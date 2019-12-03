@@ -41,6 +41,8 @@ int adv_put_to_table(adv_report_t* new_adv)
 {
 	portENTER_CRITICAL(&adv_table_mux);
 	bool found = false;
+	esp_err_t ret = ESP_OK;
+
 	for (int i=0; i<adv_reports.num_of_advs; i++) {
 		char* mac = adv_reports.table[i].tag_mac;
 		if (strcmp(new_adv->tag_mac, mac) == 0) {
@@ -54,12 +56,12 @@ int adv_put_to_table(adv_report_t* new_adv)
 		if (adv_reports.num_of_advs < MAX_ADVS_TABLE) {
 			adv_reports.table[adv_reports.num_of_advs++] = *new_adv;
 		} else {
-			return ESP_ERR_NO_MEM;
+			ret = ESP_ERR_NO_MEM;
 		}
 	}
 	portEXIT_CRITICAL(&adv_table_mux);
 
-	return 0;
+	return ret;
 }
 
 int uart_send_data(const char* logName, const char* data)
