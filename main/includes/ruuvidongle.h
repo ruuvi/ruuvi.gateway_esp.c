@@ -71,7 +71,6 @@ typedef enum nrf_command_t {
 extern struct dongle_config m_dongle_config;
 extern EventGroupHandle_t status_bits;
 extern char gw_mac[13];
-extern char gw_coordinates[20];
 
 char* ruuvi_get_conf_json();
 bool settings_get_from_flash(struct dongle_config *dongle_config);

@@ -10,7 +10,6 @@ static esp_mqtt_client_handle_t mqtt_client = NULL;
 #define TOPIC_LEN 512
 
 extern char gw_mac[13];
-extern char gw_coordinates[20];
 
 static const char *TAG = "MQTT";
 
@@ -41,7 +40,7 @@ static char* mqtt_create_json(adv_report_t* adv)
 		cJSON_AddNumberToObject(root, "gwts", now);
 		cJSON_AddNumberToObject(root, "ts", adv->timestamp);
 		cJSON_AddStringToObject(root, "data", adv->data);
-		cJSON_AddStringToObject(root, "coords", gw_coordinates);
+		cJSON_AddStringToObject(root, "coords", m_dongle_config.coordinates);
 	}
 
 	char* json_str = cJSON_PrintUnformatted(root);

@@ -81,7 +81,7 @@ static void http_send(char *msg) {
 	if (root) {
 		cJSON* gw = cJSON_AddObjectToObject(root, "gwmac");
 		if (gw) {
-			cJSON_AddStringToObject(gw, "coordinates", gw_coordinates);
+			cJSON_AddStringToObject(gw, "coordinates", m_dongle_config.coordinates);
 			cJSON_AddNumberToObject(gw, "timestamp", now);
 			tags = cJSON_AddObjectToObject(gw, "tags");
 		} else {
