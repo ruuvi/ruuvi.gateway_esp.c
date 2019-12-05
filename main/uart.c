@@ -8,6 +8,7 @@
 #include "driver/gpio.h"
 #include "esp_log.h"
 #include <string.h>
+#include <ctype.h>
 #include "cJSON.h"
 #include <time.h>
 #include "mqtt.h"
@@ -109,13 +110,38 @@ void uart_send_nrf_command(nrf_command_t command, void* arg)
 	}
 }
 
-static adv_report_t parse_adv_report_from_uart(char *msg_orig, int len) {
+static bool is_hexstr(char* str) {
+	for (int i=0; i<strlen(str); i++) {
+		if (isxdigit(str[i]) == 0) {
+			return ESP_ERR_INVALID_ARG;
+		}
+	}
+	return ESP_OK;
+}
+
+static int is_adv_report_valid(adv_report_t* adv)
+{
+	esp_err_t err = ESP_OK;
+	if (is_hexstr(adv->tag_mac) != ESP_OK) {
+		err = ESP_ERR_INVALID_ARG;
+	}
+
+	if (is_hexstr(adv->data) != ESP_OK) {
+		err = ESP_ERR_INVALID_ARG;
+	}
+
+	return err;
+}
+
+static int parse_adv_report_from_uart(char *msg_orig, int len, adv_report_t *adv) {
 	ESP_LOGD(TAG, "%s: len: %d, data: %s", __func__, len, msg_orig);
+	//TODO this assumes that data starts with valid message. It's possible that first there is junk bytes
+	//data should be iterated with different start positions and try to find a message
+	esp_err_t err = ESP_OK;
 
-	adv_report_t adv;
-
+	const int tokens_num = 3;
 	int rssi = -1;
-	char *tokens[4];
+	char *tokens[tokens_num+5];
 	int i = 0;
 	char *pch;
 	char *data;
@@ -124,12 +150,15 @@ static adv_report_t parse_adv_report_from_uart(char *msg_orig, int len) {
 	char *msg = strdup(msg_orig);
 
 	pch = strtok(msg, ",");
-	while (pch != NULL) {
+	while (pch != NULL && i < 4) {
 		tokens[i++] = pch;
 		pch = strtok(NULL, ",");
 	}
 
-	//TODO: check that msg is valid
+	if (i != tokens_num) {
+		err = ESP_ERR_INVALID_ARG;
+		ESP_LOGW(TAG, "tokens: %d", i);
+	}
 
 	tag_mac = tokens[0];
 	data = tokens[1];
@@ -137,14 +166,39 @@ static adv_report_t parse_adv_report_from_uart(char *msg_orig, int len) {
 	time_t now = 0;
 	time(&now);
 
-	adv.rssi = rssi;
-	strcpy(adv.tag_mac, tag_mac);
-	strcpy(adv.data, data);
-	adv.timestamp = now;
+	if (strlen(tag_mac) != MAC_LEN) {
+		err = ESP_ERR_INVALID_SIZE;
+		ESP_LOGW(TAG, "mac len wrong");
+	}
+
+	if (strlen(data) > ADV_DATA_MAX_LEN) {
+		err = ESP_ERR_INVALID_SIZE;
+		ESP_LOGW(TAG, "data len wrong");
+	}
+
+	if (rssi > 0) {
+		err = ESP_ERR_INVALID_ARG;
+		ESP_LOGW(TAG, "rssi wrong");
+	}
+
+	if (!err) {
+		adv->rssi = rssi;
+		strncpy(adv->tag_mac, tag_mac, MAC_LEN);
+		adv->tag_mac[MAC_LEN] = 0;
+		strncpy(adv->data, data, ADV_DATA_MAX_LEN);
+		adv->data[ADV_DATA_MAX_LEN] = 0;
+		adv->timestamp = now;
+
+		if (is_adv_report_valid(adv)) {
+			err = ESP_ERR_INVALID_ARG;
+		}
+	} else {
+		//ESP_LOGW(TAG, "invalid adv:");
+	}
 
 	free(msg);
 
-	return adv;
+	return err;
 }
 
 static void rx_task(void *arg)
@@ -162,45 +216,56 @@ static void rx_task(void *arg)
 		const int rxBytes = uart_read_bytes(UART_NUM_1, data, UART_RX_BUF_SIZE, 1000 / portTICK_RATE_MS);
 		if (rxBytes > 0) {
 			data[rxBytes] = 0;
-			ESP_LOGD(RX_TASK_TAG, "%d bytes from uart: %s", rxBytes, data);
+			ESP_LOGV(RX_TASK_TAG, "%d bytes from uart: %s", rxBytes, data);
 			//ESP_LOG_BUFFER_HEXDUMP(RX_TASK_TAG, data, rxBytes, ESP_LOG_INFO);
 
 			size_t temp_size = 0;
 			char* temp = 0;
-			char new_temp[1300];
+			char new_temp[2*UART_RX_BUF_SIZE];
 			temp = xRingbufferReceive(uart_temp_buf, &temp_size, pdMS_TO_TICKS(0));
-			//ESP_LOGD(TAG, "%d bytes from temp buffer", temp_size);
+			ESP_LOGV(TAG, "%zu bytes from temp buffer", temp_size);
 			if (temp != NULL) {
 				vRingbufferReturnItem(uart_temp_buf, temp);
-				ESP_LOG_BUFFER_HEXDUMP(TAG, temp, temp_size, ESP_LOG_INFO);
+				ESP_LOG_BUFFER_HEXDUMP(TAG, temp, temp_size, ESP_LOG_VERBOSE);
 			}
 			memcpy(new_temp, temp, temp_size);
 			memcpy(new_temp + temp_size, data, rxBytes);
 
-			char new_data[300];
+			char adv_data[UART_RX_BUF_SIZE];
 			int i, j;
 			uint end = 0;
 			int dataBytes = temp_size + rxBytes;
 
 			for (i = 0, j = 0; i < dataBytes; i++) {
-				new_data[j++] = new_temp[i];
+				adv_data[j++] = new_temp[i];
 				if (new_temp[i] == '\n') {
-					new_data[j-1] = 0;
+					adv_data[j-1] = 0;
 
-					adv_report_t adv_report = parse_adv_report_from_uart(new_data, j);
-					int ret = adv_put_to_table(&adv_report);
-					if (ret == ESP_ERR_NO_MEM) {
-						ESP_LOGD(TAG, "Adv report table full, adv dropped");
+					adv_report_t adv_report;
+					if (parse_adv_report_from_uart(adv_data, j, &adv_report) == ESP_OK) {
+						int ret = adv_put_to_table(&adv_report);
+						if (ret == ESP_ERR_NO_MEM) {
+							ESP_LOGW(TAG, "Adv report table full, adv dropped");
+						}
+					} else {
+						ESP_LOGW(TAG, "invalid adv: %s", adv_data);
 					}
 
 					end = i+1;
 					j = 0;
 				}
+				//TODO when adv_data fills with junk data, save end of it to temp buffer. This way we won't lose a message which is preceded with junk
+				if (j >= UART_RX_BUF_SIZE) {
+					j = 0;
+					end = i+1;
+					ESP_LOGW(TAG, "new_data buffer filled, reset new_data");
+
+				}
 			}
 
 			if (dataBytes - end) {
 				ESP_LOGD(TAG, "dataBytes: %d, end: %d, j: %d", dataBytes, end, j);
-				ESP_LOG_BUFFER_HEXDUMP(TAG, new_data, j, ESP_LOG_DEBUG);
+				ESP_LOG_BUFFER_HEXDUMP(TAG, adv_data, j, ESP_LOG_DEBUG);
 				int ret = xRingbufferSend(uart_temp_buf, new_temp + end, dataBytes - end, 0);
 				if (ret != pdTRUE) {
 					ESP_LOGE(TAG, "%s: Can't push to uart_temp_buf", __func__);
@@ -260,6 +325,6 @@ void uart_init(void) {
 
 	adv_reports.num_of_advs = 0;
 
-	xTaskCreate(rx_task, "uart_rx_task", 1024*4, NULL, configMAX_PRIORITIES, NULL);
+	xTaskCreate(rx_task, "uart_rx_task", 1024*5, NULL, configMAX_PRIORITIES, NULL);
 	xTaskCreate(adv_post_task, "adv_post_task", 1024*4, NULL, configMAX_PRIORITIES, NULL);
 }

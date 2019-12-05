@@ -9,6 +9,9 @@
 #define RUUVI_COMPANY_ID 0x0499
 #define RUUVIDONGLE_NVS_CONFIGURATION_KEY "ruuvi_config"
 
+#define MAC_LEN 12
+#define ADV_DATA_MAX_LEN 64
+
 #define MAX_CONFIG_STR_LEN 64
 #define MAX_HTTPURL_LEN 512
 #define MAX_MQTTSERVER_LEN 256
@@ -24,10 +27,10 @@
 #define RESET_BUTTON_BIT (1 << 2)
 
 typedef struct adv_report {
-	char tag_mac[13];
+	char tag_mac[MAC_LEN+1];
 	time_t timestamp;
 	int rssi;
-	char data[100];
+	char data[ADV_DATA_MAX_LEN+1];
 } adv_report_t;
 
 struct adv_report_table {
@@ -70,7 +73,7 @@ typedef enum nrf_command_t {
 
 extern struct dongle_config m_dongle_config;
 extern EventGroupHandle_t status_bits;
-extern char gw_mac[13];
+extern char gw_mac[MAC_LEN+1];
 
 char* ruuvi_get_conf_json();
 bool settings_get_from_flash(struct dongle_config *dongle_config);

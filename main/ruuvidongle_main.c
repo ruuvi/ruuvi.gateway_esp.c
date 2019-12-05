@@ -24,7 +24,7 @@ static const char TAG[] = "ruuvidongle";
 
 EventGroupHandle_t status_bits;
 
-char gw_mac[13] = { 0 };
+char gw_mac[MAC_LEN+1] = { 0 };
 
 struct dongle_config m_dongle_config = RUUVIDONGLE_DEFAULT_CONFIGURATION;
 extern wifi_config_t* wifi_manager_config_sta;
