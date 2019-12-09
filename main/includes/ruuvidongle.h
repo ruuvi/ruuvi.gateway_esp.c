@@ -79,6 +79,6 @@ char* ruuvi_get_conf_json();
 bool settings_get_from_flash(struct dongle_config *dongle_config);
 void settings_print(struct dongle_config *config);
 int settings_save_to_flash(struct dongle_config *config);
-void ruuvi_send_nrf_settings();
+void ruuvi_send_nrf_settings(struct dongle_config *config);
 
 #endif

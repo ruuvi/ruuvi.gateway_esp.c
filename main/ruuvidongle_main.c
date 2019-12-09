@@ -29,11 +29,11 @@ char gw_mac[MAC_LEN+1] = { 0 };
 struct dongle_config m_dongle_config = RUUVIDONGLE_DEFAULT_CONFIGURATION;
 extern wifi_config_t* wifi_manager_config_sta;
 
-void ruuvi_send_nrf_settings()
+void ruuvi_send_nrf_settings(struct dongle_config *config)
 {
-	ESP_LOGI(TAG, "sending settings to NRF: use filter: %d, company id: 0x%04x", m_dongle_config.company_filter, m_dongle_config.company_id);
-	if (m_dongle_config.company_filter) {
-		uart_send_nrf_command(SET_FILTER, &m_dongle_config.company_id);
+	ESP_LOGI(TAG, "sending settings to NRF: use filter: %d, company id: 0x%04x", config->company_filter, config->company_id);
+	if (config->company_filter) {
+		uart_send_nrf_command(SET_FILTER, &config->company_id);
 	} else {
 		uart_send_nrf_command(CLEAR_FILTER, 0);
 	}
@@ -141,7 +141,7 @@ void app_main(void)
 
 	//esp_log_level_set(TAG, ESP_LOG_DEBUG);
 
-	ruuvi_send_nrf_settings();
+	ruuvi_send_nrf_settings(&m_dongle_config);
 
 	wifi_manager_start();
 	wifi_manager_set_callback(EVENT_STA_GOT_IP, &cb_connection_ok);
