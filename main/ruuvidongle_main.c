@@ -148,7 +148,7 @@ void app_main(void)
 	wifi_manager_set_callback(EVENT_STA_DISCONNECTED, &cb_disconnect);
 
 	xTaskCreate(monitoring_task, "monitoring_task", 2048, NULL, 1, NULL);
-	xTaskCreate(reset_task, "reset_task", 1024*2, NULL, 5, NULL);
+	xTaskCreate(reset_task, "reset_task", 1024*2, NULL, 1, NULL);
 
 	ESP_LOGI(TAG, "Main started");
 }

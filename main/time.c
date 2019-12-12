@@ -93,5 +93,5 @@ void time_task(void* param)
 
 void time_init()
 {
-	xTaskCreate(time_task, "time_task", 1024*2, NULL, configMAX_PRIORITIES-1, NULL);
+	xTaskCreate(time_task, "time_task", 1024*2, NULL, 1, NULL);
 }

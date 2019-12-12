@@ -325,6 +325,6 @@ void uart_init(void) {
 
 	adv_reports.num_of_advs = 0;
 
-	xTaskCreate(rx_task, "uart_rx_task", 1024*5, NULL, configMAX_PRIORITIES, NULL);
-	xTaskCreate(adv_post_task, "adv_post_task", 1024*4, NULL, configMAX_PRIORITIES, NULL);
+	xTaskCreate(rx_task, "uart_rx_task", 1024*6, NULL, 1, NULL);
+	xTaskCreate(adv_post_task, "adv_post_task", 1024*4, NULL, 1, NULL);
 }

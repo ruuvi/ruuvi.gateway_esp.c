@@ -127,5 +127,5 @@ void leds_init()
 		ESP_LOGE(TAG, "Can't create event group");
 	}
 
-	xTaskCreate(leds_task, "leds_task", 1024*2, NULL, 5, NULL);
+	xTaskCreate(leds_task, "leds_task", 1024*2, NULL, 1, NULL);
 }
