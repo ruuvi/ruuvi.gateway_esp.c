@@ -83,9 +83,7 @@ bool settings_get_from_flash(struct dongle_config *dongle_config)
 char* ruuvi_get_conf_json()
 {
 	char* buf = 0;
-	struct dongle_config c;
-
-	settings_get_from_flash(&c);
+	struct dongle_config c = m_dongle_config;
 
 	cJSON* root = cJSON_CreateObject();
 	if (root) {
