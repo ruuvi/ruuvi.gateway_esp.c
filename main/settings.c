@@ -38,7 +38,7 @@ void settings_print(struct dongle_config *config)
 	ESP_LOGI(TAG, "config: mqtt port: %d", config->mqtt_port);
 	ESP_LOGI(TAG, "config: mqtt prefix: %s", config->mqtt_prefix);
 	ESP_LOGI(TAG, "config: mqtt user: %s", config->mqtt_user);
-	ESP_LOGI(TAG, "config: mqtt password: %s", config->mqtt_pass);
+	ESP_LOGI(TAG, "config: mqtt password: %s", "********");
 	ESP_LOGI(TAG, "config: http url: %s", config->http_url);
 	ESP_LOGI(TAG, "config: coordinates: %s", config->coordinates);
 	ESP_LOGI(TAG, "config: use company id filter: %d", config->company_filter);
