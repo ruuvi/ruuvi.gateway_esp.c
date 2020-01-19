@@ -1,8 +1,8 @@
-### Ruuvidongle ESP32 firmware
+### Ruuvi Gateway ESP32 firmware
 
 Developed with ESP_IDF version v4.1-dev-1086-g93a8603c5
 
-Needs nrf52 running and connected to UART pins.
+Needs nRF52 running and connected to UART pins.
 
 IO pins:
 ```
