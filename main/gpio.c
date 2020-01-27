@@ -87,6 +87,8 @@ static void gpio_task(void* arg)
 
 void gpio_init(void)
 {
+	esp_log_level_set(TAG, ESP_LOG_DEBUG);
+
 	gpio_config_t io_conf;
 	/*INPUT GPIO WIFI_RESET_BUTTON  -------------------------------------*/
 	//interrupt of rising edge

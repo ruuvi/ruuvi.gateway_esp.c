@@ -14,6 +14,7 @@
 
 #define TIME_SYNC_BIT (1<<0)
 
+static TaskHandle_t task_time = NULL;
 EventGroupHandle_t time_event_group = NULL;
 EventBits_t uxBits;
 static const char TAG[] = "time";
@@ -28,7 +29,7 @@ static time_t wait_for_sntp(void)
 	while(timeinfo.tm_year < (2016 - 1900) && ++retry < retry_count)
 	{
 		ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d)", retry, retry_count);
-		vTaskDelay(1000 / portTICK_PERIOD_MS);
+		vTaskDelay(2000 / portTICK_PERIOD_MS);
 		time(&now);
 		localtime_r(&now, &timeinfo);
 	}
@@ -93,5 +94,15 @@ void time_task(void* param)
 
 void time_init()
 {
-	xTaskCreate(time_task, "time_task", 1024*2, NULL, 1, NULL);
+	xTaskCreate(time_task, "time_task", 1024*2, NULL, 1, &task_time);
+}
+
+void time_stop()
+{
+	sntp_stop();
+	if (task_time) {
+		vTaskDelete(task_time);
+		vEventGroupDelete(time_event_group);
+		time_event_group = NULL;
+	}
 }

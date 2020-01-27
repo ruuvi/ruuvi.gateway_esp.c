@@ -16,7 +16,7 @@
 #include "uart.h"
 #include "http.h"
 
-#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+//#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 
 #define TXD_PIN (GPIO_NUM_4)
 #define RXD_PIN (GPIO_NUM_5)
@@ -204,7 +204,7 @@ static int parse_adv_report_from_uart(char *msg_orig, int len, adv_report_t *adv
 static void rx_task(void *arg)
 {
 	static const char *RX_TASK_TAG = "RX_TASK";
-	esp_log_level_set(RX_TASK_TAG, ESP_LOG_INFO);
+	esp_log_level_set(RX_TASK_TAG, ESP_LOG_DEBUG);
 	uint8_t* data = (uint8_t*) malloc(UART_RX_BUF_SIZE+1);
 
 	uart_temp_buf = xRingbufferCreate(BUF_MAX, RINGBUF_TYPE_NOSPLIT);
@@ -278,7 +278,7 @@ static void rx_task(void *arg)
 
 static void adv_post_task(void *arg)
 {
-	esp_log_level_set(TAG, ESP_LOG_DEBUG);
+	esp_log_level_set(TAG, ESP_LOG_INFO);
 
 	ESP_LOGI(TAG, "%s", __func__);
 	while (1) {
@@ -295,15 +295,21 @@ static void adv_post_task(void *arg)
 		adv_reports.num_of_advs = 0; //clear the table
 		portEXIT_CRITICAL(&adv_table_mux);
 
-		if (xEventGroupGetBits(status_bits) & WIFI_CONNECTED_BIT) {
-			if (m_dongle_config.use_http) {
-				http_send_advs(&adv_reports_buf);
+		EventBits_t status = xEventGroupGetBits(status_bits);
+		if (adv_reports_buf.num_of_advs) {
+			if (((status & WIFI_CONNECTED_BIT)
+			|| (status & ETH_CONNECTED_BIT))
+			&& (status & MQTT_CONNECTED_BIT)) {
+				if (m_dongle_config.use_http) {
+					http_send_advs(&adv_reports_buf);
+				}
+				if (m_dongle_config.use_mqtt && (xEventGroupGetBits(status_bits) & MQTT_CONNECTED_BIT)) {
+					mqtt_publish_table(&adv_reports_buf);
+				}
+			} else {
+				ESP_LOGW(TAG, "Can't send, wifi not connected");
+
 			}
-			if (m_dongle_config.use_mqtt && xEventGroupGetBits(status_bits) & MQTT_CONNECTED_BIT) {
-				mqtt_publish_table(&adv_reports_buf);
-			}
-		} else {
-			ESP_LOGW(TAG, "Can't send, wifi not connected");
 		}
 
 		vTaskDelay( pdMS_TO_TICKS(ADV_POST_INTERVAL) );

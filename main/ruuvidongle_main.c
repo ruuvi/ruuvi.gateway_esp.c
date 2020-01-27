@@ -19,6 +19,7 @@
 #include "http.h"
 #include "dns_server.h"
 #include "http_server.h"
+#include "ethernet.h"
 
 static const char TAG[] = "ruuvidongle";
 
@@ -47,10 +48,10 @@ void monitoring_task(void *pvParameter)
 	}
 }
 
-void get_mac_address()
+void get_mac_address(esp_mac_type_t type)
 {
 	uint8_t mac[6];
-	esp_err_t err = esp_read_mac(mac, ESP_MAC_WIFI_STA);
+	esp_err_t err = esp_read_mac(mac, type);
 	if (err != ESP_OK) {
 		ESP_LOGE(TAG, "Can't get mac address, err: %d", err);
 		return;
@@ -62,7 +63,6 @@ void get_mac_address()
 	gw_mac[12] = 0; //null terminator
 
 	ESP_LOGI(TAG, "Mac address: %s", gw_mac);
-
 }
 
 /* brief this is an exemple of a callback that you can setup in your own app to get notified of wifi manager event */
@@ -73,16 +73,39 @@ void cb_connection_ok(void *pvParameter){
 	leds_stop_blink();
 	leds_on();
 
-	get_mac_address();
+	get_mac_address(ESP_MAC_WIFI_STA);
 
-	time_sync();
-
-	if (m_dongle_config.use_mqtt) {
-		mqtt_app_start();
-	}
+	start_services();
 
 	dns_server_stop();
 	http_server_stop();
+}
+
+void ethernet_link_up_cb() {
+
+}
+
+void ethernet_link_down_cb()
+{
+	ESP_LOGI(TAG, "Ethernet lost connection");
+	xEventGroupClearBits(status_bits, ETH_CONNECTED_BIT);
+	leds_stop_blink();
+	leds_start_blink(LEDS_SLOW_BLINK);
+}
+
+void ethernet_connection_ok_cb()
+{
+	ESP_LOGI(TAG, "Ethernet connected");
+
+	wifi_manager_stop();
+
+	get_mac_address(ESP_MAC_ETH);
+
+	leds_stop_blink();
+	leds_on();
+	xEventGroupSetBits(status_bits, ETH_CONNECTED_BIT);
+
+	start_services();
 }
 
 void cb_disconnect(void *pvParameter)
@@ -106,6 +129,15 @@ esp_err_t reset_wifi_settings()
 	return ESP_OK;
 }
 
+void start_services()
+{
+	time_sync();
+
+	if (m_dongle_config.use_mqtt) {
+		mqtt_app_start();
+	}
+}
+
 void reset_task(void* arg)
 {
 	ESP_LOGI(TAG, "reset task started");
@@ -122,8 +154,17 @@ void reset_task(void* arg)
 	}
 }
 
+void wifi_init()
+{
+	wifi_manager_start();
+	wifi_manager_set_callback(EVENT_STA_GOT_IP, &cb_connection_ok);
+	wifi_manager_set_callback(EVENT_STA_DISCONNECTED, &cb_disconnect);
+}
+
 void app_main(void)
 {
+	esp_log_level_set(TAG, ESP_LOG_DEBUG);
+
 	status_bits = xEventGroupCreate();
 	if (status_bits == NULL) {
 		ESP_LOGE(TAG, "Can't create event group");
@@ -139,16 +180,15 @@ void app_main(void)
 
 	leds_start_blink(LEDS_FAST_BLINK);
 
-	//esp_log_level_set(TAG, ESP_LOG_DEBUG);
-
 	ruuvi_send_nrf_settings(&m_dongle_config);
 
-	wifi_manager_start();
-	wifi_manager_set_callback(EVENT_STA_GOT_IP, &cb_connection_ok);
-	wifi_manager_set_callback(EVENT_STA_DISCONNECTED, &cb_disconnect);
+	wifi_init();
+	ethernet_init();
 
 	xTaskCreate(monitoring_task, "monitoring_task", 2048, NULL, 1, NULL);
 	xTaskCreate(reset_task, "reset_task", 1024*2, NULL, 1, NULL);
 
 	ESP_LOGI(TAG, "Main started");
 }
+
+

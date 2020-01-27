@@ -4,6 +4,9 @@
 #include "freertos/event_groups.h"
 #include "esp_log.h"
 #include "ruuvidongle.h"
+#include "mqtt.h"
+
+#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 
 static esp_mqtt_client_handle_t mqtt_client = NULL;
 
@@ -107,6 +110,9 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
 	case MQTT_EVENT_ERROR:
 		ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
 		break;
+	case MQTT_EVENT_BEFORE_CONNECT:
+		ESP_LOGI(TAG, "MQTT_EVENT_BEFORE_CONNECT");
+		break;
 	default:
 		ESP_LOGI(TAG, "Other event id:%d", event->event_id);
 		break;
@@ -116,6 +122,15 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
 
 void mqtt_app_start(void)
 {
+	ESP_LOGI(TAG, "%s", __func__);
+
+	if (mqtt_client != NULL) {
+		ESP_LOGI(TAG, "MQTT destroy");
+		esp_mqtt_client_destroy(mqtt_client);
+		mqtt_client = NULL;
+		xEventGroupClearBits(status_bits, MQTT_CONNECTED_BIT);
+	}
+
 	char lwt_topic[TOPIC_LEN];
 	create_full_topic(lwt_topic, m_dongle_config.mqtt_prefix, gw_mac);
 
