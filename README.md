@@ -1,6 +1,10 @@
-### Ruuvi Gateway ESP32 firmware
+# Ruuvi Gateway ESP32 firmware
 
-Developed with ESP_IDF version v4.1-dev-1086-g93a8603c5
+### Features
+
+On start wifi access point is active. Access point serves a web page for setting the wifi network. It also has configuration for ethernet, where to post BLE scan results (HTTP/MQTT), filter only Ruuvitags or all BLE devices.
+
+Ethernet is automatically used if cable is plugged in and wifi will be turned off. To access the configuration again: unplug ethernet, hold reset button 3 seconds and device will reboot.
 
 Needs nRF52 running and connected to UART pins.
 
@@ -13,6 +17,18 @@ Uart:
 #define TXD_PIN (GPIO_NUM_4)
 #define RXD_PIN (GPIO_NUM_5)
 ```
+Ethernet:
+```
+#define ETH_MDC_GPIO 17
+#define ETH_MDIO_GPIO 18
+RMII clock output (nINT/REFCLK) 16
+TX0 19
+TX1 22
+TX_EN 21
+RX0 25
+RX1 26
+CRS/RX_DV 27
+```
 
 ### Configure the project
 
@@ -23,6 +39,8 @@ idf.py menuconfig
 * Set serial port under Serial Flasher Options.
 
 ### Build and Flash
+
+Developed with ESP_IDF version v4.0-rc
 
 Build the project and flash it to the board, then run monitor tool to view serial output:
 
