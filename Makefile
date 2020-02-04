@@ -3,6 +3,6 @@
 # project subdirectory.
 #
 
-PROJECT_NAME := uart_async_rxtxtasks
+PROJECT_NAME := ruuvi_gateway_esp
 
 include $(IDF_PATH)/make/project.mk
