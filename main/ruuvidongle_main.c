@@ -66,7 +66,7 @@ void get_mac_address(esp_mac_type_t type)
 }
 
 /* brief this is an exemple of a callback that you can setup in your own app to get notified of wifi manager event */
-void cb_connection_ok(void *pvParameter){
+void wifi_connection_ok_cb(void *pvParameter){
 	ESP_LOGI(TAG, "Wifi connected");
 
 	xEventGroupSetBits(status_bits, WIFI_CONNECTED_BIT);
@@ -108,7 +108,7 @@ void ethernet_connection_ok_cb()
 	start_services();
 }
 
-void cb_disconnect(void *pvParameter)
+void wifi_disconnect_cb(void *pvParameter)
 {
 	ESP_LOGW(TAG, "Wifi disconnected");
 
@@ -157,8 +157,8 @@ void reset_task(void* arg)
 void wifi_init()
 {
 	wifi_manager_start();
-	wifi_manager_set_callback(EVENT_STA_GOT_IP, &cb_connection_ok);
-	wifi_manager_set_callback(EVENT_STA_DISCONNECTED, &cb_disconnect);
+	wifi_manager_set_callback(EVENT_STA_GOT_IP, &wifi_connection_ok_cb);
+	wifi_manager_set_callback(EVENT_STA_DISCONNECTED, &wifi_disconnect_cb);
 }
 
 void app_main(void)
@@ -190,5 +190,3 @@ void app_main(void)
 
 	ESP_LOGI(TAG, "Main started");
 }
-
-

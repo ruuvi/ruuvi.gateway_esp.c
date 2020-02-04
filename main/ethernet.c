@@ -115,7 +115,6 @@ void ethernet_init()
 
 	tcpip_adapter_init();
 
-	//ESP_ERROR_CHECK(esp_event_loop_create_default());
 	ESP_ERROR_CHECK(tcpip_adapter_set_default_eth_handlers());
 
 	ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, &eth_event_handler, NULL));
