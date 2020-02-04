@@ -18,7 +18,7 @@
 #define MAX_MQTTPREFIX_LEN 64
 #define MAX_MQTTUSER_LEN 64
 #define MAX_MQTTPASS_LEN 64
-#define IP_STR_LEN 16
+#define IP_STR_LEN 17
 
 #define ADV_POST_INTERVAL 10000
 #define MAX_ADVS_TABLE 20
@@ -45,6 +45,8 @@ struct dongle_config {
 	char eth_static_ip[IP_STR_LEN];
 	char eth_netmask[IP_STR_LEN];
 	char eth_gw[IP_STR_LEN];
+	char eth_dns1[IP_STR_LEN];
+	char eth_dns2[IP_STR_LEN];
 	bool use_mqtt;
 	bool use_http;
 	char mqtt_server[256];
@@ -63,6 +65,8 @@ struct dongle_config {
 	.eth_static_ip = { 0 },			\
 	.eth_netmask = { 0 },			\
 	.eth_gw = { 0 },				\
+	.eth_dns1 = { 0 },				\
+	.eth_dns2 = { 0 },				\
 	.use_http = false,				\
 	.use_mqtt = false,				\
 	.http_url = { 0 },				\

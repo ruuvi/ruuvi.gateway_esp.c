@@ -36,6 +36,8 @@ void settings_print(struct dongle_config *config)
 	ESP_LOGI(TAG, "config: eth static ip: %s", config->eth_static_ip);
 	ESP_LOGI(TAG, "config: eth netmask: %s", config->eth_netmask);
 	ESP_LOGI(TAG, "config: eth gw: %s", config->eth_gw);
+	ESP_LOGI(TAG, "config: eth dns1: %s", config->eth_dns1);
+	ESP_LOGI(TAG, "config: eth dns2: %s", config->eth_dns2);
 	ESP_LOGI(TAG, "config: use http: %d", config->use_http);
 	ESP_LOGI(TAG, "config: use mqtt: %d", config->use_mqtt);
 	ESP_LOGI(TAG, "config: mqtt server: %s", config->mqtt_server);
@@ -95,6 +97,8 @@ char* ruuvi_get_conf_json()
 		cJSON_AddStringToObject(root, "eth_static_ip", c.eth_static_ip);
 		cJSON_AddStringToObject(root, "eth_netmask", c.eth_netmask);
 		cJSON_AddStringToObject(root, "eth_gw", c.eth_gw);
+		cJSON_AddStringToObject(root, "eth_dns1", c.eth_dns1);
+		cJSON_AddStringToObject(root, "eth_dns2", c.eth_dns2);
 		cJSON_AddBoolToObject(root, "use_http", c.use_http);
 		cJSON_AddStringToObject(root, "http_url", c.http_url);
 		cJSON_AddBoolToObject(root, "use_mqtt", c.use_mqtt);

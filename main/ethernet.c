@@ -25,6 +25,9 @@
 #define ETH_MDIO_GPIO 18
 #define ETH_PHY_RST_GPIO -1 //disabled
 
+// Cloudfare public DNS
+const char *dns_fallback_server = "1.1.1.1";
+
 static const char *TAG = "eth";
 
 /** Event handler for Ethernet events */
@@ -75,24 +78,24 @@ static void got_ip_event_handler(void *arg, esp_event_base_t event_base,
 	ethernet_connection_ok_cb();
 }
 
-void ethernet_init()
+void ethernet_update_ip()
 {
-	esp_log_level_set(TAG, ESP_LOG_DEBUG);
-
 	struct dongle_config *c = &m_dongle_config;
-	bool error = false;
-	esp_err_t ret;
 
+	bool error = false;
+	int ret = 0;
 	if (m_dongle_config.eth_dhcp) {
 		ESP_LOGI(TAG, "Using ETH DHCP");
+		ret = tcpip_adapter_dhcpc_start(TCPIP_ADAPTER_IF_ETH);
+		if (ret) {
+			ESP_LOGE(TAG, "dhcpc start error: 0x%02x", ret);
+		}
 	} else {
 		ESP_LOGI(TAG, "Using static IP");
-		// const char ip[] = "192.168.102.100";
-		// const char netmask[] = "255.255.255.0";
-		// const char gw[] = "192.168.102.254";
 
 		tcpip_adapter_ip_info_t ipInfo;
-		if (ip4addr_aton(c->eth_static_ip, &ipInfo.ip)) {
+		memset(&ipInfo, 0, sizeof(ipInfo));
+		if (!ip4addr_aton(c->eth_static_ip, &ipInfo.ip)) {
 			ESP_LOGE(TAG, "invalid eth static ip: %s", c->eth_static_ip);
 			error = true;
 		}
@@ -100,18 +103,69 @@ void ethernet_init()
 			ESP_LOGE(TAG, "invalid eth netmask: %s", c->eth_netmask);
 			error = true;
 		}
-		if (ip4addr_aton(c->eth_gw, &ipInfo.gw)) {
+		if (!ip4addr_aton(c->eth_gw, &ipInfo.gw)) {
 			ESP_LOGE(TAG, "invalid eth gw: %s", c->eth_gw);
 			error = true;
 		}
 
-		ESP_ERROR_CHECK(tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_ETH));
+		ret = tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_ETH);
+		if (ret == ESP_ERR_TCPIP_ADAPTER_DHCP_ALREADY_STOPPED) {
+			ESP_LOGW(TAG, "DHCP client already stopped");
+		} else if (ret != ESP_OK) {
+			ESP_LOGE(TAG, "DHCP client stop error: 0x%02x", ret);
+			error = true;
+		}
 
 		ret = tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_ETH, &ipInfo);
 		if (ret != ESP_OK || error) {
 			ESP_LOGE(TAG, "Invalid ip settings for ETH, err: 0x%02x", ret);
 		}
+
+		tcpip_adapter_dns_info_t dns1;
+		dns1.ip.type = IPADDR_TYPE_V4;
+		if (ip4addr_aton(c->eth_dns1, (ip4_addr_t*)&dns1.ip.u_addr)) {
+			ret = tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_ETH, TCPIP_ADAPTER_DNS_MAIN, &dns1);
+			if (ret) {
+				ESP_LOGE(TAG, "dns1 error: 0x%02x", ret);
+			}
+		} else {
+			ESP_LOGE(TAG, "invalid dns1 server: %s", c->eth_dns1);
+		}
+
+		tcpip_adapter_dns_info_t dns2;
+		dns2.ip.type = IPADDR_TYPE_V4;
+		if (ip4addr_aton(c->eth_dns2, (ip4_addr_t*)&dns2.ip.u_addr)) {
+			ret = tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_ETH, TCPIP_ADAPTER_DNS_BACKUP, &dns2);
+			if (ret) {
+				ESP_LOGE(TAG, "dns2 error: 0x%02x", ret);
+			}
+		} else {
+			ESP_LOGE(TAG, "invalid dns2 server: %s", c->eth_dns2);
+		}
 	}
+
+	//set DNS fallback also for DHCP settings
+	tcpip_adapter_dns_info_t dns_fallback;
+	dns_fallback.ip.type = IPADDR_TYPE_V4;
+	if (ip4addr_aton(dns_fallback_server, (ip4_addr_t*)&dns_fallback.ip.u_addr)) {
+		ret = tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_ETH, TCPIP_ADAPTER_DNS_FALLBACK, &dns_fallback);
+		if (ret) {
+			ESP_LOGE(TAG, "%s: dns_fallback error: 0x%02x", __func__, ret);
+		}
+	} else {
+		ESP_LOGE(TAG, "invalid dns fallback server: %s", dns_fallback_server);
+	}
+
+	if (!error) {
+		ESP_LOGI(TAG, "ETH ip updated");
+	}
+}
+
+void ethernet_init()
+{
+	esp_log_level_set(TAG, ESP_LOG_DEBUG);
+
+	ethernet_update_ip();
 
 	tcpip_adapter_init();
 
