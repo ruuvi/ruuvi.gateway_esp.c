@@ -110,6 +110,10 @@ char* ruuvi_get_conf_json()
 		cJSON_AddStringToObject(root, "coordinates", c.coordinates);
 		cJSON_AddBoolToObject(root, "use_filtering", c.company_filter);
 
+		char company_id[10];
+		snprintf(company_id, 10, "0x%04x", c.company_id);
+		cJSON_AddStringToObject(root, "company_id", company_id);
+
 		buf = cJSON_Print(root);
 		if (!buf) {
 			ESP_LOGE(TAG, "Can't create config json");
