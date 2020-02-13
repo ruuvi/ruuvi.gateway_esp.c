@@ -21,7 +21,9 @@ Ethernet:
 ```
 #define ETH_MDC_GPIO 17
 #define ETH_MDIO_GPIO 18
-RMII clock output (nINT/REFCLK) 16
+RESET_BUTTON 2
+RMII clock input (nINT/REFCLK) 0
+LAN_CLOCK_ENABLE 16
 TX0 19
 TX1 22
 TX_EN 21

@@ -20,6 +20,7 @@
 #define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 
 
+#define LAN_CLOCK_ENABLE 16
 #define ETH_PHY_ADDR 1
 #define ETH_MDC_GPIO 17
 #define ETH_MDIO_GPIO 18
@@ -164,6 +165,9 @@ void ethernet_update_ip()
 void ethernet_init()
 {
 	esp_log_level_set(TAG, ESP_LOG_DEBUG);
+
+	gpio_set_direction(LAN_CLOCK_ENABLE, GPIO_MODE_OUTPUT);
+	gpio_set_level(LAN_CLOCK_ENABLE, 1);
 
 	ethernet_update_ip();
 
