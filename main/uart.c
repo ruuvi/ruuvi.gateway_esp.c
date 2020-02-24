@@ -298,8 +298,7 @@ static void adv_post_task(void *arg)
 		EventBits_t status = xEventGroupGetBits(status_bits);
 		if (adv_reports_buf.num_of_advs) {
 			if (((status & WIFI_CONNECTED_BIT)
-			|| (status & ETH_CONNECTED_BIT))
-			&& (status & MQTT_CONNECTED_BIT)) {
+			|| (status & ETH_CONNECTED_BIT))) {
 				if (m_dongle_config.use_http) {
 					http_send_advs(&adv_reports_buf);
 				}
@@ -307,7 +306,7 @@ static void adv_post_task(void *arg)
 					mqtt_publish_table(&adv_reports_buf);
 				}
 			} else {
-				ESP_LOGW(TAG, "Can't send, wifi not connected");
+				ESP_LOGW(TAG, "Can't send, no network connection");
 
 			}
 		}
