@@ -32,6 +32,12 @@ int settings_save_to_flash(struct dongle_config *config)
 
 void settings_print(struct dongle_config *config)
 {
+	ESP_LOGI(TAG, "config: use eth dhcp: %d", config->eth_dhcp);
+	ESP_LOGI(TAG, "config: eth static ip: %s", config->eth_static_ip);
+	ESP_LOGI(TAG, "config: eth netmask: %s", config->eth_netmask);
+	ESP_LOGI(TAG, "config: eth gw: %s", config->eth_gw);
+	ESP_LOGI(TAG, "config: eth dns1: %s", config->eth_dns1);
+	ESP_LOGI(TAG, "config: eth dns2: %s", config->eth_dns2);
 	ESP_LOGI(TAG, "config: use http: %d", config->use_http);
 	ESP_LOGI(TAG, "config: use mqtt: %d", config->use_mqtt);
 	ESP_LOGI(TAG, "config: mqtt server: %s", config->mqtt_server);
@@ -42,7 +48,7 @@ void settings_print(struct dongle_config *config)
 	ESP_LOGI(TAG, "config: http url: %s", config->http_url);
 	ESP_LOGI(TAG, "config: coordinates: %s", config->coordinates);
 	ESP_LOGI(TAG, "config: use company id filter: %d", config->company_filter);
-	ESP_LOGI(TAG, "config: company id: 0x%02x%02x", config->company_id >> 8, config->company_id & 0xFF);
+	ESP_LOGI(TAG, "config: company id: 0x%04x", config->company_id);
 }
 
 bool settings_get_from_flash(struct dongle_config *dongle_config)
@@ -87,6 +93,12 @@ char* ruuvi_get_conf_json()
 
 	cJSON* root = cJSON_CreateObject();
 	if (root) {
+		cJSON_AddBoolToObject(root, "eth_dhcp", c.eth_dhcp);
+		cJSON_AddStringToObject(root, "eth_static_ip", c.eth_static_ip);
+		cJSON_AddStringToObject(root, "eth_netmask", c.eth_netmask);
+		cJSON_AddStringToObject(root, "eth_gw", c.eth_gw);
+		cJSON_AddStringToObject(root, "eth_dns1", c.eth_dns1);
+		cJSON_AddStringToObject(root, "eth_dns2", c.eth_dns2);
 		cJSON_AddBoolToObject(root, "use_http", c.use_http);
 		cJSON_AddStringToObject(root, "http_url", c.http_url);
 		cJSON_AddBoolToObject(root, "use_mqtt", c.use_mqtt);
@@ -97,6 +109,10 @@ char* ruuvi_get_conf_json()
 		//cJSON_AddStringToObject(root, "mqtt_pass", c.mqtt_pass);  //don't send to browser because security
 		cJSON_AddStringToObject(root, "coordinates", c.coordinates);
 		cJSON_AddBoolToObject(root, "use_filtering", c.company_filter);
+
+		char company_id[10];
+		snprintf(company_id, 10, "0x%04x", c.company_id);
+		cJSON_AddStringToObject(root, "company_id", company_id);
 
 		buf = cJSON_Print(root);
 		if (!buf) {

@@ -11,7 +11,7 @@
 #include "leds.h"
 
 
-#define CONFIG_WIFI_RESET_BUTTON_GPIO 	0
+#define CONFIG_WIFI_RESET_BUTTON_GPIO 	2
 #define GPIO_WIFI_RESET_BUTTON_MASK		(1ULL<<CONFIG_WIFI_RESET_BUTTON_GPIO)
 
 #define TIMER_DIVIDER 16
@@ -87,6 +87,8 @@ static void gpio_task(void* arg)
 
 void gpio_init(void)
 {
+	esp_log_level_set(TAG, ESP_LOG_DEBUG);
+
 	gpio_config_t io_conf;
 	/*INPUT GPIO WIFI_RESET_BUTTON  -------------------------------------*/
 	//interrupt of rising edge

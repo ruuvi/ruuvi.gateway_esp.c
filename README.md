@@ -1,18 +1,46 @@
-### Ruuvi Gateway ESP32 firmware
+# Ruuvi Gateway ESP32 firmware
 
-Developed with ESP_IDF version v4.1-dev-1086-g93a8603c5
+Developed with:
+* ESP-IDF version [v4.0-rc](https://github.com/espressif/esp-idf/releases/tag/v4.0-rc)
+* ESP32-DevKitC V4
+* Waveshare LAN8720 ETH board
+* nRF52832 devkit
 
-Needs nRF52 running and connected to UART pins.
+### Features
 
-IO pins:
-```
-#define LED_PIN 23
-```
-Uart:
-```
-#define TXD_PIN (GPIO_NUM_4)
-#define RXD_PIN (GPIO_NUM_5)
-```
+On start wifi access point is active. Access point serves a web page for setting the wifi network. It also has configuration for ethernet, where to post BLE scan results (HTTP/MQTT), filter only Ruuvitags or all BLE devices.
+
+Ethernet is automatically used if cable is plugged in and wifi will be turned off. To access the configuration again: unplug ethernet, hold reset button 3 seconds and device will reboot.
+
+Needs nRF52 running the Gateway firmware and connected to UART pins.
+
+### IO pins:
+
+ESP32 | Function
+--|--
+2 | Reset button
+23 | LED
+4 | UART TX
+5 | UART RX
+
+### Ethernet:
+ESP32 | LAN87210
+-|-
+0 | nINT/REFCLK
+16 | NC/CLOCK_ENABLE*
+17 | MDC
+18 | MDIO
+19 | TX0
+21 | TX_EN
+22 | TX1
+25 | RX0
+26 | RX1
+27 | CRS/RX_DV
+
+*ESP32 will use external clock signal from LAN8720 and some modifications are needed for that:
+
+* [WaveShare LAN8720 modification for clock](https://sautter.com/blog/ethernet-on-esp32-using-lan8720/)
+* Remove capacitor C15 from onboard Boot button (SW1) to make clock signal work from LAN8720
 
 ### Configure the project
 

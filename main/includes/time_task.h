@@ -4,5 +4,6 @@
 void time_task(void* param);
 void time_sync(void);
 void time_init();
+void time_stop();
 
 #endif

@@ -1,5 +1,4 @@
-#ifndef _RUUVIDONGLE_H_DEF_
-#define _RUUVIDONGLE_H_DEF_
+#pragma once
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
@@ -8,6 +7,7 @@
 
 #define RUUVI_COMPANY_ID 0x0499
 #define RUUVIDONGLE_NVS_CONFIGURATION_KEY "ruuvi_config"
+#define RUUVIDONGLE_NVS_BOOT_KEY "ruuvi_boot"
 
 #define MAC_LEN 12
 #define ADV_DATA_MAX_LEN 64
@@ -18,6 +18,7 @@
 #define MAX_MQTTPREFIX_LEN 64
 #define MAX_MQTTUSER_LEN 64
 #define MAX_MQTTPASS_LEN 64
+#define IP_STR_LEN 17
 
 #define ADV_POST_INTERVAL 10000
 #define MAX_ADVS_TABLE 20
@@ -25,6 +26,8 @@
 #define WIFI_CONNECTED_BIT (1 << 0)
 #define MQTT_CONNECTED_BIT (1 << 1)
 #define RESET_BUTTON_BIT (1 << 2)
+#define ETH_DISCONNECTED_BIT (1 << 3)
+#define ETH_CONNECTED_BIT (1 << 4)
 
 typedef struct adv_report {
 	char tag_mac[MAC_LEN+1];
@@ -37,8 +40,13 @@ struct adv_report_table {
 	int num_of_advs;
 	adv_report_t table[MAX_ADVS_TABLE];
 };
-
 struct dongle_config {
+	bool eth_dhcp;
+	char eth_static_ip[IP_STR_LEN];
+	char eth_netmask[IP_STR_LEN];
+	char eth_gw[IP_STR_LEN];
+	char eth_dns1[IP_STR_LEN];
+	char eth_dns2[IP_STR_LEN];
 	bool use_mqtt;
 	bool use_http;
 	char mqtt_server[256];
@@ -53,6 +61,12 @@ struct dongle_config {
 };
 
 #define RUUVIDONGLE_DEFAULT_CONFIGURATION	{	\
+	.eth_dhcp = true,				\
+	.eth_static_ip = { 0 },			\
+	.eth_netmask = { 0 },			\
+	.eth_gw = { 0 },				\
+	.eth_dns1 = { 0 },				\
+	.eth_dns2 = { 0 },				\
 	.use_http = false,				\
 	.use_mqtt = false,				\
 	.http_url = { 0 },				\
@@ -80,5 +94,9 @@ bool settings_get_from_flash(struct dongle_config *dongle_config);
 void settings_print(struct dongle_config *config);
 int settings_save_to_flash(struct dongle_config *config);
 void ruuvi_send_nrf_settings(struct dongle_config *config);
+void ethernet_connection_ok_cb();
+void ethernet_connection_down_cb();
+void ethernet_link_up_cb();
+void ethernet_link_down_cb();
+void start_services();
 
-#endif
