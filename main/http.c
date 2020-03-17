@@ -1,13 +1,14 @@
 #include "esp_http_client.h"
 #include <string.h>
-#include "esp_log.h"
 #include "ruuvidongle.h"
 #include "cJSON.h"
 #include <time.h>
 
 #define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+#include "esp_log.h"
 
 static const char TAG[] = "http";
+extern char gw_mac[13];
 
 static esp_err_t http_event_handler(esp_http_client_event_t* evt)
 {
@@ -79,10 +80,11 @@ static void http_send(char *msg) {
 
 	cJSON* root = cJSON_CreateObject();
 	if (root) {
-		cJSON* gw = cJSON_AddObjectToObject(root, "gwmac");
+		cJSON* gw = cJSON_AddObjectToObject(root, "data");
 		if (gw) {
 			cJSON_AddStringToObject(gw, "coordinates", m_dongle_config.coordinates);
 			cJSON_AddNumberToObject(gw, "timestamp", now);
+			cJSON_AddStringToObject(gw, "gwmac", gw_mac);
 			tags = cJSON_AddObjectToObject(gw, "tags");
 		} else {
 			ESP_LOGE(TAG, "%s: can't create json", __func__);
