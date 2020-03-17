@@ -17,12 +17,10 @@
 #include "wifi_manager.h"
 #include "mqtt.h"
 #include "time_task.h"
-#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 
-
-#define LAN_CLOCK_ENABLE 16
+#define LAN_CLOCK_ENABLE 23
 #define ETH_PHY_ADDR 1
-#define ETH_MDC_GPIO 17
+#define ETH_MDC_GPIO 15
 #define ETH_MDIO_GPIO 18
 #define ETH_PHY_RST_GPIO -1 //disabled
 
@@ -165,7 +163,6 @@ void ethernet_update_ip()
 void ethernet_init()
 {
 	esp_log_level_set(TAG, ESP_LOG_DEBUG);
-
 	gpio_set_direction(LAN_CLOCK_ENABLE, GPIO_MODE_OUTPUT);
 	gpio_set_level(LAN_CLOCK_ENABLE, 1);
 
@@ -185,6 +182,7 @@ void ethernet_init()
 
 	mac_config.smi_mdc_gpio_num = ETH_MDC_GPIO;
 	mac_config.smi_mdio_gpio_num = ETH_MDIO_GPIO;
+	mac_config.sw_reset_timeout_ms = 500;
 	esp_eth_mac_t *mac = esp_eth_mac_new_esp32(&mac_config);
 
 	esp_eth_phy_t *phy = esp_eth_phy_new_lan8720(&phy_config);

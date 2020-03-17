@@ -27,8 +27,8 @@ ESP32 | Function
 ESP32 | LAN87210
 -|-
 0 | nINT/REFCLK
-16 | NC/CLOCK_ENABLE*
-17 | MDC
+23 | NC/CLOCK_ENABLE*
+15 | MDC
 18 | MDIO
 19 | TX0
 21 | TX_EN
@@ -37,8 +37,7 @@ ESP32 | LAN87210
 26 | RX1
 27 | CRS/RX_DV
 
-*ESP32 will use external clock signal from LAN8720 and some modifications are needed for that:
-
+** ESP32 will use external clock signal from LAN8720 and some modifications are needed for that: **
 * [WaveShare LAN8720 modification for clock](https://sautter.com/blog/ethernet-on-esp32-using-lan8720/)
 * Remove capacitor C15 from onboard Boot button (SW1) to make clock signal work from LAN8720
 
