@@ -58,6 +58,7 @@ static void http_send(char *msg) {
 	}
 
 	esp_http_client_set_post_field(http_handle, msg, strlen(msg));
+	esp_http_client_set_header(http_handle, "Content-Type", "application/json");
 
 	err = esp_http_client_perform(http_handle);
 	if (err == ESP_OK) {
