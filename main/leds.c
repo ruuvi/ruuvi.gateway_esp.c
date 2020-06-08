@@ -9,7 +9,7 @@
 #include "esp_log.h"
 #include "driver/ledc.h"
 
-const char* TAG = "LEDS";
+const char * TAG = "LEDS";
 EventGroupHandle_t led_bits = NULL;
 
 #define LED_PIN 23
@@ -26,15 +26,16 @@ EventGroupHandle_t led_bits = NULL;
 #define LEDC_TEST_DUTY         (1023)
 #define LEDC_TEST_FADE_TIME    (50)
 
-ledc_channel_config_t ledc_channel[1] = {
-	{
-		.channel    = LEDC_HS_CH0_CHANNEL,
-		.duty       = 0,
-		.gpio_num   = LEDC_HS_CH0_GPIO,
-		.speed_mode = LEDC_HS_MODE,
-		.hpoint     = 0,
-		.timer_sel  = LEDC_HS_TIMER
-	}
+ledc_channel_config_t ledc_channel[1] =
+{
+    {
+        .channel    = LEDC_HS_CH0_CHANNEL,
+        .duty       = 0,
+        .gpio_num   = LEDC_HS_CH0_GPIO,
+        .speed_mode = LEDC_HS_MODE,
+        .hpoint     = 0,
+        .timer_sel  = LEDC_HS_TIMER
+    }
 };
 
 esp_timer_handle_t blink_timer;
@@ -42,40 +43,46 @@ static bool led_state = false;
 
 void leds_on()
 {
-	ledc_set_fade_with_time(ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_TEST_DUTY, LEDC_TEST_FADE_TIME);
-	ledc_fade_start(ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_NO_WAIT);
+    ledc_set_fade_with_time (ledc_channel[0].speed_mode, ledc_channel[0].channel,
+                             LEDC_TEST_DUTY, LEDC_TEST_FADE_TIME);
+    ledc_fade_start (ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_NO_WAIT);
 }
 
 void leds_off()
 {
-	ledc_set_fade_with_time(ledc_channel[0].speed_mode, ledc_channel[0].channel, 0, LEDC_TEST_FADE_TIME);
-	ledc_fade_start(ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_NO_WAIT);
+    ledc_set_fade_with_time (ledc_channel[0].speed_mode, ledc_channel[0].channel, 0,
+                             LEDC_TEST_FADE_TIME);
+    ledc_fade_start (ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_NO_WAIT);
 }
 
-static void blink_timer_handler(void* arg)
+static void blink_timer_handler (void * arg)
 {
-	if (led_state) {
-		leds_off();
-	} else {
-		leds_on();
-	}
-	led_state = !led_state;
+    if (led_state)
+    {
+        leds_off();
+    }
+    else
+    {
+        leds_on();
+    }
+
+    led_state = !led_state;
 }
 
-void leds_start_blink(uint32_t interval)
+void leds_start_blink (uint32_t interval)
 {
-	ESP_LOGI(TAG, "start led blinking, interval: %d ms", interval);
-	esp_timer_start_periodic(blink_timer, interval*1000);
+    ESP_LOGI (TAG, "start led blinking, interval: %d ms", interval);
+    esp_timer_start_periodic (blink_timer, interval * 1000);
 }
 
 void leds_stop_blink()
 {
-	ESP_LOGI(TAG, "stop led blinking");
-	esp_timer_stop(blink_timer);
-
-	ledc_set_fade_with_time(ledc_channel[0].speed_mode, ledc_channel[0].channel, 0, LEDC_TEST_FADE_TIME);
-	ledc_fade_start(ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_NO_WAIT);
-	led_state = false;
+    ESP_LOGI (TAG, "stop led blinking");
+    esp_timer_stop (blink_timer);
+    ledc_set_fade_with_time (ledc_channel[0].speed_mode, ledc_channel[0].channel, 0,
+                             LEDC_TEST_FADE_TIME);
+    ledc_fade_start (ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_NO_WAIT);
+    led_state = false;
 }
 
 _Noreturn

@@ -19,7 +19,7 @@ extern EventGroupHandle_t led_bits;
 
 void leds_on();
 void leds_off();
-void leds_start_blink(uint32_t);
+void leds_start_blink (uint32_t);
 void leds_stop_blink();
 void leds_init();
 
