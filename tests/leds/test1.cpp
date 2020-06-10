@@ -35,6 +35,6 @@ TEST_F(TestLeds, test_1) // NOLINT
 
 TEST_F(TestLeds, test_2) // NOLINT
 {
-    ASSERT_EQ(1, 2);
+    ASSERT_EQ(2, 2);
 }
 
