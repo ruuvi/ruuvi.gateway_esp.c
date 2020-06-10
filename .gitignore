@@ -1,4 +1,5 @@
-build
+/build
+/cmake-build-*
 /sdkconfig*
 !/sdkconfig.defaults
 
