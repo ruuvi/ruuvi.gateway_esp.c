@@ -19,8 +19,8 @@
 #include "time_task.h"
 
 #define LAN_CLOCK_ENABLE 2
-#define ETH_PHY_ADDR 1
-#define ETH_MDC_GPIO 15
+#define ETH_PHY_ADDR 0
+#define ETH_MDC_GPIO 23
 #define ETH_MDIO_GPIO 18
 #define ETH_PHY_RST_GPIO -1 //disabled
 
@@ -222,6 +222,13 @@ void ethernet_init()
     esp_eth_phy_t * phy = esp_eth_phy_new_lan8720 (&phy_config);
     esp_eth_config_t config = ETH_DEFAULT_CONFIG (mac, phy);
     esp_eth_handle_t eth_handle = NULL;
-    ESP_ERROR_CHECK (esp_eth_driver_install (&config, &eth_handle));
-    ESP_ERROR_CHECK (esp_eth_start (eth_handle));
+    esp_err_t err_code = esp_eth_driver_install (&config, &eth_handle);
+    if(ESP_OK == err_code)
+    {
+      esp_eth_start (eth_handle);
+    }
+    else
+    {
+         ESP_LOGE (TAG, "Ethernet fail");
+    }
 }
