@@ -2,5 +2,5 @@
 	path = components/esp32-wifi-manager
 	url = https://github.com/ruuvi/esp32-wifi-manager
 [submodule "googletest"]
-	path = googletest
+	path = tests/googletest
 	url = https://github.com/google/googletest.git
