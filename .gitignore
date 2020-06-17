@@ -1,5 +1,9 @@
-build
+/build
+/tests/build
+/cmake-build-*
+/tests/cmake-build-*
 /sdkconfig*
 !/sdkconfig.defaults
 
 .DS_Store
+.idea

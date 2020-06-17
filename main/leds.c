@@ -1,10 +1,12 @@
-#include "esp_timer.h"
-#include "freertos/FreeRTOS.h"
 #include "leds.h"
-#include "esp_log.h"
+#include <stdbool.h>
+#include <stdio.h>
+#include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/projdefs.h"
 #include "freertos/task.h"
+#include "esp_timer.h"
+#include "esp_log.h"
 #include "driver/ledc.h"
 
 const char* TAG = "LEDS";
@@ -76,6 +78,7 @@ void leds_stop_blink()
 	led_state = false;
 }
 
+_Noreturn
 static void leds_task(void* arg)
 {
 	ESP_LOGI(TAG, "%s started", __func__);
@@ -94,8 +97,8 @@ static void leds_task(void* arg)
 			leds_off();
 		}
 	}
-
 }
+
 void leds_init()
 {
 	ESP_LOGI(TAG, "%s", __func__);
@@ -103,6 +106,7 @@ void leds_init()
 	esp_timer_init();
 	esp_timer_create_args_t timer_args = {
 		.callback = blink_timer_handler,
+		.arg = NULL,
 		.dispatch_method = ESP_TIMER_TASK,
 		.name = "blink_timer"
 	};
