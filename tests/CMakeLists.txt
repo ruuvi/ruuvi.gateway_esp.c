@@ -8,5 +8,6 @@ add_definitions(
 
 enable_testing()
 add_subdirectory(googletest)
+add_subdirectory(Posix_GCC_Simulator)
 add_subdirectory(leds)
 
