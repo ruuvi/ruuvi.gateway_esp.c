@@ -4,6 +4,6 @@
 #include "ruuvidongle.h"
 
 void uart_init();
-void uart_send_nrf_command(nrf_command_t command, void* arg);
+void uart_send_nrf_command (nrf_command_t command, void * arg);
 
 #endif
