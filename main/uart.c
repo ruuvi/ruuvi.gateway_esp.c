@@ -41,14 +41,19 @@ struct adv_report_table adv_reports_buf;
  * @param[in]  bin Binary to print from.
  * @param[in]  binlen Size of binary in bytes.
  */
-static void bin2hex (char * const hexstr, const uint8_t * const bin, size_t binlen)
+static void bin2hex (char * const hexstr, const size_t hexstr_size, const uint8_t * const bin, size_t binlen)
 {
-    for (size_t ii = 0; ii < binlen; ii++)
+    size_t ii = 0;
+    for (ii = 0; ii < binlen; ii++)
     {
+        if ((2 * ii + 3) > hexstr_size)
+        {
+            break;
+        }
         sprintf (hexstr + (2 * ii), "%02X", bin[ii]);
     }
 
-    hexstr[2 * binlen] = 0;
+    hexstr[2 * ii] = 0;
 }
 
 static esp_err_t adv_put_to_table (const adv_report_t * const p_adv)
@@ -189,14 +194,14 @@ static int parse_adv_report_from_uart (const re_ca_uart_payload_t * const msg,
         time (&now);
         adv->rssi = report->rssi_db;
         adv->timestamp = now;
-        bin2hex (adv->tag_mac, report->mac, RE_CA_UART_MAC_BYTES);
+        bin2hex (adv->tag_mac, sizeof(adv->tag_mac), report->mac, RE_CA_UART_MAC_BYTES);
 
         if (is_adv_report_valid (adv))
         {
             err = ESP_ERR_INVALID_ARG;
         }
 
-        bin2hex (adv->data, report->adv, report->adv_len);
+        bin2hex (adv->data, sizeof(adv->data), report->adv, report->adv_len);
     }
 
     return err;
