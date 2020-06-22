@@ -113,7 +113,8 @@ void uart_send_nrf_command (nrf_command_t command, void * arg)
             uint16_t company_id = * (uint16_t *) arg;
             data[1] = NRF_CMD1_LEN;
             data[2] = NRF_CMD1;
-            memcpy (&data[3], &company_id, 2);
+            data[3] = company_id & 0xFFU;
+            data[4] = (uint16_t)(company_id >> 8U) & 0xFFU;
             data[5] = ETX;
             uart_send_data (TAG, data);
             break;
