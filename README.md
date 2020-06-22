@@ -1,7 +1,7 @@
 # Ruuvi Gateway ESP32 firmware
 
 Developed with:
-* ESP-IDF version [v4.0](https://github.com/espressif/esp-idf/releases/tag/v4.0)
+* ESP-IDF version [v4.0.1](https://github.com/espressif/esp-idf/releases/tag/v4.0.1)
 * ESP32-DevKitC V4
 * Waveshare LAN8720 ETH board
 * nRF52832 devkit
