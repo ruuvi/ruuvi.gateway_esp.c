@@ -89,16 +89,14 @@ static esp_err_t adv_put_to_table (const adv_report_t * const p_adv)
 
 int uart_send_data (const char * logName, const char * data)
 {
-    char buf[100] = { 0 };
     const int len = strlen (data);
 
-    for (int i = 0; i < len; i++)
-    {
-        sprintf (buf + (2 * i), "%02x", data[i]);
-    }
-
     const int txBytes = uart_write_bytes (UART_NUM_1, data, len);
-    ESP_LOGI (logName, "Wrote to uart %d bytes, 0x%s", txBytes, buf);
+    ESP_LOGI (logName, "Wrote to uart %d bytes:", txBytes);
+    if (0 != txBytes)
+    {
+        ESP_LOG_BUFFER_HEXDUMP (logName, data, txBytes, ESP_LOG_INFO);
+    }
     return txBytes;
 }
 
