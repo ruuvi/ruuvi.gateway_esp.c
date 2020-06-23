@@ -2,8 +2,7 @@
 /tests/build
 /cmake-build-*
 /tests/cmake-build-*
-/sdkconfig*
-!/sdkconfig.defaults
+/sdkconfig.old
 
 .DS_Store
 .idea
