@@ -41,14 +41,19 @@ struct adv_report_table adv_reports_buf;
  * @param[in]  bin Binary to print from.
  * @param[in]  binlen Size of binary in bytes.
  */
-static void bin2hex (char * const hexstr, const uint8_t * const bin, size_t binlen)
+static void bin2hex (char * const hexstr, const size_t hexstr_size, const uint8_t * const bin, size_t binlen)
 {
-    for (size_t ii = 0; ii < binlen; ii++)
+    size_t ii = 0;
+    for (ii = 0; ii < binlen; ii++)
     {
+        if ((2 * ii + 3) > hexstr_size)
+        {
+            break;
+        }
         sprintf (hexstr + (2 * ii), "%02X", bin[ii]);
     }
 
-    hexstr[2 * binlen] = 0;
+    hexstr[2 * ii] = 0;
 }
 
 static esp_err_t adv_put_to_table (const adv_report_t * const p_adv)
@@ -89,16 +94,14 @@ static esp_err_t adv_put_to_table (const adv_report_t * const p_adv)
 
 int uart_send_data (const char * logName, const char * data)
 {
-    char buf[100] = { 0 };
     const int len = strlen (data);
 
-    for (int i = 0; i < len; i++)
-    {
-        sprintf (buf + (2 * i), "%02x", data[i]);
-    }
-
     const int txBytes = uart_write_bytes (UART_NUM_1, data, len);
-    ESP_LOGI (logName, "Wrote to uart %d bytes, 0x%s", txBytes, buf);
+    ESP_LOGI (logName, "Wrote to uart %d bytes:", txBytes);
+    if (0 != txBytes)
+    {
+        ESP_LOG_BUFFER_HEXDUMP (logName, data, txBytes, ESP_LOG_INFO);
+    }
     return txBytes;
 }
 
@@ -115,7 +118,8 @@ void uart_send_nrf_command (nrf_command_t command, void * arg)
             uint16_t company_id = * (uint16_t *) arg;
             data[1] = NRF_CMD1_LEN;
             data[2] = NRF_CMD1;
-            memcpy (&data[3], &company_id, 2);
+            data[3] = company_id & 0xFFU;
+            data[4] = (uint16_t)(company_id >> 8U) & 0xFFU;
             data[5] = ETX;
             uart_send_data (TAG, data);
             break;
@@ -190,14 +194,14 @@ static int parse_adv_report_from_uart (const re_ca_uart_payload_t * const msg,
         time (&now);
         adv->rssi = report->rssi_db;
         adv->timestamp = now;
-        bin2hex (adv->tag_mac, report->mac, RE_CA_UART_MAC_BYTES);
+        bin2hex (adv->tag_mac, sizeof(adv->tag_mac), report->mac, RE_CA_UART_MAC_BYTES);
 
         if (is_adv_report_valid (adv))
         {
             err = ESP_ERR_INVALID_ARG;
         }
 
-        bin2hex (adv->data, report->adv, report->adv_len);
+        bin2hex (adv->data, sizeof(adv->data), report->adv, report->adv_len);
     }
 
     return err;

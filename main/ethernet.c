@@ -223,12 +223,16 @@ void ethernet_init()
     esp_eth_config_t config = ETH_DEFAULT_CONFIG (mac, phy);
     esp_eth_handle_t eth_handle = NULL;
     esp_err_t err_code = esp_eth_driver_install (&config, &eth_handle);
-    if(ESP_OK == err_code)
+    if (ESP_OK == err_code)
     {
-      esp_eth_start (eth_handle);
+      err_code = esp_eth_start (eth_handle);
+      if (ESP_OK != err_code)
+      {
+          ESP_LOGE (TAG, "Ethernet start failed");
+      }
     }
     else
     {
-         ESP_LOGE (TAG, "Ethernet fail");
+         ESP_LOGE (TAG, "Ethernet driver install failed");
     }
 }
