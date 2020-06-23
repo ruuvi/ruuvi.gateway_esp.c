@@ -5,6 +5,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(EXPECTED_IDF_VERSION v4.0.1)
 
+
 execute_process (
         COMMAND bash -c "cd $ENV{IDF_PATH} && git describe --always --tags --dirty --match ${EXPECTED_IDF_VERSION}*"
         OUTPUT_VARIABLE IDF_VERSION
