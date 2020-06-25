@@ -83,8 +83,8 @@ void wifi_connection_ok_cb (void * pvParameter)
     leds_on();
     get_mac_address (ESP_MAC_WIFI_STA);
     start_services();
-    dns_server_stop();
-    http_server_stop();
+//    dns_server_stop();
+//    http_server_stop();
 }
 
 void ethernet_link_up_cb()
