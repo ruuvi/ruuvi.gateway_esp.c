@@ -9,9 +9,9 @@
 #include "esp_log.h"
 #include "ruuvidongle.h"
 #include "leds.h"
+#include "ruuvi_board_gwesp.h"
 
-
-#define CONFIG_WIFI_RESET_BUTTON_GPIO 32
+#define CONFIG_WIFI_RESET_BUTTON_GPIO   RB_BUTTON_RESET_PIN
 #define GPIO_WIFI_RESET_BUTTON_MASK     (1ULL<<CONFIG_WIFI_RESET_BUTTON_GPIO)
 
 #define TIMER_DIVIDER 16
