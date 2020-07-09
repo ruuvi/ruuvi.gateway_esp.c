@@ -82,7 +82,17 @@ static void mqtt_publish_connect()
     char * message = "{\"state\": \"online\"}";
     char topic[TOPIC_LEN];
     create_full_topic (topic, m_dongle_config.mqtt_prefix, gw_mac);
-    esp_mqtt_client_publish (mqtt_client, topic, message, strlen (message), 1, 1);
+    ESP_LOGI(TAG, "esp_mqtt_client_publish: topic:'%s', message:'%s'", topic, message);
+    const int message_id = esp_mqtt_client_publish (
+            mqtt_client, topic, message, strlen (message), 1, 1);
+    if (-1 == message_id)
+    {
+        ESP_LOGE(TAG, "esp_mqtt_client_publish failed");
+    }
+    else
+    {
+        ESP_LOGI(TAG, "esp_mqtt_client_publish: message_id=%d", message_id);
+    }
 }
 
 static esp_err_t mqtt_event_handler (esp_mqtt_event_handle_t event)
