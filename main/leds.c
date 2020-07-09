@@ -12,6 +12,8 @@
 const char * TAG = "LEDS";
 EventGroupHandle_t led_bits = NULL;
 
+#define RUUVI_LEDS_ENABLE       0
+
 #define LED_PIN 23
 
 #define LEDC_HS_TIMER          LEDC_TIMER_1
@@ -26,6 +28,7 @@ EventGroupHandle_t led_bits = NULL;
 #define LEDC_TEST_DUTY         (1023)
 #define LEDC_TEST_FADE_TIME    (50)
 
+#if RUUVI_LEDS_ENABLE
 ledc_channel_config_t ledc_channel[1] =
 {
     {
@@ -40,21 +43,27 @@ ledc_channel_config_t ledc_channel[1] =
 
 esp_timer_handle_t blink_timer;
 static bool led_state = false;
+#endif
 
 void leds_on()
 {
+#if RUUVI_LEDS_ENABLE
     ledc_set_fade_with_time (ledc_channel[0].speed_mode, ledc_channel[0].channel,
                              LEDC_TEST_DUTY, LEDC_TEST_FADE_TIME);
     ledc_fade_start (ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_NO_WAIT);
+#endif
 }
 
 void leds_off()
 {
+#if RUUVI_LEDS_ENABLE
     ledc_set_fade_with_time (ledc_channel[0].speed_mode, ledc_channel[0].channel, 0,
                              LEDC_TEST_FADE_TIME);
     ledc_fade_start (ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_NO_WAIT);
+#endif
 }
 
+#if RUUVI_LEDS_ENABLE
 static void blink_timer_handler (void * arg)
 {
     if (led_state)
@@ -68,23 +77,29 @@ static void blink_timer_handler (void * arg)
 
     led_state = !led_state;
 }
+#endif
 
 void leds_start_blink (uint32_t interval)
 {
+#if RUUVI_LEDS_ENABLE
     ESP_LOGI (TAG, "start led blinking, interval: %d ms", interval);
     esp_timer_start_periodic (blink_timer, interval * 1000);
+#endif
 }
 
 void leds_stop_blink()
 {
+#if RUUVI_LEDS_ENABLE
     ESP_LOGI (TAG, "stop led blinking");
     esp_timer_stop (blink_timer);
     ledc_set_fade_with_time (ledc_channel[0].speed_mode, ledc_channel[0].channel, 0,
                              LEDC_TEST_FADE_TIME);
     ledc_fade_start (ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_NO_WAIT);
     led_state = false;
+#endif
 }
 
+#if RUUVI_LEDS_ENABLE
 _Noreturn
 static void leds_task(void* arg)
 {
@@ -105,10 +120,12 @@ static void leds_task(void* arg)
 		}
 	}
 }
+#endif
 
 void leds_init()
 {
 	ESP_LOGI(TAG, "%s", __func__);
+#if RUUVI_LEDS_ENABLE
 
 	esp_timer_init();
 	esp_timer_create_args_t timer_args = {
@@ -139,4 +156,5 @@ void leds_init()
 	}
 
 	xTaskCreate(leds_task, "leds_task", 1024*2, NULL, 1, NULL);
+#endif
 }
