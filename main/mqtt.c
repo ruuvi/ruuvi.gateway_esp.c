@@ -164,16 +164,6 @@ void mqtt_app_start (void)
         err = ESP_ERR_INVALID_ARG;
     }
 
-    if (m_dongle_config.mqtt_user[0] == 0)
-    {
-        err = ESP_ERR_INVALID_ARG;
-    }
-
-    if (m_dongle_config.mqtt_pass[0] == 0)
-    {
-        err = ESP_ERR_INVALID_ARG;
-    }
-
     if (err)
     {
         ESP_LOGE (TAG,
