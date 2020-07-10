@@ -42,8 +42,14 @@ struct adv_report_table
     int num_of_advs;
     adv_report_t table[MAX_ADVS_TABLE];
 };
+
+#define RUUVI_DONGLE_CONFIG_HEADER          (0xAABBU)
+#define RUUVI_DONGLE_CONFIG_FMT_VERSION     (0x0001U)
+
 struct dongle_config
 {
+    uint16_t header;
+    uint16_t fmt_version;
     bool eth_dhcp;
     char eth_static_ip[IP_STR_LEN];
     char eth_netmask[IP_STR_LEN];
@@ -64,6 +70,8 @@ struct dongle_config
 };
 
 #define RUUVIDONGLE_DEFAULT_CONFIGURATION   {   \
+    .header = RUUVI_DONGLE_CONFIG_HEADER, \
+    .fmt_version = RUUVI_DONGLE_CONFIG_FMT_VERSION, \
     .eth_dhcp = true,               \
     .eth_static_ip = { 0 },         \
     .eth_netmask = { 0 },           \

@@ -81,6 +81,19 @@ static bool settings_get_from_nvs_handle (nvs_handle handle, struct dongle_confi
         ESP_LOGW (TAG, "Can't read config from flash");
         return false;
     }
+
+    if (RUUVI_DONGLE_CONFIG_HEADER != dongle_config->header)
+    {
+        ESP_LOGW (TAG, "Incorrect config header (0x%02X)", dongle_config->header);
+        return false;
+    }
+    if (RUUVI_DONGLE_CONFIG_FMT_VERSION != dongle_config->fmt_version)
+    {
+        ESP_LOGW (TAG, "Incorrect config fmt version (exp 0x%02x, act 0x%02x)",
+                RUUVI_DONGLE_CONFIG_FMT_VERSION,
+                dongle_config->fmt_version);
+        return false;
+    }
     return true;
 }
 
