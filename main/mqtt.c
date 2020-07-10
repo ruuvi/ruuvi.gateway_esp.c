@@ -6,13 +6,12 @@
 #include "ruuvidongle.h"
 #include "mqtt.h"
 
+#undef LOG_LOCAL_LEVEL
 #define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 
 static esp_mqtt_client_handle_t mqtt_client = NULL;
 
 #define TOPIC_LEN 512
-
-extern char gw_mac[13];
 
 static const char * TAG = "MQTT";
 
@@ -82,7 +81,17 @@ static void mqtt_publish_connect()
     char * message = "{\"state\": \"online\"}";
     char topic[TOPIC_LEN];
     create_full_topic (topic, m_dongle_config.mqtt_prefix, gw_mac);
-    esp_mqtt_client_publish (mqtt_client, topic, message, strlen (message), 1, 1);
+    ESP_LOGI(TAG, "esp_mqtt_client_publish: topic:'%s', message:'%s'", topic, message);
+    const int message_id = esp_mqtt_client_publish (
+            mqtt_client, topic, message, strlen (message), 1, 1);
+    if (-1 == message_id)
+    {
+        ESP_LOGE(TAG, "esp_mqtt_client_publish failed");
+    }
+    else
+    {
+        ESP_LOGI(TAG, "esp_mqtt_client_publish: message_id=%d", message_id);
+    }
 }
 
 static esp_err_t mqtt_event_handler (esp_mqtt_event_handle_t event)
@@ -154,29 +163,19 @@ void mqtt_app_start (void)
         err = ESP_ERR_INVALID_ARG;
     }
 
-    if (m_dongle_config.mqtt_user[0] == 0)
-    {
-        err = ESP_ERR_INVALID_ARG;
-    }
-
-    if (m_dongle_config.mqtt_pass[0] == 0)
-    {
-        err = ESP_ERR_INVALID_ARG;
-    }
-
     if (err)
     {
         ESP_LOGE (TAG,
-                  "Invalid MQTT parameters: server: %s, topic prefix: %s, port: %d, user: %s, password: %s",
+                  "Invalid MQTT parameters: server: %s, topic prefix: '%s', port: %d, user: '%s', password: '%s'",
                   m_dongle_config.mqtt_server, m_dongle_config.mqtt_prefix, m_dongle_config.mqtt_port,
-                  m_dongle_config.mqtt_user, m_dongle_config.mqtt_pass);
+                  m_dongle_config.mqtt_user, "******");
         return;
     }
     else
     {
-        ESP_LOGI (TAG, "Using server: %s, topic prefix: %s, port: %d, user: %s, password: %s",
+        ESP_LOGI (TAG, "Using server: %s, topic prefix: '%s', port: %d, user: '%s', password: '%s'",
                   m_dongle_config.mqtt_server, m_dongle_config.mqtt_prefix, m_dongle_config.mqtt_port,
-                  m_dongle_config.mqtt_user, m_dongle_config.mqtt_pass);
+                  m_dongle_config.mqtt_user, "******");
     }
 
     const esp_mqtt_client_config_t mqtt_cfg =
