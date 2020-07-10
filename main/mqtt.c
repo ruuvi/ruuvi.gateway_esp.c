@@ -6,6 +6,7 @@
 #include "ruuvidongle.h"
 #include "mqtt.h"
 
+#undef LOG_LOCAL_LEVEL
 #define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 
 static esp_mqtt_client_handle_t mqtt_client = NULL;
