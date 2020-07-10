@@ -13,8 +13,6 @@ static esp_mqtt_client_handle_t mqtt_client = NULL;
 
 #define TOPIC_LEN 512
 
-extern char gw_mac[13];
-
 static const char * TAG = "MQTT";
 
 static void create_full_topic (char * full_topic, char * prefix, char * topic)
