@@ -169,14 +169,14 @@ void mqtt_app_start (void)
         ESP_LOGE (TAG,
                   "Invalid MQTT parameters: server: %s, topic prefix: '%s', port: %d, user: '%s', password: '%s'",
                   m_dongle_config.mqtt_server, m_dongle_config.mqtt_prefix, m_dongle_config.mqtt_port,
-                  m_dongle_config.mqtt_user, m_dongle_config.mqtt_pass);
+                  m_dongle_config.mqtt_user, "******");
         return;
     }
     else
     {
         ESP_LOGI (TAG, "Using server: %s, topic prefix: '%s', port: %d, user: '%s', password: '%s'",
                   m_dongle_config.mqtt_server, m_dongle_config.mqtt_prefix, m_dongle_config.mqtt_port,
-                  m_dongle_config.mqtt_user, m_dongle_config.mqtt_pass);
+                  m_dongle_config.mqtt_user, "******");
     }
 
     const esp_mqtt_client_config_t mqtt_cfg =
