@@ -56,46 +56,59 @@ void settings_print (struct dongle_config * config)
     ESP_LOGI (TAG, "config: company id: 0x%04x", config->company_id);
 }
 
-bool settings_get_from_flash (struct dongle_config * dongle_config)
+static bool settings_get_from_nvs_handle (nvs_handle handle, struct dongle_config * dongle_config)
 {
-    nvs_handle handle;
-    esp_err_t esp_err;
-    esp_err_t ret = nvs_open (ruuvi_dongle_nvs_namespace, NVS_READONLY, &handle);
-
-    if (ret == ESP_OK)
+    size_t sz = 0;
     {
-        /* allocate buffer */
-        size_t sz = sizeof (struct dongle_config);
-        uint8_t * buff = (uint8_t *) malloc (sizeof (uint8_t) * sz);
-        memset (buff, 0x00, sz);
-        //sz = sizeof(m_dongle_config);
-        esp_err = nvs_get_blob (handle, RUUVIDONGLE_NVS_CONFIGURATION_KEY, buff, &sz);
-
-        if (esp_err == ESP_OK)
+        const esp_err_t esp_err = nvs_get_blob (handle, RUUVIDONGLE_NVS_CONFIGURATION_KEY, NULL, &sz);
+        if (ESP_OK != esp_err)
         {
-            memcpy (dongle_config, buff, sz);
-            ESP_LOGI (TAG, "Configuration from flash:");
+            ESP_LOGW (TAG, "Can't read config from flash");
+            return false;
         }
-        else
-        {
-            struct dongle_config default_config = RUUVIDONGLE_DEFAULT_CONFIGURATION;
-            *dongle_config = default_config;
-            ESP_LOGW (TAG, "Can't read config from flash, using default");
-        }
+    }
 
-        nvs_close (handle);
-        free (buff);
+    if (sizeof (*dongle_config) != sz)
+    {
+        ESP_LOGW (TAG, "Size of config in flash differs");
+        return false;
+    }
+
+    const esp_err_t esp_err = nvs_get_blob (
+        handle, RUUVIDONGLE_NVS_CONFIGURATION_KEY, dongle_config, &sz);
+    if (ESP_OK != esp_err)
+    {
+        ESP_LOGW (TAG, "Can't read config from flash");
+        return false;
+    }
+    return true;
+}
+
+void settings_get_from_flash (struct dongle_config * dongle_config)
+{
+    static const struct dongle_config default_config = RUUVIDONGLE_DEFAULT_CONFIGURATION;
+    nvs_handle handle = 0;
+    const esp_err_t ret = nvs_open (ruuvi_dongle_nvs_namespace, NVS_READONLY, &handle);
+    if (ESP_OK != ret)
+    {
+        ESP_LOGE (TAG, "Can't open '%s' namespace in NVS, err: 0x%02x", ruuvi_dongle_nvs_namespace, ret);
+        ESP_LOGI (TAG, "Using default config:");
+        *dongle_config = default_config;
     }
     else
     {
-        struct dongle_config default_config = RUUVIDONGLE_DEFAULT_CONFIGURATION;
-        *dongle_config = default_config;
-        ESP_LOGE (TAG, "%s: can't open nvs namespace, err: 0x%02x", __func__, ret);
+        if (!settings_get_from_nvs_handle (handle, dongle_config))
+        {
+            ESP_LOGI (TAG, "Using default config:");
+            *dongle_config = default_config;
+        }
+        else
+        {
+            ESP_LOGI (TAG, "Configuration from flash:");
+        }
+        nvs_close (handle);
     }
-
-    ESP_LOGI (TAG, "Settings read from flash:");
     settings_print (dongle_config);
-    return ret;
 }
 
 char * ruuvi_get_conf_json()
