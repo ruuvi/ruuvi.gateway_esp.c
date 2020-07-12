@@ -25,11 +25,11 @@
 #define ADV_POST_INTERVAL 10000
 #define MAX_ADVS_TABLE 100
 
-#define WIFI_CONNECTED_BIT (1 << 0)
-#define MQTT_CONNECTED_BIT (1 << 1)
-#define RESET_BUTTON_BIT (1 << 2)
-#define ETH_DISCONNECTED_BIT (1 << 3)
-#define ETH_CONNECTED_BIT (1 << 4)
+#define WIFI_CONNECTED_BIT (1U << 0U)
+#define MQTT_CONNECTED_BIT (1U << 1U)
+#define RESET_BUTTON_BIT (1U << 2U)
+#define ETH_DISCONNECTED_BIT (1U << 3U)
+#define ETH_CONNECTED_BIT (1U << 4U)
 
 typedef struct adv_report
 {
