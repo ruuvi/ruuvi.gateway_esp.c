@@ -61,6 +61,9 @@ static void http_send (char * msg)
     {
         .url = m_dongle_config.http_url,
         .method = HTTP_METHOD_POST,
+        .auth_type = ('\0' != m_dongle_config.http_user[0]) ? HTTP_AUTH_TYPE_BASIC : HTTP_AUTH_TYPE_NONE,
+        .username = m_dongle_config.http_user,
+        .password = m_dongle_config.http_pass,
         .event_handler = http_event_handler,
     };
     http_handle = esp_http_client_init (&http_config);
@@ -87,6 +90,10 @@ static void http_send (char * msg)
     }
 
     err = esp_http_client_cleanup (http_handle);
+    if (ESP_OK != err)
+    {
+        ESP_LOGE (TAG, "esp_http_client_cleanup failed, err=%s", esp_err_to_name (err));
+    }
 }
 
 void http_send_advs (struct adv_report_table * reports)

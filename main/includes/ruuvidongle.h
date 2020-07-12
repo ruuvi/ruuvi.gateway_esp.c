@@ -14,7 +14,9 @@
 
 #define MAX_CONFIG_STR_LEN 64
 #define MAX_HTTPURL_LEN 512
-#define MAX_MQTTSERVER_LEN 256
+#define MAX_HTTPUSER_LEN 64
+#define MAX_HTTPPASS_LEN 64
+#define MAX_MQTTSEVER_LEN 256
 #define MAX_MQTTPREFIX_LEN 64
 #define MAX_MQTTUSER_LEN 64
 #define MAX_MQTTPASS_LEN 64
@@ -44,20 +46,20 @@ struct adv_report_table
 };
 
 #define RUUVI_DONGLE_CONFIG_HEADER          (0xAABBU)
-#define RUUVI_DONGLE_CONFIG_FMT_VERSION     (0x0001U)
+#define RUUVI_DONGLE_CONFIG_FMT_VERSION     (0x0002U)
 
 struct dongle_config
 {
     uint16_t header;
     uint16_t fmt_version;
     bool eth_dhcp;
+    bool use_mqtt;
+    bool use_http;
     char eth_static_ip[IP_STR_LEN];
     char eth_netmask[IP_STR_LEN];
     char eth_gw[IP_STR_LEN];
     char eth_dns1[IP_STR_LEN];
     char eth_dns2[IP_STR_LEN];
-    bool use_mqtt;
-    bool use_http;
     char mqtt_server[MAX_MQTTSEVER_LEN];
     uint32_t mqtt_port;
     char mqtt_prefix[MAX_MQTTPREFIX_LEN];
@@ -75,19 +77,21 @@ struct dongle_config
     .header = RUUVI_DONGLE_CONFIG_HEADER, \
     .fmt_version = RUUVI_DONGLE_CONFIG_FMT_VERSION, \
     .eth_dhcp = true,               \
+    .use_http = false,              \
+    .use_mqtt = false,              \
     .eth_static_ip = { 0 },         \
     .eth_netmask = { 0 },           \
     .eth_gw = { 0 },                \
     .eth_dns1 = { 0 },              \
     .eth_dns2 = { 0 },              \
-    .use_http = false,              \
-    .use_mqtt = false,              \
-    .http_url = { 0 },              \
     .mqtt_server = { 0 },           \
     .mqtt_port = 0,                 \
     .mqtt_prefix = { 0 },           \
     .mqtt_user = { 0 },             \
     .mqtt_pass = { 0 },             \
+    .http_url = { 0 },              \
+    .http_user = { 0 },             \
+    .http_pass = { 0 },             \
     .company_filter = true,         \
     .company_id = RUUVI_COMPANY_ID, \
     .coordinates = { 0 }            \

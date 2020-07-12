@@ -43,14 +43,16 @@ void settings_print (struct dongle_config * config)
     ESP_LOGI (TAG, "config: eth gw: %s", config->eth_gw);
     ESP_LOGI (TAG, "config: eth dns1: %s", config->eth_dns1);
     ESP_LOGI (TAG, "config: eth dns2: %s", config->eth_dns2);
-    ESP_LOGI (TAG, "config: use http: %d", config->use_http);
     ESP_LOGI (TAG, "config: use mqtt: %d", config->use_mqtt);
     ESP_LOGI (TAG, "config: mqtt server: %s", config->mqtt_server);
     ESP_LOGI (TAG, "config: mqtt port: %d", config->mqtt_port);
     ESP_LOGI (TAG, "config: mqtt prefix: %s", config->mqtt_prefix);
     ESP_LOGI (TAG, "config: mqtt user: %s", config->mqtt_user);
     ESP_LOGI (TAG, "config: mqtt password: %s", "********");
+    ESP_LOGI (TAG, "config: use http: %d", config->use_http);
     ESP_LOGI (TAG, "config: http url: %s", config->http_url);
+    ESP_LOGI (TAG, "config: http user: %s", config->http_user);
+    ESP_LOGI (TAG, "config: http pass: %s", "********");
     ESP_LOGI (TAG, "config: coordinates: %s", config->coordinates);
     ESP_LOGI (TAG, "config: use company id filter: %d", config->company_filter);
     ESP_LOGI (TAG, "config: company id: 0x%04x", config->company_id);
@@ -140,6 +142,7 @@ char * ruuvi_get_conf_json()
         cJSON_AddStringToObject (root, "eth_dns2", c.eth_dns2);
         cJSON_AddBoolToObject (root, "use_http", c.use_http);
         cJSON_AddStringToObject (root, "http_url", c.http_url);
+        cJSON_AddStringToObject (root, "http_user", c.http_user);
         cJSON_AddBoolToObject (root, "use_mqtt", c.use_mqtt);
         cJSON_AddStringToObject (root, "mqtt_server", c.mqtt_server);
         cJSON_AddNumberToObject (root, "mqtt_port", c.mqtt_port);
