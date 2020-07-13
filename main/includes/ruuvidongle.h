@@ -13,13 +13,13 @@
 #define ADV_DATA_MAX_LEN 64
 
 #define MAX_CONFIG_STR_LEN  64
-#define MAX_HTTP_URL_LEN    512
-#define MAX_HTTP_USER_LEN   64
-#define MAX_HTTP_PASS_LEN   64
+#define MAX_HTTP_URL_LEN    256
+#define MAX_HTTP_USER_LEN   51
+#define MAX_HTTP_PASS_LEN   51
 #define MAX_MQTT_SERVER_LEN 256
-#define MAX_MQTT_PREFIX_LEN 64
-#define MAX_MQTT_USER_LEN   64
-#define MAX_MQTT_PASS_LEN   64
+#define MAX_MQTT_PREFIX_LEN 51
+#define MAX_MQTT_USER_LEN   51
+#define MAX_MQTT_PASS_LEN   51
 #define IP_STR_LEN 17
 
 #define ADV_POST_INTERVAL 10000
@@ -46,7 +46,7 @@ struct adv_report_table
 };
 
 #define RUUVI_DONGLE_CONFIG_HEADER          (0xAABBU)
-#define RUUVI_DONGLE_CONFIG_FMT_VERSION     (0x0002U)
+#define RUUVI_DONGLE_CONFIG_FMT_VERSION     (0x0003U)
 
 struct dongle_config
 {
