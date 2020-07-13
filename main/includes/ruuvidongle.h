@@ -16,7 +16,7 @@
 #define MAX_HTTPURL_LEN 512
 #define MAX_HTTPUSER_LEN 64
 #define MAX_HTTPPASS_LEN 64
-#define MAX_MQTTSEVER_LEN 256
+#define MAX_MQTT_SERVER_LEN 256
 #define MAX_MQTTPREFIX_LEN 64
 #define MAX_MQTTUSER_LEN 64
 #define MAX_MQTTPASS_LEN 64
@@ -60,7 +60,7 @@ struct dongle_config
     char eth_gw[IP_STR_LEN];
     char eth_dns1[IP_STR_LEN];
     char eth_dns2[IP_STR_LEN];
-    char mqtt_server[MAX_MQTTSEVER_LEN];
+    char mqtt_server[MAX_MQTT_SERVER_LEN];
     uint32_t mqtt_port;
     char mqtt_prefix[MAX_MQTTPREFIX_LEN];
     char mqtt_user[MAX_MQTTUSER_LEN];
