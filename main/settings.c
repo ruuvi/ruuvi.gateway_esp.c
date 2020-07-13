@@ -45,7 +45,7 @@ void settings_print (struct dongle_config * config)
     ESP_LOGI (TAG, "config: eth dns2: %s", config->eth_dns2);
     ESP_LOGI (TAG, "config: use mqtt: %d", config->use_mqtt);
     ESP_LOGI (TAG, "config: mqtt server: %s", config->mqtt_server);
-    ESP_LOGI (TAG, "config: mqtt port: %d", config->mqtt_port);
+    ESP_LOGI (TAG, "config: mqtt port: %u", config->mqtt_port);
     ESP_LOGI (TAG, "config: mqtt prefix: %s", config->mqtt_prefix);
     ESP_LOGI (TAG, "config: mqtt user: %s", config->mqtt_user);
     ESP_LOGI (TAG, "config: mqtt password: %s", "********");

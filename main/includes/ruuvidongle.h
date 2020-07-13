@@ -46,7 +46,7 @@ struct adv_report_table
 };
 
 #define RUUVI_DONGLE_CONFIG_HEADER          (0xAABBU)
-#define RUUVI_DONGLE_CONFIG_FMT_VERSION     (0x0003U)
+#define RUUVI_DONGLE_CONFIG_FMT_VERSION     (0x0004U)
 
 struct dongle_config
 {
@@ -61,7 +61,7 @@ struct dongle_config
     char eth_dns1[IP_STR_LEN];
     char eth_dns2[IP_STR_LEN];
     char mqtt_server[MAX_MQTT_SERVER_LEN];
-    uint32_t mqtt_port;
+    uint16_t mqtt_port;
     char mqtt_prefix[MAX_MQTT_PREFIX_LEN];
     char mqtt_user[MAX_MQTT_USER_LEN];
     char mqtt_pass[MAX_MQTT_PASS_LEN];
