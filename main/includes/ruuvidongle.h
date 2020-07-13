@@ -12,14 +12,14 @@
 #define MAC_LEN 12
 #define ADV_DATA_MAX_LEN 64
 
-#define MAX_CONFIG_STR_LEN 64
-#define MAX_HTTPURL_LEN 512
-#define MAX_HTTPUSER_LEN 64
-#define MAX_HTTPPASS_LEN 64
+#define MAX_CONFIG_STR_LEN  64
+#define MAX_HTTP_URL_LEN    512
+#define MAX_HTTP_USER_LEN   64
+#define MAX_HTTP_PASS_LEN   64
 #define MAX_MQTT_SERVER_LEN 256
-#define MAX_MQTTPREFIX_LEN 64
-#define MAX_MQTTUSER_LEN 64
-#define MAX_MQTTPASS_LEN 64
+#define MAX_MQTT_PREFIX_LEN 64
+#define MAX_MQTT_USER_LEN   64
+#define MAX_MQTT_PASS_LEN   64
 #define IP_STR_LEN 17
 
 #define ADV_POST_INTERVAL 10000
@@ -62,12 +62,12 @@ struct dongle_config
     char eth_dns2[IP_STR_LEN];
     char mqtt_server[MAX_MQTT_SERVER_LEN];
     uint32_t mqtt_port;
-    char mqtt_prefix[MAX_MQTTPREFIX_LEN];
-    char mqtt_user[MAX_MQTTUSER_LEN];
-    char mqtt_pass[MAX_MQTTPASS_LEN];
-    char http_url[MAX_HTTPURL_LEN];
-    char http_user[MAX_HTTPUSER_LEN];
-    char http_pass[MAX_HTTPPASS_LEN];
+    char mqtt_prefix[MAX_MQTT_PREFIX_LEN];
+    char mqtt_user[MAX_MQTT_USER_LEN];
+    char mqtt_pass[MAX_MQTT_PASS_LEN];
+    char http_url[MAX_HTTP_URL_LEN];
+    char http_user[MAX_HTTP_USER_LEN];
+    char http_pass[MAX_HTTP_PASS_LEN];
     uint16_t company_id;
     bool company_filter;
     char coordinates[MAX_CONFIG_STR_LEN];
