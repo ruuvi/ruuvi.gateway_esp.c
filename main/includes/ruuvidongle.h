@@ -77,7 +77,7 @@ struct dongle_config
     .header = RUUVI_DONGLE_CONFIG_HEADER, \
     .fmt_version = RUUVI_DONGLE_CONFIG_FMT_VERSION, \
     .eth_dhcp = true,               \
-    .use_http = false,              \
+    .use_http = true,              \
     .use_mqtt = false,              \
     .eth_static_ip = { 0 },         \
     .eth_netmask = { 0 },           \
@@ -89,7 +89,7 @@ struct dongle_config
     .mqtt_prefix = { 0 },           \
     .mqtt_user = { 0 },             \
     .mqtt_pass = { 0 },             \
-    .http_url = { 0 },              \
+    .http_url = { "https://network.ruuvi.com:443/gwapi/v1" }, \
     .http_user = { 0 },             \
     .http_pass = { 0 },             \
     .company_filter = true,         \
