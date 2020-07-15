@@ -8,7 +8,6 @@
 #include "esp_log.h"
 
 static const char TAG[] = "http";
-extern char gw_mac[13];
 
 static esp_err_t http_event_handler (esp_http_client_event_t * evt)
 {
@@ -27,18 +26,16 @@ static esp_err_t http_event_handler (esp_http_client_event_t * evt)
             break;
 
         case HTTP_EVENT_ON_HEADER:
-            //ESP_LOGD(TAG, "HTTP_EVENT_ON_HEADER");
-            //printf("%.*s", evt->data_len, (char*)evt->data);
+            ESP_LOGD(TAG, "HTTP_EVENT_ON_HEADER:");
+            printf("%.*s\n", evt->data_len, (char*)evt->data);
             break;
 
         case HTTP_EVENT_ON_DATA:
-            ESP_LOGD (TAG, "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
-
+            ESP_LOGD (TAG, "HTTP_EVENT_ON_DATA, len=%d:", evt->data_len);
             if (!esp_http_client_is_chunked_response (evt->client))
             {
-                printf ("%.*s", evt->data_len, (char *) evt->data);
+                printf ("%.*s\n", evt->data_len, (char *) evt->data);
             }
-
             break;
 
         case HTTP_EVENT_ON_FINISH:
@@ -49,11 +46,10 @@ static esp_err_t http_event_handler (esp_http_client_event_t * evt)
             ESP_LOGD (TAG, "HTTP_EVENT_DISCONNECTED");
             break;
     }
-
     return ESP_OK;
 }
 
-static void http_send (char * msg)
+void http_send (const char * msg)
 {
     esp_err_t err;
     esp_http_client_handle_t http_handle;
@@ -61,6 +57,9 @@ static void http_send (char * msg)
     {
         .url = m_dongle_config.http_url,
         .method = HTTP_METHOD_POST,
+        .auth_type = ('\0' != m_dongle_config.http_user[0]) ? HTTP_AUTH_TYPE_BASIC : HTTP_AUTH_TYPE_NONE,
+        .username = m_dongle_config.http_user,
+        .password = m_dongle_config.http_pass,
         .event_handler = http_event_handler,
     };
     http_handle = esp_http_client_init (&http_config);
@@ -87,6 +86,10 @@ static void http_send (char * msg)
     }
 
     err = esp_http_client_cleanup (http_handle);
+    if (ESP_OK != err)
+    {
+        ESP_LOGE (TAG, "esp_http_client_cleanup failed, err=%s", esp_err_to_name (err));
+    }
 }
 
 void http_send_advs (struct adv_report_table * reports)

@@ -43,59 +43,87 @@ void settings_print (struct dongle_config * config)
     ESP_LOGI (TAG, "config: eth gw: %s", config->eth_gw);
     ESP_LOGI (TAG, "config: eth dns1: %s", config->eth_dns1);
     ESP_LOGI (TAG, "config: eth dns2: %s", config->eth_dns2);
-    ESP_LOGI (TAG, "config: use http: %d", config->use_http);
     ESP_LOGI (TAG, "config: use mqtt: %d", config->use_mqtt);
     ESP_LOGI (TAG, "config: mqtt server: %s", config->mqtt_server);
-    ESP_LOGI (TAG, "config: mqtt port: %d", config->mqtt_port);
+    ESP_LOGI (TAG, "config: mqtt port: %u", config->mqtt_port);
     ESP_LOGI (TAG, "config: mqtt prefix: %s", config->mqtt_prefix);
     ESP_LOGI (TAG, "config: mqtt user: %s", config->mqtt_user);
     ESP_LOGI (TAG, "config: mqtt password: %s", "********");
+    ESP_LOGI (TAG, "config: use http: %d", config->use_http);
     ESP_LOGI (TAG, "config: http url: %s", config->http_url);
+    ESP_LOGI (TAG, "config: http user: %s", config->http_user);
+    ESP_LOGI (TAG, "config: http pass: %s", "********");
     ESP_LOGI (TAG, "config: coordinates: %s", config->coordinates);
     ESP_LOGI (TAG, "config: use company id filter: %d", config->company_filter);
     ESP_LOGI (TAG, "config: company id: 0x%04x", config->company_id);
 }
 
-bool settings_get_from_flash (struct dongle_config * dongle_config)
+static bool settings_get_from_nvs_handle (nvs_handle handle, struct dongle_config * dongle_config)
 {
-    nvs_handle handle;
-    esp_err_t esp_err;
-    esp_err_t ret = nvs_open (ruuvi_dongle_nvs_namespace, NVS_READONLY, &handle);
-
-    if (ret == ESP_OK)
+    size_t sz = 0;
     {
-        /* allocate buffer */
-        size_t sz = sizeof (struct dongle_config);
-        uint8_t * buff = (uint8_t *) malloc (sizeof (uint8_t) * sz);
-        memset (buff, 0x00, sz);
-        //sz = sizeof(m_dongle_config);
-        esp_err = nvs_get_blob (handle, RUUVIDONGLE_NVS_CONFIGURATION_KEY, buff, &sz);
-
-        if (esp_err == ESP_OK)
+        const esp_err_t esp_err = nvs_get_blob (handle, RUUVIDONGLE_NVS_CONFIGURATION_KEY, NULL, &sz);
+        if (ESP_OK != esp_err)
         {
-            memcpy (dongle_config, buff, sz);
-            ESP_LOGI (TAG, "Configuration from flash:");
+            ESP_LOGW (TAG, "Can't read config from flash");
+            return false;
         }
-        else
-        {
-            struct dongle_config default_config = RUUVIDONGLE_DEFAULT_CONFIGURATION;
-            *dongle_config = default_config;
-            ESP_LOGW (TAG, "Can't read config from flash, using default");
-        }
+    }
 
-        nvs_close (handle);
-        free (buff);
+    if (sizeof (*dongle_config) != sz)
+    {
+        ESP_LOGW (TAG, "Size of config in flash differs");
+        return false;
+    }
+
+    const esp_err_t esp_err = nvs_get_blob (
+        handle, RUUVIDONGLE_NVS_CONFIGURATION_KEY, dongle_config, &sz);
+    if (ESP_OK != esp_err)
+    {
+        ESP_LOGW (TAG, "Can't read config from flash");
+        return false;
+    }
+
+    if (RUUVI_DONGLE_CONFIG_HEADER != dongle_config->header)
+    {
+        ESP_LOGW (TAG, "Incorrect config header (0x%02X)", dongle_config->header);
+        return false;
+    }
+    if (RUUVI_DONGLE_CONFIG_FMT_VERSION != dongle_config->fmt_version)
+    {
+        ESP_LOGW (TAG, "Incorrect config fmt version (exp 0x%02x, act 0x%02x)",
+                RUUVI_DONGLE_CONFIG_FMT_VERSION,
+                dongle_config->fmt_version);
+        return false;
+    }
+    return true;
+}
+
+void settings_get_from_flash (struct dongle_config * dongle_config)
+{
+    static const struct dongle_config default_config = RUUVIDONGLE_DEFAULT_CONFIGURATION;
+    nvs_handle handle = 0;
+    const esp_err_t ret = nvs_open (ruuvi_dongle_nvs_namespace, NVS_READONLY, &handle);
+    if (ESP_OK != ret)
+    {
+        ESP_LOGE (TAG, "Can't open '%s' namespace in NVS, err: 0x%02x", ruuvi_dongle_nvs_namespace, ret);
+        ESP_LOGI (TAG, "Using default config:");
+        *dongle_config = default_config;
     }
     else
     {
-        struct dongle_config default_config = RUUVIDONGLE_DEFAULT_CONFIGURATION;
-        *dongle_config = default_config;
-        ESP_LOGE (TAG, "%s: can't open nvs namespace, err: 0x%02x", __func__, ret);
+        if (!settings_get_from_nvs_handle (handle, dongle_config))
+        {
+            ESP_LOGI (TAG, "Using default config:");
+            *dongle_config = default_config;
+        }
+        else
+        {
+            ESP_LOGI (TAG, "Configuration from flash:");
+        }
+        nvs_close (handle);
     }
-
-    ESP_LOGI (TAG, "Settings read from flash:");
     settings_print (dongle_config);
-    return ret;
 }
 
 char * ruuvi_get_conf_json()
@@ -114,6 +142,7 @@ char * ruuvi_get_conf_json()
         cJSON_AddStringToObject (root, "eth_dns2", c.eth_dns2);
         cJSON_AddBoolToObject (root, "use_http", c.use_http);
         cJSON_AddStringToObject (root, "http_url", c.http_url);
+        cJSON_AddStringToObject (root, "http_user", c.http_user);
         cJSON_AddBoolToObject (root, "use_mqtt", c.use_mqtt);
         cJSON_AddStringToObject (root, "mqtt_server", c.mqtt_server);
         cJSON_AddNumberToObject (root, "mqtt_port", c.mqtt_port);
