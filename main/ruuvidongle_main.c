@@ -3,6 +3,7 @@
 #include "freertos/projdefs.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
+#include "driver/gpio.h"
 #include "ruuvidongle.h"
 #include "cJSON.h"
 #include "esp_system.h"
@@ -20,6 +21,7 @@
 #include "dns_server.h"
 #include "http_server.h"
 #include "ethernet.h"
+#include "ruuvi_board_gwesp.h"
 
 static const char TAG[] = "ruuvidongle";
 
@@ -124,7 +126,7 @@ esp_err_t reset_wifi_settings()
     }
 
     /* save empty connection info in NVS memory */
-    wifi_manager_save_sta_config();
+    wifi_manager_clear_sta_config();
     return ESP_OK;
 }
 
@@ -151,7 +153,8 @@ void reset_task (void * arg)
         if (bits & RESET_BUTTON_BIT)
         {
             ESP_LOGI (TAG, "Reset activated");
-            reset_wifi_settings();  //erase wifi settings so after reboot ap will start
+            // restart the Gateway,
+            // on boot it will check if RB_BUTTON_RESET_PIN is pressed and erase the settings in flash.
             esp_restart();
         }
     }
@@ -175,10 +178,25 @@ void app_main (void)
     }
 
     nvs_flash_init();
-    settings_get_from_flash (&m_dongle_config);
-    uart_init();
     gpio_init();
     leds_init();
+
+    if (0 == gpio_get_level (RB_BUTTON_RESET_PIN))
+    {
+        ESP_LOGI (TAG, "Reset button is pressed during boot - clear settings in flash");
+        reset_wifi_settings();  //erase wifi settings
+        ESP_LOGI (TAG, "Wait until the reset button is released");
+        leds_start_blink (LEDS_MEDIUM_BLINK);
+        while (0 == gpio_get_level (RB_BUTTON_RESET_PIN))
+        {
+            vTaskDelay(1);
+        }
+        ESP_LOGI (TAG, "Reset activated");
+        esp_restart();
+    }
+
+    settings_get_from_flash (&m_dongle_config);
+    uart_init();
     time_init();
     leds_start_blink (LEDS_FAST_BLINK);
     ruuvi_send_nrf_settings (&m_dongle_config);
