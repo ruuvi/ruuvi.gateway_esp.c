@@ -77,7 +77,8 @@ void time_sync (void)
     xEventGroupSetBits (time_event_group, TIME_SYNC_BIT);
 }
 
-void time_task (void * param)
+_Noreturn
+static void time_task (void * param)
 {
     if (!time_event_group) { time_event_group = xEventGroupCreate(); }
 
@@ -100,7 +101,7 @@ void time_task (void * param)
 
 void time_init()
 {
-    xTaskCreate (time_task, "time_task", 1024 * 2, NULL, 1, &task_time);
+    xTaskCreate (time_task, "time_task", 1024 * 3, NULL, 1, &task_time);
 }
 
 void time_stop()
