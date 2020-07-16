@@ -373,10 +373,12 @@ static void rx_task (void * arg)
     }
 }
 
+_Noreturn
 static void adv_post_task (void * arg)
 {
     esp_log_level_set (TAG, ESP_LOG_INFO);
     ESP_LOGI (TAG, "%s", __func__);
+    bool flagConnected = false;
 
     while (1)
     {
@@ -397,16 +399,36 @@ static void adv_post_task (void * arg)
         portEXIT_CRITICAL (&adv_table_mux);
         EventBits_t status = xEventGroupGetBits (status_bits);
 
+        if (!flagConnected)
+        {
+            if ((status & WIFI_CONNECTED_BIT) || (status & ETH_CONNECTED_BIT))
+            {
+                if (m_dongle_config.use_http)
+                {
+                    flagConnected = true;
+                    char json_str[64];
+                    snprintf (json_str, sizeof(json_str), "{\"status\": \"online\", \"gw_mac\": \"%s\"}", gw_mac);
+                    ESP_LOGI (TAG, "HTTP POST: %s", json_str);
+                    http_send (json_str);
+                }
+            }
+        }
+        else
+        {
+            if (!((status & WIFI_CONNECTED_BIT) || (status & ETH_CONNECTED_BIT)))
+            {
+                flagConnected = false;
+            }
+        }
+
         if (adv_reports_buf.num_of_advs)
         {
-            if ( ( (status & WIFI_CONNECTED_BIT)
-                    || (status & ETH_CONNECTED_BIT)))
+            if (flagConnected)
             {
                 if (m_dongle_config.use_http)
                 {
                     http_send_advs (&adv_reports_buf);
                 }
-
                 if (m_dongle_config.use_mqtt && (xEventGroupGetBits (status_bits) & MQTT_CONNECTED_BIT))
                 {
                     mqtt_publish_table (&adv_reports_buf);
@@ -417,7 +439,6 @@ static void adv_post_task (void * arg)
                 ESP_LOGW (TAG, "Can't send, no network connection");
             }
         }
-
         vTaskDelay (pdMS_TO_TICKS (ADV_POST_INTERVAL));
     }
 }

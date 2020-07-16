@@ -13,6 +13,7 @@ extern "C" {
 #define LEDS_BLINK_BIT (1 << 2)
 
 #define LEDS_SLOW_BLINK 1000
+#define LEDS_MEDIUM_BLINK 500
 #define LEDS_FAST_BLINK 200
 
 extern EventGroupHandle_t led_bits;
