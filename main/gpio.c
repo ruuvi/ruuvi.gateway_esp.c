@@ -10,6 +10,7 @@
 #include "ruuvidongle.h"
 #include "leds.h"
 #include "ruuvi_board_gwesp.h"
+#include "http_server.h"
 
 #define CONFIG_WIFI_RESET_BUTTON_GPIO   RB_BUTTON_RESET_PIN
 #define GPIO_WIFI_RESET_BUTTON_MASK     (1ULL<<CONFIG_WIFI_RESET_BUTTON_GPIO)
@@ -65,6 +66,7 @@ static void config_timer (void)
                         NULL);
 }
 
+_Noreturn
 static void gpio_task (void * arg)
 {
     uint32_t io_num;
@@ -89,6 +91,7 @@ static void gpio_task (void * arg)
                     ESP_LOGD (TAG, "Button released");
                     config_timer();
                     timer_started = 0;
+                    http_server_start();
                 }
             }
         }
