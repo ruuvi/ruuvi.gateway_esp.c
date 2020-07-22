@@ -59,6 +59,11 @@ See the [Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/l
 ### Using prebuilt images
 Prebuilt images for development versions of firmware can be found at [Ruuvi Jenkins](https://jenkins.ruuvi.com/job/ruuvi_gateway_esp-PR/). However these are artifacts of internal development, if you want to just use the gateway you should use [release](https://github.com/ruuvi/ruuvi.gateway_esp.c/releases) starting from 1.x+. First release is estimated to be ready on 7/2020. 
 
-You can flash them with idf.py or using Windows GUI tool with these settings:
+You can flash them with esptool.py
+```
+pip install esptool
+esptool.py -p (PORT) -b 460800 --before default_reset --after hard_reset write_flash --flash_mode dio --flash_size detect --flash_freq 40m 0x1000 bootloader.bin 0x8000 partition-table.bin 0x10000 ruuvi_gateway_esp.bin
+```
+or using Windows GUI tool with these settings:
 ![alt text](docs/guiflasher.jpg "Bootloader 0x1000, partition table 0x8000, ruuvi_gateway_esp 0x10000")
 
