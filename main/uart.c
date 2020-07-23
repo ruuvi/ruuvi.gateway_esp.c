@@ -65,9 +65,9 @@ static esp_err_t adv_put_to_table (const adv_report_t * const p_adv)
     // Check if we already have advertisement with this MAC
     for (int i = 0; i < adv_reports.num_of_advs; i++)
     {
-        char * mac = adv_reports.table[i].tag_mac;
+        const mac_address_bin_t * p_mac = &adv_reports.table[i].tag_mac;
 
-        if (strcmp (p_adv->tag_mac, mac) == 0)
+        if (memcmp (&p_adv->tag_mac, p_mac, sizeof(*p_mac)) == 0)
         {
             // Yes, update data.
             found = true;
@@ -157,11 +157,6 @@ static int is_adv_report_valid (adv_report_t * adv)
 {
     esp_err_t err = ESP_OK;
 
-    if (is_hexstr (adv->tag_mac) != ESP_OK)
-    {
-        err = ESP_ERR_INVALID_ARG;
-    }
-
     if (is_hexstr (adv->data) != ESP_OK)
     {
         err = ESP_ERR_INVALID_ARG;
@@ -194,7 +189,7 @@ static int parse_adv_report_from_uart (const re_ca_uart_payload_t * const msg,
         time (&now);
         adv->rssi = report->rssi_db;
         adv->timestamp = now;
-        bin2hex (adv->tag_mac, sizeof(adv->tag_mac), report->mac, RE_CA_UART_MAC_BYTES);
+        mac_address_bin_init(&adv->tag_mac, report->mac);
 
         if (is_adv_report_valid (adv))
         {
@@ -388,7 +383,8 @@ static void adv_post_task (void * arg)
         for (int i = 0; i < adv_reports.num_of_advs; i++)
         {
             adv = &adv_reports.table[i];
-            ESP_LOGI (TAG, "i: %d, tag: %s, rssi: %d, data: %s, timestamp: %ld", i, adv->tag_mac,
+            const mac_address_str_t mac_str = mac_address_to_str(&adv->tag_mac);
+            ESP_LOGI (TAG, "i: %d, tag: %s, rssi: %d, data: %s, timestamp: %ld", i, mac_str.str_buf,
                       adv->rssi, adv->data, adv->timestamp);
         }
 
@@ -407,7 +403,7 @@ static void adv_post_task (void * arg)
                 {
                     flagConnected = true;
                     char json_str[64];
-                    snprintf (json_str, sizeof(json_str), "{\"status\": \"online\", \"gw_mac\": \"%s\"}", gw_mac);
+                    snprintf (json_str, sizeof(json_str), "{\"status\": \"online\", \"gw_mac\": \"%s\"}", gw_mac_sta.str_buf);
                     ESP_LOGI (TAG, "HTTP POST: %s", json_str);
                     http_send (json_str);
                 }

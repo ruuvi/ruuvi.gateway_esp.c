@@ -9,7 +9,6 @@
 #define RUUVIDONGLE_NVS_CONFIGURATION_KEY "ruuvi_config"
 #define RUUVIDONGLE_NVS_BOOT_KEY "ruuvi_boot"
 
-#define MAC_LEN 12
 #define ADV_DATA_MAX_LEN 64
 
 #define MAX_CONFIG_STR_LEN  64
@@ -31,9 +30,19 @@
 #define ETH_DISCONNECTED_BIT (1U << 3U)
 #define ETH_CONNECTED_BIT (1U << 4U)
 
+typedef struct mac_address_bin
+{
+    uint8_t mac[6];
+} mac_address_bin_t;
+
+typedef struct mac_address_str
+{
+    char str_buf[6 * 2 + 5 + 1]; // format: XX:XX:XX:XX:XX:XX
+} mac_address_str_t;
+
 typedef struct adv_report
 {
-    char tag_mac[MAC_LEN + 1];
+    mac_address_bin_t tag_mac;
     time_t timestamp;
     int rssi;
     char data[ADV_DATA_MAX_LEN + 1];
@@ -105,8 +114,10 @@ typedef enum nrf_command_t
 
 extern struct dongle_config m_dongle_config;
 extern EventGroupHandle_t status_bits;
-extern char gw_mac[MAC_LEN + 1];
+extern mac_address_str_t gw_mac_sta;
 
+void mac_address_bin_init(mac_address_bin_t* p_mac, const uint8_t mac[6]);
+mac_address_str_t mac_address_to_str(const mac_address_bin_t* p_mac);
 char * ruuvi_get_conf_json();
 void settings_get_from_flash (struct dongle_config * dongle_config);
 void settings_print (struct dongle_config * config);
