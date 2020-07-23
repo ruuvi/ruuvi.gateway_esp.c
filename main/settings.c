@@ -7,6 +7,29 @@
 
 static const char TAG[] = "settings";
 static const char * ruuvi_dongle_nvs_namespace = "ruuvidongle";
+static const struct dongle_config default_config = RUUVIDONGLE_DEFAULT_CONFIGURATION;
+
+int settings_clear_in_flash (void)
+{
+    ESP_LOGD (TAG, "%s", __func__);
+    nvs_handle handle = 0;
+    esp_err_t esp_err = 0;
+    esp_err_t ret = nvs_open (ruuvi_dongle_nvs_namespace, NVS_READWRITE, &handle);
+    if (ret == ESP_OK)
+    {
+        esp_err = nvs_set_blob (handle, RUUVIDONGLE_NVS_CONFIGURATION_KEY, &default_config, sizeof (default_config));
+        if (esp_err != ESP_OK)
+        {
+            ESP_LOGE (TAG, "Can't save config to NVS, err: %02x", esp_err);
+        }
+        nvs_close (handle);
+    }
+    else
+    {
+        ESP_LOGE (TAG, "Can't open '%s' nvs namespace, err: %02x", RUUVIDONGLE_NVS_CONFIGURATION_KEY, ret);
+    }
+    return 0;
+}
 
 int settings_save_to_flash (struct dongle_config * config)
 {
@@ -101,7 +124,6 @@ static bool settings_get_from_nvs_handle (nvs_handle handle, struct dongle_confi
 
 void settings_get_from_flash (struct dongle_config * dongle_config)
 {
-    static const struct dongle_config default_config = RUUVIDONGLE_DEFAULT_CONFIGURATION;
     nvs_handle handle = 0;
     const esp_err_t ret = nvs_open (ruuvi_dongle_nvs_namespace, NVS_READONLY, &handle);
     if (ESP_OK != ret)

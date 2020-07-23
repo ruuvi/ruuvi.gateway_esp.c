@@ -118,18 +118,6 @@ void wifi_disconnect_cb (void * pvParameter)
     leds_start_blink (LEDS_SLOW_BLINK);
 }
 
-esp_err_t reset_wifi_settings()
-{
-    if (wifi_manager_config_sta)
-    {
-        memset (wifi_manager_config_sta, 0x00, sizeof (wifi_config_t));
-    }
-
-    /* save empty connection info in NVS memory */
-    wifi_manager_clear_sta_config();
-    return ESP_OK;
-}
-
 void start_services()
 {
     time_sync();
@@ -184,7 +172,8 @@ void app_main (void)
     if (0 == gpio_get_level (RB_BUTTON_RESET_PIN))
     {
         ESP_LOGI (TAG, "Reset button is pressed during boot - clear settings in flash");
-        reset_wifi_settings();  //erase wifi settings
+        wifi_manager_clear_sta_config();
+        settings_clear_in_flash();
         ESP_LOGI (TAG, "Wait until the reset button is released");
         leds_start_blink (LEDS_MEDIUM_BLINK);
         while (0 == gpio_get_level (RB_BUTTON_RESET_PIN))
