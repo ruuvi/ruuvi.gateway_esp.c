@@ -151,8 +151,9 @@ char * ruuvi_get_conf_json()
         //cJSON_AddStringToObject(root, "mqtt_pass", c.mqtt_pass);  //don't send to browser because security
         cJSON_AddStringToObject (root, "coordinates", c.coordinates);
         cJSON_AddBoolToObject (root, "use_filtering", c.company_filter);
+        cJSON_AddStringToObject (root, "gw_mac", gw_mac_sta.str_buf);
         char company_id[10];
-        snprintf (company_id, 10, "0x%04x", c.company_id);
+        snprintf (company_id, sizeof(company_id), "0x%04x", c.company_id);
         cJSON_AddStringToObject (root, "company_id", company_id);
         buf = cJSON_Print (root);
 

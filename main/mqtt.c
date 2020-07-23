@@ -15,21 +15,21 @@ static esp_mqtt_client_handle_t mqtt_client = NULL;
 
 static const char * TAG = "MQTT";
 
-static void create_full_topic (char * full_topic, char * prefix, char * topic)
+static void create_full_topic (char * full_topic, const char * prefix, const char * topic)
 {
-    if (full_topic == NULL || topic == NULL || prefix == NULL)
+    if (full_topic == NULL || topic == NULL)
     {
         ESP_LOGE (TAG, "%s: null arguments", __func__);
         return;
     }
 
-    if (strlen (prefix) > 0)
+    if (NULL != prefix)
     {
-        snprintf (full_topic, TOPIC_LEN - 1, "%s%s", prefix, topic);
+        snprintf (full_topic, TOPIC_LEN, "%s%s", prefix, topic);
     }
     else
     {
-        snprintf (full_topic, TOPIC_LEN - 1, "%s", topic);
+        snprintf (full_topic, TOPIC_LEN, "%s", topic);
     }
 }
 
@@ -41,7 +41,7 @@ static char * mqtt_create_json (adv_report_t * adv)
 
     if (root)
     {
-        cJSON_AddStringToObject (root, "gwmac", gw_mac);
+        cJSON_AddStringToObject (root, "gw_mac", gw_mac_sta.str_buf);
         cJSON_AddNumberToObject (root, "rssi", adv->rssi);
         cJSON_AddArrayToObject (root, "aoa");
         cJSON_AddNumberToObject (root, "gwts", now);
@@ -59,7 +59,8 @@ static void mqtt_publish_adv (adv_report_t * adv)
 {
     char topic[TOPIC_LEN];
     char * json = mqtt_create_json (adv);
-    create_full_topic (topic, m_dongle_config.mqtt_prefix, adv->tag_mac);
+    const mac_address_str_t tag_mac_str = mac_address_to_str(&adv->tag_mac);
+    create_full_topic (topic, m_dongle_config.mqtt_prefix, tag_mac_str.str_buf);
     ESP_LOGD (TAG, "publish: topic: %s, data: %s", topic, json);
     esp_mqtt_client_publish (mqtt_client, topic, json, 0, 1, 0);
     free (json);
@@ -80,7 +81,7 @@ static void mqtt_publish_connect()
 {
     char * message = "{\"state\": \"online\"}";
     char topic[TOPIC_LEN];
-    create_full_topic (topic, m_dongle_config.mqtt_prefix, gw_mac);
+    create_full_topic (topic, m_dongle_config.mqtt_prefix, "/gw_status");
     ESP_LOGI(TAG, "esp_mqtt_client_publish: topic:'%s', message:'%s'", topic, message);
     const int message_id = esp_mqtt_client_publish (
             mqtt_client, topic, message, strlen (message), 1, 1);
@@ -154,7 +155,7 @@ void mqtt_app_start (void)
     }
 
     char lwt_topic[TOPIC_LEN];
-    create_full_topic (lwt_topic, m_dongle_config.mqtt_prefix, gw_mac);
+    create_full_topic (lwt_topic, m_dongle_config.mqtt_prefix, "/gw_status");
     char * lwt_message = "{\"state\": \"offline\"}";
     esp_err_t err = 0;
 

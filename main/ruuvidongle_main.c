@@ -27,7 +27,7 @@ static const char TAG[] = "ruuvidongle";
 
 EventGroupHandle_t status_bits;
 
-char gw_mac[MAC_LEN + 1] = { 0 };
+mac_address_str_t gw_mac_sta = { 0 };
 
 struct dongle_config m_dongle_config = RUUVIDONGLE_DEFAULT_CONFIGURATION;
 extern wifi_config_t * wifi_manager_config_sta;
@@ -56,24 +56,30 @@ void monitoring_task (void * pvParameter)
     }
 }
 
-void get_mac_address (esp_mac_type_t type)
+void mac_address_bin_init(mac_address_bin_t* p_mac, const uint8_t mac[6])
 {
-    uint8_t mac[6];
-    esp_err_t err = esp_read_mac (mac, type);
+    memcpy(p_mac->mac, mac, sizeof(p_mac->mac));
+}
 
+mac_address_str_t mac_address_to_str(const mac_address_bin_t* p_mac)
+{
+    mac_address_str_t mac_str = {0};
+    const uint8_t* mac = p_mac->mac;
+    snprintf(mac_str.str_buf, sizeof(mac_str.str_buf), "%02x:%02x:%02x:%02x:%02x:%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    return mac_str;
+}
+
+mac_address_str_t get_gw_mac_sta(void)
+{
+    mac_address_bin_t mac = {0};
+    esp_err_t err = esp_read_mac (mac.mac, ESP_MAC_WIFI_STA);
     if (err != ESP_OK)
     {
         ESP_LOGE (TAG, "Can't get mac address, err: %d", err);
-        return;
+        mac_address_str_t mac_str = {0};
+        return mac_str;
     }
-
-    for (int i = 0; i < 6; i++)
-    {
-        sprintf (gw_mac + (i * 2), "%02x", mac[i]);
-    }
-
-    gw_mac[12] = 0; //null terminator
-    ESP_LOGI (TAG, "Mac address: %s", gw_mac);
+    return mac_address_to_str(&mac);
 }
 
 /* brief this is an exemple of a callback that you can setup in your own app to get notified of wifi manager event */
@@ -83,7 +89,6 @@ void wifi_connection_ok_cb (void * pvParameter)
     xEventGroupSetBits (status_bits, WIFI_CONNECTED_BIT);
     leds_stop_blink();
     leds_on();
-    get_mac_address (ESP_MAC_WIFI_STA);
     start_services();
 }
 
@@ -103,7 +108,6 @@ void ethernet_connection_ok_cb()
 {
     ESP_LOGI (TAG, "Ethernet connected");
     wifi_manager_stop();
-    get_mac_address (ESP_MAC_ETH);
     leds_stop_blink();
     leds_on();
     xEventGroupSetBits (status_bits, ETH_CONNECTED_BIT);
@@ -200,6 +204,8 @@ void app_main (void)
     time_init();
     leds_start_blink (LEDS_FAST_BLINK);
     ruuvi_send_nrf_settings (&m_dongle_config);
+    gw_mac_sta = get_gw_mac_sta();
+    ESP_LOGI (TAG, "Mac address: %s", gw_mac_sta.str_buf);
     wifi_init();
     ethernet_init();
     xTaskCreate (monitoring_task, "monitoring_task", 2048, NULL, 1, NULL);

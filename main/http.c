@@ -108,7 +108,7 @@ void http_send_advs (struct adv_report_table * reports)
         {
             cJSON_AddStringToObject (gw, "coordinates", m_dongle_config.coordinates);
             cJSON_AddNumberToObject (gw, "timestamp", now);
-            cJSON_AddStringToObject (gw, "gwmac", gw_mac);
+            cJSON_AddStringToObject (gw, "gw_mac", gw_mac_sta.str_buf);
             tags = cJSON_AddObjectToObject (gw, "tags");
         }
         else
@@ -130,7 +130,8 @@ void http_send_advs (struct adv_report_table * reports)
             cJSON_AddNumberToObject (tag, "rssi", adv->rssi);
             cJSON_AddNumberToObject (tag, "timestamp", adv->timestamp);
             cJSON_AddStringToObject (tag, "data", adv->data);
-            cJSON_AddItemToObject (tags, adv->tag_mac, tag);
+            const mac_address_str_t mac_str = mac_address_to_str(&adv->tag_mac);
+            cJSON_AddItemToObject (tags, mac_str.str_buf, tag);
         }
     }
     else
