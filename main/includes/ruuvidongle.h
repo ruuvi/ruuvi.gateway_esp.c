@@ -110,6 +110,7 @@ extern char gw_mac[MAC_LEN + 1];
 char * ruuvi_get_conf_json();
 void settings_get_from_flash (struct dongle_config * dongle_config);
 void settings_print (struct dongle_config * config);
+int settings_clear_in_flash (void);
 int settings_save_to_flash (struct dongle_config * config);
 void ruuvi_send_nrf_settings (struct dongle_config * config);
 void ethernet_connection_ok_cb();
