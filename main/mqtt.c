@@ -188,7 +188,8 @@ void mqtt_app_start (void)
         .lwt_retain = true,
         .lwt_topic = lwt_topic,
         .lwt_msg = lwt_message,
-        .lwt_qos = 1
+        .lwt_qos = 1,
+        .transport = MQTT_TRANSPORT_OVER_TCP,
     };
     mqtt_client = esp_mqtt_client_init (&mqtt_cfg);
     esp_mqtt_client_start (mqtt_client);
