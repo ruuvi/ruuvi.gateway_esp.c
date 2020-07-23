@@ -407,6 +407,10 @@ static void adv_post_task (void * arg)
                     ESP_LOGI (TAG, "HTTP POST: %s", json_str);
                     http_send (json_str);
                 }
+                else if (m_dongle_config.use_mqtt)
+                {
+                    flagConnected = true;
+                }
             }
         }
         else
