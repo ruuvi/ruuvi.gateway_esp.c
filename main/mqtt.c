@@ -25,7 +25,7 @@ static void create_full_topic (char * full_topic, const char * prefix, const cha
 
     if (NULL != prefix)
     {
-        snprintf (full_topic, TOPIC_LEN, "%s%s", prefix, topic);
+        snprintf (full_topic, TOPIC_LEN, "%s/%s", prefix, topic);
     }
     else
     {
@@ -81,7 +81,7 @@ static void mqtt_publish_connect()
 {
     char * message = "{\"state\": \"online\"}";
     char topic[TOPIC_LEN];
-    create_full_topic (topic, m_dongle_config.mqtt_prefix, "/gw_status");
+    create_full_topic (topic, m_dongle_config.mqtt_prefix, "gw_status");
     ESP_LOGI(TAG, "esp_mqtt_client_publish: topic:'%s', message:'%s'", topic, message);
     const int message_id = esp_mqtt_client_publish (
             mqtt_client, topic, message, strlen (message), 1, 1);
@@ -155,7 +155,7 @@ void mqtt_app_start (void)
     }
 
     char lwt_topic[TOPIC_LEN];
-    create_full_topic (lwt_topic, m_dongle_config.mqtt_prefix, "/gw_status");
+    create_full_topic (lwt_topic, m_dongle_config.mqtt_prefix, "gw_status");
     char * lwt_message = "{\"state\": \"offline\"}";
     esp_err_t err = 0;
 
