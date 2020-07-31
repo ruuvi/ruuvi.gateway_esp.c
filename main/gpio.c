@@ -13,7 +13,6 @@
 #include "http_server.h"
 
 #define CONFIG_WIFI_RESET_BUTTON_GPIO   RB_BUTTON_RESET_PIN
-#define GPIO_WIFI_RESET_BUTTON_MASK     (1ULL<<CONFIG_WIFI_RESET_BUTTON_GPIO)
 
 #define TIMER_DIVIDER 16
 #define TIMER_SCALE    (TIMER_BASE_CLK / TIMER_DIVIDER)  /*!< used to calculate counter value */
@@ -101,17 +100,23 @@ static void gpio_task (void * arg)
 void gpio_init (void)
 {
     esp_log_level_set (TAG, ESP_LOG_DEBUG);
-    gpio_config_t io_conf;
+
     /*INPUT GPIO WIFI_RESET_BUTTON  -------------------------------------*/
-    //interrupt of rising edge
-    io_conf.intr_type = GPIO_PIN_INTR_ANYEDGE; //GPIO_PIN_INTR_POSEDGE; Rizwan
-    //bit mask of the pins
-    io_conf.pin_bit_mask = GPIO_WIFI_RESET_BUTTON_MASK;
-    //set as input mode
-    io_conf.mode = GPIO_MODE_INPUT;
-    //disable pull-up mode
-    io_conf.pull_up_en = 0;
-    gpio_config (&io_conf);
+    {
+        static const gpio_config_t io_conf_reset_button = {
+            .pin_bit_mask = (1ULL << (unsigned)CONFIG_WIFI_RESET_BUTTON_GPIO),
+            .mode = GPIO_MODE_INPUT,
+            .pull_up_en = 0,
+            .pull_down_en = 0,
+            .intr_type = GPIO_INTR_ANYEDGE,
+        };
+        const esp_err_t err = gpio_config (&io_conf_reset_button);
+        if (ESP_OK != err)
+        {
+            ESP_LOGE(TAG, "gpio_config failed for '%s', res=%d", "reset button", err);
+        }
+    }
+
     /*-------------------------------------------------------------------*/
     //create a queue to handle gpio event from isr
     gpio_evt_queue = xQueueCreate (10, sizeof (uint32_t));
