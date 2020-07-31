@@ -106,7 +106,7 @@ void gpio_init (void)
         static const gpio_config_t io_conf_reset_button = {
             .pin_bit_mask = (1ULL << (unsigned)CONFIG_WIFI_RESET_BUTTON_GPIO),
             .mode = GPIO_MODE_INPUT,
-            .pull_up_en = 0,
+            .pull_up_en = 1,
             .pull_down_en = 0,
             .intr_type = GPIO_INTR_ANYEDGE,
         };
