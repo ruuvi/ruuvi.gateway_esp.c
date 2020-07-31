@@ -154,7 +154,36 @@ void reset_task (void * arg)
 
 void wifi_init()
 {
-    wifi_manager_start();
+    static const WiFiAntConfig_t wiFiAntConfig = {
+        .wifiAntGpioConfig = {
+            .gpio_cfg = {
+                [0] = {
+                    .gpio_select = 1,
+                    .gpio_num = RB_GWBUS_LNA,
+                },
+                [1] = {
+                    .gpio_select = 0,
+                    .gpio_num = 0,
+                },
+                [2] = {
+                    .gpio_select = 0,
+                    .gpio_num = 0,
+                },
+                [3] = {
+                    .gpio_select = 0,
+                    .gpio_num = 0,
+                },
+            },
+        },
+        .wifiAntConfig = {
+            .rx_ant_mode = WIFI_ANT_MODE_ANT1,
+            .rx_ant_default = WIFI_ANT_ANT1,
+            .tx_ant_mode = WIFI_ANT_MODE_ANT0,
+            .enabled_ant0 = 0,
+            .enabled_ant1 = 1
+        },
+    };
+    wifi_manager_start(&wiFiAntConfig);
     wifi_manager_set_callback (EVENT_STA_GOT_IP, &wifi_connection_ok_cb);
     wifi_manager_set_callback (EVENT_STA_DISCONNECTED, &wifi_disconnect_cb);
 }

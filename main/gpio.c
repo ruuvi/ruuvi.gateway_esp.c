@@ -117,6 +117,22 @@ void gpio_init (void)
         }
     }
 
+    /* OUTPUT GPIO LNA_CRX  -------------------------------------*/
+    {
+        const gpio_config_t io_conf_lna_crx = {
+            .pin_bit_mask = 1ULL << (unsigned)RB_GWBUS_LNA,
+            .mode = GPIO_MODE_OUTPUT,
+            .pull_up_en = 0,
+            .pull_down_en = 0,
+            .intr_type = GPIO_INTR_DISABLE,
+        };
+        const esp_err_t err = gpio_config (&io_conf_lna_crx);
+        if (ESP_OK != err)
+        {
+            ESP_LOGE(TAG, "gpio_config failed for '%s', res=%d", "bluetooth LNA CRX", err);
+        }
+    }
+
     /*-------------------------------------------------------------------*/
     //create a queue to handle gpio event from isr
     gpio_evt_queue = xQueueCreate (10, sizeof (uint32_t));
