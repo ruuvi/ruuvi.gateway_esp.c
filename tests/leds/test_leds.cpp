@@ -186,7 +186,7 @@ static void* freertosStartup(void *arg)
 
 /*** Unit-Tests *******************************************************************************************************/
 
-TEST_F(TestLeds, DISABLED_test_all) // NOLINT
+TEST_F(TestLeds, test_all) // NOLINT
 {
     esp_timer_cb_t timer_cb = nullptr;
     void* timer_cb_arg = nullptr;
