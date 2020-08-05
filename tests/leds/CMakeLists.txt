@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.7)
 
 project(ruuvi_gateway_esp-test-leds)
 set(ProjectId ruuvi_gateway_esp-test-leds)
