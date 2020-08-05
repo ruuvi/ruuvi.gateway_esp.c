@@ -1,15 +1,23 @@
+#!/bin/bash
+
+#set -x
+
 export SONAR_TOKEN=$SONAR_TOKEN_ruuvi_gateway_esp
 if [ "$SONAR_TOKEN" = "" ]; then
      echo Environment variable "SONAR_TOKEN_ruuvi_gateway_esp" is not set
      exit 1
 fi
 
-USAGE="Usage: `basename "$0"` {prep | scan [--cache_disabled]}"
+USAGE="Usage: `basename "$0"` {prep | scan [relative_or_absolute_path_to_cache_location]}"
+# default cache location: /home/<user>/.sonar/cache
 
 PROJECT_KEY=ruuvi_ruuvi.gateway_esp.c
 BW_OUTPUT=bw-output-$PROJECT_KEY
 PROJECT_VERSION=0.0
 BUILD=build
+TESTS=tests
+BUILD_TESTS=$TESTS/cmake-build-unit-tests
+CWD=$(pwd)
 
 case $1 in 
     prep)
@@ -21,22 +29,65 @@ case $1 in
     scan)
         [ ! -d "$BUILD/$BW_OUTPUT" ] && echo "Directory $BUILD/$BW_OUTPUT DOES NOT exists, run 'prep'" && exit 1
         if [ "$2" == "" ]; then
-            CACHE_ENABLED=""
-        elif [ "$2" == "--cache_disabled" ]; then
             CACHE_ENABLED="-Dsonar.cfamily.cache.enabled=false"
+            CACHE_PATH=""
         else
-            echo $USAGE
-            exit 1
+            CACHE_ENABLED="sonar.cfamily.cache.enabled=true"
+            CACHE_PATH="sonar.cfamily.cache.path=$2"
         fi
+        
+        mkdir -p $BUILD_TESTS
+        cd $BUILD_TESTS
+        echo Initial cleanup
+        find . -type f -name '*.gcna' -delete
+        find . -type f -name '*.gcno' -delete
+        find . -type f -name 'gtestresults.xml' -delete
+        rm -f $BUILD_TESTS/test-coverage.xml
+
+        echo Generate makefiles for unit-tests
+        cmake -DCMAKE_BUILD_TYPE=Debug -G "Unix Makefiles" ..
+        test ${?} -eq 0 || exit 1
+
+        echo Clean build
+        make clean
+        test ${?} -eq 0 || exit 1
+
+        echo Build unit-tests
+        make
+        test ${?} -eq 0 || exit 1
+
+        echo Run unit-tests
+        ctest
+
+        cd $CWD
+        test ${?} -eq 0 || exit 1
+
+        echo Generate execution_report.xml for SonarCloud
+        python scripts/conv_gtestresults_to_sonarcloud.py \
+        	--cmake_build_path=$BUILD_TESTS \
+        	--output=$BUILD_TESTS/execution_report.xml \
+        	--update_sonar_project_properties
+        test ${?} -eq 0 || exit 1
+        
+        echo Generate test-coverage.xml for SonarCloud
+        gcovr . --delete --sonarqube $BUILD_TESTS/test-coverage.xml
+        test ${?} -eq 0 || exit 1
+        find . -type f -name '*.gcno' -delete
+        
+        echo Run sonar-scanner
+        # sonar.tests is getting from sonar-project.properties
         sonar-scanner \
           -Dsonar.organization=ruuvi \
-          -Dsonar.projectKey=$PROJECT_KEY \
-          -Dsonar.sources=. \
-          -Dsonar.cfamily.build-wrapper-output=$BUILD/$BW_OUTPUT \
+          -Dsonar.sources=./main \
           -Dsonar.host.url=https://sonarcloud.io \
+          -Dsonar.coverageReportPaths=$BUILD_TESTS/test-coverage.xml \
+          -Dsonar.testExecutionReportPaths=$BUILD_TESTS/execution_report.xml \
+          -Dsonar.projectKey=$PROJECT_KEY \
+          -Dsonar.cfamily.build-wrapper-output=$BUILD/$BW_OUTPUT \
           -Dsonar.cfamily.threads=$(nproc) \
           -Dsonar.projectVersion=$PROJECT_VERSION \
-          $CACHE_ENABLED
+          $CACHE_ENABLED \
+          $CACHE_PATH
         ;;
     *)
         echo $USAGE
