@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <mqueue.h>
+#include <semaphore.h>
 #include "gtest/gtest.h"
 #include "leds.h"
 #include "TQueue.h"
@@ -33,17 +34,25 @@ protected:
 
     void SetUp() override
     {
+        sem_init(&semaFreeRTOS, 0, 0);
         const int err = pthread_create(&pid, nullptr, &freertosStartup, this);
         assert(0 == err);
+        while (0 != sem_wait(&semaFreeRTOS))
+        {
+        }
     }
 
     void TearDown() override
     {
         cmdQueue.push_and_wait(MainTaskCmd_Exit);
-        vPortEndScheduler();
+        vTaskEndScheduler();
+        void* ret_code = nullptr;
+        pthread_join(pid, &ret_code);
+        sem_destroy(&semaFreeRTOS);
     }
 
 public:
+    sem_t semaFreeRTOS;
     TQueue<MainTaskCmd_e> cmdQueue;
     std::vector<TestEvent*> testEvents;
 
@@ -130,6 +139,7 @@ static void cmdHandlerTask(void *parameters)
 {
     auto* pTestLeds = static_cast<TestLeds *>(parameters);
     bool flagExit = false;
+    sem_post(&pTestLeds->semaFreeRTOS);
     while (!flagExit)
     {
         const MainTaskCmd_e cmd = pTestLeds->cmdQueue.pop();
@@ -165,8 +175,11 @@ static void cmdHandlerTask(void *parameters)
 
 static void* freertosStartup(void *arg)
 {
-    xTaskCreate(cmdHandlerTask, "cmdHandlerTask", configMINIMAL_STACK_SIZE, arg, (tskIDLE_PRIORITY + 1),
-                (xTaskHandle *) nullptr);
+    auto* pObj = static_cast<TestLeds *>(arg);
+    BaseType_t res = xTaskCreate(cmdHandlerTask, "cmdHandlerTask", configMINIMAL_STACK_SIZE, pObj,
+                                 (tskIDLE_PRIORITY + 1),
+                                 (xTaskHandle *) nullptr);
+    assert(pdPASS == res);
     vTaskStartScheduler();
     return nullptr;
 }
