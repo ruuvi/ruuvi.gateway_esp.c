@@ -17,7 +17,7 @@ add_executable(${ProjectId}
 
 set_target_properties(${ProjectId} PROPERTIES
         C_STANDARD 11
-        CXX_STANDARD 17
+        CXX_STANDARD 14
 )
 
 target_include_directories(${ProjectId} PUBLIC
