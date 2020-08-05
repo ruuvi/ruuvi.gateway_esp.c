@@ -66,7 +66,7 @@ case $1 in
         test ${?} -eq 0 || exit 1
 
         echo Generate execution_report.xml for SonarCloud
-        python scripts/conv_gtestresults_to_sonarcloud.py \
+        python3 scripts/conv_gtestresults_to_sonarcloud.py \
         	--cmake_build_path=$BUILD_TESTS \
         	--output=$BUILD_TESTS/execution_report.xml \
         	--update_sonar_project_properties
