@@ -44,13 +44,15 @@ target_compile_options(${ProjectId} PUBLIC
         --coverage
 )
 
-target_link_options(${ProjectId} PUBLIC
-        --coverage
-)
+# CMake has a target_link_options starting from version 3.13
+#target_link_options(${ProjectId} PUBLIC
+#        --coverage
+#)
 
 target_link_libraries(${ProjectId}
         gtest
         gtest_main
         FreeRTOS_Posix
         gcov
+        --coverage
 )
