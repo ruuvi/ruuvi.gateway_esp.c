@@ -14,7 +14,7 @@ USAGE="Usage: `basename "$0"` {prep | scan [relative_or_absolute_path_to_cache_l
 PROJECT_KEY=ruuvi_ruuvi.gateway_esp.c
 BW_OUTPUT=bw-output-$PROJECT_KEY
 PROJECT_VERSION=0.0
-BUILD=build
+BUILD=build-coverage
 TESTS=tests
 BUILD_TESTS=$TESTS/cmake-build-unit-tests
 CWD=$(pwd)
@@ -23,7 +23,10 @@ case $1 in
     prep)
         mkdir -p $BUILD
         cd $BUILD
-        ninja -t clean
+        if [ -f build.ninja ]; then
+            ninja -t clean
+        fi
+        cmake .. -G Ninja
         build-wrapper-linux-x86-64 --out-dir $BW_OUTPUT ninja -j $(nproc) ruuvi_gateway_esp.elf
         ;;
     scan)
