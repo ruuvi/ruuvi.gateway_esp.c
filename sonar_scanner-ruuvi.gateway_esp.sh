@@ -13,9 +13,13 @@ USAGE="Usage: `basename "$0"` {prep | scan [relative_or_absolute_path_to_cache_l
 
 PROJECT_KEY=ruuvi_ruuvi.gateway_esp.c
 BW_OUTPUT=bw-output-$PROJECT_KEY
-BUILD=build-coverage
+ROOT_DIR=.
+SCRIPTS=$ROOT_DIR/scripts
+BUILD=$ROOT_DIR/build-coverage
 TESTS=tests
 BUILD_TESTS=$TESTS/cmake-build-unit-tests
+SOURCES=./main
+
 CWD=$(pwd)
 
 if [ "$PROJECT_VERSION" = "" ]; then
@@ -41,7 +45,7 @@ case $1 in
             CACHE_ENABLED="sonar.cfamily.cache.enabled=true"
             CACHE_PATH="sonar.cfamily.cache.path=$2"
         fi
-        
+
         mkdir -p $BUILD_TESTS
         cd $BUILD_TESTS || exit 1
         echo Initial cleanup
@@ -69,10 +73,10 @@ case $1 in
         test ${?} -eq 0 || exit 1
 
         echo Generate execution_report.xml for SonarCloud
-        python3 scripts/conv_gtestresults_to_sonarcloud.py \
-        	--cmake_build_path=$BUILD_TESTS \
-        	--output=$BUILD_TESTS/execution_report.xml \
-        	--update_sonar_project_properties
+        python3 $SCRIPTS/conv_gtestresults_to_sonarcloud.py \
+            --cmake_build_path=$BUILD_TESTS \
+            --output=$BUILD_TESTS/execution_report.xml \
+            --update_sonar_project_properties
         test ${?} -eq 0 || exit 1
         
         echo Generate test-coverage.xml for SonarCloud
@@ -84,7 +88,7 @@ case $1 in
         # sonar.tests is getting from sonar-project.properties
         sonar-scanner \
           -Dsonar.organization=ruuvi \
-          -Dsonar.sources=./main \
+          -Dsonar.sources=$SOURCES \
           -Dsonar.host.url=https://sonarcloud.io \
           -Dsonar.coverageReportPaths=$BUILD_TESTS/test-coverage.xml \
           -Dsonar.testExecutionReportPaths=$BUILD_TESTS/execution_report.xml \
