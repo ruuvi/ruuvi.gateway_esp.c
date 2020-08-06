@@ -13,21 +13,24 @@ USAGE="Usage: `basename "$0"` {prep | scan [relative_or_absolute_path_to_cache_l
 
 PROJECT_KEY=ruuvi_ruuvi.gateway_esp.c
 BW_OUTPUT=bw-output-$PROJECT_KEY
-PROJECT_VERSION=0.0
 BUILD=build-coverage
 TESTS=tests
 BUILD_TESTS=$TESTS/cmake-build-unit-tests
 CWD=$(pwd)
 
+if [ "$PROJECT_VERSION" = "" ]; then
+    PROJECT_VERSION=0.0
+fi
+
 case $1 in 
     prep)
         mkdir -p $BUILD
-        cd $BUILD
+        cd $BUILD || exit 1
         if [ -f build.ninja ]; then
             ninja -t clean
         fi
         cmake .. -G Ninja
-        build-wrapper-linux-x86-64 --out-dir $BW_OUTPUT ninja -j $(nproc) ruuvi_gateway_esp.elf
+        build-wrapper-linux-x86-64 --out-dir $BW_OUTPUT ninja -j "$(nproc)" ruuvi_gateway_esp.elf
         ;;
     scan)
         [ ! -d "$BUILD/$BW_OUTPUT" ] && echo "Directory $BUILD/$BW_OUTPUT DOES NOT exists, run 'prep'" && exit 1
@@ -40,7 +43,7 @@ case $1 in
         fi
         
         mkdir -p $BUILD_TESTS
-        cd $BUILD_TESTS
+        cd $BUILD_TESTS || exit 1
         echo Initial cleanup
         find . -type f -name '*.gcna' -delete
         find . -type f -name '*.gcno' -delete
@@ -62,7 +65,7 @@ case $1 in
         echo Run unit-tests
         ctest
 
-        cd $CWD
+        cd "$CWD" || exit 1
         test ${?} -eq 0 || exit 1
 
         echo Generate execution_report.xml for SonarCloud
@@ -93,7 +96,7 @@ case $1 in
           $CACHE_PATH
         ;;
     *)
-        echo $USAGE
+        echo "$USAGE"
         exit 1
         ;;
 esac
