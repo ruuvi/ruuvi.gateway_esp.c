@@ -54,6 +54,11 @@ struct adv_report_table
     adv_report_t table[MAX_ADVS_TABLE];
 };
 
+typedef struct gw_metrics
+{
+    uint64_t received_advertisements;
+} gw_metrics_t;
+
 #define RUUVI_DONGLE_CONFIG_HEADER          (0xAABBU)
 #define RUUVI_DONGLE_CONFIG_FMT_VERSION     (0x0004U)
 
@@ -115,10 +120,12 @@ typedef enum nrf_command_t
 extern struct dongle_config m_dongle_config;
 extern EventGroupHandle_t status_bits;
 extern mac_address_str_t gw_mac_sta;
+extern gw_metrics_t gw_metrics;
 
 void mac_address_bin_init(mac_address_bin_t* p_mac, const uint8_t mac[6]);
 mac_address_str_t mac_address_to_str(const mac_address_bin_t* p_mac);
 char * ruuvi_get_conf_json();
+char * ruuvi_get_metrics();
 void settings_get_from_flash (struct dongle_config * dongle_config);
 void settings_print (struct dongle_config * config);
 int settings_clear_in_flash (void);

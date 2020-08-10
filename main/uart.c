@@ -59,6 +59,7 @@ static void bin2hex (char * const hexstr, const size_t hexstr_size, const uint8_
 static esp_err_t adv_put_to_table (const adv_report_t * const p_adv)
 {
     portENTER_CRITICAL (&adv_table_mux);
+    gw_metrics.received_advertisements++;
     bool found = false;
     esp_err_t ret = ESP_OK;
 
