@@ -419,7 +419,7 @@ adv_post_task(void *arg)
         {
             if ((status & WIFI_CONNECTED_BIT) || (status & ETH_CONNECTED_BIT))
             {
-                if (m_dongle_config.use_http)
+                if (g_gateway_config.use_http)
                 {
                     flagConnected = true;
                     char json_str[64];
@@ -431,7 +431,7 @@ adv_post_task(void *arg)
                     ESP_LOGI(TAG, "HTTP POST: %s", json_str);
                     http_send(json_str);
                 }
-                else if (m_dongle_config.use_mqtt)
+                else if (g_gateway_config.use_mqtt)
                 {
                     flagConnected = true;
                 }
@@ -449,11 +449,11 @@ adv_post_task(void *arg)
         {
             if (flagConnected)
             {
-                if (m_dongle_config.use_http)
+                if (g_gateway_config.use_http)
                 {
                     http_send_advs(&adv_reports_buf);
                 }
-                if (m_dongle_config.use_mqtt && (xEventGroupGetBits(status_bits) & MQTT_CONNECTED_BIT))
+                if (g_gateway_config.use_mqtt && (xEventGroupGetBits(status_bits) & MQTT_CONNECTED_BIT))
                 {
                     mqtt_publish_table(&adv_reports_buf);
                 }

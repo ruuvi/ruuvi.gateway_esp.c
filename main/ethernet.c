@@ -90,12 +90,12 @@ got_ip_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, v
 void
 ethernet_update_ip()
 {
-    ruuvi_gateway_config_t *c = &m_dongle_config;
+    ruuvi_gateway_config_t *c = &g_gateway_config;
 
     bool error = false;
     int  ret   = 0;
 
-    if (m_dongle_config.eth_dhcp)
+    if (g_gateway_config.eth_dhcp)
     {
         ESP_LOGI(TAG, "Using ETH DHCP");
         ret = tcpip_adapter_dhcpc_start(TCPIP_ADAPTER_IF_ETH);

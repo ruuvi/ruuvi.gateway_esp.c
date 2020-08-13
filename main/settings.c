@@ -158,7 +158,7 @@ char *
 ruuvi_get_conf_json()
 {
     char *                 buf  = 0;
-    ruuvi_gateway_config_t c    = m_dongle_config;
+    ruuvi_gateway_config_t c    = g_gateway_config;
     cJSON *                root = cJSON_CreateObject();
 
     if (root)

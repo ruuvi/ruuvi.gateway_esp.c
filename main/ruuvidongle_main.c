@@ -29,7 +29,7 @@ EventGroupHandle_t status_bits;
 
 mac_address_str_t gw_mac_sta = { 0 };
 
-ruuvi_gateway_config_t m_dongle_config = RUUVIDONGLE_DEFAULT_CONFIGURATION;
+ruuvi_gateway_config_t g_gateway_config = RUUVIDONGLE_DEFAULT_CONFIGURATION;
 
 extern wifi_config_t *wifi_manager_config_sta;
 
@@ -150,7 +150,7 @@ start_services()
 {
     time_sync();
 
-    if (m_dongle_config.use_mqtt)
+    if (g_gateway_config.use_mqtt)
     {
         mqtt_app_start();
     }
@@ -243,11 +243,11 @@ app_main(void)
         esp_restart();
     }
 
-    settings_get_from_flash(&m_dongle_config);
+    settings_get_from_flash(&g_gateway_config);
     uart_init();
     time_init();
     leds_start_blink(LEDS_FAST_BLINK);
-    ruuvi_send_nrf_settings(&m_dongle_config);
+    ruuvi_send_nrf_settings(&g_gateway_config);
     gw_mac_sta = get_gw_mac_sta();
     ESP_LOGI(TAG, "Mac address: %s", gw_mac_sta.str_buf);
     wifi_init();

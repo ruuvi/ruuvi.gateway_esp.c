@@ -120,7 +120,7 @@ typedef enum nrf_command_t
     CLEAR_FILTER
 } nrf_command_t;
 
-extern ruuvi_gateway_config_t m_dongle_config;
+extern ruuvi_gateway_config_t g_gateway_config;
 extern EventGroupHandle_t     status_bits;
 extern mac_address_str_t      gw_mac_sta;
 extern gw_metrics_t           gw_metrics;

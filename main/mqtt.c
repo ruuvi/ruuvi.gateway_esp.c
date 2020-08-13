@@ -49,7 +49,7 @@ mqtt_create_json(adv_report_t *adv)
         cJSON_AddNumberToObject(root, "gwts", now);
         cJSON_AddNumberToObject(root, "ts", adv->timestamp);
         cJSON_AddStringToObject(root, "data", adv->data);
-        cJSON_AddStringToObject(root, "coords", m_dongle_config.coordinates);
+        cJSON_AddStringToObject(root, "coords", g_gateway_config.coordinates);
     }
 
     char *json_str = cJSON_PrintUnformatted(root);
@@ -63,7 +63,7 @@ mqtt_publish_adv(adv_report_t *adv)
     char                    topic[TOPIC_LEN];
     char *                  json        = mqtt_create_json(adv);
     const mac_address_str_t tag_mac_str = mac_address_to_str(&adv->tag_mac);
-    create_full_topic(topic, m_dongle_config.mqtt_prefix, tag_mac_str.str_buf);
+    create_full_topic(topic, g_gateway_config.mqtt_prefix, tag_mac_str.str_buf);
     ESP_LOGD(TAG, "publish: topic: %s, data: %s", topic, json);
     esp_mqtt_client_publish(mqtt_client, topic, json, 0, 1, 0);
     free(json);
@@ -86,7 +86,7 @@ mqtt_publish_connect()
 {
     char *message = "{\"state\": \"online\"}";
     char  topic[TOPIC_LEN];
-    create_full_topic(topic, m_dongle_config.mqtt_prefix, "gw_status");
+    create_full_topic(topic, g_gateway_config.mqtt_prefix, "gw_status");
     ESP_LOGI(TAG, "esp_mqtt_client_publish: topic:'%s', message:'%s'", topic, message);
     const int message_id = esp_mqtt_client_publish(mqtt_client, topic, message, strlen(message), 1, 1);
     if (-1 == message_id)
@@ -161,11 +161,11 @@ mqtt_app_start(void)
     }
 
     char lwt_topic[TOPIC_LEN];
-    create_full_topic(lwt_topic, m_dongle_config.mqtt_prefix, "gw_status");
+    create_full_topic(lwt_topic, g_gateway_config.mqtt_prefix, "gw_status");
     char *    lwt_message = "{\"state\": \"offline\"}";
     esp_err_t err         = 0;
 
-    if (m_dongle_config.mqtt_server[0] == 0)
+    if (g_gateway_config.mqtt_server[0] == 0)
     {
         err = ESP_ERR_INVALID_ARG;
     }
@@ -175,10 +175,10 @@ mqtt_app_start(void)
         ESP_LOGE(
             TAG,
             "Invalid MQTT parameters: server: %s, topic prefix: '%s', port: %u, user: '%s', password: '%s'",
-            m_dongle_config.mqtt_server,
-            m_dongle_config.mqtt_prefix,
-            m_dongle_config.mqtt_port,
-            m_dongle_config.mqtt_user,
+            g_gateway_config.mqtt_server,
+            g_gateway_config.mqtt_prefix,
+            g_gateway_config.mqtt_port,
+            g_gateway_config.mqtt_user,
             "******");
         return;
     }
@@ -187,19 +187,19 @@ mqtt_app_start(void)
         ESP_LOGI(
             TAG,
             "Using server: %s, topic prefix: '%s', port: %u, user: '%s', password: '%s'",
-            m_dongle_config.mqtt_server,
-            m_dongle_config.mqtt_prefix,
-            m_dongle_config.mqtt_port,
-            m_dongle_config.mqtt_user,
+            g_gateway_config.mqtt_server,
+            g_gateway_config.mqtt_prefix,
+            g_gateway_config.mqtt_port,
+            g_gateway_config.mqtt_user,
             "******");
     }
 
     const esp_mqtt_client_config_t mqtt_cfg = {
         .event_handle = mqtt_event_handler,
-        .host         = m_dongle_config.mqtt_server,
-        .port         = m_dongle_config.mqtt_port,
-        .username     = m_dongle_config.mqtt_user,
-        .password     = m_dongle_config.mqtt_pass,
+        .host         = g_gateway_config.mqtt_server,
+        .port         = g_gateway_config.mqtt_port,
+        .username     = g_gateway_config.mqtt_user,
+        .password     = g_gateway_config.mqtt_pass,
         .lwt_retain   = true,
         .lwt_topic    = lwt_topic,
         .lwt_msg      = lwt_message,
