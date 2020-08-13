@@ -5,9 +5,14 @@
 extern "C" {
 #endif
 
-void time_sync (void);
-void time_init(void);
-void time_stop(void);
+void
+time_sync(void);
+
+void
+time_init(void);
+
+void
+time_stop(void);
 
 #ifdef __cplusplus
 }

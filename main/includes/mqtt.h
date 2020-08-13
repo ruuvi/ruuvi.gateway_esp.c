@@ -3,7 +3,10 @@
 
 #include "ruuvidongle.h"
 
-void mqtt_app_start (void);
-void mqtt_publish_table (struct adv_report_table * table);
+void
+mqtt_app_start(void);
+
+void
+mqtt_publish_table(struct adv_report_table *table);
 
 #endif

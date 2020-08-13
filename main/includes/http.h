@@ -3,8 +3,10 @@
 
 #include "ruuvidongle.h"
 
-void http_send (const char * msg);
+void
+http_send(const char *msg);
 
-void http_send_advs (struct adv_report_table *);
+void
+http_send_advs(struct adv_report_table *);
 
 #endif
