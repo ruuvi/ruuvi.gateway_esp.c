@@ -19,7 +19,7 @@ settings_clear_in_flash(void)
     esp_err_t  ret     = nvs_open(ruuvi_dongle_nvs_namespace, NVS_READWRITE, &handle);
     if (ret == ESP_OK)
     {
-        esp_err = nvs_set_blob(handle, RUUVIDONGLE_NVS_CONFIGURATION_KEY, &default_config, sizeof(default_config));
+        esp_err = nvs_set_blob(handle, RUUVI_GATEWAY_NVS_CONFIGURATION_KEY, &default_config, sizeof(default_config));
         if (esp_err != ESP_OK)
         {
             ESP_LOGE(TAG, "Can't save config to NVS, err: %02x", esp_err);
@@ -28,7 +28,7 @@ settings_clear_in_flash(void)
     }
     else
     {
-        ESP_LOGE(TAG, "Can't open '%s' nvs namespace, err: %02x", RUUVIDONGLE_NVS_CONFIGURATION_KEY, ret);
+        ESP_LOGE(TAG, "Can't open '%s' nvs namespace, err: %02x", RUUVI_GATEWAY_NVS_CONFIGURATION_KEY, ret);
     }
     return 0;
 }
@@ -43,7 +43,7 @@ settings_save_to_flash(ruuvi_gateway_config_t *config)
 
     if (ret == ESP_OK)
     {
-        esp_err = nvs_set_blob(handle, RUUVIDONGLE_NVS_CONFIGURATION_KEY, config, sizeof(ruuvi_gateway_config_t));
+        esp_err = nvs_set_blob(handle, RUUVI_GATEWAY_NVS_CONFIGURATION_KEY, config, sizeof(ruuvi_gateway_config_t));
 
         if (esp_err != ESP_OK)
         {
@@ -89,7 +89,7 @@ settings_get_from_nvs_handle(nvs_handle handle, ruuvi_gateway_config_t *dongle_c
 {
     size_t sz = 0;
     {
-        const esp_err_t esp_err = nvs_get_blob(handle, RUUVIDONGLE_NVS_CONFIGURATION_KEY, NULL, &sz);
+        const esp_err_t esp_err = nvs_get_blob(handle, RUUVI_GATEWAY_NVS_CONFIGURATION_KEY, NULL, &sz);
         if (ESP_OK != esp_err)
         {
             ESP_LOGW(TAG, "Can't read config from flash");
@@ -103,7 +103,7 @@ settings_get_from_nvs_handle(nvs_handle handle, ruuvi_gateway_config_t *dongle_c
         return false;
     }
 
-    const esp_err_t esp_err = nvs_get_blob(handle, RUUVIDONGLE_NVS_CONFIGURATION_KEY, dongle_config, &sz);
+    const esp_err_t esp_err = nvs_get_blob(handle, RUUVI_GATEWAY_NVS_CONFIGURATION_KEY, dongle_config, &sz);
     if (ESP_OK != esp_err)
     {
         ESP_LOGW(TAG, "Can't read config from flash");
