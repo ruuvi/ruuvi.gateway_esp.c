@@ -8,7 +8,7 @@
 static const char  TAG[]                      = "settings";
 static const char *ruuvi_dongle_nvs_namespace = "ruuvidongle";
 
-static const ruuvi_gateway_config_t default_config = RUUVIDONGLE_DEFAULT_CONFIGURATION;
+static const ruuvi_gateway_config_t default_config = RUUVI_GATEWAY_DEFAULT_CONFIGURATION;
 
 int
 settings_clear_in_flash(void)
@@ -110,17 +110,17 @@ settings_get_from_nvs_handle(nvs_handle handle, ruuvi_gateway_config_t *dongle_c
         return false;
     }
 
-    if (RUUVI_DONGLE_CONFIG_HEADER != dongle_config->header)
+    if (RUUVI_GATEWAY_CONFIG_HEADER != dongle_config->header)
     {
         ESP_LOGW(TAG, "Incorrect config header (0x%02X)", dongle_config->header);
         return false;
     }
-    if (RUUVI_DONGLE_CONFIG_FMT_VERSION != dongle_config->fmt_version)
+    if (RUUVI_GATEWAY_CONFIG_FMT_VERSION != dongle_config->fmt_version)
     {
         ESP_LOGW(
             TAG,
             "Incorrect config fmt version (exp 0x%02x, act 0x%02x)",
-            RUUVI_DONGLE_CONFIG_FMT_VERSION,
+            RUUVI_GATEWAY_CONFIG_FMT_VERSION,
             dongle_config->fmt_version);
         return false;
     }

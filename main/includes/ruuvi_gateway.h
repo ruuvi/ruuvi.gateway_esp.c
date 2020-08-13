@@ -59,8 +59,8 @@ typedef struct gw_metrics
     uint64_t received_advertisements;
 } gw_metrics_t;
 
-#define RUUVI_DONGLE_CONFIG_HEADER      (0xAABBU)
-#define RUUVI_DONGLE_CONFIG_FMT_VERSION (0x0004U)
+#define RUUVI_GATEWAY_CONFIG_HEADER      (0xAABBU)
+#define RUUVI_GATEWAY_CONFIG_FMT_VERSION (0x0004U)
 
 typedef struct ruuvi_gateway_config_t
 {
@@ -88,10 +88,10 @@ typedef struct ruuvi_gateway_config_t
 } ruuvi_gateway_config_t;
 
 // clang-format off
-#define RUUVIDONGLE_DEFAULT_CONFIGURATION \
+#define RUUVI_GATEWAY_DEFAULT_CONFIGURATION \
     { \
-        .header = RUUVI_DONGLE_CONFIG_HEADER, \
-        .fmt_version = RUUVI_DONGLE_CONFIG_FMT_VERSION, \
+        .header = RUUVI_GATEWAY_CONFIG_HEADER, \
+        .fmt_version = RUUVI_GATEWAY_CONFIG_FMT_VERSION, \
         .eth_dhcp = true, \
         .use_http = true, \
         .use_mqtt = false, \

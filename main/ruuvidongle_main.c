@@ -29,7 +29,7 @@ EventGroupHandle_t status_bits;
 
 mac_address_str_t gw_mac_sta = { 0 };
 
-ruuvi_gateway_config_t g_gateway_config = RUUVIDONGLE_DEFAULT_CONFIGURATION;
+ruuvi_gateway_config_t g_gateway_config = RUUVI_GATEWAY_DEFAULT_CONFIGURATION;
 
 extern wifi_config_t *wifi_manager_config_sta;
 
