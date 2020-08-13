@@ -5,9 +5,10 @@
 #include "nvs_flash.h"
 #include "string.h"
 
-static const char                 TAG[]                      = "settings";
-static const char *               ruuvi_dongle_nvs_namespace = "ruuvidongle";
-static const struct dongle_config default_config             = RUUVIDONGLE_DEFAULT_CONFIGURATION;
+static const char  TAG[]                      = "settings";
+static const char *ruuvi_dongle_nvs_namespace = "ruuvidongle";
+
+static const ruuvi_gateway_config_t default_config = RUUVIDONGLE_DEFAULT_CONFIGURATION;
 
 int
 settings_clear_in_flash(void)
@@ -33,7 +34,7 @@ settings_clear_in_flash(void)
 }
 
 int
-settings_save_to_flash(struct dongle_config *config)
+settings_save_to_flash(ruuvi_gateway_config_t *config)
 {
     ESP_LOGD(TAG, "%s", __func__);
     nvs_handle handle;
@@ -42,7 +43,7 @@ settings_save_to_flash(struct dongle_config *config)
 
     if (ret == ESP_OK)
     {
-        esp_err = nvs_set_blob(handle, RUUVIDONGLE_NVS_CONFIGURATION_KEY, config, sizeof(struct dongle_config));
+        esp_err = nvs_set_blob(handle, RUUVIDONGLE_NVS_CONFIGURATION_KEY, config, sizeof(ruuvi_gateway_config_t));
 
         if (esp_err != ESP_OK)
         {
@@ -60,7 +61,7 @@ settings_save_to_flash(struct dongle_config *config)
 }
 
 void
-settings_print(struct dongle_config *config)
+settings_print(ruuvi_gateway_config_t *config)
 {
     ESP_LOGI(TAG, "config: use eth dhcp: %d", config->eth_dhcp);
     ESP_LOGI(TAG, "config: eth static ip: %s", config->eth_static_ip);
@@ -84,7 +85,7 @@ settings_print(struct dongle_config *config)
 }
 
 static bool
-settings_get_from_nvs_handle(nvs_handle handle, struct dongle_config *dongle_config)
+settings_get_from_nvs_handle(nvs_handle handle, ruuvi_gateway_config_t *dongle_config)
 {
     size_t sz = 0;
     {
@@ -127,7 +128,7 @@ settings_get_from_nvs_handle(nvs_handle handle, struct dongle_config *dongle_con
 }
 
 void
-settings_get_from_flash(struct dongle_config *dongle_config)
+settings_get_from_flash(ruuvi_gateway_config_t *dongle_config)
 {
     nvs_handle      handle = 0;
     const esp_err_t ret    = nvs_open(ruuvi_dongle_nvs_namespace, NVS_READONLY, &handle);
@@ -156,9 +157,9 @@ settings_get_from_flash(struct dongle_config *dongle_config)
 char *
 ruuvi_get_conf_json()
 {
-    char *               buf  = 0;
-    struct dongle_config c    = m_dongle_config;
-    cJSON *              root = cJSON_CreateObject();
+    char *                 buf  = 0;
+    ruuvi_gateway_config_t c    = m_dongle_config;
+    cJSON *                root = cJSON_CreateObject();
 
     if (root)
     {

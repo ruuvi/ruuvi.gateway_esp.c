@@ -90,9 +90,10 @@ got_ip_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, v
 void
 ethernet_update_ip()
 {
-    struct dongle_config *c     = &m_dongle_config;
-    bool                  error = false;
-    int                   ret   = 0;
+    ruuvi_gateway_config_t *c = &m_dongle_config;
+
+    bool error = false;
+    int  ret   = 0;
 
     if (m_dongle_config.eth_dhcp)
     {

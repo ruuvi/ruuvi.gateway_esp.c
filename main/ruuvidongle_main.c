@@ -29,12 +29,12 @@ EventGroupHandle_t status_bits;
 
 mac_address_str_t gw_mac_sta = { 0 };
 
-struct dongle_config m_dongle_config = RUUVIDONGLE_DEFAULT_CONFIGURATION;
+ruuvi_gateway_config_t m_dongle_config = RUUVIDONGLE_DEFAULT_CONFIGURATION;
 
 extern wifi_config_t *wifi_manager_config_sta;
 
 void
-ruuvi_send_nrf_settings(struct dongle_config *config)
+ruuvi_send_nrf_settings(ruuvi_gateway_config_t *config)
 {
     ESP_LOGI(
         TAG,
