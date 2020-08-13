@@ -86,7 +86,7 @@ settings_print(ruuvi_gateway_config_t *config)
 }
 
 static bool
-settings_get_from_nvs_handle(nvs_handle handle, ruuvi_gateway_config_t *dongle_config)
+settings_get_from_nvs_handle(nvs_handle handle, ruuvi_gateway_config_t *p_gateway_config)
 {
     size_t sz = 0;
     {
@@ -98,31 +98,31 @@ settings_get_from_nvs_handle(nvs_handle handle, ruuvi_gateway_config_t *dongle_c
         }
     }
 
-    if (sizeof(*dongle_config) != sz)
+    if (sizeof(*p_gateway_config) != sz)
     {
         ESP_LOGW(TAG, "Size of config in flash differs");
         return false;
     }
 
-    const esp_err_t esp_err = nvs_get_blob(handle, RUUVI_GATEWAY_NVS_CONFIGURATION_KEY, dongle_config, &sz);
+    const esp_err_t esp_err = nvs_get_blob(handle, RUUVI_GATEWAY_NVS_CONFIGURATION_KEY, p_gateway_config, &sz);
     if (ESP_OK != esp_err)
     {
         ESP_LOGW(TAG, "Can't read config from flash");
         return false;
     }
 
-    if (RUUVI_GATEWAY_CONFIG_HEADER != dongle_config->header)
+    if (RUUVI_GATEWAY_CONFIG_HEADER != p_gateway_config->header)
     {
-        ESP_LOGW(TAG, "Incorrect config header (0x%02X)", dongle_config->header);
+        ESP_LOGW(TAG, "Incorrect config header (0x%02X)", p_gateway_config->header);
         return false;
     }
-    if (RUUVI_GATEWAY_CONFIG_FMT_VERSION != dongle_config->fmt_version)
+    if (RUUVI_GATEWAY_CONFIG_FMT_VERSION != p_gateway_config->fmt_version)
     {
         ESP_LOGW(
             TAG,
             "Incorrect config fmt version (exp 0x%02x, act 0x%02x)",
             RUUVI_GATEWAY_CONFIG_FMT_VERSION,
-            dongle_config->fmt_version);
+            p_gateway_config->fmt_version);
         return false;
     }
     return true;
