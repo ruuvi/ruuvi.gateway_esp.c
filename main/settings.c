@@ -55,7 +55,7 @@ settings_save_to_flash(ruuvi_gateway_config_t *config)
     }
     else
     {
-        ESP_LOGE(TAG, "Can't open ruuvidongle nvs namespace, err: %02x", ret);
+        ESP_LOGE(TAG, "Can't open %s nvs namespace, err: %02x", g_ruuvi_gateway_nvs_namespace, ret);
     }
 
     return 0;
