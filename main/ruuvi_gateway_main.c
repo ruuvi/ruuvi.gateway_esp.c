@@ -23,7 +23,7 @@
 #include "ethernet.h"
 #include "ruuvi_board_gwesp.h"
 
-static const char TAG[] = "ruuvidongle";
+static const char TAG[] = "ruuvi_gateway";
 
 EventGroupHandle_t status_bits;
 
