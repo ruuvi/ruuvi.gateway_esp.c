@@ -138,7 +138,7 @@ char *
 ruuvi_get_metrics();
 
 void
-settings_get_from_flash(ruuvi_gateway_config_t *dongle_config);
+settings_get_from_flash(ruuvi_gateway_config_t *p_gateway_config);
 
 void
 settings_print(ruuvi_gateway_config_t *config);

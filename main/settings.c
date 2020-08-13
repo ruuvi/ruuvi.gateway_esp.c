@@ -128,7 +128,7 @@ settings_get_from_nvs_handle(nvs_handle handle, ruuvi_gateway_config_t *dongle_c
 }
 
 void
-settings_get_from_flash(ruuvi_gateway_config_t *dongle_config)
+settings_get_from_flash(ruuvi_gateway_config_t *p_gateway_config)
 {
     nvs_handle      handle = 0;
     const esp_err_t ret    = nvs_open(ruuvi_dongle_nvs_namespace, NVS_READONLY, &handle);
@@ -136,14 +136,14 @@ settings_get_from_flash(ruuvi_gateway_config_t *dongle_config)
     {
         ESP_LOGE(TAG, "Can't open '%s' namespace in NVS, err: 0x%02x", ruuvi_dongle_nvs_namespace, ret);
         ESP_LOGI(TAG, "Using default config:");
-        *dongle_config = default_config;
+        *p_gateway_config = default_config;
     }
     else
     {
-        if (!settings_get_from_nvs_handle(handle, dongle_config))
+        if (!settings_get_from_nvs_handle(handle, p_gateway_config))
         {
             ESP_LOGI(TAG, "Using default config:");
-            *dongle_config = default_config;
+            *p_gateway_config = default_config;
         }
         else
         {
@@ -151,7 +151,7 @@ settings_get_from_flash(ruuvi_gateway_config_t *dongle_config)
         }
         nvs_close(handle);
     }
-    settings_print(dongle_config);
+    settings_print(p_gateway_config);
 }
 
 char *
