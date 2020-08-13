@@ -7,7 +7,7 @@
 
 #define RUUVI_COMPANY_ID                    0x0499
 #define RUUVI_GATEWAY_NVS_CONFIGURATION_KEY "ruuvi_config"
-#define RUUVIDONGLE_NVS_BOOT_KEY            "ruuvi_boot"
+#define RUUVI_GATEWAY_NVS_BOOT_KEY          "ruuvi_boot"
 
 #define ADV_DATA_MAX_LEN 64
 
