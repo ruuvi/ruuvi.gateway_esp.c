@@ -3,7 +3,7 @@
 #include "mqtt_client.h"
 #include "freertos/event_groups.h"
 #include "esp_log.h"
-#include "ruuvidongle.h"
+#include "ruuvi_gateway.h"
 #include "mqtt.h"
 
 #undef LOG_LOCAL_LEVEL

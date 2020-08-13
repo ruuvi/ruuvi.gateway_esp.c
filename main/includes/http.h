@@ -1,7 +1,7 @@
 #ifndef _HTTP_H_DEF_
 #define _HTTP_H_DEF_
 
-#include "ruuvidongle.h"
+#include "ruuvi_gateway.h"
 
 void
 http_send(const char *msg);

@@ -1,6 +1,6 @@
 #include "esp_http_client.h"
 #include <string.h>
-#include "ruuvidongle.h"
+#include "ruuvi_gateway.h"
 #include "cJSON.h"
 #include <time.h>
 

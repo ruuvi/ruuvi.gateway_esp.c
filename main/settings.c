@@ -1,4 +1,4 @@
-#include "ruuvidongle.h"
+#include "ruuvi_gateway.h"
 #include "cJSON.h"
 #include "esp_log.h"
 #include "nvs.h"

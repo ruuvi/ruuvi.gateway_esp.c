@@ -13,7 +13,7 @@
 #include "driver/gpio.h"
 #include "sdkconfig.h"
 #include "ethernet.h"
-#include "ruuvidongle.h"
+#include "ruuvi_gateway.h"
 #include "wifi_manager.h"
 #include "mqtt.h"
 #include "time_task.h"

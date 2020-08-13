@@ -4,7 +4,7 @@
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 #include "driver/gpio.h"
-#include "ruuvidongle.h"
+#include "ruuvi_gateway.h"
 #include "cJSON.h"
 #include "esp_system.h"
 #include "esp_log.h"

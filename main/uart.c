@@ -12,7 +12,7 @@
 #include "cJSON.h"
 #include <time.h>
 #include "mqtt.h"
-#include "ruuvidongle.h"
+#include "ruuvi_gateway.h"
 #include "uart.h"
 #include "http.h"
 #include "ruuvi_board_gwesp.h"
