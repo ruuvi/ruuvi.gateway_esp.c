@@ -7,7 +7,7 @@
 
 static const char TAG[] = "settings";
 
-static const char g_ruuvi_gateway_nvs_namespace[] = "ruuvidongle";
+static const char g_ruuvi_gateway_nvs_namespace[] = "ruuvi_gateway";
 
 static const ruuvi_gateway_config_t default_config = RUUVI_GATEWAY_DEFAULT_CONFIGURATION;
 
