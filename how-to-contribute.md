@@ -1,7 +1,7 @@
 # Contributing
 
 When contributing to this repository, please first discuss the change you wish to make via issue
-or [Ruuvi Slack](https://slack.ruuvi.com) #ruuvigateway channel. Open an issue describing what
+or [Ruuvi Slack](http://slack.ruuvi.com) #ruuvigateway channel. Open an issue describing what
 you're going to do before starting work so others know that it is being worked on. 
 
 ## Pull Request Process
@@ -9,20 +9,29 @@ you're going to do before starting work so others know that it is being worked o
 1. Once you have opened issue about the feature and @ojousima or @TheSomeMan has approved
 it in principle, please fork the repository and work on your own fork.
 
-2. Once the feature is ready for review, open a Pull Request. Code is automatically
+2. If your work is a simple fix, there's no need for architectural discussion. If it is
+a larger contribution, confirm beforehand where functionality should be. The best place might
+be inside one of the components instead of in main project.
+  - Pay special attention to memory safety, e.g. use `snprintf` instead of `sprintf`,
+    check that pointer is not NULL before dereferencing it etc. 
+  - Remember that this is embedded system, ensure that your loops have upper bound and
+    memory gets freed after use.
+  - Run `./scripts/run-clang-format.sh` to format your code.
+
+3. Once the feature is ready for review, open a Pull Request. Code is automatically
 checked by Jenkins: does it compile, do unit tests pass, does it follow the clang-format
 definitions. If Jenkins rejects the pull request for any reason, check the Jenkins log
 and fix any issues found.
   - If you are not on the list of allowlisted authors, Jenkins will ask admins to verify
     that your work is safe to run (e.g. no rm -rf / in makefiles). 
-  - In that case one of the project admins will manually trigger the Jenkins build.
+    - In that case one of the project admins will manually trigger the Jenkins build.
 
-3. Once Jenkins build passes, request a review from @TheSomeMan. If this is your first time
+4. Once Jenkins build passes, request a review from @TheSomeMan. If this is your first time
 contriburting to this repository, please leave a note saying BSD-3 Licensing is ok for you.
 e.g. `I am the original author of this work, and I have the right to give the work to this 
 project and agree to BSD-3 License`. 
 
-4. Your work will be discussed for potential changes or fixes, and once the feature and
+5. Your work will be discussed for potential changes or fixes, and once the feature and
 implementation are approved it will be merged to the project. Thanks for the contribution!
 
 ## Code of Conduct 
