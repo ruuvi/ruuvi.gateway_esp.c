@@ -1,4 +1,4 @@
-#include "ruuvidongle.h"
+#include "ruuvi_gateway.h"
 #include "esp_log.h"
 #include "esp_heap_caps.h"
 

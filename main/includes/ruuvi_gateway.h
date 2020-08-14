@@ -5,9 +5,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define RUUVI_COMPANY_ID                  0x0499
-#define RUUVIDONGLE_NVS_CONFIGURATION_KEY "ruuvi_config"
-#define RUUVIDONGLE_NVS_BOOT_KEY          "ruuvi_boot"
+#define RUUVI_COMPANY_ID                    0x0499
+#define RUUVI_GATEWAY_NVS_CONFIGURATION_KEY "ruuvi_config"
+#define RUUVI_GATEWAY_NVS_BOOT_KEY          "ruuvi_boot"
 
 #define ADV_DATA_MAX_LEN 64
 
@@ -59,10 +59,10 @@ typedef struct gw_metrics
     uint64_t received_advertisements;
 } gw_metrics_t;
 
-#define RUUVI_DONGLE_CONFIG_HEADER      (0xAABBU)
-#define RUUVI_DONGLE_CONFIG_FMT_VERSION (0x0004U)
+#define RUUVI_GATEWAY_CONFIG_HEADER      (0xAABBU)
+#define RUUVI_GATEWAY_CONFIG_FMT_VERSION (0x0004U)
 
-struct dongle_config
+typedef struct ruuvi_gateway_config_t
 {
     uint16_t header;
     uint16_t fmt_version;
@@ -85,13 +85,13 @@ struct dongle_config
     uint16_t company_id;
     bool     company_filter;
     char     coordinates[MAX_CONFIG_STR_LEN];
-};
+} ruuvi_gateway_config_t;
 
 // clang-format off
-#define RUUVIDONGLE_DEFAULT_CONFIGURATION \
+#define RUUVI_GATEWAY_DEFAULT_CONFIGURATION \
     { \
-        .header = RUUVI_DONGLE_CONFIG_HEADER, \
-        .fmt_version = RUUVI_DONGLE_CONFIG_FMT_VERSION, \
+        .header = RUUVI_GATEWAY_CONFIG_HEADER, \
+        .fmt_version = RUUVI_GATEWAY_CONFIG_FMT_VERSION, \
         .eth_dhcp = true, \
         .use_http = true, \
         .use_mqtt = false, \
@@ -120,10 +120,10 @@ typedef enum nrf_command_t
     CLEAR_FILTER
 } nrf_command_t;
 
-extern struct dongle_config m_dongle_config;
-extern EventGroupHandle_t   status_bits;
-extern mac_address_str_t    gw_mac_sta;
-extern gw_metrics_t         gw_metrics;
+extern ruuvi_gateway_config_t g_gateway_config;
+extern EventGroupHandle_t     status_bits;
+extern mac_address_str_t      gw_mac_sta;
+extern gw_metrics_t           gw_metrics;
 
 void
 mac_address_bin_init(mac_address_bin_t *p_mac, const uint8_t mac[6]);
@@ -138,19 +138,19 @@ char *
 ruuvi_get_metrics();
 
 void
-settings_get_from_flash(struct dongle_config *dongle_config);
+settings_get_from_flash(ruuvi_gateway_config_t *p_gateway_config);
 
 void
-settings_print(struct dongle_config *config);
+settings_print(ruuvi_gateway_config_t *config);
 
 int
 settings_clear_in_flash(void);
 
 int
-settings_save_to_flash(struct dongle_config *config);
+settings_save_to_flash(ruuvi_gateway_config_t *config);
 
 void
-ruuvi_send_nrf_settings(struct dongle_config *config);
+ruuvi_send_nrf_settings(ruuvi_gateway_config_t *config);
 
 void
 ethernet_connection_ok_cb();

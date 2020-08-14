@@ -13,7 +13,7 @@
 #include "driver/gpio.h"
 #include "sdkconfig.h"
 #include "ethernet.h"
-#include "ruuvidongle.h"
+#include "ruuvi_gateway.h"
 #include "wifi_manager.h"
 #include "mqtt.h"
 #include "time_task.h"
@@ -90,11 +90,12 @@ got_ip_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, v
 void
 ethernet_update_ip()
 {
-    struct dongle_config *c     = &m_dongle_config;
-    bool                  error = false;
-    int                   ret   = 0;
+    ruuvi_gateway_config_t *c = &g_gateway_config;
 
-    if (m_dongle_config.eth_dhcp)
+    bool error = false;
+    int  ret   = 0;
+
+    if (g_gateway_config.eth_dhcp)
     {
         ESP_LOGI(TAG, "Using ETH DHCP");
         ret = tcpip_adapter_dhcpc_start(TCPIP_ADAPTER_IF_ETH);

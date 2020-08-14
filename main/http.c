@@ -1,6 +1,6 @@
 #include "esp_http_client.h"
 #include <string.h>
-#include "ruuvidongle.h"
+#include "ruuvi_gateway.h"
 #include "cJSON.h"
 #include <time.h>
 
@@ -56,11 +56,11 @@ http_send(const char *msg)
     esp_err_t                err;
     esp_http_client_handle_t http_handle;
     esp_http_client_config_t http_config = {
-        .url           = m_dongle_config.http_url,
+        .url           = g_gateway_config.http_url,
         .method        = HTTP_METHOD_POST,
-        .auth_type     = ('\0' != m_dongle_config.http_user[0]) ? HTTP_AUTH_TYPE_BASIC : HTTP_AUTH_TYPE_NONE,
-        .username      = m_dongle_config.http_user,
-        .password      = m_dongle_config.http_pass,
+        .auth_type     = ('\0' != g_gateway_config.http_user[0]) ? HTTP_AUTH_TYPE_BASIC : HTTP_AUTH_TYPE_NONE,
+        .username      = g_gateway_config.http_user,
+        .password      = g_gateway_config.http_pass,
         .event_handler = http_event_handler,
     };
     http_handle = esp_http_client_init(&http_config);
@@ -110,7 +110,7 @@ http_send_advs(struct adv_report_table *reports)
 
         if (gw)
         {
-            cJSON_AddStringToObject(gw, "coordinates", m_dongle_config.coordinates);
+            cJSON_AddStringToObject(gw, "coordinates", g_gateway_config.coordinates);
             cJSON_AddNumberToObject(gw, "timestamp", now);
             cJSON_AddStringToObject(gw, "gw_mac", gw_mac_sta.str_buf);
             tags = cJSON_AddObjectToObject(gw, "tags");

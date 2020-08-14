@@ -1,7 +1,7 @@
 #ifndef _UART_H_DEF_
 #define _UART_H_DEF_
 
-#include "ruuvidongle.h"
+#include "ruuvi_gateway.h"
 
 void
 uart_init();

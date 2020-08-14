@@ -7,7 +7,7 @@
 #include "driver/timer.h"
 #include "gpio.h"
 #include "esp_log.h"
-#include "ruuvidongle.h"
+#include "ruuvi_gateway.h"
 #include "leds.h"
 #include "ruuvi_board_gwesp.h"
 #include "http_server.h"

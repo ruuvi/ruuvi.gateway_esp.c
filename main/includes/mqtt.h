@@ -1,7 +1,7 @@
 #ifndef _MQTT_H_INCLUDED
 #define _MQTT_H_INCLUDED
 
-#include "ruuvidongle.h"
+#include "ruuvi_gateway.h"
 
 void
 mqtt_app_start(void);
