@@ -15,7 +15,9 @@
 #include "nvs_flash.h"
 #include "gpio.h"
 #include "leds.h"
-#include "uart.h"
+//#include "uart.h"
+#include "api.h"
+#include "terminal.h"
 #include "http.h"
 #include "dns_server.h"
 #include "http_server.h"
@@ -37,11 +39,13 @@ void ruuvi_send_nrf_settings (struct dongle_config * config)
 
     if (config->company_filter)
     {
-        uart_send_nrf_command (SET_FILTER, &config->company_id);
+        //TODO!
+        //uart_send_nrf_command (SET_FILTER, &config->company_id);
     }
     else
     {
-        uart_send_nrf_command (CLEAR_FILTER, 0);
+        //TODO!
+        //uart_send_nrf_command (CLEAR_FILTER, 0);
     }
 }
 
@@ -176,7 +180,9 @@ void app_main (void)
 
     nvs_flash_init();
     settings_get_from_flash (&m_dongle_config);
-    uart_init();
+    //uart_init();
+    terminal_open(NULL);
+    api_process(0);
     gpio_init();
     leds_init();
     time_init();
