@@ -18,6 +18,7 @@
 #include "ruuvi_board_gwesp.h"
 #include "ruuvi_endpoints.h"
 #include "ruuvi_endpoint_ca_uart.h"
+#include "bin2hex.h"
 
 //#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 
@@ -31,31 +32,6 @@ portMUX_TYPE    adv_table_mux = portMUX_INITIALIZER_UNLOCKED;
 
 struct adv_report_table adv_reports;
 struct adv_report_table adv_reports_buf;
-
-/**
- * @brief Print given binary into hex string.
- *
- * Example {0xA0, 0xBB, 0x31} -> "A0BB31"
- *
- * @param[out] hexstr String to print into. Must be at least 2 * binlen + 1 bytes long.
- * @param[in]  bin Binary to print from.
- * @param[in]  binlen Size of binary in bytes.
- */
-static void
-bin2hex(char *const hexstr, const size_t hexstr_size, const uint8_t *const bin, size_t binlen)
-{
-    size_t ii = 0;
-    for (ii = 0; ii < binlen; ii++)
-    {
-        if ((2 * ii + 3) > hexstr_size)
-        {
-            break;
-        }
-        sprintf(hexstr + (2 * ii), "%02X", bin[ii]);
-    }
-
-    hexstr[2 * ii] = 0;
-}
 
 static esp_err_t
 adv_put_to_table(const adv_report_t *const p_adv)
