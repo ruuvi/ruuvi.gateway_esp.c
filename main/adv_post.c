@@ -142,13 +142,14 @@ static int parse_adv_report_from_uart (const re_ca_uart_payload_t * const msg,
         adv->rssi = report->rssi_db;
         adv->timestamp = now;
         bin2hex (adv->tag_mac, sizeof (adv->tag_mac), report->mac, RE_CA_UART_MAC_BYTES);
+        bin2hex (adv->data, sizeof (adv->data), report->adv, report->adv_len);
 
         if (is_adv_report_valid (adv))
         {
             err = ESP_ERR_INVALID_ARG;
         }
 
-        bin2hex (adv->data, sizeof (adv->data), report->adv, report->adv_len);
+
     }
 
     return err;
