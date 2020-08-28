@@ -15,7 +15,7 @@
 #include "nvs_flash.h"
 #include "gpio.h"
 #include "leds.h"
-//#include "uart.h"
+#include "adv_post.h"
 #include "api.h"
 #include "terminal.h"
 #include "http.h"
@@ -180,9 +180,9 @@ void app_main (void)
 
     nvs_flash_init();
     settings_get_from_flash (&m_dongle_config);
-    //uart_init();
-    terminal_open(NULL);
-    api_process(0);
+    adv_post_init();
+    terminal_open (NULL);
+    api_process (1);
     gpio_init();
     leds_init();
     time_init();
