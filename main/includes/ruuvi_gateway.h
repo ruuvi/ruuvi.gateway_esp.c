@@ -93,6 +93,12 @@ typedef struct ruuvi_gateway_config_t
     char     http_pass[MAX_HTTP_PASS_LEN];
     uint16_t company_id;
     bool     company_filter;
+    bool     scan_coded_phy;
+    bool     scan_1mbit_phy;
+    bool     scan_extended_payload;
+    bool     scan_channel_37;
+    bool     scan_channel_38;
+    bool     scan_channel_39;
     char     coordinates[MAX_CONFIG_STR_LEN];
 } ruuvi_gateway_config_t;
 
@@ -119,6 +125,12 @@ typedef struct ruuvi_gateway_config_t
         .http_pass = { 0 }, \
         .company_filter = true, \
         .company_id = RUUVI_COMPANY_ID, \
+        .scan_coded_phy = false, \
+        .scan_1mbit_phy = false, \
+        .scan_extended_payload = false, \
+        .scan_channel_37 = false, \
+        .scan_channel_38 = false, \
+        .scan_channel_39 = false, \
         .coordinates = { 0 }, \
     }
 // clang-format on

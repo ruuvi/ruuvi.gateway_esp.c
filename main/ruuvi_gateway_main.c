@@ -24,6 +24,9 @@
 #include "terminal.h"
 #include "time_task.h"
 #include "wifi_manager.h"
+#include "ruuvi_endpoint_ca_uart.h"
+
+#define BOOL_TO_U8(x) ((true == x) ? RE_CA_BOOL_ENABLE : RE_CA_BOOL_DISABLE)
 
 static const char TAG[] = "ruuvi_gateway";
 
@@ -40,20 +43,33 @@ ruuvi_send_nrf_settings(ruuvi_gateway_config_t *config)
 {
     ESP_LOGI(
         TAG,
-        "sending settings to NRF: use filter: %d, company id: 0x%04x",
+        "sending settings to NRF: use filter: %d, "
+        "company id: 0x%04x,"
+        "use scan coded phy: %d,"
+        "use scan 1mbit/phy: %d,"
+        "use scan extended payload: %d,"
+        "use scan channel 37: %d,"
+        "use scan channel 38: %d,"
+        "use scan channel 39: %d",
         config->company_filter,
-        config->company_id);
+        config->company_id,
+        config->scan_coded_phy,
+        config->scan_1mbit_phy,
+        config->scan_extended_payload,
+        config->scan_channel_37,
+        config->scan_channel_38,
+        config->scan_channel_39
+    );
 
-    if (config->company_filter)
-    {
-        // TODO!
-        // uart_send_nrf_command (SET_FILTER, &config->company_id);
-    }
-    else
-    {
-        // TODO!
-        // uart_send_nrf_command (CLEAR_FILTER, 0);
-    }
+    api_send_all(RE_CA_UART_SET_ALL,
+                  (__u16)config->company_id,
+                  (__u8)BOOL_TO_U8(config->company_filter),
+                  (__u8)BOOL_TO_U8(config->scan_coded_phy),
+                  (__u8)BOOL_TO_U8(config->scan_extended_payload),
+                  (__u8)BOOL_TO_U8(config->scan_1mbit_phy),
+                  (__u8)BOOL_TO_U8(config->scan_channel_37),
+                  (__u8)BOOL_TO_U8(config->scan_channel_38),
+                  (__u8)BOOL_TO_U8(config->scan_channel_39));
 }
 
 void
