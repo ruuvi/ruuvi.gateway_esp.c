@@ -10,12 +10,13 @@
 #include "cJSON.h"
 #include <time.h>
 #include "mqtt.h"
-#include "ruuvidongle.h"
+#include "ruuvi_gateway.h"
 #include "adv_post.h"
 #include "http.h"
 #include "ruuvi_board_gwesp.h"
 #include "ruuvi_endpoints.h"
 #include "ruuvi_endpoint_ca_uart.h"
+#include "bin2hex.h"
 
 portMUX_TYPE adv_table_mux = portMUX_INITIALIZER_UNLOCKED;
 
@@ -24,45 +25,20 @@ struct adv_report_table adv_reports_buf;
 
 static const char * ADV_POST_TASK_TAG = "ADV_POST_TASK";
 
-/**
- * @brief Print given binary into hex string.
- *
- * Example {0xA0, 0xBB, 0x31} -> "A0BB31"
- *
- * @param[out] hexstr String to print into. Must be at least 2 * binlen + 1 bytes long.
- * @param[in]  bin Binary to print from.
- * @param[in]  binlen Size of binary in bytes.
- */
-static void bin2hex (char * const hexstr, const size_t hexstr_size,
-                     const uint8_t * const bin, size_t binlen)
-{
-    size_t ii = 0;
-
-    for (ii = 0; ii < binlen; ii++)
-    {
-        if ( (2 * ii + 3) > hexstr_size)
-        {
-            break;
-        }
-
-        sprintf (hexstr + (2 * ii), "%02X", bin[ii]);
-    }
-
-    hexstr[2 * ii] = 0;
-}
-
-static esp_err_t adv_put_to_table (const adv_report_t * const p_adv)
+static esp_err_t
+adv_put_to_table(const adv_report_t *const p_adv)
 {
     portENTER_CRITICAL (&adv_table_mux);
+    gw_metrics.received_advertisements++;
     bool found = false;
     esp_err_t ret = ESP_OK;
 
     // Check if we already have advertisement with this MAC
     for (int i = 0; i < adv_reports.num_of_advs; i++)
     {
-        char * mac = adv_reports.table[i].tag_mac;
+        const mac_address_bin_t *p_mac = &adv_reports.table[i].tag_mac;
 
-        if (strcmp (p_adv->tag_mac, mac) == 0)
+        if (memcmp(&p_adv->tag_mac, p_mac, sizeof(*p_mac)) == 0)
         {
             // Yes, update data.
             found = true;
@@ -100,16 +76,12 @@ static bool is_hexstr (char * str)
     return ESP_OK;
 }
 
-static int is_adv_report_valid (adv_report_t * adv)
+static int
+is_adv_report_valid(adv_report_t *adv)
 {
     esp_err_t err = ESP_OK;
 
-    if (is_hexstr (adv->tag_mac) != ESP_OK)
-    {
-        err = ESP_ERR_INVALID_ARG;
-    }
-
-    if (is_hexstr (adv->data) != ESP_OK)
+    if (is_hexstr(adv->data) != ESP_OK)
     {
         err = ESP_ERR_INVALID_ARG;
     }
@@ -117,8 +89,8 @@ static int is_adv_report_valid (adv_report_t * adv)
     return err;
 }
 
-static int parse_adv_report_from_uart (const re_ca_uart_payload_t * const msg,
-                                       adv_report_t * adv)
+static int
+parse_adv_report_from_uart(const re_ca_uart_payload_t *const msg, adv_report_t *adv)
 {
     esp_err_t err = ESP_OK;
 
@@ -141,14 +113,13 @@ static int parse_adv_report_from_uart (const re_ca_uart_payload_t * const msg,
         time (&now);
         adv->rssi = report->rssi_db;
         adv->timestamp = now;
-        bin2hex (adv->tag_mac, sizeof (adv->tag_mac), report->mac, RE_CA_UART_MAC_BYTES);
-        bin2hex (adv->data, sizeof (adv->data), report->adv, report->adv_len);
+        mac_address_bin_init(&adv->tag_mac, report->mac);
+        bin2hex(adv->data, sizeof(adv->data), report->adv, report->adv_len);
 
         if (is_adv_report_valid (adv))
         {
             err = ESP_ERR_INVALID_ARG;
         }
-
 
     }
 
@@ -171,10 +142,12 @@ void adv_post_send (void * arg)
     }
 }
 
-static void adv_post_task (void * arg)
+_Noreturn static void
+adv_post_task(void *arg)
 {
     esp_log_level_set (ADV_POST_TASK_TAG, ESP_LOG_INFO);
     ESP_LOGI (ADV_POST_TASK_TAG, "%s", __func__);
+    bool flagConnected = false;
 
     while (1)
     {
@@ -183,10 +156,16 @@ static void adv_post_task (void * arg)
 
         for (int i = 0; i < adv_reports.num_of_advs; i++)
         {
-            adv = &adv_reports.table[i];
-            ESP_LOGI (ADV_POST_TASK_TAG, "i: %d, tag: %s, rssi: %d, data: %s, timestamp: %ld", i,
-                      adv->tag_mac,
-                      adv->rssi, adv->data, adv->timestamp);
+            adv                             = &adv_reports.table[i];
+            const mac_address_str_t mac_str = mac_address_to_str(&adv->tag_mac);
+            ESP_LOGI(
+                ADV_POST_TASK_TAG,
+                "i: %d, tag: %s, rssi: %d, data: %s, timestamp: %ld",
+                i,
+                mac_str.str_buf,
+                adv->rssi,
+                adv->data,
+                adv->timestamp);
         }
 
         //for thread safety copy the advertisements to a separate buffer for posting
@@ -196,17 +175,44 @@ static void adv_post_task (void * arg)
         portEXIT_CRITICAL (&adv_table_mux);
         EventBits_t status = xEventGroupGetBits (status_bits);
 
+        if (!flagConnected)
+        {
+            if ((status & WIFI_CONNECTED_BIT) || (status & ETH_CONNECTED_BIT))
+            {
+                if (g_gateway_config.use_http)
+                {
+                    flagConnected = true;
+                    char json_str[64];
+                    snprintf(
+                        json_str,
+                        sizeof(json_str),
+                        "{\"status\": \"online\", \"gw_mac\": \"%s\"}",
+                        gw_mac_sta.str_buf);
+                    ESP_LOGI(ADV_POST_TASK_TAG, "HTTP POST: %s", json_str);
+                    http_send(json_str);
+                }
+                else if (g_gateway_config.use_mqtt)
+                {
+                    flagConnected = true;
+                }
+            }
+        }
+        else
+        {
+            if (!((status & WIFI_CONNECTED_BIT) || (status & ETH_CONNECTED_BIT)))
+            {
+                flagConnected = false;
+            }
+        }
         if (adv_reports_buf.num_of_advs)
         {
-            if ( ( (status & WIFI_CONNECTED_BIT)
-                    || (status & ETH_CONNECTED_BIT)))
+            if (flagConnected)
             {
-                if (m_dongle_config.use_http)
+                if (g_gateway_config.use_http)
                 {
                     http_send_advs (&adv_reports_buf);
                 }
-
-                if (m_dongle_config.use_mqtt && (xEventGroupGetBits (status_bits) & MQTT_CONNECTED_BIT))
+                if (g_gateway_config.use_mqtt && (xEventGroupGetBits(status_bits) & MQTT_CONNECTED_BIT))
                 {
                     mqtt_publish_table (&adv_reports_buf);
                 }

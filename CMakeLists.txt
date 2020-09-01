@@ -24,3 +24,8 @@ endif()
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(ruuvi_gateway_esp)
+
+target_compile_definitions(__idf_main PUBLIC
+        RUUVI_LEDS_DISABLE=1
+	RUUVI_ESP
+)

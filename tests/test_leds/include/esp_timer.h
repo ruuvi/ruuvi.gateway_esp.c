@@ -13,13 +13,14 @@ typedef struct esp_timer *esp_timer_handle_t;
  * @brief Timer callback function type
  * @param arg pointer to opaque user-specific data
  */
-typedef void (*esp_timer_cb_t)(void* arg);
+typedef void (*esp_timer_cb_t)(void *arg);
 
 /**
  * @brief Method for dispatching timer callback
  */
-typedef enum {
-    ESP_TIMER_TASK,     //!< Callback is called from timer task
+typedef enum
+{
+    ESP_TIMER_TASK, //!< Callback is called from timer task
 
     /* Not supported for now, provision to allow callbacks to run directly
      * from an ISR:
@@ -32,11 +33,12 @@ typedef enum {
 /**
  * @brief Timer configuration passed to esp_timer_create
  */
-typedef struct {
-    esp_timer_cb_t callback;        //!< Function to call when timer expires
-    void* arg;                      //!< Argument to pass to the callback
-    esp_timer_dispatch_t dispatch_method;   //!< Call the callback from task or from ISR
-    const char* name;               //!< Timer name, used in esp_timer_dump function
+typedef struct
+{
+    esp_timer_cb_t       callback;        //!< Function to call when timer expires
+    void *               arg;             //!< Argument to pass to the callback
+    esp_timer_dispatch_t dispatch_method; //!< Call the callback from task or from ISR
+    const char *         name;            //!< Timer name, used in esp_timer_dump function
 } esp_timer_create_args_t;
 
 /**
@@ -51,7 +53,8 @@ typedef struct {
  *      - ESP_ERR_INVALID_STATE if already initialized
  *      - other errors from interrupt allocator
  */
-esp_err_t esp_timer_init();
+esp_err_t
+esp_timer_init();
 
 /**
  * @brief De-initialize esp_timer library
@@ -62,7 +65,8 @@ esp_err_t esp_timer_init();
  *      - ESP_OK on success
  *      - ESP_ERR_INVALID_STATE if not yet initialized
  */
-esp_err_t esp_timer_deinit();
+esp_err_t
+esp_timer_deinit();
 
 /**
  * @brief Create an esp_timer instance
@@ -80,8 +84,8 @@ esp_err_t esp_timer_deinit();
  *      - ESP_ERR_INVALID_STATE if esp_timer library is not initialized yet
  *      - ESP_ERR_NO_MEM if memory allocation fails
  */
-esp_err_t esp_timer_create(const esp_timer_create_args_t* create_args,
-                           esp_timer_handle_t* out_handle);
+esp_err_t
+esp_timer_create(const esp_timer_create_args_t *create_args, esp_timer_handle_t *out_handle);
 
 /**
  * @brief Start a periodic timer
@@ -96,7 +100,8 @@ esp_err_t esp_timer_create(const esp_timer_create_args_t* create_args,
  *      - ESP_ERR_INVALID_ARG if the handle is invalid
  *      - ESP_ERR_INVALID_STATE if the timer is already running
  */
-esp_err_t esp_timer_start_periodic(esp_timer_handle_t timer, uint64_t period);
+esp_err_t
+esp_timer_start_periodic(esp_timer_handle_t timer, uint64_t period);
 
 /**
  * @brief Stop the timer
@@ -109,12 +114,14 @@ esp_err_t esp_timer_start_periodic(esp_timer_handle_t timer, uint64_t period);
  *      - ESP_OK on success
  *      - ESP_ERR_INVALID_STATE if the timer is not running
  */
-esp_err_t esp_timer_stop(esp_timer_handle_t timer);
+esp_err_t
+esp_timer_stop(esp_timer_handle_t timer);
 
-int64_t esp_timer_get_time();
+int64_t
+esp_timer_get_time();
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif //ESP_TIMER_H
+#endif // ESP_TIMER_H
