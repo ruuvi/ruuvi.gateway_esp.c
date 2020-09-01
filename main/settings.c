@@ -1,8 +1,8 @@
-#include "ruuvi_gateway.h"
 #include "cJSON.h"
 #include "esp_log.h"
 #include "nvs.h"
 #include "nvs_flash.h"
+#include "ruuvi_gateway.h"
 #include "string.h"
 
 static const char TAG[] = "settings";
@@ -178,7 +178,8 @@ ruuvi_get_conf_json()
         cJSON_AddNumberToObject(root, "mqtt_port", c.mqtt_port);
         cJSON_AddStringToObject(root, "mqtt_prefix", c.mqtt_prefix);
         cJSON_AddStringToObject(root, "mqtt_user", c.mqtt_user);
-        // cJSON_AddStringToObject(root, "mqtt_pass", c.mqtt_pass);  //don't send to browser because security
+        // cJSON_AddStringToObject(root, "mqtt_pass", c.mqtt_pass);  //don't send to
+        // browser because security
         cJSON_AddStringToObject(root, "coordinates", c.coordinates);
         cJSON_AddBoolToObject(root, "use_filtering", c.company_filter);
         cJSON_AddStringToObject(root, "gw_mac", gw_mac_sta.str_buf);

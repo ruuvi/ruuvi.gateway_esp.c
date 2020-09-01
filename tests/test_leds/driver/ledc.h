@@ -43,23 +43,29 @@ typedef enum
 } ledc_timer_t;
 
 /**
- * @brief Configuration parameters of LEDC channel for ledc_channel_config function
+ * @brief Configuration parameters of LEDC channel for ledc_channel_config
+ * function
  */
 typedef struct
 {
-    int              gpio_num;   /*!< the LEDC output gpio_num, if you want to use gpio16, gpio_num = 16 */
-    ledc_mode_t      speed_mode; /*!< LEDC speed speed_mode, high-speed mode or low-speed mode */
-    ledc_channel_t   channel;    /*!< LEDC channel (0 - 7) */
-    ledc_intr_type_t intr_type;  /*!< configure interrupt, Fade interrupt enable  or Fade interrupt disable */
-    ledc_timer_t     timer_sel;  /*!< Select the timer source of channel (0 - 3) */
-    uint32_t         duty;       /*!< LEDC channel duty, the range of duty setting is [0, (2**duty_resolution)] */
-    int              hpoint;     /*!< LEDC channel hpoint value, the max value is 0xfffff */
+    int gpio_num;               /*!< the LEDC output gpio_num, if you want to use gpio16,
+                                   gpio_num = 16 */
+    ledc_mode_t speed_mode;     /*!< LEDC speed speed_mode, high-speed mode or
+                                   low-speed mode */
+    ledc_channel_t   channel;   /*!< LEDC channel (0 - 7) */
+    ledc_intr_type_t intr_type; /*!< configure interrupt, Fade interrupt enable
+                                   or Fade interrupt disable */
+    ledc_timer_t timer_sel;     /*!< Select the timer source of channel (0 - 3) */
+    uint32_t     duty;          /*!< LEDC channel duty, the range of duty setting is [0,
+                                   (2**duty_resolution)] */
+    int hpoint;                 /*!< LEDC channel hpoint value, the max value is 0xfffff */
 } ledc_channel_config_t;
 
 typedef enum
 {
     LEDC_FADE_NO_WAIT = 0, /*!< LEDC fade function will return immediately */
-    LEDC_FADE_WAIT_DONE,   /*!< LEDC fade function will block until fading to the target duty */
+    LEDC_FADE_WAIT_DONE,   /*!< LEDC fade function will block until fading to the
+                              target duty */
     LEDC_FADE_MAX,
 } ledc_fade_mode_t;
 
@@ -90,41 +96,54 @@ typedef enum
 
 typedef enum
 {
-    LEDC_AUTO_CLK,      /*!< The driver will automatically select the source clock(REF_TICK or APB) based on the giving
+    LEDC_AUTO_CLK,      /*!< The driver will automatically select the source
+                           clock(REF_TICK or APB) based on the giving
                            resolution and duty parameter when init the timer*/
     LEDC_USE_REF_TICK,  /*!< LEDC timer select REF_TICK clock as source clock*/
     LEDC_USE_APB_CLK,   /*!< LEDC timer select APB clock as source clock*/
-    LEDC_USE_RTC8M_CLK, /*!< LEDC timer select RTC8M_CLK as source clock. Only for low speed channels and this parameter
+    LEDC_USE_RTC8M_CLK, /*!< LEDC timer select RTC8M_CLK as source clock. Only for
+                           low speed channels and this parameter
                            must be the same for all low speed channels*/
 } ledc_clk_cfg_t;
 
 /**
- * @brief Configuration parameters of LEDC Timer timer for ledc_timer_config function
+ * @brief Configuration parameters of LEDC Timer timer for ledc_timer_config
+ * function
  */
 typedef struct
 {
-    ledc_mode_t      speed_mode;      /*!< LEDC speed speed_mode, high-speed mode or low-speed mode */
+    ledc_mode_t speed_mode;           /*!< LEDC speed speed_mode, high-speed mode or
+                                         low-speed mode */
     ledc_timer_bit_t duty_resolution; /*!< LEDC channel duty resolution */
     ledc_timer_t     timer_num;       /*!< The timer source of channel (0 - 3) */
     uint32_t         freq_hz;         /*!< LEDC timer frequency (Hz) */
     ledc_clk_cfg_t   clk_cfg;         /*!< Configure LEDC source clock.
-                                           For low speed channels and high speed channels, you can specify
-                                           the source clock using LEDC_USE_REF_TICK, LEDC_USE_APB_CLK or LEDC_AUTO_CLK.
-                                           For low speed channels, you can also specify the source clock
+                                           For low speed channels and high speed channels,
+                                         you can specify
+                                           the source clock using LEDC_USE_REF_TICK,
+                                         LEDC_USE_APB_CLK or LEDC_AUTO_CLK.
+                                           For low speed channels, you can also specify the
+                                         source clock
                                            using LEDC_USE_RTC8M_CLK, in this case,
-                                           all low speed channel's source clock must be RTC8M_CLK*/
+                                           all low speed channel's source clock must be
+                                         RTC8M_CLK*/
 } ledc_timer_config_t;
 
 /**
  * @brief Set LEDC fade function, with a limited time.
  * @note  Call ledc_fade_func_install() once before calling this function.
  *        Call ledc_fade_start() after this to start fading.
- * @note  ledc_set_fade_with_step, ledc_set_fade_with_time and ledc_fade_start are not thread-safe, do not call these
- * functions to control one LEDC channel in different tasks at the same time. A thread-safe version of API is
+ * @note  ledc_set_fade_with_step, ledc_set_fade_with_time and ledc_fade_start
+ * are not thread-safe, do not call these
+ * functions to control one LEDC channel in different tasks at the same time. A
+ * thread-safe version of API is
  * ledc_set_fade_step_and_start
- * @note  If a fade operation is running in progress on that channel, the driver would not allow it to be stopped.
- *        Other duty operations will have to wait until the fade operation has finished.
- * @param speed_mode Select the LEDC speed_mode, high-speed mode and low-speed mode,
+ * @note  If a fade operation is running in progress on that channel, the driver
+ * would not allow it to be stopped.
+ *        Other duty operations will have to wait until the fade operation has
+ * finished.
+ * @param speed_mode Select the LEDC speed_mode, high-speed mode and low-speed
+ * mode,
  * @param channel LEDC channel index (0-7), select from ledc_channel_t
  * @param target_duty Target duty of fading.( 0 - (2 ** duty_resolution - 1)))
  * @param max_fade_time_ms The maximum time of the fading ( ms ).
@@ -141,10 +160,14 @@ ledc_set_fade_with_time(ledc_mode_t speed_mode, ledc_channel_t channel, uint32_t
 /**
  * @brief Start LEDC fading.
  * @note  Call ledc_fade_func_install() once before calling this function.
- *        Call this API right after ledc_set_fade_with_time or ledc_set_fade_with_step before to start fading.
- * @note  If a fade operation is running in progress on that channel, the driver would not allow it to be stopped.
- *        Other duty operations will have to wait until the fade operation has finished.
- * @param speed_mode Select the LEDC speed_mode, high-speed mode and low-speed mode
+ *        Call this API right after ledc_set_fade_with_time or
+ * ledc_set_fade_with_step before to start fading.
+ * @note  If a fade operation is running in progress on that channel, the driver
+ * would not allow it to be stopped.
+ *        Other duty operations will have to wait until the fade operation has
+ * finished.
+ * @param speed_mode Select the LEDC speed_mode, high-speed mode and low-speed
+ * mode
  * @param channel LEDC channel number
  * @param fade_mode Whether to block until fading done.
  *
@@ -158,21 +181,24 @@ ledc_fade_start(ledc_mode_t speed_mode, ledc_channel_t channel, ledc_fade_mode_t
 
 /**
  * @brief LEDC timer configuration
- *        Configure LEDC timer with the given source timer/frequency(Hz)/duty_resolution
+ *        Configure LEDC timer with the given source
+ * timer/frequency(Hz)/duty_resolution
  *
  * @param  timer_conf Pointer of LEDC timer configure struct
  *
  * @return
  *     - ESP_OK Success
  *     - ESP_ERR_INVALID_ARG Parameter error
- *     - ESP_FAIL Can not find a proper pre-divider number base on the given frequency and the current duty_resolution.
+ *     - ESP_FAIL Can not find a proper pre-divider number base on the given
+ * frequency and the current duty_resolution.
  */
 esp_err_t
 ledc_timer_config(const ledc_timer_config_t *timer_conf);
 
 /**
  * @brief LEDC channel configuration
- *        Configure LEDC channel with the given channel/output gpio_num/interrupt/source timer/frequency(Hz)/LEDC duty
+ *        Configure LEDC channel with the given channel/output
+ * gpio_num/interrupt/source timer/frequency(Hz)/LEDC duty
  * resolution
  *
  * @param ledc_conf Pointer of LEDC channel configure struct
@@ -185,8 +211,10 @@ esp_err_t
 ledc_channel_config(const ledc_channel_config_t *ledc_conf);
 
 /**
- * @brief Install LEDC fade function. This function will occupy interrupt of LEDC module.
- * @param intr_alloc_flags Flags used to allocate the interrupt. One or multiple (ORred)
+ * @brief Install LEDC fade function. This function will occupy interrupt of
+ * LEDC module.
+ * @param intr_alloc_flags Flags used to allocate the interrupt. One or multiple
+ * (ORred)
  *        ESP_INTR_FLAG_* values. See esp_intr_alloc.h for more info.
  *
  * @return

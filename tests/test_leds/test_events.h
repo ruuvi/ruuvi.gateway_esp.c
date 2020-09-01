@@ -14,7 +14,8 @@ typedef enum TestEventType_Tag
     TestEventType_LedcFadeFuncInstall,
 } TestEventType_e;
 
-/*** Test-Events classes implementation *******************************************************************************/
+/*** Test-Events classes implementation
+ * *******************************************************************************/
 
 class TestEvent
 {

@@ -2,8 +2,8 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #define RUUVI_COMPANY_ID                    0x0499
 #define RUUVI_GATEWAY_NVS_CONFIGURATION_KEY "ruuvi_config"
@@ -31,12 +31,12 @@
 #define ETH_CONNECTED_BIT    (1U << 4U)
 
 #ifdef RUUVI_ESP
-typedef uint8_t __u8;
-typedef int8_t __s8;
+typedef uint8_t  __u8;
+typedef int8_t   __s8;
 typedef uint16_t __u16;
-typedef int16_t __s16;
+typedef int16_t  __s16;
 typedef uint32_t __u32;
-typedef int32_t __s32;
+typedef int32_t  __s32;
 #endif
 
 typedef struct mac_address_bin

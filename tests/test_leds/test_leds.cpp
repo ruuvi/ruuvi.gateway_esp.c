@@ -1,13 +1,13 @@
-#include <stdio.h>
-#include <mqueue.h>
-#include <semaphore.h>
-#include "gtest/gtest.h"
-#include "leds.h"
 #include "TQueue.h"
+#include "driver/ledc.h"
 #include "esp_err.h"
 #include "esp_timer.h"
-#include "driver/ledc.h"
+#include "leds.h"
 #include "test_events.h"
+#include "gtest/gtest.h"
+#include <mqueue.h>
+#include <semaphore.h>
+#include <stdio.h>
 
 using namespace std;
 
@@ -21,7 +21,8 @@ typedef enum MainTaskCmd_Tag
     MainTaskCmd_LedsStopBlink,
 } MainTaskCmd_e;
 
-/*** Google-test class implementation *********************************************************************************/
+/*** Google-test class implementation
+ * *********************************************************************************/
 
 static void *
 freertosStartup(void *arg);
@@ -76,7 +77,8 @@ TestLeds::~TestLeds()
     g_pTestLeds = nullptr;
 }
 
-/*** esp_timer stub functions *****************************************************************************************/
+/*** esp_timer stub functions
+ * *****************************************************************************************/
 
 esp_err_t
 esp_timer_init(void)
@@ -107,7 +109,8 @@ esp_timer_stop(esp_timer_handle_t timer)
     return ESP_OK;
 }
 
-/*** driver/ledc.c stub functions *************************************************************************************/
+/*** driver/ledc.c stub functions
+ * *************************************************************************************/
 
 esp_err_t
 ledc_timer_config(const ledc_timer_config_t *timer_conf)
@@ -145,7 +148,8 @@ ledc_fade_func_install(int intr_alloc_flags)
     return ESP_OK;
 }
 
-/*** Cmd-handler task *************************************************************************************************/
+/*** Cmd-handler task
+ * *************************************************************************************************/
 
 static void
 cmdHandlerTask(void *parameters)
@@ -202,7 +206,8 @@ freertosStartup(void *arg)
     return nullptr;
 }
 
-/*** Unit-Tests *******************************************************************************************************/
+/*** Unit-Tests
+ * *******************************************************************************************************/
 
 TEST_F(TestLeds, test_all) // NOLINT
 {

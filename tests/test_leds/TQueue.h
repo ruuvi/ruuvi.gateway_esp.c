@@ -1,10 +1,10 @@
 #ifndef TQUEUE_H
 #define TQUEUE_H
 
+#include <condition_variable>
+#include <mutex>
 #include <queue>
 #include <thread>
-#include <mutex>
-#include <condition_variable>
 
 template<typename T>
 class TQueue

@@ -3,7 +3,9 @@
 
 #include "ruuvi_gateway.h"
 
-void adv_post_init (void);
-void adv_post_send (void * arg);
+void
+adv_post_init(void);
+void
+adv_post_send(void *arg);
 
 #endif

@@ -1,6 +1,6 @@
-#include "ruuvi_gateway.h"
-#include "esp_log.h"
 #include "esp_heap_caps.h"
+#include "esp_log.h"
+#include "ruuvi_gateway.h"
 
 #define BUF_LEN        2048
 #define METRICS_PREFIX "ruuvigw_"
@@ -41,18 +41,30 @@ gen_metrics(char *buf, size_t limit)
                        "heap_free_bytes{capability=\"MALLOC_CAP_SPIRAM\"} %zu\n" METRICS_PREFIX
                        "heap_free_bytes{capability=\"MALLOC_CAP_INTERNAL\"} %zu\n" METRICS_PREFIX
                        "heap_free_bytes{capability=\"MALLOC_CAP_DEFAULT\"} %zu\n" METRICS_PREFIX
-                       "heap_largest_free_block_bytes{capability=\"MALLOC_CAP_EXEC\"} %zu\n" METRICS_PREFIX
-                       "heap_largest_free_block_bytes{capability=\"MALLOC_CAP_32BIT\"} %zu\n" METRICS_PREFIX
-                       "heap_largest_free_block_bytes{capability=\"MALLOC_CAP_8BIT\"} %zu\n" METRICS_PREFIX
-                       "heap_largest_free_block_bytes{capability=\"MALLOC_CAP_DMA\"} %zu\n" METRICS_PREFIX
-                       "heap_largest_free_block_bytes{capability=\"MALLOC_CAP_PID2\"} %zu\n" METRICS_PREFIX
-                       "heap_largest_free_block_bytes{capability=\"MALLOC_CAP_PID3\"} %zu\n" METRICS_PREFIX
-                       "heap_largest_free_block_bytes{capability=\"MALLOC_CAP_PID4\"} %zu\n" METRICS_PREFIX
-                       "heap_largest_free_block_bytes{capability=\"MALLOC_CAP_PID5\"} %zu\n" METRICS_PREFIX
-                       "heap_largest_free_block_bytes{capability=\"MALLOC_CAP_PID6\"} %zu\n" METRICS_PREFIX
-                       "heap_largest_free_block_bytes{capability=\"MALLOC_CAP_PID7\"} %zu\n" METRICS_PREFIX
-                       "heap_largest_free_block_bytes{capability=\"MALLOC_CAP_SPIRAM\"} %zu\n" METRICS_PREFIX
-                       "heap_largest_free_block_bytes{capability=\"MALLOC_CAP_INTERNAL\"} %zu\n" METRICS_PREFIX
+                       "heap_largest_free_block_bytes{capability=\"MALLOC_CAP_EXEC\"} "
+                       "%zu\n" METRICS_PREFIX
+                       "heap_largest_free_block_bytes{capability="
+                       "\"MALLOC_CAP_32BIT\"} %zu\n" METRICS_PREFIX
+                       "heap_largest_free_block_bytes{capability=\"MALLOC_CAP_8BIT\"} "
+                       "%zu\n" METRICS_PREFIX
+                       "heap_largest_free_block_bytes{capability="
+                       "\"MALLOC_CAP_DMA\"} %zu\n" METRICS_PREFIX
+                       "heap_largest_free_block_bytes{capability=\"MALLOC_CAP_PID2\"} "
+                       "%zu\n" METRICS_PREFIX
+                       "heap_largest_free_block_bytes{capability="
+                       "\"MALLOC_CAP_PID3\"} %zu\n" METRICS_PREFIX
+                       "heap_largest_free_block_bytes{capability=\"MALLOC_CAP_PID4\"} "
+                       "%zu\n" METRICS_PREFIX
+                       "heap_largest_free_block_bytes{capability="
+                       "\"MALLOC_CAP_PID5\"} %zu\n" METRICS_PREFIX
+                       "heap_largest_free_block_bytes{capability=\"MALLOC_CAP_PID6\"} "
+                       "%zu\n" METRICS_PREFIX
+                       "heap_largest_free_block_bytes{capability="
+                       "\"MALLOC_CAP_PID7\"} %zu\n" METRICS_PREFIX
+                       "heap_largest_free_block_bytes{capability=\"MALLOC_CAP_SPIRAM\"} "
+                       "%zu\n" METRICS_PREFIX
+                       "heap_largest_free_block_bytes{capability="
+                       "\"MALLOC_CAP_INTERNAL\"} %zu\n" METRICS_PREFIX
                        "heap_largest_free_block_bytes{capability=\"MALLOC_CAP_DEFAULT\"} %zu\n",
         gw_metrics.received_advertisements,
         esp_timer_get_time(),
@@ -93,7 +105,8 @@ ruuvi_get_metrics()
     {
         ESP_LOGW(
             TAG,
-            "Initial buffer size of %d for metrics is insufficient, needed %d! Consider increasing BUF_LEN in "
+            "Initial buffer size of %d for metrics is insufficient, "
+            "needed %d! Consider increasing BUF_LEN in "
             "metrics.c",
             BUF_LEN,
             size);
