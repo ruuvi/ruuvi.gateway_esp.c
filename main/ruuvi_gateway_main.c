@@ -1,27 +1,32 @@
+#include "ruuvi_gateway.h"
+#include "adv_post.h"
+#include "api.h"
+#include "cJSON.h"
+#include "dns_server.h"
+#include "driver/gpio.h"
+#include "esp_log.h"
+#include "esp_system.h"
+#include "ethernet.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/FreeRTOSConfig.h"
+#include "freertos/event_groups.h"
 #include "freertos/projdefs.h"
 #include "freertos/task.h"
-#include "freertos/event_groups.h"
-#include "driver/gpio.h"
-#include "ruuvi_gateway.h"
-#include "cJSON.h"
-#include "esp_system.h"
-#include "esp_log.h"
-#include "string.h"
-#include "wifi_manager.h"
-#include "time_task.h"
+#include "gpio.h"
+#include "http.h"
+#include "http_server.h"
+#include "leds.h"
 #include "mqtt.h"
 #include "nvs.h"
 #include "nvs_flash.h"
-#include "gpio.h"
-#include "leds.h"
-#include "uart.h"
-#include "http.h"
-#include "dns_server.h"
-#include "http_server.h"
-#include "ethernet.h"
 #include "ruuvi_board_gwesp.h"
+#include "string.h"
+#include "terminal.h"
+#include "time_task.h"
+#include "wifi_manager.h"
+#include "ruuvi_endpoint_ca_uart.h"
+
+#define BOOL_TO_U8(x) ((true == x) ? RE_CA_BOOL_ENABLE : RE_CA_BOOL_DISABLE)
 
 static const char TAG[] = "ruuvi_gateway";
 
@@ -38,18 +43,33 @@ ruuvi_send_nrf_settings(ruuvi_gateway_config_t *config)
 {
     ESP_LOGI(
         TAG,
-        "sending settings to NRF: use filter: %d, company id: 0x%04x",
+        "sending settings to NRF: use filter: %d, "
+        "company id: 0x%04x,"
+        "use scan coded phy: %d,"
+        "use scan 1mbit/phy: %d,"
+        "use scan extended payload: %d,"
+        "use scan channel 37: %d,"
+        "use scan channel 38: %d,"
+        "use scan channel 39: %d",
         config->company_filter,
-        config->company_id);
+        config->company_id,
+        config->scan_coded_phy,
+        config->scan_1mbit_phy,
+        config->scan_extended_payload,
+        config->scan_channel_37,
+        config->scan_channel_38,
+        config->scan_channel_39
+    );
 
-    if (config->company_filter)
-    {
-        uart_send_nrf_command(SET_FILTER, &config->company_id);
-    }
-    else
-    {
-        uart_send_nrf_command(CLEAR_FILTER, 0);
-    }
+    api_send_all(RE_CA_UART_SET_ALL,
+                  (__u16)config->company_id,
+                  (__u8)BOOL_TO_U8(config->company_filter),
+                  (__u8)BOOL_TO_U8(config->scan_coded_phy),
+                  (__u8)BOOL_TO_U8(config->scan_extended_payload),
+                  (__u8)BOOL_TO_U8(config->scan_1mbit_phy),
+                  (__u8)BOOL_TO_U8(config->scan_channel_37),
+                  (__u8)BOOL_TO_U8(config->scan_channel_38),
+                  (__u8)BOOL_TO_U8(config->scan_channel_39));
 }
 
 void
@@ -100,7 +120,8 @@ get_gw_mac_sta(void)
     return mac_address_to_str(&mac);
 }
 
-/* brief this is an exemple of a callback that you can setup in your own app to get notified of wifi manager event */
+/* brief this is an exemple of a callback that you can setup in your own app to
+ * get notified of wifi manager event */
 void
 wifi_connection_ok_cb(void *pvParameter)
 {
@@ -170,7 +191,8 @@ reset_task(void *arg)
         {
             ESP_LOGI(TAG, "Reset activated");
             // restart the Gateway,
-            // on boot it will check if RB_BUTTON_RESET_PIN is pressed and erase the settings in flash.
+            // on boot it will check if RB_BUTTON_RESET_PIN is pressed and erase the
+            // settings in flash.
             esp_restart();
         }
     }
@@ -180,34 +202,34 @@ void
 wifi_init()
 {
     static const WiFiAntConfig_t wiFiAntConfig = {
-        .wifiAntGpioConfig = {
-            .gpio_cfg = {
-                [0] = {
-                    .gpio_select = 1,
-                    .gpio_num = RB_GWBUS_LNA,
-                },
-                [1] = {
-                    .gpio_select = 0,
-                    .gpio_num = 0,
-                },
-                [2] = {
-                    .gpio_select = 0,
-                    .gpio_num = 0,
-                },
-                [3] = {
-                    .gpio_select = 0,
-                    .gpio_num = 0,
-                },
-            },
-        },
-        .wifiAntConfig = {
-            .rx_ant_mode = WIFI_ANT_MODE_ANT1,
-            .rx_ant_default = WIFI_ANT_ANT1,
-            .tx_ant_mode = WIFI_ANT_MODE_ANT0,
-            .enabled_ant0 = 0,
-            .enabled_ant1 = 1
-        },
-    };
+      .wifiAntGpioConfig =
+          {
+              .gpio_cfg =
+                  {
+                          [0] =
+                              {
+                                  .gpio_select = 1, .gpio_num = RB_GWBUS_LNA,
+                              },
+                          [1] =
+                              {
+                                  .gpio_select = 0, .gpio_num = 0,
+                              },
+                          [2] =
+                              {
+                                  .gpio_select = 0, .gpio_num = 0,
+                              },
+                          [3] =
+                              {
+                                  .gpio_select = 0, .gpio_num = 0,
+                              },
+                  },
+          },
+      .wifiAntConfig = {.rx_ant_mode = WIFI_ANT_MODE_ANT1,
+                        .rx_ant_default = WIFI_ANT_ANT1,
+                        .tx_ant_mode = WIFI_ANT_MODE_ANT0,
+                        .enabled_ant0 = 0,
+                        .enabled_ant1 = 1},
+  };
     wifi_manager_start(&wiFiAntConfig);
     wifi_manager_set_callback(EVENT_STA_GOT_IP, &wifi_connection_ok_cb);
     wifi_manager_set_callback(EVENT_STA_DISCONNECTED, &wifi_disconnect_cb);
@@ -244,7 +266,9 @@ app_main(void)
     }
 
     settings_get_from_flash(&g_gateway_config);
-    uart_init();
+    adv_post_init();
+    terminal_open(NULL);
+    api_process(1);
     time_init();
     leds_start_blink(LEDS_FAST_BLINK);
     ruuvi_send_nrf_settings(&g_gateway_config);

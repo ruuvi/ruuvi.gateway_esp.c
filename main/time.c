@@ -1,16 +1,16 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdbool.h>
-#include <time.h>
-#include <sys/time.h>
 #include "esp_log.h"
+#include "esp_sntp.h"
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "freertos/event_groups.h"
+#include "freertos/task.h"
 #include "lwip/err.h"
-#include "esp_sntp.h"
 #include "sntp.h"
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/time.h>
+#include <time.h>
 
 #define TIME_SYNC_BIT (1 << 0)
 

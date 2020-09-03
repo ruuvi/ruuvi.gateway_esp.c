@@ -1,22 +1,22 @@
-#include <stdio.h>
-#include <string.h>
+#include "ethernet.h"
+#include "driver/gpio.h"
 #include "esp_err.h"
-#include "esp_eth_com.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/event_groups.h"
-#include "leds.h"
-#include "tcpip_adapter.h"
 #include "esp_eth.h"
+#include "esp_eth_com.h"
 #include "esp_event.h"
 #include "esp_log.h"
-#include "driver/gpio.h"
-#include "sdkconfig.h"
-#include "ethernet.h"
-#include "ruuvi_gateway.h"
-#include "wifi_manager.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/event_groups.h"
+#include "freertos/task.h"
+#include "leds.h"
 #include "mqtt.h"
+#include "ruuvi_gateway.h"
+#include "sdkconfig.h"
+#include "tcpip_adapter.h"
 #include "time_task.h"
+#include "wifi_manager.h"
+#include <stdio.h>
+#include <string.h>
 
 #define LAN_CLOCK_ENABLE 2
 #define ETH_PHY_ADDR     0

@@ -2,8 +2,8 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #define RUUVI_COMPANY_ID                    0x0499
 #define RUUVI_GATEWAY_NVS_CONFIGURATION_KEY "ruuvi_config"
@@ -29,6 +29,15 @@
 #define RESET_BUTTON_BIT     (1U << 2U)
 #define ETH_DISCONNECTED_BIT (1U << 3U)
 #define ETH_CONNECTED_BIT    (1U << 4U)
+
+#ifdef RUUVI_ESP
+typedef uint8_t  __u8;
+typedef int8_t   __s8;
+typedef uint16_t __u16;
+typedef int16_t  __s16;
+typedef uint32_t __u32;
+typedef int32_t  __s32;
+#endif
 
 typedef struct mac_address_bin
 {
@@ -84,6 +93,12 @@ typedef struct ruuvi_gateway_config_t
     char     http_pass[MAX_HTTP_PASS_LEN];
     uint16_t company_id;
     bool     company_filter;
+    bool     scan_coded_phy;
+    bool     scan_1mbit_phy;
+    bool     scan_extended_payload;
+    bool     scan_channel_37;
+    bool     scan_channel_38;
+    bool     scan_channel_39;
     char     coordinates[MAX_CONFIG_STR_LEN];
 } ruuvi_gateway_config_t;
 
@@ -110,6 +125,12 @@ typedef struct ruuvi_gateway_config_t
         .http_pass = { 0 }, \
         .company_filter = true, \
         .company_id = RUUVI_COMPANY_ID, \
+        .scan_coded_phy = false, \
+        .scan_1mbit_phy = false, \
+        .scan_extended_payload = false, \
+        .scan_channel_37 = false, \
+        .scan_channel_38 = false, \
+        .scan_channel_39 = false, \
         .coordinates = { 0 }, \
     }
 // clang-format on

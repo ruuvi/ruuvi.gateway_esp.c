@@ -8,8 +8,8 @@
 #ifndef RUUVI_GATEWAY_ESP_BIN2HEX_H
 #define RUUVI_GATEWAY_ESP_BIN2HEX_H
 
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,7 +20,8 @@ extern "C" {
  *
  * Example {0xA0, 0xBB, 0x31} -> "A0BB31"
  *
- * @param[out] p_hex_str Pointer to string to print into. Must be at least 2 * bin_buf_len + 1 bytes long.
+ * @param[out] p_hex_str Pointer to string to print into. Must be at least 2 *
+ * bin_buf_len + 1 bytes long.
  * @param[in]  hex_str_size Size of hex_str in bytes.
  * @param[in]  p_bin_buf Pointer to the binary to print from.
  * @param[in]  bin_buf_len Size of the binary buffer in bytes.

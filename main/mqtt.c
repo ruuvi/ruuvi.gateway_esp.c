@@ -1,10 +1,10 @@
+#include "mqtt.h"
 #include "cJSON.h"
 #include "esp_err.h"
-#include "mqtt_client.h"
-#include "freertos/event_groups.h"
 #include "esp_log.h"
+#include "freertos/event_groups.h"
+#include "mqtt_client.h"
 #include "ruuvi_gateway.h"
-#include "mqtt.h"
 
 #undef LOG_LOCAL_LEVEL
 #define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
@@ -174,7 +174,8 @@ mqtt_app_start(void)
     {
         ESP_LOGE(
             TAG,
-            "Invalid MQTT parameters: server: %s, topic prefix: '%s', port: %u, user: '%s', password: '%s'",
+            "Invalid MQTT parameters: server: %s, topic prefix: '%s', "
+            "port: %u, user: '%s', password: '%s'",
             g_gateway_config.mqtt_server,
             g_gateway_config.mqtt_prefix,
             g_gateway_config.mqtt_port,
@@ -186,7 +187,8 @@ mqtt_app_start(void)
     {
         ESP_LOGI(
             TAG,
-            "Using server: %s, topic prefix: '%s', port: %u, user: '%s', password: '%s'",
+            "Using server: %s, topic prefix: '%s', port: %u, user: '%s', "
+            "password: '%s'",
             g_gateway_config.mqtt_server,
             g_gateway_config.mqtt_prefix,
             g_gateway_config.mqtt_port,

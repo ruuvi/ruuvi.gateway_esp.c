@@ -1,8 +1,8 @@
-#include "ruuvi_gateway.h"
 #include "cJSON.h"
 #include "esp_log.h"
 #include "nvs.h"
 #include "nvs_flash.h"
+#include "ruuvi_gateway.h"
 #include "string.h"
 
 static const char TAG[] = "settings";
@@ -83,6 +83,12 @@ settings_print(ruuvi_gateway_config_t *config)
     ESP_LOGI(TAG, "config: coordinates: %s", config->coordinates);
     ESP_LOGI(TAG, "config: use company id filter: %d", config->company_filter);
     ESP_LOGI(TAG, "config: company id: 0x%04x", config->company_id);
+    ESP_LOGI(TAG, "config: use scan coded phy: %d", config->scan_coded_phy);
+    ESP_LOGI(TAG, "config: use scan 1mbit/phy: %d", config->scan_1mbit_phy);
+    ESP_LOGI(TAG, "config: use scan extended payload: %d", config->scan_extended_payload);
+    ESP_LOGI(TAG, "config: use scan channel 37: %d", config->scan_channel_37);
+    ESP_LOGI(TAG, "config: use scan channel 38: %d", config->scan_channel_38);
+    ESP_LOGI(TAG, "config: use scan channel 39: %d", config->scan_channel_39);
 }
 
 static bool
@@ -178,9 +184,16 @@ ruuvi_get_conf_json()
         cJSON_AddNumberToObject(root, "mqtt_port", c.mqtt_port);
         cJSON_AddStringToObject(root, "mqtt_prefix", c.mqtt_prefix);
         cJSON_AddStringToObject(root, "mqtt_user", c.mqtt_user);
-        // cJSON_AddStringToObject(root, "mqtt_pass", c.mqtt_pass);  //don't send to browser because security
+        // cJSON_AddStringToObject(root, "mqtt_pass", c.mqtt_pass);  //don't send to
+        // browser because security
         cJSON_AddStringToObject(root, "coordinates", c.coordinates);
         cJSON_AddBoolToObject(root, "use_filtering", c.company_filter);
+        cJSON_AddBoolToObject(root, "use_coded_phy", c.scan_coded_phy);
+        cJSON_AddBoolToObject(root, "use_1mbit_phy", c.scan_1mbit_phy);
+        cJSON_AddBoolToObject(root, "use_extended_payload", c.scan_extended_payload);
+        cJSON_AddBoolToObject(root, "use_channel_37", c.scan_channel_37);
+        cJSON_AddBoolToObject(root, "use_channel_38", c.scan_channel_38);
+        cJSON_AddBoolToObject(root, "use_channel_39", c.scan_channel_39);
         cJSON_AddStringToObject(root, "gw_mac", gw_mac_sta.str_buf);
         char company_id[10];
         snprintf(company_id, sizeof(company_id), "0x%04x", c.company_id);

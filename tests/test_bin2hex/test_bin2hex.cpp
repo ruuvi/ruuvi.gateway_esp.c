@@ -5,13 +5,14 @@
  * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
  */
 
-#include "gtest/gtest.h"
 #include "bin2hex.h"
+#include "gtest/gtest.h"
 #include <string>
 
 using namespace std;
 
-/*** Google-test class implementation *********************************************************************************/
+/*** Google-test class implementation
+ * *********************************************************************************/
 
 class TestBin2Hex : public ::testing::Test
 {
@@ -40,7 +41,8 @@ TestBin2Hex::TestBin2Hex()
 
 TestBin2Hex::~TestBin2Hex() = default;
 
-/*** Unit-Tests *******************************************************************************************************/
+/*** Unit-Tests
+ * *******************************************************************************************************/
 
 TEST_F(TestBin2Hex, test_1) // NOLINT
 {

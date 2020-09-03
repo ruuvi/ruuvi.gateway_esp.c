@@ -1,16 +1,16 @@
-#include "freertos/FreeRTOS.h"
-#include "freertos/projdefs.h"
-#include "freertos/queue.h"
-#include "freertos/event_groups.h"
-#include "freertos/portmacro.h"
 #include "driver/gpio.h"
 #include "driver/timer.h"
-#include "gpio.h"
 #include "esp_log.h"
-#include "ruuvi_gateway.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/event_groups.h"
+#include "freertos/portmacro.h"
+#include "freertos/projdefs.h"
+#include "freertos/queue.h"
+#include "gpio.h"
+#include "http_server.h"
 #include "leds.h"
 #include "ruuvi_board_gwesp.h"
-#include "http_server.h"
+#include "ruuvi_gateway.h"
 
 #define CONFIG_WIFI_RESET_BUTTON_GPIO RB_BUTTON_RESET_PIN
 
@@ -57,10 +57,12 @@ config_timer(void)
     config.auto_reload = 0;
     timer_init(TIMER_GROUP_0, TIMER_0, &config);
     /* Timer's counter will initially start from value below.
-    Also, if auto_reload is set, this value will be automatically reload on alarm */
+    Also, if auto_reload is set, this value will be automatically reload on alarm
+    */
     timer_set_counter_value(TIMER_GROUP_0, TIMER_0, 0x00000000ULL);
     /* Configure the alarm value and the interrupt on alarm. */
-    timer_set_alarm_value(TIMER_GROUP_0, TIMER_0, 3 * TIMER_SCALE); // 3 seconds interval
+    timer_set_alarm_value(TIMER_GROUP_0, TIMER_0,
+                          3 * TIMER_SCALE); // 3 seconds interval
     timer_enable_intr(TIMER_GROUP_0, TIMER_0);
     timer_isr_register(TIMER_GROUP_0, TIMER_0, timer_isr, (void *)TIMER_0, ESP_INTR_FLAG_IRAM, NULL);
 }
