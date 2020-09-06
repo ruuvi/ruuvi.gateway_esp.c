@@ -7,6 +7,9 @@
 [submodule "tests/Posix_GCC_Simulator"]
 	path = tests/Posix_GCC_Simulator
 	url = https://github.com/ruuvi/Posix_GCC_Simulator.git
+[submodule "components/ruuvi.endpoints.c"]
+	path = components/ruuvi.endpoints.c
+	url = https://github.com/ruuvi/ruuvi.endpoints.c.git
 [submodule "components/ruuvi.boards.c"]
 	path = components/ruuvi.boards.c
 	url = https://github.com/ruuvi/ruuvi.boards.c.git
