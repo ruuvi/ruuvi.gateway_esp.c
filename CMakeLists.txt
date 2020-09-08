@@ -5,6 +5,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(EXPECTED_IDF_VERSION v4.0.1)
 
+set(EXTRA_COMPONENT_DIRS
+        components/ruuvi.comm_tester.c/components)
+
 execute_process (
         COMMAND bash -c "cd $ENV{IDF_PATH} && git describe --always --tags --dirty --match ${EXPECTED_IDF_VERSION}*"
         OUTPUT_VARIABLE IDF_VERSION
@@ -24,5 +27,5 @@ project(ruuvi_gateway_esp)
 
 target_compile_definitions(__idf_main PUBLIC
         RUUVI_LEDS_DISABLE=1
-	RUUVI_ESP
+        RUUVI_ESP
 )
