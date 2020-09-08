@@ -19,9 +19,8 @@ idf_component_register(
             json
             esp32-wifi-manager
             ruuvi.boards.c
-	    ruuvi.comm_tester.c
+            ruuvi.comm_tester.c
             ruuvi.endpoints.c
         INCLUDE_DIRS
             "includes"
 )
-#string(APPEND CMAKE_C_FLAGS " -DRUUVI_ESP")
