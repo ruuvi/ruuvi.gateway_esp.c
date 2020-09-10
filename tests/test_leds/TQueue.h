@@ -1,18 +1,17 @@
 #ifndef TQUEUE_H
 #define TQUEUE_H
 
-
+#include <condition_variable>
+#include <mutex>
 #include <queue>
 #include <thread>
-#include <mutex>
-#include <condition_variable>
 
-template <typename T>
+template<typename T>
 class TQueue
 {
 public:
-
-    T pop()
+    T
+    pop()
     {
         std::unique_lock<std::mutex> mlock(mutex_);
         while (queue_.empty())
@@ -24,7 +23,8 @@ public:
         return item;
     }
 
-    void pop(T& item)
+    void
+    pop(T &item)
     {
         std::unique_lock<std::mutex> mlock(mutex_);
         while (queue_.empty())
@@ -35,7 +35,8 @@ public:
         queue_.pop();
     }
 
-    void push(const T& item)
+    void
+    push(const T &item)
     {
         std::unique_lock<std::mutex> mlock(mutex_);
         handled_ = false;
@@ -44,7 +45,8 @@ public:
         cond_.notify_one();
     }
 
-    void push(T&& item)
+    void
+    push(T &&item)
     {
         std::unique_lock<std::mutex> mlock(mutex_);
         handled_ = false;
@@ -53,7 +55,8 @@ public:
         cond_.notify_one();
     }
 
-    void push_and_wait(const T& item)
+    void
+    push_and_wait(const T &item)
     {
         std::unique_lock<std::mutex> mlock(mutex_);
         handled_ = false;
@@ -63,7 +66,8 @@ public:
         wait_until_handled();
     }
 
-    void push_and_wait(T&& item)
+    void
+    push_and_wait(T &&item)
     {
         std::unique_lock<std::mutex> mlock(mutex_);
         handled_ = false;
@@ -73,7 +77,8 @@ public:
         wait_until_handled();
     }
 
-    void notify_handled()
+    void
+    notify_handled()
     {
         std::unique_lock<std::mutex> mlock(mutex_);
         handled_ = true;
@@ -81,7 +86,8 @@ public:
         cond_handled_.notify_one();
     }
 
-    void wait_until_handled()
+    void
+    wait_until_handled()
     {
         std::unique_lock<std::mutex> mlock(mutex_);
         while (!handled_)
@@ -91,11 +97,11 @@ public:
     }
 
 private:
-    std::queue<T> queue_;
-    std::mutex mutex_;
+    std::queue<T>           queue_;
+    std::mutex              mutex_;
     std::condition_variable cond_;
-    bool handled_;
+    bool                    handled_;
     std::condition_variable cond_handled_;
 };
 
-#endif //TQUEUE_H
+#endif // TQUEUE_H

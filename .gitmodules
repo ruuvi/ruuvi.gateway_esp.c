@@ -10,6 +10,3 @@
 [submodule "components/ruuvi.boards.c"]
 	path = components/ruuvi.boards.c
 	url = https://github.com/ruuvi/ruuvi.boards.c.git
-[submodule "components/ruuvi.comm_tester.c"]
-	path = components/ruuvi.comm_tester.c
-	url = https://github.com/ruuvi/ruuvi.comm_tester.c.git
