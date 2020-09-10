@@ -24,4 +24,3 @@ idf_component_register(
         INCLUDE_DIRS
             "includes"
 )
-string(APPEND CMAKE_C_FLAGS " -DRUUVI_ESP")
