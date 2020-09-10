@@ -11,6 +11,8 @@
 #include "http.h"
 #include "mqtt.h"
 #include "ruuvi_board_gwesp.h"
+#include "api.h"
+#include "types_def.h"
 #include "ruuvi_endpoint_ca_uart.h"
 #include "ruuvi_endpoints.h"
 #include "ruuvi_gateway.h"
@@ -18,12 +20,25 @@
 #include <string.h>
 #include <time.h>
 
+static void
+adv_post_send_report(void *arg);
+static void
+adv_post_send_ack(void *arg);
+static void
+adv_post_send_device_id(void *arg);
+
 portMUX_TYPE adv_table_mux = portMUX_INITIALIZER_UNLOCKED;
 
 struct adv_report_table adv_reports;
 struct adv_report_table adv_reports_buf;
 
 static const char *ADV_POST_TASK_TAG = "ADV_POST_TASK";
+
+adv_callbacks_fn_t adv_callback_func_tbl = {
+    .AdvAckCallback    = adv_post_send_ack,
+    .AdvReportCallback = adv_post_send_report,
+    .AdvIdCallback     = adv_post_send_device_id,
+};
 
 static esp_err_t
 adv_put_to_table(const adv_report_t *const p_adv)
@@ -126,8 +141,20 @@ parse_adv_report_from_uart(const re_ca_uart_payload_t *const msg, adv_report_t *
     return err;
 }
 
-void
-adv_post_send(void *arg)
+static void
+adv_post_send_ack(void *arg)
+{
+    // Do something
+}
+
+static void
+adv_post_send_device_id(void *arg)
+{
+    // Do something
+}
+
+static void
+adv_post_send_report(void *arg)
 {
     adv_report_t adv_report;
 
@@ -233,5 +260,6 @@ void
 adv_post_init(void)
 {
     adv_reports.num_of_advs = 0;
+    api_callbacks_reg((void *)&adv_callback_func_tbl);
     xTaskCreate(adv_post_task, "adv_post_task", 1024 * 4, NULL, 1, NULL);
 }
