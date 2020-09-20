@@ -5,7 +5,5 @@
 
 void
 adv_post_init(void);
-void
-adv_post_send(void *arg);
 
 #endif
