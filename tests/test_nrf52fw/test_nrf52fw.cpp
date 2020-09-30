@@ -8,6 +8,7 @@
 #include "nrf52fw.h"
 #include <string>
 #include <sys/stat.h>
+#include <ftw.h>
 #include "gtest/gtest.h"
 #include "esp_log_wrapper.hpp"
 #include "esp_err.h"
@@ -67,6 +68,30 @@ public:
     }
 };
 
+static int
+remove_file(const char *filename, const struct stat *status, int flag, struct FTW *p_info)
+{
+    return remove(filename);
+}
+
+static void remove_dir_with_files(const char* path)
+{
+    struct stat st = { 0 };
+    if (stat(path, &st) == 0)
+    {
+        if (S_ISDIR(st.st_mode))
+        {
+            const int res = nftw(path, remove_file, 10, FTW_DEPTH | FTW_MOUNT | FTW_PHYS);
+            assert(0 == res);
+        }
+        else
+        {
+            const int res = remove(path);
+            assert(0 == res);
+        }
+    }
+}
+
 class TestNRF52Fw : public ::testing::Test
 {
 private:
@@ -85,13 +110,7 @@ protected:
         this->m_mount_point     = "/" FS_NRF52_MOUNT_POINT;
         this->m_info_txt_name   = "info.txt";
         {
-            struct stat st = { 0 };
-            if (stat(this->m_mount_point_dir, &st) == 0)
-            {
-                char cmd_buf[80];
-                snprintf(cmd_buf, sizeof(cmd_buf), "rm -rf %s", this->m_mount_point_dir);
-                system(cmd_buf);
-            }
+            remove_dir_with_files(this->m_mount_point_dir);
             mkdir(this->m_mount_point_dir, 0700);
         }
         this->m_fd = nullptr;
@@ -128,9 +147,7 @@ protected:
             m_p_ffs = nullptr;
         }
         {
-            char cmd_buf[80];
-            snprintf(cmd_buf, sizeof(cmd_buf), "rm -rf %s", this->m_mount_point_dir);
-            system(cmd_buf);
+            remove_dir_with_files(this->m_mount_point_dir);
         }
         esp_log_wrapper_deinit();
     }
