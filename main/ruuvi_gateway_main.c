@@ -25,6 +25,7 @@
 #include "time_task.h"
 #include "wifi_manager.h"
 #include "ruuvi_endpoint_ca_uart.h"
+#include "nrf52fw.h"
 
 #define BOOL_TO_U8(x) ((true == x) ? RE_CA_BOOL_ENABLE : RE_CA_BOOL_DISABLE)
 
@@ -264,6 +265,8 @@ app_main(void)
         ESP_LOGI(TAG, "Reset activated");
         esp_restart();
     }
+
+    nrf52fw_update_firmware_if_necessary();
 
     settings_get_from_flash(&g_gateway_config);
     adv_post_init();
