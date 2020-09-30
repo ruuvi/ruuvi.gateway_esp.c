@@ -17,6 +17,7 @@ idf_component_register(
             lwip
             esp_http_client
             json
+            fatfs
             esp32-wifi-manager
             ruuvi.boards.c
             ruuvi.comm_tester.c
