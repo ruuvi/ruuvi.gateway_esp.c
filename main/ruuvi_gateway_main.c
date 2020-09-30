@@ -74,6 +74,12 @@ ruuvi_send_nrf_settings(ruuvi_gateway_config_t *config)
 }
 
 void
+ruuvi_send_nrf_get_id(void)
+{
+    api_send_get_device_id(RE_CA_UART_GET_DEVICE_ID);
+}
+
+void
 monitoring_task(void *pvParameter)
 {
     for (;;)
@@ -270,7 +276,7 @@ app_main(void)
 
     settings_get_from_flash(&g_gateway_config);
     adv_post_init();
-    terminal_open(NULL);
+    terminal_open(NULL, true);
     api_process(1);
     time_init();
     leds_start_blink(LEDS_FAST_BLINK);
