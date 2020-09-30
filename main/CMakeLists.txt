@@ -21,6 +21,7 @@ idf_component_register(
             ruuvi.boards.c
             ruuvi.comm_tester.c
             ruuvi.endpoints.c
+            libSWD-esp32
         INCLUDE_DIRS
             "includes"
 )

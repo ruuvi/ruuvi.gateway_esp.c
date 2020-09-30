@@ -13,3 +13,6 @@
 [submodule "components/ruuvi.comm_tester.c"]
 	path = components/ruuvi.comm_tester.c
 	url = https://github.com/ruuvi/ruuvi.comm_tester.c.git
+[submodule "components/libSWD-esp32"]
+	path = components/libSWD-esp32
+	url = https://github.com/ruuvi/libSWD-esp32.git
