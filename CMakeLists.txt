@@ -8,6 +8,17 @@ set(EXPECTED_IDF_VERSION v4.0.1)
 set(EXTRA_COMPONENT_DIRS
         components/ruuvi.comm_tester.c/components)
 
+include(ExternalProject)
+
+ExternalProject_Add(mkfatfs
+        PREFIX mkfatfs
+        SOURCE_DIR ${CMAKE_SOURCE_DIR}/mkfatfs
+        BINARY_DIR ${CMAKE_BINARY_DIR}/mkfatfs
+        BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/mkfatfs/mkfatfs
+        INSTALL_COMMAND ""
+        BUILD_ALWAYS 1
+)
+
 execute_process (
         COMMAND bash -c "cd $ENV{IDF_PATH} && git describe --always --tags --dirty --match ${EXPECTED_IDF_VERSION}*"
         OUTPUT_VARIABLE IDF_VERSION
