@@ -74,7 +74,8 @@ remove_file(const char *filename, const struct stat *status, int flag, struct FT
     return remove(filename);
 }
 
-static void remove_dir_with_files(const char* path)
+static void
+remove_dir_with_files(const char *path)
 {
     struct stat st = { 0 };
     if (stat(path, &st) == 0)
