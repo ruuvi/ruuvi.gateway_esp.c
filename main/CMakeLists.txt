@@ -2,6 +2,8 @@ idf_component_register(
         SRCS
             bin2hex.c
             bin2hex.h
+            flashfatfs.c
+            flashfatfs.h
             ruuvi_gateway_main.c
             time.c
             mqtt.c
