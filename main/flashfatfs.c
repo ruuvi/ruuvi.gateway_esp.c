@@ -25,12 +25,12 @@ struct FlashFatFs_Tag
 FlashFatFs_t *
 flashfatfs_mount(const char *mount_point, const char *partition_label, const int max_files)
 {
-    const char* mount_point_prefix = "";
+    const char *mount_point_prefix = "";
 #if RUUVI_TESTS_NRF52FW
     mount_point_prefix = (mount_point[0] == '/') ? "." : "";
 #endif
-    size_t mount_point_buf_size = strlen(mount_point_prefix) + strlen(mount_point) + 1;
-    FlashFatFs_t *pObj = calloc(1, sizeof(*pObj) + mount_point_buf_size);
+    size_t        mount_point_buf_size = strlen(mount_point_prefix) + strlen(mount_point) + 1;
+    FlashFatFs_t *pObj                 = calloc(1, sizeof(*pObj) + mount_point_buf_size);
     if (NULL == pObj)
     {
         ESP_LOGE(TAG, "%s: Can't allocate memory", __func__);
@@ -84,12 +84,12 @@ flashfatfs_open(FlashFatFs_t *p_ffs, const char *file_path)
     return fd;
 }
 
-FILE*
+FILE *
 flashfatfs_fopen(FlashFatFs_t *p_ffs, const char *file_path)
 {
     char tmp_path[80];
     snprintf(tmp_path, sizeof(tmp_path), "%s/%s", p_ffs->mount_point, file_path);
-    FILE* fd = fopen(tmp_path, "r");
+    FILE *fd = fopen(tmp_path, "r");
     if (NULL == fd)
     {
         ESP_LOGE(TAG, "Can't open: %s", tmp_path);

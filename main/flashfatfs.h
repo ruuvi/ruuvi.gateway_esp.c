@@ -27,7 +27,7 @@ flashfatfs_unmount(FlashFatFs_t *p_ffs);
 int
 flashfatfs_open(FlashFatFs_t *p_ffs, const char *file_path);
 
-FILE*
+FILE *
 flashfatfs_fopen(FlashFatFs_t *p_ffs, const char *file_path);
 
 #ifdef __cplusplus
