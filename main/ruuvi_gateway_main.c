@@ -19,7 +19,7 @@
 #include "mqtt.h"
 #include "nvs.h"
 #include "nvs_flash.h"
-#include "ruuvi_board_gwesp.h"
+#include "ruuvi_boards.h"
 #include "string.h"
 #include "terminal.h"
 #include "time_task.h"

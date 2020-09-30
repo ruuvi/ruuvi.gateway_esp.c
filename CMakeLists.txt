@@ -57,4 +57,5 @@ target_compile_definitions(__idf_main PUBLIC
         RUUVI_LEDS_DISABLE=1
         RUUVI_ESP
         GW_NRF_PARTITION="${GW_NRF_PARTITION}"
+        BOARD_RUUVIGW_ESP
 )

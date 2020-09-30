@@ -10,7 +10,7 @@
 #include "freertos/task.h"
 #include "http.h"
 #include "mqtt.h"
-#include "ruuvi_board_gwesp.h"
+#include "ruuvi_boards.h"
 #include "api.h"
 #include "types_def.h"
 #include "ruuvi_endpoint_ca_uart.h"
