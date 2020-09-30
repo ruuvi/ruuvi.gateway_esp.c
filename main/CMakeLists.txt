@@ -12,6 +12,8 @@ idf_component_register(
             adv_post.c
             http.c
             settings.c
+            nrf52fw.c
+            nrf52fw.h
             nrf52swd.c
             nrf52swd.h
             ethernet.c
