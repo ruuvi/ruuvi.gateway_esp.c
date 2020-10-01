@@ -106,15 +106,19 @@ protected:
     void
     SetUp() override
     {
+        printf("SetUp: start\n");
 #define FS_NRF52_MOUNT_POINT "fs_nrf52"
         this->m_mount_point_dir = FS_NRF52_MOUNT_POINT;
         this->m_mount_point     = "/" FS_NRF52_MOUNT_POINT;
         this->m_info_txt_name   = "info.txt";
         {
+            printf("SetUp: remove_dir_with_files\n");
             remove_dir_with_files(this->m_mount_point_dir);
+            printf("SetUp: mkdir\n");
             mkdir(this->m_mount_point_dir, 0700);
         }
         this->m_fd = nullptr;
+        printf("SetUp: esp_log_wrapper_init\n");
         esp_log_wrapper_init();
         g_pTestClass = this;
 
@@ -128,29 +132,39 @@ protected:
         this->m_mount_info.mount_err          = ESP_OK;
         this->m_mount_info.unmount_err        = ESP_OK;
         this->m_mount_info.wl_handle          = 0;
+        printf("SetUp: finish\n");
     }
 
     void
     TearDown() override
     {
+        printf("TearDown: start\n");
         g_pTestClass = nullptr;
+        printf("TearDown: this->m_memSegmentsRead.clear\n");
         this->m_memSegmentsRead.clear();
+        printf("TearDown: this->m_memSegmentsWrite.clear\n");
         this->m_memSegmentsWrite.clear();
+        printf("TearDown: nrf52fw_simulate_file_read_error\n");
         nrf52fw_simulate_file_read_error(false);
         if (nullptr != m_fd)
         {
+            printf("TearDown: fclose\n");
             fclose(m_fd);
             m_fd = nullptr;
         }
         if (nullptr != m_p_ffs)
         {
+            printf("TearDown: flashfatfs_unmount\n");
             flashfatfs_unmount(m_p_ffs);
             m_p_ffs = nullptr;
         }
         {
+            printf("TearDown: remove_dir_with_files\n");
             remove_dir_with_files(this->m_mount_point_dir);
         }
+        printf("TearDown: esp_log_wrapper_deinit\n");
         esp_log_wrapper_deinit();
+        printf("TearDown: finish\n");
     }
 
     FILE *
@@ -334,8 +348,10 @@ vTaskDelay(const TickType_t xTicksToDelay)
 TEST_F(TestNRF52Fw, test_parse_version_digit_0) // NOLINT
 {
     uint8_t val = 1;
+    printf("test_parse_version_digit_0: start\n");
     ASSERT_TRUE(nrf52fw_parse_version_digit("0", nullptr, &val));
     ASSERT_EQ(0, val);
+    printf("test_parse_version_digit_0: finish\n");
 }
 
 TEST_F(TestNRF52Fw, test_parse_version_digit_1) // NOLINT
