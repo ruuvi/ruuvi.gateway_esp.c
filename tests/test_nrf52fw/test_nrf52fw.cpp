@@ -107,18 +107,26 @@ protected:
     SetUp() override
     {
         printf("SetUp: start\n");
+        fflush(stdout);
+        fflush(stderr);
 #define FS_NRF52_MOUNT_POINT "fs_nrf52"
         this->m_mount_point_dir = FS_NRF52_MOUNT_POINT;
         this->m_mount_point     = "/" FS_NRF52_MOUNT_POINT;
         this->m_info_txt_name   = "info.txt";
         {
             printf("SetUp: remove_dir_with_files\n");
+            fflush(stdout);
+            fflush(stderr);
             remove_dir_with_files(this->m_mount_point_dir);
             printf("SetUp: mkdir\n");
+            fflush(stdout);
+            fflush(stderr);
             mkdir(this->m_mount_point_dir, 0700);
         }
         this->m_fd = nullptr;
         printf("SetUp: esp_log_wrapper_init\n");
+        fflush(stdout);
+        fflush(stderr);
         esp_log_wrapper_init();
         g_pTestClass = this;
 
@@ -133,38 +141,58 @@ protected:
         this->m_mount_info.unmount_err        = ESP_OK;
         this->m_mount_info.wl_handle          = 0;
         printf("SetUp: finish\n");
+        fflush(stdout);
+        fflush(stderr);
     }
 
     void
     TearDown() override
     {
         printf("TearDown: start\n");
+        fflush(stdout);
+        fflush(stderr);
         g_pTestClass = nullptr;
         printf("TearDown: this->m_memSegmentsRead.clear\n");
+        fflush(stdout);
+        fflush(stderr);
         this->m_memSegmentsRead.clear();
         printf("TearDown: this->m_memSegmentsWrite.clear\n");
+        fflush(stdout);
+        fflush(stderr);
         this->m_memSegmentsWrite.clear();
         printf("TearDown: nrf52fw_simulate_file_read_error\n");
+        fflush(stdout);
+        fflush(stderr);
         nrf52fw_simulate_file_read_error(false);
         if (nullptr != m_fd)
         {
             printf("TearDown: fclose\n");
+            fflush(stdout);
+            fflush(stderr);
             fclose(m_fd);
             m_fd = nullptr;
         }
         if (nullptr != m_p_ffs)
         {
             printf("TearDown: flashfatfs_unmount\n");
+            fflush(stdout);
+            fflush(stderr);
             flashfatfs_unmount(m_p_ffs);
             m_p_ffs = nullptr;
         }
         {
             printf("TearDown: remove_dir_with_files\n");
+            fflush(stdout);
+            fflush(stderr);
             remove_dir_with_files(this->m_mount_point_dir);
         }
         printf("TearDown: esp_log_wrapper_deinit\n");
+        fflush(stdout);
+        fflush(stderr);
         esp_log_wrapper_deinit();
         printf("TearDown: finish\n");
+        fflush(stdout);
+        fflush(stderr);
     }
 
     FILE *
@@ -349,9 +377,13 @@ TEST_F(TestNRF52Fw, test_parse_version_digit_0) // NOLINT
 {
     uint8_t val = 1;
     printf("test_parse_version_digit_0: start\n");
+    fflush(stdout);
+    fflush(stderr);
     ASSERT_TRUE(nrf52fw_parse_version_digit("0", nullptr, &val));
     ASSERT_EQ(0, val);
     printf("test_parse_version_digit_0: finish\n");
+    fflush(stdout);
+    fflush(stderr);
 }
 
 TEST_F(TestNRF52Fw, test_parse_version_digit_1) // NOLINT
