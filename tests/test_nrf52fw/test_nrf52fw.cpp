@@ -123,7 +123,8 @@ protected:
             fflush(stderr);
             mkdir(this->m_mount_point_dir, 0700);
         }
-        this->m_fd = nullptr;
+        this->m_fd    = nullptr;
+        this->m_p_ffs = nullptr;
         printf("SetUp: esp_log_wrapper_init\n");
         fflush(stdout);
         fflush(stderr);
@@ -164,21 +165,21 @@ protected:
         fflush(stdout);
         fflush(stderr);
         nrf52fw_simulate_file_read_error(false);
-        if (nullptr != m_fd)
+        if (nullptr != this->m_fd)
         {
             printf("TearDown: fclose\n");
             fflush(stdout);
             fflush(stderr);
-            fclose(m_fd);
-            m_fd = nullptr;
+            fclose(this->m_fd);
+            this->m_fd = nullptr;
         }
-        if (nullptr != m_p_ffs)
+        if (nullptr != this->m_p_ffs)
         {
             printf("TearDown: flashfatfs_unmount\n");
             fflush(stdout);
             fflush(stderr);
-            flashfatfs_unmount(m_p_ffs);
-            m_p_ffs = nullptr;
+            flashfatfs_unmount(this->m_p_ffs);
+            this->m_p_ffs = nullptr;
         }
         {
             printf("TearDown: remove_dir_with_files\n");
