@@ -51,7 +51,7 @@ typedef struct NRF52Fw_TmpBuf_Tag
 } NRF52Fw_TmpBuf_t;
 
 bool
-nrf52fw_update_firmware_if_necessary(void);
+nrf52fw_update_fw_if_necessary(void);
 
 #if RUUVI_TESTS_NRF52FW
 
@@ -66,6 +66,21 @@ nrf52fw_update_firmware_if_necessary(void);
  */
 STATIC bool
 nrf52fw_parse_version_digit(const char *p_digit_str, const char *p_digit_str_end, uint8_t *p_digit);
+
+/**
+ * @brief Parse one-byte digit (in range 0..255) and update corresponding byte in version.
+ * @param p_token_begin - ptr to string
+ * @param p_token_end - ptr to the end of the digit in string or NULL
+ * @param[out] p_version - ptr to output variable version
+ * @param byte_num - byte number in version that needs to be updated
+ * @return true if successful
+ */
+STATIC bool
+nrf52fw_parse_digit_update_ver(
+    const char *  p_token_begin,
+    const char *  p_token_end,
+    uint32_t *    p_version,
+    const uint8_t byte_num);
 
 /**
  * @brief Parse a version string (like "1.2.3")

@@ -18,13 +18,17 @@ extern "C" {
 
 typedef struct FlashFatFs_Tag FlashFatFs_t;
 
+typedef int FlashFatFsNumFiles_t;
+
+typedef int FileDescriptor_t;
+
 FlashFatFs_t *
-flashfatfs_mount(const char *mount_point, const char *partition_label, const int max_files);
+flashfatfs_mount(const char *mount_point, const char *partition_label, const FlashFatFsNumFiles_t max_files);
 
 bool
 flashfatfs_unmount(FlashFatFs_t *p_ffs);
 
-int
+FileDescriptor_t
 flashfatfs_open(FlashFatFs_t *p_ffs, const char *file_path);
 
 FILE *

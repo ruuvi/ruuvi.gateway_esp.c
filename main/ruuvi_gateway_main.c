@@ -272,7 +272,7 @@ app_main(void)
         esp_restart();
     }
 
-    nrf52fw_update_firmware_if_necessary();
+    nrf52fw_update_fw_if_necessary();
 
     settings_get_from_flash(&g_gateway_config);
     adv_post_init();
