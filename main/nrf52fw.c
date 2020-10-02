@@ -166,7 +166,7 @@ nrf52fw_line_rstrip(char *p_line_buf, const size_t line_buf_size)
     p_line_buf[line_buf_size - 1] = '\0';
     size_t len                    = strlen(p_line_buf);
     bool   flag_stop              = false;
-    while (len > 0 && !flag_stop)
+    while ((len > 0) && !flag_stop)
     {
         len -= 1;
         switch (p_line_buf[len])
@@ -576,9 +576,11 @@ nrf52fw_calc_segment_crc(
             {
                 ESP_LOGE(TAG, "%s: offset %u greater than segment len %u", __func__, offset, segment_len);
                 flag_stop = true;
-                continue;
             }
-            actual_crc = crc32_le(actual_crc, (void *)p_tmp_buf->buf_wr, len);
+            else
+            {
+                actual_crc = crc32_le(actual_crc, (void *)p_tmp_buf->buf_wr, len);
+            }
         }
     }
     *p_crc = actual_crc;
