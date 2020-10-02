@@ -32,7 +32,7 @@ FileDescriptor_t
 flashfatfs_open(FlashFatFs_t *p_ffs, const char *file_path);
 
 FILE *
-flashfatfs_fopen(FlashFatFs_t *p_ffs, const char *file_path);
+flashfatfs_fopen(FlashFatFs_t *p_ffs, const char *file_path, const bool flag_use_binary_mode);
 
 #ifdef __cplusplus
 }

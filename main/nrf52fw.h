@@ -139,10 +139,10 @@ STATIC bool
 nrf52fw_read_info_txt(FlashFatFs_t *p_ffs, const char *p_path_info_txt, NRF52Fw_Info_t *p_info);
 
 STATIC bool
-nrf52fw_read_current_fw_version(uint32_t *p_fw_ver);
+nrf52fw_read_current_fw_ver(uint32_t *p_fw_ver);
 
 STATIC bool
-nrf52fw_write_current_fw_version(const uint32_t fw_ver);
+nrf52fw_write_current_fw_ver(const uint32_t fw_ver);
 
 STATIC void
 nrf52fw_simulate_file_read_error(const bool flag_error);
@@ -155,7 +155,7 @@ nrf52fw_flash_write_segment(
     const size_t      segment_len);
 
 STATIC bool
-nrf52fw_flash_write_segment_from_file(
+nrf52fw_write_segment_from_file(
     FlashFatFs_t *    p_ffs,
     const char *      p_path,
     NRF52Fw_TmpBuf_t *p_tmp_buf,

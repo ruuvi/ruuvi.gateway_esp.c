@@ -27,7 +27,7 @@ FlashFatFs_t *
 flashfatfs_mount(const char *mount_point, const char *partition_label, const FlashFatFsNumFiles_t max_files)
 {
     const char *mount_point_prefix = "";
-#if RUUVI_TESTS_NRF52FW
+#if RUUVI_TESTS_NRF52FW || RUUVI_TESTS_FLASHFATFS
     mount_point_prefix = (mount_point[0] == '/') ? "." : "";
 #endif
     size_t        mount_point_buf_size = strlen(mount_point_prefix) + strlen(mount_point) + 1;
@@ -84,7 +84,7 @@ flashfatfs_open(FlashFatFs_t *p_ffs, const char *file_path)
 {
     char tmp_path[80];
     snprintf(tmp_path, sizeof(tmp_path), "%s/%s", p_ffs->mount_point, file_path);
-    int fd = open(tmp_path, O_RDONLY);
+    FileDescriptor_t fd = open(tmp_path, O_RDONLY);
     if (fd < 0)
     {
         ESP_LOGE(TAG, "Can't open: %s", tmp_path);
@@ -93,11 +93,11 @@ flashfatfs_open(FlashFatFs_t *p_ffs, const char *file_path)
 }
 
 FILE *
-flashfatfs_fopen(FlashFatFs_t *p_ffs, const char *file_path)
+flashfatfs_fopen(FlashFatFs_t *p_ffs, const char *file_path, const bool flag_use_binary_mode)
 {
     char tmp_path[80];
     snprintf(tmp_path, sizeof(tmp_path), "%s/%s", p_ffs->mount_point, file_path);
-    FILE *fd = fopen(tmp_path, "r");
+    FILE *fd = fopen(tmp_path, flag_use_binary_mode ? "rb" : "r");
     if (NULL == fd)
     {
         ESP_LOGE(TAG, "Can't open: %s", tmp_path);

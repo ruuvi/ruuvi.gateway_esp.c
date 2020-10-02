@@ -40,7 +40,7 @@ nrf52fw_parse_version_digit(const char *p_digit_str, const char *p_digit_str_end
 
     do
     {
-        const uint32_t val = strtoul(p_digit_str, &end, 10);
+        const uint32_t val = (uint32_t)strtoul(p_digit_str, &end, 10);
         if (NULL == p_digit_str_end)
         {
             if ('\0' != *end)
@@ -73,17 +73,13 @@ nrf52fw_parse_digit_update_ver(
     const uint8_t byte_num)
 {
     bool result = false;
-    do
+    uint8_t digit_val = 0;
+    if (nrf52fw_parse_version_digit(p_token_begin, p_token_end, &digit_val))
     {
-        uint8_t digit_val = 0;
-        if (!nrf52fw_parse_version_digit(p_token_begin, p_token_end, &digit_val))
-        {
-            break;
-        }
         const uint32_t num_bits_per_byte = 8U;
         *p_version |= (uint32_t)digit_val << (num_bits_per_byte * byte_num);
         result = true;
-    } while (0);
+    }
     return result;
 }
 
@@ -111,10 +107,11 @@ nrf52fw_parse_version(const char *p_version_str, NRF52Fw_Version_t *p_version)
             break;
         }
         uint8_t byte_num = 3U;
-        if (!nrf52fw_parse_digit_update_ver(p_token_begin, p_token_end, &version, byte_num--))
+        if (!nrf52fw_parse_digit_update_ver(p_token_begin, p_token_end, &version, byte_num))
         {
             break;
         }
+        byte_num -= 1;
 
         p_token_begin = p_token_end + 1;
         if ('\0' == *p_token_begin)
@@ -126,17 +123,18 @@ nrf52fw_parse_version(const char *p_version_str, NRF52Fw_Version_t *p_version)
         {
             break;
         }
-        if (!nrf52fw_parse_digit_update_ver(p_token_begin, p_token_end, &version, byte_num--))
+        if (!nrf52fw_parse_digit_update_ver(p_token_begin, p_token_end, &version, byte_num))
         {
             break;
         }
+        byte_num -= 1;
 
         p_token_begin = p_token_end + 1;
         if ('\0' == *p_token_begin)
         {
             break;
         }
-        if (!nrf52fw_parse_digit_update_ver(p_token_begin, NULL, &version, byte_num--))
+        if (!nrf52fw_parse_digit_update_ver(p_token_begin, NULL, &version, byte_num))
         {
             break;
         }
@@ -155,14 +153,10 @@ nrf52fw_parse_version_line(const char *p_version_line, NRF52Fw_Version_t *p_vers
     bool         result             = false;
     const char * version_prefix     = "# v";
     const size_t version_prefix_len = strlen(version_prefix);
-    do
+    if (0 == strncmp(p_version_line, version_prefix, version_prefix_len))
     {
-        if (0 != strncmp(p_version_line, version_prefix, version_prefix_len))
-        {
-            break;
-        }
         result = nrf52fw_parse_version(&p_version_line[version_prefix_len], p_version);
-    } while (0);
+    }
     return result;
 }
 
@@ -198,7 +192,7 @@ nrf52fw_parse_segment_info_line(const char *p_version_line, NRF52Fw_Segment_t *p
     {
         const char *   p_token_start = p_version_line;
         char *         end           = NULL;
-        const uint32_t segment_addr  = strtoul(p_token_start, &end, 16);
+        const uint32_t segment_addr  = (uint32_t)strtoul(p_token_start, &end, 16);
         if ((' ' != *end) && ('\t' != *end))
         {
             break;
@@ -209,7 +203,7 @@ nrf52fw_parse_segment_info_line(const char *p_version_line, NRF52Fw_Segment_t *p
         }
         p_token_start              = end;
         end                        = NULL;
-        const uint32_t segment_len = strtoul(p_token_start, &end, 0);
+        const uint32_t segment_len = (uint32_t)strtoul(p_token_start, &end, 0);
         if ((' ' != *end) && ('\t' != *end))
         {
             break;
@@ -232,7 +226,7 @@ nrf52fw_parse_segment_info_line(const char *p_version_line, NRF52Fw_Segment_t *p
         }
         p_token_start              = end;
         end                        = NULL;
-        const uint32_t segment_crc = strtoul(p_token_start, &end, 16);
+        const uint32_t segment_crc = (uint32_t)strtoul(p_token_start, &end, 16);
         if ('\0' != *end)
         {
             break;
@@ -295,7 +289,8 @@ nrf52fw_read_info_txt(FlashFatFs_t *p_ffs, const char *p_path_info_txt, NRF52Fw_
 {
     bool result = false;
     memset(p_info, 0, sizeof(*p_info));
-    FILE *p_fd = flashfatfs_fopen(p_ffs, p_path_info_txt);
+    const bool flag_use_binary_mode = false;
+    FILE *     p_fd                 = flashfatfs_fopen(p_ffs, p_path_info_txt, flag_use_binary_mode);
     if (NULL == p_fd)
     {
         ESP_LOGE(TAG, "%s: Can't open: %s", __func__, p_path_info_txt);
@@ -319,28 +314,23 @@ nrf52fw_read_info_txt(FlashFatFs_t *p_ffs, const char *p_path_info_txt, NRF52Fw_
 STATIC bool
 nrf52fw_init_swd(void)
 {
-    bool result = false;
     ESP_LOGI(TAG, "Init SWD");
-    do
+    if (!nrf52swd_init())
     {
-        if (!nrf52swd_init())
-        {
-            ESP_LOGE(TAG, "nrf52swd_init failed");
-            break;
-        }
-        if (!nrf52swd_check_id_code())
-        {
-            ESP_LOGE(TAG, "nrf52swd_check_id_code failed");
-            break;
-        }
-        if (!nrf52swd_debug_halt())
-        {
-            ESP_LOGE(TAG, "nrf52swd_debug_halt failed");
-            break;
-        }
-        result = true;
-    } while (0);
-    return result;
+        ESP_LOGE(TAG, "nrf52swd_init failed");
+        return false;
+    }
+    if (!nrf52swd_check_id_code())
+    {
+        ESP_LOGE(TAG, "nrf52swd_check_id_code failed");
+        return false;
+    }
+    if (!nrf52swd_debug_halt())
+    {
+        ESP_LOGE(TAG, "nrf52swd_debug_halt failed");
+        return false;
+    }
+    return true;
 }
 
 STATIC void
@@ -351,13 +341,13 @@ nrf52fw_deinit_swd(void)
 }
 
 STATIC bool
-nrf52fw_read_current_fw_version(uint32_t *p_fw_ver)
+nrf52fw_read_current_fw_ver(uint32_t *p_fw_ver)
 {
     return nrf52swd_read_mem(NRF52FW_IUCR_FW_VER, 1, p_fw_ver);
 }
 
 STATIC bool
-nrf52fw_write_current_fw_version(const uint32_t fw_ver)
+nrf52fw_write_current_fw_ver(const uint32_t fw_ver)
 {
     return nrf52swd_write_mem(NRF52FW_IUCR_FW_VER, 1, &fw_ver);
 }
@@ -403,55 +393,59 @@ nrf52fw_flash_write_segment(
         {
             ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52fw_file_read");
             flag_stop = true;
-            continue;
         }
-        if (0 == len)
+        else if (0 == len)
         {
             result    = true;
             flag_stop = true;
-            continue;
-            ;
         }
-        if (0 != (len % sizeof(uint32_t)))
+        else if (0 != (len % sizeof(uint32_t)))
         {
             ESP_LOGE(TAG, "%s: bad len %d", __func__, len);
             flag_stop = true;
-            continue;
         }
-        offset += len;
-        if (offset > segment_len)
+        else
         {
-            ESP_LOGE(TAG, "%s: offset %u greater than segment len %u", __func__, offset, segment_len);
-            flag_stop = true;
-            continue;
-        }
-        ESP_LOGI(TAG, "Writing 0x%08x...", addr);
-        if (!nrf52swd_write_mem(addr, len / sizeof(uint32_t), p_tmp_buf->buf_wr))
-        {
-            ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52swd_write_mem");
-            flag_stop = true;
-            continue;
-        }
+            offset += len;
+            if (offset > segment_len)
+            {
+                ESP_LOGE(TAG, "%s: offset %u greater than segment len %u", __func__, offset, segment_len);
+                flag_stop = true;
+            }
+            if (!flag_stop)
+            {
+                ESP_LOGI(TAG, "Writing 0x%08x...", addr);
+                if (!nrf52swd_write_mem(addr, len / sizeof(uint32_t), p_tmp_buf->buf_wr))
+                {
+                    ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52swd_write_mem");
+                    flag_stop = true;
+                }
+            }
 #if NRF52FW_ENABLE_FLASH_VERIFICATION
-        if (!nrf52swd_read_mem(addr, len / sizeof(uint32_t), p_tmp_buf->buf_rd))
-        {
-            ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52swd_read_mem");
-            flag_stop = true;
-            continue;
-        }
-        if (0 != memcmp(p_tmp_buf->buf_wr, p_tmp_buf->buf_rd, len))
-        {
-            ESP_LOGE(TAG, "%s: %s failed", __func__, "verify");
-            flag_stop = true;
-            continue;
-        }
+            if (!flag_stop)
+            {
+                if (!nrf52swd_read_mem(addr, len / sizeof(uint32_t), p_tmp_buf->buf_rd))
+                {
+                    ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52swd_read_mem");
+                    flag_stop = true;
+                }
+            }
+            if (!flag_stop)
+            {
+                if (0 != memcmp(p_tmp_buf->buf_wr, p_tmp_buf->buf_rd, len))
+                {
+                    ESP_LOGE(TAG, "%s: %s failed", __func__, "verify");
+                    flag_stop = true;
+                }
+            }
 #endif
+        }
     }
     return result;
 }
 
 STATIC bool
-nrf52fw_flash_write_segment_from_file(
+nrf52fw_write_segment_from_file(
     FlashFatFs_t *    p_ffs,
     const char *      p_path,
     NRF52Fw_TmpBuf_t *p_tmp_buf,
@@ -517,7 +511,7 @@ nrf52fw_flash_write_firmware(FlashFatFs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf, c
                 p_segment_info->address,
                 p_segment_info->size,
                 p_segment_info->file_name);
-            result = nrf52fw_flash_write_segment_from_file(
+            result = nrf52fw_write_segment_from_file(
                 p_ffs,
                 p_segment_info->file_name,
                 p_tmp_buf,
@@ -536,7 +530,7 @@ nrf52fw_flash_write_firmware(FlashFatFs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf, c
         }
         if (result)
         {
-            result = nrf52fw_write_current_fw_version(p_fw_info->fw_ver.version);
+            result = nrf52fw_write_current_fw_ver(p_fw_info->fw_ver.version);
             if (!result)
             {
                 ESP_LOGE(TAG, "%s: Failed to write firmware version", __func__);
@@ -564,38 +558,35 @@ nrf52fw_calc_segment_crc(
         {
             ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52fw_file_read");
             flag_stop = true;
-            continue;
         }
-        if (0 == len)
+        else if (0 == len)
         {
             result    = true;
             flag_stop = true;
-            continue;
         }
-        if (0 != (len % sizeof(uint32_t)))
+        else if (0 != (len % sizeof(uint32_t)))
         {
             ESP_LOGE(TAG, "%s: bad len %d", __func__, len);
             flag_stop = true;
-            continue;
         }
-        offset += len;
-        if (offset > segment_len)
+        else
         {
-            ESP_LOGE(TAG, "%s: offset %u greater than segment len %u", __func__, offset, segment_len);
-            flag_stop = true;
-            continue;
+            offset += len;
+            if (offset > segment_len)
+            {
+                ESP_LOGE(TAG, "%s: offset %u greater than segment len %u", __func__, offset, segment_len);
+                flag_stop = true;
+                continue;
+            }
+            actual_crc = crc32_le(actual_crc, (void *)p_tmp_buf->buf_wr, len);
         }
-        actual_crc = crc32_le(actual_crc, (void *)p_tmp_buf->buf_wr, len);
     }
     *p_crc = actual_crc;
     return result;
 }
 
 STATIC bool
-nrf52fw_check_firmware_segment_crc(
-    FlashFatFs_t *           p_ffs,
-    NRF52Fw_TmpBuf_t *       p_tmp_buf,
-    const NRF52Fw_Segment_t *p_segment_info)
+nrf52fw_check_fw_segment_crc(FlashFatFs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf, const NRF52Fw_Segment_t *p_segment_info)
 {
     bool                   result = false;
     const FileDescriptor_t fd     = flashfatfs_open(p_ffs, p_segment_info->file_name);
@@ -640,7 +631,7 @@ nrf52fw_check_firmware(FlashFatFs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf, const N
     bool result = true;
     for (uint32_t i = 0; result && (i < p_fw_info->num_segments); ++i)
     {
-        result = nrf52fw_check_firmware_segment_crc(p_ffs, p_tmp_buf, &p_fw_info->segments[i]);
+        result = nrf52fw_check_fw_segment_crc(p_ffs, p_tmp_buf, &p_fw_info->segments[i]);
     }
     return result;
 }
@@ -665,9 +656,9 @@ nrf52fw_update_fw_step3(FlashFatFs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf)
             (unsigned)((fw_info.fw_ver.version >> 8U) & 0xFFU));
 
         uint32_t cur_fw_ver = 0;
-        if (!nrf52fw_read_current_fw_version(&cur_fw_ver))
+        if (!nrf52fw_read_current_fw_ver(&cur_fw_ver))
         {
-            ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52fw_read_current_fw_version");
+            ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52fw_read_current_fw_ver");
             break;
         }
         ESP_LOGI(
@@ -775,7 +766,7 @@ nrf52fw_update_fw_if_necessary(void)
     vTaskDelay(ticks_in_reset_state);
     nrf52fw_hw_reset_nrf52(false);
 
-    const int res = nrf52fw_update_fw_step0();
+    const bool res = nrf52fw_update_fw_step0();
 
     nrf52fw_hw_reset_nrf52(true);
     vTaskDelay(ticks_in_reset_state);
