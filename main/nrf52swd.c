@@ -278,7 +278,7 @@ nrf52swd_check_id_code(void)
 bool
 nrf52swd_debug_halt(void)
 {
-    bool result = false;
+    bool                      result  = false;
     const LibSWD_ReturnCode_t ret_val = libswd_debug_halt(gp_nrf52swd_libswd_ctx, LIBSWD_OPERATION_EXECUTE);
     if (ret_val < 0)
     {
@@ -311,7 +311,7 @@ nrf52swd_debug_run(void)
 static bool
 nrf52swd_read_reg(const uint32_t reg_addr, uint32_t *p_val)
 {
-    bool result = false;
+    bool                      result  = false;
     const LibSWD_ReturnCode_t ret_val = libswd_memap_read_int_32(
         gp_nrf52swd_libswd_ctx,
         LIBSWD_OPERATION_EXECUTE,
@@ -332,13 +332,13 @@ nrf52swd_read_reg(const uint32_t reg_addr, uint32_t *p_val)
 static bool
 nrf52swd_write_reg(const uint32_t reg_addr, const uint32_t val)
 {
-    bool result = false;
+    bool                      result  = false;
     const LibSWD_ReturnCode_t ret_val = libswd_memap_write_int_32(
         gp_nrf52swd_libswd_ctx,
         LIBSWD_OPERATION_EXECUTE,
         reg_addr,
         1,
-        (LibSWD_Data_t*)&val);
+        (LibSWD_Data_t *)&val);
     if (LIBSWD_OK != ret_val)
     {
         ESP_LOGE(TAG, "%s: libswd_memap_write_int_32(0x%08x) failed, err=%d", __func__, reg_addr, ret_val);
@@ -437,8 +437,8 @@ nrf52swd_erase_all(void)
 bool
 nrf52swd_read_mem(const uint32_t addr, const uint32_t num_words, uint32_t *p_buf)
 {
-    bool result = false;
-    const LibSWD_ReturnCode_t res = libswd_memap_read_int_32(
+    bool                      result = false;
+    const LibSWD_ReturnCode_t res    = libswd_memap_read_int_32(
         gp_nrf52swd_libswd_ctx,
         LIBSWD_OPERATION_EXECUTE,
         addr,

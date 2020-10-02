@@ -72,7 +72,7 @@ nrf52fw_parse_digit_update_ver(
     uint32_t *    p_version,
     const uint8_t byte_num)
 {
-    bool result = false;
+    bool    result    = false;
     uint8_t digit_val = 0;
     if (nrf52fw_parse_version_digit(p_token_begin, p_token_end, &digit_val))
     {
