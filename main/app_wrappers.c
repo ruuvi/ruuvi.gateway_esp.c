@@ -9,7 +9,7 @@
 #include <stdlib.h>
 
 typedef unsigned long app_strtoul_result_t;
-typedef long app_strtol_result_t;
+typedef long          app_strtol_result_t;
 
 uint32_t
 app_strtoul_cptr(const char *__restrict p_str, const char **__restrict pp_end, const str2num_base_t base)
@@ -36,7 +36,7 @@ app_strtoul(char *__restrict p_str, char **__restrict pp_end, const str2num_base
 int32_t
 app_strtol_cptr(const char *__restrict p_str, const char **__restrict pp_end, const str2num_base_t base)
 {
-    app_strtol_result_t result = strtol(p_str, (char**)pp_end, base);
+    app_strtol_result_t result = strtol(p_str, (char **)pp_end, base);
     if (result >= INT32_MAX)
     {
         result = INT32_MAX;
