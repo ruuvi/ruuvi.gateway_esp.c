@@ -1132,7 +1132,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_error_on_verify) // NOLINT
 
     ASSERT_FALSE(nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf)));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Writing 0x00001000...");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52fw_flash_write_segment: verify failed");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52fw_flash_write_block: verify failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -1163,7 +1163,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_error_on_read) // NOLINT
 
     ASSERT_FALSE(nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf)));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Writing 0x00001000...");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52fw_flash_write_segment: nrf52swd_read_mem failed");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52fw_flash_write_block: nrf52swd_read_mem failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -1196,7 +1196,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_error_on_write) // NOLINT
 
     ASSERT_FALSE(nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf)));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Writing 0x00001000...");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52fw_flash_write_segment: nrf52swd_write_mem failed");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52fw_flash_write_block: nrf52swd_write_mem failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -1232,7 +1232,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_fail_file_greater_than_expected)
         &tmp_buf,
         segment_addr,
         sizeof(segment_buf) - sizeof(uint32_t)));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52fw_flash_write_segment: offset 64 greater than segment len 60");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52fw_flash_write_block: offset 64 greater than segment len 60");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -1264,7 +1264,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_fail_bad_length) // NOLINT
         MemSegment(segment_addr, sizeof(segment_buf) / sizeof(segment_buf[0]), segment_buf));
 
     ASSERT_FALSE(nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf)));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52fw_flash_write_segment: bad len 63");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52fw_flash_write_block: bad len 63");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -1297,7 +1297,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_fail_after_file_read_error) // N
 
     nrf52fw_simulate_file_read_error(true);
     ASSERT_FALSE(nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf)));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52fw_flash_write_segment: nrf52fw_file_read failed");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52fw_flash_write_block: nrf52fw_file_read failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -1382,7 +1382,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_from_file_error_on_writing_segme
 
     TEST_CHECK_LOG_RECORD_FLASH_FAT_FS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Writing 0x00001000...");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52fw_flash_write_segment: nrf52swd_write_mem failed");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52fw_flash_write_block: nrf52swd_write_mem failed");
     TEST_CHECK_LOG_RECORD(
         ESP_LOG_ERROR,
         "nrf52fw_write_segment_from_file: Failed to write segment 0x00001000 from 'segment_1.bin'");
@@ -1698,7 +1698,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_segment) // NOLIN
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Writing 0x00000200...");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Flash segment 1: 0x00001000 size=1028 from segment_2.bin");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Writing 0x00001000...");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52fw_flash_write_segment: nrf52swd_write_mem failed");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52fw_flash_write_block: nrf52swd_write_mem failed");
     TEST_CHECK_LOG_RECORD(
         ESP_LOG_ERROR,
         "nrf52fw_write_segment_from_file: Failed to write segment 0x00001000 from 'segment_2.bin'");
@@ -3463,7 +3463,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_write_firmware) 
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Flash 3 segments");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Flash segment 0: 0x00000000 size=2816 from segment_1.bin");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Writing 0x00000000...");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52fw_flash_write_segment: nrf52swd_write_mem failed");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52fw_flash_write_block: nrf52swd_write_mem failed");
     TEST_CHECK_LOG_RECORD(
         ESP_LOG_ERROR,
         "nrf52fw_write_segment_from_file: Failed to write segment 0x00000000 from 'segment_1.bin'");

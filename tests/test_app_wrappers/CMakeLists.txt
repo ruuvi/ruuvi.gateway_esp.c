@@ -1,21 +1,13 @@
 cmake_minimum_required(VERSION 3.7)
 
-project(ruuvi_gateway_esp-test-nrf52fw)
-set(ProjectId ruuvi_gateway_esp-test-nrf52fw)
+project(ruuvi_gateway_esp-test-app_wrappers)
+set(ProjectId ruuvi_gateway_esp-test-app_wrappers)
 
 add_executable(${ProjectId}
-        test_nrf52fw.cpp
-        TQueue.hpp
-        esp_log_wrapper.cpp
-        esp_log_wrapper.hpp
-        crc.cpp
+        test_app_strtoul.cpp
+        test_app_strtol.cpp
         ../../main/app_wrappers.c
         ../../main/app_wrappers.h
-        ../../main/nrf52fw.c
-        ../../main/nrf52fw.h
-        ../../main/flashfatfs.c
-        ../../main/flashfatfs.h
-        include/esp_log.h
 )
 
 set_target_properties(${ProjectId} PROPERTIES
@@ -29,15 +21,10 @@ target_include_directories(${ProjectId} PUBLIC
         ../../main
         include
         ${CMAKE_CURRENT_SOURCE_DIR}
-        $ENV{IDF_PATH}/components/esp_rom/include
-        ../Posix_GCC_Simulator/FreeRTOS_Posix/FreeRTOS_Kernel/include
-        ../Posix_GCC_Simulator/FreeRTOS_Posix/FreeRTOS_Kernel/portable/GCC/Posix
-        ../Posix_GCC_Simulator/FreeRTOS_Posix
 )
 
 target_compile_definitions(${ProjectId} PUBLIC
-        RUUVI_TESTS_NRF52FW=1
-        GW_NRF_PARTITION="fatfs_nrf52"
+        RUUVI_TESTS_APP_MALLOC=1
 )
 
 target_compile_options(${ProjectId} PUBLIC

@@ -11,6 +11,7 @@ add_subdirectory(googletest)
 add_subdirectory(Posix_GCC_Simulator)
 
 add_subdirectory(test_app_malloc)
+add_subdirectory(test_app_wrappers)
 add_subdirectory(test_bin2hex)
 add_subdirectory(test_flashfatfs)
 add_subdirectory(test_leds)
@@ -19,6 +20,11 @@ add_subdirectory(test_nrf52fw)
 add_test(NAME test_app_malloc
         COMMAND ruuvi_gateway_esp-test-app_malloc
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-app_malloc>/gtestresults.xml
+)
+
+add_test(NAME test_app_wrappers
+        COMMAND ruuvi_gateway_esp-test-app_wrappers
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-app_wrappers>/gtestresults.xml
 )
 
 add_test(NAME test_bin2hex

@@ -1,5 +1,5 @@
 /**
- * @file nrf52fw.h
+ * @file nrf52fw.c
  * @author TheSomeMan
  * @date 2020-09-13
  * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
@@ -9,7 +9,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <sys/stat.h>
 #include "esp_log.h"
 #include "flashfatfs.h"
 #include "nrf52swd.h"
@@ -17,6 +16,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "app_malloc.h"
+#include "app_wrappers.h"
 #if RUUVI_TESTS_NRF52FW
 #include <stdio.h>
 #endif
@@ -35,12 +35,12 @@ static const char *TAG = "nRF52Fw";
 STATIC bool
 nrf52fw_parse_version_digit(const char *p_digit_str, const char *p_digit_str_end, uint8_t *p_digit)
 {
-    bool  result = false;
-    char *end    = (void *)p_digit_str_end;
+    bool        result = false;
+    const char *end    = p_digit_str_end;
 
     do
     {
-        const uint32_t val = (uint32_t)strtoul(p_digit_str, &end, 10);
+        const uint32_t val = app_strtoul_cptr(p_digit_str, &end, 10);
         if (NULL == p_digit_str_end)
         {
             if ('\0' != *end)
@@ -166,7 +166,7 @@ nrf52fw_line_rstrip(char *p_line_buf, const size_t line_buf_size)
     p_line_buf[line_buf_size - 1] = '\0';
     size_t len                    = strlen(p_line_buf);
     bool   flag_stop              = false;
-    while ((len > 0) && !flag_stop)
+    while ((len > 0) && (!flag_stop))
     {
         len -= 1;
         switch (p_line_buf[len])
@@ -191,8 +191,8 @@ nrf52fw_parse_segment_info_line(const char *p_version_line, NRF52Fw_Segment_t *p
     do
     {
         const char *   p_token_start = p_version_line;
-        char *         end           = NULL;
-        const uint32_t segment_addr  = (uint32_t)strtoul(p_token_start, &end, 16);
+        const char *   end           = NULL;
+        const uint32_t segment_addr  = app_strtoul_cptr(p_token_start, &end, 16);
         if ((' ' != *end) && ('\t' != *end))
         {
             break;
@@ -203,7 +203,7 @@ nrf52fw_parse_segment_info_line(const char *p_version_line, NRF52Fw_Segment_t *p
         }
         p_token_start              = end;
         end                        = NULL;
-        const uint32_t segment_len = (uint32_t)strtoul(p_token_start, &end, 0);
+        const uint32_t segment_len = app_strtoul_cptr(p_token_start, &end, 0);
         if ((' ' != *end) && ('\t' != *end))
         {
             break;
@@ -226,7 +226,7 @@ nrf52fw_parse_segment_info_line(const char *p_version_line, NRF52Fw_Segment_t *p
         }
         p_token_start              = end;
         end                        = NULL;
-        const uint32_t segment_crc = (uint32_t)strtoul(p_token_start, &end, 16);
+        const uint32_t segment_crc = app_strtoul_cptr(p_token_start, &end, 16);
         if ('\0' != *end)
         {
             break;
@@ -237,7 +237,7 @@ nrf52fw_parse_segment_info_line(const char *p_version_line, NRF52Fw_Segment_t *p
             p_segment->file_name,
             sizeof(p_segment->file_name),
             "%.*s",
-            (int)segment_file_name_len,
+            (app_print_precision_t)segment_file_name_len,
             p_segment_file_name_begin);
         p_segment->crc = segment_crc;
         result         = true;
@@ -376,71 +376,74 @@ nrf52fw_file_read(const FileDescriptor_t fd, void *p_buf, const size_t buf_size)
 }
 
 STATIC bool
+nrf52fw_flash_write_block(
+    NRF52Fw_TmpBuf_t *p_tmp_buf,
+    const int32_t     len,
+    const uint32_t    segment_addr,
+    const size_t      segment_len,
+    uint32_t *        p_offset)
+{
+    const uint32_t addr = segment_addr + *p_offset;
+    if (0 == len)
+    {
+        return true;
+    }
+    else if (len < 0)
+    {
+        ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52fw_file_read");
+        return false;
+    }
+    else if (0 != (len % sizeof(uint32_t)))
+    {
+        ESP_LOGE(TAG, "%s: bad len %d", __func__, len);
+        return false;
+    }
+    *p_offset += len;
+    if (*p_offset > segment_len)
+    {
+        ESP_LOGE(TAG, "%s: offset %u greater than segment len %u", __func__, *p_offset, segment_len);
+        return false;
+    }
+    ESP_LOGI(TAG, "Writing 0x%08x...", addr);
+    if (!nrf52swd_write_mem(addr, len / sizeof(uint32_t), p_tmp_buf->buf_wr))
+    {
+        ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52swd_write_mem");
+        return false;
+    }
+#if NRF52FW_ENABLE_FLASH_VERIFICATION
+    if (!nrf52swd_read_mem(addr, len / sizeof(uint32_t), p_tmp_buf->buf_rd))
+    {
+        ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52swd_read_mem");
+        return false;
+    }
+    if (0 != memcmp(p_tmp_buf->buf_wr, p_tmp_buf->buf_rd, len))
+    {
+        ESP_LOGE(TAG, "%s: %s failed", __func__, "verify");
+        return false;
+    }
+#endif
+    return true;
+}
+
+STATIC bool
 nrf52fw_flash_write_segment(
     const FileDescriptor_t fd,
     NRF52Fw_TmpBuf_t *     p_tmp_buf,
     const uint32_t         segment_addr,
     const size_t           segment_len)
 {
-    bool     result    = false;
-    uint32_t offset    = 0;
-    bool     flag_stop = false;
-    while (!flag_stop)
+    bool     result = true;
+    uint32_t offset = 0;
+    int32_t  len    = 0;
+    do
     {
-        const uint32_t addr = segment_addr + offset;
-        int32_t        len  = nrf52fw_file_read(fd, p_tmp_buf->buf_wr, sizeof(p_tmp_buf->buf_wr));
-        if (len < 0)
+        len = nrf52fw_file_read(fd, p_tmp_buf->buf_wr, sizeof(p_tmp_buf->buf_wr));
+        if (!nrf52fw_flash_write_block(p_tmp_buf, len, segment_addr, segment_len, &offset))
         {
-            ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52fw_file_read");
-            flag_stop = true;
+            result = false;
+            break;
         }
-        else if (0 == len)
-        {
-            result    = true;
-            flag_stop = true;
-        }
-        else if (0 != (len % sizeof(uint32_t)))
-        {
-            ESP_LOGE(TAG, "%s: bad len %d", __func__, len);
-            flag_stop = true;
-        }
-        else
-        {
-            offset += len;
-            if (offset > segment_len)
-            {
-                ESP_LOGE(TAG, "%s: offset %u greater than segment len %u", __func__, offset, segment_len);
-                flag_stop = true;
-            }
-            if (!flag_stop)
-            {
-                ESP_LOGI(TAG, "Writing 0x%08x...", addr);
-                if (!nrf52swd_write_mem(addr, len / sizeof(uint32_t), p_tmp_buf->buf_wr))
-                {
-                    ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52swd_write_mem");
-                    flag_stop = true;
-                }
-            }
-#if NRF52FW_ENABLE_FLASH_VERIFICATION
-            if (!flag_stop)
-            {
-                if (!nrf52swd_read_mem(addr, len / sizeof(uint32_t), p_tmp_buf->buf_rd))
-                {
-                    ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52swd_read_mem");
-                    flag_stop = true;
-                }
-            }
-            if (!flag_stop)
-            {
-                if (0 != memcmp(p_tmp_buf->buf_wr, p_tmp_buf->buf_rd, len))
-                {
-                    ESP_LOGE(TAG, "%s: %s failed", __func__, "verify");
-                    flag_stop = true;
-                }
-            }
-#endif
-        }
-    }
+    } while (0 != len);
     return result;
 }
 
