@@ -2,6 +2,8 @@ idf_component_register(
         SRCS
             app_malloc.c
             app_malloc.h
+            app_wrappers.c
+            app_wrappers.h
             bin2hex.c
             bin2hex.h
             flashfatfs.c
