@@ -97,7 +97,9 @@ flashfatfs_fopen(FlashFatFs_t *p_ffs, const char *file_path, const bool flag_use
 {
     char tmp_path[80];
     snprintf(tmp_path, sizeof(tmp_path), "%s/%s", p_ffs->mount_point, file_path);
-    FILE *fd = fopen(tmp_path, flag_use_binary_mode ? "rb" : "r");
+    const char *mode = flag_use_binary_mode ? "rb" : "r";
+
+    FILE *fd = fopen(tmp_path, mode);
     if (NULL == fd)
     {
         ESP_LOGE(TAG, "Can't open: %s", tmp_path);

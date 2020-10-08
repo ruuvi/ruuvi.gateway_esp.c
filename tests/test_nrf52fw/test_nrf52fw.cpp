@@ -1297,7 +1297,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_fail_after_file_read_error) // N
 
     nrf52fw_simulate_file_read_error(true);
     ASSERT_FALSE(nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf)));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52fw_flash_write_block: nrf52fw_file_read failed");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52fw_flash_write_segment: nrf52fw_file_read failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }

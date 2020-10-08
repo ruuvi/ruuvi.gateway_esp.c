@@ -45,6 +45,11 @@ app_strtol_cptr(const char *__restrict p_str, const char **__restrict pp_end, co
     {
         result = INT32_MIN;
     }
+    else
+    {
+        // MISRA C:2004, 14.10 - All if...else if constructs shall be terminated with an else clause.
+        // MISRA C:2012, 15.7 - All if...else if constructs shall be terminated with an else statement
+    }
     return (int32_t)result;
 }
 
@@ -59,6 +64,11 @@ app_strtol(char *__restrict p_str, char **__restrict pp_end, const str2num_base_
     else if (result <= INT32_MIN)
     {
         result = INT32_MIN;
+    }
+    else
+    {
+        // MISRA C:2004, 14.10 - All if...else if constructs shall be terminated with an else clause.
+        // MISRA C:2012, 15.7 - All if...else if constructs shall be terminated with an else statement
     }
     return (int32_t)result;
 }

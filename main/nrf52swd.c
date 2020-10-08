@@ -332,13 +332,14 @@ nrf52swd_read_reg(const uint32_t reg_addr, uint32_t *p_val)
 static bool
 nrf52swd_write_reg(const uint32_t reg_addr, const uint32_t val)
 {
-    bool                      result  = false;
-    const LibSWD_ReturnCode_t ret_val = libswd_memap_write_int_32(
+    bool                      result   = false;
+    LibSWD_Data_t             data_val = val;
+    const LibSWD_ReturnCode_t ret_val  = libswd_memap_write_int_32(
         gp_nrf52swd_libswd_ctx,
         LIBSWD_OPERATION_EXECUTE,
         reg_addr,
         1,
-        (LibSWD_Data_t *)&val);
+        &data_val);
     if (LIBSWD_OK != ret_val)
     {
         ESP_LOGE(TAG, "%s: libswd_memap_write_int_32(0x%08x) failed, err=%d", __func__, reg_addr, ret_val);
