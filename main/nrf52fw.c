@@ -17,6 +17,11 @@
 #include "freertos/task.h"
 #include "app_malloc.h"
 #include "app_wrappers.h"
+
+#if !defined(RUUVI_TESTS_NRF52FW)
+#define RUUVI_TESTS_NRF52FW (0)
+#endif
+
 #if RUUVI_TESTS_NRF52FW
 #include <stdio.h>
 #endif

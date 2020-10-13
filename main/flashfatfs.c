@@ -15,6 +15,14 @@
 #include "wear_levelling.h"
 #include "app_malloc.h"
 
+#if !defined(RUUVI_TESTS_NRF52FW)
+#define RUUVI_TESTS_NRF52FW (0)
+#endif
+
+#if !defined(RUUVI_TESTS_FLASHFATFS)
+#define RUUVI_TESTS_FLASHFATFS (0)
+#endif
+
 static const char *TAG = "FlashFatFS";
 
 struct FlashFatFs_Tag
