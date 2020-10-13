@@ -38,35 +38,40 @@ flashfatfs_mount(const char *mount_point, const char *partition_label, const Fla
 #if RUUVI_TESTS_NRF52FW || RUUVI_TESTS_FLASHFATFS
     mount_point_prefix = (mount_point[0] == '/') ? "." : "";
 #endif
-    size_t        mount_point_buf_size = strlen(mount_point_prefix) + strlen(mount_point) + 1;
-    FlashFatFs_t *pObj                 = app_calloc(1, sizeof(*pObj) + mount_point_buf_size);
-    if (NULL == pObj)
+    size_t mount_point_buf_size = strlen(mount_point_prefix) + strlen(mount_point) + 1;
+
+    FlashFatFs_t *p_obj = app_calloc(1, sizeof(*p_obj) + mount_point_buf_size);
+    if (NULL == p_obj)
     {
         ESP_LOGE(TAG, "%s: Can't allocate memory", __func__);
     }
     else
     {
-        pObj->mount_point = (void *)(pObj + 1);
-        snprintf(pObj->mount_point, mount_point_buf_size, "%s%s", mount_point_prefix, mount_point);
+        p_obj->mount_point = (void *)(p_obj + 1);
+        snprintf(p_obj->mount_point, mount_point_buf_size, "%s%s", mount_point_prefix, mount_point);
 
         esp_vfs_fat_sdmmc_mount_config_t mount_config = {
             .format_if_mount_failed = false,
             .max_files              = max_files,
             .allocation_unit_size   = 512U,
         };
-        const esp_err_t err = esp_vfs_fat_spiflash_mount(mount_point, partition_label, &mount_config, &pObj->wl_handle);
+        const esp_err_t err = esp_vfs_fat_spiflash_mount(
+            mount_point,
+            partition_label,
+            &mount_config,
+            &p_obj->wl_handle);
         if (ESP_OK != err)
         {
             ESP_LOGE(TAG, "%s: %s failed, err=%d", __func__, "esp_vfs_fat_spiflash_mount", err);
-            app_free(pObj);
-            pObj = NULL;
+            app_free(p_obj);
+            p_obj = NULL;
         }
         else
         {
             ESP_LOGI(TAG, "Partition '%s' mounted successfully to %s", partition_label, mount_point);
         }
     }
-    return pObj;
+    return p_obj;
 }
 
 bool

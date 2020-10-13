@@ -8,7 +8,6 @@
 #include "nrf52fw.h"
 #include <string.h>
 #include <unistd.h>
-#include <stdlib.h>
 #include "esp_log.h"
 #include "flashfatfs.h"
 #include "nrf52swd.h"
@@ -17,14 +16,6 @@
 #include "freertos/task.h"
 #include "app_malloc.h"
 #include "app_wrappers.h"
-
-#if !defined(RUUVI_TESTS_NRF52FW)
-#define RUUVI_TESTS_NRF52FW (0)
-#endif
-
-#if RUUVI_TESTS_NRF52FW
-#include <stdio.h>
-#endif
 
 #if RUUVI_TESTS_NRF52FW
 #define STATIC
@@ -255,7 +246,7 @@ nrf52fw_parse_info_file(FILE *p_fd, NRF52Fw_Info_t *p_info)
         }
         else
         {
-            if (p_info->num_segments >= sizeof(p_info->segments) / sizeof(p_info->segments[0]))
+            if (p_info->num_segments >= (sizeof(p_info->segments) / sizeof(p_info->segments[0])))
             {
                 err_line_num = line_cnt;
                 break;

@@ -12,6 +12,10 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#if !defined(RUUVI_TESTS_NRF52FW)
+#define RUUVI_TESTS_NRF52FW (0)
+#endif
+
 #if RUUVI_TESTS_NRF52FW
 #include <stdio.h>
 #include "flashfatfs.h"
