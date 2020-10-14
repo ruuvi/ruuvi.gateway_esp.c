@@ -103,7 +103,7 @@ mac_address_to_str(const mac_address_bin_t *p_mac)
     snprintf(
         mac_str.str_buf,
         sizeof(mac_str.str_buf),
-        "%02x:%02x:%02x:%02x:%02x:%02x",
+        "%02X:%02X:%02X:%02X:%02X:%02X",
         mac[0],
         mac[1],
         mac[2],
