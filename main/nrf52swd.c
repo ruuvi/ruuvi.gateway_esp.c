@@ -7,6 +7,8 @@
 
 #include "nrf52swd.h"
 #include <stdbool.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include <driver/spi_master.h>
 #include <driver/gpio.h>
 #include "libswd.h"
@@ -368,6 +370,7 @@ nrf51swd_nvmc_wait_while_busy(void)
             result = true;
             break;
         }
+        vTaskDelay(0);
     }
     return result;
 }
