@@ -63,14 +63,14 @@ ruuvi_send_nrf_settings(ruuvi_gateway_config_t *config)
 
     api_send_all(
         RE_CA_UART_SET_ALL,
-        (__u16)config->company_id,
-        (__u8)BOOL_TO_U8(config->company_filter),
-        (__u8)BOOL_TO_U8(config->scan_coded_phy),
-        (__u8)BOOL_TO_U8(config->scan_extended_payload),
-        (__u8)BOOL_TO_U8(config->scan_1mbit_phy),
-        (__u8)BOOL_TO_U8(config->scan_channel_37),
-        (__u8)BOOL_TO_U8(config->scan_channel_38),
-        (__u8)BOOL_TO_U8(config->scan_channel_39));
+        (uint16_t)config->company_id,
+        (uint8_t)BOOL_TO_U8(config->company_filter),
+        (uint8_t)BOOL_TO_U8(config->scan_coded_phy),
+        (uint8_t)BOOL_TO_U8(config->scan_extended_payload),
+        (uint8_t)BOOL_TO_U8(config->scan_1mbit_phy),
+        (uint8_t)BOOL_TO_U8(config->scan_channel_37),
+        (uint8_t)BOOL_TO_U8(config->scan_channel_38),
+        (uint8_t)BOOL_TO_U8(config->scan_channel_39));
 }
 
 void

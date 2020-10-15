@@ -30,15 +30,6 @@
 #define ETH_DISCONNECTED_BIT (1U << 3U)
 #define ETH_CONNECTED_BIT    (1U << 4U)
 
-#ifdef RUUVI_ESP
-typedef uint8_t  __u8;
-typedef int8_t   __s8;
-typedef uint16_t __u16;
-typedef int16_t  __s16;
-typedef uint32_t __u32;
-typedef int32_t  __s32;
-#endif
-
 typedef struct mac_address_bin
 {
     uint8_t mac[6];
