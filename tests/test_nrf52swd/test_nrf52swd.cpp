@@ -83,6 +83,7 @@ protected:
             this->m_spi_bus_config                = spi_buf_config;
             this->m_spi_dma_chan                  = -1;
             this->m_spi_bus_initialize_result     = ESP_OK;
+            this->m_spi_bus_free_result           = ESP_OK;
         }
         {
             this->m_spi_add_device_host                    = (spi_host_device_t)-1;
@@ -90,6 +91,7 @@ protected:
             this->m_spi_add_device_config                  = dev_config;
             this->m_spi_add_device_desc.stub               = 0;
             this->m_spi_add_device_result                  = ESP_OK;
+            this->m_spi_remove_device_result               = ESP_OK;
         }
         {
             this->m_libswd_init_failed = false;
@@ -156,11 +158,13 @@ public:
     spi_bus_config_t  m_spi_bus_config;
     int               m_spi_dma_chan;
     esp_err_t         m_spi_bus_initialize_result;
+    esp_err_t         m_spi_bus_free_result;
 
     spi_host_device_t             m_spi_add_device_host;
     spi_device_interface_config_t m_spi_add_device_config;
     spi_device_t                  m_spi_add_device_desc;
     esp_err_t                     m_spi_add_device_result;
+    esp_err_t                     m_spi_remove_device_result;
 
     libswd_ctx_t    m_libswd_ctx;
     libswd_driver_t m_libswd_driver;
@@ -284,7 +288,7 @@ spi_bus_initialize(spi_host_device_t host, const spi_bus_config_t *bus_config, i
 esp_err_t
 spi_bus_free(spi_host_device_t host)
 {
-    return ESP_OK;
+    return g_pTestClass->m_spi_bus_free_result;
 }
 
 esp_err_t
@@ -301,7 +305,7 @@ spi_bus_remove_device(spi_device_handle_t handle)
 {
     assert(handle == &g_pTestClass->m_spi_add_device_desc);
     g_pTestClass->m_spi_add_device_host = (spi_host_device_t)-1;
-    return ESP_OK;
+    return g_pTestClass->m_spi_remove_device_result;
 }
 
 libswd_ctx_t *
@@ -519,7 +523,7 @@ TEST_F(TestNRF52Swd, init_spi_add_device_fail) // NOLINT
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
-TEST_F(TestNRF52Swd, init_ok) // NOLINT
+TEST_F(TestNRF52Swd, init_ok_deinit_ok) // NOLINT
 {
     ASSERT_TRUE(nrf52swd_init());
 
@@ -539,6 +543,56 @@ TEST_F(TestNRF52Swd, init_ok) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "libswd_deinit");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_remove_device");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_free");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestNRF52Swd, init_ok_deinit_fail_at_spi_bus_remove_device) // NOLINT
+{
+    ASSERT_TRUE(nrf52swd_init());
+
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52 SWD init");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_initialize");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_add_device");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "libswd_init");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "libswd_debug_init");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "nrf52swd_init ok");
+    ASSERT_NE(nullptr, this->m_libswd_ctx.driver);
+    ASSERT_NE(nullptr, this->m_libswd_ctx.driver->device);
+    ASSERT_EQ(LIBSWD_OPERATION_EXECUTE, this->m_libswd_debug_init_operation);
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+
+    this->m_spi_remove_device_result = ESP_FAIL;
+    nrf52swd_deinit();
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52 SWD deinit");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "libswd_deinit");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_remove_device");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_deinit: spi_bus_remove_device failed, err=-1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_free");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestNRF52Swd, init_ok_deinit_fail_at_spi_bus_free) // NOLINT
+{
+    ASSERT_TRUE(nrf52swd_init());
+
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52 SWD init");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_initialize");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_add_device");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "libswd_init");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "libswd_debug_init");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "nrf52swd_init ok");
+    ASSERT_NE(nullptr, this->m_libswd_ctx.driver);
+    ASSERT_NE(nullptr, this->m_libswd_ctx.driver->device);
+    ASSERT_EQ(LIBSWD_OPERATION_EXECUTE, this->m_libswd_debug_init_operation);
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+
+    this->m_spi_bus_free_result = ESP_FAIL;
+    nrf52swd_deinit();
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52 SWD deinit");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "libswd_deinit");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_remove_device");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_free");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_deinit: spi_bus_free failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -588,7 +642,7 @@ TEST_F(TestNRF52Swd, init_failed_on_libswd_init) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_initialize");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_add_device");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "libswd_init");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_init_without_err_handling: libswd_init failed, err=-1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_init_internal: libswd_init failed, err=-1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52 SWD deinit");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_remove_device");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_free");
@@ -605,7 +659,7 @@ TEST_F(TestNRF52Swd, init_failed_on_libswd_debug_init) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_add_device");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "libswd_init");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "libswd_debug_init");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_init_without_err_handling: libswd_debug_init failed, err=-1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_libswd_debug_init: libswd_debug_init failed, err=-1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52 SWD deinit");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "libswd_deinit");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_remove_device");

@@ -65,7 +65,7 @@ bool
 nrf52swd_init_gpio_cfg_nreset(void)
 {
     const gpio_config_t io_conf_nrf52_nreset = {
-        .pin_bit_mask = (1ULL << (unsigned)NRF52_GPIO_NRST),
+        .pin_bit_mask = (1ULL << (uint32_t)NRF52_GPIO_NRST),
         .mode         = GPIO_MODE_OUTPUT,
         .pull_up_en   = 1,
         .pull_down_en = 0,
@@ -109,7 +109,20 @@ nrf52swd_init_spi_add_device(void)
 }
 
 static bool
-nrf52swd_init_without_err_handling(void)
+nrf52swd_libswd_debug_init(void)
+{
+    ESP_LOGD(TAG, "libswd_debug_init");
+    const LibSWD_ReturnCode_t ret_val = libswd_debug_init(gp_nrf52swd_libswd_ctx, LIBSWD_OPERATION_EXECUTE);
+    if (ret_val < 0)
+    {
+        NRF52SWD_LOG_ERR("libswd_debug_init", ret_val);
+        return false;
+    }
+    return true;
+}
+
+static bool
+nrf52swd_init_internal(void)
 {
     ESP_LOGI(TAG, "nRF52 SWD init");
     if (!nrf52swd_init_gpio_cfg_nreset())
@@ -140,14 +153,9 @@ nrf52swd_init_without_err_handling(void)
 
     libswd_log_level_set(gp_nrf52swd_libswd_ctx, LIBSWD_LOGLEVEL_DEBUG);
     gp_nrf52swd_libswd_ctx->driver->device = &g_nrf52swd_device_spi;
-    ESP_LOGD(TAG, "libswd_debug_init");
+    if (!nrf52swd_libswd_debug_init())
     {
-        const LibSWD_ReturnCode_t ret_val = libswd_debug_init(gp_nrf52swd_libswd_ctx, LIBSWD_OPERATION_EXECUTE);
-        if (ret_val < 0)
-        {
-            NRF52SWD_LOG_ERR("libswd_debug_init", ret_val);
-            return false;
-        }
+        return false;
     }
 
     ESP_LOGD(TAG, "nrf52swd_init ok");
@@ -157,7 +165,7 @@ nrf52swd_init_without_err_handling(void)
 bool
 nrf52swd_init(void)
 {
-    if (!nrf52swd_init_without_err_handling())
+    if (!nrf52swd_init_internal())
     {
         nrf52swd_deinit();
         return false;
