@@ -11,6 +11,16 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#if !defined(RUUVI_TESTS_NRF52SWD)
+#define RUUVI_TESTS_NRF52SWD (0)
+#endif
+
+#if RUUVI_TESTS_NRF52SWD
+#define NRF52SWD_STATIC
+#else
+#define NRF52SWD_STATIC static
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -34,9 +44,6 @@ bool
 nrf52swd_debug_run(void);
 
 bool
-nrf52swd_erase_page(const uint32_t page_address);
-
-bool
 nrf52swd_erase_all(void);
 
 bool
@@ -44,6 +51,38 @@ nrf52swd_read_mem(const uint32_t addr, const uint32_t num_words, uint32_t *p_buf
 
 bool
 nrf52swd_write_mem(const uint32_t addr, const uint32_t num_words, const uint32_t *p_buf);
+
+#if RUUVI_TESTS_NRF52SWD
+
+NRF52SWD_STATIC
+bool
+nrf52swd_init_gpio_cfg_nreset(void);
+
+NRF52SWD_STATIC
+bool
+nrf52swd_init_spi_init(void);
+
+NRF52SWD_STATIC
+bool
+nrf52swd_init_spi_add_device(void);
+
+NRF52SWD_STATIC
+bool
+nrf52swd_read_reg(const uint32_t reg_addr, uint32_t *p_val);
+
+NRF52SWD_STATIC
+bool
+nrf52swd_write_reg(const uint32_t reg_addr, const uint32_t val);
+
+NRF52SWD_STATIC
+bool
+nrf51swd_nvmc_is_ready_or_err(bool *p_result);
+
+NRF52SWD_STATIC
+bool
+nrf51swd_nvmc_wait_while_busy(void);
+
+#endif
 
 #ifdef __cplusplus
 }

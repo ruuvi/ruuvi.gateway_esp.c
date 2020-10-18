@@ -60,10 +60,10 @@ static libswd_ctx_t *      gp_nrf52swd_libswd_ctx;
 static bool                g_nrf52swd_is_spi_initialized;
 static bool                g_nrf52swd_is_spi_device_added;
 
-static bool
+NRF52SWD_STATIC
+bool
 nrf52swd_init_gpio_cfg_nreset(void)
 {
-    bool                result               = false;
     const gpio_config_t io_conf_nrf52_nreset = {
         .pin_bit_mask = (1ULL << (unsigned)NRF52_GPIO_NRST),
         .mode         = GPIO_MODE_OUTPUT,
@@ -75,97 +75,94 @@ nrf52swd_init_gpio_cfg_nreset(void)
     if (ESP_OK != err)
     {
         NRF52SWD_LOG_ERR("gpio_config(nRF52 nRESET)", err);
+        return false;
     }
-    else
-    {
-        result = true;
-    }
-    return result;
+    return true;
 }
 
-static bool
+NRF52SWD_STATIC
+bool
 nrf52swd_init_spi_init(void)
 {
-    bool            result = false;
-    const esp_err_t err    = spi_bus_initialize(HSPI_HOST, &pinsSPI, 0);
+    ESP_LOGD(TAG, "spi_bus_initialize");
+    const esp_err_t err = spi_bus_initialize(HSPI_HOST, &pinsSPI, 0);
     if (ESP_OK != err)
     {
         NRF52SWD_LOG_ERR("spi_bus_initialize", err);
+        return false;
     }
-    else
-    {
-        result = true;
-    }
-    return result;
+    return true;
 }
 
-static bool
+NRF52SWD_STATIC
+bool
 nrf52swd_init_spi_add_device(void)
 {
-    bool            result = false;
-    const esp_err_t err    = spi_bus_add_device(HSPI_HOST, &confSPI, &g_nrf52swd_device_spi);
+    ESP_LOGD(TAG, "spi_bus_add_device");
+    const esp_err_t err = spi_bus_add_device(HSPI_HOST, &confSPI, &g_nrf52swd_device_spi);
     if (ESP_OK != err)
     {
         NRF52SWD_LOG_ERR("spi_bus_add_device", err);
+        return false;
     }
-    else
+    return true;
+}
+
+static bool
+nrf52swd_init_without_err_handling(void)
+{
+    ESP_LOGI(TAG, "nRF52 SWD init");
+    if (!nrf52swd_init_gpio_cfg_nreset())
     {
-        result = true;
+        return false;
     }
-    return result;
+
+    nrf52swd_reset(false);
+    if (!nrf52swd_init_spi_init())
+    {
+        return false;
+    }
+
+    g_nrf52swd_is_spi_initialized = true;
+    if (!nrf52swd_init_spi_add_device())
+    {
+        return false;
+    }
+
+    g_nrf52swd_is_spi_device_added = true;
+    ESP_LOGD(TAG, "libswd_init");
+    gp_nrf52swd_libswd_ctx = libswd_init();
+    if (NULL == gp_nrf52swd_libswd_ctx)
+    {
+        NRF52SWD_LOG_ERR("libswd_init", -1);
+        return false;
+    }
+
+    libswd_log_level_set(gp_nrf52swd_libswd_ctx, LIBSWD_LOGLEVEL_DEBUG);
+    gp_nrf52swd_libswd_ctx->driver->device = &g_nrf52swd_device_spi;
+    ESP_LOGD(TAG, "libswd_debug_init");
+    {
+        const LibSWD_ReturnCode_t ret_val = libswd_debug_init(gp_nrf52swd_libswd_ctx, LIBSWD_OPERATION_EXECUTE);
+        if (ret_val < 0)
+        {
+            NRF52SWD_LOG_ERR("libswd_debug_init", ret_val);
+            return false;
+        }
+    }
+
+    ESP_LOGD(TAG, "nrf52swd_init ok");
+    return true;
 }
 
 bool
 nrf52swd_init(void)
 {
-    ESP_LOGI(TAG, "nRF52 SWD init");
-    bool result = nrf52swd_init_gpio_cfg_nreset();
-    if (result)
-    {
-        nrf52swd_reset(false);
-        result = nrf52swd_init_spi_init();
-    }
-
-    if (result)
-    {
-        g_nrf52swd_is_spi_initialized = true;
-        result                        = nrf52swd_init_spi_add_device();
-    }
-
-    if (result)
-    {
-        g_nrf52swd_is_spi_device_added = true;
-        ESP_LOGD(TAG, "libswd_init");
-        gp_nrf52swd_libswd_ctx = libswd_init();
-        if (NULL == gp_nrf52swd_libswd_ctx)
-        {
-            NRF52SWD_LOG_ERR("libswd_init", -1);
-            result = false;
-        }
-    }
-
-    if (result)
-    {
-        libswd_log_level_set(gp_nrf52swd_libswd_ctx, LIBSWD_LOGLEVEL_DEBUG);
-        gp_nrf52swd_libswd_ctx->driver->device = &g_nrf52swd_device_spi;
-        ESP_LOGD(TAG, "libswd_debug_init");
-        const LibSWD_ReturnCode_t ret_val = libswd_debug_init(gp_nrf52swd_libswd_ctx, LIBSWD_OPERATION_EXECUTE);
-        if (ret_val < 0)
-        {
-            NRF52SWD_LOG_ERR("libswd_debug_init", ret_val);
-            result = false;
-        }
-    }
-
-    if (result)
-    {
-        ESP_LOGD(TAG, "nrf52swd_init ok");
-    }
-    else
+    if (!nrf52swd_init_without_err_handling())
     {
         nrf52swd_deinit();
+        return false;
     }
-    return result;
+    return true;
 }
 
 void
@@ -174,6 +171,7 @@ nrf52swd_deinit(void)
     ESP_LOGI(TAG, "nRF52 SWD deinit");
     if (NULL != gp_nrf52swd_libswd_ctx)
     {
+        ESP_LOGD(TAG, "libswd_deinit");
         libswd_deinit(gp_nrf52swd_libswd_ctx);
         gp_nrf52swd_libswd_ctx = NULL;
     }
@@ -181,6 +179,7 @@ nrf52swd_deinit(void)
     {
         g_nrf52swd_is_spi_device_added = false;
 
+        ESP_LOGD(TAG, "spi_bus_remove_device");
         const esp_err_t err = spi_bus_remove_device(g_nrf52swd_device_spi);
         if (ESP_OK != err)
         {
@@ -192,6 +191,7 @@ nrf52swd_deinit(void)
     {
         g_nrf52swd_is_spi_initialized = false;
 
+        ESP_LOGD(TAG, "spi_bus_free");
         const esp_err_t err = spi_bus_free(HSPI_HOST);
         if (ESP_OK != err)
         {
@@ -212,22 +212,17 @@ nrf52swd_reset(const bool flag_reset)
     {
         res = gpio_set_level(NRF52_GPIO_NRST, 1U);
     }
-    bool result = false;
     if (ESP_OK != res)
     {
         NRF52SWD_LOG_ERR("gpio_set_level", res);
+        return false;
     }
-    else
-    {
-        result = true;
-    }
-    return result;
+    return true;
 }
 
 bool
 nrf52swd_check_id_code(void)
 {
-    bool             result       = false;
     LibSWD_IdCode_t *p_idcode_ptr = NULL;
     ESP_LOGD(TAG, "libswd_dap_detect");
     const LibSWD_ReturnCode_t dap_res = libswd_dap_detect(
@@ -237,61 +232,48 @@ nrf52swd_check_id_code(void)
     if (LIBSWD_OK != dap_res)
     {
         NRF52SWD_LOG_ERR("libswd_dap_detect", dap_res);
+        return false;
     }
-    else
+    const uint32_t id_code          = *p_idcode_ptr;
+    const uint32_t expected_id_code = 0x2ba01477;
+    if (expected_id_code != id_code)
     {
-        const uint32_t id_code          = *p_idcode_ptr;
-        const uint32_t expected_id_code = 0x2ba01477;
-        if (expected_id_code != id_code)
-        {
-            ESP_LOGE(TAG, "Wrong nRF52 ID code 0x%08x (expected 0x%08x)", id_code, expected_id_code);
-        }
-        else
-        {
-            ESP_LOGI(TAG, "IDCODE: 0x%08x", (unsigned)id_code);
-            result = true;
-        }
+        ESP_LOGE(TAG, "Wrong nRF52 ID code 0x%08x (expected 0x%08x)", id_code, expected_id_code);
+        return false;
     }
-    return result;
+    ESP_LOGI(TAG, "IDCODE: 0x%08x", (unsigned)id_code);
+    return true;
 }
 
 bool
 nrf52swd_debug_halt(void)
 {
-    bool                      result  = false;
     const LibSWD_ReturnCode_t ret_val = libswd_debug_halt(gp_nrf52swd_libswd_ctx, LIBSWD_OPERATION_EXECUTE);
     if (ret_val < 0)
     {
         NRF52SWD_LOG_ERR("libswd_debug_halt", ret_val);
+        return false;
     }
-    else
-    {
-        result = true;
-    }
-    return result;
+    return true;
 }
 
 bool
 nrf52swd_debug_run(void)
 {
-    bool result = false;
     ESP_LOGI(TAG, "Run nRF52 firmware");
     const LibSWD_ReturnCode_t ret_val = libswd_debug_run(gp_nrf52swd_libswd_ctx, LIBSWD_OPERATION_EXECUTE);
     if (ret_val < 0)
     {
         NRF52SWD_LOG_ERR("libswd_debug_run", ret_val);
+        return false;
     }
-    else
-    {
-        result = true;
-    }
-    return result;
+    return true;
 }
 
-static bool
+NRF52SWD_STATIC
+bool
 nrf52swd_read_reg(const uint32_t reg_addr, uint32_t *p_val)
 {
-    bool                      result  = false;
     const LibSWD_ReturnCode_t ret_val = libswd_memap_read_int_32(
         gp_nrf52swd_libswd_ctx,
         LIBSWD_OPERATION_EXECUTE,
@@ -301,18 +283,15 @@ nrf52swd_read_reg(const uint32_t reg_addr, uint32_t *p_val)
     if (LIBSWD_OK != ret_val)
     {
         ESP_LOGE(TAG, "%s: libswd_memap_read_int_32(0x%08x) failed, err=%d", __func__, reg_addr, ret_val);
+        return false;
     }
-    else
-    {
-        result = true;
-    }
-    return result;
+    return true;
 }
 
-static bool
+NRF52SWD_STATIC
+bool
 nrf52swd_write_reg(const uint32_t reg_addr, const uint32_t val)
 {
-    bool                      result   = false;
     LibSWD_Data_t             data_val = val;
     const LibSWD_ReturnCode_t ret_val  = libswd_memap_write_int_32(
         gp_nrf52swd_libswd_ctx,
@@ -323,65 +302,40 @@ nrf52swd_write_reg(const uint32_t reg_addr, const uint32_t val)
     if (LIBSWD_OK != ret_val)
     {
         ESP_LOGE(TAG, "%s: libswd_memap_write_int_32(0x%08x) failed, err=%d", __func__, reg_addr, ret_val);
-    }
-    else
-    {
-        result = true;
-    }
-    return result;
-}
-
-static bool
-nrf51swd_nvmc_wait_while_busy(void)
-{
-    bool result = false;
-    for (;;)
-    {
-        uint32_t reg_val = 0;
-        if (!nrf52swd_read_reg(NRF52_NVMC_REG_READY, &reg_val))
-        {
-            NRF52SWD_LOG_ERR("nrf52swd_read_reg(REG_READY)", -1);
-            break;
-        }
-        if (0 != (reg_val & NRF52_NVMC_REG_READY__MASK))
-        {
-            result = true;
-            break;
-        }
-        vTaskDelay(0);
-    }
-    return result;
-}
-
-bool
-nrf52swd_erase_page(const uint32_t page_address)
-{
-    if (!nrf51swd_nvmc_wait_while_busy())
-    {
-        NRF52SWD_LOG_ERR("nrf51swd_nvmc_wait_while_busy", -1);
-        return false;
-    }
-    if (!nrf52swd_write_reg(NRF52_NVMC_REG_CONFIG, NRF52_NVMC_REG_CONFIG__WEN_EEN))
-    {
-        NRF52SWD_LOG_ERR("nrf52swd_write_reg(REG_CONFIG):=EEN", -1);
-        return false;
-    }
-    if (!nrf52swd_write_reg(NRF52_NVMC_REG_ERASEPAGE, page_address))
-    {
-        NRF52SWD_LOG_ERR("nrf52swd_write_reg(REG_ERASEPAGE)", -1);
-        return false;
-    }
-    if (!nrf51swd_nvmc_wait_while_busy())
-    {
-        NRF52SWD_LOG_ERR("nrf51swd_nvmc_wait_while_busy", -1);
-        return false;
-    }
-    if (!nrf52swd_write_reg(NRF52_NVMC_REG_CONFIG, NRF52_NVMC_REG_CONFIG__WEN_REN))
-    {
-        NRF52SWD_LOG_ERR("nrf52swd_write_reg(REG_CONFIG):=REN", -1);
         return false;
     }
     return true;
+}
+
+NRF52SWD_STATIC
+bool
+nrf51swd_nvmc_is_ready_or_err(bool *p_result)
+{
+    *p_result        = false;
+    uint32_t reg_val = 0;
+    if (!nrf52swd_read_reg(NRF52_NVMC_REG_READY, &reg_val))
+    {
+        NRF52SWD_LOG_ERR("nrf52swd_read_reg(REG_READY)", -1);
+        return true;
+    }
+    if (0 != (reg_val & NRF52_NVMC_REG_READY__MASK))
+    {
+        *p_result = true;
+        return true;
+    }
+    return false;
+}
+
+NRF52SWD_STATIC
+bool
+nrf51swd_nvmc_wait_while_busy(void)
+{
+    bool result = false;
+    while (!nrf51swd_nvmc_is_ready_or_err(&result))
+    {
+        vTaskDelay(0);
+    }
+    return result;
 }
 
 bool

@@ -17,18 +17,13 @@
 #include "app_malloc.h"
 #include "app_wrappers.h"
 
-#if RUUVI_TESTS_NRF52FW
-#define STATIC
-#else
-#define STATIC static
-#endif
-
 #define NRF52FW_IUCR_BASE_ADDR (0x10001000)
 #define NRF52FW_IUCR_FW_VER    (NRF52FW_IUCR_BASE_ADDR + 0x080)
 
 static const char *TAG = "nRF52Fw";
 
-STATIC bool
+NRF52FW_STATIC
+bool
 nrf52fw_parse_version_digit(const char *p_digit_str, const char *p_digit_str_end, uint8_t *p_digit)
 {
     const char *   end = p_digit_str_end;
@@ -55,7 +50,8 @@ nrf52fw_parse_version_digit(const char *p_digit_str, const char *p_digit_str_end
     return true;
 }
 
-STATIC bool
+NRF52FW_STATIC
+bool
 nrf52fw_parse_digit_update_ver(
     const char *  p_token_begin,
     const char *  p_token_end,
@@ -72,7 +68,8 @@ nrf52fw_parse_digit_update_ver(
     return true;
 }
 
-STATIC bool
+NRF52FW_STATIC
+bool
 nrf52fw_parse_version(const char *p_version_str, NRF52Fw_Version_t *p_version)
 {
     uint32_t version = 0;
@@ -131,7 +128,8 @@ nrf52fw_parse_version(const char *p_version_str, NRF52Fw_Version_t *p_version)
     return true;
 }
 
-STATIC bool
+NRF52FW_STATIC
+bool
 nrf52fw_parse_version_line(const char *p_version_line, NRF52Fw_Version_t *p_version)
 {
     const char * version_prefix     = "# v";
@@ -143,7 +141,8 @@ nrf52fw_parse_version_line(const char *p_version_line, NRF52Fw_Version_t *p_vers
     return nrf52fw_parse_version(&p_version_line[version_prefix_len], p_version);
 }
 
-STATIC void
+NRF52FW_STATIC
+void
 nrf52fw_line_rstrip(char *p_line_buf, const size_t line_buf_size)
 {
     p_line_buf[line_buf_size - 1] = '\0';
@@ -167,7 +166,8 @@ nrf52fw_line_rstrip(char *p_line_buf, const size_t line_buf_size)
     }
 }
 
-STATIC bool
+NRF52FW_STATIC
+bool
 nrf52fw_parse_segment_info_line(const char *p_version_line, NRF52Fw_Segment_t *p_segment)
 {
     const char *   p_token_start = p_version_line;
@@ -223,7 +223,8 @@ nrf52fw_parse_segment_info_line(const char *p_version_line, NRF52Fw_Segment_t *p
     return true;
 }
 
-STATIC int32_t
+NRF52FW_STATIC
+int32_t
 nrf52fw_parse_info_file(FILE *p_fd, NRF52Fw_Info_t *p_info)
 {
     p_info->fw_ver.version = 0;
@@ -262,7 +263,8 @@ nrf52fw_parse_info_file(FILE *p_fd, NRF52Fw_Info_t *p_info)
     return err_line_num;
 }
 
-STATIC bool
+NRF52FW_STATIC
+bool
 nrf52fw_read_info_txt(FlashFatFs_t *p_ffs, const char *p_path_info_txt, NRF52Fw_Info_t *p_info)
 {
     memset(p_info, 0, sizeof(*p_info));
@@ -284,7 +286,8 @@ nrf52fw_read_info_txt(FlashFatFs_t *p_ffs, const char *p_path_info_txt, NRF52Fw_
     return true;
 }
 
-STATIC bool
+NRF52FW_STATIC
+bool
 nrf52fw_init_swd(void)
 {
     ESP_LOGI(TAG, "Init SWD");
@@ -306,20 +309,23 @@ nrf52fw_init_swd(void)
     return true;
 }
 
-STATIC void
+NRF52FW_STATIC
+void
 nrf52fw_deinit_swd(void)
 {
     ESP_LOGI(TAG, "Deinit SWD");
     nrf52swd_deinit();
 }
 
-STATIC bool
+NRF52FW_STATIC
+bool
 nrf52fw_read_current_fw_ver(uint32_t *p_fw_ver)
 {
     return nrf52swd_read_mem(NRF52FW_IUCR_FW_VER, 1, p_fw_ver);
 }
 
-STATIC bool
+NRF52FW_STATIC
+bool
 nrf52fw_write_current_fw_ver(const uint32_t fw_ver)
 {
     return nrf52swd_write_mem(NRF52FW_IUCR_FW_VER, 1, &fw_ver);
@@ -329,14 +335,16 @@ nrf52fw_write_current_fw_ver(const uint32_t fw_ver)
 
 static bool g_nrf52fw_flag_simulate_file_read_error;
 
-STATIC void
+NRF52FW_STATIC
+void
 nrf52fw_simulate_file_read_error(const bool flag_error)
 {
     g_nrf52fw_flag_simulate_file_read_error = flag_error;
 }
 #endif
 
-STATIC int32_t
+NRF52FW_STATIC
+int32_t
 nrf52fw_file_read(const FileDescriptor_t fd, void *p_buf, const size_t buf_size)
 {
 #if RUUVI_TESTS_NRF52FW
@@ -348,7 +356,8 @@ nrf52fw_file_read(const FileDescriptor_t fd, void *p_buf, const size_t buf_size)
     return read(fd, p_buf, buf_size);
 }
 
-STATIC bool
+NRF52FW_STATIC
+bool
 nrf52fw_flash_write_block(
     NRF52Fw_TmpBuf_t *p_tmp_buf,
     const int32_t     len,
@@ -389,7 +398,8 @@ nrf52fw_flash_write_block(
     return true;
 }
 
-STATIC bool
+NRF52FW_STATIC
+bool
 nrf52fw_flash_write_segment(
     const FileDescriptor_t fd,
     NRF52Fw_TmpBuf_t *     p_tmp_buf,
@@ -417,7 +427,8 @@ nrf52fw_flash_write_segment(
     return true;
 }
 
-STATIC bool
+NRF52FW_STATIC
+bool
 nrf52fw_write_segment_from_file(
     FlashFatFs_t *    p_ffs,
     const char *      p_path,
@@ -441,7 +452,8 @@ nrf52fw_write_segment_from_file(
     return true;
 }
 
-STATIC bool
+NRF52FW_STATIC
+bool
 nrf52fw_erase_flash(void)
 {
     ESP_LOGI(TAG, "Erasing flash memory...");
@@ -453,7 +465,8 @@ nrf52fw_erase_flash(void)
     return true;
 }
 
-STATIC bool
+NRF52FW_STATIC
+bool
 nrf52fw_flash_write_firmware(FlashFatFs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf, const NRF52Fw_Info_t *p_fw_info)
 {
     if (!nrf52fw_erase_flash())
@@ -497,7 +510,8 @@ nrf52fw_flash_write_firmware(FlashFatFs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf, c
     return true;
 }
 
-STATIC bool
+NRF52FW_STATIC
+bool
 nrf52fw_calc_segment_crc(
     const FileDescriptor_t fd,
     NRF52Fw_TmpBuf_t *     p_tmp_buf,
@@ -535,7 +549,8 @@ nrf52fw_calc_segment_crc(
     return true;
 }
 
-STATIC bool
+NRF52FW_STATIC
+bool
 nrf52fw_check_fw_segment_crc(FlashFatFs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf, const NRF52Fw_Segment_t *p_segment_info)
 {
     const FileDescriptor_t fd = flashfatfs_open(p_ffs, p_segment_info->file_name);
@@ -568,7 +583,8 @@ nrf52fw_check_fw_segment_crc(FlashFatFs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf, c
     return true;
 }
 
-STATIC bool
+NRF52FW_STATIC
+bool
 nrf52fw_check_firmware(FlashFatFs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf, const NRF52Fw_Info_t *p_fw_info)
 {
     for (uint32_t i = 0; i < p_fw_info->num_segments; ++i)
@@ -581,7 +597,8 @@ nrf52fw_check_firmware(FlashFatFs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf, const N
     return true;
 }
 
-STATIC bool
+NRF52FW_STATIC
+bool
 nrf52fw_update_fw_step3(FlashFatFs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf)
 {
     NRF52Fw_Info_t fw_info = { 0 };
@@ -630,7 +647,8 @@ nrf52fw_update_fw_step3(FlashFatFs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf)
     return true;
 }
 
-STATIC bool
+NRF52FW_STATIC
+bool
 nrf52fw_update_fw_step2(FlashFatFs_t *p_ffs)
 {
     NRF52Fw_TmpBuf_t *p_tmp_buf = app_malloc(sizeof(*p_tmp_buf));
@@ -644,7 +662,8 @@ nrf52fw_update_fw_step2(FlashFatFs_t *p_ffs)
     return result;
 }
 
-STATIC bool
+NRF52FW_STATIC
+bool
 nrf52fw_update_fw_step1(void)
 {
     const FlashFatFsNumFiles_t max_num_files = 1;
@@ -659,7 +678,8 @@ nrf52fw_update_fw_step1(void)
     return result;
 }
 
-STATIC bool
+NRF52FW_STATIC
+bool
 nrf52fw_update_fw_step0(void)
 {
     if (!nrf52fw_init_swd())
@@ -682,7 +702,8 @@ nrf52fw_update_fw_step0(void)
     return result;
 }
 
-STATIC void
+NRF52FW_STATIC
+void
 nrf52fw_hw_reset_nrf52(const bool flag_reset)
 {
     ESP_LOGI(TAG, "Hardware reset nRF52: %s", flag_reset ? "true" : "false");

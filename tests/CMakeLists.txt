@@ -16,6 +16,7 @@ add_subdirectory(test_bin2hex)
 add_subdirectory(test_flashfatfs)
 add_subdirectory(test_leds)
 add_subdirectory(test_nrf52fw)
+add_subdirectory(test_nrf52swd)
 
 add_test(NAME test_app_malloc
         COMMAND ruuvi_gateway_esp-test-app_malloc
@@ -45,4 +46,9 @@ add_test(NAME test_leds
 add_test(NAME test_nrf52fw
         COMMAND ruuvi_gateway_esp-test-nrf52fw
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-nrf52fw>/gtestresults.xml
+)
+
+add_test(NAME test_nrf52swd
+        COMMAND ruuvi_gateway_esp-test-nrf52swd
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-nrf52swd>/gtestresults.xml
 )
