@@ -1,7 +1,13 @@
 idf_component_register(
         SRCS
+            app_malloc.c
+            app_malloc.h
+            app_wrappers.c
+            app_wrappers.h
             bin2hex.c
             bin2hex.h
+            flashfatfs.c
+            flashfatfs.h
             ruuvi_gateway_main.c
             time.c
             mqtt.c
@@ -10,6 +16,10 @@ idf_component_register(
             adv_post.c
             http.c
             settings.c
+            nrf52fw.c
+            nrf52fw.h
+            nrf52swd.c
+            nrf52swd.h
             ethernet.c
             metrics.c
         REQUIRES
@@ -17,10 +27,12 @@ idf_component_register(
             lwip
             esp_http_client
             json
+            fatfs
             esp32-wifi-manager
             ruuvi.boards.c
             ruuvi.comm_tester.c
             ruuvi.endpoints.c
+            libSWD-esp32
         INCLUDE_DIRS
             "includes"
 )

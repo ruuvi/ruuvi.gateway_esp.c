@@ -9,7 +9,7 @@
 #include "gpio.h"
 #include "http_server.h"
 #include "leds.h"
-#include "ruuvi_board_gwesp.h"
+#include "ruuvi_boards.h"
 #include "ruuvi_gateway.h"
 
 #define CONFIG_WIFI_RESET_BUTTON_GPIO RB_BUTTON_RESET_PIN

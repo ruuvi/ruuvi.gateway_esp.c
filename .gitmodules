@@ -13,3 +13,9 @@
 [submodule "components/ruuvi.comm_tester.c"]
 	path = components/ruuvi.comm_tester.c
 	url = https://github.com/ruuvi/ruuvi.comm_tester.c.git
+[submodule "components/libSWD-esp32"]
+	path = components/libSWD-esp32
+	url = https://github.com/ruuvi/libSWD-esp32.git
+[submodule "ESP32_mkfatfs"]
+	path = ESP32_mkfatfs
+	url = https://github.com/jkearins/ESP32_mkfatfs.git

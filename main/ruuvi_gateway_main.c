@@ -19,12 +19,13 @@
 #include "mqtt.h"
 #include "nvs.h"
 #include "nvs_flash.h"
-#include "ruuvi_board_gwesp.h"
+#include "ruuvi_boards.h"
 #include "string.h"
 #include "terminal.h"
 #include "time_task.h"
 #include "wifi_manager.h"
 #include "ruuvi_endpoint_ca_uart.h"
+#include "nrf52fw.h"
 
 #define BOOL_TO_U8(x) ((true == x) ? RE_CA_BOOL_ENABLE : RE_CA_BOOL_DISABLE)
 
@@ -102,7 +103,7 @@ mac_address_to_str(const mac_address_bin_t *p_mac)
     snprintf(
         mac_str.str_buf,
         sizeof(mac_str.str_buf),
-        "%02x:%02x:%02x:%02x:%02x:%02x",
+        "%02X:%02X:%02X:%02X:%02X:%02X",
         mac[0],
         mac[1],
         mac[2],
@@ -270,6 +271,8 @@ app_main(void)
         ESP_LOGI(TAG, "Reset activated");
         esp_restart();
     }
+
+    nrf52fw_update_fw_if_necessary();
 
     settings_get_from_flash(&g_gateway_config);
     adv_post_init();
