@@ -206,7 +206,7 @@ adv_post_task(void *arg)
 
         if (!flagConnected)
         {
-            if ((status & WIFI_CONNECTED_BIT) || (status & ETH_CONNECTED_BIT))
+            if (0 != (status & (WIFI_CONNECTED_BIT | ETH_CONNECTED_BIT)))
             {
                 if (g_gateway_config.use_http)
                 {
@@ -228,7 +228,7 @@ adv_post_task(void *arg)
         }
         else
         {
-            if (!((status & WIFI_CONNECTED_BIT) || (status & ETH_CONNECTED_BIT)))
+            if (0 == (status & (WIFI_CONNECTED_BIT | ETH_CONNECTED_BIT)))
             {
                 flagConnected = false;
             }
@@ -241,7 +241,7 @@ adv_post_task(void *arg)
                 {
                     http_send_advs(&adv_reports_buf);
                 }
-                if (g_gateway_config.use_mqtt && (xEventGroupGetBits(status_bits) & MQTT_CONNECTED_BIT))
+                if (g_gateway_config.use_mqtt && (0 != (xEventGroupGetBits(status_bits) & MQTT_CONNECTED_BIT)))
                 {
                     mqtt_publish_table(&adv_reports_buf);
                 }

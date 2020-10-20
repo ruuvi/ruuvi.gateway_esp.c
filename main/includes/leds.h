@@ -8,13 +8,13 @@
 extern "C" {
 #endif
 
-#define LEDS_ON_BIT    (1 << 0)
-#define LEDS_OFF_BIT   (1 << 1)
-#define LEDS_BLINK_BIT (1 << 2)
+#define LEDS_ON_BIT    (1U << 0U)
+#define LEDS_OFF_BIT   (1U << 1U)
+#define LEDS_BLINK_BIT (1U << 2U)
 
-#define LEDS_SLOW_BLINK   1000
-#define LEDS_MEDIUM_BLINK 500
-#define LEDS_FAST_BLINK   200
+#define LEDS_SLOW_BLINK   1000U
+#define LEDS_MEDIUM_BLINK 500U
+#define LEDS_FAST_BLINK   200U
 
 extern EventGroupHandle_t led_bits;
 

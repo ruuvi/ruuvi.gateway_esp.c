@@ -1,5 +1,6 @@
 idf_component_register(
         SRCS
+            attribs.h
             app_malloc.c
             app_malloc.h
             app_wrappers.c

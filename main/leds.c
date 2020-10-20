@@ -1,4 +1,6 @@
 #include "leds.h"
+#include <stdbool.h>
+#include <stdio.h>
 #include "driver/ledc.h"
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -6,8 +8,7 @@
 #include "freertos/event_groups.h"
 #include "freertos/projdefs.h"
 #include "freertos/task.h"
-#include <stdbool.h>
-#include <stdio.h>
+#include "attribs.h"
 
 const char *TAG = "LEDS";
 
@@ -44,7 +45,7 @@ static bool        led_state = false;
 #if !defined(RUUVI_LEDS_DISABLE)
 #define RUUVI_LEDS_DISABLE (0)
 #endif
-static bool g_leds_enabled = !RUUVI_LEDS_DISABLE;
+static bool g_leds_enabled = (0 == RUUVI_LEDS_DISABLE);
 
 void
 leds_on()
@@ -108,7 +109,8 @@ leds_stop_blink()
     led_state = false;
 }
 
-_Noreturn static void
+ATTR_NORETURN
+static void
 leds_task(void *arg)
 {
     ESP_LOGI(TAG, "%s started", __func__);
@@ -122,17 +124,17 @@ leds_task(void *arg)
             pdTRUE,
             pdFALSE,
             pdMS_TO_TICKS(1000));
-        if (bits & LEDS_BLINK_BIT)
+        if (0 != (bits & LEDS_BLINK_BIT))
         {
             ESP_LOGI(TAG, "led blink");
             leds_start_blink(1000);
         }
-        else if (bits & LEDS_ON_BIT)
+        else if (0 != (bits & LEDS_ON_BIT))
         {
             ESP_LOGI(TAG, "led on");
             leds_on();
         }
-        else if (bits & LEDS_OFF_BIT)
+        else if (0 != (bits & LEDS_OFF_BIT))
         {
             ESP_LOGI(TAG, "led off");
             leds_off();
@@ -178,5 +180,5 @@ leds_init()
         ESP_LOGE(TAG, "Can't create event group");
     }
 
-    xTaskCreate(leds_task, "leds_task", 1024 * 2, NULL, 1, NULL);
+    xTaskCreate(&leds_task, "leds_task", 1024 * 2, NULL, 1, NULL);
 }

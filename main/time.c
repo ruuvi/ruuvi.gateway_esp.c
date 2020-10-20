@@ -11,6 +11,7 @@
 #include <string.h>
 #include <sys/time.h>
 #include <time.h>
+#include "attribs.h"
 
 #define TIME_SYNC_BIT (1 << 0)
 
@@ -80,7 +81,8 @@ time_sync(void)
     xEventGroupSetBits(time_event_group, TIME_SYNC_BIT);
 }
 
-_Noreturn static void
+ATTR_NORETURN
+static void
 time_task(void *param)
 {
     if (!time_event_group)
@@ -112,7 +114,7 @@ time_task(void *param)
 void
 time_init()
 {
-    xTaskCreate(time_task, "time_task", 1024 * 3, NULL, 1, &task_time);
+    xTaskCreate(&time_task, "time_task", 1024 * 3, NULL, 1, &task_time);
 }
 
 void
