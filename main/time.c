@@ -28,8 +28,13 @@ wait_for_sntp(void)
     int       retry       = 0;
     const int retry_count = 20;
 
-    while (timeinfo.tm_year < (2016 - 1900) && ++retry < retry_count)
+    while (timeinfo.tm_year < (2016 - 1900))
     {
+        retry += 1;
+        if (retry >= retry_count)
+        {
+            break;
+        }
         ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d)", retry, retry_count);
         vTaskDelay(3000 / portTICK_PERIOD_MS);
         time(&now);
