@@ -99,8 +99,12 @@ gen_metrics(char *buf, size_t limit)
 char *
 ruuvi_get_metrics()
 {
-    char *buf  = malloc(BUF_LEN * sizeof(char));
-    int   size = gen_metrics(buf, BUF_LEN);
+    char *buf = malloc(BUF_LEN * sizeof(char));
+    if (NULL == buf)
+    {
+        return NULL;
+    }
+    int size = gen_metrics(buf, BUF_LEN);
     if (size >= BUF_LEN)
     {
         ESP_LOGW(
@@ -110,7 +114,12 @@ ruuvi_get_metrics()
             "metrics.c",
             BUF_LEN,
             size);
-        realloc(buf, (size + 1) * sizeof(char));
+        free(buf);
+        buf = malloc((size + 1) * sizeof(char));
+        if (NULL == buf)
+        {
+            return NULL;
+        }
         gen_metrics(buf, size + 1);
     }
     return buf;
