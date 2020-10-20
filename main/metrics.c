@@ -1,3 +1,10 @@
+/**
+ * @file metrics.c
+ * @author Scrin
+ * @date 2020-08-11
+ * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
+ */
+
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "ruuvi_gateway.h"

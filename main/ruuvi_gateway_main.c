@@ -1,3 +1,10 @@
+/**
+ * @file ruuvi_gateway_main.c
+ * @author Jukka Saari
+ * @date 2019-11-27
+ * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
+ */
+
 #include "ruuvi_gateway.h"
 #include "adv_post.h"
 #include "api.h"

@@ -1,5 +1,12 @@
-#ifndef _LEDS_H_DEF_
-#define _LEDS_H_DEF_
+/**
+ * @file leds.h
+ * @author Jukka Saari
+ * @date 2019-11-27
+ * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
+ */
+
+#ifndef RUUVI_LEDS_H
+#define RUUVI_LEDS_H
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
@@ -37,4 +44,4 @@ leds_init();
 }
 #endif
 
-#endif
+#endif // RUUVI_LEDS_H

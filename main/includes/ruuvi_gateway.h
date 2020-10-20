@@ -1,9 +1,21 @@
-#pragma once
+/**
+ * @file ruuvi_gateway.h
+ * @author Jukka Saari
+ * @date 2019-11-27
+ * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
+ */
+
+#ifndef RUUVI_GATEWAY_H
+#define RUUVI_GATEWAY_H
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include <stdbool.h>
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define RUUVI_COMPANY_ID                    0x0499
 #define RUUVI_GATEWAY_NVS_CONFIGURATION_KEY "ruuvi_config"
@@ -178,3 +190,9 @@ ethernet_link_down_cb();
 
 void
 start_services();
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // RUUVI_GATEWAY_H

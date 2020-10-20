@@ -1,7 +1,18 @@
-#ifndef _MQTT_H_INCLUDED
-#define _MQTT_H_INCLUDED
+/**
+ * @file mqtt.h
+ * @author Jukka Saari
+ * @date 2019-11-27
+ * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
+ */
+
+#ifndef RUUVI_MQTT_H
+#define RUUVI_MQTT_H
 
 #include "ruuvi_gateway.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 void
 mqtt_app_start(void);
@@ -9,4 +20,8 @@ mqtt_app_start(void);
 void
 mqtt_publish_table(struct adv_report_table *table);
 
+#ifdef __cplusplus
+}
 #endif
+
+#endif // RUUVI_MQTT_H
