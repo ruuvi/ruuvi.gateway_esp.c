@@ -111,19 +111,19 @@ ethernet_update_ip()
         tcpip_adapter_ip_info_t ipInfo;
         memset(&ipInfo, 0, sizeof(ipInfo));
 
-        if (!ip4addr_aton(c->eth_static_ip, &ipInfo.ip))
+        if (0 == ip4addr_aton(c->eth_static_ip, &ipInfo.ip))
         {
             ESP_LOGE(TAG, "invalid eth static ip: %s", c->eth_static_ip);
             error = true;
         }
 
-        if (!ip4addr_aton(c->eth_netmask, &ipInfo.netmask))
+        if (0 == ip4addr_aton(c->eth_netmask, &ipInfo.netmask))
         {
             ESP_LOGE(TAG, "invalid eth netmask: %s", c->eth_netmask);
             error = true;
         }
 
-        if (!ip4addr_aton(c->eth_gw, &ipInfo.gw))
+        if (0 == ip4addr_aton(c->eth_gw, &ipInfo.gw))
         {
             ESP_LOGE(TAG, "invalid eth gw: %s", c->eth_gw);
             error = true;
