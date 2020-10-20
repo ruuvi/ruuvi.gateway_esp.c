@@ -1,3 +1,10 @@
+/**
+ * @file time.c
+ * @author Jukka Saari
+ * @date 2019-11-27
+ * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
+ */
+
 #include "esp_log.h"
 #include "esp_sntp.h"
 #include "esp_system.h"

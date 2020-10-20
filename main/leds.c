@@ -1,3 +1,10 @@
+/**
+ * @file leds.c
+ * @author Jukka Saari
+ * @date 2019-11-27
+ * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
+ */
+
 #include "leds.h"
 #include "driver/ledc.h"
 #include "esp_log.h"

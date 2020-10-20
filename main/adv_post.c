@@ -1,3 +1,10 @@
+/**
+ * @file adv_post.c
+ * @author Oleg Protasevich
+ * @date 2020-09-04
+ * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
+ */
+
 #include "adv_post.h"
 #include "bin2hex.h"
 #include "cJSON.h"

@@ -1,3 +1,10 @@
+/**
+ * @file settings.c
+ * @author Jukka Saari
+ * @date 2019-11-27
+ * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
+ */
+
 #include "cJSON.h"
 #include "esp_log.h"
 #include "nvs.h"

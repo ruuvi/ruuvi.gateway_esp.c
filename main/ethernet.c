@@ -1,3 +1,10 @@
+/**
+ * @file ethernet.c
+ * @author Jukka Saari
+ * @date 2020-01-27
+ * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
+ */
+
 #include "ethernet.h"
 #include "driver/gpio.h"
 #include "esp_err.h"

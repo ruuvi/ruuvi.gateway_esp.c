@@ -1,5 +1,12 @@
-#ifndef _TIMETASK_H_DEF_
-#define _TIMETASK_H_DEF_
+/**
+ * @file time_task.h
+ * @author Jukka Saari
+ * @date 2019-11-27
+ * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
+ */
+
+#ifndef RUUVI_TIMETASK_H
+#define RUUVI_TIMETASK_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,4 +25,4 @@ time_stop(void);
 }
 #endif
 
-#endif
+#endif // RUUVI_TIMETASK_H
