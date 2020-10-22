@@ -151,5 +151,5 @@ gpio_init(void)
     gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
     // hook isr handler for specific gpio pin
     gpio_isr_handler_add(CONFIG_WIFI_RESET_BUTTON_GPIO, gpio_isr_handler, (void *)CONFIG_WIFI_RESET_BUTTON_GPIO);
-    xTaskCreate(gpio_task, "gpio_task", 3072, NULL, 1, NULL);
+    xTaskCreate(&gpio_task, "gpio_task", 3072, NULL, 1, NULL);
 }

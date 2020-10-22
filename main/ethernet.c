@@ -147,6 +147,10 @@ ethernet_update_ip()
             ESP_LOGE(TAG, "DHCP client stop error: 0x%02x", ret);
             error = true;
         }
+        else
+        {
+            // MISRA C:2012, 15.7 - All if...else if constructs shall be terminated with an else statement
+        }
 
         ret = tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_ETH, &ipInfo);
 
