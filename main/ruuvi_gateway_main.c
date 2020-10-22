@@ -34,8 +34,6 @@
 #include "ruuvi_endpoint_ca_uart.h"
 #include "nrf52fw.h"
 
-#define BOOL_TO_U8(x) ((true == x) ? RE_CA_BOOL_ENABLE : RE_CA_BOOL_DISABLE)
-
 static const char TAG[] = "ruuvi_gateway";
 
 EventGroupHandle_t status_bits;
@@ -45,6 +43,12 @@ mac_address_str_t gw_mac_sta = { 0 };
 ruuvi_gateway_config_t g_gateway_config = RUUVI_GATEWAY_DEFAULT_CONFIGURATION;
 
 extern wifi_config_t *wifi_manager_config_sta;
+
+static inline uint8_t
+conv_bool_to_u8(const bool x)
+{
+    return x ? (uint8_t)RE_CA_BOOL_ENABLE : (uint8_t)RE_CA_BOOL_DISABLE;
+}
 
 void
 ruuvi_send_nrf_settings(ruuvi_gateway_config_t *config)
@@ -70,14 +74,14 @@ ruuvi_send_nrf_settings(ruuvi_gateway_config_t *config)
 
     api_send_all(
         RE_CA_UART_SET_ALL,
-        (uint16_t)config->company_id,
-        (uint8_t)BOOL_TO_U8(config->company_filter),
-        (uint8_t)BOOL_TO_U8(config->scan_coded_phy),
-        (uint8_t)BOOL_TO_U8(config->scan_extended_payload),
-        (uint8_t)BOOL_TO_U8(config->scan_1mbit_phy),
-        (uint8_t)BOOL_TO_U8(config->scan_channel_37),
-        (uint8_t)BOOL_TO_U8(config->scan_channel_38),
-        (uint8_t)BOOL_TO_U8(config->scan_channel_39));
+        config->company_id,
+        conv_bool_to_u8(config->company_filter),
+        conv_bool_to_u8(config->scan_coded_phy),
+        conv_bool_to_u8(config->scan_extended_payload),
+        conv_bool_to_u8(config->scan_1mbit_phy),
+        conv_bool_to_u8(config->scan_channel_37),
+        conv_bool_to_u8(config->scan_channel_38),
+        conv_bool_to_u8(config->scan_channel_39));
 }
 
 void
@@ -149,6 +153,7 @@ wifi_connection_ok_cb(void *pvParameter)
 void
 ethernet_link_up_cb(void)
 {
+    ESP_LOGI(TAG, "Ethernet connection established");
 }
 
 void

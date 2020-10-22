@@ -146,6 +146,10 @@ leds_task(void *arg)
             ESP_LOGI(TAG, "led off");
             leds_off();
         }
+        else
+        {
+            // MISRA C:2012, 15.7 - All if...else if constructs shall be terminated with an else statement
+        }
     }
 }
 

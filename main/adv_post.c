@@ -268,5 +268,5 @@ adv_post_init(void)
 {
     adv_reports.num_of_advs = 0;
     api_callbacks_reg((void *)&adv_callback_func_tbl);
-    xTaskCreate(adv_post_task, "adv_post_task", 1024 * 4, NULL, 1, NULL);
+    xTaskCreate(&adv_post_task, "adv_post_task", 1024 * 4, NULL, 1, NULL);
 }
