@@ -156,10 +156,10 @@ mac_address_str_t
 mac_address_to_str(const mac_address_bin_t *p_mac);
 
 char *
-ruuvi_get_conf_json();
+ruuvi_get_conf_json(void);
 
 char *
-ruuvi_get_metrics();
+ruuvi_get_metrics(void);
 
 void
 settings_get_from_flash(ruuvi_gateway_config_t *p_gateway_config);
@@ -177,19 +177,16 @@ void
 ruuvi_send_nrf_settings(ruuvi_gateway_config_t *config);
 
 void
-ethernet_connection_ok_cb();
+ethernet_connection_ok_cb(void);
 
 void
-ethernet_connection_down_cb();
+ethernet_link_up_cb(void);
 
 void
-ethernet_link_up_cb();
+ethernet_link_down_cb(void);
 
 void
-ethernet_link_down_cb();
-
-void
-start_services();
+start_services(void);
 
 #ifdef __cplusplus
 }

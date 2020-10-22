@@ -95,7 +95,7 @@ got_ip_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, v
 }
 
 void
-ethernet_update_ip()
+ethernet_update_ip(void)
 {
     ruuvi_gateway_config_t *c = &g_gateway_config;
 
@@ -215,7 +215,7 @@ ethernet_update_ip()
 }
 
 void
-ethernet_init()
+ethernet_init(void)
 {
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
     gpio_set_direction(LAN_CLOCK_ENABLE, GPIO_MODE_OUTPUT);

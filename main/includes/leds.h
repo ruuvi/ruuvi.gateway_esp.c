@@ -26,19 +26,19 @@ extern "C" {
 extern EventGroupHandle_t led_bits;
 
 void
-leds_on();
+leds_on(void);
 
 void
-leds_off();
+leds_off(void);
 
 void
 leds_start_blink(uint32_t interval);
 
 void
-leds_stop_blink();
+leds_stop_blink(void);
 
 void
-leds_init();
+leds_init(void);
 
 #ifdef __cplusplus
 }

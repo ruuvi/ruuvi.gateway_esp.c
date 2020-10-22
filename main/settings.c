@@ -169,7 +169,7 @@ settings_get_from_flash(ruuvi_gateway_config_t *p_gateway_config)
 }
 
 char *
-ruuvi_get_conf_json()
+ruuvi_get_conf_json(void)
 {
     char *                 buf  = 0;
     ruuvi_gateway_config_t c    = g_gateway_config;

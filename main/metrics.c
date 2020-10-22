@@ -104,7 +104,7 @@ gen_metrics(char *buf, size_t limit)
 }
 
 char *
-ruuvi_get_metrics()
+ruuvi_get_metrics(void)
 {
     char *buf = malloc(BUF_LEN * sizeof(char));
     if (NULL == buf)

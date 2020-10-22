@@ -15,9 +15,6 @@ extern "C" {
 void
 gpio_init(void);
 
-void
-button_timer_init();
-
 #ifdef __cplusplus
 }
 #endif

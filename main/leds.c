@@ -55,7 +55,7 @@ static bool        led_state = false;
 static bool g_leds_enabled = (0 == RUUVI_LEDS_DISABLE);
 
 void
-leds_on()
+leds_on(void)
 {
     if (!g_leds_enabled)
     {
@@ -66,7 +66,7 @@ leds_on()
 }
 
 void
-leds_off()
+leds_off(void)
 {
     if (!g_leds_enabled)
     {
@@ -103,7 +103,7 @@ leds_start_blink(uint32_t interval)
 }
 
 void
-leds_stop_blink()
+leds_stop_blink(void)
 {
     if (!g_leds_enabled)
     {
@@ -150,7 +150,7 @@ leds_task(void *arg)
 }
 
 void
-leds_init()
+leds_init(void)
 {
     if (!g_leds_enabled)
     {

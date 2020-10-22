@@ -13,10 +13,10 @@ extern "C" {
 #endif
 
 void
-ethernet_init();
+ethernet_init(void);
 
 void
-ethernet_update_ip();
+ethernet_update_ip(void);
 
 #ifdef __cplusplus
 }
