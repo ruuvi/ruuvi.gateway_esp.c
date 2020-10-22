@@ -89,7 +89,7 @@ mqtt_publish_table(struct adv_report_table *table)
 }
 
 static void
-mqtt_publish_connect()
+mqtt_publish_connect(void)
 {
     char *message = "{\"state\": \"online\"}";
     char  topic[TOPIC_LEN];

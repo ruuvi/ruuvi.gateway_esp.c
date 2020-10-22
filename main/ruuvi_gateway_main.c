@@ -147,12 +147,12 @@ wifi_connection_ok_cb(void *pvParameter)
 }
 
 void
-ethernet_link_up_cb()
+ethernet_link_up_cb(void)
 {
 }
 
 void
-ethernet_link_down_cb()
+ethernet_link_down_cb(void)
 {
     ESP_LOGI(TAG, "Ethernet lost connection");
     xEventGroupClearBits(status_bits, ETH_CONNECTED_BIT);
@@ -161,7 +161,7 @@ ethernet_link_down_cb()
 }
 
 void
-ethernet_connection_ok_cb()
+ethernet_connection_ok_cb(void)
 {
     ESP_LOGI(TAG, "Ethernet connected");
     wifi_manager_stop();
@@ -181,7 +181,7 @@ wifi_disconnect_cb(void *pvParameter)
 }
 
 void
-start_services()
+start_services(void)
 {
     time_sync();
 
@@ -213,7 +213,7 @@ reset_task(void *arg)
 }
 
 void
-wifi_init()
+wifi_init(void)
 {
     static const WiFiAntConfig_t wiFiAntConfig = {
       .wifiAntGpioConfig =

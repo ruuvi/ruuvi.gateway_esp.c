@@ -124,13 +124,13 @@ time_task(void *param)
 }
 
 void
-time_init()
+time_init(void)
 {
     xTaskCreate(&time_task, "time_task", 1024 * 3, NULL, 1, &task_time);
 }
 
 void
-time_stop()
+time_stop(void)
 {
     sntp_stop();
 
