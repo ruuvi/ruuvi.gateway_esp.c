@@ -36,16 +36,18 @@ static const char TAG[] = "gpio";
 static void IRAM_ATTR
 gpio_isr_handler(void *arg)
 {
-    uint32_t gpio_num = (uint32_t)arg;
+    uint32_t gpio_num = (uint32_t)(uintptr_t)arg;
     xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
 }
 
 static void IRAM_ATTR
 timer_isr(void *para)
 {
-    BaseType_t xHigherPriorityTaskWoken, result;
-    xHigherPriorityTaskWoken  = pdFALSE;
-    result                    = xEventGroupSetBitsFromISR(status_bits, RESET_BUTTON_BIT, &xHigherPriorityTaskWoken);
+    (void)para;
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+    const BaseType_t result = xEventGroupSetBitsFromISR(status_bits, RESET_BUTTON_BIT, &xHigherPriorityTaskWoken);
+
     TIMERG0.int_clr_timers.t0 = 1;
 
     if (result == pdPASS)
@@ -74,7 +76,7 @@ config_timer(void)
     timer_set_alarm_value(TIMER_GROUP_0, TIMER_0,
                           3 * TIMER_SCALE); // 3 seconds interval
     timer_enable_intr(TIMER_GROUP_0, TIMER_0);
-    timer_isr_register(TIMER_GROUP_0, TIMER_0, timer_isr, (void *)TIMER_0, ESP_INTR_FLAG_IRAM, NULL);
+    timer_isr_register(TIMER_GROUP_0, TIMER_0, &timer_isr, (void *)TIMER_0, ESP_INTR_FLAG_IRAM, NULL);
 }
 
 ATTR_NORETURN
@@ -157,6 +159,6 @@ gpio_init(void)
     // install gpio isr service
     gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
     // hook isr handler for specific gpio pin
-    gpio_isr_handler_add(CONFIG_WIFI_RESET_BUTTON_GPIO, gpio_isr_handler, (void *)CONFIG_WIFI_RESET_BUTTON_GPIO);
+    gpio_isr_handler_add(CONFIG_WIFI_RESET_BUTTON_GPIO, &gpio_isr_handler, (void *)CONFIG_WIFI_RESET_BUTTON_GPIO);
     xTaskCreate(&gpio_task, "gpio_task", 3072, NULL, 1, NULL);
 }
