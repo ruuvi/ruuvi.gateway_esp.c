@@ -114,14 +114,6 @@ time_task(void *param)
 
     for (;;)
     {
-        /**
-         EventBits_t xEventGroupWaitBits(
-                                    const EventGroupHandle_t xEventGroup,
-                                    const EventBits_t uxBitsToWaitFor,
-                                    const BaseType_t xClearOnExit,
-                                    const BaseType_t xWaitForAllBits,
-                                    TickType_t xTicksToWait );
-         */
         // Wait for trigger command or 24 hours to synch time.
         xEventGroupWaitBits(
             time_event_group,
