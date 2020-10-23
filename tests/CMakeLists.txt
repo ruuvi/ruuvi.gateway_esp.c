@@ -13,6 +13,7 @@ add_subdirectory(Posix_GCC_Simulator)
 add_subdirectory(test_app_malloc)
 add_subdirectory(test_app_wrappers)
 add_subdirectory(test_bin2hex)
+add_subdirectory(test_cjson_wrap)
 add_subdirectory(test_flashfatfs)
 add_subdirectory(test_leds)
 add_subdirectory(test_mac_addr)
@@ -33,6 +34,11 @@ add_test(NAME test_app_wrappers
 add_test(NAME test_bin2hex
         COMMAND ruuvi_gateway_esp-test-bin2hex
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-bin2hex>/gtestresults.xml
+)
+
+add_test(NAME test_cjson_wrap
+        COMMAND ruuvi_gateway_esp-test-cjson_wrap
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-cjson_wrap>/gtestresults.xml
 )
 
 add_test(NAME test_flashfatfs
