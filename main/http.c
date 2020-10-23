@@ -106,13 +106,13 @@ http_send(const char *msg)
 }
 
 void
-http_send_advs(struct adv_report_table *reports)
+http_send_advs(const struct adv_report_table *reports)
 {
     cJSON *tags = 0;
     time_t now;
     time(&now);
-    adv_report_t *adv;
-    cJSON *       root = cJSON_CreateObject();
+    const adv_report_t *adv;
+    cJSON *             root = cJSON_CreateObject();
 
     if (root)
     {
