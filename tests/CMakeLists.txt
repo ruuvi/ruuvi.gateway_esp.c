@@ -15,6 +15,7 @@ add_subdirectory(test_app_wrappers)
 add_subdirectory(test_bin2hex)
 add_subdirectory(test_flashfatfs)
 add_subdirectory(test_leds)
+add_subdirectory(test_mac_addr)
 add_subdirectory(test_nrf52fw)
 add_subdirectory(test_nrf52swd)
 add_subdirectory(test_time_units)
@@ -42,6 +43,11 @@ add_test(NAME test_flashfatfs
 add_test(NAME test_leds
         COMMAND ruuvi_gateway_esp-test-leds
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-leds>/gtestresults.xml
+)
+
+add_test(NAME test_mac_addr
+        COMMAND ruuvi_gateway_esp-test-mac_addr
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-mac_addr>/gtestresults.xml
 )
 
 add_test(NAME test_nrf52fw
