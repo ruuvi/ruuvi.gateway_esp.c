@@ -15,7 +15,7 @@ bin2hex(char *const p_hex_str, const size_t hex_str_size, const uint8_t *const p
 
     for (size_t i = 0; i < bin_buf_len; i++)
     {
-        if (str_buf_get_len(&str_buf) + 3 > hex_str_size)
+        if ((str_buf_get_len(&str_buf) + 3) > hex_str_size)
         {
             break;
         }

@@ -49,7 +49,7 @@ typedef struct mac_address_bin
 
 typedef struct mac_address_str
 {
-    char str_buf[6 * 2 + 5 + 1]; // format: XX:XX:XX:XX:XX:XX
+    char str_buf[(6 * 2) + (5 + 1)]; // format: XX:XX:XX:XX:XX:XX
 } mac_address_str_t;
 
 typedef struct adv_report

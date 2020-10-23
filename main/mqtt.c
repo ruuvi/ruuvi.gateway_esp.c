@@ -25,7 +25,7 @@ static const char *TAG = "MQTT";
 static void
 create_full_topic(char *full_topic, const char *prefix, const char *topic)
 {
-    if (full_topic == NULL || topic == NULL)
+    if ((full_topic == NULL) || (topic == NULL))
     {
         ESP_LOGE(TAG, "%s: null arguments", __func__);
         return;

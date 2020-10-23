@@ -96,7 +96,7 @@ gpio_task(void *arg)
         if (CONFIG_WIFI_RESET_BUTTON_GPIO == io_num)
         {
             const GPIO_Level_t io_level = gpio_get_level(io_num);
-            if (!timer_started && (0 == io_level))
+            if ((!timer_started) && (0 == io_level))
             {
                 ESP_LOGD(TAG, "Button pressed");
                 // Start the timer
