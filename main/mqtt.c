@@ -82,7 +82,7 @@ mqtt_publish_table(const struct adv_report_table *table)
 {
     ESP_LOGI(TAG, "sending advertisement table (%d items) to MQTT", table->num_of_advs);
 
-    for (int i = 0; i < table->num_of_advs; i++)
+    for (int i = 0; i < table->num_of_advs; ++i)
     {
         adv_report_t adv = table->table[i];
         mqtt_publish_adv(&adv);

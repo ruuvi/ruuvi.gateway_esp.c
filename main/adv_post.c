@@ -54,12 +54,12 @@ static esp_err_t
 adv_put_to_table(const adv_report_t *const p_adv)
 {
     portENTER_CRITICAL(&adv_table_mux);
-    gw_metrics.received_advertisements++;
+    gw_metrics.received_advertisements += 1;
     bool      found = false;
     esp_err_t ret   = ESP_OK;
 
     // Check if we already have advertisement with this MAC
-    for (int i = 0; i < adv_reports.num_of_advs; i++)
+    for (int i = 0; i < adv_reports.num_of_advs; ++i)
     {
         const mac_address_bin_t *p_mac = &adv_reports.table[i].tag_mac;
 
@@ -76,7 +76,8 @@ adv_put_to_table(const adv_report_t *const p_adv)
     {
         if (adv_reports.num_of_advs < MAX_ADVS_TABLE)
         {
-            adv_reports.table[adv_reports.num_of_advs++] = *p_adv;
+            adv_reports.table[adv_reports.num_of_advs] = *p_adv;
+            adv_reports.num_of_advs += 1;
         }
         else
         {
@@ -92,7 +93,7 @@ static bool
 is_hexstr(char *str)
 {
     const size_t len = strlen(str);
-    for (int i = 0; i < len; i++)
+    for (int i = 0; i < len; ++i)
     {
         const int ch_val = (int)(unsigned char)str[i];
         if (0 == isxdigit(ch_val))
@@ -187,7 +188,7 @@ static void
 adv_post_log(const struct adv_report_table *p_reports)
 {
     ESP_LOGI(ADV_POST_TASK_TAG, "Advertisements in table:");
-    for (int i = 0; i < p_reports->num_of_advs; i++)
+    for (int i = 0; i < p_reports->num_of_advs; ++i)
     {
         const adv_report_t *p_adv = &p_reports->table[i];
 
