@@ -5,11 +5,13 @@
  * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
  */
 
-#include "cJSON.h"
-#include "esp_http_client.h"
-#include "ruuvi_gateway.h"
+#include "http.h"
 #include <string.h>
 #include <time.h>
+#include "cJSON.h"
+#include "cjson_wrap.h"
+#include "esp_http_client.h"
+#include "ruuvi_gateway.h"
 
 #define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 #include "esp_log.h"
@@ -138,7 +140,7 @@ http_send_advs(const struct adv_report_table *reports)
         if (gw)
         {
             cJSON_AddStringToObject(gw, "coordinates", g_gateway_config.coordinates);
-            cJSON_AddNumberToObject(gw, "timestamp", now);
+            cjson_wrap_add_timestamp(gw, "timestamp", now);
             cJSON_AddStringToObject(gw, "gw_mac", gw_mac_sta.str_buf);
             tags = cJSON_AddObjectToObject(gw, "tags");
         }
@@ -159,7 +161,7 @@ http_send_advs(const struct adv_report_table *reports)
             adv        = &reports->table[i];
             cJSON *tag = cJSON_CreateObject();
             cJSON_AddNumberToObject(tag, "rssi", adv->rssi);
-            cJSON_AddNumberToObject(tag, "timestamp", adv->timestamp);
+            cjson_wrap_add_timestamp(tag, "timestamp", adv->timestamp);
             cJSON_AddStringToObject(tag, "data", adv->data);
             const mac_address_str_t mac_str = mac_address_to_str(&adv->tag_mac);
             cJSON_AddItemToObject(tags, mac_str.str_buf, tag);

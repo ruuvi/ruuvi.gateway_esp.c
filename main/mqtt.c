@@ -7,6 +7,7 @@
 
 #include "mqtt.h"
 #include "cJSON.h"
+#include "cjson_wrap.h"
 #include "esp_err.h"
 #include "esp_log.h"
 #include "freertos/event_groups.h"
@@ -53,8 +54,8 @@ mqtt_create_json(adv_report_t *adv)
         cJSON_AddStringToObject(root, "gw_mac", gw_mac_sta.str_buf);
         cJSON_AddNumberToObject(root, "rssi", adv->rssi);
         cJSON_AddArrayToObject(root, "aoa");
-        cJSON_AddNumberToObject(root, "gwts", now);
-        cJSON_AddNumberToObject(root, "ts", adv->timestamp);
+        cjson_wrap_add_timestamp(root, "gwts", now);
+        cjson_wrap_add_timestamp(root, "ts", adv->timestamp);
         cJSON_AddStringToObject(root, "data", adv->data);
         cJSON_AddStringToObject(root, "coords", g_gateway_config.coordinates);
     }

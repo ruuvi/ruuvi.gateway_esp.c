@@ -7,6 +7,8 @@ idf_component_register(
             app_wrappers.h
             bin2hex.c
             bin2hex.h
+            cjson_wrap.c
+            cjson_wrap.h
             flashfatfs.c
             flashfatfs.h
             ruuvi_gateway_main.c
