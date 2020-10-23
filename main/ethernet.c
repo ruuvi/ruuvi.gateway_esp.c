@@ -152,6 +152,11 @@ eth_tcpip_adapter_set_dns_info(const char *p_dns_ip, const tcpip_adapter_dns_typ
 
     tcpip_adapter_dns_info_t dns_info = {
         .ip = {
+            .u_addr = {
+                .ip4 = {
+                    .addr = 0,
+                },
+            },
             .type = IPADDR_TYPE_V4,
         },
     };

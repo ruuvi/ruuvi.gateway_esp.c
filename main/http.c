@@ -66,12 +66,29 @@ http_send(const char *msg)
     esp_err_t                err;
     esp_http_client_handle_t http_handle;
     esp_http_client_config_t http_config = {
-        .url           = g_gateway_config.http_url,
-        .method        = HTTP_METHOD_POST,
-        .auth_type     = ('\0' != g_gateway_config.http_user[0]) ? HTTP_AUTH_TYPE_BASIC : HTTP_AUTH_TYPE_NONE,
-        .username      = g_gateway_config.http_user,
-        .password      = g_gateway_config.http_pass,
-        .event_handler = http_event_handler,
+        .url                   = g_gateway_config.http_url,
+        .host                  = NULL,
+        .port                  = 0,
+        .username              = g_gateway_config.http_user,
+        .password              = g_gateway_config.http_pass,
+        .auth_type             = ('\0' != g_gateway_config.http_user[0]) ? HTTP_AUTH_TYPE_BASIC : HTTP_AUTH_TYPE_NONE,
+        .path                  = NULL,
+        .query                 = NULL,
+        .cert_pem              = NULL,
+        .client_cert_pem       = NULL,
+        .client_key_pem        = NULL,
+        .method                = HTTP_METHOD_POST,
+        .timeout_ms            = 0,
+        .disable_auto_redirect = false,
+        .max_redirection_count = 0,
+        .event_handler         = &http_event_handler,
+        .transport_type        = HTTP_TRANSPORT_UNKNOWN,
+        .buffer_size           = 0,
+        .buffer_size_tx        = 0,
+        .user_data             = NULL,
+        .is_async              = false,
+        .use_global_ca_store   = false,
+        .skip_cert_common_name_check = false,
     };
     http_handle = esp_http_client_init(&http_config);
 

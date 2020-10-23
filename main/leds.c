@@ -37,12 +37,13 @@ EventGroupHandle_t led_bits = NULL;
 
 ledc_channel_config_t ledc_channel[1] = {
     {
-        .channel    = LEDC_HS_CH0_CHANNEL,
-        .duty       = 0,
         .gpio_num   = LEDC_HS_CH0_GPIO,
         .speed_mode = LEDC_HS_MODE,
-        .hpoint     = 0,
+        .channel    = LEDC_HS_CH0_CHANNEL,
+        .intr_type  = LEDC_INTR_DISABLE,
         .timer_sel  = LEDC_HS_TIMER,
+        .duty       = 0,
+        .hpoint     = 0,
     },
 };
 
