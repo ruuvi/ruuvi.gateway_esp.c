@@ -77,7 +77,7 @@ mqtt_publish_adv(adv_report_t *adv)
 }
 
 void
-mqtt_publish_table(struct adv_report_table *table)
+mqtt_publish_table(const struct adv_report_table *table)
 {
     ESP_LOGI(TAG, "sending advertisement table (%d items) to MQTT", table->num_of_advs);
 

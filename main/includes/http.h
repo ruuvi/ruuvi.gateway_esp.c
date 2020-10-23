@@ -18,7 +18,7 @@ void
 http_send(const char *msg);
 
 void
-http_send_advs(struct adv_report_table *);
+http_send_advs(const struct adv_report_table *);
 
 #ifdef __cplusplus
 }
