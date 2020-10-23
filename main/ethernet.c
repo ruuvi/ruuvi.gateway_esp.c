@@ -38,31 +38,30 @@ const char *dns_fallback_server = "1.1.1.1";
 
 static const char *TAG = "eth";
 
+static void
+eth_on_event_connected(esp_eth_handle_t eth_handle)
+{
+    mac_address_bin_t mac_bin = { 0 };
+    esp_eth_ioctl(eth_handle, ETH_CMD_G_MAC_ADDR, &mac_bin.mac[0]);
+    ESP_LOGI(TAG, "Ethernet Link Up");
+    const mac_address_str_t mac_str = mac_address_to_str(&mac_bin);
+    ESP_LOGI(TAG, "Ethernet HW Addr %s", mac_str.str_buf);
+    ethernet_link_up_cb();
+}
+
 /** Event handler for Ethernet events */
 static void
 eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
     (void)arg;
     (void)event_base;
-    uint8_t mac_addr[6] = { 0 };
     /* we can get the ethernet driver handle from event data */
     esp_eth_handle_t eth_handle = *(esp_eth_handle_t *)event_data;
 
     switch (event_id)
     {
         case ETHERNET_EVENT_CONNECTED:
-            esp_eth_ioctl(eth_handle, ETH_CMD_G_MAC_ADDR, mac_addr);
-            ESP_LOGI(TAG, "Ethernet Link Up");
-            ESP_LOGI(
-                TAG,
-                "Ethernet HW Addr %02x:%02x:%02x:%02x:%02x:%02x",
-                mac_addr[0],
-                mac_addr[1],
-                mac_addr[2],
-                mac_addr[3],
-                mac_addr[4],
-                mac_addr[5]);
-            ethernet_link_up_cb();
+            eth_on_event_connected(eth_handle);
             break;
 
         case ETHERNET_EVENT_DISCONNECTED:
