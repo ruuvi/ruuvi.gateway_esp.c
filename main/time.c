@@ -97,6 +97,7 @@ ATTR_NORETURN
 static void
 time_task(void *param)
 {
+    (void)param;
     if (!time_event_group)
     {
         time_event_group = xEventGroupCreate();

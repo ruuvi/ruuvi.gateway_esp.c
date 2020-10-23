@@ -93,6 +93,7 @@ ruuvi_send_nrf_get_id(void)
 void
 monitoring_task(void *pvParameter)
 {
+    (void)pvParameter;
     for (;;)
     {
         ESP_LOGI(TAG, "free heap: %d", esp_get_free_heap_size());
@@ -143,6 +144,7 @@ get_gw_mac_sta(void)
 void
 wifi_connection_ok_cb(void *pvParameter)
 {
+    (void)pvParameter;
     ESP_LOGI(TAG, "Wifi connected");
     xEventGroupSetBits(status_bits, WIFI_CONNECTED_BIT);
     leds_stop_blink();
@@ -179,6 +181,7 @@ ethernet_connection_ok_cb(void)
 void
 wifi_disconnect_cb(void *pvParameter)
 {
+    (void)pvParameter;
     ESP_LOGW(TAG, "Wifi disconnected");
     xEventGroupClearBits(status_bits, WIFI_CONNECTED_BIT);
     leds_stop_blink();

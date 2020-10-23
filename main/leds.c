@@ -79,6 +79,7 @@ leds_off(void)
 static void
 blink_timer_handler(void *arg)
 {
+    (void)arg;
     if (led_state)
     {
         leds_off();
@@ -120,6 +121,7 @@ ATTR_NORETURN
 static void
 leds_task(void *arg)
 {
+    (void)arg;
     ESP_LOGI(TAG, "%s started", __func__);
 
     EventBits_t bits;

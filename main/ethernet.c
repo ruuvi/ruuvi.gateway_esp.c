@@ -40,6 +40,8 @@ static const char *TAG = "eth";
 static void
 eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
+    (void)arg;
+    (void)event_base;
     uint8_t mac_addr[6] = { 0 };
     /* we can get the ethernet driver handle from event data */
     esp_eth_handle_t eth_handle = *(esp_eth_handle_t *)event_data;
@@ -83,6 +85,9 @@ eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void
 static void
 got_ip_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
+    (void)arg;
+    (void)event_base;
+    (void)event_id;
     ip_event_got_ip_t *            event   = (ip_event_got_ip_t *)event_data;
     const tcpip_adapter_ip_info_t *ip_info = &event->ip_info;
     ESP_LOGI(TAG, "Ethernet Got IP Address");
