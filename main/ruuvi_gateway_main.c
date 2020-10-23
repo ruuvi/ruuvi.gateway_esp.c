@@ -101,30 +101,6 @@ monitoring_task(void *pvParameter)
     }
 }
 
-void
-mac_address_bin_init(mac_address_bin_t *p_mac, const uint8_t mac[6])
-{
-    memcpy(p_mac->mac, mac, sizeof(p_mac->mac));
-}
-
-mac_address_str_t
-mac_address_to_str(const mac_address_bin_t *p_mac)
-{
-    mac_address_str_t mac_str = { 0 };
-    const uint8_t *   mac     = p_mac->mac;
-    snprintf(
-        mac_str.str_buf,
-        sizeof(mac_str.str_buf),
-        "%02X:%02X:%02X:%02X:%02X:%02X",
-        mac[0],
-        mac[1],
-        mac[2],
-        mac[3],
-        mac[4],
-        mac[5]);
-    return mac_str;
-}
-
 mac_address_str_t
 get_gw_mac_sta(void)
 {
@@ -300,7 +276,9 @@ app_main(void)
     ESP_LOGI(TAG, "Mac address: %s", gw_mac_sta.str_buf);
     wifi_init();
     ethernet_init();
-    xTaskCreate(monitoring_task, "monitoring_task", 2048, NULL, 1, NULL);
-    xTaskCreate(reset_task, "reset_task", 1024 * 2, NULL, 1, NULL);
+    const uint32_t stack_size_for_monitoring_task = 2 * 1024;
+    xTaskCreate(monitoring_task, "monitoring_task", stack_size_for_monitoring_task, NULL, 1, NULL);
+    const uint32_t stack_size_for_reset_task = 2 * 1024;
+    xTaskCreate(reset_task, "reset_task", stack_size_for_reset_task, NULL, 1, NULL);
     ESP_LOGI(TAG, "Main started");
 }

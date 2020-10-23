@@ -31,6 +31,8 @@
 #define ETH_MDIO_GPIO    18
 #define ETH_PHY_RST_GPIO -1 // disabled
 
+#define SW_RESET_TIMEOUT_MS 500
+
 // Cloudfare public DNS
 const char *dns_fallback_server = "1.1.1.1";
 
@@ -252,18 +254,21 @@ ethernet_init(void)
     ESP_ERROR_CHECK(tcpip_adapter_set_default_eth_handlers());
     ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, &eth_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP, &got_ip_event_handler, NULL));
-    eth_mac_config_t mac_config    = ETH_MAC_DEFAULT_CONFIG();
-    eth_phy_config_t phy_config    = ETH_PHY_DEFAULT_CONFIG();
-    phy_config.phy_addr            = ETH_PHY_ADDR;
-    phy_config.reset_gpio_num      = ETH_PHY_RST_GPIO;
+    eth_mac_config_t mac_config = ETH_MAC_DEFAULT_CONFIG();
+    eth_phy_config_t phy_config = ETH_PHY_DEFAULT_CONFIG();
+
+    phy_config.phy_addr       = ETH_PHY_ADDR;
+    phy_config.reset_gpio_num = ETH_PHY_RST_GPIO;
+
     mac_config.smi_mdc_gpio_num    = ETH_MDC_GPIO;
     mac_config.smi_mdio_gpio_num   = ETH_MDIO_GPIO;
-    mac_config.sw_reset_timeout_ms = 500;
-    esp_eth_mac_t *  mac           = esp_eth_mac_new_esp32(&mac_config);
-    esp_eth_phy_t *  phy           = esp_eth_phy_new_lan8720(&phy_config);
-    esp_eth_config_t config        = ETH_DEFAULT_CONFIG(mac, phy);
-    esp_eth_handle_t eth_handle    = NULL;
-    esp_err_t        err_code      = esp_eth_driver_install(&config, &eth_handle);
+    mac_config.sw_reset_timeout_ms = SW_RESET_TIMEOUT_MS;
+
+    esp_eth_mac_t *  mac        = esp_eth_mac_new_esp32(&mac_config);
+    esp_eth_phy_t *  phy        = esp_eth_phy_new_lan8720(&phy_config);
+    esp_eth_config_t config     = ETH_DEFAULT_CONFIG(mac, phy);
+    esp_eth_handle_t eth_handle = NULL;
+    esp_err_t        err_code   = esp_eth_driver_install(&config, &eth_handle);
     if (ESP_OK == err_code)
     {
         err_code = esp_eth_start(eth_handle);

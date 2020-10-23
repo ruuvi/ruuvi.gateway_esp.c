@@ -16,6 +16,7 @@
 #include "freertos/projdefs.h"
 #include "freertos/task.h"
 #include "attribs.h"
+#include "time_units.h"
 
 const char *TAG = "LEDS";
 
@@ -94,14 +95,14 @@ blink_timer_handler(void *arg)
 }
 
 void
-leds_start_blink(uint32_t interval)
+leds_start_blink(const TimeUnitsMilliSeconds_t interval_ms)
 {
     if (!g_leds_enabled)
     {
         return;
     }
-    ESP_LOGI(TAG, "start led blinking, interval: %d ms", interval);
-    esp_timer_start_periodic(blink_timer, interval * 1000);
+    ESP_LOGI(TAG, "start led blinking, interval: %u ms", (unsigned)interval_ms);
+    esp_timer_start_periodic(blink_timer, time_units_conv_ms_to_us(interval_ms));
 }
 
 void
@@ -137,7 +138,8 @@ leds_task(void *arg)
         if (0 != (bits & LEDS_BLINK_BIT))
         {
             ESP_LOGI(TAG, "led blink");
-            leds_start_blink(1000);
+            const TimeUnitsMilliSeconds_t blink_interval_ms = time_units_conv_seconds_to_ms(1);
+            leds_start_blink(blink_interval_ms);
         }
         else if (0 != (bits & LEDS_ON_BIT))
         {
@@ -194,5 +196,6 @@ leds_init(void)
         ESP_LOGE(TAG, "Can't create event group");
     }
 
-    xTaskCreate(&leds_task, "leds_task", 1024 * 2, NULL, 1, NULL);
+    const uint32_t stack_size = 2U * 1024U;
+    xTaskCreate(&leds_task, "leds_task", stack_size, NULL, 1, NULL);
 }

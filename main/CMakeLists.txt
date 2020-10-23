@@ -1,30 +1,41 @@
 idf_component_register(
         SRCS
-            attribs.h
+            adv_post.c
+            includes/adv_post.h
             app_malloc.c
             app_malloc.h
             app_wrappers.c
             app_wrappers.h
+            attribs.h
             bin2hex.c
             bin2hex.h
             cjson_wrap.c
             cjson_wrap.h
+            ethernet.c
+            includes/ethernet.h
             flashfatfs.c
             flashfatfs.h
-            ruuvi_gateway_main.c
-            time.c
-            mqtt.c
             gpio.c
-            leds.c
-            adv_post.c
+            includes/gpio.h
             http.c
-            settings.c
+            includes/http.h
+            leds.c
+            includes/leds.h
+            mac_addr.c
+            mac_addr.h
+            metrics.c
+            mqtt.c
+            includes/mqtt.h
             nrf52fw.c
             nrf52fw.h
             nrf52swd.c
             nrf52swd.h
-            ethernet.c
-            metrics.c
+            ruuvi_gateway_main.c
+            includes/ruuvi_gateway.h
+            settings.c
+            time.c
+            includes/time_task.h
+            time_units.h
         REQUIRES
             mqtt
             lwip
