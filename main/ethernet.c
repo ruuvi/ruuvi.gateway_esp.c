@@ -113,7 +113,7 @@ ethernet_update_ip_dhcp(void)
 }
 
 static bool
-ethernet_tcpip_adapter_dhcpc_stop(void)
+eth_tcpip_adapter_dhcpc_stop(void)
 {
     const esp_err_t ret = tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_ETH);
     if (ESP_OK != ret)
@@ -132,7 +132,7 @@ ethernet_tcpip_adapter_dhcpc_stop(void)
 }
 
 static void
-ethernet_tcpip_adapter_set_dns_info(const char *p_dns_ip, const tcpip_adapter_dns_type_t type)
+eth_tcpip_adapter_set_dns_info(const char *p_dns_ip, const tcpip_adapter_dns_type_t type)
 {
     const char *dns_server = "Undef";
     switch (type)
@@ -195,7 +195,7 @@ ethernet_update_ip_static(void)
         return false;
     }
 
-    if (!ethernet_tcpip_adapter_dhcpc_stop())
+    if (!eth_tcpip_adapter_dhcpc_stop())
     {
         return false;
     }
@@ -207,8 +207,8 @@ ethernet_update_ip_static(void)
         return false;
     }
 
-    ethernet_tcpip_adapter_set_dns_info(p_gw_cfg->eth_dns1, TCPIP_ADAPTER_DNS_MAIN);
-    ethernet_tcpip_adapter_set_dns_info(p_gw_cfg->eth_dns2, TCPIP_ADAPTER_DNS_BACKUP);
+    eth_tcpip_adapter_set_dns_info(p_gw_cfg->eth_dns1, TCPIP_ADAPTER_DNS_MAIN);
+    eth_tcpip_adapter_set_dns_info(p_gw_cfg->eth_dns2, TCPIP_ADAPTER_DNS_BACKUP);
     return true;
 }
 
@@ -231,7 +231,7 @@ ethernet_update_ip(void)
     }
 
     // set DNS fallback also for DHCP settings
-    ethernet_tcpip_adapter_set_dns_info(dns_fallback_server, TCPIP_ADAPTER_DNS_FALLBACK);
+    eth_tcpip_adapter_set_dns_info(dns_fallback_server, TCPIP_ADAPTER_DNS_FALLBACK);
 
     ESP_LOGI(TAG, "ETH ip updated");
 }
