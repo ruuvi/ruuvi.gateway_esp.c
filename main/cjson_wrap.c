@@ -12,6 +12,6 @@ void
 cjson_wrap_add_timestamp(cJSON *const object, const char *const name, const time_t timestamp)
 {
     char timestamp_str[32];
-    snprintf(timestamp_str, sizeof(timestamp_str), "%ld", (long)timestamp);
+    snprintf(timestamp_str, sizeof(timestamp_str), "%ld", timestamp);
     cJSON_AddStringToObject(object, name, timestamp_str);
 }
