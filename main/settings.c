@@ -25,7 +25,7 @@ settings_clear_in_flash(void)
     nvs_handle handle  = 0;
     esp_err_t  esp_err = 0;
     esp_err_t  ret     = nvs_open(g_ruuvi_gateway_nvs_namespace, NVS_READWRITE, &handle);
-    if (ret == ESP_OK)
+    if (ESP_OK == ret)
     {
         esp_err = nvs_set_blob(handle, RUUVI_GATEWAY_NVS_CONFIGURATION_KEY, &default_config, sizeof(default_config));
         if (esp_err != ESP_OK)
@@ -49,7 +49,7 @@ settings_save_to_flash(ruuvi_gateway_config_t *config)
     esp_err_t  esp_err;
     esp_err_t  ret = nvs_open(g_ruuvi_gateway_nvs_namespace, NVS_READWRITE, &handle);
 
-    if (ret == ESP_OK)
+    if (ESP_OK == ret)
     {
         esp_err = nvs_set_blob(handle, RUUVI_GATEWAY_NVS_CONFIGURATION_KEY, config, sizeof(ruuvi_gateway_config_t));
 

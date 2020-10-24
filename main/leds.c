@@ -191,7 +191,7 @@ leds_init(void)
     ledc_fade_func_install(0);
 
     led_bits = xEventGroupCreate();
-    if (led_bits == NULL)
+    if (NULL == led_bits)
     {
         ESP_LOGE(TAG, "Can't create event group");
     }

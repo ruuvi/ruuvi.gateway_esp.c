@@ -50,7 +50,7 @@ timer_isr(void *para)
 
     TIMERG0.int_clr_timers.t0 = 1;
 
-    if (result == pdPASS)
+    if (pdPASS == result)
     {
         portYIELD_FROM_ISR();
     }

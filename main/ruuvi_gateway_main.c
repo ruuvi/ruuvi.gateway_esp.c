@@ -239,7 +239,7 @@ app_main(void)
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
     status_bits = xEventGroupCreate();
 
-    if (status_bits == NULL)
+    if (NULL == status_bits)
     {
         ESP_LOGE(TAG, "Can't create event group");
     }

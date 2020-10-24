@@ -26,7 +26,7 @@ static const char *TAG = "MQTT";
 static void
 create_full_topic(char *full_topic, const char *prefix, const char *topic)
 {
-    if ((full_topic == NULL) || (topic == NULL))
+    if ((NULL == full_topic) || (NULL == topic))
     {
         ESP_LOGE(TAG, "%s: null arguments", __func__);
         return;
@@ -173,7 +173,7 @@ mqtt_app_start(void)
     char *    lwt_message = "{\"state\": \"offline\"}";
     esp_err_t err         = 0;
 
-    if (g_gateway_config.mqtt_server[0] == 0)
+    if (0 == g_gateway_config.mqtt_server[0])
     {
         err = ESP_ERR_INVALID_ARG;
     }

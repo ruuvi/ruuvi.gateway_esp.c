@@ -94,7 +94,7 @@ http_send(const char *msg)
     };
     http_handle = esp_http_client_init(&http_config);
 
-    if (http_handle == NULL)
+    if (NULL == http_handle)
     {
         ESP_LOGE(TAG, "Can't init http client");
         return;
@@ -104,7 +104,7 @@ http_send(const char *msg)
     esp_http_client_set_header(http_handle, "Content-Type", "application/json");
     err = esp_http_client_perform(http_handle);
 
-    if (err == ESP_OK)
+    if (ESP_OK == err)
     {
         ESP_LOGD(
             TAG,

@@ -63,7 +63,7 @@ adv_put_to_table(const adv_report_t *const p_adv)
     {
         const mac_address_bin_t *p_mac = &adv_reports.table[i].tag_mac;
 
-        if (memcmp(&p_adv->tag_mac, p_mac, sizeof(*p_mac)) == 0)
+        if (0 == memcmp(&p_adv->tag_mac, p_mac, sizeof(*p_mac)))
         {
             // Yes, update data.
             found                = true;
@@ -173,11 +173,11 @@ adv_post_send_report(void *arg)
     adv_report_t adv_report;
 
     // Refactor into function
-    if (parse_adv_report_from_uart((re_ca_uart_payload_t *)arg, &adv_report) == ESP_OK)
+    if (ESP_OK == parse_adv_report_from_uart((re_ca_uart_payload_t *)arg, &adv_report))
     {
         int ret = adv_put_to_table(&adv_report);
 
-        if (ret == ESP_ERR_NO_MEM)
+        if (ESP_ERR_NO_MEM == ret)
         {
             ESP_LOGW(ADV_POST_TASK_TAG, "Adv report table full, adv dropped");
         }

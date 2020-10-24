@@ -13,7 +13,7 @@ void
 mac_address_bin_init(mac_address_bin_t *p_mac, const uint8_t mac[MAC_ADDRESS_NUM_BYTES])
 {
     _Static_assert(
-        sizeof(p_mac->mac) == MAC_ADDRESS_NUM_BYTES,
+        MAC_ADDRESS_NUM_BYTES == sizeof(p_mac->mac),
         "Size of mac_address_bin_t must be equal to MAC_ADDRESS_NUM_BYTES");
     memcpy(p_mac->mac, mac, sizeof(p_mac->mac));
 }
