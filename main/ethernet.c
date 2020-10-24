@@ -89,13 +89,13 @@ got_ip_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, v
     (void)arg;
     (void)event_base;
     (void)event_id;
-    ip_event_got_ip_t *            event   = (ip_event_got_ip_t *)event_data;
-    const tcpip_adapter_ip_info_t *ip_info = &event->ip_info;
+    const ip_event_got_ip_t *      p_event   = (ip_event_got_ip_t *)event_data;
+    const tcpip_adapter_ip_info_t *p_ip_info = &p_event->ip_info;
     ESP_LOGI(TAG, "Ethernet Got IP Address");
     ESP_LOGI(TAG, "~~~~~~~~~~~");
-    ESP_LOGI(TAG, "ETHIP:" IPSTR, IP2STR(&ip_info->ip));
-    ESP_LOGI(TAG, "ETHMASK:" IPSTR, IP2STR(&ip_info->netmask));
-    ESP_LOGI(TAG, "ETHGW:" IPSTR, IP2STR(&ip_info->gw));
+    ESP_LOGI(TAG, "ETHIP:" IPSTR, IP2STR(&p_ip_info->ip));
+    ESP_LOGI(TAG, "ETHMASK:" IPSTR, IP2STR(&p_ip_info->netmask));
+    ESP_LOGI(TAG, "ETHGW:" IPSTR, IP2STR(&p_ip_info->gw));
     ESP_LOGI(TAG, "~~~~~~~~~~~");
     ethernet_connection_ok_cb();
 }
@@ -179,23 +179,23 @@ static bool
 ethernet_update_ip_static(void)
 {
     ruuvi_gateway_config_t *p_gw_cfg = &g_gateway_config;
-    tcpip_adapter_ip_info_t ipInfo   = { 0 };
+    tcpip_adapter_ip_info_t ip_info  = { 0 };
 
     ESP_LOGI(TAG, "Using static IP");
 
-    if (0 == ip4addr_aton(p_gw_cfg->eth_static_ip, &ipInfo.ip))
+    if (0 == ip4addr_aton(p_gw_cfg->eth_static_ip, &ip_info.ip))
     {
         ESP_LOGE(TAG, "invalid eth static ip: %s", p_gw_cfg->eth_static_ip);
         return false;
     }
 
-    if (0 == ip4addr_aton(p_gw_cfg->eth_netmask, &ipInfo.netmask))
+    if (0 == ip4addr_aton(p_gw_cfg->eth_netmask, &ip_info.netmask))
     {
         ESP_LOGE(TAG, "invalid eth netmask: %s", p_gw_cfg->eth_netmask);
         return false;
     }
 
-    if (0 == ip4addr_aton(p_gw_cfg->eth_gw, &ipInfo.gw))
+    if (0 == ip4addr_aton(p_gw_cfg->eth_gw, &ip_info.gw))
     {
         ESP_LOGE(TAG, "invalid eth gw: %s", p_gw_cfg->eth_gw);
         return false;
@@ -206,7 +206,7 @@ ethernet_update_ip_static(void)
         return false;
     }
 
-    const esp_err_t ret = tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_ETH, &ipInfo);
+    const esp_err_t ret = tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_ETH, &ip_info);
     if (ESP_OK != ret)
     {
         ESP_LOGE(TAG, "Failed to configure IP settings for ETH, err: 0x%02x", ret);
