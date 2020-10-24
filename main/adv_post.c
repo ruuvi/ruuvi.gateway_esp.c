@@ -59,7 +59,7 @@ adv_put_to_table(const adv_report_t *const p_adv)
     esp_err_t ret   = ESP_OK;
 
     // Check if we already have advertisement with this MAC
-    for (int i = 0; i < adv_reports.num_of_advs; ++i)
+    for (num_of_advs_t i = 0; i < adv_reports.num_of_advs; ++i)
     {
         const mac_address_bin_t *p_mac = &adv_reports.table[i].tag_mac;
 
@@ -188,7 +188,7 @@ static void
 adv_post_log(const struct adv_report_table *p_reports)
 {
     ESP_LOGI(ADV_POST_TASK_TAG, "Advertisements in table:");
-    for (int i = 0; i < p_reports->num_of_advs; ++i)
+    for (num_of_advs_t i = 0; i < p_reports->num_of_advs; ++i)
     {
         const adv_report_t *p_adv = &p_reports->table[i];
 

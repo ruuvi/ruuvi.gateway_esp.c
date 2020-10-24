@@ -156,7 +156,7 @@ http_send_advs(const struct adv_report_table *reports)
 
     if (tags)
     {
-        for (int i = 0; i < reports->num_of_advs; ++i)
+        for (num_of_advs_t i = 0; i < reports->num_of_advs; ++i)
         {
             adv        = &reports->table[i];
             cJSON *tag = cJSON_CreateObject();

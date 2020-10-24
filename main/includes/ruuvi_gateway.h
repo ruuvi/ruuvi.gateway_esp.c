@@ -35,7 +35,7 @@ extern "C" {
 #define IP_STR_LEN          17
 
 #define ADV_POST_INTERVAL 10000
-#define MAX_ADVS_TABLE    100
+#define MAX_ADVS_TABLE    (100U)
 
 #define WIFI_CONNECTED_BIT   (1U << 0U)
 #define MQTT_CONNECTED_BIT   (1U << 1U)
@@ -51,10 +51,12 @@ typedef struct adv_report
     char              data[ADV_DATA_MAX_LEN + 1];
 } adv_report_t;
 
+typedef uint32_t num_of_advs_t;
+
 struct adv_report_table
 {
-    int          num_of_advs;
-    adv_report_t table[MAX_ADVS_TABLE];
+    num_of_advs_t num_of_advs;
+    adv_report_t  table[MAX_ADVS_TABLE];
 };
 
 typedef struct gw_metrics
