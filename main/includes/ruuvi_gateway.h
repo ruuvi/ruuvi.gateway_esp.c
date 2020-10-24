@@ -12,6 +12,7 @@
 #include "freertos/event_groups.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "../mac_addr.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,16 +42,6 @@ extern "C" {
 #define RESET_BUTTON_BIT     (1U << 2U)
 #define ETH_DISCONNECTED_BIT (1U << 3U)
 #define ETH_CONNECTED_BIT    (1U << 4U)
-
-typedef struct mac_address_bin
-{
-    uint8_t mac[6];
-} mac_address_bin_t;
-
-typedef struct mac_address_str
-{
-    char str_buf[6 * 2 + 5 + 1]; // format: XX:XX:XX:XX:XX:XX
-} mac_address_str_t;
 
 typedef struct adv_report
 {
@@ -148,12 +139,6 @@ extern ruuvi_gateway_config_t g_gateway_config;
 extern EventGroupHandle_t     status_bits;
 extern mac_address_str_t      gw_mac_sta;
 extern gw_metrics_t           gw_metrics;
-
-void
-mac_address_bin_init(mac_address_bin_t *p_mac, const uint8_t mac[6]);
-
-mac_address_str_t
-mac_address_to_str(const mac_address_bin_t *p_mac);
 
 char *
 ruuvi_get_conf_json(void);

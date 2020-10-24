@@ -19,8 +19,12 @@
 #include <sys/time.h>
 #include <time.h>
 #include "attribs.h"
+#include "time_units.h"
 
 #define TIME_SYNC_BIT (1 << 0)
+
+#define TM_YEAR_BASE (1900)
+#define TM_YEAR_MIN  (2020)
 
 static TaskHandle_t task_time        = NULL;
 EventGroupHandle_t  time_event_group = NULL;
@@ -36,7 +40,7 @@ wait_for_sntp(void)
     int       retry       = 0;
     const int retry_count = 20;
 
-    while (timeinfo.tm_year < (2016 - 1900))
+    while (timeinfo.tm_year < (TM_YEAR_MIN - TM_YEAR_BASE))
     {
         retry += 1;
         if (retry >= retry_count)
@@ -44,12 +48,13 @@ wait_for_sntp(void)
             break;
         }
         ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d)", retry, retry_count);
-        vTaskDelay(3000 / portTICK_PERIOD_MS);
+        const uint32_t delay_ms = 3000;
+        vTaskDelay(pdMS_TO_TICKS(delay_ms));
         time(&now);
         localtime_r(&now, &timeinfo);
     }
 
-    if (timeinfo.tm_year > (2016 - 1900))
+    if (timeinfo.tm_year > (TM_YEAR_MIN - TM_YEAR_BASE))
     {
         return now;
     }
@@ -65,10 +70,14 @@ sync_sntp(void)
     ESP_LOGI(TAG, "Synchronizing SNTP");
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     sntp_set_sync_mode(SNTP_SYNC_MODE_SMOOTH);
-    sntp_setservername(0, "time1.google.com");
-    sntp_setservername(1, "time2.google.com");
-    sntp_setservername(2, "time3.google.com");
-    sntp_setservername(3, "pool.ntp.org");
+    u8_t server_idx = 0;
+    sntp_setservername(server_idx, "time1.google.com");
+    server_idx += 1;
+    sntp_setservername(server_idx, "time2.google.com");
+    server_idx += 1;
+    sntp_setservername(server_idx, "time3.google.com");
+    server_idx += 1;
+    sntp_setservername(server_idx, "pool.ntp.org");
     sntp_init();
     time_t now = wait_for_sntp();
     sntp_stop();
@@ -97,6 +106,7 @@ ATTR_NORETURN
 static void
 time_task(void *param)
 {
+    (void)param;
     if (!time_event_group)
     {
         time_event_group = xEventGroupCreate();
@@ -104,21 +114,15 @@ time_task(void *param)
 
     for (;;)
     {
-        /**
-         EventBits_t xEventGroupWaitBits(
-                                    const EventGroupHandle_t xEventGroup,
-                                    const EventBits_t uxBitsToWaitFor,
-                                    const BaseType_t xClearOnExit,
-                                    const BaseType_t xWaitForAllBits,
-                                    TickType_t xTicksToWait );
-         */
         // Wait for trigger command or 24 hours to synch time.
         xEventGroupWaitBits(
             time_event_group,
             TIME_SYNC_BIT,
             pdTRUE,
             pdFALSE,
-            (24 * 60 * 60 * 1000) / portTICK_PERIOD_MS);
+            pdMS_TO_TICKS(
+                TIME_UNITS_HOURS_PER_DAY * TIME_UNITS_MINUTES_PER_HOUR * TIME_UNITS_SECONDS_PER_MINUTE
+                * TIME_UNITS_MS_PER_SECOND));
         sync_sntp();
     }
 }
@@ -126,7 +130,8 @@ time_task(void *param)
 void
 time_init(void)
 {
-    xTaskCreate(&time_task, "time_task", 1024 * 3, NULL, 1, &task_time);
+    const uint32_t stack_size = 3 * 1024;
+    xTaskCreate(&time_task, "time_task", stack_size, NULL, 1, &task_time);
 }
 
 void

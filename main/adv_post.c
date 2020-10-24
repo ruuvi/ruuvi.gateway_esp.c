@@ -91,14 +91,15 @@ adv_put_to_table(const adv_report_t *const p_adv)
 static bool
 is_hexstr(char *str)
 {
-    for (int i = 0; i < strlen(str); i++)
+    const size_t len = strlen(str);
+    for (int i = 0; i < len; i++)
     {
-        if (isxdigit(str[i]) == 0)
+        const int ch_val = (int)(unsigned char)str[i];
+        if (0 == isxdigit(ch_val))
         {
             return ESP_ERR_INVALID_ARG;
         }
     }
-
     return ESP_OK;
 }
 

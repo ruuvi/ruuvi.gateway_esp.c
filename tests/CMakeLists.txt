@@ -13,10 +13,13 @@ add_subdirectory(Posix_GCC_Simulator)
 add_subdirectory(test_app_malloc)
 add_subdirectory(test_app_wrappers)
 add_subdirectory(test_bin2hex)
+add_subdirectory(test_cjson_wrap)
 add_subdirectory(test_flashfatfs)
 add_subdirectory(test_leds)
+add_subdirectory(test_mac_addr)
 add_subdirectory(test_nrf52fw)
 add_subdirectory(test_nrf52swd)
+add_subdirectory(test_time_units)
 
 add_test(NAME test_app_malloc
         COMMAND ruuvi_gateway_esp-test-app_malloc
@@ -33,6 +36,11 @@ add_test(NAME test_bin2hex
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-bin2hex>/gtestresults.xml
 )
 
+add_test(NAME test_cjson_wrap
+        COMMAND ruuvi_gateway_esp-test-cjson_wrap
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-cjson_wrap>/gtestresults.xml
+)
+
 add_test(NAME test_flashfatfs
         COMMAND ruuvi_gateway_esp-test-flashfatfs
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-flashfatfs>/gtestresults.xml
@@ -43,6 +51,11 @@ add_test(NAME test_leds
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-leds>/gtestresults.xml
 )
 
+add_test(NAME test_mac_addr
+        COMMAND ruuvi_gateway_esp-test-mac_addr
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-mac_addr>/gtestresults.xml
+)
+
 add_test(NAME test_nrf52fw
         COMMAND ruuvi_gateway_esp-test-nrf52fw
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-nrf52fw>/gtestresults.xml
@@ -51,4 +64,9 @@ add_test(NAME test_nrf52fw
 add_test(NAME test_nrf52swd
         COMMAND ruuvi_gateway_esp-test-nrf52swd
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-nrf52swd>/gtestresults.xml
+)
+
+add_test(NAME test_time_units
+        COMMAND ruuvi_gateway_esp-test-time_units
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-time_units>/gtestresults.xml
 )

@@ -73,8 +73,8 @@ config_timer(void)
     */
     timer_set_counter_value(TIMER_GROUP_0, TIMER_0, 0x00000000ULL);
     /* Configure the alarm value and the interrupt on alarm. */
-    timer_set_alarm_value(TIMER_GROUP_0, TIMER_0,
-                          3 * TIMER_SCALE); // 3 seconds interval
+    const uint32_t timeout_interval_seconds = 3;
+    timer_set_alarm_value(TIMER_GROUP_0, TIMER_0, timeout_interval_seconds * TIMER_SCALE);
     timer_enable_intr(TIMER_GROUP_0, TIMER_0);
     timer_isr_register(TIMER_GROUP_0, TIMER_0, &timer_isr, (void *)TIMER_0, ESP_INTR_FLAG_IRAM, NULL);
 }
@@ -96,7 +96,7 @@ gpio_task(void *arg)
         if (CONFIG_WIFI_RESET_BUTTON_GPIO == io_num)
         {
             const GPIO_Level_t io_level = gpio_get_level(io_num);
-            if (!timer_started && (0 == io_level))
+            if ((!timer_started) && (0 == io_level))
             {
                 ESP_LOGD(TAG, "Button pressed");
                 // Start the timer
@@ -160,5 +160,6 @@ gpio_init(void)
     gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
     // hook isr handler for specific gpio pin
     gpio_isr_handler_add(CONFIG_WIFI_RESET_BUTTON_GPIO, &gpio_isr_handler, (void *)CONFIG_WIFI_RESET_BUTTON_GPIO);
-    xTaskCreate(&gpio_task, "gpio_task", 3072, NULL, 1, NULL);
+    const uint32_t stack_size = 3072;
+    xTaskCreate(&gpio_task, "gpio_task", stack_size, NULL, 1, NULL);
 }

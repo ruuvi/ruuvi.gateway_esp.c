@@ -6,6 +6,7 @@
  */
 
 #include "bin2hex.h"
+#include <string.h>
 #include "str_buf.h"
 
 void
@@ -13,9 +14,10 @@ bin2hex(char *const p_hex_str, const size_t hex_str_size, const uint8_t *const p
 {
     str_buf_t str_buf = STR_BUF_INIT(p_hex_str, hex_str_size);
 
+    const size_t len_of_hex_digit_with_separator = 3;
     for (size_t i = 0; i < bin_buf_len; i++)
     {
-        if (str_buf_get_len(&str_buf) + 3 > hex_str_size)
+        if ((str_buf_get_len(&str_buf) + len_of_hex_digit_with_separator) > hex_str_size)
         {
             break;
         }

@@ -5,11 +5,13 @@
  * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
  */
 
-#include "cJSON.h"
-#include "esp_http_client.h"
-#include "ruuvi_gateway.h"
+#include "http.h"
 #include <string.h>
 #include <time.h>
+#include "cJSON.h"
+#include "cjson_wrap.h"
+#include "esp_http_client.h"
+#include "ruuvi_gateway.h"
 
 #define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 #include "esp_log.h"
@@ -66,12 +68,29 @@ http_send(const char *msg)
     esp_err_t                err;
     esp_http_client_handle_t http_handle;
     esp_http_client_config_t http_config = {
-        .url           = g_gateway_config.http_url,
-        .method        = HTTP_METHOD_POST,
-        .auth_type     = ('\0' != g_gateway_config.http_user[0]) ? HTTP_AUTH_TYPE_BASIC : HTTP_AUTH_TYPE_NONE,
-        .username      = g_gateway_config.http_user,
-        .password      = g_gateway_config.http_pass,
-        .event_handler = http_event_handler,
+        .url                   = g_gateway_config.http_url,
+        .host                  = NULL,
+        .port                  = 0,
+        .username              = g_gateway_config.http_user,
+        .password              = g_gateway_config.http_pass,
+        .auth_type             = ('\0' != g_gateway_config.http_user[0]) ? HTTP_AUTH_TYPE_BASIC : HTTP_AUTH_TYPE_NONE,
+        .path                  = NULL,
+        .query                 = NULL,
+        .cert_pem              = NULL,
+        .client_cert_pem       = NULL,
+        .client_key_pem        = NULL,
+        .method                = HTTP_METHOD_POST,
+        .timeout_ms            = 0,
+        .disable_auto_redirect = false,
+        .max_redirection_count = 0,
+        .event_handler         = &http_event_handler,
+        .transport_type        = HTTP_TRANSPORT_UNKNOWN,
+        .buffer_size           = 0,
+        .buffer_size_tx        = 0,
+        .user_data             = NULL,
+        .is_async              = false,
+        .use_global_ca_store   = false,
+        .skip_cert_common_name_check = false,
     };
     http_handle = esp_http_client_init(&http_config);
 
@@ -121,7 +140,7 @@ http_send_advs(const struct adv_report_table *reports)
         if (gw)
         {
             cJSON_AddStringToObject(gw, "coordinates", g_gateway_config.coordinates);
-            cJSON_AddNumberToObject(gw, "timestamp", now);
+            cjson_wrap_add_timestamp(gw, "timestamp", now);
             cJSON_AddStringToObject(gw, "gw_mac", gw_mac_sta.str_buf);
             tags = cJSON_AddObjectToObject(gw, "tags");
         }
@@ -142,7 +161,7 @@ http_send_advs(const struct adv_report_table *reports)
             adv        = &reports->table[i];
             cJSON *tag = cJSON_CreateObject();
             cJSON_AddNumberToObject(tag, "rssi", adv->rssi);
-            cJSON_AddNumberToObject(tag, "timestamp", adv->timestamp);
+            cjson_wrap_add_timestamp(tag, "timestamp", adv->timestamp);
             cJSON_AddStringToObject(tag, "data", adv->data);
             const mac_address_str_t mac_str = mac_address_to_str(&adv->tag_mac);
             cJSON_AddItemToObject(tags, mac_str.str_buf, tag);

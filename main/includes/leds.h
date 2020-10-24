@@ -10,6 +10,7 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
+#include "../time_units.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,7 +33,7 @@ void
 leds_off(void);
 
 void
-leds_start_blink(uint32_t interval);
+leds_start_blink(const TimeUnitsMilliSeconds_t interval_ms);
 
 void
 leds_stop_blink(void);

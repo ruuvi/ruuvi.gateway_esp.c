@@ -7,6 +7,7 @@
 
 #include "mqtt.h"
 #include "cJSON.h"
+#include "cjson_wrap.h"
 #include "esp_err.h"
 #include "esp_log.h"
 #include "freertos/event_groups.h"
@@ -25,7 +26,7 @@ static const char *TAG = "MQTT";
 static void
 create_full_topic(char *full_topic, const char *prefix, const char *topic)
 {
-    if (full_topic == NULL || topic == NULL)
+    if ((full_topic == NULL) || (topic == NULL))
     {
         ESP_LOGE(TAG, "%s: null arguments", __func__);
         return;
@@ -53,8 +54,8 @@ mqtt_create_json(adv_report_t *adv)
         cJSON_AddStringToObject(root, "gw_mac", gw_mac_sta.str_buf);
         cJSON_AddNumberToObject(root, "rssi", adv->rssi);
         cJSON_AddArrayToObject(root, "aoa");
-        cJSON_AddNumberToObject(root, "gwts", now);
-        cJSON_AddNumberToObject(root, "ts", adv->timestamp);
+        cjson_wrap_add_timestamp(root, "gwts", now);
+        cjson_wrap_add_timestamp(root, "ts", adv->timestamp);
         cJSON_AddStringToObject(root, "data", adv->data);
         cJSON_AddStringToObject(root, "coords", g_gateway_config.coordinates);
     }
@@ -204,16 +205,40 @@ mqtt_app_start(void)
     }
 
     const esp_mqtt_client_config_t mqtt_cfg = {
-        .event_handle = mqtt_event_handler,
-        .host         = g_gateway_config.mqtt_server,
-        .port         = g_gateway_config.mqtt_port,
-        .username     = g_gateway_config.mqtt_user,
-        .password     = g_gateway_config.mqtt_pass,
-        .lwt_retain   = true,
-        .lwt_topic    = lwt_topic,
-        .lwt_msg      = lwt_message,
-        .lwt_qos      = 1,
-        .transport    = MQTT_TRANSPORT_OVER_TCP,
+        .event_handle                = &mqtt_event_handler,
+        .event_loop_handle           = NULL,
+        .host                        = g_gateway_config.mqtt_server,
+        .uri                         = NULL,
+        .port                        = g_gateway_config.mqtt_port,
+        .client_id                   = NULL,
+        .username                    = g_gateway_config.mqtt_user,
+        .password                    = g_gateway_config.mqtt_pass,
+        .lwt_topic                   = lwt_topic,
+        .lwt_msg                     = lwt_message,
+        .lwt_qos                     = 1,
+        .lwt_retain                  = true,
+        .lwt_msg_len                 = 0,
+        .disable_clean_session       = 0,
+        .keepalive                   = 0,
+        .disable_auto_reconnect      = false,
+        .user_context                = NULL,
+        .task_prio                   = 0,
+        .task_stack                  = 0,
+        .buffer_size                 = 0,
+        .cert_pem                    = NULL,
+        .cert_len                    = 0,
+        .client_cert_pem             = NULL,
+        .client_cert_len             = 0,
+        .client_key_pem              = NULL,
+        .client_key_len              = 0,
+        .transport                   = MQTT_TRANSPORT_OVER_TCP,
+        .refresh_connection_after_ms = 0,
+        .psk_hint_key                = NULL,
+        .use_global_ca_store         = false,
+        .reconnect_timeout_ms        = 0,
+        .alpn_protos                 = NULL,
+        .clientkey_password          = NULL,
+        .clientkey_password_len      = 0,
     };
     mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
     esp_mqtt_client_start(mqtt_client);
