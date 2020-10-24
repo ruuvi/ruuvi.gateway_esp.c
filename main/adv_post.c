@@ -90,67 +90,59 @@ adv_put_to_table(const adv_report_t *const p_adv)
 }
 
 static bool
-is_hexstr(char *str)
+is_hexstr(const char *str)
 {
     const size_t len = strlen(str);
-    for (int i = 0; i < len; ++i)
+    for (size_t i = 0; i < len; ++i)
     {
-        const int ch_val = (int)(unsigned char)str[i];
+        const int_fast32_t ch_val = (int_fast32_t)(uint8_t)str[i];
         if (0 == isxdigit(ch_val))
         {
-            return ESP_ERR_INVALID_ARG;
+            return false;
         }
     }
-    return ESP_OK;
+    return true;
 }
 
-static int
-is_adv_report_valid(adv_report_t *adv)
+static bool
+is_adv_report_valid(const adv_report_t *adv)
 {
-    esp_err_t err = ESP_OK;
-
-    if (is_hexstr(adv->data) != ESP_OK)
+    if (!is_hexstr(adv->data))
     {
-        err = ESP_ERR_INVALID_ARG;
+        return false;
     }
-
-    return err;
+    return true;
 }
 
-static int
+static bool
 parse_adv_report_from_uart(const re_ca_uart_payload_t *const msg, adv_report_t *adv)
 {
-    esp_err_t err = ESP_OK;
-
     if (NULL == msg)
     {
-        err = ESP_ERR_INVALID_ARG;
+        return false;
     }
-    else if (NULL == adv)
+    if (NULL == adv)
     {
-        err = ESP_ERR_INVALID_ARG;
+        return false;
     }
-    else if (msg->cmd != RE_CA_UART_ADV_RPRT)
+    if (RE_CA_UART_ADV_RPRT != msg->cmd)
     {
-        err = ESP_ERR_INVALID_ARG;
+        return false;
     }
-    else
-    {
-        const re_ca_uart_ble_adv_t *const report = &(msg->params.adv);
-        time_t                            now    = 0;
-        time(&now);
-        adv->rssi      = report->rssi_db;
-        adv->timestamp = now;
-        mac_address_bin_init(&adv->tag_mac, report->mac);
-        bin2hex(adv->data, sizeof(adv->data), report->adv, report->adv_len);
+    const re_ca_uart_ble_adv_t *const report = &(msg->params.adv);
+    time_t                            now    = 0;
+    time(&now);
+    adv->rssi      = report->rssi_db;
+    adv->timestamp = now;
+    mac_address_bin_init(&adv->tag_mac, report->mac);
+    bin2hex(adv->data, sizeof(adv->data), report->adv, report->adv_len);
 
-        if (is_adv_report_valid(adv))
-        {
-            err = ESP_ERR_INVALID_ARG;
-        }
+    if (!is_adv_report_valid(adv))
+    {
+        return false;
     }
 
-    return err;
+    return true;
 }
 
 static void
@@ -170,17 +162,16 @@ adv_post_send_device_id(void *arg)
 static void
 adv_post_send_report(void *arg)
 {
-    adv_report_t adv_report;
+    adv_report_t adv_report = { 0 };
 
-    // Refactor into function
-    if (ESP_OK == parse_adv_report_from_uart((re_ca_uart_payload_t *)arg, &adv_report))
+    if (!parse_adv_report_from_uart((re_ca_uart_payload_t *)arg, &adv_report))
     {
-        int ret = adv_put_to_table(&adv_report);
-
-        if (ESP_ERR_NO_MEM == ret)
-        {
-            ESP_LOGW(ADV_POST_TASK_TAG, "Adv report table full, adv dropped");
-        }
+        return;
+    }
+    const esp_err_t ret = adv_put_to_table(&adv_report);
+    if (ESP_ERR_NO_MEM == ret)
+    {
+        ESP_LOGW(ADV_POST_TASK_TAG, "Adv report table full, adv dropped");
     }
 }
 
