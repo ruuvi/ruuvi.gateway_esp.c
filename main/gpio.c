@@ -15,49 +15,59 @@
 #include "freertos/queue.h"
 #include "gpio.h"
 #include "http_server.h"
-#include "leds.h"
 #include "ruuvi_boards.h"
 #include "ruuvi_gateway.h"
 #include "attribs.h"
+#include "log.h"
 
-#define CONFIG_WIFI_RESET_BUTTON_GPIO RB_BUTTON_RESET_PIN
+#define CONFIG_WIFI_RESET_BUTTON_GPIO (RB_BUTTON_RESET_PIN)
 
-#define TIMER_DIVIDER         16
+#define TIMER_DIVIDER         (16)
 #define TIMER_SCALE           (TIMER_BASE_CLK / TIMER_DIVIDER) /*!< used to calculate counter value */
-#define ESP_INTR_FLAG_DEFAULT 0
+#define ESP_INTR_FLAG_DEFAULT (0)
 
-typedef int GPIO_Level_t;
+typedef int gpio_level_t;
 
-static xQueueHandle       gpio_evt_queue = NULL;
-extern EventGroupHandle_t status_bits;
+typedef struct gpio_event_t
+{
+    gpio_num_t gpio_num;
+} gpio_event_t;
+
+static xQueueHandle gp_gpio_evt_queue;
 
 static const char TAG[] = "gpio";
 
 static void IRAM_ATTR
-gpio_isr_handler(void *arg)
+gpio_isr_handler_reset_button(void *arg)
 {
-    uint32_t gpio_num = (uint32_t)(uintptr_t)arg;
-    xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
+    (void)arg;
+    const gpio_event_t gpio_evt = {
+        .gpio_num = CONFIG_WIFI_RESET_BUTTON_GPIO,
+    };
+    xQueueSendFromISR(gp_gpio_evt_queue, &gpio_evt, NULL);
 }
 
 static void IRAM_ATTR
-timer_isr(void *para)
+gpio_timer_isr(void *para)
 {
     (void)para;
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    BaseType_t is_higher_priority_task_woken = pdFALSE;
 
-    const BaseType_t result = xEventGroupSetBitsFromISR(status_bits, RESET_BUTTON_BIT, &xHigherPriorityTaskWoken);
+    const BaseType_t result = xEventGroupSetBitsFromISR(status_bits, RESET_BUTTON_BIT, &is_higher_priority_task_woken);
 
     TIMERG0.int_clr_timers.t0 = 1;
 
     if (pdPASS == result)
     {
-        portYIELD_FROM_ISR();
+        if (pdFALSE != is_higher_priority_task_woken)
+        {
+            portYIELD_FROM_ISR();
+        }
     }
 }
 
 static void
-config_timer(void)
+gpio_config_timer(void)
 {
     /* Select and initialize basic parameters of the timer */
     timer_config_t config;
@@ -76,7 +86,27 @@ config_timer(void)
     const uint32_t timeout_interval_seconds = 3;
     timer_set_alarm_value(TIMER_GROUP_0, TIMER_0, timeout_interval_seconds * TIMER_SCALE);
     timer_enable_intr(TIMER_GROUP_0, TIMER_0);
-    timer_isr_register(TIMER_GROUP_0, TIMER_0, &timer_isr, (void *)TIMER_0, ESP_INTR_FLAG_IRAM, NULL);
+    timer_isr_register(TIMER_GROUP_0, TIMER_0, &gpio_timer_isr, (void *)TIMER_0, ESP_INTR_FLAG_IRAM, NULL);
+}
+
+static void
+gpio_task_handle_reset_button(const gpio_level_t io_level, bool *p_is_timer_started)
+{
+    if ((!*p_is_timer_started) && (0 == io_level))
+    {
+        ESP_LOGD(TAG, "Button pressed");
+        // Start the timer
+        timer_start(TIMER_GROUP_0, TIMER_0);
+        *p_is_timer_started = true;
+    }
+    else
+    {
+        // Stop and reinitialize the timer
+        ESP_LOGD(TAG, "Button released");
+        gpio_config_timer();
+        *p_is_timer_started = false;
+        http_server_start();
+    }
 }
 
 ATTR_NORETURN
@@ -84,35 +114,113 @@ static void
 gpio_task(void *arg)
 {
     (void)arg;
-    uint32_t io_num        = 0;
-    bool     timer_started = false;
-
+    bool flag_timer_started = false;
     for (;;)
     {
-        if (pdPASS != xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY))
+        gpio_event_t gpio_evt = {
+            .gpio_num = GPIO_NUM_NC,
+        };
+        if (pdPASS != xQueueReceive(gp_gpio_evt_queue, &gpio_evt, portMAX_DELAY))
         {
             continue;
         }
-        if (CONFIG_WIFI_RESET_BUTTON_GPIO == io_num)
+        if (CONFIG_WIFI_RESET_BUTTON_GPIO == gpio_evt.gpio_num)
         {
-            const GPIO_Level_t io_level = gpio_get_level(io_num);
-            if ((!timer_started) && (0 == io_level))
-            {
-                ESP_LOGD(TAG, "Button pressed");
-                // Start the timer
-                timer_start(TIMER_GROUP_0, TIMER_0);
-                timer_started = true;
-            }
-            else
-            {
-                // Stop and reinitialize the timer
-                ESP_LOGD(TAG, "Button released");
-                config_timer();
-                timer_started = false;
-                http_server_start();
-            }
+            gpio_task_handle_reset_button(gpio_get_level(gpio_evt.gpio_num), &flag_timer_started);
         }
     }
+}
+
+static bool
+gpio_config_input_reset_button(void)
+{
+    /* INPUT GPIO WIFI_RESET_BUTTON */
+    static const gpio_config_t io_conf_reset_button = {
+        .pin_bit_mask = (1ULL << (uint32_t)CONFIG_WIFI_RESET_BUTTON_GPIO),
+        .mode         = GPIO_MODE_INPUT,
+        .pull_up_en   = 1,
+        .pull_down_en = 0,
+        .intr_type    = GPIO_INTR_ANYEDGE,
+    };
+    const esp_err_t err = gpio_config(&io_conf_reset_button);
+    if (ESP_OK != err)
+    {
+        LOG_ERR("%s failed, err=%d", "gpio_config", err);
+        return false;
+    }
+    return true;
+}
+
+static bool
+gpio_config_output_lna_crx(void)
+{
+    /* OUTPUT GPIO LNA_CRX */
+    const gpio_config_t io_conf_lna_crx = {
+        .pin_bit_mask = 1ULL << (uint32_t)RB_GWBUS_LNA,
+        .mode         = GPIO_MODE_OUTPUT,
+        .pull_up_en   = 0,
+        .pull_down_en = 0,
+        .intr_type    = GPIO_INTR_DISABLE,
+    };
+    const esp_err_t err = gpio_config(&io_conf_lna_crx);
+    if (ESP_OK != err)
+    {
+        LOG_ERR("%s failed, err=%d", "gpio_config", err);
+        return false;
+    }
+    return true;
+}
+
+static bool
+gpio_init_evt_queue(void)
+{
+    // create a queue to handle gpio event from ISR
+    const UBaseType_t queue_len = 10;
+    gp_gpio_evt_queue           = xQueueCreate(queue_len, sizeof(gpio_event_t));
+    if (NULL == gp_gpio_evt_queue)
+    {
+        LOG_ERR("%s failed", "xQueueCreate");
+        return false;
+    }
+    return true;
+}
+
+static bool
+gpio_init_install_isr_service(void)
+{
+    const esp_err_t err = gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
+    if (ESP_OK != err)
+    {
+        LOG_ERR("%s failed, err=%d", "gpio_install_isr_service", err);
+        return false;
+    }
+    return true;
+}
+
+static bool
+gpio_hook_isr_for_reset_button(void)
+{
+    const esp_err_t err = gpio_isr_handler_add(CONFIG_WIFI_RESET_BUTTON_GPIO, &gpio_isr_handler_reset_button, NULL);
+    if (ESP_OK != err)
+    {
+        LOG_ERR("%s failed, err=%d", "gpio_isr_handler_add", err);
+        return false;
+    }
+    return true;
+}
+
+static bool
+gpio_start_task(void)
+{
+    const uint32_t    stack_size    = 3U * 1024U;
+    const UBaseType_t task_priority = 1U;
+    const BaseType_t  res           = xTaskCreate(&gpio_task, "gpio_task", stack_size, NULL, task_priority, NULL);
+    if (pdPASS != res)
+    {
+        LOG_ERR("%s failed, err=%d", "xTaskCreate", res);
+        return false;
+    }
+    return true;
 }
 
 void
@@ -120,46 +228,33 @@ gpio_init(void)
 {
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
 
-    /*INPUT GPIO WIFI_RESET_BUTTON  -------------------------------------*/
+    if (!gpio_config_input_reset_button())
     {
-        static const gpio_config_t io_conf_reset_button = {
-            .pin_bit_mask = (1ULL << (unsigned)CONFIG_WIFI_RESET_BUTTON_GPIO),
-            .mode         = GPIO_MODE_INPUT,
-            .pull_up_en   = 1,
-            .pull_down_en = 0,
-            .intr_type    = GPIO_INTR_ANYEDGE,
-        };
-        const esp_err_t err = gpio_config(&io_conf_reset_button);
-        if (ESP_OK != err)
-        {
-            ESP_LOGE(TAG, "gpio_config failed for '%s', res=%d", "reset button", err);
-        }
+        return;
+    }
+    if (!gpio_config_output_lna_crx())
+    {
+        return;
+    }
+    if (!gpio_init_evt_queue())
+    {
+        return;
     }
 
-    /* OUTPUT GPIO LNA_CRX  -------------------------------------*/
+    gpio_config_timer();
+
+    if (!gpio_init_install_isr_service())
     {
-        const gpio_config_t io_conf_lna_crx = {
-            .pin_bit_mask = 1ULL << (unsigned)RB_GWBUS_LNA,
-            .mode         = GPIO_MODE_OUTPUT,
-            .pull_up_en   = 0,
-            .pull_down_en = 0,
-            .intr_type    = GPIO_INTR_DISABLE,
-        };
-        const esp_err_t err = gpio_config(&io_conf_lna_crx);
-        if (ESP_OK != err)
-        {
-            ESP_LOGE(TAG, "gpio_config failed for '%s', res=%d", "bluetooth LNA CRX", err);
-        }
+        return;
     }
 
-    /*-------------------------------------------------------------------*/
-    // create a queue to handle gpio event from isr
-    gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));
-    config_timer();
-    // install gpio isr service
-    gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
-    // hook isr handler for specific gpio pin
-    gpio_isr_handler_add(CONFIG_WIFI_RESET_BUTTON_GPIO, &gpio_isr_handler, (void *)CONFIG_WIFI_RESET_BUTTON_GPIO);
-    const uint32_t stack_size = 3072;
-    xTaskCreate(&gpio_task, "gpio_task", stack_size, NULL, 1, NULL);
+    if (!gpio_hook_isr_for_reset_button())
+    {
+        return;
+    }
+
+    if (!gpio_start_task())
+    {
+        return;
+    }
 }
