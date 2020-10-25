@@ -160,7 +160,7 @@ settings_get_from_flash(ruuvi_gateway_config_t *p_gateway_config);
 bool
 ruuvi_get_conf_json_str(cjson_wrap_str_t *p_json_str);
 
-__attribute__((__deprecated__)) //
+__attribute__((__deprecated__)) // this function should be removed after esp32-wifi-manager refactoring (#70, #102)
 char *
 ruuvi_get_conf_json(void);
 
@@ -168,7 +168,7 @@ char *
 ruuvi_get_metrics(void);
 
 void
-ruuvi_send_nrf_settings(ruuvi_gateway_config_t *config);
+ruuvi_send_nrf_settings(const ruuvi_gateway_config_t *p_config);
 
 void
 ethernet_connection_ok_cb(void);
