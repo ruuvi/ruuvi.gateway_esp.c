@@ -13,6 +13,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "../mac_addr.h"
+#include "../cjson_wrap.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -144,23 +145,27 @@ extern EventGroupHandle_t     status_bits;
 extern mac_address_str_t      gw_mac_sta;
 extern gw_metrics_t           gw_metrics;
 
+void
+settings_clear_in_flash(void);
+
+void
+settings_save_to_flash(const ruuvi_gateway_config_t *p_config);
+
+void
+settings_print(const ruuvi_gateway_config_t *p_config);
+
+void
+settings_get_from_flash(ruuvi_gateway_config_t *p_gateway_config);
+
+bool
+ruuvi_get_conf_json_str(cjson_wrap_str_t *p_json_str);
+
+__attribute__((__deprecated__)) //
 char *
 ruuvi_get_conf_json(void);
 
 char *
 ruuvi_get_metrics(void);
-
-void
-settings_get_from_flash(ruuvi_gateway_config_t *p_gateway_config);
-
-void
-settings_print(ruuvi_gateway_config_t *config);
-
-int
-settings_clear_in_flash(void);
-
-int
-settings_save_to_flash(ruuvi_gateway_config_t *config);
 
 void
 ruuvi_send_nrf_settings(ruuvi_gateway_config_t *config);
