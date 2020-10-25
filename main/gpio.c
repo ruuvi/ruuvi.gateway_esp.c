@@ -7,7 +7,6 @@
 
 #include "driver/gpio.h"
 #include "driver/timer.h"
-#include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/portmacro.h"
@@ -38,9 +37,9 @@ static xQueueHandle gp_gpio_evt_queue;
 static const char TAG[] = "gpio";
 
 static void IRAM_ATTR
-gpio_isr_handler_reset_button(void *arg)
+gpio_reset_button_handler_isr(void *p_arg)
 {
-    (void)arg;
+    (void)p_arg;
     const gpio_event_t gpio_evt = {
         .gpio_num = CONFIG_WIFI_RESET_BUTTON_GPIO,
     };
@@ -48,21 +47,18 @@ gpio_isr_handler_reset_button(void *arg)
 }
 
 static void IRAM_ATTR
-gpio_timer_isr(void *para)
+gpio_timer_isr(void *p_arg)
 {
-    (void)para;
+    (void)p_arg;
     BaseType_t is_higher_priority_task_woken = pdFALSE;
 
     const BaseType_t result = xEventGroupSetBitsFromISR(status_bits, RESET_BUTTON_BIT, &is_higher_priority_task_woken);
 
     TIMERG0.int_clr_timers.t0 = 1;
 
-    if (pdPASS == result)
+    if ((pdPASS == result) && (pdFALSE != is_higher_priority_task_woken))
     {
-        if (pdFALSE != is_higher_priority_task_woken)
-        {
-            portYIELD_FROM_ISR();
-        }
+        portYIELD_FROM_ISR();
     }
 }
 
@@ -94,7 +90,7 @@ gpio_task_handle_reset_button(const gpio_level_t io_level, bool *p_is_timer_star
 {
     if ((!*p_is_timer_started) && (0 == io_level))
     {
-        ESP_LOGD(TAG, "Button pressed");
+        LOG_DBG("Button pressed");
         // Start the timer
         timer_start(TIMER_GROUP_0, TIMER_0);
         *p_is_timer_started = true;
@@ -102,7 +98,7 @@ gpio_task_handle_reset_button(const gpio_level_t io_level, bool *p_is_timer_star
     else
     {
         // Stop and reinitialize the timer
-        ESP_LOGD(TAG, "Button released");
+        LOG_DBG("Button released");
         gpio_config_timer();
         *p_is_timer_started = false;
         http_server_start();
@@ -111,9 +107,9 @@ gpio_task_handle_reset_button(const gpio_level_t io_level, bool *p_is_timer_star
 
 ATTR_NORETURN
 static void
-gpio_task(void *arg)
+gpio_task(void *p_arg)
 {
-    (void)arg;
+    (void)p_arg;
     bool flag_timer_started = false;
     for (;;)
     {
@@ -200,7 +196,7 @@ gpio_init_install_isr_service(void)
 static bool
 gpio_hook_isr_for_reset_button(void)
 {
-    const esp_err_t err = gpio_isr_handler_add(CONFIG_WIFI_RESET_BUTTON_GPIO, &gpio_isr_handler_reset_button, NULL);
+    const esp_err_t err = gpio_isr_handler_add(CONFIG_WIFI_RESET_BUTTON_GPIO, &gpio_reset_button_handler_isr, NULL);
     if (ESP_OK != err)
     {
         LOG_ERR("%s failed, err=%d", "gpio_isr_handler_add", err);
