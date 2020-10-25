@@ -15,8 +15,22 @@
 extern "C" {
 #endif
 
+typedef struct cjson_wrap_str_t
+{
+    const char *p_str;
+} cjson_wrap_str_t;
+
 void
-cjson_wrap_add_timestamp(cJSON *const object, const char *const name, const time_t timestamp);
+cjson_wrap_add_timestamp(cJSON *const p_object, const char *const p_name, const time_t timestamp);
+
+cjson_wrap_str_t
+cjson_wrap_print(const cJSON *p_item);
+
+cjson_wrap_str_t
+cjson_wrap_print_and_delete(cJSON **pp_object);
+
+void
+cjson_wrap_free_json_str(cjson_wrap_str_t *p_json_str);
 
 #ifdef __cplusplus
 }
