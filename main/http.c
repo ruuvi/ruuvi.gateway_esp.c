@@ -138,7 +138,7 @@ http_send_advs(const adv_report_table_t *reports)
     cJSON_AddStringToObject(p_json_data, "gw_mac", gw_mac_sta.str_buf);
 
     cJSON *p_json_tags = cJSON_AddObjectToObject(p_json_data, "tags");
-    if (NULL != p_json_tags)
+    if (NULL == p_json_tags)
     {
         LOG_ERR("can't create json");
         return;
