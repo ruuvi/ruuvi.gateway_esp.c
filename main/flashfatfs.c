@@ -25,14 +25,14 @@
 
 static const char *TAG = "FlashFatFS";
 
-struct FlashFatFs_Tag
+struct flash_fat_fs_t
 {
     char *      mount_point;
     wl_handle_t wl_handle;
 };
 
-FlashFatFs_t *
-flashfatfs_mount(const char *mount_point, const char *partition_label, const FlashFatFsNumFiles_t max_files)
+flash_fat_fs_t *
+flashfatfs_mount(const char *mount_point, const char *partition_label, const flash_fat_fs_num_files_t max_files)
 {
     const char *mount_point_prefix = "";
 #if RUUVI_TESTS_NRF52FW || RUUVI_TESTS_FLASHFATFS
@@ -40,7 +40,7 @@ flashfatfs_mount(const char *mount_point, const char *partition_label, const Fla
 #endif
     size_t mount_point_buf_size = strlen(mount_point_prefix) + strlen(mount_point) + 1;
 
-    FlashFatFs_t *p_obj = app_calloc(1, sizeof(*p_obj) + mount_point_buf_size);
+    flash_fat_fs_t *p_obj = app_calloc(1, sizeof(*p_obj) + mount_point_buf_size);
     if (NULL == p_obj)
     {
         ESP_LOGE(TAG, "%s: Can't allocate memory", __func__);
@@ -75,7 +75,7 @@ flashfatfs_mount(const char *mount_point, const char *partition_label, const Fla
 }
 
 bool
-flashfatfs_unmount(FlashFatFs_t *p_ffs)
+flashfatfs_unmount(flash_fat_fs_t *p_ffs)
 {
     bool result = false;
     ESP_LOGI(TAG, "Unmount %s", p_ffs->mount_point);
@@ -92,12 +92,12 @@ flashfatfs_unmount(FlashFatFs_t *p_ffs)
     return result;
 }
 
-FileDescriptor_t
-flashfatfs_open(FlashFatFs_t *p_ffs, const char *file_path)
+file_descriptor_t
+flashfatfs_open(flash_fat_fs_t *p_ffs, const char *file_path)
 {
     char tmp_path[80];
     snprintf(tmp_path, sizeof(tmp_path), "%s/%s", p_ffs->mount_point, file_path);
-    FileDescriptor_t fd = open(tmp_path, O_RDONLY);
+    file_descriptor_t fd = open(tmp_path, O_RDONLY);
     if (fd < 0)
     {
         ESP_LOGE(TAG, "Can't open: %s", tmp_path);
@@ -106,7 +106,7 @@ flashfatfs_open(FlashFatFs_t *p_ffs, const char *file_path)
 }
 
 FILE *
-flashfatfs_fopen(FlashFatFs_t *p_ffs, const char *file_path, const bool flag_use_binary_mode)
+flashfatfs_fopen(flash_fat_fs_t *p_ffs, const char *file_path, const bool flag_use_binary_mode)
 {
     char tmp_path[80];
     snprintf(tmp_path, sizeof(tmp_path), "%s/%s", p_ffs->mount_point, file_path);

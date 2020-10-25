@@ -265,7 +265,7 @@ nrf52fw_parse_info_file(FILE *p_fd, NRF52Fw_Info_t *p_info)
 
 NRF52FW_STATIC
 bool
-nrf52fw_read_info_txt(FlashFatFs_t *p_ffs, const char *p_path_info_txt, NRF52Fw_Info_t *p_info)
+nrf52fw_read_info_txt(flash_fat_fs_t *p_ffs, const char *p_path_info_txt, NRF52Fw_Info_t *p_info)
 {
     memset(p_info, 0, sizeof(*p_info));
     const bool flag_use_binary_mode = false;
@@ -345,7 +345,7 @@ nrf52fw_simulate_file_read_error(const bool flag_error)
 
 NRF52FW_STATIC
 int32_t
-nrf52fw_file_read(const FileDescriptor_t fd, void *p_buf, const size_t buf_size)
+nrf52fw_file_read(const file_descriptor_t fd, void *p_buf, const size_t buf_size)
 {
 #if RUUVI_TESTS_NRF52FW
     if (g_nrf52fw_flag_simulate_file_read_error)
@@ -401,10 +401,10 @@ nrf52fw_flash_write_block(
 NRF52FW_STATIC
 bool
 nrf52fw_flash_write_segment(
-    const FileDescriptor_t fd,
-    NRF52Fw_TmpBuf_t *     p_tmp_buf,
-    const uint32_t         segment_addr,
-    const size_t           segment_len)
+    const file_descriptor_t fd,
+    NRF52Fw_TmpBuf_t *      p_tmp_buf,
+    const uint32_t          segment_addr,
+    const size_t            segment_len)
 {
     uint32_t offset = 0;
     for (;;)
@@ -430,13 +430,13 @@ nrf52fw_flash_write_segment(
 NRF52FW_STATIC
 bool
 nrf52fw_write_segment_from_file(
-    FlashFatFs_t *    p_ffs,
+    flash_fat_fs_t *  p_ffs,
     const char *      p_path,
     NRF52Fw_TmpBuf_t *p_tmp_buf,
     const uint32_t    segment_addr,
     const size_t      segment_len)
 {
-    const FileDescriptor_t fd = flashfatfs_open(p_ffs, p_path);
+    const file_descriptor_t fd = flashfatfs_open(p_ffs, p_path);
     if (fd < 0)
     {
         ESP_LOGE(TAG, "%s: Can't open '%s'", __func__, p_path);
@@ -467,7 +467,7 @@ nrf52fw_erase_flash(void)
 
 NRF52FW_STATIC
 bool
-nrf52fw_flash_write_firmware(FlashFatFs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf, const NRF52Fw_Info_t *p_fw_info)
+nrf52fw_flash_write_firmware(flash_fat_fs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf, const NRF52Fw_Info_t *p_fw_info)
 {
     if (!nrf52fw_erase_flash())
     {
@@ -513,10 +513,10 @@ nrf52fw_flash_write_firmware(FlashFatFs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf, c
 NRF52FW_STATIC
 bool
 nrf52fw_calc_segment_crc(
-    const FileDescriptor_t fd,
-    NRF52Fw_TmpBuf_t *     p_tmp_buf,
-    const size_t           segment_len,
-    uint32_t *             p_crc)
+    const file_descriptor_t fd,
+    NRF52Fw_TmpBuf_t *      p_tmp_buf,
+    const size_t            segment_len,
+    uint32_t *              p_crc)
 {
     uint32_t offset     = 0U;
     uint32_t actual_crc = 0U;
@@ -551,9 +551,12 @@ nrf52fw_calc_segment_crc(
 
 NRF52FW_STATIC
 bool
-nrf52fw_check_fw_segment_crc(FlashFatFs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf, const NRF52Fw_Segment_t *p_segment_info)
+nrf52fw_check_fw_segment_crc(
+    flash_fat_fs_t *         p_ffs,
+    NRF52Fw_TmpBuf_t *       p_tmp_buf,
+    const NRF52Fw_Segment_t *p_segment_info)
 {
-    const FileDescriptor_t fd = flashfatfs_open(p_ffs, p_segment_info->file_name);
+    const file_descriptor_t fd = flashfatfs_open(p_ffs, p_segment_info->file_name);
     if (fd < 0)
     {
         ESP_LOGE(TAG, "%s: Can't open '%s'", __func__, p_segment_info->file_name);
@@ -585,7 +588,7 @@ nrf52fw_check_fw_segment_crc(FlashFatFs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf, c
 
 NRF52FW_STATIC
 bool
-nrf52fw_check_firmware(FlashFatFs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf, const NRF52Fw_Info_t *p_fw_info)
+nrf52fw_check_firmware(flash_fat_fs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf, const NRF52Fw_Info_t *p_fw_info)
 {
     for (uint32_t i = 0; i < p_fw_info->num_segments; ++i)
     {
@@ -599,7 +602,7 @@ nrf52fw_check_firmware(FlashFatFs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf, const N
 
 NRF52FW_STATIC
 bool
-nrf52fw_update_fw_step3(FlashFatFs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf)
+nrf52fw_update_fw_step3(flash_fat_fs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf)
 {
     NRF52Fw_Info_t fw_info = { 0 };
     if (!nrf52fw_read_info_txt(p_ffs, "info.txt", &fw_info))
@@ -649,7 +652,7 @@ nrf52fw_update_fw_step3(FlashFatFs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf)
 
 NRF52FW_STATIC
 bool
-nrf52fw_update_fw_step2(FlashFatFs_t *p_ffs)
+nrf52fw_update_fw_step2(flash_fat_fs_t *p_ffs)
 {
     NRF52Fw_TmpBuf_t *p_tmp_buf = app_malloc(sizeof(*p_tmp_buf));
     if (NULL == p_tmp_buf)
@@ -666,8 +669,8 @@ NRF52FW_STATIC
 bool
 nrf52fw_update_fw_step1(void)
 {
-    const FlashFatFsNumFiles_t max_num_files = 1;
-    FlashFatFs_t *             p_ffs         = flashfatfs_mount("/fs_nrf52", GW_NRF_PARTITION, max_num_files);
+    const flash_fat_fs_num_files_t max_num_files = 1;
+    flash_fat_fs_t *               p_ffs         = flashfatfs_mount("/fs_nrf52", GW_NRF_PARTITION, max_num_files);
     if (NULL == p_ffs)
     {
         ESP_LOGE(TAG, "%s: %s failed", __func__, "flashfatfs_mount");

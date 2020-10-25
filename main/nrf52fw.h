@@ -145,14 +145,14 @@ nrf52fw_parse_info_file(FILE *p_fd, NRF52Fw_Info_t *p_info);
 
 /**
  * @brief Open file "info.txt" on FlashFatFs, parse it and fill @ref NRF52Fw_Info_t
- * @param p_ffs - ptr to @ref FlashFatFs_t
+ * @param p_ffs - ptr to @ref flash_fat_fs_t
  * @param p_path_info_txt - ptr to path to "into.txt"
  * @param[out] p_info - ptr to output variable @ref NRF52Fw_Info_t
  * @return true if successful
  */
 NRF52FW_STATIC
 bool
-nrf52fw_read_info_txt(FlashFatFs_t *p_ffs, const char *p_path_info_txt, NRF52Fw_Info_t *p_info);
+nrf52fw_read_info_txt(flash_fat_fs_t *p_ffs, const char *p_path_info_txt, NRF52Fw_Info_t *p_info);
 
 /**
  * @brief Read current firmware version from nRF52
@@ -182,7 +182,7 @@ nrf52fw_simulate_file_read_error(const bool flag_error);
 
 /**
  * @brief Write a segment of flash memory to nRF52 from an opened file
- * @param fd - descriptor of an opened file, @ref FileDescriptor_t
+ * @param fd - descriptor of an opened file, @ref file_descriptor_t
  * @param p_tmp_buf - ptr to temporary buffer, @ref NRF52Fw_TmpBuf_t
  * @param segment_addr - address of segment
  * @param segment_len - segment length
@@ -191,14 +191,14 @@ nrf52fw_simulate_file_read_error(const bool flag_error);
 NRF52FW_STATIC
 bool
 nrf52fw_flash_write_segment(
-    const FileDescriptor_t fd,
-    NRF52Fw_TmpBuf_t *     p_tmp_buf,
-    const uint32_t         segment_addr,
-    const size_t           segment_len);
+    const file_descriptor_t fd,
+    NRF52Fw_TmpBuf_t *      p_tmp_buf,
+    const uint32_t          segment_addr,
+    const size_t            segment_len);
 
 /**
  * @brief Write a segment of flash memory to nRF52 from file
- * @param p_ffs - ptr to FlashFatFs descriptor, @ref FlashFatFs_t
+ * @param p_ffs - ptr to FlashFatFs descriptor, @ref flash_fat_fs_t
  * @param p_path - ptr to a string with file path
  * @param p_tmp_buf - ptr to temporary buffer, @ref NRF52Fw_TmpBuf_t
  * @param segment_addr - address of segment
@@ -208,7 +208,7 @@ nrf52fw_flash_write_segment(
 NRF52FW_STATIC
 bool
 nrf52fw_write_segment_from_file(
-    FlashFatFs_t *    p_ffs,
+    flash_fat_fs_t *  p_ffs,
     const char *      p_path,
     NRF52Fw_TmpBuf_t *p_tmp_buf,
     const uint32_t    segment_addr,
@@ -216,18 +216,18 @@ nrf52fw_write_segment_from_file(
 
 /**
  * @brief Write firmware segments of flash memory to nRF52 from files
- * @param p_ffs - ptr to FlashFatFs descriptor, @ref FlashFatFs_t
+ * @param p_ffs - ptr to FlashFatFs descriptor, @ref flash_fat_fs_t
  * @param p_tmp_buf - ptr to temporary buffer, @ref NRF52Fw_TmpBuf_t
  * @param p_fw_info - ptr to firmware segments description info, @ref NRF52Fw_Info_t
  * @return true if successful
  */
 NRF52FW_STATIC
 bool
-nrf52fw_flash_write_firmware(FlashFatFs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf, const NRF52Fw_Info_t *p_fw_info);
+nrf52fw_flash_write_firmware(flash_fat_fs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf, const NRF52Fw_Info_t *p_fw_info);
 
 /**
  * @brief Read file and calculate CRC for firmware segment
- * @param fd - descriptor of an opened file, @ref FileDescriptor_t
+ * @param fd - descriptor of an opened file, @ref file_descriptor_t
  * @param p_tmp_buf - ptr to temporary buffer, @ref NRF52Fw_TmpBuf_t
  * @param segment_len - length of segment
  * @param[out] p_crc - ptr to output variable with CRC
@@ -236,21 +236,21 @@ nrf52fw_flash_write_firmware(FlashFatFs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf, c
 NRF52FW_STATIC
 bool
 nrf52fw_calc_segment_crc(
-    const FileDescriptor_t fd,
-    NRF52Fw_TmpBuf_t *     p_tmp_buf,
-    const size_t           segment_len,
-    uint32_t *             p_crc);
+    const file_descriptor_t fd,
+    NRF52Fw_TmpBuf_t *      p_tmp_buf,
+    const size_t            segment_len,
+    uint32_t *              p_crc);
 
 /**
  * @brief Check CRC for all firmware segments
- * @param p_ffs - ptr to FlashFatFs descriptor, @ref FlashFatFs_t
+ * @param p_ffs - ptr to FlashFatFs descriptor, @ref flash_fat_fs_t
  * @param p_tmp_buf - ptr to temporary buffer, @ref NRF52Fw_TmpBuf_t
  * @param p_fw_info - ptr to firmware segments description info, @ref NRF52Fw_Info_t
  * @return true if successful
  */
 NRF52FW_STATIC
 bool
-nrf52fw_check_firmware(FlashFatFs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf, const NRF52Fw_Info_t *p_fw_info);
+nrf52fw_check_firmware(flash_fat_fs_t *p_ffs, NRF52Fw_TmpBuf_t *p_tmp_buf, const NRF52Fw_Info_t *p_fw_info);
 
 #endif // RUUVI_TESTS_NRF52FW
 
