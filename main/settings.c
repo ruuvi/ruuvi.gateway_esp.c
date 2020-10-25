@@ -103,7 +103,7 @@ settings_print(const ruuvi_gateway_config_t *p_config)
 static bool
 settings_get_gw_cfg_from_nvs(nvs_handle handle, ruuvi_gateway_config_t *p_gw_cfg)
 {
-    size_t sz = 0;
+    size_t    sz      = 0;
     esp_err_t esp_err = nvs_get_blob(handle, RUUVI_GATEWAY_NVS_CONFIGURATION_KEY, NULL, &sz);
     if (ESP_OK != esp_err)
     {

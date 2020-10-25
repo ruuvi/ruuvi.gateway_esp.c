@@ -76,14 +76,7 @@ extern "C" {
         { \
             threadName = "???"; \
         } \
-        ESP_LOGW(TAG, "[%s] " fmt, threadName, ##__VA_ARGS__); \
-        ESP_LOGW( \
-            TAG, \
-            "[%s] " fmt ", err=%d (%s)", \
-            threadName, \
-            ##__VA_ARGS__, \
-            err, \
-            esp_err_to_name(err)); \
+        ESP_LOGW(TAG, "[%s] " fmt ", err=%d (%s)", threadName, ##__VA_ARGS__, err, esp_err_to_name(err)); \
     } while (0)
 
 #define LOG_INFO(fmt, ...) \
