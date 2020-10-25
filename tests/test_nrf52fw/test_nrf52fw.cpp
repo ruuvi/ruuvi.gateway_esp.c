@@ -136,11 +136,11 @@ class TestNRF52Fw : public ::testing::Test
 {
 private:
 protected:
-    FILE *        m_fd;
+    FILE *          m_fd;
     flash_fat_fs_t *m_p_ffs;
-    const char *  m_mount_point_dir;
-    const char *  m_mount_point;
-    const char *  m_info_txt_name;
+    const char *    m_mount_point_dir;
+    const char *    m_mount_point;
+    const char *    m_info_txt_name;
 
     void
     SetUp() override

@@ -39,8 +39,8 @@ adv_post_send_device_id(void *arg);
 
 portMUX_TYPE adv_table_mux = portMUX_INITIALIZER_UNLOCKED;
 
-struct adv_report_table adv_reports;
-struct adv_report_table adv_reports_buf;
+adv_report_table_t adv_reports;
+adv_report_table_t adv_reports_buf;
 
 static const char *ADV_POST_TASK_TAG = "ADV_POST_TASK";
 
@@ -132,7 +132,7 @@ parse_adv_report_from_uart(const re_ca_uart_payload_t *const msg, adv_report_t *
     const re_ca_uart_ble_adv_t *const report = &(msg->params.adv);
     time_t                            now    = 0;
     time(&now);
-    adv->rssi      = report->rssi_db;
+    adv->rssi      = (wifi_rssi_t)report->rssi_db;
     adv->timestamp = now;
     mac_address_bin_init(&adv->tag_mac, report->mac);
     bin2hex(adv->data, sizeof(adv->data), report->adv, report->adv_len);
@@ -176,7 +176,7 @@ adv_post_send_report(void *arg)
 }
 
 static void
-adv_post_log(const struct adv_report_table *p_reports)
+adv_post_log(const adv_report_table_t *p_reports)
 {
     ESP_LOGI(ADV_POST_TASK_TAG, "Advertisements in table:");
     for (num_of_advs_t i = 0; i < p_reports->num_of_advs; ++i)
@@ -237,7 +237,7 @@ adv_post_check_is_disconnected(void)
 }
 
 static void
-adv_post_retransmit_advs(const struct adv_report_table *p_reports)
+adv_post_retransmit_advs(const adv_report_table_t *p_reports)
 {
     if (g_gateway_config.use_http)
     {

@@ -116,7 +116,7 @@ http_send(const char *p_msg)
 }
 
 void
-http_send_advs(const struct adv_report_table *reports)
+http_send_advs(const adv_report_table_t *reports)
 {
     cJSON *p_json_root = cJSON_CreateObject();
     if (NULL == p_json_root)

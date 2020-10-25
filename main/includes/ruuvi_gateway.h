@@ -43,23 +43,25 @@ extern "C" {
 #define ETH_DISCONNECTED_BIT (1U << 3U)
 #define ETH_CONNECTED_BIT    (1U << 4U)
 
-typedef struct adv_report
+typedef int32_t wifi_rssi_t;
+
+typedef struct adv_report_t
 {
     mac_address_bin_t tag_mac;
     time_t            timestamp;
-    int               rssi;
+    wifi_rssi_t       rssi;
     char              data[ADV_DATA_MAX_LEN + 1];
 } adv_report_t;
 
 typedef uint32_t num_of_advs_t;
 
-struct adv_report_table
+typedef struct adv_report_table_t
 {
     num_of_advs_t num_of_advs;
     adv_report_t  table[MAX_ADVS_TABLE];
-};
+} adv_report_table_t;
 
-typedef struct gw_metrics
+typedef struct gw_metrics_t
 {
     uint64_t received_advertisements;
 } gw_metrics_t;
@@ -131,11 +133,11 @@ typedef struct ruuvi_gateway_config_t
     }
 // clang-format on
 
-typedef enum nrf_command_t
+typedef enum nrf_command_e
 {
-    SET_FILTER,
-    CLEAR_FILTER
-} nrf_command_t;
+    NRF_COMMAND_SET_FILTER   = 0,
+    NRF_COMMAND_CLEAR_FILTER = 1,
+} nrf_command_e;
 
 extern ruuvi_gateway_config_t g_gateway_config;
 extern EventGroupHandle_t     status_bits;
