@@ -27,7 +27,7 @@ mac_address_to_str(const mac_address_bin_t *p_mac)
         .size = sizeof(mac_str.str_buf),
         .idx  = 0,
     };
-    for (unsigned i = 0; i < sizeof(p_mac->mac); ++i)
+    for (size_t i = 0; i < sizeof(p_mac->mac); ++i)
     {
         if (0 != i)
         {
