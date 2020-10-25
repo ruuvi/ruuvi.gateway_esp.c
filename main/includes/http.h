@@ -15,7 +15,7 @@ extern "C" {
 #endif
 
 void
-http_send(const char *msg);
+http_send(const char *p_msg);
 
 void
 http_send_advs(const struct adv_report_table *reports);
