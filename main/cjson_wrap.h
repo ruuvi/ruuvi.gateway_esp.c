@@ -20,6 +20,15 @@ typedef struct cjson_wrap_str_t
     const char *p_str;
 } cjson_wrap_str_t;
 
+static inline cjson_wrap_str_t
+cjson_wrap_str_null(void)
+{
+    const cjson_wrap_str_t json_str = {
+        .p_str = NULL,
+    };
+    return json_str;
+}
+
 void
 cjson_wrap_add_timestamp(cJSON *const p_object, const char *const p_name, const time_t timestamp);
 
