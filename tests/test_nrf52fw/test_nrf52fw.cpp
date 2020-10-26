@@ -136,11 +136,11 @@ class TestNRF52Fw : public ::testing::Test
 {
 private:
 protected:
-    FILE *        m_fd;
-    FlashFatFs_t *m_p_ffs;
-    const char *  m_mount_point_dir;
-    const char *  m_mount_point;
-    const char *  m_info_txt_name;
+    FILE *          m_fd;
+    flash_fat_fs_t *m_p_ffs;
+    const char *    m_mount_point_dir;
+    const char *    m_mount_point;
+    const char *    m_info_txt_name;
 
     void
     SetUp() override
@@ -540,7 +540,7 @@ TEST_F(TestNRF52Fw, test_nrf52fw_parse_digit_update_ver_byte_num_3_fail) // NOLI
 
 TEST_F(TestNRF52Fw, test_parse_version_ok_1_2_3) // NOLINT
 {
-    NRF52Fw_Version_t fw_ver = { 0 };
+    nrf52fw_version_t fw_ver = { 0 };
     ASSERT_TRUE(nrf52fw_parse_version("1.2.3", &fw_ver));
     ASSERT_EQ(0x01020300, fw_ver.version);
 }
@@ -552,84 +552,84 @@ TEST_F(TestNRF52Fw, test_parse_version_ok_1_2_3_with_null_output) // NOLINT
 
 TEST_F(TestNRF52Fw, test_parse_version_fail_1_2_) // NOLINT
 {
-    NRF52Fw_Version_t fw_ver = { 0 };
+    nrf52fw_version_t fw_ver = { 0 };
     ASSERT_FALSE(nrf52fw_parse_version("1.2.", &fw_ver));
     ASSERT_EQ(0, fw_ver.version);
 }
 
 TEST_F(TestNRF52Fw, test_parse_version_fail_1_2) // NOLINT
 {
-    NRF52Fw_Version_t fw_ver = { 0 };
+    nrf52fw_version_t fw_ver = { 0 };
     ASSERT_FALSE(nrf52fw_parse_version("1.2", &fw_ver));
     ASSERT_EQ(0, fw_ver.version);
 }
 
 TEST_F(TestNRF52Fw, test_parse_version_fail_1_) // NOLINT
 {
-    NRF52Fw_Version_t fw_ver = { 0 };
+    nrf52fw_version_t fw_ver = { 0 };
     ASSERT_FALSE(nrf52fw_parse_version("1.", &fw_ver));
     ASSERT_EQ(0, fw_ver.version);
 }
 
 TEST_F(TestNRF52Fw, test_parse_version_fail_1) // NOLINT
 {
-    NRF52Fw_Version_t fw_ver = { 0 };
+    nrf52fw_version_t fw_ver = { 0 };
     ASSERT_FALSE(nrf52fw_parse_version("1", &fw_ver));
     ASSERT_EQ(0, fw_ver.version);
 }
 
 TEST_F(TestNRF52Fw, test_parse_version_fail_1x_2_3) // NOLINT
 {
-    NRF52Fw_Version_t fw_ver = { 0 };
+    nrf52fw_version_t fw_ver = { 0 };
     ASSERT_FALSE(nrf52fw_parse_version("1x.2.3", &fw_ver));
     ASSERT_EQ(0, fw_ver.version);
 }
 
 TEST_F(TestNRF52Fw, test_parse_version_fail_1_2x_3) // NOLINT
 {
-    NRF52Fw_Version_t fw_ver = { 0 };
+    nrf52fw_version_t fw_ver = { 0 };
     ASSERT_FALSE(nrf52fw_parse_version("1.2x.3", &fw_ver));
     ASSERT_EQ(0, fw_ver.version);
 }
 
 TEST_F(TestNRF52Fw, test_parse_version_fail_1_2_3x) // NOLINT
 {
-    NRF52Fw_Version_t fw_ver = { 0 };
+    nrf52fw_version_t fw_ver = { 0 };
     ASSERT_FALSE(nrf52fw_parse_version("1.2.3x", &fw_ver));
     ASSERT_EQ(0, fw_ver.version);
 }
 
 TEST_F(TestNRF52Fw, test_parse_version_fail_empty) // NOLINT
 {
-    NRF52Fw_Version_t fw_ver = { 0 };
+    nrf52fw_version_t fw_ver = { 0 };
     ASSERT_FALSE(nrf52fw_parse_version("", &fw_ver));
     ASSERT_EQ(0, fw_ver.version);
 }
 
 TEST_F(TestNRF52Fw, test_parse_version_fail_null) // NOLINT
 {
-    NRF52Fw_Version_t fw_ver = { 0 };
+    nrf52fw_version_t fw_ver = { 0 };
     ASSERT_FALSE(nrf52fw_parse_version(nullptr, &fw_ver));
     ASSERT_EQ(0, fw_ver.version);
 }
 
 TEST_F(TestNRF52Fw, test_parse_version_line_ok_1_2_3) // NOLINT
 {
-    NRF52Fw_Version_t fw_ver = { 0 };
+    nrf52fw_version_t fw_ver = { 0 };
     ASSERT_TRUE(nrf52fw_parse_version_line("# v1.2.3", &fw_ver));
     ASSERT_EQ(0x01020300, fw_ver.version);
 }
 
 TEST_F(TestNRF52Fw, test_parse_version_line_fail_1) // NOLINT
 {
-    NRF52Fw_Version_t fw_ver = { 0 };
+    nrf52fw_version_t fw_ver = { 0 };
     ASSERT_FALSE(nrf52fw_parse_version_line("# 1.2.3", &fw_ver));
     ASSERT_EQ(0x00000000, fw_ver.version);
 }
 
 TEST_F(TestNRF52Fw, test_parse_version_line_fail_2) // NOLINT
 {
-    NRF52Fw_Version_t fw_ver = { 0 };
+    nrf52fw_version_t fw_ver = { 0 };
     ASSERT_FALSE(nrf52fw_parse_version_line("v1.2.3", &fw_ver));
     ASSERT_EQ(0x00000000, fw_ver.version);
 }
@@ -685,13 +685,13 @@ TEST_F(TestNRF52Fw, test_nrf52fw_line_rstrip_abc_space_tab_cr_lf) // NOLINT
 
 TEST_F(TestNRF52Fw, test_nrf52fw_parse_segment_info_line_empty) // NOLINT
 {
-    NRF52Fw_Segment_t segment = { 0 };
+    nrf52fw_segment_t segment = { 0 };
     ASSERT_FALSE(nrf52fw_parse_segment_info_line("", &segment));
 }
 
 TEST_F(TestNRF52Fw, test_nrf52fw_parse_segment_info_line_ok) // NOLINT
 {
-    NRF52Fw_Segment_t segment = { 0 };
+    nrf52fw_segment_t segment = { 0 };
     ASSERT_TRUE(nrf52fw_parse_segment_info_line("0x00001000 151016 segment_2.bin 0x0e326e66", &segment));
     ASSERT_EQ(0x00001000, segment.address);
     ASSERT_EQ(151016, segment.size);
@@ -701,7 +701,7 @@ TEST_F(TestNRF52Fw, test_nrf52fw_parse_segment_info_line_ok) // NOLINT
 
 TEST_F(TestNRF52Fw, test_nrf52fw_parse_segment_info_line_ok_alt1) // NOLINT
 {
-    NRF52Fw_Segment_t segment = { 0 };
+    nrf52fw_segment_t segment = { 0 };
     ASSERT_TRUE(nrf52fw_parse_segment_info_line("00001000 \t 0x24DE8 \t segment_2.bin \t 0e326e66", &segment));
     ASSERT_EQ(0x00001000, segment.address);
     ASSERT_EQ(151016, segment.size);
@@ -711,7 +711,7 @@ TEST_F(TestNRF52Fw, test_nrf52fw_parse_segment_info_line_ok_alt1) // NOLINT
 
 TEST_F(TestNRF52Fw, test_nrf52fw_parse_segment_info_line_ok_alt2) // NOLINT
 {
-    NRF52Fw_Segment_t segment = { 0 };
+    nrf52fw_segment_t segment = { 0 };
     ASSERT_TRUE(nrf52fw_parse_segment_info_line("00001000\t 0x24DE8\t segment_2.bin\t 0e326e66", &segment));
     ASSERT_EQ(0x00001000, segment.address);
     ASSERT_EQ(151016, segment.size);
@@ -721,37 +721,37 @@ TEST_F(TestNRF52Fw, test_nrf52fw_parse_segment_info_line_ok_alt2) // NOLINT
 
 TEST_F(TestNRF52Fw, test_nrf52fw_parse_segment_info_line_fail_1) // NOLINT
 {
-    NRF52Fw_Segment_t segment = { 0 };
+    nrf52fw_segment_t segment = { 0 };
     ASSERT_FALSE(nrf52fw_parse_segment_info_line("0x00001000 151016 segment_2.bin 0x0e326e6q", &segment));
 }
 
 TEST_F(TestNRF52Fw, test_nrf52fw_parse_segment_info_line_fail_2) // NOLINT
 {
-    NRF52Fw_Segment_t segment = { 0 };
+    nrf52fw_segment_t segment = { 0 };
     ASSERT_FALSE(nrf52fw_parse_segment_info_line("0x00001000 151016 segment_2.bin ", &segment));
 }
 
 TEST_F(TestNRF52Fw, test_nrf52fw_parse_segment_info_line_fail_3) // NOLINT
 {
-    NRF52Fw_Segment_t segment = { 0 };
+    nrf52fw_segment_t segment = { 0 };
     ASSERT_FALSE(nrf52fw_parse_segment_info_line("0x00001000 151016 segment_2.bin", &segment));
 }
 
 TEST_F(TestNRF52Fw, test_nrf52fw_parse_segment_info_line_fail_4) // NOLINT
 {
-    NRF52Fw_Segment_t segment = { 0 };
+    nrf52fw_segment_t segment = { 0 };
     ASSERT_FALSE(nrf52fw_parse_segment_info_line("0x00001000 151016 0x0e326e6", &segment));
 }
 
 TEST_F(TestNRF52Fw, test_nrf52fw_parse_segment_info_line_fail_5) // NOLINT
 {
-    NRF52Fw_Segment_t segment = { 0 };
+    nrf52fw_segment_t segment = { 0 };
     ASSERT_FALSE(nrf52fw_parse_segment_info_line("0x00001000 151016q segment_2.bin 0x0e326e6", &segment));
 }
 
 TEST_F(TestNRF52Fw, test_nrf52fw_parse_segment_info_line_fail_6) // NOLINT
 {
-    NRF52Fw_Segment_t segment = { 0 };
+    nrf52fw_segment_t segment = { 0 };
     ASSERT_FALSE(nrf52fw_parse_segment_info_line("0x00001000q 151016 segment_2.bin 0x0e326e6", &segment));
 }
 
@@ -772,27 +772,27 @@ TEST_F(TestNRF52Fw, test_nrf52fw_parse_info_file_1) // NOLINT
         this->m_fd = this->open_file(p_path_info_txt, "r");
         ASSERT_NE(nullptr, this->m_fd);
 
-        NRF52Fw_Info_t info = { 0 };
+        nrf52fw_info_t info = { 0 };
         ASSERT_EQ(0, nrf52fw_parse_info_file(this->m_fd, &info));
         ASSERT_EQ(0x01040200, info.fw_ver.version);
         ASSERT_EQ(3, info.num_segments);
 
         {
-            const NRF52Fw_Segment_t *p_segment = &info.segments[0];
+            const nrf52fw_segment_t *p_segment = &info.segments[0];
             ASSERT_EQ(0x00000000, p_segment->address);
             ASSERT_EQ(2816, p_segment->size);
             ASSERT_EQ(string("segment_1.bin"), string(p_segment->file_name));
             ASSERT_EQ(0xc9924e37, p_segment->crc);
         }
         {
-            const NRF52Fw_Segment_t *p_segment = &info.segments[1];
+            const nrf52fw_segment_t *p_segment = &info.segments[1];
             ASSERT_EQ(0x00001000, p_segment->address);
             ASSERT_EQ(151016, p_segment->size);
             ASSERT_EQ(string("segment_2.bin"), string(p_segment->file_name));
             ASSERT_EQ(0x0e326e66, p_segment->crc);
         }
         {
-            const NRF52Fw_Segment_t *p_segment = &info.segments[2];
+            const nrf52fw_segment_t *p_segment = &info.segments[2];
             ASSERT_EQ(0x00026000, p_segment->address);
             ASSERT_EQ(24448, p_segment->size);
             ASSERT_EQ(string("segment_3.bin"), string(p_segment->file_name));
@@ -820,7 +820,7 @@ TEST_F(TestNRF52Fw, test_nrf52fw_parse_info_file_no_version) // NOLINT
         this->m_fd = this->open_file(p_path_info_txt, "r");
         ASSERT_NE(nullptr, this->m_fd);
 
-        NRF52Fw_Info_t info = { 0 };
+        nrf52fw_info_t info = { 0 };
         ASSERT_EQ(1, nrf52fw_parse_info_file(this->m_fd, &info));
         ASSERT_EQ(0, info.fw_ver.version);
         ASSERT_EQ(0, info.num_segments);
@@ -847,7 +847,7 @@ TEST_F(TestNRF52Fw, test_nrf52fw_parse_info_file_bad_line_2) // NOLINT
         this->m_fd = this->open_file(p_path_info_txt, "r");
         ASSERT_NE(nullptr, this->m_fd);
 
-        NRF52Fw_Info_t info = { 0 };
+        nrf52fw_info_t info = { 0 };
         ASSERT_EQ(2, nrf52fw_parse_info_file(this->m_fd, &info));
         ASSERT_EQ(0x01040200, info.fw_ver.version);
         ASSERT_EQ(0, info.num_segments);
@@ -877,7 +877,7 @@ TEST_F(TestNRF52Fw, test_nrf52fw_parse_info_file_segments_overflow) // NOLINT
         this->m_fd = this->open_file(p_path_info_txt, "r");
         ASSERT_NE(nullptr, this->m_fd);
 
-        NRF52Fw_Info_t info = { 0 };
+        nrf52fw_info_t info = { 0 };
         ASSERT_EQ(7, nrf52fw_parse_info_file(this->m_fd, &info));
         ASSERT_EQ(0x01040200, info.fw_ver.version);
         ASSERT_EQ(5, info.num_segments);
@@ -903,28 +903,28 @@ TEST_F(TestNRF52Fw, nrf52fw_read_info_txt) // NOLINT
         this->m_p_ffs = flashfatfs_mount(this->m_mount_point, GW_NRF_PARTITION, 2);
         ASSERT_NE(nullptr, this->m_p_ffs);
 
-        NRF52Fw_Info_t info = { 0 };
+        nrf52fw_info_t info = { 0 };
         ASSERT_TRUE(nrf52fw_read_info_txt(this->m_p_ffs, this->m_info_txt_name, &info));
 
         ASSERT_EQ(0x01040200, info.fw_ver.version);
         ASSERT_EQ(3, info.num_segments);
 
         {
-            const NRF52Fw_Segment_t *p_segment = &info.segments[0];
+            const nrf52fw_segment_t *p_segment = &info.segments[0];
             ASSERT_EQ(0x00000000, p_segment->address);
             ASSERT_EQ(2816, p_segment->size);
             ASSERT_EQ(string("segment_1.bin"), string(p_segment->file_name));
             ASSERT_EQ(0xc9924e37, p_segment->crc);
         }
         {
-            const NRF52Fw_Segment_t *p_segment = &info.segments[1];
+            const nrf52fw_segment_t *p_segment = &info.segments[1];
             ASSERT_EQ(0x00001000, p_segment->address);
             ASSERT_EQ(151016, p_segment->size);
             ASSERT_EQ(string("segment_2.bin"), string(p_segment->file_name));
             ASSERT_EQ(0x0e326e66, p_segment->crc);
         }
         {
-            const NRF52Fw_Segment_t *p_segment = &info.segments[2];
+            const nrf52fw_segment_t *p_segment = &info.segments[2];
             ASSERT_EQ(0x00026000, p_segment->address);
             ASSERT_EQ(24448, p_segment->size);
             ASSERT_EQ(string("segment_3.bin"), string(p_segment->file_name));
@@ -938,7 +938,7 @@ TEST_F(TestNRF52Fw, nrf52fw_read_info_txt) // NOLINT
 
 TEST_F(TestNRF52Fw, nrf52fw_read_info_txt_no_file) // NOLINT
 {
-    NRF52Fw_Info_t info = { 0 };
+    nrf52fw_info_t info = { 0 };
 
     this->m_p_ffs = flashfatfs_mount(this->m_mount_point, GW_NRF_PARTITION, 2);
     ASSERT_NE(nullptr, this->m_p_ffs);
@@ -974,7 +974,7 @@ TEST_F(TestNRF52Fw, nrf52fw_read_info_txt_bad_line_3) // NOLINT
     this->m_p_ffs = flashfatfs_mount(this->m_mount_point, GW_NRF_PARTITION, 2);
     ASSERT_NE(nullptr, this->m_p_ffs);
     {
-        NRF52Fw_Info_t info = { 0 };
+        nrf52fw_info_t info = { 0 };
         ASSERT_FALSE(nrf52fw_read_info_txt(this->m_p_ffs, this->m_info_txt_name, &info));
 
         ASSERT_EQ(0x01040200, info.fw_ver.version);
@@ -1050,7 +1050,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_ok_16_words) // NOLINT
     this->m_fd = this->open_file(segment_path, "rb");
     ASSERT_NE(nullptr, this->m_fd);
 
-    NRF52Fw_TmpBuf_t tmp_buf = { 0 };
+    nrf52fw_tmp_buf_t tmp_buf = { 0 };
 
     const uint32_t segment_addr = 0x00001000;
     this->m_memSegmentsRead.emplace_back(
@@ -1087,7 +1087,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_ok_257_words) // NOLINT
     this->m_fd = this->open_file(segment_path, "rb");
     ASSERT_NE(nullptr, this->m_fd);
 
-    NRF52Fw_TmpBuf_t tmp_buf = { 0 };
+    nrf52fw_tmp_buf_t tmp_buf = { 0 };
 
     const uint32_t segment_addr = 0x00001000;
     this->m_memSegmentsRead.emplace_back(
@@ -1122,7 +1122,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_error_on_verify) // NOLINT
     this->m_fd = this->open_file(segment_path, "rb");
     ASSERT_NE(nullptr, this->m_fd);
 
-    NRF52Fw_TmpBuf_t tmp_buf = { 0 };
+    nrf52fw_tmp_buf_t tmp_buf = { 0 };
 
     const uint32_t segment_addr = 0x00001000;
     segment_buf[1] += 1U;
@@ -1157,7 +1157,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_error_on_read) // NOLINT
     this->m_fd = this->open_file(segment_path, "rb");
     ASSERT_NE(nullptr, this->m_fd);
 
-    NRF52Fw_TmpBuf_t tmp_buf = { 0 };
+    nrf52fw_tmp_buf_t tmp_buf = { 0 };
 
     const uint32_t segment_addr = 0x00001000;
 
@@ -1188,7 +1188,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_error_on_write) // NOLINT
     this->m_fd = this->open_file(segment_path, "rb");
     ASSERT_NE(nullptr, this->m_fd);
 
-    NRF52Fw_TmpBuf_t tmp_buf = { 0 };
+    nrf52fw_tmp_buf_t tmp_buf = { 0 };
 
     const uint32_t segment_addr = 0x00001000;
     this->m_memSegmentsWrite.emplace_back(
@@ -1221,7 +1221,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_fail_file_greater_than_expected)
     this->m_fd = this->open_file(segment_path, "rb");
     ASSERT_NE(nullptr, this->m_fd);
 
-    NRF52Fw_TmpBuf_t tmp_buf = { 0 };
+    nrf52fw_tmp_buf_t tmp_buf = { 0 };
 
     const uint32_t segment_addr = 0x00001000;
     this->m_memSegmentsRead.emplace_back(
@@ -1257,7 +1257,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_fail_bad_length) // NOLINT
     this->m_fd = this->open_file(segment_path, "rb");
     ASSERT_NE(nullptr, this->m_fd);
 
-    NRF52Fw_TmpBuf_t tmp_buf = { 0 };
+    nrf52fw_tmp_buf_t tmp_buf = { 0 };
 
     const uint32_t segment_addr = 0x00001000;
     this->m_memSegmentsRead.emplace_back(
@@ -1289,7 +1289,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_fail_after_file_read_error) // N
     this->m_fd = this->open_file(segment_path, "rb");
     ASSERT_NE(nullptr, this->m_fd);
 
-    NRF52Fw_TmpBuf_t tmp_buf = { 0 };
+    nrf52fw_tmp_buf_t tmp_buf = { 0 };
 
     const uint32_t segment_addr = 0x00001000;
     this->m_memSegmentsRead.emplace_back(
@@ -1319,7 +1319,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_from_file_ok) // NOLINT
         this->m_fd = nullptr;
     }
 
-    NRF52Fw_TmpBuf_t tmp_buf = { 0 };
+    nrf52fw_tmp_buf_t tmp_buf = { 0 };
 
     const uint32_t segment_addr = 0x00001000;
     this->m_memSegmentsRead.emplace_back(
@@ -1363,7 +1363,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_from_file_error_on_writing_segme
         this->m_fd = nullptr;
     }
 
-    NRF52Fw_TmpBuf_t tmp_buf = { 0 };
+    nrf52fw_tmp_buf_t tmp_buf = { 0 };
 
     const uint32_t segment_addr = 0x00001000;
     this->m_memSegmentsRead.emplace_back(
@@ -1400,7 +1400,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_from_file_error_no_file) // NOLI
         segment_buf[i] = 0xAA000000 + i;
     }
 
-    NRF52Fw_TmpBuf_t tmp_buf = { 0 };
+    nrf52fw_tmp_buf_t tmp_buf = { 0 };
 
     const uint32_t segment_addr = 0x00001000;
     this->m_memSegmentsRead.emplace_back(
@@ -1425,18 +1425,18 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_from_file_error_no_file) // NOLI
 
 TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_ok) // NOLINT
 {
-    NRF52Fw_Info_t fw_info = { 0 };
+    nrf52fw_info_t fw_info = { 0 };
     fw_info.fw_ver.version = 0x01020300;
     fw_info.num_segments   = 2;
     {
-        NRF52Fw_Segment_t *p_segment = &fw_info.segments[0];
+        nrf52fw_segment_t *p_segment = &fw_info.segments[0];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "segment_1.bin");
         p_segment->address = 0x00000000;
         p_segment->size    = 516;
         p_segment->crc     = 0;
     }
     {
-        NRF52Fw_Segment_t *p_segment = &fw_info.segments[1];
+        nrf52fw_segment_t *p_segment = &fw_info.segments[1];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "segment_2.bin");
         p_segment->address = 0x00001000;
         p_segment->size    = 1028;
@@ -1444,7 +1444,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_ok) // NOLINT
     }
 
     {
-        NRF52Fw_Segment_t *p_segment      = &fw_info.segments[0];
+        nrf52fw_segment_t *p_segment      = &fw_info.segments[0];
         uint32_t *         p_segment_buf1 = (uint32_t *)malloc(p_segment->size);
         ASSERT_NE(nullptr, p_segment_buf1);
         for (unsigned i = 0; i < p_segment->size / sizeof(uint32_t); ++i)
@@ -1462,7 +1462,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_ok) // NOLINT
     }
 
     {
-        NRF52Fw_Segment_t *p_segment      = &fw_info.segments[1];
+        nrf52fw_segment_t *p_segment      = &fw_info.segments[1];
         uint32_t *         p_segment_buf2 = (uint32_t *)malloc(p_segment->size);
         ASSERT_NE(nullptr, p_segment_buf2);
         for (unsigned i = 0; i < p_segment->size / sizeof(uint32_t); ++i)
@@ -1479,7 +1479,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_ok) // NOLINT
         free(p_segment_buf2);
     }
 
-    NRF52Fw_TmpBuf_t tmp_buf = { 0 };
+    nrf52fw_tmp_buf_t tmp_buf = { 0 };
 
     this->m_p_ffs = flashfatfs_mount(this->m_mount_point, GW_NRF_PARTITION, 2);
     ASSERT_NE(nullptr, this->m_p_ffs);
@@ -1520,18 +1520,18 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_ok) // NOLINT
 
 TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_version) // NOLINT
 {
-    NRF52Fw_Info_t fw_info = { 0 };
+    nrf52fw_info_t fw_info = { 0 };
     fw_info.fw_ver.version = 0x01020300;
     fw_info.num_segments   = 2;
     {
-        NRF52Fw_Segment_t *p_segment = &fw_info.segments[0];
+        nrf52fw_segment_t *p_segment = &fw_info.segments[0];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "segment_1.bin");
         p_segment->address = 0x00000000;
         p_segment->size    = 516;
         p_segment->crc     = 0;
     }
     {
-        NRF52Fw_Segment_t *p_segment = &fw_info.segments[1];
+        nrf52fw_segment_t *p_segment = &fw_info.segments[1];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "segment_2.bin");
         p_segment->address = 0x00001000;
         p_segment->size    = 1028;
@@ -1539,7 +1539,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_version) // NOLIN
     }
 
     {
-        NRF52Fw_Segment_t *p_segment      = &fw_info.segments[0];
+        nrf52fw_segment_t *p_segment      = &fw_info.segments[0];
         uint32_t *         p_segment_buf1 = (uint32_t *)malloc(p_segment->size);
         ASSERT_NE(nullptr, p_segment_buf1);
         for (unsigned i = 0; i < p_segment->size / sizeof(uint32_t); ++i)
@@ -1557,7 +1557,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_version) // NOLIN
     }
 
     {
-        NRF52Fw_Segment_t *p_segment      = &fw_info.segments[1];
+        nrf52fw_segment_t *p_segment      = &fw_info.segments[1];
         uint32_t *         p_segment_buf2 = (uint32_t *)malloc(p_segment->size);
         ASSERT_NE(nullptr, p_segment_buf2);
         for (unsigned i = 0; i < p_segment->size / sizeof(uint32_t); ++i)
@@ -1574,7 +1574,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_version) // NOLIN
         free(p_segment_buf2);
     }
 
-    NRF52Fw_TmpBuf_t tmp_buf = { 0 };
+    nrf52fw_tmp_buf_t tmp_buf = { 0 };
 
     this->m_p_ffs = flashfatfs_mount(this->m_mount_point, GW_NRF_PARTITION, 2);
     ASSERT_NE(nullptr, this->m_p_ffs);
@@ -1616,18 +1616,18 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_version) // NOLIN
 
 TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_segment) // NOLINT
 {
-    NRF52Fw_Info_t fw_info = { 0 };
+    nrf52fw_info_t fw_info = { 0 };
     fw_info.fw_ver.version = 0x01020300;
     fw_info.num_segments   = 2;
     {
-        NRF52Fw_Segment_t *p_segment = &fw_info.segments[0];
+        nrf52fw_segment_t *p_segment = &fw_info.segments[0];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "segment_1.bin");
         p_segment->address = 0x00000000;
         p_segment->size    = 516;
         p_segment->crc     = 0;
     }
     {
-        NRF52Fw_Segment_t *p_segment = &fw_info.segments[1];
+        nrf52fw_segment_t *p_segment = &fw_info.segments[1];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "segment_2.bin");
         p_segment->address = 0x00001000;
         p_segment->size    = 1028;
@@ -1635,7 +1635,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_segment) // NOLIN
     }
 
     {
-        NRF52Fw_Segment_t *p_segment      = &fw_info.segments[0];
+        nrf52fw_segment_t *p_segment      = &fw_info.segments[0];
         uint32_t *         p_segment_buf1 = (uint32_t *)malloc(p_segment->size);
         ASSERT_NE(nullptr, p_segment_buf1);
         for (unsigned i = 0; i < p_segment->size / sizeof(uint32_t); ++i)
@@ -1653,7 +1653,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_segment) // NOLIN
     }
 
     {
-        NRF52Fw_Segment_t *p_segment      = &fw_info.segments[1];
+        nrf52fw_segment_t *p_segment      = &fw_info.segments[1];
         uint32_t *         p_segment_buf2 = (uint32_t *)malloc(p_segment->size);
         ASSERT_NE(nullptr, p_segment_buf2);
         for (unsigned i = 0; i < p_segment->size / sizeof(uint32_t); ++i)
@@ -1670,7 +1670,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_segment) // NOLIN
         free(p_segment_buf2);
     }
 
-    NRF52Fw_TmpBuf_t tmp_buf = { 0 };
+    nrf52fw_tmp_buf_t tmp_buf = { 0 };
 
     this->m_p_ffs = flashfatfs_mount(this->m_mount_point, GW_NRF_PARTITION, 2);
     ASSERT_NE(nullptr, this->m_p_ffs);
@@ -1712,18 +1712,18 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_segment) // NOLIN
 
 TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_erasing) // NOLINT
 {
-    NRF52Fw_Info_t fw_info = { 0 };
+    nrf52fw_info_t fw_info = { 0 };
     fw_info.fw_ver.version = 0x01020300;
     fw_info.num_segments   = 2;
     {
-        NRF52Fw_Segment_t *p_segment = &fw_info.segments[0];
+        nrf52fw_segment_t *p_segment = &fw_info.segments[0];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "segment_1.bin");
         p_segment->address = 0x00000000;
         p_segment->size    = 516;
         p_segment->crc     = 0;
     }
     {
-        NRF52Fw_Segment_t *p_segment = &fw_info.segments[1];
+        nrf52fw_segment_t *p_segment = &fw_info.segments[1];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "segment_2.bin");
         p_segment->address = 0x00001000;
         p_segment->size    = 1028;
@@ -1731,7 +1731,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_erasing) // NOLINT
     }
 
     {
-        NRF52Fw_Segment_t *p_segment      = &fw_info.segments[0];
+        nrf52fw_segment_t *p_segment      = &fw_info.segments[0];
         uint32_t *         p_segment_buf1 = (uint32_t *)malloc(p_segment->size);
         ASSERT_NE(nullptr, p_segment_buf1);
         for (unsigned i = 0; i < p_segment->size / sizeof(uint32_t); ++i)
@@ -1749,7 +1749,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_erasing) // NOLINT
     }
 
     {
-        NRF52Fw_Segment_t *p_segment      = &fw_info.segments[1];
+        nrf52fw_segment_t *p_segment      = &fw_info.segments[1];
         uint32_t *         p_segment_buf2 = (uint32_t *)malloc(p_segment->size);
         ASSERT_NE(nullptr, p_segment_buf2);
         for (unsigned i = 0; i < p_segment->size / sizeof(uint32_t); ++i)
@@ -1766,7 +1766,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_erasing) // NOLINT
         free(p_segment_buf2);
     }
 
-    NRF52Fw_TmpBuf_t tmp_buf = { 0 };
+    nrf52fw_tmp_buf_t tmp_buf = { 0 };
 
     this->m_p_ffs = flashfatfs_mount(this->m_mount_point, GW_NRF_PARTITION, 2);
     ASSERT_NE(nullptr, this->m_p_ffs);
@@ -1809,7 +1809,7 @@ TEST_F(TestNRF52Fw, nrf52fw_calc_segment_crc_ok) // NOLINT
     this->m_fd = this->open_file(segment_path, "rb");
     ASSERT_NE(nullptr, this->m_fd);
 
-    NRF52Fw_TmpBuf_t tmp_buf = { 0 };
+    nrf52fw_tmp_buf_t tmp_buf = { 0 };
 
     uint32_t crc = 0;
     ASSERT_TRUE(nrf52fw_calc_segment_crc(fileno(this->m_fd), &tmp_buf, segment_size, &crc));
@@ -1839,7 +1839,7 @@ TEST_F(TestNRF52Fw, nrf52fw_calc_segment_crc_fail_file_greater_than_expected) //
     this->m_fd = this->open_file(segment_path, "rb");
     ASSERT_NE(nullptr, this->m_fd);
 
-    NRF52Fw_TmpBuf_t tmp_buf = { 0 };
+    nrf52fw_tmp_buf_t tmp_buf = { 0 };
 
     uint32_t crc = 0;
     ASSERT_FALSE(nrf52fw_calc_segment_crc(fileno(this->m_fd), &tmp_buf, segment_size - sizeof(uint32_t), &crc));
@@ -1869,7 +1869,7 @@ TEST_F(TestNRF52Fw, nrf52fw_calc_segment_crc_fail_bad_length) // NOLINT
     this->m_fd = this->open_file(segment_path, "rb");
     ASSERT_NE(nullptr, this->m_fd);
 
-    NRF52Fw_TmpBuf_t tmp_buf = { 0 };
+    nrf52fw_tmp_buf_t tmp_buf = { 0 };
 
     uint32_t crc = 0;
     ASSERT_FALSE(nrf52fw_calc_segment_crc(fileno(this->m_fd), &tmp_buf, segment_size, &crc));
@@ -1899,7 +1899,7 @@ TEST_F(TestNRF52Fw, nrf52fw_calc_segment_crc_fail_after_file_read_error) // NOLI
     this->m_fd = this->open_file(segment_path, "rb");
     ASSERT_NE(nullptr, this->m_fd);
 
-    NRF52Fw_TmpBuf_t tmp_buf = { 0 };
+    nrf52fw_tmp_buf_t tmp_buf = { 0 };
 
     nrf52fw_simulate_file_read_error(true);
     uint32_t crc = 0;
@@ -1929,18 +1929,18 @@ TEST_F(TestNRF52Fw, nrf52fw_check_firmware_ok) // NOLINT
     }
     const uint32_t segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
 
-    NRF52Fw_Info_t fw_info = { 0 };
+    nrf52fw_info_t fw_info = { 0 };
     fw_info.fw_ver.version = 0x03040500;
     fw_info.num_segments   = 2;
     {
-        NRF52Fw_Segment_t *p_segment = &fw_info.segments[0];
+        nrf52fw_segment_t *p_segment = &fw_info.segments[0];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "%s", segment1_path);
         p_segment->address = 0x00000000;
         p_segment->size    = segment1_size;
         p_segment->crc     = segment1_crc;
     }
     {
-        NRF52Fw_Segment_t *p_segment = &fw_info.segments[1];
+        nrf52fw_segment_t *p_segment = &fw_info.segments[1];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "%s", segment2_path);
         p_segment->address = 0x00001000;
         p_segment->size    = segment2_size;
@@ -1962,7 +1962,7 @@ TEST_F(TestNRF52Fw, nrf52fw_check_firmware_ok) // NOLINT
         this->m_fd = nullptr;
     }
 
-    NRF52Fw_TmpBuf_t tmp_buf = { 0 };
+    nrf52fw_tmp_buf_t tmp_buf = { 0 };
 
     this->m_p_ffs = flashfatfs_mount(this->m_mount_point, GW_NRF_PARTITION, 2);
     ASSERT_NE(nullptr, this->m_p_ffs);
@@ -1998,18 +1998,18 @@ TEST_F(TestNRF52Fw, nrf52fw_check_firmware_error_bad_crc) // NOLINT
     }
     const uint32_t segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
 
-    NRF52Fw_Info_t fw_info = { 0 };
+    nrf52fw_info_t fw_info = { 0 };
     fw_info.fw_ver.version = 0x03040500;
     fw_info.num_segments   = 2;
     {
-        NRF52Fw_Segment_t *p_segment = &fw_info.segments[0];
+        nrf52fw_segment_t *p_segment = &fw_info.segments[0];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "%s", segment1_path);
         p_segment->address = 0x00000000;
         p_segment->size    = segment1_size;
         p_segment->crc     = segment1_crc;
     }
     {
-        NRF52Fw_Segment_t *p_segment = &fw_info.segments[1];
+        nrf52fw_segment_t *p_segment = &fw_info.segments[1];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "%s", segment2_path);
         p_segment->address = 0x00001000;
         p_segment->size    = segment2_size;
@@ -2031,7 +2031,7 @@ TEST_F(TestNRF52Fw, nrf52fw_check_firmware_error_bad_crc) // NOLINT
         this->m_fd = nullptr;
     }
 
-    NRF52Fw_TmpBuf_t tmp_buf = { 0 };
+    nrf52fw_tmp_buf_t tmp_buf = { 0 };
 
     this->m_p_ffs = flashfatfs_mount(this->m_mount_point, GW_NRF_PARTITION, 2);
     ASSERT_NE(nullptr, this->m_p_ffs);
@@ -2070,18 +2070,18 @@ TEST_F(TestNRF52Fw, nrf52fw_check_firmware_fail_open_file) // NOLINT
     }
     const uint32_t segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
 
-    NRF52Fw_Info_t fw_info = { 0 };
+    nrf52fw_info_t fw_info = { 0 };
     fw_info.fw_ver.version = 0x03040500;
     fw_info.num_segments   = 2;
     {
-        NRF52Fw_Segment_t *p_segment = &fw_info.segments[0];
+        nrf52fw_segment_t *p_segment = &fw_info.segments[0];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "%s", segment1_path);
         p_segment->address = 0x00000000;
         p_segment->size    = segment1_size;
         p_segment->crc     = segment1_crc;
     }
     {
-        NRF52Fw_Segment_t *p_segment = &fw_info.segments[1];
+        nrf52fw_segment_t *p_segment = &fw_info.segments[1];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "%s", segment2_path);
         p_segment->address = 0x00001000;
         p_segment->size    = segment2_size;
@@ -2096,7 +2096,7 @@ TEST_F(TestNRF52Fw, nrf52fw_check_firmware_fail_open_file) // NOLINT
         this->m_fd = nullptr;
     }
 
-    NRF52Fw_TmpBuf_t tmp_buf = { 0 };
+    nrf52fw_tmp_buf_t tmp_buf = { 0 };
 
     this->m_p_ffs = flashfatfs_mount(this->m_mount_point, GW_NRF_PARTITION, 2);
     ASSERT_NE(nullptr, this->m_p_ffs);
@@ -2134,18 +2134,18 @@ TEST_F(TestNRF52Fw, nrf52fw_check_firmware_fail_calc_segment_crc) // NOLINT
     }
     const uint32_t segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
 
-    NRF52Fw_Info_t fw_info = { 0 };
+    nrf52fw_info_t fw_info = { 0 };
     fw_info.fw_ver.version = 0x03040500;
     fw_info.num_segments   = 2;
     {
-        NRF52Fw_Segment_t *p_segment = &fw_info.segments[0];
+        nrf52fw_segment_t *p_segment = &fw_info.segments[0];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "%s", segment1_path);
         p_segment->address = 0x00000000;
         p_segment->size    = segment1_size;
         p_segment->crc     = segment1_crc;
     }
     {
-        NRF52Fw_Segment_t *p_segment = &fw_info.segments[1];
+        nrf52fw_segment_t *p_segment = &fw_info.segments[1];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "%s", segment2_path);
         p_segment->address = 0x00001000;
         p_segment->size    = segment2_size;
@@ -2167,7 +2167,7 @@ TEST_F(TestNRF52Fw, nrf52fw_check_firmware_fail_calc_segment_crc) // NOLINT
         this->m_fd = nullptr;
     }
 
-    NRF52Fw_TmpBuf_t tmp_buf = { 0 };
+    nrf52fw_tmp_buf_t tmp_buf = { 0 };
 
     this->m_p_ffs = flashfatfs_mount(this->m_mount_point, GW_NRF_PARTITION, 2);
     ASSERT_NE(nullptr, this->m_p_ffs);

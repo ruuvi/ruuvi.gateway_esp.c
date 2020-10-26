@@ -18,7 +18,7 @@ void
 mqtt_app_start(void);
 
 void
-mqtt_publish_table(const struct adv_report_table *table);
+mqtt_publish_table(const adv_report_table_t *p_table);
 
 #ifdef __cplusplus
 }

@@ -9,82 +9,102 @@
 #include "cJSON.h"
 #include "cjson_wrap.h"
 #include "esp_err.h"
-#include "esp_log.h"
 #include "freertos/event_groups.h"
 #include "mqtt_client.h"
 #include "ruuvi_gateway.h"
 
-#undef LOG_LOCAL_LEVEL
 #define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
-
-static esp_mqtt_client_handle_t mqtt_client = NULL;
+#include "log.h"
 
 #define TOPIC_LEN 512
+
+typedef int mqtt_message_id_t;
+
+typedef struct mqtt_topic_buf_t
+{
+    char buf[TOPIC_LEN];
+} mqtt_topic_buf_t;
+
+static esp_mqtt_client_handle_t gp_mqtt_client = NULL;
 
 static const char *TAG = "MQTT";
 
 static void
-create_full_topic(char *full_topic, const char *prefix, const char *topic)
+mqtt_create_full_topic(
+    mqtt_topic_buf_t *const p_full_topic,
+    const char *const       p_prefix_str,
+    const char *const       p_topic_str)
 {
-    if ((full_topic == NULL) || (topic == NULL))
+    if ((NULL == p_full_topic) || (NULL == p_topic_str))
     {
-        ESP_LOGE(TAG, "%s: null arguments", __func__);
+        LOG_ERR("null arguments");
         return;
     }
 
-    if (NULL != prefix)
+    if (NULL != p_prefix_str)
     {
-        snprintf(full_topic, TOPIC_LEN, "%s/%s", prefix, topic);
+        snprintf(p_full_topic->buf, sizeof(p_full_topic->buf), "%s/%s", p_prefix_str, p_topic_str);
     }
     else
     {
-        snprintf(full_topic, TOPIC_LEN, "%s", topic);
+        snprintf(p_full_topic->buf, sizeof(p_full_topic->buf), "%s", p_topic_str);
     }
 }
 
-static char *
-mqtt_create_json(adv_report_t *adv)
+static bool
+mqtt_create_json(const adv_report_t *p_adv, cjson_wrap_str_t *p_json_str)
 {
-    time_t now = 0;
-    time(&now);
-    cJSON *root = cJSON_CreateObject();
+    const time_t now = time(NULL);
 
-    if (root)
+    cJSON *p_json_root = cJSON_CreateObject();
+    if (NULL == p_json_root)
     {
-        cJSON_AddStringToObject(root, "gw_mac", gw_mac_sta.str_buf);
-        cJSON_AddNumberToObject(root, "rssi", adv->rssi);
-        cJSON_AddArrayToObject(root, "aoa");
-        cjson_wrap_add_timestamp(root, "gwts", now);
-        cjson_wrap_add_timestamp(root, "ts", adv->timestamp);
-        cJSON_AddStringToObject(root, "data", adv->data);
-        cJSON_AddStringToObject(root, "coords", g_gateway_config.coordinates);
+        return false;
     }
+    cJSON_AddStringToObject(p_json_root, "gw_mac", gw_mac_sta.str_buf);
+    cJSON_AddNumberToObject(p_json_root, "rssi", p_adv->rssi);
+    cJSON_AddArrayToObject(p_json_root, "aoa");
+    cjson_wrap_add_timestamp(p_json_root, "gwts", now);
+    cjson_wrap_add_timestamp(p_json_root, "ts", p_adv->timestamp);
+    cJSON_AddStringToObject(p_json_root, "data", p_adv->data);
+    cJSON_AddStringToObject(p_json_root, "coords", g_gateway_config.coordinates);
 
-    char *json_str = cJSON_PrintUnformatted(root);
-    cJSON_Delete(root);
-    return json_str;
+    *p_json_str = cjson_wrap_print_and_delete(&p_json_root);
+    if (NULL == p_json_str->p_str)
+    {
+        return false;
+    }
+    return true;
 }
 
 static void
-mqtt_publish_adv(adv_report_t *adv)
+mqtt_publish_adv(const adv_report_t *p_adv)
 {
-    char                    topic[TOPIC_LEN];
-    char *                  json        = mqtt_create_json(adv);
-    const mac_address_str_t tag_mac_str = mac_address_to_str(&adv->tag_mac);
-    create_full_topic(topic, g_gateway_config.mqtt_prefix, tag_mac_str.str_buf);
-    ESP_LOGD(TAG, "publish: topic: %s, data: %s", topic, json);
-    esp_mqtt_client_publish(mqtt_client, topic, json, 0, 1, 0);
-    free(json);
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+    if (!mqtt_create_json(p_adv, &json_str))
+    {
+        LOG_ERR("%s failed", "mqtt_create_json");
+        return;
+    }
+    const mac_address_str_t tag_mac_str = mac_address_to_str(&p_adv->tag_mac);
+    mqtt_topic_buf_t        topic;
+    mqtt_create_full_topic(&topic, g_gateway_config.mqtt_prefix, tag_mac_str.str_buf);
+    LOG_DBG("publish: topic: %s, data: %s", topic.buf, json_str.p_str);
+    const int32_t mqtt_len         = 0;
+    const int32_t mqtt_qos         = 1;
+    const int32_t mqtt_flag_retain = 0;
+    esp_mqtt_client_publish(gp_mqtt_client, topic.buf, json_str.p_str, mqtt_len, mqtt_qos, mqtt_flag_retain);
+    cjson_wrap_free_json_str(&json_str);
 }
 
 void
-mqtt_publish_table(const struct adv_report_table *table)
+mqtt_publish_table(const adv_report_table_t *p_table)
 {
-    ESP_LOGI(TAG, "sending advertisement table (%d items) to MQTT", table->num_of_advs);
+    LOG_INFO("sending advertisement table (%d items) to MQTT", p_table->num_of_advs);
 
-    for (int i = 0; i < table->num_of_advs; i++)
+    for (num_of_advs_t i = 0; i < p_table->num_of_advs; ++i)
     {
-        adv_report_t adv = table->table[i];
+        const adv_report_t adv = p_table->table[i];
         mqtt_publish_adv(&adv);
     }
 }
@@ -92,98 +112,94 @@ mqtt_publish_table(const struct adv_report_table *table)
 static void
 mqtt_publish_connect(void)
 {
-    char *message = "{\"state\": \"online\"}";
-    char  topic[TOPIC_LEN];
-    create_full_topic(topic, g_gateway_config.mqtt_prefix, "gw_status");
-    ESP_LOGI(TAG, "esp_mqtt_client_publish: topic:'%s', message:'%s'", topic, message);
-    const int message_id = esp_mqtt_client_publish(mqtt_client, topic, message, strlen(message), 1, 1);
+    char *p_message = "{\"state\": \"online\"}";
+
+    mqtt_topic_buf_t topic;
+    mqtt_create_full_topic(&topic, g_gateway_config.mqtt_prefix, "gw_status");
+    LOG_INFO("esp_mqtt_client_publish: topic:'%s', message:'%s'", topic.buf, p_message);
+    const int32_t mqtt_qos         = 1;
+    const int32_t mqtt_flag_retain = 1;
+
+    const mqtt_message_id_t message_id
+        = esp_mqtt_client_publish(gp_mqtt_client, topic.buf, p_message, strlen(p_message), mqtt_qos, mqtt_flag_retain);
     if (-1 == message_id)
     {
-        ESP_LOGE(TAG, "esp_mqtt_client_publish failed");
+        LOG_ERR("esp_mqtt_client_publish failed");
     }
     else
     {
-        ESP_LOGI(TAG, "esp_mqtt_client_publish: message_id=%d", message_id);
+        LOG_INFO("esp_mqtt_client_publish: message_id=%d", message_id);
     }
 }
 
 static esp_err_t
-mqtt_event_handler(esp_mqtt_event_handle_t event)
+mqtt_event_handler(esp_mqtt_event_handle_t h_event)
 {
-    switch (event->event_id)
+    switch (h_event->event_id)
     {
         case MQTT_EVENT_CONNECTED:
-            ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
+            LOG_INFO("MQTT_EVENT_CONNECTED");
             xEventGroupSetBits(status_bits, MQTT_CONNECTED_BIT);
             mqtt_publish_connect();
             break;
 
         case MQTT_EVENT_DISCONNECTED:
-            ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
+            LOG_INFO("MQTT_EVENT_DISCONNECTED");
             xEventGroupClearBits(status_bits, MQTT_CONNECTED_BIT);
             break;
 
         case MQTT_EVENT_SUBSCRIBED:
-            ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
+            LOG_INFO("MQTT_EVENT_SUBSCRIBED, msg_id=%d", h_event->msg_id);
             break;
 
         case MQTT_EVENT_UNSUBSCRIBED:
-            ESP_LOGI(TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
+            LOG_INFO("MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", h_event->msg_id);
             break;
 
         case MQTT_EVENT_PUBLISHED:
-            ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
+            LOG_INFO("MQTT_EVENT_PUBLISHED, msg_id=%d", h_event->msg_id);
             break;
 
         case MQTT_EVENT_DATA:
-            ESP_LOGI(TAG, "MQTT_EVENT_DATA");
+            LOG_INFO("MQTT_EVENT_DATA");
             break;
 
         case MQTT_EVENT_ERROR:
-            ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
+            LOG_INFO("MQTT_EVENT_ERROR");
             break;
 
         case MQTT_EVENT_BEFORE_CONNECT:
-            ESP_LOGI(TAG, "MQTT_EVENT_BEFORE_CONNECT");
+            LOG_INFO("MQTT_EVENT_BEFORE_CONNECT");
             break;
 
         default:
-            ESP_LOGI(TAG, "Other event id:%d", event->event_id);
+            LOG_INFO("Other event id:%d", h_event->event_id);
             break;
     }
-
     return ESP_OK;
 }
 
 void
 mqtt_app_start(void)
 {
-    ESP_LOGI(TAG, "%s", __func__);
+    LOG_INFO("%s", __func__);
 
-    if (mqtt_client != NULL)
+    if (NULL != gp_mqtt_client)
     {
-        ESP_LOGI(TAG, "MQTT destroy");
-        esp_mqtt_client_destroy(mqtt_client);
-        mqtt_client = NULL;
+        LOG_INFO("MQTT destroy");
+        esp_mqtt_client_destroy(gp_mqtt_client);
+        gp_mqtt_client = NULL;
         xEventGroupClearBits(status_bits, MQTT_CONNECTED_BIT);
     }
 
-    char lwt_topic[TOPIC_LEN];
-    create_full_topic(lwt_topic, g_gateway_config.mqtt_prefix, "gw_status");
-    char *    lwt_message = "{\"state\": \"offline\"}";
-    esp_err_t err         = 0;
+    mqtt_topic_buf_t lwt_topic_buf;
+    mqtt_create_full_topic(&lwt_topic_buf, g_gateway_config.mqtt_prefix, "gw_status");
+    const char *p_lwt_message = "{\"state\": \"offline\"}";
 
-    if (g_gateway_config.mqtt_server[0] == 0)
+    if ('\0' == g_gateway_config.mqtt_server[0])
     {
-        err = ESP_ERR_INVALID_ARG;
-    }
-
-    if (err)
-    {
-        ESP_LOGE(
-            TAG,
-            "Invalid MQTT parameters: server: %s, topic prefix: '%s', "
-            "port: %u, user: '%s', password: '%s'",
+        LOG_ERR(
+            "Invalid MQTT parameters: server: %s, topic prefix: '%s', port: %u, user: '%s', password: '%s'",
             g_gateway_config.mqtt_server,
             g_gateway_config.mqtt_prefix,
             g_gateway_config.mqtt_port,
@@ -191,18 +207,14 @@ mqtt_app_start(void)
             "******");
         return;
     }
-    else
-    {
-        ESP_LOGI(
-            TAG,
-            "Using server: %s, topic prefix: '%s', port: %u, user: '%s', "
-            "password: '%s'",
-            g_gateway_config.mqtt_server,
-            g_gateway_config.mqtt_prefix,
-            g_gateway_config.mqtt_port,
-            g_gateway_config.mqtt_user,
-            "******");
-    }
+
+    LOG_INFO(
+        "Using server: %s, topic prefix: '%s', port: %u, user: '%s', password: '%s'",
+        g_gateway_config.mqtt_server,
+        g_gateway_config.mqtt_prefix,
+        g_gateway_config.mqtt_port,
+        g_gateway_config.mqtt_user,
+        "******");
 
     const esp_mqtt_client_config_t mqtt_cfg = {
         .event_handle                = &mqtt_event_handler,
@@ -213,8 +225,8 @@ mqtt_app_start(void)
         .client_id                   = NULL,
         .username                    = g_gateway_config.mqtt_user,
         .password                    = g_gateway_config.mqtt_pass,
-        .lwt_topic                   = lwt_topic,
-        .lwt_msg                     = lwt_message,
+        .lwt_topic                   = lwt_topic_buf.buf,
+        .lwt_msg                     = p_lwt_message,
         .lwt_qos                     = 1,
         .lwt_retain                  = true,
         .lwt_msg_len                 = 0,
@@ -240,7 +252,12 @@ mqtt_app_start(void)
         .clientkey_password          = NULL,
         .clientkey_password_len      = 0,
     };
-    mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
-    esp_mqtt_client_start(mqtt_client);
+    gp_mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
+    if (NULL == gp_mqtt_client)
+    {
+        LOG_ERR("%s failed", "esp_mqtt_client_init");
+        return;
+    }
+    esp_mqtt_client_start(gp_mqtt_client);
     // TODO handle connection fails, wrong server, user, pass etc
 }

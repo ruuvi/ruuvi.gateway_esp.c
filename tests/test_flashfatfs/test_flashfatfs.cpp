@@ -19,7 +19,7 @@ using namespace std;
 /*** Google-test class implementation
  * *********************************************************************************/
 
-struct FlashFatFs_Tag
+struct flash_fat_fs_t
 {
     char *      mount_point;
     wl_handle_t wl_handle;
@@ -108,10 +108,10 @@ class TestNRF52Fw : public ::testing::Test
 {
 private:
 protected:
-    FILE *        m_fd;
-    FlashFatFs_t *m_p_ffs;
-    const char *  m_mount_point_dir;
-    const char *  m_mount_point;
+    FILE *          m_fd;
+    flash_fat_fs_t *m_p_ffs;
+    const char *    m_mount_point_dir;
+    const char *    m_mount_point;
 
     void
     SetUp() override
@@ -379,7 +379,7 @@ TEST_F(TestNRF52Fw, flashfatfs_open_ok) // NOLINT
     this->m_p_ffs = flashfatfs_mount("fs_nrf52", GW_NRF_PARTITION, max_files);
     ASSERT_NE(nullptr, this->m_p_ffs);
 
-    FileDescriptor_t fd = flashfatfs_open(this->m_p_ffs, test_file_name);
+    file_descriptor_t fd = flashfatfs_open(this->m_p_ffs, test_file_name);
     ASSERT_GE(fd, 0);
 
     {
@@ -412,7 +412,7 @@ TEST_F(TestNRF52Fw, flashfatfs_open_failed) // NOLINT
     this->m_p_ffs = flashfatfs_mount("fs_nrf52", GW_NRF_PARTITION, max_files);
     ASSERT_NE(nullptr, this->m_p_ffs);
 
-    FileDescriptor_t fd = flashfatfs_open(this->m_p_ffs, test_file_name);
+    file_descriptor_t fd = flashfatfs_open(this->m_p_ffs, test_file_name);
     ASSERT_LT(fd, 0);
 
     ASSERT_TRUE(flashfatfs_unmount(this->m_p_ffs));

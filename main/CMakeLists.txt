@@ -21,6 +21,7 @@ idf_component_register(
             includes/http.h
             leds.c
             includes/leds.h
+            log.h
             mac_addr.c
             mac_addr.h
             metrics.c

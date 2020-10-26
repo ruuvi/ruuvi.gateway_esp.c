@@ -13,6 +13,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "../mac_addr.h"
+#include "../cjson_wrap.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,7 +36,7 @@ extern "C" {
 #define IP_STR_LEN          17
 
 #define ADV_POST_INTERVAL 10000
-#define MAX_ADVS_TABLE    100
+#define MAX_ADVS_TABLE    (100U)
 
 #define WIFI_CONNECTED_BIT   (1U << 0U)
 #define MQTT_CONNECTED_BIT   (1U << 1U)
@@ -43,21 +44,25 @@ extern "C" {
 #define ETH_DISCONNECTED_BIT (1U << 3U)
 #define ETH_CONNECTED_BIT    (1U << 4U)
 
-typedef struct adv_report
+typedef int32_t wifi_rssi_t;
+
+typedef struct adv_report_t
 {
     mac_address_bin_t tag_mac;
     time_t            timestamp;
-    int               rssi;
+    wifi_rssi_t       rssi;
     char              data[ADV_DATA_MAX_LEN + 1];
 } adv_report_t;
 
-struct adv_report_table
-{
-    int          num_of_advs;
-    adv_report_t table[MAX_ADVS_TABLE];
-};
+typedef uint32_t num_of_advs_t;
 
-typedef struct gw_metrics
+typedef struct adv_report_table_t
+{
+    num_of_advs_t num_of_advs;
+    adv_report_t  table[MAX_ADVS_TABLE];
+} adv_report_table_t;
+
+typedef struct gw_metrics_t
 {
     uint64_t received_advertisements;
 } gw_metrics_t;
@@ -129,17 +134,33 @@ typedef struct ruuvi_gateway_config_t
     }
 // clang-format on
 
-typedef enum nrf_command_t
+typedef enum nrf_command_e
 {
-    SET_FILTER,
-    CLEAR_FILTER
-} nrf_command_t;
+    NRF_COMMAND_SET_FILTER   = 0,
+    NRF_COMMAND_CLEAR_FILTER = 1,
+} nrf_command_e;
 
 extern ruuvi_gateway_config_t g_gateway_config;
 extern EventGroupHandle_t     status_bits;
 extern mac_address_str_t      gw_mac_sta;
 extern gw_metrics_t           gw_metrics;
 
+void
+settings_clear_in_flash(void);
+
+void
+settings_save_to_flash(const ruuvi_gateway_config_t *p_config);
+
+void
+settings_print(const ruuvi_gateway_config_t *p_config);
+
+void
+settings_get_from_flash(ruuvi_gateway_config_t *p_gateway_config);
+
+bool
+ruuvi_get_conf_json_str(cjson_wrap_str_t *p_json_str);
+
+__attribute__((__deprecated__)) // this function should be removed after esp32-wifi-manager refactoring (#70, #102)
 char *
 ruuvi_get_conf_json(void);
 
@@ -147,19 +168,7 @@ char *
 ruuvi_get_metrics(void);
 
 void
-settings_get_from_flash(ruuvi_gateway_config_t *p_gateway_config);
-
-void
-settings_print(ruuvi_gateway_config_t *config);
-
-int
-settings_clear_in_flash(void);
-
-int
-settings_save_to_flash(ruuvi_gateway_config_t *config);
-
-void
-ruuvi_send_nrf_settings(ruuvi_gateway_config_t *config);
+ruuvi_send_nrf_settings(const ruuvi_gateway_config_t *p_config);
 
 void
 ethernet_connection_ok_cb(void);

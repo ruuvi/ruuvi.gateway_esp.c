@@ -16,23 +16,23 @@
 extern "C" {
 #endif
 
-typedef struct FlashFatFs_Tag FlashFatFs_t;
+typedef struct flash_fat_fs_t flash_fat_fs_t;
 
-typedef int FlashFatFsNumFiles_t;
+typedef int flash_fat_fs_num_files_t;
 
-typedef int FileDescriptor_t;
+typedef int file_descriptor_t;
 
-FlashFatFs_t *
-flashfatfs_mount(const char *mount_point, const char *partition_label, const FlashFatFsNumFiles_t max_files);
+flash_fat_fs_t *
+flashfatfs_mount(const char *mount_point, const char *partition_label, const flash_fat_fs_num_files_t max_files);
 
 bool
-flashfatfs_unmount(FlashFatFs_t *p_ffs);
+flashfatfs_unmount(flash_fat_fs_t *p_ffs);
 
-FileDescriptor_t
-flashfatfs_open(FlashFatFs_t *p_ffs, const char *file_path);
+file_descriptor_t
+flashfatfs_open(flash_fat_fs_t *p_ffs, const char *file_path);
 
 FILE *
-flashfatfs_fopen(FlashFatFs_t *p_ffs, const char *file_path, const bool flag_use_binary_mode);
+flashfatfs_fopen(flash_fat_fs_t *p_ffs, const char *file_path, const bool flag_use_binary_mode);
 
 #ifdef __cplusplus
 }
