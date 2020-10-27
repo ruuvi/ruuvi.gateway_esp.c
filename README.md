@@ -16,8 +16,8 @@ Latest documentation and roadmap is at https://docs.ruuvi.com/gw-esp32-firmware 
 | ESP32  |   Function   |
 |--------|--------------|
 | GPIO35 | Reset button |
-| 4 | UART TX |
-| 5 | UART RX |
+| GPIO5 | UART TX |
+| GPIO36 / VP | UART RX |
 
 ### nRF52832 devkit
 | ESP32  | nRF52832 devkit |     Function     |
@@ -34,8 +34,8 @@ Latest documentation and roadmap is at https://docs.ruuvi.com/gw-esp32-firmware 
 | ESP32 | LAN87210 |
 |----|---|
 |  0 | nINT/REFCLK |
-| 23 | NC/CLOCK_ENABLE* |
-| 15 | MDC |
+| 02 | NC/CLOCK_ENABLE* |
+| 23 | MDC |
 | 18 | MDIO |
 | 19 | TX0 |
 | 21 | TX_EN |
