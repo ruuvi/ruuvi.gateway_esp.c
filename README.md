@@ -26,9 +26,9 @@ Latest documentation and roadmap is at https://docs.ruuvi.com/gw-esp32-firmware 
 | GPIO36 | P0.31           | UART: NRF -> ESP |
 | GPIO15 | Debug In: 4     | SWD CLK          |
 | GPIO16 | Debug In: 2     | SWD I/O          |
-| GPIO17 | Debug In: 3     | SWD NRST         |
+| GPIO17 | Debug In: 10    | SWD NRST         |
 | 3V3    | Debug In: 1     | VCC +3.3V        |
-| GND    | Debug In: 5     | GND              |
+| GND    | Debug In: 3     | GND              |
 
 ### Ethernet:
 | ESP32 | LAN87210 |
