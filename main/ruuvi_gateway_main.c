@@ -29,6 +29,7 @@
 #include "ruuvi_endpoint_ca_uart.h"
 #include "nrf52fw.h"
 #include "attribs.h"
+#include "http_server_cb.h"
 
 #define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 #include "log.h"
@@ -36,10 +37,6 @@
 static const char TAG[] = "ruuvi_gateway";
 
 EventGroupHandle_t status_bits;
-
-mac_address_str_t gw_mac_sta = { 0 };
-
-ruuvi_gateway_config_t g_gateway_config = RUUVI_GATEWAY_DEFAULT_CONFIGURATION;
 
 static inline uint8_t
 conv_bool_to_u8(const bool x)
@@ -230,7 +227,7 @@ wifi_init(void)
             .enabled_ant1 = 1,
         },
     };
-    wifi_manager_start(&wiFiAntConfig);
+    wifi_manager_start(&wiFiAntConfig, &http_server_cb_on_get, &http_server_cb_on_post, &http_server_cb_on_delete);
     wifi_manager_set_callback(EVENT_STA_GOT_IP, &wifi_connection_ok_cb);
     wifi_manager_set_callback(EVENT_STA_DISCONNECTED, &wifi_disconnect_cb);
 }
