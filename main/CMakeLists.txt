@@ -17,8 +17,14 @@ idf_component_register(
             flashfatfs.h
             gpio.c
             includes/gpio.h
+            gw_cfg.c
+            gw_cfg.h
             http.c
             includes/http.h
+            json_ruuvi.c
+            json_ruuvi.h
+            http_server_cb.c
+            http_server_cb.h
             leds.c
             includes/leds.h
             log.h
@@ -49,5 +55,5 @@ idf_component_register(
             ruuvi.endpoints.c
             libSWD-esp32
         INCLUDE_DIRS
-            "includes"
+            includes
 )

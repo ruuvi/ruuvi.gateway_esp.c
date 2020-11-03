@@ -15,6 +15,9 @@ add_subdirectory(test_app_wrappers)
 add_subdirectory(test_bin2hex)
 add_subdirectory(test_cjson_wrap)
 add_subdirectory(test_flashfatfs)
+add_subdirectory(test_json_ruuvi)
+add_subdirectory(test_gw_cfg)
+add_subdirectory(test_http_server_cb)
 add_subdirectory(test_leds)
 add_subdirectory(test_mac_addr)
 add_subdirectory(test_nrf52fw)
@@ -43,7 +46,22 @@ add_test(NAME test_cjson_wrap
 
 add_test(NAME test_flashfatfs
         COMMAND ruuvi_gateway_esp-test-flashfatfs
-            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-flashfatfs>/gtestresults.xml
+        --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-flashfatfs>/gtestresults.xml
+        )
+
+add_test(NAME test_json_ruuvi
+        COMMAND ruuvi_gateway_esp-test-json_ruuvi
+        --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-json_ruuvi>/gtestresults.xml
+        )
+
+add_test(NAME test_gw_cfg
+        COMMAND ruuvi_gateway_esp-test-gw_cfg
+        --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-gw_cfg>/gtestresults.xml
+        )
+
+add_test(NAME test_http_server_cb
+        COMMAND ruuvi_gateway_esp-test-http_server_cb
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-http_server_cb>/gtestresults.xml
 )
 
 add_test(NAME test_leds

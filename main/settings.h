@@ -8,11 +8,20 @@
 #ifndef RUUVI_GATEWAY_ESP_SETTINGS_H
 #define RUUVI_GATEWAY_ESP_SETTINGS_H
 
-#include "ruuvi_gateway.h"
+#include <stdint.h>
+#include <stdbool.h>
+#include "cjson_wrap.h"
+#include "gw_cfg.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+void
+settings_save_to_flash(const ruuvi_gateway_config_t *p_config);
+
+void
+settings_get_from_flash(ruuvi_gateway_config_t *p_gateway_config);
 
 #ifdef __cplusplus
 }
