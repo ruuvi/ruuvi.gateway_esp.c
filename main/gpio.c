@@ -106,9 +106,8 @@ gpio_task_handle_reset_button(const gpio_level_t io_level, bool *p_is_timer_star
 
 ATTR_NORETURN
 static void
-gpio_task(void *p_arg)
+gpio_task(ATTR_UNUSED void *p_arg)
 {
-    (void)p_arg;
     bool flag_timer_started = false;
     for (;;)
     {

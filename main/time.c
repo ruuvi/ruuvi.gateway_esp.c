@@ -104,9 +104,8 @@ time_sync(void)
 
 ATTR_NORETURN
 static void
-time_task(void *p_param)
+time_task(ATTR_UNUSED void *p_param)
 {
-    (void)p_param;
     if (NULL == gh_time_event_group)
     {
         gh_time_event_group = xEventGroupCreate();

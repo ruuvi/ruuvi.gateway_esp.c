@@ -83,9 +83,8 @@ ruuvi_send_nrf_get_id(void)
 
 ATTR_NORETURN
 static void
-monitoring_task(void *p_param)
+monitoring_task(ATTR_UNUSED void *p_param)
 {
-    (void)p_param;
     for (;;)
     {
         LOG_INFO("free heap: %u", esp_get_free_heap_size());

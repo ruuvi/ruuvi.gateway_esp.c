@@ -248,7 +248,7 @@ adv_post_retransmit_advs(const adv_report_table_t *p_reports)
 
 ATTR_NORETURN
 static void
-adv_post_task(void *arg)
+adv_post_task(ATTR_UNUSED void *arg)
 {
     esp_log_level_set(TAG, ESP_LOG_INFO);
     ESP_LOGI(TAG, "%s", __func__);

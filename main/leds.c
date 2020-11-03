@@ -78,9 +78,8 @@ leds_off(void)
 }
 
 static void
-blink_timer_handler(void *arg)
+blink_timer_handler(ATTR_UNUSED void *arg)
 {
-    (void)arg;
     if (led_state)
     {
         leds_off();
