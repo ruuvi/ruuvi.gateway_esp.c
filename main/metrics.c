@@ -8,6 +8,7 @@
 #include "esp_heap_caps.h"
 #include "ruuvi_gateway.h"
 #include "str_buf.h"
+#include "app_malloc.h"
 #include "log.h"
 
 #define METRICS_PREFIX "ruuvigw_"
@@ -231,7 +232,7 @@ ruuvi_get_metrics(void)
     metrics_print(&str_buf, &metrics_info);
     const str_buf_size_t buf_size = str_buf_get_len(&str_buf) + 1;
 
-    char *p_buf = malloc(buf_size * sizeof(char));
+    char *p_buf = app_malloc(buf_size * sizeof(char));
     if (NULL == p_buf)
     {
         LOG_ERR("Can't allocate memory");
