@@ -12,11 +12,9 @@
 #include "driver/gpio.h"
 #include "esp_system.h"
 #include "ethernet.h"
+#include "os_task.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/FreeRTOSConfig.h"
 #include "freertos/event_groups.h"
-#include "freertos/projdefs.h"
-#include "freertos/task.h"
 #include "gpio.h"
 #include "leds.h"
 #include "mqtt.h"
@@ -276,8 +274,14 @@ app_main(void)
     wifi_init();
     ethernet_init();
     const uint32_t stack_size_for_monitoring_task = 2 * 1024;
-    xTaskCreate(&monitoring_task, "monitoring_task", stack_size_for_monitoring_task, NULL, 1, NULL);
+    if (!os_task_create(&monitoring_task, "monitoring_task", stack_size_for_monitoring_task, NULL, 1, NULL))
+    {
+        LOG_ERR("Can't create thread");
+    }
     const uint32_t stack_size_for_reset_task = 2 * 1024;
-    xTaskCreate(&reset_task, "reset_task", stack_size_for_reset_task, NULL, 1, NULL);
+    if (!os_task_create(&reset_task, "reset_task", stack_size_for_reset_task, NULL, 1, NULL))
+    {
+        LOG_ERR("Can't create thread");
+    }
     LOG_INFO("Main started");
 }

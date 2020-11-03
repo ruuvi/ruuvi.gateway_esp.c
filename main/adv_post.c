@@ -9,12 +9,8 @@
 #include "bin2hex.h"
 #include "cJSON.h"
 #include "esp_err.h"
-#include "esp_log.h"
+#include "os_task.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/FreeRTOSConfig.h"
-#include "freertos/portmacro.h"
-#include "freertos/projdefs.h"
-#include "freertos/task.h"
 #include "http.h"
 #include "mqtt.h"
 #include "ruuvi_boards.h"
@@ -27,6 +23,7 @@
 #include <string.h>
 #include <time.h>
 #include "attribs.h"
+#include "log.h"
 
 static void
 adv_post_send_report(void *arg);
@@ -42,7 +39,7 @@ portMUX_TYPE adv_table_mux = portMUX_INITIALIZER_UNLOCKED;
 adv_report_table_t adv_reports;
 adv_report_table_t adv_reports_buf;
 
-static const char *ADV_POST_TASK_TAG = "ADV_POST_TASK";
+static const char *TAG = "ADV_POST_TASK";
 
 adv_callbacks_fn_t adv_callback_func_tbl = {
     .AdvAckCallback    = adv_post_send_ack,
@@ -171,21 +168,21 @@ adv_post_send_report(void *arg)
     const esp_err_t ret = adv_put_to_table(&adv_report);
     if (ESP_ERR_NO_MEM == ret)
     {
-        ESP_LOGW(ADV_POST_TASK_TAG, "Adv report table full, adv dropped");
+        ESP_LOGW(TAG, "Adv report table full, adv dropped");
     }
 }
 
 static void
 adv_post_log(const adv_report_table_t *p_reports)
 {
-    ESP_LOGI(ADV_POST_TASK_TAG, "Advertisements in table:");
+    ESP_LOGI(TAG, "Advertisements in table:");
     for (num_of_advs_t i = 0; i < p_reports->num_of_advs; ++i)
     {
         const adv_report_t *p_adv = &p_reports->table[i];
 
         const mac_address_str_t mac_str = mac_address_to_str(&p_adv->tag_mac);
         ESP_LOGI(
-            ADV_POST_TASK_TAG,
+            TAG,
             "i: %d, tag: %s, rssi: %d, data: %s, timestamp: %ld",
             i,
             mac_str.str_buf,
@@ -208,7 +205,7 @@ adv_post_check_is_connected(void)
             flag_connected = true;
             char json_str[64];
             snprintf(json_str, sizeof(json_str), "{\"status\": \"online\", \"gw_mac\": \"%s\"}", gw_mac_sta.str_buf);
-            ESP_LOGI(ADV_POST_TASK_TAG, "HTTP POST: %s", json_str);
+            ESP_LOGI(TAG, "HTTP POST: %s", json_str);
             http_send(json_str);
         }
         else if (g_gateway_config.use_mqtt)
@@ -253,9 +250,8 @@ ATTR_NORETURN
 static void
 adv_post_task(void *arg)
 {
-    (void)arg;
-    esp_log_level_set(ADV_POST_TASK_TAG, ESP_LOG_INFO);
-    ESP_LOGI(ADV_POST_TASK_TAG, "%s", __func__);
+    esp_log_level_set(TAG, ESP_LOG_INFO);
+    ESP_LOGI(TAG, "%s", __func__);
     bool flag_connected = false;
 
     while (1)
@@ -285,7 +281,7 @@ adv_post_task(void *arg)
             }
             else
             {
-                ESP_LOGW(ADV_POST_TASK_TAG, "Can't send, no network connection");
+                ESP_LOGW(TAG, "Can't send, no network connection");
             }
         }
 
@@ -299,5 +295,8 @@ adv_post_init(void)
     adv_reports.num_of_advs = 0;
     api_callbacks_reg((void *)&adv_callback_func_tbl);
     const uint32_t stack_size = 1024U * 4U;
-    xTaskCreate(&adv_post_task, "adv_post_task", stack_size, NULL, 1, NULL);
+    if (!os_task_create(&adv_post_task, "adv_post_task", stack_size, NULL, 1, NULL))
+    {
+        LOG_ERR("Can't create thread");
+    }
 }

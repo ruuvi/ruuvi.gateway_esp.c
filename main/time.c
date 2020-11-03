@@ -8,9 +8,9 @@
 #include "time_task.h"
 #include "esp_sntp.h"
 #include "esp_system.h"
+#include "os_task.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
-#include "freertos/task.h"
 #include "lwip/err.h"
 #include "sntp.h"
 #include <stdio.h>
@@ -132,7 +132,10 @@ time_init(void)
 {
     const uint32_t    stack_size    = 3U * 1024U;
     const UBaseType_t task_priority = 1;
-    xTaskCreate(&time_task, "time_task", stack_size, NULL, task_priority, &gh_time_task);
+    if (!os_task_create(&time_task, "time_task", stack_size, NULL, task_priority, &gh_time_task))
+    {
+        LOG_ERR("Can't create thread");
+    }
 }
 
 void

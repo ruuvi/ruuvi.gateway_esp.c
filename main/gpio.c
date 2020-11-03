@@ -7,10 +7,9 @@
 
 #include "driver/gpio.h"
 #include "driver/timer.h"
+#include "os_task.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
-#include "freertos/portmacro.h"
-#include "freertos/projdefs.h"
 #include "freertos/queue.h"
 #include "gpio.h"
 #include "http_server.h"
@@ -210,10 +209,9 @@ gpio_start_task(void)
 {
     const uint32_t    stack_size    = 3U * 1024U;
     const UBaseType_t task_priority = 1U;
-    const BaseType_t  res           = xTaskCreate(&gpio_task, "gpio_task", stack_size, NULL, task_priority, NULL);
-    if (pdPASS != res)
+    if (!os_task_create(&gpio_task, "gpio_task", stack_size, NULL, task_priority, NULL))
     {
-        LOG_ERR("%s failed, err=%d", "xTaskCreate", res);
+        LOG_ERR("Can't create task");
         return false;
     }
     return true;
