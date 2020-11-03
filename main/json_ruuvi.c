@@ -77,35 +77,70 @@ json_ruuvi_parse(const cJSON *p_json_root, ruuvi_gateway_config_t *p_gw_cfg)
 {
     LOG_DBG("Got SETTINGS:");
 
-    json_ruuvi_get_bool_val(p_json_root, "eth_dhcp", &p_gw_cfg->eth_dhcp, true);
+    json_ruuvi_get_bool_val(p_json_root, "eth_dhcp", &p_gw_cfg->eth.eth_dhcp, true);
     json_ruuvi_copy_string_val(
         p_json_root,
         "eth_static_ip",
-        p_gw_cfg->eth_static_ip,
-        sizeof(p_gw_cfg->eth_static_ip),
+        p_gw_cfg->eth.eth_static_ip,
+        sizeof(p_gw_cfg->eth.eth_static_ip),
         true);
-    json_ruuvi_copy_string_val(p_json_root, "eth_netmask", p_gw_cfg->eth_netmask, sizeof(p_gw_cfg->eth_netmask), true);
-    json_ruuvi_copy_string_val(p_json_root, "eth_gw", p_gw_cfg->eth_gw, sizeof(p_gw_cfg->eth_gw), true);
-    json_ruuvi_copy_string_val(p_json_root, "eth_dns1", p_gw_cfg->eth_dns1, sizeof(p_gw_cfg->eth_dns1), true);
-    json_ruuvi_copy_string_val(p_json_root, "eth_dns2", p_gw_cfg->eth_dns2, sizeof(p_gw_cfg->eth_dns2), true);
+    json_ruuvi_copy_string_val(
+        p_json_root,
+        "eth_netmask",
+        p_gw_cfg->eth.eth_netmask,
+        sizeof(p_gw_cfg->eth.eth_netmask),
+        true);
+    json_ruuvi_copy_string_val(p_json_root, "eth_gw", p_gw_cfg->eth.eth_gw, sizeof(p_gw_cfg->eth.eth_gw), true);
+    json_ruuvi_copy_string_val(p_json_root, "eth_dns1", p_gw_cfg->eth.eth_dns1, sizeof(p_gw_cfg->eth.eth_dns1), true);
+    json_ruuvi_copy_string_val(p_json_root, "eth_dns2", p_gw_cfg->eth.eth_dns2, sizeof(p_gw_cfg->eth.eth_dns2), true);
 
-    json_ruuvi_get_bool_val(p_json_root, "use_mqtt", &p_gw_cfg->use_mqtt, true);
-    json_ruuvi_copy_string_val(p_json_root, "mqtt_server", p_gw_cfg->mqtt_server, sizeof(p_gw_cfg->mqtt_server), true);
-    json_ruuvi_copy_string_val(p_json_root, "mqtt_prefix", p_gw_cfg->mqtt_prefix, sizeof(p_gw_cfg->mqtt_prefix), true);
-    json_ruuvi_get_uint16_val(p_json_root, "mqtt_port", &p_gw_cfg->mqtt_port, true);
-    json_ruuvi_copy_string_val(p_json_root, "mqtt_user", p_gw_cfg->mqtt_user, sizeof(p_gw_cfg->mqtt_user), true);
-    if (!json_ruuvi_copy_string_val(p_json_root, "mqtt_pass", p_gw_cfg->mqtt_pass, sizeof(p_gw_cfg->mqtt_pass), false))
+    json_ruuvi_get_bool_val(p_json_root, "use_mqtt", &p_gw_cfg->mqtt.use_mqtt, true);
+    json_ruuvi_copy_string_val(
+        p_json_root,
+        "mqtt_server",
+        p_gw_cfg->mqtt.mqtt_server,
+        sizeof(p_gw_cfg->mqtt.mqtt_server),
+        true);
+    json_ruuvi_copy_string_val(
+        p_json_root,
+        "mqtt_prefix",
+        p_gw_cfg->mqtt.mqtt_prefix,
+        sizeof(p_gw_cfg->mqtt.mqtt_prefix),
+        true);
+    json_ruuvi_get_uint16_val(p_json_root, "mqtt_port", &p_gw_cfg->mqtt.mqtt_port, true);
+    json_ruuvi_copy_string_val(
+        p_json_root,
+        "mqtt_user",
+        p_gw_cfg->mqtt.mqtt_user,
+        sizeof(p_gw_cfg->mqtt.mqtt_user),
+        true);
+    if (!json_ruuvi_copy_string_val(
+            p_json_root,
+            "mqtt_pass",
+            p_gw_cfg->mqtt.mqtt_pass,
+            sizeof(p_gw_cfg->mqtt.mqtt_pass),
+            false))
     {
         LOG_WARN("mqtt_pass not found or not changed");
     }
 
-    json_ruuvi_get_bool_val(p_json_root, "use_http", &p_gw_cfg->use_http, true);
-    json_ruuvi_copy_string_val(p_json_root, "http_url", p_gw_cfg->http_url, sizeof(p_gw_cfg->http_url), true);
-    json_ruuvi_copy_string_val(p_json_root, "http_user", p_gw_cfg->http_user, sizeof(p_gw_cfg->http_user), true);
-    json_ruuvi_copy_string_val(p_json_root, "http_pass", p_gw_cfg->http_pass, sizeof(p_gw_cfg->http_pass), true);
+    json_ruuvi_get_bool_val(p_json_root, "use_http", &p_gw_cfg->http.use_http, true);
+    json_ruuvi_copy_string_val(p_json_root, "http_url", p_gw_cfg->http.http_url, sizeof(p_gw_cfg->http.http_url), true);
+    json_ruuvi_copy_string_val(
+        p_json_root,
+        "http_user",
+        p_gw_cfg->http.http_user,
+        sizeof(p_gw_cfg->http.http_user),
+        true);
+    json_ruuvi_copy_string_val(
+        p_json_root,
+        "http_pass",
+        p_gw_cfg->http.http_pass,
+        sizeof(p_gw_cfg->http.http_pass),
+        true);
 
-    json_ruuvi_get_bool_val(p_json_root, "use_filtering", &p_gw_cfg->company_filter, true);
-    json_ruuvi_get_uint16_val(p_json_root, "company_id", &p_gw_cfg->company_id, true);
+    json_ruuvi_get_bool_val(p_json_root, "use_filtering", &p_gw_cfg->filter.company_filter, true);
+    json_ruuvi_get_uint16_val(p_json_root, "company_id", &p_gw_cfg->filter.company_id, true);
 
     json_ruuvi_copy_string_val(p_json_root, "coordinates", p_gw_cfg->coordinates, sizeof(p_gw_cfg->coordinates), true);
     return true;

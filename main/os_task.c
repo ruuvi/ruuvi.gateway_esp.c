@@ -8,7 +8,7 @@
 #include "os_task.h"
 #include "log.h"
 
-static const char* TAG = "os_task";
+static const char *TAG = "os_task";
 
 bool
 os_task_create(

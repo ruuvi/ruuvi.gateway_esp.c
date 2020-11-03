@@ -200,7 +200,7 @@ adv_post_check_is_connected(void)
     const EventBits_t status = xEventGroupGetBits(status_bits);
     if (0 != (status & (WIFI_CONNECTED_BIT | ETH_CONNECTED_BIT)))
     {
-        if (g_gateway_config.use_http)
+        if (g_gateway_config.http.use_http)
         {
             flag_connected = true;
             char json_str[64];
@@ -208,7 +208,7 @@ adv_post_check_is_connected(void)
             ESP_LOGI(TAG, "HTTP POST: %s", json_str);
             http_send(json_str);
         }
-        else if (g_gateway_config.use_mqtt)
+        else if (g_gateway_config.mqtt.use_mqtt)
         {
             flag_connected = true;
         }
@@ -236,11 +236,11 @@ adv_post_check_is_disconnected(void)
 static void
 adv_post_retransmit_advs(const adv_report_table_t *p_reports)
 {
-    if (g_gateway_config.use_http)
+    if (g_gateway_config.http.use_http)
     {
         http_send_advs(p_reports);
     }
-    if (g_gateway_config.use_mqtt && (0 != (xEventGroupGetBits(status_bits) & MQTT_CONNECTED_BIT)))
+    if (g_gateway_config.mqtt.use_mqtt && (0 != (xEventGroupGetBits(status_bits) & MQTT_CONNECTED_BIT)))
     {
         mqtt_publish_table(p_reports);
     }

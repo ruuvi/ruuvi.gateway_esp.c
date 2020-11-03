@@ -54,25 +54,25 @@ ruuvi_send_nrf_settings(const ruuvi_gateway_config_t *p_config)
         "use scan channel 37: %d,"
         "use scan channel 38: %d,"
         "use scan channel 39: %d",
-        p_config->company_filter,
-        p_config->company_id,
-        p_config->scan_coded_phy,
-        p_config->scan_1mbit_phy,
-        p_config->scan_extended_payload,
-        p_config->scan_channel_37,
-        p_config->scan_channel_38,
-        p_config->scan_channel_39);
+        p_config->filter.company_filter,
+        p_config->filter.company_id,
+        p_config->scan.scan_coded_phy,
+        p_config->scan.scan_1mbit_phy,
+        p_config->scan.scan_extended_payload,
+        p_config->scan.scan_channel_37,
+        p_config->scan.scan_channel_38,
+        p_config->scan.scan_channel_39);
 
     api_send_all(
         RE_CA_UART_SET_ALL,
-        p_config->company_id,
-        conv_bool_to_u8(p_config->company_filter),
-        conv_bool_to_u8(p_config->scan_coded_phy),
-        conv_bool_to_u8(p_config->scan_extended_payload),
-        conv_bool_to_u8(p_config->scan_1mbit_phy),
-        conv_bool_to_u8(p_config->scan_channel_37),
-        conv_bool_to_u8(p_config->scan_channel_38),
-        conv_bool_to_u8(p_config->scan_channel_39));
+        p_config->filter.company_id,
+        conv_bool_to_u8(p_config->filter.company_filter),
+        conv_bool_to_u8(p_config->scan.scan_coded_phy),
+        conv_bool_to_u8(p_config->scan.scan_extended_payload),
+        conv_bool_to_u8(p_config->scan.scan_1mbit_phy),
+        conv_bool_to_u8(p_config->scan.scan_channel_37),
+        conv_bool_to_u8(p_config->scan.scan_channel_38),
+        conv_bool_to_u8(p_config->scan.scan_channel_39));
 }
 
 void
@@ -160,7 +160,7 @@ start_services(void)
 {
     time_sync();
 
-    if (g_gateway_config.use_mqtt)
+    if (g_gateway_config.mqtt.use_mqtt)
     {
         mqtt_app_start();
     }
