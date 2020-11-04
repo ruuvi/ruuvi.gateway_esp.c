@@ -18,7 +18,8 @@ extern "C" {
 #define ATTRIBUTE(attrs)
 #endif
 
-#define ATTR_NORETURN ATTRIBUTE((__noreturn__))
+#define ATTR_NORETURN ATTRIBUTE((noreturn))
+#define ATTR_UNUSED   ATTRIBUTE((unused))
 
 #ifdef __cplusplus
 }

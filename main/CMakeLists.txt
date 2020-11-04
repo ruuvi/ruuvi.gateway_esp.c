@@ -37,6 +37,8 @@ idf_component_register(
             nrf52fw.h
             nrf52swd.c
             nrf52swd.h
+            os_task.c
+            os_task.h
             ruuvi_gateway_main.c
             includes/ruuvi_gateway.h
             settings.c

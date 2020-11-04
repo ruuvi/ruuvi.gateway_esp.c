@@ -9,6 +9,8 @@ add_executable(${ProjectId}
         TQueue.h
         ../../main/leds.c
         ../../main/includes/leds.h
+        ../../main/os_task.c
+        ../../main/os_task.h
         include/esp_err.h
         include/esp_log.h
         include/esp_timer.h

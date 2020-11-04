@@ -12,11 +12,9 @@
 #include "driver/gpio.h"
 #include "esp_system.h"
 #include "ethernet.h"
+#include "os_task.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/FreeRTOSConfig.h"
 #include "freertos/event_groups.h"
-#include "freertos/projdefs.h"
-#include "freertos/task.h"
 #include "gpio.h"
 #include "leds.h"
 #include "mqtt.h"
@@ -56,25 +54,25 @@ ruuvi_send_nrf_settings(const ruuvi_gateway_config_t *p_config)
         "use scan channel 37: %d,"
         "use scan channel 38: %d,"
         "use scan channel 39: %d",
-        p_config->company_filter,
-        p_config->company_id,
-        p_config->scan_coded_phy,
-        p_config->scan_1mbit_phy,
-        p_config->scan_extended_payload,
-        p_config->scan_channel_37,
-        p_config->scan_channel_38,
-        p_config->scan_channel_39);
+        p_config->filter.company_filter,
+        p_config->filter.company_id,
+        p_config->scan.scan_coded_phy,
+        p_config->scan.scan_1mbit_phy,
+        p_config->scan.scan_extended_payload,
+        p_config->scan.scan_channel_37,
+        p_config->scan.scan_channel_38,
+        p_config->scan.scan_channel_39);
 
     api_send_all(
         RE_CA_UART_SET_ALL,
-        p_config->company_id,
-        conv_bool_to_u8(p_config->company_filter),
-        conv_bool_to_u8(p_config->scan_coded_phy),
-        conv_bool_to_u8(p_config->scan_extended_payload),
-        conv_bool_to_u8(p_config->scan_1mbit_phy),
-        conv_bool_to_u8(p_config->scan_channel_37),
-        conv_bool_to_u8(p_config->scan_channel_38),
-        conv_bool_to_u8(p_config->scan_channel_39));
+        p_config->filter.company_id,
+        conv_bool_to_u8(p_config->filter.company_filter),
+        conv_bool_to_u8(p_config->scan.scan_coded_phy),
+        conv_bool_to_u8(p_config->scan.scan_extended_payload),
+        conv_bool_to_u8(p_config->scan.scan_1mbit_phy),
+        conv_bool_to_u8(p_config->scan.scan_channel_37),
+        conv_bool_to_u8(p_config->scan.scan_channel_38),
+        conv_bool_to_u8(p_config->scan.scan_channel_39));
 }
 
 void
@@ -85,9 +83,8 @@ ruuvi_send_nrf_get_id(void)
 
 ATTR_NORETURN
 static void
-monitoring_task(void *p_param)
+monitoring_task(ATTR_UNUSED void *p_param)
 {
-    (void)p_param;
     for (;;)
     {
         LOG_INFO("free heap: %u", esp_get_free_heap_size());
@@ -163,7 +160,7 @@ start_services(void)
 {
     time_sync();
 
-    if (g_gateway_config.use_mqtt)
+    if (g_gateway_config.mqtt.use_mqtt)
     {
         mqtt_app_start();
     }
@@ -276,8 +273,14 @@ app_main(void)
     wifi_init();
     ethernet_init();
     const uint32_t stack_size_for_monitoring_task = 2 * 1024;
-    xTaskCreate(&monitoring_task, "monitoring_task", stack_size_for_monitoring_task, NULL, 1, NULL);
+    if (!os_task_create(&monitoring_task, "monitoring_task", stack_size_for_monitoring_task, NULL, 1, NULL))
+    {
+        LOG_ERR("Can't create thread");
+    }
     const uint32_t stack_size_for_reset_task = 2 * 1024;
-    xTaskCreate(&reset_task, "reset_task", stack_size_for_reset_task, NULL, 1, NULL);
+    if (!os_task_create(&reset_task, "reset_task", stack_size_for_reset_task, NULL, 1, NULL))
+    {
+        LOG_ERR("Can't create thread");
+    }
     LOG_INFO("Main started");
 }

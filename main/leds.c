@@ -9,14 +9,13 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include "driver/ledc.h"
-#include "esp_log.h"
 #include "esp_timer.h"
+#include "os_task.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
-#include "freertos/projdefs.h"
-#include "freertos/task.h"
 #include "attribs.h"
 #include "time_units.h"
+#include "log.h"
 
 const char *TAG = "LEDS";
 
@@ -79,9 +78,8 @@ leds_off(void)
 }
 
 static void
-blink_timer_handler(void *arg)
+blink_timer_handler(ATTR_UNUSED void *arg)
 {
-    (void)arg;
     if (led_state)
     {
         leds_off();
@@ -197,5 +195,8 @@ leds_init(void)
     }
 
     const uint32_t stack_size = 2U * 1024U;
-    xTaskCreate(&leds_task, "leds_task", stack_size, NULL, 1, NULL);
+    if (!os_task_create(&leds_task, "leds_task", stack_size, NULL, 1, NULL))
+    {
+        LOG_ERR("Can't create thread");
+    }
 }

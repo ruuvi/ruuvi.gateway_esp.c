@@ -88,7 +88,7 @@ mqtt_publish_adv(const adv_report_t *p_adv)
     }
     const mac_address_str_t tag_mac_str = mac_address_to_str(&p_adv->tag_mac);
     mqtt_topic_buf_t        topic;
-    mqtt_create_full_topic(&topic, g_gateway_config.mqtt_prefix, tag_mac_str.str_buf);
+    mqtt_create_full_topic(&topic, g_gateway_config.mqtt.mqtt_prefix, tag_mac_str.str_buf);
     LOG_DBG("publish: topic: %s, data: %s", topic.buf, json_str.p_str);
     const int32_t mqtt_len         = 0;
     const int32_t mqtt_qos         = 1;
@@ -115,7 +115,7 @@ mqtt_publish_connect(void)
     char *p_message = "{\"state\": \"online\"}";
 
     mqtt_topic_buf_t topic;
-    mqtt_create_full_topic(&topic, g_gateway_config.mqtt_prefix, "gw_status");
+    mqtt_create_full_topic(&topic, g_gateway_config.mqtt.mqtt_prefix, "gw_status");
     LOG_INFO("esp_mqtt_client_publish: topic:'%s', message:'%s'", topic.buf, p_message);
     const int32_t mqtt_qos         = 1;
     const int32_t mqtt_flag_retain = 1;
@@ -193,38 +193,38 @@ mqtt_app_start(void)
     }
 
     mqtt_topic_buf_t lwt_topic_buf;
-    mqtt_create_full_topic(&lwt_topic_buf, g_gateway_config.mqtt_prefix, "gw_status");
+    mqtt_create_full_topic(&lwt_topic_buf, g_gateway_config.mqtt.mqtt_prefix, "gw_status");
     const char *p_lwt_message = "{\"state\": \"offline\"}";
 
-    if ('\0' == g_gateway_config.mqtt_server[0])
+    if ('\0' == g_gateway_config.mqtt.mqtt_server[0])
     {
         LOG_ERR(
             "Invalid MQTT parameters: server: %s, topic prefix: '%s', port: %u, user: '%s', password: '%s'",
-            g_gateway_config.mqtt_server,
-            g_gateway_config.mqtt_prefix,
-            g_gateway_config.mqtt_port,
-            g_gateway_config.mqtt_user,
+            g_gateway_config.mqtt.mqtt_server,
+            g_gateway_config.mqtt.mqtt_prefix,
+            g_gateway_config.mqtt.mqtt_port,
+            g_gateway_config.mqtt.mqtt_user,
             "******");
         return;
     }
 
     LOG_INFO(
         "Using server: %s, topic prefix: '%s', port: %u, user: '%s', password: '%s'",
-        g_gateway_config.mqtt_server,
-        g_gateway_config.mqtt_prefix,
-        g_gateway_config.mqtt_port,
-        g_gateway_config.mqtt_user,
+        g_gateway_config.mqtt.mqtt_server,
+        g_gateway_config.mqtt.mqtt_prefix,
+        g_gateway_config.mqtt.mqtt_port,
+        g_gateway_config.mqtt.mqtt_user,
         "******");
 
     const esp_mqtt_client_config_t mqtt_cfg = {
         .event_handle                = &mqtt_event_handler,
         .event_loop_handle           = NULL,
-        .host                        = g_gateway_config.mqtt_server,
+        .host                        = g_gateway_config.mqtt.mqtt_server,
         .uri                         = NULL,
-        .port                        = g_gateway_config.mqtt_port,
+        .port                        = g_gateway_config.mqtt.mqtt_port,
         .client_id                   = NULL,
-        .username                    = g_gateway_config.mqtt_user,
-        .password                    = g_gateway_config.mqtt_pass,
+        .username                    = g_gateway_config.mqtt.mqtt_user,
+        .password                    = g_gateway_config.mqtt.mqtt_pass,
         .lwt_topic                   = lwt_topic_buf.buf,
         .lwt_msg                     = p_lwt_message,
         .lwt_qos                     = 1,

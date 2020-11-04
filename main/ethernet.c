@@ -183,21 +183,21 @@ ethernet_update_ip_static(void)
 
     ESP_LOGI(TAG, "Using static IP");
 
-    if (0 == ip4addr_aton(p_gw_cfg->eth_static_ip, &ip_info.ip))
+    if (0 == ip4addr_aton(p_gw_cfg->eth.eth_static_ip, &ip_info.ip))
     {
-        ESP_LOGE(TAG, "invalid eth static ip: %s", p_gw_cfg->eth_static_ip);
+        ESP_LOGE(TAG, "invalid eth static ip: %s", p_gw_cfg->eth.eth_static_ip);
         return false;
     }
 
-    if (0 == ip4addr_aton(p_gw_cfg->eth_netmask, &ip_info.netmask))
+    if (0 == ip4addr_aton(p_gw_cfg->eth.eth_netmask, &ip_info.netmask))
     {
-        ESP_LOGE(TAG, "invalid eth netmask: %s", p_gw_cfg->eth_netmask);
+        ESP_LOGE(TAG, "invalid eth netmask: %s", p_gw_cfg->eth.eth_netmask);
         return false;
     }
 
-    if (0 == ip4addr_aton(p_gw_cfg->eth_gw, &ip_info.gw))
+    if (0 == ip4addr_aton(p_gw_cfg->eth.eth_gw, &ip_info.gw))
     {
-        ESP_LOGE(TAG, "invalid eth gw: %s", p_gw_cfg->eth_gw);
+        ESP_LOGE(TAG, "invalid eth gw: %s", p_gw_cfg->eth.eth_gw);
         return false;
     }
 
@@ -213,15 +213,15 @@ ethernet_update_ip_static(void)
         return false;
     }
 
-    eth_tcpip_adapter_set_dns_info(p_gw_cfg->eth_dns1, TCPIP_ADAPTER_DNS_MAIN);
-    eth_tcpip_adapter_set_dns_info(p_gw_cfg->eth_dns2, TCPIP_ADAPTER_DNS_BACKUP);
+    eth_tcpip_adapter_set_dns_info(p_gw_cfg->eth.eth_dns1, TCPIP_ADAPTER_DNS_MAIN);
+    eth_tcpip_adapter_set_dns_info(p_gw_cfg->eth.eth_dns2, TCPIP_ADAPTER_DNS_BACKUP);
     return true;
 }
 
 void
 ethernet_update_ip(void)
 {
-    if (g_gateway_config.eth_dhcp)
+    if (g_gateway_config.eth.eth_dhcp)
     {
         if (!ethernet_update_ip_dhcp())
         {
