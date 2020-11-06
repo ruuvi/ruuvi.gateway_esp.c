@@ -5,12 +5,15 @@ set(ProjectId ruuvi_gateway_esp-test-flashfatfs)
 
 add_executable(${ProjectId}
         test_flashfatfs.cpp
-        TQueue.hpp
-        esp_log_wrapper.cpp
-        esp_log_wrapper.hpp
         ../../main/flashfatfs.c
         ../../main/flashfatfs.h
-        include/esp_log.h
+        ../../main/log.h
+        ../common/include/esp_log.h
+        ../common/include/esp_err.h
+        ../common/TQueue.hpp
+        ../common/esp_log_wrapper.cpp
+        ../common/esp_log_wrapper.hpp
+        $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
 )
 
 set_target_properties(${ProjectId} PROPERTIES
@@ -21,9 +24,14 @@ set_target_properties(${ProjectId} PROPERTIES
 target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
+        ../common
+        ../common/include
         ../../main
         include
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ../Posix_GCC_Simulator/FreeRTOS_Posix/FreeRTOS_Kernel/include
+        ../Posix_GCC_Simulator/FreeRTOS_Posix/FreeRTOS_Kernel/portable/GCC/Posix
+        ../Posix_GCC_Simulator/FreeRTOS_Posix
 )
 
 target_compile_definitions(${ProjectId} PUBLIC

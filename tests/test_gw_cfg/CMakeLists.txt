@@ -5,14 +5,17 @@ set(ProjectId ruuvi_gateway_esp-test-gw_cfg)
 
 add_executable(${ProjectId}
         test_gw_cfg.cpp
-        TQueue.hpp
-        esp_log_wrapper.cpp
-        esp_log_wrapper.hpp
         ../../main/gw_cfg.c
         ../../main/gw_cfg.h
         ../../main/cjson_wrap.c
         ../../main/cjson_wrap.h
-        include/esp_log.h
+        ../../main/log.h
+        ../common/include/esp_log.h
+        ../common/include/esp_err.h
+        ../common/TQueue.hpp
+        ../common/esp_log_wrapper.cpp
+        ../common/esp_log_wrapper.hpp
+        $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.h
 )
@@ -25,6 +28,8 @@ set_target_properties(${ProjectId} PROPERTIES
 target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
+        ../common
+        ../common/include
         ../../main
         include
         $ENV{IDF_PATH}/components/json/cJSON

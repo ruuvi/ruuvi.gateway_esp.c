@@ -5,9 +5,6 @@ set(ProjectId ruuvi_gateway_esp-test-http_server_cb)
 
 add_executable(${ProjectId}
         test_http_server_cb.cpp
-        TQueue.hpp
-        esp_log_wrapper.cpp
-        esp_log_wrapper.hpp
         ../../main/gw_cfg.c
         ../../main/gw_cfg.h
         ../../main/http_server_cb.c
@@ -16,11 +13,17 @@ add_executable(${ProjectId}
         ../../main/json_ruuvi.h
         ../../main/cjson_wrap.c
         ../../main/cjson_wrap.h
+        ../../main/log.h
         ../../components/esp32-wifi-manager/src/http_server_resp.c
         ../../components/esp32-wifi-manager/src/http_server_resp.h
         ../../components/esp32-wifi-manager/src/wifi_manager.h
         ../../components/esp32-wifi-manager/src/wifi_manager_defs.h
-        include/esp_log.h
+        ../common/include/esp_log.h
+        ../common/include/esp_err.h
+        ../common/TQueue.hpp
+        ../common/esp_log_wrapper.cpp
+        ../common/esp_log_wrapper.hpp
+        $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.h
 )
@@ -33,6 +36,8 @@ set_target_properties(${ProjectId} PROPERTIES
 target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
+        ../common
+        ../common/include
         ../../main
         ../../main/includes
         include
