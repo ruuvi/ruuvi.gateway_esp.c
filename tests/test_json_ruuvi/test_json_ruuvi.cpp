@@ -361,6 +361,79 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
+TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_mqtt_pass) // NOLINT
+{
+    cJSON *root = cJSON_CreateObject();
+    ASSERT_NE(nullptr, root);
+    cJSON_AddBoolToObject(root, "eth_dhcp", true);
+    cJSON_AddStringToObject(root, "eth_static_ip", "192.168.1.1");
+    cJSON_AddStringToObject(root, "eth_netmask", "255.255.255.0");
+    cJSON_AddStringToObject(root, "eth_gw", "192.168.0.1");
+    cJSON_AddStringToObject(root, "eth_dns1", "8.8.8.8");
+    cJSON_AddStringToObject(root, "eth_dns2", "4.4.4.4");
+
+    cJSON_AddBoolToObject(root, "use_mqtt", true);
+    cJSON_AddStringToObject(root, "mqtt_server", "mqtt.server.org");
+    cJSON_AddStringToObject(root, "mqtt_prefix", "prefix");
+    cJSON_AddNumberToObject(root, "mqtt_port", 1234);
+    cJSON_AddStringToObject(root, "mqtt_user", "user123");
+
+    cJSON_AddBoolToObject(root, "use_http", false);
+    cJSON_AddStringToObject(root, "http_url", "https://api.ruuvi.com:456/api");
+    cJSON_AddStringToObject(root, "http_user", "user567");
+    cJSON_AddStringToObject(root, "http_pass", "pass567");
+
+    cJSON_AddBoolToObject(root, "use_filtering", true);
+    cJSON_AddNumberToObject(root, "company_id", 888);
+
+    cJSON_AddStringToObject(root, "coordinates", "coord:123,456");
+
+    ruuvi_gateway_config_t gw_cfg = { 0 };
+    ASSERT_TRUE(json_ruuvi_parse(root, &gw_cfg));
+    cJSON_Delete(root);
+    ASSERT_TRUE(gw_cfg.eth.eth_dhcp);
+    ASSERT_EQ(string("192.168.1.1"), gw_cfg.eth.eth_static_ip);
+    ASSERT_EQ(string("255.255.255.0"), gw_cfg.eth.eth_netmask);
+    ASSERT_EQ(string("192.168.0.1"), gw_cfg.eth.eth_gw);
+    ASSERT_EQ(string("8.8.8.8"), gw_cfg.eth.eth_dns1);
+    ASSERT_EQ(string("4.4.4.4"), gw_cfg.eth.eth_dns2);
+    ASSERT_TRUE(gw_cfg.mqtt.use_mqtt);
+    ASSERT_EQ(string("mqtt.server.org"), gw_cfg.mqtt.mqtt_server);
+    ASSERT_EQ(string("prefix"), gw_cfg.mqtt.mqtt_prefix);
+    ASSERT_EQ(1234, gw_cfg.mqtt.mqtt_port);
+    ASSERT_EQ(string("user123"), gw_cfg.mqtt.mqtt_user);
+    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_pass);
+    ASSERT_FALSE(gw_cfg.http.use_http);
+    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.http.http_url);
+    ASSERT_EQ(string("user567"), gw_cfg.http.http_user);
+    ASSERT_EQ(string("pass567"), gw_cfg.http.http_pass);
+    ASSERT_TRUE(gw_cfg.filter.company_filter);
+    ASSERT_EQ(888, gw_cfg.filter.company_id);
+    ASSERT_EQ(string("coord:123,456"), gw_cfg.coordinates);
+
+    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "Got SETTINGS:");
+    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "eth_dhcp: 1");
+    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "eth_static_ip: 192.168.1.1");
+    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "eth_netmask: 255.255.255.0");
+    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "eth_gw: 192.168.0.1");
+    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "eth_dns1: 8.8.8.8");
+    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "eth_dns2: 4.4.4.4");
+    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "use_mqtt: 1");
+    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
+    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "mqtt_prefix: prefix");
+    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "mqtt_port: 1234");
+    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "mqtt_user: user123");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, "[main] mqtt_pass not found or not changed");
+    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
+    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "http_user: user567");
+    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "http_pass: pass567");
+    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "use_filtering: 1");
+    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "company_id: 888");
+    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "coordinates: coord:123,456");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
 TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
 {
     ruuvi_gateway_config_t gw_cfg = { 0 };
