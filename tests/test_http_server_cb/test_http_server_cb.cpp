@@ -7,12 +7,14 @@
 
 #include "http_server_cb.h"
 #include <cstring>
+#include <utility>
 #include "gtest/gtest.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log_wrapper.hpp"
 #include "gw_cfg.h"
 #include "json_ruuvi.h"
+#include "flashfatfs.h"
 
 using namespace std;
 
@@ -22,14 +24,19 @@ using namespace std;
 class TestHttpServerCb;
 static TestHttpServerCb *g_pTestClass;
 
+struct flash_fat_fs_t
+{
+    string                   mount_point;
+    string                   partition_label;
+    flash_fat_fs_num_files_t max_files;
+};
+
 extern "C" {
 
-static const char g_task_name[] = "main";
-
-char *
-pcTaskGetName(TaskHandle_t xTaskToQuery)
+const char *
+os_task_get_name(void)
 {
-    (void)xTaskToQuery;
+    static const char g_task_name[] = "main";
     return const_cast<char *>(g_task_name);
 }
 
@@ -74,6 +81,26 @@ public:
     }
 };
 
+class FileInfo
+{
+public:
+    string fileName;
+    string content;
+    bool   flag_fail_to_open;
+
+    FileInfo(string fileName, string content, const bool flag_fail_to_open)
+        : fileName(std::move(fileName))
+        , content(std::move(content))
+        , flag_fail_to_open(flag_fail_to_open)
+    {
+    }
+
+    FileInfo(string fileName, string content)
+        : FileInfo(std::move(fileName), std::move(content), false)
+    {
+    }
+};
+
 class TestHttpServerCb : public ::testing::Test
 {
 private:
@@ -94,6 +121,9 @@ protected:
     void
     TearDown() override
     {
+        http_server_cb_deinit();
+        this->m_files.clear();
+        this->m_fd   = -1;
         g_pTestClass = nullptr;
         esp_log_wrapper_deinit();
     }
@@ -103,12 +133,17 @@ public:
 
     ~TestHttpServerCb() override;
 
-    MemAllocTrace m_mem_alloc_trace;
-    uint32_t      m_malloc_cnt;
-    uint32_t      m_malloc_fail_on_cnt;
-    bool          m_flag_settings_saved_to_flash;
-    bool          m_flag_settings_sent_to_nrf;
-    bool          m_flag_settings_ethernet_ip_updated;
+    MemAllocTrace     m_mem_alloc_trace;
+    uint32_t          m_malloc_cnt;
+    uint32_t          m_malloc_fail_on_cnt;
+    bool              m_flag_settings_saved_to_flash;
+    bool              m_flag_settings_sent_to_nrf;
+    bool              m_flag_settings_ethernet_ip_updated;
+    flash_fat_fs_t    m_fatfs;
+    bool              m_is_fatfs_mounted;
+    bool              m_is_fatfs_mount_fail;
+    vector<FileInfo>  m_files;
+    file_descriptor_t m_fd;
 };
 
 TestHttpServerCb::TestHttpServerCb()
@@ -117,6 +152,9 @@ TestHttpServerCb::TestHttpServerCb()
     , m_flag_settings_saved_to_flash(false)
     , m_flag_settings_sent_to_nrf(false)
     , m_flag_settings_ethernet_ip_updated(false)
+    , m_is_fatfs_mounted(false)
+    , m_is_fatfs_mount_fail(false)
+    , m_fd(-1)
     , Test()
 {
 }
@@ -186,31 +224,67 @@ ruuvi_send_nrf_settings(const ruuvi_gateway_config_t *p_config)
     g_pTestClass->m_flag_settings_sent_to_nrf = true;
 }
 
-const uint8_t *
-embed_files_find(const char *file_path, size_t *pLen, bool *pIsGzipped)
+const flash_fat_fs_t *
+flashfatfs_mount(const char *mount_point, const char *partition_label, const flash_fat_fs_num_files_t max_files)
 {
-    if (0 == strcmp("index.html", file_path))
+    assert(!g_pTestClass->m_is_fatfs_mounted);
+    if (g_pTestClass->m_is_fatfs_mount_fail)
     {
-        static const char g_file_index_html[] = "index_html_content";
-        *pLen                                 = strlen(g_file_index_html);
-        *pIsGzipped                           = false;
-        return reinterpret_cast<const uint8_t *>(g_file_index_html);
+        return nullptr;
     }
-    if (0 == strcmp("app.js", file_path))
+    g_pTestClass->m_fatfs.mount_point.assign(mount_point);
+    g_pTestClass->m_fatfs.partition_label.assign(partition_label);
+    g_pTestClass->m_fatfs.max_files  = max_files;
+    g_pTestClass->m_is_fatfs_mounted = true;
+    return &g_pTestClass->m_fatfs;
+}
+
+bool
+flashfatfs_unmount(const flash_fat_fs_t **pp_ffs)
+{
+    assert(nullptr != pp_ffs);
+    assert(*pp_ffs == &g_pTestClass->m_fatfs);
+    assert(g_pTestClass->m_is_fatfs_mounted);
+    g_pTestClass->m_is_fatfs_mounted = false;
+    g_pTestClass->m_fatfs.mount_point.assign("");
+    g_pTestClass->m_fatfs.partition_label.assign("");
+    g_pTestClass->m_fatfs.max_files = 0;
+    *pp_ffs                         = nullptr;
+    return true;
+}
+
+bool
+flashfatfs_get_file_size(const flash_fat_fs_t *p_ffs, const char *file_path, size_t *p_size)
+{
+    assert(p_ffs == &g_pTestClass->m_fatfs);
+    for (auto &file : g_pTestClass->m_files)
     {
-        static const char g_file_app_js[] = "app_js_gzipped";
-        *pLen                             = strlen(g_file_app_js);
-        *pIsGzipped                       = true;
-        return reinterpret_cast<const uint8_t *>(g_file_app_js);
+        if (0 == strcmp(file_path, file.fileName.c_str()))
+        {
+            *p_size = file.content.size();
+            return true;
+        }
     }
-    if (0 == strcmp("binary", file_path))
+    *p_size = 0;
+    return false;
+}
+
+file_descriptor_t
+flashfatfs_open(const flash_fat_fs_t *p_ffs, const char *file_path)
+{
+    assert(p_ffs == &g_pTestClass->m_fatfs);
+    for (auto &file : g_pTestClass->m_files)
     {
-        static const char g_file_binary[] = "binary_data";
-        *pLen                             = strlen(g_file_binary);
-        *pIsGzipped                       = false;
-        return reinterpret_cast<const uint8_t *>(g_file_binary);
+        if (0 == strcmp(file_path, file.fileName.c_str()))
+        {
+            if (file.flag_fail_to_open)
+            {
+                return (file_descriptor_t)-1;
+            }
+            return g_pTestClass->m_fd;
+        }
     }
-    return nullptr;
+    return (file_descriptor_t)-1;
 }
 
 } // extern "C"
@@ -252,6 +326,37 @@ TestHttpServerCb::~TestHttpServerCb() = default;
 
 /*** Unit-Tests
  * *******************************************************************************************************/
+
+TEST_F(TestHttpServerCb, http_server_cb_init_ok_deinit_ok) // NOLINT
+{
+    ASSERT_FALSE(g_pTestClass->m_is_fatfs_mounted);
+    ASSERT_TRUE(http_server_cb_init());
+    ASSERT_TRUE(g_pTestClass->m_is_fatfs_mounted);
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    http_server_cb_deinit();
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_FALSE(g_pTestClass->m_is_fatfs_mounted);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_deinit_of_not_initialized) // NOLINT
+{
+    ASSERT_FALSE(g_pTestClass->m_is_fatfs_mounted);
+    http_server_cb_deinit();
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_FALSE(g_pTestClass->m_is_fatfs_mounted);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_init_failed) // NOLINT
+{
+    ASSERT_FALSE(g_pTestClass->m_is_fatfs_mounted);
+    this->m_is_fatfs_mount_fail = true;
+    ASSERT_FALSE(http_server_cb_init());
+    ASSERT_FALSE(g_pTestClass->m_is_fatfs_mounted);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(
+        ESP_LOG_ERROR,
+        "flashfatfs_mount: failed to mount partition 'fatfs_gwui'");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
 
 TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
 {
@@ -481,59 +586,173 @@ TEST_F(TestHttpServerCb, http_get_content_type_by_ext) // NOLINT
     ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_OCTET_STREAM, http_get_content_type_by_ext(".unk"));
 }
 
+TEST_F(TestHttpServerCb, resp_file_index_html_fail_partition_not_ready) // NOLINT
+{
+    const char *            expected_resp = "index_html_content";
+    const file_descriptor_t fd            = 1;
+    FileInfo                fileInfo      = FileInfo("index.html", expected_resp);
+    this->m_files.emplace_back(fileInfo);
+    this->m_fd = fd;
+
+    const http_server_resp_t resp = http_server_resp_file("index.html");
+    ASSERT_EQ(HTTP_RESP_CODE_503, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
+    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(0, resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "Try to find file: index.html");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_ERROR, "GWUI partition is not ready");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, resp_file_index_html_fail_file_name_too_long) // NOLINT
+{
+    const char *            file_name     = "a1234567890123456789012345678901234567890123456789012345678901234567890";
+    const char *            expected_resp = "index_html_content";
+    const file_descriptor_t fd            = 1;
+    ASSERT_TRUE(http_server_cb_init());
+    FileInfo fileInfo = FileInfo(file_name, expected_resp);
+    this->m_files.emplace_back(fileInfo);
+    this->m_fd = fd;
+
+    const http_server_resp_t resp = http_server_resp_file(file_name);
+    ASSERT_EQ(HTTP_RESP_CODE_503, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
+    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(0, resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, string("Try to find file: ") + string(file_name));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(
+        ESP_LOG_ERROR,
+        string("Temporary buffer is not enough for the file path '") + string(file_name) + string("'"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
 TEST_F(TestHttpServerCb, resp_file_index_html) // NOLINT
 {
-    const char *             expected_resp = "index_html_content";
-    const http_server_resp_t resp          = http_server_resp_file("index.html");
+    const char *            expected_resp = "index_html_content";
+    const file_descriptor_t fd            = 1;
+    ASSERT_TRUE(http_server_cb_init());
+    FileInfo fileInfo = FileInfo("index.html", expected_resp);
+    this->m_files.emplace_back(fileInfo);
+    this->m_fd = fd;
+
+    const http_server_resp_t resp = http_server_resp_file("index.html");
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_EQ(HTTP_CONTENT_LOCATION_FLASH_MEM, resp.content_location);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
     ASSERT_FALSE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(fd, resp.select_location.fatfs.fd);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "Try to find file: index.html");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "File index.html was opened successfully, fd=1");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, resp_file_index_html_gzipped) // NOLINT
+{
+    const char *            expected_resp = "index_html_content";
+    const file_descriptor_t fd            = 2;
+    ASSERT_TRUE(http_server_cb_init());
+    FileInfo fileInfo = FileInfo("index.html.gz", expected_resp);
+    this->m_files.emplace_back(fileInfo);
+    this->m_fd = fd;
+
+    const http_server_resp_t resp = http_server_resp_file("index.html");
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
+    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(strlen(expected_resp), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_GZIP, resp.content_encoding);
+    ASSERT_EQ(fd, resp.select_location.fatfs.fd);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, string("Try to find file: index.html"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "File index.html.gz was opened successfully, fd=2");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
 TEST_F(TestHttpServerCb, resp_file_app_js_gzipped) // NOLINT
 {
-    const char *             expected_resp = "app_js_gzipped";
-    const http_server_resp_t resp          = http_server_resp_file("app.js");
+    const char *            expected_resp = "app_js_gzipped";
+    const file_descriptor_t fd            = 1;
+    ASSERT_TRUE(http_server_cb_init());
+    FileInfo fileInfo = FileInfo("app.js.gz", expected_resp);
+    this->m_files.emplace_back(fileInfo);
+    this->m_fd = fd;
+
+    const http_server_resp_t resp = http_server_resp_file("app.js");
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_EQ(HTTP_CONTENT_LOCATION_FLASH_MEM, resp.content_location);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
     ASSERT_FALSE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_JAVASCRIPT, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_GZIP, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(fd, resp.select_location.fatfs.fd);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, string("Try to find file: app.js"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "File app.js.gz was opened successfully, fd=1");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, resp_file_app_css_gzipped) // NOLINT
+{
+    const char *            expected_resp = "slyle_css_gzipped";
+    const file_descriptor_t fd            = 1;
+    ASSERT_TRUE(http_server_cb_init());
+    FileInfo fileInfo = FileInfo("style.css.gz", expected_resp);
+    this->m_files.emplace_back(fileInfo);
+    this->m_fd = fd;
+
+    const http_server_resp_t resp = http_server_resp_file("style.css");
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
+    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_CSS, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(strlen(expected_resp), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_GZIP, resp.content_encoding);
+    ASSERT_EQ(fd, resp.select_location.fatfs.fd);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, string("Try to find file: style.css"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "File style.css.gz was opened successfully, fd=1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
 TEST_F(TestHttpServerCb, resp_file_binary_without_extension) // NOLINT
 {
-    const char *             expected_resp = "binary_data";
-    const http_server_resp_t resp          = http_server_resp_file("binary");
+    const char *            expected_resp = "binary_data";
+    const file_descriptor_t fd            = 1;
+    ASSERT_TRUE(http_server_cb_init());
+    FileInfo fileInfo = FileInfo("binary", expected_resp);
+    this->m_files.emplace_back(fileInfo);
+    this->m_fd = fd;
+
+    const http_server_resp_t resp = http_server_resp_file("binary");
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_EQ(HTTP_CONTENT_LOCATION_FLASH_MEM, resp.content_location);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
     ASSERT_FALSE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_OCTET_STREAM, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(fd, resp.select_location.fatfs.fd);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, string("Try to find file: binary"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "File binary was opened successfully, fd=1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
 TEST_F(TestHttpServerCb, resp_file_unknown_html) // NOLINT
 {
+    ASSERT_TRUE(http_server_cb_init());
+
     const http_server_resp_t resp = http_server_resp_file("unknown.html");
     ASSERT_EQ(HTTP_RESP_CODE_404, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
@@ -544,61 +763,102 @@ TEST_F(TestHttpServerCb, resp_file_unknown_html) // NOLINT
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, string("Try to find file: unknown.html"));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_ERROR, string("File not found: unknown.html"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_ERROR, string("Can't find file: unknown.html"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, resp_file_index_html_failed_on_open) // NOLINT
+{
+    const char *            expected_resp = "index_html_content";
+    const file_descriptor_t fd            = 1;
+    ASSERT_TRUE(http_server_cb_init());
+    FileInfo fileInfo = FileInfo("index.html", expected_resp, true);
+    this->m_files.emplace_back(fileInfo);
+    this->m_fd = fd;
+
+    const http_server_resp_t resp = http_server_resp_file("index.html");
+    ASSERT_EQ(HTTP_RESP_CODE_503, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
+    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(0, resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "Try to find file: index.html");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_ERROR, string("Can't open file: index.html"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_default) // NOLINT
 {
-    const char *             expected_resp = "index_html_content";
-    const http_server_resp_t resp          = http_server_cb_on_get("");
+    const char *            expected_resp = "index_html_content";
+    const file_descriptor_t fd            = 1;
+    ASSERT_TRUE(http_server_cb_init());
+    FileInfo fileInfo = FileInfo("index.html.gz", expected_resp);
+    this->m_files.emplace_back(fileInfo);
+    this->m_fd = fd;
+
+    const http_server_resp_t resp = http_server_cb_on_get("");
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_EQ(HTTP_CONTENT_LOCATION_FLASH_MEM, resp.content_location);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
     ASSERT_FALSE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(HTTP_CONENT_ENCODING_GZIP, resp.content_encoding);
+    ASSERT_EQ(fd, resp.select_location.fatfs.fd);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("[main] GET /"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, string("Try to find file: index.html"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "File index.html.gz was opened successfully, fd=1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_index_html) // NOLINT
 {
-    const char *             expected_resp = "index_html_content";
-    const http_server_resp_t resp          = http_server_cb_on_get("index.html");
+    const char *            expected_resp = "index_html_content";
+    const file_descriptor_t fd            = 1;
+    ASSERT_TRUE(http_server_cb_init());
+    FileInfo fileInfo = FileInfo("index.html.gz", expected_resp);
+    this->m_files.emplace_back(fileInfo);
+    this->m_fd = fd;
+
+    const http_server_resp_t resp = http_server_cb_on_get("index.html");
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_EQ(HTTP_CONTENT_LOCATION_FLASH_MEM, resp.content_location);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
     ASSERT_FALSE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(HTTP_CONENT_ENCODING_GZIP, resp.content_encoding);
+    ASSERT_EQ(fd, resp.select_location.fatfs.fd);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("[main] GET /index.html"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, string("Try to find file: index.html"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "File index.html.gz was opened successfully, fd=1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_app_js) // NOLINT
 {
-    const char *             expected_resp = "app_js_gzipped";
-    const http_server_resp_t resp          = http_server_cb_on_get("app.js");
+    const char *            expected_resp = "app_js_gzipped";
+    const file_descriptor_t fd            = 1;
+    ASSERT_TRUE(http_server_cb_init());
+    FileInfo fileInfo = FileInfo("app.js.gz", expected_resp);
+    this->m_files.emplace_back(fileInfo);
+    this->m_fd = fd;
+
+    const http_server_resp_t resp = http_server_cb_on_get("app.js");
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_EQ(HTTP_CONTENT_LOCATION_FLASH_MEM, resp.content_location);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
     ASSERT_FALSE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_JAVASCRIPT, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_GZIP, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(fd, resp.select_location.fatfs.fd);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("[main] GET /app.js"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, string("Try to find file: app.js"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "File app.js.gz was opened successfully, fd=1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 

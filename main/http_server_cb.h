@@ -24,6 +24,12 @@
 extern "C" {
 #endif
 
+bool
+http_server_cb_init(void);
+
+void
+http_server_cb_deinit(void);
+
 http_server_resp_t
 http_server_cb_on_get(const char *p_path);
 

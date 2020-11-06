@@ -10,10 +10,10 @@
 #include "settings.h"
 #include "ruuvi_gateway.h"
 #include "cjson_wrap.h"
-#include "ruuvi_gwui_html.h"
 #include "wifi_manager.h"
 #include "ethernet.h"
 #include "json_ruuvi.h"
+#include "flashfatfs.h"
 
 #define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 #include "log.h"
@@ -21,6 +21,33 @@
 static const char TAG[] = "http_server";
 
 static const char g_empty_json[] = "{}";
+
+static const flash_fat_fs_t *gp_ffs_gwui;
+
+bool
+http_server_cb_init(void)
+{
+    const char *                   mount_point   = "/fs_gwui";
+    const flash_fat_fs_num_files_t max_num_files = 4U;
+
+    gp_ffs_gwui = flashfatfs_mount(mount_point, GW_GWUI_PARTITION, max_num_files);
+    if (NULL == gp_ffs_gwui)
+    {
+        LOG_ERR("flashfatfs_mount: failed to mount partition '%s'", GW_GWUI_PARTITION);
+        return false;
+    }
+    return true;
+}
+
+void
+http_server_cb_deinit(void)
+{
+    if (NULL != gp_ffs_gwui)
+    {
+        flashfatfs_unmount(&gp_ffs_gwui);
+        gp_ffs_gwui = NULL;
+    }
+}
 
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
@@ -110,23 +137,58 @@ HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_file(const char *file_path)
 {
-    size_t file_len   = 0;
-    bool   is_gzipped = false;
     LOG_DBG("Try to find file: %s", file_path);
-    const uint8_t *p_file_content = embed_files_find(file_path, &file_len, &is_gzipped);
-    if (NULL == p_file_content)
+    if (NULL == gp_ffs_gwui)
     {
-        LOG_ERR("File not found: %s", file_path);
-        return http_server_resp_404();
+        LOG_ERR("GWUI partition is not ready");
+        return http_server_resp_503();
     }
+    const flash_fat_fs_t *p_ffs = gp_ffs_gwui;
+
     const char *p_file_ext = strrchr(file_path, '.');
     if (NULL == p_file_ext)
     {
         p_file_ext = "";
     }
+
+    size_t       file_size         = 0;
+    bool         is_gzipped        = false;
+    char         tmp_file_path[64] = { '\0' };
+    const char * suffix_gz         = ".gz";
+    const size_t suffix_gz_len     = strlen(suffix_gz);
+    if ((strlen(file_path) + suffix_gz_len) >= sizeof(tmp_file_path))
+    {
+        LOG_ERR("Temporary buffer is not enough for the file path '%s'", file_path);
+        return http_server_resp_503();
+    }
+    if ((0 == strcmp(".js", p_file_ext)) || (0 == strcmp(".html", p_file_ext)) || (0 == strcmp(".css", p_file_ext)))
+    {
+        snprintf(tmp_file_path, sizeof(tmp_file_path), "%s%s", file_path, suffix_gz);
+        if (flashfatfs_get_file_size(p_ffs, tmp_file_path, &file_size))
+        {
+            is_gzipped = true;
+        }
+    }
+    if (!is_gzipped)
+    {
+        snprintf(tmp_file_path, sizeof(tmp_file_path), "%s", file_path);
+        if (!flashfatfs_get_file_size(p_ffs, tmp_file_path, &file_size))
+        {
+            LOG_ERR("Can't find file: %s", tmp_file_path);
+            return http_server_resp_404();
+        }
+    }
     const http_content_type_e     content_type     = http_get_content_type_by_ext(p_file_ext);
     const http_content_encoding_e content_encoding = is_gzipped ? HTTP_CONENT_ENCODING_GZIP : HTTP_CONENT_ENCODING_NONE;
-    return http_server_resp_data_in_flash(content_type, NULL, file_len, content_encoding, p_file_content);
+
+    const file_descriptor_t fd = flashfatfs_open(p_ffs, tmp_file_path);
+    if (fd < 0)
+    {
+        LOG_ERR("Can't open file: %s", tmp_file_path);
+        return http_server_resp_503();
+    }
+    LOG_DBG("File %s was opened successfully, fd=%d", tmp_file_path, fd);
+    return http_server_resp_data_from_file(content_type, NULL, file_size, content_encoding, fd);
 }
 
 http_server_resp_t

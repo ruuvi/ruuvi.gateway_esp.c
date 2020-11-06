@@ -192,7 +192,7 @@ reset_task(void *p_param)
     }
 }
 
-void
+static bool
 wifi_init(void)
 {
     static const WiFiAntConfig_t wiFiAntConfig = {
@@ -224,9 +224,15 @@ wifi_init(void)
             .enabled_ant1 = 1,
         },
     };
+    if (!http_server_cb_init())
+    {
+        LOG_ERR("%s failed", "http_server_cb_init");
+        return false;
+    }
     wifi_manager_start(&wiFiAntConfig, &http_server_cb_on_get, &http_server_cb_on_post, &http_server_cb_on_delete);
     wifi_manager_set_callback(EVENT_STA_GOT_IP, &wifi_connection_ok_cb);
     wifi_manager_set_callback(EVENT_STA_DISCONNECTED, &wifi_disconnect_cb);
+    return true;
 }
 
 void
@@ -270,7 +276,11 @@ app_main(void)
     ruuvi_send_nrf_settings(&g_gateway_config);
     gw_mac_sta = get_gw_mac_sta();
     LOG_INFO("Mac address: %s", gw_mac_sta.str_buf);
-    wifi_init();
+    if (!wifi_init())
+    {
+        LOG_ERR("%s failed", "wifi_init");
+        return;
+    }
     ethernet_init();
     const uint32_t stack_size_for_monitoring_task = 2 * 1024;
     if (!os_task_create(&monitoring_task, "monitoring_task", stack_size_for_monitoring_task, NULL, 1, NULL))
