@@ -20,6 +20,12 @@ app_malloc(const size_t size);
 void
 app_free(void *ptr);
 
+void
+app_free_pptr(void **p_ptr);
+
+void
+app_free_const_pptr(const void **p_ptr);
+
 void *
 app_calloc(const size_t nmemb, const size_t size);
 

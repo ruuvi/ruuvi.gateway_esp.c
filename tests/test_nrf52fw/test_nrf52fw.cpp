@@ -302,6 +302,22 @@ app_free(void *ptr)
     free(ptr);
 }
 
+void
+app_free_pptr(void **p_ptr)
+{
+    g_pTestClass->m_mem_alloc_trace.remove(*p_ptr);
+    free(*p_ptr);
+    *p_ptr = nullptr;
+}
+
+void
+app_free_const_pptr(const void **p_ptr)
+{
+    g_pTestClass->m_mem_alloc_trace.remove(const_cast<void *>(*p_ptr));
+    free(const_cast<void *>(*p_ptr));
+    *p_ptr = nullptr;
+}
+
 void *
 app_calloc(const size_t nmemb, const size_t size)
 {

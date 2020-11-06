@@ -63,8 +63,7 @@ flashfatfs_mount(const char *mount_point, const char *partition_label, const fla
         if (ESP_OK != err)
         {
             ESP_LOGE(TAG, "%s: %s failed, err=%d", __func__, "esp_vfs_fat_spiflash_mount", err);
-            app_free(p_obj);
-            p_obj = NULL;
+            app_free_pptr((void **)&p_obj);
         }
         else
         {
@@ -80,7 +79,8 @@ flashfatfs_unmount(flash_fat_fs_t *p_ffs)
     bool result = false;
     ESP_LOGI(TAG, "Unmount %s", p_ffs->mount_point);
     const esp_err_t err = esp_vfs_fat_spiflash_unmount(p_ffs->mount_point, p_ffs->wl_handle);
-    app_free(p_ffs);
+    app_free_const_pptr((const void **)pp_ffs);
+    *pp_ffs = NULL;
     if (ESP_OK != err)
     {
         ESP_LOGE(TAG, "%s: %s failed, err=%d", __func__, "esp_vfs_fat_spiflash_unmount", err);

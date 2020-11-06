@@ -661,7 +661,7 @@ nrf52fw_update_fw_step2(flash_fat_fs_t *p_ffs)
         return false;
     }
     const bool result = nrf52fw_update_fw_step3(p_ffs, p_tmp_buf);
-    app_free(p_tmp_buf);
+    app_free_pptr((void **)&p_tmp_buf);
     return result;
 }
 
