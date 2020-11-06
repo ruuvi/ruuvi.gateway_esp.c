@@ -137,11 +137,11 @@ class TestNRF52Fw : public ::testing::Test
 {
 private:
 protected:
-    FILE *          m_fd;
-    flash_fat_fs_t *m_p_ffs;
-    const char *    m_mount_point_dir;
-    const char *    m_mount_point;
-    const char *    m_info_txt_name;
+    FILE *                m_fd;
+    const flash_fat_fs_t *m_p_ffs;
+    const char *          m_mount_point_dir;
+    const char *          m_mount_point;
+    const char *          m_info_txt_name;
 
     void
     SetUp() override
@@ -187,7 +187,7 @@ protected:
         }
         if (nullptr != this->m_p_ffs)
         {
-            flashfatfs_unmount(this->m_p_ffs);
+            flashfatfs_unmount(&this->m_p_ffs);
             this->m_p_ffs = nullptr;
         }
         {
@@ -954,7 +954,7 @@ TEST_F(TestNRF52Fw, nrf52fw_read_info_txt) // NOLINT
             ASSERT_EQ(string("segment_3.bin"), string(p_segment->file_name));
             ASSERT_EQ(0x9c7cffe7, p_segment->crc);
         }
-        ASSERT_TRUE(flashfatfs_unmount(this->m_p_ffs));
+        ASSERT_TRUE(flashfatfs_unmount(&this->m_p_ffs));
         this->m_p_ffs = nullptr;
     }
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
@@ -969,7 +969,7 @@ TEST_F(TestNRF52Fw, nrf52fw_read_info_txt_no_file) // NOLINT
 
     ASSERT_FALSE(nrf52fw_read_info_txt(this->m_p_ffs, this->m_info_txt_name, &info));
 
-    ASSERT_TRUE(flashfatfs_unmount(this->m_p_ffs));
+    ASSERT_TRUE(flashfatfs_unmount(&this->m_p_ffs));
     this->m_p_ffs = nullptr;
 
     ASSERT_EQ(0, info.fw_ver.version);
@@ -1004,7 +1004,7 @@ TEST_F(TestNRF52Fw, nrf52fw_read_info_txt_bad_line_3) // NOLINT
         ASSERT_EQ(0x01040200, info.fw_ver.version);
         ASSERT_EQ(1, info.num_segments);
     }
-    ASSERT_TRUE(flashfatfs_unmount(this->m_p_ffs));
+    ASSERT_TRUE(flashfatfs_unmount(&this->m_p_ffs));
     this->m_p_ffs = nullptr;
     TEST_CHECK_LOG_RECORD_FLASH_FAT_FS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52fw_read_info_txt: Failed to parse 'info.txt' at line 3");
@@ -1355,7 +1355,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_from_file_ok) // NOLINT
     ASSERT_TRUE(
         nrf52fw_write_segment_from_file(this->m_p_ffs, segment_path, &tmp_buf, segment_addr, sizeof(segment_buf)));
 
-    flashfatfs_unmount(this->m_p_ffs);
+    flashfatfs_unmount(&this->m_p_ffs);
     this->m_p_ffs = nullptr;
 
     ASSERT_EQ(1, this->m_memSegmentsWrite.size());
@@ -1401,7 +1401,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_from_file_error_on_writing_segme
     ASSERT_FALSE(
         nrf52fw_write_segment_from_file(this->m_p_ffs, segment_path, &tmp_buf, segment_addr, sizeof(segment_buf)));
 
-    flashfatfs_unmount(this->m_p_ffs);
+    flashfatfs_unmount(&this->m_p_ffs);
     this->m_p_ffs = nullptr;
 
     TEST_CHECK_LOG_RECORD_FLASH_FAT_FS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
@@ -1436,7 +1436,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_from_file_error_no_file) // NOLI
     ASSERT_FALSE(
         nrf52fw_write_segment_from_file(this->m_p_ffs, segment_path, &tmp_buf, segment_addr, sizeof(segment_buf)));
 
-    flashfatfs_unmount(this->m_p_ffs);
+    flashfatfs_unmount(&this->m_p_ffs);
     this->m_p_ffs = nullptr;
 
     TEST_CHECK_LOG_RECORD_FLASH_FAT_FS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
@@ -1510,7 +1510,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_ok) // NOLINT
 
     ASSERT_TRUE(nrf52fw_flash_write_firmware(this->m_p_ffs, &tmp_buf, &fw_info));
 
-    flashfatfs_unmount(this->m_p_ffs);
+    flashfatfs_unmount(&this->m_p_ffs);
     this->m_p_ffs = nullptr;
 
     ASSERT_EQ(3, this->m_memSegmentsWrite.size());
@@ -1610,7 +1610,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_version) // NOLIN
 
     ASSERT_FALSE(nrf52fw_flash_write_firmware(this->m_p_ffs, &tmp_buf, &fw_info));
 
-    flashfatfs_unmount(this->m_p_ffs);
+    flashfatfs_unmount(&this->m_p_ffs);
     this->m_p_ffs = nullptr;
 
     ASSERT_EQ(3, this->m_memSegmentsWrite.size());
@@ -1706,7 +1706,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_segment) // NOLIN
 
     ASSERT_FALSE(nrf52fw_flash_write_firmware(this->m_p_ffs, &tmp_buf, &fw_info));
 
-    flashfatfs_unmount(this->m_p_ffs);
+    flashfatfs_unmount(&this->m_p_ffs);
     this->m_p_ffs = nullptr;
 
     ASSERT_EQ(2, this->m_memSegmentsWrite.size());
@@ -1799,7 +1799,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_erasing) // NOLINT
 
     ASSERT_FALSE(nrf52fw_flash_write_firmware(this->m_p_ffs, &tmp_buf, &fw_info));
 
-    flashfatfs_unmount(this->m_p_ffs);
+    flashfatfs_unmount(&this->m_p_ffs);
     this->m_p_ffs = nullptr;
 
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
@@ -2062,7 +2062,7 @@ TEST_F(TestNRF52Fw, nrf52fw_check_firmware_error_bad_crc) // NOLINT
 
     ASSERT_FALSE(nrf52fw_check_firmware(this->m_p_ffs, &tmp_buf, &fw_info));
 
-    flashfatfs_unmount(this->m_p_ffs);
+    flashfatfs_unmount(&this->m_p_ffs);
     this->m_p_ffs = nullptr;
 
     TEST_CHECK_LOG_RECORD_FLASH_FAT_FS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
@@ -2127,7 +2127,7 @@ TEST_F(TestNRF52Fw, nrf52fw_check_firmware_fail_open_file) // NOLINT
 
     ASSERT_FALSE(nrf52fw_check_firmware(this->m_p_ffs, &tmp_buf, &fw_info));
 
-    flashfatfs_unmount(this->m_p_ffs);
+    flashfatfs_unmount(&this->m_p_ffs);
     this->m_p_ffs = nullptr;
 
     TEST_CHECK_LOG_RECORD_FLASH_FAT_FS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
@@ -2199,7 +2199,7 @@ TEST_F(TestNRF52Fw, nrf52fw_check_firmware_fail_calc_segment_crc) // NOLINT
     nrf52fw_simulate_file_read_error(true);
     ASSERT_FALSE(nrf52fw_check_firmware(this->m_p_ffs, &tmp_buf, &fw_info));
 
-    flashfatfs_unmount(this->m_p_ffs);
+    flashfatfs_unmount(&this->m_p_ffs);
     this->m_p_ffs = nullptr;
 
     TEST_CHECK_LOG_RECORD_FLASH_FAT_FS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
