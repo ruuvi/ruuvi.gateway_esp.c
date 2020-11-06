@@ -8,7 +8,6 @@
 #include "nrf52fw.h"
 #include <string.h>
 #include <unistd.h>
-#include "esp_log.h"
 #include "flashfatfs.h"
 #include "nrf52swd.h"
 #include "esp32/rom/crc.h"
@@ -16,6 +15,7 @@
 #include "freertos/task.h"
 #include "app_malloc.h"
 #include "app_wrappers.h"
+#include "log.h"
 
 #define NRF52FW_IUCR_BASE_ADDR (0x10001000)
 #define NRF52FW_IUCR_FW_VER    (NRF52FW_IUCR_BASE_ADDR + 0x080)
@@ -273,14 +273,14 @@ nrf52fw_read_info_txt(const flash_fat_fs_t *p_ffs, const char *p_path_info_txt, 
     FILE *p_fd = flashfatfs_fopen(p_ffs, p_path_info_txt, flag_use_binary_mode);
     if (NULL == p_fd)
     {
-        ESP_LOGE(TAG, "%s: Can't open: %s", __func__, p_path_info_txt);
+        LOG_ERR("Can't open: %s", p_path_info_txt);
         return false;
     }
     const int32_t err_line_num = nrf52fw_parse_info_file(p_fd, p_info);
     fclose(p_fd);
     if (0 != err_line_num)
     {
-        ESP_LOGE(TAG, "%s: Failed to parse '%s' at line %d", __func__, p_path_info_txt, err_line_num);
+        LOG_ERR("Failed to parse '%s' at line %d", p_path_info_txt, err_line_num);
         return false;
     }
     return true;
@@ -290,20 +290,20 @@ NRF52FW_STATIC
 bool
 nrf52fw_init_swd(void)
 {
-    ESP_LOGI(TAG, "Init SWD");
+    LOG_INFO("Init SWD");
     if (!nrf52swd_init())
     {
-        ESP_LOGE(TAG, "nrf52swd_init failed");
+        LOG_ERR("nrf52swd_init failed");
         return false;
     }
     if (!nrf52swd_check_id_code())
     {
-        ESP_LOGE(TAG, "nrf52swd_check_id_code failed");
+        LOG_ERR("nrf52swd_check_id_code failed");
         return false;
     }
     if (!nrf52swd_debug_halt())
     {
-        ESP_LOGE(TAG, "nrf52swd_debug_halt failed");
+        LOG_ERR("nrf52swd_debug_halt failed");
         return false;
     }
     return true;
@@ -313,7 +313,7 @@ NRF52FW_STATIC
 void
 nrf52fw_deinit_swd(void)
 {
-    ESP_LOGI(TAG, "Deinit SWD");
+    LOG_INFO("Deinit SWD");
     nrf52swd_deinit();
 }
 
@@ -368,30 +368,30 @@ nrf52fw_flash_write_block(
     const uint32_t addr = segment_addr + *p_offset;
     if (0 != (len % sizeof(uint32_t)))
     {
-        ESP_LOGE(TAG, "%s: bad len %d", __func__, len);
+        LOG_ERR("bad len %d", len);
         return false;
     }
     *p_offset += len;
     if (*p_offset > segment_len)
     {
-        ESP_LOGE(TAG, "%s: offset %u greater than segment len %u", __func__, *p_offset, segment_len);
+        LOG_ERR("offset %u greater than segment len %u", *p_offset, segment_len);
         return false;
     }
-    ESP_LOGI(TAG, "Writing 0x%08x...", addr);
+    LOG_INFO("Writing 0x%08x...", addr);
     if (!nrf52swd_write_mem(addr, len / sizeof(uint32_t), p_tmp_buf->buf_wr))
     {
-        ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52swd_write_mem");
+        LOG_ERR("%s failed", "nrf52swd_write_mem");
         return false;
     }
 #if NRF52FW_ENABLE_FLASH_VERIFICATION
     if (!nrf52swd_read_mem(addr, len / sizeof(uint32_t), p_tmp_buf->buf_rd))
     {
-        ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52swd_read_mem");
+        LOG_ERR("%s failed", "nrf52swd_read_mem");
         return false;
     }
     if (0 != memcmp(p_tmp_buf->buf_wr, p_tmp_buf->buf_rd, len))
     {
-        ESP_LOGE(TAG, "%s: %s failed", __func__, "verify");
+        LOG_ERR("%s failed", "verify");
         return false;
     }
 #endif
@@ -416,7 +416,7 @@ nrf52fw_flash_write_segment(
         }
         if (len < 0)
         {
-            ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52fw_file_read");
+            LOG_ERR("%s failed", "nrf52fw_file_read");
             return false;
         }
         if (!nrf52fw_flash_write_block(p_tmp_buf, len, segment_addr, segment_len, &offset))
@@ -439,14 +439,14 @@ nrf52fw_write_segment_from_file(
     const file_descriptor_t fd = flashfatfs_open(p_ffs, p_path);
     if (fd < 0)
     {
-        ESP_LOGE(TAG, "%s: Can't open '%s'", __func__, p_path);
+        LOG_ERR("Can't open '%s'", p_path);
         return false;
     }
     const bool res = nrf52fw_flash_write_segment(fd, p_tmp_buf, segment_addr, segment_len);
     close(fd);
     if (!res)
     {
-        ESP_LOGE(TAG, "%s: Failed to write segment 0x%08x from '%s'", __func__, segment_addr, p_path);
+        LOG_ERR("Failed to write segment 0x%08x from '%s'", segment_addr, p_path);
         return false;
     }
     return true;
@@ -456,10 +456,10 @@ NRF52FW_STATIC
 bool
 nrf52fw_erase_flash(void)
 {
-    ESP_LOGI(TAG, "Erasing flash memory...");
+    LOG_INFO("Erasing flash memory...");
     if (!nrf52swd_erase_all())
     {
-        ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52swd_erase_all");
+        LOG_ERR("%s failed", "nrf52swd_erase_all");
         return false;
     }
     return true;
@@ -471,15 +471,14 @@ nrf52fw_flash_write_firmware(const flash_fat_fs_t *p_ffs, nrf52fw_tmp_buf_t *p_t
 {
     if (!nrf52fw_erase_flash())
     {
-        ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52fw_erase_flash");
+        LOG_ERR("%s failed", "nrf52fw_erase_flash");
         return false;
     }
-    ESP_LOGI(TAG, "Flash %u segments", p_fw_info->num_segments);
+    LOG_INFO("Flash %u segments", p_fw_info->num_segments);
     for (uint32_t i = 0; i < p_fw_info->num_segments; ++i)
     {
         const nrf52fw_segment_t *p_segment_info = &p_fw_info->segments[i];
-        ESP_LOGI(
-            TAG,
+        LOG_INFO(
             "Flash segment %u: 0x%08x size=%u from %s",
             i,
             p_segment_info->address,
@@ -492,10 +491,8 @@ nrf52fw_flash_write_firmware(const flash_fat_fs_t *p_ffs, nrf52fw_tmp_buf_t *p_t
                 p_segment_info->address,
                 p_segment_info->size))
         {
-            ESP_LOGE(
-                TAG,
-                "%s: Failed to write segment %u: 0x%08x from %s",
-                __func__,
+            LOG_ERR(
+                "Failed to write segment %u: 0x%08x from %s",
                 i,
                 p_segment_info->address,
                 p_segment_info->file_name);
@@ -504,7 +501,7 @@ nrf52fw_flash_write_firmware(const flash_fat_fs_t *p_ffs, nrf52fw_tmp_buf_t *p_t
     }
     if (!nrf52fw_write_current_fw_ver(p_fw_info->fw_ver.version))
     {
-        ESP_LOGE(TAG, "%s: Failed to write firmware version", __func__);
+        LOG_ERR("Failed to write firmware version");
         return false;
     }
     return true;
@@ -525,7 +522,7 @@ nrf52fw_calc_segment_crc(
         const int32_t len = nrf52fw_file_read(fd, p_tmp_buf->buf_wr, sizeof(p_tmp_buf->buf_wr));
         if (len < 0)
         {
-            ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52fw_file_read");
+            LOG_ERR("%s failed", "nrf52fw_file_read");
             return false;
         }
         if (0 == len)
@@ -534,13 +531,13 @@ nrf52fw_calc_segment_crc(
         }
         if (0 != (len % sizeof(uint32_t)))
         {
-            ESP_LOGE(TAG, "%s: bad len %d", __func__, len);
+            LOG_ERR("bad len %d", len);
             return false;
         }
         offset += len;
         if (offset > segment_len)
         {
-            ESP_LOGE(TAG, "%s: offset %u greater than segment len %u", __func__, offset, segment_len);
+            LOG_ERR("offset %u greater than segment len %u", offset, segment_len);
             return false;
         }
         actual_crc = crc32_le(actual_crc, (void *)p_tmp_buf->buf_wr, len);
@@ -559,7 +556,7 @@ nrf52fw_check_fw_segment_crc(
     const file_descriptor_t fd = flashfatfs_open(p_ffs, p_segment_info->file_name);
     if (fd < 0)
     {
-        ESP_LOGE(TAG, "%s: Can't open '%s'", __func__, p_segment_info->file_name);
+        LOG_ERR("Can't open '%s'", p_segment_info->file_name);
         return false;
     }
 
@@ -569,15 +566,13 @@ nrf52fw_check_fw_segment_crc(
 
     if (!res)
     {
-        ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52fw_calc_segment_crc");
+        LOG_ERR("%s failed", "nrf52fw_calc_segment_crc");
         return false;
     }
     if (p_segment_info->crc != crc)
     {
-        ESP_LOGE(
-            TAG,
-            "%s: Segment: 0x%08x: expected CRC: 0x%08x, actual CRC: 0x%08x",
-            __func__,
+        LOG_ERR(
+            "Segment: 0x%08x: expected CRC: 0x%08x, actual CRC: 0x%08x",
             p_segment_info->address,
             p_segment_info->crc,
             crc);
@@ -607,11 +602,10 @@ nrf52fw_update_fw_step3(const flash_fat_fs_t *p_ffs, nrf52fw_tmp_buf_t *p_tmp_bu
     nrf52fw_info_t fw_info = { 0 };
     if (!nrf52fw_read_info_txt(p_ffs, "info.txt", &fw_info))
     {
-        ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52fw_read_info_txt");
+        LOG_ERR("%s failed", "nrf52fw_read_info_txt");
         return false;
     }
-    ESP_LOGI(
-        TAG,
+    LOG_INFO(
         "Firmware on FatFS: v%u.%u.%u",
         (unsigned)((fw_info.fw_ver.version >> 24U) & 0xFFU),
         (unsigned)((fw_info.fw_ver.version >> 16U) & 0xFFU),
@@ -620,30 +614,29 @@ nrf52fw_update_fw_step3(const flash_fat_fs_t *p_ffs, nrf52fw_tmp_buf_t *p_tmp_bu
     uint32_t cur_fw_ver = 0;
     if (!nrf52fw_read_current_fw_ver(&cur_fw_ver))
     {
-        ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52fw_read_current_fw_ver");
+        LOG_ERR("%s failed", "nrf52fw_read_current_fw_ver");
         return false;
     }
-    ESP_LOGI(
-        TAG,
+    LOG_INFO(
         "Firmware on nRF52: v%u.%u.%u",
         (unsigned)((cur_fw_ver >> 24U) & 0xFFU),
         (unsigned)((cur_fw_ver >> 16U) & 0xFFU),
         (unsigned)((cur_fw_ver >> 8U) & 0xFFU));
     if (cur_fw_ver == fw_info.fw_ver.version)
     {
-        ESP_LOGI(TAG, "Firmware updating is not needed");
+        LOG_INFO("Firmware updating is not needed");
     }
     else
     {
-        ESP_LOGI(TAG, "Need to update firmware on nRF52");
+        LOG_INFO("Need to update firmware on nRF52");
         if (!nrf52fw_check_firmware(p_ffs, p_tmp_buf, &fw_info))
         {
-            ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52fw_check_firmware");
+            LOG_ERR("%s failed", "nrf52fw_check_firmware");
             return false;
         }
         if (!nrf52fw_flash_write_firmware(p_ffs, p_tmp_buf, &fw_info))
         {
-            ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52fw_flash_write_firmware");
+            LOG_ERR("%s failed", "nrf52fw_flash_write_firmware");
             return false;
         }
     }
@@ -657,7 +650,7 @@ nrf52fw_update_fw_step2(const flash_fat_fs_t *p_ffs)
     nrf52fw_tmp_buf_t *p_tmp_buf = app_malloc(sizeof(*p_tmp_buf));
     if (NULL == p_tmp_buf)
     {
-        ESP_LOGE(TAG, "%s: %s failed", __func__, "app_malloc");
+        LOG_ERR("%s failed", "app_malloc");
         return false;
     }
     const bool result = nrf52fw_update_fw_step3(p_ffs, p_tmp_buf);
@@ -674,7 +667,7 @@ nrf52fw_update_fw_step1(void)
     const flash_fat_fs_t *p_ffs = flashfatfs_mount("/fs_nrf52", GW_NRF_PARTITION, max_num_files);
     if (NULL == p_ffs)
     {
-        ESP_LOGE(TAG, "%s: %s failed", __func__, "flashfatfs_mount");
+        LOG_ERR("%s failed", "flashfatfs_mount");
         return false;
     }
     const bool result = nrf52fw_update_fw_step2(p_ffs);
@@ -688,7 +681,7 @@ nrf52fw_update_fw_step0(void)
 {
     if (!nrf52fw_init_swd())
     {
-        ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52fw_init_swd");
+        LOG_ERR("%s failed", "nrf52fw_init_swd");
         return false;
     }
 
@@ -699,7 +692,7 @@ nrf52fw_update_fw_step0(void)
         result = nrf52swd_debug_run();
         if (!result)
         {
-            ESP_LOGE(TAG, "%s: %s failed", __func__, "nrf52swd_debug_run");
+            LOG_ERR("%s failed", "nrf52swd_debug_run");
         }
     }
     nrf52fw_deinit_swd();
@@ -710,7 +703,7 @@ NRF52FW_STATIC
 void
 nrf52fw_hw_reset_nrf52(const bool flag_reset)
 {
-    ESP_LOGI(TAG, "Hardware reset nRF52: %s", flag_reset ? "true" : "false");
+    LOG_INFO("Hardware reset nRF52: %s", flag_reset ? "true" : "false");
     nrf52swd_reset(flag_reset);
 }
 
