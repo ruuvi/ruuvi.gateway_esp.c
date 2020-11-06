@@ -15,6 +15,7 @@
 #include "esp_vfs_fat.h"
 #include "esp32/rom/crc.h"
 #include "freertos/FreeRTOS.h"
+#include "os_task.h"
 
 using namespace std;
 
@@ -273,6 +274,13 @@ TestNRF52Fw::TestNRF52Fw()
 TestNRF52Fw::~TestNRF52Fw() = default;
 
 extern "C" {
+
+const char *
+os_task_get_name(void)
+{
+    static const char g_task_name[] = "main";
+    return const_cast<char *>(g_task_name);
+}
 
 void *
 app_malloc(const size_t size)

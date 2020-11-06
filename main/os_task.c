@@ -27,3 +27,14 @@ os_task_create(
     }
     return true;
 }
+
+const char *
+os_task_get_name(void)
+{
+    const char *task_name = pcTaskGetTaskName(NULL);
+    if (NULL == task_name)
+    {
+        task_name = "???";
+    }
+    return task_name;
+}

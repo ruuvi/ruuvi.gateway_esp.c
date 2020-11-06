@@ -22,12 +22,10 @@ static TestJsonRuuvi *g_pTestClass;
 
 extern "C" {
 
-static const char g_task_name[] = "main";
-
-char *
-pcTaskGetName(TaskHandle_t xTaskToQuery)
+const char *
+os_task_get_name(void)
 {
-    (void)xTaskToQuery;
+    static const char g_task_name[] = "main";
     return const_cast<char *>(g_task_name);
 }
 
