@@ -152,7 +152,7 @@ TEST_F(TestCJsonWrap, test_copy_string_val_wrong_type) // NOLINT
     ASSERT_NE(nullptr, root);
     cJSON_AddBoolToObject(root, "attr", 1);
     char buf[80];
-    ASSERT_FALSE(json_wrap_copy_string_val(root, "attr2", buf, sizeof(buf)));
+    ASSERT_FALSE(json_wrap_copy_string_val(root, "attr", buf, sizeof(buf)));
     cJSON_Delete(root);
 }
 

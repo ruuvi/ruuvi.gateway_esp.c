@@ -19,3 +19,6 @@
 [submodule "ESP32_mkfatfs"]
 	path = ESP32_mkfatfs
 	url = https://github.com/jkearins/ESP32_mkfatfs.git
+[submodule "ruuvi.gwui.html"]
+	path = ruuvi.gwui.html
+	url = https://github.com/ruuvi/ruuvi.gwui.html.git

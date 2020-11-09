@@ -1,4 +1,4 @@
-#include "TQueue.h"
+#include "TQueue.hpp"
 #include "driver/ledc.h"
 #include "esp_err.h"
 #include "esp_timer.h"
@@ -8,6 +8,7 @@
 #include <mqueue.h>
 #include <semaphore.h>
 #include <stdio.h>
+#include "esp_log_wrapper.hpp"
 
 using namespace std;
 
@@ -36,6 +37,7 @@ protected:
     void
     SetUp() override
     {
+        esp_log_wrapper_init();
         sem_init(&semaFreeRTOS, 0, 0);
         const int err = pthread_create(&pid, nullptr, &freertosStartup, this);
         assert(0 == err);
@@ -52,6 +54,7 @@ protected:
         void *ret_code = nullptr;
         pthread_join(pid, &ret_code);
         sem_destroy(&semaFreeRTOS);
+        esp_log_wrapper_deinit();
     }
 
 public:

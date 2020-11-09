@@ -26,6 +26,15 @@ if("${RUUVI_NRF52_FW_VERSION}" STREQUAL "")
     message(FATAL_ERROR "Bad nRF52 firmware version: ${RUUVI_NRF52_FW_URL}")
 endif()
 
+set(GW_GWUI_PARTITION fatfs_gwui)
+file(STRINGS "partitions.csv" PARTITIONS_CSV)
+string(REGEX MATCH "${GW_GWUI_PARTITION}, *data, *fat, *(0x[0-9a-fA-F]+), *([x0-9a-fA-F]+)," PARTITION_FATFS_GWUI ${PARTITIONS_CSV})
+if("${PARTITION_FATFS_GWUI}" STREQUAL "")
+    message(FATAL_ERROR "Can't find 'fatfs_gwui' partition in partitions.csv")
+endif()
+set(FATFS_GWUI_ADDR ${CMAKE_MATCH_1})
+set(FATFS_GWUI_SIZE ${CMAKE_MATCH_2})
+
 set(GW_NRF_PARTITION fatfs_nrf52)
 file(STRINGS "partitions.csv" PARTITIONS_CSV)
 string(REGEX MATCH "${GW_NRF_PARTITION}, *data, *fat, *(0x[0-9a-fA-F]+), *([x0-9a-fA-F]+)," PARTITION_FATFS_NRF52 ${PARTITIONS_CSV})
@@ -56,6 +65,7 @@ project(ruuvi_gateway_esp)
 target_compile_definitions(__idf_main PUBLIC
         RUUVI_LEDS_DISABLE=1
         RUUVI_ESP
+        GW_GWUI_PARTITION="${GW_GWUI_PARTITION}"
         GW_NRF_PARTITION="${GW_NRF_PARTITION}"
         BOARD_RUUVIGW_ESP
 )

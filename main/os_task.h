@@ -40,6 +40,13 @@ os_task_create(
     const os_task_priority_t priority,
     os_task_handle_t *       ph_task);
 
+/**
+ * Get task name for the current thread.
+ * @return pointer to the string with the current task name.
+ */
+const char *
+os_task_get_name(void);
+
 #ifdef __cplusplus
 }
 #endif

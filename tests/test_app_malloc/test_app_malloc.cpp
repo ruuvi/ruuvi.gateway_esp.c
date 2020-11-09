@@ -44,11 +44,27 @@ TestAppMalloc::~TestAppMalloc() = default;
 /*** Unit-Tests
  * *******************************************************************************************************/
 
-TEST_F(TestAppMalloc, test_app_malloc) // NOLINT
+TEST_F(TestAppMalloc, test_app_malloc_app_free) // NOLINT
 {
     void *ptr = app_malloc(1000);
     ASSERT_NE(nullptr, ptr);
     app_free(ptr);
+}
+
+TEST_F(TestAppMalloc, test_app_malloc_app_free_pptr) // NOLINT
+{
+    void *ptr = app_malloc(1000);
+    ASSERT_NE(nullptr, ptr);
+    app_free_pptr(&ptr);
+    ASSERT_EQ(nullptr, ptr);
+}
+
+TEST_F(TestAppMalloc, test_app_malloc_app_free_const_pptr) // NOLINT
+{
+    const void *ptr = app_malloc(1000);
+    ASSERT_NE(nullptr, ptr);
+    app_free_const_pptr(&ptr);
+    ASSERT_EQ(nullptr, ptr);
 }
 
 TEST_F(TestAppMalloc, test_app_calloc) // NOLINT

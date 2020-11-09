@@ -152,7 +152,7 @@ nrf52fw_parse_info_file(FILE *p_fd, nrf52fw_info_t *p_info);
  */
 NRF52FW_STATIC
 bool
-nrf52fw_read_info_txt(flash_fat_fs_t *p_ffs, const char *p_path_info_txt, nrf52fw_info_t *p_info);
+nrf52fw_read_info_txt(const flash_fat_fs_t *p_ffs, const char *p_path_info_txt, nrf52fw_info_t *p_info);
 
 /**
  * @brief Read current firmware version from nRF52
@@ -208,11 +208,11 @@ nrf52fw_flash_write_segment(
 NRF52FW_STATIC
 bool
 nrf52fw_write_segment_from_file(
-    flash_fat_fs_t *   p_ffs,
-    const char *       p_path,
-    nrf52fw_tmp_buf_t *p_tmp_buf,
-    const uint32_t     segment_addr,
-    const size_t       segment_len);
+    const flash_fat_fs_t *p_ffs,
+    const char *          p_path,
+    nrf52fw_tmp_buf_t *   p_tmp_buf,
+    const uint32_t        segment_addr,
+    const size_t          segment_len);
 
 /**
  * @brief Write firmware segments of flash memory to nRF52 from files
@@ -223,7 +223,10 @@ nrf52fw_write_segment_from_file(
  */
 NRF52FW_STATIC
 bool
-nrf52fw_flash_write_firmware(flash_fat_fs_t *p_ffs, nrf52fw_tmp_buf_t *p_tmp_buf, const nrf52fw_info_t *p_fw_info);
+nrf52fw_flash_write_firmware(
+    const flash_fat_fs_t *p_ffs,
+    nrf52fw_tmp_buf_t *   p_tmp_buf,
+    const nrf52fw_info_t *p_fw_info);
 
 /**
  * @brief Read file and calculate CRC for firmware segment
@@ -250,7 +253,7 @@ nrf52fw_calc_segment_crc(
  */
 NRF52FW_STATIC
 bool
-nrf52fw_check_firmware(flash_fat_fs_t *p_ffs, nrf52fw_tmp_buf_t *p_tmp_buf, const nrf52fw_info_t *p_fw_info);
+nrf52fw_check_firmware(const flash_fat_fs_t *p_ffs, nrf52fw_tmp_buf_t *p_tmp_buf, const nrf52fw_info_t *p_fw_info);
 
 #endif // RUUVI_TESTS_NRF52FW
 

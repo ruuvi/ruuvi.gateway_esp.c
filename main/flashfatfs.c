@@ -10,10 +10,10 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include "esp_err.h"
-#include "esp_log.h"
 #include "esp_vfs_fat.h"
 #include "wear_levelling.h"
 #include "app_malloc.h"
+#include "log.h"
 
 #if !defined(RUUVI_TESTS_NRF52FW)
 #define RUUVI_TESTS_NRF52FW (0)
@@ -31,7 +31,7 @@ struct flash_fat_fs_t
     wl_handle_t wl_handle;
 };
 
-flash_fat_fs_t *
+const flash_fat_fs_t *
 flashfatfs_mount(const char *mount_point, const char *partition_label, const flash_fat_fs_num_files_t max_files)
 {
     const char *mount_point_prefix = "";
@@ -40,10 +40,11 @@ flashfatfs_mount(const char *mount_point, const char *partition_label, const fla
 #endif
     size_t mount_point_buf_size = strlen(mount_point_prefix) + strlen(mount_point) + 1;
 
+    LOG_DBG("Mount partition '%s' to the mount point %s", partition_label, mount_point);
     flash_fat_fs_t *p_obj = app_calloc(1, sizeof(*p_obj) + mount_point_buf_size);
     if (NULL == p_obj)
     {
-        ESP_LOGE(TAG, "%s: Can't allocate memory", __func__);
+        LOG_ERR("Can't allocate memory");
     }
     else
     {
@@ -62,60 +63,94 @@ flashfatfs_mount(const char *mount_point, const char *partition_label, const fla
             &p_obj->wl_handle);
         if (ESP_OK != err)
         {
-            ESP_LOGE(TAG, "%s: %s failed, err=%d", __func__, "esp_vfs_fat_spiflash_mount", err);
-            app_free(p_obj);
-            p_obj = NULL;
+            LOG_ERR_ESP(err, "%s failed", "esp_vfs_fat_spiflash_mount");
+            app_free_pptr((void **)&p_obj);
         }
         else
         {
-            ESP_LOGI(TAG, "Partition '%s' mounted successfully to %s", partition_label, mount_point);
+            LOG_INFO("Partition '%s' mounted successfully to %s", partition_label, mount_point);
         }
     }
     return p_obj;
 }
 
 bool
-flashfatfs_unmount(flash_fat_fs_t *p_ffs)
+flashfatfs_unmount(const flash_fat_fs_t **pp_ffs)
 {
-    bool result = false;
-    ESP_LOGI(TAG, "Unmount %s", p_ffs->mount_point);
+    const flash_fat_fs_t *p_ffs = *pp_ffs;
+    LOG_INFO("Unmount %s", p_ffs->mount_point);
     const esp_err_t err = esp_vfs_fat_spiflash_unmount(p_ffs->mount_point, p_ffs->wl_handle);
-    app_free(p_ffs);
+    app_free_const_pptr((const void **)pp_ffs);
+    *pp_ffs = NULL;
     if (ESP_OK != err)
     {
-        ESP_LOGE(TAG, "%s: %s failed, err=%d", __func__, "esp_vfs_fat_spiflash_unmount", err);
+        LOG_ERR_ESP(err, "%s failed", "esp_vfs_fat_spiflash_unmount");
+        return false;
     }
-    else
-    {
-        result = true;
-    }
-    return result;
+    return true;
+}
+
+FLASHFATFS_CB_STATIC
+flashfatfs_path_t
+flashfatfs_get_full_path(const flash_fat_fs_t *p_ffs, const char *file_path)
+{
+    const char *      mount_point = (NULL != p_ffs) ? p_ffs->mount_point : "";
+    flashfatfs_path_t tmp_path    = { '\0' };
+    snprintf(tmp_path.buf, sizeof(tmp_path.buf), "%s/%s", mount_point, file_path);
+    return tmp_path;
 }
 
 file_descriptor_t
-flashfatfs_open(flash_fat_fs_t *p_ffs, const char *file_path)
+flashfatfs_open(const flash_fat_fs_t *p_ffs, const char *file_path)
 {
-    char tmp_path[80];
-    snprintf(tmp_path, sizeof(tmp_path), "%s/%s", p_ffs->mount_point, file_path);
-    file_descriptor_t fd = open(tmp_path, O_RDONLY);
+    if (NULL == p_ffs)
+    {
+        LOG_ERR("p_ffs is NULL");
+        return -1;
+    }
+    const flashfatfs_path_t tmp_path = flashfatfs_get_full_path(p_ffs, file_path);
+    file_descriptor_t       fd       = open(tmp_path.buf, O_RDONLY);
     if (fd < 0)
     {
-        ESP_LOGE(TAG, "Can't open: %s", tmp_path);
+        LOG_ERR("Can't open: %s", tmp_path.buf);
     }
     return fd;
 }
 
 FILE *
-flashfatfs_fopen(flash_fat_fs_t *p_ffs, const char *file_path, const bool flag_use_binary_mode)
+flashfatfs_fopen(const flash_fat_fs_t *p_ffs, const char *file_path, const bool flag_use_binary_mode)
 {
-    char tmp_path[80];
-    snprintf(tmp_path, sizeof(tmp_path), "%s/%s", p_ffs->mount_point, file_path);
-    const char *mode = flag_use_binary_mode ? "rb" : "r";
+    const flashfatfs_path_t tmp_path = flashfatfs_get_full_path(p_ffs, file_path);
+    const char *            mode     = flag_use_binary_mode ? "rb" : "r";
 
-    FILE *fd = fopen(tmp_path, mode);
+    FILE *fd = fopen(tmp_path.buf, mode);
     if (NULL == fd)
     {
-        ESP_LOGE(TAG, "Can't open: %s", tmp_path);
+        LOG_ERR("Can't open: %s", tmp_path.buf);
     }
     return fd;
+}
+
+bool
+flashfatfs_stat(const flash_fat_fs_t *p_ffs, const char *file_path, struct stat *p_st)
+{
+    const flashfatfs_path_t tmp_path = flashfatfs_get_full_path(p_ffs, file_path);
+    if (stat(tmp_path.buf, p_st) < 0)
+    {
+        return false;
+    }
+    return true;
+}
+
+bool
+flashfatfs_get_file_size(const flash_fat_fs_t *p_ffs, const char *file_path, size_t *p_size)
+{
+    struct stat st = { 0 };
+    *p_size        = 0;
+    if (!flashfatfs_stat(p_ffs, file_path, &st))
+    {
+        return false;
+    }
+    *p_size = (size_t)st.st_size;
+    return true;
 }

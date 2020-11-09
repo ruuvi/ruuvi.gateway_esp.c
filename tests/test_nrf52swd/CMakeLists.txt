@@ -5,14 +5,17 @@ set(ProjectId ruuvi_gateway_esp-test-nrf52swd)
 
 add_executable(${ProjectId}
         test_nrf52swd.cpp
-        TQueue.hpp
-        esp_log_wrapper.cpp
-        esp_log_wrapper.hpp
         ../../main/app_wrappers.c
         ../../main/app_wrappers.h
         ../../main/nrf52swd.c
         ../../main/nrf52swd.h
-        include/esp_log.h
+        ../../main/log.h
+        ../common/include/esp_log.h
+        ../common/include/esp_err.h
+        ../common/TQueue.hpp
+        ../common/esp_log_wrapper.cpp
+        ../common/esp_log_wrapper.hpp
+        $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
 )
 
 set_target_properties(${ProjectId} PROPERTIES
@@ -23,6 +26,8 @@ set_target_properties(${ProjectId} PROPERTIES
 target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
+        ../common
+        ../common/include
         ../../main
         ../../components/libSWD-esp32/include
         ../../components/ruuvi.boards.c
