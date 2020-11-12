@@ -5,10 +5,8 @@ set(ProjectId ruuvi_gateway_esp-test-bin2hex)
 
 add_executable(${ProjectId}
         test_bin2hex.cpp
-        ../../main/bin2hex.c
-        ../../main/bin2hex.h
-        ../../components/esp32-wifi-manager/src/str_buf.c
-        ../../components/esp32-wifi-manager/src/str_buf.h
+        ${RUUVI_GW_SRC}/bin2hex.c
+        ${RUUVI_GW_SRC}/bin2hex.h
 )
 
 set_target_properties(${ProjectId} PROPERTIES
@@ -19,8 +17,7 @@ set_target_properties(${ProjectId} PROPERTIES
 target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
-        ../../main
-        ../../components/esp32-wifi-manager/src
+        ${RUUVI_GW_SRC}
         include
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
@@ -46,5 +43,7 @@ target_link_libraries(${ProjectId}
         gtest
         gtest_main
         gcov
+        ruuvi_esp_wrappers
+        ruuvi_esp_wrappers-common_test_funcs
         --coverage
 )

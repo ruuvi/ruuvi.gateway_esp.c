@@ -6,12 +6,37 @@ add_definitions(
         -DRUUVI_TESTS=1
 )
 
+set(RUUVI_ESP_WRAPPERS ${CMAKE_CURRENT_SOURCE_DIR}/../components/ruuvi.esp_wrappers.c)
+set(RUUVI_ESP_WRAPPERS_INC ${RUUVI_ESP_WRAPPERS}/include)
+
+set(RUUVI_ESP_WRAPPERS_TESTS_COMMON ${RUUVI_ESP_WRAPPERS}/tests/common)
+set(RUUVI_ESP_WRAPPERS_TESTS_COMMON_INC ${RUUVI_ESP_WRAPPERS_TESTS_COMMON}/include)
+
+include_directories(
+        ${RUUVI_ESP_WRAPPERS_INC}
+        ${RUUVI_ESP_WRAPPERS_TESTS_COMMON_INC}
+)
+
+set(RUUVI_GW_SRC ${CMAKE_CURRENT_SOURCE_DIR}/../main)
+
+set(WIFI_MANAGER ${CMAKE_CURRENT_SOURCE_DIR}/../components/esp32-wifi-manager)
+set(WIFI_MANAGER_SRC ${WIFI_MANAGER}/src)
+set(WIFI_MANAGER_INC ${WIFI_MANAGER}/src)
+
 enable_testing()
 add_subdirectory(googletest)
 add_subdirectory(Posix_GCC_Simulator)
 
-add_subdirectory(test_app_malloc)
-add_subdirectory(test_app_wrappers)
+include_directories(
+        "Posix_GCC_Simulator/FreeRTOS_Posix"
+        "Posix_GCC_Simulator/FreeRTOS_Posix/FreeRTOS_Kernel/include"
+        "Posix_GCC_Simulator/FreeRTOS_Posix/FreeRTOS_Kernel/include/freertos"
+        "Posix_GCC_Simulator/FreeRTOS_Posix/FreeRTOS_Kernel/portable/GCC/Posix"
+)
+
+add_subdirectory(${RUUVI_ESP_WRAPPERS} ruuvi.esp_wrappers.c)
+add_subdirectory(${RUUVI_ESP_WRAPPERS_TESTS_COMMON} ruuvi.esp_wrappers_tests)
+
 add_subdirectory(test_bin2hex)
 add_subdirectory(test_cjson_wrap)
 add_subdirectory(test_flashfatfs)
@@ -22,18 +47,6 @@ add_subdirectory(test_leds)
 add_subdirectory(test_mac_addr)
 add_subdirectory(test_nrf52fw)
 add_subdirectory(test_nrf52swd)
-add_subdirectory(test_os_task)
-add_subdirectory(test_time_units)
-
-add_test(NAME test_app_malloc
-        COMMAND ruuvi_gateway_esp-test-app_malloc
-            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-app_malloc>/gtestresults.xml
-)
-
-add_test(NAME test_app_wrappers
-        COMMAND ruuvi_gateway_esp-test-app_wrappers
-            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-app_wrappers>/gtestresults.xml
-)
 
 add_test(NAME test_bin2hex
         COMMAND ruuvi_gateway_esp-test-bin2hex
@@ -83,14 +96,4 @@ add_test(NAME test_nrf52fw
 add_test(NAME test_nrf52swd
         COMMAND ruuvi_gateway_esp-test-nrf52swd
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-nrf52swd>/gtestresults.xml
-)
-
-add_test(NAME test_os_task
-        COMMAND ruuvi_gateway_esp-test-os_task
-            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-os_task>/gtestresults.xml
-)
-
-add_test(NAME test_time_units
-        COMMAND ruuvi_gateway_esp-test-time_units
-            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-time_units>/gtestresults.xml
 )

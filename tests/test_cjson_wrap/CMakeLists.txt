@@ -5,8 +5,8 @@ set(ProjectId ruuvi_gateway_esp-test-cjson_wrap)
 
 add_executable(${ProjectId}
         test_cjson_wrap.cpp
-        ../../main/cjson_wrap.c
-        ../../main/cjson_wrap.h
+        ${RUUVI_GW_SRC}/cjson_wrap.c
+        ${RUUVI_GW_SRC}/cjson_wrap.h
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.h
 )
@@ -19,7 +19,7 @@ set_target_properties(${ProjectId} PROPERTIES
 target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
-        ../../main
+        ${RUUVI_GW_SRC}
         $ENV{IDF_PATH}/components/json/cJSON
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
@@ -45,5 +45,7 @@ target_link_libraries(${ProjectId}
         gtest
         gtest_main
         gcov
+        ruuvi_esp_wrappers
+        ruuvi_esp_wrappers-common_test_funcs
         --coverage
 )
