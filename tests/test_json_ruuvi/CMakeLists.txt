@@ -5,16 +5,10 @@ set(ProjectId ruuvi_gateway_esp-test-json_ruuvi)
 
 add_executable(${ProjectId}
         test_json_ruuvi.cpp
-        ../../main/json_ruuvi.c
-        ../../main/json_ruuvi.h
-        ../../main/cjson_wrap.c
-        ../../main/cjson_wrap.h
-        ../../main/log.h
-        ../common/include/esp_log.h
-        ../common/include/esp_err.h
-        ../common/TQueue.hpp
-        ../common/esp_log_wrapper.cpp
-        ../common/esp_log_wrapper.hpp
+        ${RUUVI_GW_SRC}/json_ruuvi.c
+        ${RUUVI_GW_SRC}/json_ruuvi.h
+        ${RUUVI_GW_SRC}/cjson_wrap.c
+        ${RUUVI_GW_SRC}/cjson_wrap.h
         $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.h
@@ -28,9 +22,7 @@ set_target_properties(${ProjectId} PROPERTIES
 target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
-        ../common
-        ../common/include
-        ../../main
+        ${RUUVI_GW_SRC}
         include
         $ENV{IDF_PATH}/components/json/cJSON
         ${CMAKE_CURRENT_SOURCE_DIR}
@@ -61,5 +53,7 @@ target_link_libraries(${ProjectId}
         gtest
         gtest_main
         gcov
+        ruuvi_esp_wrappers
+        ruuvi_esp_wrappers-common_test_funcs
         --coverage
 )

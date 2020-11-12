@@ -5,24 +5,19 @@ set(ProjectId ruuvi_gateway_esp-test-http_server_cb)
 
 add_executable(${ProjectId}
         test_http_server_cb.cpp
-        ../../main/gw_cfg.c
-        ../../main/gw_cfg.h
-        ../../main/http_server_cb.c
-        ../../main/http_server_cb.h
-        ../../main/json_ruuvi.c
-        ../../main/json_ruuvi.h
-        ../../main/cjson_wrap.c
-        ../../main/cjson_wrap.h
-        ../../main/log.h
-        ../../components/esp32-wifi-manager/src/http_server_resp.c
-        ../../components/esp32-wifi-manager/src/http_server_resp.h
-        ../../components/esp32-wifi-manager/src/wifi_manager.h
-        ../../components/esp32-wifi-manager/src/wifi_manager_defs.h
-        ../common/include/esp_log.h
-        ../common/include/esp_err.h
-        ../common/TQueue.hpp
-        ../common/esp_log_wrapper.cpp
-        ../common/esp_log_wrapper.hpp
+        ${RUUVI_GW_SRC}/gw_cfg.c
+        ${RUUVI_GW_SRC}/gw_cfg.h
+        ${RUUVI_GW_SRC}/http_server_cb.c
+        ${RUUVI_GW_SRC}/http_server_cb.h
+        ${RUUVI_GW_SRC}/json_ruuvi.c
+        ${RUUVI_GW_SRC}/json_ruuvi.h
+        ${RUUVI_GW_SRC}/cjson_wrap.c
+        ${RUUVI_GW_SRC}/cjson_wrap.h
+        ${RUUVI_ESP_WRAPPERS_INC}/log.h
+        ${WIFI_MANAGER_SRC}/http_server_resp.c
+        ${WIFI_MANAGER_SRC}/http_server_resp.h
+        ${WIFI_MANAGER_INC}/wifi_manager.h
+        ${WIFI_MANAGER_INC}/wifi_manager_defs.h
         $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.h
@@ -36,10 +31,8 @@ set_target_properties(${ProjectId} PROPERTIES
 target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
-        ../common
-        ../common/include
-        ../../main
-        ../../main/includes
+        ${RUUVI_GW_SRC}
+        ${RUUVI_GW_SRC}/includes
         include
         $ENV{IDF_PATH}/components/json/cJSON
         $ENV{IDF_PATH}/components/esp_wifi/include
@@ -80,5 +73,7 @@ target_link_libraries(${ProjectId}
         gtest
         gtest_main
         gcov
+        ruuvi_esp_wrappers
+        ruuvi_esp_wrappers-common_test_funcs
         --coverage
 )

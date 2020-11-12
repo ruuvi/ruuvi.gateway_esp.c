@@ -6,18 +6,10 @@ set(ProjectId ruuvi_gateway_esp-test-nrf52fw)
 add_executable(${ProjectId}
         test_nrf52fw.cpp
         crc.cpp
-        ../../main/app_wrappers.c
-        ../../main/app_wrappers.h
-        ../../main/nrf52fw.c
-        ../../main/nrf52fw.h
-        ../../main/flashfatfs.c
-        ../../main/flashfatfs.h
-        ../../main/log.h
-        ../common/include/esp_log.h
-        ../common/include/esp_err.h
-        ../common/TQueue.hpp
-        ../common/esp_log_wrapper.cpp
-        ../common/esp_log_wrapper.hpp
+        ${RUUVI_GW_SRC}/nrf52fw.c
+        ${RUUVI_GW_SRC}/nrf52fw.h
+        ${RUUVI_GW_SRC}/flashfatfs.c
+        ${RUUVI_GW_SRC}/flashfatfs.h
         $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
 )
 
@@ -29,9 +21,7 @@ set_target_properties(${ProjectId} PROPERTIES
 target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
-        ../common
-        ../common/include
-        ../../main
+        ${RUUVI_GW_SRC}
         include
         ${CMAKE_CURRENT_SOURCE_DIR}
         $ENV{IDF_PATH}/components/esp_rom/include
@@ -62,5 +52,7 @@ target_link_libraries(${ProjectId}
         gtest
         gtest_main
         gcov
+        ruuvi_esp_wrappers
+        ruuvi_esp_wrappers-common_test_funcs
         --coverage
 )

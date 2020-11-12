@@ -10,7 +10,7 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
-#include "../time_units.h"
+#include "time_units.h"
 
 #ifdef __cplusplus
 extern "C" {

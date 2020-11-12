@@ -5,10 +5,8 @@ set(ProjectId ruuvi_gateway_esp-test-mac_addr)
 
 add_executable(${ProjectId}
         test_mac_addr.cpp
-        ../../components/esp32-wifi-manager/src/str_buf.c
-        ../../components/esp32-wifi-manager/src/str_buf.h
-        ../../main/mac_addr.c
-        ../../main/mac_addr.h
+        ${RUUVI_GW_SRC}/mac_addr.c
+        ${RUUVI_GW_SRC}/mac_addr.h
 )
 
 set_target_properties(${ProjectId} PROPERTIES
@@ -19,8 +17,7 @@ set_target_properties(${ProjectId} PROPERTIES
 target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
-        ../../main
-        ../../components/esp32-wifi-manager/src
+        ${RUUVI_GW_SRC}
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -45,5 +42,7 @@ target_link_libraries(${ProjectId}
         gtest
         gtest_main
         gcov
+        ruuvi_esp_wrappers
+        ruuvi_esp_wrappers-common_test_funcs
         --coverage
 )

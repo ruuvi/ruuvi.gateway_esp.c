@@ -14,7 +14,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "app_malloc.h"
-#include "app_wrappers.h"
+#include "app_str.h"
 #include "log.h"
 
 #define NRF52FW_IUCR_BASE_ADDR (0x10001000)
