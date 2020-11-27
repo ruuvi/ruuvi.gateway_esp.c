@@ -196,7 +196,7 @@ static bool
 wifi_init(void)
 {
     static const WiFiAntConfig_t wiFiAntConfig = {
-        .wifiAntGpioConfig = {
+        .wifi_ant_gpio_config = {
             .gpio_cfg = {
                 [0] = {
                     .gpio_select = 1,
@@ -216,7 +216,7 @@ wifi_init(void)
                 },
             },
         },
-        .wifiAntConfig = {
+        .wifi_ant_config = {
             .rx_ant_mode = WIFI_ANT_MODE_ANT1,
             .rx_ant_default = WIFI_ANT_ANT1,
             .tx_ant_mode = WIFI_ANT_MODE_ANT0,
@@ -253,7 +253,10 @@ app_main(void)
     if (0 == gpio_get_level(RB_BUTTON_RESET_PIN))
     {
         LOG_INFO("Reset button is pressed during boot - clear settings in flash");
-        wifi_manager_clear_sta_config();
+        if (!wifi_manager_clear_sta_config())
+        {
+            LOG_ERR("%s failed", "wifi_manager_clear_sta_config");
+        }
         settings_clear_in_flash();
         LOG_INFO("Wait until the reset button is released");
         leds_start_blink(LEDS_MEDIUM_BLINK);
