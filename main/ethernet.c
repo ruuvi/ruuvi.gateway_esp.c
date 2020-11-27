@@ -119,7 +119,7 @@ eth_tcpip_adapter_dhcpc_stop(void)
     const esp_err_t ret = tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_ETH);
     if (ESP_OK != ret)
     {
-        if (ESP_ERR_TCPIP_ADAPTER_DHCP_ALREADY_STOPPED == ret)
+        if ((ESP_ERR_TCPIP_ADAPTER_DHCP_ALREADY_STOPPED) == ret)
         {
             ESP_LOGW(TAG, "DHCP client already stopped");
         }
