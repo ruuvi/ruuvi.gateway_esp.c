@@ -55,7 +55,7 @@ case $1 in
         rm -f $BUILD_TESTS/test-coverage.xml
 
         echo Generate makefiles for unit-tests
-        cmake -DCMAKE_BUILD_TYPE=Debug -G "Unix Makefiles" ..
+        cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -G "Unix Makefiles" ..
         test ${?} -eq 0 || exit 1
 
         echo Clean build
@@ -83,7 +83,8 @@ case $1 in
         gcovr . --delete --sonarqube $BUILD_TESTS/test-coverage.xml
         test ${?} -eq 0 || exit 1
         find . -type f -name '*.gcno' -delete
-        
+        ls -la $BUILD_TESTS/test-coverage.xml
+
         echo Run sonar-scanner
         # sonar.tests is getting from sonar-project.properties
         sonar-scanner \

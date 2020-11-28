@@ -238,17 +238,14 @@ ruuvi_get_metrics(void)
 {
     const metrics_info_t metrics_info = gen_metrics();
 
-    str_buf_t str_buf = str_buf_init(NULL, 0);
+    str_buf_t str_buf = str_buf_init_null();
     metrics_print(&str_buf, &metrics_info);
-    const str_buf_size_t buf_size = str_buf_get_len(&str_buf) + 1;
 
-    char *p_buf = app_malloc(buf_size * sizeof(char));
-    if (NULL == p_buf)
+    if (!str_buf_init_with_alloc(&str_buf))
     {
         LOG_ERR("Can't allocate memory");
         return NULL;
     }
-    str_buf = str_buf_init(p_buf, buf_size);
     metrics_print(&str_buf, &metrics_info);
-    return p_buf;
+    return str_buf.buf;
 }

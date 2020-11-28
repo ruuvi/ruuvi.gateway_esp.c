@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <sys/stat.h>
+#include "esp_type_wrapper.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,9 +30,6 @@ extern "C" {
 typedef struct flash_fat_fs_t flash_fat_fs_t;
 
 typedef int flash_fat_fs_num_files_t;
-
-typedef int file_descriptor_t;
-typedef int file_read_result_t;
 
 typedef struct flashfatfs_path_t
 {

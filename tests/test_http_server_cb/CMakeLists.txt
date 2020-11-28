@@ -15,7 +15,7 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/cjson_wrap.h
         ${RUUVI_ESP_WRAPPERS_INC}/log.h
         ${WIFI_MANAGER_SRC}/http_server_resp.c
-        ${WIFI_MANAGER_SRC}/http_server_resp.h
+        ${WIFI_MANAGER_INC}/http_server_resp.h
         ${WIFI_MANAGER_INC}/wifi_manager.h
         ${WIFI_MANAGER_INC}/wifi_manager_defs.h
         $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
@@ -41,6 +41,7 @@ target_include_directories(${ProjectId} PUBLIC
         $ENV{IDF_PATH}/components/esp_event/include
         $ENV{IDF_PATH}/components/lwip/include/apps
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ../../components/esp32-wifi-manager/src/include
         ../../components/esp32-wifi-manager/src
         ../../components/esp32-wifi-manager/tests/lwip/extra
         ../../components/esp32-wifi-manager/tests/lwip/lwip/src/include
