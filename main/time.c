@@ -28,18 +28,47 @@
 static TaskHandle_t       gh_time_task        = NULL;
 static EventGroupHandle_t gh_time_event_group = NULL;
 
+static time_t             g_time_min;
+
 static const char TAG[] = "time";
 
 static time_t
+time_task_get_min_valid_time(void)
+{
+    struct tm tm_2020_01_01 = {
+        .tm_sec   = 0,
+        .tm_min   = 0,
+        .tm_hour  = 0,
+        .tm_mday  = 1,
+        .tm_mon   = 0,
+        .tm_year  = TM_YEAR_MIN - TM_YEAR_BASE,
+        .tm_wday  = 0,
+        .tm_yday  = 0,
+        .tm_isdst = -1,
+    };
+    return mktime(&tm_2020_01_01);
+}
+
+bool
+time_is_valid(const time_t timestamp)
+{
+    if (timestamp < g_time_min)
+    {
+        return false;
+    }
+    return true;
+}
+
+/**
+ * @brief Wait for time to be set.
+ */
+static void
 wait_for_sntp(void)
 {
-    // wait for time to be set
-    time_t        now         = 0;
-    struct tm     timeinfo    = { 0 };
     int32_t       retry       = 0;
     const int32_t retry_count = 20;
 
-    while (timeinfo.tm_year < (TM_YEAR_MIN - TM_YEAR_BASE))
+    while (!time_is_valid(time(NULL)))
     {
         retry += 1;
         if (retry >= retry_count)
@@ -49,17 +78,6 @@ wait_for_sntp(void)
         LOG_INFO("Waiting for system time to be set... (%d/%d)", retry, retry_count);
         const uint32_t delay_ms = 3000;
         vTaskDelay(pdMS_TO_TICKS(delay_ms));
-        time(&now);
-        localtime_r(&now, &timeinfo);
-    }
-
-    if (timeinfo.tm_year > (TM_YEAR_MIN - TM_YEAR_BASE))
-    {
-        return now;
-    }
-    else
-    {
-        return 0;
     }
 }
 
@@ -78,21 +96,21 @@ sync_sntp(void)
     server_idx += 1;
     sntp_setservername(server_idx, "pool.ntp.org");
     sntp_init();
-    const time_t now = wait_for_sntp();
+    wait_for_sntp();
     sntp_stop();
 
-    if (0 != now)
-    {
-        char      strftime_buf[64];
-        struct tm timeinfo = { 0 };
-        localtime_r(&now, &timeinfo);
-        strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
-        LOG_INFO("SNTP Synchronized: %s", strftime_buf);
-    }
-    else
+    const time_t now = time(NULL);
+    if (!time_is_valid(now))
     {
         LOG_WARN("SNTP not synchronized");
+        return;
     }
+
+    char      strftime_buf[64];
+    struct tm timeinfo = { 0 };
+    localtime_r(&now, &timeinfo);
+    strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+    LOG_INFO("SNTP Synchronized: %s", strftime_buf);
 }
 
 void
@@ -128,6 +146,8 @@ time_task(ATTR_UNUSED void *p_param)
 void
 time_init(void)
 {
+    g_time_min = time_task_get_min_valid_time();
+
     const uint32_t    stack_size    = 3U * 1024U;
     const UBaseType_t task_priority = 1;
     if (!os_task_create(&time_task, "time_task", stack_size, NULL, task_priority, &gh_time_task))

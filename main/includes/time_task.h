@@ -8,6 +8,9 @@
 #ifndef RUUVI_TIMETASK_H
 #define RUUVI_TIMETASK_H
 
+#include <stdbool.h>
+#include <time.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -20,6 +23,9 @@ time_init(void);
 
 void
 time_stop(void);
+
+bool
+time_is_valid(const time_t timestamp);
 
 #ifdef __cplusplus
 }
