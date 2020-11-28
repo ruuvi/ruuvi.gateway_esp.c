@@ -27,7 +27,6 @@
 
 static TaskHandle_t       gh_time_task        = NULL;
 static EventGroupHandle_t gh_time_event_group = NULL;
-EventBits_t               uxBits;
 
 static const char TAG[] = "time";
 
