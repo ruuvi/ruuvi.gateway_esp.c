@@ -34,7 +34,7 @@ idf_component_register(
             ruuvi_gateway_main.c
             includes/ruuvi_gateway.h
             settings.c
-            time.c
+            time_task.c
             includes/time_task.h
         REQUIRES
             mqtt
