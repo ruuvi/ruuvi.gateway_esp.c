@@ -16,13 +16,13 @@ extern "C" {
 #endif
 
 void
-time_sync(void);
+time_task_sync_time(void);
 
 void
-time_init(void);
+time_task_init(void);
 
 void
-time_stop(void);
+time_task_stop(void);
 
 bool
 time_is_valid(const time_t timestamp);

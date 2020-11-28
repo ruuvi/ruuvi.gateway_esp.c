@@ -25,10 +25,9 @@
 #define TM_YEAR_BASE (1900)
 #define TM_YEAR_MIN  (2020)
 
-static TaskHandle_t       gh_time_task        = NULL;
-static EventGroupHandle_t gh_time_event_group = NULL;
-
-static time_t             g_time_min;
+static TaskHandle_t       gh_time_task;
+static EventGroupHandle_t gh_time_event_group;
+static time_t             g_time_min_valid;
 
 static const char TAG[] = "time";
 
@@ -52,7 +51,7 @@ time_task_get_min_valid_time(void)
 bool
 time_is_valid(const time_t timestamp)
 {
-    if (timestamp < g_time_min)
+    if (timestamp < g_time_min_valid)
     {
         return false;
     }
@@ -63,7 +62,7 @@ time_is_valid(const time_t timestamp)
  * @brief Wait for time to be set.
  */
 static void
-wait_for_sntp(void)
+time_task_wait_for_sntp(void)
 {
     int32_t       retry       = 0;
     const int32_t retry_count = 20;
@@ -82,7 +81,7 @@ wait_for_sntp(void)
 }
 
 static void
-sync_sntp(void)
+time_task_sync_sntp(void)
 {
     LOG_INFO("Synchronizing SNTP");
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
@@ -96,7 +95,7 @@ sync_sntp(void)
     server_idx += 1;
     sntp_setservername(server_idx, "pool.ntp.org");
     sntp_init();
-    wait_for_sntp();
+    time_task_wait_for_sntp();
     sntp_stop();
 
     const time_t now = time(NULL);
@@ -114,14 +113,14 @@ sync_sntp(void)
 }
 
 void
-time_sync(void)
+time_task_sync_time(void)
 {
     xEventGroupSetBits(gh_time_event_group, TIME_SYNC_BIT);
 }
 
 ATTR_NORETURN
 static void
-time_task(ATTR_UNUSED void *p_param)
+time_task_thread(ATTR_UNUSED void *p_param)
 {
     if (NULL == gh_time_event_group)
     {
@@ -139,25 +138,25 @@ time_task(ATTR_UNUSED void *p_param)
             pdMS_TO_TICKS(
                 TIME_UNITS_HOURS_PER_DAY * TIME_UNITS_MINUTES_PER_HOUR * TIME_UNITS_SECONDS_PER_MINUTE
                 * TIME_UNITS_MS_PER_SECOND));
-        sync_sntp();
+        time_task_sync_sntp();
     }
 }
 
 void
-time_init(void)
+time_task_init(void)
 {
-    g_time_min = time_task_get_min_valid_time();
+    g_time_min_valid = time_task_get_min_valid_time();
 
     const uint32_t    stack_size    = 3U * 1024U;
     const UBaseType_t task_priority = 1;
-    if (!os_task_create(&time_task, "time_task", stack_size, NULL, task_priority, &gh_time_task))
+    if (!os_task_create(&time_task_thread, "time_task", stack_size, NULL, task_priority, &gh_time_task))
     {
         LOG_ERR("Can't create thread");
     }
 }
 
 void
-time_stop(void)
+time_task_stop(void)
 {
     sntp_stop();
 
