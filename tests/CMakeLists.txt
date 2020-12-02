@@ -60,6 +60,7 @@ add_subdirectory(test_leds)
 add_subdirectory(test_mac_addr)
 add_subdirectory(test_nrf52fw)
 add_subdirectory(test_nrf52swd)
+add_subdirectory(test_time_task)
 
 add_test(NAME test_bin2hex
         COMMAND ruuvi_gateway_esp-test-bin2hex
@@ -110,3 +111,9 @@ add_test(NAME test_nrf52swd
         COMMAND ruuvi_gateway_esp-test-nrf52swd
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-nrf52swd>/gtestresults.xml
 )
+
+add_test(NAME test_time_task
+        COMMAND ruuvi_gateway_esp-test-time_task
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-time_task>/gtestresults.xml
+)
+
