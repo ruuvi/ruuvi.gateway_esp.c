@@ -59,5 +59,6 @@ target_link_libraries(${ProjectId}
 #        ruuvi_esp_wrappers
         ruuvi_esp_wrappers-common_test_funcs
         esp_simul
+        lwip
         --coverage
 )

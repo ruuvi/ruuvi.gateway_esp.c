@@ -32,6 +32,7 @@
 #ifndef LWIP_LWIPOPTS_H
 #define LWIP_LWIPOPTS_H
 
+#include <stdint.h>
 #include "arch/cc.h"
 #include "sdkconfig.h"
 
