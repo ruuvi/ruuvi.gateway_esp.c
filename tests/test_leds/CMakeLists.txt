@@ -53,5 +53,6 @@ target_link_libraries(${ProjectId}
         gcov
         ruuvi_esp_wrappers
         ruuvi_esp_wrappers-common_test_funcs
+        esp_simul
         --coverage
 )

@@ -6,10 +6,6 @@ add_definitions(
         -DRUUVI_TESTS=1
 )
 
-include_directories(
-        esp_simul
-)
-
 set(RUUVI_ESP_WRAPPERS ${CMAKE_CURRENT_SOURCE_DIR}/../components/ruuvi.esp_wrappers.c)
 set(RUUVI_ESP_WRAPPERS_INC ${RUUVI_ESP_WRAPPERS}/include)
 
@@ -40,6 +36,8 @@ include_directories(
 
 add_subdirectory(${RUUVI_ESP_WRAPPERS} ruuvi.esp_wrappers.c)
 add_subdirectory(${RUUVI_ESP_WRAPPERS_TESTS_COMMON} ruuvi.esp_wrappers_tests)
+
+add_subdirectory(esp_simul)
 
 add_subdirectory(lwip)
 
