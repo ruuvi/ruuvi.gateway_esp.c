@@ -75,7 +75,7 @@ time_task_wait_for_sntp(void)
         }
         LOG_INFO("Waiting for system time to be set... (%d/%d)", retry, retry_count);
         const uint32_t delay_ms = 3000;
-        os_task_delay(OS_TIME_MS_TO_TICKS(delay_ms));
+        os_task_delay(OS_DELTA_TICKS_MS_TO_TICKS(delay_ms));
     }
 }
 
