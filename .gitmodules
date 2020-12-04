@@ -25,3 +25,6 @@
 [submodule "components/ruuvi.esp_wrappers.c"]
 	path = components/ruuvi.esp_wrappers.c
 	url = https://github.com/ruuvi/ruuvi.esp_wrappers.c.git
+[submodule "tests/lwip/lwip"]
+	path = tests/lwip/lwip
+	url = https://github.com/ruuvi/lwip.git

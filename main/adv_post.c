@@ -22,6 +22,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <time.h>
+#include "time_task.h"
 #include "attribs.h"
 #include "log.h"
 
@@ -37,7 +38,6 @@ adv_post_send_device_id(void *arg);
 portMUX_TYPE adv_table_mux = portMUX_INITIALIZER_UNLOCKED;
 
 adv_report_table_t adv_reports;
-adv_report_table_t adv_reports_buf;
 
 static const char *TAG = "ADV_POST_TASK";
 
@@ -195,29 +195,19 @@ adv_post_log(const adv_report_table_t *p_reports)
 static bool
 adv_post_check_is_connected(void)
 {
-    bool flag_connected = false;
-
     const EventBits_t status = xEventGroupGetBits(status_bits);
-    if (0 != (status & (WIFI_CONNECTED_BIT | ETH_CONNECTED_BIT)))
+    if (0 == (status & (WIFI_CONNECTED_BIT | ETH_CONNECTED_BIT)))
     {
-        if (g_gateway_config.http.use_http)
-        {
-            flag_connected = true;
-            char json_str[64];
-            snprintf(json_str, sizeof(json_str), "{\"status\": \"online\", \"gw_mac\": \"%s\"}", gw_mac_sta.str_buf);
-            ESP_LOGI(TAG, "HTTP POST: %s", json_str);
-            http_send(json_str);
-        }
-        else if (g_gateway_config.mqtt.use_mqtt)
-        {
-            flag_connected = true;
-        }
-        else
-        {
-            // MISRA C:2012, 15.7 - All if...else if constructs shall be terminated with an else statement
-        }
+        return false;
     }
-    return flag_connected;
+    if (g_gateway_config.http.use_http)
+    {
+        char json_str[64];
+        snprintf(json_str, sizeof(json_str), "{\"status\": \"online\", \"gw_mac\": \"%s\"}", gw_mac_sta.str_buf);
+        ESP_LOGI(TAG, "HTTP POST: %s", json_str);
+        http_send(json_str);
+    }
+    return true;
 }
 
 static bool
@@ -234,14 +224,34 @@ adv_post_check_is_disconnected(void)
 }
 
 static void
-adv_post_retransmit_advs(const adv_report_table_t *p_reports)
+adv_post_retransmit_advs(const adv_report_table_t *p_reports, const bool flag_connected)
 {
+    if (0 == p_reports->num_of_advs)
+    {
+        return;
+    }
+    if (!flag_connected)
+    {
+        ESP_LOGW(TAG, "Can't send, no network connection");
+        return;
+    }
+    if (!time_is_valid(p_reports->table[0].timestamp))
+    {
+        ESP_LOGW(TAG, "Can't send, time have not synchronized yet");
+        return;
+    }
+
     if (g_gateway_config.http.use_http)
     {
         http_send_advs(p_reports);
     }
-    if (g_gateway_config.mqtt.use_mqtt && (0 != (xEventGroupGetBits(status_bits) & MQTT_CONNECTED_BIT)))
+    if (g_gateway_config.mqtt.use_mqtt)
     {
+        if (0 == (xEventGroupGetBits(status_bits) & MQTT_CONNECTED_BIT))
+        {
+            ESP_LOGW(TAG, "Can't send, MQTT is not connected yet");
+            return;
+        }
         mqtt_publish_table(p_reports);
     }
 }
@@ -250,6 +260,8 @@ ATTR_NORETURN
 static void
 adv_post_task(ATTR_UNUSED void *arg)
 {
+    static adv_report_table_t g_adv_reports_buf;
+
     esp_log_level_set(TAG, ESP_LOG_INFO);
     ESP_LOGI(TAG, "%s", __func__);
     bool flag_connected = false;
@@ -258,11 +270,11 @@ adv_post_task(ATTR_UNUSED void *arg)
     {
         // for thread safety copy the advertisements to a separate buffer for posting
         portENTER_CRITICAL(&adv_table_mux);
-        adv_reports_buf         = adv_reports;
+        g_adv_reports_buf       = adv_reports;
         adv_reports.num_of_advs = 0; // clear the table
         portEXIT_CRITICAL(&adv_table_mux);
 
-        adv_post_log(&adv_reports_buf);
+        adv_post_log(&g_adv_reports_buf);
 
         if (!flag_connected)
         {
@@ -273,11 +285,11 @@ adv_post_task(ATTR_UNUSED void *arg)
             flag_connected = adv_post_check_is_disconnected();
         }
 
-        if (0 != adv_reports_buf.num_of_advs)
+        if (0 != g_adv_reports_buf.num_of_advs)
         {
             if (flag_connected)
             {
-                adv_post_retransmit_advs(&adv_reports_buf);
+                adv_post_retransmit_advs(&g_adv_reports_buf, flag_connected);
             }
             else
             {

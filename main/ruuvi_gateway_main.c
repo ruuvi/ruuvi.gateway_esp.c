@@ -158,7 +158,7 @@ wifi_disconnect_cb(void *p_param)
 void
 start_services(void)
 {
-    time_sync();
+    time_task_sync_time();
 
     if (g_gateway_config.mqtt.use_mqtt)
     {
@@ -274,7 +274,7 @@ app_main(void)
     adv_post_init();
     terminal_open(NULL, true);
     api_process(1);
-    time_init();
+    time_task_init();
     leds_start_blink(LEDS_FAST_BLINK);
     ruuvi_send_nrf_settings(&g_gateway_config);
     gw_mac_sta = get_gw_mac_sta();
