@@ -1,6 +1,6 @@
 /**
  * @file time.c
- * @author Jukka Saari
+ * @author Jukka Saari, TheSomeMan
  * @date 2019-11-27
  * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
  */
