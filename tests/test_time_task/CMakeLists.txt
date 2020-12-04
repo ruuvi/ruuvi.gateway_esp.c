@@ -6,7 +6,6 @@ set(ProjectId ruuvi_gateway_esp-test-time_task)
 add_executable(${ProjectId}
         test_time_task.cpp
         test_events.hpp
-        include/esp_timer.h
         ${RUUVI_GW_SRC}/time_task.c
         ${RUUVI_GW_SRC}/includes/time_task.h
         ${RUUVI_ESP_WRAPPERS}/src/os_sema.c
