@@ -47,9 +47,9 @@ target_include_directories(${ProjectId} PUBLIC
         ../../components/esp32-wifi-manager/tests/lwip/lwip/src/include
         ../../components/esp32-wifi-manager/tests/lwip/lwip/contrib/ports/unix/lib
         ../../components/esp32-wifi-manager/tests/lwip/lwip/contrib/ports/unix/port/include
-        ../Posix_GCC_Simulator/FreeRTOS_Posix/FreeRTOS_Kernel/include
-        ../Posix_GCC_Simulator/FreeRTOS_Posix/FreeRTOS_Kernel/portable/GCC/Posix
-        ../Posix_GCC_Simulator/FreeRTOS_Posix
+        ../posix_gcc_simulator/FreeRTOS_Posix/FreeRTOS_Kernel/include
+        ../posix_gcc_simulator/FreeRTOS_Posix/FreeRTOS_Kernel/portable/GCC/Posix
+        ../posix_gcc_simulator/FreeRTOS_Posix
 )
 
 target_compile_definitions(${ProjectId} PUBLIC

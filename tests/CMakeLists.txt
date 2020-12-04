@@ -25,13 +25,13 @@ set(WIFI_MANAGER_INC ${WIFI_MANAGER}/src/include)
 
 enable_testing()
 add_subdirectory(googletest)
-add_subdirectory(Posix_GCC_Simulator)
+add_subdirectory(posix_gcc_simulator)
 
 include_directories(
-        "Posix_GCC_Simulator/FreeRTOS_Posix"
-        "Posix_GCC_Simulator/FreeRTOS_Posix/FreeRTOS_Kernel/include"
-        "Posix_GCC_Simulator/FreeRTOS_Posix/FreeRTOS_Kernel/include/freertos"
-        "Posix_GCC_Simulator/FreeRTOS_Posix/FreeRTOS_Kernel/portable/GCC/Posix"
+        "posix_gcc_simulator/FreeRTOS_Posix"
+        "posix_gcc_simulator/FreeRTOS_Posix/FreeRTOS_Kernel/include"
+        "posix_gcc_simulator/FreeRTOS_Posix/FreeRTOS_Kernel/include/freertos"
+        "posix_gcc_simulator/FreeRTOS_Posix/FreeRTOS_Kernel/portable/GCC/Posix"
 )
 
 add_subdirectory(${RUUVI_ESP_WRAPPERS} ruuvi.esp_wrappers.c)

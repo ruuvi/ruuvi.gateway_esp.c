@@ -31,9 +31,9 @@ target_include_directories(${ProjectId} PUBLIC
         $ENV{IDF_PATH}/components/esp_rom/include
         $ENV{IDF_PATH}/components/esp32/include
 
-        ../Posix_GCC_Simulator/FreeRTOS_Posix/FreeRTOS_Kernel/include
-        ../Posix_GCC_Simulator/FreeRTOS_Posix/FreeRTOS_Kernel/portable/GCC/Posix
-        ../Posix_GCC_Simulator/FreeRTOS_Posix
+        ../posix_gcc_simulator/FreeRTOS_Posix/FreeRTOS_Kernel/include
+        ../posix_gcc_simulator/FreeRTOS_Posix/FreeRTOS_Kernel/portable/GCC/Posix
+        ../posix_gcc_simulator/FreeRTOS_Posix
 )
 
 target_compile_definitions(${ProjectId} PUBLIC
