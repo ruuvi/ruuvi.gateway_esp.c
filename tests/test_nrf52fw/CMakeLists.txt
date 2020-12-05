@@ -25,9 +25,6 @@ target_include_directories(${ProjectId} PUBLIC
         include
         ${CMAKE_CURRENT_SOURCE_DIR}
         $ENV{IDF_PATH}/components/esp_rom/include
-        ../posix_gcc_simulator/FreeRTOS_Posix/FreeRTOS_Kernel/include
-        ../posix_gcc_simulator/FreeRTOS_Posix/FreeRTOS_Kernel/portable/GCC/Posix
-        ../posix_gcc_simulator/FreeRTOS_Posix
 )
 
 target_compile_definitions(${ProjectId} PUBLIC

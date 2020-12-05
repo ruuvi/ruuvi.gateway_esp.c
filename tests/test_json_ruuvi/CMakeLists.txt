@@ -26,10 +26,6 @@ target_include_directories(${ProjectId} PUBLIC
         include
         $ENV{IDF_PATH}/components/json/cJSON
         ${CMAKE_CURRENT_SOURCE_DIR}
-
-        ../posix_gcc_simulator/FreeRTOS_Posix/FreeRTOS_Kernel/include
-        ../posix_gcc_simulator/FreeRTOS_Posix/FreeRTOS_Kernel/portable/GCC/Posix
-        ../posix_gcc_simulator/FreeRTOS_Posix
 )
 
 target_compile_definitions(${ProjectId} PUBLIC
