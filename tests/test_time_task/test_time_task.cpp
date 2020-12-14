@@ -190,37 +190,11 @@ freertosStartup(void *arg)
     return nullptr;
 }
 
-#define TEST_CHECK_LOG_RECORD_EX(tag_, level_, msg_, flag_skip_file_info_) \
-    do \
-    { \
-        ASSERT_FALSE(esp_log_wrapper_is_empty()); \
-        const LogRecord log_record = esp_log_wrapper_pop(); \
-        ASSERT_EQ(level_, log_record.level); \
-        ASSERT_EQ(string(tag_), log_record.tag); \
-        if (flag_skip_file_info_) \
-        { \
-            const char *p = strchr(log_record.message.c_str(), ' '); \
-            assert(NULL != p); \
-            p += 1; \
-            p = strchr(p, ' '); \
-            assert(NULL != p); \
-            p += 1; \
-            p = strchr(p, ' '); \
-            assert(NULL != p); \
-            p += 1; \
-            ASSERT_EQ(string(msg_), p); \
-        } \
-        else \
-        { \
-            ASSERT_EQ(string(msg_), log_record.message); \
-        } \
-    } while (0)
+#define TEST_CHECK_LOG_RECORD_TIME(level_, thread_, msg_) \
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD_WITH_THREAD("time", level_, thread_, msg_);
 
-#define TEST_CHECK_LOG_RECORD_TIME(level_, msg_)         TEST_CHECK_LOG_RECORD_EX("time", level_, msg_, false);
-#define TEST_CHECK_LOG_RECORD_TIME_NO_FILE(level_, msg_) TEST_CHECK_LOG_RECORD_EX("time", level_, msg_, true);
-
-#define TEST_CHECK_LOG_RECORD_OS_TASK(level_, msg_)         TEST_CHECK_LOG_RECORD_EX("os_task", level_, msg_, false);
-#define TEST_CHECK_LOG_RECORD_OS_TASK_NO_FILE(level_, msg_) TEST_CHECK_LOG_RECORD_EX("os_task", level_, msg_, true);
+#define TEST_CHECK_LOG_RECORD_OS_TASK(level_, thread_, msg_) \
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD_WITH_THREAD("os_task", level_, thread_, msg_);
 
 /*** Unit-Tests
  * *******************************************************************************************************/
@@ -231,8 +205,9 @@ TEST_F(TestTimeTask, test_all) // NOLINT
     ASSERT_TRUE(this->result_time_task_init);
     TEST_CHECK_LOG_RECORD_OS_TASK(
         ESP_LOG_INFO,
-        "[cmdHandlerTask] Start thread 'time_task' with priority 1, stack size 3072 bytes");
-    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "[time_task] time_task started");
+        "cmdHandlerTask",
+        "Start thread 'time_task' with priority 1, stack size 3072 bytes");
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "time_task started");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_EQ(0, testEvents.size());
 
@@ -319,7 +294,7 @@ TEST_F(TestTimeTask, test_all) // NOLINT
         ASSERT_EQ(TestEventType_SNTP_Stop, pBaseEv->eventType);
     }
     ASSERT_EQ(exp_num_events, idx);
-    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "[time_task] Synchronizing SNTP");
-    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "[time_task] SNTP Synchronized: Mon Nov 30 00:00:00 2020");
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Synchronizing SNTP");
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "SNTP Synchronized: Mon Nov 30 00:00:00 2020");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }

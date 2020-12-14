@@ -283,7 +283,7 @@ os_task_get_name(void)
 }
 
 void *
-app_malloc(const size_t size)
+os_malloc(const size_t size)
 {
     if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
     {
@@ -296,30 +296,14 @@ app_malloc(const size_t size)
 }
 
 void
-app_free(void *ptr)
+os_free_internal(void *ptr)
 {
     g_pTestClass->m_mem_alloc_trace.remove(ptr);
     free(ptr);
 }
 
-void
-app_free_pptr(void **p_ptr)
-{
-    g_pTestClass->m_mem_alloc_trace.remove(*p_ptr);
-    free(*p_ptr);
-    *p_ptr = nullptr;
-}
-
-void
-app_free_const_pptr(const void **p_ptr)
-{
-    g_pTestClass->m_mem_alloc_trace.remove(const_cast<void *>(*p_ptr));
-    free(const_cast<void *>(*p_ptr));
-    *p_ptr = nullptr;
-}
-
 void *
-app_calloc(const size_t nmemb, const size_t size)
+os_calloc(const size_t nmemb, const size_t size)
 {
     if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
     {
@@ -416,37 +400,9 @@ vTaskDelay(const TickType_t xTicksToDelay)
 
 } // extern "C"
 
-#define TEST_CHECK_LOG_RECORD_EX(tag_, level_, msg_, flag_skip_file_info_) \
-    do \
-    { \
-        ASSERT_FALSE(esp_log_wrapper_is_empty()); \
-        const LogRecord log_record = esp_log_wrapper_pop(); \
-        ASSERT_EQ(level_, log_record.level); \
-        ASSERT_EQ(string(tag_), log_record.tag); \
-        if (flag_skip_file_info_) \
-        { \
-            const char *p = strchr(log_record.message.c_str(), ' '); \
-            assert(NULL != p); \
-            p += 1; \
-            p = strchr(p, ' '); \
-            assert(NULL != p); \
-            p += 1; \
-            p = strchr(p, ' '); \
-            assert(NULL != p); \
-            p += 1; \
-            ASSERT_EQ(string(msg_), p); \
-        } \
-        else \
-        { \
-            ASSERT_EQ(string(msg_), log_record.message); \
-        } \
-    } while (0)
+#define TEST_CHECK_LOG_RECORD_NRF52(level_, msg_) ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("nRF52Fw", level_, msg_);
 
-#define TEST_CHECK_LOG_RECORD_NRF52(level_, msg_)         TEST_CHECK_LOG_RECORD_EX("nRF52Fw", level_, msg_, false);
-#define TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(level_, msg_) TEST_CHECK_LOG_RECORD_EX("nRF52Fw", level_, msg_, true);
-
-#define TEST_CHECK_LOG_RECORD_FFFS(level_, msg_)         TEST_CHECK_LOG_RECORD_EX("FlashFatFS", level_, msg_, false);
-#define TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(level_, msg_) TEST_CHECK_LOG_RECORD_EX("FlashFatFS", level_, msg_, true);
+#define TEST_CHECK_LOG_RECORD_FFFS(level_, msg_) ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("FlashFatFS", level_, msg_);
 
 /*** Unit-Tests
  * *******************************************************************************************************/
@@ -993,11 +949,11 @@ TEST_F(TestNRF52Fw, nrf52fw_read_info_txt_no_file) // NOLINT
     ASSERT_EQ(0, info.fw_ver.version);
     ASSERT_EQ(0, info.num_segments);
 
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_ERROR, "Can't open: ./fs_nrf52/info.txt");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "Can't open: info.txt");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Unmount ./fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_ERROR, "Can't open: ./fs_nrf52/info.txt");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "Can't open: info.txt");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -1025,10 +981,10 @@ TEST_F(TestNRF52Fw, nrf52fw_read_info_txt_bad_line_3) // NOLINT
     }
     ASSERT_TRUE(flashfatfs_unmount(&this->m_p_ffs));
     this->m_p_ffs = nullptr;
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "Failed to parse 'info.txt' at line 3");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Unmount ./fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "Failed to parse 'info.txt' at line 3");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -1106,7 +1062,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_ok_16_words) // NOLINT
         ASSERT_EQ(this->m_memSegmentsRead[0].segmentAddr, this->m_memSegmentsWrite[0].segmentAddr);
         ASSERT_EQ(this->m_memSegmentsRead[0].data, this->m_memSegmentsWrite[0].data);
     }
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Writing 0x00001000...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001000...");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -1175,8 +1131,8 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_error_on_verify) // NOLINT
     segment_buf[1] -= 1U;
 
     ASSERT_FALSE(nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf)));
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Writing 0x00001000...");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "verify failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001000...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "verify failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -1206,8 +1162,8 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_error_on_read) // NOLINT
     const uint32_t segment_addr = 0x00001000;
 
     ASSERT_FALSE(nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf)));
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Writing 0x00001000...");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "nrf52swd_read_mem failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001000...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_read_mem failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -1239,8 +1195,8 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_error_on_write) // NOLINT
         MemSegment(segment_addr, sizeof(segment_buf) / sizeof(segment_buf[0]), segment_buf));
 
     ASSERT_FALSE(nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf)));
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Writing 0x00001000...");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "nrf52swd_write_mem failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001000...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_write_mem failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -1276,7 +1232,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_fail_file_greater_than_expected)
         &tmp_buf,
         segment_addr,
         sizeof(segment_buf) - sizeof(uint32_t)));
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "offset 64 greater than segment len 60");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "offset 64 greater than segment len 60");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -1308,7 +1264,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_fail_bad_length) // NOLINT
         MemSegment(segment_addr, sizeof(segment_buf) / sizeof(segment_buf[0]), segment_buf));
 
     ASSERT_FALSE(nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf)));
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "bad len 63");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "bad len 63");
 
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
@@ -1342,7 +1298,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_fail_after_file_read_error) // N
 
     nrf52fw_simulate_file_read_error(true);
     ASSERT_FALSE(nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf)));
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "nrf52fw_file_read failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_file_read failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -1384,10 +1340,10 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_from_file_ok) // NOLINT
         ASSERT_EQ(this->m_memSegmentsRead[0].segmentAddr, this->m_memSegmentsWrite[0].segmentAddr);
         ASSERT_EQ(this->m_memSegmentsRead[0].data, this->m_memSegmentsWrite[0].data);
     }
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Writing 0x00001000...");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Unmount ./fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001000...");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -1426,12 +1382,12 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_from_file_error_on_writing_segme
     flashfatfs_unmount(&this->m_p_ffs);
     this->m_p_ffs = nullptr;
 
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Writing 0x00001000...");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "nrf52swd_write_mem failed");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "Failed to write segment 0x00001000 from 'segment_1.bin'");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Unmount ./fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001000...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_write_mem failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "Failed to write segment 0x00001000 from 'segment_1.bin'");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -1460,11 +1416,11 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_from_file_error_no_file) // NOLI
     flashfatfs_unmount(&this->m_p_ffs);
     this->m_p_ffs = nullptr;
 
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_ERROR, "Can't open: ./fs_nrf52/segment_1.bin");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "Can't open 'segment_1.bin'");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Unmount ./fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_ERROR, "Can't open: ./fs_nrf52/segment_1.bin");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "Can't open 'segment_1.bin'");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -1549,18 +1505,18 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_ok) // NOLINT
         ASSERT_EQ(1, this->m_memSegmentsWrite[2].data.size());
         ASSERT_EQ(fw_info.fw_ver.version, this->m_memSegmentsWrite[2].data[0]);
     }
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Erasing flash memory...");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Flash 2 segments");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Flash segment 0: 0x00000000 size=516 from segment_1.bin");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Writing 0x00000000...");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Writing 0x00000200...");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Flash segment 1: 0x00001000 size=1028 from segment_2.bin");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Writing 0x00001000...");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Writing 0x00001200...");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Writing 0x00001400...");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Unmount ./fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Erasing flash memory...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash 2 segments");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 0: 0x00000000 size=516 from segment_1.bin");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000000...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000200...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 1: 0x00001000 size=1028 from segment_2.bin");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001000...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001200...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001400...");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -1645,19 +1601,19 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_version) // NOLIN
         ASSERT_EQ(this->m_memSegmentsRead[1].segmentAddr, this->m_memSegmentsWrite[2].segmentAddr);
         ASSERT_EQ(this->m_memSegmentsRead[1].data, this->m_memSegmentsWrite[2].data);
     }
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Erasing flash memory...");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Flash 2 segments");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Flash segment 0: 0x00000000 size=516 from segment_1.bin");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Writing 0x00000000...");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Writing 0x00000200...");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Flash segment 1: 0x00001000 size=1028 from segment_2.bin");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Writing 0x00001000...");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Writing 0x00001200...");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Writing 0x00001400...");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "Failed to write firmware version");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Unmount ./fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Erasing flash memory...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash 2 segments");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 0: 0x00000000 size=516 from segment_1.bin");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000000...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000200...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 1: 0x00001000 size=1028 from segment_2.bin");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001000...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001200...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001400...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "Failed to write firmware version");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -1738,19 +1694,19 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_segment) // NOLIN
         ASSERT_EQ(this->m_memSegmentsRead[0].segmentAddr, this->m_memSegmentsWrite[1].segmentAddr);
         ASSERT_EQ(this->m_memSegmentsRead[0].data, this->m_memSegmentsWrite[1].data);
     }
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Erasing flash memory...");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Flash 2 segments");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Flash segment 0: 0x00000000 size=516 from segment_1.bin");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Writing 0x00000000...");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Writing 0x00000200...");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Flash segment 1: 0x00001000 size=1028 from segment_2.bin");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Writing 0x00001000...");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "nrf52swd_write_mem failed");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "Failed to write segment 0x00001000 from 'segment_2.bin'");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "Failed to write segment 1: 0x00001000 from segment_2.bin");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Unmount ./fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Erasing flash memory...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash 2 segments");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 0: 0x00000000 size=516 from segment_1.bin");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000000...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000200...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 1: 0x00001000 size=1028 from segment_2.bin");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001000...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_write_mem failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "Failed to write segment 0x00001000 from 'segment_2.bin'");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "Failed to write segment 1: 0x00001000 from segment_2.bin");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -1824,12 +1780,12 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_erasing) // NOLINT
     this->m_p_ffs = nullptr;
 
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Erasing flash memory...");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "nrf52swd_erase_all failed");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "nrf52fw_erase_flash failed");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Unmount ./fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Erasing flash memory...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_erase_all failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_erase_flash failed");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -1889,7 +1845,7 @@ TEST_F(TestNRF52Fw, nrf52fw_calc_segment_crc_fail_file_greater_than_expected) //
 
     uint32_t crc = 0;
     ASSERT_FALSE(nrf52fw_calc_segment_crc(fileno(this->m_fd), &tmp_buf, segment_size - sizeof(uint32_t), &crc));
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "offset 2816 greater than segment len 2812");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "offset 2816 greater than segment len 2812");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -1919,7 +1875,7 @@ TEST_F(TestNRF52Fw, nrf52fw_calc_segment_crc_fail_bad_length) // NOLINT
 
     uint32_t crc = 0;
     ASSERT_FALSE(nrf52fw_calc_segment_crc(fileno(this->m_fd), &tmp_buf, segment_size, &crc));
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "bad len 255");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "bad len 255");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -1950,7 +1906,7 @@ TEST_F(TestNRF52Fw, nrf52fw_calc_segment_crc_fail_after_file_read_error) // NOLI
     nrf52fw_simulate_file_read_error(true);
     uint32_t crc = 0;
     ASSERT_FALSE(nrf52fw_calc_segment_crc(fileno(this->m_fd), &tmp_buf, segment_size, &crc));
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "nrf52fw_file_read failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_file_read failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -2018,9 +1974,9 @@ TEST_F(TestNRF52Fw, nrf52fw_check_firmware_ok) // NOLINT
     flashfatfs_unmount(&this->m_p_ffs);
     this->m_p_ffs = nullptr;
 
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Unmount ./fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -2088,12 +2044,10 @@ TEST_F(TestNRF52Fw, nrf52fw_check_firmware_error_bad_crc) // NOLINT
     flashfatfs_unmount(&this->m_p_ffs);
     this->m_p_ffs = nullptr;
 
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(
-        ESP_LOG_ERROR,
-        "Segment: 0x00001000: expected CRC: 0xa433c76e, actual CRC: 0xa433c76d");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Unmount ./fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "Segment: 0x00001000: expected CRC: 0xa433c76e, actual CRC: 0xa433c76d");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -2154,11 +2108,11 @@ TEST_F(TestNRF52Fw, nrf52fw_check_firmware_fail_open_file) // NOLINT
     flashfatfs_unmount(&this->m_p_ffs);
     this->m_p_ffs = nullptr;
 
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_ERROR, "Can't open: ./fs_nrf52/segment_2.bin");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "Can't open 'segment_2.bin'");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Unmount ./fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_ERROR, "Can't open: ./fs_nrf52/segment_2.bin");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "Can't open 'segment_2.bin'");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -2227,11 +2181,11 @@ TEST_F(TestNRF52Fw, nrf52fw_check_firmware_fail_calc_segment_crc) // NOLINT
     flashfatfs_unmount(&this->m_p_ffs);
     this->m_p_ffs = nullptr;
 
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "nrf52fw_file_read failed");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "nrf52fw_calc_segment_crc failed");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Unmount ./fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_file_read failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_calc_segment_crc failed");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -2319,18 +2273,18 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_not_needed) // 
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
 
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: false");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Init SWD");
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Firmware on FatFS: v1.2.3");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Firmware on nRF52: v1.2.3");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Firmware updating is not needed");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Unmount ./fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Deinit SWD");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on nRF52: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware updating is not needed");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -2421,41 +2375,41 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required) // NO
     ASSERT_EQ(1, this->m_cnt_nrf52swd_erase_all);
     ASSERT_EQ(4, this->m_memSegmentsWrite.size());
 
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: false");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Init SWD");
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Firmware on FatFS: v1.2.3");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Firmware on nRF52: v1.2.0");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Need to update firmware on nRF52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Erasing flash memory...");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Flash 3 segments");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Flash segment 0: 0x00000000 size=2816 from segment_1.bin");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Writing 0x00000000...");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Writing 0x00000200...");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Writing 0x00000400...");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Writing 0x00000600...");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Writing 0x00000800...");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Writing 0x00000a00...");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Flash segment 1: 0x00001000 size=151016 from segment_2.bin");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on nRF52: v1.2.0");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Need to update firmware on nRF52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Erasing flash memory...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash 3 segments");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 0: 0x00000000 size=2816 from segment_1.bin");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000000...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000200...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000400...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000600...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000800...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000a00...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 1: 0x00001000 size=151016 from segment_2.bin");
     for (uint32_t offset = 0; offset < segment2_size; offset += 512)
     {
         char buf[80];
-        snprintf(buf, sizeof(buf), "[main] Writing 0x%08x...", (unsigned)(0x00001000U + offset));
+        snprintf(buf, sizeof(buf), "Writing 0x%08x...", (unsigned)(0x00001000U + offset));
         TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, buf);
     }
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Flash segment 2: 0x00026000 size=24448 from segment_3.bin");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 2: 0x00026000 size=24448 from segment_3.bin");
     for (uint32_t offset = 0; offset < segment3_size; offset += 512)
     {
         char buf[80];
-        snprintf(buf, sizeof(buf), "[main] Writing 0x%08x...", (unsigned)(0x00026000U + offset));
+        snprintf(buf, sizeof(buf), "Writing 0x%08x...", (unsigned)(0x00026000U + offset));
         TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, buf);
     }
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Unmount ./fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Deinit SWD");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -2544,13 +2498,13 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
 
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: false");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Init SWD");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "nrf52swd_init failed");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "nrf52fw_init_swd failed");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_init failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_init_swd failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -2639,13 +2593,13 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
 
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: false");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Init SWD");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "nrf52swd_check_id_code failed");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "nrf52fw_init_swd failed");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_check_id_code failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_init_swd failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -2734,13 +2688,13 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
 
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: false");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Init SWD");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "nrf52swd_debug_halt failed");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "nrf52fw_init_swd failed");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_debug_halt failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_init_swd failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -2829,19 +2783,19 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__debug_run_failed) // N
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
 
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: false");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Init SWD");
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Firmware on FatFS: v1.2.3");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Firmware on nRF52: v1.2.3");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Firmware updating is not needed");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Unmount ./fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "nrf52swd_debug_run failed");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Deinit SWD");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on nRF52: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware updating is not needed");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_debug_run failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -2930,15 +2884,15 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_mount_failed) //
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
 
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: false");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Init SWD");
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_ERROR, "esp_vfs_fat_spiflash_mount failed, err=261 (UNKNOWN ERROR)");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "flashfatfs_mount failed");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Deinit SWD");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_ERROR, "esp_vfs_fat_spiflash_mount failed, err=261 (UNKNOWN ERROR)");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "flashfatfs_mount failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -3027,15 +2981,15 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_mount_failed_no_
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
 
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: false");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Init SWD");
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_ERROR, "Can't allocate memory");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "flashfatfs_mount failed");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Deinit SWD");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_ERROR, "Can't allocate memory");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "flashfatfs_mount failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -3124,16 +3078,16 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_step2_no_mem) //
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
 
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: false");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Init SWD");
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "app_malloc failed");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Unmount ./fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Deinit SWD");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "os_malloc failed");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -3212,18 +3166,18 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_read_info_txt) /
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
 
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: false");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Init SWD");
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_ERROR, "Can't open: ./fs_nrf52/info.txt");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "Can't open: info.txt");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "nrf52fw_read_info_txt failed");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Unmount ./fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Deinit SWD");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_ERROR, "Can't open: ./fs_nrf52/info.txt");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "Can't open: info.txt");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_read_info_txt failed");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -3306,17 +3260,17 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_read_version) //
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
 
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: false");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Init SWD");
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Firmware on FatFS: v1.2.3");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "nrf52fw_read_current_fw_ver failed");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Unmount ./fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Deinit SWD");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_read_current_fw_ver failed");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -3404,22 +3358,20 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_check_firmware) 
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
 
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: false");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Init SWD");
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Firmware on FatFS: v1.2.3");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Firmware on nRF52: v1.2.0");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Need to update firmware on nRF52");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(
-        ESP_LOG_ERROR,
-        "Segment: 0x00001000: expected CRC: 0x5b3ddbc1, actual CRC: 0x5b3ddbc0");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "nrf52fw_check_firmware failed");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Unmount ./fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Deinit SWD");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on nRF52: v1.2.0");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Need to update firmware on nRF52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "Segment: 0x00001000: expected CRC: 0x5b3ddbc1, actual CRC: 0x5b3ddbc0");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_check_firmware failed");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -3511,26 +3463,26 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_write_firmware) 
     ASSERT_EQ(1, this->m_memSegmentsWrite.size());
     ASSERT_EQ(1, this->m_cnt_nrf52swd_erase_all);
 
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: false");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Init SWD");
-    TEST_CHECK_LOG_RECORD_FFFS_NO_FILE(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Firmware on FatFS: v1.2.3");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Firmware on nRF52: v1.2.0");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Need to update firmware on nRF52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Erasing flash memory...");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Flash 3 segments");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Flash segment 0: 0x00000000 size=2816 from segment_1.bin");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Writing 0x00000000...");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "nrf52swd_write_mem failed");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "Failed to write segment 0x00000000 from 'segment_1.bin'");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "Failed to write segment 0: 0x00000000 from segment_1.bin");
-    TEST_CHECK_LOG_RECORD_NRF52_NO_FILE(ESP_LOG_ERROR, "nrf52fw_flash_write_firmware failed");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "[main] Unmount ./fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Deinit SWD");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "[main] Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on nRF52: v1.2.0");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Need to update firmware on nRF52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Erasing flash memory...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash 3 segments");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 0: 0x00000000 size=2816 from segment_1.bin");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000000...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_write_mem failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "Failed to write segment 0x00000000 from 'segment_1.bin'");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "Failed to write segment 0: 0x00000000 from segment_1.bin");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_flash_write_firmware failed");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }

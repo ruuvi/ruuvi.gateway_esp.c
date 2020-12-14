@@ -21,9 +21,6 @@ target_include_directories(${ProjectId} PUBLIC
         ${RUUVI_GW_SRC}
         include
         ${CMAKE_CURRENT_SOURCE_DIR}
-        ../Posix_GCC_Simulator/FreeRTOS_Posix/FreeRTOS_Kernel/include
-        ../Posix_GCC_Simulator/FreeRTOS_Posix/FreeRTOS_Kernel/portable/GCC/Posix
-        ../Posix_GCC_Simulator/FreeRTOS_Posix
 )
 
 target_compile_definitions(${ProjectId} PUBLIC
@@ -48,7 +45,6 @@ target_link_libraries(${ProjectId}
         gtest
         gtest_main
         gcov
-        ruuvi_esp_wrappers
         ruuvi_esp_wrappers-common_test_funcs
         --coverage
 )

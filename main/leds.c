@@ -15,6 +15,8 @@
 #include "freertos/event_groups.h"
 #include "attribs.h"
 #include "time_units.h"
+
+#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
 
 const char *TAG = "LEDS";
@@ -99,7 +101,7 @@ leds_start_blink(const TimeUnitsMilliSeconds_t interval_ms)
     {
         return;
     }
-    ESP_LOGI(TAG, "start led blinking, interval: %u ms", (unsigned)interval_ms);
+    LOG_INFO("start led blinking, interval: %u ms", (unsigned)interval_ms);
     esp_timer_start_periodic(blink_timer, time_units_conv_ms_to_us(interval_ms));
 }
 
@@ -110,7 +112,7 @@ leds_stop_blink(void)
     {
         return;
     }
-    ESP_LOGI(TAG, "stop led blinking");
+    LOG_INFO("stop led blinking");
     esp_timer_stop(blink_timer);
     ledc_set_fade_with_time(ledc_channel[0].speed_mode, ledc_channel[0].channel, 0, LEDC_TEST_FADE_TIME);
     ledc_fade_start(ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_NO_WAIT);
@@ -119,10 +121,9 @@ leds_stop_blink(void)
 
 ATTR_NORETURN
 static void
-leds_task(void *arg)
+leds_task(void)
 {
-    (void)arg;
-    ESP_LOGI(TAG, "%s started", __func__);
+    LOG_INFO("%s started", __func__);
 
     EventBits_t bits;
     while (1)
@@ -135,18 +136,18 @@ leds_task(void *arg)
             pdMS_TO_TICKS(1000));
         if (0 != (bits & LEDS_BLINK_BIT))
         {
-            ESP_LOGI(TAG, "led blink");
+            LOG_INFO("led blink");
             const TimeUnitsMilliSeconds_t blink_interval_ms = time_units_conv_seconds_to_ms(1);
             leds_start_blink(blink_interval_ms);
         }
         else if (0 != (bits & LEDS_ON_BIT))
         {
-            ESP_LOGI(TAG, "led on");
+            LOG_INFO("led on");
             leds_on();
         }
         else if (0 != (bits & LEDS_OFF_BIT))
         {
-            ESP_LOGI(TAG, "led off");
+            LOG_INFO("led off");
             leds_off();
         }
         else
@@ -161,10 +162,10 @@ leds_init(void)
 {
     if (!g_leds_enabled)
     {
-        ESP_LOGI(TAG, "%s: LEDs disabled", __func__);
+        LOG_INFO("%s: LEDs disabled", __func__);
         return;
     }
-    ESP_LOGI(TAG, "%s", __func__);
+    LOG_INFO("%s", __func__);
     esp_timer_init();
     esp_timer_create_args_t timer_args = {
         .callback        = blink_timer_handler,
@@ -191,11 +192,13 @@ leds_init(void)
     led_bits = xEventGroupCreate();
     if (NULL == led_bits)
     {
-        ESP_LOGE(TAG, "Can't create event group");
+        LOG_INFO("Can't create event group");
     }
 
     const uint32_t stack_size = 2U * 1024U;
-    if (!os_task_create(&leds_task, "leds_task", stack_size, NULL, 1, NULL))
+
+    os_task_handle_t h_task = NULL;
+    if (!os_task_create_without_param(&leds_task, "leds_task", stack_size, 1, &h_task))
     {
         LOG_ERR("Can't create thread");
     }

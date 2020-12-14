@@ -106,7 +106,7 @@ gpio_task_handle_reset_button(const gpio_level_t io_level, bool *p_is_timer_star
 
 ATTR_NORETURN
 static void
-gpio_task(ATTR_UNUSED void *p_arg)
+gpio_task(void)
 {
     bool flag_timer_started = false;
     for (;;)
@@ -208,7 +208,8 @@ gpio_start_task(void)
 {
     const uint32_t    stack_size    = 3U * 1024U;
     const UBaseType_t task_priority = 1U;
-    if (!os_task_create(&gpio_task, "gpio_task", stack_size, NULL, task_priority, NULL))
+    os_task_handle_t  h_task        = NULL;
+    if (!os_task_create_without_param(&gpio_task, "gpio_task", stack_size, task_priority, &h_task))
     {
         LOG_ERR("Can't create task");
         return false;

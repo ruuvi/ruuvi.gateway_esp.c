@@ -258,7 +258,7 @@ adv_post_retransmit_advs(const adv_report_table_t *p_reports, const bool flag_co
 
 ATTR_NORETURN
 static void
-adv_post_task(ATTR_UNUSED void *arg)
+adv_post_task(void)
 {
     static adv_report_table_t g_adv_reports_buf;
 
@@ -306,8 +306,9 @@ adv_post_init(void)
 {
     adv_reports.num_of_advs = 0;
     api_callbacks_reg((void *)&adv_callback_func_tbl);
-    const uint32_t stack_size = 1024U * 4U;
-    if (!os_task_create(&adv_post_task, "adv_post_task", stack_size, NULL, 1, NULL))
+    const uint32_t   stack_size = 1024U * 4U;
+    os_task_handle_t h_task     = NULL;
+    if (!os_task_create_without_param(&adv_post_task, "adv_post_task", stack_size, 1, &h_task))
     {
         LOG_ERR("Can't create thread");
     }

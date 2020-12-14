@@ -8,7 +8,7 @@
 #include "esp_heap_caps.h"
 #include "ruuvi_gateway.h"
 #include "str_buf.h"
-#include "app_malloc.h"
+#include "os_malloc.h"
 #include "log.h"
 
 #define METRICS_PREFIX "ruuvigw_"

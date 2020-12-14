@@ -6,14 +6,15 @@
  */
 
 #include "flashfatfs.h"
+#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
+#include "log.h"
 #include <string.h>
 #include <stdlib.h>
 #include <fcntl.h>
 #include "esp_err.h"
 #include "esp_vfs_fat.h"
 #include "wear_levelling.h"
-#include "app_malloc.h"
-#include "log.h"
+#include "os_malloc.h"
 
 #if !defined(RUUVI_TESTS_NRF52FW)
 #define RUUVI_TESTS_NRF52FW (0)
@@ -41,36 +42,28 @@ flashfatfs_mount(const char *mount_point, const char *partition_label, const fla
     size_t mount_point_buf_size = strlen(mount_point_prefix) + strlen(mount_point) + 1;
 
     LOG_DBG("Mount partition '%s' to the mount point %s", partition_label, mount_point);
-    flash_fat_fs_t *p_obj = app_calloc(1, sizeof(*p_obj) + mount_point_buf_size);
+    flash_fat_fs_t *p_obj = os_calloc(1, sizeof(*p_obj) + mount_point_buf_size);
     if (NULL == p_obj)
     {
         LOG_ERR("Can't allocate memory");
+        return NULL;
     }
-    else
-    {
-        p_obj->mount_point = (void *)(p_obj + 1);
-        snprintf(p_obj->mount_point, mount_point_buf_size, "%s%s", mount_point_prefix, mount_point);
+    p_obj->mount_point = (void *)(p_obj + 1);
+    snprintf(p_obj->mount_point, mount_point_buf_size, "%s%s", mount_point_prefix, mount_point);
 
-        esp_vfs_fat_sdmmc_mount_config_t mount_config = {
-            .format_if_mount_failed = false,
-            .max_files              = max_files,
-            .allocation_unit_size   = 512U,
-        };
-        const esp_err_t err = esp_vfs_fat_spiflash_mount(
-            mount_point,
-            partition_label,
-            &mount_config,
-            &p_obj->wl_handle);
-        if (ESP_OK != err)
-        {
-            LOG_ERR_ESP(err, "%s failed", "esp_vfs_fat_spiflash_mount");
-            app_free_pptr((void **)&p_obj);
-        }
-        else
-        {
-            LOG_INFO("Partition '%s' mounted successfully to %s", partition_label, mount_point);
-        }
+    esp_vfs_fat_sdmmc_mount_config_t mount_config = {
+        .format_if_mount_failed = false,
+        .max_files              = max_files,
+        .allocation_unit_size   = 512U,
+    };
+    const esp_err_t err = esp_vfs_fat_spiflash_mount(mount_point, partition_label, &mount_config, &p_obj->wl_handle);
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "%s failed", "esp_vfs_fat_spiflash_mount");
+        os_free(p_obj);
+        return NULL;
     }
+    LOG_INFO("Partition '%s' mounted successfully to %s", partition_label, mount_point);
     return p_obj;
 }
 
@@ -80,7 +73,7 @@ flashfatfs_unmount(const flash_fat_fs_t **pp_ffs)
     const flash_fat_fs_t *p_ffs = *pp_ffs;
     LOG_INFO("Unmount %s", p_ffs->mount_point);
     const esp_err_t err = esp_vfs_fat_spiflash_unmount(p_ffs->mount_point, p_ffs->wl_handle);
-    app_free_const_pptr((const void **)pp_ffs);
+    os_free(p_ffs);
     *pp_ffs = NULL;
     if (ESP_OK != err)
     {
@@ -106,7 +99,7 @@ flashfatfs_open(const flash_fat_fs_t *p_ffs, const char *file_path)
     if (NULL == p_ffs)
     {
         LOG_ERR("p_ffs is NULL");
-        return -1;
+        return FILE_DESCRIPTOR_INVALID;
     }
     const flashfatfs_path_t tmp_path = flashfatfs_get_full_path(p_ffs, file_path);
     file_descriptor_t       fd       = open(tmp_path.buf, O_RDONLY);

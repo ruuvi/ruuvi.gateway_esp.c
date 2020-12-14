@@ -31,6 +31,13 @@ typedef struct spi_device_t
     int stub;
 } spi_device_t;
 
+const char *
+os_task_get_name(void)
+{
+    static const char g_task_name[] = "main";
+    return const_cast<char *>(g_task_name);
+}
+
 } // extern "C"
 
 class MemSegment
@@ -427,17 +434,10 @@ libswd_memap_write_int_32(libswd_ctx_t *libswdctx, libswd_operation_t operation,
 
 } // extern "C"
 
-#define TEST_CHECK_LOG_RECORD_EX(tag_, level_, msg_) \
-    do \
-    { \
-        ASSERT_FALSE(esp_log_wrapper_is_empty()); \
-        const LogRecord log_record = esp_log_wrapper_pop(); \
-        ASSERT_EQ(level_, log_record.level); \
-        ASSERT_EQ(string(tag_), log_record.tag); \
-        ASSERT_EQ(string(msg_), log_record.message); \
-    } while (0)
+#define TEST_CHECK_LOG_RECORD(level_, msg_) ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("SWD", level_, msg_)
 
-#define TEST_CHECK_LOG_RECORD(level_, msg_) TEST_CHECK_LOG_RECORD_EX("SWD", level_, msg_);
+#define TEST_CHECK_LOG_RECORD_WITH_FUNC(level_, func_, msg_) \
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD_WITH_FUNC("SWD", level_, func_, msg_)
 
 /*** Unit-Tests
  * *******************************************************************************************************/
@@ -457,7 +457,11 @@ TEST_F(TestNRF52Swd, init_gpio_cfg_nreset_fail) // NOLINT
 {
     this->m_gpio_config_result = ESP_FAIL;
     ASSERT_FALSE(nrf52swd_init_gpio_cfg_nreset());
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_init_gpio_cfg_nreset: gpio_config(nRF52 nRESET) failed, err=-1");
+
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(
+        ESP_LOG_ERROR,
+        "nrf52swd_init_gpio_cfg_nreset",
+        "gpio_config(nRF52 nRESET) failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -486,7 +490,7 @@ TEST_F(TestNRF52Swd, init_spi_init_fail) // NOLINT
     ASSERT_FALSE(nrf52swd_init_spi_init());
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_initialize");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_init_spi_init: spi_bus_initialize failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(ESP_LOG_ERROR, "nrf52swd_init_spi_init", "spi_bus_initialize failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -519,7 +523,7 @@ TEST_F(TestNRF52Swd, init_spi_add_device_fail) // NOLINT
     this->m_spi_add_device_result = ESP_FAIL;
     ASSERT_FALSE(nrf52swd_init_spi_add_device());
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_add_device");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_init_spi_add_device: spi_bus_add_device failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(ESP_LOG_ERROR, "nrf52swd_init_spi_add_device", "spi_bus_add_device failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -602,7 +606,10 @@ TEST_F(TestNRF52Swd, init_failed_on_init_gpio_cfg_nreset) // NOLINT
     ASSERT_FALSE(nrf52swd_init());
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52 SWD init");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_init_gpio_cfg_nreset: gpio_config(nRF52 nRESET) failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(
+        ESP_LOG_ERROR,
+        "nrf52swd_init_gpio_cfg_nreset",
+        "gpio_config(nRF52 nRESET) failed, err=-1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52 SWD deinit");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
@@ -614,7 +621,7 @@ TEST_F(TestNRF52Swd, init_failed_on_init_spi) // NOLINT
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52 SWD init");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_initialize");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_init_spi_init: spi_bus_initialize failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(ESP_LOG_ERROR, "nrf52swd_init_spi_init", "spi_bus_initialize failed, err=-1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52 SWD deinit");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
@@ -627,7 +634,7 @@ TEST_F(TestNRF52Swd, init_failed_on_spi_add_device) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52 SWD init");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_initialize");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_add_device");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_init_spi_add_device: spi_bus_add_device failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(ESP_LOG_ERROR, "nrf52swd_init_spi_add_device", "spi_bus_add_device failed, err=-1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52 SWD deinit");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_free");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -642,7 +649,7 @@ TEST_F(TestNRF52Swd, init_failed_on_libswd_init) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_initialize");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_add_device");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "libswd_init");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_init_internal: libswd_init failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(ESP_LOG_ERROR, "nrf52swd_init_internal", "libswd_init failed, err=-1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52 SWD deinit");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_remove_device");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_free");
@@ -659,7 +666,7 @@ TEST_F(TestNRF52Swd, init_failed_on_libswd_debug_init) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_add_device");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "libswd_init");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "libswd_debug_init");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_libswd_debug_init: libswd_debug_init failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(ESP_LOG_ERROR, "nrf52swd_libswd_debug_init", "libswd_debug_init failed, err=-1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52 SWD deinit");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "libswd_deinit");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_remove_device");
@@ -690,7 +697,7 @@ TEST_F(TestNRF52Swd, nrf52swd_reset_fail) // NOLINT
     ASSERT_EQ(~0U, this->m_gpio_nrf52_nrst_level);
     ASSERT_FALSE(nrf52swd_reset(true));
 
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_reset: gpio_set_level failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(ESP_LOG_ERROR, "nrf52swd_reset", "gpio_set_level failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -746,7 +753,7 @@ TEST_F(TestNRF52Swd, nrf52swd_check_id_code_fail_dap_detect) // NOLINT
     this->m_libswd_dap_detect_result = ESP_FAIL;
     ASSERT_FALSE(nrf52swd_check_id_code());
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "libswd_dap_detect");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_check_id_code: libswd_dap_detect failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(ESP_LOG_ERROR, "nrf52swd_check_id_code", "libswd_dap_detect failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -779,7 +786,7 @@ TEST_F(TestNRF52Swd, nrf52swd_debug_halt_failed) // NOLINT
 
     this->m_libswd_debug_halt_result = -1;
     ASSERT_FALSE(nrf52swd_debug_halt());
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_debug_halt: libswd_debug_halt failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(ESP_LOG_ERROR, "nrf52swd_debug_halt", "libswd_debug_halt failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -814,7 +821,7 @@ TEST_F(TestNRF52Swd, nrf52swd_debug_run_failed) // NOLINT
     this->m_libswd_debug_run_result = -1;
     ASSERT_FALSE(nrf52swd_debug_run());
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Run nRF52 firmware");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_debug_run: libswd_debug_run failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(ESP_LOG_ERROR, "nrf52swd_debug_run", "libswd_debug_run failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -978,7 +985,10 @@ TEST_F(TestNRF52Swd, nrf52swd_nvmc_is_ready_or_err_fail) // NOLINT
     ASSERT_FALSE(result);
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_read_reg: libswd_memap_read_int_32(0x4001e400) failed, err=-1");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf51swd_nvmc_is_ready_or_err: nrf52swd_read_reg(REG_READY) failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(
+        ESP_LOG_ERROR,
+        "nrf51swd_nvmc_is_ready_or_err",
+        "nrf52swd_read_reg(REG_READY) failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1040,7 +1050,10 @@ TEST_F(TestNRF52Swd, nrf51swd_nvmc_wait_while_busy_fail_3) // NOLINT
     ASSERT_EQ(3, this->m_vTaskDelay_cnt);
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_read_reg: libswd_memap_read_int_32(0x4001e400) failed, err=-1");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf51swd_nvmc_is_ready_or_err: nrf52swd_read_reg(REG_READY) failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(
+        ESP_LOG_ERROR,
+        "nrf51swd_nvmc_is_ready_or_err",
+        "nrf52swd_read_reg(REG_READY) failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1099,8 +1112,14 @@ TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_erase_all_fail_on_first_wait) // NOLINT
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52: Erase all flash");
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_read_reg: libswd_memap_read_int_32(0x4001e400) failed, err=-1");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf51swd_nvmc_is_ready_or_err: nrf52swd_read_reg(REG_READY) failed, err=-1");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_erase_all: nrf51swd_nvmc_wait_while_busy failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(
+        ESP_LOG_ERROR,
+        "nrf51swd_nvmc_is_ready_or_err",
+        "nrf52swd_read_reg(REG_READY) failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(
+        ESP_LOG_ERROR,
+        "nrf52swd_erase_all",
+        "nrf51swd_nvmc_wait_while_busy failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1133,8 +1152,14 @@ TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_erase_all_fail_on_second_wait) // NOLINT
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52: Erase all flash");
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_read_reg: libswd_memap_read_int_32(0x4001e400) failed, err=-1");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf51swd_nvmc_is_ready_or_err: nrf52swd_read_reg(REG_READY) failed, err=-1");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_erase_all: nrf51swd_nvmc_wait_while_busy failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(
+        ESP_LOG_ERROR,
+        "nrf51swd_nvmc_is_ready_or_err",
+        "nrf52swd_read_reg(REG_READY) failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(
+        ESP_LOG_ERROR,
+        "nrf52swd_erase_all",
+        "nrf51swd_nvmc_wait_while_busy failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1163,7 +1188,10 @@ TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_erase_all_fail_on_write_reg_config_wen_ee
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52: Erase all flash");
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_write_reg: libswd_memap_write_int_32(0x4001e504) failed, err=-1");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_erase_all: nrf52swd_write_reg(REG_CONFIG):=EEN failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(
+        ESP_LOG_ERROR,
+        "nrf52swd_erase_all",
+        "nrf52swd_write_reg(REG_CONFIG):=EEN failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1202,7 +1230,10 @@ TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_erase_all_fail_on_write_reg_config_wen_re
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52: Erase all flash");
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_write_reg: libswd_memap_write_int_32(0x4001e504) failed, err=-1");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_erase_all: nrf52swd_write_reg(REG_CONFIG):=REN failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(
+        ESP_LOG_ERROR,
+        "nrf52swd_erase_all",
+        "nrf52swd_write_reg(REG_CONFIG):=REN failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1236,7 +1267,10 @@ TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_erase_all_fail_on_write_reg_erase_all) //
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52: Erase all flash");
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_write_reg: libswd_memap_write_int_32(0x4001e50c) failed, err=-1");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_erase_all: nrf52swd_write_reg(REG_ERASEALL) failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(
+        ESP_LOG_ERROR,
+        "nrf52swd_erase_all",
+        "nrf52swd_write_reg(REG_ERASEALL) failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1289,7 +1323,7 @@ TEST_F(TestNRF52Swd, nrf52swd_read_mem_fail) // NOLINT
     ASSERT_FALSE(nrf52swd_read_mem(reg_addr, sizeof(arr_of_vals) / sizeof(arr_of_vals[0]), arr_of_vals));
     ASSERT_EQ(LIBSWD_OPERATION_EXECUTE, this->m_libswd_read_int_32_operation);
 
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_read_mem: libswd_memap_read_int_32 failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(ESP_LOG_ERROR, "nrf52swd_read_mem", "libswd_memap_read_int_32 failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1356,8 +1390,14 @@ TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_write_mem_fail_on_first_wait) // NOLINT
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_read_reg: libswd_memap_read_int_32(0x4001e400) failed, err=-1");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf51swd_nvmc_is_ready_or_err: nrf52swd_read_reg(REG_READY) failed, err=-1");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_write_mem: nrf51swd_nvmc_wait_while_busy failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(
+        ESP_LOG_ERROR,
+        "nrf51swd_nvmc_is_ready_or_err",
+        "nrf52swd_read_reg(REG_READY) failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(
+        ESP_LOG_ERROR,
+        "nrf52swd_write_mem",
+        "nrf51swd_nvmc_wait_while_busy failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1396,8 +1436,14 @@ TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_write_mem_fail_on_second_wait) // NOLINT
     }
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_read_reg: libswd_memap_read_int_32(0x4001e400) failed, err=-1");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf51swd_nvmc_is_ready_or_err: nrf52swd_read_reg(REG_READY) failed, err=-1");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_write_mem: nrf51swd_nvmc_wait_while_busy failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(
+        ESP_LOG_ERROR,
+        "nrf51swd_nvmc_is_ready_or_err",
+        "nrf52swd_read_reg(REG_READY) failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(
+        ESP_LOG_ERROR,
+        "nrf52swd_write_mem",
+        "nrf51swd_nvmc_wait_while_busy failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1428,7 +1474,10 @@ TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_write_mem_fail_on_write_reg_config_wen_we
     }
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_write_reg: libswd_memap_write_int_32(0x4001e504) failed, err=-1");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_write_mem: nrf52swd_write_reg(REG_CONFIG):=WEN failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(
+        ESP_LOG_ERROR,
+        "nrf52swd_write_mem",
+        "nrf52swd_write_reg(REG_CONFIG):=WEN failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1473,7 +1522,10 @@ TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_write_mem_fail_on_write_reg_config_wen_re
     }
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_write_reg: libswd_memap_write_int_32(0x4001e504) failed, err=-1");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_write_mem: nrf52swd_write_reg(REG_CONFIG):=REN failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(
+        ESP_LOG_ERROR,
+        "nrf52swd_write_mem",
+        "nrf52swd_write_reg(REG_CONFIG):=REN failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1512,6 +1564,6 @@ TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_write_mem_fail_on_write) // NOLINT
         ASSERT_EQ(arr_of_vals[4], this->m_memSegmentsWrite[1].data[4]);
     }
 
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_write_mem: libswd_memap_write_int_32 failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(ESP_LOG_ERROR, "nrf52swd_write_mem", "libswd_memap_write_int_32 failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }

@@ -29,7 +29,7 @@
 #include "attribs.h"
 #include "http_server_cb.h"
 
-#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
 
 static const char TAG[] = "ruuvi_gateway";
@@ -83,7 +83,7 @@ ruuvi_send_nrf_get_id(void)
 
 ATTR_NORETURN
 static void
-monitoring_task(ATTR_UNUSED void *p_param)
+monitoring_task(void)
 {
     for (;;)
     {
@@ -168,9 +168,8 @@ start_services(void)
 
 ATTR_NORETURN
 static void
-reset_task(void *p_param)
+reset_task(void)
 {
-    (void)p_param;
     LOG_INFO("Reset task started");
 
     while (1)
@@ -285,13 +284,20 @@ app_main(void)
         return;
     }
     ethernet_init();
-    const uint32_t stack_size_for_monitoring_task = 2 * 1024;
-    if (!os_task_create(&monitoring_task, "monitoring_task", stack_size_for_monitoring_task, NULL, 1, NULL))
+    const uint32_t   stack_size_for_monitoring_task = 2 * 1024;
+    os_task_handle_t ph_task_monitoring             = NULL;
+    if (!os_task_create_without_param(
+            &monitoring_task,
+            "monitoring_task",
+            stack_size_for_monitoring_task,
+            1,
+            &ph_task_monitoring))
     {
         LOG_ERR("Can't create thread");
     }
-    const uint32_t stack_size_for_reset_task = 2 * 1024;
-    if (!os_task_create(&reset_task, "reset_task", stack_size_for_reset_task, NULL, 1, NULL))
+    const uint32_t   stack_size_for_reset_task = 2 * 1024;
+    os_task_handle_t ph_task_reset             = NULL;
+    if (!os_task_create_without_param(&reset_task, "reset_task", stack_size_for_reset_task, 1, &ph_task_reset))
     {
         LOG_ERR("Can't create thread");
     }
