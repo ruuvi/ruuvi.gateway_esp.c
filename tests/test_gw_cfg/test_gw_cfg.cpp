@@ -111,7 +111,7 @@ TestGwCfg::TestGwCfg()
 extern "C" {
 
 void *
-app_malloc(const size_t size)
+os_malloc(const size_t size)
 {
     if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
     {
@@ -124,14 +124,14 @@ app_malloc(const size_t size)
 }
 
 void
-app_free(void *ptr)
+os_free_internal(void *ptr)
 {
     g_pTestClass->m_mem_alloc_trace.remove(ptr);
     free(ptr);
 }
 
 void *
-app_calloc(const size_t nmemb, const size_t size)
+os_calloc(const size_t nmemb, const size_t size)
 {
     if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
     {
@@ -147,34 +147,7 @@ app_calloc(const size_t nmemb, const size_t size)
 
 TestGwCfg::~TestGwCfg() = default;
 
-#define TEST_CHECK_LOG_RECORD_EX(tag_, level_, msg_, flag_skip_file_info_) \
-    do \
-    { \
-        ASSERT_FALSE(esp_log_wrapper_is_empty()); \
-        const LogRecord log_record = esp_log_wrapper_pop(); \
-        ASSERT_EQ(level_, log_record.level); \
-        ASSERT_EQ(string(tag_), log_record.tag); \
-        if (flag_skip_file_info_) \
-        { \
-            const char *p = strchr(log_record.message.c_str(), ' '); \
-            assert(NULL != p); \
-            p += 1; \
-            p = strchr(p, ' '); \
-            assert(NULL != p); \
-            p += 1; \
-            p = strchr(p, ' '); \
-            assert(NULL != p); \
-            p += 1; \
-            ASSERT_EQ(string(msg_), p); \
-        } \
-        else \
-        { \
-            ASSERT_EQ(string(msg_), log_record.message); \
-        } \
-    } while (0)
-
-#define TEST_CHECK_LOG_RECORD(level_, msg_)         TEST_CHECK_LOG_RECORD_EX("gw_cfg", level_, msg_, false)
-#define TEST_CHECK_LOG_RECORD_NO_FILE(level_, msg_) TEST_CHECK_LOG_RECORD_EX("gw_cfg", level_, msg_, true)
+#define TEST_CHECK_LOG_RECORD(level_, msg_) ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("gw_cfg", level_, msg_)
 
 /*** Unit-Tests
  * *******************************************************************************************************/
@@ -183,32 +156,32 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default) // NOLINT
 {
     const ruuvi_gateway_config_t gw_cfg = g_gateway_config_default;
     gw_cfg_print_to_log(&gw_cfg);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("[main] Got SETTINGS from browser:"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("[main] config: use eth dhcp: 1"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("[main] config: eth static ip: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("[main] config: eth netmask: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("[main] config: eth gw: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("[main] config: eth dns1: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("[main] config: eth dns2: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("[main] config: use mqtt: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("[main] config: mqtt server: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("[main] config: mqtt port: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("[main] config: mqtt prefix: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("[main] config: mqtt user: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("[main] config: mqtt password: ********"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("[main] config: use http: 1"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("[main] config: http url: https://network.ruuvi.com:443/gwapi/v1"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("[main] config: http user: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("[main] config: http pass: ********"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("[main] config: coordinates: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("[main] config: use company id filter: 1"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("[main] config: company id: 0x0499"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("[main] config: use scan coded phy: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("[main] config: use scan 1mbit/phy: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("[main] config: use scan extended payload: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("[main] config: use scan channel 37: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("[main] config: use scan channel 38: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("[main] config: use scan channel 39: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Got SETTINGS from browser:"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use eth dhcp: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth static ip: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth netmask: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth gw: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth dns1: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth dns2: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use mqtt: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt server: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt port: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt prefix: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt password: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http url: https://network.ruuvi.com:443/gwapi/v1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http user: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http pass: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: coordinates: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use company id filter: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: company id: 0x0499"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan coded phy: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan 1mbit/phy: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan extended payload: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan channel 37: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan channel 38: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan channel 39: 0"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -257,15 +230,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_json_creation) // NO
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 1;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't create json object"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't create json object"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -276,15 +249,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_eth_dhcp) // NOLINT
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 2;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: eth_dhcp"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dhcp"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -295,15 +268,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_eth_dhcp_2) // NOLIN
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 3;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: eth_dhcp"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dhcp"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -314,15 +287,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_eth_static_ip) // NO
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 4;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: eth_static_ip"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_static_ip"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -333,15 +306,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_eth_static_ip_2) // 
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 5;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: eth_static_ip"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_static_ip"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -352,15 +325,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_eth_static_ip_3) // 
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 6;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: eth_static_ip"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_static_ip"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -371,15 +344,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_eth_netmask) // NOLI
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 7;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: eth_netmask"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_netmask"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -390,15 +363,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_eth_netmask_2) // NO
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 8;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: eth_netmask"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_netmask"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -409,15 +382,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_eth_netmask_3) // NO
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 9;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: eth_netmask"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_netmask"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -428,15 +401,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_eth_gw) // NOLINT
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 10;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: eth_gw"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_gw"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -447,15 +420,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_eth_gw_2) // NOLINT
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 11;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: eth_gw"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_gw"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -466,15 +439,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_eth_gw_3) // NOLINT
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 12;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: eth_gw"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_gw"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -485,15 +458,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_eth_dns1) // NOLINT
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 13;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: eth_dns1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dns1"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -504,15 +477,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_eth_dns1_2) // NOLIN
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 14;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: eth_dns1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dns1"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -523,15 +496,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_eth_dns1_3) // NOLIN
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 15;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: eth_dns1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dns1"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -542,15 +515,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_eth_dns2) // NOLINT
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 16;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: eth_dns2"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dns2"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -561,15 +534,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_eth_dns2_1) // NOLIN
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 17;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: eth_dns2"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dns2"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -580,15 +553,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_eth_dns2_2) // NOLIN
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 18;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: eth_dns2"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dns2"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -599,15 +572,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_http) // NOLINT
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 19;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: use_http"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_http"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -618,15 +591,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_http_2) // NOLIN
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 20;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: use_http"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_http"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -637,15 +610,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_http_url) // NOLINT
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 21;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: http_url"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_url"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -656,15 +629,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_http_url_2) // NOLIN
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 22;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: http_url"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_url"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -675,15 +648,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_http_url_3) // NOLIN
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 23;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: http_url"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_url"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -694,15 +667,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_http_user) // NOLINT
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 24;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: http_user"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -713,15 +686,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_http_user_2) // NOLI
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 25;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: http_user"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -732,15 +705,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_http_user_3) // NOLI
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 26;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: http_user"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -751,15 +724,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_mqtt) // NOLINT
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 27;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: use_mqtt"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_mqtt"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -770,15 +743,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_mqtt_2) // NOLIN
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 28;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: use_mqtt"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_mqtt"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -789,15 +762,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_mqtt_server) // NOLI
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 29;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: mqtt_server"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_server"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -808,15 +781,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_mqtt_server_2) // NO
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 30;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: mqtt_server"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_server"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -827,15 +800,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_mqtt_server_3) // NO
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 31;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: mqtt_server"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_server"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -846,15 +819,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_mqtt_port) // NOLINT
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 32;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: mqtt_port"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_port"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -865,15 +838,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_mqtt_port_2) // NOLI
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 33;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: mqtt_port"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_port"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -884,15 +857,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_mqtt_prefix) // NOLI
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 34;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: mqtt_prefix"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_prefix"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -903,15 +876,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_mqtt_prefix_2) // NO
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 35;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: mqtt_prefix"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_prefix"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -922,15 +895,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_mqtt_prefix_3) // NO
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 36;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: mqtt_prefix"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_prefix"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -941,15 +914,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_mqtt_user) // NOLINT
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 37;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: mqtt_user"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -960,15 +933,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_mqtt_user_2) // NOLI
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 38;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: mqtt_user"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -979,15 +952,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_mqtt_user_3) // NOLI
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 39;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: mqtt_user"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -998,15 +971,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_gw_mac) // NOLINT
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 40;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: gw_mac"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: gw_mac"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -1017,15 +990,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_gw_mac_2) // NOLINT
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 41;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: gw_mac"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: gw_mac"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -1036,15 +1009,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_gw_mac_3) // NOLINT
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 42;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: gw_mac"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: gw_mac"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -1055,15 +1028,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_filtering) // NO
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 43;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: use_filtering"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_filtering"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -1074,15 +1047,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_filtering_2) // 
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 44;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: use_filtering"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_filtering"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -1093,15 +1066,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_company_id) // NOLIN
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 45;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: company_id"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: company_id"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -1112,15 +1085,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_company_id_2) // NOL
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 46;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: company_id"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: company_id"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -1131,15 +1104,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_company_id_3) // NOL
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 47;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: company_id"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: company_id"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -1150,15 +1123,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_coordinates) // NOLI
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 48;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: coordinates"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: coordinates"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -1169,15 +1142,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_coordinates_2) // NO
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 49;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: coordinates"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: coordinates"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -1188,15 +1161,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_coordinates_3) // NO
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 50;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: coordinates"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: coordinates"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -1207,15 +1180,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_coded_phy) // NO
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 51;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: use_coded_phy"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_coded_phy"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -1226,15 +1199,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_coded_phy_2) // 
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 52;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: use_coded_phy"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_coded_phy"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -1245,15 +1218,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_1mbit_phy) // NO
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 53;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: use_1mbit_phy"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_1mbit_phy"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -1264,15 +1237,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_1mbit_phy_2) // 
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 54;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: use_1mbit_phy"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_1mbit_phy"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -1283,15 +1256,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_extended_payload
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 55;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: use_extended_payload"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_extended_payload"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -1302,15 +1275,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_extended_payload
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 56;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: use_extended_payload"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_extended_payload"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -1321,15 +1294,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_channel_37) // N
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 57;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: use_channel_37"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_channel_37"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -1340,15 +1313,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_channel_37_2) //
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 58;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: use_channel_37"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_channel_37"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -1359,15 +1332,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_channel_38) // N
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 59;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: use_channel_38"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_channel_38"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -1378,15 +1351,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_channel_38_2) //
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 60;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: use_channel_38"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_channel_38"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -1397,15 +1370,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_channel_39) // N
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 61;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: use_channel_39"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_channel_39"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -1416,15 +1389,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_channel_39_2) //
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 62;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't add json item: use_channel_39"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_channel_39"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -1435,15 +1408,15 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_converting_to_json_s
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 63;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, string("Can't create json string"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't create json string"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }

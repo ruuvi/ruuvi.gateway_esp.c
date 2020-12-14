@@ -15,6 +15,8 @@
 #include "time_units.h"
 #include "os_sema.h"
 #include "os_time.h"
+
+#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
 
 #define TIME_SYNC_BIT (1U << 0U)
@@ -75,7 +77,7 @@ time_task_wait_for_sntp(void)
         }
         LOG_INFO("Waiting for system time to be set... (%d/%d)", retry, retry_count);
         const uint32_t delay_ms = 3000;
-        os_task_delay(OS_DELTA_TICKS_MS_TO_TICKS(delay_ms));
+        os_task_delay(OS_DELTA_MS_TO_TICKS(delay_ms));
     }
 }
 

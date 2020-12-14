@@ -13,8 +13,10 @@
 #include "esp32/rom/crc.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "app_malloc.h"
-#include "app_str.h"
+#include "os_malloc.h"
+#include "os_str.h"
+
+#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
 
 #define NRF52FW_IUCR_BASE_ADDR (0x10001000)
@@ -27,7 +29,7 @@ bool
 nrf52fw_parse_version_digit(const char *p_digit_str, const char *p_digit_str_end, uint8_t *p_digit)
 {
     const char *   end = p_digit_str_end;
-    const uint32_t val = app_strtoul_cptr(p_digit_str, &end, 10);
+    const uint32_t val = os_str_to_uint32_cptr(p_digit_str, &end, 10);
     if (NULL == p_digit_str_end)
     {
         if ('\0' != *end)
@@ -172,7 +174,7 @@ nrf52fw_parse_segment_info_line(const char *p_version_line, nrf52fw_segment_t *p
 {
     const char *   p_token_start = p_version_line;
     const char *   end           = NULL;
-    const uint32_t segment_addr  = app_strtoul_cptr(p_token_start, &end, 16);
+    const uint32_t segment_addr  = os_str_to_uint32_cptr(p_token_start, &end, 16);
     if ((' ' != *end) && ('\t' != *end))
     {
         return false;
@@ -183,7 +185,7 @@ nrf52fw_parse_segment_info_line(const char *p_version_line, nrf52fw_segment_t *p
     }
     p_token_start              = end;
     end                        = NULL;
-    const uint32_t segment_len = app_strtoul_cptr(p_token_start, &end, 0);
+    const uint32_t segment_len = os_str_to_uint32_cptr(p_token_start, &end, 0);
     if ((' ' != *end) && ('\t' != *end))
     {
         return false;
@@ -206,7 +208,7 @@ nrf52fw_parse_segment_info_line(const char *p_version_line, nrf52fw_segment_t *p
     }
     p_token_start              = end;
     end                        = NULL;
-    const uint32_t segment_crc = app_strtoul_cptr(p_token_start, &end, 16);
+    const uint32_t segment_crc = os_str_to_uint32_cptr(p_token_start, &end, 16);
     if ('\0' != *end)
     {
         return false;
@@ -217,7 +219,7 @@ nrf52fw_parse_segment_info_line(const char *p_version_line, nrf52fw_segment_t *p
         p_segment->file_name,
         sizeof(p_segment->file_name),
         "%.*s",
-        (app_print_precision_t)segment_file_name_len,
+        (printf_precision_t)segment_file_name_len,
         p_segment_file_name_begin);
     p_segment->crc = segment_crc;
     return true;
@@ -647,14 +649,14 @@ NRF52FW_STATIC
 bool
 nrf52fw_update_fw_step2(const flash_fat_fs_t *p_ffs)
 {
-    nrf52fw_tmp_buf_t *p_tmp_buf = app_malloc(sizeof(*p_tmp_buf));
+    nrf52fw_tmp_buf_t *p_tmp_buf = os_malloc(sizeof(*p_tmp_buf));
     if (NULL == p_tmp_buf)
     {
-        LOG_ERR("%s failed", "app_malloc");
+        LOG_ERR("%s failed", "os_malloc");
         return false;
     }
     const bool result = nrf52fw_update_fw_step3(p_ffs, p_tmp_buf);
-    app_free_pptr((void **)&p_tmp_buf);
+    os_free(p_tmp_buf);
     return result;
 }
 

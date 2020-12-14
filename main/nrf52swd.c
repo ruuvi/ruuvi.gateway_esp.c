@@ -12,8 +12,10 @@
 #include <driver/spi_master.h>
 #include <driver/gpio.h>
 #include "libswd.h"
-#include "esp_log.h"
 #include "ruuvi_board_gwesp.h"
+
+#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
+#include "log.h"
 
 static const char *TAG = "SWD";
 
@@ -24,7 +26,7 @@ typedef int LibSWD_Data_t;
 #define NRF52SWD_LOG_ERR(func, err) \
     do \
     { \
-        ESP_LOGE(TAG, "%s: %s failed, err=%d", __func__, func, err); \
+        LOG_ERR_VAL(err, "%s failed", func); \
     } while (0)
 
 static const spi_bus_config_t pinsSPI = {
@@ -84,7 +86,7 @@ NRF52SWD_STATIC
 bool
 nrf52swd_init_spi_init(void)
 {
-    ESP_LOGD(TAG, "spi_bus_initialize");
+    LOG_DBG("spi_bus_initialize");
     const esp_err_t err = spi_bus_initialize(HSPI_HOST, &pinsSPI, 0);
     if (ESP_OK != err)
     {
@@ -98,7 +100,7 @@ NRF52SWD_STATIC
 bool
 nrf52swd_init_spi_add_device(void)
 {
-    ESP_LOGD(TAG, "spi_bus_add_device");
+    LOG_DBG("spi_bus_add_device");
     const esp_err_t err = spi_bus_add_device(HSPI_HOST, &confSPI, &g_nrf52swd_device_spi);
     if (ESP_OK != err)
     {
@@ -111,7 +113,7 @@ nrf52swd_init_spi_add_device(void)
 static bool
 nrf52swd_libswd_debug_init(void)
 {
-    ESP_LOGD(TAG, "libswd_debug_init");
+    LOG_DBG("libswd_debug_init");
     const LibSWD_ReturnCode_t ret_val = libswd_debug_init(gp_nrf52swd_libswd_ctx, LIBSWD_OPERATION_EXECUTE);
     if (ret_val < 0)
     {
@@ -124,7 +126,7 @@ nrf52swd_libswd_debug_init(void)
 static bool
 nrf52swd_init_internal(void)
 {
-    ESP_LOGI(TAG, "nRF52 SWD init");
+    LOG_INFO("nRF52 SWD init");
     if (!nrf52swd_init_gpio_cfg_nreset())
     {
         return false;
@@ -143,7 +145,7 @@ nrf52swd_init_internal(void)
     }
 
     g_nrf52swd_is_spi_device_added = true;
-    ESP_LOGD(TAG, "libswd_init");
+    LOG_DBG("libswd_init");
     gp_nrf52swd_libswd_ctx = libswd_init();
     if (NULL == gp_nrf52swd_libswd_ctx)
     {
@@ -158,7 +160,7 @@ nrf52swd_init_internal(void)
         return false;
     }
 
-    ESP_LOGD(TAG, "nrf52swd_init ok");
+    LOG_DBG("nrf52swd_init ok");
     return true;
 }
 
@@ -176,10 +178,10 @@ nrf52swd_init(void)
 void
 nrf52swd_deinit(void)
 {
-    ESP_LOGI(TAG, "nRF52 SWD deinit");
+    LOG_INFO("nRF52 SWD deinit");
     if (NULL != gp_nrf52swd_libswd_ctx)
     {
-        ESP_LOGD(TAG, "libswd_deinit");
+        LOG_DBG("libswd_deinit");
         libswd_deinit(gp_nrf52swd_libswd_ctx);
         gp_nrf52swd_libswd_ctx = NULL;
     }
@@ -187,11 +189,11 @@ nrf52swd_deinit(void)
     {
         g_nrf52swd_is_spi_device_added = false;
 
-        ESP_LOGD(TAG, "spi_bus_remove_device");
+        LOG_DBG("spi_bus_remove_device");
         const esp_err_t err = spi_bus_remove_device(g_nrf52swd_device_spi);
         if (ESP_OK != err)
         {
-            ESP_LOGE(TAG, "%s: spi_bus_remove_device failed, err=%d", __func__, err);
+            LOG_ERR("%s: spi_bus_remove_device failed, err=%d", __func__, err);
         }
         g_nrf52swd_device_spi = NULL;
     }
@@ -199,11 +201,11 @@ nrf52swd_deinit(void)
     {
         g_nrf52swd_is_spi_initialized = false;
 
-        ESP_LOGD(TAG, "spi_bus_free");
+        LOG_DBG("spi_bus_free");
         const esp_err_t err = spi_bus_free(HSPI_HOST);
         if (ESP_OK != err)
         {
-            ESP_LOGE(TAG, "%s: spi_bus_free failed, err=%d", __func__, err);
+            LOG_ERR("%s: spi_bus_free failed, err=%d", __func__, err);
         }
     }
 }
@@ -232,7 +234,7 @@ bool
 nrf52swd_check_id_code(void)
 {
     LibSWD_IdCode_t *p_idcode_ptr = NULL;
-    ESP_LOGD(TAG, "libswd_dap_detect");
+    LOG_DBG("libswd_dap_detect");
     const LibSWD_ReturnCode_t dap_res = libswd_dap_detect(
         gp_nrf52swd_libswd_ctx,
         LIBSWD_OPERATION_EXECUTE,
@@ -246,10 +248,10 @@ nrf52swd_check_id_code(void)
     const uint32_t expected_id_code = 0x2ba01477;
     if (expected_id_code != id_code)
     {
-        ESP_LOGE(TAG, "Wrong nRF52 ID code 0x%08x (expected 0x%08x)", id_code, expected_id_code);
+        LOG_ERR("Wrong nRF52 ID code 0x%08x (expected 0x%08x)", id_code, expected_id_code);
         return false;
     }
-    ESP_LOGI(TAG, "IDCODE: 0x%08x", (unsigned)id_code);
+    LOG_INFO("IDCODE: 0x%08x", (unsigned)id_code);
     return true;
 }
 
@@ -268,7 +270,7 @@ nrf52swd_debug_halt(void)
 bool
 nrf52swd_debug_run(void)
 {
-    ESP_LOGI(TAG, "Run nRF52 firmware");
+    LOG_INFO("Run nRF52 firmware");
     const LibSWD_ReturnCode_t ret_val = libswd_debug_run(gp_nrf52swd_libswd_ctx, LIBSWD_OPERATION_EXECUTE);
     if (ret_val < 0)
     {
@@ -290,7 +292,7 @@ nrf52swd_read_reg(const uint32_t reg_addr, uint32_t *p_val)
         (LibSWD_Data_t *)p_val);
     if (LIBSWD_OK != ret_val)
     {
-        ESP_LOGE(TAG, "%s: libswd_memap_read_int_32(0x%08x) failed, err=%d", __func__, reg_addr, ret_val);
+        LOG_ERR("%s: libswd_memap_read_int_32(0x%08x) failed, err=%d", __func__, reg_addr, ret_val);
         return false;
     }
     return true;
@@ -309,7 +311,7 @@ nrf52swd_write_reg(const uint32_t reg_addr, const uint32_t val)
         &data_val);
     if (LIBSWD_OK != ret_val)
     {
-        ESP_LOGE(TAG, "%s: libswd_memap_write_int_32(0x%08x) failed, err=%d", __func__, reg_addr, ret_val);
+        LOG_ERR("%s: libswd_memap_write_int_32(0x%08x) failed, err=%d", __func__, reg_addr, ret_val);
         return false;
     }
     return true;
@@ -349,7 +351,7 @@ nrf51swd_nvmc_wait_while_busy(void)
 bool
 nrf52swd_erase_all(void)
 {
-    ESP_LOGI(TAG, "nRF52: Erase all flash");
+    LOG_INFO("nRF52: Erase all flash");
     if (!nrf51swd_nvmc_wait_while_busy())
     {
         NRF52SWD_LOG_ERR("nrf51swd_nvmc_wait_while_busy", -1);

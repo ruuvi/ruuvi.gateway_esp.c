@@ -162,7 +162,7 @@ TestHttpServerCb::TestHttpServerCb()
 extern "C" {
 
 void *
-app_malloc(const size_t size)
+os_malloc(const size_t size)
 {
     if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
     {
@@ -175,14 +175,14 @@ app_malloc(const size_t size)
 }
 
 void
-app_free(void *ptr)
+os_free_internal(void *ptr)
 {
     g_pTestClass->m_mem_alloc_trace.remove(ptr);
     free(ptr);
 }
 
 void *
-app_calloc(const size_t nmemb, const size_t size)
+os_calloc(const size_t nmemb, const size_t size)
 {
     if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
     {
@@ -198,7 +198,7 @@ char *
 ruuvi_get_metrics(void)
 {
     const char *p_metrics_str = "metrics_info";
-    char *      p_buf         = static_cast<char *>(app_malloc(strlen(p_metrics_str) + 1));
+    char *      p_buf         = static_cast<char *>(os_malloc(strlen(p_metrics_str) + 1));
     if (nullptr != p_buf)
     {
         strcpy(p_buf, p_metrics_str);
@@ -291,38 +291,10 @@ flashfatfs_open(const flash_fat_fs_t *p_ffs, const char *file_path)
 
 TestHttpServerCb::~TestHttpServerCb() = default;
 
-#define TEST_CHECK_LOG_RECORD_EX(tag_, level_, msg_, flag_skip_file_info_) \
-    do \
-    { \
-        ASSERT_FALSE(esp_log_wrapper_is_empty()); \
-        const LogRecord log_record = esp_log_wrapper_pop(); \
-        ASSERT_EQ(level_, log_record.level); \
-        ASSERT_EQ(string(tag_), log_record.tag); \
-        if (flag_skip_file_info_) \
-        { \
-            const char *p = strchr(log_record.message.c_str(), ' '); \
-            assert(NULL != p); \
-            p += 1; \
-            p = strchr(p, ' '); \
-            assert(NULL != p); \
-            p += 1; \
-            p = strchr(p, ' '); \
-            assert(NULL != p); \
-            p += 1; \
-            ASSERT_EQ(string(msg_), p); \
-        } \
-        else \
-        { \
-            ASSERT_EQ(string(msg_), log_record.message); \
-        } \
-    } while (0)
+#define TEST_CHECK_LOG_RECORD_HTTP_SERVER(level_, msg_) \
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("http_server", level_, msg_)
 
-#define TEST_CHECK_LOG_RECORD_HTTP_SERVER(level_, msg_) TEST_CHECK_LOG_RECORD_EX("http_server", level_, msg_, false)
-#define TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(level_, msg_) \
-    TEST_CHECK_LOG_RECORD_EX("http_server", level_, msg_, true)
-
-#define TEST_CHECK_LOG_RECORD_GW_CFG(level_, msg_)         TEST_CHECK_LOG_RECORD_EX("gw_cfg", level_, msg_, false)
-#define TEST_CHECK_LOG_RECORD_GW_CFG_NO_FILE(level_, msg_) TEST_CHECK_LOG_RECORD_EX("gw_cfg", level_, msg_, true)
+#define TEST_CHECK_LOG_RECORD_GW_CFG(level_, msg_) ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("gw_cfg", level_, msg_)
 
 /*** Unit-Tests
  * *******************************************************************************************************/
@@ -352,9 +324,7 @@ TEST_F(TestHttpServerCb, http_server_cb_init_failed) // NOLINT
     this->m_is_fatfs_mount_fail = true;
     ASSERT_FALSE(http_server_cb_init());
     ASSERT_FALSE(g_pTestClass->m_is_fatfs_mounted);
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(
-        ESP_LOG_ERROR,
-        "flashfatfs_mount: failed to mount partition 'fatfs_gwui'");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "flashfatfs_mount: failed to mount partition 'fatfs_gwui'");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -416,7 +386,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("[main] ruuvi.json: ") + string(expected_json));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -439,8 +409,8 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed) // NOLINT
         &g_gateway_config));
     snprintf(gw_mac_sta.str_buf, sizeof(gw_mac_sta.str_buf), "11:22:33:44:55:66");
     cJSON_Hooks hooks = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     g_pTestClass->m_malloc_fail_on_cnt = 1;
     cJSON_InitHooks(&hooks);
@@ -456,7 +426,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed) // NOLINT
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
-    TEST_CHECK_LOG_RECORD_GW_CFG_NO_FILE(ESP_LOG_ERROR, string("Can't create json object"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_ERROR, string("Can't create json object"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -518,7 +488,7 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("[main] ruuvi.json: ") + string(expected_json));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -534,7 +504,7 @@ TEST_F(TestHttpServerCb, resp_json_unknown) // NOLINT
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_WARN, string("[main] Request to unknown json: unknown.json"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_WARN, string("Request to unknown json: unknown.json"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -553,7 +523,7 @@ TEST_F(TestHttpServerCb, resp_metrics_ok) // NOLINT
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("[main] metrics: ") + string(expected_resp));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("metrics: ") + string(expected_resp));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -570,7 +540,7 @@ TEST_F(TestHttpServerCb, resp_metrics_malloc_failed) // NOLINT
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_ERROR, string("Not enough memory"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Not enough memory"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -603,8 +573,8 @@ TEST_F(TestHttpServerCb, resp_file_index_html_fail_partition_not_ready) // NOLIN
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "Try to find file: index.html");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_ERROR, "GWUI partition is not ready");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Try to find file: index.html");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "GWUI partition is not ready");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -627,8 +597,8 @@ TEST_F(TestHttpServerCb, resp_file_index_html_fail_file_name_too_long) // NOLINT
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, string("Try to find file: ") + string(file_name));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: ") + string(file_name));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_ERROR,
         string("Temporary buffer is not enough for the file path '") + string(file_name) + string("'"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -652,8 +622,8 @@ TEST_F(TestHttpServerCb, resp_file_index_html) // NOLINT
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(fd, resp.select_location.fatfs.fd);
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "Try to find file: index.html");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "File index.html was opened successfully, fd=1");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Try to find file: index.html");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File index.html was opened successfully, fd=1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -675,8 +645,8 @@ TEST_F(TestHttpServerCb, resp_file_index_html_gzipped) // NOLINT
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_GZIP, resp.content_encoding);
     ASSERT_EQ(fd, resp.select_location.fatfs.fd);
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, string("Try to find file: index.html"));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "File index.html.gz was opened successfully, fd=2");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: index.html"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File index.html.gz was opened successfully, fd=2");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -698,8 +668,8 @@ TEST_F(TestHttpServerCb, resp_file_app_js_gzipped) // NOLINT
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_GZIP, resp.content_encoding);
     ASSERT_EQ(fd, resp.select_location.fatfs.fd);
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, string("Try to find file: app.js"));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "File app.js.gz was opened successfully, fd=1");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: app.js"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File app.js.gz was opened successfully, fd=1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -721,8 +691,8 @@ TEST_F(TestHttpServerCb, resp_file_app_css_gzipped) // NOLINT
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_GZIP, resp.content_encoding);
     ASSERT_EQ(fd, resp.select_location.fatfs.fd);
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, string("Try to find file: style.css"));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "File style.css.gz was opened successfully, fd=1");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: style.css"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File style.css.gz was opened successfully, fd=1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -744,8 +714,8 @@ TEST_F(TestHttpServerCb, resp_file_binary_without_extension) // NOLINT
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(fd, resp.select_location.fatfs.fd);
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, string("Try to find file: binary"));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "File binary was opened successfully, fd=1");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: binary"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File binary was opened successfully, fd=1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -762,8 +732,8 @@ TEST_F(TestHttpServerCb, resp_file_unknown_html) // NOLINT
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, string("Try to find file: unknown.html"));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_ERROR, string("Can't find file: unknown.html"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: unknown.html"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find file: unknown.html"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -785,8 +755,8 @@ TEST_F(TestHttpServerCb, resp_file_index_html_failed_on_open) // NOLINT
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "Try to find file: index.html");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_ERROR, string("Can't open file: index.html"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Try to find file: index.html");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't open file: index.html"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -808,9 +778,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_default) // NOLINT
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_GZIP, resp.content_encoding);
     ASSERT_EQ(fd, resp.select_location.fatfs.fd);
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("[main] GET /"));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, string("Try to find file: index.html"));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "File index.html.gz was opened successfully, fd=1");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("GET /"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: index.html"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File index.html.gz was opened successfully, fd=1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -832,9 +802,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_index_html) // NOLINT
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_GZIP, resp.content_encoding);
     ASSERT_EQ(fd, resp.select_location.fatfs.fd);
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("[main] GET /index.html"));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, string("Try to find file: index.html"));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "File index.html.gz was opened successfully, fd=1");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("GET /index.html"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: index.html"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File index.html.gz was opened successfully, fd=1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -856,9 +826,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_app_js) // NOLINT
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_GZIP, resp.content_encoding);
     ASSERT_EQ(fd, resp.select_location.fatfs.fd);
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("[main] GET /app.js"));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, string("Try to find file: app.js"));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "File app.js.gz was opened successfully, fd=1");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("GET /app.js"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: app.js"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File app.js.gz was opened successfully, fd=1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -920,8 +890,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("[main] GET /ruuvi.json"));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("[main] ruuvi.json: ") + string(expected_json));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("GET /ruuvi.json"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -940,8 +910,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics) // NOLINT
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("[main] GET /metrics"));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("[main] metrics: ") + string(expected_resp));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("GET /metrics"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("metrics: ") + string(expected_resp));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -977,55 +947,53 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok) // NOLINT
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "Got SETTINGS:");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_ERROR, "eth_dhcp not found");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_ERROR, "eth_static_ip not found");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_ERROR, "eth_netmask not found");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_ERROR, "eth_gw not found");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_ERROR, "eth_dns1 not found");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_ERROR, "eth_dns2 not found");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "use_mqtt: 1");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "mqtt_prefix: ruuvi/30:AE:A4:02:84:A4");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "mqtt_port: 1883");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "mqtt_user: ");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "mqtt_pass: ");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "http_url: https://network.ruuvi.com:443/gwapi/v1");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "http_user: ");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "http_pass: ");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "use_filtering: 1");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_ERROR, "company_id not found or invalid");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_ERROR, "coordinates not found");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] Got SETTINGS from browser:"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: use eth dhcp: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: eth static ip: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: eth netmask: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: eth gw: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: eth dns1: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: eth dns2: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: use mqtt: 1"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: mqtt server: test.mosquitto.org"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: mqtt port: 1883"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: mqtt prefix: ruuvi/30:AE:A4:02:84:A4"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: mqtt user: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: mqtt password: ********"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: use http: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(
-        ESP_LOG_INFO,
-        string("[main] config: http url: https://network.ruuvi.com:443/gwapi/v1"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: http user: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: http pass: ********"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: coordinates: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: use company id filter: 1"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: company id: 0x0000"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: use scan coded phy: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: use scan 1mbit/phy: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: use scan extended payload: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: use scan channel 37: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: use scan channel 38: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: use scan channel 39: 0"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Got SETTINGS:");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "eth_dhcp not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "eth_static_ip not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "eth_netmask not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "eth_gw not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "eth_dns1 not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "eth_dns2 not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_mqtt: 1");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_prefix: ruuvi/30:AE:A4:02:84:A4");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_port: 1883");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_user: ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_pass: ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_url: https://network.ruuvi.com:443/gwapi/v1");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_user: ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_pass: ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_filtering: 1");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "company_id not found or invalid");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "coordinates not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("Got SETTINGS from browser:"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth dhcp: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth static ip: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth netmask: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth gw: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth dns1: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth dns2: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use mqtt: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/30:AE:A4:02:84:A4"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt user: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt password: ********"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: https://network.ruuvi.com:443/gwapi/v1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http user: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http pass: ********"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: coordinates: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use company id filter: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: company id: 0x0000"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan coded phy: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan 1mbit/phy: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan extended payload: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 37: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 38: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 39: 0"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1060,8 +1028,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed) // NOLINT
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_ERROR, string("Failed to parse json or no memory"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Failed to parse json or no memory"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1098,55 +1066,53 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "Got SETTINGS:");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_ERROR, "eth_dhcp not found");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_ERROR, "eth_static_ip not found");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_ERROR, "eth_netmask not found");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_ERROR, "eth_gw not found");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_ERROR, "eth_dns1 not found");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_ERROR, "eth_dns2 not found");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "use_mqtt: 1");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "mqtt_prefix: ruuvi/30:AE:A4:02:84:A4");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "mqtt_port: 1883");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "mqtt_user: ");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "mqtt_pass: ");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "http_url: https://network.ruuvi.com:443/gwapi/v1");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "http_user: ");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "http_pass: ");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_DEBUG, "use_filtering: 1");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_ERROR, "company_id not found or invalid");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER_NO_FILE(ESP_LOG_ERROR, "coordinates not found");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] Got SETTINGS from browser:"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: use eth dhcp: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: eth static ip: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: eth netmask: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: eth gw: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: eth dns1: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: eth dns2: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: use mqtt: 1"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: mqtt server: test.mosquitto.org"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: mqtt port: 1883"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: mqtt prefix: ruuvi/30:AE:A4:02:84:A4"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: mqtt user: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: mqtt password: ********"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: use http: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(
-        ESP_LOG_INFO,
-        string("[main] config: http url: https://network.ruuvi.com:443/gwapi/v1"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: http user: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: http pass: ********"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: coordinates: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: use company id filter: 1"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: company id: 0x0000"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: use scan coded phy: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: use scan 1mbit/phy: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: use scan extended payload: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: use scan channel 37: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: use scan channel 38: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("[main] config: use scan channel 39: 0"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Got SETTINGS:");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "eth_dhcp not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "eth_static_ip not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "eth_netmask not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "eth_gw not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "eth_dns1 not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "eth_dns2 not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_mqtt: 1");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_prefix: ruuvi/30:AE:A4:02:84:A4");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_port: 1883");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_user: ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_pass: ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_url: https://network.ruuvi.com:443/gwapi/v1");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_user: ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_pass: ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_filtering: 1");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "company_id not found or invalid");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "coordinates not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("Got SETTINGS from browser:"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth dhcp: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth static ip: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth netmask: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth gw: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth dns1: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth dns2: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use mqtt: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/30:AE:A4:02:84:A4"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt user: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt password: ********"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: https://network.ruuvi.com:443/gwapi/v1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http user: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http pass: ********"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: coordinates: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use company id filter: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: company id: 0x0000"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan coded phy: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan 1mbit/phy: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan extended payload: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 37: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 38: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 39: 0"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1181,7 +1147,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_unknown_json) // NOLINT
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_WARN, string("[main] POST /unknown.json"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_WARN, string("POST /unknown.json"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1197,6 +1163,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_delete) // NOLINT
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_WARN, string("[main] DELETE /unknown.json"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_WARN, string("DELETE /unknown.json"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }

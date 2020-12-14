@@ -11,8 +11,10 @@ add_executable(${ProjectId}
         ${RUUVI_ESP_WRAPPERS}/src/os_sema.c
         ${RUUVI_ESP_WRAPPERS_INC}/os_sema.h
         ${RUUVI_ESP_WRAPPERS}/src/os_task.c
+        ${RUUVI_ESP_WRAPPERS}/src/os_malloc.c
         ${RUUVI_ESP_WRAPPERS_INC}/os_task.h
         ${RUUVI_ESP_WRAPPERS_INC}/os_time.h
+        ${RUUVI_ESP_WRAPPERS_INC}/os_malloc.h
         $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
 )
 

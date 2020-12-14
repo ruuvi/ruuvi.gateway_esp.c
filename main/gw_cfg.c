@@ -7,6 +7,8 @@
 
 #include "gw_cfg.h"
 #include <stdio.h>
+
+#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
 
 // clang-format off

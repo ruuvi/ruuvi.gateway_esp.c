@@ -13,7 +13,7 @@
 #include "esp_http_client.h"
 #include "ruuvi_gateway.h"
 
-#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
 
 static const char TAG[] = "http";

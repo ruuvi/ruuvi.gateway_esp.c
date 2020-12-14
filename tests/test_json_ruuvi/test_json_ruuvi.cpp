@@ -111,7 +111,7 @@ TestJsonRuuvi::TestJsonRuuvi()
 extern "C" {
 
 void *
-app_malloc(const size_t size)
+os_malloc(const size_t size)
 {
     if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
     {
@@ -124,14 +124,14 @@ app_malloc(const size_t size)
 }
 
 void
-app_free(void *ptr)
+os_free_internal(void *ptr)
 {
     g_pTestClass->m_mem_alloc_trace.remove(ptr);
     free(ptr);
 }
 
 void *
-app_calloc(const size_t nmemb, const size_t size)
+os_calloc(const size_t nmemb, const size_t size)
 {
     if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
     {
@@ -147,34 +147,7 @@ app_calloc(const size_t nmemb, const size_t size)
 
 TestJsonRuuvi::~TestJsonRuuvi() = default;
 
-#define TEST_CHECK_LOG_RECORD_EX(tag_, level_, msg_, flag_skip_file_info_) \
-    do \
-    { \
-        ASSERT_FALSE(esp_log_wrapper_is_empty()); \
-        const LogRecord log_record = esp_log_wrapper_pop(); \
-        ASSERT_EQ(level_, log_record.level); \
-        ASSERT_EQ(string(tag_), log_record.tag); \
-        if (flag_skip_file_info_) \
-        { \
-            const char *p = strchr(log_record.message.c_str(), ' '); \
-            assert(NULL != p); \
-            p += 1; \
-            p = strchr(p, ' '); \
-            assert(NULL != p); \
-            p += 1; \
-            p = strchr(p, ' '); \
-            assert(NULL != p); \
-            p += 1; \
-            ASSERT_EQ(string(msg_), p); \
-        } \
-        else \
-        { \
-            ASSERT_EQ(string(msg_), log_record.message); \
-        } \
-    } while (0)
-
-#define TEST_CHECK_LOG_RECORD(level_, msg_)         TEST_CHECK_LOG_RECORD_EX("http_server", level_, msg_, false)
-#define TEST_CHECK_LOG_RECORD_NO_FILE(level_, msg_) TEST_CHECK_LOG_RECORD_EX("http_server", level_, msg_, true)
+#define TEST_CHECK_LOG_RECORD(level_, msg_) ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("http_server", level_, msg_)
 
 /*** Unit-Tests
  * *******************************************************************************************************/
@@ -188,7 +161,7 @@ TEST_F(TestJsonRuuvi, copy_string_val_ok) // NOLINT
     ASSERT_TRUE(json_ruuvi_copy_string_val(root, "attr", buf, sizeof(buf), false));
     ASSERT_EQ(string("value123"), string(buf));
     cJSON_Delete(root);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "attr: value123");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "attr: value123");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -211,7 +184,7 @@ TEST_F(TestJsonRuuvi, copy_string_val_failed_log) // NOLINT
     char buf[80];
     ASSERT_FALSE(json_ruuvi_copy_string_val(root, "attr2", buf, sizeof(buf), true));
     cJSON_Delete(root);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, "attr2 not found");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "attr2 not found");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -224,7 +197,7 @@ TEST_F(TestJsonRuuvi, get_bool_val_ok) // NOLINT
     ASSERT_TRUE(json_ruuvi_get_bool_val(root, "attr", &val, false));
     ASSERT_TRUE(val);
     cJSON_Delete(root);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "attr: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "attr: 1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -247,7 +220,7 @@ TEST_F(TestJsonRuuvi, get_bool_val_failed_log) // NOLINT
     bool val = false;
     ASSERT_FALSE(json_ruuvi_get_bool_val(root, "attr2", &val, true));
     cJSON_Delete(root);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, "attr2 not found");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "attr2 not found");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -260,7 +233,7 @@ TEST_F(TestJsonRuuvi, get_uint16_val_ok) // NOLINT
     ASSERT_TRUE(json_ruuvi_get_uint16_val(root, "attr", &val, false));
     ASSERT_EQ(123, val);
     cJSON_Delete(root);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "attr: 123");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "attr: 123");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -283,7 +256,7 @@ TEST_F(TestJsonRuuvi, get_uint16_val_failed_log) // NOLINT
     uint16_t val = 0;
     ASSERT_FALSE(json_ruuvi_get_uint16_val(root, "attr2", &val, true));
     cJSON_Delete(root);
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, "attr2 not found or invalid");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "attr2 not found or invalid");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -338,26 +311,26 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     ASSERT_EQ(888, gw_cfg.filter.company_id);
     ASSERT_EQ(string("coord:123,456"), gw_cfg.coordinates);
 
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "Got SETTINGS:");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "eth_dhcp: 1");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "eth_static_ip: 192.168.1.1");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "eth_netmask: 255.255.255.0");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "eth_gw: 192.168.0.1");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "eth_dns1: 8.8.8.8");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "eth_dns2: 4.4.4.4");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "use_mqtt: 1");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "mqtt_prefix: prefix");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "mqtt_port: 1234");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "mqtt_user: user123");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "mqtt_pass: pass123");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "http_user: user567");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "http_pass: pass567");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "use_filtering: 1");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "company_id: 888");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "coordinates: coord:123,456");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Got SETTINGS:");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_dhcp: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_static_ip: 192.168.1.1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_netmask: 255.255.255.0");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_gw: 192.168.0.1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_dns1: 8.8.8.8");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_dns2: 4.4.4.4");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_mqtt: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_prefix: prefix");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_port: 1234");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_user: user123");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_pass: pass123");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_user: user567");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_pass: pass567");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_filtering: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "company_id: 888");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "coordinates: coord:123,456");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -411,26 +384,26 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_mqtt_pass) // NOLINT
     ASSERT_EQ(888, gw_cfg.filter.company_id);
     ASSERT_EQ(string("coord:123,456"), gw_cfg.coordinates);
 
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "Got SETTINGS:");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "eth_dhcp: 1");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "eth_static_ip: 192.168.1.1");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "eth_netmask: 255.255.255.0");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "eth_gw: 192.168.0.1");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "eth_dns1: 8.8.8.8");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "eth_dns2: 4.4.4.4");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "use_mqtt: 1");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "mqtt_prefix: prefix");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "mqtt_port: 1234");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "mqtt_user: user123");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, "[main] mqtt_pass not found or not changed");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "http_user: user567");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "http_pass: pass567");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "use_filtering: 1");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "company_id: 888");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "coordinates: coord:123,456");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Got SETTINGS:");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_dhcp: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_static_ip: 192.168.1.1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_netmask: 255.255.255.0");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_gw: 192.168.0.1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_dns1: 8.8.8.8");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_dns2: 4.4.4.4");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_mqtt: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_prefix: prefix");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_port: 1234");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_user: user123");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, "mqtt_pass not found or not changed");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_user: user567");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_pass: pass567");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_filtering: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "company_id: 888");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "coordinates: coord:123,456");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -438,8 +411,8 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
 {
     ruuvi_gateway_config_t gw_cfg = { 0 };
     cJSON_Hooks            hooks  = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     g_pTestClass->m_malloc_fail_on_cnt = 0;
     cJSON_InitHooks(&hooks);
@@ -479,26 +452,26 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     ASSERT_EQ(0, gw_cfg.filter.company_id);
     ASSERT_EQ(string(""), gw_cfg.coordinates);
 
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "Got SETTINGS:");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, "eth_dhcp not found");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, "eth_static_ip not found");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, "eth_netmask not found");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, "eth_gw not found");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, "eth_dns1 not found");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, "eth_dns2 not found");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "use_mqtt: 1");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "mqtt_prefix: ruuvi/30:AE:A4:02:84:A4");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "mqtt_port: 1883");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "mqtt_user: ");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "mqtt_pass: ");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "http_url: https://network.ruuvi.com:443/gwapi/v1");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "http_user: ");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "http_pass: ");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_DEBUG, "use_filtering: 1");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, "company_id not found or invalid");
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, "coordinates not found");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Got SETTINGS:");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "eth_dhcp not found");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "eth_static_ip not found");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "eth_netmask not found");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "eth_gw not found");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "eth_dns1 not found");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "eth_dns2 not found");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_mqtt: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_prefix: ruuvi/30:AE:A4:02:84:A4");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_port: 1883");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_user: ");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_pass: ");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_url: https://network.ruuvi.com:443/gwapi/v1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_user: ");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_pass: ");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_filtering: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "company_id not found or invalid");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "coordinates not found");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -507,8 +480,8 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body_malloc_failed) // NOLINT
 {
     ruuvi_gateway_config_t gw_cfg = { 0 };
     cJSON_Hooks            hooks  = {
-        .malloc_fn = &app_malloc,
-        .free_fn   = &app_free,
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
     };
     g_pTestClass->m_malloc_fail_on_cnt = 1;
     cJSON_InitHooks(&hooks);
@@ -528,7 +501,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body_malloc_failed) // NOLINT
         "}",
         &gw_cfg));
 
-    TEST_CHECK_LOG_RECORD_NO_FILE(ESP_LOG_ERROR, "Failed to parse json or no memory");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "Failed to parse json or no memory");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }

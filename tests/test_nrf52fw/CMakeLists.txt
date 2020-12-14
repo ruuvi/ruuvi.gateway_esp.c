@@ -10,6 +10,8 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/nrf52fw.h
         ${RUUVI_GW_SRC}/flashfatfs.c
         ${RUUVI_GW_SRC}/flashfatfs.h
+        ${RUUVI_ESP_WRAPPERS}/src/os_str.c
+        ${RUUVI_ESP_WRAPPERS_INC}/os_str.h
         $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
 )
 
@@ -49,7 +51,6 @@ target_link_libraries(${ProjectId}
         gtest
         gtest_main
         gcov
-        ruuvi_esp_wrappers
         ruuvi_esp_wrappers-common_test_funcs
         --coverage
 )
