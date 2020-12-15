@@ -24,11 +24,17 @@
 #define TM_YEAR_BASE (1900)
 #define TM_YEAR_MIN  (2020)
 
-static os_task_handle_t   gh_time_task;
-static EventGroupHandle_t gh_time_event_group;
-static time_t             g_time_min_valid;
-static os_sema_t          gh_time_task_ready;
-static os_sema_t          gh_time_task_syncing;
+#define RUUVI_STACK_SIZE_TIME_TASK (3U * 1024U)
+
+static os_task_stack_type_t g_time_task_stack_mem[RUUVI_STACK_SIZE_TIME_TASK];
+static os_task_static_t     g_time_task_mem;
+static os_sema_static_t     g_time_task_sema_ready_mem;
+static os_sema_static_t     g_time_task_sema_syncing_mem;
+static os_task_handle_t     gh_time_task;
+static EventGroupHandle_t   gh_time_event_group;
+static time_t               g_time_min_valid;
+static os_sema_t            gh_time_task_ready;
+static os_sema_t            gh_time_task_syncing;
 
 static const char TAG[] = "time";
 
@@ -128,7 +134,7 @@ time_task_wait_until_syncing_complete(void)
 
 ATTR_NORETURN
 static void
-time_task_thread(ATTR_UNUSED void *p_param)
+time_task_thread(void)
 {
     LOG_INFO("time_task started");
     os_sema_signal(gh_time_task_ready);
@@ -177,21 +183,8 @@ time_task_init(void)
         return false;
     }
 
-    gh_time_task_ready = os_sema_create();
-    if (NULL == gh_time_task_ready)
-    {
-        LOG_ERR("%s failed", "os_sema_create");
-        time_task_destroy_resources();
-        return false;
-    }
-
-    gh_time_task_syncing = os_sema_create();
-    if (NULL == gh_time_task_syncing)
-    {
-        LOG_ERR("%s failed", "os_sema_create");
-        time_task_destroy_resources();
-        return false;
-    }
+    gh_time_task_ready   = os_sema_create_static(&g_time_task_sema_ready_mem);
+    gh_time_task_syncing = os_sema_create_static(&g_time_task_sema_syncing_mem);
 
     gh_time_event_group = xEventGroupCreate();
     if (NULL == gh_time_event_group)
@@ -203,9 +196,15 @@ time_task_init(void)
 
     g_time_min_valid = time_task_get_min_valid_time();
 
-    const uint32_t    stack_size    = 3U * 1024U;
     const UBaseType_t task_priority = 1;
-    if (!os_task_create(&time_task_thread, "time_task", stack_size, NULL, task_priority, &gh_time_task))
+    if (!os_task_create_static_without_param(
+            &time_task_thread,
+            "time_task",
+            g_time_task_stack_mem,
+            RUUVI_STACK_SIZE_TIME_TASK,
+            task_priority,
+            &g_time_task_mem,
+            &gh_time_task))
     {
         LOG_ERR("Can't create thread");
         time_task_destroy_resources();
