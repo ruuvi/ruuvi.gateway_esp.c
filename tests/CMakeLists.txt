@@ -50,6 +50,7 @@ include_directories(
 
 add_subdirectory(test_bin2hex)
 add_subdirectory(test_cjson_wrap)
+add_subdirectory(test_event_mgr)
 add_subdirectory(test_flashfatfs)
 add_subdirectory(test_json_ruuvi)
 add_subdirectory(test_gw_cfg)
@@ -68,6 +69,11 @@ add_test(NAME test_bin2hex
 add_test(NAME test_cjson_wrap
         COMMAND ruuvi_gateway_esp-test-cjson_wrap
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-cjson_wrap>/gtestresults.xml
+)
+
+add_test(NAME test_event_mgr
+        COMMAND ruuvi_gateway_esp-test-event_mgr
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-event_mgr>/gtestresults.xml
 )
 
 add_test(NAME test_flashfatfs
