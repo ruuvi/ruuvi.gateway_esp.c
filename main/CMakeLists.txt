@@ -8,6 +8,8 @@ idf_component_register(
             cjson_wrap.h
             ethernet.c
             includes/ethernet.h
+            event_mgr.c
+            event_mgr.h
             flashfatfs.c
             flashfatfs.h
             gpio.c

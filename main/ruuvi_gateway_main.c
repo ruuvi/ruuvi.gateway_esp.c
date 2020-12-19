@@ -28,6 +28,7 @@
 #include "nrf52fw.h"
 #include "attribs.h"
 #include "http_server_cb.h"
+#include "event_mgr.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -117,6 +118,7 @@ wifi_connection_ok_cb(void *p_param)
     leds_stop_blink();
     leds_on();
     start_services();
+    event_mgr_notify(EVENT_MGR_EV_WIFI_CONNECTED);
 }
 
 void
@@ -132,6 +134,7 @@ ethernet_link_down_cb(void)
     xEventGroupClearBits(status_bits, ETH_CONNECTED_BIT);
     leds_stop_blink();
     leds_start_blink(LEDS_SLOW_BLINK);
+    event_mgr_notify(EVENT_MGR_EV_ETH_DISCONNECTED);
 }
 
 void
@@ -143,6 +146,7 @@ ethernet_connection_ok_cb(void)
     leds_on();
     xEventGroupSetBits(status_bits, ETH_CONNECTED_BIT);
     start_services();
+    event_mgr_notify(EVENT_MGR_EV_ETH_CONNECTED);
 }
 
 void
@@ -153,6 +157,7 @@ wifi_disconnect_cb(void *p_param)
     xEventGroupClearBits(status_bits, WIFI_CONNECTED_BIT);
     leds_stop_blink();
     leds_start_blink(LEDS_SLOW_BLINK);
+    event_mgr_notify(EVENT_MGR_EV_WIFI_DISCONNECTED);
 }
 
 void
@@ -238,6 +243,12 @@ void
 app_main(void)
 {
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
+
+    if (!event_mgr_init())
+    {
+        LOG_ERR("%s failed", "event_mgr_init");
+    }
+
     status_bits = xEventGroupCreate();
 
     if (NULL == status_bits)

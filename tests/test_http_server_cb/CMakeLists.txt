@@ -43,10 +43,10 @@ target_include_directories(${ProjectId} PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
         ../../components/esp32-wifi-manager/src/include
         ../../components/esp32-wifi-manager/src
-        ../../components/esp32-wifi-manager/tests/lwip/extra
-        ../../components/esp32-wifi-manager/tests/lwip/lwip/src/include
-        ../../components/esp32-wifi-manager/tests/lwip/lwip/contrib/ports/unix/lib
-        ../../components/esp32-wifi-manager/tests/lwip/lwip/contrib/ports/unix/port/include
+        ../lwip/extra
+        ../lwip/lwip/src/include
+        ../lwip/lwip/contrib/ports/unix/lib
+        ../lwip/lwip/contrib/ports/unix/port/include
 )
 
 target_compile_definitions(${ProjectId} PUBLIC
