@@ -107,8 +107,6 @@ get_gw_mac_sta(void)
     return mac_address_to_str(&mac);
 }
 
-/* brief this is an example of a callback that you can setup in your own app to
- * get notified of wifi manager event */
 void
 wifi_connection_ok_cb(void *p_param)
 {
@@ -163,8 +161,6 @@ wifi_disconnect_cb(void *p_param)
 void
 start_services(void)
 {
-    time_task_sync_time();
-
     if (g_gateway_config.mqtt.use_mqtt)
     {
         mqtt_app_start();

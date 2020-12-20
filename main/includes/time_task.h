@@ -31,11 +31,8 @@ time_task_init(void);
 bool
 time_is_valid(const time_t timestamp);
 
-void
-time_task_sync_time(void);
-
-void
-time_task_wait_until_syncing_complete(void);
+bool
+time_is_synchronized(void);
 
 #ifdef __cplusplus
 }

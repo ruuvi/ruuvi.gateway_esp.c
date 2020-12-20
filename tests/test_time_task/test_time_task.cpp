@@ -10,22 +10,57 @@
 #include <semaphore.h>
 #include <stdio.h>
 #include "esp_log_wrapper.hpp"
+#include "event_mgr.h"
+
+#define CMD_HANDLER_TASK_NAME "cmd_handler"
 
 using namespace std;
 
-typedef enum MainTaskCmd_Tag
+typedef enum main_task_cmd_e
 {
-    MainTaskCmd_Exit,
-    MainTaskCmd_TimeTaskInit,
-    MainTaskCmd_TimeTaskStartSyncing,
-    MainTaskCmd_TimeTaskWaitUntilSyncingComplete,
-} MainTaskCmd_e;
+    MAIN_TASK_CMD_EXIT,
+    MAIN_TASK_CMD_TIME_TASK_INIT,
+} main_task_cmd_e;
+
+extern "C" {
+
+static struct timespec
+timespec_get_clock_monotonic(void)
+{
+    struct timespec timestamp = {};
+    clock_gettime(CLOCK_MONOTONIC, &timestamp);
+    return timestamp;
+}
+
+static struct timespec
+timespec_diff(const struct timespec *p_t2, const struct timespec *p_t1)
+{
+    struct timespec result = {
+        .tv_sec  = p_t2->tv_sec - p_t1->tv_sec,
+        .tv_nsec = p_t2->tv_nsec - p_t1->tv_nsec,
+    };
+    if (result.tv_nsec < 0)
+    {
+        result.tv_sec -= 1;
+        result.tv_nsec += 1000000000;
+    }
+    return result;
+}
+
+static uint32_t
+timespec_diff_ms(const struct timespec *p_t2, const struct timespec *p_t1)
+{
+    struct timespec diff = timespec_diff(p_t2, p_t1);
+    return diff.tv_sec * 1000 + diff.tv_nsec / 1000000;
+}
+
+} // extern "C"
 
 /*** Google-test class implementation
  * *********************************************************************************/
 
 static void *
-freertosStartup(void *arg);
+freertos_startup(void *p_arg);
 
 class TestTimeTask : public ::testing::Test
 {
@@ -39,7 +74,7 @@ protected:
         this->result_time_task_init = false;
         esp_log_wrapper_init();
         sem_init(&semaFreeRTOS, 0, 0);
-        const int err = pthread_create(&pid, nullptr, &freertosStartup, this);
+        const int err = pthread_create(&pid, nullptr, &freertos_startup, this);
         assert(0 == err);
         while (0 != sem_wait(&semaFreeRTOS))
         {
@@ -49,27 +84,45 @@ protected:
     void
     TearDown() override
     {
-        cmdQueue.push_and_wait(MainTaskCmd_Exit);
+        cmdQueue.push_and_wait(MAIN_TASK_CMD_EXIT);
         vTaskEndScheduler();
-        void *ret_code = nullptr;
-        pthread_join(pid, &ret_code);
+        void *p_ret_code = nullptr;
+        pthread_join(pid, &p_ret_code);
         sem_destroy(&semaFreeRTOS);
         esp_log_wrapper_deinit();
     }
 
 public:
     sem_t                    semaFreeRTOS;
-    TQueue<MainTaskCmd_e>    cmdQueue;
+    TQueue<main_task_cmd_e>  cmdQueue;
     std::vector<TestEvent *> testEvents;
     bool                     result_time_task_init;
     time_t                   cur_time;
+    sntp_sync_time_cb_t      sntp_sync_time_cb;
 
     TestTimeTask();
 
     ~TestTimeTask() override;
+
+    bool
+    wait_for_events(const uint32_t timeout_ms = 1000U, const uint32_t num_events = 1)
+    {
+        struct timespec t1 = timespec_get_clock_monotonic();
+        struct timespec t2 = t1;
+        while (timespec_diff_ms(&t2, &t1) < timeout_ms)
+        {
+            if (testEvents.size() >= num_events)
+            {
+                return true;
+            }
+            sleep(1);
+            t2 = timespec_get_clock_monotonic();
+        }
+        return false;
+    }
 };
 
-static TestTimeTask *g_pTestTimeTask;
+static TestTimeTask *gp_obj;
 
 TestTimeTask::TestTimeTask()
     : Test()
@@ -77,13 +130,14 @@ TestTimeTask::TestTimeTask()
     , semaFreeRTOS({ 0 })
     , result_time_task_init(false)
     , cur_time(0)
+    , sntp_sync_time_cb(nullptr)
 {
-    g_pTestTimeTask = this;
+    gp_obj = this;
 }
 
 TestTimeTask::~TestTimeTask()
 {
-    g_pTestTimeTask = nullptr;
+    gp_obj = nullptr;
 }
 
 extern "C" {
@@ -94,31 +148,37 @@ extern "C" {
 void
 sntp_setoperatingmode(u8_t operating_mode)
 {
-    g_pTestTimeTask->testEvents.push_back(new TestEventSntpSetOperatingMode(operating_mode));
+    gp_obj->testEvents.push_back(new TestEventSntpSetOperatingMode(operating_mode));
 }
 
 void
 sntp_set_sync_mode(sntp_sync_mode_t sync_mode)
 {
-    g_pTestTimeTask->testEvents.push_back(new TestEventSntpSetSyncMode(sync_mode));
+    gp_obj->testEvents.push_back(new TestEventSntpSetSyncMode(sync_mode));
 }
 
 void
-sntp_setservername(u8_t idx, const char *server)
+sntp_setservername(u8_t idx, const char *p_server)
 {
-    g_pTestTimeTask->testEvents.push_back(new TestEventSntpSetServerName(idx, server));
+    gp_obj->testEvents.push_back(new TestEventSntpSetServerName(idx, p_server));
 }
 
 void
 sntp_init(void)
 {
-    g_pTestTimeTask->testEvents.push_back(new TestEventSntpInit());
+    gp_obj->testEvents.push_back(new TestEventSntpInit());
 }
 
 void
 sntp_stop(void)
 {
-    g_pTestTimeTask->testEvents.push_back(new TestEventSntpStop());
+    gp_obj->testEvents.push_back(new TestEventSntpStop());
+}
+
+void
+sntp_set_time_sync_notification_cb(sntp_sync_time_cb_t p_callback)
+{
+    gp_obj->sntp_sync_time_cb = p_callback;
 }
 
 /*** os_time stub functions
@@ -127,13 +187,12 @@ sntp_stop(void)
 time_t
 os_time_get(void)
 {
-    return g_pTestTimeTask->cur_time;
+    return gp_obj->cur_time;
 }
 
 void
 os_task_delay(const os_delta_ticks_t delay_ticks)
 {
-    g_pTestTimeTask->testEvents.push_back(new TestEventDelay(delay_ticks));
 }
 
 } // extern "C"
@@ -142,47 +201,41 @@ os_task_delay(const os_delta_ticks_t delay_ticks)
  * *************************************************************************************************/
 
 static void
-cmdHandlerTask(void *parameters)
+cmd_handler_task(void *p_param)
 {
-    auto *pTestTimeTask = static_cast<TestTimeTask *>(parameters);
-    bool  flagExit      = false;
-    sem_post(&pTestTimeTask->semaFreeRTOS);
-    while (!flagExit)
+    auto *p_obj     = static_cast<TestTimeTask *>(p_param);
+    bool  flag_exit = false;
+    sem_post(&p_obj->semaFreeRTOS);
+    while (!flag_exit)
     {
-        const MainTaskCmd_e cmd = pTestTimeTask->cmdQueue.pop();
+        const main_task_cmd_e cmd = p_obj->cmdQueue.pop();
         switch (cmd)
         {
-            case MainTaskCmd_Exit:
-                flagExit = true;
+            case MAIN_TASK_CMD_EXIT:
+                flag_exit = true;
                 break;
-            case MainTaskCmd_TimeTaskInit:
-                pTestTimeTask->result_time_task_init = time_task_init();
-                break;
-            case MainTaskCmd_TimeTaskStartSyncing:
-                time_task_sync_time();
-                break;
-            case MainTaskCmd_TimeTaskWaitUntilSyncingComplete:
-                time_task_wait_until_syncing_complete();
+            case MAIN_TASK_CMD_TIME_TASK_INIT:
+                p_obj->result_time_task_init = time_task_init();
                 break;
             default:
                 printf("Error: Unknown cmd %d\n", (int)cmd);
                 exit(1);
                 break;
         }
-        pTestTimeTask->cmdQueue.notify_handled();
+        p_obj->cmdQueue.notify_handled();
     }
     vTaskDelete(nullptr);
 }
 
 static void *
-freertosStartup(void *arg)
+freertos_startup(void *p_arg)
 {
-    auto *     pObj = static_cast<TestTimeTask *>(arg);
-    BaseType_t res  = xTaskCreate(
-        &cmdHandlerTask,
-        "cmdHandlerTask",
+    auto *     p_obj = static_cast<TestTimeTask *>(p_arg);
+    BaseType_t res   = xTaskCreate(
+        &cmd_handler_task,
+        CMD_HANDLER_TASK_NAME,
         configMINIMAL_STACK_SIZE,
-        pObj,
+        p_obj,
         (tskIDLE_PRIORITY + 1),
         (xTaskHandle *)nullptr);
     assert(pdPASS == res);
@@ -191,7 +244,7 @@ freertosStartup(void *arg)
 }
 
 #define TEST_CHECK_LOG_RECORD_TIME(level_, thread_, msg_) \
-    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD_WITH_THREAD("time", level_, thread_, msg_);
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD_WITH_THREAD("TIME", level_, thread_, msg_);
 
 #define TEST_CHECK_LOG_RECORD_OS_TASK(level_, thread_, msg_) \
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD_WITH_THREAD("os_task", level_, thread_, msg_);
@@ -201,100 +254,122 @@ freertosStartup(void *arg)
 
 TEST_F(TestTimeTask, test_all) // NOLINT
 {
-    cmdQueue.push_and_wait(MainTaskCmd_TimeTaskInit);
+    ASSERT_TRUE(event_mgr_init());
+
+    cmdQueue.push_and_wait(MAIN_TASK_CMD_TIME_TASK_INIT);
     ASSERT_TRUE(this->result_time_task_init);
     TEST_CHECK_LOG_RECORD_OS_TASK(
         ESP_LOG_INFO,
-        "cmdHandlerTask",
-        "Start thread 'time_task' with priority 1, stack size 3072 bytes");
+        CMD_HANDLER_TASK_NAME,
+        "Start thread(static) 'time_task' with priority 1, stack size 3072 bytes");
     TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "time_task started");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_EQ(0, testEvents.size());
+    ASSERT_NE(nullptr, this->sntp_sync_time_cb);
 
-    struct tm tm_2019_12_31 = {
-        .tm_sec   = 59,
-        .tm_min   = 59,
-        .tm_hour  = 23,
-        .tm_mday  = 31,
-        .tm_mon   = 12 - 1,
-        .tm_year  = 2019 - 1900,
-        .tm_wday  = 0,
-        .tm_yday  = 0,
-        .tm_isdst = -1,
-    };
-    const time_t timestamp_last_invalid = mktime(&tm_2019_12_31);
-    ASSERT_FALSE(time_is_valid(timestamp_last_invalid));
-    ASSERT_TRUE(time_is_valid(timestamp_last_invalid + 1));
+    {
+        const int exp_num_events = 6;
+        ASSERT_EQ(exp_num_events, testEvents.size());
+        int idx = 0;
+        {
+            auto *p_base_ev = testEvents[idx++];
+            ASSERT_EQ(TestEventType_SNTP_SetOperatingMode, p_base_ev->eventType);
+            auto *p_ev = reinterpret_cast<TestEventSntpSetOperatingMode *>(p_base_ev);
+            ASSERT_EQ(SNTP_OPMODE_POLL, p_ev->operating_mode);
+        }
+        {
+            auto *p_base_ev = testEvents[idx++];
+            ASSERT_EQ(TestEventType_SNTP_SetSyncMode, p_base_ev->eventType);
+            auto *p_ev = reinterpret_cast<TestEventSntpSetSyncMode *>(p_base_ev);
+            ASSERT_EQ(SNTP_SYNC_MODE_SMOOTH, p_ev->sync_mode);
+        }
+        {
+            auto *p_base_ev = testEvents[idx++];
+            ASSERT_EQ(TestEventType_SNTP_SetServerName, p_base_ev->eventType);
+            auto *p_ev = reinterpret_cast<TestEventSntpSetServerName *>(p_base_ev);
+            ASSERT_EQ(0, p_ev->idx);
+            ASSERT_EQ(string("time1.google.com"), p_ev->server);
+        }
+        {
+            auto *p_base_ev = testEvents[idx++];
+            ASSERT_EQ(TestEventType_SNTP_SetServerName, p_base_ev->eventType);
+            auto *p_ev = reinterpret_cast<TestEventSntpSetServerName *>(p_base_ev);
+            ASSERT_EQ(1, p_ev->idx);
+            ASSERT_EQ(string("time2.google.com"), p_ev->server);
+        }
+        {
+            auto *p_base_ev = testEvents[idx++];
+            ASSERT_EQ(TestEventType_SNTP_SetServerName, p_base_ev->eventType);
+            auto *p_ev = reinterpret_cast<TestEventSntpSetServerName *>(p_base_ev);
+            ASSERT_EQ(2, p_ev->idx);
+            ASSERT_EQ(string("time3.google.com"), p_ev->server);
+        }
+        {
+            auto *p_base_ev = testEvents[idx++];
+            ASSERT_EQ(TestEventType_SNTP_SetServerName, p_base_ev->eventType);
+            auto *p_ev = reinterpret_cast<TestEventSntpSetServerName *>(p_base_ev);
+            ASSERT_EQ(3, p_ev->idx);
+            ASSERT_EQ(string("pool.ntp.org"), p_ev->server);
+        }
+    }
+    testEvents.clear();
 
-    struct tm tm_2020_11_30 = {
-        .tm_sec   = 0,
-        .tm_min   = 0,
-        .tm_hour  = 0,
-        .tm_mday  = 30,
-        .tm_mon   = 11 - 1,
-        .tm_year  = 2020 - 1900,
-        .tm_wday  = 0,
-        .tm_yday  = 0,
-        .tm_isdst = -1,
-    };
-    this->cur_time = mktime(&tm_2020_11_30);
-
-    cmdQueue.push_and_wait(MainTaskCmd_TimeTaskStartSyncing);
-    cmdQueue.push_and_wait(MainTaskCmd_TimeTaskWaitUntilSyncingComplete);
-
-    const int exp_num_events = 8;
-    ASSERT_EQ(exp_num_events, testEvents.size());
-    int idx = 0;
-    {
-        auto *pBaseEv = testEvents[idx++];
-        ASSERT_EQ(TestEventType_SNTP_SetOperatingMode, pBaseEv->eventType);
-        auto *pEv = reinterpret_cast<TestEventSntpSetOperatingMode *>(pBaseEv);
-        ASSERT_EQ(SNTP_OPMODE_POLL, pEv->operating_mode);
-    }
-    {
-        auto *pBaseEv = testEvents[idx++];
-        ASSERT_EQ(TestEventType_SNTP_SetSyncMode, pBaseEv->eventType);
-        auto *pEv = reinterpret_cast<TestEventSntpSetSyncMode *>(pBaseEv);
-        ASSERT_EQ(SNTP_SYNC_MODE_SMOOTH, pEv->sync_mode);
-    }
-    {
-        auto *pBaseEv = testEvents[idx++];
-        ASSERT_EQ(TestEventType_SNTP_SetServerName, pBaseEv->eventType);
-        auto *pEv = reinterpret_cast<TestEventSntpSetServerName *>(pBaseEv);
-        ASSERT_EQ(0, pEv->idx);
-        ASSERT_EQ(string("time1.google.com"), pEv->server);
-    }
-    {
-        auto *pBaseEv = testEvents[idx++];
-        ASSERT_EQ(TestEventType_SNTP_SetServerName, pBaseEv->eventType);
-        auto *pEv = reinterpret_cast<TestEventSntpSetServerName *>(pBaseEv);
-        ASSERT_EQ(1, pEv->idx);
-        ASSERT_EQ(string("time2.google.com"), pEv->server);
-    }
-    {
-        auto *pBaseEv = testEvents[idx++];
-        ASSERT_EQ(TestEventType_SNTP_SetServerName, pBaseEv->eventType);
-        auto *pEv = reinterpret_cast<TestEventSntpSetServerName *>(pBaseEv);
-        ASSERT_EQ(2, pEv->idx);
-        ASSERT_EQ(string("time3.google.com"), pEv->server);
-    }
-    {
-        auto *pBaseEv = testEvents[idx++];
-        ASSERT_EQ(TestEventType_SNTP_SetServerName, pBaseEv->eventType);
-        auto *pEv = reinterpret_cast<TestEventSntpSetServerName *>(pBaseEv);
-        ASSERT_EQ(3, pEv->idx);
-        ASSERT_EQ(string("pool.ntp.org"), pEv->server);
-    }
-    {
-        auto *pBaseEv = testEvents[idx++];
-        ASSERT_EQ(TestEventType_SNTP_Init, pBaseEv->eventType);
-    }
-    {
-        auto *pBaseEv = testEvents[idx++];
-        ASSERT_EQ(TestEventType_SNTP_Stop, pBaseEv->eventType);
-    }
-    ASSERT_EQ(exp_num_events, idx);
-    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Synchronizing SNTP");
-    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "SNTP Synchronized: Mon Nov 30 00:00:00 2020");
+    event_mgr_notify(EVENT_MGR_EV_WIFI_CONNECTED);
+    ASSERT_TRUE(this->wait_for_events());
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Activate SNTP time synchronization");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    {
+        const int exp_num_events = 1;
+        ASSERT_EQ(exp_num_events, testEvents.size());
+        int idx = 0;
+        {
+            auto *p_base_ev = testEvents[idx++];
+            ASSERT_EQ(TestEventType_SNTP_Init, p_base_ev->eventType);
+        }
+    }
+    testEvents.clear();
+
+    event_mgr_notify(EVENT_MGR_EV_WIFI_DISCONNECTED);
+    ASSERT_TRUE(this->wait_for_events());
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Deactivate SNTP time synchronization");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    {
+        const int exp_num_events = 1;
+        ASSERT_EQ(exp_num_events, testEvents.size());
+        int idx = 0;
+        {
+            auto *p_base_ev = testEvents[idx++];
+            ASSERT_EQ(TestEventType_SNTP_Stop, p_base_ev->eventType);
+        }
+    }
+    testEvents.clear();
+
+    event_mgr_notify(EVENT_MGR_EV_ETH_CONNECTED);
+    ASSERT_TRUE(this->wait_for_events());
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Activate SNTP time synchronization");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    {
+        const int exp_num_events = 1;
+        ASSERT_EQ(exp_num_events, testEvents.size());
+        int idx = 0;
+        {
+            auto *p_base_ev = testEvents[idx++];
+            ASSERT_EQ(TestEventType_SNTP_Init, p_base_ev->eventType);
+        }
+    }
+    testEvents.clear();
+
+    event_mgr_notify(EVENT_MGR_EV_ETH_DISCONNECTED);
+    ASSERT_TRUE(this->wait_for_events());
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Deactivate SNTP time synchronization");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    {
+        const int exp_num_events = 1;
+        ASSERT_EQ(exp_num_events, testEvents.size());
+        int idx = 0;
+        {
+            auto *p_base_ev = testEvents[idx++];
+            ASSERT_EQ(TestEventType_SNTP_Stop, p_base_ev->eventType);
+        }
+    }
+    testEvents.clear();
 }
