@@ -27,6 +27,8 @@
 
 #define RUUVI_STACK_SIZE_TIME_TASK (3U * 1024U)
 
+#define TIME_TASK_BUF_SIZE_TIME_STR (20)
+
 typedef enum time_task_sig_e
 {
     TIME_TASK_SIG_WIFI_CONNECTED    = OS_SIGNAL_NUM_0,
@@ -101,7 +103,6 @@ time_task_conv_from_sig_num(const os_signal_num_e sig_num)
 static void
 time_task_cb_notification_on_sync(struct timeval *p_tv)
 {
-#define TIME_TASK_BUF_SIZE_TIME_STR (20)
     struct tm tm_time = { 0 };
     gmtime_r(&p_tv->tv_sec, &tm_time);
     char buf_time_str[TIME_TASK_BUF_SIZE_TIME_STR];
