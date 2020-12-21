@@ -8,13 +8,8 @@ add_executable(${ProjectId}
         test_events.hpp
         ${RUUVI_GW_SRC}/time_task.c
         ${RUUVI_GW_SRC}/includes/time_task.h
-        ${RUUVI_ESP_WRAPPERS}/src/os_sema.c
-        ${RUUVI_ESP_WRAPPERS_INC}/os_sema.h
-        ${RUUVI_ESP_WRAPPERS}/src/os_task.c
-        ${RUUVI_ESP_WRAPPERS}/src/os_malloc.c
-        ${RUUVI_ESP_WRAPPERS_INC}/os_task.h
-        ${RUUVI_ESP_WRAPPERS_INC}/os_time.h
-        ${RUUVI_ESP_WRAPPERS_INC}/os_malloc.h
+        ${RUUVI_GW_SRC}/event_mgr.c
+        ${RUUVI_GW_SRC}/event_mgr.h
         $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
 )
 
@@ -32,6 +27,7 @@ target_include_directories(${ProjectId} PUBLIC
         $ENV{IDF_PATH}/components/lwip/include/apps
         $ENV{IDF_PATH}/components/lwip/include/apps/sntp
         ${RUUVI_GW_SRC}/includes
+        ${RUUVI_GW_SRC}
         include
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
@@ -58,7 +54,7 @@ target_link_libraries(${ProjectId}
         gtest_main
         FreeRTOS_Posix
         gcov
-#        ruuvi_esp_wrappers
+        ruuvi_esp_wrappers
         ruuvi_esp_wrappers-common_test_funcs
         esp_simul
         lwip

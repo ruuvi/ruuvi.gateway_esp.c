@@ -52,8 +52,9 @@ event_mgr_init(void)
         return false;
     }
     p_obj->h_mutex = os_mutex_create_static(&p_obj->mutex_static);
-    for (enum event_mgr_ev_e ev = EVENT_MGR_EV_NONE; ev < EVENT_MGR_EV_LAST; ++ev)
+    for (uint32_t i = EVENT_MGR_EV_NONE; i < EVENT_MGR_EV_LAST; ++i)
     {
+        const event_mgr_ev_e ev = (const event_mgr_ev_e)i;
         TAILQ_INIT(&p_obj->events[ev].head);
     }
     return true;
@@ -64,8 +65,9 @@ void
 event_mgr_deinit(void)
 {
     event_mgr_t *const p_obj = &g_event_mgr;
-    for (enum event_mgr_ev_e ev = EVENT_MGR_EV_NONE; ev < EVENT_MGR_EV_LAST; ++ev)
+    for (uint32_t i = EVENT_MGR_EV_NONE; i < EVENT_MGR_EV_LAST; ++i)
     {
+        const event_mgr_ev_e                    ev      = (const event_mgr_ev_e)i;
         event_mgr_queue_of_subscribers_t *const p_queue = &p_obj->events[ev];
         while (!TAILQ_EMPTY(&p_queue->head))
         {
