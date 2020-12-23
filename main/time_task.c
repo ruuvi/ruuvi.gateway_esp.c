@@ -228,11 +228,11 @@ time_task_init(void)
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     sntp_set_sync_mode(SNTP_SYNC_MODE_SMOOTH);
     u8_t server_idx = 0;
-    sntp_setservername(server_idx, "time1.google.com");
+    sntp_setservername(server_idx, "time.google.com");
     server_idx += 1;
-    sntp_setservername(server_idx, "time2.google.com");
+    sntp_setservername(server_idx, "time.cloudflare.com");
     server_idx += 1;
-    sntp_setservername(server_idx, "time3.google.com");
+    sntp_setservername(server_idx, "time.nist.gov");
     server_idx += 1;
     sntp_setservername(server_idx, "pool.ntp.org");
     sntp_set_time_sync_notification_cb(time_task_cb_notification_on_sync);

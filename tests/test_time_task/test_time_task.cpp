@@ -287,21 +287,21 @@ TEST_F(TestTimeTask, test_all) // NOLINT
             ASSERT_EQ(TestEventType_SNTP_SetServerName, p_base_ev->eventType);
             auto *p_ev = reinterpret_cast<TestEventSntpSetServerName *>(p_base_ev);
             ASSERT_EQ(0, p_ev->idx);
-            ASSERT_EQ(string("time1.google.com"), p_ev->server);
+            ASSERT_EQ(string("time.google.com"), p_ev->server);
         }
         {
             auto *p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetServerName, p_base_ev->eventType);
             auto *p_ev = reinterpret_cast<TestEventSntpSetServerName *>(p_base_ev);
             ASSERT_EQ(1, p_ev->idx);
-            ASSERT_EQ(string("time2.google.com"), p_ev->server);
+            ASSERT_EQ(string("time.cloudflare.com"), p_ev->server);
         }
         {
             auto *p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetServerName, p_base_ev->eventType);
             auto *p_ev = reinterpret_cast<TestEventSntpSetServerName *>(p_base_ev);
             ASSERT_EQ(2, p_ev->idx);
-            ASSERT_EQ(string("time3.google.com"), p_ev->server);
+            ASSERT_EQ(string("time.nist.gov"), p_ev->server);
         }
         {
             auto *p_base_ev = testEvents[idx++];
