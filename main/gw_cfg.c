@@ -34,7 +34,7 @@
         }, \
         .http = { \
             .use_http = true, \
-            .http_url = { "https://network.ruuvi.com:443/gwapi/v1" }, \
+            .http_url = { "https://network.ruuvi.com/record" }, \
             .http_user = { 0 }, \
             .http_pass = { 0 }, \
         }, \

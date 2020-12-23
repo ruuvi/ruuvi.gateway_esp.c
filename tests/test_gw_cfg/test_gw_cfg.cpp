@@ -170,7 +170,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt password: ********"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 1"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http url: https://network.ruuvi.com:443/gwapi/v1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http url: https://network.ruuvi.com/record"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http user: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http pass: ********"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: coordinates: "));
@@ -201,7 +201,7 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_default) // NOLINT
                "\t\"eth_dns1\":\t\"\",\n"
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"use_http\":\ttrue,\n"
-               "\t\"http_url\":\t\"https://network.ruuvi.com:443/gwapi/v1\",\n"
+               "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
                "\t\"http_user\":\t\"\",\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_server\":\t\"\",\n"
