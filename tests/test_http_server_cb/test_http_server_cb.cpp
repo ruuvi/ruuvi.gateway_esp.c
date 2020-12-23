@@ -339,7 +339,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
           "\t\"eth_dns1\":\t\"\",\n"
           "\t\"eth_dns2\":\t\"\",\n"
           "\t\"use_http\":\tfalse,\n"
-          "\t\"http_url\":\t\"https://network.ruuvi.com:443/gwapi/v1\",\n"
+          "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
           "\t\"http_user\":\t\"\",\n"
           "\t\"use_mqtt\":\ttrue,\n"
           "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
@@ -366,7 +366,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
         "\"mqtt_user\":\"\","
         "\"mqtt_pass\":\"\","
         "\"use_http\":false,"
-        "\"http_url\":\"https://network.ruuvi.com:443/gwapi/v1\","
+        "\"http_url\":\"https://network.ruuvi.com/record\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
         "\"use_filtering\":true"
@@ -401,7 +401,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed) // NOLINT
         "\"mqtt_user\":\"\","
         "\"mqtt_pass\":\"\","
         "\"use_http\":false,"
-        "\"http_url\":\"https://network.ruuvi.com:443/gwapi/v1\","
+        "\"http_url\":\"https://network.ruuvi.com/record\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
         "\"use_filtering\":true"
@@ -441,7 +441,7 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
           "\t\"eth_dns1\":\t\"\",\n"
           "\t\"eth_dns2\":\t\"\",\n"
           "\t\"use_http\":\tfalse,\n"
-          "\t\"http_url\":\t\"https://network.ruuvi.com:443/gwapi/v1\",\n"
+          "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
           "\t\"http_user\":\t\"\",\n"
           "\t\"use_mqtt\":\ttrue,\n"
           "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
@@ -468,7 +468,7 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
         "\"mqtt_user\":\"\","
         "\"mqtt_pass\":\"\","
         "\"use_http\":false,"
-        "\"http_url\":\"https://network.ruuvi.com:443/gwapi/v1\","
+        "\"http_url\":\"https://network.ruuvi.com/record\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
         "\"use_filtering\":true"
@@ -843,7 +843,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
           "\t\"eth_dns1\":\t\"\",\n"
           "\t\"eth_dns2\":\t\"\",\n"
           "\t\"use_http\":\tfalse,\n"
-          "\t\"http_url\":\t\"https://network.ruuvi.com:443/gwapi/v1\",\n"
+          "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
           "\t\"http_user\":\t\"\",\n"
           "\t\"use_mqtt\":\ttrue,\n"
           "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
@@ -870,7 +870,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
         "\"mqtt_user\":\"\","
         "\"mqtt_pass\":\"\","
         "\"use_http\":false,"
-        "\"http_url\":\"https://network.ruuvi.com:443/gwapi/v1\","
+        "\"http_url\":\"https://network.ruuvi.com/record\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
         "\"use_filtering\":true"
@@ -928,7 +928,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok) // NOLINT
         "\"mqtt_user\":\"\","
         "\"mqtt_pass\":\"\","
         "\"use_http\":false,"
-        "\"http_url\":\"https://network.ruuvi.com:443/gwapi/v1\","
+        "\"http_url\":\"https://network.ruuvi.com/record\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
         "\"use_filtering\":true"
@@ -962,7 +962,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_user: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_pass: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_url: https://network.ruuvi.com:443/gwapi/v1");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_url: https://network.ruuvi.com/record");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_user: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_pass: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_filtering: 1");
@@ -982,7 +982,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt user: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt password: ********"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: https://network.ruuvi.com:443/gwapi/v1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: https://network.ruuvi.com/record"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http user: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http pass: ********"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: coordinates: "));
@@ -1010,7 +1010,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed) // NOLINT
         "\"mqtt_user\":\"\","
         "\"mqtt_pass\":\"\","
         "\"use_http\":false,"
-        "\"http_url\":\"https://network.ruuvi.com:443/gwapi/v1\","
+        "\"http_url\":\"https://network.ruuvi.com/record\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
         "\"use_filtering\":true"
@@ -1047,7 +1047,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
         "\"mqtt_user\":\"\","
         "\"mqtt_pass\":\"\","
         "\"use_http\":false,"
-        "\"http_url\":\"https://network.ruuvi.com:443/gwapi/v1\","
+        "\"http_url\":\"https://network.ruuvi.com/record\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
         "\"use_filtering\":true"
@@ -1081,7 +1081,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_user: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_pass: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_url: https://network.ruuvi.com:443/gwapi/v1");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_url: https://network.ruuvi.com/record");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_user: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_pass: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_filtering: 1");
@@ -1101,7 +1101,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt user: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt password: ********"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: https://network.ruuvi.com:443/gwapi/v1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: https://network.ruuvi.com/record"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http user: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http pass: ********"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: coordinates: "));
@@ -1129,7 +1129,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_unknown_json) // NOLINT
         "\"mqtt_user\":\"\","
         "\"mqtt_pass\":\"\","
         "\"use_http\":false,"
-        "\"http_url\":\"https://network.ruuvi.com:443/gwapi/v1\","
+        "\"http_url\":\"https://network.ruuvi.com/record\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
         "\"use_filtering\":true"
