@@ -44,11 +44,11 @@
         }, \
         .scan = { \
             .scan_coded_phy = false, \
-            .scan_1mbit_phy = false, \
-            .scan_extended_payload = false, \
-            .scan_channel_37 = false, \
-            .scan_channel_38 = false, \
-            .scan_channel_39 = false, \
+            .scan_1mbit_phy = true, \
+            .scan_extended_payload = true, \
+            .scan_channel_37 = true, \
+            .scan_channel_38 = true, \
+            .scan_channel_39 = true, \
         }, \
         .coordinates = { 0 }, \
     }
