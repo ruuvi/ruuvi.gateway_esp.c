@@ -352,7 +352,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
           "\t\"coordinates\":\t\"\",\n"
           "\t\"use_coded_phy\":\tfalse,\n"
           "\t\"use_1mbit_phy\":\ttrue,\n"
-          "\t\"use_extended_payload\":\tftrue,\n"
+          "\t\"use_extended_payload\":\ttrue,\n"
           "\t\"use_channel_37\":\ttrue,\n"
           "\t\"use_channel_38\":\ttrue,\n"
           "\t\"use_channel_39\":\ttrue\n"
