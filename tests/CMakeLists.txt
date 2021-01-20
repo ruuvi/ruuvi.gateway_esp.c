@@ -48,6 +48,7 @@ include_directories(
         "lwip/lwip/contrib/ports/unix/port/include"
 )
 
+add_subdirectory(test_adv_table)
 add_subdirectory(test_bin2hex)
 add_subdirectory(test_cjson_wrap)
 add_subdirectory(test_event_mgr)
@@ -60,6 +61,11 @@ add_subdirectory(test_mac_addr)
 add_subdirectory(test_nrf52fw)
 add_subdirectory(test_nrf52swd)
 add_subdirectory(test_time_task)
+
+add_test(NAME test_adv_table
+        COMMAND ruuvi_gateway_esp-test-adv_table
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-adv_table>/gtestresults.xml
+)
 
 add_test(NAME test_bin2hex
         COMMAND ruuvi_gateway_esp-test-bin2hex
