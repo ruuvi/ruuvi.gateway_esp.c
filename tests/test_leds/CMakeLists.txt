@@ -9,7 +9,7 @@ add_executable(${ProjectId}
         include/esp_timer.h
         driver/ledc.h
         ${RUUVI_GW_SRC}/leds.c
-        ${RUUVI_GW_SRC}/includes/leds.h
+        ${RUUVI_GW_SRC}/leds.h
         $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
 )
 
@@ -24,7 +24,7 @@ target_include_directories(${ProjectId} PUBLIC
         ${Posix_GCC_Simulator_SOURCE_DIR}/FreeRTOS_Posix
         ${Posix_GCC_Simulator_SOURCE_DIR}/FreeRTOS_Posix/FreeRTOS_Kernel/include
         ${Posix_GCC_Simulator_SOURCE_DIR}/FreeRTOS_Posix/FreeRTOS_Kernel/portable/GCC/Posix
-        ${RUUVI_GW_SRC}/includes
+        ${RUUVI_GW_SRC}
         include
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
