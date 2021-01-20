@@ -37,8 +37,6 @@ adv_post_send_device_id(void *arg);
 
 portMUX_TYPE adv_table_mux = portMUX_INITIALIZER_UNLOCKED;
 
-adv_report_table_t adv_reports;
-
 static const char *TAG = "ADV_POST_TASK";
 
 adv_callbacks_fn_t adv_callback_func_tbl = {
@@ -52,38 +50,14 @@ adv_put_to_table(const adv_report_t *const p_adv)
 {
     portENTER_CRITICAL(&adv_table_mux);
     gw_metrics.received_advertisements += 1;
-    bool      found = false;
-    esp_err_t ret   = ESP_OK;
 
-    // Check if we already have advertisement with this MAC
-    for (num_of_advs_t i = 0; i < adv_reports.num_of_advs; ++i)
+    if (!adv_table_put(p_adv))
     {
-        const mac_address_bin_t *p_mac = &adv_reports.table[i].tag_mac;
-
-        if (0 == memcmp(&p_adv->tag_mac, p_mac, sizeof(*p_mac)))
-        {
-            // Yes, update data.
-            found                = true;
-            adv_reports.table[i] = *p_adv;
-        }
-    }
-
-    // not found from the table, insert if not full
-    if (!found)
-    {
-        if (adv_reports.num_of_advs < MAX_ADVS_TABLE)
-        {
-            adv_reports.table[adv_reports.num_of_advs] = *p_adv;
-            adv_reports.num_of_advs += 1;
-        }
-        else
-        {
-            ret = ESP_ERR_NO_MEM;
-        }
+        return ESP_ERR_NO_MEM;
     }
 
     portEXIT_CRITICAL(&adv_table_mux);
-    return ret;
+    return ESP_OK;
 }
 
 static bool
@@ -270,8 +244,7 @@ adv_post_task(void)
     {
         // for thread safety copy the advertisements to a separate buffer for posting
         portENTER_CRITICAL(&adv_table_mux);
-        g_adv_reports_buf       = adv_reports;
-        adv_reports.num_of_advs = 0; // clear the table
+        adv_table_read_and_clear(&g_adv_reports_buf);
         portEXIT_CRITICAL(&adv_table_mux);
 
         adv_post_log(&g_adv_reports_buf);
@@ -304,7 +277,7 @@ adv_post_task(void)
 void
 adv_post_init(void)
 {
-    adv_reports.num_of_advs = 0;
+    adv_table_init();
     api_callbacks_reg((void *)&adv_callback_func_tbl);
     const uint32_t   stack_size = 1024U * 4U;
     os_task_handle_t h_task     = NULL;
