@@ -9,6 +9,7 @@
 #include "cJSON.h"
 #include "cjson_wrap.h"
 #include "esp_err.h"
+#include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "mqtt_client.h"
 #include "ruuvi_gateway.h"

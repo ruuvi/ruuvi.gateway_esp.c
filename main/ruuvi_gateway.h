@@ -21,33 +21,12 @@ extern "C" {
 #endif
 
 #define ADV_POST_INTERVAL 10000
-#define MAX_ADVS_TABLE    (100U)
-
-#define ADV_DATA_MAX_LEN 64
 
 #define WIFI_CONNECTED_BIT   (1U << 0U)
 #define MQTT_CONNECTED_BIT   (1U << 1U)
 #define RESET_BUTTON_BIT     (1U << 2U)
 #define ETH_DISCONNECTED_BIT (1U << 3U)
 #define ETH_CONNECTED_BIT    (1U << 4U)
-
-typedef int32_t wifi_rssi_t;
-
-typedef struct adv_report_t
-{
-    mac_address_bin_t tag_mac;
-    time_t            timestamp;
-    wifi_rssi_t       rssi;
-    char              data[ADV_DATA_MAX_LEN + 1];
-} adv_report_t;
-
-typedef uint32_t num_of_advs_t;
-
-typedef struct adv_report_table_t
-{
-    num_of_advs_t num_of_advs;
-    adv_report_t  table[MAX_ADVS_TABLE];
-} adv_report_table_t;
 
 typedef struct gw_metrics_t
 {

@@ -1,6 +1,7 @@
 idf_component_register(
         SRCS
             adv_post.c
+            adv_table.h
             adv_post.h
             bin2hex.c
             bin2hex.h

@@ -8,7 +8,7 @@
 #ifndef RUUVI_HTTP_H
 #define RUUVI_HTTP_H
 
-#include "ruuvi_gateway.h"
+#include "adv_table.h"
 
 #ifdef __cplusplus
 extern "C" {
