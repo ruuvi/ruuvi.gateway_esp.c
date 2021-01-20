@@ -86,7 +86,7 @@ HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_metrics(void)
 {
-    const char *p_metrics = ruuvi_get_metrics();
+    const char *p_metrics = metrics_generate();
     if (NULL == p_metrics)
     {
         LOG_ERR("Not enough memory");

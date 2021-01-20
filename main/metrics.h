@@ -16,7 +16,7 @@ void
 metrics_received_advs_increment(void);
 
 char *
-ruuvi_get_metrics(void);
+metrics_generate(void);
 
 #ifdef __cplusplus
 }

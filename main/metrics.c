@@ -252,7 +252,7 @@ metrics_print(str_buf_t *p_str_buf, const metrics_info_t *p_metrics)
 }
 
 char *
-ruuvi_get_metrics(void)
+metrics_generate(void)
 {
     const metrics_info_t metrics_info = gen_metrics();
 
