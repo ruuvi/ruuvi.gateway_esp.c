@@ -36,8 +36,6 @@ adv_post_send_ack(void *arg);
 static void
 adv_post_send_device_id(void *arg);
 
-portMUX_TYPE adv_table_mux = portMUX_INITIALIZER_UNLOCKED;
-
 static const char *TAG = "ADV_POST_TASK";
 
 adv_callbacks_fn_t adv_callback_func_tbl = {
@@ -50,12 +48,10 @@ static esp_err_t
 adv_put_to_table(const adv_report_t *const p_adv)
 {
     metrics_received_advs_increment();
-    portENTER_CRITICAL(&adv_table_mux);
     if (!adv_table_put(p_adv))
     {
         return ESP_ERR_NO_MEM;
     }
-    portEXIT_CRITICAL(&adv_table_mux);
     return ESP_OK;
 }
 
@@ -242,9 +238,7 @@ adv_post_task(void)
     while (1)
     {
         // for thread safety copy the advertisements to a separate buffer for posting
-        portENTER_CRITICAL(&adv_table_mux);
         adv_table_read_and_clear(&g_adv_reports_buf);
-        portEXIT_CRITICAL(&adv_table_mux);
 
         adv_post_log(&g_adv_reports_buf);
 
