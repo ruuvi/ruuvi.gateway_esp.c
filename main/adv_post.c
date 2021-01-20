@@ -24,6 +24,7 @@
 #include <time.h>
 #include "time_task.h"
 #include "attribs.h"
+#include "metrics.h"
 #include "log.h"
 
 static void
@@ -48,14 +49,12 @@ adv_callbacks_fn_t adv_callback_func_tbl = {
 static esp_err_t
 adv_put_to_table(const adv_report_t *const p_adv)
 {
+    metrics_received_advs_increment();
     portENTER_CRITICAL(&adv_table_mux);
-    gw_metrics.received_advertisements += 1;
-
     if (!adv_table_put(p_adv))
     {
         return ESP_ERR_NO_MEM;
     }
-
     portEXIT_CRITICAL(&adv_table_mux);
     return ESP_OK;
 }

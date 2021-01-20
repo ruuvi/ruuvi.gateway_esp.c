@@ -28,11 +28,6 @@ extern "C" {
 #define ETH_DISCONNECTED_BIT (1U << 3U)
 #define ETH_CONNECTED_BIT    (1U << 4U)
 
-typedef struct gw_metrics_t
-{
-    uint64_t received_advertisements;
-} gw_metrics_t;
-
 typedef enum nrf_command_e
 {
     NRF_COMMAND_SET_FILTER   = 0,
@@ -40,13 +35,9 @@ typedef enum nrf_command_e
 } nrf_command_e;
 
 extern EventGroupHandle_t status_bits;
-extern gw_metrics_t       gw_metrics;
 
 void
 settings_clear_in_flash(void);
-
-char *
-ruuvi_get_metrics(void);
 
 void
 ruuvi_send_nrf_settings(const ruuvi_gateway_config_t *p_config);

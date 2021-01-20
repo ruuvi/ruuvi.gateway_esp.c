@@ -14,6 +14,7 @@
 #include "ethernet.h"
 #include "json_ruuvi.h"
 #include "flashfatfs.h"
+#include "metrics.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"

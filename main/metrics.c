@@ -15,9 +15,27 @@
 
 static const char TAG[] = "metrics";
 
-gw_metrics_t gw_metrics = {};
+static uint64_t     g_received_advertisements;
+static portMUX_TYPE g_received_advertisements_mux = portMUX_INITIALIZER_UNLOCKED;
 
-size_t
+void
+metrics_received_advs_increment(void)
+{
+    portENTER_CRITICAL(&g_received_advertisements_mux);
+    g_received_advertisements += 1;
+    portEXIT_CRITICAL(&g_received_advertisements_mux);
+}
+
+static uint64_t
+metrics_received_advs_get(void)
+{
+    portENTER_CRITICAL(&g_received_advertisements_mux);
+    const uint64_t num_received_advertisements = g_received_advertisements;
+    portEXIT_CRITICAL(&g_received_advertisements_mux);
+    return num_received_advertisements;
+}
+
+static size_t
 get_total_free_bytes(const uint32_t caps)
 {
     multi_heap_info_t x = { 0 };
@@ -78,7 +96,7 @@ static metrics_info_t
 gen_metrics(void)
 {
     const metrics_info_t metrics = {
-        .received_advertisements          = gw_metrics.received_advertisements,
+        .received_advertisements          = metrics_received_advs_get(),
         .uptime_us                        = esp_timer_get_time(),
         .total_free_bytes.size_exec       = (ulong_t)get_total_free_bytes(MALLOC_CAP_EXEC),
         .total_free_bytes.size_32bit      = (ulong_t)get_total_free_bytes(MALLOC_CAP_32BIT),

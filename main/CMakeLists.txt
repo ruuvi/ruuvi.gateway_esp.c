@@ -29,6 +29,7 @@ idf_component_register(
             mac_addr.c
             mac_addr.h
             metrics.c
+            metrics.h
             mqtt.c
             mqtt.h
             nrf52fw.c
