@@ -12,9 +12,9 @@
 #include "freertos/event_groups.h"
 #include <stdbool.h>
 #include <stdint.h>
-#include "../mac_addr.h"
-#include "../cjson_wrap.h"
-#include "../settings.h"
+#include "mac_addr.h"
+#include "cjson_wrap.h"
+#include "settings.h"
 
 #ifdef __cplusplus
 extern "C" {
