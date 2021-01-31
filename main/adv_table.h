@@ -17,6 +17,12 @@
 extern "C" {
 #endif
 
+#if RUUVI_TESTS_ADV_TABLE
+#define ADV_TABLE_STATIC
+#else
+#define ADV_TABLE_STATIC static
+#endif
+
 #define ADV_DATA_MAX_LEN (64)
 #define MAX_ADVS_TABLE   (100U)
 
@@ -41,11 +47,22 @@ typedef struct adv_report_table_t
 void
 adv_table_init(void);
 
+void
+adv_table_deinit(void);
+
 bool
 adv_table_put(const adv_report_t *const p_adv);
 
 void
 adv_table_read_and_clear(adv_report_table_t *const p_reports);
+
+#if RUUVI_TESTS_ADV_TABLE
+
+ADV_TABLE_STATIC
+uint32_t
+adv_report_calc_hash(const mac_address_bin_t *const p_mac);
+
+#endif /* RUUVI_TESTS_ADV_TABLE */
 
 #ifdef __cplusplus
 }
