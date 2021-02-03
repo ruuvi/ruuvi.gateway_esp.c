@@ -33,7 +33,7 @@ cjson_wrap_str_null(void)
     return json_str;
 }
 
-void
+bool
 cjson_wrap_add_timestamp(cJSON *const p_object, const char *const p_name, const time_t timestamp);
 
 cjson_wrap_str_t
