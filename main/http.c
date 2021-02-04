@@ -12,6 +12,7 @@
 #include "cjson_wrap.h"
 #include "esp_http_client.h"
 #include "ruuvi_gateway.h"
+#include "http_json.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -58,9 +59,9 @@ http_event_handler(esp_http_client_event_t *p_evt)
 }
 
 void
-http_send(const char *p_msg)
+http_send(const char *const p_msg)
 {
-    esp_http_client_config_t http_config = {
+    const esp_http_client_config_t http_config = {
         .url             = g_gateway_config.http.http_url,
         .host            = NULL,
         .port            = 0,
@@ -116,45 +117,14 @@ http_send(const char *p_msg)
 }
 
 void
-http_send_advs(const adv_report_table_t *reports)
+http_send_advs(const adv_report_table_t *const p_reports)
 {
-    cJSON *p_json_root = cJSON_CreateObject();
-    if (NULL == p_json_root)
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+    if (!http_create_json_str(p_reports, time(NULL), &gw_mac_sta, g_gateway_config.coordinates, &json_str))
     {
-        LOG_ERR("Can't create json");
+        LOG_ERR("Not enough memory to generate json");
         return;
     }
-
-    cJSON *p_json_data = cJSON_AddObjectToObject(p_json_root, "data");
-    if (NULL == p_json_data)
-    {
-        LOG_ERR("Can't create json");
-        return;
-    }
-
-    const time_t now = time(NULL);
-    cJSON_AddStringToObject(p_json_data, "coordinates", g_gateway_config.coordinates);
-    cjson_wrap_add_timestamp(p_json_data, "timestamp", now);
-    cJSON_AddStringToObject(p_json_data, "gw_mac", gw_mac_sta.str_buf);
-
-    cJSON *p_json_tags = cJSON_AddObjectToObject(p_json_data, "tags");
-    if (NULL == p_json_tags)
-    {
-        LOG_ERR("can't create json");
-        return;
-    }
-    for (num_of_advs_t i = 0; i < reports->num_of_advs; ++i)
-    {
-        const adv_report_t *p_adv      = &reports->table[i];
-        cJSON *             p_json_tag = cJSON_CreateObject();
-        cJSON_AddNumberToObject(p_json_tag, "rssi", p_adv->rssi);
-        cjson_wrap_add_timestamp(p_json_tag, "timestamp", p_adv->timestamp);
-        cJSON_AddStringToObject(p_json_tag, "data", p_adv->data);
-        const mac_address_str_t mac_str = mac_address_to_str(&p_adv->tag_mac);
-        cJSON_AddItemToObject(p_json_tags, mac_str.str_buf, p_json_tag);
-    }
-
-    cjson_wrap_str_t json_str = cjson_wrap_print_and_delete(&p_json_root);
     LOG_INFO("HTTP POST: %s", json_str.p_str);
     http_send(json_str.p_str);
     cjson_wrap_free_json_str(&json_str);

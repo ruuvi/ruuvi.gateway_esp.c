@@ -20,6 +20,8 @@ idf_component_register(
             gw_cfg.h
             http.c
             http.h
+            http_json.c
+            http_json.h
             json_ruuvi.c
             json_ruuvi.h
             http_server_cb.c
