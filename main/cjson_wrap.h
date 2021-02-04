@@ -24,6 +24,9 @@ typedef struct cjson_wrap_str_t
     const char *p_str;
 } cjson_wrap_str_t;
 
+void
+cjson_wrap_init(void);
+
 static inline cjson_wrap_str_t
 cjson_wrap_str_null(void)
 {

@@ -29,6 +29,7 @@
 #include "attribs.h"
 #include "http_server_cb.h"
 #include "event_mgr.h"
+#include "cjson_wrap.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -239,6 +240,7 @@ void
 app_main(void)
 {
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
+    cjson_wrap_init();
 
     if (!event_mgr_init())
     {
