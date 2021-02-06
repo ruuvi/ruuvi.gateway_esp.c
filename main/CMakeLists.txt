@@ -34,6 +34,8 @@ idf_component_register(
             metrics.h
             mqtt.c
             mqtt.h
+            mqtt_json.c
+            mqtt_json.h
             nrf52fw.c
             nrf52fw.h
             nrf52swd.c
