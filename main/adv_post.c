@@ -26,6 +26,7 @@
 #include "attribs.h"
 #include "metrics.h"
 #include "os_malloc.h"
+#include "esp_type_wrapper.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -117,14 +118,14 @@ adv_post_send_report(void *arg)
     const esp_err_t ret = adv_put_to_table(&adv_report);
     if (ESP_ERR_NO_MEM == ret)
     {
-        ESP_LOGW(TAG, "Adv report table full, adv dropped");
+        LOG_WARN("Adv report table full, adv dropped");
     }
 }
 
 static void
 adv_post_log(const adv_report_table_t *p_reports)
 {
-    ESP_LOGI(TAG, "Advertisements in table: %d", p_reports->num_of_advs);
+    LOG_INFO("Advertisements in table: %u", (printf_uint_t)p_reports->num_of_advs);
     for (num_of_advs_t i = 0; i < p_reports->num_of_advs; ++i)
     {
         const adv_report_t *p_adv = &p_reports->table[i];
@@ -153,7 +154,7 @@ adv_post_check_is_connected(void)
     {
         char json_str[64];
         snprintf(json_str, sizeof(json_str), "{\"status\": \"online\", \"gw_mac\": \"%s\"}", gw_mac_sta.str_buf);
-        ESP_LOGI(TAG, "HTTP POST: %s", json_str);
+        LOG_INFO("HTTP POST: %s", json_str);
         http_send(json_str);
     }
     return true;
@@ -181,12 +182,12 @@ adv_post_retransmit_advs(const adv_report_table_t *p_reports, const bool flag_co
     }
     if (!flag_connected)
     {
-        ESP_LOGW(TAG, "Can't send, no network connection");
+        LOG_WARN("Can't send, no network connection");
         return;
     }
     if (!time_is_valid(p_reports->table[0].timestamp))
     {
-        ESP_LOGW(TAG, "Can't send, time have not synchronized yet");
+        LOG_WARN("Can't send, time have not synchronized yet");
         return;
     }
 
@@ -198,7 +199,7 @@ adv_post_retransmit_advs(const adv_report_table_t *p_reports, const bool flag_co
     {
         if (0 == (xEventGroupGetBits(status_bits) & MQTT_CONNECTED_BIT))
         {
-            ESP_LOGW(TAG, "Can't send, MQTT is not connected yet");
+            LOG_WARN("Can't send, MQTT is not connected yet");
             return;
         }
         mqtt_publish_table(p_reports);
@@ -212,7 +213,7 @@ adv_post_task(void)
     static adv_report_table_t g_adv_reports_buf;
 
     esp_log_level_set(TAG, ESP_LOG_INFO);
-    ESP_LOGI(TAG, "%s", __func__);
+    LOG_INFO("%s", __func__);
     bool flag_connected = false;
 
     while (1)
@@ -239,7 +240,7 @@ adv_post_task(void)
             }
             else
             {
-                ESP_LOGW(TAG, "Can't send, no network connection");
+                LOG_WARN("Can't send, no network connection");
             }
         }
 
