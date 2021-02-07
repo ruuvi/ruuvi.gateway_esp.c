@@ -124,7 +124,7 @@ adv_post_send_report(void *arg)
 static void
 adv_post_log(const adv_report_table_t *p_reports)
 {
-    ESP_LOGI(TAG, "Advertisements in table:");
+    ESP_LOGI(TAG, "Advertisements in table: %d", p_reports->num_of_advs);
     for (num_of_advs_t i = 0; i < p_reports->num_of_advs; ++i)
     {
         const adv_report_t *p_adv = &p_reports->table[i];
