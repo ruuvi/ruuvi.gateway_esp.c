@@ -6,6 +6,8 @@
  */
 
 #include "http_json.h"
+#include "bin2hex.h"
+#include "os_malloc.h"
 
 static cJSON *
 http_generate_json_data_attributes(
@@ -46,10 +48,17 @@ http_generate_json_tag_mac_section(cJSON *const p_json_tags, const adv_report_t 
     {
         return false;
     }
-    if (NULL == cJSON_AddStringToObject(p_json_tag, "data", p_adv->data))
+    char *p_hex_str = bin2hex_with_malloc(p_adv->data_buf, p_adv->data_len);
+    if (NULL == p_hex_str)
     {
         return false;
     }
+    if (NULL == cJSON_AddStringToObject(p_json_tag, "data", p_hex_str))
+    {
+        os_free(p_hex_str);
+        return false;
+    }
+    os_free(p_hex_str);
     return true;
 }
 

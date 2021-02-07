@@ -23,17 +23,19 @@ extern "C" {
 #define ADV_TABLE_STATIC static
 #endif
 
-#define ADV_DATA_MAX_LEN (64)
+#define ADV_DATA_MAX_LEN (32)
 #define MAX_ADVS_TABLE   (100U)
 
-typedef int32_t wifi_rssi_t;
+typedef int8_t  wifi_rssi_t;
+typedef uint8_t ble_date_len_t;
 
 typedef struct adv_report_t
 {
     mac_address_bin_t tag_mac;
     time_t            timestamp;
     wifi_rssi_t       rssi;
-    char              data[ADV_DATA_MAX_LEN + 1];
+    ble_date_len_t    data_len;
+    uint8_t           data_buf[ADV_DATA_MAX_LEN];
 } adv_report_t;
 
 typedef uint32_t num_of_advs_t;

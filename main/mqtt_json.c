@@ -6,6 +6,8 @@
  */
 
 #include "mqtt_json.h"
+#include "bin2hex.h"
+#include "os_malloc.h"
 
 static bool
 mqtt_create_json_attributes(
@@ -35,10 +37,17 @@ mqtt_create_json_attributes(
     {
         return false;
     }
-    if (NULL == cJSON_AddStringToObject(p_json_root, "data", p_adv->data))
+    char *p_hex_str = bin2hex_with_malloc(p_adv->data_buf, p_adv->data_len);
+    if (NULL == p_hex_str)
     {
         return false;
     }
+    if (NULL == cJSON_AddStringToObject(p_json_root, "data", p_hex_str))
+    {
+        os_free(p_hex_str);
+        return false;
+    }
+    os_free(p_hex_str);
     if (NULL == cJSON_AddStringToObject(p_json_root, "coords", p_coordinates_str))
     {
         return false;

@@ -25,6 +25,9 @@
 #include "time_task.h"
 #include "attribs.h"
 #include "metrics.h"
+#include "os_malloc.h"
+
+#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
 static void
@@ -56,57 +59,34 @@ adv_put_to_table(const adv_report_t *const p_adv)
 }
 
 static bool
-is_hexstr(const char *str)
+parse_adv_report_from_uart(const re_ca_uart_payload_t *const p_msg, adv_report_t *const p_adv)
 {
-    const size_t len = strlen(str);
-    for (size_t i = 0; i < len; ++i)
-    {
-        const int_fast32_t ch_val = (int_fast32_t)(uint8_t)str[i];
-        if (0 == isxdigit(ch_val))
-        {
-            return false;
-        }
-    }
-    return true;
-}
-
-static bool
-is_adv_report_valid(const adv_report_t *adv)
-{
-    if (!is_hexstr(adv->data))
+    if (NULL == p_msg)
     {
         return false;
     }
-    return true;
-}
-
-static bool
-parse_adv_report_from_uart(const re_ca_uart_payload_t *const msg, adv_report_t *adv)
-{
-    if (NULL == msg)
+    if (NULL == p_adv)
     {
         return false;
     }
-    if (NULL == adv)
+    if (RE_CA_UART_ADV_RPRT != p_msg->cmd)
     {
         return false;
     }
-    if (RE_CA_UART_ADV_RPRT != msg->cmd)
+    const re_ca_uart_ble_adv_t *const p_report = &(p_msg->params.adv);
+    if (p_report->adv_len > sizeof(p_adv->data_buf))
     {
+        LOG_ERR(
+            "Got advertisement with len=%u, max allowed len=%u",
+            (unsigned)p_report->adv_len,
+            (unsigned)sizeof(p_adv->data_buf));
         return false;
     }
-    const re_ca_uart_ble_adv_t *const report = &(msg->params.adv);
-    time_t                            now    = 0;
-    time(&now);
-    adv->rssi      = (wifi_rssi_t)report->rssi_db;
-    adv->timestamp = now;
-    mac_address_bin_init(&adv->tag_mac, report->mac);
-    bin2hex(adv->data, sizeof(adv->data), report->adv, report->adv_len);
-
-    if (!is_adv_report_valid(adv))
-    {
-        return false;
-    }
+    mac_address_bin_init(&p_adv->tag_mac, p_report->mac);
+    p_adv->timestamp = time(NULL);
+    p_adv->rssi      = (wifi_rssi_t)p_report->rssi_db;
+    p_adv->data_len  = p_report->adv_len;
+    memcpy(p_adv->data_buf, p_report->adv, p_report->adv_len);
 
     return true;
 }
@@ -150,13 +130,13 @@ adv_post_log(const adv_report_table_t *p_reports)
         const adv_report_t *p_adv = &p_reports->table[i];
 
         const mac_address_str_t mac_str = mac_address_to_str(&p_adv->tag_mac);
-        ESP_LOGI(
-            TAG,
-            "i: %d, tag: %s, rssi: %d, data: %s, timestamp: %ld",
+        LOG_DUMP_INFO(
+            p_adv->data_buf,
+            p_adv->data_len,
+            "i: %d, tag: %s, rssi: %d, timestamp: %ld",
             i,
             mac_str.str_buf,
             p_adv->rssi,
-            p_adv->data,
             p_adv->timestamp);
     }
 }

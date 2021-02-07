@@ -7,6 +7,8 @@ add_executable(${ProjectId}
         test_mqtt_json.cpp
         ${RUUVI_GW_SRC}/mqtt_json.c
         ${RUUVI_GW_SRC}/mqtt_json.h
+        ${RUUVI_GW_SRC}/bin2hex.c
+        ${RUUVI_GW_SRC}/bin2hex.h
         ${RUUVI_GW_SRC}/cjson_wrap.c
         ${RUUVI_GW_SRC}/cjson_wrap.h
         ${RUUVI_GW_SRC}/mac_addr.c
