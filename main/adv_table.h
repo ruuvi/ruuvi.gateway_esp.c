@@ -17,6 +17,10 @@
 extern "C" {
 #endif
 
+#if !defined(RUUVI_TESTS_ADV_TABLE)
+#define RUUVI_TESTS_ADV_TABLE 0
+#endif
+
 #if RUUVI_TESTS_ADV_TABLE
 #define ADV_TABLE_STATIC
 #else

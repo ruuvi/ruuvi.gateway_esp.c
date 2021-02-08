@@ -12,6 +12,10 @@
 #include <stdint.h>
 #include "str_buf.h"
 
+#if !defined(RUUVI_TESTS_BIN2HEX)
+#define RUUVI_TESTS_BIN2HEX 0
+#endif
+
 #if RUUVI_TESTS_BIN2HEX
 #define BIN2HEX_STATIC
 #else

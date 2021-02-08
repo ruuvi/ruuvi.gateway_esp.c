@@ -85,7 +85,7 @@ parse_adv_report_from_uart(const re_ca_uart_payload_t *const p_msg, adv_report_t
     }
     mac_address_bin_init(&p_adv->tag_mac, p_report->mac);
     p_adv->timestamp = time(NULL);
-    p_adv->rssi      = (wifi_rssi_t)p_report->rssi_db;
+    p_adv->rssi      = p_report->rssi_db;
     p_adv->data_len  = p_report->adv_len;
     memcpy(p_adv->data_buf, p_report->adv, p_report->adv_len);
 

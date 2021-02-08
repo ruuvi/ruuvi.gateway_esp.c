@@ -19,9 +19,10 @@ extern "C" {
 
 typedef double cjson_number_t;
 
-typedef struct cjson_wrap_str_t
+typedef union cjson_wrap_str_t
 {
     const char *p_str;
+    void *      p_mem;
 } cjson_wrap_str_t;
 
 void

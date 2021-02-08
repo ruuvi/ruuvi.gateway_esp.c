@@ -61,9 +61,9 @@ adv_report_calc_hash(const mac_address_bin_t *const p_mac)
 {
     uint32_t     hash_val           = 0;
     const size_t mac_addr_half_size = sizeof(p_mac->mac) / sizeof(p_mac->mac[0]) / 2;
-    for (unsigned i = 0; i < mac_addr_half_size; ++i)
+    for (uint32_t i = 0; i < mac_addr_half_size; ++i)
     {
-        hash_val |= (uint32_t)(p_mac->mac[i] ^ p_mac->mac[i + mac_addr_half_size]) << (i * CHAR_BIT);
+        hash_val |= ((uint32_t)p_mac->mac[i] ^ (uint32_t)p_mac->mac[i + mac_addr_half_size]) << (i * CHAR_BIT);
     }
     return hash_val;
 }
@@ -94,13 +94,14 @@ adv_hash_table_add(adv_report_hash_list_elem_t *p_elem, adv_report_t *p_adv)
     p_elem->p_next          = NULL;
     const uint32_t hash_val = adv_report_calc_hash(&p_adv->tag_mac);
     const uint32_t hash_idx = hash_val % ADV_TABLE_HASH_SIZE;
-    if (NULL == g_adv_hash_table.p_list[hash_idx])
+
+    adv_report_hash_list_elem_t *p_hash_elem = g_adv_hash_table.p_list[hash_idx];
+    if (NULL == p_hash_elem)
     {
         g_adv_hash_table.p_list[hash_idx] = p_elem;
     }
     else
     {
-        adv_report_hash_list_elem_t *p_hash_elem      = g_adv_hash_table.p_list[hash_idx];
         adv_report_hash_list_elem_t *p_prev_hash_elem = p_hash_elem;
         while (NULL != p_hash_elem)
         {

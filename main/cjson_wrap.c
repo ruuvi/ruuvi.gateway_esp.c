@@ -62,9 +62,9 @@ cjson_wrap_print_and_delete(cJSON **pp_object)
 void
 cjson_wrap_free_json_str(cjson_wrap_str_t *p_json_str)
 {
-    if (NULL != p_json_str->p_str)
+    if (NULL != p_json_str->p_mem)
     {
-        cJSON_free((void *)p_json_str->p_str);
+        cJSON_free(p_json_str->p_mem);
     }
     p_json_str->p_str = NULL;
 }
