@@ -35,8 +35,8 @@ typedef uint8_t ble_date_len_t;
 
 typedef struct adv_report_t
 {
-    mac_address_bin_t tag_mac;
     time_t            timestamp;
+    mac_address_bin_t tag_mac;
     wifi_rssi_t       rssi;
     ble_date_len_t    data_len;
     uint8_t           data_buf[ADV_DATA_MAX_LEN];

@@ -148,8 +148,8 @@ TEST_F(TestHttpJson, test_1) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_table_t           adv_table     = { .num_of_advs = 1,
                                      .table       = { {
-                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .timestamp = 1612358929,
+                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .rssi      = -70,
                                          .data_len  = data.size(),
                                      } } };
@@ -186,14 +186,14 @@ TEST_F(TestHttpJson, test_2) // NOLINT
     adv_report_table_t           adv_table     = { .num_of_advs = 2,
                                      .table       = {
                                          {
-                                             .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                              .timestamp = 1612358929,
+                                             .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                              .rssi      = -70,
                                              .data_len  = data1.size(),
                                          },
                                          {
-                                             .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x04 },
                                              .timestamp = 1612358930,
+                                             .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x04 },
                                              .rssi      = -71,
                                              .data_len  = data2.size(),
                                          },
@@ -234,8 +234,8 @@ TEST_F(TestHttpJson, test_malloc_failed_1_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_table_t           adv_table     = { .num_of_advs = 1,
                                      .table       = { {
-                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .timestamp = 1612358929,
+                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .rssi      = -70,
                                          .data_len  = data.size(),
                                      } } };
@@ -255,8 +255,8 @@ TEST_F(TestHttpJson, test_malloc_failed_2_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_table_t           adv_table     = { .num_of_advs = 1,
                                      .table       = { {
-                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .timestamp = 1612358929,
+                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .rssi      = -70,
                                          .data_len  = data.size(),
                                      } } };
@@ -276,8 +276,8 @@ TEST_F(TestHttpJson, test_malloc_failed_3_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_table_t           adv_table     = { .num_of_advs = 1,
                                      .table       = { {
-                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .timestamp = 1612358929,
+                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .rssi      = -70,
                                          .data_len  = data.size(),
                                      } } };
@@ -297,8 +297,8 @@ TEST_F(TestHttpJson, test_malloc_failed_4_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_table_t           adv_table     = { .num_of_advs = 1,
                                      .table       = { {
-                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .timestamp = 1612358929,
+                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .rssi      = -70,
                                          .data_len  = data.size(),
                                      } } };
@@ -318,8 +318,8 @@ TEST_F(TestHttpJson, test_malloc_failed_5_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_table_t           adv_table     = { .num_of_advs = 1,
                                      .table       = { {
-                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .timestamp = 1612358929,
+                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .rssi      = -70,
                                          .data_len  = data.size(),
                                      } } };
@@ -339,8 +339,8 @@ TEST_F(TestHttpJson, test_malloc_failed_6_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_table_t           adv_table     = { .num_of_advs = 1,
                                      .table       = { {
-                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .timestamp = 1612358929,
+                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .rssi      = -70,
                                          .data_len  = data.size(),
                                      } } };
@@ -360,8 +360,8 @@ TEST_F(TestHttpJson, test_malloc_failed_7_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_table_t           adv_table     = { .num_of_advs = 1,
                                      .table       = { {
-                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .timestamp = 1612358929,
+                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .rssi      = -70,
                                          .data_len  = data.size(),
                                      } } };
@@ -381,8 +381,8 @@ TEST_F(TestHttpJson, test_malloc_failed_8_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_table_t           adv_table     = { .num_of_advs = 1,
                                      .table       = { {
-                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .timestamp = 1612358929,
+                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .rssi      = -70,
                                          .data_len  = data.size(),
                                      } } };
@@ -402,8 +402,8 @@ TEST_F(TestHttpJson, test_malloc_failed_9_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_table_t           adv_table     = { .num_of_advs = 1,
                                      .table       = { {
-                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .timestamp = 1612358929,
+                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .rssi      = -70,
                                          .data_len  = data.size(),
                                      } } };
@@ -423,8 +423,8 @@ TEST_F(TestHttpJson, test_malloc_failed_10_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_table_t           adv_table     = { .num_of_advs = 1,
                                      .table       = { {
-                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .timestamp = 1612358929,
+                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .rssi      = -70,
                                          .data_len  = data.size(),
                                      } } };
@@ -444,8 +444,8 @@ TEST_F(TestHttpJson, test_malloc_failed_11_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_table_t           adv_table     = { .num_of_advs = 1,
                                      .table       = { {
-                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .timestamp = 1612358929,
+                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .rssi      = -70,
                                          .data_len  = data.size(),
                                      } } };
@@ -465,8 +465,8 @@ TEST_F(TestHttpJson, test_malloc_failed_12_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_table_t           adv_table     = { .num_of_advs = 1,
                                      .table       = { {
-                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .timestamp = 1612358929,
+                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .rssi      = -70,
                                          .data_len  = data.size(),
                                      } } };
@@ -486,8 +486,8 @@ TEST_F(TestHttpJson, test_malloc_failed_13_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     const adv_report_table_t     adv_table     = { .num_of_advs = 1,
                                            .table       = { {
-                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .timestamp = 1612358929,
+                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .rssi      = -70,
                                                .data_len  = data.size(),
                                            } } };
@@ -507,8 +507,8 @@ TEST_F(TestHttpJson, test_malloc_failed_14_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     const adv_report_table_t     adv_table     = { .num_of_advs = 1,
                                            .table       = { {
-                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .timestamp = 1612358929,
+                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .rssi      = -70,
                                                .data_len  = data.size(),
                                            } } };
@@ -528,8 +528,8 @@ TEST_F(TestHttpJson, test_malloc_failed_15_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     const adv_report_table_t     adv_table     = { .num_of_advs = 1,
                                            .table       = { {
-                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .timestamp = 1612358929,
+                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .rssi      = -70,
                                                .data_len  = data.size(),
                                            } } };
@@ -549,8 +549,8 @@ TEST_F(TestHttpJson, test_malloc_failed_16_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     const adv_report_table_t     adv_table     = { .num_of_advs = 1,
                                            .table       = { {
-                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .timestamp = 1612358929,
+                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .rssi      = -70,
                                                .data_len  = data.size(),
                                            } } };
@@ -570,8 +570,8 @@ TEST_F(TestHttpJson, test_malloc_failed_17_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     const adv_report_table_t     adv_table     = { .num_of_advs = 1,
                                            .table       = { {
-                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .timestamp = 1612358929,
+                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .rssi      = -70,
                                                .data_len  = data.size(),
                                            } } };
@@ -591,8 +591,8 @@ TEST_F(TestHttpJson, test_malloc_failed_18_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     const adv_report_table_t     adv_table     = { .num_of_advs = 1,
                                            .table       = { {
-                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .timestamp = 1612358929,
+                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .rssi      = -70,
                                                .data_len  = data.size(),
                                            } } };
@@ -612,8 +612,8 @@ TEST_F(TestHttpJson, test_malloc_failed_19_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_table_t           adv_table     = { .num_of_advs = 1,
                                      .table       = { {
-                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .timestamp = 1612358929,
+                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                          .rssi      = -70,
                                          .data_len  = data.size(),
                                      } } };
@@ -633,8 +633,8 @@ TEST_F(TestHttpJson, test_malloc_failed_20_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     const adv_report_table_t     adv_table     = { .num_of_advs = 1,
                                            .table       = { {
-                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .timestamp = 1612358929,
+                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .rssi      = -70,
                                                .data_len  = data.size(),
                                            } } };
@@ -654,8 +654,8 @@ TEST_F(TestHttpJson, test_malloc_failed_21_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     const adv_report_table_t     adv_table     = { .num_of_advs = 1,
                                            .table       = { {
-                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .timestamp = 1612358929,
+                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .rssi      = -70,
                                                .data_len  = data.size(),
                                            } } };
@@ -675,8 +675,8 @@ TEST_F(TestHttpJson, test_malloc_failed_22_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     const adv_report_table_t     adv_table     = { .num_of_advs = 1,
                                            .table       = { {
-                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .timestamp = 1612358929,
+                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .rssi      = -70,
                                                .data_len  = data.size(),
                                            } } };
@@ -696,8 +696,8 @@ TEST_F(TestHttpJson, test_malloc_failed_23_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     const adv_report_table_t     adv_table     = { .num_of_advs = 1,
                                            .table       = { {
-                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .timestamp = 1612358929,
+                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .rssi      = -70,
                                                .data_len  = data.size(),
                                            } } };
@@ -717,8 +717,8 @@ TEST_F(TestHttpJson, test_malloc_failed_24_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     const adv_report_table_t     adv_table     = { .num_of_advs = 1,
                                            .table       = { {
-                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .timestamp = 1612358929,
+                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .rssi      = -70,
                                                .data_len  = data.size(),
                                            } } };
@@ -738,8 +738,8 @@ TEST_F(TestHttpJson, test_malloc_failed_25_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     const adv_report_table_t     adv_table     = { .num_of_advs = 1,
                                            .table       = { {
-                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .timestamp = 1612358929,
+                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .rssi      = -70,
                                                .data_len  = data.size(),
                                            } } };
@@ -759,8 +759,8 @@ TEST_F(TestHttpJson, test_malloc_failed_26_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     const adv_report_table_t     adv_table     = { .num_of_advs = 1,
                                            .table       = { {
-                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .timestamp = 1612358929,
+                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .rssi      = -70,
                                                .data_len  = data.size(),
                                            } } };
@@ -780,8 +780,8 @@ TEST_F(TestHttpJson, test_malloc_failed_27_of_27) // NOLINT
     const std::array<uint8_t, 1> data          = { 0xAAU };
     const adv_report_table_t     adv_table     = { .num_of_advs = 1,
                                            .table       = { {
-                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .timestamp = 1612358929,
+                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                .rssi      = -70,
                                                .data_len  = data.size(),
                                            } } };
