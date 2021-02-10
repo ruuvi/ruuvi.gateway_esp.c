@@ -15,6 +15,7 @@
 #include "gw_cfg.h"
 #include "json_ruuvi.h"
 #include "flashfatfs.h"
+#include "metrics.h"
 
 using namespace std;
 
@@ -195,7 +196,7 @@ os_calloc(const size_t nmemb, const size_t size)
 }
 
 char *
-ruuvi_get_metrics(void)
+metrics_generate(void)
 {
     const char *p_metrics_str = "metrics_info";
     char *      p_buf         = static_cast<char *>(os_malloc(strlen(p_metrics_str) + 1));

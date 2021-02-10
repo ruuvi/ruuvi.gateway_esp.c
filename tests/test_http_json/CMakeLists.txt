@@ -1,16 +1,21 @@
 cmake_minimum_required(VERSION 3.7)
 
-project(ruuvi_gateway_esp-test-leds)
-set(ProjectId ruuvi_gateway_esp-test-leds)
+project(ruuvi_gateway_esp-test-http_json)
+set(ProjectId ruuvi_gateway_esp-test-http_json)
 
 add_executable(${ProjectId}
-        test_leds.cpp
-        test_events.h
-        include/esp_timer.h
-        driver/ledc.h
-        ${RUUVI_GW_SRC}/leds.c
-        ${RUUVI_GW_SRC}/leds.h
+        test_http_json.cpp
+        ${RUUVI_GW_SRC}/http_json.c
+        ${RUUVI_GW_SRC}/http_json.h
+        ${RUUVI_GW_SRC}/bin2hex.c
+        ${RUUVI_GW_SRC}/bin2hex.h
+        ${RUUVI_GW_SRC}/cjson_wrap.c
+        ${RUUVI_GW_SRC}/cjson_wrap.h
+        ${RUUVI_GW_SRC}/mac_addr.c
+        ${RUUVI_GW_SRC}/mac_addr.h
         $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
+        $ENV{IDF_PATH}/components/json/cJSON/cJSON.c
+        $ENV{IDF_PATH}/components/json/cJSON/cJSON.h
 )
 
 set_target_properties(${ProjectId} PROPERTIES
@@ -21,16 +26,14 @@ set_target_properties(${ProjectId} PROPERTIES
 target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
-        ${Posix_GCC_Simulator_SOURCE_DIR}/FreeRTOS_Posix
-        ${Posix_GCC_Simulator_SOURCE_DIR}/FreeRTOS_Posix/FreeRTOS_Kernel/include
-        ${Posix_GCC_Simulator_SOURCE_DIR}/FreeRTOS_Posix/FreeRTOS_Kernel/portable/GCC/Posix
         ${RUUVI_GW_SRC}
         include
+        $ENV{IDF_PATH}/components/json/cJSON
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 target_compile_definitions(${ProjectId} PUBLIC
-        RUUVI_TESTS_LEDS=1
+        RUUVI_TESTS_HTTP_JSON=1
 )
 
 target_compile_options(${ProjectId} PUBLIC
@@ -49,10 +52,8 @@ target_compile_options(${ProjectId} PUBLIC
 target_link_libraries(${ProjectId}
         gtest
         gtest_main
-        FreeRTOS_Posix
         gcov
         ruuvi_esp_wrappers
         ruuvi_esp_wrappers-common_test_funcs
-        esp_simul
         --coverage
 )

@@ -9,9 +9,9 @@
 #include "cJSON.h"
 #include "cjson_wrap.h"
 #include "esp_err.h"
-#include "freertos/event_groups.h"
 #include "mqtt_client.h"
 #include "ruuvi_gateway.h"
+#include "mqtt_json.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -51,39 +51,13 @@ mqtt_create_full_topic(
     }
 }
 
-static bool
-mqtt_create_json(const adv_report_t *p_adv, cjson_wrap_str_t *p_json_str)
-{
-    const time_t now = time(NULL);
-
-    cJSON *p_json_root = cJSON_CreateObject();
-    if (NULL == p_json_root)
-    {
-        return false;
-    }
-    cJSON_AddStringToObject(p_json_root, "gw_mac", gw_mac_sta.str_buf);
-    cJSON_AddNumberToObject(p_json_root, "rssi", p_adv->rssi);
-    cJSON_AddArrayToObject(p_json_root, "aoa");
-    cjson_wrap_add_timestamp(p_json_root, "gwts", now);
-    cjson_wrap_add_timestamp(p_json_root, "ts", p_adv->timestamp);
-    cJSON_AddStringToObject(p_json_root, "data", p_adv->data);
-    cJSON_AddStringToObject(p_json_root, "coords", g_gateway_config.coordinates);
-
-    *p_json_str = cjson_wrap_print_and_delete(&p_json_root);
-    if (NULL == p_json_str->p_str)
-    {
-        return false;
-    }
-    return true;
-}
-
 static void
 mqtt_publish_adv(const adv_report_t *p_adv)
 {
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
-    if (!mqtt_create_json(p_adv, &json_str))
+    if (!mqtt_create_json_str(p_adv, time(NULL), &gw_mac_sta, g_gateway_config.coordinates, &json_str))
     {
-        LOG_ERR("%s failed", "mqtt_create_json");
+        LOG_ERR("%s failed", "mqtt_create_json_str");
         return;
     }
     const mac_address_str_t tag_mac_str = mac_address_to_str(&p_adv->tag_mac);

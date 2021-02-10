@@ -8,17 +8,17 @@
 #ifndef RUUVI_HTTP_H
 #define RUUVI_HTTP_H
 
-#include "ruuvi_gateway.h"
+#include "adv_table.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 void
-http_send(const char *p_msg);
+http_send(const char *const p_msg);
 
 void
-http_send_advs(const adv_report_table_t *reports);
+http_send_advs(const adv_report_table_t *const p_reports);
 
 #ifdef __cplusplus
 }

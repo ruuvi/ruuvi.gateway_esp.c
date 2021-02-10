@@ -1,43 +1,50 @@
 idf_component_register(
         SRCS
             adv_post.c
-            includes/adv_post.h
+            adv_table.c
+            adv_table.h
+            adv_post.h
             bin2hex.c
             bin2hex.h
             cjson_wrap.c
             cjson_wrap.h
             ethernet.c
-            includes/ethernet.h
+            ethernet.h
             event_mgr.c
             event_mgr.h
             flashfatfs.c
             flashfatfs.h
             gpio.c
-            includes/gpio.h
+            gpio.h
             gw_cfg.c
             gw_cfg.h
             http.c
-            includes/http.h
+            http.h
+            http_json.c
+            http_json.h
             json_ruuvi.c
             json_ruuvi.h
             http_server_cb.c
             http_server_cb.h
             leds.c
-            includes/leds.h
+            leds.h
             mac_addr.c
             mac_addr.h
             metrics.c
+            metrics.h
             mqtt.c
-            includes/mqtt.h
+            mqtt.h
+            mqtt_json.c
+            mqtt_json.h
             nrf52fw.c
             nrf52fw.h
             nrf52swd.c
             nrf52swd.h
             ruuvi_gateway_main.c
-            includes/ruuvi_gateway.h
+            ruuvi_gateway.h
             settings.c
             time_task.c
-            includes/time_task.h
+            time_task.h
         REQUIRES
             mqtt
             lwip
@@ -50,6 +57,4 @@ idf_component_register(
             ruuvi.endpoints.c
             libSWD-esp32
             ruuvi.esp_wrappers.c
-        INCLUDE_DIRS
-            includes
 )

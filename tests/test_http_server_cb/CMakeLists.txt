@@ -13,6 +13,7 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/json_ruuvi.h
         ${RUUVI_GW_SRC}/cjson_wrap.c
         ${RUUVI_GW_SRC}/cjson_wrap.h
+        ${RUUVI_GW_SRC}/metrics.h
         ${RUUVI_ESP_WRAPPERS_INC}/log.h
         ${WIFI_MANAGER_SRC}/http_server_resp.c
         ${WIFI_MANAGER_INC}/http_server_resp.h
@@ -32,7 +33,6 @@ target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
         ${RUUVI_GW_SRC}
-        ${RUUVI_GW_SRC}/includes
         include
         $ENV{IDF_PATH}/components/json/cJSON
         $ENV{IDF_PATH}/components/esp_wifi/include

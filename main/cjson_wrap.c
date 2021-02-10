@@ -8,13 +8,28 @@
 #include "cjson_wrap.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include "os_malloc.h"
 
 void
+cjson_wrap_init(void)
+{
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+}
+
+bool
 cjson_wrap_add_timestamp(cJSON *const p_object, const char *const p_name, const time_t timestamp)
 {
     char timestamp_str[32];
     snprintf(timestamp_str, sizeof(timestamp_str), "%ld", timestamp);
-    cJSON_AddStringToObject(p_object, p_name, timestamp_str);
+    if (NULL == cJSON_AddStringToObject(p_object, p_name, timestamp_str))
+    {
+        return false;
+    }
+    return true;
 }
 
 cjson_wrap_str_t
@@ -47,7 +62,10 @@ cjson_wrap_print_and_delete(cJSON **pp_object)
 void
 cjson_wrap_free_json_str(cjson_wrap_str_t *p_json_str)
 {
-    free((void *)p_json_str->p_str);
+    if (NULL != p_json_str->p_mem)
+    {
+        cJSON_free(p_json_str->p_mem);
+    }
     p_json_str->p_str = NULL;
 }
 

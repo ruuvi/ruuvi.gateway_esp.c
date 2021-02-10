@@ -8,7 +8,7 @@
 #ifndef RUUVI_MQTT_H
 #define RUUVI_MQTT_H
 
-#include "ruuvi_gateway.h"
+#include "adv_table.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -7,7 +7,7 @@ add_executable(${ProjectId}
         test_time_task.cpp
         test_events.hpp
         ${RUUVI_GW_SRC}/time_task.c
-        ${RUUVI_GW_SRC}/includes/time_task.h
+        ${RUUVI_GW_SRC}/time_task.h
         ${RUUVI_GW_SRC}/event_mgr.c
         ${RUUVI_GW_SRC}/event_mgr.h
         $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
@@ -26,7 +26,6 @@ target_include_directories(${ProjectId} PUBLIC
         ${Posix_GCC_Simulator_SOURCE_DIR}/FreeRTOS_Posix/FreeRTOS_Kernel/portable/GCC/Posix
         $ENV{IDF_PATH}/components/lwip/include/apps
         $ENV{IDF_PATH}/components/lwip/include/apps/sntp
-        ${RUUVI_GW_SRC}/includes
         ${RUUVI_GW_SRC}
         include
         ${CMAKE_CURRENT_SOURCE_DIR}

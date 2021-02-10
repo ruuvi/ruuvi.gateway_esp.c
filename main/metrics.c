@@ -13,18 +13,6 @@
 
 #define METRICS_PREFIX "ruuvigw_"
 
-static const char TAG[] = "metrics";
-
-gw_metrics_t gw_metrics = {};
-
-size_t
-get_total_free_bytes(const uint32_t caps)
-{
-    multi_heap_info_t x = { 0 };
-    heap_caps_get_info(&x, caps);
-    return x.total_free_bytes;
-}
-
 // See:
 // https://prometheus.io/docs/instrumenting/writing_exporters/
 // https://prometheus.io/docs/instrumenting/exposition_formats/
@@ -71,14 +59,43 @@ typedef struct metrics_info_t
     int64_t                     uptime_us;
     metrics_total_free_info_t   total_free_bytes;
     metrics_largest_free_info_t largest_free_block;
-
 } metrics_info_t;
+
+static const char TAG[] = "metrics";
+
+static uint64_t     g_received_advertisements;
+static portMUX_TYPE g_received_advertisements_mux = portMUX_INITIALIZER_UNLOCKED;
+
+void
+metrics_received_advs_increment(void)
+{
+    portENTER_CRITICAL(&g_received_advertisements_mux);
+    g_received_advertisements += 1;
+    portEXIT_CRITICAL(&g_received_advertisements_mux);
+}
+
+static uint64_t
+metrics_received_advs_get(void)
+{
+    portENTER_CRITICAL(&g_received_advertisements_mux);
+    const uint64_t num_received_advertisements = g_received_advertisements;
+    portEXIT_CRITICAL(&g_received_advertisements_mux);
+    return num_received_advertisements;
+}
+
+static size_t
+get_total_free_bytes(const uint32_t caps)
+{
+    multi_heap_info_t x = { 0 };
+    heap_caps_get_info(&x, caps);
+    return x.total_free_bytes;
+}
 
 static metrics_info_t
 gen_metrics(void)
 {
     const metrics_info_t metrics = {
-        .received_advertisements          = gw_metrics.received_advertisements,
+        .received_advertisements          = metrics_received_advs_get(),
         .uptime_us                        = esp_timer_get_time(),
         .total_free_bytes.size_exec       = (ulong_t)get_total_free_bytes(MALLOC_CAP_EXEC),
         .total_free_bytes.size_32bit      = (ulong_t)get_total_free_bytes(MALLOC_CAP_32BIT),
@@ -234,7 +251,7 @@ metrics_print(str_buf_t *p_str_buf, const metrics_info_t *p_metrics)
 }
 
 char *
-ruuvi_get_metrics(void)
+metrics_generate(void)
 {
     const metrics_info_t metrics_info = gen_metrics();
 

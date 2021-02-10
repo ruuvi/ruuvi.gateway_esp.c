@@ -19,10 +19,14 @@ extern "C" {
 
 typedef double cjson_number_t;
 
-typedef struct cjson_wrap_str_t
+typedef union cjson_wrap_str_t
 {
     const char *p_str;
+    void *      p_mem;
 } cjson_wrap_str_t;
+
+void
+cjson_wrap_init(void);
 
 static inline cjson_wrap_str_t
 cjson_wrap_str_null(void)
@@ -33,7 +37,7 @@ cjson_wrap_str_null(void)
     return json_str;
 }
 
-void
+bool
 cjson_wrap_add_timestamp(cJSON *const p_object, const char *const p_name, const time_t timestamp);
 
 cjson_wrap_str_t

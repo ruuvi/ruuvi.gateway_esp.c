@@ -48,18 +48,26 @@ include_directories(
         "lwip/lwip/contrib/ports/unix/port/include"
 )
 
+add_subdirectory(test_adv_table)
 add_subdirectory(test_bin2hex)
 add_subdirectory(test_cjson_wrap)
 add_subdirectory(test_event_mgr)
 add_subdirectory(test_flashfatfs)
 add_subdirectory(test_json_ruuvi)
 add_subdirectory(test_gw_cfg)
+add_subdirectory(test_http_json)
 add_subdirectory(test_http_server_cb)
 add_subdirectory(test_leds)
 add_subdirectory(test_mac_addr)
+add_subdirectory(test_mqtt_json)
 add_subdirectory(test_nrf52fw)
 add_subdirectory(test_nrf52swd)
 add_subdirectory(test_time_task)
+
+add_test(NAME test_adv_table
+        COMMAND ruuvi_gateway_esp-test-adv_table
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-adv_table>/gtestresults.xml
+)
 
 add_test(NAME test_bin2hex
         COMMAND ruuvi_gateway_esp-test-bin2hex
@@ -91,6 +99,11 @@ add_test(NAME test_gw_cfg
         --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-gw_cfg>/gtestresults.xml
         )
 
+add_test(NAME test_http_json
+        COMMAND ruuvi_gateway_esp-test-http_json
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-http_json>/gtestresults.xml
+)
+
 add_test(NAME test_http_server_cb
         COMMAND ruuvi_gateway_esp-test-http_server_cb
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-http_server_cb>/gtestresults.xml
@@ -104,6 +117,11 @@ add_test(NAME test_leds
 add_test(NAME test_mac_addr
         COMMAND ruuvi_gateway_esp-test-mac_addr
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-mac_addr>/gtestresults.xml
+)
+
+add_test(NAME test_mqtt_json
+        COMMAND ruuvi_gateway_esp-test-mqtt_json
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-mqtt_json>/gtestresults.xml
 )
 
 add_test(NAME test_nrf52fw
