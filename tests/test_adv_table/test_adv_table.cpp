@@ -78,13 +78,13 @@ os_mutex_unlock(os_mutex_t const h_mutex)
         __VA_ARGS__ \
     }; \
     const adv_report_t adv_var_name_ = { \
+        .timestamp = timestamp_, \
         .tag_mac   = { ((mac_addr_) >> 5 * 8) & 0xFFU, \
                      ((mac_addr_) >> 4 * 8) & 0xFFU, \
                      ((mac_addr_) >> 3 * 8) & 0xFFU, \
                      ((mac_addr_) >> 2 * 8) & 0xFFU, \
                      ((mac_addr_) >> 1 * 8) & 0xFFU, \
                      ((mac_addr_) >> 0 * 8) & 0xFFU }, \
-        .timestamp = timestamp_, \
         .rssi      = rssi_, \
         .data_len  = sizeof(tmp_##data_var_name_) / sizeof(tmp_##data_var_name_[0]), \
         .data_buf  = { __VA_ARGS__ }, \

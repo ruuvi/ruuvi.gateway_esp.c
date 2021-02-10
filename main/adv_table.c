@@ -11,9 +11,9 @@
 #include "os_mutex.h"
 
 #if defined(__XTENSA__)
-_Static_assert(sizeof(adv_report_t) == 16 + 32, "sizeof(adv_report_t)");
+_Static_assert(sizeof(adv_report_t) == 12 + 32, "sizeof(adv_report_t)");
 #elif defined(__linux__) && defined(__x86_64__)
-_Static_assert(sizeof(adv_report_t) == 24 + 32, "sizeof(adv_report_t)");
+_Static_assert(sizeof(adv_report_t) == 16 + 32, "sizeof(adv_report_t)");
 #endif
 
 #define ADV_TABLE_HASH_SIZE (101)
