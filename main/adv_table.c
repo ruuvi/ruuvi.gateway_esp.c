@@ -10,6 +10,12 @@
 #include <limits.h>
 #include "os_mutex.h"
 
+#if defined(__XTENSA__)
+_Static_assert(sizeof(adv_report_t) == 16 + 32, "sizeof(adv_report_t)");
+#elif defined(__linux__) && defined(__x86_64__)
+_Static_assert(sizeof(adv_report_t) == 24 + 32, "sizeof(adv_report_t)");
+#endif
+
 #define ADV_TABLE_HASH_SIZE (101)
 
 typedef struct adv_report_hash_list_elem_t adv_report_hash_list_elem_t;
