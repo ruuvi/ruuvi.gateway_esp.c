@@ -18,7 +18,7 @@
 #include "log.h"
 
 #define ESP32_GPIO_MUXSEL GPIO_NUM_14
-#define ESP32_GPIO_MUXLED RB_GWBUS_3
+#define ESP32_GPIO_MUXLED GPIO_NUM_13
 
 static const char *TAG = "SWD";
 
