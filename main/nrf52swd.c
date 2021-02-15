@@ -17,6 +17,9 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
 
+#define ESP32_GPIO_MUXSEL GPIO_NUM_14
+#define ESP32_GPIO_MUXLED RB_GWBUS_3
+
 static const char *TAG = "SWD";
 
 typedef int LibSWD_ReturnCode_t;
@@ -84,15 +87,58 @@ nrf52swd_init_gpio_cfg_nreset(void)
 
 NRF52SWD_STATIC
 bool
+nrf52swd_init_gpio_cfg_muxsel(void)
+{
+    const gpio_config_t io_conf_muxsel = {
+        .pin_bit_mask = (1ULL << (uint32_t)ESP32_GPIO_MUXSEL),
+        .mode         = GPIO_MODE_OUTPUT,
+        .pull_up_en   = 0,
+        .pull_down_en = 0,
+        .intr_type    = GPIO_INTR_DISABLE,
+    };
+    const esp_err_t err = gpio_config(&io_conf_muxsel);
+    if (ESP_OK != err)
+    {
+        NRF52SWD_LOG_ERR("gpio_config(nRF52 MUXSEL)", err);
+        return false;
+    }
+    return true;
+}
+
+NRF52SWD_STATIC
+bool
+nrf52swd_init_gpio_cfg_muxled(void)
+{
+    const gpio_config_t io_conf_muxled = {
+        .pin_bit_mask = (1ULL << (uint32_t)ESP32_GPIO_MUXLED),
+        .mode         = GPIO_MODE_OUTPUT,
+        .pull_up_en   = 0,
+        .pull_down_en = 0,
+        .intr_type    = GPIO_INTR_DISABLE,
+    };
+    const esp_err_t err = gpio_config(&io_conf_muxled);
+    if (ESP_OK != err)
+    {
+        NRF52SWD_LOG_ERR("gpio_config(nRF52 MUXLED)", err);
+        return false;
+    }
+    return true;
+}
+
+NRF52SWD_STATIC
+bool
 nrf52swd_init_spi_init(void)
 {
     LOG_DBG("spi_bus_initialize");
-    const esp_err_t err = spi_bus_initialize(HSPI_HOST, &pinsSPI, 0);
+    esp_err_t err = gpio_set_level(ESP32_GPIO_MUXSEL, 1);
+    err |= spi_bus_initialize(HSPI_HOST, &pinsSPI, 0);
     if (ESP_OK != err)
     {
         NRF52SWD_LOG_ERR("spi_bus_initialize", err);
+        (void) gpio_set_level(ESP32_GPIO_MUXSEL, 0);
         return false;
     }
+    (void) gpio_set_level(ESP32_GPIO_MUXLED, 0);
     return true;
 }
 
@@ -128,6 +174,16 @@ nrf52swd_init_internal(void)
 {
     LOG_INFO("nRF52 SWD init");
     if (!nrf52swd_init_gpio_cfg_nreset())
+    {
+        return false;
+    }
+
+    if (!nrf52swd_init_gpio_cfg_muxsel())
+    {
+        return false;
+    }
+        
+    if (!nrf52swd_init_gpio_cfg_muxled())
     {
         return false;
     }
@@ -202,7 +258,9 @@ nrf52swd_deinit(void)
         g_nrf52swd_is_spi_initialized = false;
 
         LOG_DBG("spi_bus_free");
-        const esp_err_t err = spi_bus_free(HSPI_HOST);
+        esp_err_t err = spi_bus_free(HSPI_HOST);
+        err |= gpio_set_level(ESP32_GPIO_MUXLED, 0);
+        err |= gpio_set_level(ESP32_GPIO_MUXSEL, 0);
         if (ESP_OK != err)
         {
             LOG_ERR("%s: spi_bus_free failed, err=%d", __func__, err);
