@@ -135,10 +135,10 @@ nrf52swd_init_spi_init(void)
     if (ESP_OK != err)
     {
         NRF52SWD_LOG_ERR("spi_bus_initialize", err);
-        (void) gpio_set_level(ESP32_GPIO_MUXSEL, 0);
+        (void)gpio_set_level(ESP32_GPIO_MUXSEL, 0);
         return false;
     }
-    (void) gpio_set_level(ESP32_GPIO_MUXLED, 0);
+    (void)gpio_set_level(ESP32_GPIO_MUXLED, 0);
     return true;
 }
 
@@ -182,7 +182,7 @@ nrf52swd_init_internal(void)
     {
         return false;
     }
-        
+
     if (!nrf52swd_init_gpio_cfg_muxled())
     {
         return false;
