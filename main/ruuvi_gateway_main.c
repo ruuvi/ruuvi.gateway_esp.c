@@ -140,7 +140,10 @@ void
 ethernet_connection_ok_cb(void)
 {
     LOG_INFO("Ethernet connected");
-    wifi_manager_stop();
+    if (wifi_manager_is_working())
+    {
+        wifi_manager_stop();
+    }
     leds_stop_blink();
     leds_on();
     xEventGroupSetBits(status_bits, ETH_CONNECTED_BIT);
