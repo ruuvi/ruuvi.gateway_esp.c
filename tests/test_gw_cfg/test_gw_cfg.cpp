@@ -156,7 +156,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default) // NOLINT
 {
     const ruuvi_gateway_config_t gw_cfg = g_gateway_config_default;
     gw_cfg_print_to_log(&gw_cfg);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Got SETTINGS from browser:"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS:"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use eth: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use eth dhcp: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth static ip: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth netmask: "));

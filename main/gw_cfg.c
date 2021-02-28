@@ -17,6 +17,7 @@
         .header = RUUVI_GATEWAY_CONFIG_HEADER, \
         .fmt_version = RUUVI_GATEWAY_CONFIG_FMT_VERSION, \
         .eth = { \
+            .use_eth = false, \
             .eth_dhcp = true, \
             .eth_static_ip = { 0 }, \
             .eth_netmask = { 0 }, \
@@ -63,7 +64,8 @@ static const char TAG[] = "gw_cfg";
 void
 gw_cfg_print_to_log(const ruuvi_gateway_config_t *p_config)
 {
-    LOG_INFO("Got SETTINGS from browser:");
+    LOG_INFO("Gateway SETTINGS:");
+    LOG_INFO("config: use eth: %d", p_config->eth.use_eth);
     LOG_INFO("config: use eth dhcp: %d", p_config->eth.eth_dhcp);
     LOG_INFO("config: eth static ip: %s", p_config->eth.eth_static_ip);
     LOG_INFO("config: eth netmask: %s", p_config->eth.eth_netmask);

@@ -40,10 +40,11 @@ extern "C" {
 #define RUUVI_COMPANY_ID 0x0499
 
 #define RUUVI_GATEWAY_CONFIG_HEADER      (0xAABBU)
-#define RUUVI_GATEWAY_CONFIG_FMT_VERSION (0x0005U)
+#define RUUVI_GATEWAY_CONFIG_FMT_VERSION (0x0006U)
 
 typedef struct ruuvi_gw_cfg_eth_t
 {
+    bool use_eth;
     bool eth_dhcp;
     char eth_static_ip[IP_STR_LEN];
     char eth_netmask[IP_STR_LEN];
