@@ -18,6 +18,9 @@ bool
 ethernet_init(void);
 
 void
+ethernet_deinit(void);
+
+void
 ethernet_update_ip(void);
 
 #ifdef __cplusplus

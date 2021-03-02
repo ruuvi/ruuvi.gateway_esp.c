@@ -298,3 +298,34 @@ ethernet_init(void)
     }
     return true;
 }
+
+void
+ethernet_deinit(void)
+{
+    if (NULL == g_eth_handle)
+    {
+        return;
+    }
+    LOG_INFO("Ethernet deinit");
+    esp_err_t err_code = esp_eth_stop(g_eth_handle);
+    if (ESP_OK != err_code)
+    {
+        LOG_ERR_ESP(err_code, "Ethernet stop failed");
+    }
+    err_code = esp_eth_driver_uninstall(g_eth_handle);
+    if (ESP_OK != err_code)
+    {
+        LOG_ERR_ESP(err_code, "Ethernet driver uninstall failed");
+    }
+    err_code = esp_event_handler_unregister(ETH_EVENT, ESP_EVENT_ANY_ID, &eth_event_handler);
+    if (ESP_OK != err_code)
+    {
+        LOG_ERR_ESP(err_code, "Ethernet event handler unregister failed: %s", "ESP_EVENT_ANY_ID");
+    }
+    esp_event_handler_unregister(IP_EVENT, IP_EVENT_ETH_GOT_IP, &got_ip_event_handler);
+    if (ESP_OK != err_code)
+    {
+        LOG_ERR_ESP(err_code, "Ethernet event handler unregister failed: %s", "IP_EVENT_ETH_GOT_IP");
+    }
+    tcpip_adapter_clear_default_eth_handlers();
+}
