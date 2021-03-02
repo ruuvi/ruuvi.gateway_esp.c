@@ -96,9 +96,9 @@ got_ip_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, v
     const tcpip_adapter_ip_info_t *p_ip_info = &p_event->ip_info;
     LOG_INFO("Ethernet Got IP Address");
     LOG_INFO("~~~~~~~~~~~");
-    LOG_INFO("ETHIP:" IPSTR, IP2STR(&p_ip_info->ip));
-    LOG_INFO("ETHMASK:" IPSTR, IP2STR(&p_ip_info->netmask));
-    LOG_INFO("ETHGW:" IPSTR, IP2STR(&p_ip_info->gw));
+    LOG_INFO("ETH:IP:" IPSTR, IP2STR(&p_ip_info->ip));
+    LOG_INFO("ETH:MASK:" IPSTR, IP2STR(&p_ip_info->netmask));
+    LOG_INFO("ETH:GW:" IPSTR, IP2STR(&p_ip_info->gw));
     LOG_INFO("~~~~~~~~~~~");
     ethernet_connection_ok_cb();
 }
