@@ -114,6 +114,7 @@ wifi_connection_ok_cb(void *p_param)
     (void)p_param;
     LOG_INFO("Wifi connected");
     xEventGroupSetBits(status_bits, WIFI_CONNECTED_BIT);
+    ethernet_deinit();
     leds_stop_blink();
     leds_on();
     start_services();
