@@ -109,19 +109,6 @@ get_gw_mac_sta(void)
 }
 
 void
-wifi_connection_ok_cb(void *p_param)
-{
-    (void)p_param;
-    LOG_INFO("Wifi connected");
-    xEventGroupSetBits(status_bits, WIFI_CONNECTED_BIT);
-    ethernet_deinit();
-    leds_stop_blink();
-    leds_on();
-    start_services();
-    event_mgr_notify(EVENT_MGR_EV_WIFI_CONNECTED);
-}
-
-void
 ethernet_link_up_cb(void)
 {
     LOG_INFO("Ethernet connection established");
@@ -160,6 +147,19 @@ ethernet_connection_ok_cb(void)
     xEventGroupSetBits(status_bits, ETH_CONNECTED_BIT);
     start_services();
     event_mgr_notify(EVENT_MGR_EV_ETH_CONNECTED);
+}
+
+void
+wifi_connection_ok_cb(void *p_param)
+{
+    (void)p_param;
+    LOG_INFO("Wifi connected");
+    xEventGroupSetBits(status_bits, WIFI_CONNECTED_BIT);
+    ethernet_deinit();
+    leds_stop_blink();
+    leds_on();
+    start_services();
+    event_mgr_notify(EVENT_MGR_EV_WIFI_CONNECTED);
 }
 
 void
