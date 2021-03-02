@@ -15,7 +15,10 @@ extern "C" {
 #endif
 
 bool
-ethernet_init(void);
+ethernet_init(
+    void (*ethernet_link_up_cb)(void),
+    void (*ethernet_link_down_cb)(void),
+    void (*ethernet_connection_ok_cb)(void));
 
 void
 ethernet_deinit(void);

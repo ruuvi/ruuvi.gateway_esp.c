@@ -40,6 +40,9 @@ const char *dns_fallback_server = "1.1.1.1";
 static const char *TAG = "ETH";
 
 static esp_eth_handle_t g_eth_handle;
+static void (*g_ethernet_link_up_cb)(void);
+static void (*g_ethernet_link_down_cb)(void);
+static void (*g_ethernet_connection_ok_cb)(void);
 
 static void
 eth_on_event_connected(esp_eth_handle_t eth_handle)
@@ -49,7 +52,7 @@ eth_on_event_connected(esp_eth_handle_t eth_handle)
     LOG_INFO("Ethernet Link Up");
     const mac_address_str_t mac_str = mac_address_to_str(&mac_bin);
     LOG_INFO("Ethernet HW Addr %s", mac_str.str_buf);
-    ethernet_link_up_cb();
+    g_ethernet_link_up_cb();
 }
 
 /** Event handler for Ethernet events */
@@ -69,7 +72,7 @@ eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void
 
         case ETHERNET_EVENT_DISCONNECTED:
             LOG_INFO("Ethernet Link Down");
-            ethernet_link_down_cb();
+            g_ethernet_link_down_cb();
             break;
 
         case ETHERNET_EVENT_START:
@@ -100,7 +103,7 @@ got_ip_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, v
     LOG_INFO("ETH:MASK:" IPSTR, IP2STR(&p_ip_info->netmask));
     LOG_INFO("ETH:GW:" IPSTR, IP2STR(&p_ip_info->gw));
     LOG_INFO("~~~~~~~~~~~");
-    ethernet_connection_ok_cb();
+    g_ethernet_connection_ok_cb();
 }
 
 static bool
@@ -246,9 +249,15 @@ ethernet_update_ip(void)
 }
 
 bool
-ethernet_init(void)
+ethernet_init(
+    void (*ethernet_link_up_cb)(void),
+    void (*ethernet_link_down_cb)(void),
+    void (*ethernet_connection_ok_cb)(void))
 {
     LOG_INFO("Ethernet init");
+    g_ethernet_link_up_cb       = ethernet_link_up_cb;
+    g_ethernet_link_down_cb     = ethernet_link_down_cb;
+    g_ethernet_connection_ok_cb = ethernet_connection_ok_cb;
     gpio_set_direction(LAN_CLOCK_ENABLE, GPIO_MODE_OUTPUT);
     gpio_set_level(LAN_CLOCK_ENABLE, 1);
     ethernet_update_ip();

@@ -108,13 +108,13 @@ get_gw_mac_sta(void)
     return mac_address_to_str(&mac);
 }
 
-void
+static void
 ethernet_link_up_cb(void)
 {
     LOG_INFO("Ethernet connection established");
 }
 
-void
+static void
 ethernet_link_down_cb(void)
 {
     LOG_INFO("Ethernet lost connection");
@@ -124,7 +124,7 @@ ethernet_link_down_cb(void)
     event_mgr_notify(EVENT_MGR_EV_ETH_DISCONNECTED);
 }
 
-void
+static void
 ethernet_connection_ok_cb(void)
 {
     LOG_INFO("Ethernet connected");
@@ -314,7 +314,7 @@ app_main(void)
     }
     if (g_gateway_config.eth.use_eth || !wifi_manager_is_sta_configured())
     {
-        ethernet_init();
+        ethernet_init(&ethernet_link_up_cb, &ethernet_link_down_cb, &ethernet_connection_ok_cb);
     }
     else
     {
