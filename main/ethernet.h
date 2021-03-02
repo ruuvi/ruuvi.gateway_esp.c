@@ -8,11 +8,13 @@
 #ifndef RUUVI_ETHERNET_H
 #define RUUVI_ETHERNET_H
 
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void
+bool
 ethernet_init(void);
 
 void

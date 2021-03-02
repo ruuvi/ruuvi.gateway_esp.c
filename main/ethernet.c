@@ -245,7 +245,7 @@ ethernet_update_ip(void)
     LOG_INFO("ETH ip updated");
 }
 
-void
+bool
 ethernet_init(void)
 {
     LOG_INFO("Ethernet init");
@@ -253,9 +253,24 @@ ethernet_init(void)
     gpio_set_level(LAN_CLOCK_ENABLE, 1);
     ethernet_update_ip();
     tcpip_adapter_init();
-    ESP_ERROR_CHECK(tcpip_adapter_set_default_eth_handlers());
-    ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, &eth_event_handler, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP, &got_ip_event_handler, NULL));
+    esp_err_t err_code = tcpip_adapter_set_default_eth_handlers();
+    if (ESP_OK != err_code)
+    {
+        LOG_ERR_ESP(err_code, "%s failed", "tcpip_adapter_set_default_eth_handlers");
+        return false;
+    }
+    err_code = esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, &eth_event_handler, NULL);
+    if (ESP_OK != err_code)
+    {
+        LOG_ERR_ESP(err_code, "%s failed", "esp_event_handler_register");
+        return false;
+    }
+    err_code = esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP, &got_ip_event_handler, NULL);
+    if (ESP_OK != err_code)
+    {
+        LOG_ERR_ESP(err_code, "%s failed", "esp_event_handler_register");
+        return false;
+    }
     eth_mac_config_t mac_config = ETH_MAC_DEFAULT_CONFIG();
     eth_phy_config_t phy_config = ETH_PHY_DEFAULT_CONFIG();
 
@@ -266,20 +281,20 @@ ethernet_init(void)
     mac_config.smi_mdio_gpio_num   = ETH_MDIO_GPIO;
     mac_config.sw_reset_timeout_ms = SW_RESET_TIMEOUT_MS;
 
-    esp_eth_mac_t *  mac      = esp_eth_mac_new_esp32(&mac_config);
-    esp_eth_phy_t *  phy      = esp_eth_phy_new_lan8720(&phy_config);
-    esp_eth_config_t config   = ETH_DEFAULT_CONFIG(mac, phy);
-    esp_err_t        err_code = esp_eth_driver_install(&config, &g_eth_handle);
-    if (ESP_OK == err_code)
+    esp_eth_mac_t *  mac    = esp_eth_mac_new_esp32(&mac_config);
+    esp_eth_phy_t *  phy    = esp_eth_phy_new_lan8720(&phy_config);
+    esp_eth_config_t config = ETH_DEFAULT_CONFIG(mac, phy);
+    err_code                = esp_eth_driver_install(&config, &g_eth_handle);
+    if (ESP_OK != err_code)
     {
-        err_code = esp_eth_start(g_eth_handle);
-        if (ESP_OK != err_code)
-        {
-            LOG_ERR_ESP(err_code, "Ethernet start failed");
-        }
+        LOG_ERR_ESP(err_code, "Ethernet driver install failed");
+        return false;
     }
-    else
+    err_code = esp_eth_start(g_eth_handle);
+    if (ESP_OK != err_code)
     {
-        LOG_ERR("Ethernet driver install failed");
+        LOG_ERR_ESP(err_code, "Ethernet start failed");
+        return false;
     }
+    return true;
 }
