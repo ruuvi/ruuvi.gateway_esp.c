@@ -114,6 +114,7 @@ wifi_connection_ok_cb(void *p_param)
     (void)p_param;
     LOG_INFO("Wifi connected");
     xEventGroupSetBits(status_bits, WIFI_CONNECTED_BIT);
+    ethernet_deinit();
     leds_stop_blink();
     leds_on();
     start_services();
@@ -143,6 +144,16 @@ ethernet_connection_ok_cb(void)
     if (wifi_manager_is_working())
     {
         wifi_manager_stop();
+    }
+    if (!g_gateway_config.eth.use_eth)
+    {
+        LOG_INFO("The Ethernet cable was connected, but the Ethernet was not configured");
+        LOG_INFO("Set the default configuration with Ethernet and DHCP enabled");
+        g_gateway_config              = g_gateway_config_default;
+        g_gateway_config.eth.use_eth  = true;
+        g_gateway_config.eth.eth_dhcp = true;
+        gw_cfg_print_to_log(&g_gateway_config);
+        settings_save_to_flash(&g_gateway_config);
     }
     leds_stop_blink();
     leds_on();
@@ -197,7 +208,7 @@ reset_task(void)
 }
 
 static bool
-wifi_init(void)
+wifi_init(const bool flag_use_eth)
 {
     static const WiFiAntConfig_t wiFiAntConfig = {
         .wifi_ant_gpio_config = {
@@ -233,7 +244,12 @@ wifi_init(void)
         LOG_ERR("%s failed", "http_server_cb_init");
         return false;
     }
-    wifi_manager_start(&wiFiAntConfig, &http_server_cb_on_get, &http_server_cb_on_post, &http_server_cb_on_delete);
+    wifi_manager_start(
+        !flag_use_eth,
+        &wiFiAntConfig,
+        &http_server_cb_on_get,
+        &http_server_cb_on_post,
+        &http_server_cb_on_delete);
     wifi_manager_set_callback(EVENT_STA_GOT_IP, &wifi_connection_ok_cb);
     wifi_manager_set_callback(EVENT_STA_DISCONNECTED, &wifi_disconnect_cb);
     return true;
@@ -290,12 +306,21 @@ app_main(void)
     ruuvi_send_nrf_settings(&g_gateway_config);
     gw_mac_sta = get_gw_mac_sta();
     LOG_INFO("Mac address: %s", gw_mac_sta.str_buf);
-    if (!wifi_init())
+
+    if (!wifi_init(g_gateway_config.eth.use_eth))
     {
         LOG_ERR("%s failed", "wifi_init");
         return;
     }
-    ethernet_init();
+    if (g_gateway_config.eth.use_eth || !wifi_manager_is_sta_configured())
+    {
+        ethernet_init();
+    }
+    else
+    {
+        LOG_INFO("Gateway already configured to use WiFi connection, so Ethernet is not needed");
+    }
+
     const uint32_t   stack_size_for_monitoring_task = 2 * 1024;
     os_task_handle_t ph_task_monitoring             = NULL;
     if (!os_task_create_without_param(

@@ -11,7 +11,6 @@
 #include "esp_eth.h"
 #include "esp_eth_com.h"
 #include "esp_event.h"
-#include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
@@ -24,6 +23,8 @@
 #include "wifi_manager.h"
 #include <stdio.h>
 #include <string.h>
+#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
+#include "log.h"
 
 #define LAN_CLOCK_ENABLE 2
 #define ETH_PHY_ADDR     0
@@ -36,16 +37,18 @@
 // Cloudfare public DNS
 const char *dns_fallback_server = "1.1.1.1";
 
-static const char *TAG = "eth";
+static const char *TAG = "ETH";
+
+static esp_eth_handle_t g_eth_handle;
 
 static void
 eth_on_event_connected(esp_eth_handle_t eth_handle)
 {
     mac_address_bin_t mac_bin = { 0 };
     esp_eth_ioctl(eth_handle, ETH_CMD_G_MAC_ADDR, &mac_bin.mac[0]);
-    ESP_LOGI(TAG, "Ethernet Link Up");
+    LOG_INFO("Ethernet Link Up");
     const mac_address_str_t mac_str = mac_address_to_str(&mac_bin);
-    ESP_LOGI(TAG, "Ethernet HW Addr %s", mac_str.str_buf);
+    LOG_INFO("Ethernet HW Addr %s", mac_str.str_buf);
     ethernet_link_up_cb();
 }
 
@@ -65,16 +68,16 @@ eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void
             break;
 
         case ETHERNET_EVENT_DISCONNECTED:
-            ESP_LOGI(TAG, "Ethernet Link Down");
+            LOG_INFO("Ethernet Link Down");
             ethernet_link_down_cb();
             break;
 
         case ETHERNET_EVENT_START:
-            ESP_LOGI(TAG, "Ethernet Started");
+            LOG_INFO("Ethernet Started");
             break;
 
         case ETHERNET_EVENT_STOP:
-            ESP_LOGI(TAG, "Ethernet Stopped");
+            LOG_INFO("Ethernet Stopped");
             break;
 
         default:
@@ -91,23 +94,23 @@ got_ip_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, v
     (void)event_id;
     const ip_event_got_ip_t *      p_event   = (ip_event_got_ip_t *)event_data;
     const tcpip_adapter_ip_info_t *p_ip_info = &p_event->ip_info;
-    ESP_LOGI(TAG, "Ethernet Got IP Address");
-    ESP_LOGI(TAG, "~~~~~~~~~~~");
-    ESP_LOGI(TAG, "ETHIP:" IPSTR, IP2STR(&p_ip_info->ip));
-    ESP_LOGI(TAG, "ETHMASK:" IPSTR, IP2STR(&p_ip_info->netmask));
-    ESP_LOGI(TAG, "ETHGW:" IPSTR, IP2STR(&p_ip_info->gw));
-    ESP_LOGI(TAG, "~~~~~~~~~~~");
+    LOG_INFO("Ethernet Got IP Address");
+    LOG_INFO("~~~~~~~~~~~");
+    LOG_INFO("ETHIP:" IPSTR, IP2STR(&p_ip_info->ip));
+    LOG_INFO("ETHMASK:" IPSTR, IP2STR(&p_ip_info->netmask));
+    LOG_INFO("ETHGW:" IPSTR, IP2STR(&p_ip_info->gw));
+    LOG_INFO("~~~~~~~~~~~");
     ethernet_connection_ok_cb();
 }
 
 static bool
 ethernet_update_ip_dhcp(void)
 {
-    ESP_LOGI(TAG, "Using ETH DHCP");
+    LOG_INFO("Using ETH DHCP");
     const esp_err_t ret = tcpip_adapter_dhcpc_start(TCPIP_ADAPTER_IF_ETH);
     if (ESP_OK != ret)
     {
-        ESP_LOGE(TAG, "dhcpc start error: 0x%02x", (unsigned)ret);
+        LOG_ERR_ESP(ret, "%s failed", "tcpip_adapter_dhcpc_start");
         return false;
     }
     return true;
@@ -121,11 +124,11 @@ eth_tcpip_adapter_dhcpc_stop(void)
     {
         if ((ESP_ERR_TCPIP_ADAPTER_DHCP_ALREADY_STOPPED) == ret)
         {
-            ESP_LOGW(TAG, "DHCP client already stopped");
+            LOG_WARN("DHCP client already stopped");
         }
         else
         {
-            ESP_LOGE(TAG, "DHCP client stop error: 0x%02x", ret);
+            LOG_ERR_ESP(ret, "%s failed", "tcpip_adapter_dhcpc_stop");
             return false;
         }
     }
@@ -164,13 +167,13 @@ eth_tcpip_adapter_set_dns_info(const char *p_dns_ip, const tcpip_adapter_dns_typ
 
     if (0 == ip4addr_aton(p_dns_ip, &dns_info.ip.u_addr.ip4))
     {
-        ESP_LOGE(TAG, "Set DNS info failed for %s, invalid server: %s", dns_server, p_dns_ip);
+        LOG_ERR("Set DNS info failed for %s, invalid server: %s", dns_server, p_dns_ip);
         return;
     }
     const esp_err_t ret = tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_ETH, type, &dns_info);
     if (ESP_OK != ret)
     {
-        ESP_LOGE(TAG, "Set DNS info failed for %s, error: 0x%02x", dns_server, ret);
+        LOG_ERR_ESP(ret, "%s failed for DNS: '%s'", "tcpip_adapter_set_dns_info", dns_server);
         return;
     }
 }
@@ -181,23 +184,23 @@ ethernet_update_ip_static(void)
     ruuvi_gateway_config_t *p_gw_cfg = &g_gateway_config;
     tcpip_adapter_ip_info_t ip_info  = { 0 };
 
-    ESP_LOGI(TAG, "Using static IP");
+    LOG_INFO("Using static IP");
 
     if (0 == ip4addr_aton(p_gw_cfg->eth.eth_static_ip, &ip_info.ip))
     {
-        ESP_LOGE(TAG, "invalid eth static ip: %s", p_gw_cfg->eth.eth_static_ip);
+        LOG_ERR("Invalid eth static ip: %s", p_gw_cfg->eth.eth_static_ip);
         return false;
     }
 
     if (0 == ip4addr_aton(p_gw_cfg->eth.eth_netmask, &ip_info.netmask))
     {
-        ESP_LOGE(TAG, "invalid eth netmask: %s", p_gw_cfg->eth.eth_netmask);
+        LOG_ERR("invalid eth netmask: %s", p_gw_cfg->eth.eth_netmask);
         return false;
     }
 
     if (0 == ip4addr_aton(p_gw_cfg->eth.eth_gw, &ip_info.gw))
     {
-        ESP_LOGE(TAG, "invalid eth gw: %s", p_gw_cfg->eth.eth_gw);
+        LOG_ERR("invalid eth gw: %s", p_gw_cfg->eth.eth_gw);
         return false;
     }
 
@@ -209,7 +212,7 @@ ethernet_update_ip_static(void)
     const esp_err_t ret = tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_ETH, &ip_info);
     if (ESP_OK != ret)
     {
-        ESP_LOGE(TAG, "Failed to configure IP settings for ETH, err: 0x%02x", ret);
+        LOG_ERR_ESP(ret, "%s failed", "tcpip_adapter_set_ip_info");
         return false;
     }
 
@@ -239,20 +242,35 @@ ethernet_update_ip(void)
     // set DNS fallback also for DHCP settings
     eth_tcpip_adapter_set_dns_info(dns_fallback_server, TCPIP_ADAPTER_DNS_FALLBACK);
 
-    ESP_LOGI(TAG, "ETH ip updated");
+    LOG_INFO("ETH ip updated");
 }
 
-void
+bool
 ethernet_init(void)
 {
-    esp_log_level_set(TAG, ESP_LOG_DEBUG);
+    LOG_INFO("Ethernet init");
     gpio_set_direction(LAN_CLOCK_ENABLE, GPIO_MODE_OUTPUT);
     gpio_set_level(LAN_CLOCK_ENABLE, 1);
     ethernet_update_ip();
     tcpip_adapter_init();
-    ESP_ERROR_CHECK(tcpip_adapter_set_default_eth_handlers());
-    ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, &eth_event_handler, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP, &got_ip_event_handler, NULL));
+    esp_err_t err_code = tcpip_adapter_set_default_eth_handlers();
+    if (ESP_OK != err_code)
+    {
+        LOG_ERR_ESP(err_code, "%s failed", "tcpip_adapter_set_default_eth_handlers");
+        return false;
+    }
+    err_code = esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, &eth_event_handler, NULL);
+    if (ESP_OK != err_code)
+    {
+        LOG_ERR_ESP(err_code, "%s failed", "esp_event_handler_register");
+        return false;
+    }
+    err_code = esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP, &got_ip_event_handler, NULL);
+    if (ESP_OK != err_code)
+    {
+        LOG_ERR_ESP(err_code, "%s failed", "esp_event_handler_register");
+        return false;
+    }
     eth_mac_config_t mac_config = ETH_MAC_DEFAULT_CONFIG();
     eth_phy_config_t phy_config = ETH_PHY_DEFAULT_CONFIG();
 
@@ -263,21 +281,51 @@ ethernet_init(void)
     mac_config.smi_mdio_gpio_num   = ETH_MDIO_GPIO;
     mac_config.sw_reset_timeout_ms = SW_RESET_TIMEOUT_MS;
 
-    esp_eth_mac_t *  mac        = esp_eth_mac_new_esp32(&mac_config);
-    esp_eth_phy_t *  phy        = esp_eth_phy_new_lan8720(&phy_config);
-    esp_eth_config_t config     = ETH_DEFAULT_CONFIG(mac, phy);
-    esp_eth_handle_t eth_handle = NULL;
-    esp_err_t        err_code   = esp_eth_driver_install(&config, &eth_handle);
-    if (ESP_OK == err_code)
+    esp_eth_mac_t *  mac    = esp_eth_mac_new_esp32(&mac_config);
+    esp_eth_phy_t *  phy    = esp_eth_phy_new_lan8720(&phy_config);
+    esp_eth_config_t config = ETH_DEFAULT_CONFIG(mac, phy);
+    err_code                = esp_eth_driver_install(&config, &g_eth_handle);
+    if (ESP_OK != err_code)
     {
-        err_code = esp_eth_start(eth_handle);
-        if (ESP_OK != err_code)
-        {
-            ESP_LOGE(TAG, "Ethernet start failed");
-        }
+        LOG_ERR_ESP(err_code, "Ethernet driver install failed");
+        return false;
     }
-    else
+    err_code = esp_eth_start(g_eth_handle);
+    if (ESP_OK != err_code)
     {
-        ESP_LOGE(TAG, "Ethernet driver install failed");
+        LOG_ERR_ESP(err_code, "Ethernet start failed");
+        return false;
     }
+    return true;
+}
+
+void
+ethernet_deinit(void)
+{
+    if (NULL == g_eth_handle)
+    {
+        return;
+    }
+    LOG_INFO("Ethernet deinit");
+    esp_err_t err_code = esp_eth_stop(g_eth_handle);
+    if (ESP_OK != err_code)
+    {
+        LOG_ERR_ESP(err_code, "Ethernet stop failed");
+    }
+    err_code = esp_eth_driver_uninstall(g_eth_handle);
+    if (ESP_OK != err_code)
+    {
+        LOG_ERR_ESP(err_code, "Ethernet driver uninstall failed");
+    }
+    err_code = esp_event_handler_unregister(ETH_EVENT, ESP_EVENT_ANY_ID, &eth_event_handler);
+    if (ESP_OK != err_code)
+    {
+        LOG_ERR_ESP(err_code, "Ethernet event handler unregister failed: %s", "ESP_EVENT_ANY_ID");
+    }
+    esp_event_handler_unregister(IP_EVENT, IP_EVENT_ETH_GOT_IP, &got_ip_event_handler);
+    if (ESP_OK != err_code)
+    {
+        LOG_ERR_ESP(err_code, "Ethernet event handler unregister failed: %s", "IP_EVENT_ETH_GOT_IP");
+    }
+    tcpip_adapter_clear_default_eth_handlers();
 }
