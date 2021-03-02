@@ -42,7 +42,7 @@ static const char *TAG = "ETH";
 static esp_eth_handle_t g_eth_handle;
 static void (*g_ethernet_link_up_cb)(void);
 static void (*g_ethernet_link_down_cb)(void);
-static void (*g_ethernet_connection_ok_cb)(void);
+static void (*g_ethernet_connection_ok_cb)(const tcpip_adapter_ip_info_t *p_ip_info);
 
 static void
 eth_on_event_connected(esp_eth_handle_t eth_handle)
@@ -103,7 +103,7 @@ got_ip_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, v
     LOG_INFO("ETH:MASK:" IPSTR, IP2STR(&p_ip_info->netmask));
     LOG_INFO("ETH:GW:" IPSTR, IP2STR(&p_ip_info->gw));
     LOG_INFO("~~~~~~~~~~~");
-    g_ethernet_connection_ok_cb();
+    g_ethernet_connection_ok_cb(p_ip_info);
 }
 
 static bool
@@ -252,7 +252,7 @@ bool
 ethernet_init(
     void (*ethernet_link_up_cb)(void),
     void (*ethernet_link_down_cb)(void),
-    void (*ethernet_connection_ok_cb)(void))
+    void (*ethernet_connection_ok_cb)(const tcpip_adapter_ip_info_t *p_ip_info))
 {
     LOG_INFO("Ethernet init");
     g_ethernet_link_up_cb       = ethernet_link_up_cb;

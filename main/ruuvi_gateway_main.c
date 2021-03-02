@@ -125,7 +125,7 @@ ethernet_link_down_cb(void)
 }
 
 static void
-ethernet_connection_ok_cb(void)
+ethernet_connection_ok_cb(const tcpip_adapter_ip_info_t *p_ip_info)
 {
     LOG_INFO("Ethernet connected");
     if (wifi_manager_is_working())
