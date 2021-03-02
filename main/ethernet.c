@@ -39,6 +39,8 @@ const char *dns_fallback_server = "1.1.1.1";
 
 static const char *TAG = "ETH";
 
+static esp_eth_handle_t g_eth_handle;
+
 static void
 eth_on_event_connected(esp_eth_handle_t eth_handle)
 {
@@ -264,14 +266,13 @@ ethernet_init(void)
     mac_config.smi_mdio_gpio_num   = ETH_MDIO_GPIO;
     mac_config.sw_reset_timeout_ms = SW_RESET_TIMEOUT_MS;
 
-    esp_eth_mac_t *  mac        = esp_eth_mac_new_esp32(&mac_config);
-    esp_eth_phy_t *  phy        = esp_eth_phy_new_lan8720(&phy_config);
-    esp_eth_config_t config     = ETH_DEFAULT_CONFIG(mac, phy);
-    esp_eth_handle_t eth_handle = NULL;
-    esp_err_t        err_code   = esp_eth_driver_install(&config, &eth_handle);
+    esp_eth_mac_t *  mac      = esp_eth_mac_new_esp32(&mac_config);
+    esp_eth_phy_t *  phy      = esp_eth_phy_new_lan8720(&phy_config);
+    esp_eth_config_t config   = ETH_DEFAULT_CONFIG(mac, phy);
+    esp_err_t        err_code = esp_eth_driver_install(&config, &g_eth_handle);
     if (ESP_OK == err_code)
     {
-        err_code = esp_eth_start(eth_handle);
+        err_code = esp_eth_start(g_eth_handle);
         if (ESP_OK != err_code)
         {
             LOG_ERR_ESP(err_code, "Ethernet start failed");
