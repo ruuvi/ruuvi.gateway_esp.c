@@ -78,7 +78,7 @@ protected:
         g_pTestClass           = this;
         this->m_vTaskDelay_cnt = 0;
         {
-            const gpio_config_t gpio_cfg  = { 0 };
+            const gpio_config_t gpio_cfg = { 0 };
             for (uint32_t i = 0; i < sizeof(this->m_gpio_config) / sizeof(this->m_gpio_config[0]); ++i)
             {
                 this->m_gpio_config[i] = gpio_cfg;
