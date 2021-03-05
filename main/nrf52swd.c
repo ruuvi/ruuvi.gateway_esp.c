@@ -64,6 +64,7 @@ static spi_device_handle_t g_nrf52swd_device_spi;
 static libswd_ctx_t *      gp_nrf52swd_libswd_ctx;
 static bool                g_nrf52swd_is_spi_initialized;
 static bool                g_nrf52swd_is_spi_device_added;
+static uint64_t            g_nrf52swd_initialized_gpio_bitmask;
 
 NRF52SWD_STATIC
 bool
@@ -82,12 +83,13 @@ nrf52swd_init_gpio_cfg_nreset(void)
         NRF52SWD_LOG_ERR("gpio_config(nRF52 nRESET)", err);
         return false;
     }
+    g_nrf52swd_initialized_gpio_bitmask |= io_conf_nrf52_nreset.pin_bit_mask;
     return true;
 }
 
 NRF52SWD_STATIC
 bool
-nrf52swd_init_gpio_cfg_muxsel(void)
+nrf52swd_init_gpio_cfg_analog_switch_control(void)
 {
     const gpio_config_t io_conf_muxsel = {
         .pin_bit_mask = (1ULL << (uint32_t)ESP32_GPIO_ANALOG_SWITCH_CONTROL),
@@ -102,6 +104,7 @@ nrf52swd_init_gpio_cfg_muxsel(void)
         NRF52SWD_LOG_ERR("gpio_config(nRF52 MUXSEL)", err);
         return false;
     }
+    g_nrf52swd_initialized_gpio_bitmask |= io_conf_muxsel.pin_bit_mask;
     return true;
 }
 
@@ -122,6 +125,7 @@ nrf52swd_init_gpio_cfg_muxled(void)
         NRF52SWD_LOG_ERR("gpio_config(nRF52 MUXLED)", err);
         return false;
     }
+    g_nrf52swd_initialized_gpio_bitmask |= io_conf_muxled.pin_bit_mask;
     return true;
 }
 
@@ -130,15 +134,12 @@ bool
 nrf52swd_init_spi_init(void)
 {
     LOG_DBG("spi_bus_initialize");
-    esp_err_t err = gpio_set_level(ESP32_GPIO_ANALOG_SWITCH_CONTROL, 1);
-    err |= spi_bus_initialize(HSPI_HOST, &pinsSPI, 0);
+    esp_err_t err = spi_bus_initialize(HSPI_HOST, &pinsSPI, 0);
     if (ESP_OK != err)
     {
         NRF52SWD_LOG_ERR("spi_bus_initialize", err);
-        (void)gpio_set_level(ESP32_GPIO_ANALOG_SWITCH_CONTROL, 0);
         return false;
     }
-    (void)gpio_set_level(ESP32_GPIO_MUXLED, 0);
     return true;
 }
 
@@ -169,21 +170,34 @@ nrf52swd_libswd_debug_init(void)
     return true;
 }
 
-static bool
-nrf52swd_init_internal(void)
+NRF52SWD_STATIC
+bool
+nrf52swd_gpio_init(void)
 {
-    LOG_INFO("nRF52 SWD init");
     if (!nrf52swd_init_gpio_cfg_nreset())
     {
         return false;
     }
 
-    if (!nrf52swd_init_gpio_cfg_muxsel())
+    if (!nrf52swd_init_gpio_cfg_analog_switch_control())
     {
         return false;
     }
+    (void)gpio_set_level(ESP32_GPIO_ANALOG_SWITCH_CONTROL, 1);
 
     if (!nrf52swd_init_gpio_cfg_muxled())
+    {
+        return false;
+    }
+    (void)gpio_set_level(ESP32_GPIO_MUXLED, 0);
+    return true;
+}
+
+static bool
+nrf52swd_init_internal(void)
+{
+    LOG_INFO("nRF52 SWD init");
+    if (!nrf52swd_gpio_init())
     {
         return false;
     }
@@ -259,12 +273,20 @@ nrf52swd_deinit(void)
 
         LOG_DBG("spi_bus_free");
         esp_err_t err = spi_bus_free(HSPI_HOST);
-        err |= gpio_set_level(ESP32_GPIO_MUXLED, 0);
-        err |= gpio_set_level(ESP32_GPIO_ANALOG_SWITCH_CONTROL, 0);
         if (ESP_OK != err)
         {
             LOG_ERR("%s: spi_bus_free failed, err=%d", __func__, err);
         }
+    }
+    if (0 != (g_nrf52swd_initialized_gpio_bitmask & (1LLU << ESP32_GPIO_MUXLED)))
+    {
+        (void)gpio_set_level(ESP32_GPIO_MUXLED, 0);
+        g_nrf52swd_initialized_gpio_bitmask &= ~(1LLU << ESP32_GPIO_MUXLED);
+    }
+    if (0 != (g_nrf52swd_initialized_gpio_bitmask & (1LLU << ESP32_GPIO_ANALOG_SWITCH_CONTROL)))
+    {
+        (void)gpio_set_level(ESP32_GPIO_ANALOG_SWITCH_CONTROL, 0);
+        g_nrf52swd_initialized_gpio_bitmask &= ~(1LLU << ESP32_GPIO_ANALOG_SWITCH_CONTROL);
     }
 }
 
