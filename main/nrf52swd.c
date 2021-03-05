@@ -17,8 +17,8 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
 
-#define ESP32_GPIO_MUXSEL GPIO_NUM_14
-#define ESP32_GPIO_MUXLED GPIO_NUM_13
+#define ESP32_GPIO_ANALOG_SWITCH_CONTROL GPIO_NUM_14 /* MTMS */
+#define ESP32_GPIO_MUXLED                GPIO_NUM_13
 
 static const char *TAG = "SWD";
 
@@ -90,7 +90,7 @@ bool
 nrf52swd_init_gpio_cfg_muxsel(void)
 {
     const gpio_config_t io_conf_muxsel = {
-        .pin_bit_mask = (1ULL << (uint32_t)ESP32_GPIO_MUXSEL),
+        .pin_bit_mask = (1ULL << (uint32_t)ESP32_GPIO_ANALOG_SWITCH_CONTROL),
         .mode         = GPIO_MODE_OUTPUT,
         .pull_up_en   = 0,
         .pull_down_en = 0,
@@ -130,12 +130,12 @@ bool
 nrf52swd_init_spi_init(void)
 {
     LOG_DBG("spi_bus_initialize");
-    esp_err_t err = gpio_set_level(ESP32_GPIO_MUXSEL, 1);
+    esp_err_t err = gpio_set_level(ESP32_GPIO_ANALOG_SWITCH_CONTROL, 1);
     err |= spi_bus_initialize(HSPI_HOST, &pinsSPI, 0);
     if (ESP_OK != err)
     {
         NRF52SWD_LOG_ERR("spi_bus_initialize", err);
-        (void)gpio_set_level(ESP32_GPIO_MUXSEL, 0);
+        (void)gpio_set_level(ESP32_GPIO_ANALOG_SWITCH_CONTROL, 0);
         return false;
     }
     (void)gpio_set_level(ESP32_GPIO_MUXLED, 0);
@@ -260,7 +260,7 @@ nrf52swd_deinit(void)
         LOG_DBG("spi_bus_free");
         esp_err_t err = spi_bus_free(HSPI_HOST);
         err |= gpio_set_level(ESP32_GPIO_MUXLED, 0);
-        err |= gpio_set_level(ESP32_GPIO_MUXSEL, 0);
+        err |= gpio_set_level(ESP32_GPIO_ANALOG_SWITCH_CONTROL, 0);
         if (ESP_OK != err)
         {
             LOG_ERR("%s: spi_bus_free failed, err=%d", __func__, err);
