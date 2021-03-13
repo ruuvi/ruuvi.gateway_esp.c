@@ -15,6 +15,8 @@
 #include "json_ruuvi.h"
 #include "flashfatfs.h"
 #include "metrics.h"
+#include "http_json.h"
+#include "os_malloc.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -100,6 +102,64 @@ http_server_resp_metrics(void)
         strlen(p_metrics),
         HTTP_CONENT_ENCODING_NONE,
         (const uint8_t *)p_metrics,
+        flag_no_cache);
+}
+
+HTTP_SERVER_CB_STATIC
+bool
+http_server_read_history(cjson_wrap_str_t *p_json_str, const time_t cur_time, const uint32_t time_interval_seconds)
+{
+    adv_report_table_t *p_reports = os_malloc(sizeof(*p_reports));
+    if (NULL == p_reports)
+    {
+        return false;
+    }
+    adv_table_history_read(p_reports, cur_time, time_interval_seconds);
+
+    const bool res = http_create_json_str(p_reports, cur_time, &gw_mac_sta, g_gateway_config.coordinates, p_json_str);
+    os_free(p_reports);
+    return res;
+}
+
+#if !RUUVI_TESTS_HTTP_SERVER_CB
+static time_t
+http_server_get_cur_time(void)
+{
+    return time(NULL);
+}
+#endif
+
+HTTP_SERVER_CB_STATIC
+http_server_resp_t
+http_server_resp_history(const char *const p_params)
+{
+#define HTTP_SERVER_DEFAULT_HISTORY_INTERVAL_SECONDS (60U)
+    uint32_t time_interval_seconds = HTTP_SERVER_DEFAULT_HISTORY_INTERVAL_SECONDS;
+    if (NULL != p_params)
+    {
+        const char *const p_time_prefix   = "&time=";
+        const size_t      time_prefix_len = strlen(p_time_prefix);
+        if (0 == strncmp(p_params, p_time_prefix, time_prefix_len))
+        {
+            time_interval_seconds = strtoul(&p_params[time_prefix_len], NULL, 0);
+        }
+    }
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+    const time_t     cur_time = http_server_get_cur_time();
+    if (!http_server_read_history(&json_str, cur_time, time_interval_seconds))
+    {
+        LOG_ERR("Not enough memory");
+        return http_server_resp_503();
+    }
+
+    const bool flag_no_cache = true;
+    LOG_INFO("History on %u seconds interval: %s", (unsigned)time_interval_seconds, json_str.p_str);
+    return http_server_resp_data_in_heap(
+        HTTP_CONENT_TYPE_APPLICATION_JSON,
+        NULL,
+        strlen(json_str.p_str),
+        HTTP_CONENT_ENCODING_NONE,
+        (const uint8_t *)json_str.p_str,
         flag_no_cache);
 }
 
@@ -192,8 +252,26 @@ http_server_resp_file(const char *file_path)
     return http_server_resp_data_from_file(content_type, NULL, file_size, content_encoding, fd);
 }
 
+static bool
+http_server_is_url_prefix_eq(
+    const char *const p_path,
+    const size_t      path_page_name_len,
+    const char *const p_exp_page_name)
+{
+    const size_t exp_page_name_len = strlen(p_exp_page_name);
+    if (exp_page_name_len != path_page_name_len)
+    {
+        return false;
+    }
+    if (0 != strncmp(p_path, p_exp_page_name, path_page_name_len))
+    {
+        return false;
+    }
+    return true;
+}
+
 http_server_resp_t
-http_server_cb_on_get(const char *p_path)
+http_server_cb_on_get(const char *const p_path)
 {
     const char *p_file_ext = strrchr(p_path, '.');
     LOG_INFO("GET /%s", p_path);
@@ -202,9 +280,19 @@ http_server_cb_on_get(const char *p_path)
     {
         return http_server_resp_json(p_path);
     }
-    if (0 == strcmp(p_path, "metrics"))
+    size_t      len      = strlen(p_path);
+    const char *p_params = strchr(p_path, '&');
+    if (NULL != p_params)
+    {
+        len = (size_t)(ptrdiff_t)(p_params - p_path);
+    }
+    if (http_server_is_url_prefix_eq(p_path, len, "metrics"))
     {
         return http_server_resp_metrics();
+    }
+    if (http_server_is_url_prefix_eq(p_path, len, "history"))
+    {
+        return http_server_resp_history(p_params);
     }
     const char *p_file_path = ('\0' == p_path[0]) ? "index.html" : p_path;
     return http_server_resp_file(p_file_path);
