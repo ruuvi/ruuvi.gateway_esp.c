@@ -15,6 +15,10 @@
 #endif
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
+#include <time.h>
+#endif
+
+#if RUUVI_TESTS_HTTP_SERVER_CB
 #define HTTP_SERVER_CB_STATIC
 #else
 #define HTTP_SERVER_CB_STATIC static
@@ -40,6 +44,9 @@ http_server_resp_t
 http_server_cb_on_delete(const char *p_path);
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
+
+time_t
+http_server_get_cur_time(void);
 
 http_server_resp_t
 http_server_resp_json_ruuvi(void);

@@ -14,6 +14,10 @@ set_target_properties(${ProjectId} PROPERTIES
         CXX_STANDARD 14
 )
 
+target_include_directories(${ProjectId} SYSTEM BEFORE PUBLIC
+        sys_include
+)
+
 target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}

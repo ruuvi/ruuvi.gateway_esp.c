@@ -72,21 +72,20 @@ os_mutex_unlock(os_mutex_t const h_mutex)
 
 } // extern "C"
 
+#define NUMARGS(...) (sizeof((int[]) { __VA_ARGS__ }) / sizeof(int))
+
 #define DECL_ADV_REPORT(adv_var_name_, mac_addr_, timestamp_, rssi_, data_var_name_, ...) \
-    const uint8_t tmp_##data_var_name_[] = { __VA_ARGS__ }; \
-    const std::array<uint8_t, sizeof(tmp_##data_var_name_) / sizeof(tmp_##data_var_name_[0])> data_var_name_ = { \
-        __VA_ARGS__ \
-    }; \
-    const adv_report_t adv_var_name_ = { \
+    auto               data_var_name_ = make_array<uint8_t>(__VA_ARGS__); \
+    const adv_report_t adv_var_name_  = { \
         .timestamp = timestamp_, \
-        .tag_mac   = { ((mac_addr_) >> 5 * 8) & 0xFFU, \
-                     ((mac_addr_) >> 4 * 8) & 0xFFU, \
-                     ((mac_addr_) >> 3 * 8) & 0xFFU, \
-                     ((mac_addr_) >> 2 * 8) & 0xFFU, \
-                     ((mac_addr_) >> 1 * 8) & 0xFFU, \
-                     ((mac_addr_) >> 0 * 8) & 0xFFU }, \
+        .tag_mac   = { ((mac_addr_) >> 5U * 8U) & 0xFFU, \
+                     ((mac_addr_) >> 4U * 8U) & 0xFFU, \
+                     ((mac_addr_) >> 3U * 8U) & 0xFFU, \
+                     ((mac_addr_) >> 2U * 8U) & 0xFFU, \
+                     ((mac_addr_) >> 1U * 8U) & 0xFFU, \
+                     ((mac_addr_) >> 0U * 8U) & 0xFFU }, \
         .rssi      = rssi_, \
-        .data_len  = sizeof(tmp_##data_var_name_) / sizeof(tmp_##data_var_name_[0]), \
+        .data_len  = data_var_name_.size(), \
         .data_buf  = { __VA_ARGS__ }, \
     }
 
@@ -103,30 +102,65 @@ os_mutex_unlock(os_mutex_t const h_mutex)
         ASSERT_EQ(exp_data_, data_from_reports); \
     } while (0)
 
+template<typename V, typename... T>
+constexpr auto
+make_array(T &&... values) -> std::array<V, sizeof...(T)>
+{
+    return std::array<V, sizeof...(T)> { std::forward<V>(values)... };
+}
+
 /*** Unit-Tests
  * *******************************************************************************************************/
 
 TEST_F(TestAdvTable, test_1) // NOLINT
 {
-    DECL_ADV_REPORT(adv, 0x112233445566LLU, 1611154440, 50, data, 0xAAU, 0xBBU);
+    const uint64_t    mac_addr       = 0x112233445566LLU;
+    const time_t      base_timestamp = 1611154440;
+    const wifi_rssi_t rssi           = 50;
+    DECL_ADV_REPORT(adv, mac_addr, base_timestamp, rssi, data, 0xAAU, 0xBBU);
 
     ASSERT_TRUE(adv_table_put(&adv));
     {
         adv_report_table_t reports = {};
-        adv_table_read_and_clear(&reports);
+        adv_table_read_retransmission_list_and_clear(&reports);
         ASSERT_EQ(1, reports.num_of_advs);
         CHECK_ADV_REPORT(adv, data, &reports.table[0]);
+    }
+
+    // Test reading of the history
+    const uint32_t time_interval_seconds = 10;
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + 1, time_interval_seconds);
+        ASSERT_EQ(1, reports.num_of_advs);
+        CHECK_ADV_REPORT(adv, data, &reports.table[0]);
+    }
+
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds, time_interval_seconds);
+        ASSERT_EQ(1, reports.num_of_advs);
+        CHECK_ADV_REPORT(adv, data, &reports.table[0]);
+    }
+
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 1, time_interval_seconds);
+        ASSERT_EQ(0, reports.num_of_advs);
     }
 }
 
 TEST_F(TestAdvTable, test_1_read_clear_add) // NOLINT
 {
-    DECL_ADV_REPORT(adv, 0x112233445566LLU, 1611154440, 50, data, 0xAAU, 0xBBU);
+    const uint64_t    mac_addr       = 0x112233445566LLU;
+    const time_t      base_timestamp = 1611154440;
+    const wifi_rssi_t rssi           = 50;
+    DECL_ADV_REPORT(adv, mac_addr, base_timestamp, rssi, data, 0xAAU, 0xBBU);
 
     ASSERT_TRUE(adv_table_put(&adv));
     {
         adv_report_table_t reports = {};
-        adv_table_read_and_clear(&reports);
+        adv_table_read_retransmission_list_and_clear(&reports);
         ASSERT_EQ(1, reports.num_of_advs);
         CHECK_ADV_REPORT(adv, data, &reports.table[0]);
     }
@@ -134,7 +168,16 @@ TEST_F(TestAdvTable, test_1_read_clear_add) // NOLINT
     ASSERT_TRUE(adv_table_put(&adv));
     {
         adv_report_table_t reports = {};
-        adv_table_read_and_clear(&reports);
+        adv_table_read_retransmission_list_and_clear(&reports);
+        ASSERT_EQ(1, reports.num_of_advs);
+        CHECK_ADV_REPORT(adv, data, &reports.table[0]);
+    }
+
+    // Test reading of the history
+    const uint32_t time_interval_seconds = 10;
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + 1, time_interval_seconds);
         ASSERT_EQ(1, reports.num_of_advs);
         CHECK_ADV_REPORT(adv, data, &reports.table[0]);
     }
@@ -142,25 +185,54 @@ TEST_F(TestAdvTable, test_1_read_clear_add) // NOLINT
 
 TEST_F(TestAdvTable, test_2) // NOLINT
 {
-    DECL_ADV_REPORT(adv1, 0x112233445566LLU, 1611154440, 50, data1, 0xA1U, 0xB1U);
-    DECL_ADV_REPORT(adv2, 0x122333455667LLU, 1611154441, 51, data2, 0xA2U, 0xB2U, 0xC2U);
+    const uint64_t    mac_addr       = 0x112233445566LLU;
+    const time_t      base_timestamp = 1611154440;
+    const wifi_rssi_t rssi           = 50;
+    DECL_ADV_REPORT(adv1, mac_addr + 0, base_timestamp + 0, rssi + 0, data1, 0xA1U, 0xB1U);
+    DECL_ADV_REPORT(adv2, mac_addr + 1, base_timestamp + 1, rssi + 1, data2, 0xA2U, 0xB2U, 0xC2);
 
     ASSERT_TRUE(adv_table_put(&adv1));
     ASSERT_TRUE(adv_table_put(&adv2));
 
     {
         adv_report_table_t reports = {};
-        adv_table_read_and_clear(&reports);
+        adv_table_read_retransmission_list_and_clear(&reports);
         ASSERT_EQ(2, reports.num_of_advs);
         CHECK_ADV_REPORT(adv1, data1, &reports.table[0]);
         CHECK_ADV_REPORT(adv2, data2, &reports.table[1]);
+    }
+
+    // Test reading of the history
+    const uint32_t time_interval_seconds = 10;
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds, time_interval_seconds);
+        ASSERT_EQ(2, reports.num_of_advs);
+        CHECK_ADV_REPORT(adv2, data2, &reports.table[0]);
+        CHECK_ADV_REPORT(adv1, data1, &reports.table[1]);
+    }
+
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 1, time_interval_seconds);
+        ASSERT_EQ(1, reports.num_of_advs);
+        CHECK_ADV_REPORT(adv2, data2, &reports.table[0]);
+    }
+
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 2, time_interval_seconds);
+        ASSERT_EQ(0, reports.num_of_advs);
     }
 }
 
 TEST_F(TestAdvTable, test_2_with_the_same_hash) // NOLINT
 {
-    DECL_ADV_REPORT(adv1, 0x112233445566LLU, 1611154440, 50, data1, 0xA1U, 0xB1U);
-    DECL_ADV_REPORT(adv2, 0x112232445567LLU, 1611154441, 51, data2, 0xA2U, 0xB2U, 0xC2U);
+    const uint64_t    mac_addr       = 0x112233445566LLU;
+    const time_t      base_timestamp = 1611154440;
+    const wifi_rssi_t rssi           = 50;
+    DECL_ADV_REPORT(adv1, mac_addr ^ 0x000000000000LLU, base_timestamp + 0, rssi + 0, data1, 0xA1U, 0xB1U);
+    DECL_ADV_REPORT(adv2, mac_addr ^ 0x000001000001LLU, base_timestamp + 1, rssi + 1, data2, 0xA2U, 0xB2U, 0xC2);
 
     ASSERT_EQ(adv_report_calc_hash(&adv1.tag_mac), adv_report_calc_hash(&adv2.tag_mac));
 
@@ -169,27 +241,53 @@ TEST_F(TestAdvTable, test_2_with_the_same_hash) // NOLINT
 
     {
         adv_report_table_t reports = {};
-        adv_table_read_and_clear(&reports);
+        adv_table_read_retransmission_list_and_clear(&reports);
         ASSERT_EQ(2, reports.num_of_advs);
         CHECK_ADV_REPORT(adv1, data1, &reports.table[0]);
         CHECK_ADV_REPORT(adv2, data2, &reports.table[1]);
+    }
+
+    // Test reading of the history
+    const uint32_t time_interval_seconds = 10;
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds, time_interval_seconds);
+        ASSERT_EQ(2, reports.num_of_advs);
+        CHECK_ADV_REPORT(adv2, data2, &reports.table[0]);
+        CHECK_ADV_REPORT(adv1, data1, &reports.table[1]);
+    }
+
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 1, time_interval_seconds);
+        ASSERT_EQ(1, reports.num_of_advs);
+        CHECK_ADV_REPORT(adv2, data2, &reports.table[0]);
+    }
+
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 2, time_interval_seconds);
+        ASSERT_EQ(0, reports.num_of_advs);
     }
 }
 
 TEST_F(TestAdvTable, test_2_with_the_same_hash_with_clear) // NOLINT
 {
-    DECL_ADV_REPORT(adv1, 0x112233445566LLU, 1611154440, 50, data1, 0xA1U, 0xB1U);
+    const uint64_t    mac_addr       = 0x112233445566LLU;
+    const time_t      base_timestamp = 1611154440;
+    const wifi_rssi_t rssi           = 50;
+    DECL_ADV_REPORT(adv1, mac_addr ^ 0x000000000000LLU, base_timestamp + 0, rssi + 0, data1, 0xA1U, 0xB1U);
 
     ASSERT_TRUE(adv_table_put(&adv1));
 
     {
         adv_report_table_t reports = {};
-        adv_table_read_and_clear(&reports);
+        adv_table_read_retransmission_list_and_clear(&reports);
         ASSERT_EQ(1, reports.num_of_advs);
         CHECK_ADV_REPORT(adv1, data1, &reports.table[0]);
     }
 
-    DECL_ADV_REPORT(adv2, 0x112232445567LLU, 1611154441, 51, data2, 0xA2U, 0xB2U, 0xC2U);
+    DECL_ADV_REPORT(adv2, mac_addr ^ 0x000001000001LLU, base_timestamp + 1, rssi + 1, data2, 0xA2U, 0xB2U, 0xC2);
 
     ASSERT_EQ(adv_report_calc_hash(&adv1.tag_mac), adv_report_calc_hash(&adv2.tag_mac));
 
@@ -197,17 +295,43 @@ TEST_F(TestAdvTable, test_2_with_the_same_hash_with_clear) // NOLINT
 
     {
         adv_report_table_t reports = {};
-        adv_table_read_and_clear(&reports);
+        adv_table_read_retransmission_list_and_clear(&reports);
         ASSERT_EQ(1, reports.num_of_advs);
         CHECK_ADV_REPORT(adv2, data2, &reports.table[0]);
+    }
+
+    // Test reading of the history
+    const uint32_t time_interval_seconds = 10;
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds, time_interval_seconds);
+        ASSERT_EQ(2, reports.num_of_advs);
+        CHECK_ADV_REPORT(adv2, data2, &reports.table[0]);
+        CHECK_ADV_REPORT(adv1, data1, &reports.table[1]);
+    }
+
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 1, time_interval_seconds);
+        ASSERT_EQ(1, reports.num_of_advs);
+        CHECK_ADV_REPORT(adv2, data2, &reports.table[0]);
+    }
+
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 2, time_interval_seconds);
+        ASSERT_EQ(0, reports.num_of_advs);
     }
 }
 
 TEST_F(TestAdvTable, test_3_overwrite_1) // NOLINT
 {
-    DECL_ADV_REPORT(adv1, 0x112233445566LLU, 1611154440, 50, data1, 0xA1U, 0xB1U);
-    DECL_ADV_REPORT(adv2, 0x122334455667LLU, 1611154441, 51, data2, 0xA2U, 0xB2U, 0xC2U);
-    DECL_ADV_REPORT(adv3, 0x112233445566LLU, 1611154443, 53, data3, 0xA3U, 0xB3U, 0xC3U, 0xD3U);
+    const uint64_t    mac            = 0x112233445566LLU;
+    const time_t      base_timestamp = 1611154440;
+    const wifi_rssi_t rssi           = 50;
+    DECL_ADV_REPORT(adv1, mac ^ 0x000000000000LLU, base_timestamp + 0, rssi + 0, data1, 0xA1U, 0xB1U);
+    DECL_ADV_REPORT(adv2, mac ^ 0x000000000001LLU, base_timestamp + 1, rssi + 1, data2, 0xA2U, 0xB2U, 0xC2);
+    DECL_ADV_REPORT(adv3, mac ^ 0x000000000000LLU, base_timestamp + 2, rssi + 2, data3, 0xA3U, 0xB3U, 0xC3U, 0xD3U);
 
     ASSERT_TRUE(adv_table_put(&adv1));
     ASSERT_TRUE(adv_table_put(&adv2));
@@ -215,18 +339,52 @@ TEST_F(TestAdvTable, test_3_overwrite_1) // NOLINT
 
     {
         adv_report_table_t reports = {};
-        adv_table_read_and_clear(&reports);
+        adv_table_read_retransmission_list_and_clear(&reports);
         ASSERT_EQ(2, reports.num_of_advs);
         CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
         CHECK_ADV_REPORT(adv2, data2, &reports.table[1]);
+    }
+
+    // Test reading of the history
+    const uint32_t time_interval_seconds = 10;
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds, time_interval_seconds);
+        ASSERT_EQ(2, reports.num_of_advs);
+        CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
+        CHECK_ADV_REPORT(adv2, data2, &reports.table[1]);
+    }
+
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 1, time_interval_seconds);
+        ASSERT_EQ(2, reports.num_of_advs);
+        CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
+        CHECK_ADV_REPORT(adv2, data2, &reports.table[1]);
+    }
+
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 2, time_interval_seconds);
+        ASSERT_EQ(1, reports.num_of_advs);
+        CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
+    }
+
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 3, time_interval_seconds);
+        ASSERT_EQ(0, reports.num_of_advs);
     }
 }
 
 TEST_F(TestAdvTable, test_3_overwrite_2) // NOLINT
 {
-    DECL_ADV_REPORT(adv1, 0x112233445566LLU, 1611154440, 50, data1, 0xA1U, 0xB1U);
-    DECL_ADV_REPORT(adv2, 0x122334455667LLU, 1611154441, 51, data2, 0xA2U, 0xB2U, 0xC2U);
-    DECL_ADV_REPORT(adv3, 0x122334455667LLU, 1611154443, 53, data3, 0xA3U, 0xB3U, 0xC3U, 0xD3U);
+    const uint64_t    mac            = 0x112233445566LLU;
+    const time_t      base_timestamp = 1611154440;
+    const wifi_rssi_t rssi           = 50;
+    DECL_ADV_REPORT(adv1, mac ^ 0x000000000000LLU, base_timestamp + 0, rssi + 0, data1, 0xA1U, 0xB1U);
+    DECL_ADV_REPORT(adv2, mac ^ 0x000000000001LLU, base_timestamp + 1, rssi + 1, data2, 0xA2U, 0xB2U, 0xC2);
+    DECL_ADV_REPORT(adv3, mac ^ 0x000000000001LLU, base_timestamp + 2, rssi + 2, data3, 0xA3U, 0xB3U, 0xC3U, 0xD3U);
 
     ASSERT_TRUE(adv_table_put(&adv1));
     ASSERT_TRUE(adv_table_put(&adv2));
@@ -234,18 +392,51 @@ TEST_F(TestAdvTable, test_3_overwrite_2) // NOLINT
 
     {
         adv_report_table_t reports = {};
-        adv_table_read_and_clear(&reports);
+        adv_table_read_retransmission_list_and_clear(&reports);
         ASSERT_EQ(2, reports.num_of_advs);
         CHECK_ADV_REPORT(adv1, data1, &reports.table[0]);
         CHECK_ADV_REPORT(adv3, data3, &reports.table[1]);
+    }
+
+    // Test reading of the history
+    const uint32_t time_interval_seconds = 10;
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds, time_interval_seconds);
+        ASSERT_EQ(2, reports.num_of_advs);
+        CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
+        CHECK_ADV_REPORT(adv1, data1, &reports.table[1]);
+    }
+
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 1, time_interval_seconds);
+        ASSERT_EQ(1, reports.num_of_advs);
+        CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
+    }
+
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 2, time_interval_seconds);
+        ASSERT_EQ(1, reports.num_of_advs);
+        CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
+    }
+
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 3, time_interval_seconds);
+        ASSERT_EQ(0, reports.num_of_advs);
     }
 }
 
 TEST_F(TestAdvTable, test_3_with_the_same_hash_overwrite_1) // NOLINT
 {
-    DECL_ADV_REPORT(adv1, 0x112233445566LLU, 1611154440, 50, data1, 0xA1U, 0xB1U);
-    DECL_ADV_REPORT(adv2, 0x112232445567LLU, 1611154441, 51, data2, 0xA2U, 0xB2U, 0xC2U);
-    DECL_ADV_REPORT(adv3, 0x112233445566LLU, 1611154441, 51, data3, 0xA3U, 0xB3U, 0xC3U, 0xD3U);
+    const uint64_t    mac            = 0x112233445566LLU;
+    const time_t      base_timestamp = 1611154440;
+    const wifi_rssi_t rssi           = 50;
+    DECL_ADV_REPORT(adv1, mac ^ 0x000000000000LLU, base_timestamp + 0, rssi + 0, data1, 0xA1U, 0xB1U);
+    DECL_ADV_REPORT(adv2, mac ^ 0x000001000001LLU, base_timestamp + 1, rssi + 1, data2, 0xA2U, 0xB2U, 0xC2);
+    DECL_ADV_REPORT(adv3, mac ^ 0x000000000000LLU, base_timestamp + 2, rssi + 2, data3, 0xA3U, 0xB3U, 0xC3U, 0xD3U);
 
     ASSERT_TRUE(adv_table_put(&adv1));
     ASSERT_TRUE(adv_table_put(&adv2));
@@ -253,18 +444,52 @@ TEST_F(TestAdvTable, test_3_with_the_same_hash_overwrite_1) // NOLINT
 
     {
         adv_report_table_t reports = {};
-        adv_table_read_and_clear(&reports);
+        adv_table_read_retransmission_list_and_clear(&reports);
         ASSERT_EQ(2, reports.num_of_advs);
         CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
         CHECK_ADV_REPORT(adv2, data2, &reports.table[1]);
+    }
+
+    // Test reading of the history
+    const uint32_t time_interval_seconds = 10;
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds, time_interval_seconds);
+        ASSERT_EQ(2, reports.num_of_advs);
+        CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
+        CHECK_ADV_REPORT(adv2, data2, &reports.table[1]);
+    }
+
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 1, time_interval_seconds);
+        ASSERT_EQ(2, reports.num_of_advs);
+        CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
+        CHECK_ADV_REPORT(adv2, data2, &reports.table[1]);
+    }
+
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 2, time_interval_seconds);
+        ASSERT_EQ(1, reports.num_of_advs);
+        CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
+    }
+
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 3, time_interval_seconds);
+        ASSERT_EQ(0, reports.num_of_advs);
     }
 }
 
 TEST_F(TestAdvTable, test_3_with_the_same_hash_overwrite_2) // NOLINT
 {
-    DECL_ADV_REPORT(adv1, 0x112233445566LLU, 1611154440, 50, data1, 0xA1U, 0xB1U);
-    DECL_ADV_REPORT(adv2, 0x112232445567LLU, 1611154441, 51, data2, 0xA2U, 0xB2U, 0xC2U);
-    DECL_ADV_REPORT(adv3, 0x112232445567LLU, 1611154443, 53, data3, 0xA3U, 0xB3U, 0xC3U, 0xD3U);
+    const uint64_t    mac            = 0x112233445566LLU;
+    const time_t      base_timestamp = 1611154440;
+    const wifi_rssi_t rssi           = 50;
+    DECL_ADV_REPORT(adv1, mac ^ 0x000000000000LLU, base_timestamp + 0, rssi + 0, data1, 0xA1U, 0xB1U);
+    DECL_ADV_REPORT(adv2, mac ^ 0x000001000001LLU, base_timestamp + 1, rssi + 1, data2, 0xA2U, 0xB2U, 0xC2);
+    DECL_ADV_REPORT(adv3, mac ^ 0x000001000001LLU, base_timestamp + 2, rssi + 2, data3, 0xA3U, 0xB3U, 0xC3U, 0xD3U);
 
     ASSERT_EQ(adv_report_calc_hash(&adv1.tag_mac), adv_report_calc_hash(&adv2.tag_mac));
 
@@ -274,9 +499,39 @@ TEST_F(TestAdvTable, test_3_with_the_same_hash_overwrite_2) // NOLINT
 
     {
         adv_report_table_t reports = {};
-        adv_table_read_and_clear(&reports);
+        adv_table_read_retransmission_list_and_clear(&reports);
         ASSERT_EQ(2, reports.num_of_advs);
         CHECK_ADV_REPORT(adv1, data1, &reports.table[0]);
         CHECK_ADV_REPORT(adv3, data3, &reports.table[1]);
+    }
+
+    // Test reading of the history
+    const uint32_t time_interval_seconds = 10;
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds, time_interval_seconds);
+        ASSERT_EQ(2, reports.num_of_advs);
+        CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
+        CHECK_ADV_REPORT(adv1, data1, &reports.table[1]);
+    }
+
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 1, time_interval_seconds);
+        ASSERT_EQ(1, reports.num_of_advs);
+        CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
+    }
+
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 2, time_interval_seconds);
+        ASSERT_EQ(1, reports.num_of_advs);
+        CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
+    }
+
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 3, time_interval_seconds);
+        ASSERT_EQ(0, reports.num_of_advs);
     }
 }
