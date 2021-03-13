@@ -21,6 +21,8 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
 
+#define HTTP_SERVER_DEFAULT_HISTORY_INTERVAL_SECONDS (60U)
+
 static const char TAG[] = "http_server";
 
 static const char g_empty_json[] = "{}";
@@ -133,7 +135,6 @@ HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_history(const char *const p_params)
 {
-#define HTTP_SERVER_DEFAULT_HISTORY_INTERVAL_SECONDS (60U)
     uint32_t time_interval_seconds = HTTP_SERVER_DEFAULT_HISTORY_INTERVAL_SECONDS;
     if (NULL != p_params)
     {
@@ -141,7 +142,7 @@ http_server_resp_history(const char *const p_params)
         const size_t      time_prefix_len = strlen(p_time_prefix);
         if (0 == strncmp(p_params, p_time_prefix, time_prefix_len))
         {
-            time_interval_seconds = strtoul(&p_params[time_prefix_len], NULL, 0);
+            time_interval_seconds = (uint32_t)strtoul(&p_params[time_prefix_len], NULL, 0);
         }
     }
     cjson_wrap_str_t json_str = cjson_wrap_str_null();

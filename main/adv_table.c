@@ -12,13 +12,13 @@
 #include "os_mutex.h"
 #include "sys/queue.h"
 
-#define ADV_TABLE_HIST_RETENTION_TIME_SECONDS (10U)
-
 #if defined(__XTENSA__)
-_Static_assert(sizeof(adv_report_t) == 12 + 32, "sizeof(adv_report_t)");
+#define ADV_REPORT_EXPECTED_SIZE (12U + 32U)
 #elif defined(__linux__) && defined(__x86_64__)
-_Static_assert(sizeof(adv_report_t) == 16 + 32, "sizeof(adv_report_t)");
+#define ADV_REPORT_EXPECTED_SIZE (16U + 32U)
 #endif
+
+_Static_assert(sizeof(adv_report_t) == ADV_REPORT_EXPECTED_SIZE, "sizeof(adv_report_t)");
 
 #define ADV_TABLE_HASH_SIZE (101)
 
@@ -49,13 +49,13 @@ adv_table_init(void)
 {
     gp_adv_reports_mutex = os_mutex_create_static(&g_adv_reports_mutex_mem);
 
-    for (uint32_t i = 0; i < sizeof(g_adv_hash_table) / sizeof(g_adv_hash_table[0]); ++i)
+    for (uint32_t i = 0; i < (sizeof(g_adv_hash_table) / sizeof(g_adv_hash_table[0])); ++i)
     {
         STAILQ_INIT(&g_adv_hash_table[i]);
     }
     STAILQ_INIT(&g_adv_reports_retransmission_list);
     TAILQ_INIT(&g_adv_reports_hist_list);
-    for (uint32_t i = 0; i < sizeof(g_arr_of_adv_reports) / sizeof(g_arr_of_adv_reports[0]); ++i)
+    for (uint32_t i = 0; i < (sizeof(g_arr_of_adv_reports) / sizeof(g_arr_of_adv_reports[0])); ++i)
     {
         adv_reports_list_elem_t *p_elem = &g_arr_of_adv_reports[i];
         memset(p_elem, 0, sizeof(*p_elem));
@@ -194,7 +194,7 @@ adv_table_read_retransmission_list_and_clear_unsafe(adv_report_table_t *const p_
         }
         STAILQ_REMOVE_HEAD(&g_adv_reports_retransmission_list, retransmission_list);
         p_elem->is_in_retransmission_list = false;
-        if (p_reports->num_of_advs < sizeof(p_reports->table) / sizeof(p_reports->table[0]))
+        if (p_reports->num_of_advs < (sizeof(p_reports->table) / sizeof(p_reports->table[0])))
         {
             p_reports->table[p_reports->num_of_advs] = p_elem->adv_report;
             p_reports->num_of_advs += 1;
@@ -221,7 +221,7 @@ adv_table_read_history_unsafe(
     adv_reports_list_elem_t *p_elem = NULL;
     TAILQ_FOREACH(p_elem, &g_adv_reports_hist_list, hist_list)
     {
-        if (p_reports->num_of_advs >= sizeof(p_reports->table) / sizeof(p_reports->table[0]))
+        if (p_reports->num_of_advs >= (sizeof(p_reports->table) / sizeof(p_reports->table[0])))
         {
             break;
         }
