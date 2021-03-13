@@ -312,7 +312,7 @@ app_main(void)
         LOG_ERR("%s failed", "wifi_init");
         return;
     }
-    if (g_gateway_config.eth.use_eth || !wifi_manager_is_sta_configured())
+    if (g_gateway_config.eth.use_eth || (!wifi_manager_is_sta_configured()))
     {
         ethernet_init();
     }
