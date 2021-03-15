@@ -299,12 +299,6 @@ ethernet_init(
         LOG_ERR_ESP(err_code, "Ethernet driver install failed");
         return false;
     }
-    err_code = esp_eth_start(g_eth_handle);
-    if (ESP_OK != err_code)
-    {
-        LOG_ERR_ESP(err_code, "Ethernet start failed");
-        return false;
-    }
     return true;
 }
 
@@ -316,25 +310,62 @@ ethernet_deinit(void)
         return;
     }
     LOG_INFO("Ethernet deinit");
+
     esp_err_t err_code = esp_eth_stop(g_eth_handle);
     if (ESP_OK != err_code)
     {
         LOG_ERR_ESP(err_code, "Ethernet stop failed");
     }
+
     err_code = esp_eth_driver_uninstall(g_eth_handle);
+
+    g_eth_handle = NULL;
     if (ESP_OK != err_code)
     {
         LOG_ERR_ESP(err_code, "Ethernet driver uninstall failed");
     }
+
     err_code = esp_event_handler_unregister(ETH_EVENT, ESP_EVENT_ANY_ID, &eth_event_handler);
     if (ESP_OK != err_code)
     {
         LOG_ERR_ESP(err_code, "Ethernet event handler unregister failed: %s", "ESP_EVENT_ANY_ID");
     }
+
     esp_event_handler_unregister(IP_EVENT, IP_EVENT_ETH_GOT_IP, &got_ip_event_handler);
     if (ESP_OK != err_code)
     {
         LOG_ERR_ESP(err_code, "Ethernet event handler unregister failed: %s", "IP_EVENT_ETH_GOT_IP");
     }
+
     tcpip_adapter_clear_default_eth_handlers();
+}
+
+void
+ethernet_start(void)
+{
+    if (NULL == g_eth_handle)
+    {
+        return;
+    }
+    LOG_INFO("Ethernet start");
+    esp_err_t err_code = esp_eth_start(g_eth_handle);
+    if (ESP_OK != err_code)
+    {
+        LOG_ERR_ESP(err_code, "Ethernet start failed");
+    }
+}
+
+void
+ethernet_stop(void)
+{
+    if (NULL == g_eth_handle)
+    {
+        return;
+    }
+    LOG_INFO("Ethernet stop");
+    esp_err_t err_code = esp_eth_stop(g_eth_handle);
+    if (ESP_OK != err_code)
+    {
+        LOG_ERR_ESP(err_code, "Ethernet stop failed");
+    }
 }

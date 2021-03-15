@@ -25,6 +25,12 @@ void
 ethernet_deinit(void);
 
 void
+ethernet_start(void);
+
+void
+ethernet_stop(void);
+
+void
 ethernet_update_ip(void);
 
 #ifdef __cplusplus
