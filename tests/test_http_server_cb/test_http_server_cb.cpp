@@ -797,25 +797,21 @@ TEST_F(TestHttpServerCb, resp_file_index_html_failed_on_open) // NOLINT
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_default) // NOLINT
 {
-    const char *            expected_resp = "index_html_content";
-    const file_descriptor_t fd            = 1;
     ASSERT_TRUE(http_server_cb_init());
-    FileInfo fileInfo = FileInfo("index.html.gz", expected_resp);
-    this->m_files.emplace_back(fileInfo);
-    this->m_fd = fd;
+    this->m_fd = -1;
 
     const http_server_resp_t resp = http_server_cb_on_get("");
-    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
+    ASSERT_EQ(HTTP_RESP_CODE_404, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
     ASSERT_FALSE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(strlen(expected_resp), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_GZIP, resp.content_encoding);
-    ASSERT_EQ(fd, resp.select_location.fatfs.fd);
+    ASSERT_EQ(0, resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(0, resp.select_location.fatfs.fd);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("GET /"));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: index.html"));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File index.html.gz was opened successfully, fd=1");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: ruuvi.html"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "Can't find file: ruuvi.html");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 

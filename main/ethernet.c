@@ -39,7 +39,10 @@ const char *dns_fallback_server = "1.1.1.1";
 
 static const char *TAG = "ETH";
 
-static esp_eth_handle_t g_eth_handle;
+static esp_eth_handle_t            g_eth_handle;
+static ethernet_cb_link_up_t       g_ethernet_link_up_cb;
+static ethernet_cb_link_down_t     g_ethernet_link_down_cb;
+static ethernet_cb_connection_ok_t g_ethernet_connection_ok_cb;
 
 static void
 eth_on_event_connected(esp_eth_handle_t eth_handle)
@@ -49,7 +52,7 @@ eth_on_event_connected(esp_eth_handle_t eth_handle)
     LOG_INFO("Ethernet Link Up");
     const mac_address_str_t mac_str = mac_address_to_str(&mac_bin);
     LOG_INFO("Ethernet HW Addr %s", mac_str.str_buf);
-    ethernet_link_up_cb();
+    g_ethernet_link_up_cb();
 }
 
 /** Event handler for Ethernet events */
@@ -69,7 +72,7 @@ eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void
 
         case ETHERNET_EVENT_DISCONNECTED:
             LOG_INFO("Ethernet Link Down");
-            ethernet_link_down_cb();
+            g_ethernet_link_down_cb();
             break;
 
         case ETHERNET_EVENT_START:
@@ -96,11 +99,11 @@ got_ip_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, v
     const tcpip_adapter_ip_info_t *p_ip_info = &p_event->ip_info;
     LOG_INFO("Ethernet Got IP Address");
     LOG_INFO("~~~~~~~~~~~");
-    LOG_INFO("ETHIP:" IPSTR, IP2STR(&p_ip_info->ip));
-    LOG_INFO("ETHMASK:" IPSTR, IP2STR(&p_ip_info->netmask));
-    LOG_INFO("ETHGW:" IPSTR, IP2STR(&p_ip_info->gw));
+    LOG_INFO("ETH:IP:" IPSTR, IP2STR(&p_ip_info->ip));
+    LOG_INFO("ETH:MASK:" IPSTR, IP2STR(&p_ip_info->netmask));
+    LOG_INFO("ETH:GW:" IPSTR, IP2STR(&p_ip_info->gw));
     LOG_INFO("~~~~~~~~~~~");
-    ethernet_connection_ok_cb();
+    g_ethernet_connection_ok_cb(p_ip_info);
 }
 
 static bool
@@ -246,9 +249,15 @@ ethernet_update_ip(void)
 }
 
 bool
-ethernet_init(void)
+ethernet_init(
+    ethernet_cb_link_up_t       ethernet_link_up_cb,
+    ethernet_cb_link_down_t     ethernet_link_down_cb,
+    ethernet_cb_connection_ok_t ethernet_connection_ok_cb)
 {
     LOG_INFO("Ethernet init");
+    g_ethernet_link_up_cb       = ethernet_link_up_cb;
+    g_ethernet_link_down_cb     = ethernet_link_down_cb;
+    g_ethernet_connection_ok_cb = ethernet_connection_ok_cb;
     gpio_set_direction(LAN_CLOCK_ENABLE, GPIO_MODE_OUTPUT);
     gpio_set_level(LAN_CLOCK_ENABLE, 1);
     ethernet_update_ip();
@@ -290,12 +299,6 @@ ethernet_init(void)
         LOG_ERR_ESP(err_code, "Ethernet driver install failed");
         return false;
     }
-    err_code = esp_eth_start(g_eth_handle);
-    if (ESP_OK != err_code)
-    {
-        LOG_ERR_ESP(err_code, "Ethernet start failed");
-        return false;
-    }
     return true;
 }
 
@@ -307,25 +310,62 @@ ethernet_deinit(void)
         return;
     }
     LOG_INFO("Ethernet deinit");
+
     esp_err_t err_code = esp_eth_stop(g_eth_handle);
     if (ESP_OK != err_code)
     {
         LOG_ERR_ESP(err_code, "Ethernet stop failed");
     }
+
     err_code = esp_eth_driver_uninstall(g_eth_handle);
+
+    g_eth_handle = NULL;
     if (ESP_OK != err_code)
     {
         LOG_ERR_ESP(err_code, "Ethernet driver uninstall failed");
     }
+
     err_code = esp_event_handler_unregister(ETH_EVENT, ESP_EVENT_ANY_ID, &eth_event_handler);
     if (ESP_OK != err_code)
     {
         LOG_ERR_ESP(err_code, "Ethernet event handler unregister failed: %s", "ESP_EVENT_ANY_ID");
     }
+
     esp_event_handler_unregister(IP_EVENT, IP_EVENT_ETH_GOT_IP, &got_ip_event_handler);
     if (ESP_OK != err_code)
     {
         LOG_ERR_ESP(err_code, "Ethernet event handler unregister failed: %s", "IP_EVENT_ETH_GOT_IP");
     }
+
     tcpip_adapter_clear_default_eth_handlers();
+}
+
+void
+ethernet_start(void)
+{
+    if (NULL == g_eth_handle)
+    {
+        return;
+    }
+    LOG_INFO("Ethernet start");
+    esp_err_t err_code = esp_eth_start(g_eth_handle);
+    if (ESP_OK != err_code)
+    {
+        LOG_ERR_ESP(err_code, "Ethernet start failed");
+    }
+}
+
+void
+ethernet_stop(void)
+{
+    if (NULL == g_eth_handle)
+    {
+        return;
+    }
+    LOG_INFO("Ethernet stop");
+    esp_err_t err_code = esp_eth_stop(g_eth_handle);
+    if (ESP_OK != err_code)
+    {
+        LOG_ERR_ESP(err_code, "Ethernet stop failed");
+    }
 }

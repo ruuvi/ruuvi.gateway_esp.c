@@ -295,7 +295,7 @@ http_server_cb_on_get(const char *const p_path)
     {
         return http_server_resp_history(p_params);
     }
-    const char *p_file_path = ('\0' == p_path[0]) ? "index.html" : p_path;
+    const char *p_file_path = ('\0' == p_path[0]) ? "ruuvi.html" : p_path;
     return http_server_resp_file(p_file_path);
 }
 

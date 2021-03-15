@@ -108,43 +108,28 @@ get_gw_mac_sta(void)
     return mac_address_to_str(&mac);
 }
 
-void
-wifi_connection_ok_cb(void *p_param)
-{
-    (void)p_param;
-    LOG_INFO("Wifi connected");
-    xEventGroupSetBits(status_bits, WIFI_CONNECTED_BIT);
-    ethernet_deinit();
-    leds_stop_blink();
-    leds_on();
-    start_services();
-    event_mgr_notify(EVENT_MGR_EV_WIFI_CONNECTED);
-}
-
-void
+static void
 ethernet_link_up_cb(void)
 {
     LOG_INFO("Ethernet connection established");
 }
 
-void
+static void
 ethernet_link_down_cb(void)
 {
     LOG_INFO("Ethernet lost connection");
+    wifi_manager_update_network_connection_info(UPDATE_LOST_CONNECTION, NULL, NULL);
     xEventGroupClearBits(status_bits, ETH_CONNECTED_BIT);
     leds_stop_blink();
     leds_start_blink(LEDS_SLOW_BLINK);
     event_mgr_notify(EVENT_MGR_EV_ETH_DISCONNECTED);
 }
 
-void
-ethernet_connection_ok_cb(void)
+static void
+ethernet_connection_ok_cb(const tcpip_adapter_ip_info_t *p_ip_info)
 {
     LOG_INFO("Ethernet connected");
-    if (wifi_manager_is_working())
-    {
-        wifi_manager_stop();
-    }
+    wifi_manager_update_network_connection_info(UPDATE_CONNECTION_OK, NULL, p_ip_info);
     if (!g_gateway_config.eth.use_eth)
     {
         LOG_INFO("The Ethernet cable was connected, but the Ethernet was not configured");
@@ -154,12 +139,67 @@ ethernet_connection_ok_cb(void)
         g_gateway_config.eth.eth_dhcp = true;
         gw_cfg_print_to_log(&g_gateway_config);
         settings_save_to_flash(&g_gateway_config);
+        if (wifi_manager_is_ap_active())
+        {
+            LOG_INFO("Stop WiFi AP");
+            wifi_manager_stop_ap();
+        }
     }
     leds_stop_blink();
     leds_on();
     xEventGroupSetBits(status_bits, ETH_CONNECTED_BIT);
     start_services();
     event_mgr_notify(EVENT_MGR_EV_ETH_CONNECTED);
+}
+
+void
+wifi_connection_ok_cb(void *p_param)
+{
+    (void)p_param;
+    LOG_INFO("Wifi connected");
+    xEventGroupSetBits(status_bits, WIFI_CONNECTED_BIT);
+    leds_stop_blink();
+    leds_on();
+    start_services();
+    event_mgr_notify(EVENT_MGR_EV_WIFI_CONNECTED);
+}
+
+void
+wifi_connection_cb_on_connect_eth_cmd(void)
+{
+    LOG_INFO("callback: on_connect_eth_cmd");
+    ethernet_start();
+}
+
+void
+wifi_connection_cb_on_disconnect_eth_cmd(void)
+{
+    LOG_INFO("callback: on_disconnect_eth_cmd");
+    wifi_manager_update_network_connection_info(UPDATE_USER_DISCONNECT, NULL, NULL);
+    ethernet_stop();
+}
+
+void
+wifi_connection_cb_on_disconnect_sta_cmd(void)
+{
+    LOG_INFO("callback: on_disconnect_sta_cmd");
+}
+
+void
+wifi_connection_cb_on_ap_sta_connected(void)
+{
+    LOG_INFO("callback: on_ap_sta_connected");
+    ethernet_stop();
+}
+
+void
+wifi_connection_cb_on_ap_sta_disconnected(void)
+{
+    LOG_INFO("callback: on_ap_sta_disconnected");
+    if (!wifi_manager_is_connected_to_wifi_or_ethernet())
+    {
+        ethernet_start();
+    }
 }
 
 void
@@ -249,7 +289,12 @@ wifi_init(const bool flag_use_eth)
         &wiFiAntConfig,
         &http_server_cb_on_get,
         &http_server_cb_on_post,
-        &http_server_cb_on_delete);
+        &http_server_cb_on_delete,
+        &wifi_connection_cb_on_connect_eth_cmd,
+        &wifi_connection_cb_on_disconnect_eth_cmd,
+        &wifi_connection_cb_on_disconnect_sta_cmd,
+        &wifi_connection_cb_on_ap_sta_connected,
+        &wifi_connection_cb_on_ap_sta_disconnected);
     wifi_manager_set_callback(EVENT_STA_GOT_IP, &wifi_connection_ok_cb);
     wifi_manager_set_callback(EVENT_STA_DISCONNECTED, &wifi_disconnect_cb);
     return true;
@@ -312,9 +357,10 @@ app_main(void)
         LOG_ERR("%s failed", "wifi_init");
         return;
     }
+    ethernet_init(&ethernet_link_up_cb, &ethernet_link_down_cb, &ethernet_connection_ok_cb);
     if (g_gateway_config.eth.use_eth || (!wifi_manager_is_sta_configured()))
     {
-        ethernet_init();
+        ethernet_start();
     }
     else
     {

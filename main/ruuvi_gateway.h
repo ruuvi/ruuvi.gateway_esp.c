@@ -43,15 +43,6 @@ void
 ruuvi_send_nrf_settings(const ruuvi_gateway_config_t *p_config);
 
 void
-ethernet_connection_ok_cb(void);
-
-void
-ethernet_link_up_cb(void);
-
-void
-ethernet_link_down_cb(void);
-
-void
 start_services(void);
 
 #ifdef __cplusplus
