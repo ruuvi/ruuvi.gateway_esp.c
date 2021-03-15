@@ -39,10 +39,10 @@ const char *dns_fallback_server = "1.1.1.1";
 
 static const char *TAG = "ETH";
 
-static esp_eth_handle_t g_eth_handle;
-static void (*g_ethernet_link_up_cb)(void);
-static void (*g_ethernet_link_down_cb)(void);
-static void (*g_ethernet_connection_ok_cb)(const tcpip_adapter_ip_info_t *p_ip_info);
+static esp_eth_handle_t            g_eth_handle;
+static ethernet_cb_link_up_t       g_ethernet_link_up_cb;
+static ethernet_cb_link_down_t     g_ethernet_link_down_cb;
+static ethernet_cb_connection_ok_t g_ethernet_connection_ok_cb;
 
 static void
 eth_on_event_connected(esp_eth_handle_t eth_handle)
@@ -250,9 +250,9 @@ ethernet_update_ip(void)
 
 bool
 ethernet_init(
-    void (*ethernet_link_up_cb)(void),
-    void (*ethernet_link_down_cb)(void),
-    void (*ethernet_connection_ok_cb)(const tcpip_adapter_ip_info_t *p_ip_info))
+    ethernet_cb_link_up_t       ethernet_link_up_cb,
+    ethernet_cb_link_down_t     ethernet_link_down_cb,
+    ethernet_cb_connection_ok_t ethernet_connection_ok_cb)
 {
     LOG_INFO("Ethernet init");
     g_ethernet_link_up_cb       = ethernet_link_up_cb;

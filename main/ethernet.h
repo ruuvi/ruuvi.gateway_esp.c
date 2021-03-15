@@ -15,11 +15,15 @@
 extern "C" {
 #endif
 
+typedef void (*ethernet_cb_link_up_t)(void);
+typedef void (*ethernet_cb_link_down_t)(void);
+typedef void (*ethernet_cb_connection_ok_t)(const tcpip_adapter_ip_info_t *p_ip_info);
+
 bool
 ethernet_init(
-    void (*ethernet_link_up_cb)(void),
-    void (*ethernet_link_down_cb)(void),
-    void (*ethernet_connection_ok_cb)(const tcpip_adapter_ip_info_t *p_ip_info));
+    ethernet_cb_link_up_t       ethernet_link_up_cb,
+    ethernet_cb_link_down_t     ethernet_link_down_cb,
+    ethernet_cb_connection_ok_t ethernet_connection_ok_cb);
 
 void
 ethernet_deinit(void);
