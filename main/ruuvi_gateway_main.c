@@ -358,7 +358,7 @@ app_main(void)
         return;
     }
     ethernet_init(&ethernet_link_up_cb, &ethernet_link_down_cb, &ethernet_connection_ok_cb);
-    if (g_gateway_config.eth.use_eth || !wifi_manager_is_sta_configured())
+    if (g_gateway_config.eth.use_eth || (!wifi_manager_is_sta_configured()))
     {
         ethernet_start();
     }

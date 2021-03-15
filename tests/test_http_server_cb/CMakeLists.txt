@@ -5,10 +5,17 @@ set(ProjectId ruuvi_gateway_esp-test-http_server_cb)
 
 add_executable(${ProjectId}
         test_http_server_cb.cpp
+        ${RUUVI_GW_SRC}/adv_table.h
         ${RUUVI_GW_SRC}/gw_cfg.c
         ${RUUVI_GW_SRC}/gw_cfg.h
         ${RUUVI_GW_SRC}/http_server_cb.c
         ${RUUVI_GW_SRC}/http_server_cb.h
+        ${RUUVI_GW_SRC}/http_json.c
+        ${RUUVI_GW_SRC}/http_json.h
+        ${RUUVI_GW_SRC}/mac_addr.c
+        ${RUUVI_GW_SRC}/mac_addr.h
+        ${RUUVI_GW_SRC}/bin2hex.c
+        ${RUUVI_GW_SRC}/bin2hex.h
         ${RUUVI_GW_SRC}/json_ruuvi.c
         ${RUUVI_GW_SRC}/json_ruuvi.h
         ${RUUVI_GW_SRC}/cjson_wrap.c

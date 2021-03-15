@@ -219,7 +219,7 @@ adv_post_task(void)
     while (1)
     {
         // for thread safety copy the advertisements to a separate buffer for posting
-        adv_table_read_and_clear(&g_adv_reports_buf);
+        adv_table_read_retransmission_list_and_clear(&g_adv_reports_buf);
 
         adv_post_log(&g_adv_reports_buf);
 

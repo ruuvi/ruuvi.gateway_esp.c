@@ -147,8 +147,8 @@ TEST_F(TestMqttJson, test_1) // NOLINT
     const char *                 p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .rssi      = -70,
         .data_len  = data.size(),
     };
@@ -177,8 +177,8 @@ TEST_F(TestMqttJson, test_malloc_failed_1_of_23) // NOLINT
     const char *                 p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .rssi      = -70,
         .data_len  = data.size(),
     };
@@ -197,8 +197,8 @@ TEST_F(TestMqttJson, test_malloc_failed_2_of_23) // NOLINT
     const char *                 p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .rssi      = -70,
         .data_len  = data.size(),
     };
@@ -217,8 +217,8 @@ TEST_F(TestMqttJson, test_malloc_failed_3_of_23) // NOLINT
     const char *                 p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .rssi      = -70,
         .data_len  = data.size(),
     };
@@ -237,8 +237,8 @@ TEST_F(TestMqttJson, test_malloc_failed_4_of_23) // NOLINT
     const char *                 p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .rssi      = -70,
         .data_len  = data.size(),
     };
@@ -257,8 +257,8 @@ TEST_F(TestMqttJson, test_malloc_failed_5_of_23) // NOLINT
     const char *                 p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .rssi      = -70,
         .data_len  = data.size(),
     };
@@ -277,8 +277,8 @@ TEST_F(TestMqttJson, test_malloc_failed_6_of_23) // NOLINT
     const char *                 p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .rssi      = -70,
         .data_len  = data.size(),
     };
@@ -297,8 +297,8 @@ TEST_F(TestMqttJson, test_malloc_failed_7_of_23) // NOLINT
     const char *                 p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .rssi      = -70,
         .data_len  = data.size(),
     };
@@ -317,8 +317,8 @@ TEST_F(TestMqttJson, test_malloc_failed_8_of_23) // NOLINT
     const char *                 p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .rssi      = -70,
         .data_len  = data.size(),
     };
@@ -337,8 +337,8 @@ TEST_F(TestMqttJson, test_malloc_failed_9_of_23) // NOLINT
     const char *                 p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .rssi      = -70,
         .data_len  = data.size(),
     };
@@ -357,8 +357,8 @@ TEST_F(TestMqttJson, test_malloc_failed_10_of_23) // NOLINT
     const char *                 p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .rssi      = -70,
         .data_len  = data.size(),
     };
@@ -377,8 +377,8 @@ TEST_F(TestMqttJson, test_malloc_failed_11_of_23) // NOLINT
     const char *                 p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .rssi      = -70,
         .data_len  = data.size(),
     };
@@ -397,8 +397,8 @@ TEST_F(TestMqttJson, test_malloc_failed_12_of_23) // NOLINT
     const char *                 p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .rssi      = -70,
         .data_len  = data.size(),
     };
@@ -417,8 +417,8 @@ TEST_F(TestMqttJson, test_malloc_failed_13_of_23) // NOLINT
     const char *                 p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .rssi      = -70,
         .data_len  = data.size(),
     };
@@ -437,8 +437,8 @@ TEST_F(TestMqttJson, test_malloc_failed_14_of_23) // NOLINT
     const char *                 p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .rssi      = -70,
         .data_len  = data.size(),
     };
@@ -457,8 +457,8 @@ TEST_F(TestMqttJson, test_malloc_failed_15_of_23) // NOLINT
     const char *                 p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .rssi      = -70,
         .data_len  = data.size(),
     };
@@ -477,8 +477,8 @@ TEST_F(TestMqttJson, test_malloc_failed_16_of_23) // NOLINT
     const char *                 p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .rssi      = -70,
         .data_len  = data.size(),
     };
@@ -497,8 +497,8 @@ TEST_F(TestMqttJson, test_malloc_failed_17_of_23) // NOLINT
     const char *                 p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .rssi      = -70,
         .data_len  = data.size(),
     };
@@ -517,8 +517,8 @@ TEST_F(TestMqttJson, test_malloc_failed_18_of_23) // NOLINT
     const char *                 p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .rssi      = -70,
         .data_len  = data.size(),
     };
@@ -537,8 +537,8 @@ TEST_F(TestMqttJson, test_malloc_failed_19_of_23) // NOLINT
     const char *                 p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .rssi      = -70,
         .data_len  = data.size(),
     };
@@ -557,8 +557,8 @@ TEST_F(TestMqttJson, test_malloc_failed_20_of_23) // NOLINT
     const char *                 p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .rssi      = -70,
         .data_len  = data.size(),
     };
@@ -577,8 +577,8 @@ TEST_F(TestMqttJson, test_malloc_failed_21_of_23) // NOLINT
     const char *                 p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .rssi      = -70,
         .data_len  = data.size(),
     };
@@ -597,8 +597,8 @@ TEST_F(TestMqttJson, test_malloc_failed_22_of_23) // NOLINT
     const char *                 p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .rssi      = -70,
         .data_len  = data.size(),
     };
@@ -617,8 +617,8 @@ TEST_F(TestMqttJson, test_malloc_failed_23_of_23) // NOLINT
     const char *                 p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
         .rssi      = -70,
         .data_len  = data.size(),
     };

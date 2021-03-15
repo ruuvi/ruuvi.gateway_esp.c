@@ -16,6 +16,7 @@
 #include "json_ruuvi.h"
 #include "flashfatfs.h"
 #include "metrics.h"
+#include "adv_table.h"
 
 using namespace std;
 
@@ -205,6 +206,39 @@ metrics_generate(void)
         strcpy(p_buf, p_metrics_str);
     }
     return p_buf;
+}
+
+time_t
+http_server_get_cur_time(void)
+{
+    return 1615660220;
+}
+
+void
+adv_table_history_read(adv_report_table_t *const p_reports, const time_t cur_time, const uint32_t time_interval_seconds)
+{
+    (void)time_interval_seconds;
+    p_reports->num_of_advs = 2;
+    {
+        adv_report_t *const p_adv   = &p_reports->table[0];
+        p_adv->timestamp            = cur_time - 1;
+        const mac_address_bin_t mac = { 0xAAU, 0xBBU, 0xCCU, 0x11U, 0x22U, 0x01U };
+        p_adv->tag_mac              = mac;
+        p_adv->rssi                 = 50;
+        const uint8_t data_buf[]    = { 0x22U, 0x33U };
+        p_adv->data_len             = sizeof(data_buf);
+        memcpy(p_adv->data_buf, data_buf, sizeof(data_buf));
+    }
+    {
+        adv_report_t *const p_adv   = &p_reports->table[1];
+        p_adv->timestamp            = cur_time - 11;
+        const mac_address_bin_t mac = { 0xAAU, 0xBBU, 0xCCU, 0x11U, 0x22U, 0x02U };
+        p_adv->tag_mac              = mac;
+        p_adv->rssi                 = 51;
+        const uint8_t data_buf[]    = { 0x22U, 0x33U, 0x44U };
+        p_adv->data_len             = sizeof(data_buf);
+        memcpy(p_adv->data_buf, data_buf, sizeof(data_buf));
+    }
 }
 
 void
@@ -909,6 +943,80 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics) // NOLINT
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("GET /metrics"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("metrics: ") + string(expected_resp));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_history) // NOLINT
+{
+    const char *expected_resp
+        = "{\n"
+          "\t\"data\":\t{\n"
+          "\t\t\"coordinates\":\t\"\",\n"
+          "\t\t\"timestamp\":\t\"1615660220\",\n"
+          "\t\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
+          "\t\t\"tags\":\t{\n\t\t\t\"AA:BB:CC:11:22:01\":\t{\n"
+          "\t\t\t\t\"rssi\":\t50,\n"
+          "\t\t\t\t\"timestamp\":\t\"1615660219\",\n"
+          "\t\t\t\t\"data\":\t\"2233\"\n"
+          "\t\t\t},\n"
+          "\t\t\t\"AA:BB:CC:11:22:02\":\t{\n"
+          "\t\t\t\t\"rssi\":\t51,\n"
+          "\t\t\t\t\"timestamp\":\t\"1615660209\",\n"
+          "\t\t\t\t\"data\":\t\"223344\"\n"
+          "\t\t\t}\n"
+          "\t\t}\n"
+          "\t}\n"
+          "}";
+    const http_server_resp_t resp = http_server_cb_on_get("history");
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(strlen(expected_resp), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("GET /history"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("History on 60 seconds interval: ") + string(expected_resp));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_history_with_time_interval_20) // NOLINT
+{
+    const char *expected_resp
+        = "{\n"
+          "\t\"data\":\t{\n"
+          "\t\t\"coordinates\":\t\"\",\n"
+          "\t\t\"timestamp\":\t\"1615660220\",\n"
+          "\t\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
+          "\t\t\"tags\":\t{\n\t\t\t\"AA:BB:CC:11:22:01\":\t{\n"
+          "\t\t\t\t\"rssi\":\t50,\n"
+          "\t\t\t\t\"timestamp\":\t\"1615660219\",\n"
+          "\t\t\t\t\"data\":\t\"2233\"\n"
+          "\t\t\t},\n"
+          "\t\t\t\"AA:BB:CC:11:22:02\":\t{\n"
+          "\t\t\t\t\"rssi\":\t51,\n"
+          "\t\t\t\t\"timestamp\":\t\"1615660209\",\n"
+          "\t\t\t\t\"data\":\t\"223344\"\n"
+          "\t\t\t}\n"
+          "\t\t}\n"
+          "\t}\n"
+          "}";
+    const http_server_resp_t resp = http_server_cb_on_get("history&time=20");
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(strlen(expected_resp), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("GET /history&time=20"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("History on 20 seconds interval: ") + string(expected_resp));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 

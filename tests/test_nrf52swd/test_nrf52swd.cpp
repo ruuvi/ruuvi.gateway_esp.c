@@ -78,8 +78,11 @@ protected:
         g_pTestClass           = this;
         this->m_vTaskDelay_cnt = 0;
         {
-            const gpio_config_t gpio_cfg  = { 0 };
-            this->m_gpio_config           = gpio_cfg;
+            const gpio_config_t gpio_cfg = { 0 };
+            for (uint32_t i = 0; i < sizeof(this->m_gpio_config) / sizeof(this->m_gpio_config[0]); ++i)
+            {
+                this->m_gpio_config[i] = gpio_cfg;
+            }
             this->m_gpio_config_result    = ESP_OK;
             this->m_gpio_nrf52_nrst_level = ~0U;
             this->m_gpio_set_level_result = ESP_OK;
@@ -156,7 +159,7 @@ public:
 
     uint32_t m_vTaskDelay_cnt;
 
-    gpio_config_t m_gpio_config;
+    gpio_config_t m_gpio_config[64];
     esp_err_t     m_gpio_config_result;
     uint32_t      m_gpio_nrf52_nrst_level;
     esp_err_t     m_gpio_set_level_result;
@@ -271,14 +274,24 @@ vTaskDelay(const TickType_t xTicksToDelay)
 esp_err_t
 gpio_config(const gpio_config_t *pGPIOConfig)
 {
-    g_pTestClass->m_gpio_config = *pGPIOConfig;
+    for (uint32_t bit_idx = 0; bit_idx < 64; ++bit_idx)
+    {
+        if (0 != (pGPIOConfig->pin_bit_mask & (1LLU << bit_idx)))
+        {
+            g_pTestClass->m_gpio_config[bit_idx] = *pGPIOConfig;
+        }
+    }
     return g_pTestClass->m_gpio_config_result;
 }
 
 esp_err_t
 gpio_set_level(gpio_num_t gpio_num, uint32_t level)
 {
-    assert(0 != ((1ULL << (uint32_t)gpio_num) & g_pTestClass->m_gpio_config.pin_bit_mask));
+    if (0 == ((1ULL << (uint32_t)gpio_num) & g_pTestClass->m_gpio_config[gpio_num].pin_bit_mask))
+    {
+        assert(0);
+    }
+    assert(0 != ((1ULL << (uint32_t)gpio_num) & g_pTestClass->m_gpio_config[gpio_num].pin_bit_mask));
     g_pTestClass->m_gpio_nrf52_nrst_level = level;
     return g_pTestClass->m_gpio_set_level_result;
 }
@@ -445,11 +458,11 @@ libswd_memap_write_int_32(libswd_ctx_t *libswdctx, libswd_operation_t operation,
 TEST_F(TestNRF52Swd, init_gpio_cfg_nreset_ok) // NOLINT
 {
     ASSERT_TRUE(nrf52swd_init_gpio_cfg_nreset());
-    ASSERT_EQ(1ULL << (unsigned)GPIO_NUM_17, this->m_gpio_config.pin_bit_mask);
-    ASSERT_EQ(GPIO_MODE_OUTPUT, this->m_gpio_config.mode);
-    ASSERT_EQ(1, this->m_gpio_config.pull_up_en);
-    ASSERT_EQ(0, this->m_gpio_config.pull_down_en);
-    ASSERT_EQ(GPIO_INTR_DISABLE, this->m_gpio_config.intr_type);
+    ASSERT_EQ(1ULL << (unsigned)GPIO_NUM_17, this->m_gpio_config[GPIO_NUM_17].pin_bit_mask);
+    ASSERT_EQ(GPIO_MODE_OUTPUT, this->m_gpio_config[GPIO_NUM_17].mode);
+    ASSERT_EQ(1, this->m_gpio_config[GPIO_NUM_17].pull_up_en);
+    ASSERT_EQ(0, this->m_gpio_config[GPIO_NUM_17].pull_down_en);
+    ASSERT_EQ(GPIO_INTR_DISABLE, this->m_gpio_config[GPIO_NUM_17].intr_type);
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
