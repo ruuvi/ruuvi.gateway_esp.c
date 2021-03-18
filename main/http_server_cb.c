@@ -118,7 +118,12 @@ http_server_read_history(cjson_wrap_str_t *p_json_str, const time_t cur_time, co
     }
     adv_table_history_read(p_reports, cur_time, time_interval_seconds);
 
-    const bool res = http_create_json_str(p_reports, cur_time, &gw_mac_sta, g_gateway_config.coordinates, p_json_str);
+    const bool res = http_create_json_str(
+        p_reports,
+        cur_time,
+        &g_gw_mac_sta_str,
+        g_gateway_config.coordinates,
+        p_json_str);
     os_free(p_reports);
     return res;
 }

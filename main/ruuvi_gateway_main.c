@@ -94,18 +94,28 @@ monitoring_task(void)
     }
 }
 
-mac_address_str_t
-get_gw_mac_sta(void)
+static void
+get_gw_mac_sta(
+    mac_address_bin_t *const p_gw_mac_sta,
+    mac_address_str_t *const p_gw_mac_sta_str,
+    wifi_ssid_t *const       p_gw_wifi_ssid)
 {
-    mac_address_bin_t mac = { 0 };
-    const esp_err_t   err = esp_read_mac(mac.mac, ESP_MAC_WIFI_STA);
+    const esp_err_t err = esp_read_mac(p_gw_mac_sta->mac, ESP_MAC_WIFI_STA);
     if (err != ESP_OK)
     {
         LOG_ERR_ESP(err, "Can't get mac address");
-        mac_address_str_t mac_str = { 0 };
-        return mac_str;
+        p_gw_mac_sta_str->str_buf[0] = '\0';
+        sniprintf(p_gw_wifi_ssid->ssid_buf, sizeof(p_gw_wifi_ssid->ssid_buf), "%sXXXX", DEFAULT_AP_SSID);
+        return;
     }
-    return mac_address_to_str(&mac);
+    *p_gw_mac_sta_str = mac_address_to_str(p_gw_mac_sta);
+    sniprintf(
+        p_gw_wifi_ssid->ssid_buf,
+        sizeof(p_gw_wifi_ssid->ssid_buf),
+        "%s%02X%02X",
+        DEFAULT_AP_SSID,
+        p_gw_mac_sta->mac[4],
+        p_gw_mac_sta->mac[5]);
 }
 
 static void
@@ -168,7 +178,7 @@ void
 wifi_connection_cb_on_connect_eth_cmd(void)
 {
     LOG_INFO("callback: on_connect_eth_cmd");
-    ethernet_start();
+    ethernet_start(g_gw_wifi_ssid.ssid_buf);
 }
 
 void
@@ -198,7 +208,7 @@ wifi_connection_cb_on_ap_sta_disconnected(void)
     LOG_INFO("callback: on_ap_sta_disconnected");
     if (!wifi_manager_is_connected_to_wifi_or_ethernet())
     {
-        ethernet_start();
+        ethernet_start(g_gw_wifi_ssid.ssid_buf);
     }
 }
 
@@ -248,7 +258,7 @@ reset_task(void)
 }
 
 static bool
-wifi_init(const bool flag_use_eth)
+wifi_init(const bool flag_use_eth, const wifi_ssid_t *const p_gw_wifi_ssid)
 {
     static const WiFiAntConfig_t wiFiAntConfig = {
         .wifi_ant_gpio_config = {
@@ -286,6 +296,7 @@ wifi_init(const bool flag_use_eth)
     }
     wifi_manager_start(
         !flag_use_eth,
+        p_gw_wifi_ssid,
         &wiFiAntConfig,
         &http_server_cb_on_get,
         &http_server_cb_on_post,
@@ -322,10 +333,14 @@ app_main(void)
     gpio_init();
     leds_init();
 
+    get_gw_mac_sta(&g_gw_mac_sta, &g_gw_mac_sta_str, &g_gw_wifi_ssid);
+    LOG_INFO("Mac address: %s", g_gw_mac_sta_str.str_buf);
+    LOG_INFO("WiFi SSID / Hostname: %s", g_gw_wifi_ssid.ssid_buf);
+
     if (0 == gpio_get_level(RB_BUTTON_RESET_PIN))
     {
         LOG_INFO("Reset button is pressed during boot - clear settings in flash");
-        if (!wifi_manager_clear_sta_config())
+        if (!wifi_manager_clear_sta_config(&g_gw_wifi_ssid))
         {
             LOG_ERR("%s failed", "wifi_manager_clear_sta_config");
         }
@@ -349,10 +364,8 @@ app_main(void)
     time_task_init();
     leds_start_blink(LEDS_FAST_BLINK);
     ruuvi_send_nrf_settings(&g_gateway_config);
-    gw_mac_sta = get_gw_mac_sta();
-    LOG_INFO("Mac address: %s", gw_mac_sta.str_buf);
 
-    if (!wifi_init(g_gateway_config.eth.use_eth))
+    if (!wifi_init(g_gateway_config.eth.use_eth, &g_gw_wifi_ssid))
     {
         LOG_ERR("%s failed", "wifi_init");
         return;
@@ -360,7 +373,7 @@ app_main(void)
     ethernet_init(&ethernet_link_up_cb, &ethernet_link_down_cb, &ethernet_connection_ok_cb);
     if (g_gateway_config.eth.use_eth || (!wifi_manager_is_sta_configured()))
     {
-        ethernet_start();
+        ethernet_start(g_gw_wifi_ssid.ssid_buf);
     }
     else
     {

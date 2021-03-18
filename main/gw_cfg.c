@@ -57,7 +57,11 @@
 
 ruuvi_gateway_config_t       g_gateway_config         = RUUVI_GATEWAY_DEFAULT_CONFIGURATION;
 const ruuvi_gateway_config_t g_gateway_config_default = RUUVI_GATEWAY_DEFAULT_CONFIGURATION;
-mac_address_str_t            gw_mac_sta               = { 0 };
+mac_address_bin_t            g_gw_mac_sta             = { 0 };
+mac_address_str_t            g_gw_mac_sta_str         = { 0 };
+wifi_ssid_t                  g_gw_wifi_ssid           = {
+    .ssid_buf = DEFAULT_AP_SSID, // RuuviGatewayXXXX where XXXX - last 4 digits of the MAC-address
+};
 
 static const char TAG[] = "gw_cfg";
 
@@ -291,7 +295,7 @@ bool
 gw_cfg_generate_json_str(cjson_wrap_str_t *p_json_str)
 {
     const ruuvi_gateway_config_t *p_cfg     = &g_gateway_config;
-    const mac_address_str_t *     p_mac_sta = &gw_mac_sta;
+    const mac_address_str_t *     p_mac_sta = &g_gw_mac_sta_str;
 
     p_json_str->p_str = NULL;
 
