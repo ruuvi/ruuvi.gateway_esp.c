@@ -74,6 +74,6 @@ You can flash them with esptool.py
 pip install esptool
 esptool.py -p (PORT) -b 460800 --before default_reset --after hard_reset write_flash --flash_mode dio --flash_size detect --flash_freq 40m 0x1000 bootloader.bin 0x8000 partition-table.bin 0x10000 ruuvi_gateway_esp.bin 0x300000 fatfs_gwui.bin 0x360000 fatfs_nrf52.bin
 ```
-or using Windows GUI tool with these settings:
-![alt text](docs/guiflasher.png "Bootloader 0x1000, partition table 0x8000, ruuvi_gateway_esp 0x10000, fatfs_nrf52 0x360000")
 
+or using the Windows GUI tool `Flash Download Tools` ([download](https://www.espressif.com/en/support/download/other-tools)) with these settings:
+![alt text](docs/guiflasher.png "Bootloader 0x1000, partition table 0x8000, ruuvi_gateway_esp 0x10000, fatfs_nrf52 0x360000")
