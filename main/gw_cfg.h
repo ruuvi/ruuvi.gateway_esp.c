@@ -12,6 +12,7 @@
 #include <stdbool.h>
 #include "cjson_wrap.h"
 #include "mac_addr.h"
+#include "wifi_manager_defs.h"
 
 #if !defined(RUUVI_TESTS_GW_CFG)
 #define RUUVI_TESTS_GW_CFG (0)
@@ -103,6 +104,7 @@ extern ruuvi_gateway_config_t       g_gateway_config;
 extern const ruuvi_gateway_config_t g_gateway_config_default;
 extern mac_address_bin_t            g_gw_mac_sta;
 extern mac_address_str_t            g_gw_mac_sta_str;
+extern wifi_ssid_t                  g_gw_wifi_ssid;
 
 void
 gw_cfg_print_to_log(const ruuvi_gateway_config_t *p_config);

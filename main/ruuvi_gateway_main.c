@@ -97,16 +97,25 @@ monitoring_task(void)
 static void
 get_gw_mac_sta(
     mac_address_bin_t *const p_gw_mac_sta,
-    mac_address_str_t *const p_gw_mac_sta_str)
+    mac_address_str_t *const p_gw_mac_sta_str,
+    wifi_ssid_t *const       p_gw_wifi_ssid)
 {
     const esp_err_t err = esp_read_mac(p_gw_mac_sta->mac, ESP_MAC_WIFI_STA);
     if (err != ESP_OK)
     {
         LOG_ERR_ESP(err, "Can't get mac address");
         p_gw_mac_sta_str->str_buf[0] = '\0';
+        sniprintf(p_gw_wifi_ssid->ssid_buf, sizeof(p_gw_wifi_ssid->ssid_buf), "%sXXXX", DEFAULT_AP_SSID);
         return;
     }
     *p_gw_mac_sta_str = mac_address_to_str(p_gw_mac_sta);
+    sniprintf(
+        p_gw_wifi_ssid->ssid_buf,
+        sizeof(p_gw_wifi_ssid->ssid_buf),
+        "%s%02X%02X",
+        DEFAULT_AP_SSID,
+        p_gw_mac_sta->mac[4],
+        p_gw_mac_sta->mac[5]);
 }
 
 static void
@@ -249,7 +258,7 @@ reset_task(void)
 }
 
 static bool
-wifi_init(const bool flag_use_eth)
+wifi_init(const bool flag_use_eth, const wifi_ssid_t *const p_gw_wifi_ssid)
 {
     static const WiFiAntConfig_t wiFiAntConfig = {
         .wifi_ant_gpio_config = {
@@ -287,6 +296,7 @@ wifi_init(const bool flag_use_eth)
     }
     wifi_manager_start(
         !flag_use_eth,
+        p_gw_wifi_ssid,
         &wiFiAntConfig,
         &http_server_cb_on_get,
         &http_server_cb_on_post,
@@ -323,12 +333,14 @@ app_main(void)
     gpio_init();
     leds_init();
 
-    get_gw_mac_sta(&g_gw_mac_sta, &g_gw_mac_sta_str);
+    get_gw_mac_sta(&g_gw_mac_sta, &g_gw_mac_sta_str, &g_gw_wifi_ssid);
     LOG_INFO("Mac address: %s", g_gw_mac_sta_str.str_buf);
+    LOG_INFO("WiFi SSID / Hostname: %s", g_gw_wifi_ssid.ssid_buf);
+
     if (0 == gpio_get_level(RB_BUTTON_RESET_PIN))
     {
         LOG_INFO("Reset button is pressed during boot - clear settings in flash");
-        if (!wifi_manager_clear_sta_config())
+        if (!wifi_manager_clear_sta_config(&g_gw_wifi_ssid))
         {
             LOG_ERR("%s failed", "wifi_manager_clear_sta_config");
         }
@@ -353,7 +365,7 @@ app_main(void)
     leds_start_blink(LEDS_FAST_BLINK);
     ruuvi_send_nrf_settings(&g_gateway_config);
 
-    if (!wifi_init(g_gateway_config.eth.use_eth))
+    if (!wifi_init(g_gateway_config.eth.use_eth, &g_gw_wifi_ssid))
     {
         LOG_ERR("%s failed", "wifi_init");
         return;

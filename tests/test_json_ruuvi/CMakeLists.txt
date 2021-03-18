@@ -23,6 +23,7 @@ target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
         ${RUUVI_GW_SRC}
+        ${WIFI_MANAGER_INC}
         include
         $ENV{IDF_PATH}/components/json/cJSON
         ${CMAKE_CURRENT_SOURCE_DIR}

@@ -56,6 +56,7 @@ target_include_directories(${ProjectId} PUBLIC
 
 target_compile_definitions(${ProjectId} PUBLIC
         RUUVI_TESTS_HTTP_SERVER_CB=1
+        CONFIG_DEFAULT_AP_SSID=\"RuuviGateway\"
         GW_GWUI_PARTITION="fatfs_gwui"
 )
 
