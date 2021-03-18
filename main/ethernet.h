@@ -29,7 +29,7 @@ void
 ethernet_deinit(void);
 
 void
-ethernet_start(void);
+ethernet_start(const char *const hostname);
 
 void
 ethernet_stop(void);

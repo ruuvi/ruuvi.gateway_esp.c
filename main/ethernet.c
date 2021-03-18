@@ -262,6 +262,7 @@ ethernet_init(
     gpio_set_level(LAN_CLOCK_ENABLE, 1);
     ethernet_update_ip();
     tcpip_adapter_init();
+
     esp_err_t err_code = tcpip_adapter_set_default_eth_handlers();
     if (ESP_OK != err_code)
     {
@@ -299,6 +300,7 @@ ethernet_init(
         LOG_ERR_ESP(err_code, "Ethernet driver install failed");
         return false;
     }
+
     return true;
 }
 
@@ -341,17 +343,24 @@ ethernet_deinit(void)
 }
 
 void
-ethernet_start(void)
+ethernet_start(const char *const hostname)
 {
     if (NULL == g_eth_handle)
     {
         return;
     }
     LOG_INFO("Ethernet start");
-    esp_err_t err_code = esp_eth_start(g_eth_handle);
-    if (ESP_OK != err_code)
+    esp_err_t err = esp_eth_start(g_eth_handle);
+    if (ESP_OK != err)
     {
-        LOG_ERR_ESP(err_code, "Ethernet start failed");
+        LOG_ERR_ESP(err, "Ethernet start failed");
+    }
+
+    LOG_INFO("Set hostname for Ethernet interface: %s", hostname);
+    err = tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_ETH, hostname);
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "%s failed", "tcpip_adapter_set_hostname");
     }
 }
 

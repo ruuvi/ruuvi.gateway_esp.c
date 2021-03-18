@@ -178,7 +178,7 @@ void
 wifi_connection_cb_on_connect_eth_cmd(void)
 {
     LOG_INFO("callback: on_connect_eth_cmd");
-    ethernet_start();
+    ethernet_start(g_gw_wifi_ssid.ssid_buf);
 }
 
 void
@@ -208,7 +208,7 @@ wifi_connection_cb_on_ap_sta_disconnected(void)
     LOG_INFO("callback: on_ap_sta_disconnected");
     if (!wifi_manager_is_connected_to_wifi_or_ethernet())
     {
-        ethernet_start();
+        ethernet_start(g_gw_wifi_ssid.ssid_buf);
     }
 }
 
@@ -373,7 +373,7 @@ app_main(void)
     ethernet_init(&ethernet_link_up_cb, &ethernet_link_down_cb, &ethernet_connection_ok_cb);
     if (g_gateway_config.eth.use_eth || (!wifi_manager_is_sta_configured()))
     {
-        ethernet_start();
+        ethernet_start(g_gw_wifi_ssid.ssid_buf);
     }
     else
     {
