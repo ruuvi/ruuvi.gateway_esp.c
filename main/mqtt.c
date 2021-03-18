@@ -55,7 +55,7 @@ static void
 mqtt_publish_adv(const adv_report_t *p_adv)
 {
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
-    if (!mqtt_create_json_str(p_adv, time(NULL), &gw_mac_sta, g_gateway_config.coordinates, &json_str))
+    if (!mqtt_create_json_str(p_adv, time(NULL), &g_gw_mac_sta_str, g_gateway_config.coordinates, &json_str))
     {
         LOG_ERR("%s failed", "mqtt_create_json_str");
         return;

@@ -153,7 +153,7 @@ adv_post_check_is_connected(void)
     if (g_gateway_config.http.use_http)
     {
         char json_str[64];
-        snprintf(json_str, sizeof(json_str), "{\"status\": \"online\", \"gw_mac\": \"%s\"}", gw_mac_sta.str_buf);
+        snprintf(json_str, sizeof(json_str), "{\"status\": \"online\", \"gw_mac\": \"%s\"}", g_gw_mac_sta_str.str_buf);
         LOG_INFO("HTTP POST: %s", json_str);
         http_send(json_str);
     }

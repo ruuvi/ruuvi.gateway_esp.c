@@ -120,7 +120,7 @@ void
 http_send_advs(const adv_report_table_t *const p_reports)
 {
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
-    if (!http_create_json_str(p_reports, time(NULL), &gw_mac_sta, g_gateway_config.coordinates, &json_str))
+    if (!http_create_json_str(p_reports, time(NULL), &g_gw_mac_sta_str, g_gateway_config.coordinates, &json_str))
     {
         LOG_ERR("Not enough memory to generate json");
         return;

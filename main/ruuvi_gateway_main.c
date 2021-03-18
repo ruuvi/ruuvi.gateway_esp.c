@@ -94,18 +94,19 @@ monitoring_task(void)
     }
 }
 
-mac_address_str_t
-get_gw_mac_sta(void)
+static void
+get_gw_mac_sta(
+    mac_address_bin_t *const p_gw_mac_sta,
+    mac_address_str_t *const p_gw_mac_sta_str)
 {
-    mac_address_bin_t mac = { 0 };
-    const esp_err_t   err = esp_read_mac(mac.mac, ESP_MAC_WIFI_STA);
+    const esp_err_t err = esp_read_mac(p_gw_mac_sta->mac, ESP_MAC_WIFI_STA);
     if (err != ESP_OK)
     {
         LOG_ERR_ESP(err, "Can't get mac address");
-        mac_address_str_t mac_str = { 0 };
-        return mac_str;
+        p_gw_mac_sta_str->str_buf[0] = '\0';
+        return;
     }
-    return mac_address_to_str(&mac);
+    *p_gw_mac_sta_str = mac_address_to_str(p_gw_mac_sta);
 }
 
 static void
@@ -322,6 +323,8 @@ app_main(void)
     gpio_init();
     leds_init();
 
+    get_gw_mac_sta(&g_gw_mac_sta, &g_gw_mac_sta_str);
+    LOG_INFO("Mac address: %s", g_gw_mac_sta_str.str_buf);
     if (0 == gpio_get_level(RB_BUTTON_RESET_PIN))
     {
         LOG_INFO("Reset button is pressed during boot - clear settings in flash");
@@ -349,8 +352,6 @@ app_main(void)
     time_task_init();
     leds_start_blink(LEDS_FAST_BLINK);
     ruuvi_send_nrf_settings(&g_gateway_config);
-    gw_mac_sta = get_gw_mac_sta();
-    LOG_INFO("Mac address: %s", gw_mac_sta.str_buf);
 
     if (!wifi_init(g_gateway_config.eth.use_eth))
     {

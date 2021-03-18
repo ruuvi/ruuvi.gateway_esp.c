@@ -407,7 +407,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
         "\"use_filtering\":true"
         "}",
         &g_gateway_config));
-    snprintf(gw_mac_sta.str_buf, sizeof(gw_mac_sta.str_buf), "11:22:33:44:55:66");
+    snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
 
     esp_log_wrapper_clear();
     const http_server_resp_t resp = http_server_resp_json_ruuvi();
@@ -442,7 +442,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed) // NOLINT
         "\"use_filtering\":true"
         "}",
         &g_gateway_config));
-    snprintf(gw_mac_sta.str_buf, sizeof(gw_mac_sta.str_buf), "11:22:33:44:55:66");
+    snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
     cJSON_Hooks hooks = {
         .malloc_fn = &os_malloc,
         .free_fn   = &os_free_internal,
@@ -509,7 +509,7 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
         "\"use_filtering\":true"
         "}",
         &g_gateway_config));
-    snprintf(gw_mac_sta.str_buf, sizeof(gw_mac_sta.str_buf), "11:22:33:44:55:66");
+    snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
 
     esp_log_wrapper_clear();
     const http_server_resp_t resp = http_server_resp_json("ruuvi.json");
@@ -907,7 +907,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
         "\"use_filtering\":true"
         "}",
         &g_gateway_config));
-    snprintf(gw_mac_sta.str_buf, sizeof(gw_mac_sta.str_buf), "11:22:33:44:55:66");
+    snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
 
     esp_log_wrapper_clear();
     const http_server_resp_t resp = http_server_cb_on_get("ruuvi.json");

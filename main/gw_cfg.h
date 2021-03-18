@@ -101,7 +101,8 @@ typedef struct ruuvi_gateway_config_t
 
 extern ruuvi_gateway_config_t       g_gateway_config;
 extern const ruuvi_gateway_config_t g_gateway_config_default;
-extern mac_address_str_t            gw_mac_sta;
+extern mac_address_bin_t            g_gw_mac_sta;
+extern mac_address_str_t            g_gw_mac_sta_str;
 
 void
 gw_cfg_print_to_log(const ruuvi_gateway_config_t *p_config);
