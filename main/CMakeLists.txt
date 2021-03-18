@@ -28,8 +28,6 @@ idf_component_register(
             http_server_cb.h
             leds.c
             leds.h
-            mac_addr.c
-            mac_addr.h
             metrics.c
             metrics.h
             mqtt.c

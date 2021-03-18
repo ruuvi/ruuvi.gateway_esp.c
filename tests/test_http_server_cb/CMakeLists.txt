@@ -12,8 +12,6 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/http_server_cb.h
         ${RUUVI_GW_SRC}/http_json.c
         ${RUUVI_GW_SRC}/http_json.h
-        ${RUUVI_GW_SRC}/mac_addr.c
-        ${RUUVI_GW_SRC}/mac_addr.h
         ${RUUVI_GW_SRC}/bin2hex.c
         ${RUUVI_GW_SRC}/bin2hex.h
         ${RUUVI_GW_SRC}/json_ruuvi.c

@@ -11,8 +11,6 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/bin2hex.h
         ${RUUVI_GW_SRC}/cjson_wrap.c
         ${RUUVI_GW_SRC}/cjson_wrap.h
-        ${RUUVI_GW_SRC}/mac_addr.c
-        ${RUUVI_GW_SRC}/mac_addr.h
         $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.h

@@ -58,7 +58,6 @@ add_subdirectory(test_gw_cfg)
 add_subdirectory(test_http_json)
 add_subdirectory(test_http_server_cb)
 add_subdirectory(test_leds)
-add_subdirectory(test_mac_addr)
 add_subdirectory(test_mqtt_json)
 add_subdirectory(test_nrf52fw)
 add_subdirectory(test_nrf52swd)
@@ -112,11 +111,6 @@ add_test(NAME test_http_server_cb
 add_test(NAME test_leds
         COMMAND ruuvi_gateway_esp-test-leds
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-leds>/gtestresults.xml
-)
-
-add_test(NAME test_mac_addr
-        COMMAND ruuvi_gateway_esp-test-mac_addr
-            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-mac_addr>/gtestresults.xml
 )
 
 add_test(NAME test_mqtt_json
