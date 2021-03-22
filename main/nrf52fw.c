@@ -308,9 +308,9 @@ nrf52fw_init_swd(void)
         LOG_ERR("nrf52swd_debug_halt failed");
         return false;
     }
-    if (!nrf52swd_debug_reset_vector_catch())
+    if (!nrf52swd_debug_enable_reset_vector_catch())
     {
-        LOG_ERR("nrf52swd_debug_reset_vector_catch failed");
+        LOG_ERR("nrf52swd_debug_enable_reset_vector_catch failed");
         return false;
     }
     if (!nrf52swd_debug_reset())

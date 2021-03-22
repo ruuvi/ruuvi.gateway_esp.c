@@ -159,18 +159,20 @@ protected:
         esp_log_wrapper_init();
         g_pTestClass = this;
 
-        this->m_malloc_cnt                    = 0;
-        this->m_malloc_fail_on_cnt            = 0;
-        this->m_result_nrf52swd_init          = true;
-        this->m_result_nrf52swd_check_id_code = true;
-        this->m_result_nrf52swd_debug_halt    = true;
-        this->m_result_nrf52swd_debug_run     = true;
-        this->m_result_nrf52swd_erase_all     = true;
-        this->m_cnt_nrf52swd_erase_all        = 0;
-        this->m_mount_info.flag_mounted       = false;
-        this->m_mount_info.mount_err          = ESP_OK;
-        this->m_mount_info.unmount_err        = ESP_OK;
-        this->m_mount_info.wl_handle          = 0;
+        this->m_malloc_cnt                                      = 0;
+        this->m_malloc_fail_on_cnt                              = 0;
+        this->m_result_nrf52swd_init                            = true;
+        this->m_result_nrf52swd_check_id_code                   = true;
+        this->m_result_nrf52swd_debug_halt                      = true;
+        this->m_result_nrf52swd_debug_enable_reset_vector_catch = true;
+        this->m_result_nrf52swd_debug_reset                     = true;
+        this->m_result_nrf52swd_debug_run                       = true;
+        this->m_result_nrf52swd_erase_all                       = true;
+        this->m_cnt_nrf52swd_erase_all                          = 0;
+        this->m_mount_info.flag_mounted                         = false;
+        this->m_mount_info.mount_err                            = ESP_OK;
+        this->m_mount_info.unmount_err                          = ESP_OK;
+        this->m_mount_info.wl_handle                            = 0;
     }
 
     void
@@ -214,6 +216,8 @@ public:
     bool                      m_result_nrf52swd_init;
     bool                      m_result_nrf52swd_check_id_code;
     bool                      m_result_nrf52swd_debug_halt;
+    bool                      m_result_nrf52swd_debug_enable_reset_vector_catch;
+    bool                      m_result_nrf52swd_debug_reset;
     bool                      m_result_nrf52swd_debug_run;
     bool                      m_result_nrf52swd_erase_all;
     uint32_t                  m_cnt_nrf52swd_erase_all;
@@ -342,6 +346,18 @@ bool
 nrf52swd_debug_halt(void)
 {
     return g_pTestClass->m_result_nrf52swd_debug_halt;
+}
+
+bool
+nrf52swd_debug_enable_reset_vector_catch(void)
+{
+    return g_pTestClass->m_result_nrf52swd_debug_enable_reset_vector_catch;
+}
+
+bool
+nrf52swd_debug_reset(void)
+{
+    return g_pTestClass->m_result_nrf52swd_debug_reset;
 }
 
 bool
@@ -2692,6 +2708,198 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_debug_halt failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_init_swd failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52swd_debug_reset) // NOLINT
+{
+    const char *segment1_path = "segment_1.bin";
+    const char *segment2_path = "segment_2.bin";
+    const char *segment3_path = "segment_3.bin";
+
+    const size_t segment1_size = 2816;
+    const size_t segment2_size = 151016;
+    const size_t segment3_size = 24448;
+
+    uint32_t segment1_crc = 0;
+    uint32_t segment2_crc = 0;
+    uint32_t segment3_crc = 0;
+
+    {
+        std::unique_ptr<uint32_t[]> segment1_buf(new uint32_t[segment1_size / sizeof(uint32_t)]);
+        for (int i = 0; i < segment1_size / sizeof(uint32_t); ++i)
+        {
+            segment1_buf[i] = 0xAA000000 + i;
+        }
+        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment1_buf.get()), segment1_size);
+        {
+            this->m_fd = this->open_file(segment1_path, "wb");
+            ASSERT_NE(nullptr, this->m_fd);
+            fwrite(segment1_buf.get(), 1, segment1_size, this->m_fd);
+            fclose(this->m_fd);
+            this->m_fd = nullptr;
+        }
+    }
+
+    {
+        std::unique_ptr<uint32_t[]> segment2_buf(new uint32_t[segment2_size / sizeof(uint32_t)]);
+        for (int i = 0; i < segment2_size / sizeof(uint32_t); ++i)
+        {
+            segment2_buf[i] = 0xBB000000 + i;
+        }
+        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
+        {
+            this->m_fd = this->open_file(segment2_path, "wb");
+            ASSERT_NE(nullptr, this->m_fd);
+            fwrite(segment2_buf.get(), 1, segment2_size, this->m_fd);
+            fclose(this->m_fd);
+            this->m_fd = nullptr;
+        }
+    }
+
+    {
+        std::unique_ptr<uint32_t[]> segment3_buf(new uint32_t[segment3_size / sizeof(uint32_t)]);
+        for (int i = 0; i < segment3_size / sizeof(uint32_t); ++i)
+        {
+            segment3_buf[i] = 0xCC000000 + i;
+        }
+        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment3_buf.get()), segment3_size);
+        {
+            this->m_fd = this->open_file(segment3_path, "wb");
+            ASSERT_NE(nullptr, this->m_fd);
+            fwrite(segment3_buf.get(), 1, segment3_size, this->m_fd);
+            fclose(this->m_fd);
+            this->m_fd = nullptr;
+        }
+    }
+
+    {
+        this->m_fd = this->open_file("info.txt", "w");
+        ASSERT_NE(nullptr, this->m_fd);
+        fprintf(this->m_fd, "# v1.2.3\n");
+        fprintf(this->m_fd, "0x00000000 %u %s 0x%08x\n", (unsigned)segment1_size, segment1_path, segment1_crc);
+        fprintf(this->m_fd, "0x00001000 %u %s 0x%08x\n", (unsigned)segment2_size, segment2_path, segment2_crc);
+        fprintf(this->m_fd, "0x00026000 %u %s 0x%08x\n", (unsigned)segment3_size, segment3_path, segment3_crc);
+        fclose(this->m_fd);
+        this->m_fd = nullptr;
+    }
+
+    {
+        const uint32_t version = 0x01020300;
+        this->m_memSegmentsRead.emplace_back(MemSegment(0x10001080, 1, &version));
+    }
+
+    this->m_result_nrf52swd_debug_reset = false;
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary());
+
+    ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
+    ASSERT_EQ(0, this->m_memSegmentsWrite.size());
+
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_debug_reset failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_init_swd failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(
+    TestNRF52Fw,
+    nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52swd_debug_enable_reset_vector_catch) // NOLINT
+{
+    const char *segment1_path = "segment_1.bin";
+    const char *segment2_path = "segment_2.bin";
+    const char *segment3_path = "segment_3.bin";
+
+    const size_t segment1_size = 2816;
+    const size_t segment2_size = 151016;
+    const size_t segment3_size = 24448;
+
+    uint32_t segment1_crc = 0;
+    uint32_t segment2_crc = 0;
+    uint32_t segment3_crc = 0;
+
+    {
+        std::unique_ptr<uint32_t[]> segment1_buf(new uint32_t[segment1_size / sizeof(uint32_t)]);
+        for (int i = 0; i < segment1_size / sizeof(uint32_t); ++i)
+        {
+            segment1_buf[i] = 0xAA000000 + i;
+        }
+        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment1_buf.get()), segment1_size);
+        {
+            this->m_fd = this->open_file(segment1_path, "wb");
+            ASSERT_NE(nullptr, this->m_fd);
+            fwrite(segment1_buf.get(), 1, segment1_size, this->m_fd);
+            fclose(this->m_fd);
+            this->m_fd = nullptr;
+        }
+    }
+
+    {
+        std::unique_ptr<uint32_t[]> segment2_buf(new uint32_t[segment2_size / sizeof(uint32_t)]);
+        for (int i = 0; i < segment2_size / sizeof(uint32_t); ++i)
+        {
+            segment2_buf[i] = 0xBB000000 + i;
+        }
+        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
+        {
+            this->m_fd = this->open_file(segment2_path, "wb");
+            ASSERT_NE(nullptr, this->m_fd);
+            fwrite(segment2_buf.get(), 1, segment2_size, this->m_fd);
+            fclose(this->m_fd);
+            this->m_fd = nullptr;
+        }
+    }
+
+    {
+        std::unique_ptr<uint32_t[]> segment3_buf(new uint32_t[segment3_size / sizeof(uint32_t)]);
+        for (int i = 0; i < segment3_size / sizeof(uint32_t); ++i)
+        {
+            segment3_buf[i] = 0xCC000000 + i;
+        }
+        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment3_buf.get()), segment3_size);
+        {
+            this->m_fd = this->open_file(segment3_path, "wb");
+            ASSERT_NE(nullptr, this->m_fd);
+            fwrite(segment3_buf.get(), 1, segment3_size, this->m_fd);
+            fclose(this->m_fd);
+            this->m_fd = nullptr;
+        }
+    }
+
+    {
+        this->m_fd = this->open_file("info.txt", "w");
+        ASSERT_NE(nullptr, this->m_fd);
+        fprintf(this->m_fd, "# v1.2.3\n");
+        fprintf(this->m_fd, "0x00000000 %u %s 0x%08x\n", (unsigned)segment1_size, segment1_path, segment1_crc);
+        fprintf(this->m_fd, "0x00001000 %u %s 0x%08x\n", (unsigned)segment2_size, segment2_path, segment2_crc);
+        fprintf(this->m_fd, "0x00026000 %u %s 0x%08x\n", (unsigned)segment3_size, segment3_path, segment3_crc);
+        fclose(this->m_fd);
+        this->m_fd = nullptr;
+    }
+
+    {
+        const uint32_t version = 0x01020300;
+        this->m_memSegmentsRead.emplace_back(MemSegment(0x10001080, 1, &version));
+    }
+
+    this->m_result_nrf52swd_debug_enable_reset_vector_catch = false;
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary());
+
+    ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
+    ASSERT_EQ(0, this->m_memSegmentsWrite.size());
+
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_debug_enable_reset_vector_catch failed");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_init_swd failed");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");

@@ -41,7 +41,7 @@ bool
 nrf52swd_debug_halt(void);
 
 bool
-nrf52swd_debug_reset_vector_catch(void);
+nrf52swd_debug_enable_reset_vector_catch(void);
 
 bool
 nrf52swd_debug_reset(void);

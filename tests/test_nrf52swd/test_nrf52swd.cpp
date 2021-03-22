@@ -123,6 +123,14 @@ protected:
             this->m_libswd_debug_halt_result    = 0;
         }
         {
+            this->m_libswd_debug_enable_reset_vector_catch_operation = (libswd_operation_t)0;
+            this->m_libswd_debug_enable_reset_vector_catch_result    = 0;
+        }
+        {
+            this->m_libswd_debug_reset_operation = (libswd_operation_t)0;
+            this->m_libswd_debug_reset_result    = 0;
+        }
+        {
             this->m_libswd_debug_run_operation = (libswd_operation_t)0;
             this->m_libswd_debug_run_result    = 0;
         }
@@ -189,6 +197,12 @@ public:
 
     libswd_operation_t m_libswd_debug_halt_operation;
     int                m_libswd_debug_halt_result;
+
+    libswd_operation_t m_libswd_debug_enable_reset_vector_catch_operation;
+    int                m_libswd_debug_enable_reset_vector_catch_result;
+
+    libswd_operation_t m_libswd_debug_reset_operation;
+    int                m_libswd_debug_reset_result;
 
     libswd_operation_t m_libswd_debug_run_operation;
     int                m_libswd_debug_run_result;
@@ -380,6 +394,22 @@ libswd_debug_halt(libswd_ctx_t *libswdctx, libswd_operation_t operation)
     assert(&g_pTestClass->m_libswd_ctx == libswdctx);
     g_pTestClass->m_libswd_debug_halt_operation = operation;
     return g_pTestClass->m_libswd_debug_halt_result;
+}
+
+int
+libswd_debug_enable_reset_vector_catch(libswd_ctx_t *libswdctx, libswd_operation_t operation)
+{
+    assert(&g_pTestClass->m_libswd_ctx == libswdctx);
+    g_pTestClass->m_libswd_debug_enable_reset_vector_catch_operation = operation;
+    return g_pTestClass->m_libswd_debug_enable_reset_vector_catch_result;
+}
+
+int
+libswd_debug_reset(libswd_ctx_t *libswdctx, libswd_operation_t operation)
+{
+    assert(&g_pTestClass->m_libswd_ctx == libswdctx);
+    g_pTestClass->m_libswd_debug_reset_operation = operation;
+    return g_pTestClass->m_libswd_debug_reset_result;
 }
 
 int
@@ -800,6 +830,75 @@ TEST_F(TestNRF52Swd, nrf52swd_debug_halt_failed) // NOLINT
     this->m_libswd_debug_halt_result = -1;
     ASSERT_FALSE(nrf52swd_debug_halt());
     TEST_CHECK_LOG_RECORD_WITH_FUNC(ESP_LOG_ERROR, "nrf52swd_debug_halt", "libswd_debug_halt failed, err=-1");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestNRF52Swd, nrf52swd_debug_enable_reset_vector_catch_ok) // NOLINT
+{
+    ASSERT_TRUE(nrf52swd_init());
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52 SWD init");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_initialize");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_add_device");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "libswd_init");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "libswd_debug_init");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "nrf52swd_init ok");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+
+    ASSERT_TRUE(nrf52swd_debug_enable_reset_vector_catch());
+    ASSERT_EQ(LIBSWD_OPERATION_EXECUTE, this->m_libswd_debug_enable_reset_vector_catch_operation);
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestNRF52Swd, nrf52swd_debug_enable_reset_vector_catch_failed) // NOLINT
+{
+    ASSERT_TRUE(nrf52swd_init());
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52 SWD init");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_initialize");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_add_device");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "libswd_init");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "libswd_debug_init");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "nrf52swd_init ok");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+
+    this->m_libswd_debug_enable_reset_vector_catch_result = -1;
+    ASSERT_FALSE(nrf52swd_debug_enable_reset_vector_catch());
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(
+        ESP_LOG_ERROR,
+        "nrf52swd_debug_enable_reset_vector_catch",
+        "libswd_debug_enable_reset_vector_catch failed, err=-1");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestNRF52Swd, nrf52swd_debug_reset_ok) // NOLINT
+{
+    ASSERT_TRUE(nrf52swd_init());
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52 SWD init");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_initialize");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_add_device");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "libswd_init");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "libswd_debug_init");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "nrf52swd_init ok");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+
+    ASSERT_TRUE(nrf52swd_debug_reset());
+    ASSERT_EQ(LIBSWD_OPERATION_EXECUTE, this->m_libswd_debug_reset_operation);
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestNRF52Swd, nrf52swd_debug_reset_failed) // NOLINT
+{
+    ASSERT_TRUE(nrf52swd_init());
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52 SWD init");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_initialize");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "spi_bus_add_device");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "libswd_init");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "libswd_debug_init");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "nrf52swd_init ok");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+
+    this->m_libswd_debug_reset_result = -1;
+    ASSERT_FALSE(nrf52swd_debug_reset());
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(ESP_LOG_ERROR, "nrf52swd_debug_reset", "libswd_debug_reset failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
