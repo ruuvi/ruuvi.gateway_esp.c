@@ -308,6 +308,16 @@ nrf52fw_init_swd(void)
         LOG_ERR("nrf52swd_debug_halt failed");
         return false;
     }
+    if (!nrf52swd_debug_reset_vector_catch())
+    {
+        LOG_ERR("nrf52swd_debug_reset_vector_catch failed");
+        return false;
+    }
+    if (!nrf52swd_debug_reset())
+    {
+        LOG_ERR("nrf52swd_debug_reset failed");
+        return false;
+    }
     return true;
 }
 
@@ -724,4 +734,21 @@ nrf52fw_update_fw_if_necessary(void)
     nrf52fw_hw_reset_nrf52(false);
 
     return res;
+}
+
+bool
+nrf52fw_software_reset(void)
+{
+    LOG_INFO("nrf52fw_software_reset");
+    if (!nrf52fw_init_swd())
+    {
+        LOG_ERR("%s failed", "nrf52fw_init_swd");
+        return false;
+    }
+    if (!nrf52swd_debug_run())
+    {
+        LOG_ERR("%s failed", "nrf52swd_debug_run");
+    }
+    nrf52fw_deinit_swd();
+    return true;
 }

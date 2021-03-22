@@ -348,6 +348,32 @@ nrf52swd_debug_halt(void)
 }
 
 bool
+nrf52swd_debug_reset_vector_catch(void)
+{
+    const LibSWD_ReturnCode_t ret_val = libswd_debug_enable_reset_vector_catch(
+        gp_nrf52swd_libswd_ctx,
+        LIBSWD_OPERATION_EXECUTE);
+    if (ret_val < 0)
+    {
+        NRF52SWD_LOG_ERR("libswd_debug_reset", ret_val);
+        return false;
+    }
+    return true;
+}
+
+bool
+nrf52swd_debug_reset(void)
+{
+    const LibSWD_ReturnCode_t ret_val = libswd_debug_reset(gp_nrf52swd_libswd_ctx, LIBSWD_OPERATION_EXECUTE);
+    if (ret_val < 0)
+    {
+        NRF52SWD_LOG_ERR("libswd_debug_reset", ret_val);
+        return false;
+    }
+    return true;
+}
+
+bool
 nrf52swd_debug_run(void)
 {
     LOG_INFO("Run nRF52 firmware");
