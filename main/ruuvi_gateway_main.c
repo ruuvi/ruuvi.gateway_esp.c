@@ -360,7 +360,7 @@ app_main(void)
     settings_get_from_flash(&g_gateway_config);
     adv_post_init();
     terminal_open(NULL, true);
-    api_process(1);
+    api_process(true);
     time_task_init();
     leds_start_blink(LEDS_FAST_BLINK);
     ruuvi_send_nrf_settings(&g_gateway_config);

@@ -40,12 +40,16 @@ adv_post_send_ack(void *arg);
 static void
 adv_post_send_device_id(void *arg);
 
+static void
+adv_post_send_get_all(void *arg);
+
 static const char *TAG = "ADV_POST_TASK";
 
 adv_callbacks_fn_t adv_callback_func_tbl = {
     .AdvAckCallback    = adv_post_send_ack,
     .AdvReportCallback = adv_post_send_report,
     .AdvIdCallback     = adv_post_send_device_id,
+    .AdvGetAllCallback = adv_post_send_get_all,
 };
 
 static esp_err_t
@@ -120,6 +124,13 @@ adv_post_send_report(void *arg)
     {
         LOG_WARN("Adv report table full, adv dropped");
     }
+}
+
+static void
+adv_post_send_get_all(void *arg)
+{
+    (void)arg;
+    ruuvi_send_nrf_settings(&g_gateway_config);
 }
 
 static void
