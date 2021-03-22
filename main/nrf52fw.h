@@ -63,6 +63,9 @@ typedef struct nrf52fw_tmp_buf_t
 bool
 nrf52fw_update_fw_if_necessary(void);
 
+bool
+nrf52fw_software_reset(void);
+
 #if RUUVI_TESTS_NRF52FW
 
 /**
