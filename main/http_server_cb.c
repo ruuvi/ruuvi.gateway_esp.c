@@ -143,7 +143,7 @@ http_server_resp_history(const char *const p_params)
     uint32_t time_interval_seconds = HTTP_SERVER_DEFAULT_HISTORY_INTERVAL_SECONDS;
     if (NULL != p_params)
     {
-        const char *const p_time_prefix   = "&time=";
+        const char *const p_time_prefix   = "time=";
         const size_t      time_prefix_len = strlen(p_time_prefix);
         if (0 == strncmp(p_params, p_time_prefix, time_prefix_len))
         {
@@ -287,10 +287,11 @@ http_server_cb_on_get(const char *const p_path)
         return http_server_resp_json(p_path);
     }
     size_t      len      = strlen(p_path);
-    const char *p_params = strchr(p_path, '&');
+    const char *p_params = strchr(p_path, '?');
     if (NULL != p_params)
     {
         len = (size_t)(ptrdiff_t)(p_params - p_path);
+        p_params += 1;
     }
     if (http_server_is_url_prefix_eq(p_path, len, "metrics"))
     {

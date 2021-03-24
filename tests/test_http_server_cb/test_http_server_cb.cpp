@@ -1004,7 +1004,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_with_time_interval_20) //
           "\t\t}\n"
           "\t}\n"
           "}";
-    const http_server_resp_t resp = http_server_cb_on_get("history&time=20");
+    const http_server_resp_t resp = http_server_cb_on_get("history?time=20");
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -1015,7 +1015,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_with_time_interval_20) //
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("GET /history&time=20"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("GET /history?time=20"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("History on 20 seconds interval: ") + string(expected_resp));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
