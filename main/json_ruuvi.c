@@ -144,6 +144,13 @@ json_ruuvi_parse(const cJSON *p_json_root, ruuvi_gateway_config_t *p_gw_cfg)
     json_ruuvi_get_uint16_val(p_json_root, "company_id", &p_gw_cfg->filter.company_id, true);
 
     json_ruuvi_copy_string_val(p_json_root, "coordinates", p_gw_cfg->coordinates, sizeof(p_gw_cfg->coordinates), true);
+
+    json_ruuvi_get_bool_val(p_json_root, "use_coded_phy", &p_gw_cfg->scan.scan_coded_phy, false);
+    json_ruuvi_get_bool_val(p_json_root, "use_1mbit_phy", &p_gw_cfg->scan.scan_1mbit_phy, true);
+    json_ruuvi_get_bool_val(p_json_root, "use_extended_payload", &p_gw_cfg->scan.scan_extended_payload, true);
+    json_ruuvi_get_bool_val(p_json_root, "use_channel_37", &p_gw_cfg->scan.scan_channel_37, true);
+    json_ruuvi_get_bool_val(p_json_root, "use_channel_38", &p_gw_cfg->scan.scan_channel_38, true);
+    json_ruuvi_get_bool_val(p_json_root, "use_channel_39", &p_gw_cfg->scan.scan_channel_39, true);
     return true;
 }
 
