@@ -196,7 +196,7 @@ mqtt_app_start(void)
         .host                        = g_gateway_config.mqtt.mqtt_server,
         .uri                         = NULL,
         .port                        = g_gateway_config.mqtt.mqtt_port,
-        .client_id                   = NULL,
+        .client_id                   = g_gw_mac_sta_str.str_buf,
         .username                    = g_gateway_config.mqtt.mqtt_user,
         .password                    = g_gateway_config.mqtt.mqtt_pass,
         .lwt_topic                   = lwt_topic_buf.buf,
