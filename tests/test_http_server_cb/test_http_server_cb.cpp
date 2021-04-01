@@ -1073,6 +1073,12 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_filtering: 1");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "company_id not found or invalid");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "coordinates not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_coded_phy not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_1mbit_phy not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_extended_payload not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_channel_37 not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_channel_38 not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_channel_39 not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("Gateway SETTINGS:"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth dhcp: 0"));
@@ -1193,6 +1199,12 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_filtering: 1");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "company_id not found or invalid");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "coordinates not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_coded_phy not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_1mbit_phy not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_extended_payload not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_channel_37 not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_channel_38 not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_channel_39 not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("Gateway SETTINGS:"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth dhcp: 0"));
