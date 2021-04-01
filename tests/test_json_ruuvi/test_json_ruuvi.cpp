@@ -160,7 +160,7 @@ TEST_F(TestJsonRuuvi, copy_string_val_ok) // NOLINT
     char buf[80];
     ASSERT_TRUE(json_ruuvi_copy_string_val(root, "attr", buf, sizeof(buf), false));
     ASSERT_EQ(string("value123"), string(buf));
-    
+
     cJSON_Delete(root);
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "attr: value123");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
