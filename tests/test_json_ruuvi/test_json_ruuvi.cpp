@@ -160,6 +160,7 @@ TEST_F(TestJsonRuuvi, copy_string_val_ok) // NOLINT
     char buf[80];
     ASSERT_TRUE(json_ruuvi_copy_string_val(root, "attr", buf, sizeof(buf), false));
     ASSERT_EQ(string("value123"), string(buf));
+
     cJSON_Delete(root);
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "attr: value123");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -288,6 +289,13 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
 
     cJSON_AddStringToObject(root, "coordinates", "coord:123,456");
 
+    cJSON_AddBoolToObject(root, "use_coded_phy", true);
+    cJSON_AddBoolToObject(root, "use_1mbit_phy", true);
+    cJSON_AddBoolToObject(root, "use_extended_payload", true);
+    cJSON_AddBoolToObject(root, "use_channel_37", true);
+    cJSON_AddBoolToObject(root, "use_channel_38", true);
+    cJSON_AddBoolToObject(root, "use_channel_39", true);
+
     ruuvi_gateway_config_t gw_cfg = { 0 };
     ASSERT_TRUE(json_ruuvi_parse(root, &gw_cfg));
     cJSON_Delete(root);
@@ -310,6 +318,12 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     ASSERT_TRUE(gw_cfg.filter.company_filter);
     ASSERT_EQ(888, gw_cfg.filter.company_id);
     ASSERT_EQ(string("coord:123,456"), gw_cfg.coordinates);
+    ASSERT_EQ(true, gw_cfg.scan.scan_coded_phy);
+    ASSERT_EQ(true, gw_cfg.scan.scan_1mbit_phy);
+    ASSERT_EQ(true, gw_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.scan.scan_channel_37);
+    ASSERT_EQ(true, gw_cfg.scan.scan_channel_38);
+    ASSERT_EQ(true, gw_cfg.scan.scan_channel_39);
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Got SETTINGS:");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_dhcp: 1");
@@ -331,6 +345,12 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_filtering: 1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "company_id: 888");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "coordinates: coord:123,456");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_coded_phy: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_1mbit_phy: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_extended_payload: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_channel_37: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_channel_38: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_channel_39: 1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -361,6 +381,13 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_mqtt_pass) // NOLINT
 
     cJSON_AddStringToObject(root, "coordinates", "coord:123,456");
 
+    cJSON_AddBoolToObject(root, "use_coded_phy", true);
+    cJSON_AddBoolToObject(root, "use_1mbit_phy", true);
+    cJSON_AddBoolToObject(root, "use_extended_payload", true);
+    cJSON_AddBoolToObject(root, "use_channel_37", true);
+    cJSON_AddBoolToObject(root, "use_channel_38", true);
+    cJSON_AddBoolToObject(root, "use_channel_39", true);
+
     ruuvi_gateway_config_t gw_cfg = { 0 };
     ASSERT_TRUE(json_ruuvi_parse(root, &gw_cfg));
     cJSON_Delete(root);
@@ -383,6 +410,12 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_mqtt_pass) // NOLINT
     ASSERT_TRUE(gw_cfg.filter.company_filter);
     ASSERT_EQ(888, gw_cfg.filter.company_id);
     ASSERT_EQ(string("coord:123,456"), gw_cfg.coordinates);
+    ASSERT_EQ(true, gw_cfg.scan.scan_coded_phy);
+    ASSERT_EQ(true, gw_cfg.scan.scan_1mbit_phy);
+    ASSERT_EQ(true, gw_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.scan.scan_channel_37);
+    ASSERT_EQ(true, gw_cfg.scan.scan_channel_38);
+    ASSERT_EQ(true, gw_cfg.scan.scan_channel_39);
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Got SETTINGS:");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_dhcp: 1");
@@ -404,6 +437,12 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_mqtt_pass) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_filtering: 1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "company_id: 888");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "coordinates: coord:123,456");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_coded_phy: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_1mbit_phy: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_extended_payload: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_channel_37: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_channel_38: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_channel_39: 1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -428,7 +467,13 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
         "\"http_url\":\"https://network.ruuvi.com/record\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
-        "\"use_filtering\":true"
+        "\"use_filtering\":true,"
+        "\"use_coded_phy\":true,"
+        "\"use_1mbit_phy\":true,"
+        "\"use_extended_payload\":true,"
+        "\"use_channel_37\":true,"
+        "\"use_channel_38\":true,"
+        "\"use_channel_39\":true"
         "}",
         &gw_cfg));
 
@@ -472,6 +517,12 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_filtering: 1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "company_id not found or invalid");
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "coordinates not found");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_coded_phy: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_1mbit_phy: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_extended_payload: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_channel_37: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_channel_38: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_channel_39: 1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
