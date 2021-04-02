@@ -17,9 +17,6 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
 
-#define ESP32_GPIO_ANALOG_SWITCH_CONTROL GPIO_NUM_14 /* MTMS */
-#define ESP32_GPIO_MUXLED                GPIO_NUM_13
-
 static const char *TAG = "SWD";
 
 typedef int LibSWD_ReturnCode_t;
@@ -33,9 +30,9 @@ typedef int LibSWD_Data_t;
     } while (0)
 
 static const spi_bus_config_t pinsSPI = {
-    .mosi_io_num     = NRF52_GPIO_SWD_IO,
+    .mosi_io_num     = RB_ESP32_GPIO_MUX_NRF52_SWD_IO,
     .miso_io_num     = GPIO_NUM_NC, // not connected
-    .sclk_io_num     = NRF52_GPIO_SWD_CLK,
+    .sclk_io_num     = RB_ESP32_GPIO_MUX_NRF52_SWD_CLK,
     .quadwp_io_num   = GPIO_NUM_NC,
     .quadhd_io_num   = GPIO_NUM_NC,
     .max_transfer_sz = 0,
@@ -71,7 +68,7 @@ bool
 nrf52swd_init_gpio_cfg_nreset(void)
 {
     const gpio_config_t io_conf_nrf52_nreset = {
-        .pin_bit_mask = (1ULL << (uint32_t)NRF52_GPIO_NRST),
+        .pin_bit_mask = (1ULL << (uint32_t)RB_ESP32_GPIO_MUX_NRF52_NRST),
         .mode         = GPIO_MODE_OUTPUT,
         .pull_up_en   = 1,
         .pull_down_en = 0,
@@ -92,7 +89,7 @@ bool
 nrf52swd_init_gpio_cfg_analog_switch_control(void)
 {
     const gpio_config_t io_conf_muxsel = {
-        .pin_bit_mask = (1ULL << (uint32_t)ESP32_GPIO_ANALOG_SWITCH_CONTROL),
+        .pin_bit_mask = (1ULL << (uint32_t)RB_ESP32_GPIO_ANALOG_SWITCH_CONTROL),
         .mode         = GPIO_MODE_OUTPUT,
         .pull_up_en   = 0,
         .pull_down_en = 0,
@@ -113,7 +110,7 @@ bool
 nrf52swd_init_gpio_cfg_muxled(void)
 {
     const gpio_config_t io_conf_muxled = {
-        .pin_bit_mask = (1ULL << (uint32_t)ESP32_GPIO_MUXLED),
+        .pin_bit_mask = (1ULL << (uint32_t)RB_ESP32_GPIO_MUX_LED),
         .mode         = GPIO_MODE_OUTPUT,
         .pull_up_en   = 0,
         .pull_down_en = 0,
@@ -183,13 +180,13 @@ nrf52swd_gpio_init(void)
     {
         return false;
     }
-    (void)gpio_set_level(ESP32_GPIO_ANALOG_SWITCH_CONTROL, 1);
+    (void)gpio_set_level(RB_ESP32_GPIO_ANALOG_SWITCH_CONTROL, 1);
 
     if (!nrf52swd_init_gpio_cfg_muxled())
     {
         return false;
     }
-    (void)gpio_set_level(ESP32_GPIO_MUXLED, 0);
+    (void)gpio_set_level(RB_ESP32_GPIO_MUX_LED, 0);
     return true;
 }
 
@@ -278,15 +275,15 @@ nrf52swd_deinit(void)
             LOG_ERR("%s: spi_bus_free failed, err=%d", __func__, err);
         }
     }
-    if (0 != (g_nrf52swd_initialized_gpio_bitmask & (1LLU << ESP32_GPIO_MUXLED)))
+    if (0 != (g_nrf52swd_initialized_gpio_bitmask & (1LLU << RB_ESP32_GPIO_MUX_LED)))
     {
-        (void)gpio_set_level(ESP32_GPIO_MUXLED, 0);
-        g_nrf52swd_initialized_gpio_bitmask &= ~(1LLU << ESP32_GPIO_MUXLED);
+        (void)gpio_set_level(RB_ESP32_GPIO_MUX_LED, 0);
+        g_nrf52swd_initialized_gpio_bitmask &= ~(1LLU << RB_ESP32_GPIO_MUX_LED);
     }
-    if (0 != (g_nrf52swd_initialized_gpio_bitmask & (1LLU << ESP32_GPIO_ANALOG_SWITCH_CONTROL)))
+    if (0 != (g_nrf52swd_initialized_gpio_bitmask & (1LLU << RB_ESP32_GPIO_ANALOG_SWITCH_CONTROL)))
     {
-        (void)gpio_set_level(ESP32_GPIO_ANALOG_SWITCH_CONTROL, 0);
-        g_nrf52swd_initialized_gpio_bitmask &= ~(1LLU << ESP32_GPIO_ANALOG_SWITCH_CONTROL);
+        (void)gpio_set_level(RB_ESP32_GPIO_ANALOG_SWITCH_CONTROL, 0);
+        g_nrf52swd_initialized_gpio_bitmask &= ~(1LLU << RB_ESP32_GPIO_ANALOG_SWITCH_CONTROL);
     }
 }
 
@@ -296,11 +293,11 @@ nrf52swd_reset(const bool flag_reset)
     esp_err_t res = ESP_OK;
     if (flag_reset)
     {
-        res = gpio_set_level(NRF52_GPIO_NRST, 0U);
+        res = gpio_set_level(RB_ESP32_GPIO_MUX_NRF52_NRST, 0U);
     }
     else
     {
-        res = gpio_set_level(NRF52_GPIO_NRST, 1U);
+        res = gpio_set_level(RB_ESP32_GPIO_MUX_NRF52_NRST, 1U);
     }
     if (ESP_OK != res)
     {
