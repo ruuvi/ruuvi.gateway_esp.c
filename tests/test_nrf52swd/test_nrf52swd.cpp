@@ -38,6 +38,19 @@ os_task_get_name(void)
     return const_cast<char *>(g_task_name);
 }
 
+/*** gpio_switch_ctrl.c stub functions
+ * *************************************************************************************/
+
+void
+gpio_switch_ctrl_activate(void)
+{
+}
+
+void
+gpio_switch_ctrl_deactivate(void)
+{
+}
+
 } // extern "C"
 
 class MemSegment
