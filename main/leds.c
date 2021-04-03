@@ -15,6 +15,7 @@
 #include "freertos/event_groups.h"
 #include "attribs.h"
 #include "time_units.h"
+#include "ruuvi_board_gwesp.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -23,7 +24,7 @@ const char *TAG = "LEDS";
 
 EventGroupHandle_t led_bits = NULL;
 
-#define LED_PIN 23
+#define LED_PIN (RB_ESP32_GPIO_MUX_LED)
 
 #define LEDC_HS_TIMER       LEDC_TIMER_1
 #define LEDC_HS_MODE        LEDC_HIGH_SPEED_MODE
@@ -55,6 +56,7 @@ static bool        led_state = false;
 #if !defined(RUUVI_LEDS_DISABLE)
 #define RUUVI_LEDS_DISABLE (0)
 #endif
+
 static bool g_leds_enabled = (0 == RUUVI_LEDS_DISABLE);
 
 void
@@ -64,8 +66,9 @@ leds_on(void)
     {
         return;
     }
+    (void)gpio_set_level(RB_ESP32_GPIO_ANALOG_SWITCH_CONTROL, 1);
     ledc_set_fade_with_time(ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_TEST_DUTY, LEDC_TEST_FADE_TIME);
-    ledc_fade_start(ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_NO_WAIT);
+    ledc_fade_start(ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_WAIT_DONE);
 }
 
 void
@@ -76,7 +79,8 @@ leds_off(void)
         return;
     }
     ledc_set_fade_with_time(ledc_channel[0].speed_mode, ledc_channel[0].channel, 0, LEDC_TEST_FADE_TIME);
-    ledc_fade_start(ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_NO_WAIT);
+    ledc_fade_start(ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_WAIT_DONE);
+    (void)gpio_set_level(RB_ESP32_GPIO_ANALOG_SWITCH_CONTROL, 0);
 }
 
 static void
@@ -115,8 +119,9 @@ leds_stop_blink(void)
     LOG_INFO("stop led blinking");
     esp_timer_stop(blink_timer);
     ledc_set_fade_with_time(ledc_channel[0].speed_mode, ledc_channel[0].channel, 0, LEDC_TEST_FADE_TIME);
-    ledc_fade_start(ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_NO_WAIT);
+    ledc_fade_start(ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_WAIT_DONE);
     led_state = false;
+    (void)gpio_set_level(RB_ESP32_GPIO_ANALOG_SWITCH_CONTROL, 0);
 }
 
 ATTR_NORETURN
