@@ -13,6 +13,7 @@
 #include <driver/gpio.h>
 #include "libswd.h"
 #include "ruuvi_board_gwesp.h"
+#include "gpio_switch_ctrl.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -61,6 +62,7 @@ static spi_device_handle_t g_nrf52swd_device_spi;
 static libswd_ctx_t *      gp_nrf52swd_libswd_ctx;
 static bool                g_nrf52swd_is_spi_initialized;
 static bool                g_nrf52swd_is_spi_device_added;
+static bool                g_nrf52swd_switch_ctrl_activated;
 static uint64_t            g_nrf52swd_initialized_gpio_bitmask;
 
 NRF52SWD_STATIC
@@ -81,27 +83,6 @@ nrf52swd_init_gpio_cfg_nreset(void)
         return false;
     }
     g_nrf52swd_initialized_gpio_bitmask |= io_conf_nrf52_nreset.pin_bit_mask;
-    return true;
-}
-
-NRF52SWD_STATIC
-bool
-nrf52swd_init_gpio_cfg_analog_switch_control(void)
-{
-    const gpio_config_t io_conf_muxsel = {
-        .pin_bit_mask = (1ULL << (uint32_t)RB_ESP32_GPIO_ANALOG_SWITCH_CONTROL),
-        .mode         = GPIO_MODE_OUTPUT,
-        .pull_up_en   = 0,
-        .pull_down_en = 0,
-        .intr_type    = GPIO_INTR_DISABLE,
-    };
-    const esp_err_t err = gpio_config(&io_conf_muxsel);
-    if (ESP_OK != err)
-    {
-        NRF52SWD_LOG_ERR("gpio_config(nRF52 MUXSEL)", err);
-        return false;
-    }
-    g_nrf52swd_initialized_gpio_bitmask |= io_conf_muxsel.pin_bit_mask;
     return true;
 }
 
@@ -176,11 +157,8 @@ nrf52swd_gpio_init(void)
         return false;
     }
 
-    if (!nrf52swd_init_gpio_cfg_analog_switch_control())
-    {
-        return false;
-    }
-    (void)gpio_set_level(RB_ESP32_GPIO_ANALOG_SWITCH_CONTROL, 1);
+    gpio_switch_ctrl_activate();
+    g_nrf52swd_switch_ctrl_activated = true;
 
     if (!nrf52swd_init_gpio_cfg_muxled())
     {
@@ -280,10 +258,10 @@ nrf52swd_deinit(void)
         (void)gpio_set_level(RB_ESP32_GPIO_MUX_LED, 0);
         g_nrf52swd_initialized_gpio_bitmask &= ~(1LLU << RB_ESP32_GPIO_MUX_LED);
     }
-    if (0 != (g_nrf52swd_initialized_gpio_bitmask & (1LLU << RB_ESP32_GPIO_ANALOG_SWITCH_CONTROL)))
+    if (g_nrf52swd_switch_ctrl_activated)
     {
-        (void)gpio_set_level(RB_ESP32_GPIO_ANALOG_SWITCH_CONTROL, 0);
-        g_nrf52swd_initialized_gpio_bitmask &= ~(1LLU << RB_ESP32_GPIO_ANALOG_SWITCH_CONTROL);
+        gpio_switch_ctrl_deactivate();
+        g_nrf52swd_switch_ctrl_activated = false;
     }
 }
 

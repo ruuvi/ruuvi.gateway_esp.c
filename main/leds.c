@@ -16,6 +16,7 @@
 #include "attribs.h"
 #include "time_units.h"
 #include "ruuvi_board_gwesp.h"
+#include "gpio_switch_ctrl.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -66,7 +67,7 @@ leds_on(void)
     {
         return;
     }
-    (void)gpio_set_level(RB_ESP32_GPIO_ANALOG_SWITCH_CONTROL, 1);
+    gpio_switch_ctrl_activate();
     ledc_set_fade_with_time(ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_TEST_DUTY, LEDC_TEST_FADE_TIME);
     ledc_fade_start(ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_WAIT_DONE);
 }
@@ -80,7 +81,7 @@ leds_off(void)
     }
     ledc_set_fade_with_time(ledc_channel[0].speed_mode, ledc_channel[0].channel, 0, LEDC_TEST_FADE_TIME);
     ledc_fade_start(ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_WAIT_DONE);
-    (void)gpio_set_level(RB_ESP32_GPIO_ANALOG_SWITCH_CONTROL, 0);
+    gpio_switch_ctrl_deactivate();
 }
 
 static void
@@ -121,7 +122,7 @@ leds_stop_blink(void)
     ledc_set_fade_with_time(ledc_channel[0].speed_mode, ledc_channel[0].channel, 0, LEDC_TEST_FADE_TIME);
     ledc_fade_start(ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_WAIT_DONE);
     led_state = false;
-    (void)gpio_set_level(RB_ESP32_GPIO_ANALOG_SWITCH_CONTROL, 0);
+    gpio_switch_ctrl_deactivate();
 }
 
 ATTR_NORETURN

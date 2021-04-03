@@ -16,6 +16,8 @@ idf_component_register(
             flashfatfs.h
             gpio.c
             gpio.h
+            gpio_switch_ctrl.c
+            gpio_switch_ctrl.h
             gw_cfg.c
             gw_cfg.h
             http.c

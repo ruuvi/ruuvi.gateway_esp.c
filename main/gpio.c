@@ -16,6 +16,7 @@
 #include "ruuvi_boards.h"
 #include "ruuvi_gateway.h"
 #include "attribs.h"
+#include "gpio_switch_ctrl.h"
 #include "log.h"
 
 #define CONFIG_WIFI_RESET_BUTTON_GPIO (RB_BUTTON_RESET_PIN)
@@ -221,6 +222,8 @@ void
 gpio_init(void)
 {
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
+
+    gpio_switch_ctrl_init();
 
     if (!gpio_config_input_reset_button())
     {
