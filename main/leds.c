@@ -33,8 +33,9 @@ static const char *TAG = "LEDS";
 #define LEDC_HS_CH0_GPIO    LED_PIN
 #define LEDC_HS_CH0_CHANNEL LEDC_CHANNEL_0
 
-#define LEDC_TEST_DUTY      (1023)
-#define LEDC_TEST_FADE_TIME (50)
+#define LEDC_TEST_DUTY_OFF  (1023 - 0 /* 0% */)
+#define LEDC_TEST_DUTY_ON   (1023 - 256 /* 256 / 1024 = 25% */)
+#define LEDC_TEST_FADE_TIME (25)
 
 #define LEDS_DEFAULT_TIMER_PERIOD_MS (1000U)
 #define LEDS_DUTY_CYCLE_PERCENT_0    (0U)
@@ -215,7 +216,7 @@ leds_task_handle_sig(
             ledc_set_fade_with_time(
                 ledc_channel[0].speed_mode,
                 ledc_channel[0].channel,
-                LEDC_TEST_DUTY,
+                LEDC_TEST_DUTY_ON,
                 LEDC_TEST_FADE_TIME);
             ledc_fade_start(ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_NO_WAIT);
 
@@ -227,7 +228,11 @@ leds_task_handle_sig(
 
         case LEDS_TASK_SIG_TURN_OFF:
             LOG_DBG("SIG_TURN_OFF");
-            ledc_set_fade_with_time(ledc_channel[0].speed_mode, ledc_channel[0].channel, 0, LEDC_TEST_FADE_TIME);
+            ledc_set_fade_with_time(
+                ledc_channel[0].speed_mode,
+                ledc_channel[0].channel,
+                LEDC_TEST_DUTY_OFF,
+                LEDC_TEST_FADE_TIME);
             ledc_fade_start(ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_WAIT_DONE);
             if (g_leds_gpio_switch_ctrl_activated)
             {

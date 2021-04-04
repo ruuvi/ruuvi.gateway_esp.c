@@ -10,6 +10,10 @@
 #include <stdio.h>
 #include "esp_log_wrapper.hpp"
 
+#define LEDC_TEST_DUTY_OFF  (1023 - 0 /* 0% */)
+#define LEDC_TEST_DUTY_ON   (1023 - 256 /* 256 / 1024 = 25% */)
+#define LEDC_TEST_FADE_TIME (25)
+
 using namespace std;
 
 typedef enum MainTaskCmd_Tag
@@ -261,8 +265,8 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
         ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
         ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(1023, pEv->target_duty);
-        ASSERT_EQ(50, pEv->max_fade_time_ms);
+        ASSERT_EQ(LEDC_TEST_DUTY_ON, pEv->target_duty);
+        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
     }
     {
         auto *pEv = reinterpret_cast<TestEventLedcFadeStart *>(testEvents[idx++]);
@@ -283,8 +287,8 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
         ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
         ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(0, pEv->target_duty);
-        ASSERT_EQ(50, pEv->max_fade_time_ms);
+        ASSERT_EQ(LEDC_TEST_DUTY_OFF, pEv->target_duty);
+        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
     }
     {
         auto *pEv = reinterpret_cast<TestEventLedcFadeStart *>(testEvents[idx++]);
@@ -306,8 +310,8 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
         ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
         ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(1023, pEv->target_duty);
-        ASSERT_EQ(50, pEv->max_fade_time_ms);
+        ASSERT_EQ(LEDC_TEST_DUTY_ON, pEv->target_duty);
+        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
     }
     {
         auto *pEv = reinterpret_cast<TestEventLedcFadeStart *>(testEvents[idx++]);
@@ -327,8 +331,8 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
         ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
         ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(0, pEv->target_duty);
-        ASSERT_EQ(50, pEv->max_fade_time_ms);
+        ASSERT_EQ(LEDC_TEST_DUTY_OFF, pEv->target_duty);
+        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
     }
     {
         auto *pEv = reinterpret_cast<TestEventLedcFadeStart *>(testEvents[idx++]);
@@ -348,8 +352,8 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
         ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
         ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(1023, pEv->target_duty);
-        ASSERT_EQ(50, pEv->max_fade_time_ms);
+        ASSERT_EQ(LEDC_TEST_DUTY_ON, pEv->target_duty);
+        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
     }
     {
         auto *pEv = reinterpret_cast<TestEventLedcFadeStart *>(testEvents[idx++]);
@@ -369,8 +373,8 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
         ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
         ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(0, pEv->target_duty);
-        ASSERT_EQ(50, pEv->max_fade_time_ms);
+        ASSERT_EQ(LEDC_TEST_DUTY_OFF, pEv->target_duty);
+        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
     }
     {
         auto *pEv = reinterpret_cast<TestEventLedcFadeStart *>(testEvents[idx++]);
@@ -391,8 +395,8 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
         ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
         ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(0, pEv->target_duty);
-        ASSERT_EQ(50, pEv->max_fade_time_ms);
+        ASSERT_EQ(LEDC_TEST_DUTY_OFF, pEv->target_duty);
+        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
     }
     {
         auto *pEv = reinterpret_cast<TestEventLedcFadeStart *>(testEvents[idx++]);
@@ -411,8 +415,8 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
         ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
         ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(0, pEv->target_duty);
-        ASSERT_EQ(50, pEv->max_fade_time_ms);
+        ASSERT_EQ(LEDC_TEST_DUTY_OFF, pEv->target_duty);
+        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
     }
     {
         auto *pEv = reinterpret_cast<TestEventLedcFadeStart *>(testEvents[idx++]);
@@ -431,8 +435,8 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
         ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
         ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(1023, pEv->target_duty);
-        ASSERT_EQ(50, pEv->max_fade_time_ms);
+        ASSERT_EQ(LEDC_TEST_DUTY_ON, pEv->target_duty);
+        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
     }
     {
         auto *pEv = reinterpret_cast<TestEventLedcFadeStart *>(testEvents[idx++]);
@@ -452,8 +456,8 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
         ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
         ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(0, pEv->target_duty);
-        ASSERT_EQ(50, pEv->max_fade_time_ms);
+        ASSERT_EQ(LEDC_TEST_DUTY_OFF, pEv->target_duty);
+        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
     }
     {
         auto *pEv = reinterpret_cast<TestEventLedcFadeStart *>(testEvents[idx++]);
@@ -472,8 +476,8 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
         ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
         ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(1023, pEv->target_duty);
-        ASSERT_EQ(50, pEv->max_fade_time_ms);
+        ASSERT_EQ(LEDC_TEST_DUTY_ON, pEv->target_duty);
+        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
     }
     {
         auto *pEv = reinterpret_cast<TestEventLedcFadeStart *>(testEvents[idx++]);
@@ -496,8 +500,8 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
         ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
         ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(1023, pEv->target_duty);
-        ASSERT_EQ(50, pEv->max_fade_time_ms);
+        ASSERT_EQ(LEDC_TEST_DUTY_ON, pEv->target_duty);
+        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
     }
     {
         auto *pEv = reinterpret_cast<TestEventLedcFadeStart *>(testEvents[idx++]);
@@ -519,8 +523,8 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
         ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
         ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(1023, pEv->target_duty);
-        ASSERT_EQ(50, pEv->max_fade_time_ms);
+        ASSERT_EQ(LEDC_TEST_DUTY_ON, pEv->target_duty);
+        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
     }
     {
         auto *pEv = reinterpret_cast<TestEventLedcFadeStart *>(testEvents[idx++]);
@@ -540,8 +544,8 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
         ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
         ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(0, pEv->target_duty);
-        ASSERT_EQ(50, pEv->max_fade_time_ms);
+        ASSERT_EQ(LEDC_TEST_DUTY_OFF, pEv->target_duty);
+        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
     }
     {
         auto *pEv = reinterpret_cast<TestEventLedcFadeStart *>(testEvents[idx++]);
@@ -561,8 +565,8 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
         ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
         ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(1023, pEv->target_duty);
-        ASSERT_EQ(50, pEv->max_fade_time_ms);
+        ASSERT_EQ(LEDC_TEST_DUTY_ON, pEv->target_duty);
+        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
     }
     {
         auto *pEv = reinterpret_cast<TestEventLedcFadeStart *>(testEvents[idx++]);
@@ -583,8 +587,8 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
         ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
         ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(1023, pEv->target_duty);
-        ASSERT_EQ(50, pEv->max_fade_time_ms);
+        ASSERT_EQ(LEDC_TEST_DUTY_ON, pEv->target_duty);
+        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
     }
     {
         auto *pEv = reinterpret_cast<TestEventLedcFadeStart *>(testEvents[idx++]);
