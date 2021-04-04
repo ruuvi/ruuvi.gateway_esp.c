@@ -130,7 +130,7 @@ ethernet_link_down_cb(void)
     LOG_INFO("Ethernet lost connection");
     wifi_manager_update_network_connection_info(UPDATE_LOST_CONNECTION, NULL, NULL);
     xEventGroupClearBits(status_bits, ETH_CONNECTED_BIT);
-    leds_start_blink(LEDS_SLOW_BLINK, 50);
+    leds_indication_network_no_connection();
     event_mgr_notify(EVENT_MGR_EV_ETH_DISCONNECTED);
 }
 
@@ -154,7 +154,6 @@ ethernet_connection_ok_cb(const tcpip_adapter_ip_info_t *p_ip_info)
             wifi_manager_stop_ap();
         }
     }
-    leds_on();
     xEventGroupSetBits(status_bits, ETH_CONNECTED_BIT);
     start_services();
     event_mgr_notify(EVENT_MGR_EV_ETH_CONNECTED);
@@ -166,7 +165,6 @@ wifi_connection_ok_cb(void *p_param)
     (void)p_param;
     LOG_INFO("Wifi connected");
     xEventGroupSetBits(status_bits, WIFI_CONNECTED_BIT);
-    leds_on();
     start_services();
     event_mgr_notify(EVENT_MGR_EV_WIFI_CONNECTED);
 }
@@ -215,7 +213,7 @@ wifi_disconnect_cb(void *p_param)
     (void)p_param;
     LOG_WARN("Wifi disconnected");
     xEventGroupClearBits(status_bits, WIFI_CONNECTED_BIT);
-    leds_start_blink(LEDS_SLOW_BLINK, 50);
+    leds_indication_network_no_connection();
     event_mgr_notify(EVENT_MGR_EV_WIFI_DISCONNECTED);
 }
 
@@ -342,7 +340,7 @@ app_main(void)
         }
         settings_clear_in_flash();
         LOG_INFO("Wait until the reset button is released");
-        leds_start_blink(LEDS_MEDIUM_BLINK, 50);
+        leds_indication_on_configure_button_press();
         while (0 == gpio_get_level(RB_BUTTON_RESET_PIN))
         {
             vTaskDelay(1);
@@ -358,7 +356,6 @@ app_main(void)
     terminal_open(NULL, true);
     api_process(true);
     time_task_init();
-    leds_start_blink(LEDS_FAST_BLINK, 50);
     ruuvi_send_nrf_settings(&g_gateway_config);
 
     if (!wifi_init(g_gateway_config.eth.use_eth, &g_gw_wifi_ssid))
@@ -374,6 +371,15 @@ app_main(void)
     else
     {
         LOG_INFO("Gateway already configured to use WiFi connection, so Ethernet is not needed");
+    }
+
+    if (wifi_manager_is_ap_active())
+    {
+        leds_indication_on_hotspot_activation();
+    }
+    else
+    {
+        leds_indication_network_no_connection();
     }
 
     const uint32_t   stack_size_for_monitoring_task = 2 * 1024;

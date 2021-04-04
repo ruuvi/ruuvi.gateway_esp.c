@@ -12,6 +12,7 @@
 #include "mqtt_client.h"
 #include "ruuvi_gateway.h"
 #include "mqtt_json.h"
+#include "leds.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -115,11 +116,13 @@ mqtt_event_handler(esp_mqtt_event_handle_t h_event)
             LOG_INFO("MQTT_EVENT_CONNECTED");
             xEventGroupSetBits(status_bits, MQTT_CONNECTED_BIT);
             mqtt_publish_connect();
+            leds_indication_on_network_ok();
             break;
 
         case MQTT_EVENT_DISCONNECTED:
             LOG_INFO("MQTT_EVENT_DISCONNECTED");
             xEventGroupClearBits(status_bits, MQTT_CONNECTED_BIT);
+            leds_indication_network_no_connection();
             break;
 
         case MQTT_EVENT_SUBSCRIBED:

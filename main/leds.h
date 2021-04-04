@@ -12,25 +12,50 @@
 #include "freertos/event_groups.h"
 #include "time_units.h"
 
+#if !defined(RUUVI_TESTS_LEDS)
+#define RUUVI_TESTS_LEDS (0)
+#endif
+
+#if RUUVI_TESTS_LEDS
+#define LEDS_STATIC
+#else
+#define LEDS_STATIC static
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define LEDS_SLOW_BLINK   1000U
-#define LEDS_MEDIUM_BLINK 500U
-#define LEDS_FAST_BLINK   200U
+void
+leds_init(void);
 
+void
+leds_indication_on_configure_button_press(void);
+
+void
+leds_indication_on_hotspot_activation(void);
+
+void
+leds_indication_network_no_connection(void);
+
+void
+leds_indication_on_network_ok(void);
+
+#if RUUVI_TESTS_LEDS
+
+LEDS_STATIC
 void
 leds_on(void);
 
+LEDS_STATIC
 void
 leds_off(void);
 
+LEDS_STATIC
 void
 leds_start_blink(const TimeUnitsMilliSeconds_t interval_ms, const uint32_t duty_cycle_percent);
 
-void
-leds_init(void);
+#endif // RUUVI_TESTS_LEDS
 
 #ifdef __cplusplus
 }

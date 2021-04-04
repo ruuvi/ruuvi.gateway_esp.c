@@ -13,6 +13,7 @@
 #include "esp_http_client.h"
 #include "ruuvi_gateway.h"
 #include "http_json.h"
+#include "leds.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -58,7 +59,7 @@ http_event_handler(esp_http_client_event_t *p_evt)
     return ESP_OK;
 }
 
-void
+bool
 http_send(const char *const p_msg)
 {
     const esp_http_client_config_t http_config = {
@@ -90,11 +91,13 @@ http_send(const char *const p_msg)
     if (NULL == http_handle)
     {
         LOG_ERR("Can't init http client");
-        return;
+        return false;
     }
 
     esp_http_client_set_post_field(http_handle, p_msg, strlen(p_msg));
     esp_http_client_set_header(http_handle, "Content-Type", "application/json");
+
+    bool result = true;
 
     esp_err_t err = esp_http_client_perform(http_handle);
     if (ESP_OK == err)
@@ -107,6 +110,7 @@ http_send(const char *const p_msg)
     else
     {
         LOG_ERR_ESP(err, "HTTP POST request failed");
+        result = false;
     }
 
     err = esp_http_client_cleanup(http_handle);
@@ -114,6 +118,7 @@ http_send(const char *const p_msg)
     {
         LOG_ERR_ESP(err, "esp_http_client_cleanup failed");
     }
+    return result;
 }
 
 void
@@ -126,6 +131,13 @@ http_send_advs(const adv_report_table_t *const p_reports)
         return;
     }
     LOG_INFO("HTTP POST: %s", json_str.p_str);
-    http_send(json_str.p_str);
+    if (http_send(json_str.p_str))
+    {
+        leds_indication_on_network_ok();
+    }
+    else
+    {
+        leds_indication_network_no_connection();
+    }
     cjson_wrap_free_json_str(&json_str);
 }
