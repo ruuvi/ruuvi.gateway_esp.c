@@ -63,7 +63,6 @@ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(ruuvi_gateway_esp)
 
 target_compile_definitions(__idf_main PUBLIC
-        RUUVI_LEDS_DISABLE=0
         RUUVI_ESP
         GW_GWUI_PARTITION="${GW_GWUI_PARTITION}"
         GW_NRF_PARTITION="${GW_NRF_PARTITION}"

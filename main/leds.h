@@ -16,15 +16,9 @@
 extern "C" {
 #endif
 
-#define LEDS_ON_BIT    (1U << 0U)
-#define LEDS_OFF_BIT   (1U << 1U)
-#define LEDS_BLINK_BIT (1U << 2U)
-
 #define LEDS_SLOW_BLINK   1000U
 #define LEDS_MEDIUM_BLINK 500U
 #define LEDS_FAST_BLINK   200U
-
-extern EventGroupHandle_t led_bits;
 
 void
 leds_on(void);
@@ -33,10 +27,7 @@ void
 leds_off(void);
 
 void
-leds_start_blink(const TimeUnitsMilliSeconds_t interval_ms);
-
-void
-leds_stop_blink(void);
+leds_start_blink(const TimeUnitsMilliSeconds_t interval_ms, const uint32_t duty_cycle_percent);
 
 void
 leds_init(void);
