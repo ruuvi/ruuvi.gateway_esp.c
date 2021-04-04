@@ -711,7 +711,6 @@ nrf52fw_update_fw_step0(void)
     return result;
 }
 
-NRF52FW_STATIC
 void
 nrf52fw_hw_reset_nrf52(const bool flag_reset)
 {

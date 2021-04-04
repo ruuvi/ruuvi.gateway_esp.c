@@ -60,6 +60,9 @@ typedef struct nrf52fw_tmp_buf_t
     uint32_t buf_rd[NRF52FW_TMP_BUF_SIZE / sizeof(uint32_t)];
 } nrf52fw_tmp_buf_t;
 
+void
+nrf52fw_hw_reset_nrf52(const bool flag_reset);
+
 bool
 nrf52fw_update_fw_if_necessary(void);
 
