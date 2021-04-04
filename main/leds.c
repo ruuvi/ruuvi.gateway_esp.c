@@ -21,7 +21,7 @@
 #include "gpio_switch_ctrl.h"
 #include "esp_type_wrapper.h"
 
-#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
+#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
 static const char *TAG = "LEDS";
@@ -41,6 +41,15 @@ static const char *TAG = "LEDS";
 #define LEDS_DUTY_CYCLE_PERCENT_100  (100U)
 
 #define LEDS_TASK_PRIORITY (6)
+
+#define LEDS_BLINKING_ON_CONFIGURE_BUTTON_PRESS_PERIOD     (500U /* 2 Hz */)
+#define LEDS_BLINKING_ON_CONFIGURE_BUTTON_PRESS_DUTY_CYCLE (50U)
+
+#define LEDS_BLINKING_ON_HOTSPOT_ACTIVATION_PERIOD     (2000U /* 0.5 Hz */)
+#define LEDS_BLINKING_ON_HOTSPOT_ACTIVATION_DUTY_CYCLE (50U)
+
+#define LEDS_BLINKING_ON_NETWORK_PROBLEM_PERIOD     (200U /* 5 Hz */)
+#define LEDS_BLINKING_ON_NETWORK_PROBLEM_DUTY_CYCLE (50U)
 
 typedef enum leds_task_sig_e
 {
@@ -121,6 +130,7 @@ leds_timer_sig_turn_off_stop(void)
     os_timer_sig_one_shot_stop(g_p_leds_timer_sig_turn_off);
 }
 
+LEDS_STATIC
 void
 leds_on(void)
 {
@@ -135,6 +145,7 @@ leds_on(void)
     os_mutex_unlock(g_p_leds_mutex);
 }
 
+LEDS_STATIC
 void
 leds_off(void)
 {
@@ -149,6 +160,7 @@ leds_off(void)
     os_mutex_unlock(g_p_leds_mutex);
 }
 
+LEDS_STATIC
 void
 leds_start_blink(const TimeUnitsMilliSeconds_t interval_ms, const uint32_t duty_cycle_percent)
 {
@@ -304,4 +316,34 @@ leds_init(void)
     {
         LOG_ERR("Can't create thread");
     }
+}
+
+void
+leds_indication_on_configure_button_press(void)
+{
+    LOG_INFO("%s", __func__);
+    leds_start_blink(
+        LEDS_BLINKING_ON_CONFIGURE_BUTTON_PRESS_PERIOD,
+        LEDS_BLINKING_ON_CONFIGURE_BUTTON_PRESS_DUTY_CYCLE);
+}
+
+void
+leds_indication_on_hotspot_activation(void)
+{
+    LOG_INFO("%s", __func__);
+    leds_start_blink(LEDS_BLINKING_ON_HOTSPOT_ACTIVATION_PERIOD, LEDS_BLINKING_ON_HOTSPOT_ACTIVATION_DUTY_CYCLE);
+}
+
+void
+leds_indication_network_no_connection(void)
+{
+    LOG_INFO("%s", __func__);
+    leds_start_blink(LEDS_BLINKING_ON_NETWORK_PROBLEM_PERIOD, LEDS_BLINKING_ON_NETWORK_PROBLEM_DUTY_CYCLE);
+}
+
+void
+leds_indication_on_network_ok(void)
+{
+    LOG_INFO("%s", __func__);
+    leds_on();
 }

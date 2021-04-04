@@ -17,6 +17,7 @@
 #include "ruuvi_gateway.h"
 #include "attribs.h"
 #include "gpio_switch_ctrl.h"
+#include "leds.h"
 #include "log.h"
 
 #define CONFIG_WIFI_RESET_BUTTON_GPIO (RB_BUTTON_RESET_PIN)
@@ -94,6 +95,7 @@ gpio_task_handle_reset_button(const gpio_level_t io_level, bool *p_is_timer_star
         // Start the timer
         timer_start(TIMER_GROUP_0, TIMER_0);
         *p_is_timer_started = true;
+        leds_indication_on_configure_button_press();
     }
     else
     {
@@ -102,6 +104,7 @@ gpio_task_handle_reset_button(const gpio_level_t io_level, bool *p_is_timer_star
         gpio_config_timer();
         *p_is_timer_started = false;
         http_server_start();
+        leds_indication_on_hotspot_activation();
     }
 }
 

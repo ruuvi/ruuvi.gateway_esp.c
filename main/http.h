@@ -8,13 +8,14 @@
 #ifndef RUUVI_HTTP_H
 #define RUUVI_HTTP_H
 
+#include <stdbool.h>
 #include "adv_table.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void
+bool
 http_send(const char *const p_msg);
 
 void
