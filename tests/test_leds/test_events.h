@@ -3,10 +3,6 @@
 
 typedef enum TestEventType_Tag
 {
-    TestEventType_EspTimerInit,
-    TestEventType_EspTimerCreate,
-    TestEventType_EspTimerStartPeriodic,
-    TestEventType_EspTimerStop,
     TestEventType_LedcTimerConfig,
     TestEventType_LedcChannelConfig,
     TestEventType_LedcSetFadeWithTime,
@@ -24,59 +20,6 @@ public:
 
     explicit TestEvent(const TestEventType_e eventType)
         : eventType(eventType)
-    {
-    }
-};
-
-class TestEventEspTimerInit : public TestEvent
-{
-public:
-    TestEventEspTimerInit()
-        : TestEvent(TestEventType_EspTimerInit)
-    {
-    }
-};
-
-class TestEventEspTimerCreate : public TestEvent
-{
-public:
-    esp_timer_cb_t       callback;        //!< Function to call when timer expires
-    void *               arg;             //!< Argument to pass to the callback
-    esp_timer_dispatch_t dispatch_method; //!< Call the callback from task or from ISR
-    std::string          name;            //!< Timer name, used in esp_timer_dump function
-
-    TestEventEspTimerCreate(esp_timer_cb_t callback, void *arg, esp_timer_dispatch_t dispatch_method, const char *name)
-        : TestEvent(TestEventType_EspTimerCreate)
-        , callback(callback)
-        , arg(arg)
-        , dispatch_method(dispatch_method)
-        , name(name)
-    {
-    }
-};
-
-class TestEventEspTimerStartPeriodic : public TestEvent
-{
-public:
-    esp_timer_handle_t timer;
-    uint64_t           period_us;
-
-    TestEventEspTimerStartPeriodic(esp_timer_handle_t timer, uint64_t period_us)
-        : TestEvent(TestEventType_EspTimerStartPeriodic)
-        , timer(timer)
-        , period_us(period_us)
-    {
-    }
-};
-
-class TestEventEspTimerStop : public TestEvent
-{
-public:
-    esp_timer_handle_t timer;
-
-    explicit TestEventEspTimerStop(esp_timer_handle_t timer)
-        : TestEvent(TestEventType_EspTimerStop)
-        , timer(timer)
     {
     }
 };

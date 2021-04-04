@@ -8,22 +8,23 @@
 #include "leds.h"
 #include <stdbool.h>
 #include <stdio.h>
+#include <assert.h>
 #include "driver/ledc.h"
-#include "esp_timer.h"
+#include "driver/gpio.h"
 #include "os_task.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/event_groups.h"
+#include "os_mutex.h"
+#include "os_signal.h"
+#include "os_timer_sig.h"
 #include "attribs.h"
 #include "time_units.h"
 #include "ruuvi_board_gwesp.h"
 #include "gpio_switch_ctrl.h"
+#include "esp_type_wrapper.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
 
-const char *TAG = "LEDS";
-
-EventGroupHandle_t led_bits = NULL;
+static const char *TAG = "LEDS";
 
 #define LED_PIN (RB_ESP32_GPIO_MUX_LED)
 
@@ -32,14 +33,25 @@ EventGroupHandle_t led_bits = NULL;
 #define LEDC_HS_CH0_GPIO    LED_PIN
 #define LEDC_HS_CH0_CHANNEL LEDC_CHANNEL_0
 
-#define LEDC_LS_TIMER LEDC_TIMER_2
-#define LEDC_LS_MODE  LEDC_LOW_SPEED_MODE
-
-#define LEDC_TEST_CH_NUM    (4)
 #define LEDC_TEST_DUTY      (1023)
 #define LEDC_TEST_FADE_TIME (50)
 
-ledc_channel_config_t ledc_channel[1] = {
+#define LEDS_DEFAULT_TIMER_PERIOD_MS (1000U)
+#define LEDS_DUTY_CYCLE_PERCENT_0    (0U)
+#define LEDS_DUTY_CYCLE_PERCENT_100  (100U)
+
+#define LEDS_TASK_PRIORITY (6)
+
+typedef enum leds_task_sig_e
+{
+    LEDS_TASK_SIG_TURN_ON  = OS_SIGNAL_NUM_0,
+    LEDS_TASK_SIG_TURN_OFF = OS_SIGNAL_NUM_1,
+} leds_task_sig_e;
+
+#define LEDS_TASK_SIG_FIRST (LEDS_TASK_SIG_TURN_ON)
+#define LEDS_TASK_SIG_LAST  (LEDS_TASK_SIG_TURN_OFF)
+
+static ledc_channel_config_t ledc_channel[1] = {
     {
         .gpio_num   = LEDC_HS_CH0_GPIO,
         .speed_mode = LEDC_HS_MODE,
@@ -51,78 +63,172 @@ ledc_channel_config_t ledc_channel[1] = {
     },
 };
 
-esp_timer_handle_t blink_timer;
-static bool        led_state = false;
+static os_mutex_t                     g_p_leds_mutex;
+static os_mutex_static_t              g_leds_mutex_mem;
+static os_signal_t *                  g_p_leds_signal;
+static os_signal_static_t             g_leds_signal_mem;
+static os_timer_sig_periodic_t *      g_p_leds_timer_sig_turn_on;
+static os_timer_sig_periodic_static_t g_leds_timer_sig_turn_on_mem;
+static os_timer_sig_one_shot_t *      g_p_leds_timer_sig_turn_off;
+static os_timer_sig_one_shot_static_t g_leds_timer_sig_turn_off_mem;
+static TimeUnitsMilliSeconds_t        g_leds_period_ms;
+static uint32_t                       g_leds_duty_cycle_percent;
+static bool                           g_leds_gpio_switch_ctrl_activated;
 
-#if !defined(RUUVI_LEDS_DISABLE)
-#define RUUVI_LEDS_DISABLE (0)
-#endif
+ATTR_PURE
+static os_signal_num_e
+leds_task_conv_to_sig_num(const leds_task_sig_e sig)
+{
+    return (os_signal_num_e)sig;
+}
 
-static bool g_leds_enabled = (0 == RUUVI_LEDS_DISABLE);
+static leds_task_sig_e
+leds_task_conv_from_sig_num(const os_signal_num_e sig_num)
+{
+    assert(((os_signal_num_e)LEDS_TASK_SIG_FIRST <= sig_num) && (sig_num <= (os_signal_num_e)LEDS_TASK_SIG_LAST));
+    return (leds_task_sig_e)sig_num;
+}
+
+static void
+leds_timer_sig_turn_on_start(const TimeUnitsMilliSeconds_t period_ms)
+{
+    const os_delta_ticks_t period_ticks = pdMS_TO_TICKS(period_ms);
+    LOG_DBG("Start timer:ON: period: %u ms (%u ticks)", (printf_uint_t)period_ms, (printf_uint_t)period_ticks);
+    os_timer_sig_periodic_restart(g_p_leds_timer_sig_turn_on, period_ticks);
+    os_signal_send(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_TURN_ON));
+}
+
+static void
+leds_timer_sig_turn_on_stop(void)
+{
+    LOG_DBG("Stop timer:ON");
+    os_timer_sig_periodic_stop(g_p_leds_timer_sig_turn_on);
+}
+
+static void
+leds_timer_sig_turn_off_start(const TimeUnitsMilliSeconds_t period_ms, const uint32_t duty_cycle_percent)
+{
+    const TimeUnitsMilliSeconds_t delay_ms    = (period_ms * duty_cycle_percent) / LEDS_DUTY_CYCLE_PERCENT_100;
+    const os_delta_ticks_t        delay_ticks = pdMS_TO_TICKS(delay_ms);
+    LOG_DBG("Start timer:OFF: delay: %u ms (%u ticks)", (printf_uint_t)delay_ms, (printf_uint_t)delay_ticks);
+    os_timer_sig_one_shot_restart(g_p_leds_timer_sig_turn_off, delay_ticks);
+}
+
+static void
+leds_timer_sig_turn_off_stop(void)
+{
+    LOG_DBG("Stop timer:OFF");
+    os_timer_sig_one_shot_stop(g_p_leds_timer_sig_turn_off);
+}
 
 void
 leds_on(void)
 {
-    if (!g_leds_enabled)
-    {
-        return;
-    }
-    gpio_switch_ctrl_activate();
-    ledc_set_fade_with_time(ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_TEST_DUTY, LEDC_TEST_FADE_TIME);
-    ledc_fade_start(ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_WAIT_DONE);
+    LOG_INFO("LED: ON");
+    assert(NULL != g_p_leds_mutex);
+    os_mutex_lock(g_p_leds_mutex);
+    leds_timer_sig_turn_on_stop();
+    leds_timer_sig_turn_off_stop();
+    g_leds_period_ms          = LEDS_DEFAULT_TIMER_PERIOD_MS;
+    g_leds_duty_cycle_percent = LEDS_DUTY_CYCLE_PERCENT_100;
+    os_signal_send(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_TURN_ON));
+    os_mutex_unlock(g_p_leds_mutex);
 }
 
 void
 leds_off(void)
 {
-    if (!g_leds_enabled)
-    {
-        return;
-    }
-    ledc_set_fade_with_time(ledc_channel[0].speed_mode, ledc_channel[0].channel, 0, LEDC_TEST_FADE_TIME);
-    ledc_fade_start(ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_WAIT_DONE);
-    gpio_switch_ctrl_deactivate();
+    LOG_INFO("LED: OFF");
+    assert(NULL != g_p_leds_mutex);
+    os_mutex_lock(g_p_leds_mutex);
+    leds_timer_sig_turn_on_stop();
+    leds_timer_sig_turn_off_stop();
+    g_leds_period_ms          = LEDS_DEFAULT_TIMER_PERIOD_MS;
+    g_leds_duty_cycle_percent = LEDS_DUTY_CYCLE_PERCENT_0;
+    os_signal_send(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_TURN_OFF));
+    os_mutex_unlock(g_p_leds_mutex);
 }
 
-static void
-blink_timer_handler(ATTR_UNUSED void *arg)
+void
+leds_start_blink(const TimeUnitsMilliSeconds_t interval_ms, const uint32_t duty_cycle_percent)
 {
-    if (led_state)
+    LOG_INFO(
+        "LED: Start blinking, interval: %u ms, duty cycle: %u%%",
+        (printf_uint_t)interval_ms,
+        (printf_uint_t)duty_cycle_percent);
+    assert(NULL != g_p_leds_mutex);
+    os_mutex_lock(g_p_leds_mutex);
+    leds_timer_sig_turn_on_stop();
+    leds_timer_sig_turn_off_stop();
+
+    if (0 == interval_ms)
     {
-        leds_off();
+        g_leds_period_ms          = LEDS_DEFAULT_TIMER_PERIOD_MS;
+        g_leds_duty_cycle_percent = LEDS_DUTY_CYCLE_PERCENT_100;
+        os_signal_send(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_TURN_ON));
     }
     else
     {
-        leds_on();
+        g_leds_period_ms          = interval_ms;
+        g_leds_duty_cycle_percent = duty_cycle_percent;
+        leds_timer_sig_turn_on_start(interval_ms);
     }
 
-    led_state = !led_state;
+    os_mutex_unlock(g_p_leds_mutex);
 }
 
-void
-leds_start_blink(const TimeUnitsMilliSeconds_t interval_ms)
+static void
+leds_task_handle_sig(
+    const leds_task_sig_e         leds_task_sig,
+    const TimeUnitsMilliSeconds_t period_ms,
+    const uint32_t                duty_cycle_percent)
 {
-    if (!g_leds_enabled)
+    switch (leds_task_sig)
     {
-        return;
-    }
-    LOG_INFO("start led blinking, interval: %u ms", (unsigned)interval_ms);
-    esp_timer_start_periodic(blink_timer, time_units_conv_ms_to_us(interval_ms));
-}
+        case LEDS_TASK_SIG_TURN_ON:
+            LOG_DBG(
+                "SIG_TURN_ON: period %u ms, duty_cycle %u%%",
+                (printf_uint_t)period_ms,
+                (printf_uint_t)duty_cycle_percent);
+            if (LEDS_DUTY_CYCLE_PERCENT_0 == duty_cycle_percent)
+            {
+                leds_off();
+                break;
+            }
+            if (!g_leds_gpio_switch_ctrl_activated)
+            {
+                gpio_switch_ctrl_activate();
+                g_leds_gpio_switch_ctrl_activated = true;
+            }
+            ledc_set_fade_with_time(
+                ledc_channel[0].speed_mode,
+                ledc_channel[0].channel,
+                LEDC_TEST_DUTY,
+                LEDC_TEST_FADE_TIME);
+            ledc_fade_start(ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_NO_WAIT);
 
-void
-leds_stop_blink(void)
-{
-    if (!g_leds_enabled)
-    {
-        return;
+            if (LEDS_DUTY_CYCLE_PERCENT_100 != duty_cycle_percent)
+            {
+                leds_timer_sig_turn_off_start(period_ms, duty_cycle_percent);
+            }
+            break;
+
+        case LEDS_TASK_SIG_TURN_OFF:
+            LOG_DBG("SIG_TURN_OFF");
+            ledc_set_fade_with_time(ledc_channel[0].speed_mode, ledc_channel[0].channel, 0, LEDC_TEST_FADE_TIME);
+            ledc_fade_start(ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_WAIT_DONE);
+            if (g_leds_gpio_switch_ctrl_activated)
+            {
+                gpio_switch_ctrl_deactivate();
+                g_leds_gpio_switch_ctrl_activated = false;
+            }
+            break;
+
+        default:
+            LOG_ERR("Unhanded sig: %d", (int)leds_task_sig);
+            assert(0);
+            break;
     }
-    LOG_INFO("stop led blinking");
-    esp_timer_stop(blink_timer);
-    ledc_set_fade_with_time(ledc_channel[0].speed_mode, ledc_channel[0].channel, 0, LEDC_TEST_FADE_TIME);
-    ledc_fade_start(ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_WAIT_DONE);
-    led_state = false;
-    gpio_switch_ctrl_deactivate();
 }
 
 ATTR_NORETURN
@@ -131,34 +237,25 @@ leds_task(void)
 {
     LOG_INFO("%s started", __func__);
 
-    EventBits_t bits;
-    while (1)
+    os_signal_register_cur_thread(g_p_leds_signal);
+
+    for (;;)
     {
-        bits = xEventGroupWaitBits(
-            led_bits,
-            LEDS_ON_BIT | LEDS_OFF_BIT | LEDS_BLINK_BIT,
-            pdTRUE,
-            pdFALSE,
-            pdMS_TO_TICKS(1000));
-        if (0 != (bits & LEDS_BLINK_BIT))
+        os_signal_events_t sig_events = { 0 };
+        os_signal_wait(g_p_leds_signal, &sig_events);
+        for (;;)
         {
-            LOG_INFO("led blink");
-            const TimeUnitsMilliSeconds_t blink_interval_ms = time_units_conv_seconds_to_ms(1);
-            leds_start_blink(blink_interval_ms);
-        }
-        else if (0 != (bits & LEDS_ON_BIT))
-        {
-            LOG_INFO("led on");
-            leds_on();
-        }
-        else if (0 != (bits & LEDS_OFF_BIT))
-        {
-            LOG_INFO("led off");
-            leds_off();
-        }
-        else
-        {
-            // MISRA C:2012, 15.7 - All if...else if constructs shall be terminated with an else statement
+            const os_signal_num_e sig_num = os_signal_num_get_next(&sig_events);
+            if (OS_SIGNAL_NUM_NONE == sig_num)
+            {
+                break;
+            }
+            const leds_task_sig_e time_task_sig = leds_task_conv_from_sig_num(sig_num);
+            os_mutex_lock(g_p_leds_mutex);
+            const TimeUnitsMilliSeconds_t period_ms          = g_leds_period_ms;
+            const uint32_t                duty_cycle_percent = g_leds_duty_cycle_percent;
+            os_mutex_unlock(g_p_leds_mutex);
+            leds_task_handle_sig(time_task_sig, period_ms, duty_cycle_percent);
         }
     }
 }
@@ -166,20 +263,27 @@ leds_task(void)
 void
 leds_init(void)
 {
-    if (!g_leds_enabled)
-    {
-        LOG_INFO("%s: LEDs disabled", __func__);
-        return;
-    }
     LOG_INFO("%s", __func__);
-    esp_timer_init();
-    esp_timer_create_args_t timer_args = {
-        .callback        = blink_timer_handler,
-        .arg             = NULL,
-        .dispatch_method = ESP_TIMER_TASK,
-        .name            = "blink_timer",
-    };
-    esp_timer_create(&timer_args, &blink_timer);
+
+    g_p_leds_mutex = os_mutex_create_static(&g_leds_mutex_mem);
+
+    g_p_leds_signal = os_signal_create_static(&g_leds_signal_mem);
+    os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_TURN_ON));
+    os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_TURN_OFF));
+
+    g_p_leds_timer_sig_turn_on = os_timer_sig_periodic_create_static(
+        &g_leds_timer_sig_turn_on_mem,
+        "leds:on",
+        g_p_leds_signal,
+        leds_task_conv_to_sig_num(LEDS_TASK_SIG_TURN_ON),
+        pdMS_TO_TICKS(LEDS_DEFAULT_TIMER_PERIOD_MS));
+
+    g_p_leds_timer_sig_turn_off = os_timer_sig_one_shot_create_static(
+        &g_leds_timer_sig_turn_off_mem,
+        "leds:off",
+        g_p_leds_signal,
+        leds_task_conv_to_sig_num(LEDS_TASK_SIG_TURN_OFF),
+        pdMS_TO_TICKS(LEDS_DEFAULT_TIMER_PERIOD_MS));
 
     ledc_timer_config_t ledc_timer = {
         .duty_resolution = LEDC_TIMER_10_BIT, // resolution of PWM duty
@@ -190,21 +294,13 @@ leds_init(void)
     };
 
     ledc_timer_config(&ledc_timer);
-
     ledc_channel_config(&ledc_channel[0]);
-
     ledc_fade_func_install(0);
-
-    led_bits = xEventGroupCreate();
-    if (NULL == led_bits)
-    {
-        LOG_INFO("Can't create event group");
-    }
 
     const uint32_t stack_size = 2U * 1024U;
 
     os_task_handle_t h_task = NULL;
-    if (!os_task_create_without_param(&leds_task, "leds_task", stack_size, 1, &h_task))
+    if (!os_task_create_without_param(&leds_task, "leds_task", stack_size, LEDS_TASK_PRIORITY, &h_task))
     {
         LOG_ERR("Can't create thread");
     }
