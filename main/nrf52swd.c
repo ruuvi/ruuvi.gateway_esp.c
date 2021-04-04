@@ -88,27 +88,6 @@ nrf52swd_init_gpio_cfg_nreset(void)
 
 NRF52SWD_STATIC
 bool
-nrf52swd_init_gpio_cfg_muxled(void)
-{
-    const gpio_config_t io_conf_muxled = {
-        .pin_bit_mask = (1ULL << (uint32_t)RB_ESP32_GPIO_MUX_LED),
-        .mode         = GPIO_MODE_OUTPUT,
-        .pull_up_en   = 0,
-        .pull_down_en = 0,
-        .intr_type    = GPIO_INTR_DISABLE,
-    };
-    const esp_err_t err = gpio_config(&io_conf_muxled);
-    if (ESP_OK != err)
-    {
-        NRF52SWD_LOG_ERR("gpio_config(nRF52 MUXLED)", err);
-        return false;
-    }
-    g_nrf52swd_initialized_gpio_bitmask |= io_conf_muxled.pin_bit_mask;
-    return true;
-}
-
-NRF52SWD_STATIC
-bool
 nrf52swd_init_spi_init(void)
 {
     LOG_DBG("spi_bus_initialize");
@@ -160,11 +139,6 @@ nrf52swd_gpio_init(void)
     gpio_switch_ctrl_activate();
     g_nrf52swd_switch_ctrl_activated = true;
 
-    if (!nrf52swd_init_gpio_cfg_muxled())
-    {
-        return false;
-    }
-    (void)gpio_set_level(RB_ESP32_GPIO_MUX_LED, 0);
     return true;
 }
 
@@ -252,11 +226,6 @@ nrf52swd_deinit(void)
         {
             LOG_ERR("%s: spi_bus_free failed, err=%d", __func__, err);
         }
-    }
-    if (0 != (g_nrf52swd_initialized_gpio_bitmask & (1LLU << RB_ESP32_GPIO_MUX_LED)))
-    {
-        (void)gpio_set_level(RB_ESP32_GPIO_MUX_LED, 0);
-        g_nrf52swd_initialized_gpio_bitmask &= ~(1LLU << RB_ESP32_GPIO_MUX_LED);
     }
     if (g_nrf52swd_switch_ctrl_activated)
     {

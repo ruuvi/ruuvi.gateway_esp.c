@@ -350,7 +350,9 @@ app_main(void)
         esp_restart();
     }
 
+    leds_indication_on_nrf52_fw_updating();
     nrf52fw_update_fw_if_necessary();
+    leds_off();
 
     settings_get_from_flash(&g_gateway_config);
     adv_post_init();

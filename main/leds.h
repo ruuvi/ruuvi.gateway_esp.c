@@ -30,6 +30,9 @@ void
 leds_init(void);
 
 void
+leds_off(void);
+
+void
 leds_indication_on_configure_button_press(void);
 
 void
@@ -41,15 +44,14 @@ leds_indication_network_no_connection(void);
 void
 leds_indication_on_network_ok(void);
 
+void
+leds_indication_on_nrf52_fw_updating(void);
+
 #if RUUVI_TESTS_LEDS
 
 LEDS_STATIC
 void
 leds_on(void);
-
-LEDS_STATIC
-void
-leds_off(void);
 
 LEDS_STATIC
 void

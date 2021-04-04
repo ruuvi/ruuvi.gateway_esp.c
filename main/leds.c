@@ -52,6 +52,9 @@ static const char *TAG = "LEDS";
 #define LEDS_BLINKING_ON_NETWORK_PROBLEM_PERIOD     (200U /* 5 Hz */)
 #define LEDS_BLINKING_ON_NETWORK_PROBLEM_DUTY_CYCLE (50U)
 
+#define LEDS_BLINKING_ON_NRF52_FW_UPDATING_PERIOD     (1000U /* 1 Hz */)
+#define LEDS_BLINKING_ON_NRF52_FW_UPDATING_DUTY_CYCLE (5U)
+
 typedef enum leds_task_sig_e
 {
     LEDS_TASK_SIG_TURN_ON  = OS_SIGNAL_NUM_0,
@@ -146,7 +149,6 @@ leds_on(void)
     os_mutex_unlock(g_p_leds_mutex);
 }
 
-LEDS_STATIC
 void
 leds_off(void)
 {
@@ -351,4 +353,11 @@ leds_indication_on_network_ok(void)
 {
     LOG_INFO("%s", __func__);
     leds_on();
+}
+
+void
+leds_indication_on_nrf52_fw_updating(void)
+{
+    LOG_INFO("%s", __func__);
+    leds_start_blink(LEDS_BLINKING_ON_NRF52_FW_UPDATING_PERIOD, LEDS_BLINKING_ON_NRF52_FW_UPDATING_DUTY_CYCLE);
 }
