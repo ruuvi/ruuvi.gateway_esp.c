@@ -334,6 +334,7 @@ app_main(void)
     if (0 == gpio_get_level(RB_BUTTON_RESET_PIN))
     {
         LOG_INFO("Reset button is pressed during boot - clear settings in flash");
+        nrf52fw_hw_reset_nrf52(true);
         if (!wifi_manager_clear_sta_config(&g_gw_wifi_ssid))
         {
             LOG_ERR("%s failed", "wifi_manager_clear_sta_config");
