@@ -27,6 +27,7 @@
 #include "metrics.h"
 #include "os_malloc.h"
 #include "esp_type_wrapper.h"
+#include "wifi_manager.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -204,6 +205,11 @@ adv_post_retransmit_advs(const adv_report_table_t *p_reports, const bool flag_co
 
     if (g_gateway_config.http.use_http)
     {
+        if (!wifi_manager_is_connected_to_wifi_or_ethernet())
+        {
+            LOG_WARN("Can't send, no network connection");
+            return;
+        }
         http_send_advs(p_reports);
     }
     if (g_gateway_config.mqtt.use_mqtt)
