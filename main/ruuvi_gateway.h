@@ -22,9 +22,9 @@ extern "C" {
 
 #define ADV_POST_INTERVAL 10000
 
-#define WIFI_CONNECTED_BIT   (1U << 0U)
-#define MQTT_CONNECTED_BIT   (1U << 1U)
-#define ETH_CONNECTED_BIT    (1U << 4U)
+#define WIFI_CONNECTED_BIT (1U << 0U)
+#define MQTT_CONNECTED_BIT (1U << 1U)
+#define ETH_CONNECTED_BIT  (1U << 4U)
 
 typedef enum nrf_command_e
 {

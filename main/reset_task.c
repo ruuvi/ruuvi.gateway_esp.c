@@ -84,8 +84,9 @@ reset_task_handle_sig(const reset_task_sig_e reset_task_sig)
     switch (reset_task_sig)
     {
         case RESET_TASK_SIG_CONFIGURE_BUTTON_PRESSED:
-            LOG_INFO("The CONFIGURE button has been pressed - start timer for %u seconds",
-                     RESET_TASK_TIMEOUT_AFTER_PRESSING_CONFIGURE_BUTTON);
+            LOG_INFO(
+                "The CONFIGURE button has been pressed - start timer for %u seconds",
+                RESET_TASK_TIMEOUT_AFTER_PRESSING_CONFIGURE_BUTTON);
             os_timer_sig_one_shot_start(g_p_timer_sig_reset_by_configure_button);
             leds_indication_on_configure_button_press();
             break;
