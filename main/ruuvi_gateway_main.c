@@ -30,6 +30,7 @@
 #include "http_server_cb.h"
 #include "event_mgr.h"
 #include "cjson_wrap.h"
+#include "reset_task.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -122,6 +123,7 @@ static void
 ethernet_link_up_cb(void)
 {
     LOG_INFO("Ethernet connection established");
+    leds_indication_on_network_ok();
 }
 
 static void
@@ -167,6 +169,7 @@ wifi_connection_ok_cb(void *p_param)
     xEventGroupSetBits(status_bits, WIFI_CONNECTED_BIT);
     start_services();
     event_mgr_notify(EVENT_MGR_EV_WIFI_CONNECTED);
+    leds_indication_on_network_ok();
 }
 
 void
@@ -181,6 +184,7 @@ wifi_connection_cb_on_disconnect_eth_cmd(void)
 {
     LOG_INFO("callback: on_disconnect_eth_cmd");
     wifi_manager_update_network_connection_info(UPDATE_USER_DISCONNECT, NULL, NULL);
+    xEventGroupClearBits(status_bits, ETH_CONNECTED_BIT);
     ethernet_stop();
 }
 
@@ -188,6 +192,7 @@ void
 wifi_connection_cb_on_disconnect_sta_cmd(void)
 {
     LOG_INFO("callback: on_disconnect_sta_cmd");
+    xEventGroupClearBits(status_bits, WIFI_CONNECTED_BIT);
 }
 
 void
@@ -195,6 +200,7 @@ wifi_connection_cb_on_ap_sta_connected(void)
 {
     LOG_INFO("callback: on_ap_sta_connected");
     ethernet_stop();
+    reset_task_stop_timer_after_hotspot_activation();
 }
 
 void
@@ -204,6 +210,7 @@ wifi_connection_cb_on_ap_sta_disconnected(void)
     if (!wifi_manager_is_connected_to_wifi_or_ethernet())
     {
         ethernet_start(g_gw_wifi_ssid.ssid_buf);
+        reset_task_start_timer_after_hotspot_activation();
     }
 }
 
@@ -223,31 +230,6 @@ start_services(void)
     if (g_gateway_config.mqtt.use_mqtt)
     {
         mqtt_app_start();
-    }
-}
-
-ATTR_NORETURN
-static void
-reset_task(void)
-{
-    LOG_INFO("Reset task started");
-
-    while (1)
-    {
-        const EventBits_t bits = xEventGroupWaitBits(
-            status_bits,
-            RESET_BUTTON_BIT,
-            pdTRUE,
-            pdFALSE,
-            pdMS_TO_TICKS(1000));
-        if (0 != (bits & RESET_BUTTON_BIT))
-        {
-            LOG_INFO("Reset activated");
-            // restart the Gateway,
-            // on boot it will check if RB_BUTTON_RESET_PIN is pressed and erase the
-            // settings in flash.
-            esp_restart();
-        }
     }
 }
 
@@ -340,13 +322,13 @@ app_main(void)
             LOG_ERR("%s failed", "wifi_manager_clear_sta_config");
         }
         settings_clear_in_flash();
-        LOG_INFO("Wait until the reset button is released");
+        LOG_INFO("Wait until the CONFIGURE button is released");
         leds_indication_on_configure_button_press();
         while (0 == gpio_get_level(RB_BUTTON_RESET_PIN))
         {
             vTaskDelay(1);
         }
-        LOG_INFO("Reset activated");
+        LOG_INFO("The CONFIGURE button has been released - restart system");
         esp_restart();
     }
 
@@ -396,9 +378,8 @@ app_main(void)
     {
         LOG_ERR("Can't create thread");
     }
-    const uint32_t   stack_size_for_reset_task = 2 * 1024;
-    os_task_handle_t ph_task_reset             = NULL;
-    if (!os_task_create_without_param(&reset_task, "reset_task", stack_size_for_reset_task, 1, &ph_task_reset))
+
+    if (!reset_task_init())
     {
         LOG_ERR("Can't create thread");
     }
