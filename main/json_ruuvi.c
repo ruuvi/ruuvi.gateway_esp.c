@@ -140,6 +140,25 @@ json_ruuvi_parse(const cJSON *p_json_root, ruuvi_gateway_config_t *p_gw_cfg)
         sizeof(p_gw_cfg->http.http_pass),
         true);
 
+    json_ruuvi_copy_string_val(
+        p_json_root,
+        "lan_auth_type",
+        p_gw_cfg->lan_auth.lan_auth_type,
+        sizeof(p_gw_cfg->lan_auth.lan_auth_type),
+        true);
+    json_ruuvi_copy_string_val(
+        p_json_root,
+        "lan_auth_user",
+        p_gw_cfg->lan_auth.lan_auth_user,
+        sizeof(p_gw_cfg->lan_auth.lan_auth_user),
+        true);
+    json_ruuvi_copy_string_val(
+        p_json_root,
+        "lan_auth_pass",
+        p_gw_cfg->lan_auth.lan_auth_pass,
+        sizeof(p_gw_cfg->lan_auth.lan_auth_pass),
+        true);
+
     json_ruuvi_get_bool_val(p_json_root, "use_filtering", &p_gw_cfg->filter.company_filter, true);
     json_ruuvi_get_uint16_val(p_json_root, "company_id", &p_gw_cfg->filter.company_id, true);
 

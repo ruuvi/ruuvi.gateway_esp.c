@@ -31,13 +31,18 @@
             .mqtt_port = 0, \
             .mqtt_prefix = { 0 }, \
             .mqtt_user = { 0 }, \
-            .mqtt_pass = { 0 },                 \
+            .mqtt_pass = { 0 }, \
         }, \
         .http = { \
             .use_http = true, \
             .http_url = { "https://network.ruuvi.com/record" }, \
             .http_user = { 0 }, \
             .http_pass = { 0 }, \
+        }, \
+        .lan_auth = { \
+            .lan_auth_type = { "lan_auth_deny" }, \
+            .lan_auth_user = { 0 }, \
+            .lan_auth_pass = { 0 }, \
         }, \
         .filter = { \
             .company_id = RUUVI_COMPANY_ID, \
@@ -86,6 +91,9 @@ gw_cfg_print_to_log(const ruuvi_gateway_config_t *p_config)
     LOG_INFO("config: http url: %s", p_config->http.http_url);
     LOG_INFO("config: http user: %s", p_config->http.http_user);
     LOG_INFO("config: http pass: %s", "********");
+    LOG_INFO("config: LAN auth type: %s", p_config->lan_auth.lan_auth_type);
+    LOG_INFO("config: LAN auth user: %s", p_config->lan_auth.lan_auth_user);
+    LOG_INFO("config: LAN auth pass: %s", "********");
     LOG_INFO("config: coordinates: %s", p_config->coordinates);
     LOG_INFO("config: use company id filter: %d", p_config->filter.company_filter);
     LOG_INFO("config: company id: 0x%04x", p_config->filter.company_id);
@@ -172,6 +180,20 @@ gw_cfg_json_add_items_http(cJSON *p_json_root, const ruuvi_gateway_config_t *p_c
         return false;
     }
     if (!gw_cfg_json_add_string(p_json_root, "http_user", p_cfg->http.http_user))
+    {
+        return false;
+    }
+    return true;
+}
+
+static bool
+gw_cfg_json_add_items_lan_auth(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg)
+{
+    if (!gw_cfg_json_add_string(p_json_root, "lan_auth_type", p_cfg->lan_auth.lan_auth_type))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_string(p_json_root, "lan_auth_user", p_cfg->lan_auth.lan_auth_user))
     {
         return false;
     }
@@ -269,6 +291,10 @@ gw_cfg_json_add_items(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg, c
         return false;
     }
     if (!gw_cfg_json_add_items_mqtt(p_json_root, p_cfg))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_items_lan_auth(p_json_root, p_cfg))
     {
         return false;
     }

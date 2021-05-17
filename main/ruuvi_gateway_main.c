@@ -31,6 +31,7 @@
 #include "event_mgr.h"
 #include "cjson_wrap.h"
 #include "reset_task.h"
+#include "http_server.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -150,6 +151,13 @@ ethernet_connection_ok_cb(const tcpip_adapter_ip_info_t *p_ip_info)
         g_gateway_config.eth.eth_dhcp = true;
         gw_cfg_print_to_log(&g_gateway_config);
         settings_save_to_flash(&g_gateway_config);
+        if (!http_server_set_auth(
+                g_gateway_config.lan_auth.lan_auth_type,
+                g_gateway_config.lan_auth.lan_auth_user,
+                g_gateway_config.lan_auth.lan_auth_pass))
+        {
+            LOG_ERR("%s failed", "http_server_set_auth");
+        }
         if (wifi_manager_is_ap_active())
         {
             LOG_INFO("Stop WiFi AP");
@@ -337,6 +345,13 @@ app_main(void)
     leds_off();
 
     settings_get_from_flash(&g_gateway_config);
+    if (!http_server_set_auth(
+            g_gateway_config.lan_auth.lan_auth_type,
+            g_gateway_config.lan_auth.lan_auth_user,
+            g_gateway_config.lan_auth.lan_auth_pass))
+    {
+        LOG_ERR("%s failed", "http_server_set_auth");
+    }
     adv_post_init();
     terminal_open(NULL, true);
     api_process(true);

@@ -17,6 +17,7 @@
 #include "metrics.h"
 #include "http_json.h"
 #include "os_malloc.h"
+#include "http_server.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -64,14 +65,16 @@ http_server_resp_json_ruuvi(void)
         return http_server_resp_503();
     }
     LOG_INFO("ruuvi.json: %s", json_str.p_str);
-    const bool flag_no_cache = true;
+    const bool flag_no_cache        = true;
+    const bool flag_add_header_date = true;
     return http_server_resp_data_in_heap(
         HTTP_CONENT_TYPE_APPLICATION_JSON,
         NULL,
         strlen(json_str.p_str),
         HTTP_CONENT_ENCODING_NONE,
         (const uint8_t *)json_str.p_str,
-        flag_no_cache);
+        flag_no_cache,
+        flag_add_header_date);
 }
 
 HTTP_SERVER_CB_STATIC
@@ -96,7 +99,8 @@ http_server_resp_metrics(void)
         LOG_ERR("Not enough memory");
         return http_server_resp_503();
     }
-    const bool flag_no_cache = true;
+    const bool flag_no_cache        = true;
+    const bool flag_add_header_date = true;
     LOG_INFO("metrics: %s", p_metrics);
     return http_server_resp_data_in_heap(
         HTTP_CONENT_TYPE_TEXT_PLAIN,
@@ -104,7 +108,8 @@ http_server_resp_metrics(void)
         strlen(p_metrics),
         HTTP_CONENT_ENCODING_NONE,
         (const uint8_t *)p_metrics,
-        flag_no_cache);
+        flag_no_cache,
+        flag_add_header_date);
 }
 
 HTTP_SERVER_CB_STATIC
@@ -158,7 +163,8 @@ http_server_resp_history(const char *const p_params)
         return http_server_resp_503();
     }
 
-    const bool flag_no_cache = true;
+    const bool flag_no_cache        = true;
+    const bool flag_add_header_date = true;
     LOG_INFO("History on %u seconds interval: %s", (unsigned)time_interval_seconds, json_str.p_str);
     return http_server_resp_data_in_heap(
         HTTP_CONENT_TYPE_APPLICATION_JSON,
@@ -166,7 +172,8 @@ http_server_resp_history(const char *const p_params)
         strlen(json_str.p_str),
         HTTP_CONENT_ENCODING_NONE,
         (const uint8_t *)json_str.p_str,
-        flag_no_cache);
+        flag_no_cache,
+        flag_add_header_date);
 }
 
 HTTP_SERVER_CB_STATIC
@@ -202,7 +209,7 @@ http_get_content_type_by_ext(const char *p_file_ext)
 
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
-http_server_resp_file(const char *file_path)
+http_server_resp_file(const char *file_path, const http_resp_code_e http_resp_code)
 {
     LOG_DBG("Try to find file: %s", file_path);
     if (NULL == gp_ffs_gwui)
@@ -255,7 +262,7 @@ http_server_resp_file(const char *file_path)
         return http_server_resp_503();
     }
     LOG_DBG("File %s was opened successfully, fd=%d", tmp_file_path, fd);
-    return http_server_resp_data_from_file(content_type, NULL, file_size, content_encoding, fd);
+    return http_server_resp_data_from_file(http_resp_code, content_type, NULL, file_size, content_encoding, fd);
 }
 
 static bool
@@ -277,7 +284,7 @@ http_server_is_url_prefix_eq(
 }
 
 http_server_resp_t
-http_server_cb_on_get(const char *const p_path)
+http_server_cb_on_get(const char *const p_path, const http_server_resp_t *const p_resp_auth)
 {
     const char *p_file_ext = strrchr(p_path, '.');
     LOG_INFO("GET /%s", p_path);
@@ -302,7 +309,7 @@ http_server_cb_on_get(const char *const p_path)
         return http_server_resp_history(p_params);
     }
     const char *p_file_path = ('\0' == p_path[0]) ? "ruuvi.html" : p_path;
-    return http_server_resp_file(p_file_path);
+    return http_server_resp_file(p_file_path, (NULL != p_resp_auth) ? p_resp_auth->http_resp_code : HTTP_RESP_CODE_200);
 }
 
 HTTP_SERVER_CB_STATIC
@@ -316,6 +323,13 @@ http_server_cb_on_post_ruuvi(const char *p_body)
     }
     gw_cfg_print_to_log(&g_gateway_config);
     settings_save_to_flash(&g_gateway_config);
+    if (!http_server_set_auth(
+            g_gateway_config.lan_auth.lan_auth_type,
+            g_gateway_config.lan_auth.lan_auth_user,
+            g_gateway_config.lan_auth.lan_auth_pass))
+    {
+        LOG_ERR("%s failed", "http_server_set_auth");
+    }
     ruuvi_send_nrf_settings(&g_gateway_config);
     ethernet_update_ip();
     return http_server_resp_data_in_flash(
@@ -338,7 +352,7 @@ http_server_cb_on_post(const char *p_file_name, const char *p_body)
 }
 
 http_server_resp_t
-http_server_cb_on_delete(const char *p_path)
+http_server_cb_on_delete(const char *p_path, const http_server_resp_t *const p_resp_auth)
 {
     (void)p_path;
     LOG_WARN("DELETE /%s", p_path);
