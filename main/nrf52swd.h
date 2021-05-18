@@ -26,6 +26,9 @@ extern "C" {
 #endif
 
 bool
+nrf52swd_init_gpio_cfg_nreset(void);
+
+bool
 nrf52swd_init(void);
 
 void

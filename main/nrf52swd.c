@@ -60,15 +60,18 @@ static const spi_device_interface_config_t confSPI = {
 
 static spi_device_handle_t g_nrf52swd_device_spi;
 static libswd_ctx_t *      gp_nrf52swd_libswd_ctx;
+static bool                g_nrf52swd_is_gpio_cfg_nreset_initialized;
 static bool                g_nrf52swd_is_spi_initialized;
 static bool                g_nrf52swd_is_spi_device_added;
 static bool                g_nrf52swd_switch_ctrl_activated;
-static uint64_t            g_nrf52swd_initialized_gpio_bitmask;
 
-NRF52SWD_STATIC
 bool
 nrf52swd_init_gpio_cfg_nreset(void)
 {
+    if (g_nrf52swd_is_gpio_cfg_nreset_initialized)
+    {
+        return true;
+    }
     const gpio_config_t io_conf_nrf52_nreset = {
         .pin_bit_mask = (1ULL << (uint32_t)RB_ESP32_GPIO_MUX_NRF52_NRST),
         .mode         = GPIO_MODE_OUTPUT,
@@ -82,7 +85,7 @@ nrf52swd_init_gpio_cfg_nreset(void)
         NRF52SWD_LOG_ERR("gpio_config(nRF52 nRESET)", err);
         return false;
     }
-    g_nrf52swd_initialized_gpio_bitmask |= io_conf_nrf52_nreset.pin_bit_mask;
+    g_nrf52swd_is_gpio_cfg_nreset_initialized = true;
     return true;
 }
 
