@@ -89,6 +89,30 @@ nrf52swd_init_gpio_cfg_nreset(void)
     return true;
 }
 
+bool
+nrf52swd_deinit_gpio_cfg_nreset(void)
+{
+    if (!g_nrf52swd_is_gpio_cfg_nreset_initialized)
+    {
+        return true;
+    }
+    const gpio_config_t io_conf_nrf52_nreset = {
+        .pin_bit_mask = (1ULL << (uint32_t)RB_ESP32_GPIO_MUX_NRF52_NRST),
+        .mode         = GPIO_MODE_DISABLE,
+        .pull_up_en   = 0,
+        .pull_down_en = 0,
+        .intr_type    = GPIO_INTR_DISABLE,
+    };
+    const esp_err_t err = gpio_config(&io_conf_nrf52_nreset);
+    if (ESP_OK != err)
+    {
+        NRF52SWD_LOG_ERR("gpio_config(nRF52 nRESET)", err);
+        return false;
+    }
+    g_nrf52swd_is_gpio_cfg_nreset_initialized = false;
+    return true;
+}
+
 NRF52SWD_STATIC
 bool
 nrf52swd_init_spi_init(void)

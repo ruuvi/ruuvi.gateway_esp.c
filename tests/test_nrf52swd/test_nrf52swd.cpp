@@ -167,6 +167,7 @@ protected:
     void
     TearDown() override
     {
+        nrf52swd_deinit_gpio_cfg_nreset();
         g_pTestClass = nullptr;
         esp_log_wrapper_deinit();
         this->m_memSegmentsRead.clear();
