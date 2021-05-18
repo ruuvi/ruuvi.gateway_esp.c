@@ -275,6 +275,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     cJSON_AddBoolToObject(root, "use_mqtt", true);
     cJSON_AddStringToObject(root, "mqtt_server", "mqtt.server.org");
     cJSON_AddStringToObject(root, "mqtt_prefix", "prefix");
+    cJSON_AddStringToObject(root, "mqtt_client_id", "AA:BB:CC:DD:EE:FF");
     cJSON_AddNumberToObject(root, "mqtt_port", 1234);
     cJSON_AddStringToObject(root, "mqtt_user", "user123");
     cJSON_AddStringToObject(root, "mqtt_pass", "pass123");
@@ -308,6 +309,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     ASSERT_TRUE(gw_cfg.mqtt.use_mqtt);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.mqtt.mqtt_server);
     ASSERT_EQ(string("prefix"), gw_cfg.mqtt.mqtt_prefix);
+    ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.mqtt.mqtt_client_id);
     ASSERT_EQ(1234, gw_cfg.mqtt.mqtt_port);
     ASSERT_EQ(string("user123"), gw_cfg.mqtt.mqtt_user);
     ASSERT_EQ(string("pass123"), gw_cfg.mqtt.mqtt_pass);
@@ -335,6 +337,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_prefix: prefix");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_client_id: AA:BB:CC:DD:EE:FF");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_port: 1234");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_user: user123");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_pass: pass123");
@@ -368,6 +371,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_mqtt_pass) // NOLINT
     cJSON_AddBoolToObject(root, "use_mqtt", true);
     cJSON_AddStringToObject(root, "mqtt_server", "mqtt.server.org");
     cJSON_AddStringToObject(root, "mqtt_prefix", "prefix");
+    cJSON_AddStringToObject(root, "mqtt_client_id", "AA:BB:CC:DD:EE:FF");
     cJSON_AddNumberToObject(root, "mqtt_port", 1234);
     cJSON_AddStringToObject(root, "mqtt_user", "user123");
 
@@ -400,6 +404,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_mqtt_pass) // NOLINT
     ASSERT_TRUE(gw_cfg.mqtt.use_mqtt);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.mqtt.mqtt_server);
     ASSERT_EQ(string("prefix"), gw_cfg.mqtt.mqtt_prefix);
+    ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.mqtt.mqtt_client_id);
     ASSERT_EQ(1234, gw_cfg.mqtt.mqtt_port);
     ASSERT_EQ(string("user123"), gw_cfg.mqtt.mqtt_user);
     ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_pass);
@@ -427,6 +432,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_mqtt_pass) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_prefix: prefix");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_client_id: AA:BB:CC:DD:EE:FF");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_port: 1234");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_user: user123");
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, "mqtt_pass not found or not changed");
@@ -461,6 +467,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
         "\"mqtt_server\":\"test.mosquitto.org\","
         "\"mqtt_port\":1883,"
         "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
+        "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
         "\"mqtt_user\":\"\","
         "\"mqtt_pass\":\"\","
         "\"use_http\":false,"
@@ -486,6 +493,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     ASSERT_TRUE(gw_cfg.mqtt.use_mqtt);
     ASSERT_EQ(string("test.mosquitto.org"), gw_cfg.mqtt.mqtt_server);
     ASSERT_EQ(string("ruuvi/30:AE:A4:02:84:A4"), gw_cfg.mqtt.mqtt_prefix);
+    ASSERT_EQ(string("30:AE:A4:02:84:A4"), gw_cfg.mqtt.mqtt_client_id);
     ASSERT_EQ(1883, gw_cfg.mqtt.mqtt_port);
     ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_user);
     ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_pass);
@@ -507,6 +515,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_prefix: ruuvi/30:AE:A4:02:84:A4");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_client_id: 30:AE:A4:02:84:A4");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_port: 1883");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_user: ");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_pass: ");
@@ -542,6 +551,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body_malloc_failed) // NOLINT
         "\"mqtt_server\":\"test.mosquitto.org\","
         "\"mqtt_port\":1883,"
         "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
+        "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
         "\"mqtt_user\":\"\","
         "\"mqtt_pass\":\"\","
         "\"use_http\":false,"
