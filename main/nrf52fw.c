@@ -15,6 +15,7 @@
 #include "freertos/task.h"
 #include "os_malloc.h"
 #include "os_str.h"
+#include "gpio_switch_ctrl.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -715,7 +716,16 @@ void
 nrf52fw_hw_reset_nrf52(const bool flag_reset)
 {
     LOG_INFO("Hardware reset nRF52: %s", flag_reset ? "true" : "false");
+    nrf52swd_init_gpio_cfg_nreset();
+    if (flag_reset)
+    {
+        gpio_switch_ctrl_activate();
+    }
     nrf52swd_reset(flag_reset);
+    if (!flag_reset)
+    {
+        gpio_switch_ctrl_deactivate();
+    }
 }
 
 bool
