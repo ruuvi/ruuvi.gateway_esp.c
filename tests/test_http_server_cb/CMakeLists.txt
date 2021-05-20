@@ -21,12 +21,20 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/metrics.h
         ${RUUVI_ESP_WRAPPERS_INC}/log.h
         ${WIFI_MANAGER_SRC}/http_server_resp.c
+        ${WIFI_MANAGER_SRC}/wifiman_sha256.c
+        ${WIFI_MANAGER_SRC}/wifiman_sha256.h
+        ${WIFI_MANAGER_SRC}/http_server_auth.c
+        ${WIFI_MANAGER_SRC}/http_server_auth.h
         ${WIFI_MANAGER_INC}/http_server_resp.h
         ${WIFI_MANAGER_INC}/wifi_manager.h
         ${WIFI_MANAGER_INC}/wifi_manager_defs.h
         $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.h
+        $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/sha256.c
+        $ENV{IDF_PATH}/components/mbedtls/mbedtls/include/mbedtls/sha256.h
+        $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/platform_util.c
+        $ENV{IDF_PATH}/components/mbedtls/mbedtls/include/mbedtls/platform_util.h
 )
 
 set_target_properties(${ProjectId} PROPERTIES
@@ -45,6 +53,7 @@ target_include_directories(${ProjectId} PUBLIC
         $ENV{IDF_PATH}/components/esp_common/include
         $ENV{IDF_PATH}/components/esp_event/include
         $ENV{IDF_PATH}/components/lwip/include/apps
+        $ENV{IDF_PATH}/components/mbedtls/mbedtls/include
         ${CMAKE_CURRENT_SOURCE_DIR}
         ../../components/esp32-wifi-manager/src/include
         ../../components/esp32-wifi-manager/src

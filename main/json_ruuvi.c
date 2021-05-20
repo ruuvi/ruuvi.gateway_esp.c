@@ -6,8 +6,10 @@
  */
 
 #include "json_ruuvi.h"
+#include "stdio.h"
 #include "cJSON.h"
 #include "cjson_wrap.h"
+#include "http_server_auth_type.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -140,12 +142,19 @@ json_ruuvi_parse(const cJSON *p_json_root, ruuvi_gateway_config_t *p_gw_cfg)
         sizeof(p_gw_cfg->http.http_pass),
         true);
 
-    json_ruuvi_copy_string_val(
-        p_json_root,
-        "lan_auth_type",
-        p_gw_cfg->lan_auth.lan_auth_type,
-        sizeof(p_gw_cfg->lan_auth.lan_auth_type),
-        true);
+    if (!json_ruuvi_copy_string_val(
+            p_json_root,
+            "lan_auth_type",
+            p_gw_cfg->lan_auth.lan_auth_type,
+            sizeof(p_gw_cfg->lan_auth.lan_auth_type),
+            true))
+    {
+        snprintf(
+            p_gw_cfg->lan_auth.lan_auth_type,
+            sizeof(p_gw_cfg->lan_auth.lan_auth_type),
+            "%s",
+            HTTP_SERVER_AUTH_TYPE_STR_DENY);
+    }
     json_ruuvi_copy_string_val(
         p_json_root,
         "lan_auth_user",

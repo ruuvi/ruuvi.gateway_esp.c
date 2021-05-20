@@ -7,6 +7,7 @@
 
 #include "gw_cfg.h"
 #include <stdio.h>
+#include "http_server_auth_type.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -40,7 +41,7 @@
             .http_pass = { 0 }, \
         }, \
         .lan_auth = { \
-            .lan_auth_type = { "lan_auth_deny" }, \
+            .lan_auth_type = { HTTP_SERVER_AUTH_TYPE_STR_DENY }, \
             .lan_auth_user = { 0 }, \
             .lan_auth_pass = { 0 }, \
         }, \

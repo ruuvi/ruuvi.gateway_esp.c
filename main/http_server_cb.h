@@ -61,7 +61,7 @@ http_content_type_e
 http_get_content_type_by_ext(const char *p_file_ext);
 
 http_server_resp_t
-http_server_resp_file(const char *file_path);
+http_server_resp_file(const char *file_path, const http_resp_code_e http_resp_code);
 
 http_server_resp_t
 http_server_cb_on_post_ruuvi(const char *p_body);
