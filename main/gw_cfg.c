@@ -31,6 +31,7 @@
             .mqtt_server = { 0 }, \
             .mqtt_port = 0, \
             .mqtt_prefix = { 0 }, \
+            .mqtt_client_id = { 0 }, \
             .mqtt_user = { 0 }, \
             .mqtt_pass = { 0 }, \
         }, \
@@ -86,6 +87,7 @@ gw_cfg_print_to_log(const ruuvi_gateway_config_t *p_config)
     LOG_INFO("config: mqtt server: %s", p_config->mqtt.mqtt_server);
     LOG_INFO("config: mqtt port: %u", p_config->mqtt.mqtt_port);
     LOG_INFO("config: mqtt prefix: %s", p_config->mqtt.mqtt_prefix);
+    LOG_INFO("config: mqtt client id: %s", p_config->mqtt.mqtt_client_id);
     LOG_INFO("config: mqtt user: %s", p_config->mqtt.mqtt_user);
     LOG_INFO("config: mqtt password: %s", "********");
     LOG_INFO("config: use http: %d", p_config->http.use_http);
@@ -217,6 +219,10 @@ gw_cfg_json_add_items_mqtt(cJSON *p_json_root, const ruuvi_gateway_config_t *p_c
         return false;
     }
     if (!gw_cfg_json_add_string(p_json_root, "mqtt_prefix", p_cfg->mqtt.mqtt_prefix))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_string(p_json_root, "mqtt_client_id", p_cfg->mqtt.mqtt_client_id))
     {
         return false;
     }

@@ -110,6 +110,12 @@ json_ruuvi_parse(const cJSON *p_json_root, ruuvi_gateway_config_t *p_gw_cfg)
         p_gw_cfg->mqtt.mqtt_prefix,
         sizeof(p_gw_cfg->mqtt.mqtt_prefix),
         true);
+    json_ruuvi_copy_string_val(
+        p_json_root,
+        "mqtt_client_id",
+        p_gw_cfg->mqtt.mqtt_client_id,
+        sizeof(p_gw_cfg->mqtt.mqtt_client_id),
+        true);
     json_ruuvi_get_uint16_val(p_json_root, "mqtt_port", &p_gw_cfg->mqtt.mqtt_port, true);
     json_ruuvi_copy_string_val(
         p_json_root,

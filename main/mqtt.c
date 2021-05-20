@@ -186,8 +186,9 @@ mqtt_app_start(void)
     }
 
     LOG_INFO(
-        "Using server: %s, topic prefix: '%s', port: %u, user: '%s', password: '%s'",
+        "Using server: %s, client id: '%s', topic prefix: '%s', port: %u, user: '%s', password: '%s'",
         g_gateway_config.mqtt.mqtt_server,
+        g_gateway_config.mqtt.mqtt_client_id,
         g_gateway_config.mqtt.mqtt_prefix,
         g_gateway_config.mqtt.mqtt_port,
         g_gateway_config.mqtt.mqtt_user,
@@ -199,7 +200,7 @@ mqtt_app_start(void)
         .host                        = g_gateway_config.mqtt.mqtt_server,
         .uri                         = NULL,
         .port                        = g_gateway_config.mqtt.mqtt_port,
-        .client_id                   = g_gw_mac_sta_str.str_buf,
+        .client_id                   = g_gateway_config.mqtt.mqtt_client_id,
         .username                    = g_gateway_config.mqtt.mqtt_user,
         .password                    = g_gateway_config.mqtt.mqtt_pass,
         .lwt_topic                   = lwt_topic_buf.buf,
