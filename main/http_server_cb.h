@@ -35,13 +35,13 @@ void
 http_server_cb_deinit(void);
 
 http_server_resp_t
-http_server_cb_on_get(const char *p_path);
+http_server_cb_on_get(const char *p_path, const http_server_resp_t *const p_resp_auth);
 
 http_server_resp_t
 http_server_cb_on_post(const char *p_file_name, const char *p_body);
 
 http_server_resp_t
-http_server_cb_on_delete(const char *p_path);
+http_server_cb_on_delete(const char *p_path, const http_server_resp_t *const p_resp_auth);
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 
@@ -61,7 +61,7 @@ http_content_type_e
 http_get_content_type_by_ext(const char *p_file_ext);
 
 http_server_resp_t
-http_server_resp_file(const char *file_path);
+http_server_resp_file(const char *file_path, const http_resp_code_e http_resp_code);
 
 http_server_resp_t
 http_server_cb_on_post_ruuvi(const char *p_body);
