@@ -34,15 +34,18 @@ extern "C" {
 #define MAX_HTTP_PASS_LEN      51
 #define MAX_MQTT_SERVER_LEN    256
 #define MAX_MQTT_PREFIX_LEN    51
-#define MAX_MQTT_CLIENT_ID_LEN 51
 #define MAX_MQTT_USER_LEN      51
 #define MAX_MQTT_PASS_LEN      51
+#define MAX_MQTT_CLIENT_ID_LEN 51
+#define MAX_LAN_AUTH_TYPE_LEN  16
+#define MAX_LAN_AUTH_USER_LEN  51
+#define MAX_LAN_AUTH_PASS_LEN  51
 #define IP_STR_LEN             17
 
 #define RUUVI_COMPANY_ID 0x0499
 
 #define RUUVI_GATEWAY_CONFIG_HEADER      (0xAABBU)
-#define RUUVI_GATEWAY_CONFIG_FMT_VERSION (0x0006U)
+#define RUUVI_GATEWAY_CONFIG_FMT_VERSION (0x0007U)
 
 typedef struct ruuvi_gw_cfg_eth_t
 {
@@ -74,6 +77,13 @@ typedef struct ruuvi_gw_cfg_http_t
     char http_pass[MAX_HTTP_PASS_LEN];
 } ruuvi_gw_cfg_http_t;
 
+typedef struct ruuvi_gw_cfg_lan_auth_t
+{
+    char lan_auth_type[MAX_LAN_AUTH_TYPE_LEN];
+    char lan_auth_user[MAX_LAN_AUTH_USER_LEN];
+    char lan_auth_pass[MAX_LAN_AUTH_PASS_LEN];
+} ruuvi_gw_cfg_lan_auth_t;
+
 typedef struct ruuvi_gw_cfg_filter_t
 {
     uint16_t company_id;
@@ -92,14 +102,15 @@ typedef struct ruuvi_gw_cfg_scan_t
 
 typedef struct ruuvi_gateway_config_t
 {
-    uint16_t              header;
-    uint16_t              fmt_version;
-    ruuvi_gw_cfg_eth_t    eth;
-    ruuvi_gw_cfg_mqtt_t   mqtt;
-    ruuvi_gw_cfg_http_t   http;
-    ruuvi_gw_cfg_filter_t filter;
-    ruuvi_gw_cfg_scan_t   scan;
-    char                  coordinates[MAX_CONFIG_STR_LEN];
+    uint16_t                header;
+    uint16_t                fmt_version;
+    ruuvi_gw_cfg_eth_t      eth;
+    ruuvi_gw_cfg_mqtt_t     mqtt;
+    ruuvi_gw_cfg_http_t     http;
+    ruuvi_gw_cfg_lan_auth_t lan_auth;
+    ruuvi_gw_cfg_filter_t   filter;
+    ruuvi_gw_cfg_scan_t     scan;
+    char                    coordinates[MAX_CONFIG_STR_LEN];
 } ruuvi_gateway_config_t;
 
 extern ruuvi_gateway_config_t       g_gateway_config;

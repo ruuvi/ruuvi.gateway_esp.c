@@ -285,6 +285,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     cJSON_AddStringToObject(root, "http_user", "user567");
     cJSON_AddStringToObject(root, "http_pass", "pass567");
 
+    cJSON_AddStringToObject(root, "lan_auth_type", "lan_auth_ruuvi");
+    cJSON_AddStringToObject(root, "lan_auth_user", "user1");
+    cJSON_AddStringToObject(root, "lan_auth_pass", "qwe");
+
     cJSON_AddBoolToObject(root, "use_filtering", true);
     cJSON_AddNumberToObject(root, "company_id", 888);
 
@@ -345,6 +349,9 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_user: user567");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_pass: pass567");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_type: lan_auth_ruuvi");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_user: user1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_filtering: 1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "company_id: 888");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "coordinates: coord:123,456");
@@ -379,6 +386,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_mqtt_pass) // NOLINT
     cJSON_AddStringToObject(root, "http_url", "https://api.ruuvi.com:456/api");
     cJSON_AddStringToObject(root, "http_user", "user567");
     cJSON_AddStringToObject(root, "http_pass", "pass567");
+
+    cJSON_AddStringToObject(root, "lan_auth_type", "lan_auth_ruuvi");
+    cJSON_AddStringToObject(root, "lan_auth_user", "user1");
+    cJSON_AddStringToObject(root, "lan_auth_pass", "qwe");
 
     cJSON_AddBoolToObject(root, "use_filtering", true);
     cJSON_AddNumberToObject(root, "company_id", 888);
@@ -440,6 +451,9 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_mqtt_pass) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_user: user567");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_pass: pass567");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_type: lan_auth_ruuvi");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_user: user1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_filtering: 1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "company_id: 888");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "coordinates: coord:123,456");
@@ -474,6 +488,9 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
         "\"http_url\":\"https://network.ruuvi.com/record\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
+        "\"lan_auth_type\":\"lan_auth_ruuvi\","
+        "\"lan_auth_user\":\"user1\","
+        "\"lan_auth_pass\":\"qwe\","
         "\"use_filtering\":true,"
         "\"use_coded_phy\":true,"
         "\"use_1mbit_phy\":true,"
@@ -523,6 +540,9 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_url: https://network.ruuvi.com/record");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_user: ");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_pass: ");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_type: lan_auth_ruuvi");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_user: user1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_filtering: 1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "company_id not found or invalid");
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "coordinates not found");

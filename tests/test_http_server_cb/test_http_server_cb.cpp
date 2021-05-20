@@ -42,6 +42,12 @@ os_task_get_name(void)
     return const_cast<char *>(g_task_name);
 }
 
+uint32_t
+esp_random(void)
+{
+    return 0;
+}
+
 } // extern "C"
 
 class MemAllocTrace
@@ -382,6 +388,8 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
           "\t\"mqtt_prefix\":\t\"ruuvi/30:AE:A4:02:84:A4\",\n"
           "\t\"mqtt_client_id\":\t\"30:AE:A4:02:84:A4\",\n"
           "\t\"mqtt_user\":\t\"\",\n"
+          "\t\"lan_auth_type\":\t\"lan_auth_deny\",\n"
+          "\t\"lan_auth_user\":\t\"\",\n"
           "\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
           "\t\"use_filtering\":\ttrue,\n"
           "\t\"company_id\":\t\"0x0499\",\n"
@@ -419,10 +427,10 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
@@ -458,7 +466,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed) // NOLINT
 
     ASSERT_EQ(HTTP_RESP_CODE_503, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
-    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
@@ -487,6 +495,8 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
           "\t\"mqtt_prefix\":\t\"ruuvi/30:AE:A4:02:84:A4\",\n"
           "\t\"mqtt_client_id\":\t\"30:AE:A4:02:84:A4\",\n"
           "\t\"mqtt_user\":\t\"\",\n"
+          "\t\"lan_auth_type\":\t\"lan_auth_deny\",\n"
+          "\t\"lan_auth_user\":\t\"\",\n"
           "\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
           "\t\"use_filtering\":\ttrue,\n"
           "\t\"company_id\":\t\"0x0499\",\n"
@@ -524,10 +534,10 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
@@ -538,7 +548,7 @@ TEST_F(TestHttpServerCb, resp_json_unknown) // NOLINT
 
     ASSERT_EQ(HTTP_RESP_CODE_404, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
-    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
@@ -574,7 +584,7 @@ TEST_F(TestHttpServerCb, resp_metrics_malloc_failed) // NOLINT
 
     ASSERT_EQ(HTTP_RESP_CODE_503, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
-    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
@@ -604,10 +614,10 @@ TEST_F(TestHttpServerCb, resp_file_index_html_fail_partition_not_ready) // NOLIN
     this->m_files.emplace_back(fileInfo);
     this->m_fd = fd;
 
-    const http_server_resp_t resp = http_server_resp_file("index.html");
+    const http_server_resp_t resp = http_server_resp_file("index.html", HTTP_RESP_CODE_200);
     ASSERT_EQ(HTTP_RESP_CODE_503, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
-    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
@@ -628,10 +638,10 @@ TEST_F(TestHttpServerCb, resp_file_index_html_fail_file_name_too_long) // NOLINT
     this->m_files.emplace_back(fileInfo);
     this->m_fd = fd;
 
-    const http_server_resp_t resp = http_server_resp_file(file_name);
+    const http_server_resp_t resp = http_server_resp_file(file_name, HTTP_RESP_CODE_200);
     ASSERT_EQ(HTTP_RESP_CODE_503, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
-    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
@@ -653,7 +663,7 @@ TEST_F(TestHttpServerCb, resp_file_index_html) // NOLINT
     this->m_files.emplace_back(fileInfo);
     this->m_fd = fd;
 
-    const http_server_resp_t resp = http_server_resp_file("index.html");
+    const http_server_resp_t resp = http_server_resp_file("index.html", HTTP_RESP_CODE_200);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
     ASSERT_FALSE(resp.flag_no_cache);
@@ -676,7 +686,7 @@ TEST_F(TestHttpServerCb, resp_file_index_html_gzipped) // NOLINT
     this->m_files.emplace_back(fileInfo);
     this->m_fd = fd;
 
-    const http_server_resp_t resp = http_server_resp_file("index.html");
+    const http_server_resp_t resp = http_server_resp_file("index.html", HTTP_RESP_CODE_200);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
     ASSERT_FALSE(resp.flag_no_cache);
@@ -699,7 +709,7 @@ TEST_F(TestHttpServerCb, resp_file_app_js_gzipped) // NOLINT
     this->m_files.emplace_back(fileInfo);
     this->m_fd = fd;
 
-    const http_server_resp_t resp = http_server_resp_file("app.js");
+    const http_server_resp_t resp = http_server_resp_file("app.js", HTTP_RESP_CODE_200);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
     ASSERT_FALSE(resp.flag_no_cache);
@@ -722,7 +732,7 @@ TEST_F(TestHttpServerCb, resp_file_app_css_gzipped) // NOLINT
     this->m_files.emplace_back(fileInfo);
     this->m_fd = fd;
 
-    const http_server_resp_t resp = http_server_resp_file("style.css");
+    const http_server_resp_t resp = http_server_resp_file("style.css", HTTP_RESP_CODE_200);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
     ASSERT_FALSE(resp.flag_no_cache);
@@ -745,7 +755,7 @@ TEST_F(TestHttpServerCb, resp_file_binary_without_extension) // NOLINT
     this->m_files.emplace_back(fileInfo);
     this->m_fd = fd;
 
-    const http_server_resp_t resp = http_server_resp_file("binary");
+    const http_server_resp_t resp = http_server_resp_file("binary", HTTP_RESP_CODE_200);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
     ASSERT_FALSE(resp.flag_no_cache);
@@ -763,10 +773,10 @@ TEST_F(TestHttpServerCb, resp_file_unknown_html) // NOLINT
 {
     ASSERT_TRUE(http_server_cb_init());
 
-    const http_server_resp_t resp = http_server_resp_file("unknown.html");
+    const http_server_resp_t resp = http_server_resp_file("unknown.html", HTTP_RESP_CODE_200);
     ASSERT_EQ(HTTP_RESP_CODE_404, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
-    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
@@ -786,10 +796,10 @@ TEST_F(TestHttpServerCb, resp_file_index_html_failed_on_open) // NOLINT
     this->m_files.emplace_back(fileInfo);
     this->m_fd = fd;
 
-    const http_server_resp_t resp = http_server_resp_file("index.html");
+    const http_server_resp_t resp = http_server_resp_file("index.html", HTTP_RESP_CODE_200);
     ASSERT_EQ(HTTP_RESP_CODE_503, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
-    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
@@ -805,10 +815,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_default) // NOLINT
     ASSERT_TRUE(http_server_cb_init());
     this->m_fd = -1;
 
-    const http_server_resp_t resp = http_server_cb_on_get("");
+    const http_server_resp_t resp = http_server_cb_on_get("", nullptr);
     ASSERT_EQ(HTTP_RESP_CODE_404, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
-    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
@@ -829,7 +839,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_index_html) // NOLINT
     this->m_files.emplace_back(fileInfo);
     this->m_fd = fd;
 
-    const http_server_resp_t resp = http_server_cb_on_get("index.html");
+    const http_server_resp_t resp = http_server_cb_on_get("index.html", nullptr);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
     ASSERT_FALSE(resp.flag_no_cache);
@@ -853,7 +863,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_app_js) // NOLINT
     this->m_files.emplace_back(fileInfo);
     this->m_fd = fd;
 
-    const http_server_resp_t resp = http_server_cb_on_get("app.js");
+    const http_server_resp_t resp = http_server_cb_on_get("app.js", nullptr);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
     ASSERT_FALSE(resp.flag_no_cache);
@@ -887,6 +897,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
           "\t\"mqtt_prefix\":\t\"ruuvi/30:AE:A4:02:84:A4\",\n"
           "\t\"mqtt_client_id\":\t\"30:AE:A4:02:84:A4\",\n"
           "\t\"mqtt_user\":\t\"\",\n"
+          "\t\"lan_auth_type\":\t\"lan_auth_deny\",\n"
+          "\t\"lan_auth_user\":\t\"\",\n"
           "\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
           "\t\"use_filtering\":\ttrue,\n"
           "\t\"company_id\":\t\"0x0499\",\n"
@@ -917,17 +929,17 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
     snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
 
     esp_log_wrapper_clear();
-    const http_server_resp_t resp = http_server_cb_on_get("ruuvi.json");
+    const http_server_resp_t resp = http_server_cb_on_get("ruuvi.json", nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("GET /ruuvi.json"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -936,7 +948,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
 TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics) // NOLINT
 {
     const char *             expected_resp = "metrics_info";
-    const http_server_resp_t resp          = http_server_cb_on_get("metrics");
+    const http_server_resp_t resp          = http_server_cb_on_get("metrics", nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -974,7 +986,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history) // NOLINT
           "\t\t}\n"
           "\t}\n"
           "}";
-    const http_server_resp_t resp = http_server_cb_on_get("history");
+    const http_server_resp_t resp = http_server_cb_on_get("history", nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -1011,7 +1023,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_with_time_interval_20) //
           "\t\t}\n"
           "\t}\n"
           "}";
-    const http_server_resp_t resp = http_server_cb_on_get("history?time=20");
+    const http_server_resp_t resp = http_server_cb_on_get("history?time=20", nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -1079,6 +1091,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_url: https://network.ruuvi.com/record");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_user: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_pass: ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_type not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_user not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_pass not found");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_filtering: 1");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "company_id not found or invalid");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "coordinates not found");
@@ -1107,6 +1122,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: https://network.ruuvi.com/record"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http user: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http pass: ********"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_deny"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth user: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: coordinates: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use company id filter: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: company id: 0x0000"));
@@ -1145,7 +1163,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed) // NOLINT
 
     ASSERT_EQ(HTTP_RESP_CODE_503, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
-    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
@@ -1209,6 +1227,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_url: https://network.ruuvi.com/record");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_user: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_pass: ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_type not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_user not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_pass not found");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_filtering: 1");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "company_id not found or invalid");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "coordinates not found");
@@ -1237,6 +1258,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: https://network.ruuvi.com/record"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http user: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http pass: ********"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_deny"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth user: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: coordinates: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use company id filter: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: company id: 0x0000"));
@@ -1275,7 +1299,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_unknown_json) // NOLINT
 
     ASSERT_EQ(HTTP_RESP_CODE_404, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
-    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
@@ -1287,11 +1311,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_unknown_json) // NOLINT
 
 TEST_F(TestHttpServerCb, http_server_cb_on_delete) // NOLINT
 {
-    const http_server_resp_t resp = http_server_cb_on_delete("unknown.json");
+    const http_server_resp_t resp = http_server_cb_on_delete("unknown.json", nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_404, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
-    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);

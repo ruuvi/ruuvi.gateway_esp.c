@@ -279,6 +279,22 @@ TestNRF52Fw::~TestNRF52Fw() = default;
 
 extern "C" {
 
+void
+gpio_switch_ctrl_activate(void)
+{
+}
+
+void
+gpio_switch_ctrl_deactivate(void)
+{
+}
+
+bool
+nrf52swd_init_gpio_cfg_nreset(void)
+{
+    return true;
+}
+
 const char *
 os_task_get_name(void)
 {
