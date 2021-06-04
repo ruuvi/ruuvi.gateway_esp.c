@@ -29,7 +29,7 @@ extern "C" {
 #endif
 
 bool
-http_server_cb_init(void);
+http_server_cb_init(const char* const p_fatfs_gwui_partition_name);
 
 void
 http_server_cb_deinit(void);

@@ -32,6 +32,7 @@
 #include "cjson_wrap.h"
 #include "reset_task.h"
 #include "http_server.h"
+#include "fw_update.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -242,7 +243,10 @@ start_services(void)
 }
 
 static bool
-wifi_init(const bool flag_use_eth, const wifi_ssid_t *const p_gw_wifi_ssid)
+wifi_init(
+    const bool               flag_use_eth,
+    const wifi_ssid_t *const p_gw_wifi_ssid,
+    const char *const        p_fatfs_gwui_partition_name)
 {
     static const WiFiAntConfig_t wiFiAntConfig = {
         .wifi_ant_gpio_config = {
@@ -273,7 +277,7 @@ wifi_init(const bool flag_use_eth, const wifi_ssid_t *const p_gw_wifi_ssid)
             .enabled_ant1 = 1,
         },
     };
-    if (!http_server_cb_init())
+    if (!http_server_cb_init(p_fatfs_gwui_partition_name))
     {
         LOG_ERR("%s failed", "http_server_cb_init");
         return false;
@@ -300,6 +304,8 @@ app_main(void)
 {
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
     cjson_wrap_init();
+
+    fw_update_read_flash_info();
 
     if (!event_mgr_init())
     {
@@ -341,7 +347,7 @@ app_main(void)
     }
 
     leds_indication_on_nrf52_fw_updating();
-    nrf52fw_update_fw_if_necessary();
+    nrf52fw_update_fw_if_necessary(fw_update_get_current_fatfs_nrf52_partition_name());
     leds_off();
 
     settings_get_from_flash(&g_gateway_config);
@@ -358,7 +364,7 @@ app_main(void)
     time_task_init();
     ruuvi_send_nrf_settings(&g_gateway_config);
 
-    if (!wifi_init(g_gateway_config.eth.use_eth, &g_gw_wifi_ssid))
+    if (!wifi_init(g_gateway_config.eth.use_eth, &g_gw_wifi_ssid, fw_update_get_current_fatfs_gwui_partition_name()))
     {
         LOG_ERR("%s failed", "wifi_init");
         return;

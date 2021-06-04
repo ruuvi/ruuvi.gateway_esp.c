@@ -31,12 +31,12 @@ static const char g_empty_json[] = "{}";
 static const flash_fat_fs_t *gp_ffs_gwui;
 
 bool
-http_server_cb_init(void)
+http_server_cb_init(const char* const p_fatfs_gwui_partition_name)
 {
     const char *                   mount_point   = "/fs_gwui";
     const flash_fat_fs_num_files_t max_num_files = 4U;
 
-    gp_ffs_gwui = flashfatfs_mount(mount_point, GW_GWUI_PARTITION, max_num_files);
+    gp_ffs_gwui = flashfatfs_mount(mount_point, p_fatfs_gwui_partition_name, max_num_files);
     if (NULL == gp_ffs_gwui)
     {
         LOG_ERR("flashfatfs_mount: failed to mount partition '%s'", GW_GWUI_PARTITION);

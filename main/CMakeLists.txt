@@ -14,6 +14,8 @@ idf_component_register(
             event_mgr.h
             flashfatfs.c
             flashfatfs.h
+            fw_update.c
+            fw_update.h
             gpio.c
             gpio.h
             gpio_switch_ctrl.c
@@ -48,6 +50,7 @@ idf_component_register(
             time_task.c
             time_task.h
         REQUIRES
+            app_update
             mqtt
             lwip
             esp_http_client

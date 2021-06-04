@@ -673,11 +673,11 @@ nrf52fw_update_fw_step2(const flash_fat_fs_t *p_ffs)
 
 NRF52FW_STATIC
 bool
-nrf52fw_update_fw_step1(void)
+nrf52fw_update_fw_step1(const char* const p_fatfs_nrf52_partition_name)
 {
     const flash_fat_fs_num_files_t max_num_files = 1;
 
-    const flash_fat_fs_t *p_ffs = flashfatfs_mount("/fs_nrf52", GW_NRF_PARTITION, max_num_files);
+    const flash_fat_fs_t *p_ffs = flashfatfs_mount("/fs_nrf52", p_fatfs_nrf52_partition_name, max_num_files);
     if (NULL == p_ffs)
     {
         LOG_ERR("%s failed", "flashfatfs_mount");
@@ -690,7 +690,7 @@ nrf52fw_update_fw_step1(void)
 
 NRF52FW_STATIC
 bool
-nrf52fw_update_fw_step0(void)
+nrf52fw_update_fw_step0(const char* const p_fatfs_nrf52_partition_name)
 {
     if (!nrf52fw_init_swd())
     {
@@ -698,7 +698,7 @@ nrf52fw_update_fw_step0(void)
         return false;
     }
 
-    bool result = nrf52fw_update_fw_step1();
+    bool result = nrf52fw_update_fw_step1(p_fatfs_nrf52_partition_name);
 
     if (result)
     {
@@ -729,14 +729,14 @@ nrf52fw_hw_reset_nrf52(const bool flag_reset)
 }
 
 bool
-nrf52fw_update_fw_if_necessary(void)
+nrf52fw_update_fw_if_necessary(const char* const p_fatfs_nrf52_partition_name)
 {
     const TickType_t ticks_in_reset_state = 100;
     nrf52fw_hw_reset_nrf52(true);
     vTaskDelay(ticks_in_reset_state);
     nrf52fw_hw_reset_nrf52(false);
 
-    const bool res = nrf52fw_update_fw_step0();
+    const bool res = nrf52fw_update_fw_step0(p_fatfs_nrf52_partition_name);
 
     nrf52fw_hw_reset_nrf52(true);
     vTaskDelay(ticks_in_reset_state);
