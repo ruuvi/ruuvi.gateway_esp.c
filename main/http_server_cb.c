@@ -18,8 +18,13 @@
 #include "http_json.h"
 #include "os_malloc.h"
 #include "http_server.h"
+#include "http.h"
 
+#if RUUVI_TESTS_HTTP_SERVER_CB
+#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
+#else
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
+#endif
 #include "log.h"
 
 #define HTTP_SERVER_DEFAULT_HISTORY_INTERVAL_SECONDS (60U)
@@ -77,6 +82,90 @@ http_server_resp_json_ruuvi(void)
         flag_add_header_date);
 }
 
+typedef struct download_github_latest_release_info_t
+{
+    bool   is_error;
+    char * p_json_buf;
+    size_t json_buf_size;
+} download_github_latest_release_info_t;
+
+static void
+cb_on_http_data_json_github_latest_release(
+    const uint8_t *const p_buf,
+    const size_t         buf_size,
+    const size_t         offset,
+    const size_t         content_length,
+    void *               p_user_data)
+{
+    download_github_latest_release_info_t *const p_info = p_user_data;
+    if (p_info->is_error)
+    {
+        return;
+    }
+    if (NULL == p_info->p_json_buf)
+    {
+        if (0 == content_length)
+        {
+            p_info->is_error = true;
+            LOG_ERR("Content length is zero");
+            return;
+        }
+        p_info->json_buf_size = content_length + 1;
+        p_info->p_json_buf    = os_calloc(1, p_info->json_buf_size);
+        if (NULL == p_info->p_json_buf)
+        {
+            p_info->is_error = true;
+            LOG_ERR("Can't allocate %lu bytes for github_latest_release.json", (printf_ulong_t)content_length);
+            return;
+        }
+    }
+    if ((offset >= p_info->json_buf_size) || ((offset + buf_size) >= p_info->json_buf_size))
+    {
+        p_info->is_error = true;
+        LOG_ERR(
+            "Buffer overflow while downloading github_latest_release.json: json_buf_size=%lu, offset=%lu, len=%lu",
+            (printf_ulong_t)p_info->json_buf_size,
+            (printf_ulong_t)offset,
+            (printf_ulong_t)buf_size);
+        return;
+    }
+    memcpy(&p_info->p_json_buf[offset], p_buf, buf_size);
+}
+
+HTTP_SERVER_CB_STATIC
+http_server_resp_t
+http_server_resp_json_github_latest_release(void)
+{
+    download_github_latest_release_info_t info = {
+        .is_error   = false,
+        .p_json_buf = NULL,
+    };
+    if (!http_download(
+            "https://api.github.com/repos/ruuvi/ruuvi.gateway_esp.c/releases/latest",
+            &cb_on_http_data_json_github_latest_release,
+            &info))
+    {
+        return http_server_resp_504();
+    }
+    if (NULL == info.p_json_buf)
+    {
+        return http_server_resp_504();
+    }
+
+    cjson_wrap_str_t json_str = { .p_str = info.p_json_buf };
+    LOG_INFO("github_latest_release.json: %s", json_str.p_str);
+    const bool flag_no_cache        = true;
+    const bool flag_add_header_date = true;
+    return http_server_resp_data_in_heap(
+        HTTP_CONENT_TYPE_APPLICATION_JSON,
+        NULL,
+        strlen(json_str.p_str),
+        HTTP_CONENT_ENCODING_NONE,
+        (const uint8_t *)json_str.p_str,
+        flag_no_cache,
+        flag_add_header_date);
+}
+
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_json(const char *p_file_name)
@@ -84,6 +173,10 @@ http_server_resp_json(const char *p_file_name)
     if (0 == strcmp(p_file_name, "ruuvi.json"))
     {
         return http_server_resp_json_ruuvi();
+    }
+    else if (0 == strcmp(p_file_name, "github_latest_release.json"))
+    {
+        return http_server_resp_json_github_latest_release();
     }
     LOG_WARN("Request to unknown json: %s", p_file_name);
     return http_server_resp_404();

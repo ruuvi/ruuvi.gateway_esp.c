@@ -30,7 +30,7 @@ void
 http_send_advs(const adv_report_table_t *const p_reports);
 
 bool
-http_download(const char* const p_url, http_download_cb_on_data_t cb_on_data, void* const p_user_data);
+http_download(const char *const p_url, http_download_cb_on_data_t cb_on_data, void *const p_user_data);
 
 #ifdef __cplusplus
 }
