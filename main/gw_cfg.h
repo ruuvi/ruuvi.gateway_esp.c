@@ -45,7 +45,7 @@ extern "C" {
 #define RUUVI_COMPANY_ID 0x0499
 
 #define RUUVI_GATEWAY_CONFIG_HEADER      (0xAABBU)
-#define RUUVI_GATEWAY_CONFIG_FMT_VERSION (0x0007U)
+#define RUUVI_GATEWAY_CONFIG_FMT_VERSION (0x0008U)
 
 typedef struct ruuvi_gw_cfg_eth_t
 {
