@@ -343,7 +343,7 @@ TestHttpServerCb::~TestHttpServerCb() = default;
 TEST_F(TestHttpServerCb, http_server_cb_init_ok_deinit_ok) // NOLINT
 {
     ASSERT_FALSE(g_pTestClass->m_is_fatfs_mounted);
-    ASSERT_TRUE(http_server_cb_init());
+    ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
     ASSERT_TRUE(g_pTestClass->m_is_fatfs_mounted);
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     http_server_cb_deinit();
@@ -363,7 +363,7 @@ TEST_F(TestHttpServerCb, http_server_cb_init_failed) // NOLINT
 {
     ASSERT_FALSE(g_pTestClass->m_is_fatfs_mounted);
     this->m_is_fatfs_mount_fail = true;
-    ASSERT_FALSE(http_server_cb_init());
+    ASSERT_FALSE(http_server_cb_init(GW_GWUI_PARTITION));
     ASSERT_FALSE(g_pTestClass->m_is_fatfs_mounted);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "flashfatfs_mount: failed to mount partition 'fatfs_gwui'");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -633,7 +633,7 @@ TEST_F(TestHttpServerCb, resp_file_index_html_fail_file_name_too_long) // NOLINT
     const char *            file_name     = "a1234567890123456789012345678901234567890123456789012345678901234567890";
     const char *            expected_resp = "index_html_content";
     const file_descriptor_t fd            = 1;
-    ASSERT_TRUE(http_server_cb_init());
+    ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
     FileInfo fileInfo = FileInfo(file_name, expected_resp);
     this->m_files.emplace_back(fileInfo);
     this->m_fd = fd;
@@ -658,7 +658,7 @@ TEST_F(TestHttpServerCb, resp_file_index_html) // NOLINT
 {
     const char *            expected_resp = "index_html_content";
     const file_descriptor_t fd            = 1;
-    ASSERT_TRUE(http_server_cb_init());
+    ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
     FileInfo fileInfo = FileInfo("index.html", expected_resp);
     this->m_files.emplace_back(fileInfo);
     this->m_fd = fd;
@@ -681,7 +681,7 @@ TEST_F(TestHttpServerCb, resp_file_index_html_gzipped) // NOLINT
 {
     const char *            expected_resp = "index_html_content";
     const file_descriptor_t fd            = 2;
-    ASSERT_TRUE(http_server_cb_init());
+    ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
     FileInfo fileInfo = FileInfo("index.html.gz", expected_resp);
     this->m_files.emplace_back(fileInfo);
     this->m_fd = fd;
@@ -704,7 +704,7 @@ TEST_F(TestHttpServerCb, resp_file_app_js_gzipped) // NOLINT
 {
     const char *            expected_resp = "app_js_gzipped";
     const file_descriptor_t fd            = 1;
-    ASSERT_TRUE(http_server_cb_init());
+    ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
     FileInfo fileInfo = FileInfo("app.js.gz", expected_resp);
     this->m_files.emplace_back(fileInfo);
     this->m_fd = fd;
@@ -727,7 +727,7 @@ TEST_F(TestHttpServerCb, resp_file_app_css_gzipped) // NOLINT
 {
     const char *            expected_resp = "slyle_css_gzipped";
     const file_descriptor_t fd            = 1;
-    ASSERT_TRUE(http_server_cb_init());
+    ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
     FileInfo fileInfo = FileInfo("style.css.gz", expected_resp);
     this->m_files.emplace_back(fileInfo);
     this->m_fd = fd;
@@ -750,7 +750,7 @@ TEST_F(TestHttpServerCb, resp_file_binary_without_extension) // NOLINT
 {
     const char *            expected_resp = "binary_data";
     const file_descriptor_t fd            = 1;
-    ASSERT_TRUE(http_server_cb_init());
+    ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
     FileInfo fileInfo = FileInfo("binary", expected_resp);
     this->m_files.emplace_back(fileInfo);
     this->m_fd = fd;
@@ -771,7 +771,7 @@ TEST_F(TestHttpServerCb, resp_file_binary_without_extension) // NOLINT
 
 TEST_F(TestHttpServerCb, resp_file_unknown_html) // NOLINT
 {
-    ASSERT_TRUE(http_server_cb_init());
+    ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
 
     const http_server_resp_t resp = http_server_resp_file("unknown.html", HTTP_RESP_CODE_200);
     ASSERT_EQ(HTTP_RESP_CODE_404, resp.http_resp_code);
@@ -791,7 +791,7 @@ TEST_F(TestHttpServerCb, resp_file_index_html_failed_on_open) // NOLINT
 {
     const char *            expected_resp = "index_html_content";
     const file_descriptor_t fd            = 1;
-    ASSERT_TRUE(http_server_cb_init());
+    ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
     FileInfo fileInfo = FileInfo("index.html", expected_resp, true);
     this->m_files.emplace_back(fileInfo);
     this->m_fd = fd;
@@ -812,7 +812,7 @@ TEST_F(TestHttpServerCb, resp_file_index_html_failed_on_open) // NOLINT
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_default) // NOLINT
 {
-    ASSERT_TRUE(http_server_cb_init());
+    ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
     this->m_fd = -1;
 
     const http_server_resp_t resp = http_server_cb_on_get("", nullptr);
@@ -834,7 +834,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_index_html) // NOLINT
 {
     const char *            expected_resp = "index_html_content";
     const file_descriptor_t fd            = 1;
-    ASSERT_TRUE(http_server_cb_init());
+    ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
     FileInfo fileInfo = FileInfo("index.html.gz", expected_resp);
     this->m_files.emplace_back(fileInfo);
     this->m_fd = fd;
@@ -858,7 +858,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_app_js) // NOLINT
 {
     const char *            expected_resp = "app_js_gzipped";
     const file_descriptor_t fd            = 1;
-    ASSERT_TRUE(http_server_cb_init());
+    ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
     FileInfo fileInfo = FileInfo("app.js.gz", expected_resp);
     this->m_files.emplace_back(fileInfo);
     this->m_fd = fd;
