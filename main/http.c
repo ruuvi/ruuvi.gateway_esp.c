@@ -14,9 +14,19 @@
 #include "ruuvi_gateway.h"
 #include "http_json.h"
 #include "leds.h"
+#include "os_str.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
+
+typedef struct http_download_cb_info_t
+{
+    http_download_cb_on_data_t cb_on_data;
+    void *const                p_user_data;
+    esp_http_client_handle_t   http_handle;
+    uint32_t                   content_length;
+    uint32_t                   offset;
+} http_download_cb_info_t;
 
 static const char TAG[] = "http";
 
@@ -140,4 +150,141 @@ http_send_advs(const adv_report_table_t *const p_reports)
         leds_indication_network_no_connection();
     }
     cjson_wrap_free_json_str(&json_str);
+}
+
+static esp_err_t
+http_download_event_handler(esp_http_client_event_t *p_evt)
+{
+    http_download_cb_info_t *const p_cb_info = p_evt->user_data;
+    switch (p_evt->event_id)
+    {
+        case HTTP_EVENT_ERROR:
+            LOG_ERR("HTTP_EVENT_ERROR");
+            break;
+
+        case HTTP_EVENT_ON_CONNECTED:
+            LOG_DBG("HTTP_EVENT_ON_CONNECTED");
+            break;
+
+        case HTTP_EVENT_HEADER_SENT:
+            LOG_DBG("HTTP_EVENT_HEADER_SENT");
+            break;
+
+        case HTTP_EVENT_ON_HEADER:
+            LOG_DBG("HTTP_EVENT_ON_HEADER, key=%s, value=%s", p_evt->header_key, p_evt->header_value);
+            if (0 == strcasecmp(p_evt->header_key, "Content-Length"))
+            {
+                p_cb_info->content_length = os_str_to_uint32_cptr(p_evt->header_value, NULL, 10);
+            }
+            break;
+
+        case HTTP_EVENT_ON_DATA:
+            LOG_DBG("HTTP_EVENT_ON_DATA, len=%d", p_evt->data_len);
+            LOG_DUMP_VERBOSE(p_evt->data, p_evt->data_len, "<--:");
+            if (HTTP_RESP_CODE_200 == esp_http_client_get_status_code(p_cb_info->http_handle))
+            {
+                p_cb_info->cb_on_data(
+                    p_evt->data,
+                    p_evt->data_len,
+                    p_cb_info->offset,
+                    p_cb_info->content_length,
+                    p_cb_info->p_user_data);
+                p_cb_info->offset += p_evt->data_len;
+            }
+            break;
+
+        case HTTP_EVENT_ON_FINISH:
+            LOG_DBG("HTTP_EVENT_ON_FINISH");
+            break;
+
+        case HTTP_EVENT_DISCONNECTED:
+            LOG_DBG("HTTP_EVENT_DISCONNECTED");
+            break;
+
+        default:
+            break;
+    }
+    return ESP_OK;
+}
+
+static bool
+http_download_firmware_via_handle(esp_http_client_handle_t http_handle)
+{
+    esp_err_t err = esp_http_client_set_header(http_handle, "Accept", "text/html,application/octet-stream,*/*");
+    if (ESP_OK != err)
+    {
+        LOG_ERR("%s failed", "esp_http_client_set_header");
+        return false;
+    }
+    err = esp_http_client_set_header(http_handle, "User-Agent", "RuuviGateway");
+    if (ESP_OK != err)
+    {
+        LOG_ERR("%s failed", "esp_http_client_set_header");
+        return false;
+    }
+
+    err = esp_http_client_perform(http_handle);
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "%s failed", "esp_http_client_perform");
+        return false;
+    }
+    LOG_DBG(
+        "HTTP GET Status = %d, content_length = %d",
+        esp_http_client_get_status_code(http_handle),
+        esp_http_client_get_content_length(http_handle));
+    return true;
+}
+
+bool
+http_download(const char *const p_url, http_download_cb_on_data_t cb_on_data, void *const p_user_data)
+{
+    http_download_cb_info_t cb_info = {
+        .cb_on_data     = cb_on_data,
+        .p_user_data    = p_user_data,
+        .http_handle    = NULL,
+        .content_length = 0,
+        .offset         = 0,
+    };
+    const esp_http_client_config_t http_config = {
+        .url                         = p_url,
+        .host                        = NULL,
+        .port                        = 0,
+        .username                    = NULL,
+        .password                    = NULL,
+        .auth_type                   = HTTP_AUTH_TYPE_NONE,
+        .path                        = NULL,
+        .query                       = NULL,
+        .cert_pem                    = NULL,
+        .client_cert_pem             = NULL,
+        .client_key_pem              = NULL,
+        .method                      = HTTP_METHOD_GET,
+        .timeout_ms                  = 0,
+        .disable_auto_redirect       = false,
+        .max_redirection_count       = 0,
+        .event_handler               = &http_download_event_handler,
+        .transport_type              = HTTP_TRANSPORT_UNKNOWN,
+        .buffer_size                 = 2048,
+        .buffer_size_tx              = 1024,
+        .user_data                   = &cb_info,
+        .is_async                    = false,
+        .use_global_ca_store         = false,
+        .skip_cert_common_name_check = false,
+    };
+    LOG_INFO("http_download");
+    cb_info.http_handle = esp_http_client_init(&http_config);
+    if (NULL == cb_info.http_handle)
+    {
+        LOG_ERR("Can't init http client");
+        return false;
+    }
+
+    const bool result = http_download_firmware_via_handle(cb_info.http_handle);
+
+    const esp_err_t err = esp_http_client_cleanup(cb_info.http_handle);
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "esp_http_client_cleanup failed");
+    }
+    return result;
 }
