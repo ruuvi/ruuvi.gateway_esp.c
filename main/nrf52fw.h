@@ -62,13 +62,18 @@ typedef struct nrf52fw_tmp_buf_t
     uint32_t buf_rd[NRF52FW_TMP_BUF_SIZE / sizeof(uint32_t)];
 } nrf52fw_tmp_buf_t;
 
+typedef void (*nrf52fw_cb_progress)(const size_t num_bytes_flashed, const size_t total_size, void *const p_param);
+
 extern char g_nrf52_firmware_version[NRF52FW_FIRMWARE_VERSION_SIZE];
 
 void
 nrf52fw_hw_reset_nrf52(const bool flag_reset);
 
 bool
-nrf52fw_update_fw_if_necessary(const char* const p_fatfs_nrf52_partition_name);
+nrf52fw_update_fw_if_necessary(
+    const char *const   p_fatfs_nrf52_partition_name,
+    nrf52fw_cb_progress cb_progress,
+    void *const         p_param_cb_progress);
 
 bool
 nrf52fw_software_reset(void);
@@ -196,6 +201,10 @@ nrf52fw_simulate_file_read_error(const bool flag_error);
  * @param p_tmp_buf - ptr to temporary buffer, @ref nrf52fw_tmp_buf_t
  * @param segment_addr - address of segment
  * @param segment_len - segment length
+ * @param p_accum_num_bytes_flashed - ptr to a variable which is used for accumulating the number of flashed bytes
+ * @param total_size - total num bytes to be flashed
+ * @param cb_progress - callback function to track progress
+ * @param p_param_cb_progress - ptr to parameter for cb_progress
  * @return true if successful
  */
 NRF52FW_STATIC
@@ -204,7 +213,11 @@ nrf52fw_flash_write_segment(
     const file_descriptor_t fd,
     nrf52fw_tmp_buf_t *     p_tmp_buf,
     const uint32_t          segment_addr,
-    const size_t            segment_len);
+    const size_t            segment_len,
+    size_t *const           p_accum_num_bytes_flashed,
+    const size_t            total_size,
+    nrf52fw_cb_progress     cb_progress,
+    void *const             p_param_cb_progress);
 
 /**
  * @brief Write a segment of flash memory to nRF52 from file
@@ -213,6 +226,10 @@ nrf52fw_flash_write_segment(
  * @param p_tmp_buf - ptr to temporary buffer, @ref nrf52fw_tmp_buf_t
  * @param segment_addr - address of segment
  * @param segment_len - segment length
+ * @param p_accum_num_bytes_flashed - ptr to a variable which is used for accumulating the number of flashed bytes
+ * @param total_size - total num bytes to be flashed
+ * @param cb_progress - callback function to track progress
+ * @param p_param_cb_progress - ptr to parameter for cb_progress
  * @return true if successful
  */
 NRF52FW_STATIC
@@ -222,13 +239,19 @@ nrf52fw_write_segment_from_file(
     const char *          p_path,
     nrf52fw_tmp_buf_t *   p_tmp_buf,
     const uint32_t        segment_addr,
-    const size_t          segment_len);
+    const size_t          segment_len,
+    size_t *const         p_accum_num_bytes_flashed,
+    const size_t          total_size,
+    nrf52fw_cb_progress   cb_progress,
+    void *const           p_param_cb_progress);
 
 /**
  * @brief Write firmware segments of flash memory to nRF52 from files
  * @param p_ffs - ptr to FlashFatFs descriptor, @ref flash_fat_fs_t
  * @param p_tmp_buf - ptr to temporary buffer, @ref nrf52fw_tmp_buf_t
  * @param p_fw_info - ptr to firmware segments description info, @ref nrf52fw_info_t
+ * @param cb_progress - callback function to track progress
+ * @param p_param_cb_progress - ptr to parameter for cb_progress
  * @return true if successful
  */
 NRF52FW_STATIC
@@ -236,7 +259,9 @@ bool
 nrf52fw_flash_write_firmware(
     const flash_fat_fs_t *p_ffs,
     nrf52fw_tmp_buf_t *   p_tmp_buf,
-    const nrf52fw_info_t *p_fw_info);
+    const nrf52fw_info_t *p_fw_info,
+    nrf52fw_cb_progress   cb_progress,
+    void *const           p_param_cb_progress);
 
 /**
  * @brief Read file and calculate CRC for firmware segment

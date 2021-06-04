@@ -421,7 +421,11 @@ nrf52fw_flash_write_segment(
     const file_descriptor_t fd,
     nrf52fw_tmp_buf_t *     p_tmp_buf,
     const uint32_t          segment_addr,
-    const size_t            segment_len)
+    const size_t            segment_len,
+    size_t *const           p_accum_num_bytes_flashed,
+    const size_t            total_size,
+    nrf52fw_cb_progress     cb_progress,
+    void *const             p_param_cb_progress)
 {
     uint32_t offset = 0;
     for (;;)
@@ -440,6 +444,14 @@ nrf52fw_flash_write_segment(
         {
             return false;
         }
+        if (NULL != p_accum_num_bytes_flashed)
+        {
+            *p_accum_num_bytes_flashed += len;
+            if (NULL != cb_progress)
+            {
+                cb_progress(*p_accum_num_bytes_flashed, total_size, p_param_cb_progress);
+            }
+        }
         vTaskDelay(pdMS_TO_TICKS(NRF52FW_SLEEP_WHILE_FLASHING_MS));
     }
     return true;
@@ -452,7 +464,11 @@ nrf52fw_write_segment_from_file(
     const char *          p_path,
     nrf52fw_tmp_buf_t *   p_tmp_buf,
     const uint32_t        segment_addr,
-    const size_t          segment_len)
+    const size_t          segment_len,
+    size_t *const         p_accum_num_bytes_flashed,
+    const size_t          total_size,
+    nrf52fw_cb_progress   cb_progress,
+    void *const           p_param_cb_progress)
 {
     const file_descriptor_t fd = flashfatfs_open(p_ffs, p_path);
     if (fd < 0)
@@ -460,7 +476,15 @@ nrf52fw_write_segment_from_file(
         LOG_ERR("Can't open '%s'", p_path);
         return false;
     }
-    const bool res = nrf52fw_flash_write_segment(fd, p_tmp_buf, segment_addr, segment_len);
+    const bool res = nrf52fw_flash_write_segment(
+        fd,
+        p_tmp_buf,
+        segment_addr,
+        segment_len,
+        p_accum_num_bytes_flashed,
+        total_size,
+        cb_progress,
+        p_param_cb_progress);
     close(fd);
     if (!res)
     {
@@ -485,7 +509,12 @@ nrf52fw_erase_flash(void)
 
 NRF52FW_STATIC
 bool
-nrf52fw_flash_write_firmware(const flash_fat_fs_t *p_ffs, nrf52fw_tmp_buf_t *p_tmp_buf, const nrf52fw_info_t *p_fw_info)
+nrf52fw_flash_write_firmware(
+    const flash_fat_fs_t *p_ffs,
+    nrf52fw_tmp_buf_t *   p_tmp_buf,
+    const nrf52fw_info_t *p_fw_info,
+    nrf52fw_cb_progress   cb_progress,
+    void *const           p_param_cb_progress)
 {
     if (!nrf52fw_erase_flash())
     {
@@ -493,6 +522,13 @@ nrf52fw_flash_write_firmware(const flash_fat_fs_t *p_ffs, nrf52fw_tmp_buf_t *p_t
         return false;
     }
     LOG_INFO("Flash %u segments", p_fw_info->num_segments);
+    size_t total_size = 0;
+    for (uint32_t i = 0; i < p_fw_info->num_segments; ++i)
+    {
+        const nrf52fw_segment_t *p_segment_info = &p_fw_info->segments[i];
+        total_size += p_segment_info->size;
+    }
+    size_t accum_num_bytes_flashed = 0;
     for (uint32_t i = 0; i < p_fw_info->num_segments; ++i)
     {
         const nrf52fw_segment_t *p_segment_info = &p_fw_info->segments[i];
@@ -507,7 +543,11 @@ nrf52fw_flash_write_firmware(const flash_fat_fs_t *p_ffs, nrf52fw_tmp_buf_t *p_t
                 p_segment_info->file_name,
                 p_tmp_buf,
                 p_segment_info->address,
-                p_segment_info->size))
+                p_segment_info->size,
+                &accum_num_bytes_flashed,
+                total_size,
+                cb_progress,
+                p_param_cb_progress))
         {
             LOG_ERR(
                 "Failed to write segment %u: 0x%08x from %s",
@@ -615,7 +655,11 @@ nrf52fw_check_firmware(const flash_fat_fs_t *p_ffs, nrf52fw_tmp_buf_t *p_tmp_buf
 
 NRF52FW_STATIC
 bool
-nrf52fw_update_fw_step3(const flash_fat_fs_t *p_ffs, nrf52fw_tmp_buf_t *p_tmp_buf)
+nrf52fw_update_fw_step3(
+    const flash_fat_fs_t *p_ffs,
+    nrf52fw_tmp_buf_t *   p_tmp_buf,
+    nrf52fw_cb_progress   cb_progress,
+    void *const           p_param_cb_progress)
 {
     nrf52fw_info_t fw_info = { 0 };
     if (!nrf52fw_read_info_txt(p_ffs, "info.txt", &fw_info))
@@ -655,7 +699,7 @@ nrf52fw_update_fw_step3(const flash_fat_fs_t *p_ffs, nrf52fw_tmp_buf_t *p_tmp_bu
             LOG_ERR("%s failed", "nrf52fw_check_firmware");
             return false;
         }
-        if (!nrf52fw_flash_write_firmware(p_ffs, p_tmp_buf, &fw_info))
+        if (!nrf52fw_flash_write_firmware(p_ffs, p_tmp_buf, &fw_info, cb_progress, p_param_cb_progress))
         {
             LOG_ERR("%s failed", "nrf52fw_flash_write_firmware");
             return false;
@@ -666,7 +710,7 @@ nrf52fw_update_fw_step3(const flash_fat_fs_t *p_ffs, nrf52fw_tmp_buf_t *p_tmp_bu
 
 NRF52FW_STATIC
 bool
-nrf52fw_update_fw_step2(const flash_fat_fs_t *p_ffs)
+nrf52fw_update_fw_step2(const flash_fat_fs_t *p_ffs, nrf52fw_cb_progress cb_progress, void *const p_param_cb_progress)
 {
     nrf52fw_tmp_buf_t *p_tmp_buf = os_malloc(sizeof(*p_tmp_buf));
     if (NULL == p_tmp_buf)
@@ -674,14 +718,17 @@ nrf52fw_update_fw_step2(const flash_fat_fs_t *p_ffs)
         LOG_ERR("%s failed", "os_malloc");
         return false;
     }
-    const bool result = nrf52fw_update_fw_step3(p_ffs, p_tmp_buf);
+    const bool result = nrf52fw_update_fw_step3(p_ffs, p_tmp_buf, cb_progress, p_param_cb_progress);
     os_free(p_tmp_buf);
     return result;
 }
 
 NRF52FW_STATIC
 bool
-nrf52fw_update_fw_step1(const char* const p_fatfs_nrf52_partition_name)
+nrf52fw_update_fw_step1(
+    const char *const   p_fatfs_nrf52_partition_name,
+    nrf52fw_cb_progress cb_progress,
+    void *const         p_param_cb_progress)
 {
     const flash_fat_fs_num_files_t max_num_files = 1;
 
@@ -691,14 +738,17 @@ nrf52fw_update_fw_step1(const char* const p_fatfs_nrf52_partition_name)
         LOG_ERR("%s failed", "flashfatfs_mount");
         return false;
     }
-    const bool result = nrf52fw_update_fw_step2(p_ffs);
+    const bool result = nrf52fw_update_fw_step2(p_ffs, cb_progress, p_param_cb_progress);
     flashfatfs_unmount(&p_ffs);
     return result;
 }
 
 NRF52FW_STATIC
 bool
-nrf52fw_update_fw_step0(const char* const p_fatfs_nrf52_partition_name)
+nrf52fw_update_fw_step0(
+    const char *const   p_fatfs_nrf52_partition_name,
+    nrf52fw_cb_progress cb_progress,
+    void *const         p_param_cb_progress)
 {
     if (!nrf52fw_init_swd())
     {
@@ -706,7 +756,7 @@ nrf52fw_update_fw_step0(const char* const p_fatfs_nrf52_partition_name)
         return false;
     }
 
-    bool result = nrf52fw_update_fw_step1(p_fatfs_nrf52_partition_name);
+    bool result = nrf52fw_update_fw_step1(p_fatfs_nrf52_partition_name, cb_progress, p_param_cb_progress);
 
     if (result)
     {
@@ -737,14 +787,17 @@ nrf52fw_hw_reset_nrf52(const bool flag_reset)
 }
 
 bool
-nrf52fw_update_fw_if_necessary(const char* const p_fatfs_nrf52_partition_name)
+nrf52fw_update_fw_if_necessary(
+    const char *const   p_fatfs_nrf52_partition_name,
+    nrf52fw_cb_progress cb_progress,
+    void *const         p_param_cb_progress)
 {
     const TickType_t ticks_in_reset_state = 100;
     nrf52fw_hw_reset_nrf52(true);
     vTaskDelay(ticks_in_reset_state);
     nrf52fw_hw_reset_nrf52(false);
 
-    const bool res = nrf52fw_update_fw_step0(p_fatfs_nrf52_partition_name);
+    const bool res = nrf52fw_update_fw_step0(p_fatfs_nrf52_partition_name, cb_progress, p_param_cb_progress);
 
     nrf52fw_hw_reset_nrf52(true);
     vTaskDelay(ticks_in_reset_state);

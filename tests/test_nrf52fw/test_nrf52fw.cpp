@@ -1088,7 +1088,15 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_ok_16_words) // NOLINT
     this->m_memSegmentsRead.emplace_back(
         MemSegment(segment_addr, sizeof(segment_buf) / sizeof(segment_buf[0]), segment_buf));
 
-    ASSERT_TRUE(nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf)));
+    ASSERT_TRUE(nrf52fw_flash_write_segment(
+        fileno(this->m_fd),
+        &tmp_buf,
+        segment_addr,
+        sizeof(segment_buf),
+        nullptr,
+        0,
+        nullptr,
+        nullptr));
     ASSERT_EQ(1, this->m_memSegmentsWrite.size());
     {
         ASSERT_EQ(this->m_memSegmentsRead[0].segmentAddr, this->m_memSegmentsWrite[0].segmentAddr);
@@ -1125,7 +1133,15 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_ok_257_words) // NOLINT
     this->m_memSegmentsRead.emplace_back(
         MemSegment(segment_addr, sizeof(segment_buf) / sizeof(segment_buf[0]), segment_buf));
 
-    ASSERT_TRUE(nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf)));
+    ASSERT_TRUE(nrf52fw_flash_write_segment(
+        fileno(this->m_fd),
+        &tmp_buf,
+        segment_addr,
+        sizeof(segment_buf),
+        nullptr,
+        0,
+        nullptr,
+        nullptr));
     ASSERT_EQ(1, this->m_memSegmentsWrite.size());
     {
         ASSERT_EQ(this->m_memSegmentsRead[0].segmentAddr, this->m_memSegmentsWrite[0].segmentAddr);
@@ -1162,7 +1178,15 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_error_on_verify) // NOLINT
         MemSegment(segment_addr, sizeof(segment_buf) / sizeof(segment_buf[0]), segment_buf));
     segment_buf[1] -= 1U;
 
-    ASSERT_FALSE(nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf)));
+    ASSERT_FALSE(nrf52fw_flash_write_segment(
+        fileno(this->m_fd),
+        &tmp_buf,
+        segment_addr,
+        sizeof(segment_buf),
+        nullptr,
+        0,
+        nullptr,
+        nullptr));
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001000...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "verify failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1193,7 +1217,15 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_error_on_read) // NOLINT
 
     const uint32_t segment_addr = 0x00001000;
 
-    ASSERT_FALSE(nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf)));
+    ASSERT_FALSE(nrf52fw_flash_write_segment(
+        fileno(this->m_fd),
+        &tmp_buf,
+        segment_addr,
+        sizeof(segment_buf),
+        nullptr,
+        0,
+        nullptr,
+        nullptr));
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001000...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_read_mem failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1226,7 +1258,15 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_error_on_write) // NOLINT
     this->m_memSegmentsWrite.emplace_back(
         MemSegment(segment_addr, sizeof(segment_buf) / sizeof(segment_buf[0]), segment_buf));
 
-    ASSERT_FALSE(nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf)));
+    ASSERT_FALSE(nrf52fw_flash_write_segment(
+        fileno(this->m_fd),
+        &tmp_buf,
+        segment_addr,
+        sizeof(segment_buf),
+        nullptr,
+        0,
+        nullptr,
+        nullptr));
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001000...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_write_mem failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1263,7 +1303,11 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_fail_file_greater_than_expected)
         fileno(this->m_fd),
         &tmp_buf,
         segment_addr,
-        sizeof(segment_buf) - sizeof(uint32_t)));
+        sizeof(segment_buf) - sizeof(uint32_t),
+        nullptr,
+        0,
+        nullptr,
+        nullptr));
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "offset 64 greater than segment len 60");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
@@ -1295,7 +1339,15 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_fail_bad_length) // NOLINT
     this->m_memSegmentsRead.emplace_back(
         MemSegment(segment_addr, sizeof(segment_buf) / sizeof(segment_buf[0]), segment_buf));
 
-    ASSERT_FALSE(nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf)));
+    ASSERT_FALSE(nrf52fw_flash_write_segment(
+        fileno(this->m_fd),
+        &tmp_buf,
+        segment_addr,
+        sizeof(segment_buf),
+        nullptr,
+        0,
+        nullptr,
+        nullptr));
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "bad len 63");
 
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1329,7 +1381,15 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_fail_after_file_read_error) // N
         MemSegment(segment_addr, sizeof(segment_buf) / sizeof(segment_buf[0]), segment_buf));
 
     nrf52fw_simulate_file_read_error(true);
-    ASSERT_FALSE(nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf)));
+    ASSERT_FALSE(nrf52fw_flash_write_segment(
+        fileno(this->m_fd),
+        &tmp_buf,
+        segment_addr,
+        sizeof(segment_buf),
+        nullptr,
+        0,
+        nullptr,
+        nullptr));
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_file_read failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
@@ -1361,8 +1421,16 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_from_file_ok) // NOLINT
     this->m_p_ffs = flashfatfs_mount(this->m_mount_point, GW_NRF_PARTITION, 2);
     ASSERT_NE(nullptr, this->m_p_ffs);
 
-    ASSERT_TRUE(
-        nrf52fw_write_segment_from_file(this->m_p_ffs, segment_path, &tmp_buf, segment_addr, sizeof(segment_buf)));
+    ASSERT_TRUE(nrf52fw_write_segment_from_file(
+        this->m_p_ffs,
+        segment_path,
+        &tmp_buf,
+        segment_addr,
+        sizeof(segment_buf),
+        nullptr,
+        0,
+        nullptr,
+        nullptr));
 
     flashfatfs_unmount(&this->m_p_ffs);
     this->m_p_ffs = nullptr;
@@ -1408,8 +1476,16 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_from_file_error_on_writing_segme
     this->m_p_ffs = flashfatfs_mount(this->m_mount_point, GW_NRF_PARTITION, 2);
     ASSERT_NE(nullptr, this->m_p_ffs);
 
-    ASSERT_FALSE(
-        nrf52fw_write_segment_from_file(this->m_p_ffs, segment_path, &tmp_buf, segment_addr, sizeof(segment_buf)));
+    ASSERT_FALSE(nrf52fw_write_segment_from_file(
+        this->m_p_ffs,
+        segment_path,
+        &tmp_buf,
+        segment_addr,
+        sizeof(segment_buf),
+        nullptr,
+        0,
+        nullptr,
+        nullptr));
 
     flashfatfs_unmount(&this->m_p_ffs);
     this->m_p_ffs = nullptr;
@@ -1442,8 +1518,16 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_from_file_error_no_file) // NOLI
     this->m_p_ffs = flashfatfs_mount(this->m_mount_point, GW_NRF_PARTITION, 2);
     ASSERT_NE(nullptr, this->m_p_ffs);
 
-    ASSERT_FALSE(
-        nrf52fw_write_segment_from_file(this->m_p_ffs, segment_path, &tmp_buf, segment_addr, sizeof(segment_buf)));
+    ASSERT_FALSE(nrf52fw_write_segment_from_file(
+        this->m_p_ffs,
+        segment_path,
+        &tmp_buf,
+        segment_addr,
+        sizeof(segment_buf),
+        nullptr,
+        0,
+        nullptr,
+        nullptr));
 
     flashfatfs_unmount(&this->m_p_ffs);
     this->m_p_ffs = nullptr;
@@ -1518,7 +1602,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_ok) // NOLINT
     this->m_p_ffs = flashfatfs_mount(this->m_mount_point, GW_NRF_PARTITION, 2);
     ASSERT_NE(nullptr, this->m_p_ffs);
 
-    ASSERT_TRUE(nrf52fw_flash_write_firmware(this->m_p_ffs, &tmp_buf, &fw_info));
+    ASSERT_TRUE(nrf52fw_flash_write_firmware(this->m_p_ffs, &tmp_buf, &fw_info, nullptr, nullptr));
 
     flashfatfs_unmount(&this->m_p_ffs);
     this->m_p_ffs = nullptr;
@@ -1543,10 +1627,13 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash 2 segments");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 0: 0x00000000 size=516 from segment_1.bin");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000000...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000100...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000200...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 1: 0x00001000 size=1028 from segment_2.bin");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001000...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001100...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001200...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001300...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001400...");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1619,7 +1706,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_version) // NOLIN
         this->m_memSegmentsWrite.emplace_back(MemSegment(0x10001080, 1, &version));
     }
 
-    ASSERT_FALSE(nrf52fw_flash_write_firmware(this->m_p_ffs, &tmp_buf, &fw_info));
+    ASSERT_FALSE(nrf52fw_flash_write_firmware(this->m_p_ffs, &tmp_buf, &fw_info, nullptr, nullptr));
 
     flashfatfs_unmount(&this->m_p_ffs);
     this->m_p_ffs = nullptr;
@@ -1639,10 +1726,13 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_version) // NOLIN
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash 2 segments");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 0: 0x00000000 size=516 from segment_1.bin");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000000...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000100...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000200...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 1: 0x00001000 size=1028 from segment_2.bin");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001000...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001100...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001200...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001300...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001400...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "Failed to write firmware version");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
@@ -1716,7 +1806,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_segment) // NOLIN
         this->m_memSegmentsWrite.emplace_back(MemSegment(fw_info.segments[1].address, 1, &stub));
     }
 
-    ASSERT_FALSE(nrf52fw_flash_write_firmware(this->m_p_ffs, &tmp_buf, &fw_info));
+    ASSERT_FALSE(nrf52fw_flash_write_firmware(this->m_p_ffs, &tmp_buf, &fw_info, nullptr, nullptr));
 
     flashfatfs_unmount(&this->m_p_ffs);
     this->m_p_ffs = nullptr;
@@ -1732,6 +1822,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_segment) // NOLIN
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash 2 segments");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 0: 0x00000000 size=516 from segment_1.bin");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000000...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000100...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000200...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 1: 0x00001000 size=1028 from segment_2.bin");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001000...");
@@ -1806,7 +1897,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_erasing) // NOLINT
 
     this->m_result_nrf52swd_erase_all = false;
 
-    ASSERT_FALSE(nrf52fw_flash_write_firmware(this->m_p_ffs, &tmp_buf, &fw_info));
+    ASSERT_FALSE(nrf52fw_flash_write_firmware(this->m_p_ffs, &tmp_buf, &fw_info, nullptr, nullptr));
 
     flashfatfs_unmount(&this->m_p_ffs);
     this->m_p_ffs = nullptr;
@@ -2300,7 +2391,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_not_needed) // 
         this->m_memSegmentsRead.emplace_back(MemSegment(0x10001080, 1, &version));
     }
 
-    ASSERT_TRUE(nrf52fw_update_fw_if_necessary());
+    ASSERT_TRUE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
@@ -2402,7 +2493,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required) // NO
     this->m_memSegmentsRead.emplace_back(MemSegment(0x00001000, segment2_size / sizeof(uint32_t), segment2_buf.get()));
     this->m_memSegmentsRead.emplace_back(MemSegment(0x00026000, segment3_size / sizeof(uint32_t), segment3_buf.get()));
 
-    ASSERT_TRUE(nrf52fw_update_fw_if_necessary());
+    ASSERT_TRUE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
 
     ASSERT_EQ(1, this->m_cnt_nrf52swd_erase_all);
     ASSERT_EQ(4, this->m_memSegmentsWrite.size());
@@ -2419,20 +2510,25 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required) // NO
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash 3 segments");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 0: 0x00000000 size=2816 from segment_1.bin");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000000...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000100...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000200...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000300...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000400...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000500...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000600...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000700...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000800...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000900...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000a00...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 1: 0x00001000 size=151016 from segment_2.bin");
-    for (uint32_t offset = 0; offset < segment2_size; offset += 512)
+    for (uint32_t offset = 0; offset < segment2_size; offset += 256)
     {
         char buf[80];
         snprintf(buf, sizeof(buf), "Writing 0x%08x...", (unsigned)(0x00001000U + offset));
         TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, buf);
     }
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 2: 0x00026000 size=24448 from segment_3.bin");
-    for (uint32_t offset = 0; offset < segment3_size; offset += 512)
+    for (uint32_t offset = 0; offset < segment3_size; offset += 256)
     {
         char buf[80];
         snprintf(buf, sizeof(buf), "Writing 0x%08x...", (unsigned)(0x00026000U + offset));
@@ -2525,7 +2621,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
     }
 
     this->m_result_nrf52swd_init = false;
-    ASSERT_FALSE(nrf52fw_update_fw_if_necessary());
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
@@ -2620,7 +2716,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
     }
 
     this->m_result_nrf52swd_check_id_code = false;
-    ASSERT_FALSE(nrf52fw_update_fw_if_necessary());
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
@@ -2715,7 +2811,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
     }
 
     this->m_result_nrf52swd_debug_halt = false;
-    ASSERT_FALSE(nrf52fw_update_fw_if_necessary());
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
@@ -2810,7 +2906,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
     }
 
     this->m_result_nrf52swd_debug_reset = false;
-    ASSERT_FALSE(nrf52fw_update_fw_if_necessary());
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
@@ -2907,7 +3003,7 @@ TEST_F(
     }
 
     this->m_result_nrf52swd_debug_enable_reset_vector_catch = false;
-    ASSERT_FALSE(nrf52fw_update_fw_if_necessary());
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
@@ -3002,7 +3098,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__debug_run_failed) // N
     }
 
     this->m_result_nrf52swd_debug_run = false;
-    ASSERT_FALSE(nrf52fw_update_fw_if_necessary());
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
@@ -3103,7 +3199,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_mount_failed) //
     }
 
     this->m_mount_info.mount_err = ESP_ERR_NOT_FOUND;
-    ASSERT_FALSE(nrf52fw_update_fw_if_necessary());
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
@@ -3200,7 +3296,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_mount_failed_no_
     }
 
     this->m_malloc_fail_on_cnt = 1;
-    ASSERT_FALSE(nrf52fw_update_fw_if_necessary());
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
@@ -3297,7 +3393,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_step2_no_mem) //
     }
 
     this->m_malloc_fail_on_cnt = 2;
-    ASSERT_FALSE(nrf52fw_update_fw_if_necessary());
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
@@ -3385,7 +3481,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_read_info_txt) /
         this->m_memSegmentsRead.emplace_back(MemSegment(0x10001080, 1, &version));
     }
 
-    ASSERT_FALSE(nrf52fw_update_fw_if_necessary());
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
@@ -3479,7 +3575,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_read_version) //
         this->m_fd = nullptr;
     }
 
-    ASSERT_FALSE(nrf52fw_update_fw_if_necessary());
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
@@ -3577,7 +3673,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_check_firmware) 
         this->m_memSegmentsRead.emplace_back(MemSegment(0x10001080, 1, &version));
     }
 
-    ASSERT_FALSE(nrf52fw_update_fw_if_necessary());
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
@@ -3682,7 +3778,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_write_firmware) 
         this->m_memSegmentsWrite.emplace_back(MemSegment(0x00000000, 1, &stub));
     }
 
-    ASSERT_FALSE(nrf52fw_update_fw_if_necessary());
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
 
     ASSERT_EQ(1, this->m_memSegmentsWrite.size());
     ASSERT_EQ(1, this->m_cnt_nrf52swd_erase_all);
