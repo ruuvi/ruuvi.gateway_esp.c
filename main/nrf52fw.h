@@ -29,6 +29,8 @@
 
 #define NRF52FW_ENABLE_FLASH_VERIFICATION 1
 
+#define NRF52FW_FIRMWARE_VERSION_SIZE (64U)
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -59,6 +61,8 @@ typedef struct nrf52fw_tmp_buf_t
     uint32_t buf_wr[NRF52FW_TMP_BUF_SIZE / sizeof(uint32_t)];
     uint32_t buf_rd[NRF52FW_TMP_BUF_SIZE / sizeof(uint32_t)];
 } nrf52fw_tmp_buf_t;
+
+extern char g_nrf52_firmware_version[NRF52FW_FIRMWARE_VERSION_SIZE];
 
 void
 nrf52fw_hw_reset_nrf52(const bool flag_reset);

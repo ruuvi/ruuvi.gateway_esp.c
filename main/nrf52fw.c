@@ -25,6 +25,8 @@
 
 static const char *TAG = "nRF52Fw";
 
+char g_nrf52_firmware_version[NRF52FW_FIRMWARE_VERSION_SIZE];
+
 NRF52FW_STATIC
 bool
 nrf52fw_parse_version_digit(const char *p_digit_str, const char *p_digit_str_end, uint8_t *p_digit)
@@ -630,11 +632,14 @@ nrf52fw_update_fw_step3(const flash_fat_fs_t *p_ffs, nrf52fw_tmp_buf_t *p_tmp_bu
         LOG_ERR("%s failed", "nrf52fw_read_current_fw_ver");
         return false;
     }
-    LOG_INFO(
-        "Firmware on nRF52: v%u.%u.%u",
+    snprintf(
+        g_nrf52_firmware_version,
+        sizeof(g_nrf52_firmware_version),
+        "v%u.%u.%u",
         (unsigned)((cur_fw_ver >> 24U) & 0xFFU),
         (unsigned)((cur_fw_ver >> 16U) & 0xFFU),
         (unsigned)((cur_fw_ver >> 8U) & 0xFFU));
+    LOG_INFO("Firmware on nRF52: %s", g_nrf52_firmware_version);
     if (cur_fw_ver == fw_info.fw_ver.version)
     {
         LOG_INFO("Firmware updating is not needed");
