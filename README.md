@@ -72,8 +72,8 @@ Prebuilt images for development versions of firmware can be found at [Ruuvi Jenk
 You can flash them with esptool.py. You might need to install CH340 drivers using [these instructions](https://learn.sparkfun.com/tutorials/how-to-install-ch340-drivers#drivers-if-you-need-them)
 ```
 pip install esptool
-esptool.py -p (PORT) -b 460800 --before default_reset --after hard_reset write_flash --flash_mode dio --flash_size detect --flash_freq 40m 0x1000 bootloader.bin 0x8000 partition-table.bin 0x10000 ruuvi_gateway_esp.bin 0x300000 fatfs_gwui.bin 0x360000 fatfs_nrf52.bin
+esptool.py -p (PORT) -b 460800 --before default_reset --after hard_reset write_flash --flash_mode dio --flash_size detect --flash_freq 40m 0x1000 bootloader.bin 0x8000 partition-table.bin 0xd000 ota_data_initial.bin 0x100000 ruuvi_gateway_esp.bin 0x500000 fatfs_gwui.bin 0x5C0000 fatfs_nrf52.bin
 ```
 
 or using the Windows GUI tool `Flash Download Tools` ([download](https://www.espressif.com/en/support/download/other-tools)) with these settings:
-![alt text](docs/guiflasher.png "Bootloader 0x1000, partition table 0x8000, ruuvi_gateway_esp 0x10000, fatfs_nrf52 0x360000")
+![alt text](docs/guiflasher.png "Bootloader 0x1000, partition table 0x8000, ota_data_initial 0xd000, ruuvi_gateway_esp 0x100000, fatfs_gwui 0x500000, fatfs_nrf52 0x5C0000")
