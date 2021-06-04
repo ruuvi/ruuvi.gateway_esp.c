@@ -208,7 +208,6 @@ void
 wifi_connection_cb_on_ap_sta_connected(void)
 {
     LOG_INFO("callback: on_ap_sta_connected");
-    ethernet_stop();
     reset_task_stop_timer_after_hotspot_activation();
 }
 
