@@ -8,6 +8,8 @@ idf_component_register(
             bin2hex.h
             cjson_wrap.c
             cjson_wrap.h
+            esp_ota_ops_patched.c
+            esp_ota_ops_patched.h
             ethernet.c
             ethernet.h
             event_mgr.c

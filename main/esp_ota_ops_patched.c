@@ -71,7 +71,7 @@ is_ota_partition(const esp_partition_t *p)
 }
 
 esp_err_t
-esp_ota_begin(const esp_partition_t *partition, size_t image_size, esp_ota_handle_t *out_handle)
+esp_ota_begin_patched(const esp_partition_t *partition, esp_ota_handle_t *out_handle)
 {
     ota_ops_entry_t *new_entry;
     esp_err_t        ret = ESP_OK;
@@ -110,16 +110,9 @@ esp_ota_begin(const esp_partition_t *partition, size_t image_size, esp_ota_handl
     }
 #endif
 
-    // If input image size is 0 or OTA_SIZE_UNKNOWN, erase entire partition
-    if ((image_size == 0) || (image_size == OTA_SIZE_UNKNOWN))
-    {
-        ret = esp_partition_erase_range(partition, 0, partition->size);
-    }
-    else
-    {
-        const int aligned_erase_size = (image_size + SPI_FLASH_SEC_SIZE - 1) & ~(SPI_FLASH_SEC_SIZE - 1);
-        ret                          = esp_partition_erase_range(partition, 0, aligned_erase_size);
-    }
+    extern esp_err_t erase_partition_with_sleep(const esp_partition_t *const p_partition);
+
+    ret = erase_partition_with_sleep(partition);
 
     if (ret != ESP_OK)
     {
@@ -134,14 +127,7 @@ esp_ota_begin(const esp_partition_t *partition, size_t image_size, esp_ota_handl
 
     LIST_INSERT_HEAD(&s_ota_ops_entries_head, new_entry, entries);
 
-    if ((image_size == 0) || (image_size == OTA_SIZE_UNKNOWN))
-    {
-        new_entry->erased_size = partition->size;
-    }
-    else
-    {
-        new_entry->erased_size = image_size;
-    }
+    new_entry->erased_size = partition->size;
 
     new_entry->part   = partition;
     new_entry->handle = ++s_ota_ops_last_handle;
@@ -150,7 +136,7 @@ esp_ota_begin(const esp_partition_t *partition, size_t image_size, esp_ota_handl
 }
 
 esp_err_t
-esp_ota_write(esp_ota_handle_t handle, const void *data, size_t size)
+esp_ota_write_patched(esp_ota_handle_t handle, const void *data, size_t size)
 {
     const uint8_t *  data_bytes = (const uint8_t *)data;
     esp_err_t        ret;
@@ -227,7 +213,7 @@ esp_ota_write(esp_ota_handle_t handle, const void *data, size_t size)
 }
 
 esp_err_t
-esp_ota_end(esp_ota_handle_t handle)
+esp_ota_end_patched(esp_ota_handle_t handle)
 {
     ota_ops_entry_t *it;
     esp_err_t        ret = ESP_OK;
