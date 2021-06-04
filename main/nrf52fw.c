@@ -23,6 +23,8 @@
 #define NRF52FW_IUCR_BASE_ADDR (0x10001000)
 #define NRF52FW_IUCR_FW_VER    (NRF52FW_IUCR_BASE_ADDR + 0x080)
 
+#define NRF52FW_SLEEP_WHILE_FLASHING_MS (20U)
+
 static const char *TAG = "nRF52Fw";
 
 char g_nrf52_firmware_version[NRF52FW_FIRMWARE_VERSION_SIZE];
@@ -438,6 +440,7 @@ nrf52fw_flash_write_segment(
         {
             return false;
         }
+        vTaskDelay(pdMS_TO_TICKS(NRF52FW_SLEEP_WHILE_FLASHING_MS));
     }
     return true;
 }
