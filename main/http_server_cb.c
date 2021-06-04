@@ -19,6 +19,7 @@
 #include "os_malloc.h"
 #include "http_server.h"
 #include "http.h"
+#include "fw_update.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -433,12 +434,46 @@ http_server_cb_on_post_ruuvi(const char *p_body)
         (const uint8_t *)g_empty_json);
 }
 
+HTTP_SERVER_CB_STATIC
+http_server_resp_t
+http_server_cb_on_post_fw_update(const char *p_body)
+{
+    LOG_DBG("POST /fw_update.json");
+    fw_update_set_extra_info_for_status_json_update_start();
+
+    if (!json_fw_update_parse_http_body(p_body))
+    {
+        fw_update_set_extra_info_for_status_json_update_failed("Bad request");
+        return http_server_resp_400();
+    }
+    if (!fw_update_is_url_valid())
+    {
+        fw_update_set_extra_info_for_status_json_update_failed("Bad URL");
+        return http_server_resp_400();
+    }
+    if (!fw_update_run())
+    {
+        fw_update_set_extra_info_for_status_json_update_failed("Internal error");
+        return http_server_resp_503();
+    }
+    return http_server_resp_data_in_flash(
+        HTTP_CONENT_TYPE_APPLICATION_JSON,
+        NULL,
+        strlen(g_empty_json),
+        HTTP_CONENT_ENCODING_NONE,
+        (const uint8_t *)g_empty_json);
+}
+
 http_server_resp_t
 http_server_cb_on_post(const char *p_file_name, const char *p_body)
 {
     if (0 == strcmp(p_file_name, "ruuvi.json"))
     {
         return http_server_cb_on_post_ruuvi(p_body);
+    }
+    else if (0 == strcmp(p_file_name, "fw_update.json"))
+    {
+        return http_server_cb_on_post_fw_update(p_body);
     }
     LOG_WARN("POST /%s", p_file_name);
     return http_server_resp_404();

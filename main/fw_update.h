@@ -39,6 +39,24 @@ fw_update_get_current_fatfs_gwui_partition_name(void);
 const char *
 fw_update_get_cur_version(void);
 
+bool
+json_fw_update_parse_http_body(const char *const p_body);
+
+bool
+fw_update_is_url_valid(void);
+
+bool
+fw_update_run(void);
+
+void
+fw_update_set_extra_info_for_status_json_update_start(void);
+
+void
+fw_update_set_extra_info_for_status_json_update_successful(void);
+
+void
+fw_update_set_extra_info_for_status_json_update_failed(const char *const p_message);
+
 #ifdef __cplusplus
 }
 #endif
