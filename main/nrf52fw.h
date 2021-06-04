@@ -64,7 +64,7 @@ void
 nrf52fw_hw_reset_nrf52(const bool flag_reset);
 
 bool
-nrf52fw_update_fw_if_necessary(void);
+nrf52fw_update_fw_if_necessary(const char* const p_fatfs_nrf52_partition_name);
 
 bool
 nrf52fw_software_reset(void);
