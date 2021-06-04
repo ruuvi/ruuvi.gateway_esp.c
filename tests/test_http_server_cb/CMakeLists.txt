@@ -73,6 +73,7 @@ target_compile_definitions(${ProjectId} PUBLIC
         RUUVI_TESTS_HTTP_SERVER_CB=1
         CONFIG_DEFAULT_AP_SSID=\"RuuviGateway\"
         GW_GWUI_PARTITION="fatfs_gwui"
+        GW_NRF_PARTITION="fatfs_nrf52"
 )
 
 target_compile_options(${ProjectId} PUBLIC

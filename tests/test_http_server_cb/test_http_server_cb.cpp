@@ -63,6 +63,34 @@ http_download(const char *const p_url, http_download_cb_on_data_t cb_on_data, vo
     return false;
 }
 
+void
+fw_update_set_extra_info_for_status_json_update_start(void)
+{
+}
+
+void
+fw_update_set_extra_info_for_status_json_update_failed(const char *const p_message)
+{
+}
+
+bool
+fw_update_is_url_valid(void)
+{
+    return true;
+}
+
+bool
+json_fw_update_parse_http_body(const char *const p_body)
+{
+    return false;
+}
+
+bool
+fw_update_run(void)
+{
+    return true;
+}
+
 } // extern "C"
 
 class MemAllocTrace
