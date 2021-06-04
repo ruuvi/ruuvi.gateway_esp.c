@@ -7,14 +7,13 @@
 
 #include "fw_update.h"
 #include <string.h>
-#include <assert.h>
 #include "http.h"
 #include "esp_type_wrapper.h"
 #include "cJSON.h"
 #include "cjson_wrap.h"
 #include "wifi_manager.h"
 #include "http_server.h"
-#include "esp_ota_ops.h"
+#include "esp_ota_ops_patched.h"
 #include "nrf52fw.h"
 #include "leds.h"
 
@@ -329,7 +328,7 @@ fw_update_ota_partition_cb_on_recv_data(
     const fw_update_percentage_t percentage = 50U + (offset + buf_size) * 50U / content_length;
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, percentage);
 
-    const esp_err_t err = esp_ota_write(p_info->out_handle, p_buf, buf_size);
+    const esp_err_t err = esp_ota_write_patched(p_info->out_handle, p_buf, buf_size);
     if (ESP_OK != err)
     {
         p_info->is_error = true;
@@ -380,7 +379,7 @@ fw_update_ota(const char *const p_url)
     }
 
     esp_ota_handle_t out_handle = 0;
-    esp_err_t        err        = esp_ota_begin(p_partition, OTA_SIZE_UNKNOWN, &out_handle);
+    esp_err_t        err        = esp_ota_begin_patched(p_partition, &out_handle);
     if (ESP_OK != err)
     {
         LOG_ERR("%s failed", "esp_ota_begin");
@@ -389,7 +388,7 @@ fw_update_ota(const char *const p_url)
 
     const bool res = fw_update_ota_partition(p_partition, out_handle, p_url);
 
-    err = esp_ota_end(out_handle);
+    err = esp_ota_end_patched(out_handle);
     if (ESP_OK != err)
     {
         LOG_ERR("%s failed", "esp_ota_end");
