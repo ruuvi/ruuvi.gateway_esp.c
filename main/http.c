@@ -15,7 +15,7 @@
 #include "http_json.h"
 #include "leds.h"
 
-#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
+#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
 static const char TAG[] = "http";
