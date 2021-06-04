@@ -31,7 +31,7 @@ static const char g_empty_json[] = "{}";
 static const flash_fat_fs_t *gp_ffs_gwui;
 
 bool
-http_server_cb_init(const char* const p_fatfs_gwui_partition_name)
+http_server_cb_init(const char *const p_fatfs_gwui_partition_name)
 {
     const char *                   mount_point   = "/fs_gwui";
     const flash_fat_fs_num_files_t max_num_files = 4U;

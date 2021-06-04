@@ -85,7 +85,7 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t *const p_flash_info)
 
     const char *const p_fatfs_nrf52_partition_name = p_flash_info->is_ota0_active ? GW_NRF_PARTITION_2
                                                                                   : GW_NRF_PARTITION;
-    p_flash_info->p_next_fatfs_nrf52_partition     = find_data_fat_partition_by_name(p_fatfs_nrf52_partition_name);
+    p_flash_info->p_next_fatfs_nrf52_partition = find_data_fat_partition_by_name(p_fatfs_nrf52_partition_name);
     if (NULL == p_flash_info->p_next_fatfs_nrf52_partition)
     {
         return false;
