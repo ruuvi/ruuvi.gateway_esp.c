@@ -420,7 +420,7 @@ nrf51swd_nvmc_wait_while_busy(void)
     bool result = false;
     while (!nrf51swd_nvmc_is_ready_or_err(&result))
     {
-        vTaskDelay(0);
+        vTaskDelay(1);
     }
     return result;
 }
