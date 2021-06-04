@@ -17,6 +17,7 @@
 #include "flashfatfs.h"
 #include "metrics.h"
 #include "adv_table.h"
+#include "http.h"
 
 using namespace std;
 
@@ -55,6 +56,12 @@ fw_update_get_cur_version(void)
 }
 
 char g_nrf52_firmware_version[] = "v0.7.1";
+
+bool
+http_download(const char *const p_url, http_download_cb_on_data_t cb_on_data, void *const p_user_data)
+{
+    return false;
+}
 
 } // extern "C"
 
