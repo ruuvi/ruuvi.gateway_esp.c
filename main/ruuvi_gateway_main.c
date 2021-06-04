@@ -347,7 +347,7 @@ app_main(void)
     }
 
     leds_indication_on_nrf52_fw_updating();
-    nrf52fw_update_fw_if_necessary(fw_update_get_current_fatfs_nrf52_partition_name());
+    nrf52fw_update_fw_if_necessary(fw_update_get_current_fatfs_nrf52_partition_name(), NULL, NULL);
     leds_off();
 
     settings_get_from_flash(&g_gateway_config);
