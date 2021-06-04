@@ -48,6 +48,14 @@ esp_random(void)
     return 0;
 }
 
+const char *
+fw_update_get_cur_version(void)
+{
+    return "v1.3.3";
+}
+
+char g_nrf52_firmware_version[] = "v0.7.1";
+
 } // extern "C"
 
 class MemAllocTrace
@@ -373,6 +381,8 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
 {
     const char *expected_json
         = "{\n"
+          "\t\"fw_ver\":\t\"v1.3.3\",\n"
+          "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
           "\t\"eth_dhcp\":\ttrue,\n"
           "\t\"eth_static_ip\":\t\"\",\n"
           "\t\"eth_netmask\":\t\"\",\n"
@@ -480,6 +490,8 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
 {
     const char *expected_json
         = "{\n"
+          "\t\"fw_ver\":\t\"v1.3.3\",\n"
+          "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
           "\t\"eth_dhcp\":\ttrue,\n"
           "\t\"eth_static_ip\":\t\"\",\n"
           "\t\"eth_netmask\":\t\"\",\n"
@@ -882,6 +894,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
 {
     const char *expected_json
         = "{\n"
+          "\t\"fw_ver\":\t\"v1.3.3\",\n"
+          "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
           "\t\"eth_dhcp\":\ttrue,\n"
           "\t\"eth_static_ip\":\t\"\",\n"
           "\t\"eth_netmask\":\t\"\",\n"

@@ -8,6 +8,8 @@
 #include "gw_cfg.h"
 #include <stdio.h>
 #include "http_server_auth_type.h"
+#include "fw_update.h"
+#include "nrf52fw.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -136,6 +138,20 @@ gw_cfg_json_add_number(cJSON *p_json_root, const char *p_item_name, const cjson_
     if (NULL == cJSON_AddNumberToObject(p_json_root, p_item_name, val))
     {
         LOG_ERR("Can't add json item: %s", p_item_name);
+        return false;
+    }
+    return true;
+}
+
+static bool
+gw_cfg_json_add_items_fw_version(cJSON *p_json_root)
+{
+    if (!gw_cfg_json_add_string(p_json_root, "fw_ver", fw_update_get_cur_version()))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_string(p_json_root, "nrf52_fw_ver", g_nrf52_firmware_version))
+    {
         return false;
     }
     return true;
@@ -289,6 +305,10 @@ gw_cfg_json_add_items_scan(cJSON *p_json_root, const ruuvi_gateway_config_t *p_c
 static bool
 gw_cfg_json_add_items(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg, const mac_address_str_t *p_mac_sta)
 {
+    if (!gw_cfg_json_add_items_fw_version(p_json_root))
+    {
+        return false;
+    }
     if (!gw_cfg_json_add_items_eth(p_json_root, p_cfg))
     {
         return false;

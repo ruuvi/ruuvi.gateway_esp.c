@@ -26,6 +26,11 @@ target_include_directories(${ProjectId} PUBLIC
         ${WIFI_MANAGER_INC}
         include
         $ENV{IDF_PATH}/components/json/cJSON
+        $ENV{IDF_PATH}/components/app_update/include
+        $ENV{IDF_PATH}/components/spi_flash/include
+        $ENV{IDF_PATH}/components/soc/include
+        $ENV{IDF_PATH}/components/esp_common/include
+        $ENV{IDF_PATH}/components/bootloader_support/include
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
 

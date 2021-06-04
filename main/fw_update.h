@@ -36,6 +36,9 @@ fw_update_get_current_fatfs_nrf52_partition_name(void);
 const char *
 fw_update_get_current_fatfs_gwui_partition_name(void);
 
+const char *
+fw_update_get_cur_version(void);
+
 #ifdef __cplusplus
 }
 #endif

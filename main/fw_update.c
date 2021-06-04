@@ -121,3 +121,10 @@ fw_update_get_current_fatfs_gwui_partition_name(void)
     ruuvi_flash_info_t *p_flash_info = &g_ruuvi_flash_info;
     return p_flash_info->is_ota0_active ? GW_GWUI_PARTITION : GW_GWUI_PARTITION_2;
 }
+
+const char *
+fw_update_get_cur_version(void)
+{
+    ruuvi_flash_info_t *p_flash_info = &g_ruuvi_flash_info;
+    return p_flash_info->p_app_desc->version;
+}
