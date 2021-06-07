@@ -21,6 +21,7 @@
 #include <assert.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include "os_malloc.h"
 
 #include "esp_err.h"
 #include "esp_partition.h"
@@ -119,7 +120,7 @@ esp_ota_begin_patched(const esp_partition_t *partition, esp_ota_handle_t *out_ha
         return ret;
     }
 
-    new_entry = (ota_ops_entry_t *)calloc(sizeof(ota_ops_entry_t), 1);
+    new_entry = (ota_ops_entry_t *)os_calloc(sizeof(ota_ops_entry_t), 1);
     if (new_entry == NULL)
     {
         return ESP_ERR_NO_MEM;
@@ -267,6 +268,6 @@ esp_ota_end_patched(esp_ota_handle_t handle)
 
 cleanup:
     LIST_REMOVE(it, entries);
-    free(it);
+    os_free(it);
     return ret;
 }
