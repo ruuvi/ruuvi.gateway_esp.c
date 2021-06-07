@@ -138,8 +138,9 @@ http_server_resp_t
 http_server_resp_json_github_latest_release(void)
 {
     download_github_latest_release_info_t info = {
-        .is_error   = false,
-        .p_json_buf = NULL,
+        .is_error      = false,
+        .p_json_buf    = NULL,
+        .json_buf_size = 0,
     };
     if (!http_download(
             "https://api.github.com/repos/ruuvi/ruuvi.gateway_esp.c/releases/latest",
@@ -483,6 +484,7 @@ http_server_resp_t
 http_server_cb_on_delete(const char *p_path, const http_server_resp_t *const p_resp_auth)
 {
     (void)p_path;
+    (void)p_resp_auth;
     LOG_WARN("DELETE /%s", p_path);
     return http_server_resp_404();
 }

@@ -25,6 +25,12 @@
 
 #define NRF52FW_SLEEP_WHILE_FLASHING_MS (20U)
 
+#define BIT_IDX_OF_BYTE_3 (3U * 8U)
+#define BIT_IDX_OF_BYTE_2 (2U * 8U)
+#define BIT_IDX_OF_BYTE_1 (1U * 8U)
+#define BIT_IDX_OF_BYTE_0 (0U * 8U)
+#define BYTE_MASK         (0xFFU)
+
 static const char *TAG = "nRF52Fw";
 
 char g_nrf52_firmware_version[NRF52FW_FIRMWARE_VERSION_SIZE];
@@ -418,14 +424,11 @@ nrf52fw_flash_write_block(
 NRF52FW_STATIC
 bool
 nrf52fw_flash_write_segment(
-    const file_descriptor_t fd,
-    nrf52fw_tmp_buf_t *     p_tmp_buf,
-    const uint32_t          segment_addr,
-    const size_t            segment_len,
-    size_t *const           p_accum_num_bytes_flashed,
-    const size_t            total_size,
-    nrf52fw_cb_progress     cb_progress,
-    void *const             p_param_cb_progress)
+    const file_descriptor_t        fd,
+    nrf52fw_tmp_buf_t *            p_tmp_buf,
+    const uint32_t                 segment_addr,
+    const size_t                   segment_len,
+    nrf52fw_progress_info_t *const p_progress_info)
 {
     uint32_t offset = 0;
     for (;;)
@@ -444,12 +447,15 @@ nrf52fw_flash_write_segment(
         {
             return false;
         }
-        if (NULL != p_accum_num_bytes_flashed)
+        if (NULL != p_progress_info)
         {
-            *p_accum_num_bytes_flashed += len;
-            if (NULL != cb_progress)
+            p_progress_info->accum_num_bytes_flashed += len;
+            if (NULL != p_progress_info->cb_progress)
             {
-                cb_progress(*p_accum_num_bytes_flashed, total_size, p_param_cb_progress);
+                p_progress_info->cb_progress(
+                    p_progress_info->accum_num_bytes_flashed,
+                    p_progress_info->total_size,
+                    p_progress_info->p_param_cb_progress);
             }
         }
         vTaskDelay(pdMS_TO_TICKS(NRF52FW_SLEEP_WHILE_FLASHING_MS));
@@ -460,15 +466,12 @@ nrf52fw_flash_write_segment(
 NRF52FW_STATIC
 bool
 nrf52fw_write_segment_from_file(
-    const flash_fat_fs_t *p_ffs,
-    const char *          p_path,
-    nrf52fw_tmp_buf_t *   p_tmp_buf,
-    const uint32_t        segment_addr,
-    const size_t          segment_len,
-    size_t *const         p_accum_num_bytes_flashed,
-    const size_t          total_size,
-    nrf52fw_cb_progress   cb_progress,
-    void *const           p_param_cb_progress)
+    const flash_fat_fs_t *         p_ffs,
+    const char *                   p_path,
+    nrf52fw_tmp_buf_t *            p_tmp_buf,
+    const uint32_t                 segment_addr,
+    const size_t                   segment_len,
+    nrf52fw_progress_info_t *const p_progress_info)
 {
     const file_descriptor_t fd = flashfatfs_open(p_ffs, p_path);
     if (fd < 0)
@@ -476,15 +479,7 @@ nrf52fw_write_segment_from_file(
         LOG_ERR("Can't open '%s'", p_path);
         return false;
     }
-    const bool res = nrf52fw_flash_write_segment(
-        fd,
-        p_tmp_buf,
-        segment_addr,
-        segment_len,
-        p_accum_num_bytes_flashed,
-        total_size,
-        cb_progress,
-        p_param_cb_progress);
+    const bool res = nrf52fw_flash_write_segment(fd, p_tmp_buf, segment_addr, segment_len, p_progress_info);
     close(fd);
     if (!res)
     {
@@ -528,7 +523,12 @@ nrf52fw_flash_write_firmware(
         const nrf52fw_segment_t *p_segment_info = &p_fw_info->segments[i];
         total_size += p_segment_info->size;
     }
-    size_t accum_num_bytes_flashed = 0;
+    nrf52fw_progress_info_t progress_info = {
+        .accum_num_bytes_flashed = 0,
+        .total_size              = total_size,
+        .cb_progress             = cb_progress,
+        .p_param_cb_progress     = p_param_cb_progress,
+    };
     for (uint32_t i = 0; i < p_fw_info->num_segments; ++i)
     {
         const nrf52fw_segment_t *p_segment_info = &p_fw_info->segments[i];
@@ -544,10 +544,7 @@ nrf52fw_flash_write_firmware(
                 p_tmp_buf,
                 p_segment_info->address,
                 p_segment_info->size,
-                &accum_num_bytes_flashed,
-                total_size,
-                cb_progress,
-                p_param_cb_progress))
+                &progress_info))
         {
             LOG_ERR(
                 "Failed to write segment %u: 0x%08x from %s",
@@ -683,9 +680,9 @@ nrf52fw_update_fw_step3(
         g_nrf52_firmware_version,
         sizeof(g_nrf52_firmware_version),
         "v%u.%u.%u",
-        (unsigned)((cur_fw_ver >> 24U) & 0xFFU),
-        (unsigned)((cur_fw_ver >> 16U) & 0xFFU),
-        (unsigned)((cur_fw_ver >> 8U) & 0xFFU));
+        (printf_uint_t)((cur_fw_ver >> BIT_IDX_OF_BYTE_3) & BYTE_MASK),
+        (printf_uint_t)((cur_fw_ver >> BIT_IDX_OF_BYTE_2) & BYTE_MASK),
+        (printf_uint_t)((cur_fw_ver >> BIT_IDX_OF_BYTE_1) & BYTE_MASK));
     LOG_INFO("Firmware on nRF52: %s", g_nrf52_firmware_version);
     if (cur_fw_ver == fw_info.fw_ver.version)
     {

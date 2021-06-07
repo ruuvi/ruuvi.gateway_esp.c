@@ -39,6 +39,9 @@
 
 static const char TAG[] = "ruuvi_gateway";
 
+#define MAC_ADDRESS_IDX_OF_LAST_BYTE        (MAC_ADDRESS_NUM_BYTES - 1U)
+#define MAC_ADDRESS_IDX_OF_PENULTIMATE_BYTE (MAC_ADDRESS_NUM_BYTES - 2U)
+
 EventGroupHandle_t status_bits;
 
 static inline uint8_t
@@ -117,8 +120,8 @@ get_gw_mac_sta(
         sizeof(p_gw_wifi_ssid->ssid_buf),
         "%s%02X%02X",
         DEFAULT_AP_SSID,
-        p_gw_mac_sta->mac[4],
-        p_gw_mac_sta->mac[5]);
+        p_gw_mac_sta->mac[MAC_ADDRESS_IDX_OF_PENULTIMATE_BYTE],
+        p_gw_mac_sta->mac[MAC_ADDRESS_IDX_OF_LAST_BYTE]);
 }
 
 static void
