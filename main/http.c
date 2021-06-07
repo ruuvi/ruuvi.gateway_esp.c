@@ -19,6 +19,8 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
+#define BASE_10 (10U)
+
 typedef struct http_download_cb_info_t
 {
     http_download_cb_on_data_t cb_on_data;
@@ -174,7 +176,7 @@ http_download_event_handler(esp_http_client_event_t *p_evt)
             LOG_DBG("HTTP_EVENT_ON_HEADER, key=%s, value=%s", p_evt->header_key, p_evt->header_value);
             if (0 == strcasecmp(p_evt->header_key, "Content-Length"))
             {
-                p_cb_info->content_length = os_str_to_uint32_cptr(p_evt->header_value, NULL, 10);
+                p_cb_info->content_length = os_str_to_uint32_cptr(p_evt->header_value, NULL, BASE_10);
             }
             break;
 

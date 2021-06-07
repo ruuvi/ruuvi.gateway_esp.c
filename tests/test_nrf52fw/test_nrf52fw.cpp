@@ -1088,15 +1088,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_ok_16_words) // NOLINT
     this->m_memSegmentsRead.emplace_back(
         MemSegment(segment_addr, sizeof(segment_buf) / sizeof(segment_buf[0]), segment_buf));
 
-    ASSERT_TRUE(nrf52fw_flash_write_segment(
-        fileno(this->m_fd),
-        &tmp_buf,
-        segment_addr,
-        sizeof(segment_buf),
-        nullptr,
-        0,
-        nullptr,
-        nullptr));
+    ASSERT_TRUE(nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf), nullptr));
     ASSERT_EQ(1, this->m_memSegmentsWrite.size());
     {
         ASSERT_EQ(this->m_memSegmentsRead[0].segmentAddr, this->m_memSegmentsWrite[0].segmentAddr);
@@ -1133,15 +1125,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_ok_257_words) // NOLINT
     this->m_memSegmentsRead.emplace_back(
         MemSegment(segment_addr, sizeof(segment_buf) / sizeof(segment_buf[0]), segment_buf));
 
-    ASSERT_TRUE(nrf52fw_flash_write_segment(
-        fileno(this->m_fd),
-        &tmp_buf,
-        segment_addr,
-        sizeof(segment_buf),
-        nullptr,
-        0,
-        nullptr,
-        nullptr));
+    ASSERT_TRUE(nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf), nullptr));
     ASSERT_EQ(1, this->m_memSegmentsWrite.size());
     {
         ASSERT_EQ(this->m_memSegmentsRead[0].segmentAddr, this->m_memSegmentsWrite[0].segmentAddr);
@@ -1178,15 +1162,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_error_on_verify) // NOLINT
         MemSegment(segment_addr, sizeof(segment_buf) / sizeof(segment_buf[0]), segment_buf));
     segment_buf[1] -= 1U;
 
-    ASSERT_FALSE(nrf52fw_flash_write_segment(
-        fileno(this->m_fd),
-        &tmp_buf,
-        segment_addr,
-        sizeof(segment_buf),
-        nullptr,
-        0,
-        nullptr,
-        nullptr));
+    ASSERT_FALSE(nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf), nullptr));
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001000...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "verify failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1217,15 +1193,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_error_on_read) // NOLINT
 
     const uint32_t segment_addr = 0x00001000;
 
-    ASSERT_FALSE(nrf52fw_flash_write_segment(
-        fileno(this->m_fd),
-        &tmp_buf,
-        segment_addr,
-        sizeof(segment_buf),
-        nullptr,
-        0,
-        nullptr,
-        nullptr));
+    ASSERT_FALSE(nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf), nullptr));
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001000...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_read_mem failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1258,15 +1226,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_error_on_write) // NOLINT
     this->m_memSegmentsWrite.emplace_back(
         MemSegment(segment_addr, sizeof(segment_buf) / sizeof(segment_buf[0]), segment_buf));
 
-    ASSERT_FALSE(nrf52fw_flash_write_segment(
-        fileno(this->m_fd),
-        &tmp_buf,
-        segment_addr,
-        sizeof(segment_buf),
-        nullptr,
-        0,
-        nullptr,
-        nullptr));
+    ASSERT_FALSE(nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf), nullptr));
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001000...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_write_mem failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1304,9 +1264,6 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_fail_file_greater_than_expected)
         &tmp_buf,
         segment_addr,
         sizeof(segment_buf) - sizeof(uint32_t),
-        nullptr,
-        0,
-        nullptr,
         nullptr));
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "offset 64 greater than segment len 60");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1339,15 +1296,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_fail_bad_length) // NOLINT
     this->m_memSegmentsRead.emplace_back(
         MemSegment(segment_addr, sizeof(segment_buf) / sizeof(segment_buf[0]), segment_buf));
 
-    ASSERT_FALSE(nrf52fw_flash_write_segment(
-        fileno(this->m_fd),
-        &tmp_buf,
-        segment_addr,
-        sizeof(segment_buf),
-        nullptr,
-        0,
-        nullptr,
-        nullptr));
+    ASSERT_FALSE(nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf), nullptr));
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "bad len 63");
 
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1381,15 +1330,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_fail_after_file_read_error) // N
         MemSegment(segment_addr, sizeof(segment_buf) / sizeof(segment_buf[0]), segment_buf));
 
     nrf52fw_simulate_file_read_error(true);
-    ASSERT_FALSE(nrf52fw_flash_write_segment(
-        fileno(this->m_fd),
-        &tmp_buf,
-        segment_addr,
-        sizeof(segment_buf),
-        nullptr,
-        0,
-        nullptr,
-        nullptr));
+    ASSERT_FALSE(nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf), nullptr));
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_file_read failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
@@ -1427,9 +1368,6 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_from_file_ok) // NOLINT
         &tmp_buf,
         segment_addr,
         sizeof(segment_buf),
-        nullptr,
-        0,
-        nullptr,
         nullptr));
 
     flashfatfs_unmount(&this->m_p_ffs);
@@ -1482,9 +1420,6 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_from_file_error_on_writing_segme
         &tmp_buf,
         segment_addr,
         sizeof(segment_buf),
-        nullptr,
-        0,
-        nullptr,
         nullptr));
 
     flashfatfs_unmount(&this->m_p_ffs);
@@ -1524,9 +1459,6 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_from_file_error_no_file) // NOLI
         &tmp_buf,
         segment_addr,
         sizeof(segment_buf),
-        nullptr,
-        0,
-        nullptr,
         nullptr));
 
     flashfatfs_unmount(&this->m_p_ffs);

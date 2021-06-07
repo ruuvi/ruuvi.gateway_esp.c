@@ -27,6 +27,11 @@
 
 #define FW_UPDATE_URL_MAX_LEN (128U)
 
+#define FW_UPDATE_PERCENTAGE_50  (50U)
+#define FW_UPDATE_PERCENTAGE_100 (100U)
+
+#define FW_UPDATE_DELAY_BEFORE_REBOOT_MS (5U * 1000U)
+
 typedef struct fw_update_config_t
 {
     char url[FW_UPDATE_URL_MAX_LEN + 1];
@@ -48,13 +53,13 @@ typedef struct fw_update_ota_partition_info_t
 
 typedef enum fw_update_stage_e
 {
-    fw_update_stage_none       = 0,
-    fw_update_stage_1          = 1,
-    fw_update_stage_2          = 2,
-    fw_update_stage_3          = 3,
-    fw_update_stage_4          = 4,
-    fw_update_stage_successful = 5,
-    fw_update_stage_failed     = 6,
+    FW_UPDATE_STAGE_NONE       = 0,
+    FW_UPDATE_STAGE_1          = 1,
+    FW_UPDATE_STAGE_2          = 2,
+    FW_UPDATE_STAGE_3          = 3,
+    FW_UPDATE_STAGE_4          = 4,
+    FW_UPDATE_STAGE_SUCCESSFUL = 5,
+    FW_UPDATE_STAGE_FAILED     = 6,
 } fw_update_stage_e;
 
 typedef uint32_t fw_update_percentage_t;
@@ -161,21 +166,21 @@ fw_update_read_flash_info(void)
 const char *
 fw_update_get_current_fatfs_nrf52_partition_name(void)
 {
-    ruuvi_flash_info_t *p_flash_info = &g_ruuvi_flash_info;
+    const ruuvi_flash_info_t *const p_flash_info = &g_ruuvi_flash_info;
     return p_flash_info->is_ota0_active ? GW_NRF_PARTITION : GW_NRF_PARTITION_2;
 }
 
 const char *
 fw_update_get_current_fatfs_gwui_partition_name(void)
 {
-    ruuvi_flash_info_t *p_flash_info = &g_ruuvi_flash_info;
+    const ruuvi_flash_info_t *const p_flash_info = &g_ruuvi_flash_info;
     return p_flash_info->is_ota0_active ? GW_GWUI_PARTITION : GW_GWUI_PARTITION_2;
 }
 
 const char *
 fw_update_get_cur_version(void)
 {
-    ruuvi_flash_info_t *p_flash_info = &g_ruuvi_flash_info;
+    const ruuvi_flash_info_t *const p_flash_info = &g_ruuvi_flash_info;
     return p_flash_info->p_app_desc->version;
 }
 
@@ -183,7 +188,7 @@ esp_err_t
 erase_partition_with_sleep(const esp_partition_t *const p_partition)
 {
     assert(p_partition != NULL);
-    if (p_partition->size % SPI_FLASH_SEC_SIZE != 0)
+    if ((p_partition->size % SPI_FLASH_SEC_SIZE) != 0)
     {
         return ESP_ERR_INVALID_SIZE;
     }
@@ -197,7 +202,7 @@ erase_partition_with_sleep(const esp_partition_t *const p_partition)
             LOG_ERR_ESP(err, "Failed to erase sector at 0x%08x", (printf_uint_t)(p_partition->address + offset));
             return err;
         }
-        const fw_update_percentage_t percentage = offset * 50U / p_partition->size;
+        const fw_update_percentage_t percentage = (offset * FW_UPDATE_PERCENTAGE_50) / p_partition->size;
         fw_update_set_extra_info_for_status_json(g_update_progress_stage, percentage);
         vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS));
         offset += SPI_FLASH_SEC_SIZE;
@@ -211,7 +216,7 @@ fw_update_data_partition_cb_on_recv_data(
     const size_t         buf_size,
     const size_t         offset,
     const size_t         content_length,
-    void *               p_user_data)
+    void *const          p_user_data)
 {
     fw_update_data_partition_info_t *const p_info = p_user_data;
     if (p_info->is_error)
@@ -224,7 +229,8 @@ fw_update_data_partition_cb_on_recv_data(
         (printf_ulong_t)offset,
         (printf_ulong_t)buf_size);
 
-    const fw_update_percentage_t percentage = 50U + (offset + buf_size) * 50U / content_length;
+    const fw_update_percentage_t percentage = FW_UPDATE_PERCENTAGE_50
+                                              + (((offset + buf_size) * FW_UPDATE_PERCENTAGE_50) / content_length);
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, percentage);
 
     const esp_err_t err = esp_partition_write(p_info->p_partition, p_info->offset, p_buf, buf_size);
@@ -312,7 +318,7 @@ fw_update_ota_partition_cb_on_recv_data(
     const size_t         buf_size,
     const size_t         offset,
     const size_t         content_length,
-    void *               p_user_data)
+    void *const          p_user_data)
 {
     fw_update_ota_partition_info_t *const p_info = p_user_data;
     if (p_info->is_error)
@@ -325,7 +331,8 @@ fw_update_ota_partition_cb_on_recv_data(
         (printf_ulong_t)offset,
         (printf_ulong_t)buf_size);
 
-    const fw_update_percentage_t percentage = 50U + (offset + buf_size) * 50U / content_length;
+    const fw_update_percentage_t percentage = FW_UPDATE_PERCENTAGE_50
+                                              + (((offset + buf_size) * FW_UPDATE_PERCENTAGE_50) / content_length);
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, percentage);
 
     const esp_err_t err = esp_ota_write_patched(p_info->out_handle, p_buf, buf_size);
@@ -338,7 +345,10 @@ fw_update_ota_partition_cb_on_recv_data(
 }
 
 static bool
-fw_update_ota_partition(const esp_partition_t *const p_partition, esp_ota_handle_t out_handle, const char *const p_url)
+fw_update_ota_partition(
+    const esp_partition_t *const p_partition,
+    const esp_ota_handle_t       out_handle,
+    const char *const            p_url)
 {
     LOG_INFO(
         "Update OTA-partition %s (address 0x%08x, size 0x%x) from %s",
@@ -363,7 +373,7 @@ fw_update_ota_partition(const esp_partition_t *const p_partition, esp_ota_handle
         LOG_ERR("Failed to update OTA-partition %s - some problem during writing", p_partition->label);
         return false;
     }
-    fw_update_set_extra_info_for_status_json(g_update_progress_stage, 100);
+    fw_update_set_extra_info_for_status_json(g_update_progress_stage, FW_UPDATE_PERCENTAGE_100);
     LOG_INFO("OTA-partition %s has been successfully updated", p_partition->label);
     return true;
 }
@@ -400,13 +410,13 @@ fw_update_ota(const char *const p_url)
 
 static bool
 json_fw_update_copy_string_val(
-    const cJSON *p_json_root,
-    const char * p_attr_name,
-    char *       buf,
-    const size_t buf_len,
-    bool         flag_log_err_if_not_found)
+    const cJSON *const p_json_root,
+    const char *const  p_attr_name,
+    char *const        p_buf,
+    const size_t       buf_len,
+    const bool         flag_log_err_if_not_found)
 {
-    if (!json_wrap_copy_string_val(p_json_root, p_attr_name, buf, buf_len))
+    if (!json_wrap_copy_string_val(p_json_root, p_attr_name, p_buf, buf_len))
     {
         if (flag_log_err_if_not_found)
         {
@@ -414,12 +424,12 @@ json_fw_update_copy_string_val(
         }
         return false;
     }
-    LOG_DBG("%s: %s", p_attr_name, buf);
+    LOG_DBG("%s: %s", p_attr_name, p_buf);
     return true;
 }
 
 static bool
-json_fw_update_parse(cJSON *p_json_root, fw_update_config_t *p_cfg)
+json_fw_update_parse(const cJSON *const p_json_root, fw_update_config_t *const p_cfg)
 {
     if (!json_fw_update_copy_string_val(p_json_root, "url", p_cfg->url, sizeof(p_cfg->url), true))
     {
@@ -449,7 +459,7 @@ fw_update_set_extra_info_for_status_json(
     const fw_update_percentage_t fw_updating_percentage)
 {
     char extra_info_buf[JSON_NETWORK_EXTRA_INFO_SIZE];
-    if (fw_update_stage_none == fw_updating_stage)
+    if (FW_UPDATE_STAGE_NONE == fw_updating_stage)
     {
         extra_info_buf[0] = '\0';
     }
@@ -468,14 +478,14 @@ fw_update_set_extra_info_for_status_json(
 void
 fw_update_set_extra_info_for_status_json_update_start(void)
 {
-    fw_update_set_extra_info_for_status_json(fw_update_stage_1, 0);
+    fw_update_set_extra_info_for_status_json(FW_UPDATE_STAGE_1, 0);
 }
 
 void
 fw_update_set_extra_info_for_status_json_update_successful(void)
 {
     char extra_info_buf[JSON_NETWORK_EXTRA_INFO_SIZE];
-    snprintf(extra_info_buf, sizeof(extra_info_buf), "\"fw_updating\":%u", (printf_uint_t)fw_update_stage_successful);
+    snprintf(extra_info_buf, sizeof(extra_info_buf), "\"fw_updating\":%u", (printf_uint_t)FW_UPDATE_STAGE_SUCCESSFUL);
     wifi_manager_set_extra_info_for_status_json(extra_info_buf);
 }
 
@@ -487,7 +497,7 @@ fw_update_set_extra_info_for_status_json_update_failed(const char *const p_messa
         extra_info_buf,
         sizeof(extra_info_buf),
         "\"fw_updating\":%u,\"message\":\"%s\"",
-        (printf_uint_t)fw_update_stage_failed,
+        (printf_uint_t)FW_UPDATE_STAGE_FAILED,
         (NULL != p_message) ? p_message : "");
     wifi_manager_set_extra_info_for_status_json(extra_info_buf);
 }
@@ -495,7 +505,8 @@ fw_update_set_extra_info_for_status_json_update_failed(const char *const p_messa
 static void
 fw_update_nrf52fw_cb_progress(const size_t num_bytes_flashed, const size_t total_size, void *const p_param)
 {
-    const fw_update_percentage_t percentage = num_bytes_flashed * 100U / total_size;
+    (void)p_param;
+    const fw_update_percentage_t percentage = (num_bytes_flashed * FW_UPDATE_PERCENTAGE_100) / total_size;
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, percentage);
 }
 
@@ -508,7 +519,7 @@ fw_update_task(void)
 
     http_server_disable_ap_stopping_by_timeout();
 
-    g_update_progress_stage = fw_update_stage_1;
+    g_update_progress_stage = FW_UPDATE_STAGE_1;
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, 0);
 
     snprintf(url, sizeof(url), "%s/%s", g_fw_update_cfg.url, "ruuvi_gateway_esp.bin");
@@ -519,7 +530,7 @@ fw_update_task(void)
         return;
     }
 
-    g_update_progress_stage = fw_update_stage_2;
+    g_update_progress_stage = FW_UPDATE_STAGE_2;
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, 0);
 
     snprintf(url, sizeof(url), "%s/%s", g_fw_update_cfg.url, "fatfs_gwui.bin");
@@ -530,7 +541,7 @@ fw_update_task(void)
         return;
     }
 
-    g_update_progress_stage = fw_update_stage_3;
+    g_update_progress_stage = FW_UPDATE_STAGE_3;
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, 0);
 
     snprintf(url, sizeof(url), "%s/%s", g_fw_update_cfg.url, "fatfs_nrf52.bin");
@@ -555,7 +566,7 @@ fw_update_task(void)
     const char *const p_fatfs_nrf52_partition_name = g_ruuvi_flash_info.is_ota0_active ? GW_NRF_PARTITION_2
                                                                                        : GW_NRF_PARTITION;
 
-    g_update_progress_stage = fw_update_stage_4;
+    g_update_progress_stage = FW_UPDATE_STAGE_4;
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, 0);
 
     leds_indication_on_nrf52_fw_updating();
@@ -566,7 +577,7 @@ fw_update_task(void)
     fw_update_set_extra_info_for_status_json_update_successful();
 
     LOG_INFO("Wait 5 seconds before reboot");
-    vTaskDelay(pdMS_TO_TICKS(5 * 1000));
+    vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_BEFORE_REBOOT_MS));
 
     LOG_INFO("Restart system");
     esp_restart();
