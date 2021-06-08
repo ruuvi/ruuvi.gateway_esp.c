@@ -284,18 +284,17 @@ wifi_init(
         LOG_ERR("%s failed", "http_server_cb_init");
         return false;
     }
-    wifi_manager_start(
-        !flag_use_eth,
-        p_gw_wifi_ssid,
-        &wiFiAntConfig,
-        &http_server_cb_on_get,
-        &http_server_cb_on_post,
-        &http_server_cb_on_delete,
-        &wifi_connection_cb_on_connect_eth_cmd,
-        &wifi_connection_cb_on_disconnect_eth_cmd,
-        &wifi_connection_cb_on_disconnect_sta_cmd,
-        &wifi_connection_cb_on_ap_sta_connected,
-        &wifi_connection_cb_on_ap_sta_disconnected);
+    const wifi_manager_callbacks_t wifi_callbacks = {
+        .cb_on_http_get            = &http_server_cb_on_get,
+        .cb_on_http_post           = &http_server_cb_on_post,
+        .cb_on_http_delete         = &http_server_cb_on_delete,
+        .cb_on_connect_eth_cmd     = &wifi_connection_cb_on_connect_eth_cmd,
+        .cb_on_disconnect_eth_cmd  = &wifi_connection_cb_on_disconnect_eth_cmd,
+        .cb_on_disconnect_sta_cmd  = &wifi_connection_cb_on_disconnect_sta_cmd,
+        .cb_on_ap_sta_connected    = &wifi_connection_cb_on_ap_sta_connected,
+        .cb_on_ap_sta_disconnected = &wifi_connection_cb_on_ap_sta_disconnected,
+    };
+    wifi_manager_start(!flag_use_eth, p_gw_wifi_ssid, &wiFiAntConfig, &wifi_callbacks);
     wifi_manager_set_callback(EVENT_STA_GOT_IP, &wifi_connection_ok_cb);
     wifi_manager_set_callback(EVENT_STA_DISCONNECTED, &wifi_disconnect_cb);
     return true;
