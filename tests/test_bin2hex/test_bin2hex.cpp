@@ -163,6 +163,18 @@ TEST_F(TestBin2Hex, test_2) // NOLINT
     ASSERT_EQ(string("01AA"), string(hex_str_buf.data()));
 }
 
+TEST_F(TestBin2Hex, test_empty_data) // NOLINT
+{
+    const size_t                       hex_str_buf_size = 10;
+    std::array<char, hex_str_buf_size> hex_str_buf {};
+    const std::array<uint8_t, 0>       bin_buf = {};
+    memset(hex_str_buf.data(), 'a', hex_str_buf.size());
+    str_buf_t str_buf = STR_BUF_INIT(hex_str_buf.data(), hex_str_buf.size());
+
+    bin2hex(&str_buf, bin_buf.data(), bin_buf.size());
+    ASSERT_EQ(string(""), string(hex_str_buf.data()));
+}
+
 TEST_F(TestBin2Hex, test_5_with_overflow_size_9) // NOLINT
 {
     const size_t                       hex_str_buf_size = 9;
