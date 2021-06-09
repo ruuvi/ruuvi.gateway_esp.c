@@ -44,6 +44,12 @@ endif()
 set(FATFS_NRF52_ADDR ${CMAKE_MATCH_1})
 set(FATFS_NRF52_SIZE ${CMAKE_MATCH_2})
 
+execute_process (
+        COMMAND bash -c "git describe --always --tags --dirty"
+        OUTPUT_VARIABLE PROJECT_VER
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+message("Project version: ${PROJECT_VER}")
 
 execute_process (
         COMMAND bash -c "cd $ENV{IDF_PATH} && git describe --always --tags --dirty --match ${EXPECTED_IDF_VERSION}*"
@@ -52,7 +58,7 @@ execute_process (
 )
 
 if("${IDF_VERSION}" STREQUAL "${EXPECTED_IDF_VERSION}")
-    message(esp-idf version: ${IDF_VERSION})
+    message("esp-idf version: ${IDF_VERSION}")
 elseif("${IDF_VERSION}" STREQUAL "${EXPECTED_IDF_VERSION}-dirty")
     message(WARNING "Expected esp-idf version is ${EXPECTED_IDF_VERSION}, but actual version is ${IDF_VERSION}")
 else()
