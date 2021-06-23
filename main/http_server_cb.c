@@ -20,6 +20,8 @@
 #include "http_server.h"
 #include "http.h"
 #include "fw_update.h"
+#include "nrf52fw.h"
+#include "adv_post.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -35,6 +37,14 @@ static const char TAG[] = "http_server";
 static const char g_empty_json[] = "{}";
 
 static const flash_fat_fs_t *gp_ffs_gwui;
+
+#if !RUUVI_TESTS_HTTP_SERVER_CB
+static time_t
+http_server_get_cur_time(void)
+{
+    return time(NULL);
+}
+#endif
 
 bool
 http_server_cb_init(const char *const p_fatfs_gwui_partition_name)
@@ -71,6 +81,125 @@ http_server_resp_json_ruuvi(void)
         return http_server_resp_503();
     }
     LOG_INFO("ruuvi.json: %s", json_str.p_str);
+    const bool flag_no_cache        = true;
+    const bool flag_add_header_date = true;
+    return http_server_resp_data_in_heap(
+        HTTP_CONENT_TYPE_APPLICATION_JSON,
+        NULL,
+        strlen(json_str.p_str),
+        HTTP_CONENT_ENCODING_NONE,
+        (const uint8_t *)json_str.p_str,
+        flag_no_cache,
+        flag_add_header_date);
+}
+
+static bool
+json_info_add_string(cJSON *p_json_root, const char *p_item_name, const char *p_val)
+{
+    if (NULL == cJSON_AddStringToObject(p_json_root, p_item_name, p_val))
+    {
+        LOG_ERR("Can't add json item: %s", p_item_name);
+        return false;
+    }
+    return true;
+}
+
+static bool
+json_info_add_uint32(cJSON *p_json_root, const char *p_item_name, const uint32_t val)
+{
+    if (NULL == cJSON_AddNumberToObject(p_json_root, p_item_name, (double)val))
+    {
+        LOG_ERR("Can't add json item: %s", p_item_name);
+        return false;
+    }
+    return true;
+}
+
+static bool
+json_info_add_items(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg, const mac_address_str_t *p_mac_sta)
+{
+    if (!json_info_add_string(p_json_root, "ESP_FW", fw_update_get_cur_version()))
+    {
+        return false;
+    }
+    if (!json_info_add_string(p_json_root, "NRF_FW", g_nrf52_firmware_version))
+    {
+        return false;
+    }
+    const mac_address_str_t nrf52_mac_addr = nrf52_get_mac_address_str();
+    if (!json_info_add_string(p_json_root, "DEVICE_ADDR", nrf52_mac_addr.str_buf))
+    {
+        return false;
+    }
+    const nrf52_device_id_str_t nrf52_device_id = nrf52_get_device_id_str();
+    if (!json_info_add_string(p_json_root, "DEVICE_ID", nrf52_device_id.str_buf))
+    {
+        return false;
+    }
+    if (!json_info_add_string(p_json_root, "ETHERNET_MAC", g_gw_mac_eth_str.str_buf))
+    {
+        return false;
+    }
+    if (!json_info_add_string(p_json_root, "WIFI_MAC", g_gw_mac_wifi_str.str_buf))
+    {
+        return false;
+    }
+    const time_t        cur_time  = http_server_get_cur_time();
+    adv_report_table_t *p_reports = os_malloc(sizeof(*p_reports));
+    if (NULL == p_reports)
+    {
+        return false;
+    }
+    adv_table_history_read(p_reports, cur_time, HTTP_SERVER_DEFAULT_HISTORY_INTERVAL_SECONDS);
+    const num_of_advs_t num_of_advs = p_reports->num_of_advs;
+    os_free(p_reports);
+
+    if (!json_info_add_uint32(p_json_root, "TAGS_SEEN", num_of_advs))
+    {
+        return false;
+    }
+    return true;
+}
+
+static bool
+json_info_generate_str(cjson_wrap_str_t *p_json_str)
+{
+    const ruuvi_gateway_config_t *p_cfg     = &g_gateway_config;
+    const mac_address_str_t *     p_mac_sta = &g_gw_mac_sta_str;
+
+    p_json_str->p_str = NULL;
+
+    cJSON *p_json_root = cJSON_CreateObject();
+    if (NULL == p_json_root)
+    {
+        LOG_ERR("Can't create json object");
+        return false;
+    }
+    if (!json_info_add_items(p_json_root, p_cfg, p_mac_sta))
+    {
+        cjson_wrap_delete(&p_json_root);
+        return false;
+    }
+
+    *p_json_str = cjson_wrap_print_and_delete(&p_json_root);
+    if (NULL == p_json_str->p_str)
+    {
+        LOG_ERR("Can't create json string");
+        return false;
+    }
+    return true;
+}
+
+HTTP_SERVER_CB_STATIC
+http_server_resp_t
+http_server_resp_json_info(void)
+{
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+    if (!json_info_generate_str(&json_str))
+    {
+        return http_server_resp_503();
+    }
+    LOG_INFO("info.json: %s", json_str.p_str);
     const bool flag_no_cache        = true;
     const bool flag_add_header_date = true;
     return http_server_resp_data_in_heap(
@@ -170,7 +299,7 @@ http_server_resp_json_github_latest_release(void)
 
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
-http_server_resp_json(const char *p_file_name)
+http_server_resp_json(const char *p_file_name, const bool flag_access_from_lan)
 {
     if (0 == strcmp(p_file_name, "ruuvi.json"))
     {
@@ -179,6 +308,10 @@ http_server_resp_json(const char *p_file_name)
     else if (0 == strcmp(p_file_name, "github_latest_release.json"))
     {
         return http_server_resp_json_github_latest_release();
+    }
+    else if ((0 == strcmp(p_file_name, "info.json")) && (!flag_access_from_lan))
+    {
+        return http_server_resp_json_info();
     }
     LOG_WARN("Request to unknown json: %s", p_file_name);
     return http_server_resp_404();
@@ -227,14 +360,6 @@ http_server_read_history(cjson_wrap_str_t *p_json_str, const time_t cur_time, co
     os_free(p_reports);
     return res;
 }
-
-#if !RUUVI_TESTS_HTTP_SERVER_CB
-static time_t
-http_server_get_cur_time(void)
-{
-    return time(NULL);
-}
-#endif
 
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
@@ -379,14 +504,14 @@ http_server_is_url_prefix_eq(
 }
 
 http_server_resp_t
-http_server_cb_on_get(const char *const p_path, const http_server_resp_t *const p_resp_auth)
+http_server_cb_on_get(const char *p_path, const bool flag_access_from_lan, const http_server_resp_t *const p_resp_auth)
 {
     const char *p_file_ext = strrchr(p_path, '.');
     LOG_INFO("GET /%s", p_path);
 
     if ((NULL != p_file_ext) && (0 == strcmp(p_file_ext, ".json")))
     {
-        return http_server_resp_json(p_path);
+        return http_server_resp_json(p_path, flag_access_from_lan);
     }
     size_t      len      = strlen(p_path);
     const char *p_params = strchr(p_path, '?');
@@ -481,7 +606,10 @@ http_server_cb_on_post(const char *p_file_name, const char *p_body)
 }
 
 http_server_resp_t
-http_server_cb_on_delete(const char *p_path, const http_server_resp_t *const p_resp_auth)
+http_server_cb_on_delete(
+    const char *                    p_path,
+    const bool                      flag_access_from_lan,
+    const http_server_resp_t *const p_resp_auth)
 {
     (void)p_path;
     (void)p_resp_auth;

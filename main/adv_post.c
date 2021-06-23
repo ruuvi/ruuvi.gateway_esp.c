@@ -28,6 +28,7 @@
 #include "os_malloc.h"
 #include "esp_type_wrapper.h"
 #include "wifi_manager.h"
+#include "mac_addr.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -39,19 +40,21 @@ static void
 adv_post_send_ack(void *arg);
 
 static void
-adv_post_send_device_id(void *arg);
+adv_post_cb_on_recv_device_id(void *arg);
 
 static void
 adv_post_send_get_all(void *arg);
 
 static const char *TAG = "ADV_POST_TASK";
 
-adv_callbacks_fn_t adv_callback_func_tbl = {
+static adv_callbacks_fn_t adv_callback_func_tbl = {
     .AdvAckCallback    = adv_post_send_ack,
     .AdvReportCallback = adv_post_send_report,
-    .AdvIdCallback     = adv_post_send_device_id,
+    .AdvIdCallback     = adv_post_cb_on_recv_device_id,
     .AdvGetAllCallback = adv_post_send_get_all,
 };
+
+static bool g_adv_post_flag_nrf52_id_received;
 
 static esp_err_t
 adv_put_to_table(const adv_report_t *const p_adv)
@@ -105,10 +108,25 @@ adv_post_send_ack(void *arg)
 }
 
 static void
-adv_post_send_device_id(void *arg)
+adv_post_cb_on_recv_device_id(void *p_arg)
 {
-    (void)arg;
-    // Do something
+    const re_ca_uart_payload_t *const p_uart_payload = (re_ca_uart_payload_t *)p_arg;
+
+    for (uint32_t i = 0; i < NRF52_DEVICE_ID_SIZE; ++i)
+    {
+        g_nrf52_device_id.id[i] = ((uint8_t *)&p_uart_payload->params.device_id.id)[i];
+    }
+    for (uint32_t i = 0; i < MAC_ADDRESS_NUM_BYTES; ++i)
+    {
+        g_nrf52_mac_addr.mac[i] = ((uint8_t *)&p_uart_payload->params.device_id.addr)[i + 2];
+    }
+    g_adv_post_flag_nrf52_id_received = true;
+
+    const nrf52_device_id_str_t nrf52_device_id_str = nrf52_get_device_id_str();
+    LOG_INFO("nRF52 DEVICE ID : %s", nrf52_device_id_str.str_buf);
+
+    const mac_address_str_t nrf52_mac_addr_str = nrf52_get_mac_address_str();
+    LOG_INFO("nRF52 ADDR      : %s", nrf52_mac_addr_str.str_buf);
 }
 
 static void
@@ -276,4 +294,54 @@ adv_post_init(void)
     {
         LOG_ERR("Can't create thread");
     }
+}
+
+bool
+is_nrf52_id_received(void)
+{
+    return g_adv_post_flag_nrf52_id_received;
+}
+
+mac_address_bin_t
+nrf52_get_mac_address(void)
+{
+    return g_nrf52_mac_addr;
+}
+
+mac_address_str_t
+nrf52_get_mac_address_str(void)
+{
+    return mac_address_to_str(&g_nrf52_mac_addr);
+}
+
+nrf52_device_id_t
+nrf52_get_device_id(void)
+{
+    return g_nrf52_device_id;
+}
+
+static nrf52_device_id_str_t
+nrf52_device_id_to_str(const nrf52_device_id_t *p_dev_id)
+{
+    nrf52_device_id_str_t device_id_str = { 0 };
+    str_buf_t             str_buf       = {
+        .buf  = device_id_str.str_buf,
+        .size = sizeof(device_id_str.str_buf),
+        .idx  = 0,
+    };
+    for (size_t i = 0; i < sizeof(p_dev_id->id); ++i)
+    {
+        if (0 != i)
+        {
+            str_buf_printf(&str_buf, ":");
+        }
+        str_buf_printf(&str_buf, "%02X", p_dev_id->id[i]);
+    }
+    return device_id_str;
+}
+
+nrf52_device_id_str_t
+nrf52_get_device_id_str(void)
+{
+    return nrf52_device_id_to_str(&g_nrf52_device_id);
 }

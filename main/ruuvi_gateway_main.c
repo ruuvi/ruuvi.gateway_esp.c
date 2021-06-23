@@ -101,27 +101,50 @@ monitoring_task(void)
 }
 
 static void
-get_gw_mac_sta(
-    mac_address_bin_t *const p_gw_mac_sta,
-    mac_address_str_t *const p_gw_mac_sta_str,
-    wifi_ssid_t *const       p_gw_wifi_ssid)
+gateway_read_mac_addr(
+    const esp_mac_type_t     mac_type,
+    mac_address_bin_t *const p_mac_addr_bin,
+    mac_address_str_t *const p_mac_addr_str)
 {
-    const esp_err_t err = esp_read_mac(p_gw_mac_sta->mac, ESP_MAC_WIFI_STA);
+    const esp_err_t err = esp_read_mac(p_mac_addr_bin->mac, mac_type);
     if (err != ESP_OK)
     {
-        LOG_ERR_ESP(err, "Can't get mac address");
-        p_gw_mac_sta_str->str_buf[0] = '\0';
-        sniprintf(p_gw_wifi_ssid->ssid_buf, sizeof(p_gw_wifi_ssid->ssid_buf), "%sXXXX", DEFAULT_AP_SSID);
-        return;
+        LOG_ERR_ESP(err, "Can't get mac address for mac_type %d", (printf_int_t)mac_type);
+        p_mac_addr_str->str_buf[0] = '\0';
     }
-    *p_gw_mac_sta_str = mac_address_to_str(p_gw_mac_sta);
-    sniprintf(
-        p_gw_wifi_ssid->ssid_buf,
-        sizeof(p_gw_wifi_ssid->ssid_buf),
-        "%s%02X%02X",
-        DEFAULT_AP_SSID,
-        p_gw_mac_sta->mac[MAC_ADDRESS_IDX_OF_PENULTIMATE_BYTE],
-        p_gw_mac_sta->mac[MAC_ADDRESS_IDX_OF_LAST_BYTE]);
+    else
+    {
+        *p_mac_addr_str = mac_address_to_str(p_mac_addr_bin);
+    }
+}
+
+static void
+set_gw_mac_sta(const mac_address_bin_t *const p_src, mac_address_str_t *const p_dst, wifi_ssid_t *const p_gw_wifi_ssid)
+{
+    *p_dst              = mac_address_to_str(p_src);
+    bool flag_mac_valid = false;
+    for (uint32_t i = 0; i < sizeof(p_src->mac); ++i)
+    {
+        if (0 != p_src->mac[i])
+        {
+            flag_mac_valid = true;
+            break;
+        }
+    }
+    if (!flag_mac_valid)
+    {
+        sniprintf(p_gw_wifi_ssid->ssid_buf, sizeof(p_gw_wifi_ssid->ssid_buf), "%sXXXX", DEFAULT_AP_SSID);
+    }
+    else
+    {
+        sniprintf(
+            p_gw_wifi_ssid->ssid_buf,
+            sizeof(p_gw_wifi_ssid->ssid_buf),
+            "%s%02X%02X",
+            DEFAULT_AP_SSID,
+            p_src->mac[MAC_ADDRESS_IDX_OF_PENULTIMATE_BYTE],
+            p_src->mac[MAC_ADDRESS_IDX_OF_LAST_BYTE]);
+    }
 }
 
 static void
@@ -300,6 +323,27 @@ wifi_init(
     return true;
 }
 
+static void
+request_and_wait_nrf52_id(void)
+{
+    const uint32_t delay_ms = 1000U;
+    const uint32_t step_ms  = 100U;
+    for (uint32_t i = 0; (i < 3U) && (!is_nrf52_id_received()); ++i)
+    {
+        LOG_INFO("Request nRF52 ID");
+        ruuvi_send_nrf_get_id();
+
+        for (uint32_t j = 0; j < delay_ms / step_ms; ++j)
+        {
+            vTaskDelay(step_ms / portTICK_PERIOD_MS);
+            if (is_nrf52_id_received())
+            {
+                break;
+            }
+        }
+    }
+}
+
 void
 app_main(void)
 {
@@ -324,10 +368,6 @@ app_main(void)
     gpio_init();
     leds_init();
 
-    get_gw_mac_sta(&g_gw_mac_sta, &g_gw_mac_sta_str, &g_gw_wifi_ssid);
-    LOG_INFO("Mac address: %s", g_gw_mac_sta_str.str_buf);
-    LOG_INFO("WiFi SSID / Hostname: %s", g_gw_wifi_ssid.ssid_buf);
-
     if (0 == gpio_get_level(RB_BUTTON_RESET_PIN))
     {
         LOG_INFO("Reset button is pressed during boot - clear settings in flash");
@@ -351,6 +391,18 @@ app_main(void)
     nrf52fw_update_fw_if_necessary(fw_update_get_current_fatfs_nrf52_partition_name(), NULL, NULL);
     leds_off();
 
+    adv_post_init();
+    terminal_open(NULL, true);
+    api_process(true);
+    request_and_wait_nrf52_id();
+
+    gateway_read_mac_addr(ESP_MAC_WIFI_STA, &g_gw_mac_wifi, &g_gw_mac_wifi_str);
+    gateway_read_mac_addr(ESP_MAC_ETH, &g_gw_mac_eth, &g_gw_mac_eth_str);
+
+    set_gw_mac_sta(&g_nrf52_mac_addr, &g_gw_mac_sta_str, &g_gw_wifi_ssid);
+    LOG_INFO("Mac address: %s", g_gw_mac_sta_str.str_buf);
+    LOG_INFO("WiFi SSID / Hostname: %s", g_gw_wifi_ssid.ssid_buf);
+
     settings_get_from_flash(&g_gateway_config);
     if (!http_server_set_auth(
             g_gateway_config.lan_auth.lan_auth_type,
@@ -359,9 +411,6 @@ app_main(void)
     {
         LOG_ERR("%s failed", "http_server_set_auth");
     }
-    adv_post_init();
-    terminal_open(NULL, true);
-    api_process(true);
     time_task_init();
     ruuvi_send_nrf_settings(&g_gateway_config);
 

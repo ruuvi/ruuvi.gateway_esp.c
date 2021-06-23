@@ -66,6 +66,12 @@
 
 ruuvi_gateway_config_t       g_gateway_config         = RUUVI_GATEWAY_DEFAULT_CONFIGURATION;
 const ruuvi_gateway_config_t g_gateway_config_default = RUUVI_GATEWAY_DEFAULT_CONFIGURATION;
+nrf52_device_id_t            g_nrf52_device_id        = { 0 };
+mac_address_bin_t            g_nrf52_mac_addr         = { 0 };
+mac_address_bin_t            g_gw_mac_eth             = { 0 };
+mac_address_str_t            g_gw_mac_eth_str         = { 0 };
+mac_address_bin_t            g_gw_mac_wifi            = { 0 };
+mac_address_str_t            g_gw_mac_wifi_str        = { 0 };
 mac_address_bin_t            g_gw_mac_sta             = { 0 };
 mac_address_str_t            g_gw_mac_sta_str         = { 0 };
 wifi_ssid_t                  g_gw_wifi_ssid           = {

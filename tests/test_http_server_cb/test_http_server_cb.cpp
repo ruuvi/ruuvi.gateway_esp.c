@@ -18,6 +18,7 @@
 #include "metrics.h"
 #include "adv_table.h"
 #include "http.h"
+#include "str_buf.h"
 
 using namespace std;
 
@@ -89,6 +90,32 @@ bool
 fw_update_run(void)
 {
     return true;
+}
+
+mac_address_str_t
+nrf52_get_mac_address_str(void)
+{
+    mac_address_str_t mac_str = { 0 };
+    str_buf_t         str_buf = {
+        .buf  = mac_str.str_buf,
+        .size = sizeof(mac_str.str_buf),
+        .idx  = 0,
+    };
+    str_buf_printf(&str_buf, "AA:BB:CC:DD:EE:FF");
+    return mac_str;
+}
+
+nrf52_device_id_str_t
+nrf52_get_device_id_str(void)
+{
+    nrf52_device_id_str_t dev_id_str = { 0 };
+    str_buf_t             str_buf    = {
+        .buf  = dev_id_str.str_buf,
+        .size = sizeof(dev_id_str.str_buf),
+        .idx  = 0,
+    };
+    str_buf_printf(&str_buf, "11:22:33:44:55:66:77:88");
+    return dev_id_str;
 }
 
 } // extern "C"
@@ -574,7 +601,7 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
     snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
 
     esp_log_wrapper_clear();
-    const http_server_resp_t resp = http_server_resp_json("ruuvi.json");
+    const http_server_resp_t resp = http_server_resp_json("ruuvi.json", false);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -591,7 +618,7 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
 
 TEST_F(TestHttpServerCb, resp_json_unknown) // NOLINT
 {
-    const http_server_resp_t resp = http_server_resp_json("unknown.json");
+    const http_server_resp_t resp = http_server_resp_json("unknown.json", false);
 
     ASSERT_EQ(HTTP_RESP_CODE_404, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
@@ -862,7 +889,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_default) // NOLINT
     ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
     this->m_fd = -1;
 
-    const http_server_resp_t resp = http_server_cb_on_get("", nullptr);
+    const http_server_resp_t resp = http_server_cb_on_get("", false, nullptr);
     ASSERT_EQ(HTTP_RESP_CODE_404, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
@@ -886,7 +913,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_index_html) // NOLINT
     this->m_files.emplace_back(fileInfo);
     this->m_fd = fd;
 
-    const http_server_resp_t resp = http_server_cb_on_get("index.html", nullptr);
+    const http_server_resp_t resp = http_server_cb_on_get("index.html", false, nullptr);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
     ASSERT_FALSE(resp.flag_no_cache);
@@ -910,7 +937,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_app_js) // NOLINT
     this->m_files.emplace_back(fileInfo);
     this->m_fd = fd;
 
-    const http_server_resp_t resp = http_server_cb_on_get("app.js", nullptr);
+    const http_server_resp_t resp = http_server_cb_on_get("app.js", false, nullptr);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
     ASSERT_FALSE(resp.flag_no_cache);
@@ -978,7 +1005,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
     snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
 
     esp_log_wrapper_clear();
-    const http_server_resp_t resp = http_server_cb_on_get("ruuvi.json", nullptr);
+    const http_server_resp_t resp = http_server_cb_on_get("ruuvi.json", false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -997,7 +1024,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
 TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics) // NOLINT
 {
     const char *             expected_resp = "metrics_info";
-    const http_server_resp_t resp          = http_server_cb_on_get("metrics", nullptr);
+    const http_server_resp_t resp          = http_server_cb_on_get("metrics", false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -1035,7 +1062,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history) // NOLINT
           "\t\t}\n"
           "\t}\n"
           "}";
-    const http_server_resp_t resp = http_server_cb_on_get("history", nullptr);
+    const http_server_resp_t resp = http_server_cb_on_get("history", false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -1072,7 +1099,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_with_time_interval_20) //
           "\t\t}\n"
           "\t}\n"
           "}";
-    const http_server_resp_t resp = http_server_cb_on_get("history?time=20", nullptr);
+    const http_server_resp_t resp = http_server_cb_on_get("history?time=20", false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -1360,7 +1387,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_unknown_json) // NOLINT
 
 TEST_F(TestHttpServerCb, http_server_cb_on_delete) // NOLINT
 {
-    const http_server_resp_t resp = http_server_cb_on_delete("unknown.json", nullptr);
+    const http_server_resp_t resp = http_server_cb_on_delete("unknown.json", false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_404, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
