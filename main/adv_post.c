@@ -33,6 +33,18 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
+/** @brief serialise up to U64 into given buffer, MSB first. */
+static inline void 
+u64_to_array (const uint64_t u64, uint8_t * const array, uint8_t bytes)
+{
+    const uint8_t offset = bytes - 1;
+
+    while (bytes--)
+    {
+        array[offset - bytes] = (u64 >> (8U * bytes)) & 0xFFU;
+    }
+}
+
 static void
 adv_post_send_report(void *arg);
 
@@ -111,15 +123,8 @@ static void
 adv_post_cb_on_recv_device_id(void *p_arg)
 {
     const re_ca_uart_payload_t *const p_uart_payload = (re_ca_uart_payload_t *)p_arg;
-
-    for (uint32_t i = 0; i < NRF52_DEVICE_ID_SIZE; ++i)
-    {
-        g_nrf52_device_id.id[i] = ((uint8_t *)&p_uart_payload->params.device_id.id)[i];
-    }
-    for (uint32_t i = 0; i < MAC_ADDRESS_NUM_BYTES; ++i)
-    {
-        g_nrf52_mac_addr.mac[i] = ((uint8_t *)&p_uart_payload->params.device_id.addr)[i + 2];
-    }
+    u64_to_array(p_uart_payload->params.device_id.id, g_nrf52_device_id.id, NRF52_DEVICE_ID_SIZE);
+    u64_to_array(p_uart_payload->params.device_id.addr, g_nrf52_mac_addr.mac, MAC_ADDRESS_NUM_BYTES);
     g_adv_post_flag_nrf52_id_received = true;
 
     const nrf52_device_id_str_t nrf52_device_id_str = nrf52_get_device_id_str();
