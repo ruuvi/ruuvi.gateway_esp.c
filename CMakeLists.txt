@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.5)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(EXPECTED_IDF_VERSION v4.0.1)
-set(RUUVI_NRF52_FW_URL https://github.com/ruuvi/ruuvi.gateway_nrf.c/releases/download/0.7.1/ruuvigw_nrf_armgcc_ruuvigw_release_0.7.1_full.hex)
+set(RUUVI_NRF52_FW_URL https://github.com/ruuvi/ruuvi.gateway_nrf.c/releases/download/v0.7.2/ruuvigw_nrf_armgcc_ruuvigw_release_v0.7.2_app.hex)
 
 set(EXTRA_COMPONENT_DIRS
         components/ruuvi.comm_tester.c/components)
@@ -22,7 +22,7 @@ ExternalProject_Add(mkfatfs
 
 string(REGEX MATCH ".*/v?([0-9]+.[0-9]+.[0-9]+)/[^/]*" _ ${RUUVI_NRF52_FW_URL})
 set(RUUVI_NRF52_FW_VERSION v${CMAKE_MATCH_1})
-if("${RUUVI_NRF52_FW_VERSION}" STREQUAL "")
+if("${RUUVI_NRF52_FW_VERSION}" STREQUAL "v")
     message(FATAL_ERROR "Bad nRF52 firmware version: ${RUUVI_NRF52_FW_URL}")
 endif()
 
