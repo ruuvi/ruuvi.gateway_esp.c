@@ -34,8 +34,8 @@
 #include "log.h"
 
 /** @brief serialise up to U64 into given buffer, MSB first. */
-static inline void 
-u64_to_array (const uint64_t u64, uint8_t * const array, uint8_t bytes)
+static inline void
+u64_to_array(const uint64_t u64, uint8_t *const array, uint8_t bytes)
 {
     const uint8_t offset = bytes - 1;
 
