@@ -125,13 +125,11 @@ adv_post_cb_on_recv_device_id(void *p_arg)
     const re_ca_uart_payload_t *const p_uart_payload = (re_ca_uart_payload_t *)p_arg;
     u64_to_array(p_uart_payload->params.device_id.id, g_nrf52_device_id.id, NRF52_DEVICE_ID_SIZE);
     u64_to_array(p_uart_payload->params.device_id.addr, g_nrf52_mac_addr.mac, MAC_ADDRESS_NUM_BYTES);
+
+    LOG_INFO("nRF52 DEVICE ID : 0x%016llx", p_uart_payload->params.device_id.id);
+    LOG_INFO("nRF52 ADDR      : 0x%016llx", p_uart_payload->params.device_id.addr);
+
     g_adv_post_flag_nrf52_id_received = true;
-
-    const nrf52_device_id_str_t nrf52_device_id_str = nrf52_get_device_id_str();
-    LOG_INFO("nRF52 DEVICE ID : %s", nrf52_device_id_str.str_buf);
-
-    const mac_address_str_t nrf52_mac_addr_str = nrf52_get_mac_address_str();
-    LOG_INFO("nRF52 ADDR      : %s", nrf52_mac_addr_str.str_buf);
 }
 
 static void
