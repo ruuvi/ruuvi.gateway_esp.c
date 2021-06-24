@@ -342,6 +342,18 @@ request_and_wait_nrf52_id(void)
             }
         }
     }
+    if (!is_nrf52_id_received())
+    {
+        LOG_ERR("Failed to read nRF52 DEVICE ID");
+    }
+    else
+    {
+        const nrf52_device_id_str_t nrf52_device_id_str = nrf52_get_device_id_str();
+        LOG_INFO("nRF52 DEVICE ID : %s", nrf52_device_id_str.str_buf);
+
+        const mac_address_str_t nrf52_mac_addr_str = nrf52_get_mac_address_str();
+        LOG_INFO("nRF52 ADDR      : %s", nrf52_mac_addr_str.str_buf);
+    }
 }
 
 void
