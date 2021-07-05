@@ -24,6 +24,8 @@ idf_component_register(
             gpio_switch_ctrl.h
             gw_cfg.c
             gw_cfg.h
+            hmac_sha256.c
+            hmac_sha256.h
             http.c
             http.h
             http_json.c

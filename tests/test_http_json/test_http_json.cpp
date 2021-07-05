@@ -154,12 +154,14 @@ TEST_F(TestHttpJson, test_1) // NOLINT
                                          .data_len  = data.size(),
                                      } } };
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
-    ASSERT_TRUE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_TRUE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(
         string("{\n"
                "\t\"data\":\t{\n"
                "\t\t\"coordinates\":\t\"170.112233,59.445566\",\n"
                "\t\t\"timestamp\":\t\"1612358920\",\n"
+               "\t\t\"nonce\":\t\"12345678\",\n"
                "\t\t\"gw_mac\":\t\"AA:CC:EE:00:11:22\",\n"
                "\t\t\"tags\":\t{\n"
                "\t\t\t\"AA:BB:CC:01:02:03\":\t{\n"
@@ -172,7 +174,7 @@ TEST_F(TestHttpJson, test_1) // NOLINT
                "}"),
         string(this->m_json_str.p_str));
     cjson_wrap_free_json_str(&this->m_json_str);
-    ASSERT_EQ(27, this->m_malloc_cnt);
+    ASSERT_EQ(31, this->m_malloc_cnt);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
@@ -200,12 +202,14 @@ TEST_F(TestHttpJson, test_2) // NOLINT
                                      } };
     memcpy(adv_table.table[0].data_buf, data1.data(), data1.size());
     memcpy(adv_table.table[1].data_buf, data2.data(), data2.size());
-    ASSERT_TRUE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_TRUE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(
         string("{\n"
                "\t\"data\":\t{\n"
                "\t\t\"coordinates\":\t\"170.112233,59.445566\",\n"
                "\t\t\"timestamp\":\t\"1612358920\",\n"
+               "\t\t\"nonce\":\t\"12345678\",\n"
                "\t\t\"gw_mac\":\t\"AA:CC:EE:00:11:22\",\n"
                "\t\t\"tags\":\t{\n"
                "\t\t\t\"AA:BB:CC:01:02:03\":\t{\n"
@@ -242,7 +246,8 @@ TEST_F(TestHttpJson, test_malloc_failed_1_of_27) // NOLINT
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 1;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -263,7 +268,8 @@ TEST_F(TestHttpJson, test_malloc_failed_2_of_27) // NOLINT
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 2;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -284,7 +290,8 @@ TEST_F(TestHttpJson, test_malloc_failed_3_of_27) // NOLINT
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 3;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -305,7 +312,8 @@ TEST_F(TestHttpJson, test_malloc_failed_4_of_27) // NOLINT
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 4;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -326,7 +334,8 @@ TEST_F(TestHttpJson, test_malloc_failed_5_of_27) // NOLINT
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 5;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -347,7 +356,8 @@ TEST_F(TestHttpJson, test_malloc_failed_6_of_27) // NOLINT
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 6;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -368,7 +378,8 @@ TEST_F(TestHttpJson, test_malloc_failed_7_of_27) // NOLINT
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 7;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -389,7 +400,8 @@ TEST_F(TestHttpJson, test_malloc_failed_8_of_27) // NOLINT
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 8;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -410,7 +422,8 @@ TEST_F(TestHttpJson, test_malloc_failed_9_of_27) // NOLINT
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 9;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -431,7 +444,8 @@ TEST_F(TestHttpJson, test_malloc_failed_10_of_27) // NOLINT
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 10;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -452,7 +466,8 @@ TEST_F(TestHttpJson, test_malloc_failed_11_of_27) // NOLINT
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 11;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -473,7 +488,8 @@ TEST_F(TestHttpJson, test_malloc_failed_12_of_27) // NOLINT
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 12;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -494,7 +510,8 @@ TEST_F(TestHttpJson, test_malloc_failed_13_of_27) // NOLINT
     memcpy((void *)adv_table.table[0].data_buf, (void *)data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 13;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -515,7 +532,8 @@ TEST_F(TestHttpJson, test_malloc_failed_14_of_27) // NOLINT
     memcpy((void *)adv_table.table[0].data_buf, (void *)data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 14;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -536,7 +554,8 @@ TEST_F(TestHttpJson, test_malloc_failed_15_of_27) // NOLINT
     memcpy((void *)adv_table.table[0].data_buf, (void *)data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 15;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -557,7 +576,8 @@ TEST_F(TestHttpJson, test_malloc_failed_16_of_27) // NOLINT
     memcpy((void *)adv_table.table[0].data_buf, (void *)data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 16;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -578,7 +598,8 @@ TEST_F(TestHttpJson, test_malloc_failed_17_of_27) // NOLINT
     memcpy((void *)adv_table.table[0].data_buf, (void *)data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 17;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -599,7 +620,8 @@ TEST_F(TestHttpJson, test_malloc_failed_18_of_27) // NOLINT
     memcpy((void *)adv_table.table[0].data_buf, (void *)data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 18;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -620,7 +642,8 @@ TEST_F(TestHttpJson, test_malloc_failed_19_of_27) // NOLINT
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 19;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -641,7 +664,8 @@ TEST_F(TestHttpJson, test_malloc_failed_20_of_27) // NOLINT
     memcpy((void *)adv_table.table[0].data_buf, (void *)data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 20;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -662,7 +686,8 @@ TEST_F(TestHttpJson, test_malloc_failed_21_of_27) // NOLINT
     memcpy((void *)adv_table.table[0].data_buf, (void *)data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 21;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -683,7 +708,8 @@ TEST_F(TestHttpJson, test_malloc_failed_22_of_27) // NOLINT
     memcpy((void *)adv_table.table[0].data_buf, (void *)data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 22;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -704,7 +730,8 @@ TEST_F(TestHttpJson, test_malloc_failed_23_of_27) // NOLINT
     memcpy((void *)adv_table.table[0].data_buf, (void *)data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 23;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -725,7 +752,8 @@ TEST_F(TestHttpJson, test_malloc_failed_24_of_27) // NOLINT
     memcpy((void *)adv_table.table[0].data_buf, (void *)data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 24;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -746,7 +774,8 @@ TEST_F(TestHttpJson, test_malloc_failed_25_of_27) // NOLINT
     memcpy((void *)adv_table.table[0].data_buf, (void *)data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 25;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -767,7 +796,8 @@ TEST_F(TestHttpJson, test_malloc_failed_26_of_27) // NOLINT
     memcpy((void *)adv_table.table[0].data_buf, (void *)data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 26;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -788,7 +818,8 @@ TEST_F(TestHttpJson, test_malloc_failed_27_of_27) // NOLINT
     memcpy((void *)adv_table.table[0].data_buf, (void *)data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 27;
-    ASSERT_FALSE(http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(
+        http_create_json_str(&adv_table, timestamp, &gw_mac_addr, p_coordinates, true, 12345678, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
