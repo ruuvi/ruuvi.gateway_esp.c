@@ -117,10 +117,10 @@ http_send(const char *const p_msg)
     esp_http_client_set_post_field(http_handle, p_msg, (int)strlen(p_msg));
     esp_http_client_set_header(http_handle, "Content-Type", "application/json");
 
-    const hmac_sha256_str_t hmac_sha256 = hmac_sha256_calc(p_msg);
-    if ('\0' != hmac_sha256.buf[0])
+    const hmac_sha256_str_t hmac_sha256_str = hmac_sha256_calc_str(p_msg);
+    if (hmac_sha256_is_str_valid(&hmac_sha256_str))
     {
-        esp_http_client_set_header(http_handle, "Ruuvi-HMAC-SHA256", hmac_sha256.buf);
+        esp_http_client_set_header(http_handle, "Ruuvi-HMAC-SHA256", hmac_sha256_str.buf);
     }
 
     bool result = true;
