@@ -279,6 +279,7 @@ adv_post_task(void)
         if (!flag_connected)
         {
             flag_connected = adv_post_check_is_connected(g_adv_post_nonce);
+            g_adv_post_nonce += 1;
         }
         else
         {
