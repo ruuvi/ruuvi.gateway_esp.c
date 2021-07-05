@@ -40,6 +40,9 @@ cjson_wrap_str_null(void)
 bool
 cjson_wrap_add_timestamp(cJSON *const p_object, const char *const p_name, const time_t timestamp);
 
+bool
+cjson_wrap_add_uint32(cJSON *const p_object, const char *const p_name, const uint32_t val);
+
 cjson_wrap_str_t
 cjson_wrap_print(const cJSON *p_item);
 

@@ -23,7 +23,17 @@ http_create_json_str(
     const time_t                    timestamp,
     const mac_address_str_t *const  p_mac_addr,
     const char *const               p_coordinates_str,
+    const bool                      flag_use_nonce,
+    const uint32_t                  nonce,
     cjson_wrap_str_t *const         p_json_str);
+
+bool
+http_create_status_online_json_str(
+    const time_t                   timestamp,
+    const mac_address_str_t *const p_mac_addr,
+    const char *const              p_coordinates_str,
+    const uint32_t                 nonce,
+    cjson_wrap_str_t *const        p_json_str);
 
 #ifdef __cplusplus
 }

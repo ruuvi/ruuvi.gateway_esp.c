@@ -14,7 +14,9 @@ http_generate_json_data_attributes(
     cJSON *const             p_json_data,
     const time_t             timestamp,
     const mac_address_str_t *p_mac_addr,
-    const char *             p_coordinates_str)
+    const char *             p_coordinates_str,
+    const bool               flag_use_nonce,
+    const uint32_t           nonce)
 {
     if (NULL == cJSON_AddStringToObject(p_json_data, "coordinates", p_coordinates_str))
     {
@@ -23,6 +25,13 @@ http_generate_json_data_attributes(
     if (!cjson_wrap_add_timestamp(p_json_data, "timestamp", timestamp))
     {
         return NULL;
+    }
+    if (flag_use_nonce)
+    {
+        if (!cjson_wrap_add_uint32(p_json_data, "nonce", nonce))
+        {
+            return NULL;
+        }
     }
     if (NULL == cJSON_AddStringToObject(p_json_data, "gw_mac", p_mac_addr->str_buf))
     {
@@ -68,7 +77,9 @@ http_generate_json_data_section(
     const adv_report_table_t *const p_reports,
     const time_t                    timestamp,
     const mac_address_str_t *       p_mac_addr,
-    const char *                    p_coordinates_str)
+    const char *                    p_coordinates_str,
+    const bool                      flag_use_nonce,
+    const uint32_t                  nonce)
 {
     cJSON *const p_json_data = cJSON_AddObjectToObject(p_json_root, "data");
     if (NULL == p_json_data)
@@ -80,7 +91,9 @@ http_generate_json_data_section(
         p_json_data,
         timestamp,
         p_mac_addr,
-        p_coordinates_str);
+        p_coordinates_str,
+        flag_use_nonce,
+        nonce);
     if (NULL == p_json_tags)
     {
         return false;
@@ -101,14 +114,23 @@ http_generate_json(
     const adv_report_table_t *const p_reports,
     const time_t                    timestamp,
     const mac_address_str_t *       p_mac_addr,
-    const char *                    p_coordinates_str)
+    const char *                    p_coordinates_str,
+    const bool                      flag_use_nonce,
+    const uint32_t                  nonce)
 {
     cJSON *p_json_root = cJSON_CreateObject();
     if (NULL == p_json_root)
     {
         return NULL;
     }
-    if (!http_generate_json_data_section(p_json_root, p_reports, timestamp, p_mac_addr, p_coordinates_str))
+    if (!http_generate_json_data_section(
+            p_json_root,
+            p_reports,
+            timestamp,
+            p_mac_addr,
+            p_coordinates_str,
+            flag_use_nonce,
+            nonce))
     {
         cjson_wrap_delete(&p_json_root);
         return NULL;
@@ -122,9 +144,79 @@ http_create_json_str(
     const time_t                    timestamp,
     const mac_address_str_t *const  p_mac_addr,
     const char *const               p_coordinates_str,
+    const bool                      flag_use_nonce,
+    const uint32_t                  nonce,
     cjson_wrap_str_t *const         p_json_str)
 {
-    cJSON *p_json_root = http_generate_json(p_reports, timestamp, p_mac_addr, p_coordinates_str);
+    cJSON *p_json_root = http_generate_json(p_reports, timestamp, p_mac_addr, p_coordinates_str, flag_use_nonce, nonce);
+    if (NULL == p_json_root)
+    {
+        return false;
+    }
+    *p_json_str = cjson_wrap_print_and_delete(&p_json_root);
+    if (NULL == p_json_str->p_str)
+    {
+        return false;
+    }
+    return true;
+}
+
+static bool
+http_generate_json_status_online_attributes(
+    cJSON *const             p_json_root,
+    const time_t             timestamp,
+    const mac_address_str_t *p_mac_addr,
+    const char *             p_coordinates_str,
+    const uint32_t           nonce)
+{
+    if (NULL == cJSON_AddStringToObject(p_json_root, "status", "online"))
+    {
+        return false;
+    }
+    if (NULL == cJSON_AddStringToObject(p_json_root, "gw_mac", p_mac_addr->str_buf))
+    {
+        return false;
+    }
+    if (!cjson_wrap_add_timestamp(p_json_root, "timestamp", timestamp))
+    {
+        return false;
+    }
+    if (!cjson_wrap_add_uint32(p_json_root, "nonce", nonce))
+    {
+        return false;
+    }
+    return true;
+}
+
+static cJSON *
+http_generate_json_status_online(
+    const time_t             timestamp,
+    const mac_address_str_t *p_mac_addr,
+    const char *             p_coordinates_str,
+    const uint32_t           nonce)
+{
+    cJSON *p_json_root = cJSON_CreateObject();
+    if (NULL == p_json_root)
+    {
+        return NULL;
+    }
+    if (!http_generate_json_status_online_attributes(p_json_root, timestamp, p_mac_addr, p_coordinates_str, nonce))
+    {
+        cjson_wrap_delete(&p_json_root);
+        return NULL;
+    }
+    return p_json_root;
+}
+
+bool
+http_create_status_online_json_str(
+    const time_t                   timestamp,
+    const mac_address_str_t *const p_mac_addr,
+    const char *const              p_coordinates_str,
+    const uint32_t                 nonce,
+    cjson_wrap_str_t *const        p_json_str)
+{
+    cJSON *p_json_root = http_generate_json_status_online(timestamp, p_mac_addr, p_coordinates_str, nonce);
     if (NULL == p_json_root)
     {
         return false;

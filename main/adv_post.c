@@ -29,6 +29,7 @@
 #include "esp_type_wrapper.h"
 #include "wifi_manager.h"
 #include "mac_addr.h"
+#include "http_json.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -66,7 +67,8 @@ static adv_callbacks_fn_t adv_callback_func_tbl = {
     .AdvGetAllCallback = adv_post_send_get_all,
 };
 
-static bool g_adv_post_flag_nrf52_id_received;
+static bool     g_adv_post_flag_nrf52_id_received;
+static uint32_t g_adv_post_nonce;
 
 static esp_err_t
 adv_put_to_table(const adv_report_t *const p_adv)
@@ -176,7 +178,7 @@ adv_post_log(const adv_report_table_t *p_reports)
 }
 
 static bool
-adv_post_check_is_connected(void)
+adv_post_check_is_connected(const uint32_t nonce)
 {
     const EventBits_t status = xEventGroupGetBits(status_bits);
     if (0 == (status & (WIFI_CONNECTED_BIT | ETH_CONNECTED_BIT)))
@@ -185,10 +187,22 @@ adv_post_check_is_connected(void)
     }
     if (g_gateway_config.http.use_http)
     {
-        char json_str[64];
-        snprintf(json_str, sizeof(json_str), "{\"status\": \"online\", \"gw_mac\": \"%s\"}", g_gw_mac_sta_str.str_buf);
-        LOG_INFO("HTTP POST: %s", json_str);
-        http_send(json_str);
+        cjson_wrap_str_t json_str = cjson_wrap_str_null();
+        if (!http_create_status_online_json_str(
+                time(NULL),
+                &g_gw_mac_sta_str,
+                g_gateway_config.coordinates,
+                nonce,
+                &json_str))
+        {
+            LOG_ERR("Not enough memory to generate json");
+        }
+        else
+        {
+            LOG_INFO("HTTP POST: %s", json_str.p_str);
+            http_send(json_str.p_str);
+            cjson_wrap_free_json_str(&json_str);
+        }
     }
     return true;
 }
@@ -231,7 +245,8 @@ adv_post_retransmit_advs(const adv_report_table_t *p_reports, const bool flag_co
             LOG_WARN("Can't send, no network connection");
             return;
         }
-        http_send_advs(p_reports);
+        http_send_advs(p_reports, g_adv_post_nonce);
+        g_adv_post_nonce += 1;
     }
     if (g_gateway_config.mqtt.use_mqtt)
     {
@@ -263,7 +278,8 @@ adv_post_task(void)
 
         if (!flag_connected)
         {
-            flag_connected = adv_post_check_is_connected();
+            flag_connected = adv_post_check_is_connected(g_adv_post_nonce);
+            g_adv_post_nonce += 1;
         }
         else
         {
@@ -289,6 +305,7 @@ adv_post_task(void)
 void
 adv_post_init(void)
 {
+    g_adv_post_nonce = esp_random();
     adv_table_init();
     api_callbacks_reg((void *)&adv_callback_func_tbl);
     const uint32_t   stack_size = 1024U * 4U;

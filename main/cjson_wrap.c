@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "os_malloc.h"
+#include "esp_type_wrapper.h"
 
 void
 cjson_wrap_init(void)
@@ -26,6 +27,18 @@ cjson_wrap_add_timestamp(cJSON *const p_object, const char *const p_name, const 
     char timestamp_str[32];
     snprintf(timestamp_str, sizeof(timestamp_str), "%ld", timestamp);
     if (NULL == cJSON_AddStringToObject(p_object, p_name, timestamp_str))
+    {
+        return false;
+    }
+    return true;
+}
+
+bool
+cjson_wrap_add_uint32(cJSON *const p_object, const char *const p_name, const uint32_t val)
+{
+    char val_str[32];
+    snprintf(val_str, sizeof(val_str), "%lu", (printf_ulong_t)val);
+    if (NULL == cJSON_AddStringToObject(p_object, p_name, val_str))
     {
         return false;
     }

@@ -33,6 +33,7 @@
 #include "reset_task.h"
 #include "http_server.h"
 #include "fw_update.h"
+#include "hmac_sha256.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -414,6 +415,8 @@ app_main(void)
     set_gw_mac_sta(&g_nrf52_mac_addr, &g_gw_mac_sta_str, &g_gw_wifi_ssid);
     LOG_INFO("Mac address: %s", g_gw_mac_sta_str.str_buf);
     LOG_INFO("WiFi SSID / Hostname: %s", g_gw_wifi_ssid.ssid_buf);
+
+    hmac_sha256_set_key("Ruuvi"); // set default encryption key
 
     settings_get_from_flash(&g_gateway_config);
     if (!http_server_set_auth(

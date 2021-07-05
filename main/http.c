@@ -15,6 +15,7 @@
 #include "http_json.h"
 #include "leds.h"
 #include "os_str.h"
+#include "hmac_sha256.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -50,7 +51,14 @@ http_event_handler(esp_http_client_event_t *p_evt)
             break;
 
         case HTTP_EVENT_ON_HEADER:
-            LOG_DBG("HTTP_EVENT_ON_HEADER: %.*s", p_evt->data_len, (char *)p_evt->data);
+            LOG_DBG("HTTP_EVENT_ON_HEADER, key=%s, value=%s", p_evt->header_key, p_evt->header_value);
+            if (0 == strcmp("Ruuvi-HMAC-KEY", p_evt->header_key))
+            {
+                if (!hmac_sha256_set_key(p_evt->header_value))
+                {
+                    LOG_ERR("Failed to update Ruuvi-HMAC-KEY");
+                }
+            }
             break;
 
         case HTTP_EVENT_ON_DATA:
@@ -106,8 +114,14 @@ http_send(const char *const p_msg)
         return false;
     }
 
-    esp_http_client_set_post_field(http_handle, p_msg, strlen(p_msg));
+    esp_http_client_set_post_field(http_handle, p_msg, (int)strlen(p_msg));
     esp_http_client_set_header(http_handle, "Content-Type", "application/json");
+
+    const hmac_sha256_str_t hmac_sha256_str = hmac_sha256_calc_str(p_msg);
+    if (hmac_sha256_is_str_valid(&hmac_sha256_str))
+    {
+        esp_http_client_set_header(http_handle, "Ruuvi-HMAC-SHA256", hmac_sha256_str.buf);
+    }
 
     bool result = true;
 
@@ -134,10 +148,17 @@ http_send(const char *const p_msg)
 }
 
 void
-http_send_advs(const adv_report_table_t *const p_reports)
+http_send_advs(const adv_report_table_t *const p_reports, const uint32_t nonce)
 {
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
-    if (!http_create_json_str(p_reports, time(NULL), &g_gw_mac_sta_str, g_gateway_config.coordinates, &json_str))
+    if (!http_create_json_str(
+            p_reports,
+            time(NULL),
+            &g_gw_mac_sta_str,
+            g_gateway_config.coordinates,
+            true,
+            nonce,
+            &json_str))
     {
         LOG_ERR("Not enough memory to generate json");
         return;
