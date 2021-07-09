@@ -30,6 +30,7 @@
 #include "wifi_manager.h"
 #include "mac_addr.h"
 #include "http_json.h"
+#include "ruuvi_device_id.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -67,7 +68,6 @@ static adv_callbacks_fn_t adv_callback_func_tbl = {
     .AdvGetAllCallback = adv_post_send_get_all,
 };
 
-static bool     g_adv_post_flag_nrf52_id_received;
 static uint32_t g_adv_post_nonce;
 
 static esp_err_t
@@ -125,13 +125,17 @@ static void
 adv_post_cb_on_recv_device_id(void *p_arg)
 {
     const re_ca_uart_payload_t *const p_uart_payload = (re_ca_uart_payload_t *)p_arg;
-    u64_to_array(p_uart_payload->params.device_id.id, g_nrf52_device_id.id, NRF52_DEVICE_ID_SIZE);
-    u64_to_array(p_uart_payload->params.device_id.addr, g_nrf52_mac_addr.mac, MAC_ADDRESS_NUM_BYTES);
+
+    nrf52_device_id_t nrf52_device_id = { 0 };
+    u64_to_array(p_uart_payload->params.device_id.id, &nrf52_device_id.id[0], sizeof(nrf52_device_id.id));
+
+    mac_address_bin_t nrf52_mac_addr = { 0 };
+    u64_to_array(p_uart_payload->params.device_id.addr, &nrf52_mac_addr.mac[0], sizeof(nrf52_mac_addr.mac));
 
     LOG_INFO("nRF52 DEVICE ID : 0x%016llx", p_uart_payload->params.device_id.id);
-    LOG_INFO("nRF52 ADDR      : 0x%016llx", p_uart_payload->params.device_id.addr);
+    LOG_INFO("nRF52 MAC ADDR  : 0x%016llx", p_uart_payload->params.device_id.addr);
 
-    g_adv_post_flag_nrf52_id_received = true;
+    ruuvi_device_id_set(&nrf52_device_id, &nrf52_mac_addr);
 }
 
 static void
@@ -314,54 +318,4 @@ adv_post_init(void)
     {
         LOG_ERR("Can't create thread");
     }
-}
-
-bool
-is_nrf52_id_received(void)
-{
-    return g_adv_post_flag_nrf52_id_received;
-}
-
-mac_address_bin_t
-nrf52_get_mac_address(void)
-{
-    return g_nrf52_mac_addr;
-}
-
-mac_address_str_t
-nrf52_get_mac_address_str(void)
-{
-    return mac_address_to_str(&g_nrf52_mac_addr);
-}
-
-nrf52_device_id_t
-nrf52_get_device_id(void)
-{
-    return g_nrf52_device_id;
-}
-
-static nrf52_device_id_str_t
-nrf52_device_id_to_str(const nrf52_device_id_t *p_dev_id)
-{
-    nrf52_device_id_str_t device_id_str = { 0 };
-    str_buf_t             str_buf       = {
-        .buf  = device_id_str.str_buf,
-        .size = sizeof(device_id_str.str_buf),
-        .idx  = 0,
-    };
-    for (size_t i = 0; i < sizeof(p_dev_id->id); ++i)
-    {
-        if (0 != i)
-        {
-            str_buf_printf(&str_buf, ":");
-        }
-        str_buf_printf(&str_buf, "%02X", p_dev_id->id[i]);
-    }
-    return device_id_str;
-}
-
-nrf52_device_id_str_t
-nrf52_get_device_id_str(void)
-{
-    return nrf52_device_id_to_str(&g_nrf52_device_id);
 }

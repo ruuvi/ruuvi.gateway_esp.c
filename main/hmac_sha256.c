@@ -10,34 +10,42 @@
 #include <stdio.h>
 #include "mbedtls/md.h"
 
-static char g_hmac_sha256_key[HMAC_SHA256_MAX_KEY_SIZE];
+static uint8_t g_hmac_sha256_key[HMAC_SHA256_MAX_KEY_SIZE];
+static size_t  g_hmac_sha256_key_size;
 
 bool
-hmac_sha256_set_key(const char *const p_key)
+hmac_sha256_set_key_bin(const uint8_t *const p_key, const size_t key_size)
 {
-    if (strlen(p_key) >= HMAC_SHA256_MAX_KEY_SIZE)
+    if (key_size >= HMAC_SHA256_MAX_KEY_SIZE)
     {
         return false;
     }
-    if (0 == strcmp(g_hmac_sha256_key, p_key))
+    if ((key_size == g_hmac_sha256_key_size) && (0 == memcmp(g_hmac_sha256_key, p_key, key_size)))
     {
         return true;
     }
-    strcpy(g_hmac_sha256_key, p_key);
+    memcpy(g_hmac_sha256_key, p_key, key_size);
+    g_hmac_sha256_key_size = key_size;
     return true;
 }
 
 bool
-hmac_sha256_calc(const char *const p_msg, hmac_sha256_t *const p_hmac_sha256)
+hmac_sha256_set_key_str(const char *const p_key)
+{
+    return hmac_sha256_set_key_bin((const uint8_t *)p_key, strlen(p_key));
+}
+
+bool
+hmac_sha256_calc(const uint8_t *const p_msg_buf, const size_t msg_len, hmac_sha256_t *const p_hmac_sha256)
 {
     const mbedtls_md_info_t *p_md_info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
     if (0
         != mbedtls_md_hmac(
             p_md_info,
             (const unsigned char *)g_hmac_sha256_key,
-            strlen(g_hmac_sha256_key),
-            (const unsigned char *)p_msg,
-            strlen(p_msg),
+            g_hmac_sha256_key_size,
+            (const unsigned char *)p_msg_buf,
+            msg_len,
             &p_hmac_sha256->buf[0]))
     {
         return false;
@@ -50,7 +58,8 @@ hmac_sha256_calc_str(const char *const p_msg)
 {
     hmac_sha256_str_t hmac_str    = { 0 };
     hmac_sha256_t     hmac_sha256 = { 0 };
-    if (!hmac_sha256_calc(p_msg, &hmac_sha256))
+    const size_t      msg_len     = strlen(p_msg);
+    if (!hmac_sha256_calc((const uint8_t *)p_msg, msg_len, &hmac_sha256))
     {
         return hmac_str; // empty string
     }

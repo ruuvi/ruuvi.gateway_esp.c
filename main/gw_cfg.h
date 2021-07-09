@@ -113,22 +113,8 @@ typedef struct ruuvi_gateway_config_t
     char                    coordinates[MAX_CONFIG_STR_LEN];
 } ruuvi_gateway_config_t;
 
-#define NRF52_DEVICE_ID_SIZE (8U)
-
-typedef struct nrf52_device_id_t
-{
-    uint8_t id[NRF52_DEVICE_ID_SIZE];
-} nrf52_device_id_t;
-
-typedef struct nrf52_device_id_str_t
-{
-    char str_buf[(NRF52_DEVICE_ID_SIZE * 2) + (NRF52_DEVICE_ID_SIZE - 1) + 1]; // format: XX:XX:XX:XX:XX:XX:XX:XX
-} nrf52_device_id_str_t;
-
 extern ruuvi_gateway_config_t       g_gateway_config;
 extern const ruuvi_gateway_config_t g_gateway_config_default;
-extern nrf52_device_id_t            g_nrf52_device_id;
-extern mac_address_bin_t            g_nrf52_mac_addr;
 extern mac_address_bin_t            g_gw_mac_eth;
 extern mac_address_str_t            g_gw_mac_eth_str;
 extern mac_address_bin_t            g_gw_mac_wifi;

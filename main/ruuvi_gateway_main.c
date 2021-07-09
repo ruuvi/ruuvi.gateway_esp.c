@@ -34,6 +34,7 @@
 #include "http_server.h"
 #include "fw_update.h"
 #include "hmac_sha256.h"
+#include "ruuvi_device_id.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -329,7 +330,7 @@ request_and_wait_nrf52_id(void)
 {
     const uint32_t delay_ms = 1000U;
     const uint32_t step_ms  = 100U;
-    for (uint32_t i = 0; (i < 3U) && (!is_nrf52_id_received()); ++i)
+    for (uint32_t i = 0; (i < 3U) && (!ruuvi_device_id_is_set()); ++i)
     {
         LOG_INFO("Request nRF52 ID");
         ruuvi_send_nrf_get_id();
@@ -337,23 +338,25 @@ request_and_wait_nrf52_id(void)
         for (uint32_t j = 0; j < delay_ms / step_ms; ++j)
         {
             vTaskDelay(step_ms / portTICK_PERIOD_MS);
-            if (is_nrf52_id_received())
+            if (ruuvi_device_id_is_set())
             {
                 break;
             }
         }
     }
-    if (!is_nrf52_id_received())
+    if (!ruuvi_device_id_is_set())
     {
         LOG_ERR("Failed to read nRF52 DEVICE ID");
     }
     else
     {
-        const nrf52_device_id_str_t nrf52_device_id_str = nrf52_get_device_id_str();
+        const nrf52_device_id_str_t nrf52_device_id_str = ruuvi_device_id_get_str();
         LOG_INFO("nRF52 DEVICE ID : %s", nrf52_device_id_str.str_buf);
 
-        const mac_address_str_t nrf52_mac_addr_str = nrf52_get_mac_address_str();
+        const mac_address_str_t nrf52_mac_addr_str = ruuvi_device_id_get_nrf52_mac_address_str();
         LOG_INFO("nRF52 ADDR      : %s", nrf52_mac_addr_str.str_buf);
+
+        hmac_sha256_set_key_str(nrf52_device_id_str.str_buf); // set default encryption key
     }
 }
 
@@ -412,11 +415,10 @@ app_main(void)
     gateway_read_mac_addr(ESP_MAC_WIFI_STA, &g_gw_mac_wifi, &g_gw_mac_wifi_str);
     gateway_read_mac_addr(ESP_MAC_ETH, &g_gw_mac_eth, &g_gw_mac_eth_str);
 
-    set_gw_mac_sta(&g_nrf52_mac_addr, &g_gw_mac_sta_str, &g_gw_wifi_ssid);
+    const mac_address_bin_t nrf52_mac_addr = ruuvi_device_id_get_nrf52_mac_address();
+    set_gw_mac_sta(&nrf52_mac_addr, &g_gw_mac_sta_str, &g_gw_wifi_ssid);
     LOG_INFO("Mac address: %s", g_gw_mac_sta_str.str_buf);
     LOG_INFO("WiFi SSID / Hostname: %s", g_gw_wifi_ssid.ssid_buf);
-
-    hmac_sha256_set_key("Ruuvi"); // set default encryption key
 
     settings_get_from_flash(&g_gateway_config);
     if (!http_server_set_auth(

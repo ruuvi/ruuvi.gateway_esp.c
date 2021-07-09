@@ -19,6 +19,7 @@
 #include "adv_table.h"
 #include "http.h"
 #include "str_buf.h"
+#include "ruuvi_device_id.h"
 
 using namespace std;
 
