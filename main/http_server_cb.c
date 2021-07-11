@@ -22,6 +22,7 @@
 #include "fw_update.h"
 #include "nrf52fw.h"
 #include "adv_post.h"
+#include "ruuvi_device_id.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -126,12 +127,12 @@ json_info_add_items(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg, con
     {
         return false;
     }
-    const mac_address_str_t nrf52_mac_addr = nrf52_get_mac_address_str();
+    const mac_address_str_t nrf52_mac_addr = ruuvi_device_id_get_nrf52_mac_address_str();
     if (!json_info_add_string(p_json_root, "DEVICE_ADDR", nrf52_mac_addr.str_buf))
     {
         return false;
     }
-    const nrf52_device_id_str_t nrf52_device_id = nrf52_get_device_id_str();
+    const nrf52_device_id_str_t nrf52_device_id = ruuvi_device_id_get_str();
     if (!json_info_add_string(p_json_root, "DEVICE_ID", nrf52_device_id.str_buf))
     {
         return false;

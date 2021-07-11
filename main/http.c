@@ -54,7 +54,7 @@ http_event_handler(esp_http_client_event_t *p_evt)
             LOG_DBG("HTTP_EVENT_ON_HEADER, key=%s, value=%s", p_evt->header_key, p_evt->header_value);
             if (0 == strcmp("Ruuvi-HMAC-KEY", p_evt->header_key))
             {
-                if (!hmac_sha256_set_key(p_evt->header_value))
+                if (!hmac_sha256_set_key_str(p_evt->header_value))
                 {
                     LOG_ERR("Failed to update Ruuvi-HMAC-KEY");
                 }
