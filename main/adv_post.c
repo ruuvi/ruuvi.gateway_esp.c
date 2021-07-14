@@ -35,18 +35,6 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
-/** @brief serialise up to U64 into given buffer, MSB first. */
-static inline void
-u64_to_array(const uint64_t u64, uint8_t *const array, uint8_t bytes)
-{
-    const uint8_t offset = bytes - 1;
-
-    while (bytes--)
-    {
-        array[offset - bytes] = (u64 >> (8U * bytes)) & 0xFFU;
-    }
-}
-
 static void
 adv_post_send_report(void *arg);
 
@@ -69,6 +57,20 @@ static adv_callbacks_fn_t adv_callback_func_tbl = {
 };
 
 static uint32_t g_adv_post_nonce;
+
+static uint32_t g_adv_post_interval_ms = ADV_POST_DEFAULT_INTERVAL_SECONDS * 1000U;
+
+/** @brief serialise up to U64 into given buffer, MSB first. */
+static inline void
+u64_to_array(const uint64_t u64, uint8_t *const array, uint8_t bytes)
+{
+    const uint8_t offset = bytes - 1;
+
+    while (bytes--)
+    {
+        array[offset - bytes] = (u64 >> (8U * bytes)) & 0xFFU;
+    }
+}
 
 static esp_err_t
 adv_put_to_table(const adv_report_t *const p_adv)
@@ -203,7 +205,7 @@ adv_post_check_is_connected(const uint32_t nonce)
         }
         else
         {
-            LOG_INFO("HTTP POST: %s", json_str.p_str);
+            LOG_INFO("HTTP POST %s: %s", g_gateway_config.http.http_url, json_str.p_str);
             http_send(json_str.p_str);
             cjson_wrap_free_json_str(&json_str);
         }
@@ -302,7 +304,7 @@ adv_post_task(void)
             }
         }
 
-        vTaskDelay(pdMS_TO_TICKS(ADV_POST_INTERVAL));
+        vTaskDelay(pdMS_TO_TICKS(g_adv_post_interval_ms));
     }
 }
 
@@ -317,5 +319,18 @@ adv_post_init(void)
     if (!os_task_create_without_param(&adv_post_task, "adv_post_task", stack_size, 1, &h_task))
     {
         LOG_ERR("Can't create thread");
+    }
+}
+
+void
+adv_post_set_period(const uint32_t period_ms)
+{
+    if (period_ms != g_adv_post_interval_ms)
+    {
+        LOG_INFO(
+            "X-Ruuvi-Gateway-Rate: Change period from %u ms to %u ms",
+            (printf_uint_t)g_adv_post_interval_ms,
+            (printf_uint_t)period_ms);
+        g_adv_post_interval_ms = period_ms;
     }
 }
