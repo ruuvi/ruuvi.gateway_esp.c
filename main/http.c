@@ -62,12 +62,13 @@ http_event_handler(esp_http_client_event_t *p_evt)
             }
             else if (0 == strcmp("x-ruuvi-gateway-rate", p_evt->header_key))
             {
-                uint32_t period_ms = os_str_to_uint32_cptr(p_evt->header_value, NULL, 10);
-                if ((0 == period_ms) || (period_ms > (60U * 60U * 1000U)))
+                uint32_t period_seconds = os_str_to_uint32_cptr(p_evt->header_value, NULL, 10U);
+                if ((0 == period_seconds) || (period_seconds > (60U * 60U)))
                 {
-                    period_ms = ADV_POST_DEFAULT_INTERVAL;
+                    LOG_WARN("Got incorrect x-ruuvi-gateway-rate: %s", p_evt->header_value);
+                    period_seconds = ADV_POST_DEFAULT_INTERVAL;
                 }
-                adv_post_set_period(period_ms);
+                adv_post_set_period(period_seconds * 1000U);
             }
             break;
 
