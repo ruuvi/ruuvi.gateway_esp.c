@@ -140,7 +140,7 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t *const p_flash_info)
 
     const char *const p_fatfs_nrf52_partition_name = p_flash_info->is_ota0_active ? GW_NRF_PARTITION_2
                                                                                   : GW_NRF_PARTITION;
-    p_flash_info->p_next_fatfs_nrf52_partition = find_data_fat_partition_by_name(p_fatfs_nrf52_partition_name);
+    p_flash_info->p_next_fatfs_nrf52_partition     = find_data_fat_partition_by_name(p_fatfs_nrf52_partition_name);
     if (NULL == p_flash_info->p_next_fatfs_nrf52_partition)
     {
         return false;
@@ -563,15 +563,15 @@ fw_update_task(void)
     g_ruuvi_flash_info.p_boot_partition = g_ruuvi_flash_info.p_next_update_partition;
     g_ruuvi_flash_info.is_ota0_active   = !g_ruuvi_flash_info.is_ota0_active;
 
-    const char *const p_fatfs_nrf52_partition_name = g_ruuvi_flash_info.is_ota0_active ? GW_NRF_PARTITION_2
-                                                                                       : GW_NRF_PARTITION;
-
     g_update_progress_stage = FW_UPDATE_STAGE_4;
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, 0);
 
     leds_indication_on_nrf52_fw_updating();
 
-    nrf52fw_update_fw_if_necessary(p_fatfs_nrf52_partition_name, &fw_update_nrf52fw_cb_progress, NULL);
+    nrf52fw_update_fw_if_necessary(
+        fw_update_get_current_fatfs_nrf52_partition_name(),
+        &fw_update_nrf52fw_cb_progress,
+        NULL);
     leds_off();
 
     fw_update_set_extra_info_for_status_json_update_successful();
