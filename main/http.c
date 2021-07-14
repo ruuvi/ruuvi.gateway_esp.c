@@ -60,7 +60,7 @@ http_event_handler(esp_http_client_event_t *p_evt)
                     LOG_ERR("Failed to update Ruuvi-HMAC-KEY");
                 }
             }
-            else if (0 == strcmp("x-ruuvi-gateway-rate", p_evt->header_key))
+            else if (0 == strcmp("X-Ruuvi-Gateway-Rate", p_evt->header_key))
             {
                 uint32_t period_seconds = os_str_to_uint32_cptr(p_evt->header_value, NULL, 10U);
                 if ((0 == period_seconds) || (period_seconds > (60U * 60U)))
