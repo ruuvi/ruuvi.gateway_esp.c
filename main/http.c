@@ -66,7 +66,7 @@ http_event_handler(esp_http_client_event_t *p_evt)
                 if ((0 == period_seconds) || (period_seconds > (60U * 60U)))
                 {
                     LOG_WARN("Got incorrect x-ruuvi-gateway-rate: %s", p_evt->header_value);
-                    period_seconds = ADV_POST_DEFAULT_INTERVAL;
+                    period_seconds = ADV_POST_DEFAULT_INTERVAL_SECONDS;
                 }
                 adv_post_set_period(period_seconds * 1000U);
             }

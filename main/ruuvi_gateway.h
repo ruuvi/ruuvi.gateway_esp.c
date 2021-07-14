@@ -20,7 +20,7 @@
 extern "C" {
 #endif
 
-#define ADV_POST_DEFAULT_INTERVAL 10
+#define ADV_POST_DEFAULT_INTERVAL_SECONDS 10
 
 #define WIFI_CONNECTED_BIT (1U << 0U)
 #define MQTT_CONNECTED_BIT (1U << 1U)

@@ -58,7 +58,7 @@ static adv_callbacks_fn_t adv_callback_func_tbl = {
 
 static uint32_t g_adv_post_nonce;
 
-static uint32_t g_adv_post_interval = ADV_POST_DEFAULT_INTERVAL * 1000U;
+static uint32_t g_adv_post_interval_ms = ADV_POST_DEFAULT_INTERVAL_SECONDS * 1000U;
 
 /** @brief serialise up to U64 into given buffer, MSB first. */
 static inline void
@@ -304,7 +304,7 @@ adv_post_task(void)
             }
         }
 
-        vTaskDelay(pdMS_TO_TICKS(g_adv_post_interval));
+        vTaskDelay(pdMS_TO_TICKS(g_adv_post_interval_ms));
     }
 }
 
@@ -325,9 +325,9 @@ adv_post_init(void)
 void
 adv_post_set_period(const uint32_t period_ms)
 {
-    if (period_ms != g_adv_post_interval)
+    if (period_ms != g_adv_post_interval_ms)
     {
-        LOG_INFO("Change period from %u ms to %u ms", (printf_uint_t)g_adv_post_interval, (printf_uint_t)period_ms);
-        g_adv_post_interval = period_ms;
+        LOG_INFO("Change period from %u ms to %u ms", (printf_uint_t)g_adv_post_interval_ms, (printf_uint_t)period_ms);
+        g_adv_post_interval_ms = period_ms;
     }
 }
