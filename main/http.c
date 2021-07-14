@@ -53,14 +53,14 @@ http_event_handler(esp_http_client_event_t *p_evt)
 
         case HTTP_EVENT_ON_HEADER:
             LOG_DBG("HTTP_EVENT_ON_HEADER, key=%s, value=%s", p_evt->header_key, p_evt->header_value);
-            if (0 == strcmp("Ruuvi-HMAC-KEY", p_evt->header_key))
+            if (0 == strcasecmp("Ruuvi-HMAC-KEY", p_evt->header_key))
             {
                 if (!hmac_sha256_set_key_str(p_evt->header_value))
                 {
                     LOG_ERR("Failed to update Ruuvi-HMAC-KEY");
                 }
             }
-            else if (0 == strcmp("X-Ruuvi-Gateway-Rate", p_evt->header_key))
+            else if (0 == strcasecmp("X-Ruuvi-Gateway-Rate", p_evt->header_key))
             {
                 uint32_t period_seconds = os_str_to_uint32_cptr(p_evt->header_value, NULL, 10U);
                 if ((0 == period_seconds) || (period_seconds > (60U * 60U)))
