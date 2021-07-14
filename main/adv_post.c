@@ -58,7 +58,7 @@ static adv_callbacks_fn_t adv_callback_func_tbl = {
 
 static uint32_t g_adv_post_nonce;
 
-static uint32_t g_adv_post_interval = ADV_POST_DEFAULT_INTERVAL;
+static uint32_t g_adv_post_interval = ADV_POST_DEFAULT_INTERVAL * 1000U;
 
 /** @brief serialise up to U64 into given buffer, MSB first. */
 static inline void
