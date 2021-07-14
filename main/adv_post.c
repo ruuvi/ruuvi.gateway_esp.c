@@ -205,7 +205,7 @@ adv_post_check_is_connected(const uint32_t nonce)
         }
         else
         {
-            LOG_INFO("HTTP POST: %s", json_str.p_str);
+            LOG_INFO("HTTP POST %s: %s", g_gateway_config.http.http_url, json_str.p_str);
             http_send(json_str.p_str);
             cjson_wrap_free_json_str(&json_str);
         }
@@ -327,7 +327,10 @@ adv_post_set_period(const uint32_t period_ms)
 {
     if (period_ms != g_adv_post_interval_ms)
     {
-        LOG_INFO("Change period from %u ms to %u ms", (printf_uint_t)g_adv_post_interval_ms, (printf_uint_t)period_ms);
+        LOG_INFO(
+            "X-Ruuvi-Gateway-Rate: Change period from %u ms to %u ms",
+            (printf_uint_t)g_adv_post_interval_ms,
+            (printf_uint_t)period_ms);
         g_adv_post_interval_ms = period_ms;
     }
 }
