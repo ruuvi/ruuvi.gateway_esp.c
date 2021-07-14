@@ -16,6 +16,7 @@
 #include "leds.h"
 #include "os_str.h"
 #include "hmac_sha256.h"
+#include "adv_post.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -58,6 +59,15 @@ http_event_handler(esp_http_client_event_t *p_evt)
                 {
                     LOG_ERR("Failed to update Ruuvi-HMAC-KEY");
                 }
+            }
+            else if (0 == strcmp("x-ruuvi-gateway-rate", p_evt->header_key))
+            {
+                uint32_t period_ms = os_str_to_uint32_cptr(p_evt->header_value, NULL, 10);
+                if ((0 == period_ms) || (period_ms > (60U * 60U * 1000U)))
+                {
+                    period_ms = ADV_POST_DEFAULT_INTERVAL;
+                }
+                adv_post_set_period(period_ms);
             }
             break;
 

@@ -19,6 +19,9 @@ extern "C" {
 void
 adv_post_init(void);
 
+void
+adv_post_set_period(const uint32_t period_ms);
+
 #ifdef __cplusplus
 }
 #endif
