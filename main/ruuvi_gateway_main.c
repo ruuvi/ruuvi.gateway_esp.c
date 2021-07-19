@@ -364,6 +364,8 @@ request_and_wait_nrf52_id(void)
 static void
 cb_before_nrf52_fw_updating(void)
 {
+    fw_update_set_stage_nrf52_updating();
+
     const mac_address_bin_t nrf52_mac_addr = settings_read_mac_addr();
     set_gw_mac_sta(&nrf52_mac_addr, &g_gw_mac_sta_str, &g_gw_wifi_ssid);
     LOG_INFO("Mac address: %s", g_gw_mac_sta_str.str_buf);
@@ -379,6 +381,8 @@ cb_before_nrf52_fw_updating(void)
 static void
 cb_after_nrf52_fw_updating(void)
 {
+    fw_update_set_extra_info_for_status_json_update_successful();
+    vTaskDelay(pdMS_TO_TICKS(5 * 1000));
     LOG_INFO("nRF52 firmware has been successfully updated - restart system");
     esp_restart();
 }
@@ -440,14 +444,12 @@ app_main(void)
     }
 
     leds_indication_on_nrf52_fw_updating();
-    fw_update_set_stage_nrf52_updating();
     nrf52fw_update_fw_if_necessary(
         fw_update_get_current_fatfs_nrf52_partition_name(),
         &fw_update_nrf52fw_cb_progress,
         NULL,
         &cb_before_nrf52_fw_updating,
         &cb_after_nrf52_fw_updating);
-    fw_update_set_extra_info_for_status_json_update_successful();
     leds_off();
 
     adv_post_init();
