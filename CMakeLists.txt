@@ -3,7 +3,7 @@
 cmake_minimum_required(VERSION 3.5)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(EXPECTED_IDF_VERSION v4.0.1)
+set(EXPECTED_IDF_VERSION v4.0.3)
 set(RUUVI_NRF52_FW_URL https://github.com/ruuvi/ruuvi.gateway_nrf.c/releases/download/v0.7.2/ruuvigw_nrf_armgcc_ruuvigw_release_v0.7.2_full.hex)
 
 set(EXTRA_COMPONENT_DIRS
