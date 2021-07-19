@@ -605,7 +605,7 @@ fw_update_is_url_valid(void)
 bool
 fw_update_run(void)
 {
-    const uint32_t stack_size_for_fw_update_task = 4 * 1024;
+    const uint32_t stack_size_for_fw_update_task = 6 * 1024;
     if (!os_task_create_finite_without_param(&fw_update_task, "fw_update_task", stack_size_for_fw_update_task, 1))
     {
         LOG_ERR("Can't create thread");
