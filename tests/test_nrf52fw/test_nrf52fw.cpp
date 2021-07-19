@@ -2323,7 +2323,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_not_needed) // 
         this->m_memSegmentsRead.emplace_back(MemSegment(0x10001080, 1, &version));
     }
 
-    ASSERT_TRUE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
+    ASSERT_TRUE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
@@ -2425,7 +2425,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required) // NO
     this->m_memSegmentsRead.emplace_back(MemSegment(0x00001000, segment2_size / sizeof(uint32_t), segment2_buf.get()));
     this->m_memSegmentsRead.emplace_back(MemSegment(0x00026000, segment3_size / sizeof(uint32_t), segment3_buf.get()));
 
-    ASSERT_TRUE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
+    ASSERT_TRUE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr));
 
     ASSERT_EQ(1, this->m_cnt_nrf52swd_erase_all);
     ASSERT_EQ(4, this->m_memSegmentsWrite.size());
@@ -2553,7 +2553,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
     }
 
     this->m_result_nrf52swd_init = false;
-    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
@@ -2648,7 +2648,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
     }
 
     this->m_result_nrf52swd_check_id_code = false;
-    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
@@ -2743,7 +2743,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
     }
 
     this->m_result_nrf52swd_debug_halt = false;
-    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
@@ -2838,7 +2838,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
     }
 
     this->m_result_nrf52swd_debug_reset = false;
-    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
@@ -2935,7 +2935,7 @@ TEST_F(
     }
 
     this->m_result_nrf52swd_debug_enable_reset_vector_catch = false;
-    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
@@ -3030,7 +3030,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__debug_run_failed) // N
     }
 
     this->m_result_nrf52swd_debug_run = false;
-    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
@@ -3131,7 +3131,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_mount_failed) //
     }
 
     this->m_mount_info.mount_err = ESP_ERR_NOT_FOUND;
-    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
@@ -3228,7 +3228,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_mount_failed_no_
     }
 
     this->m_malloc_fail_on_cnt = 1;
-    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
@@ -3325,7 +3325,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_step2_no_mem) //
     }
 
     this->m_malloc_fail_on_cnt = 2;
-    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
@@ -3413,7 +3413,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_read_info_txt) /
         this->m_memSegmentsRead.emplace_back(MemSegment(0x10001080, 1, &version));
     }
 
-    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
@@ -3507,7 +3507,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_read_version) //
         this->m_fd = nullptr;
     }
 
-    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
@@ -3605,7 +3605,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_check_firmware) 
         this->m_memSegmentsRead.emplace_back(MemSegment(0x10001080, 1, &version));
     }
 
-    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
     ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
@@ -3710,7 +3710,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_write_firmware) 
         this->m_memSegmentsWrite.emplace_back(MemSegment(0x00000000, 1, &stub));
     }
 
-    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr));
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr));
 
     ASSERT_EQ(1, this->m_memSegmentsWrite.size());
     ASSERT_EQ(1, this->m_cnt_nrf52swd_erase_all);

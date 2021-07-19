@@ -7,6 +7,7 @@
 
 #include "settings.h"
 #include <stdio.h>
+#include <string.h>
 #include "cJSON.h"
 #include "nvs.h"
 #include "nvs_flash.h"
@@ -16,6 +17,7 @@
 
 #define RUUVI_GATEWAY_NVS_NAMESPACE         "ruuvi_gateway"
 #define RUUVI_GATEWAY_NVS_CONFIGURATION_KEY "ruuvi_config"
+#define RUUVI_GATEWAY_NVS_MAC_ADDR_KEY      "ruuvi_mac_addr"
 #define RUUVI_GATEWAY_NVS_BOOT_KEY          "ruuvi_boot"
 
 static const char TAG[] = "settings";
@@ -121,7 +123,7 @@ settings_get_from_flash(ruuvi_gateway_config_t *p_gateway_config)
     nvs_handle handle = 0;
     if (!settings_nvs_open(NVS_READONLY, &handle))
     {
-        LOG_INFO("Using default config:");
+        LOG_WARN("Using default config:");
         *p_gateway_config = g_gateway_config_default;
     }
     else
@@ -138,4 +140,56 @@ settings_get_from_flash(ruuvi_gateway_config_t *p_gateway_config)
         nvs_close(handle);
     }
     gw_cfg_print_to_log(p_gateway_config);
+}
+
+mac_address_bin_t
+settings_read_mac_addr(void)
+{
+    mac_address_bin_t mac_addr = { 0 };
+    nvs_handle        handle   = 0;
+    if (!settings_nvs_open(NVS_READONLY, &handle))
+    {
+        LOG_WARN("Use empty mac_addr");
+    }
+    else
+    {
+        size_t    sz      = sizeof(mac_addr);
+        esp_err_t esp_err = nvs_get_blob(handle, RUUVI_GATEWAY_NVS_MAC_ADDR_KEY, &mac_addr, &sz);
+        if (ESP_OK != esp_err)
+        {
+            LOG_WARN_ESP(esp_err, "Can't read mac_addr from flash");
+        }
+        nvs_close(handle);
+    }
+    return mac_addr;
+}
+
+void
+settings_write_mac_addr(const mac_address_bin_t *const p_mac_addr)
+{
+    nvs_handle handle = 0;
+    if (!settings_nvs_open(NVS_READWRITE, &handle))
+    {
+        LOG_ERR("%s failed", "settings_nvs_open");
+    }
+    else
+    {
+        if (!settings_nvs_set_blob(handle, RUUVI_GATEWAY_NVS_MAC_ADDR_KEY, p_mac_addr, sizeof(*p_mac_addr)))
+        {
+            LOG_ERR("%s failed", "settings_nvs_set_blob");
+        }
+        nvs_close(handle);
+    }
+}
+
+void
+settings_update_mac_addr(const mac_address_bin_t *const p_mac_addr)
+{
+    const mac_address_bin_t mac_addr = settings_read_mac_addr();
+    if (0 != memcmp(&mac_addr, p_mac_addr, sizeof(*p_mac_addr)))
+    {
+        const mac_address_str_t new_mac_addr_str = mac_address_to_str(p_mac_addr);
+        LOG_INFO("Save new MAC-address: %s", new_mac_addr_str.str_buf);
+        settings_write_mac_addr(p_mac_addr);
+    }
 }

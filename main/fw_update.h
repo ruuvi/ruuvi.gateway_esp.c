@@ -57,6 +57,12 @@ fw_update_set_extra_info_for_status_json_update_successful(void);
 void
 fw_update_set_extra_info_for_status_json_update_failed(const char *const p_message);
 
+void
+fw_update_set_stage_nrf52_updating(void);
+
+void
+fw_update_nrf52fw_cb_progress(const size_t num_bytes_flashed, const size_t total_size, void *const p_param);
+
 #ifdef __cplusplus
 }
 #endif
