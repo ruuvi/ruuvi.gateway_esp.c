@@ -1,7 +1,7 @@
 # Ruuvi Gateway ESP32 firmware
 
 Developed with:
-* ESP-IDF version [v4.0.1](https://github.com/espressif/esp-idf/releases/tag/v4.0.1)
+* ESP-IDF version [v4.0.3](https://github.com/espressif/esp-idf/releases/tag/v4.0.3)
 * ESP32-DevKitC V4
 * Waveshare LAN8720 ETH board
 * nRF52832 devkit
@@ -64,7 +64,7 @@ idf.py -p PORT flash monitor
 
 (To exit the serial monitor, type ``Ctrl-]``.)
 
-See the [Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/) for full steps to configure and use ESP-IDF to build projects. Please note that you need to install specific ESP-IDF version, current version is at the top of the README. For example `git clone -b v4.0.1 --recursive git@github.com:espressif/esp-idf.git`
+See the [Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/) for full steps to configure and use ESP-IDF to build projects. Please note that you need to install specific ESP-IDF version, current version is at the top of the README. For example `git clone -b v4.0.3 --recursive git@github.com:espressif/esp-idf.git`
 
 ### Using prebuilt images
 Prebuilt images for development versions of firmware can be found at [Ruuvi Jenkins](https://jenkins.ruuvi.com/job/ruuvi_gateway_esp-PR/). However these are artifacts of internal development, if you want to just use the gateway you should use [release](https://github.com/ruuvi/ruuvi.gateway_esp.c/releases) starting from 1.x+. First release is estimated to be ready on 7/2020. 
