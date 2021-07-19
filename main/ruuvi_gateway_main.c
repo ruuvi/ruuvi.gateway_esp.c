@@ -272,6 +272,7 @@ start_services(void)
 static bool
 wifi_init(
     const bool               flag_use_eth,
+    const bool               flag_start_ap_only,
     const wifi_ssid_t *const p_gw_wifi_ssid,
     const char *const        p_fatfs_gwui_partition_name)
 {
@@ -319,7 +320,7 @@ wifi_init(
         .cb_on_ap_sta_connected    = &wifi_connection_cb_on_ap_sta_connected,
         .cb_on_ap_sta_disconnected = &wifi_connection_cb_on_ap_sta_disconnected,
     };
-    wifi_manager_start(!flag_use_eth, p_gw_wifi_ssid, &wiFiAntConfig, &wifi_callbacks);
+    wifi_manager_start(!flag_use_eth, flag_start_ap_only, p_gw_wifi_ssid, &wiFiAntConfig, &wifi_callbacks);
     wifi_manager_set_callback(EVENT_STA_GOT_IP, &wifi_connection_ok_cb);
     wifi_manager_set_callback(EVENT_STA_DISCONNECTED, &wifi_disconnect_cb);
     return true;
@@ -358,6 +359,28 @@ request_and_wait_nrf52_id(void)
 
         hmac_sha256_set_key_str(nrf52_device_id_str.str_buf); // set default encryption key
     }
+}
+
+static void
+cb_before_nrf52_fw_updating(void)
+{
+    const mac_address_bin_t nrf52_mac_addr = settings_read_mac_addr();
+    set_gw_mac_sta(&nrf52_mac_addr, &g_gw_mac_sta_str, &g_gw_wifi_ssid);
+    LOG_INFO("Mac address: %s", g_gw_mac_sta_str.str_buf);
+    LOG_INFO("WiFi SSID / Hostname: %s", g_gw_wifi_ssid.ssid_buf);
+
+    if (!wifi_init(false, true, &g_gw_wifi_ssid, fw_update_get_current_fatfs_gwui_partition_name()))
+    {
+        LOG_ERR("%s failed", "wifi_init");
+        return;
+    }
+}
+
+static void
+cb_after_nrf52_fw_updating(void)
+{
+    LOG_INFO("nRF52 firmware has been successfully updated - restart system");
+    esp_restart();
 }
 
 void
@@ -403,24 +426,11 @@ app_main(void)
         esp_restart();
     }
 
-    leds_indication_on_nrf52_fw_updating();
-    nrf52fw_update_fw_if_necessary(fw_update_get_current_fatfs_nrf52_partition_name(), NULL, NULL);
-    leds_off();
-
-    adv_post_init();
-    terminal_open(NULL, true);
-    api_process(true);
-    request_and_wait_nrf52_id();
-
     gateway_read_mac_addr(ESP_MAC_WIFI_STA, &g_gw_mac_wifi, &g_gw_mac_wifi_str);
     gateway_read_mac_addr(ESP_MAC_ETH, &g_gw_mac_eth, &g_gw_mac_eth_str);
 
-    const mac_address_bin_t nrf52_mac_addr = ruuvi_device_id_get_nrf52_mac_address();
-    set_gw_mac_sta(&nrf52_mac_addr, &g_gw_mac_sta_str, &g_gw_wifi_ssid);
-    LOG_INFO("Mac address: %s", g_gw_mac_sta_str.str_buf);
-    LOG_INFO("WiFi SSID / Hostname: %s", g_gw_wifi_ssid.ssid_buf);
-
     settings_get_from_flash(&g_gateway_config);
+
     if (!http_server_set_auth(
             g_gateway_config.lan_auth.lan_auth_type,
             g_gateway_config.lan_auth.lan_auth_user,
@@ -428,10 +438,38 @@ app_main(void)
     {
         LOG_ERR("%s failed", "http_server_set_auth");
     }
+
+    leds_indication_on_nrf52_fw_updating();
+    fw_update_set_stage_nrf52_updating();
+    nrf52fw_update_fw_if_necessary(
+        fw_update_get_current_fatfs_nrf52_partition_name(),
+        &fw_update_nrf52fw_cb_progress,
+        NULL,
+        &cb_before_nrf52_fw_updating,
+        &cb_after_nrf52_fw_updating);
+    fw_update_set_extra_info_for_status_json_update_successful();
+    leds_off();
+
+    adv_post_init();
+    terminal_open(NULL, true);
+    api_process(true);
+    request_and_wait_nrf52_id();
+
+    const mac_address_bin_t nrf52_mac_addr = ruuvi_device_id_get_nrf52_mac_address();
+    set_gw_mac_sta(&nrf52_mac_addr, &g_gw_mac_sta_str, &g_gw_wifi_ssid);
+    LOG_INFO("Mac address: %s", g_gw_mac_sta_str.str_buf);
+    LOG_INFO("WiFi SSID / Hostname: %s", g_gw_wifi_ssid.ssid_buf);
+
+    settings_update_mac_addr(&nrf52_mac_addr);
+
     time_task_init();
     ruuvi_send_nrf_settings(&g_gateway_config);
 
-    if (!wifi_init(g_gateway_config.eth.use_eth, &g_gw_wifi_ssid, fw_update_get_current_fatfs_gwui_partition_name()))
+    if (!wifi_init(
+            g_gateway_config.eth.use_eth,
+            false,
+            &g_gw_wifi_ssid,
+            fw_update_get_current_fatfs_gwui_partition_name()))
     {
         LOG_ERR("%s failed", "wifi_init");
         return;

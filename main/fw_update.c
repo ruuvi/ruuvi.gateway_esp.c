@@ -502,12 +502,19 @@ fw_update_set_extra_info_for_status_json_update_failed(const char *const p_messa
     wifi_manager_set_extra_info_for_status_json(extra_info_buf);
 }
 
-static void
+void
 fw_update_nrf52fw_cb_progress(const size_t num_bytes_flashed, const size_t total_size, void *const p_param)
 {
     (void)p_param;
     const fw_update_percentage_t percentage = (num_bytes_flashed * FW_UPDATE_PERCENTAGE_100) / total_size;
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, percentage);
+}
+
+void
+fw_update_set_stage_nrf52_updating(void)
+{
+    g_update_progress_stage = FW_UPDATE_STAGE_4;
+    fw_update_set_extra_info_for_status_json(g_update_progress_stage, 0);
 }
 
 static void
@@ -563,14 +570,15 @@ fw_update_task(void)
     g_ruuvi_flash_info.p_boot_partition = g_ruuvi_flash_info.p_next_update_partition;
     g_ruuvi_flash_info.is_ota0_active   = !g_ruuvi_flash_info.is_ota0_active;
 
-    g_update_progress_stage = FW_UPDATE_STAGE_4;
-    fw_update_set_extra_info_for_status_json(g_update_progress_stage, 0);
+    fw_update_set_stage_nrf52_updating();
 
     leds_indication_on_nrf52_fw_updating();
 
     nrf52fw_update_fw_if_necessary(
         fw_update_get_current_fatfs_nrf52_partition_name(),
         &fw_update_nrf52fw_cb_progress,
+        NULL,
+        NULL,
         NULL);
     leds_off();
 

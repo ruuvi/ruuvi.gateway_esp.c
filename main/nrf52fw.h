@@ -64,6 +64,9 @@ typedef struct nrf52fw_tmp_buf_t
 
 typedef void (*nrf52fw_cb_progress)(const size_t num_bytes_flashed, const size_t total_size, void *const p_param);
 
+typedef void (*nrf52fw_cb_before_updating)(void);
+typedef void (*nrf52fw_cb_after_updating)(void);
+
 typedef struct nrf52fw_progress_info_t
 {
     size_t              accum_num_bytes_flashed;
@@ -79,9 +82,11 @@ nrf52fw_hw_reset_nrf52(const bool flag_reset);
 
 bool
 nrf52fw_update_fw_if_necessary(
-    const char *const   p_fatfs_nrf52_partition_name,
-    nrf52fw_cb_progress cb_progress,
-    void *const         p_param_cb_progress);
+    const char *const          p_fatfs_nrf52_partition_name,
+    nrf52fw_cb_progress        cb_progress,
+    void *const                p_param_cb_progress,
+    nrf52fw_cb_before_updating cb_before_updating,
+    nrf52fw_cb_after_updating  cb_after_updating);
 
 bool
 nrf52fw_software_reset(void);

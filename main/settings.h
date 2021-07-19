@@ -23,6 +23,15 @@ settings_save_to_flash(const ruuvi_gateway_config_t *p_config);
 void
 settings_get_from_flash(ruuvi_gateway_config_t *p_gateway_config);
 
+mac_address_bin_t
+settings_read_mac_addr(void);
+
+void
+settings_write_mac_addr(const mac_address_bin_t *const p_mac_addr);
+
+void
+settings_update_mac_addr(const mac_address_bin_t *const p_mac_addr);
+
 #ifdef __cplusplus
 }
 #endif
