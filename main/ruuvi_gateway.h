@@ -34,7 +34,10 @@ typedef enum nrf_command_e
 
 extern EventGroupHandle_t status_bits;
 
-void
+bool
+settings_check_in_flash(void);
+
+bool
 settings_clear_in_flash(void);
 
 void

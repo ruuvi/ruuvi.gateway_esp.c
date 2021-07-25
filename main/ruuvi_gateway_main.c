@@ -387,6 +387,39 @@ cb_after_nrf52_fw_updating(void)
     esp_restart();
 }
 
+static void
+ruuvi_nvs_flash_init(void)
+{
+    LOG_INFO("Init NVS");
+    const esp_err_t err = nvs_flash_init();
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "nvs_flash_init failed");
+    }
+}
+
+static void
+ruuvi_nvs_flash_deinit(void)
+{
+    LOG_INFO("Deinit NVS");
+    const esp_err_t err = nvs_flash_deinit();
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "nvs_flash_deinit failed");
+    }
+}
+
+static void
+ruuvi_nvs_flash_erase(void)
+{
+    LOG_INFO("Erase NVS");
+    const esp_err_t err = nvs_flash_erase();
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "nvs_flash_erase failed");
+    }
+}
+
 void
 app_main(void)
 {
@@ -407,7 +440,6 @@ app_main(void)
         LOG_ERR("Can't create event group");
     }
 
-    nvs_flash_init();
     gpio_init();
     leds_init();
 
@@ -415,11 +447,22 @@ app_main(void)
     {
         LOG_INFO("Reset button is pressed during boot - clear settings in flash");
         nrf52fw_hw_reset_nrf52(true);
+
+        ruuvi_nvs_flash_erase();
+        ruuvi_nvs_flash_init();
+
+        LOG_INFO("Writing the default wifi-manager configuration to NVS");
         if (!wifi_manager_clear_sta_config(&g_gw_wifi_ssid))
         {
-            LOG_ERR("%s failed", "wifi_manager_clear_sta_config");
+            LOG_ERR("Failed to clear the wifi-manager settings in NVS");
         }
-        settings_clear_in_flash();
+
+        LOG_INFO("Writing the default gateway configuration to NVS");
+        if (!settings_clear_in_flash())
+        {
+            LOG_ERR("Failed to clear the gateway settings in NVS");
+        }
+
         LOG_INFO("Wait until the CONFIGURE button is released");
         leds_indication_on_configure_button_press();
         while (0 == gpio_get_level(RB_BUTTON_RESET_PIN))
@@ -428,6 +471,15 @@ app_main(void)
         }
         LOG_INFO("The CONFIGURE button has been released - restart system");
         esp_restart();
+    }
+
+    ruuvi_nvs_flash_init();
+
+    if (!wifi_manager_check_sta_config() || !settings_check_in_flash())
+    {
+        ruuvi_nvs_flash_deinit();
+        ruuvi_nvs_flash_erase();
+        ruuvi_nvs_flash_init();
     }
 
     gateway_read_mac_addr(ESP_MAC_WIFI_STA, &g_gw_mac_wifi, &g_gw_mac_wifi_str);
