@@ -25,12 +25,36 @@ static const char TAG[] = "settings";
 static bool
 settings_nvs_open(nvs_open_mode_t open_mode, nvs_handle_t *p_handle)
 {
-    const char *    nvs_name = RUUVI_GATEWAY_NVS_NAMESPACE;
-    const esp_err_t err      = nvs_open(nvs_name, open_mode, p_handle);
+    const char *nvs_name = RUUVI_GATEWAY_NVS_NAMESPACE;
+    esp_err_t   err      = nvs_open(nvs_name, open_mode, p_handle);
     if (ESP_OK != err)
     {
-        LOG_ERR_ESP(err, "Can't open '%s' NVS namespace", nvs_name);
-        return false;
+        if (ESP_ERR_NVS_NOT_INITIALIZED == err)
+        {
+            LOG_WARN("NVS namespace '%s': StorageState is INVALID, need to erase NVS", nvs_name);
+            return false;
+        }
+        else if (ESP_ERR_NVS_NOT_FOUND == err)
+        {
+            LOG_WARN("NVS namespace '%s' doesn't exist and mode is NVS_READONLY, try to create it", nvs_name);
+            if (!settings_clear_in_flash())
+            {
+                LOG_ERR("Failed to create NVS namespace '%s'", nvs_name);
+                return false;
+            }
+            LOG_INFO("NVS namespace '%s' created successfully", nvs_name);
+            err = nvs_open(nvs_name, open_mode, p_handle);
+            if (ESP_OK != err)
+            {
+                LOG_ERR_ESP(err, "Can't open NVS namespace: '%s'", nvs_name);
+                return false;
+            }
+        }
+        else
+        {
+            LOG_ERR_ESP(err, "Can't open NVS namespace: '%s'", nvs_name);
+            return false;
+        }
     }
     return true;
 }
@@ -47,21 +71,38 @@ settings_nvs_set_blob(nvs_handle_t handle, const char *key, const void *value, s
     return true;
 }
 
-void
+bool
+settings_check_in_flash(void)
+{
+    nvs_handle handle = 0;
+    if (!settings_nvs_open(NVS_READONLY, &handle))
+    {
+        return false;
+    }
+    nvs_close(handle);
+    return true;
+}
+
+bool
 settings_clear_in_flash(void)
 {
     LOG_DBG(".");
     nvs_handle handle = 0;
     if (!settings_nvs_open(NVS_READWRITE, &handle))
     {
-        return;
+        return false;
     }
-    (void)settings_nvs_set_blob(
-        handle,
-        RUUVI_GATEWAY_NVS_CONFIGURATION_KEY,
-        &g_gateway_config_default,
-        sizeof(g_gateway_config_default));
+    if (!settings_nvs_set_blob(
+            handle,
+            RUUVI_GATEWAY_NVS_CONFIGURATION_KEY,
+            &g_gateway_config_default,
+            sizeof(g_gateway_config_default)))
+    {
+        nvs_close(handle);
+        return false;
+    }
     nvs_close(handle);
+    return true;
 }
 
 void
@@ -84,7 +125,7 @@ settings_get_gw_cfg_from_nvs(nvs_handle handle, ruuvi_gateway_config_t *p_gw_cfg
     esp_err_t esp_err = nvs_get_blob(handle, RUUVI_GATEWAY_NVS_CONFIGURATION_KEY, NULL, &sz);
     if (ESP_OK != esp_err)
     {
-        LOG_WARN_ESP(esp_err, "Can't read config from flash");
+        LOG_ERR_ESP(esp_err, "Can't read config from flash");
         return false;
     }
 
@@ -97,7 +138,7 @@ settings_get_gw_cfg_from_nvs(nvs_handle handle, ruuvi_gateway_config_t *p_gw_cfg
     esp_err = nvs_get_blob(handle, RUUVI_GATEWAY_NVS_CONFIGURATION_KEY, p_gw_cfg, &sz);
     if (ESP_OK != esp_err)
     {
-        LOG_WARN_ESP(esp_err, "Can't read config from flash");
+        LOG_ERR_ESP(esp_err, "Can't read config from flash");
         return false;
     }
 
