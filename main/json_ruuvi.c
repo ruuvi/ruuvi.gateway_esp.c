@@ -81,6 +81,8 @@ json_ruuvi_parse(const cJSON *p_json_root, ruuvi_gateway_config_t *p_gw_cfg)
 {
     LOG_DBG("Got SETTINGS:");
 
+    *p_gw_cfg = g_gateway_config_default;
+
     json_ruuvi_get_bool_val(p_json_root, "use_eth", &p_gw_cfg->eth.use_eth, false);
     json_ruuvi_get_bool_val(p_json_root, "eth_dhcp", &p_gw_cfg->eth.eth_dhcp, true);
     json_ruuvi_copy_string_val(

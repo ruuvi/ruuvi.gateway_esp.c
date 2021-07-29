@@ -9,6 +9,9 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/json_ruuvi.h
         ${RUUVI_GW_SRC}/cjson_wrap.c
         ${RUUVI_GW_SRC}/cjson_wrap.h
+        ${RUUVI_GW_SRC}/gw_cfg.h
+        ${RUUVI_GW_SRC}/gw_cfg_default.c
+        ${RUUVI_GW_SRC}/gw_cfg_default.h
         $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.h

@@ -501,7 +501,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
         "}",
         &gw_cfg));
 
-    ASSERT_FALSE(gw_cfg.eth.eth_dhcp);
+    ASSERT_TRUE(gw_cfg.eth.eth_dhcp);
     ASSERT_EQ(string(""), gw_cfg.eth.eth_static_ip);
     ASSERT_EQ(string(""), gw_cfg.eth.eth_netmask);
     ASSERT_EQ(string(""), gw_cfg.eth.eth_gw);
@@ -519,7 +519,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     ASSERT_EQ(string(""), gw_cfg.http.http_user);
     ASSERT_EQ(string(""), gw_cfg.http.http_pass);
     ASSERT_TRUE(gw_cfg.filter.company_filter);
-    ASSERT_EQ(0, gw_cfg.filter.company_id);
+    ASSERT_EQ(RUUVI_COMPANY_ID, gw_cfg.filter.company_id);
     ASSERT_EQ(string(""), gw_cfg.coordinates);
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Got SETTINGS:");
