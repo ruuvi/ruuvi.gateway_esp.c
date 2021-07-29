@@ -289,6 +289,12 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     cJSON_AddStringToObject(root, "lan_auth_user", "user1");
     cJSON_AddStringToObject(root, "lan_auth_pass", "qwe");
 
+    cJSON_AddStringToObject(root, "auto_update_cycle", "regular");
+    cJSON_AddNumberToObject(root, "auto_update_weekdays_bitmask", 127);
+    cJSON_AddNumberToObject(root, "auto_update_interval_from", 0);
+    cJSON_AddNumberToObject(root, "auto_update_interval_to", 24);
+    cJSON_AddNumberToObject(root, "auto_update_tz_offset_hours", 3);
+
     cJSON_AddBoolToObject(root, "use_filtering", true);
     cJSON_AddNumberToObject(root, "company_id", 888);
 
@@ -352,6 +358,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_type: lan_auth_ruuvi");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_cycle: regular");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_weekdays_bitmask: 127");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_interval_from: 0");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_interval_to: 24");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_tz_offset_hours: 3");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_filtering: 1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "company_id: 888");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "coordinates: coord:123,456");
@@ -390,6 +401,12 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_mqtt_pass) // NOLINT
     cJSON_AddStringToObject(root, "lan_auth_type", "lan_auth_ruuvi");
     cJSON_AddStringToObject(root, "lan_auth_user", "user1");
     cJSON_AddStringToObject(root, "lan_auth_pass", "qwe");
+
+    cJSON_AddStringToObject(root, "auto_update_cycle", "beta");
+    cJSON_AddNumberToObject(root, "auto_update_weekdays_bitmask", 126);
+    cJSON_AddNumberToObject(root, "auto_update_interval_from", 1);
+    cJSON_AddNumberToObject(root, "auto_update_interval_to", 23);
+    cJSON_AddNumberToObject(root, "auto_update_tz_offset_hours", 7);
 
     cJSON_AddBoolToObject(root, "use_filtering", true);
     cJSON_AddNumberToObject(root, "company_id", 888);
@@ -454,6 +471,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_mqtt_pass) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_type: lan_auth_ruuvi");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_cycle: beta");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_weekdays_bitmask: 126");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_interval_from: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_interval_to: 23");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_tz_offset_hours: 7");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_filtering: 1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "company_id: 888");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "coordinates: coord:123,456");
@@ -491,6 +513,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
         "\"lan_auth_type\":\"lan_auth_ruuvi\","
         "\"lan_auth_user\":\"user1\","
         "\"lan_auth_pass\":\"qwe\","
+        "\"auto_update_cycle\":\"regular\","
+        "\"auto_update_weekdays_bitmask\":127,"
+        "\"auto_update_interval_from\":0,"
+        "\"auto_update_interval_to\":24,"
+        "\"auto_update_tz_offset_hours\":-3,"
         "\"use_filtering\":true,"
         "\"use_coded_phy\":true,"
         "\"use_1mbit_phy\":true,"
@@ -543,6 +570,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_type: lan_auth_ruuvi");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_cycle: regular");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_weekdays_bitmask: 127");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_interval_from: 0");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_interval_to: 24");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_tz_offset_hours: -3");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_filtering: 1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "company_id not found or invalid");
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "coordinates not found");

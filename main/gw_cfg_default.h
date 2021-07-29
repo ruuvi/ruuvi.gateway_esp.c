@@ -49,6 +49,13 @@ extern "C" {
             .lan_auth_user = { 0 }, \
             .lan_auth_pass = { 0 }, \
         }, \
+        .auto_update = { \
+            .auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR, \
+            .auto_update_weekdays_bitmask = 0x7F, \
+            .auto_update_interval_from = 0, \
+            .auto_update_interval_to = 24, \
+            .auto_update_tz_offset_hours = 3, \
+        }, \
         .filter = { \
             .company_id = RUUVI_COMPANY_ID, \
             .company_filter = true, \

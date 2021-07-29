@@ -187,6 +187,10 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_deny"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth user: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Auto update cycle: regular"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Auto update weekdays_bitmask: 0x7f"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Auto update interval: 00:00..24:00"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Auto update TZ: UTC+3"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: coordinates: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use company id filter: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: company id: 0x0499"));
@@ -227,6 +231,11 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_default) // NOLINT
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_deny\",\n"
                "\t\"lan_auth_user\":\t\"\",\n"
+               "\t\"auto_update_cycle\":\t\"regular\",\n"
+               "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+               "\t\"auto_update_interval_from\":\t0,\n"
+               "\t\"auto_update_interval_to\":\t24,\n"
+               "\t\"auto_update_tz_offset_hours\":\t3,\n"
                "\t\"gw_mac\":\t\"\",\n"
                "\t\"use_filtering\":\ttrue,\n"
                "\t\"company_id\":\t\"0x0499\",\n"
@@ -1269,7 +1278,7 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_lan_auth_user_3) // 
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_gw_mac) // NOLINT
+TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_auto_update_cycle) // NOLINT
 {
     g_gateway_config          = g_gateway_config_default;
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -1280,6 +1289,215 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_gw_mac) // NOLINT
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 55;
+
+    ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_cycle"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_auto_update_cycle_2) // NOLINT
+{
+    g_gateway_config          = g_gateway_config_default;
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 56;
+
+    ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_cycle"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_auto_update_cycle_3) // NOLINT
+{
+    g_gateway_config          = g_gateway_config_default;
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 57;
+
+    ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_cycle"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_auto_update_weekdays_bitmask) // NOLINT
+{
+    g_gateway_config          = g_gateway_config_default;
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 58;
+
+    ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_weekdays_bitmask"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_auto_update_weekdays_bitmask_2) // NOLINT
+{
+    g_gateway_config          = g_gateway_config_default;
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 59;
+
+    ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_weekdays_bitmask"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_auto_update_interval_from) // NOLINT
+{
+    g_gateway_config          = g_gateway_config_default;
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 60;
+
+    ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_interval_from"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_auto_update_interval_from_2) // NOLINT
+{
+    g_gateway_config          = g_gateway_config_default;
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 61;
+
+    ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_interval_from"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_auto_update_interval_to) // NOLINT
+{
+    g_gateway_config          = g_gateway_config_default;
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 62;
+
+    ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_interval_to"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_auto_update_interval_to_2) // NOLINT
+{
+    g_gateway_config          = g_gateway_config_default;
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 63;
+
+    ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_interval_to"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_auto_update_tz) // NOLINT
+{
+    g_gateway_config          = g_gateway_config_default;
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 64;
+
+    ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_tz_offset_hours"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_auto_update_tz_2) // NOLINT
+{
+    g_gateway_config          = g_gateway_config_default;
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 65;
+
+    ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_tz_offset_hours"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_gw_mac) // NOLINT
+{
+    g_gateway_config          = g_gateway_config_default;
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 66;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -1298,7 +1516,7 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_gw_mac_2) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 56;
+    this->m_malloc_fail_on_cnt = 67;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -1317,7 +1535,7 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_gw_mac_3) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 57;
+    this->m_malloc_fail_on_cnt = 68;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -1336,7 +1554,7 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_filtering) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 58;
+    this->m_malloc_fail_on_cnt = 69;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -1355,7 +1573,7 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_filtering_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 59;
+    this->m_malloc_fail_on_cnt = 70;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -1374,7 +1592,7 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_company_id) // NOLIN
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 60;
+    this->m_malloc_fail_on_cnt = 71;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -1393,7 +1611,7 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_company_id_2) // NOL
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 61;
+    this->m_malloc_fail_on_cnt = 72;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -1412,7 +1630,7 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_company_id_3) // NOL
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 62;
+    this->m_malloc_fail_on_cnt = 73;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -1431,7 +1649,7 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_coordinates) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 63;
+    this->m_malloc_fail_on_cnt = 74;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -1450,7 +1668,7 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_coordinates_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 64;
+    this->m_malloc_fail_on_cnt = 75;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -1469,7 +1687,7 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_coordinates_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 65;
+    this->m_malloc_fail_on_cnt = 76;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -1488,7 +1706,7 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_coded_phy) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 66;
+    this->m_malloc_fail_on_cnt = 77;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -1507,7 +1725,7 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_coded_phy_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 67;
+    this->m_malloc_fail_on_cnt = 78;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -1526,7 +1744,7 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_1mbit_phy) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 68;
+    this->m_malloc_fail_on_cnt = 79;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -1545,7 +1763,7 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_1mbit_phy_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 69;
+    this->m_malloc_fail_on_cnt = 80;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -1564,7 +1782,7 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_extended_payload
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 70;
+    this->m_malloc_fail_on_cnt = 81;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -1583,7 +1801,7 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_extended_payload
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 71;
+    this->m_malloc_fail_on_cnt = 82;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -1602,7 +1820,7 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_channel_37) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 72;
+    this->m_malloc_fail_on_cnt = 83;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -1621,7 +1839,7 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_channel_37_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 73;
+    this->m_malloc_fail_on_cnt = 84;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -1640,7 +1858,7 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_channel_38) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 74;
+    this->m_malloc_fail_on_cnt = 85;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -1659,7 +1877,7 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_channel_38_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 75;
+    this->m_malloc_fail_on_cnt = 86;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -1678,7 +1896,7 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_channel_39) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 76;
+    this->m_malloc_fail_on_cnt = 87;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -1697,7 +1915,7 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_use_channel_39_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 77;
+    this->m_malloc_fail_on_cnt = 88;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -1716,7 +1934,7 @@ TEST_F(TestGwCfg, gw_cfg_generate_json_str_malloc_failed_on_converting_to_json_s
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 78;
+    this->m_malloc_fail_on_cnt = 89;
 
     ASSERT_FALSE(gw_cfg_generate_json_str(&json_str));
     ASSERT_EQ(nullptr, json_str.p_str);

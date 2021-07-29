@@ -463,6 +463,11 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
           "\t\"mqtt_user\":\t\"\",\n"
           "\t\"lan_auth_type\":\t\"lan_auth_deny\",\n"
           "\t\"lan_auth_user\":\t\"\",\n"
+          "\t\"auto_update_cycle\":\t\"regular\",\n"
+          "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+          "\t\"auto_update_interval_from\":\t0,\n"
+          "\t\"auto_update_interval_to\":\t24,\n"
+          "\t\"auto_update_tz_offset_hours\":\t3,\n"
           "\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
           "\t\"use_filtering\":\ttrue,\n"
           "\t\"company_id\":\t\"0x0499\",\n"
@@ -487,6 +492,11 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
         "\"http_url\":\"https://network.ruuvi.com/record\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
+        "\"auto_update_cycle\":\"regular\","
+        "\"auto_update_weekdays_bitmask\":127,"
+        "\"auto_update_interval_from\":0,"
+        "\"auto_update_interval_to\":24,"
+        "\"auto_update_tz_offset_hours\":3,"
         "\"use_filtering\":true"
         "}",
         &g_gateway_config));
@@ -572,6 +582,11 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
           "\t\"mqtt_user\":\t\"\",\n"
           "\t\"lan_auth_type\":\t\"lan_auth_deny\",\n"
           "\t\"lan_auth_user\":\t\"\",\n"
+          "\t\"auto_update_cycle\":\t\"beta\",\n"
+          "\t\"auto_update_weekdays_bitmask\":\t126,\n"
+          "\t\"auto_update_interval_from\":\t1,\n"
+          "\t\"auto_update_interval_to\":\t23,\n"
+          "\t\"auto_update_tz_offset_hours\":\t-3,\n"
           "\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
           "\t\"use_filtering\":\ttrue,\n"
           "\t\"company_id\":\t\"0x0499\",\n"
@@ -596,6 +611,11 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
         "\"http_url\":\"https://network.ruuvi.com/record\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
+        "\"auto_update_cycle\":\"beta\","
+        "\"auto_update_weekdays_bitmask\":126,"
+        "\"auto_update_interval_from\":1,"
+        "\"auto_update_interval_to\":23,"
+        "\"auto_update_tz_offset_hours\":-3,"
         "\"use_filtering\":true"
         "}",
         &g_gateway_config));
@@ -976,6 +996,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
           "\t\"mqtt_user\":\t\"\",\n"
           "\t\"lan_auth_type\":\t\"lan_auth_deny\",\n"
           "\t\"lan_auth_user\":\t\"\",\n"
+          "\t\"auto_update_cycle\":\t\"manual\",\n"
+          "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+          "\t\"auto_update_interval_from\":\t0,\n"
+          "\t\"auto_update_interval_to\":\t24,\n"
+          "\t\"auto_update_tz_offset_hours\":\t3,\n"
           "\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
           "\t\"use_filtering\":\ttrue,\n"
           "\t\"company_id\":\t\"0x0499\",\n"
@@ -1171,6 +1196,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_type not found");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_user not found");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_pass not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_cycle not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_weekdays_bitmask not found or invalid");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_interval_from not found or invalid");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_interval_to not found or invalid");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_tz_offset_hours not found or invalid");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_filtering: 1");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "company_id not found or invalid");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "coordinates not found");
@@ -1202,6 +1232,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_deny"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth user: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update cycle: manual"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update weekdays_bitmask: 0x7f"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update interval: 00:00..24:00"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update TZ: UTC+3"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: coordinates: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use company id filter: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: company id: 0x0499"));
@@ -1307,6 +1341,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_type not found");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_user not found");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_pass not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_cycle not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_weekdays_bitmask not found or invalid");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_interval_from not found or invalid");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_interval_to not found or invalid");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_tz_offset_hours not found or invalid");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_filtering: 1");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "company_id not found or invalid");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "coordinates not found");
@@ -1338,6 +1377,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_deny"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth user: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update cycle: manual"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update weekdays_bitmask: 0x7f"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update interval: 00:00..24:00"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update TZ: UTC+3"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: coordinates: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use company id filter: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: company id: 0x0499"));

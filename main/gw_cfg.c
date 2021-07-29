@@ -53,6 +53,35 @@ gw_cfg_print_to_log(const ruuvi_gateway_config_t *p_config)
     LOG_INFO("config: LAN auth type: %s", p_config->lan_auth.lan_auth_type);
     LOG_INFO("config: LAN auth user: %s", p_config->lan_auth.lan_auth_user);
     LOG_INFO("config: LAN auth pass: %s", "********");
+
+    switch (p_config->auto_update.auto_update_cycle)
+    {
+        case AUTO_UPDATE_CYCLE_TYPE_REGULAR:
+            LOG_INFO("config: Auto update cycle: %s", AUTO_UPDATE_CYCLE_TYPE_STR_REGULAR);
+            break;
+        case AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER:
+            LOG_INFO("config: Auto update cycle: %s", AUTO_UPDATE_CYCLE_TYPE_STR_BETA_TESTER);
+            break;
+        case AUTO_UPDATE_CYCLE_TYPE_MANUAL:
+            LOG_INFO("config: Auto update cycle: %s", AUTO_UPDATE_CYCLE_TYPE_STR_MANUAL);
+            break;
+        default:
+            LOG_INFO(
+                "config: Auto update cycle: %s (%d)",
+                AUTO_UPDATE_CYCLE_TYPE_STR_MANUAL,
+                p_config->auto_update.auto_update_cycle);
+            break;
+    }
+    LOG_INFO("config: Auto update weekdays_bitmask: 0x%02x", p_config->auto_update.auto_update_weekdays_bitmask);
+    LOG_INFO(
+        "config: Auto update interval: %02u:00..%02u:00",
+        p_config->auto_update.auto_update_interval_from,
+        p_config->auto_update.auto_update_interval_to);
+    LOG_INFO(
+        "config: Auto update TZ: UTC%s%d",
+        ((p_config->auto_update.auto_update_tz_offset_hours < 0) ? "" : "+"),
+        (printf_int_t)p_config->auto_update.auto_update_tz_offset_hours);
+
     LOG_INFO("config: coordinates: %s", p_config->coordinates);
     LOG_INFO("config: use company id filter: %d", p_config->filter.company_filter);
     LOG_INFO("config: company id: 0x%04x", p_config->filter.company_id);
@@ -174,6 +203,51 @@ gw_cfg_json_add_items_lan_auth(cJSON *p_json_root, const ruuvi_gateway_config_t 
 }
 
 static bool
+gw_cfg_json_add_items_auto_update(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg)
+{
+    const char *p_auto_update_cycle_str = AUTO_UPDATE_CYCLE_TYPE_STR_MANUAL;
+    switch (p_cfg->auto_update.auto_update_cycle)
+    {
+        case AUTO_UPDATE_CYCLE_TYPE_REGULAR:
+            p_auto_update_cycle_str = AUTO_UPDATE_CYCLE_TYPE_STR_REGULAR;
+            break;
+        case AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER:
+            p_auto_update_cycle_str = AUTO_UPDATE_CYCLE_TYPE_STR_BETA_TESTER;
+            break;
+        case AUTO_UPDATE_CYCLE_TYPE_MANUAL:
+            p_auto_update_cycle_str = AUTO_UPDATE_CYCLE_TYPE_STR_MANUAL;
+            break;
+    }
+    if (!gw_cfg_json_add_string(p_json_root, "auto_update_cycle", p_auto_update_cycle_str))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_number(
+            p_json_root,
+            "auto_update_weekdays_bitmask",
+            p_cfg->auto_update.auto_update_weekdays_bitmask))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_number(p_json_root, "auto_update_interval_from", p_cfg->auto_update.auto_update_interval_from))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_number(p_json_root, "auto_update_interval_to", p_cfg->auto_update.auto_update_interval_to))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_number(
+            p_json_root,
+            "auto_update_tz_offset_hours",
+            p_cfg->auto_update.auto_update_tz_offset_hours))
+    {
+        return false;
+    }
+    return true;
+}
+
+static bool
 gw_cfg_json_add_items_mqtt(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg)
 {
     if (!gw_cfg_json_add_bool(p_json_root, "use_mqtt", p_cfg->mqtt.use_mqtt))
@@ -276,6 +350,10 @@ gw_cfg_json_add_items(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg, c
         return false;
     }
     if (!gw_cfg_json_add_items_lan_auth(p_json_root, p_cfg))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_items_auto_update(p_json_root, p_cfg))
     {
         return false;
     }
