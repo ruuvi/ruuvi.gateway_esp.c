@@ -13,6 +13,7 @@
 #include "nvs_flash.h"
 #include "ruuvi_gateway.h"
 #include "cjson_wrap.h"
+#include "gw_cfg_default.h"
 #include "log.h"
 
 #define RUUVI_GATEWAY_NVS_NAMESPACE         "ruuvi_gateway"

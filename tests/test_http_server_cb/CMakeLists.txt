@@ -12,6 +12,8 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/cjson_wrap.h
         ${RUUVI_GW_SRC}/gw_cfg.c
         ${RUUVI_GW_SRC}/gw_cfg.h
+        ${RUUVI_GW_SRC}/gw_cfg_default.c
+        ${RUUVI_GW_SRC}/gw_cfg_default.h
         ${RUUVI_GW_SRC}/http_server_cb.c
         ${RUUVI_GW_SRC}/http_server_cb.h
         ${RUUVI_GW_SRC}/http_json.c

@@ -36,6 +36,7 @@
 #include "fw_update.h"
 #include "hmac_sha256.h"
 #include "ruuvi_device_id.h"
+#include "gw_cfg_default.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"

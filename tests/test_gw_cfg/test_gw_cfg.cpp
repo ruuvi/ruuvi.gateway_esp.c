@@ -10,6 +10,7 @@
 #include "gtest/gtest.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "gw_cfg_default.h"
 #include "esp_log_wrapper.hpp"
 
 using namespace std;

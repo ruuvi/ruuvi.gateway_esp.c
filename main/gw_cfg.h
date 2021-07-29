@@ -113,14 +113,13 @@ typedef struct ruuvi_gateway_config_t
     char                    coordinates[MAX_CONFIG_STR_LEN];
 } ruuvi_gateway_config_t;
 
-extern ruuvi_gateway_config_t       g_gateway_config;
-extern const ruuvi_gateway_config_t g_gateway_config_default;
-extern mac_address_bin_t            g_gw_mac_eth;
-extern mac_address_str_t            g_gw_mac_eth_str;
-extern mac_address_bin_t            g_gw_mac_wifi;
-extern mac_address_str_t            g_gw_mac_wifi_str;
-extern mac_address_str_t            g_gw_mac_sta_str;
-extern wifi_ssid_t                  g_gw_wifi_ssid;
+extern ruuvi_gateway_config_t g_gateway_config;
+extern mac_address_bin_t      g_gw_mac_eth;
+extern mac_address_str_t      g_gw_mac_eth_str;
+extern mac_address_bin_t      g_gw_mac_wifi;
+extern mac_address_str_t      g_gw_mac_wifi_str;
+extern mac_address_str_t      g_gw_mac_sta_str;
+extern wifi_ssid_t            g_gw_wifi_ssid;
 
 void
 gw_cfg_print_to_log(const ruuvi_gateway_config_t *p_config);

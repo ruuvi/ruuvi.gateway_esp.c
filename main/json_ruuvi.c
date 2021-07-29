@@ -6,10 +6,12 @@
  */
 
 #include "json_ruuvi.h"
-#include "stdio.h"
+#include <string.h>
+#include <stdio.h>
 #include "cJSON.h"
 #include "cjson_wrap.h"
 #include "http_server_auth_type.h"
+#include "gw_cfg_default.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
