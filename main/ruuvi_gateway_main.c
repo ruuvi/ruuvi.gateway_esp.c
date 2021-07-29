@@ -13,6 +13,7 @@
 #include "esp_system.h"
 #include "ethernet.h"
 #include "os_task.h"
+#include "os_timer_sig.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "gpio.h"
@@ -44,7 +45,36 @@ static const char TAG[] = "ruuvi_gateway";
 #define MAC_ADDRESS_IDX_OF_LAST_BYTE        (MAC_ADDRESS_NUM_BYTES - 1U)
 #define MAC_ADDRESS_IDX_OF_PENULTIMATE_BYTE (MAC_ADDRESS_NUM_BYTES - 2U)
 
+#define MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS (10U)
+
+typedef enum main_task_sig_e
+{
+    MAIN_TASK_SIG_LOG_HEAP_USAGE = OS_SIGNAL_NUM_0,
+} main_task_sig_e;
+
+#define MAIN_TASK_SIG_FIRST (MAIN_TASK_SIG_LOG_HEAP_USAGE)
+#define MAIN_TASK_SIG_LAST  (MAIN_TASK_SIG_LOG_HEAP_USAGE)
+
 EventGroupHandle_t status_bits;
+
+static os_signal_t *                  g_p_signal_main_task;
+static os_signal_static_t             g_signal_main_task_mem;
+static os_timer_sig_periodic_t *      g_p_timer_sig_log_heap_usage;
+static os_timer_sig_periodic_static_t g_timer_sig_log_heap_usage;
+
+ATTR_PURE
+static os_signal_num_e
+main_task_conv_to_sig_num(const main_task_sig_e sig)
+{
+    return (os_signal_num_e)sig;
+}
+
+static main_task_sig_e
+reset_task_conv_from_sig_num(const os_signal_num_e sig_num)
+{
+    assert(((os_signal_num_e)MAIN_TASK_SIG_FIRST <= sig_num) && (sig_num <= (os_signal_num_e)MAIN_TASK_SIG_LAST));
+    return (main_task_sig_e)sig_num;
+}
 
 static inline uint8_t
 conv_bool_to_u8(const bool x)
@@ -89,17 +119,6 @@ void
 ruuvi_send_nrf_get_id(void)
 {
     api_send_get_device_id(RE_CA_UART_GET_DEVICE_ID);
-}
-
-ATTR_NORETURN
-static void
-monitoring_task(void)
-{
-    for (;;)
-    {
-        LOG_INFO("free heap: %u", esp_get_free_heap_size());
-        vTaskDelay(pdMS_TO_TICKS(10000));
-    }
 }
 
 static void
@@ -420,6 +439,17 @@ ruuvi_nvs_flash_erase(void)
     }
 }
 
+static void
+main_task_handle_sig(const main_task_sig_e main_task_sig)
+{
+    switch (main_task_sig)
+    {
+        case MAIN_TASK_SIG_LOG_HEAP_USAGE:
+            LOG_INFO("free heap: %u", esp_get_free_heap_size());
+            break;
+    }
+}
+
 void
 app_main(void)
 {
@@ -547,21 +577,45 @@ app_main(void)
         leds_indication_network_no_connection();
     }
 
-    const uint32_t   stack_size_for_monitoring_task = 2 * 1024;
-    os_task_handle_t ph_task_monitoring             = NULL;
-    if (!os_task_create_without_param(
-            &monitoring_task,
-            "monitoring_task",
-            stack_size_for_monitoring_task,
-            1,
-            &ph_task_monitoring))
-    {
-        LOG_ERR("Can't create thread");
-    }
-
     if (!reset_task_init())
     {
         LOG_ERR("Can't create thread");
     }
-    LOG_INFO("Main started");
+
+    g_p_signal_main_task = os_signal_create_static(&g_signal_main_task_mem);
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_LOG_HEAP_USAGE));
+
+    g_p_timer_sig_log_heap_usage = os_timer_sig_periodic_create_static(
+        &g_timer_sig_log_heap_usage,
+        "log_heap_usage",
+        g_p_signal_main_task,
+        main_task_conv_to_sig_num(MAIN_TASK_SIG_LOG_HEAP_USAGE),
+        pdMS_TO_TICKS(MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS * 1000U));
+
+    if (!os_signal_register_cur_thread(g_p_signal_main_task))
+    {
+        LOG_ERR("%s failed", "os_signal_register_cur_thread");
+    }
+
+    os_timer_sig_periodic_start(g_p_timer_sig_log_heap_usage);
+
+    LOG_INFO("Main loop started");
+    for (;;)
+    {
+        os_signal_events_t sig_events = { 0 };
+        if (!os_signal_wait_with_timeout(g_p_signal_main_task, OS_DELTA_TICKS_INFINITE, &sig_events))
+        {
+            continue;
+        }
+        for (;;)
+        {
+            const os_signal_num_e sig_num = os_signal_num_get_next(&sig_events);
+            if (OS_SIGNAL_NUM_NONE == sig_num)
+            {
+                break;
+            }
+            const main_task_sig_e main_task_sig = reset_task_conv_from_sig_num(sig_num);
+            main_task_handle_sig(main_task_sig);
+        }
+    }
 }
