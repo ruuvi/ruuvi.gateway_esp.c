@@ -222,6 +222,8 @@ cb_on_http_data_json_github_latest_release(
     const http_resp_code_e http_resp_code,
     void *                 p_user_data)
 {
+    LOG_INFO("cb_on_http_data_json_github_latest_release: buf_size=%lu", (printf_ulong_t)buf_size);
+
     download_github_latest_release_info_t *const p_info = p_user_data;
     if (p_info->is_error)
     {
@@ -257,22 +259,49 @@ cb_on_http_data_json_github_latest_release(
     {
         if (0 == content_length)
         {
-            p_info->is_error = true;
-            LOG_ERR("Content length is zero");
-            return false;
+            p_info->json_buf_size = buf_size + 1;
         }
-        p_info->json_buf_size = content_length + 1;
-        p_info->p_json_buf    = os_calloc(1, p_info->json_buf_size);
+        else
+        {
+            p_info->json_buf_size = content_length + 1;
+        }
+        p_info->p_json_buf = os_calloc(1, p_info->json_buf_size);
         if (NULL == p_info->p_json_buf)
         {
             p_info->is_error = true;
-            LOG_ERR("Can't allocate %lu bytes for github_latest_release.json", (printf_ulong_t)content_length);
+            LOG_ERR("Can't allocate %lu bytes for github_latest_release.json", (printf_ulong_t)p_info->json_buf_size);
             return false;
+        }
+    }
+    else
+    {
+        if (0 == content_length)
+        {
+            p_info->json_buf_size += buf_size;
+            LOG_INFO("Reallocate %lu bytes", (printf_ulong_t)p_info->json_buf_size);
+            if (!os_realloc_safe((void **)&p_info->p_json_buf, p_info->json_buf_size))
+            {
+                p_info->is_error = true;
+                if (NULL != p_info->p_json_buf)
+                {
+                    os_free(p_info->p_json_buf);
+                    p_info->p_json_buf = NULL;
+                }
+                LOG_ERR(
+                    "Can't allocate %lu bytes for github_latest_release.json",
+                    (printf_ulong_t)p_info->json_buf_size);
+                return false;
+            }
         }
     }
     if ((offset >= p_info->json_buf_size) || ((offset + buf_size) >= p_info->json_buf_size))
     {
         p_info->is_error = true;
+        if (NULL != p_info->p_json_buf)
+        {
+            os_free(p_info->p_json_buf);
+            p_info->p_json_buf = NULL;
+        }
         LOG_ERR(
             "Buffer overflow while downloading github_latest_release.json: json_buf_size=%lu, offset=%lu, len=%lu",
             (printf_ulong_t)p_info->json_buf_size,
