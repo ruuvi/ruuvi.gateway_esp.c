@@ -16,6 +16,7 @@
 #include "esp_ota_ops_patched.h"
 #include "nrf52fw.h"
 #include "leds.h"
+#include "adv_post.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -639,6 +640,7 @@ fw_update_task(void)
 {
     LOG_INFO("Firmware updating started, URL: %s", g_fw_update_cfg.url);
 
+    adv_post_stop();
     http_server_disable_ap_stopping_by_timeout();
     if (!wifi_manager_is_ap_active())
     {
