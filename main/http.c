@@ -23,6 +23,8 @@
 
 #define BASE_10 (10U)
 
+#define HTTP_DOWNLOAD_TIMEOUT_SECONDS   (25)
+
 typedef struct http_download_cb_info_t
 {
     http_download_cb_on_data_t cb_on_data;
@@ -298,7 +300,7 @@ http_download(const char *const p_url, http_download_cb_on_data_t cb_on_data, vo
         .client_cert_pem             = NULL,
         .client_key_pem              = NULL,
         .method                      = HTTP_METHOD_GET,
-        .timeout_ms                  = 0,
+        .timeout_ms                  = HTTP_DOWNLOAD_TIMEOUT_SECONDS * 1000,
         .disable_auto_redirect       = false,
         .max_redirection_count       = 0,
         .event_handler               = &http_download_event_handler,
