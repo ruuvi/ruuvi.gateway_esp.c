@@ -213,14 +213,6 @@ http_server_resp_json_info(void)
         flag_add_header_date);
 }
 
-typedef struct download_github_latest_release_info_t
-{
-    bool             is_error;
-    http_resp_code_e http_resp_code;
-    char *           p_json_buf;
-    size_t           json_buf_size;
-} download_github_latest_release_info_t;
-
 static bool
 cb_on_http_data_json_github_latest_release(
     const uint8_t *const   p_buf,
@@ -292,9 +284,8 @@ cb_on_http_data_json_github_latest_release(
     return true;
 }
 
-HTTP_SERVER_CB_STATIC
-http_server_resp_t
-http_server_resp_json_github_latest_release(void)
+download_github_latest_release_info_t
+http_download_latest_release_info(void)
 {
     download_github_latest_release_info_t info = {
         .is_error       = false,
@@ -328,21 +319,28 @@ http_server_resp_json_github_latest_release(void)
         LOG_ERR("http_download returned NULL buffer");
         info.is_error = true;
     }
+    return info;
+}
+
+HTTP_SERVER_CB_STATIC
+http_server_resp_t
+http_server_resp_json_github_latest_release(void)
+{
+    const download_github_latest_release_info_t info = http_download_latest_release_info();
     if (info.is_error)
     {
         return http_server_resp_504();
     }
 
-    cjson_wrap_str_t json_str = { .p_str = info.p_json_buf };
-    LOG_INFO("github_latest_release.json: %s", json_str.p_str);
+    LOG_INFO("github_latest_release.json: %s", info.p_json_buf);
     const bool flag_no_cache        = true;
     const bool flag_add_header_date = true;
     return http_server_resp_data_in_heap(
         HTTP_CONENT_TYPE_APPLICATION_JSON,
         NULL,
-        strlen(json_str.p_str),
+        strlen(info.p_json_buf),
         HTTP_CONENT_ENCODING_NONE,
-        (const uint8_t *)json_str.p_str,
+        (const uint8_t *)info.p_json_buf,
         flag_no_cache,
         flag_add_header_date);
 }
