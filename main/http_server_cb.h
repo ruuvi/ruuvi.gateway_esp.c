@@ -42,6 +42,9 @@ http_server_cb_init(const char *const p_fatfs_gwui_partition_name);
 void
 http_server_cb_deinit(void);
 
+void
+http_server_cb_on_user_req(const http_server_user_req_code_e req_code);
+
 http_server_resp_t
 http_server_cb_on_get(const char *p_path, const bool flag_access_from_lan, const http_server_resp_t *const p_resp_auth);
 
@@ -56,6 +59,9 @@ http_server_cb_on_delete(
 
 download_github_latest_release_info_t
 http_download_latest_release_info(void);
+
+bool
+http_server_is_timeout_expired_since_last_successful_fw_update_check(void);
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 

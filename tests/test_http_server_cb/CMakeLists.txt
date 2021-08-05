@@ -18,12 +18,24 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/http_server_cb.h
         ${RUUVI_GW_SRC}/http_json.c
         ${RUUVI_GW_SRC}/http_json.h
+        ${RUUVI_GW_SRC}/json_helper.c
+        ${RUUVI_GW_SRC}/json_helper.h
         ${RUUVI_GW_SRC}/json_ruuvi.c
         ${RUUVI_GW_SRC}/json_ruuvi.h
         ${RUUVI_GW_SRC}/metrics.h
         ${RUUVI_GW_SRC}/ruuvi_device_id.c
         ${RUUVI_GW_SRC}/ruuvi_device_id.h
+        ${RUUVI_GW_SRC}/time_str.c
+        ${RUUVI_GW_SRC}/time_str.h
         ${RUUVI_ESP_WRAPPERS_INC}/log.h
+        ${RUUVI_ESP_WRAPPERS_INC}/mac_addr.h
+        ${RUUVI_ESP_WRAPPERS_INC}/os_mkgmtime.h
+        ${RUUVI_ESP_WRAPPERS_INC}/os_str.h
+        ${RUUVI_ESP_WRAPPERS_INC}/str_buf.h
+        ${RUUVI_ESP_WRAPPERS}/src/mac_addr.c
+        ${RUUVI_ESP_WRAPPERS}/src/os_mkgmtime.c
+        ${RUUVI_ESP_WRAPPERS}/src/os_str.c
+        ${RUUVI_ESP_WRAPPERS}/src/str_buf.c
         ${WIFI_MANAGER_SRC}/http_server_auth.c
         ${WIFI_MANAGER_SRC}/http_server_auth.h
         ${WIFI_MANAGER_SRC}/http_server_resp.c
@@ -97,7 +109,6 @@ target_link_libraries(${ProjectId}
         gtest
         gtest_main
         gcov
-        ruuvi_esp_wrappers
         ruuvi_esp_wrappers-common_test_funcs
         --coverage
 )

@@ -37,6 +37,8 @@
 #include "hmac_sha256.h"
 #include "ruuvi_device_id.h"
 #include "gw_cfg_default.h"
+#include "os_time.h"
+#include "time_str.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -48,13 +50,16 @@ static const char TAG[] = "ruuvi_gateway";
 
 #define MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS (10U)
 
+#define MAIN_TASK_CHECK_FOR_FW_UPDATES_PERIOD_SECONDS (40U * 60U)
+
 typedef enum main_task_sig_e
 {
-    MAIN_TASK_SIG_LOG_HEAP_USAGE = OS_SIGNAL_NUM_0,
+    MAIN_TASK_SIG_LOG_HEAP_USAGE       = OS_SIGNAL_NUM_0,
+    MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES = OS_SIGNAL_NUM_1,
 } main_task_sig_e;
 
 #define MAIN_TASK_SIG_FIRST (MAIN_TASK_SIG_LOG_HEAP_USAGE)
-#define MAIN_TASK_SIG_LAST  (MAIN_TASK_SIG_LOG_HEAP_USAGE)
+#define MAIN_TASK_SIG_LAST  (MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES)
 
 EventGroupHandle_t status_bits;
 
@@ -62,6 +67,8 @@ static os_signal_t *                  g_p_signal_main_task;
 static os_signal_static_t             g_signal_main_task_mem;
 static os_timer_sig_periodic_t *      g_p_timer_sig_log_heap_usage;
 static os_timer_sig_periodic_static_t g_timer_sig_log_heap_usage;
+static os_timer_sig_periodic_t *      g_p_timer_sig_check_for_fw_updates;
+static os_timer_sig_periodic_static_t g_timer_sig_check_for_fw_updates_mem;
 
 ATTR_PURE
 static os_signal_num_e
@@ -71,7 +78,7 @@ main_task_conv_to_sig_num(const main_task_sig_e sig)
 }
 
 static main_task_sig_e
-reset_task_conv_from_sig_num(const os_signal_num_e sig_num)
+main_task_conv_from_sig_num(const os_signal_num_e sig_num)
 {
     assert(((os_signal_num_e)MAIN_TASK_SIG_FIRST <= sig_num) && (sig_num <= (os_signal_num_e)MAIN_TASK_SIG_LAST));
     return (main_task_sig_e)sig_num;
@@ -331,6 +338,7 @@ wifi_init(
         return false;
     }
     const wifi_manager_callbacks_t wifi_callbacks = {
+        .cb_on_http_user_req       = &http_server_cb_on_user_req,
         .cb_on_http_get            = &http_server_cb_on_get,
         .cb_on_http_post           = &http_server_cb_on_post,
         .cb_on_http_delete         = &http_server_cb_on_delete,
@@ -440,6 +448,80 @@ ruuvi_nvs_flash_erase(void)
     }
 }
 
+static const char *
+get_wday_if_set_in_bitmask(const auto_update_weekdays_bitmask_t auto_update_weekdays_bitmask, const os_time_wday_e wday)
+{
+    if (0 != (auto_update_weekdays_bitmask & (1U << (unsigned)wday)))
+    {
+        return os_time_wday_name_mid(wday);
+    }
+    return "";
+}
+
+static void
+check_for_fw_updates(void)
+{
+    if (AUTO_UPDATE_CYCLE_TYPE_MANUAL == g_gateway_config.auto_update.auto_update_cycle)
+    {
+        return;
+    }
+    if (!wifi_manager_is_connected_to_wifi_or_ethernet())
+    {
+        LOG_INFO("Check for fw updates - skip (not connected to WiFi or Ethernet)");
+        return;
+    }
+    if (!time_is_synchronized())
+    {
+        LOG_INFO("Check for fw updates - skip (time is not synchronized)");
+        return;
+    }
+    if (!http_server_is_timeout_expired_since_last_successful_fw_update_check())
+    {
+        LOG_INFO("Check for fw updates - skip (last check was performed less than 12 hours ago)");
+        return;
+    }
+    const ruuvi_gw_cfg_auto_update_t *const p_cfg_auto_update = &g_gateway_config.auto_update;
+
+    const time_t unix_time = os_time_get();
+    time_t       cur_time  = unix_time + (time_t)((int32_t)p_cfg_auto_update->auto_update_tz_offset_hours * 60 * 60);
+    struct tm    tm_time   = { 0 };
+    gmtime_r(&cur_time, &tm_time);
+
+    LOG_INFO(
+        "Check for fw updates: configured weekdays: %s %s %s %s %s %s %s, current: %s",
+        get_wday_if_set_in_bitmask(p_cfg_auto_update->auto_update_weekdays_bitmask, OS_TIME_WDAY_SUN),
+        get_wday_if_set_in_bitmask(p_cfg_auto_update->auto_update_weekdays_bitmask, OS_TIME_WDAY_MON),
+        get_wday_if_set_in_bitmask(p_cfg_auto_update->auto_update_weekdays_bitmask, OS_TIME_WDAY_TUE),
+        get_wday_if_set_in_bitmask(p_cfg_auto_update->auto_update_weekdays_bitmask, OS_TIME_WDAY_WED),
+        get_wday_if_set_in_bitmask(p_cfg_auto_update->auto_update_weekdays_bitmask, OS_TIME_WDAY_THU),
+        get_wday_if_set_in_bitmask(p_cfg_auto_update->auto_update_weekdays_bitmask, OS_TIME_WDAY_FRI),
+        get_wday_if_set_in_bitmask(p_cfg_auto_update->auto_update_weekdays_bitmask, OS_TIME_WDAY_SAT),
+        os_time_wday_name_mid(os_time_get_tm_wday(&tm_time)));
+
+    const uint32_t cur_day_bit_mask = 1U << (uint8_t)tm_time.tm_wday;
+    if (0 == (p_cfg_auto_update->auto_update_weekdays_bitmask & cur_day_bit_mask))
+    {
+        LOG_INFO("Check for fw updates - skip (weekday does not match)");
+        return;
+    }
+    LOG_INFO(
+        "Check for fw updates: configured range [%02u:00 .. %02u:00], current time: %02u:%02u)",
+        (printf_uint_t)p_cfg_auto_update->auto_update_interval_from,
+        (printf_uint_t)p_cfg_auto_update->auto_update_interval_to,
+        (printf_uint_t)tm_time.tm_hour,
+        (printf_uint_t)tm_time.tm_min);
+    if (!((tm_time.tm_hour >= p_cfg_auto_update->auto_update_interval_from)
+          && (tm_time.tm_hour < p_cfg_auto_update->auto_update_interval_to)))
+    {
+        LOG_INFO("Check for fw updates - skip (current time is out of range)");
+        return;
+    }
+
+    LOG_INFO("Check for fw updates: activate");
+
+    http_server_user_req(HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO);
+}
+
 static void
 main_task_handle_sig(const main_task_sig_e main_task_sig)
 {
@@ -447,6 +529,9 @@ main_task_handle_sig(const main_task_sig_e main_task_sig)
     {
         case MAIN_TASK_SIG_LOG_HEAP_USAGE:
             LOG_INFO("free heap: %u", esp_get_free_heap_size());
+            break;
+        case MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES:
+            check_for_fw_updates();
             break;
     }
 }
@@ -585,6 +670,7 @@ app_main(void)
 
     g_p_signal_main_task = os_signal_create_static(&g_signal_main_task_mem);
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_LOG_HEAP_USAGE));
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES));
 
     g_p_timer_sig_log_heap_usage = os_timer_sig_periodic_create_static(
         &g_timer_sig_log_heap_usage,
@@ -592,6 +678,12 @@ app_main(void)
         g_p_signal_main_task,
         main_task_conv_to_sig_num(MAIN_TASK_SIG_LOG_HEAP_USAGE),
         pdMS_TO_TICKS(MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS * 1000U));
+    g_p_timer_sig_check_for_fw_updates = os_timer_sig_periodic_create_static(
+        &g_timer_sig_check_for_fw_updates_mem,
+        "check_for_fw_updates",
+        g_p_signal_main_task,
+        main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES),
+        pdMS_TO_TICKS(MAIN_TASK_CHECK_FOR_FW_UPDATES_PERIOD_SECONDS * 1000U));
 
     if (!os_signal_register_cur_thread(g_p_signal_main_task))
     {
@@ -599,6 +691,7 @@ app_main(void)
     }
 
     os_timer_sig_periodic_start(g_p_timer_sig_log_heap_usage);
+    os_timer_sig_periodic_start(g_p_timer_sig_check_for_fw_updates);
 
     LOG_INFO("Main loop started");
     for (;;)
@@ -615,7 +708,7 @@ app_main(void)
             {
                 break;
             }
-            const main_task_sig_e main_task_sig = reset_task_conv_from_sig_num(sig_num);
+            const main_task_sig_e main_task_sig = main_task_conv_from_sig_num(sig_num);
             main_task_handle_sig(main_task_sig);
         }
     }

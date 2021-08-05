@@ -45,6 +45,12 @@ json_fw_update_parse_http_body(const char *const p_body);
 bool
 fw_update_is_url_valid(void);
 
+void
+fw_update_set_url(const char *const p_url_fmt, ...);
+
+const char *
+fw_update_get_url(void);
+
 bool
 fw_update_run(void);
 

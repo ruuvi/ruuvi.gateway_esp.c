@@ -15,12 +15,18 @@
 #include "mac_addr.h"
 #include "cjson_wrap.h"
 #include "settings.h"
+#include "http_server.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #define ADV_POST_DEFAULT_INTERVAL_SECONDS 10
+
+#define HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO (HTTP_SERVER_USER_REQ_CODE_1)
+
+#define FW_UPDATING_REGULAR_CYCLE_DELAY_SECONDS                      (14U * 24U * 60U * 60U)
+#define FW_UPDATING_DELAY_BETWEEN_SUCCESSFUL_FW_UPDATE_CHECK_SECONDS (12 * 60 * 60)
 
 #define WIFI_CONNECTED_BIT (1U << 0U)
 #define MQTT_CONNECTED_BIT (1U << 1U)

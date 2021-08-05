@@ -676,6 +676,21 @@ fw_update_is_url_valid(void)
     return true;
 }
 
+void
+fw_update_set_url(const char *const p_url_fmt, ...)
+{
+    va_list ap;
+    va_start(ap, p_url_fmt);
+    vsnprintf(g_fw_update_cfg.url, sizeof(g_fw_update_cfg.url), p_url_fmt, ap);
+    va_end(ap);
+}
+
+const char *
+fw_update_get_url(void)
+{
+    return g_fw_update_cfg.url;
+}
+
 bool
 fw_update_run(void)
 {

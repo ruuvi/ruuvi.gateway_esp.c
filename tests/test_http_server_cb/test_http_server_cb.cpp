@@ -212,17 +212,18 @@ public:
 
     ~TestHttpServerCb() override;
 
-    MemAllocTrace     m_mem_alloc_trace;
-    uint32_t          m_malloc_cnt;
-    uint32_t          m_malloc_fail_on_cnt;
-    bool              m_flag_settings_saved_to_flash;
-    bool              m_flag_settings_sent_to_nrf;
-    bool              m_flag_settings_ethernet_ip_updated;
-    flash_fat_fs_t    m_fatfs;
-    bool              m_is_fatfs_mounted;
-    bool              m_is_fatfs_mount_fail;
-    vector<FileInfo>  m_files;
-    file_descriptor_t m_fd;
+    MemAllocTrace         m_mem_alloc_trace;
+    uint32_t              m_malloc_cnt;
+    uint32_t              m_malloc_fail_on_cnt;
+    bool                  m_flag_settings_saved_to_flash;
+    bool                  m_flag_settings_sent_to_nrf;
+    bool                  m_flag_settings_ethernet_ip_updated;
+    flash_fat_fs_t        m_fatfs;
+    bool                  m_is_fatfs_mounted;
+    bool                  m_is_fatfs_mount_fail;
+    vector<FileInfo>      m_files;
+    file_descriptor_t     m_fd;
+    std::array<char, 128> fw_update_url;
 };
 
 TestHttpServerCb::TestHttpServerCb()
@@ -273,6 +274,20 @@ os_calloc(const size_t nmemb, const size_t size)
     return ptr;
 }
 
+ATTR_NONNULL(1)
+bool
+os_realloc_safe(void **const p_ptr, const size_t size)
+{
+    void *ptr       = *p_ptr;
+    void *p_new_ptr = realloc(ptr, size);
+    if (NULL == p_new_ptr)
+    {
+        return false;
+    }
+    *p_ptr = p_new_ptr;
+    return true;
+}
+
 char *
 metrics_generate(void)
 {
@@ -289,6 +304,12 @@ time_t
 http_server_get_cur_time(void)
 {
     return 1615660220;
+}
+
+TickType_t
+xTaskGetTickCount(void)
+{
+    return 0;
 }
 
 void
@@ -397,6 +418,21 @@ flashfatfs_open(const flash_fat_fs_t *p_ffs, const char *file_path)
         }
     }
     return (file_descriptor_t)-1;
+}
+
+void
+fw_update_set_url(const char *const p_url_fmt, ...)
+{
+    va_list ap;
+    va_start(ap, p_url_fmt);
+    vsnprintf(g_pTestClass->fw_update_url.data(), g_pTestClass->fw_update_url.size(), p_url_fmt, ap);
+    va_end(ap);
+}
+
+const char *
+fw_update_get_url(void)
+{
+    return g_pTestClass->fw_update_url.data();
 }
 
 } // extern "C"

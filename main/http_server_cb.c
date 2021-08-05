@@ -23,6 +23,10 @@
 #include "nrf52fw.h"
 #include "adv_post.h"
 #include "ruuvi_device_id.h"
+#include "json_helper.h"
+#include "os_str.h"
+#include "os_time.h"
+#include "time_str.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -39,11 +43,13 @@ static const char g_empty_json[] = "{}";
 
 static const flash_fat_fs_t *gp_ffs_gwui;
 
+static TickType_t g_tick_last_fw_update_check;
+
 #if !RUUVI_TESTS_HTTP_SERVER_CB
 static time_t
 http_server_get_cur_time(void)
 {
-    return time(NULL);
+    return os_time_get();
 }
 #endif
 
@@ -310,6 +316,7 @@ cb_on_http_data_json_github_latest_release(
         return false;
     }
     memcpy(&p_info->p_json_buf[offset], p_buf, buf_size);
+    p_info->p_json_buf[offset + buf_size] = '\0';
     return true;
 }
 
@@ -580,6 +587,108 @@ http_server_is_url_prefix_eq(
         return false;
     }
     return true;
+}
+
+static void
+http_server_update_timestamp_of_last_successful_fw_update_check(void)
+{
+    g_tick_last_fw_update_check = xTaskGetTickCount();
+}
+
+bool
+http_server_is_timeout_expired_since_last_successful_fw_update_check(void)
+{
+    if (0 == g_tick_last_fw_update_check)
+    {
+        return true;
+    }
+    const os_delta_ticks_t delta_ticks = xTaskGetTickCount() - g_tick_last_fw_update_check;
+    if (delta_ticks >= pdMS_TO_TICKS(FW_UPDATING_DELAY_BETWEEN_SUCCESSFUL_FW_UPDATE_CHECK_SECONDS * 1000))
+    {
+        return true;
+    }
+    return false;
+}
+
+void
+http_server_cb_on_user_req_download_latest_release_info(void)
+{
+    LOG_INFO("Download latest release info");
+    download_github_latest_release_info_t latest_release_info = http_download_latest_release_info();
+    if (latest_release_info.is_error)
+    {
+        LOG_ERR("Failed to download latest firmware release info");
+        return;
+    }
+    LOG_INFO("github_latest_release.json: %s", latest_release_info.p_json_buf);
+
+    http_server_update_timestamp_of_last_successful_fw_update_check();
+
+    bool      flag_found_tag_name    = false;
+    time_t    unix_time_published_at = 0;
+    str_buf_t tag_name               = json_helper_get_by_key(latest_release_info.p_json_buf, "tag_name");
+    if (NULL != tag_name.buf)
+    {
+        LOG_INFO("github_latest_release.json: tag_name: %s", tag_name.buf);
+        const char *p_cur_fw_ver = fw_update_get_cur_version();
+        if (0 == strcmp(p_cur_fw_ver, tag_name.buf))
+        {
+            LOG_INFO("github_latest_release.json: No update is required, the latest version is already installed");
+            return;
+        }
+        LOG_INFO(
+            "github_latest_release.json: Update is required (current version: %s, latest version: %s)",
+            p_cur_fw_ver,
+            tag_name.buf);
+
+        fw_update_set_url("https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/%s", tag_name.buf);
+        flag_found_tag_name = true;
+        str_buf_free_buf(&tag_name);
+    }
+    str_buf_t published_at = json_helper_get_by_key(latest_release_info.p_json_buf, "published_at");
+    if (NULL != published_at.buf)
+    {
+        LOG_INFO("github_latest_release.json: published_at: %s", published_at.buf);
+        unix_time_published_at = time_str_conv_to_unix_time(published_at.buf);
+        str_buf_free_buf(&published_at);
+    }
+    os_free(latest_release_info.p_json_buf);
+
+    if ((!flag_found_tag_name) || (0 == unix_time_published_at))
+    {
+        LOG_WARN("github_latest_release.json: 'tag_name' or 'published_at' is not found");
+        return;
+    }
+
+    const ruuvi_gw_cfg_auto_update_t *const p_cfg_auto_update = &g_gateway_config.auto_update;
+    if (AUTO_UPDATE_CYCLE_TYPE_REGULAR == p_cfg_auto_update->auto_update_cycle)
+    {
+        const time_t cur_unix_time = http_server_get_cur_time();
+        if ((cur_unix_time - unix_time_published_at) < (time_t)FW_UPDATING_REGULAR_CYCLE_DELAY_SECONDS)
+        {
+            LOG_INFO(
+                "github_latest_release.json: postpone the update because less than 14 days have passed since the "
+                "update was published");
+            return;
+        }
+    }
+
+    LOG_INFO("github_latest_release.json: Run firmware updating from URL: %s", fw_update_get_url());
+    fw_update_run();
+}
+
+void
+http_server_cb_on_user_req(const http_server_user_req_code_e req_code)
+{
+    switch (req_code)
+    {
+        case HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO:
+            http_server_cb_on_user_req_download_latest_release_info();
+            break;
+        default:
+            LOG_ERR("Unknown req_code=%d", (printf_int_t)req_code);
+            break;
+    }
 }
 
 http_server_resp_t
