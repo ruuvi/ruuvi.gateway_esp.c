@@ -215,31 +215,59 @@ http_server_resp_json_info(void)
 
 typedef struct download_github_latest_release_info_t
 {
-    bool   is_error;
-    char * p_json_buf;
-    size_t json_buf_size;
+    bool             is_error;
+    http_resp_code_e http_resp_code;
+    char *           p_json_buf;
+    size_t           json_buf_size;
 } download_github_latest_release_info_t;
 
-static void
+static bool
 cb_on_http_data_json_github_latest_release(
-    const uint8_t *const p_buf,
-    const size_t         buf_size,
-    const size_t         offset,
-    const size_t         content_length,
-    void *               p_user_data)
+    const uint8_t *const   p_buf,
+    const size_t           buf_size,
+    const size_t           offset,
+    const size_t           content_length,
+    const http_resp_code_e http_resp_code,
+    void *                 p_user_data)
 {
     download_github_latest_release_info_t *const p_info = p_user_data;
     if (p_info->is_error)
     {
-        return;
+        LOG_ERR("Error occurred while downloading");
+        return false;
     }
+    if (HTTP_RESP_CODE_200 != http_resp_code)
+    {
+        if (HTTP_RESP_CODE_302 == http_resp_code)
+        {
+            LOG_INFO("Got HTTP error %d: Redirect to another location", (printf_int_t)http_resp_code);
+            return true;
+        }
+        else
+        {
+            LOG_ERR(
+                "Got HTTP error %d: %.*s",
+                (printf_int_t)http_resp_code,
+                (printf_int_t)buf_size,
+                (const char *)p_buf);
+            p_info->is_error = true;
+            if (NULL != p_info->p_json_buf)
+            {
+                os_free(p_info->p_json_buf);
+                p_info->p_json_buf = NULL;
+            }
+            return false;
+        }
+    }
+
+    p_info->http_resp_code = http_resp_code;
     if (NULL == p_info->p_json_buf)
     {
         if (0 == content_length)
         {
             p_info->is_error = true;
             LOG_ERR("Content length is zero");
-            return;
+            return false;
         }
         p_info->json_buf_size = content_length + 1;
         p_info->p_json_buf    = os_calloc(1, p_info->json_buf_size);
@@ -247,7 +275,7 @@ cb_on_http_data_json_github_latest_release(
         {
             p_info->is_error = true;
             LOG_ERR("Can't allocate %lu bytes for github_latest_release.json", (printf_ulong_t)content_length);
-            return;
+            return false;
         }
     }
     if ((offset >= p_info->json_buf_size) || ((offset + buf_size) >= p_info->json_buf_size))
@@ -258,9 +286,10 @@ cb_on_http_data_json_github_latest_release(
             (printf_ulong_t)p_info->json_buf_size,
             (printf_ulong_t)offset,
             (printf_ulong_t)buf_size);
-        return;
+        return false;
     }
     memcpy(&p_info->p_json_buf[offset], p_buf, buf_size);
+    return true;
 }
 
 HTTP_SERVER_CB_STATIC
@@ -268,18 +297,38 @@ http_server_resp_t
 http_server_resp_json_github_latest_release(void)
 {
     download_github_latest_release_info_t info = {
-        .is_error      = false,
-        .p_json_buf    = NULL,
-        .json_buf_size = 0,
+        .is_error       = false,
+        .http_resp_code = HTTP_RESP_CODE_200,
+        .p_json_buf     = NULL,
+        .json_buf_size  = 0,
     };
     if (!http_download(
             "https://api.github.com/repos/ruuvi/ruuvi.gateway_esp.c/releases/latest",
             &cb_on_http_data_json_github_latest_release,
             &info))
     {
-        return http_server_resp_504();
+        LOG_ERR("http_download failed");
+        info.is_error = true;
     }
-    if (NULL == info.p_json_buf)
+    if (HTTP_RESP_CODE_200 != info.http_resp_code)
+    {
+        if (NULL == info.p_json_buf)
+        {
+            LOG_ERR("http_download failed, HTTP resp code %d", (printf_int_t)info.http_resp_code);
+        }
+        else
+        {
+            LOG_ERR("http_download failed, HTTP resp code %d: %s", (printf_int_t)info.http_resp_code, info.p_json_buf);
+            os_free(info.p_json_buf);
+        }
+        info.is_error = true;
+    }
+    else if (NULL == info.p_json_buf)
+    {
+        LOG_ERR("http_download returned NULL buffer");
+        info.is_error = true;
+    }
+    if (info.is_error)
     {
         return http_server_resp_504();
     }

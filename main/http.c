@@ -23,7 +23,7 @@
 
 #define BASE_10 (10U)
 
-#define HTTP_DOWNLOAD_TIMEOUT_SECONDS   (25)
+#define HTTP_DOWNLOAD_TIMEOUT_SECONDS (25)
 
 typedef struct http_download_cb_info_t
 {
@@ -201,6 +201,7 @@ http_download_event_handler(esp_http_client_event_t *p_evt)
 
         case HTTP_EVENT_ON_CONNECTED:
             LOG_INFO("HTTP_EVENT_ON_CONNECTED");
+            p_cb_info->offset = 0;
             break;
 
         case HTTP_EVENT_HEADER_SENT:
@@ -211,6 +212,7 @@ http_download_event_handler(esp_http_client_event_t *p_evt)
             LOG_INFO("HTTP_EVENT_ON_HEADER, key=%s, value=%s", p_evt->header_key, p_evt->header_value);
             if (0 == strcasecmp(p_evt->header_key, "Content-Length"))
             {
+                p_cb_info->offset         = 0;
                 p_cb_info->content_length = os_str_to_uint32_cptr(p_evt->header_value, NULL, BASE_10);
             }
             break;
@@ -218,16 +220,17 @@ http_download_event_handler(esp_http_client_event_t *p_evt)
         case HTTP_EVENT_ON_DATA:
             LOG_DBG("HTTP_EVENT_ON_DATA, len=%d", p_evt->data_len);
             LOG_DUMP_VERBOSE(p_evt->data, p_evt->data_len, "<--:");
-            if (HTTP_RESP_CODE_200 == esp_http_client_get_status_code(p_cb_info->http_handle))
-            {
-                p_cb_info->cb_on_data(
+            if (!p_cb_info->cb_on_data(
                     p_evt->data,
                     p_evt->data_len,
                     p_cb_info->offset,
                     p_cb_info->content_length,
-                    p_cb_info->p_user_data);
-                p_cb_info->offset += p_evt->data_len;
+                    (http_resp_code_e)esp_http_client_get_status_code(p_cb_info->http_handle),
+                    p_cb_info->p_user_data))
+            {
+                return ESP_FAIL;
             }
+            p_cb_info->offset += p_evt->data_len;
             break;
 
         case HTTP_EVENT_ON_FINISH:

@@ -210,18 +210,37 @@ erase_partition_with_sleep(const esp_partition_t *const p_partition)
     return ESP_OK;
 }
 
-static void
+static bool
 fw_update_data_partition_cb_on_recv_data(
-    const uint8_t *const p_buf,
-    const size_t         buf_size,
-    const size_t         offset,
-    const size_t         content_length,
-    void *const          p_user_data)
+    const uint8_t *const   p_buf,
+    const size_t           buf_size,
+    const size_t           offset,
+    const size_t           content_length,
+    const http_resp_code_e http_resp_code,
+    void *const            p_user_data)
 {
     fw_update_data_partition_info_t *const p_info = p_user_data;
     if (p_info->is_error)
     {
-        return;
+        return false;
+    }
+    if (HTTP_RESP_CODE_200 != http_resp_code)
+    {
+        if (HTTP_RESP_CODE_302 == http_resp_code)
+        {
+            LOG_INFO("Got HTTP error %d: Redirect to another location", (printf_int_t)http_resp_code);
+            return true;
+        }
+        else
+        {
+            LOG_ERR(
+                "Got HTTP error %d: %.*s",
+                (printf_int_t)http_resp_code,
+                (printf_int_t)buf_size,
+                (const char *)p_buf);
+            p_info->is_error = true;
+            return false;
+        }
     }
     LOG_INFO(
         "Write to partition %s, offset %lu, size %lu",
@@ -234,6 +253,7 @@ fw_update_data_partition_cb_on_recv_data(
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, percentage);
 
     const esp_err_t err = esp_partition_write(p_info->p_partition, p_info->offset, p_buf, buf_size);
+    vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS));
     if (ESP_OK != err)
     {
         p_info->is_error = true;
@@ -242,11 +262,11 @@ fw_update_data_partition_cb_on_recv_data(
             "Failed to write to partition %s at offset %lu",
             p_info->p_partition->label,
             (printf_ulong_t)p_info->offset);
-        return;
+        return false;
     }
     p_info->offset += buf_size;
 
-    vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS));
+    return true;
 }
 
 static bool
@@ -312,18 +332,38 @@ fw_update_fatfs_nrf52(const char *const p_url)
     return fw_update_data_partition(p_partition, p_url);
 }
 
-static void
+static bool
 fw_update_ota_partition_cb_on_recv_data(
-    const uint8_t *const p_buf,
-    const size_t         buf_size,
-    const size_t         offset,
-    const size_t         content_length,
-    void *const          p_user_data)
+    const uint8_t *const   p_buf,
+    const size_t           buf_size,
+    const size_t           offset,
+    const size_t           content_length,
+    const http_resp_code_e http_resp_code,
+    void *const            p_user_data)
 {
     fw_update_ota_partition_info_t *const p_info = p_user_data;
     if (p_info->is_error)
     {
-        return;
+        LOG_INFO("Drop data after an error, offset %lu, size %lu", (printf_ulong_t)offset, (printf_ulong_t)buf_size);
+        return false;
+    }
+    if (HTTP_RESP_CODE_200 != http_resp_code)
+    {
+        if (HTTP_RESP_CODE_302 == http_resp_code)
+        {
+            LOG_INFO("Got HTTP error %d: Redirect to another location", (printf_int_t)http_resp_code);
+            return true;
+        }
+        else
+        {
+            LOG_ERR(
+                "Got HTTP error %d: %.*s",
+                (printf_int_t)http_resp_code,
+                (printf_int_t)buf_size,
+                (const char *)p_buf);
+            p_info->is_error = true;
+            return false;
+        }
     }
     LOG_INFO(
         "Write to OTA-partition %s, offset %lu, size %lu",
@@ -336,12 +376,14 @@ fw_update_ota_partition_cb_on_recv_data(
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, percentage);
 
     const esp_err_t err = esp_ota_write_patched(p_info->out_handle, p_buf, buf_size);
+    vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS));
     if (ESP_OK != err)
     {
         p_info->is_error = true;
         LOG_ERR_ESP(err, "Failed to write to OTA-partition %s", p_info->p_partition->label);
+        return false;
     }
-    vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS));
+    return true;
 }
 
 static bool
