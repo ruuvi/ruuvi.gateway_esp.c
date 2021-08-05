@@ -55,6 +55,8 @@ idf_component_register(
             ruuvi_gateway_main.c
             ruuvi_gateway.h
             settings.c
+            time_str.c
+            time_str.h
             time_task.c
             time_task.h
         REQUIRES
