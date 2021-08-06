@@ -334,6 +334,7 @@ adv_post_task(void)
     if (!os_signal_register_cur_thread(g_p_adv_post_sig))
     {
         LOG_ERR("%s failed", "os_signal_register_cur_thread");
+        return;
     }
 
     LOG_INFO("%s started", __func__);
