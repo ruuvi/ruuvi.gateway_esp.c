@@ -57,7 +57,7 @@ json_helper_get_by_key_wrapper(const char *const p_json, const char *const p_key
 
 /*** Unit-Tests *******************************************************************************************************/
 
-TEST_F(TestJsonHelper, test_json_get_by_key_1) // NOLINT
+TEST_F(TestJsonHelper, test_json_get_by_key_with_eol) // NOLINT
 {
     const char *const p_json
         = "{\n"
@@ -72,7 +72,7 @@ TEST_F(TestJsonHelper, test_json_get_by_key_1) // NOLINT
     ASSERT_EQ(string("2021-07-19T14:08:10Z"), json_helper_get_by_key_wrapper(p_json, "published_at"));
 }
 
-TEST_F(TestJsonHelper, test_json_get_by_key_2) // NOLINT
+TEST_F(TestJsonHelper, test_json_get_by_key_without_eol) // NOLINT
 {
     const char *const p_json
         = "{"
@@ -87,7 +87,7 @@ TEST_F(TestJsonHelper, test_json_get_by_key_2) // NOLINT
     ASSERT_EQ(string("2021-07-19T14:08:10Z"), json_helper_get_by_key_wrapper(p_json, "published_at"));
 }
 
-TEST_F(TestJsonHelper, test_json_get_by_key_3) // NOLINT
+TEST_F(TestJsonHelper, test_json_get_by_key_with_eol_unquoted_numbers) // NOLINT
 {
     const char *const p_json
         = "{\n"
@@ -102,7 +102,7 @@ TEST_F(TestJsonHelper, test_json_get_by_key_3) // NOLINT
     ASSERT_EQ(string("false"), json_helper_get_by_key_wrapper(p_json, "published_at"));
 }
 
-TEST_F(TestJsonHelper, test_json_get_by_key_4) // NOLINT
+TEST_F(TestJsonHelper, test_json_get_by_key_without_eol_unquoted_numbers) // NOLINT
 {
     const char *const p_json
         = "{"
