@@ -63,7 +63,7 @@ time_str_conv_to_tm(const char *const p_time_str, struct tm *const p_tm_time, ui
         {
             return true;
         }
-        if (isdigit(*p_end))
+        if (0 != isdigit(*p_end))
         {
             p_cur = p_end;
         }
@@ -89,7 +89,7 @@ time_str_conv_to_tm(const char *const p_time_str, struct tm *const p_tm_time, ui
         {
             return true;
         }
-        if (isdigit(*p_end))
+        if (0 != isdigit(*p_end))
         {
             p_cur = p_end;
         }
@@ -115,7 +115,7 @@ time_str_conv_to_tm(const char *const p_time_str, struct tm *const p_tm_time, ui
         {
             return true;
         }
-        if (isdigit(*p_end))
+        if (0 != isdigit(*p_end))
         {
             p_cur = p_end;
         }
@@ -141,7 +141,7 @@ time_str_conv_to_tm(const char *const p_time_str, struct tm *const p_tm_time, ui
         {
             return true;
         }
-        if (isdigit(*p_end))
+        if (0 != isdigit(*p_end))
         {
             p_cur = p_end;
         }
@@ -167,7 +167,7 @@ time_str_conv_to_tm(const char *const p_time_str, struct tm *const p_tm_time, ui
         {
             return true;
         }
-        if (isdigit(*p_end))
+        if (0 != isdigit(*p_end))
         {
             p_cur = p_end;
         }
@@ -271,7 +271,7 @@ time_str_conv_to_tm(const char *const p_time_str, struct tm *const p_tm_time, ui
             {
                 p_end += 1;
             }
-            else if (!isdigit(*p_end))
+            else if (0 == isdigit(*p_end))
             {
                 return false;
             }

@@ -8,6 +8,7 @@
 #include "json_helper.h"
 #include <stdbool.h>
 #include <string.h>
+#include <ctype.h>
 #include "str_buf.h"
 #include "esp_type_wrapper.h"
 
@@ -21,18 +22,21 @@ json_helper_find_token_start_and_end(const char *const p_val, const char **p_p_b
         *p_p_begin          = p_begin;
         for (;;)
         {
-            const char *const p_end = strchr(p_begin, '"');
+            const char *const p_end = strpbrk(p_begin, "\\\"");
             if (NULL == p_end)
             {
                 return false;
             }
-            const char *const p_char_before_quote = p_end - 1;
-            if ('\\' != *p_char_before_quote)
+            if ('"' == *p_end)
             {
                 *p_p_end = p_end;
                 break;
             }
-            p_begin = p_end + 1;
+            if ('\0' == p_end[1])
+            {
+                return false;
+            }
+            p_begin = &p_end[2];
         }
     }
     else
@@ -40,6 +44,12 @@ json_helper_find_token_start_and_end(const char *const p_val, const char **p_p_b
         *p_p_begin              = p_val;
         const char *const p_end = strpbrk(p_val, " \t,\n}");
         if (NULL == p_end)
+        {
+            return false;
+        }
+        const size_t len = p_end - p_val;
+        if ((0 == isdigit(*p_val)) && (0 != strncmp("null", p_val, len)) && (0 != strncmp("true", p_val, len))
+            && (0 != strncmp("false", p_val, len)))
         {
             return false;
         }
@@ -55,12 +65,21 @@ json_helper_get_by_key(const char *const p_json, const char *const p_key)
     const char * p_token = p_json;
     for (;;)
     {
-        p_token = strchr(p_token, '\"');
+        p_token = strpbrk(p_token, "\\\"");
         if (NULL == p_token)
         {
             return str_buf_init_null();
         }
-        if ((0 == strncmp(p_token + 1, p_key, key_len)) && ('"' == p_token[1 + key_len]))
+        if ('\\' == *p_token)
+        {
+            if ('\0' == p_token[1])
+            {
+                return str_buf_init_null();
+            }
+            p_token += 2;
+            continue;
+        }
+        if ((0 == strncmp(&p_token[1], p_key, key_len)) && ('"' == p_token[1 + key_len]))
         {
             p_token += 1 + key_len + 1;
             break;

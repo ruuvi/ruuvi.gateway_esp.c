@@ -116,3 +116,38 @@ TEST_F(TestJsonHelper, test_json_get_by_key_4) // NOLINT
     ASSERT_EQ(string("true"), json_helper_get_by_key_wrapper(p_json, "created_at"));
     ASSERT_EQ(string("false"), json_helper_get_by_key_wrapper(p_json, "published_at"));
 }
+
+TEST_F(TestJsonHelper, test_json_get_by_key_error) // NOLINT
+{
+    ASSERT_EQ(string("ABC"), json_helper_get_by_key_wrapper(R"({"node_id": "ABC"})", "node_id"));
+    ASSERT_EQ(string(""), json_helper_get_by_key_wrapper(R"({"node_id": "ABC})", "node_id"));
+    ASSERT_EQ(string(""), json_helper_get_by_key_wrapper(R"({"node_id": "ABC\"})", "node_id"));
+    ASSERT_EQ(string(""), json_helper_get_by_key_wrapper(R"({"node_id": \"ABC"})", "node_id"));
+    ASSERT_EQ(string(""), json_helper_get_by_key_wrapper(R"({"node_id": ABC"})", "node_id"));
+    ASSERT_EQ(string(""), json_helper_get_by_key_wrapper(R"({"node_id": ABC})", "node_id"));
+    ASSERT_EQ(string(""), json_helper_get_by_key_wrapper(R"({"node_id": ""})", "node_id"));
+    ASSERT_EQ(string(""), json_helper_get_by_key_wrapper(R"({"node_id": \"})", "node_id"));
+    ASSERT_EQ(string(""), json_helper_get_by_key_wrapper(R"({"node_id": \"\"})", "node_id"));
+    ASSERT_EQ(string(""), json_helper_get_by_key_wrapper(R"({"node_id: "ABC"})", "node_id"));
+    ASSERT_EQ(string(""), json_helper_get_by_key_wrapper(R"({"node_id\": "ABC"})", "node_id"));
+    ASSERT_EQ(string(""), json_helper_get_by_key_wrapper(R"({node_id": "ABC"})", "node_id"));
+    ASSERT_EQ(string(""), json_helper_get_by_key_wrapper(R"({\"node_id": "ABC"})", "node_id"));
+}
+
+TEST_F(TestJsonHelper, test_json_get_by_key_null) // NOLINT
+{
+    ASSERT_EQ(string("null"), json_helper_get_by_key_wrapper(R"({"node_id": "null"})", "node_id"));
+    ASSERT_EQ(string("null"), json_helper_get_by_key_wrapper(R"({"node_id": null})", "node_id"));
+}
+
+TEST_F(TestJsonHelper, test_json_get_by_key_true) // NOLINT
+{
+    ASSERT_EQ(string("true"), json_helper_get_by_key_wrapper(R"({"node_id": "true"})", "node_id"));
+    ASSERT_EQ(string("true"), json_helper_get_by_key_wrapper(R"({"node_id": true})", "node_id"));
+}
+
+TEST_F(TestJsonHelper, test_json_get_by_key_false) // NOLINT
+{
+    ASSERT_EQ(string("false"), json_helper_get_by_key_wrapper(R"({"node_id": "false"})", "node_id"));
+    ASSERT_EQ(string("false"), json_helper_get_by_key_wrapper(R"({"node_id": false})", "node_id"));
+}
