@@ -20,6 +20,7 @@
 #include "http.h"
 #include "str_buf.h"
 #include "ruuvi_device_id.h"
+#include "os_malloc.h"
 
 using namespace std;
 
@@ -276,12 +277,13 @@ os_calloc(const size_t nmemb, const size_t size)
 
 ATTR_NONNULL(1)
 bool
-os_realloc_safe(void **const p_ptr, const size_t size)
+os_realloc_safe_and_clean(void **const p_ptr, const size_t size)
 {
     void *ptr       = *p_ptr;
     void *p_new_ptr = realloc(ptr, size);
     if (NULL == p_new_ptr)
     {
+        os_free(*p_ptr);
         return false;
     }
     *p_ptr = p_new_ptr;

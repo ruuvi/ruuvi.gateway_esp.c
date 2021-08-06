@@ -536,6 +536,66 @@ main_task_handle_sig(const main_task_sig_e main_task_sig)
     }
 }
 
+ATTR_NORETURN
+static void
+handle_reset_button_is_pressed_during_boot(void)
+{
+    LOG_INFO("Reset button is pressed during boot - clear settings in flash");
+    nrf52fw_hw_reset_nrf52(true);
+
+    ruuvi_nvs_flash_erase();
+    ruuvi_nvs_flash_init();
+
+    LOG_INFO("Writing the default wifi-manager configuration to NVS");
+    if (!wifi_manager_clear_sta_config(&g_gw_wifi_ssid))
+    {
+        LOG_ERR("Failed to clear the wifi-manager settings in NVS");
+    }
+
+    LOG_INFO("Writing the default gateway configuration to NVS");
+    if (!settings_clear_in_flash())
+    {
+        LOG_ERR("Failed to clear the gateway settings in NVS");
+    }
+
+    LOG_INFO("Wait until the CONFIGURE button is released");
+    leds_indication_on_configure_button_press();
+    while (0 == gpio_get_level(RB_BUTTON_RESET_PIN))
+    {
+        vTaskDelay(1);
+    }
+    LOG_INFO("The CONFIGURE button has been released - restart system");
+    esp_restart();
+}
+
+
+ATTR_NORETURN
+static void
+main_loop(void)
+{
+    LOG_INFO("Main loop started");
+    for (;;)
+    {
+        os_signal_events_t sig_events = { 0 };
+        if (!os_signal_wait_with_timeout(g_p_signal_main_task, OS_DELTA_TICKS_INFINITE, &sig_events))
+        {
+            continue;
+        }
+        for (;;)
+        {
+            const os_signal_num_e sig_num = os_signal_num_get_next(&sig_events);
+            if (OS_SIGNAL_NUM_NONE == sig_num)
+            {
+                break;
+            }
+            const main_task_sig_e main_task_sig = main_task_conv_from_sig_num(sig_num);
+            main_task_handle_sig(main_task_sig);
+        }
+    }
+}
+
+
+ATTR_NORETURN
 void
 app_main(void)
 {
@@ -561,32 +621,7 @@ app_main(void)
 
     if (0 == gpio_get_level(RB_BUTTON_RESET_PIN))
     {
-        LOG_INFO("Reset button is pressed during boot - clear settings in flash");
-        nrf52fw_hw_reset_nrf52(true);
-
-        ruuvi_nvs_flash_erase();
-        ruuvi_nvs_flash_init();
-
-        LOG_INFO("Writing the default wifi-manager configuration to NVS");
-        if (!wifi_manager_clear_sta_config(&g_gw_wifi_ssid))
-        {
-            LOG_ERR("Failed to clear the wifi-manager settings in NVS");
-        }
-
-        LOG_INFO("Writing the default gateway configuration to NVS");
-        if (!settings_clear_in_flash())
-        {
-            LOG_ERR("Failed to clear the gateway settings in NVS");
-        }
-
-        LOG_INFO("Wait until the CONFIGURE button is released");
-        leds_indication_on_configure_button_press();
-        while (0 == gpio_get_level(RB_BUTTON_RESET_PIN))
-        {
-            vTaskDelay(1);
-        }
-        LOG_INFO("The CONFIGURE button has been released - restart system");
-        esp_restart();
+        handle_reset_button_is_pressed_during_boot();
     }
 
     ruuvi_nvs_flash_init();
@@ -642,7 +677,6 @@ app_main(void)
             fw_update_get_current_fatfs_gwui_partition_name()))
     {
         LOG_ERR("%s failed", "wifi_init");
-        return;
     }
     ethernet_init(&ethernet_link_up_cb, &ethernet_link_down_cb, &ethernet_connection_ok_cb);
     if (g_gateway_config.eth.use_eth || (!wifi_manager_is_sta_configured()))
@@ -693,23 +727,5 @@ app_main(void)
     os_timer_sig_periodic_start(g_p_timer_sig_log_heap_usage);
     os_timer_sig_periodic_start(g_p_timer_sig_check_for_fw_updates);
 
-    LOG_INFO("Main loop started");
-    for (;;)
-    {
-        os_signal_events_t sig_events = { 0 };
-        if (!os_signal_wait_with_timeout(g_p_signal_main_task, OS_DELTA_TICKS_INFINITE, &sig_events))
-        {
-            continue;
-        }
-        for (;;)
-        {
-            const os_signal_num_e sig_num = os_signal_num_get_next(&sig_events);
-            if (OS_SIGNAL_NUM_NONE == sig_num)
-            {
-                break;
-            }
-            const main_task_sig_e main_task_sig = main_task_conv_from_sig_num(sig_num);
-            main_task_handle_sig(main_task_sig);
-        }
-    }
+    main_loop();
 }

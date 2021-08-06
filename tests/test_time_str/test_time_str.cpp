@@ -74,7 +74,7 @@ TEST_F(TestTimeStr, time_str_conv_to_tm_YYYY_MM_DDThh_mm_ss_mmm_plus_02_30) // N
     ASSERT_TRUE(time_str_conv_to_tm("2021-07-19T14:08:10.096+02:30", &tm_time, nullptr));
 }
 
-TEST_F(TestTimeStr, time_str_conv_to_tm_YYYY_MM_DDThh_mm_ss_mmm_minux_03_30) // NOLINT
+TEST_F(TestTimeStr, time_str_conv_to_tm_YYYY_MM_DDThh_mm_ss_mmm_minus_03_30) // NOLINT
 {
     struct tm tm_time = {};
     uint16_t  ms      = 0;
@@ -238,4 +238,50 @@ TEST_F(TestTimeStr, time_str_conv_YYYYMMDDhhmmss_plus_02) // NOLINT
     ASSERT_EQ(0, ms);
     ASSERT_TRUE(time_str_conv_to_tm("20210719012810+02", &tm_time, nullptr));
     ASSERT_EQ(1626650890, time_str_conv_to_unix_time("20210719012810+02"));
+}
+
+TEST_F(TestTimeStr, time_str_conv_YYYYMMDDhhmmss_plus_max_tz) // NOLINT
+{
+    struct tm tm_time = {};
+    uint16_t  ms      = 0;
+    ASSERT_TRUE(time_str_conv_to_tm("20210719012810+14", &tm_time, &ms));
+    ASSERT_EQ(2021 - 1900, tm_time.tm_year);
+    ASSERT_EQ(7 - 1, tm_time.tm_mon);
+    ASSERT_EQ(18, tm_time.tm_mday);
+    ASSERT_EQ(11, tm_time.tm_hour);
+    ASSERT_EQ(28, tm_time.tm_min);
+    ASSERT_EQ(10, tm_time.tm_sec);
+    ASSERT_EQ(0, ms);
+    ASSERT_TRUE(time_str_conv_to_tm("20210719012810+14", &tm_time, nullptr));
+    ASSERT_EQ(1626607690, time_str_conv_to_unix_time("20210719012810+14"));
+}
+
+TEST_F(TestTimeStr, time_str_conv_YYYYMMDDhhmmss_plus_ovf_tz) // NOLINT
+{
+    struct tm tm_time = {};
+    uint16_t  ms      = 0;
+    ASSERT_FALSE(time_str_conv_to_tm("20210719012810+15", &tm_time, &ms));
+}
+
+TEST_F(TestTimeStr, time_str_conv_YYYYMMDDhhmmss_minus_min_tz) // NOLINT
+{
+    struct tm tm_time = {};
+    uint16_t  ms      = 0;
+    ASSERT_TRUE(time_str_conv_to_tm("20210719012810-12", &tm_time, &ms));
+    ASSERT_EQ(2021 - 1900, tm_time.tm_year);
+    ASSERT_EQ(7 - 1, tm_time.tm_mon);
+    ASSERT_EQ(19, tm_time.tm_mday);
+    ASSERT_EQ(13, tm_time.tm_hour);
+    ASSERT_EQ(28, tm_time.tm_min);
+    ASSERT_EQ(10, tm_time.tm_sec);
+    ASSERT_EQ(0, ms);
+    ASSERT_TRUE(time_str_conv_to_tm("20210719012810-12", &tm_time, nullptr));
+    ASSERT_EQ(1626701290, time_str_conv_to_unix_time("20210719012810-12"));
+}
+
+TEST_F(TestTimeStr, time_str_conv_YYYYMMDDhhmmss_minux_ovf_tz) // NOLINT
+{
+    struct tm tm_time = {};
+    uint16_t  ms      = 0;
+    ASSERT_FALSE(time_str_conv_to_tm("20210719012810-13", &tm_time, &ms));
 }

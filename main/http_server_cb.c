@@ -236,28 +236,25 @@ cb_on_http_data_json_github_latest_release(
         LOG_ERR("Error occurred while downloading");
         return false;
     }
+    if (HTTP_RESP_CODE_302 == http_resp_code)
+    {
+        LOG_INFO("Got HTTP error %d: Redirect to another location", (printf_int_t)http_resp_code);
+        return true;
+    }
     if (HTTP_RESP_CODE_200 != http_resp_code)
     {
-        if (HTTP_RESP_CODE_302 == http_resp_code)
+        LOG_ERR(
+            "Got HTTP error %d: %.*s",
+            (printf_int_t)http_resp_code,
+            (printf_int_t)buf_size,
+            (const char *)p_buf);
+        p_info->is_error = true;
+        if (NULL != p_info->p_json_buf)
         {
-            LOG_INFO("Got HTTP error %d: Redirect to another location", (printf_int_t)http_resp_code);
-            return true;
+            os_free(p_info->p_json_buf);
+            p_info->p_json_buf = NULL;
         }
-        else
-        {
-            LOG_ERR(
-                "Got HTTP error %d: %.*s",
-                (printf_int_t)http_resp_code,
-                (printf_int_t)buf_size,
-                (const char *)p_buf);
-            p_info->is_error = true;
-            if (NULL != p_info->p_json_buf)
-            {
-                os_free(p_info->p_json_buf);
-                p_info->p_json_buf = NULL;
-            }
-            return false;
-        }
+        return false;
     }
 
     p_info->http_resp_code = http_resp_code;
@@ -285,14 +282,9 @@ cb_on_http_data_json_github_latest_release(
         {
             p_info->json_buf_size += buf_size;
             LOG_INFO("Reallocate %lu bytes", (printf_ulong_t)p_info->json_buf_size);
-            if (!os_realloc_safe((void **)&p_info->p_json_buf, p_info->json_buf_size))
+            if (!os_realloc_safe_and_clean((void **)&p_info->p_json_buf, p_info->json_buf_size))
             {
                 p_info->is_error = true;
-                if (NULL != p_info->p_json_buf)
-                {
-                    os_free(p_info->p_json_buf);
-                    p_info->p_json_buf = NULL;
-                }
                 LOG_ERR(
                     "Can't allocate %lu bytes for github_latest_release.json",
                     (printf_ulong_t)p_info->json_buf_size);
