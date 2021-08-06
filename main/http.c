@@ -72,6 +72,10 @@ http_event_handler(esp_http_client_event_t *p_evt)
                 }
                 adv_post_set_period(period_seconds * 1000U);
             }
+            else
+            {
+                // MISRA C:2012, 15.7 - All if...else if constructs shall be terminated with an else statement
+            }
             break;
 
         case HTTP_EVENT_ON_DATA:

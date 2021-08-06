@@ -678,6 +678,7 @@ fw_update_is_url_valid(void)
     return true;
 }
 
+ATTR_PRINTF(1, 2)
 void
 fw_update_set_url(const char *const p_url_fmt, ...)
 {

@@ -11,11 +11,8 @@
 #include "os_str.h"
 #include "os_mkgmtime.h"
 
-uint32_t
-time_str_conv_to_uint32_cptr(
-    const char *__restrict const p_str,
-    const char **__restrict const pp_end,
-    const os_str2num_base_t base)
+static uint32_t
+time_str_conv_to_uint32_cptr(const char *const p_str, const char **const pp_end, const os_str2num_base_t base)
 {
     if ((NULL != pp_end) && (NULL != *pp_end))
     {
@@ -251,20 +248,21 @@ time_str_conv_to_tm(const char *const p_time_str, struct tm *const p_tm_time, ui
         return false;
     }
 
-    uint32_t tz_hours = 0;
-    uint32_t tz_min   = 0;
+    uint8_t tz_hours = 0;
+    uint8_t tz_min   = 0;
     {
-        const char *p_end = (&p_cur[2] < &p_time_str[time_str_len]) ? &p_cur[2] : &p_time_str[time_str_len];
-        tz_hours          = time_str_conv_to_uint32_cptr(p_cur, &p_end, 10);
+        const char *   p_end        = (&p_cur[2] < &p_time_str[time_str_len]) ? &p_cur[2] : &p_time_str[time_str_len];
+        const uint32_t tz_hours_tmp = time_str_conv_to_uint32_cptr(p_cur, &p_end, 10);
 
-        if (flag_tz_offset_positive && (tz_hours > 14))
+        if (flag_tz_offset_positive && (tz_hours_tmp > 14))
         {
             return false;
         }
-        if (!flag_tz_offset_positive && (tz_hours > 12))
+        if (!flag_tz_offset_positive && (tz_hours_tmp > 12))
         {
             return false;
         }
+        tz_hours = (uint8_t)tz_hours_tmp;
         if ('\0' != *p_end)
         {
             if (':' == *p_end)
@@ -275,16 +273,20 @@ time_str_conv_to_tm(const char *const p_time_str, struct tm *const p_tm_time, ui
             {
                 return false;
             }
+            else
+            {
+                // MISRA C:2012, 15.7 - All if...else if constructs shall be terminated with an else statement
+            }
         }
         p_cur = p_end;
     }
 
     if ('\0' != *p_cur)
     {
-        const char *p_end = &p_time_str[time_str_len];
-        tz_min            = time_str_conv_to_uint32_cptr(p_cur, &p_end, 10);
+        const char *   p_end      = &p_time_str[time_str_len];
+        const uint32_t tz_min_tmp = time_str_conv_to_uint32_cptr(p_cur, &p_end, 10);
 
-        if (tz_min >= 60)
+        if (tz_min_tmp >= 60)
         {
             return false;
         }
@@ -292,17 +294,18 @@ time_str_conv_to_tm(const char *const p_time_str, struct tm *const p_tm_time, ui
         {
             return false;
         }
+        tz_min = tz_min_tmp;
     }
     if ((0 != tz_hours) || (0 != tz_min))
     {
         time_t unix_time = os_mkgmtime(p_tm_time);
         if (flag_tz_offset_positive)
         {
-            unix_time -= (tz_hours * 60 + tz_min) * 60;
+            unix_time -= (time_t)((uint32_t)((uint16_t)tz_hours * 60U + tz_min) * 60U);
         }
         else
         {
-            unix_time += (tz_hours * 60 + tz_min) * 60;
+            unix_time += (time_t)((uint32_t)((uint16_t)tz_hours * 60U + tz_min) * 60U);
         }
         gmtime_r(&unix_time, p_tm_time);
         p_tm_time->tm_isdst = 0;

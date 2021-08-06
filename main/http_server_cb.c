@@ -355,6 +355,10 @@ http_download_latest_release_info(void)
         LOG_ERR("http_download returned NULL buffer");
         info.is_error = true;
     }
+    else
+    {
+        // MISRA C:2012, 15.7 - All if...else if constructs shall be terminated with an else statement
+    }
     return info;
 }
 
