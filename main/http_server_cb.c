@@ -243,11 +243,7 @@ cb_on_http_data_json_github_latest_release(
     }
     if (HTTP_RESP_CODE_200 != http_resp_code)
     {
-        LOG_ERR(
-            "Got HTTP error %d: %.*s",
-            (printf_int_t)http_resp_code,
-            (printf_int_t)buf_size,
-            (const char *)p_buf);
+        LOG_ERR("Got HTTP error %d: %.*s", (printf_int_t)http_resp_code, (printf_int_t)buf_size, (const char *)p_buf);
         p_info->is_error = true;
         if (NULL != p_info->p_json_buf)
         {

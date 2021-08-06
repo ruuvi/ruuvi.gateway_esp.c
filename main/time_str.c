@@ -48,7 +48,7 @@ parse_val_of_tm(
 {
     const char *   p_end = (p_end1 < p_end2) ? p_end1 : p_end2;
     const uint32_t val   = time_str_conv_to_uint32_cptr(*p_p_cur, &p_end, BASE_10);
-    *p_res = false;
+    *p_res               = false;
     if ((val < min_val) || (val > max_val))
     {
         return true;
@@ -57,7 +57,7 @@ parse_val_of_tm(
     if ('\0' == *p_end)
     {
         *p_p_cur = p_end;
-        *p_res = true;
+        *p_res   = true;
         return true;
     }
     if ('\0' != delimiter)
@@ -85,10 +85,10 @@ parse_val_of_tm(
 static bool
 parse_ms(const char **const p_p_cur, const char *p_end, uint16_t *const p_ms)
 {
-    const char* const p_cur = *p_p_cur + 1;
-    const uint32_t fract_sec = time_str_conv_to_uint32_cptr(p_cur, &p_end, BASE_10);
-    const size_t   len       = p_end - p_cur;
-    uint16_t       ms        = 0;
+    const char *const p_cur     = *p_p_cur + 1;
+    const uint32_t    fract_sec = time_str_conv_to_uint32_cptr(p_cur, &p_end, BASE_10);
+    const size_t      len       = p_end - p_cur;
+    uint16_t          ms        = 0;
     switch (len)
     {
         case 0:
@@ -124,9 +124,9 @@ parse_ms(const char **const p_p_cur, const char *p_end, uint16_t *const p_ms)
 }
 
 static bool
-parse_tz(const char **const p_p_cur, const char * const p_end, int32_t *const p_tz_offset_seconds)
+parse_tz(const char **const p_p_cur, const char *const p_end, int32_t *const p_tz_offset_seconds)
 {
-    const char* p_cur = *p_p_cur;
+    const char *p_cur    = *p_p_cur;
     *p_tz_offset_seconds = 0;
 
     bool flag_tz_offset_positive = false;
@@ -145,9 +145,9 @@ parse_tz(const char **const p_p_cur, const char * const p_end, int32_t *const p_
         return false;
     }
 
-    bool res = false;
-    int tz_hours = 0;
-    int tz_minutes = 0;
+    bool res        = false;
+    int  tz_hours   = 0;
+    int  tz_minutes = 0;
     if (parse_val_of_tm(&p_cur, &p_cur[2], p_end, 0, 23, ':', &res, &tz_hours))
     {
         if (!res)

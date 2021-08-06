@@ -568,7 +568,6 @@ handle_reset_button_is_pressed_during_boot(void)
     esp_restart();
 }
 
-
 ATTR_NORETURN
 static void
 main_loop(void)
@@ -593,7 +592,6 @@ main_loop(void)
         }
     }
 }
-
 
 ATTR_NORETURN
 void
