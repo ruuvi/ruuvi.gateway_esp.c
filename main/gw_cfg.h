@@ -84,6 +84,31 @@ typedef struct ruuvi_gw_cfg_lan_auth_t
     char lan_auth_pass[MAX_LAN_AUTH_PASS_LEN];
 } ruuvi_gw_cfg_lan_auth_t;
 
+#define AUTO_UPDATE_CYCLE_TYPE_STR_REGULAR     "regular"
+#define AUTO_UPDATE_CYCLE_TYPE_STR_BETA_TESTER "beta"
+#define AUTO_UPDATE_CYCLE_TYPE_STR_MANUAL      "manual"
+#define AUTO_UPDATE_CYCLE_TYPE_STR_MAX_LEN     (20U)
+
+typedef enum auto_update_cycle_type_e
+{
+    AUTO_UPDATE_CYCLE_TYPE_REGULAR     = 0,
+    AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER = 1,
+    AUTO_UPDATE_CYCLE_TYPE_MANUAL      = 2,
+} auto_update_cycle_type_e;
+
+typedef uint8_t auto_update_weekdays_bitmask_t;
+typedef uint8_t auto_update_interval_hours_t;
+typedef int8_t  auto_update_tz_offset_hours_t;
+
+typedef struct ruuvi_gw_cfg_auto_update_t
+{
+    auto_update_cycle_type_e       auto_update_cycle;
+    auto_update_weekdays_bitmask_t auto_update_weekdays_bitmask;
+    auto_update_interval_hours_t   auto_update_interval_from;
+    auto_update_interval_hours_t   auto_update_interval_to;
+    auto_update_tz_offset_hours_t  auto_update_tz_offset_hours;
+} ruuvi_gw_cfg_auto_update_t;
+
 typedef struct ruuvi_gw_cfg_filter_t
 {
     uint16_t company_id;
@@ -102,25 +127,25 @@ typedef struct ruuvi_gw_cfg_scan_t
 
 typedef struct ruuvi_gateway_config_t
 {
-    uint16_t                header;
-    uint16_t                fmt_version;
-    ruuvi_gw_cfg_eth_t      eth;
-    ruuvi_gw_cfg_mqtt_t     mqtt;
-    ruuvi_gw_cfg_http_t     http;
-    ruuvi_gw_cfg_lan_auth_t lan_auth;
-    ruuvi_gw_cfg_filter_t   filter;
-    ruuvi_gw_cfg_scan_t     scan;
-    char                    coordinates[MAX_CONFIG_STR_LEN];
+    uint16_t                   header;
+    uint16_t                   fmt_version;
+    ruuvi_gw_cfg_eth_t         eth;
+    ruuvi_gw_cfg_mqtt_t        mqtt;
+    ruuvi_gw_cfg_http_t        http;
+    ruuvi_gw_cfg_lan_auth_t    lan_auth;
+    ruuvi_gw_cfg_auto_update_t auto_update;
+    ruuvi_gw_cfg_filter_t      filter;
+    ruuvi_gw_cfg_scan_t        scan;
+    char                       coordinates[MAX_CONFIG_STR_LEN];
 } ruuvi_gateway_config_t;
 
-extern ruuvi_gateway_config_t       g_gateway_config;
-extern const ruuvi_gateway_config_t g_gateway_config_default;
-extern mac_address_bin_t            g_gw_mac_eth;
-extern mac_address_str_t            g_gw_mac_eth_str;
-extern mac_address_bin_t            g_gw_mac_wifi;
-extern mac_address_str_t            g_gw_mac_wifi_str;
-extern mac_address_str_t            g_gw_mac_sta_str;
-extern wifi_ssid_t                  g_gw_wifi_ssid;
+extern ruuvi_gateway_config_t g_gateway_config;
+extern mac_address_bin_t      g_gw_mac_eth;
+extern mac_address_str_t      g_gw_mac_eth_str;
+extern mac_address_bin_t      g_gw_mac_wifi;
+extern mac_address_str_t      g_gw_mac_wifi_str;
+extern mac_address_str_t      g_gw_mac_sta_str;
+extern wifi_ssid_t            g_gw_wifi_ssid;
 
 void
 gw_cfg_print_to_log(const ruuvi_gateway_config_t *p_config);

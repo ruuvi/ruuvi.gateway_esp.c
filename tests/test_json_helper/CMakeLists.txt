@@ -1,20 +1,12 @@
 cmake_minimum_required(VERSION 3.7)
 
-project(ruuvi_gateway_esp-test-json_ruuvi)
-set(ProjectId ruuvi_gateway_esp-test-json_ruuvi)
+project(ruuvi_gateway_esp-test-json_helper)
+set(ProjectId ruuvi_gateway_esp-test-json_helper)
 
 add_executable(${ProjectId}
-        test_json_ruuvi.cpp
-        ${RUUVI_GW_SRC}/json_ruuvi.c
-        ${RUUVI_GW_SRC}/json_ruuvi.h
-        ${RUUVI_GW_SRC}/cjson_wrap.c
-        ${RUUVI_GW_SRC}/cjson_wrap.h
-        ${RUUVI_GW_SRC}/gw_cfg.h
-        ${RUUVI_GW_SRC}/gw_cfg_default.c
-        ${RUUVI_GW_SRC}/gw_cfg_default.h
-        $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
-        $ENV{IDF_PATH}/components/json/cJSON/cJSON.c
-        $ENV{IDF_PATH}/components/json/cJSON/cJSON.h
+        test_json_helper.cpp
+        ${RUUVI_GW_SRC}/json_helper.c
+        ${RUUVI_GW_SRC}/json_helper.h
 )
 
 set_target_properties(${ProjectId} PROPERTIES
@@ -26,14 +18,12 @@ target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
         ${RUUVI_GW_SRC}
-        ${WIFI_MANAGER_INC}
         include
-        $ENV{IDF_PATH}/components/json/cJSON
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 target_compile_definitions(${ProjectId} PUBLIC
-        RUUVI_TESTS_JSON_RUUVI=1
+        RUUVI_TESTS_JSON_HELPER=1
 )
 
 target_compile_options(${ProjectId} PUBLIC

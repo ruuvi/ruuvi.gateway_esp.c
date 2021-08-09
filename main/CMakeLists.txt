@@ -24,12 +24,16 @@ idf_component_register(
             gpio_switch_ctrl.h
             gw_cfg.c
             gw_cfg.h
+            gw_cfg_default.c
+            gw_cfg_default.h
             hmac_sha256.c
             hmac_sha256.h
             http.c
             http.h
             http_json.c
             http_json.h
+            json_helper.c
+            json_helper.h
             json_ruuvi.c
             json_ruuvi.h
             http_server_cb.c
@@ -53,6 +57,8 @@ idf_component_register(
             ruuvi_gateway_main.c
             ruuvi_gateway.h
             settings.c
+            time_str.c
+            time_str.h
             time_task.c
             time_task.h
         REQUIRES

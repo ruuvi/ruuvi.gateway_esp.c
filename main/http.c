@@ -23,6 +23,8 @@
 
 #define BASE_10 (10U)
 
+#define HTTP_DOWNLOAD_TIMEOUT_SECONDS (25)
+
 typedef struct http_download_cb_info_t
 {
     http_download_cb_on_data_t cb_on_data;
@@ -69,6 +71,10 @@ http_event_handler(esp_http_client_event_t *p_evt)
                     period_seconds = ADV_POST_DEFAULT_INTERVAL_SECONDS;
                 }
                 adv_post_set_period(period_seconds * 1000U);
+            }
+            else
+            {
+                // MISRA C:2012, 15.7 - All if...else if constructs shall be terminated with an else statement
             }
             break;
 
@@ -121,7 +127,7 @@ http_send(const char *const p_msg)
     esp_http_client_handle_t http_handle = esp_http_client_init(&http_config);
     if (NULL == http_handle)
     {
-        LOG_ERR("Can't init http client");
+        LOG_ERR("HTTP POST to URL=%s: Can't init http client", http_config.url);
         return false;
     }
 
@@ -140,20 +146,21 @@ http_send(const char *const p_msg)
     if (ESP_OK == err)
     {
         LOG_DBG(
-            "HTTP POST Status = %d, content_length = %d",
+            "HTTP POST to URL=%s: Status=%d, content_length=%d",
+            http_config.url,
             esp_http_client_get_status_code(http_handle),
             esp_http_client_get_content_length(http_handle));
     }
     else
     {
-        LOG_ERR_ESP(err, "HTTP POST request failed");
+        LOG_ERR_ESP(err, "HTTP POST to URL=%s: request failed", http_config.url);
         result = false;
     }
 
     err = esp_http_client_cleanup(http_handle);
     if (ESP_OK != err)
     {
-        LOG_ERR_ESP(err, "esp_http_client_cleanup failed");
+        LOG_ERR_ESP(err, "HTTP POST to URL=%s: esp_http_client_cleanup failed", http_config.url);
     }
     return result;
 }
@@ -197,17 +204,19 @@ http_download_event_handler(esp_http_client_event_t *p_evt)
             break;
 
         case HTTP_EVENT_ON_CONNECTED:
-            LOG_DBG("HTTP_EVENT_ON_CONNECTED");
+            LOG_INFO("HTTP_EVENT_ON_CONNECTED");
+            p_cb_info->offset = 0;
             break;
 
         case HTTP_EVENT_HEADER_SENT:
-            LOG_DBG("HTTP_EVENT_HEADER_SENT");
+            LOG_INFO("HTTP_EVENT_HEADER_SENT");
             break;
 
         case HTTP_EVENT_ON_HEADER:
-            LOG_DBG("HTTP_EVENT_ON_HEADER, key=%s, value=%s", p_evt->header_key, p_evt->header_value);
+            LOG_INFO("HTTP_EVENT_ON_HEADER, key=%s, value=%s", p_evt->header_key, p_evt->header_value);
             if (0 == strcasecmp(p_evt->header_key, "Content-Length"))
             {
+                p_cb_info->offset         = 0;
                 p_cb_info->content_length = os_str_to_uint32_cptr(p_evt->header_value, NULL, BASE_10);
             }
             break;
@@ -215,24 +224,25 @@ http_download_event_handler(esp_http_client_event_t *p_evt)
         case HTTP_EVENT_ON_DATA:
             LOG_DBG("HTTP_EVENT_ON_DATA, len=%d", p_evt->data_len);
             LOG_DUMP_VERBOSE(p_evt->data, p_evt->data_len, "<--:");
-            if (HTTP_RESP_CODE_200 == esp_http_client_get_status_code(p_cb_info->http_handle))
-            {
-                p_cb_info->cb_on_data(
+            if (!p_cb_info->cb_on_data(
                     p_evt->data,
                     p_evt->data_len,
                     p_cb_info->offset,
                     p_cb_info->content_length,
-                    p_cb_info->p_user_data);
-                p_cb_info->offset += p_evt->data_len;
+                    (http_resp_code_e)esp_http_client_get_status_code(p_cb_info->http_handle),
+                    p_cb_info->p_user_data))
+            {
+                return ESP_FAIL;
             }
+            p_cb_info->offset += p_evt->data_len;
             break;
 
         case HTTP_EVENT_ON_FINISH:
-            LOG_DBG("HTTP_EVENT_ON_FINISH");
+            LOG_INFO("HTTP_EVENT_ON_FINISH");
             break;
 
         case HTTP_EVENT_DISCONNECTED:
-            LOG_DBG("HTTP_EVENT_DISCONNECTED");
+            LOG_INFO("HTTP_EVENT_DISCONNECTED");
             break;
 
         default:
@@ -260,7 +270,11 @@ http_download_firmware_via_handle(esp_http_client_handle_t http_handle)
     err = esp_http_client_perform(http_handle);
     if (ESP_OK != err)
     {
-        LOG_ERR_ESP(err, "%s failed", "esp_http_client_perform");
+        LOG_ERR_ESP(
+            err,
+            "esp_http_client_perform failed, HTTP resp code %d (http_handle=%ld)",
+            (printf_int_t)esp_http_client_get_status_code(http_handle),
+            (printf_long_t)http_handle);
         return false;
     }
     LOG_DBG(
@@ -293,7 +307,7 @@ http_download(const char *const p_url, http_download_cb_on_data_t cb_on_data, vo
         .client_cert_pem             = NULL,
         .client_key_pem              = NULL,
         .method                      = HTTP_METHOD_GET,
-        .timeout_ms                  = 0,
+        .timeout_ms                  = HTTP_DOWNLOAD_TIMEOUT_SECONDS * 1000,
         .disable_auto_redirect       = false,
         .max_redirection_count       = 0,
         .event_handler               = &http_download_event_handler,

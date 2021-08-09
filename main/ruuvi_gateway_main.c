@@ -13,6 +13,7 @@
 #include "esp_system.h"
 #include "ethernet.h"
 #include "os_task.h"
+#include "os_timer_sig.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "gpio.h"
@@ -35,6 +36,9 @@
 #include "fw_update.h"
 #include "hmac_sha256.h"
 #include "ruuvi_device_id.h"
+#include "gw_cfg_default.h"
+#include "os_time.h"
+#include "time_str.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -44,7 +48,41 @@ static const char TAG[] = "ruuvi_gateway";
 #define MAC_ADDRESS_IDX_OF_LAST_BYTE        (MAC_ADDRESS_NUM_BYTES - 1U)
 #define MAC_ADDRESS_IDX_OF_PENULTIMATE_BYTE (MAC_ADDRESS_NUM_BYTES - 2U)
 
+#define MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS (10U)
+
+#define MAIN_TASK_CHECK_FOR_FW_UPDATES_PERIOD_SECONDS (40U * 60U)
+
+typedef enum main_task_sig_e
+{
+    MAIN_TASK_SIG_LOG_HEAP_USAGE       = OS_SIGNAL_NUM_0,
+    MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES = OS_SIGNAL_NUM_1,
+} main_task_sig_e;
+
+#define MAIN_TASK_SIG_FIRST (MAIN_TASK_SIG_LOG_HEAP_USAGE)
+#define MAIN_TASK_SIG_LAST  (MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES)
+
 EventGroupHandle_t status_bits;
+
+static os_signal_t *                  g_p_signal_main_task;
+static os_signal_static_t             g_signal_main_task_mem;
+static os_timer_sig_periodic_t *      g_p_timer_sig_log_heap_usage;
+static os_timer_sig_periodic_static_t g_timer_sig_log_heap_usage;
+static os_timer_sig_periodic_t *      g_p_timer_sig_check_for_fw_updates;
+static os_timer_sig_periodic_static_t g_timer_sig_check_for_fw_updates_mem;
+
+ATTR_PURE
+static os_signal_num_e
+main_task_conv_to_sig_num(const main_task_sig_e sig)
+{
+    return (os_signal_num_e)sig;
+}
+
+static main_task_sig_e
+main_task_conv_from_sig_num(const os_signal_num_e sig_num)
+{
+    assert(((os_signal_num_e)MAIN_TASK_SIG_FIRST <= sig_num) && (sig_num <= (os_signal_num_e)MAIN_TASK_SIG_LAST));
+    return (main_task_sig_e)sig_num;
+}
 
 static inline uint8_t
 conv_bool_to_u8(const bool x)
@@ -89,17 +127,6 @@ void
 ruuvi_send_nrf_get_id(void)
 {
     api_send_get_device_id(RE_CA_UART_GET_DEVICE_ID);
-}
-
-ATTR_NORETURN
-static void
-monitoring_task(void)
-{
-    for (;;)
-    {
-        LOG_INFO("free heap: %u", esp_get_free_heap_size());
-        vTaskDelay(pdMS_TO_TICKS(10000));
-    }
 }
 
 static void
@@ -311,6 +338,7 @@ wifi_init(
         return false;
     }
     const wifi_manager_callbacks_t wifi_callbacks = {
+        .cb_on_http_user_req       = &http_server_cb_on_user_req,
         .cb_on_http_get            = &http_server_cb_on_get,
         .cb_on_http_post           = &http_server_cb_on_post,
         .cb_on_http_delete         = &http_server_cb_on_delete,
@@ -420,6 +448,152 @@ ruuvi_nvs_flash_erase(void)
     }
 }
 
+static const char *
+get_wday_if_set_in_bitmask(const auto_update_weekdays_bitmask_t auto_update_weekdays_bitmask, const os_time_wday_e wday)
+{
+    if (0 != (auto_update_weekdays_bitmask & (1U << (unsigned)wday)))
+    {
+        return os_time_wday_name_mid(wday);
+    }
+    return "";
+}
+
+static void
+check_for_fw_updates(void)
+{
+    if (AUTO_UPDATE_CYCLE_TYPE_MANUAL == g_gateway_config.auto_update.auto_update_cycle)
+    {
+        return;
+    }
+    if (!wifi_manager_is_connected_to_wifi_or_ethernet())
+    {
+        LOG_INFO("Check for fw updates - skip (not connected to WiFi or Ethernet)");
+        return;
+    }
+    if (!time_is_synchronized())
+    {
+        LOG_INFO("Check for fw updates - skip (time is not synchronized)");
+        return;
+    }
+    if (!http_server_is_timeout_expired_since_last_successful_fw_update_check())
+    {
+        LOG_INFO("Check for fw updates - skip (last check was performed less than 12 hours ago)");
+        return;
+    }
+    const ruuvi_gw_cfg_auto_update_t *const p_cfg_auto_update = &g_gateway_config.auto_update;
+
+    const time_t unix_time = os_time_get();
+    time_t       cur_time  = unix_time + (time_t)((int32_t)p_cfg_auto_update->auto_update_tz_offset_hours * 60 * 60);
+    struct tm    tm_time   = { 0 };
+    gmtime_r(&cur_time, &tm_time);
+
+    LOG_INFO(
+        "Check for fw updates: configured weekdays: %s %s %s %s %s %s %s, current: %s",
+        get_wday_if_set_in_bitmask(p_cfg_auto_update->auto_update_weekdays_bitmask, OS_TIME_WDAY_SUN),
+        get_wday_if_set_in_bitmask(p_cfg_auto_update->auto_update_weekdays_bitmask, OS_TIME_WDAY_MON),
+        get_wday_if_set_in_bitmask(p_cfg_auto_update->auto_update_weekdays_bitmask, OS_TIME_WDAY_TUE),
+        get_wday_if_set_in_bitmask(p_cfg_auto_update->auto_update_weekdays_bitmask, OS_TIME_WDAY_WED),
+        get_wday_if_set_in_bitmask(p_cfg_auto_update->auto_update_weekdays_bitmask, OS_TIME_WDAY_THU),
+        get_wday_if_set_in_bitmask(p_cfg_auto_update->auto_update_weekdays_bitmask, OS_TIME_WDAY_FRI),
+        get_wday_if_set_in_bitmask(p_cfg_auto_update->auto_update_weekdays_bitmask, OS_TIME_WDAY_SAT),
+        os_time_wday_name_mid(os_time_get_tm_wday(&tm_time)));
+
+    const uint32_t cur_day_bit_mask = 1U << (uint8_t)tm_time.tm_wday;
+    if (0 == (p_cfg_auto_update->auto_update_weekdays_bitmask & cur_day_bit_mask))
+    {
+        LOG_INFO("Check for fw updates - skip (weekday does not match)");
+        return;
+    }
+    LOG_INFO(
+        "Check for fw updates: configured range [%02u:00 .. %02u:00], current time: %02u:%02u)",
+        (printf_uint_t)p_cfg_auto_update->auto_update_interval_from,
+        (printf_uint_t)p_cfg_auto_update->auto_update_interval_to,
+        (printf_uint_t)tm_time.tm_hour,
+        (printf_uint_t)tm_time.tm_min);
+    if (!((tm_time.tm_hour >= p_cfg_auto_update->auto_update_interval_from)
+          && (tm_time.tm_hour < p_cfg_auto_update->auto_update_interval_to)))
+    {
+        LOG_INFO("Check for fw updates - skip (current time is out of range)");
+        return;
+    }
+
+    LOG_INFO("Check for fw updates: activate");
+
+    http_server_user_req(HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO);
+}
+
+static void
+main_task_handle_sig(const main_task_sig_e main_task_sig)
+{
+    switch (main_task_sig)
+    {
+        case MAIN_TASK_SIG_LOG_HEAP_USAGE:
+            LOG_INFO("free heap: %u", esp_get_free_heap_size());
+            break;
+        case MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES:
+            check_for_fw_updates();
+            break;
+    }
+}
+
+ATTR_NORETURN
+static void
+handle_reset_button_is_pressed_during_boot(void)
+{
+    LOG_INFO("Reset button is pressed during boot - clear settings in flash");
+    nrf52fw_hw_reset_nrf52(true);
+
+    ruuvi_nvs_flash_erase();
+    ruuvi_nvs_flash_init();
+
+    LOG_INFO("Writing the default wifi-manager configuration to NVS");
+    if (!wifi_manager_clear_sta_config(&g_gw_wifi_ssid))
+    {
+        LOG_ERR("Failed to clear the wifi-manager settings in NVS");
+    }
+
+    LOG_INFO("Writing the default gateway configuration to NVS");
+    if (!settings_clear_in_flash())
+    {
+        LOG_ERR("Failed to clear the gateway settings in NVS");
+    }
+
+    LOG_INFO("Wait until the CONFIGURE button is released");
+    leds_indication_on_configure_button_press();
+    while (0 == gpio_get_level(RB_BUTTON_RESET_PIN))
+    {
+        vTaskDelay(1);
+    }
+    LOG_INFO("The CONFIGURE button has been released - restart system");
+    esp_restart();
+}
+
+ATTR_NORETURN
+static void
+main_loop(void)
+{
+    LOG_INFO("Main loop started");
+    for (;;)
+    {
+        os_signal_events_t sig_events = { 0 };
+        if (!os_signal_wait_with_timeout(g_p_signal_main_task, OS_DELTA_TICKS_INFINITE, &sig_events))
+        {
+            continue;
+        }
+        for (;;)
+        {
+            const os_signal_num_e sig_num = os_signal_num_get_next(&sig_events);
+            if (OS_SIGNAL_NUM_NONE == sig_num)
+            {
+                break;
+            }
+            const main_task_sig_e main_task_sig = main_task_conv_from_sig_num(sig_num);
+            main_task_handle_sig(main_task_sig);
+        }
+    }
+}
+
+ATTR_NORETURN
 void
 app_main(void)
 {
@@ -445,32 +619,7 @@ app_main(void)
 
     if (0 == gpio_get_level(RB_BUTTON_RESET_PIN))
     {
-        LOG_INFO("Reset button is pressed during boot - clear settings in flash");
-        nrf52fw_hw_reset_nrf52(true);
-
-        ruuvi_nvs_flash_erase();
-        ruuvi_nvs_flash_init();
-
-        LOG_INFO("Writing the default wifi-manager configuration to NVS");
-        if (!wifi_manager_clear_sta_config(&g_gw_wifi_ssid))
-        {
-            LOG_ERR("Failed to clear the wifi-manager settings in NVS");
-        }
-
-        LOG_INFO("Writing the default gateway configuration to NVS");
-        if (!settings_clear_in_flash())
-        {
-            LOG_ERR("Failed to clear the gateway settings in NVS");
-        }
-
-        LOG_INFO("Wait until the CONFIGURE button is released");
-        leds_indication_on_configure_button_press();
-        while (0 == gpio_get_level(RB_BUTTON_RESET_PIN))
-        {
-            vTaskDelay(1);
-        }
-        LOG_INFO("The CONFIGURE button has been released - restart system");
-        esp_restart();
+        handle_reset_button_is_pressed_during_boot();
     }
 
     ruuvi_nvs_flash_init();
@@ -526,7 +675,6 @@ app_main(void)
             fw_update_get_current_fatfs_gwui_partition_name()))
     {
         LOG_ERR("%s failed", "wifi_init");
-        return;
     }
     ethernet_init(&ethernet_link_up_cb, &ethernet_link_down_cb, &ethernet_connection_ok_cb);
     if (g_gateway_config.eth.use_eth || (!wifi_manager_is_sta_configured()))
@@ -547,21 +695,35 @@ app_main(void)
         leds_indication_network_no_connection();
     }
 
-    const uint32_t   stack_size_for_monitoring_task = 2 * 1024;
-    os_task_handle_t ph_task_monitoring             = NULL;
-    if (!os_task_create_without_param(
-            &monitoring_task,
-            "monitoring_task",
-            stack_size_for_monitoring_task,
-            1,
-            &ph_task_monitoring))
-    {
-        LOG_ERR("Can't create thread");
-    }
-
     if (!reset_task_init())
     {
         LOG_ERR("Can't create thread");
     }
-    LOG_INFO("Main started");
+
+    g_p_signal_main_task = os_signal_create_static(&g_signal_main_task_mem);
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_LOG_HEAP_USAGE));
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES));
+
+    g_p_timer_sig_log_heap_usage = os_timer_sig_periodic_create_static(
+        &g_timer_sig_log_heap_usage,
+        "log_heap_usage",
+        g_p_signal_main_task,
+        main_task_conv_to_sig_num(MAIN_TASK_SIG_LOG_HEAP_USAGE),
+        pdMS_TO_TICKS(MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS * 1000U));
+    g_p_timer_sig_check_for_fw_updates = os_timer_sig_periodic_create_static(
+        &g_timer_sig_check_for_fw_updates_mem,
+        "check_for_fw_updates",
+        g_p_signal_main_task,
+        main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES),
+        pdMS_TO_TICKS(MAIN_TASK_CHECK_FOR_FW_UPDATES_PERIOD_SECONDS * 1000U));
+
+    if (!os_signal_register_cur_thread(g_p_signal_main_task))
+    {
+        LOG_ERR("%s failed", "os_signal_register_cur_thread");
+    }
+
+    os_timer_sig_periodic_start(g_p_timer_sig_log_heap_usage);
+    os_timer_sig_periodic_start(g_p_timer_sig_check_for_fw_updates);
+
+    main_loop();
 }

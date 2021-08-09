@@ -16,6 +16,7 @@
 #include "esp_ota_ops_patched.h"
 #include "nrf52fw.h"
 #include "leds.h"
+#include "adv_post.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -210,18 +211,37 @@ erase_partition_with_sleep(const esp_partition_t *const p_partition)
     return ESP_OK;
 }
 
-static void
+static bool
 fw_update_data_partition_cb_on_recv_data(
-    const uint8_t *const p_buf,
-    const size_t         buf_size,
-    const size_t         offset,
-    const size_t         content_length,
-    void *const          p_user_data)
+    const uint8_t *const   p_buf,
+    const size_t           buf_size,
+    const size_t           offset,
+    const size_t           content_length,
+    const http_resp_code_e http_resp_code,
+    void *const            p_user_data)
 {
     fw_update_data_partition_info_t *const p_info = p_user_data;
     if (p_info->is_error)
     {
-        return;
+        return false;
+    }
+    if (HTTP_RESP_CODE_200 != http_resp_code)
+    {
+        if (HTTP_RESP_CODE_302 == http_resp_code)
+        {
+            LOG_INFO("Got HTTP error %d: Redirect to another location", (printf_int_t)http_resp_code);
+            return true;
+        }
+        else
+        {
+            LOG_ERR(
+                "Got HTTP error %d: %.*s",
+                (printf_int_t)http_resp_code,
+                (printf_int_t)buf_size,
+                (const char *)p_buf);
+            p_info->is_error = true;
+            return false;
+        }
     }
     LOG_INFO(
         "Write to partition %s, offset %lu, size %lu",
@@ -234,6 +254,7 @@ fw_update_data_partition_cb_on_recv_data(
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, percentage);
 
     const esp_err_t err = esp_partition_write(p_info->p_partition, p_info->offset, p_buf, buf_size);
+    vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS));
     if (ESP_OK != err)
     {
         p_info->is_error = true;
@@ -242,11 +263,11 @@ fw_update_data_partition_cb_on_recv_data(
             "Failed to write to partition %s at offset %lu",
             p_info->p_partition->label,
             (printf_ulong_t)p_info->offset);
-        return;
+        return false;
     }
     p_info->offset += buf_size;
 
-    vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS));
+    return true;
 }
 
 static bool
@@ -263,6 +284,7 @@ fw_update_data_partition(const esp_partition_t *const p_partition, const char *c
         .offset      = 0,
         .is_error    = false,
     };
+    LOG_INFO("fw_update_data_partition: Erase partition");
     esp_err_t err = erase_partition_with_sleep(p_partition);
     if (ESP_OK != err)
     {
@@ -274,6 +296,7 @@ fw_update_data_partition(const esp_partition_t *const p_partition, const char *c
             p_partition->size);
         return false;
     }
+    LOG_INFO("fw_update_data_partition: Download and write partition data");
     if (!http_download(p_url, &fw_update_data_partition_cb_on_recv_data, &fw_update_info))
     {
         LOG_ERR("Failed to update partition %s - failed to download %s", p_partition->label, p_url);
@@ -312,18 +335,38 @@ fw_update_fatfs_nrf52(const char *const p_url)
     return fw_update_data_partition(p_partition, p_url);
 }
 
-static void
+static bool
 fw_update_ota_partition_cb_on_recv_data(
-    const uint8_t *const p_buf,
-    const size_t         buf_size,
-    const size_t         offset,
-    const size_t         content_length,
-    void *const          p_user_data)
+    const uint8_t *const   p_buf,
+    const size_t           buf_size,
+    const size_t           offset,
+    const size_t           content_length,
+    const http_resp_code_e http_resp_code,
+    void *const            p_user_data)
 {
     fw_update_ota_partition_info_t *const p_info = p_user_data;
     if (p_info->is_error)
     {
-        return;
+        LOG_INFO("Drop data after an error, offset %lu, size %lu", (printf_ulong_t)offset, (printf_ulong_t)buf_size);
+        return false;
+    }
+    if (HTTP_RESP_CODE_200 != http_resp_code)
+    {
+        if (HTTP_RESP_CODE_302 == http_resp_code)
+        {
+            LOG_INFO("Got HTTP error %d: Redirect to another location", (printf_int_t)http_resp_code);
+            return true;
+        }
+        else
+        {
+            LOG_ERR(
+                "Got HTTP error %d: %.*s",
+                (printf_int_t)http_resp_code,
+                (printf_int_t)buf_size,
+                (const char *)p_buf);
+            p_info->is_error = true;
+            return false;
+        }
     }
     LOG_INFO(
         "Write to OTA-partition %s, offset %lu, size %lu",
@@ -336,12 +379,14 @@ fw_update_ota_partition_cb_on_recv_data(
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, percentage);
 
     const esp_err_t err = esp_ota_write_patched(p_info->out_handle, p_buf, buf_size);
+    vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS));
     if (ESP_OK != err)
     {
         p_info->is_error = true;
         LOG_ERR_ESP(err, "Failed to write to OTA-partition %s", p_info->p_partition->label);
+        return false;
     }
-    vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS));
+    return true;
 }
 
 static bool
@@ -388,6 +433,7 @@ fw_update_ota(const char *const p_url)
         return false;
     }
 
+    LOG_INFO("fw_update_ota: Erase partition");
     esp_ota_handle_t out_handle = 0;
     esp_err_t        err        = esp_ota_begin_patched(p_partition, &out_handle);
     if (ESP_OK != err)
@@ -396,8 +442,10 @@ fw_update_ota(const char *const p_url)
         return false;
     }
 
+    LOG_INFO("fw_update_ota: Download and write partition data");
     const bool res = fw_update_ota_partition(p_partition, out_handle, p_url);
 
+    LOG_INFO("fw_update_ota: Finish writing to partition");
     err = esp_ota_end_patched(out_handle);
     if (ESP_OK != err)
     {
@@ -517,54 +565,53 @@ fw_update_set_stage_nrf52_updating(void)
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, 0);
 }
 
-static void
-fw_update_task(void)
+static bool
+fw_update_do_actions(void)
 {
-    char url[sizeof(g_fw_update_cfg.url) + 32];
-
-    LOG_INFO("Firmware updating started, URL: %s", g_fw_update_cfg.url);
-
-    http_server_disable_ap_stopping_by_timeout();
-
     g_update_progress_stage = FW_UPDATE_STAGE_1;
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, 0);
 
+    char url[sizeof(g_fw_update_cfg.url) + 32];
     snprintf(url, sizeof(url), "%s/%s", g_fw_update_cfg.url, "ruuvi_gateway_esp.bin");
+    LOG_INFO("fw_update_ota");
     if (!fw_update_ota(url))
     {
         LOG_ERR("%s failed", "fw_update_ota");
         fw_update_set_extra_info_for_status_json_update_failed("Failed to update OTA");
-        return;
+        return false;
     }
 
     g_update_progress_stage = FW_UPDATE_STAGE_2;
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, 0);
 
     snprintf(url, sizeof(url), "%s/%s", g_fw_update_cfg.url, "fatfs_gwui.bin");
+    LOG_INFO("fw_update_fatfs_gwui");
     if (!fw_update_fatfs_gwui(url))
     {
         LOG_ERR("%s failed", "fw_update_fatfs_gwui");
         fw_update_set_extra_info_for_status_json_update_failed("Failed to update GWUI");
-        return;
+        return false;
     }
 
     g_update_progress_stage = FW_UPDATE_STAGE_3;
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, 0);
 
     snprintf(url, sizeof(url), "%s/%s", g_fw_update_cfg.url, "fatfs_nrf52.bin");
+    LOG_INFO("fw_update_fatfs_nrf52");
     if (!fw_update_fatfs_nrf52(url))
     {
         LOG_ERR("%s failed", "fw_update_fatfs_nrf52");
         fw_update_set_extra_info_for_status_json_update_failed("Failed to update nRF52");
-        return;
+        return false;
     }
 
+    LOG_INFO("esp_ota_set_boot_partition");
     const esp_err_t err = esp_ota_set_boot_partition(g_ruuvi_flash_info.p_next_update_partition);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(err, "%s failed", "esp_ota_set_boot_partition");
         fw_update_set_extra_info_for_status_json_update_failed("Failed to switch boot partition");
-        return;
+        return false;
     }
 
     g_ruuvi_flash_info.p_boot_partition = g_ruuvi_flash_info.p_next_update_partition;
@@ -574,6 +621,7 @@ fw_update_task(void)
 
     leds_indication_on_nrf52_fw_updating();
 
+    LOG_INFO("nrf52fw_update_fw_if_necessary");
     nrf52fw_update_fw_if_necessary(
         fw_update_get_current_fatfs_nrf52_partition_name(),
         &fw_update_nrf52fw_cb_progress,
@@ -584,9 +632,37 @@ fw_update_task(void)
 
     fw_update_set_extra_info_for_status_json_update_successful();
 
-    LOG_INFO("Wait 5 seconds before reboot");
-    vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_BEFORE_REBOOT_MS));
+    return true;
+}
 
+static void
+fw_update_task(void)
+{
+    LOG_INFO("Firmware updating started, URL: %s", g_fw_update_cfg.url);
+
+    adv_post_stop();
+    http_server_disable_ap_stopping_by_timeout();
+    if (!wifi_manager_is_ap_active())
+    {
+        LOG_INFO("WiFi AP is not active - start WiFi AP");
+        wifi_manager_start_ap();
+        leds_indication_on_hotspot_activation();
+    }
+    else
+    {
+        LOG_INFO("WiFi AP is already active");
+    }
+
+    if (!fw_update_do_actions())
+    {
+        LOG_ERR("Firmware updating failed");
+    }
+    else
+    {
+        LOG_INFO("Firmware updating completed successfully");
+        LOG_INFO("Wait 5 seconds before reboot");
+        vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_BEFORE_REBOOT_MS));
+    }
     LOG_INFO("Restart system");
     esp_restart();
 }
@@ -600,6 +676,22 @@ fw_update_is_url_valid(void)
         return false;
     }
     return true;
+}
+
+ATTR_PRINTF(1, 2)
+void
+fw_update_set_url(const char *const p_url_fmt, ...)
+{
+    va_list ap;
+    va_start(ap, p_url_fmt);
+    vsnprintf(g_fw_update_cfg.url, sizeof(g_fw_update_cfg.url), p_url_fmt, ap);
+    va_end(ap);
+}
+
+const char *
+fw_update_get_url(void)
+{
+    return g_fw_update_cfg.url;
 }
 
 bool

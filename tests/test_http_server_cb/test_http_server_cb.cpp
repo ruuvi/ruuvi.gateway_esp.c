@@ -20,6 +20,7 @@
 #include "http.h"
 #include "str_buf.h"
 #include "ruuvi_device_id.h"
+#include "os_malloc.h"
 
 using namespace std;
 
@@ -212,17 +213,18 @@ public:
 
     ~TestHttpServerCb() override;
 
-    MemAllocTrace     m_mem_alloc_trace;
-    uint32_t          m_malloc_cnt;
-    uint32_t          m_malloc_fail_on_cnt;
-    bool              m_flag_settings_saved_to_flash;
-    bool              m_flag_settings_sent_to_nrf;
-    bool              m_flag_settings_ethernet_ip_updated;
-    flash_fat_fs_t    m_fatfs;
-    bool              m_is_fatfs_mounted;
-    bool              m_is_fatfs_mount_fail;
-    vector<FileInfo>  m_files;
-    file_descriptor_t m_fd;
+    MemAllocTrace         m_mem_alloc_trace;
+    uint32_t              m_malloc_cnt;
+    uint32_t              m_malloc_fail_on_cnt;
+    bool                  m_flag_settings_saved_to_flash;
+    bool                  m_flag_settings_sent_to_nrf;
+    bool                  m_flag_settings_ethernet_ip_updated;
+    flash_fat_fs_t        m_fatfs;
+    bool                  m_is_fatfs_mounted;
+    bool                  m_is_fatfs_mount_fail;
+    vector<FileInfo>      m_files;
+    file_descriptor_t     m_fd;
+    std::array<char, 128> fw_update_url;
 };
 
 TestHttpServerCb::TestHttpServerCb()
@@ -273,6 +275,21 @@ os_calloc(const size_t nmemb, const size_t size)
     return ptr;
 }
 
+ATTR_NONNULL(1)
+bool
+os_realloc_safe_and_clean(void **const p_ptr, const size_t size)
+{
+    void *ptr       = *p_ptr;
+    void *p_new_ptr = realloc(ptr, size);
+    if (NULL == p_new_ptr)
+    {
+        os_free(*p_ptr);
+        return false;
+    }
+    *p_ptr = p_new_ptr;
+    return true;
+}
+
 char *
 metrics_generate(void)
 {
@@ -289,6 +306,12 @@ time_t
 http_server_get_cur_time(void)
 {
     return 1615660220;
+}
+
+TickType_t
+xTaskGetTickCount(void)
+{
+    return 0;
 }
 
 void
@@ -399,6 +422,21 @@ flashfatfs_open(const flash_fat_fs_t *p_ffs, const char *file_path)
     return (file_descriptor_t)-1;
 }
 
+void
+fw_update_set_url(const char *const p_url_fmt, ...)
+{
+    va_list ap;
+    va_start(ap, p_url_fmt);
+    vsnprintf(g_pTestClass->fw_update_url.data(), g_pTestClass->fw_update_url.size(), p_url_fmt, ap);
+    va_end(ap);
+}
+
+const char *
+fw_update_get_url(void)
+{
+    return g_pTestClass->fw_update_url.data();
+}
+
 } // extern "C"
 
 TestHttpServerCb::~TestHttpServerCb() = default;
@@ -463,6 +501,11 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
           "\t\"mqtt_user\":\t\"\",\n"
           "\t\"lan_auth_type\":\t\"lan_auth_deny\",\n"
           "\t\"lan_auth_user\":\t\"\",\n"
+          "\t\"auto_update_cycle\":\t\"regular\",\n"
+          "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+          "\t\"auto_update_interval_from\":\t0,\n"
+          "\t\"auto_update_interval_to\":\t24,\n"
+          "\t\"auto_update_tz_offset_hours\":\t3,\n"
           "\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
           "\t\"use_filtering\":\ttrue,\n"
           "\t\"company_id\":\t\"0x0499\",\n"
@@ -487,6 +530,11 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
         "\"http_url\":\"https://network.ruuvi.com/record\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
+        "\"auto_update_cycle\":\"regular\","
+        "\"auto_update_weekdays_bitmask\":127,"
+        "\"auto_update_interval_from\":0,"
+        "\"auto_update_interval_to\":24,"
+        "\"auto_update_tz_offset_hours\":3,"
         "\"use_filtering\":true"
         "}",
         &g_gateway_config));
@@ -572,6 +620,11 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
           "\t\"mqtt_user\":\t\"\",\n"
           "\t\"lan_auth_type\":\t\"lan_auth_deny\",\n"
           "\t\"lan_auth_user\":\t\"\",\n"
+          "\t\"auto_update_cycle\":\t\"beta\",\n"
+          "\t\"auto_update_weekdays_bitmask\":\t126,\n"
+          "\t\"auto_update_interval_from\":\t1,\n"
+          "\t\"auto_update_interval_to\":\t23,\n"
+          "\t\"auto_update_tz_offset_hours\":\t-3,\n"
           "\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
           "\t\"use_filtering\":\ttrue,\n"
           "\t\"company_id\":\t\"0x0499\",\n"
@@ -596,6 +649,11 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
         "\"http_url\":\"https://network.ruuvi.com/record\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
+        "\"auto_update_cycle\":\"beta\","
+        "\"auto_update_weekdays_bitmask\":126,"
+        "\"auto_update_interval_from\":1,"
+        "\"auto_update_interval_to\":23,"
+        "\"auto_update_tz_offset_hours\":-3,"
         "\"use_filtering\":true"
         "}",
         &g_gateway_config));
@@ -976,6 +1034,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
           "\t\"mqtt_user\":\t\"\",\n"
           "\t\"lan_auth_type\":\t\"lan_auth_deny\",\n"
           "\t\"lan_auth_user\":\t\"\",\n"
+          "\t\"auto_update_cycle\":\t\"manual\",\n"
+          "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+          "\t\"auto_update_interval_from\":\t0,\n"
+          "\t\"auto_update_interval_to\":\t24,\n"
+          "\t\"auto_update_tz_offset_hours\":\t3,\n"
           "\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
           "\t\"use_filtering\":\ttrue,\n"
           "\t\"company_id\":\t\"0x0499\",\n"
@@ -1171,6 +1234,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_type not found");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_user not found");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_pass not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_cycle not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_weekdays_bitmask not found or invalid");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_interval_from not found or invalid");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_interval_to not found or invalid");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_tz_offset_hours not found or invalid");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_filtering: 1");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "company_id not found or invalid");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "coordinates not found");
@@ -1182,7 +1250,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_channel_39 not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("Gateway SETTINGS:"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth dhcp: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth dhcp: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth static ip: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth netmask: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth gw: "));
@@ -1202,15 +1270,19 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_deny"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth user: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update cycle: manual"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update weekdays_bitmask: 0x7f"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update interval: 00:00..24:00"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update TZ: UTC+3"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: coordinates: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use company id filter: 1"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: company id: 0x0000"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: company id: 0x0499"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan coded phy: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan 1mbit/phy: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan extended payload: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 37: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 38: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 39: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan 1mbit/phy: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan extended payload: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 37: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 38: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1307,6 +1379,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_type not found");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_user not found");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_pass not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_cycle not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_weekdays_bitmask not found or invalid");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_interval_from not found or invalid");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_interval_to not found or invalid");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_tz_offset_hours not found or invalid");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_filtering: 1");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "company_id not found or invalid");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "coordinates not found");
@@ -1318,7 +1395,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_channel_39 not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("Gateway SETTINGS:"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth dhcp: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth dhcp: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth static ip: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth netmask: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth gw: "));
@@ -1338,15 +1415,19 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_deny"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth user: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update cycle: manual"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update weekdays_bitmask: 0x7f"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update interval: 00:00..24:00"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update TZ: UTC+3"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: coordinates: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use company id filter: 1"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: company id: 0x0000"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: company id: 0x0499"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan coded phy: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan 1mbit/phy: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan extended payload: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 37: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 38: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 39: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan 1mbit/phy: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan extended payload: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 37: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 38: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 

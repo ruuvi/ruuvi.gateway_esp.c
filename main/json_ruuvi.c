@@ -6,10 +6,12 @@
  */
 
 #include "json_ruuvi.h"
-#include "stdio.h"
+#include <string.h>
+#include <stdio.h>
 #include "cJSON.h"
 #include "cjson_wrap.h"
 #include "http_server_auth_type.h"
+#include "gw_cfg_default.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -75,9 +77,51 @@ json_ruuvi_get_uint16_val(
 
 JSON_RUUVI_STATIC
 bool
+json_ruuvi_get_uint8_val(
+    const cJSON *p_json_root,
+    const char * p_attr_name,
+    uint8_t *    p_val,
+    bool         flag_log_err_if_not_found)
+{
+    if (!json_wrap_get_uint8_val(p_json_root, p_attr_name, p_val))
+    {
+        if (flag_log_err_if_not_found)
+        {
+            LOG_ERR("%s not found or invalid", p_attr_name);
+        }
+        return false;
+    }
+    LOG_DBG("%s: %u", p_attr_name, *p_val);
+    return true;
+}
+
+JSON_RUUVI_STATIC
+bool
+json_ruuvi_get_int8_val(
+    const cJSON *p_json_root,
+    const char * p_attr_name,
+    int8_t *     p_val,
+    bool         flag_log_err_if_not_found)
+{
+    if (!json_wrap_get_int8_val(p_json_root, p_attr_name, p_val))
+    {
+        if (flag_log_err_if_not_found)
+        {
+            LOG_ERR("%s not found or invalid", p_attr_name);
+        }
+        return false;
+    }
+    LOG_DBG("%s: %d", p_attr_name, (printf_int_t)*p_val);
+    return true;
+}
+
+JSON_RUUVI_STATIC
+bool
 json_ruuvi_parse(const cJSON *p_json_root, ruuvi_gateway_config_t *p_gw_cfg)
 {
     LOG_DBG("Got SETTINGS:");
+
+    *p_gw_cfg = g_gateway_config_default;
 
     json_ruuvi_get_bool_val(p_json_root, "use_eth", &p_gw_cfg->eth.use_eth, false);
     json_ruuvi_get_bool_val(p_json_root, "eth_dhcp", &p_gw_cfg->eth.eth_dhcp, true);
@@ -172,6 +216,45 @@ json_ruuvi_parse(const cJSON *p_json_root, ruuvi_gateway_config_t *p_gw_cfg)
         "lan_auth_pass",
         p_gw_cfg->lan_auth.lan_auth_pass,
         sizeof(p_gw_cfg->lan_auth.lan_auth_pass),
+        true);
+
+    char auto_update_cycle[AUTO_UPDATE_CYCLE_TYPE_STR_MAX_LEN];
+    json_ruuvi_copy_string_val(p_json_root, "auto_update_cycle", auto_update_cycle, sizeof(auto_update_cycle), true);
+    if (0 == strcmp(AUTO_UPDATE_CYCLE_TYPE_STR_REGULAR, auto_update_cycle))
+    {
+        p_gw_cfg->auto_update.auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR;
+    }
+    else if (0 == strcmp(AUTO_UPDATE_CYCLE_TYPE_STR_BETA_TESTER, auto_update_cycle))
+    {
+        p_gw_cfg->auto_update.auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER;
+    }
+    else if (0 == strcmp(AUTO_UPDATE_CYCLE_TYPE_STR_MANUAL, auto_update_cycle))
+    {
+        p_gw_cfg->auto_update.auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_MANUAL;
+    }
+    else
+    {
+        p_gw_cfg->auto_update.auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_MANUAL;
+    }
+    json_ruuvi_get_uint8_val(
+        p_json_root,
+        "auto_update_weekdays_bitmask",
+        &p_gw_cfg->auto_update.auto_update_weekdays_bitmask,
+        true);
+    json_ruuvi_get_uint8_val(
+        p_json_root,
+        "auto_update_interval_from",
+        &p_gw_cfg->auto_update.auto_update_interval_from,
+        true);
+    json_ruuvi_get_uint8_val(
+        p_json_root,
+        "auto_update_interval_to",
+        &p_gw_cfg->auto_update.auto_update_interval_to,
+        true);
+    json_ruuvi_get_int8_val(
+        p_json_root,
+        "auto_update_tz_offset_hours",
+        &p_gw_cfg->auto_update.auto_update_tz_offset_hours,
         true);
 
     json_ruuvi_get_bool_val(p_json_root, "use_filtering", &p_gw_cfg->filter.company_filter, true);

@@ -53,6 +53,7 @@ add_subdirectory(test_bin2hex)
 add_subdirectory(test_cjson_wrap)
 add_subdirectory(test_event_mgr)
 add_subdirectory(test_flashfatfs)
+add_subdirectory(test_json_helper)
 add_subdirectory(test_json_ruuvi)
 add_subdirectory(test_gw_cfg)
 add_subdirectory(test_hmac_sha256)
@@ -62,6 +63,7 @@ add_subdirectory(test_leds)
 add_subdirectory(test_mqtt_json)
 add_subdirectory(test_nrf52fw)
 add_subdirectory(test_nrf52swd)
+add_subdirectory(test_time_str)
 add_subdirectory(test_time_task)
 
 add_test(NAME test_adv_table
@@ -87,22 +89,27 @@ add_test(NAME test_event_mgr
 add_test(NAME test_flashfatfs
         COMMAND ruuvi_gateway_esp-test-flashfatfs
         --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-flashfatfs>/gtestresults.xml
-        )
+)
+
+add_test(NAME test_json_helper
+        COMMAND ruuvi_gateway_esp-test-json_helper
+        --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-json_helper>/gtestresults.xml
+)
 
 add_test(NAME test_json_ruuvi
         COMMAND ruuvi_gateway_esp-test-json_ruuvi
         --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-json_ruuvi>/gtestresults.xml
-        )
+)
 
 add_test(NAME test_gw_cfg
         COMMAND ruuvi_gateway_esp-test-gw_cfg
         --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-gw_cfg>/gtestresults.xml
-        )
+)
 
 add_test(NAME test_hmac_sha256
         COMMAND ruuvi_gateway_esp-test-hmac_sha256
         --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-hmac_sha256>/gtestresults.xml
-        )
+)
 
 add_test(NAME test_http_json
         COMMAND ruuvi_gateway_esp-test-http_json
@@ -132,6 +139,11 @@ add_test(NAME test_nrf52fw
 add_test(NAME test_nrf52swd
         COMMAND ruuvi_gateway_esp-test-nrf52swd
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-nrf52swd>/gtestresults.xml
+)
+
+add_test(NAME test_time_str
+        COMMAND ruuvi_gateway_esp-test-time_str
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-time_str>/gtestresults.xml
 )
 
 add_test(NAME test_time_task

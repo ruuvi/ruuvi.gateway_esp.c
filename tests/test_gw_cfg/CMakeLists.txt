@@ -7,6 +7,8 @@ add_executable(${ProjectId}
         test_gw_cfg.cpp
         ${RUUVI_GW_SRC}/gw_cfg.c
         ${RUUVI_GW_SRC}/gw_cfg.h
+        ${RUUVI_GW_SRC}/gw_cfg_default.c
+        ${RUUVI_GW_SRC}/gw_cfg_default.h
         ${RUUVI_GW_SRC}/cjson_wrap.c
         ${RUUVI_GW_SRC}/cjson_wrap.h
         $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c

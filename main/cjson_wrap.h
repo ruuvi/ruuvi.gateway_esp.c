@@ -64,6 +64,12 @@ json_wrap_get_bool_val(const cJSON *p_json_root, const char *p_attr_name, bool *
 bool
 json_wrap_get_uint16_val(const cJSON *p_json_root, const char *p_attr_name, uint16_t *p_val);
 
+bool
+json_wrap_get_uint8_val(const cJSON *p_json_root, const char *p_attr_name, uint8_t *p_val);
+
+bool
+json_wrap_get_int8_val(const cJSON *p_json_root, const char *p_attr_name, int8_t *p_val);
+
 #ifdef __cplusplus
 }
 #endif

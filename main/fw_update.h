@@ -10,6 +10,7 @@
 
 #include <stdbool.h>
 #include "esp_ota_ops.h"
+#include "attribs.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,6 +45,13 @@ json_fw_update_parse_http_body(const char *const p_body);
 
 bool
 fw_update_is_url_valid(void);
+
+ATTR_PRINTF(1, 2)
+void
+fw_update_set_url(const char *const p_url_fmt, ...);
+
+const char *
+fw_update_get_url(void);
 
 bool
 fw_update_run(void);

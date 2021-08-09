@@ -31,9 +31,20 @@
 #include "mac_addr.h"
 #include "http_json.h"
 #include "ruuvi_device_id.h"
+#include "os_signal.h"
+#include "os_timer_sig.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
+
+typedef enum adv_post_sig_e
+{
+    ADV_POST_SIG_STOP       = OS_SIGNAL_NUM_0,
+    ADV_POST_SIG_RETRANSMIT = OS_SIGNAL_NUM_1,
+} adv_post_sig_e;
+
+#define ADV_POST_SIG_FIRST (ADV_POST_SIG_STOP)
+#define ADV_POST_SIG_LAST  (ADV_POST_SIG_RETRANSMIT)
 
 static void
 adv_post_send_report(void *arg);
@@ -56,9 +67,26 @@ static adv_callbacks_fn_t adv_callback_func_tbl = {
     .AdvGetAllCallback = adv_post_send_get_all,
 };
 
-static uint32_t g_adv_post_nonce;
+static uint32_t                       g_adv_post_nonce;
+static os_signal_t *                  g_p_adv_post_sig;
+static os_signal_static_t             g_adv_post_sig_mem;
+static os_timer_sig_periodic_t *      g_p_adv_post_timer_sig_retransmit;
+static os_timer_sig_periodic_static_t g_adv_post_timer_sig_retransmit_mem;
+static uint32_t                       g_adv_post_interval_ms = ADV_POST_DEFAULT_INTERVAL_SECONDS * 1000U;
 
-static uint32_t g_adv_post_interval_ms = ADV_POST_DEFAULT_INTERVAL_SECONDS * 1000U;
+ATTR_PURE
+static os_signal_num_e
+adv_post_conv_to_sig_num(const adv_post_sig_e sig)
+{
+    return (os_signal_num_e)sig;
+}
+
+static adv_post_sig_e
+adv_post_conv_from_sig_num(const os_signal_num_e sig_num)
+{
+    assert(((os_signal_num_e)ADV_POST_SIG_FIRST <= sig_num) && (sig_num <= (os_signal_num_e)ADV_POST_SIG_LAST));
+    return (adv_post_sig_e)sig_num;
+}
 
 /** @brief serialise up to U64 into given buffer, MSB first. */
 static inline void
@@ -265,58 +293,108 @@ adv_post_retransmit_advs(const adv_report_table_t *p_reports, const bool flag_co
     }
 }
 
-ATTR_NORETURN
 static void
-adv_post_task(void)
+adv_post_do_retransmission(bool *const p_flag_connected)
 {
     static adv_report_table_t g_adv_reports_buf;
 
-    esp_log_level_set(TAG, ESP_LOG_INFO);
-    LOG_INFO("%s", __func__);
-    bool flag_connected = false;
+    // for thread safety copy the advertisements to a separate buffer for posting
+    adv_table_read_retransmission_list_and_clear(&g_adv_reports_buf);
 
-    while (1)
+    adv_post_log(&g_adv_reports_buf);
+
+    if (!*p_flag_connected)
     {
-        // for thread safety copy the advertisements to a separate buffer for posting
-        adv_table_read_retransmission_list_and_clear(&g_adv_reports_buf);
+        *p_flag_connected = adv_post_check_is_connected(g_adv_post_nonce);
+        g_adv_post_nonce += 1;
+    }
+    else
+    {
+        *p_flag_connected = adv_post_check_is_disconnected();
+    }
 
-        adv_post_log(&g_adv_reports_buf);
-
-        if (!flag_connected)
+    if (0 != g_adv_reports_buf.num_of_advs)
+    {
+        if (*p_flag_connected)
         {
-            flag_connected = adv_post_check_is_connected(g_adv_post_nonce);
-            g_adv_post_nonce += 1;
+            adv_post_retransmit_advs(&g_adv_reports_buf, *p_flag_connected);
         }
         else
         {
-            flag_connected = adv_post_check_is_disconnected();
+            LOG_WARN("Can't send, no network connection");
         }
-
-        if (0 != g_adv_reports_buf.num_of_advs)
-        {
-            if (flag_connected)
-            {
-                adv_post_retransmit_advs(&g_adv_reports_buf, flag_connected);
-            }
-            else
-            {
-                LOG_WARN("Can't send, no network connection");
-            }
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(g_adv_post_interval_ms));
     }
+}
+
+static void
+adv_post_task(void)
+{
+    esp_log_level_set(TAG, ESP_LOG_INFO);
+
+    if (!os_signal_register_cur_thread(g_p_adv_post_sig))
+    {
+        LOG_ERR("%s failed", "os_signal_register_cur_thread");
+        return;
+    }
+
+    LOG_INFO("%s started", __func__);
+    os_timer_sig_periodic_start(g_p_adv_post_timer_sig_retransmit);
+
+    bool flag_stop      = false;
+    bool flag_connected = false;
+    while (!flag_stop)
+    {
+        os_signal_events_t sig_events = { 0 };
+        if (!os_signal_wait_with_timeout(g_p_adv_post_sig, OS_DELTA_TICKS_INFINITE, &sig_events))
+        {
+            continue;
+        }
+        for (;;)
+        {
+            const os_signal_num_e sig_num = os_signal_num_get_next(&sig_events);
+            if (OS_SIGNAL_NUM_NONE == sig_num)
+            {
+                break;
+            }
+            const adv_post_sig_e adv_post_sig = adv_post_conv_from_sig_num(sig_num);
+            switch (adv_post_sig)
+            {
+                case ADV_POST_SIG_STOP:
+                    LOG_INFO("Got ADV_POST_SIG_STOP");
+                    flag_stop = true;
+                    break;
+                case ADV_POST_SIG_RETRANSMIT:
+                    adv_post_do_retransmission(&flag_connected);
+                    break;
+            }
+        }
+    }
+    LOG_INFO("Stop task adv_post");
+    os_signal_unregister_cur_thread(g_p_adv_post_sig);
+    os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_retransmit);
+    os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_retransmit);
+    os_signal_delete(&g_p_adv_post_sig);
 }
 
 void
 adv_post_init(void)
 {
+    g_p_adv_post_sig = os_signal_create_static(&g_adv_post_sig_mem);
+    os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_STOP));
+    os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT));
+
+    g_p_adv_post_timer_sig_retransmit = os_timer_sig_periodic_create_static(
+        &g_adv_post_timer_sig_retransmit_mem,
+        "adv_post_retransmit",
+        g_p_adv_post_sig,
+        adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT),
+        pdMS_TO_TICKS(ADV_POST_DEFAULT_INTERVAL_SECONDS * 1000));
+
     g_adv_post_nonce = esp_random();
     adv_table_init();
     api_callbacks_reg((void *)&adv_callback_func_tbl);
-    const uint32_t   stack_size = 1024U * 4U;
-    os_task_handle_t h_task     = NULL;
-    if (!os_task_create_without_param(&adv_post_task, "adv_post_task", stack_size, 1, &h_task))
+    const uint32_t stack_size = 1024U * 4U;
+    if (!os_task_create_finite_without_param(&adv_post_task, "adv_post_task", stack_size, 1))
     {
         LOG_ERR("Can't create thread");
     }
@@ -332,5 +410,16 @@ adv_post_set_period(const uint32_t period_ms)
             (printf_uint_t)g_adv_post_interval_ms,
             (printf_uint_t)period_ms);
         g_adv_post_interval_ms = period_ms;
+        os_timer_sig_periodic_restart(g_p_adv_post_timer_sig_retransmit, pdMS_TO_TICKS(period_ms));
+    }
+}
+
+void
+adv_post_stop(void)
+{
+    LOG_INFO("adv_post_stop");
+    if (!os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_STOP)))
+    {
+        LOG_ERR("%s failed", "os_signal_send");
     }
 }

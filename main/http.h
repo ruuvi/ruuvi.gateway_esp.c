@@ -11,17 +11,19 @@
 #include <stdbool.h>
 #include "esp_http_client.h"
 #include "adv_table.h"
+#include "wifi_manager_defs.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef void (*http_download_cb_on_data_t)(
-    const uint8_t *const p_buf,
-    const size_t         buf_size,
-    const size_t         offset,
-    const size_t         content_length,
-    void *               p_user_data);
+typedef bool (*http_download_cb_on_data_t)(
+    const uint8_t *const   p_buf,
+    const size_t           buf_size,
+    const size_t           offset,
+    const size_t           content_length,
+    const http_resp_code_e resp_code,
+    void *                 p_user_data);
 
 bool
 http_send(const char *const p_msg);
