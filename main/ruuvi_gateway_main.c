@@ -606,10 +606,9 @@ configure_wifi_country_and_max_tx_power(void)
         else
         {
             LOG_INFO(
-                "WiFi country after wifi_init: CC=%.3s, max_tx_power=%d (%d dBm), schan=%u, nchan=%u, policy=%s",
+                "WiFi country after wifi_init: CC=%.3s, max_tx_power=%d dBm, schan=%u, nchan=%u, policy=%s",
                 country.cc,
                 (printf_int_t)country.max_tx_power,
-                (printf_int_t)(country.max_tx_power / 4),
                 (printf_uint_t)country.schan,
                 (printf_uint_t)country.nchan,
                 country.policy ? "MANUAL" : "AUTO");
@@ -620,7 +619,7 @@ configure_wifi_country_and_max_tx_power(void)
             .cc = "FI", /**< country code string */
             .schan = 1,   /**< start channel */
             .nchan = 13,   /**< total channel number */
-            .max_tx_power = 9 * 4,   /**< This field is used for getting WiFi maximum transmitting power, call esp_wifi_set_max_tx_power to set the maximum transmitting power. */
+            .max_tx_power = 9,   /**< This field is used for getting WiFi maximum transmitting power, call esp_wifi_set_max_tx_power to set the maximum transmitting power. */
             .policy = WIFI_COUNTRY_POLICY_AUTO,  /**< country policy */
         };
         const esp_err_t err = esp_wifi_set_country(&country);
@@ -639,10 +638,9 @@ configure_wifi_country_and_max_tx_power(void)
         else
         {
             LOG_INFO(
-                "WiFi country after esp_wifi_set_country: CC=%.3s, max_tx_power=%d (%d dBm), schan=%u, nchan=%u, policy=%s",
+                "WiFi country after esp_wifi_set_country: CC=%.3s, max_tx_power=%d dBm, schan=%u, nchan=%u, policy=%s",
                 country.cc,
                 (printf_int_t)country.max_tx_power,
-                (printf_int_t)(country.max_tx_power / 4),
                 (printf_uint_t)country.schan,
                 (printf_uint_t)country.nchan,
                 country.policy ? "MANUAL" : "AUTO");
