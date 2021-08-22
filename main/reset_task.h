@@ -29,6 +29,9 @@ reset_task_notify_configure_button_pressed(void);
 void
 reset_task_notify_configure_button_released(void);
 
+void
+reset_task_activate_after_delay(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -27,6 +27,7 @@
 #include "os_str.h"
 #include "os_time.h"
 #include "time_str.h"
+#include "reset_task.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -732,6 +733,7 @@ http_server_cb_on_post_ruuvi(const char *p_body)
     }
     ruuvi_send_nrf_settings(&g_gateway_config);
     ethernet_update_ip();
+    reset_task_activate_after_delay();
     return http_server_resp_data_in_flash(
         HTTP_CONENT_TYPE_APPLICATION_JSON,
         NULL,
