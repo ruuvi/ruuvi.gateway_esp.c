@@ -275,6 +275,7 @@ wifi_connection_cb_on_ap_sta_disconnected(void)
         ethernet_start(g_gw_wifi_ssid.ssid_buf);
         reset_task_start_timer_after_hotspot_activation();
     }
+    adv_post_enable_retransmission();
 }
 
 void

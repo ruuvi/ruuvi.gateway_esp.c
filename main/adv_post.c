@@ -41,10 +41,12 @@ typedef enum adv_post_sig_e
 {
     ADV_POST_SIG_STOP       = OS_SIGNAL_NUM_0,
     ADV_POST_SIG_RETRANSMIT = OS_SIGNAL_NUM_1,
+    ADV_POST_SIG_DISABLE    = OS_SIGNAL_NUM_2,
+    ADV_POST_SIG_ENABLE     = OS_SIGNAL_NUM_3,
 } adv_post_sig_e;
 
 #define ADV_POST_SIG_FIRST (ADV_POST_SIG_STOP)
-#define ADV_POST_SIG_LAST  (ADV_POST_SIG_RETRANSMIT)
+#define ADV_POST_SIG_LAST  (ADV_POST_SIG_ENABLE)
 
 static void
 adv_post_send_report(void *arg);
@@ -73,6 +75,7 @@ static os_signal_static_t             g_adv_post_sig_mem;
 static os_timer_sig_periodic_t *      g_p_adv_post_timer_sig_retransmit;
 static os_timer_sig_periodic_static_t g_adv_post_timer_sig_retransmit_mem;
 static uint32_t                       g_adv_post_interval_ms = ADV_POST_DEFAULT_INTERVAL_SECONDS * 1000U;
+static bool                           g_adv_post_flag_retransmission_disabled = false;
 
 ATTR_PURE
 static os_signal_num_e
@@ -364,7 +367,16 @@ adv_post_task(void)
                     flag_stop = true;
                     break;
                 case ADV_POST_SIG_RETRANSMIT:
-                    adv_post_do_retransmission(&flag_connected);
+                    if (!g_adv_post_flag_retransmission_disabled)
+                    {
+                        adv_post_do_retransmission(&flag_connected);
+                    }
+                    break;
+                case ADV_POST_SIG_DISABLE:
+                    g_adv_post_flag_retransmission_disabled = true;
+                    break;
+                case ADV_POST_SIG_ENABLE:
+                    g_adv_post_flag_retransmission_disabled = false;
                     break;
             }
         }
@@ -382,6 +394,8 @@ adv_post_init(void)
     g_p_adv_post_sig = os_signal_create_static(&g_adv_post_sig_mem);
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_STOP));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT));
+    os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DISABLE));
+    os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_ENABLE));
 
     g_p_adv_post_timer_sig_retransmit = os_timer_sig_periodic_create_static(
         &g_adv_post_timer_sig_retransmit_mem,
@@ -419,6 +433,26 @@ adv_post_stop(void)
 {
     LOG_INFO("adv_post_stop");
     if (!os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_STOP)))
+    {
+        LOG_ERR("%s failed", "os_signal_send");
+    }
+}
+
+void
+adv_post_disable_retransmission(void)
+{
+    LOG_INFO("adv_post_disable_retransmission");
+    if (!os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DISABLE)))
+    {
+        LOG_ERR("%s failed", "os_signal_send");
+    }
+}
+
+void
+adv_post_enable_retransmission(void)
+{
+    LOG_INFO("adv_post_enable_retransmission");
+    if (!os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_ENABLE)))
     {
         LOG_ERR("%s failed", "os_signal_send");
     }

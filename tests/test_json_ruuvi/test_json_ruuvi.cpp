@@ -261,16 +261,90 @@ TEST_F(TestJsonRuuvi, get_uint16_val_failed_log) // NOLINT
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
-TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
+TEST_F(TestJsonRuuvi, json_ruuvi_parse_network_cfg_eth_dhcp) // NOLINT
 {
     cJSON *root = cJSON_CreateObject();
     ASSERT_NE(nullptr, root);
+    cJSON_AddBoolToObject(root, "use_eth", true);
     cJSON_AddBoolToObject(root, "eth_dhcp", true);
+
+    ruuvi_gateway_config_t gw_cfg           = { 0 };
+    bool                   flag_network_cfg = false;
+    ASSERT_TRUE(json_ruuvi_parse(root, &gw_cfg, &flag_network_cfg));
+    cJSON_Delete(root);
+    ASSERT_TRUE(flag_network_cfg);
+    ASSERT_TRUE(gw_cfg.eth.use_eth);
+    ASSERT_TRUE(gw_cfg.eth.eth_dhcp);
+    ASSERT_EQ(string(""), gw_cfg.eth.eth_static_ip);
+    ASSERT_EQ(string(""), gw_cfg.eth.eth_netmask);
+    ASSERT_EQ(string(""), gw_cfg.eth.eth_gw);
+    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns1);
+    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns2);
+
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Got SETTINGS:");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_eth: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_dhcp: 1");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestJsonRuuvi, json_ruuvi_parse_network_cfg_eth_static) // NOLINT
+{
+    cJSON *root = cJSON_CreateObject();
+    ASSERT_NE(nullptr, root);
+    cJSON_AddBoolToObject(root, "use_eth", true);
+    cJSON_AddBoolToObject(root, "eth_dhcp", false);
     cJSON_AddStringToObject(root, "eth_static_ip", "192.168.1.1");
     cJSON_AddStringToObject(root, "eth_netmask", "255.255.255.0");
     cJSON_AddStringToObject(root, "eth_gw", "192.168.0.1");
     cJSON_AddStringToObject(root, "eth_dns1", "8.8.8.8");
     cJSON_AddStringToObject(root, "eth_dns2", "4.4.4.4");
+
+    ruuvi_gateway_config_t gw_cfg           = { 0 };
+    bool                   flag_network_cfg = false;
+    ASSERT_TRUE(json_ruuvi_parse(root, &gw_cfg, &flag_network_cfg));
+    cJSON_Delete(root);
+    ASSERT_TRUE(flag_network_cfg);
+    ASSERT_TRUE(gw_cfg.eth.use_eth);
+    ASSERT_FALSE(gw_cfg.eth.eth_dhcp);
+    ASSERT_EQ(string("192.168.1.1"), gw_cfg.eth.eth_static_ip);
+    ASSERT_EQ(string("255.255.255.0"), gw_cfg.eth.eth_netmask);
+    ASSERT_EQ(string("192.168.0.1"), gw_cfg.eth.eth_gw);
+    ASSERT_EQ(string("8.8.8.8"), gw_cfg.eth.eth_dns1);
+    ASSERT_EQ(string("4.4.4.4"), gw_cfg.eth.eth_dns2);
+
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Got SETTINGS:");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_eth: 1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_dhcp: 0");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_static_ip: 192.168.1.1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_netmask: 255.255.255.0");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_gw: 192.168.0.1");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_dns1: 8.8.8.8");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_dns2: 4.4.4.4");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestJsonRuuvi, json_ruuvi_parse_network_cfg_wifi) // NOLINT
+{
+    cJSON *root = cJSON_CreateObject();
+    ASSERT_NE(nullptr, root);
+    cJSON_AddBoolToObject(root, "use_eth", false);
+
+    ruuvi_gateway_config_t gw_cfg           = { 0 };
+    bool                   flag_network_cfg = false;
+    ASSERT_TRUE(json_ruuvi_parse(root, &gw_cfg, &flag_network_cfg));
+    cJSON_Delete(root);
+    ASSERT_TRUE(flag_network_cfg);
+    ASSERT_FALSE(gw_cfg.eth.use_eth);
+
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Got SETTINGS:");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_eth: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
+{
+    cJSON *root = cJSON_CreateObject();
+    ASSERT_NE(nullptr, root);
 
     cJSON_AddBoolToObject(root, "use_mqtt", true);
     cJSON_AddStringToObject(root, "mqtt_server", "mqtt.server.org");
@@ -307,15 +381,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     cJSON_AddBoolToObject(root, "use_channel_38", true);
     cJSON_AddBoolToObject(root, "use_channel_39", true);
 
-    ruuvi_gateway_config_t gw_cfg = { 0 };
-    ASSERT_TRUE(json_ruuvi_parse(root, &gw_cfg));
+    ruuvi_gateway_config_t gw_cfg           = { 0 };
+    bool                   flag_network_cfg = false;
+    ASSERT_TRUE(json_ruuvi_parse(root, &gw_cfg, &flag_network_cfg));
     cJSON_Delete(root);
-    ASSERT_TRUE(gw_cfg.eth.eth_dhcp);
-    ASSERT_EQ(string("192.168.1.1"), gw_cfg.eth.eth_static_ip);
-    ASSERT_EQ(string("255.255.255.0"), gw_cfg.eth.eth_netmask);
-    ASSERT_EQ(string("192.168.0.1"), gw_cfg.eth.eth_gw);
-    ASSERT_EQ(string("8.8.8.8"), gw_cfg.eth.eth_dns1);
-    ASSERT_EQ(string("4.4.4.4"), gw_cfg.eth.eth_dns2);
+    ASSERT_FALSE(flag_network_cfg);
     ASSERT_TRUE(gw_cfg.mqtt.use_mqtt);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.mqtt.mqtt_server);
     ASSERT_EQ(string("prefix"), gw_cfg.mqtt.mqtt_prefix);
@@ -338,12 +408,6 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     ASSERT_EQ(true, gw_cfg.scan.scan_channel_39);
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Got SETTINGS:");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_dhcp: 1");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_static_ip: 192.168.1.1");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_netmask: 255.255.255.0");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_gw: 192.168.0.1");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_dns1: 8.8.8.8");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_dns2: 4.4.4.4");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_prefix: prefix");
@@ -379,12 +443,6 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_mqtt_pass) // NOLINT
 {
     cJSON *root = cJSON_CreateObject();
     ASSERT_NE(nullptr, root);
-    cJSON_AddBoolToObject(root, "eth_dhcp", true);
-    cJSON_AddStringToObject(root, "eth_static_ip", "192.168.1.1");
-    cJSON_AddStringToObject(root, "eth_netmask", "255.255.255.0");
-    cJSON_AddStringToObject(root, "eth_gw", "192.168.0.1");
-    cJSON_AddStringToObject(root, "eth_dns1", "8.8.8.8");
-    cJSON_AddStringToObject(root, "eth_dns2", "4.4.4.4");
 
     cJSON_AddBoolToObject(root, "use_mqtt", true);
     cJSON_AddStringToObject(root, "mqtt_server", "mqtt.server.org");
@@ -420,15 +478,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_mqtt_pass) // NOLINT
     cJSON_AddBoolToObject(root, "use_channel_38", true);
     cJSON_AddBoolToObject(root, "use_channel_39", true);
 
-    ruuvi_gateway_config_t gw_cfg = { 0 };
-    ASSERT_TRUE(json_ruuvi_parse(root, &gw_cfg));
+    ruuvi_gateway_config_t gw_cfg           = { 0 };
+    bool                   flag_network_cfg = false;
+    ASSERT_TRUE(json_ruuvi_parse(root, &gw_cfg, &flag_network_cfg));
     cJSON_Delete(root);
-    ASSERT_TRUE(gw_cfg.eth.eth_dhcp);
-    ASSERT_EQ(string("192.168.1.1"), gw_cfg.eth.eth_static_ip);
-    ASSERT_EQ(string("255.255.255.0"), gw_cfg.eth.eth_netmask);
-    ASSERT_EQ(string("192.168.0.1"), gw_cfg.eth.eth_gw);
-    ASSERT_EQ(string("8.8.8.8"), gw_cfg.eth.eth_dns1);
-    ASSERT_EQ(string("4.4.4.4"), gw_cfg.eth.eth_dns2);
+    ASSERT_FALSE(flag_network_cfg);
     ASSERT_TRUE(gw_cfg.mqtt.use_mqtt);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.mqtt.mqtt_server);
     ASSERT_EQ(string("prefix"), gw_cfg.mqtt.mqtt_prefix);
@@ -451,12 +505,6 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_mqtt_pass) // NOLINT
     ASSERT_EQ(true, gw_cfg.scan.scan_channel_39);
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Got SETTINGS:");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_dhcp: 1");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_static_ip: 192.168.1.1");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_netmask: 255.255.255.0");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_gw: 192.168.0.1");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_dns1: 8.8.8.8");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "eth_dns2: 4.4.4.4");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_prefix: prefix");
@@ -497,6 +545,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     };
     g_pTestClass->m_malloc_fail_on_cnt = 0;
     cJSON_InitHooks(&hooks);
+    bool flag_network_cfg = false;
     ASSERT_TRUE(json_ruuvi_parse_http_body(
         "{"
         "\"use_mqtt\":true,"
@@ -526,14 +575,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
         "\"use_channel_38\":true,"
         "\"use_channel_39\":true"
         "}",
-        &gw_cfg));
+        &gw_cfg,
+        &flag_network_cfg));
 
-    ASSERT_TRUE(gw_cfg.eth.eth_dhcp);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_static_ip);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_netmask);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_gw);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns1);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns2);
+    ASSERT_FALSE(flag_network_cfg);
     ASSERT_TRUE(gw_cfg.mqtt.use_mqtt);
     ASSERT_EQ(string("test.mosquitto.org"), gw_cfg.mqtt.mqtt_server);
     ASSERT_EQ(string("ruuvi/30:AE:A4:02:84:A4"), gw_cfg.mqtt.mqtt_prefix);
@@ -550,12 +595,6 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     ASSERT_EQ(string(""), gw_cfg.coordinates);
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Got SETTINGS:");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "eth_dhcp not found");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "eth_static_ip not found");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "eth_netmask not found");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "eth_gw not found");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "eth_dns1 not found");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "eth_dns2 not found");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_prefix: ruuvi/30:AE:A4:02:84:A4");
@@ -597,6 +636,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body_malloc_failed) // NOLINT
     };
     g_pTestClass->m_malloc_fail_on_cnt = 1;
     cJSON_InitHooks(&hooks);
+    bool flag_network_cfg = false;
     ASSERT_FALSE(json_ruuvi_parse_http_body(
         "{"
         "\"use_mqtt\":true,"
@@ -612,8 +652,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body_malloc_failed) // NOLINT
         "\"http_pass\":\"\","
         "\"use_filtering\":true"
         "}",
-        &gw_cfg));
+        &gw_cfg,
+        &flag_network_cfg));
 
+    ASSERT_FALSE(flag_network_cfg);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "Failed to parse json or no memory");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());

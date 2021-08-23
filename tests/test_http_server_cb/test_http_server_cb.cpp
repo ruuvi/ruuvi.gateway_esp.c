@@ -120,6 +120,16 @@ nrf52_get_device_id_str(void)
     return dev_id_str;
 }
 
+void
+adv_post_disable_retransmission(void)
+{
+}
+
+void
+adv_post_enable_retransmission(void)
+{
+}
+
 } // extern "C"
 
 class MemAllocTrace
@@ -517,6 +527,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
           "\t\"use_channel_38\":\ttrue,\n"
           "\t\"use_channel_39\":\ttrue\n"
           "}";
+    bool flag_network_cfg = false;
     ASSERT_TRUE(json_ruuvi_parse_http_body(
         "{"
         "\"use_mqtt\":true,"
@@ -537,7 +548,9 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
         "\"auto_update_tz_offset_hours\":3,"
         "\"use_filtering\":true"
         "}",
-        &g_gateway_config));
+        &g_gateway_config,
+        &flag_network_cfg));
+    ASSERT_FALSE(flag_network_cfg);
     snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
 
     esp_log_wrapper_clear();
@@ -558,6 +571,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
 
 TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed) // NOLINT
 {
+    bool flag_network_cfg = false;
     ASSERT_TRUE(json_ruuvi_parse_http_body(
         "{"
         "\"use_mqtt\":true,"
@@ -573,7 +587,9 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed) // NOLINT
         "\"http_pass\":\"\","
         "\"use_filtering\":true"
         "}",
-        &g_gateway_config));
+        &g_gateway_config,
+        &flag_network_cfg));
+    ASSERT_FALSE(flag_network_cfg);
     snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
     cJSON_Hooks hooks = {
         .malloc_fn = &os_malloc,
@@ -636,6 +652,7 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
           "\t\"use_channel_38\":\ttrue,\n"
           "\t\"use_channel_39\":\ttrue\n"
           "}";
+    bool flag_network_cfg = false;
     ASSERT_TRUE(json_ruuvi_parse_http_body(
         "{"
         "\"use_mqtt\":true,"
@@ -656,7 +673,9 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
         "\"auto_update_tz_offset_hours\":-3,"
         "\"use_filtering\":true"
         "}",
-        &g_gateway_config));
+        &g_gateway_config,
+        &flag_network_cfg));
+    ASSERT_FALSE(flag_network_cfg);
     snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
 
     esp_log_wrapper_clear();
@@ -1050,6 +1069,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
           "\t\"use_channel_38\":\ttrue,\n"
           "\t\"use_channel_39\":\ttrue\n"
           "}";
+    bool flag_network_cfg = false;
     ASSERT_TRUE(json_ruuvi_parse_http_body(
         "{"
         "\"use_mqtt\":true,"
@@ -1065,7 +1085,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
         "\"http_pass\":\"\","
         "\"use_filtering\":true"
         "}",
-        &g_gateway_config));
+        &g_gateway_config,
+        &flag_network_cfg));
+    ASSERT_FALSE(flag_network_cfg);
     snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
 
     esp_log_wrapper_clear();
@@ -1214,12 +1236,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok) // NOLINT
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Got SETTINGS:");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "eth_dhcp not found");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "eth_static_ip not found");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "eth_netmask not found");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "eth_gw not found");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "eth_dns1 not found");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "eth_dns2 not found");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_prefix: ruuvi/30:AE:A4:02:84:A4");
@@ -1250,7 +1266,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_channel_39 not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("Gateway SETTINGS:"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth dhcp: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth dhcp: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth static ip: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth netmask: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth gw: "));
@@ -1359,12 +1375,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Got SETTINGS:");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "eth_dhcp not found");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "eth_static_ip not found");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "eth_netmask not found");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "eth_gw not found");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "eth_dns1 not found");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "eth_dns2 not found");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_prefix: ruuvi/30:AE:A4:02:84:A4");
@@ -1395,7 +1405,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_channel_39 not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("Gateway SETTINGS:"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth dhcp: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth dhcp: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth static ip: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth netmask: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth gw: "));

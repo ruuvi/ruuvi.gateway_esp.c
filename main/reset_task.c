@@ -131,6 +131,10 @@ reset_task_handle_sig(const reset_task_sig_e reset_task_sig)
             LOG_INFO("System restart is activated by WiFi AP timeout");
             esp_restart();
             break;
+        case RESET_TASK_SIG_REBOOT_AFTER_DELAY:
+            LOG_INFO("System restart is activated by command");
+            esp_restart();
+            break;
         default:
             LOG_ERR("Unhanded sig: %d", (int)reset_task_sig);
             assert(0);

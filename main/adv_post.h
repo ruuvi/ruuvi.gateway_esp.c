@@ -25,6 +25,12 @@ adv_post_set_period(const uint32_t period_ms);
 void
 adv_post_stop(void);
 
+void
+adv_post_disable_retransmission(void);
+
+void
+adv_post_enable_retransmission(void);
+
 #ifdef __cplusplus
 }
 #endif
