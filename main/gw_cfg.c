@@ -143,6 +143,10 @@ gw_cfg_json_add_items_fw_version(cJSON *p_json_root)
 static bool
 gw_cfg_json_add_items_eth(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg)
 {
+    if (!gw_cfg_json_add_bool(p_json_root, "use_eth", p_cfg->eth.use_eth))
+    {
+        return false;
+    }
     if (!gw_cfg_json_add_bool(p_json_root, "eth_dhcp", p_cfg->eth.eth_dhcp))
     {
         return false;
