@@ -236,15 +236,15 @@ wifi_connection_ok_cb(void *p_param)
     leds_indication_on_network_ok();
 }
 
-void
-wifi_connection_cb_on_connect_eth_cmd(void)
+static void
+cb_on_connect_eth_cmd(void)
 {
     LOG_INFO("callback: on_connect_eth_cmd");
     ethernet_start(g_gw_wifi_ssid.ssid_buf);
 }
 
-void
-wifi_connection_cb_on_disconnect_eth_cmd(void)
+static void
+cb_on_disconnect_eth_cmd(void)
 {
     LOG_INFO("callback: on_disconnect_eth_cmd");
     wifi_manager_update_network_connection_info(UPDATE_USER_DISCONNECT, NULL, NULL);
@@ -252,22 +252,22 @@ wifi_connection_cb_on_disconnect_eth_cmd(void)
     ethernet_stop();
 }
 
-void
-wifi_connection_cb_on_disconnect_sta_cmd(void)
+static void
+cb_on_disconnect_sta_cmd(void)
 {
     LOG_INFO("callback: on_disconnect_sta_cmd");
     xEventGroupClearBits(status_bits, WIFI_CONNECTED_BIT);
 }
 
-void
-wifi_connection_cb_on_ap_sta_connected(void)
+static void
+cb_on_ap_sta_connected(void)
 {
     LOG_INFO("callback: on_ap_sta_connected");
     reset_task_stop_timer_after_hotspot_activation();
 }
 
-void
-wifi_connection_cb_on_ap_sta_disconnected(void)
+static void
+cb_on_ap_sta_disconnected(void)
 {
     LOG_INFO("callback: on_ap_sta_disconnected");
     if (!wifi_manager_is_connected_to_wifi_or_ethernet())
@@ -343,11 +343,11 @@ wifi_init(
         .cb_on_http_get            = &http_server_cb_on_get,
         .cb_on_http_post           = &http_server_cb_on_post,
         .cb_on_http_delete         = &http_server_cb_on_delete,
-        .cb_on_connect_eth_cmd     = &wifi_connection_cb_on_connect_eth_cmd,
-        .cb_on_disconnect_eth_cmd  = &wifi_connection_cb_on_disconnect_eth_cmd,
-        .cb_on_disconnect_sta_cmd  = &wifi_connection_cb_on_disconnect_sta_cmd,
-        .cb_on_ap_sta_connected    = &wifi_connection_cb_on_ap_sta_connected,
-        .cb_on_ap_sta_disconnected = &wifi_connection_cb_on_ap_sta_disconnected,
+        .cb_on_connect_eth_cmd     = &cb_on_connect_eth_cmd,
+        .cb_on_disconnect_eth_cmd  = &cb_on_disconnect_eth_cmd,
+        .cb_on_disconnect_sta_cmd  = &cb_on_disconnect_sta_cmd,
+        .cb_on_ap_sta_connected    = &cb_on_ap_sta_connected,
+        .cb_on_ap_sta_disconnected = &cb_on_ap_sta_disconnected,
     };
     wifi_manager_start(!flag_use_eth, flag_start_ap_only, p_gw_wifi_ssid, &wiFiAntConfig, &wifi_callbacks);
     wifi_manager_set_callback(EVENT_STA_GOT_IP, &wifi_connection_ok_cb);
