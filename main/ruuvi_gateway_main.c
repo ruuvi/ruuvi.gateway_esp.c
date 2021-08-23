@@ -214,11 +214,6 @@ ethernet_connection_ok_cb(const tcpip_adapter_ip_info_t *p_ip_info)
         {
             LOG_ERR("%s failed", "http_server_set_auth");
         }
-        if (wifi_manager_is_ap_active())
-        {
-            LOG_INFO("Stop WiFi AP");
-            wifi_manager_stop_ap();
-        }
     }
     xEventGroupSetBits(status_bits, ETH_CONNECTED_BIT);
     start_services();
