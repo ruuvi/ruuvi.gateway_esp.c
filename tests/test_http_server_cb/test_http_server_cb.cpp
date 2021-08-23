@@ -130,6 +130,11 @@ adv_post_enable_retransmission(void)
 {
 }
 
+void
+wifi_manager_stop_ap(void)
+{
+}
+
 } // extern "C"
 
 class MemAllocTrace
@@ -494,6 +499,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
         = "{\n"
           "\t\"fw_ver\":\t\"v1.3.3\",\n"
           "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
+          "\t\"use_eth\":\tfalse,\n"
           "\t\"eth_dhcp\":\ttrue,\n"
           "\t\"eth_static_ip\":\t\"\",\n"
           "\t\"eth_netmask\":\t\"\",\n"
@@ -619,6 +625,7 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
         = "{\n"
           "\t\"fw_ver\":\t\"v1.3.3\",\n"
           "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
+          "\t\"use_eth\":\tfalse,\n"
           "\t\"eth_dhcp\":\ttrue,\n"
           "\t\"eth_static_ip\":\t\"\",\n"
           "\t\"eth_netmask\":\t\"\",\n"
@@ -1036,6 +1043,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
         = "{\n"
           "\t\"fw_ver\":\t\"v1.3.3\",\n"
           "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
+          "\t\"use_eth\":\tfalse,\n"
           "\t\"eth_dhcp\":\ttrue,\n"
           "\t\"eth_static_ip\":\t\"\",\n"
           "\t\"eth_netmask\":\t\"\",\n"
