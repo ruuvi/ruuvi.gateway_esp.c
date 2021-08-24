@@ -52,6 +52,12 @@ ruuvi_send_nrf_settings(const ruuvi_gateway_config_t *p_config);
 void
 start_services(void);
 
+void
+main_task_start_timer_after_hotspot_activation();
+
+void
+main_task_stop_timer_after_hotspot_activation();
+
 #ifdef __cplusplus
 }
 #endif

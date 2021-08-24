@@ -717,11 +717,16 @@ http_server_resp_t
 http_server_cb_on_post_ruuvi(const char *p_body)
 {
     LOG_DBG("POST /ruuvi.json");
-    if (!json_ruuvi_parse_http_body(p_body, &g_gateway_config))
+    bool flag_network_cfg = false;
+    if (!json_ruuvi_parse_http_body(p_body, &g_gateway_config, &flag_network_cfg))
     {
         return http_server_resp_503();
     }
     gw_cfg_print_to_log(&g_gateway_config);
+    if (flag_network_cfg)
+    {
+        adv_post_disable_retransmission();
+    }
     settings_save_to_flash(&g_gateway_config);
     if (!http_server_set_auth(
             g_gateway_config.lan_auth.lan_auth_type,
@@ -732,6 +737,10 @@ http_server_cb_on_post_ruuvi(const char *p_body)
     }
     ruuvi_send_nrf_settings(&g_gateway_config);
     ethernet_update_ip();
+    if (!flag_network_cfg)
+    {
+        adv_post_enable_retransmission();
+    }
     return http_server_resp_data_in_flash(
         HTTP_CONENT_TYPE_APPLICATION_JSON,
         NULL,
