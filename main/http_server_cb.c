@@ -740,7 +740,6 @@ http_server_cb_on_post_ruuvi(const char *p_body)
     if (!flag_network_cfg)
     {
         adv_post_enable_retransmission();
-        wifi_manager_stop_ap();
     }
     return http_server_resp_data_in_flash(
         HTTP_CONENT_TYPE_APPLICATION_JSON,
