@@ -607,6 +607,93 @@ main_loop(void)
     }
 }
 
+static void
+configure_wifi_country_and_max_tx_power(void)
+{
+    {
+        wifi_country_t country = {0};
+        const esp_err_t err = esp_wifi_get_country(&country);
+        if (ESP_OK != err)
+        {
+            LOG_ERR_ESP(err, "%s failed", "esp_wifi_get_country");
+        }
+        else
+        {
+            LOG_INFO(
+                "WiFi country after wifi_init: CC=%.3s, max_tx_power=%d dBm, schan=%u, nchan=%u, policy=%s",
+                country.cc,
+                (printf_int_t)country.max_tx_power,
+                (printf_uint_t)country.schan,
+                (printf_uint_t)country.nchan,
+                country.policy ? "MANUAL" : "AUTO");
+        }
+    }
+    {
+        wifi_country_t country = {
+            .cc = "FI", /**< country code string */
+            .schan = 1,   /**< start channel */
+            .nchan = 13,   /**< total channel number */
+            .max_tx_power = 9,   /**< This field is used for getting WiFi maximum transmitting power, call esp_wifi_set_max_tx_power to set the maximum transmitting power. */
+            .policy = WIFI_COUNTRY_POLICY_AUTO,  /**< country policy */
+        };
+        const esp_err_t err = esp_wifi_set_country(&country);
+        if (ESP_OK != err)
+        {
+            LOG_ERR_ESP(err, "%s failed", "esp_wifi_get_country");
+        }
+    }
+    {
+        wifi_country_t country = {0};
+        const esp_err_t err = esp_wifi_get_country(&country);
+        if (ESP_OK != err)
+        {
+            LOG_ERR_ESP(err, "%s failed", "esp_wifi_get_country");
+        }
+        else
+        {
+            LOG_INFO(
+                "WiFi country after esp_wifi_set_country: CC=%.3s, max_tx_power=%d dBm, schan=%u, nchan=%u, policy=%s",
+                country.cc,
+                (printf_int_t)country.max_tx_power,
+                (printf_uint_t)country.schan,
+                (printf_uint_t)country.nchan,
+                country.policy ? "MANUAL" : "AUTO");
+        }
+    }
+
+    {
+        int8_t power = 0;
+        const esp_err_t err = esp_wifi_get_max_tx_power(&power);
+        if (ESP_OK != err)
+        {
+            LOG_ERR_ESP(err, "%s failed", "esp_wifi_get_max_tx_power");
+        }
+        else
+        {
+            LOG_INFO("Max WiFi TX power after wifi_init: %d (%d dBm)", (printf_int_t)power, (printf_int_t)(power / 4));
+        }
+    }
+    {
+        const esp_err_t err = esp_wifi_set_max_tx_power(9 /*dbB*/ * 4);
+        if (ESP_OK != err)
+        {
+            LOG_ERR_ESP(err, "%s failed", "esp_wifi_set_max_tx_power");
+        }
+    }
+    {
+        int8_t power = 0;
+        const esp_err_t err = esp_wifi_get_max_tx_power(&power);
+        if (ESP_OK != err)
+        {
+            LOG_ERR_ESP(err, "%s failed", "esp_wifi_get_max_tx_power");
+        }
+        else
+        {
+            LOG_INFO("Max WiFi TX power after esp_wifi_set_max_tx_power: %d (%d dBm)", (printf_int_t)power, (printf_int_t)(power / 4));
+        }
+    }
+}
+
 ATTR_NORETURN
 void
 app_main(void)
@@ -689,6 +776,10 @@ app_main(void)
             fw_update_get_current_fatfs_gwui_partition_name()))
     {
         LOG_ERR("%s failed", "wifi_init");
+    }
+    else
+    {
+        configure_wifi_country_and_max_tx_power();
     }
     ethernet_init(&ethernet_link_up_cb, &ethernet_link_down_cb, &ethernet_connection_ok_cb);
     if (g_gateway_config.eth.use_eth || (!wifi_manager_is_sta_configured()))
