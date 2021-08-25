@@ -13,6 +13,7 @@
 #include "ruuvi_gateway.h"
 #include "mqtt_json.h"
 #include "leds.h"
+#include "fw_update.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -117,6 +118,10 @@ mqtt_event_handler(esp_mqtt_event_handle_t h_event)
             xEventGroupSetBits(status_bits, MQTT_CONNECTED_BIT);
             mqtt_publish_connect();
             leds_indication_on_network_ok();
+            if (!fw_update_mark_app_valid_cancel_rollback())
+            {
+                LOG_ERR("%s failed", "fw_update_mark_app_valid_cancel_rollback");
+            }
             break;
 
         case MQTT_EVENT_DISCONNECTED:

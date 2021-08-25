@@ -134,7 +134,6 @@ leds_timer_sig_turn_off_stop(void)
     os_timer_sig_one_shot_stop(g_p_leds_timer_sig_turn_off);
 }
 
-LEDS_STATIC
 void
 leds_on(void)
 {
