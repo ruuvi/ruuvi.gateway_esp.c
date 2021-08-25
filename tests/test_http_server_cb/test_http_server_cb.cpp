@@ -39,6 +39,8 @@ struct flash_fat_fs_t
 
 extern "C" {
 
+volatile uint32_t g_cnt_cfg_button_pressed;
+
 const char *
 os_task_get_name(void)
 {
@@ -205,6 +207,8 @@ protected:
     {
         esp_log_wrapper_init();
         g_pTestClass = this;
+
+        g_cnt_cfg_button_pressed = 0;
 
         this->m_malloc_cnt                        = 0;
         this->m_malloc_fail_on_cnt                = 0;
