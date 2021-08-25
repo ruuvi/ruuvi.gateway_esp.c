@@ -185,7 +185,6 @@ static void
 ethernet_link_up_cb(void)
 {
     LOG_INFO("Ethernet connection established");
-    leds_indication_on_network_ok();
 }
 
 static void
@@ -202,6 +201,7 @@ static void
 ethernet_connection_ok_cb(const tcpip_adapter_ip_info_t *p_ip_info)
 {
     LOG_INFO("Ethernet connected");
+    leds_indication_on_network_ok();
     wifi_manager_update_network_connection_info(UPDATE_CONNECTION_OK, NULL, p_ip_info);
     if (!g_gateway_config.eth.use_eth)
     {
@@ -756,7 +756,7 @@ app_main(void)
         NULL,
         &cb_before_nrf52_fw_updating,
         &cb_after_nrf52_fw_updating);
-    leds_off();
+    leds_indication_network_no_connection();
 
     adv_post_init();
     terminal_open(NULL, true);

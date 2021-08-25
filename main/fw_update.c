@@ -628,7 +628,14 @@ fw_update_do_actions(void)
         NULL,
         NULL,
         NULL);
-    leds_off();
+    if (wifi_manager_is_connected_to_wifi_or_ethernet())
+    {
+        leds_indication_on_network_ok();
+    }
+    else
+    {
+        leds_indication_network_no_connection();
+    }
 
     fw_update_set_extra_info_for_status_json_update_successful();
 
