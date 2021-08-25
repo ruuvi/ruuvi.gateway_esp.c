@@ -9,10 +9,13 @@
 #define RUUVI_GATEWAY_ESP_RESET_TASK_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+extern volatile uint32_t g_cnt_cfg_button_pressed;
 
 bool
 reset_task_init(void);

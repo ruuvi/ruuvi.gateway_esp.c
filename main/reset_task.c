@@ -32,10 +32,10 @@ static const char *TAG = "reset_task";
 
 static os_timer_sig_one_shot_t *      g_p_timer_sig_reset_by_configure_button;
 static os_timer_sig_one_shot_static_t g_timer_sig_reset_by_configure_button_mem;
-static os_timer_sig_one_shot_t *      g_p_timer_sig_reset_after_delay;
-static os_timer_sig_one_shot_static_t g_timer_sig_reset_after_delay_mem;
 static os_signal_t *                  g_p_signal_reset_task;
 static os_signal_static_t             signal_reset_task_mem;
+
+volatile uint32_t g_cnt_cfg_button_pressed;
 
 ATTR_PURE
 static os_signal_num_e
@@ -72,6 +72,7 @@ reset_task_handle_sig(const reset_task_sig_e reset_task_sig)
             LOG_INFO(
                 "The CONFIGURE button has been pressed - start timer for %u seconds",
                 RESET_TASK_TIMEOUT_AFTER_PRESSING_CONFIGURE_BUTTON);
+            g_cnt_cfg_button_pressed += 1;
             os_timer_sig_one_shot_start(g_p_timer_sig_reset_by_configure_button);
             leds_indication_on_configure_button_press();
             break;
