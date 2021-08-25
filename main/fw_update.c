@@ -149,7 +149,9 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t *const p_flash_info)
             LOG_INFO("Currently running partition state: %s", "UNDEFINED");
             break;
         default:
-            LOG_INFO("Currently running partition state: %s", "NEW");
+            LOG_INFO(
+                "Currently running partition state: UNKNOWN (%d)",
+                (printf_int_t)p_flash_info->running_partition_state);
             break;
     }
 
