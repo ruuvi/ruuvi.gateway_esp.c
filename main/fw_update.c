@@ -227,6 +227,7 @@ fw_update_mark_app_valid_cancel_rollback(void)
             LOG_ERR_ESP(err, "%s failed", "esp_ota_mark_app_valid_cancel_rollback");
             return false;
         }
+        g_ruuvi_flash_info.running_partition_state = ESP_OTA_IMG_VALID;
     }
     return true;
 }
