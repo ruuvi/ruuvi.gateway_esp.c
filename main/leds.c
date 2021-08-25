@@ -352,7 +352,7 @@ void
 leds_indication_on_network_ok(void)
 {
     LOG_INFO("%s", __func__);
-    leds_on();
+    leds_off();
 }
 
 void
