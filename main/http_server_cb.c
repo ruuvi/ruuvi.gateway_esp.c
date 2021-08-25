@@ -27,6 +27,7 @@
 #include "os_str.h"
 #include "os_time.h"
 #include "time_str.h"
+#include "reset_task.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -162,6 +163,10 @@ json_info_add_items(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg, con
     os_free(p_reports);
 
     if (!json_info_add_uint32(p_json_root, "TAGS_SEEN", num_of_advs))
+    {
+        return false;
+    }
+    if (!json_info_add_uint32(p_json_root, "BUTTON_PRESSES", g_cnt_cfg_button_pressed))
     {
         return false;
     }
