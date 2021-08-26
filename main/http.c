@@ -17,6 +17,7 @@
 #include "os_str.h"
 #include "hmac_sha256.h"
 #include "adv_post.h"
+#include "fw_update.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -185,6 +186,10 @@ http_send_advs(const adv_report_table_t *const p_reports, const uint32_t nonce)
     if (http_send(json_str.p_str))
     {
         leds_indication_on_network_ok();
+        if (!fw_update_mark_app_valid_cancel_rollback())
+        {
+            LOG_ERR("%s failed", "fw_update_mark_app_valid_cancel_rollback");
+        }
     }
     else
     {

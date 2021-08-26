@@ -98,6 +98,8 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t *const p_flash_info)
 {
     p_flash_info->is_valid = false;
 
+    p_flash_info->running_partition_state = ESP_OTA_IMG_UNDEFINED;
+
     p_flash_info->p_app_desc = esp_ota_get_app_description();
     LOG_INFO("Project name     : %s", p_flash_info->p_app_desc->project_name);
     LOG_INFO("Firmware version : %s", p_flash_info->p_app_desc->version);
@@ -108,6 +110,8 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t *const p_flash_info)
         LOG_ERR("There is no boot partition info");
         return false;
     }
+    LOG_INFO("Boot partition: %s", p_flash_info->p_boot_partition->label);
+
     p_flash_info->p_running_partition = esp_ota_get_running_partition();
     if (NULL == p_flash_info->p_running_partition)
     {
@@ -115,6 +119,42 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t *const p_flash_info)
         return false;
     }
     LOG_INFO("Currently running partition: %s", p_flash_info->p_running_partition->label);
+
+    esp_err_t err = esp_ota_get_state_partition(
+        p_flash_info->p_running_partition,
+        &p_flash_info->running_partition_state);
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "%s failed", "esp_ota_get_state_partition");
+        return false;
+    }
+    switch (p_flash_info->running_partition_state)
+    {
+        case ESP_OTA_IMG_NEW:
+            LOG_INFO("Currently running partition state: %s", "NEW");
+            break;
+        case ESP_OTA_IMG_PENDING_VERIFY:
+            LOG_INFO("Currently running partition state: %s", "PENDING_VERIFY");
+            break;
+        case ESP_OTA_IMG_VALID:
+            LOG_INFO("Currently running partition state: %s", "VALID");
+            break;
+        case ESP_OTA_IMG_INVALID:
+            LOG_INFO("Currently running partition state: %s", "INVALID");
+            break;
+        case ESP_OTA_IMG_ABORTED:
+            LOG_INFO("Currently running partition state: %s", "ABORTED");
+            break;
+        case ESP_OTA_IMG_UNDEFINED:
+            LOG_INFO("Currently running partition state: %s", "UNDEFINED");
+            break;
+        default:
+            LOG_INFO(
+                "Currently running partition state: UNKNOWN (%d)",
+                (printf_int_t)p_flash_info->running_partition_state);
+            break;
+    }
+
     p_flash_info->p_next_update_partition = esp_ota_get_next_update_partition(p_flash_info->p_running_partition);
     if (NULL == p_flash_info->p_next_update_partition)
     {
@@ -162,6 +202,34 @@ fw_update_read_flash_info(void)
     ruuvi_flash_info_t *p_flash_info = &g_ruuvi_flash_info;
     fw_update_read_flash_info_internal(p_flash_info);
     return p_flash_info->is_valid;
+}
+
+bool
+fw_update_is_running_partition_in_pending_verify_state(void)
+{
+    ruuvi_flash_info_t *p_flash_info = &g_ruuvi_flash_info;
+    if (ESP_OTA_IMG_PENDING_VERIFY == p_flash_info->running_partition_state)
+    {
+        return true;
+    }
+    return false;
+}
+
+bool
+fw_update_mark_app_valid_cancel_rollback(void)
+{
+    if (fw_update_is_running_partition_in_pending_verify_state())
+    {
+        LOG_INFO("Mark current OTA partition valid and cancel rollback");
+        const esp_err_t err = esp_ota_mark_app_valid_cancel_rollback();
+        if (ESP_OK != err)
+        {
+            LOG_ERR_ESP(err, "%s failed", "esp_ota_mark_app_valid_cancel_rollback");
+            return false;
+        }
+        g_ruuvi_flash_info.running_partition_state = ESP_OTA_IMG_VALID;
+    }
+    return true;
 }
 
 const char *

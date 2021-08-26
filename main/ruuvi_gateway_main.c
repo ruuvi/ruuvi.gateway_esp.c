@@ -698,18 +698,22 @@ configure_wifi_country_and_max_tx_power(void)
     }
 }
 
-ATTR_NORETURN
-void
-app_main(void)
+static bool
+main_task_init(void)
 {
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
     cjson_wrap_init();
 
-    fw_update_read_flash_info();
+    if (!fw_update_read_flash_info())
+    {
+        LOG_ERR("%s failed", "fw_update_read_flash_info");
+        return false;
+    }
 
     if (!event_mgr_init())
     {
         LOG_ERR("%s failed", "event_mgr_init");
+        return false;
     }
 
     status_bits = xEventGroupCreate();
@@ -717,6 +721,7 @@ app_main(void)
     if (NULL == status_bits)
     {
         LOG_ERR("Can't create event group");
+        return false;
     }
 
     gpio_init();
@@ -747,6 +752,7 @@ app_main(void)
             g_gateway_config.lan_auth.lan_auth_pass))
     {
         LOG_ERR("%s failed", "http_server_set_auth");
+        return false;
     }
 
     leds_indication_on_nrf52_fw_updating();
@@ -780,6 +786,7 @@ app_main(void)
             fw_update_get_current_fatfs_gwui_partition_name()))
     {
         LOG_ERR("%s failed", "wifi_init");
+        return false;
     }
     else
     {
@@ -807,6 +814,7 @@ app_main(void)
     if (!reset_task_init())
     {
         LOG_ERR("Can't create thread");
+        return false;
     }
 
     g_p_signal_main_task = os_signal_create_static(&g_signal_main_task_mem);
@@ -836,12 +844,36 @@ app_main(void)
     if (!os_signal_register_cur_thread(g_p_signal_main_task))
     {
         LOG_ERR("%s failed", "os_signal_register_cur_thread");
+        return false;
     }
 
     os_timer_sig_periodic_start(g_p_timer_sig_log_heap_usage);
     os_timer_sig_periodic_start(g_p_timer_sig_check_for_fw_updates);
 
-    main_loop();
+    return true;
+}
+
+ATTR_NORETURN
+void
+app_main(void)
+{
+    if (!main_task_init())
+    {
+        LOG_ERR("main_task_init failed - try to rollback firmware");
+        const esp_err_t err = esp_ota_mark_app_invalid_rollback_and_reboot();
+        if (0 != err)
+        {
+            LOG_ERR_ESP(err, "%s failed", "esp_ota_mark_app_invalid_rollback_and_reboot");
+        }
+        for (;;)
+        {
+            vTaskDelay(1);
+        }
+    }
+    else
+    {
+        main_loop();
+    }
 }
 
 void

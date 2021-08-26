@@ -30,6 +30,9 @@ void
 leds_init(void);
 
 void
+leds_on(void);
+
+void
 leds_off(void);
 
 void

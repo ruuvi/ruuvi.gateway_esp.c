@@ -23,6 +23,7 @@ typedef struct ruuvi_flash_info_t
     const esp_app_desc_t * p_app_desc;
     const esp_partition_t *p_boot_partition;
     const esp_partition_t *p_running_partition;
+    esp_ota_img_states_t   running_partition_state;
     const esp_partition_t *p_next_update_partition;
     const esp_partition_t *p_next_fatfs_gwui_partition;
     const esp_partition_t *p_next_fatfs_nrf52_partition;
@@ -30,6 +31,12 @@ typedef struct ruuvi_flash_info_t
 
 bool
 fw_update_read_flash_info(void);
+
+bool
+fw_update_is_running_partition_in_pending_verify_state(void);
+
+bool
+fw_update_mark_app_valid_cancel_rollback(void);
 
 const char *
 fw_update_get_current_fatfs_nrf52_partition_name(void);
