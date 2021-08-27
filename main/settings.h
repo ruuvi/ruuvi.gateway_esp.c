@@ -38,6 +38,12 @@ settings_read_flag_rebooting_after_auto_update(void);
 void
 settings_write_flag_rebooting_after_auto_update(const bool flag_rebooting_after_auto_update);
 
+bool
+settings_read_flag_force_start_wifi_hotspot(void);
+
+void
+settings_write_flag_force_start_wifi_hotspot(const bool flag_force_start_wifi_hotspot);
+
 #ifdef __cplusplus
 }
 #endif

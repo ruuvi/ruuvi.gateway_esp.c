@@ -732,6 +732,10 @@ fw_update_task(void)
         {
             settings_write_flag_rebooting_after_auto_update(true);
         }
+        else
+        {
+            settings_write_flag_force_start_wifi_hotspot(true);
+        }
         vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_BEFORE_REBOOT_MS));
     }
     LOG_INFO("Restart system");

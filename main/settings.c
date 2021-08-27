@@ -23,6 +23,9 @@
 #define RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_KEY   "ruuvi_auto_udp"
 #define RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_VALUE (0xAACC5533U)
 
+#define RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_KEY   "ruuvi_wifi_ap"
+#define RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_VALUE (0xAACC5533U)
+
 static const char TAG[] = "settings";
 
 static bool
@@ -289,6 +292,63 @@ settings_write_flag_rebooting_after_auto_update(const bool flag_rebooting_after_
             RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_KEY,
             &flag_rebooting_after_auto_update_val,
             sizeof(flag_rebooting_after_auto_update_val)))
+    {
+        LOG_ERR("%s failed", "settings_nvs_set_blob");
+    }
+    nvs_close(handle);
+}
+
+bool
+settings_read_flag_force_start_wifi_hotspot(void)
+{
+    uint32_t   flag_force_start_wifi_hotspot = 0;
+    nvs_handle handle                        = 0;
+    if (!settings_nvs_open(NVS_READONLY, &handle))
+    {
+        LOG_WARN("settings_nvs_open failed, flag_force_start_wifi_hotspot = false");
+        return false;
+    }
+    size_t    sz      = sizeof(flag_force_start_wifi_hotspot);
+    esp_err_t esp_err = nvs_get_blob(
+        handle,
+        RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_KEY,
+        &flag_force_start_wifi_hotspot,
+        &sz);
+    if (ESP_OK != esp_err)
+    {
+        LOG_WARN_ESP(esp_err, "Can't read '%s' from flash", RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_KEY);
+        nvs_close(handle);
+        settings_write_flag_force_start_wifi_hotspot(false);
+    }
+    else
+    {
+        nvs_close(handle);
+    }
+    if (RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_VALUE == flag_force_start_wifi_hotspot)
+    {
+        return true;
+    }
+    return false;
+}
+
+void
+settings_write_flag_force_start_wifi_hotspot(const bool flag_force_start_wifi_hotspot)
+{
+    nvs_handle handle = 0;
+    LOG_INFO("SETTINGS: Write flag_force_start_wifi_hotspot: %d", flag_force_start_wifi_hotspot);
+    if (!settings_nvs_open(NVS_READWRITE, &handle))
+    {
+        LOG_ERR("%s failed", "settings_nvs_open");
+        return;
+    }
+    const uint32_t flag_force_start_wifi_hotspot_val = flag_force_start_wifi_hotspot
+                                                           ? RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_VALUE
+                                                           : 0;
+    if (!settings_nvs_set_blob(
+            handle,
+            RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_KEY,
+            &flag_force_start_wifi_hotspot_val,
+            sizeof(flag_force_start_wifi_hotspot_val)))
     {
         LOG_ERR("%s failed", "settings_nvs_set_blob");
     }
