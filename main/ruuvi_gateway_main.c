@@ -704,6 +704,36 @@ main_task_init(void)
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
     cjson_wrap_init();
 
+    g_p_signal_main_task = os_signal_create_static(&g_signal_main_task_mem);
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_LOG_HEAP_USAGE));
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES));
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_DEACTIVATE_WIFI_AP));
+
+    g_p_timer_sig_log_heap_usage = os_timer_sig_periodic_create_static(
+        &g_timer_sig_log_heap_usage,
+        "log_heap_usage",
+        g_p_signal_main_task,
+        main_task_conv_to_sig_num(MAIN_TASK_SIG_LOG_HEAP_USAGE),
+        pdMS_TO_TICKS(MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS * 1000U));
+    g_p_timer_sig_check_for_fw_updates = os_timer_sig_periodic_create_static(
+        &g_timer_sig_check_for_fw_updates_mem,
+        "check_for_fw_updates",
+        g_p_signal_main_task,
+        main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES),
+        pdMS_TO_TICKS(MAIN_TASK_CHECK_FOR_FW_UPDATES_PERIOD_SECONDS * 1000U));
+    g_p_timer_sig_deactivate_wifi_ap = os_timer_sig_one_shot_create_static(
+        &g_p_timer_sig_deactivate_wifi_ap_mem,
+        "deactivate_ap",
+        g_p_signal_main_task,
+        main_task_conv_to_sig_num(MAIN_TASK_SIG_DEACTIVATE_WIFI_AP),
+        pdMS_TO_TICKS(MAIN_TASK_TIMEOUT_AFTER_MANUAL_HOTSPOT_ACTIVATION_SEC * 1000));
+
+    if (!os_signal_register_cur_thread(g_p_signal_main_task))
+    {
+        LOG_ERR("%s failed", "os_signal_register_cur_thread");
+        return false;
+    }
+
     if (!fw_update_read_flash_info())
     {
         LOG_ERR("%s failed", "fw_update_read_flash_info");
@@ -814,36 +844,6 @@ main_task_init(void)
     if (!reset_task_init())
     {
         LOG_ERR("Can't create thread");
-        return false;
-    }
-
-    g_p_signal_main_task = os_signal_create_static(&g_signal_main_task_mem);
-    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_LOG_HEAP_USAGE));
-    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES));
-    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_DEACTIVATE_WIFI_AP));
-
-    g_p_timer_sig_log_heap_usage = os_timer_sig_periodic_create_static(
-        &g_timer_sig_log_heap_usage,
-        "log_heap_usage",
-        g_p_signal_main_task,
-        main_task_conv_to_sig_num(MAIN_TASK_SIG_LOG_HEAP_USAGE),
-        pdMS_TO_TICKS(MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS * 1000U));
-    g_p_timer_sig_check_for_fw_updates = os_timer_sig_periodic_create_static(
-        &g_timer_sig_check_for_fw_updates_mem,
-        "check_for_fw_updates",
-        g_p_signal_main_task,
-        main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES),
-        pdMS_TO_TICKS(MAIN_TASK_CHECK_FOR_FW_UPDATES_PERIOD_SECONDS * 1000U));
-    g_p_timer_sig_deactivate_wifi_ap = os_timer_sig_one_shot_create_static(
-        &g_p_timer_sig_deactivate_wifi_ap_mem,
-        "deactivate_ap",
-        g_p_signal_main_task,
-        main_task_conv_to_sig_num(MAIN_TASK_SIG_DEACTIVATE_WIFI_AP),
-        pdMS_TO_TICKS(MAIN_TASK_TIMEOUT_AFTER_MANUAL_HOTSPOT_ACTIVATION_SEC * 1000));
-
-    if (!os_signal_register_cur_thread(g_p_signal_main_task))
-    {
-        LOG_ERR("%s failed", "os_signal_register_cur_thread");
         return false;
     }
 
