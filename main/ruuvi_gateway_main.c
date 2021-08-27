@@ -824,13 +824,31 @@ main_task_init(void)
         configure_wifi_country_and_max_tx_power();
     }
     ethernet_init(&ethernet_link_up_cb, &ethernet_link_down_cb, &ethernet_connection_ok_cb);
-    if (g_gateway_config.eth.use_eth || (!wifi_manager_is_sta_configured()))
+
+    if (settings_read_flag_force_start_wifi_hotspot())
     {
-        ethernet_start(g_gw_wifi_ssid.ssid_buf);
+        LOG_INFO("Force start WiFi hotspot");
+        settings_write_flag_force_start_wifi_hotspot(false);
+        if (!wifi_manager_is_ap_active())
+        {
+            wifi_manager_start_ap();
+        }
+        else
+        {
+            LOG_INFO("WiFi hotspot is already active");
+        }
+        main_task_start_timer_after_hotspot_activation();
     }
     else
     {
-        LOG_INFO("Gateway already configured to use WiFi connection, so Ethernet is not needed");
+        if (g_gateway_config.eth.use_eth || (!wifi_manager_is_sta_configured()))
+        {
+            ethernet_start(g_gw_wifi_ssid.ssid_buf);
+        }
+        else
+        {
+            LOG_INFO("Gateway already configured to use WiFi connection, so Ethernet is not needed");
+        }
     }
 
     if (wifi_manager_is_ap_active())
