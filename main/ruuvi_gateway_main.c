@@ -537,7 +537,7 @@ main_task_handle_sig(const main_task_sig_e main_task_sig)
         case MAIN_TASK_SIG_DEACTIVATE_WIFI_AP:
             LOG_INFO("MAIN_TASK_SIG_DEACTIVATE_WIFI_AP");
             wifi_manager_stop_ap();
-            if (g_gateway_config.eth.use_eth)
+            if (g_gateway_config.eth.use_eth || (!wifi_manager_is_sta_configured()))
             {
                 ethernet_start(g_gw_wifi_ssid.ssid_buf);
             }
@@ -545,6 +545,7 @@ main_task_handle_sig(const main_task_sig_e main_task_sig)
             {
                 wifi_manager_connect_async();
             }
+
             leds_indication_network_no_connection();
             break;
     }
@@ -572,6 +573,7 @@ handle_reset_button_is_pressed_during_boot(void)
         LOG_ERR("Failed to clear the gateway settings in NVS");
     }
     settings_write_flag_rebooting_after_auto_update(false);
+    settings_write_flag_force_start_wifi_hotspot(true);
 
     LOG_INFO("Wait until the CONFIGURE button is released");
     leds_indication_on_configure_button_press();
