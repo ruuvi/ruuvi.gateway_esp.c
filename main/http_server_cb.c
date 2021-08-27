@@ -670,8 +670,8 @@ http_server_cb_on_user_req_download_latest_release_info(void)
         }
     }
 
-    LOG_INFO("github_latest_release.json: Run firmware updating from URL: %s", fw_update_get_url());
-    fw_update_run();
+    LOG_INFO("github_latest_release.json: Run firmware auto-updating from URL: %s", fw_update_get_url());
+    fw_update_run(true);
 }
 
 void
@@ -771,7 +771,7 @@ http_server_cb_on_post_fw_update(const char *p_body)
         fw_update_set_extra_info_for_status_json_update_failed("Bad URL");
         return http_server_resp_400();
     }
-    if (!fw_update_run())
+    if (!fw_update_run(false))
     {
         fw_update_set_extra_info_for_status_json_update_failed("Internal error");
         return http_server_resp_503();

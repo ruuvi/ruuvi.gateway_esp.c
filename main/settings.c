@@ -19,7 +19,9 @@
 #define RUUVI_GATEWAY_NVS_NAMESPACE         "ruuvi_gateway"
 #define RUUVI_GATEWAY_NVS_CONFIGURATION_KEY "ruuvi_config"
 #define RUUVI_GATEWAY_NVS_MAC_ADDR_KEY      "ruuvi_mac_addr"
-#define RUUVI_GATEWAY_NVS_BOOT_KEY          "ruuvi_boot"
+
+#define RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_KEY   "ruuvi_auto_udp"
+#define RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_VALUE (0xAACC5533U)
 
 static const char TAG[] = "settings";
 
@@ -234,4 +236,61 @@ settings_update_mac_addr(const mac_address_bin_t *const p_mac_addr)
         LOG_INFO("Save new MAC-address: %s", new_mac_addr_str.str_buf);
         settings_write_mac_addr(p_mac_addr);
     }
+}
+
+bool
+settings_read_flag_rebooting_after_auto_update(void)
+{
+    uint32_t   flag_rebooting_after_auto_update = 0;
+    nvs_handle handle                           = 0;
+    if (!settings_nvs_open(NVS_READONLY, &handle))
+    {
+        LOG_WARN("settings_nvs_open failed, flag_rebooting_after_auto_update = false");
+        return false;
+    }
+    size_t    sz      = sizeof(flag_rebooting_after_auto_update);
+    esp_err_t esp_err = nvs_get_blob(
+        handle,
+        RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_KEY,
+        &flag_rebooting_after_auto_update,
+        &sz);
+    if (ESP_OK != esp_err)
+    {
+        LOG_WARN_ESP(esp_err, "Can't read '%s' from flash", RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_KEY);
+        nvs_close(handle);
+        settings_write_flag_rebooting_after_auto_update(false);
+    }
+    else
+    {
+        nvs_close(handle);
+    }
+    if (RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_VALUE == flag_rebooting_after_auto_update)
+    {
+        return true;
+    }
+    return false;
+}
+
+void
+settings_write_flag_rebooting_after_auto_update(const bool flag_rebooting_after_auto_update)
+{
+    LOG_INFO("SETTINGS: Write flag_rebooting_after_auto_update: %d", flag_rebooting_after_auto_update);
+    nvs_handle handle = 0;
+    if (!settings_nvs_open(NVS_READWRITE, &handle))
+    {
+        LOG_ERR("%s failed", "settings_nvs_open");
+        return;
+    }
+    const uint32_t flag_rebooting_after_auto_update_val = flag_rebooting_after_auto_update
+                                                              ? RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_VALUE
+                                                              : 0;
+    if (!settings_nvs_set_blob(
+            handle,
+            RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_KEY,
+            &flag_rebooting_after_auto_update_val,
+            sizeof(flag_rebooting_after_auto_update_val)))
+    {
+        LOG_ERR("%s failed", "settings_nvs_set_blob");
+    }
+    nvs_close(handle);
 }

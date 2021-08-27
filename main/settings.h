@@ -32,6 +32,12 @@ settings_write_mac_addr(const mac_address_bin_t *const p_mac_addr);
 void
 settings_update_mac_addr(const mac_address_bin_t *const p_mac_addr);
 
+bool
+settings_read_flag_rebooting_after_auto_update(void);
+
+void
+settings_write_flag_rebooting_after_auto_update(const bool flag_rebooting_after_auto_update);
+
 #ifdef __cplusplus
 }
 #endif
