@@ -33,9 +33,6 @@ bool
 fw_update_read_flash_info(void);
 
 bool
-fw_update_is_running_partition_in_pending_verify_state(void);
-
-bool
 fw_update_mark_app_valid_cancel_rollback(void);
 
 const char *
@@ -61,7 +58,7 @@ const char *
 fw_update_get_url(void);
 
 bool
-fw_update_run(void);
+fw_update_run(const bool flag_auto_updating);
 
 void
 fw_update_set_extra_info_for_status_json_update_start(void);

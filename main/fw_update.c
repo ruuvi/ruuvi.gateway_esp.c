@@ -75,6 +75,7 @@ static const char TAG[] = "fw_update";
 static ruuvi_flash_info_t g_ruuvi_flash_info;
 static fw_update_config_t g_fw_update_cfg;
 static fw_update_stage_e  g_update_progress_stage;
+static bool               g_flag_auto_updating;
 
 static const esp_partition_t *
 find_data_fat_partition_by_name(const char *const p_partition_name)
@@ -205,20 +206,10 @@ fw_update_read_flash_info(void)
 }
 
 bool
-fw_update_is_running_partition_in_pending_verify_state(void)
+fw_update_mark_app_valid_cancel_rollback(void)
 {
     ruuvi_flash_info_t *p_flash_info = &g_ruuvi_flash_info;
     if (ESP_OTA_IMG_PENDING_VERIFY == p_flash_info->running_partition_state)
-    {
-        return true;
-    }
-    return false;
-}
-
-bool
-fw_update_mark_app_valid_cancel_rollback(void)
-{
-    if (fw_update_is_running_partition_in_pending_verify_state())
     {
         LOG_INFO("Mark current OTA partition valid and cancel rollback");
         const esp_err_t err = esp_ota_mark_app_valid_cancel_rollback();
@@ -227,7 +218,7 @@ fw_update_mark_app_valid_cancel_rollback(void)
             LOG_ERR_ESP(err, "%s failed", "esp_ota_mark_app_valid_cancel_rollback");
             return false;
         }
-        g_ruuvi_flash_info.running_partition_state = ESP_OTA_IMG_VALID;
+        p_flash_info->running_partition_state = ESP_OTA_IMG_VALID;
     }
     return true;
 }
@@ -731,11 +722,16 @@ fw_update_task(void)
     if (!fw_update_do_actions())
     {
         LOG_ERR("Firmware updating failed");
+        g_flag_auto_updating = false;
     }
     else
     {
         LOG_INFO("Firmware updating completed successfully");
         LOG_INFO("Wait 5 seconds before reboot");
+        if (g_flag_auto_updating)
+        {
+            settings_write_flag_rebooting_after_auto_update(true);
+        }
         vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_BEFORE_REBOOT_MS));
     }
     LOG_INFO("Restart system");
@@ -770,12 +766,14 @@ fw_update_get_url(void)
 }
 
 bool
-fw_update_run(void)
+fw_update_run(const bool flag_auto_updating)
 {
     const uint32_t stack_size_for_fw_update_task = 6 * 1024;
+    g_flag_auto_updating                         = flag_auto_updating;
     if (!os_task_create_finite_without_param(&fw_update_task, "fw_update_task", stack_size_for_fw_update_task, 1))
     {
         LOG_ERR("Can't create thread");
+        g_flag_auto_updating = false;
         return false;
     }
     return true;
