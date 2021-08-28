@@ -28,6 +28,7 @@
 #include "os_time.h"
 #include "time_str.h"
 #include "reset_task.h"
+#include "os_timer_sig.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -43,8 +44,6 @@ static const char TAG[] = "http_server";
 static const char g_empty_json[] = "{}";
 
 static const flash_fat_fs_t *gp_ffs_gwui;
-
-static TickType_t g_tick_last_fw_update_check;
 
 #if !RUUVI_TESTS_HTTP_SERVER_CB
 static time_t
@@ -586,27 +585,6 @@ http_server_is_url_prefix_eq(
     return true;
 }
 
-static void
-http_server_update_timestamp_of_last_successful_fw_update_check(void)
-{
-    g_tick_last_fw_update_check = xTaskGetTickCount();
-}
-
-bool
-http_server_is_timeout_expired_since_last_successful_fw_update_check(void)
-{
-    if (0 == g_tick_last_fw_update_check)
-    {
-        return true;
-    }
-    const os_delta_ticks_t delta_ticks = xTaskGetTickCount() - g_tick_last_fw_update_check;
-    if (delta_ticks >= pdMS_TO_TICKS(FW_UPDATING_DELAY_BETWEEN_SUCCESSFUL_FW_UPDATE_CHECK_SECONDS * 1000))
-    {
-        return true;
-    }
-    return false;
-}
-
 void
 http_server_cb_on_user_req_download_latest_release_info(void)
 {
@@ -615,11 +593,12 @@ http_server_cb_on_user_req_download_latest_release_info(void)
     if (latest_release_info.is_error)
     {
         LOG_ERR("Failed to download latest firmware release info");
+        main_task_schedule_retry_check_for_fw_updates();
         return;
     }
     LOG_INFO("github_latest_release.json: %s", latest_release_info.p_json_buf);
 
-    http_server_update_timestamp_of_last_successful_fw_update_check();
+    main_task_schedule_next_check_for_fw_updates();
 
     bool      flag_found_tag_name    = false;
     time_t    unix_time_published_at = 0;

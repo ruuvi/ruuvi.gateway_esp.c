@@ -50,15 +50,15 @@ static const char TAG[] = "ruuvi_gateway";
 
 #define MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS (10U)
 
-#define MAIN_TASK_CHECK_FOR_FW_UPDATES_PERIOD_SECONDS (40U * 60U)
-
 #define MAIN_TASK_TIMEOUT_AFTER_MANUAL_HOTSPOT_ACTIVATION_SEC (60)
 
 typedef enum main_task_sig_e
 {
-    MAIN_TASK_SIG_LOG_HEAP_USAGE       = OS_SIGNAL_NUM_0,
-    MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES = OS_SIGNAL_NUM_1,
-    MAIN_TASK_SIG_DEACTIVATE_WIFI_AP   = OS_SIGNAL_NUM_2,
+    MAIN_TASK_SIG_LOG_HEAP_USAGE                      = OS_SIGNAL_NUM_0,
+    MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES                = OS_SIGNAL_NUM_1,
+    MAIN_TASK_SIG_SCHEDULE_NEXT_CHECK_FOR_FW_UPDATES  = OS_SIGNAL_NUM_2,
+    MAIN_TASK_SIG_SCHEDULE_RETRY_CHECK_FOR_FW_UPDATES = OS_SIGNAL_NUM_3,
+    MAIN_TASK_SIG_DEACTIVATE_WIFI_AP                  = OS_SIGNAL_NUM_4,
 } main_task_sig_e;
 
 #define MAIN_TASK_SIG_FIRST (MAIN_TASK_SIG_LOG_HEAP_USAGE)
@@ -70,8 +70,8 @@ static os_signal_t *                  g_p_signal_main_task;
 static os_signal_static_t             g_signal_main_task_mem;
 static os_timer_sig_periodic_t *      g_p_timer_sig_log_heap_usage;
 static os_timer_sig_periodic_static_t g_timer_sig_log_heap_usage;
-static os_timer_sig_periodic_t *      g_p_timer_sig_check_for_fw_updates;
-static os_timer_sig_periodic_static_t g_timer_sig_check_for_fw_updates_mem;
+static os_timer_sig_one_shot_t *      g_p_timer_sig_check_for_fw_updates;
+static os_timer_sig_one_shot_static_t g_timer_sig_check_for_fw_updates_mem;
 static os_timer_sig_one_shot_t *      g_p_timer_sig_deactivate_wifi_ap;
 static os_timer_sig_one_shot_static_t g_p_timer_sig_deactivate_wifi_ap_mem;
 
@@ -459,27 +459,18 @@ get_wday_if_set_in_bitmask(const auto_update_weekdays_bitmask_t auto_update_week
     return "";
 }
 
-static void
-check_for_fw_updates(void)
+static bool
+check_if_checking_for_fw_updates_allowed(void)
 {
-    if (AUTO_UPDATE_CYCLE_TYPE_MANUAL == g_gateway_config.auto_update.auto_update_cycle)
-    {
-        return;
-    }
     if (!wifi_manager_is_connected_to_wifi_or_ethernet())
     {
         LOG_INFO("Check for fw updates - skip (not connected to WiFi or Ethernet)");
-        return;
+        return false;
     }
     if (!time_is_synchronized())
     {
         LOG_INFO("Check for fw updates - skip (time is not synchronized)");
-        return;
-    }
-    if (!http_server_is_timeout_expired_since_last_successful_fw_update_check())
-    {
-        LOG_INFO("Check for fw updates - skip (last check was performed less than 12 hours ago)");
-        return;
+        return false;
     }
     const ruuvi_gw_cfg_auto_update_t *const p_cfg_auto_update = &g_gateway_config.auto_update;
 
@@ -503,7 +494,7 @@ check_for_fw_updates(void)
     if (0 == (p_cfg_auto_update->auto_update_weekdays_bitmask & cur_day_bit_mask))
     {
         LOG_INFO("Check for fw updates - skip (weekday does not match)");
-        return;
+        return false;
     }
     LOG_INFO(
         "Check for fw updates: configured range [%02u:00 .. %02u:00], current time: %02u:%02u)",
@@ -515,12 +506,9 @@ check_for_fw_updates(void)
           && (tm_time.tm_hour < p_cfg_auto_update->auto_update_interval_to)))
     {
         LOG_INFO("Check for fw updates - skip (current time is out of range)");
-        return;
+        return false;
     }
-
-    LOG_INFO("Check for fw updates: activate");
-
-    http_server_user_req(HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO);
+    return true;
 }
 
 static void
@@ -532,8 +520,41 @@ main_task_handle_sig(const main_task_sig_e main_task_sig)
             LOG_INFO("free heap: %u", esp_get_free_heap_size());
             break;
         case MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES:
-            check_for_fw_updates();
+        {
+            if (check_if_checking_for_fw_updates_allowed())
+            {
+                LOG_INFO("Check for fw updates: activate");
+                http_server_user_req(HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO);
+            }
+            else
+            {
+                main_task_schedule_retry_check_for_fw_updates();
+            }
             break;
+        }
+        case MAIN_TASK_SIG_SCHEDULE_NEXT_CHECK_FOR_FW_UPDATES:
+        {
+            const os_delta_ticks_t delay_ticks = pdMS_TO_TICKS(RUUVI_CHECK_FOR_FW_UPDATES_DELAY_AFTER_SUCCESS_SECONDS)
+                                                 * 1000;
+            LOG_INFO(
+                "Schedule next check for fw updates (after successful release_info downloading) after %lu seconds (%lu "
+                "ticks)",
+                (printf_ulong_t)RUUVI_CHECK_FOR_FW_UPDATES_DELAY_AFTER_SUCCESS_SECONDS,
+                (printf_ulong_t)delay_ticks);
+            os_timer_sig_one_shot_restart(g_p_timer_sig_check_for_fw_updates, delay_ticks);
+            break;
+        }
+        case MAIN_TASK_SIG_SCHEDULE_RETRY_CHECK_FOR_FW_UPDATES:
+        {
+            const os_delta_ticks_t delay_ticks = pdMS_TO_TICKS(RUUVI_CHECK_FOR_FW_UPDATES_DELAY_BEFORE_RETRY_SECONDS)
+                                                 * 1000;
+            LOG_INFO(
+                "Schedule a recheck for fw updates after %lu seconds (%lu ticks)",
+                (printf_ulong_t)RUUVI_CHECK_FOR_FW_UPDATES_DELAY_BEFORE_RETRY_SECONDS,
+                (printf_ulong_t)delay_ticks);
+            os_timer_sig_one_shot_restart(g_p_timer_sig_check_for_fw_updates, delay_ticks);
+            break;
+        }
         case MAIN_TASK_SIG_DEACTIVATE_WIFI_AP:
             LOG_INFO("MAIN_TASK_SIG_DEACTIVATE_WIFI_AP");
             wifi_manager_stop_ap();
@@ -710,6 +731,8 @@ main_task_init(void)
     g_p_signal_main_task = os_signal_create_static(&g_signal_main_task_mem);
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_LOG_HEAP_USAGE));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES));
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_SCHEDULE_NEXT_CHECK_FOR_FW_UPDATES));
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_SCHEDULE_RETRY_CHECK_FOR_FW_UPDATES));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_DEACTIVATE_WIFI_AP));
 
     g_p_timer_sig_log_heap_usage = os_timer_sig_periodic_create_static(
@@ -718,12 +741,12 @@ main_task_init(void)
         g_p_signal_main_task,
         main_task_conv_to_sig_num(MAIN_TASK_SIG_LOG_HEAP_USAGE),
         pdMS_TO_TICKS(MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS * 1000U));
-    g_p_timer_sig_check_for_fw_updates = os_timer_sig_periodic_create_static(
+    g_p_timer_sig_check_for_fw_updates = os_timer_sig_one_shot_create_static(
         &g_timer_sig_check_for_fw_updates_mem,
-        "check_for_fw_updates",
+        "check_fw_updates",
         g_p_signal_main_task,
         main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES),
-        pdMS_TO_TICKS(MAIN_TASK_CHECK_FOR_FW_UPDATES_PERIOD_SECONDS * 1000U));
+        pdMS_TO_TICKS(RUUVI_CHECK_FOR_FW_UPDATES_DELAY_AFTER_REBOOT_SECONDS) * 1000U);
     g_p_timer_sig_deactivate_wifi_ap = os_timer_sig_one_shot_create_static(
         &g_p_timer_sig_deactivate_wifi_ap_mem,
         "deactivate_ap",
@@ -869,7 +892,17 @@ main_task_init(void)
     }
 
     os_timer_sig_periodic_start(g_p_timer_sig_log_heap_usage);
-    os_timer_sig_periodic_start(g_p_timer_sig_check_for_fw_updates);
+    if (AUTO_UPDATE_CYCLE_TYPE_MANUAL != g_gateway_config.auto_update.auto_update_cycle)
+    {
+        LOG_INFO(
+            "Firmware auto-updating is active, run next check after %lu seconds",
+            (printf_ulong_t)RUUVI_CHECK_FOR_FW_UPDATES_DELAY_AFTER_REBOOT_SECONDS);
+        os_timer_sig_one_shot_start(g_p_timer_sig_check_for_fw_updates);
+    }
+    else
+    {
+        LOG_INFO("Firmware auto-updating is not active");
+    }
 
     return true;
 }
@@ -922,4 +955,16 @@ main_task_stop_timer_after_hotspot_activation(void)
 {
     LOG_INFO("Stop AP timer");
     os_timer_sig_one_shot_stop(g_p_timer_sig_deactivate_wifi_ap);
+}
+
+void
+main_task_schedule_next_check_for_fw_updates(void)
+{
+    os_signal_send(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_SCHEDULE_NEXT_CHECK_FOR_FW_UPDATES));
+}
+
+void
+main_task_schedule_retry_check_for_fw_updates(void)
+{
+    os_signal_send(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_SCHEDULE_RETRY_CHECK_FOR_FW_UPDATES));
 }
