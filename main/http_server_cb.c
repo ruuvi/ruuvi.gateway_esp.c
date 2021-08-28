@@ -610,6 +610,7 @@ http_server_cb_on_user_req_download_latest_release_info(void)
         if (0 == strcmp(p_cur_fw_ver, tag_name.buf))
         {
             LOG_INFO("github_latest_release.json: No update is required, the latest version is already installed");
+            os_free(latest_release_info.p_json_buf);
             return;
         }
         LOG_INFO(
