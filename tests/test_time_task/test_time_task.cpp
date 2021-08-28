@@ -72,6 +72,7 @@ protected:
     SetUp() override
     {
         this->result_time_task_init = false;
+        this->sync_mode             = SNTP_SYNC_MODE_IMMED;
         esp_log_wrapper_init();
         sem_init(&semaFreeRTOS, 0, 0);
         const int err = pthread_create(&pid, nullptr, &freertos_startup, this);
@@ -99,6 +100,7 @@ public:
     bool                     result_time_task_init;
     time_t                   cur_time;
     sntp_sync_time_cb_t      sntp_sync_time_cb;
+    sntp_sync_mode_t         sync_mode {};
 
     TestTimeTask();
 
@@ -154,7 +156,14 @@ sntp_setoperatingmode(u8_t operating_mode)
 void
 sntp_set_sync_mode(sntp_sync_mode_t sync_mode)
 {
+    gp_obj->sync_mode = sync_mode;
     gp_obj->testEvents.push_back(new TestEventSntpSetSyncMode(sync_mode));
+}
+
+sntp_sync_mode_t
+sntp_get_sync_mode(void)
+{
+    return gp_obj->sync_mode;
 }
 
 void
@@ -258,6 +267,11 @@ TEST_F(TestTimeTask, test_all) // NOLINT
 
     cmdQueue.push_and_wait(MAIN_TASK_CMD_TIME_TASK_INIT);
     ASSERT_TRUE(this->result_time_task_init);
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "Set time sync mode to IMMED");
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "Add time server: time.google.com");
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "Add time server: time.cloudflare.com");
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "Add time server: time.nist.gov");
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "Add time server: pool.ntp.org");
     TEST_CHECK_LOG_RECORD_OS_TASK(
         ESP_LOG_INFO,
         CMD_HANDLER_TASK_NAME,
@@ -280,7 +294,7 @@ TEST_F(TestTimeTask, test_all) // NOLINT
             auto *p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetSyncMode, p_base_ev->eventType);
             auto *p_ev = reinterpret_cast<TestEventSntpSetSyncMode *>(p_base_ev);
-            ASSERT_EQ(SNTP_SYNC_MODE_SMOOTH, p_ev->sync_mode);
+            ASSERT_EQ(SNTP_SYNC_MODE_IMMED, p_ev->sync_mode);
         }
         {
             auto *p_base_ev = testEvents[idx++];
@@ -327,6 +341,24 @@ TEST_F(TestTimeTask, test_all) // NOLINT
         }
     }
     testEvents.clear();
+
+    ASSERT_NE(nullptr, gp_obj->sntp_sync_time_cb);
+    struct timeval tv = {
+        .tv_sec  = 1630152456,
+        .tv_usec = 0,
+    };
+    gp_obj->sntp_sync_time_cb(&tv);
+    ASSERT_EQ(1, testEvents.size());
+    {
+        auto *p_base_ev = testEvents[0];
+        ASSERT_EQ(TestEventType_SNTP_SetSyncMode, p_base_ev->eventType);
+        auto *p_ev = reinterpret_cast<TestEventSntpSetSyncMode *>(p_base_ev);
+        ASSERT_EQ(SNTP_SYNC_MODE_SMOOTH, p_ev->sync_mode);
+    }
+    testEvents.clear();
+
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "Time has been synchronized: 2021-08-28 12:07:36.000");
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "Switch time sync mode to SMOOTH");
 
     event_mgr_notify(EVENT_MGR_EV_WIFI_DISCONNECTED);
     ASSERT_TRUE(this->wait_for_events());
