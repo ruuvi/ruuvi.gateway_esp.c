@@ -23,7 +23,7 @@
 #include "log.h"
 
 #define TM_YEAR_BASE (1900)
-#define TM_YEAR_MIN  (2020)
+#define TM_YEAR_MIN  (2021)
 
 #define RUUVI_STACK_SIZE_TIME_TASK (3U * 1024U)
 
@@ -119,6 +119,11 @@ time_task_cb_notification_on_sync(struct timeval *p_tv)
     {
         LOG_INFO("Time has been synchronized: %s.%03u", buf_time_str, (printf_uint_t)(p_tv->tv_usec / 1000));
         g_time_is_synchronized = true;
+        if (SNTP_SYNC_MODE_IMMED == sntp_get_sync_mode())
+        {
+            LOG_INFO("Switch time sync mode to SMOOTH");
+            sntp_set_sync_mode(SNTP_SYNC_MODE_SMOOTH);
+        }
     }
 }
 
@@ -226,15 +231,19 @@ time_task_init(void)
         time_task_conv_to_sig_num(TIME_TASK_SIG_ETH_DISCONNECTED));
 
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_set_sync_mode(SNTP_SYNC_MODE_SMOOTH);
-    u8_t server_idx = 0;
-    sntp_setservername(server_idx, "time.google.com");
-    server_idx += 1;
-    sntp_setservername(server_idx, "time.cloudflare.com");
-    server_idx += 1;
-    sntp_setservername(server_idx, "time.nist.gov");
-    server_idx += 1;
-    sntp_setservername(server_idx, "pool.ntp.org");
+    LOG_INFO("Set time sync mode to IMMED");
+    sntp_set_sync_mode(SNTP_SYNC_MODE_IMMED);
+    static const char* const arr_of_time_servers[] = {
+        "time.google.com",
+        "time.cloudflare.com",
+        "time.nist.gov",
+        "pool.ntp.org",
+    };
+    for (uint32_t server_idx = 0; server_idx < sizeof(arr_of_time_servers) / sizeof(*arr_of_time_servers); ++server_idx)
+    {
+        LOG_INFO("Add time server: %s", arr_of_time_servers[server_idx]);
+        sntp_setservername(server_idx, arr_of_time_servers[server_idx]);
+    }
     sntp_set_time_sync_notification_cb(time_task_cb_notification_on_sync);
 
     g_time_min_valid = time_task_get_min_valid_time();
