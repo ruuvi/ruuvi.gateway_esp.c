@@ -233,7 +233,7 @@ time_task_init(void)
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     LOG_INFO("Set time sync mode to IMMED");
     sntp_set_sync_mode(SNTP_SYNC_MODE_IMMED);
-    static const char* const arr_of_time_servers[] = {
+    static const char *const arr_of_time_servers[] = {
         "time.google.com",
         "time.cloudflare.com",
         "time.nist.gov",
