@@ -60,9 +60,6 @@ http_server_cb_on_delete(
 download_github_latest_release_info_t
 http_download_latest_release_info(void);
 
-bool
-http_server_is_timeout_expired_since_last_successful_fw_update_check(void);
-
 #if RUUVI_TESTS_HTTP_SERVER_CB
 
 time_t
