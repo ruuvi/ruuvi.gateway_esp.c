@@ -137,6 +137,16 @@ wifi_manager_stop_ap(void)
 {
 }
 
+void
+main_task_schedule_next_check_for_fw_updates(void)
+{
+}
+
+void
+main_task_schedule_retry_check_for_fw_updates(void)
+{
+}
+
 } // extern "C"
 
 class MemAllocTrace
