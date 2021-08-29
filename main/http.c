@@ -38,7 +38,7 @@ typedef struct http_download_cb_info_t
 static const char TAG[] = "http";
 
 static esp_err_t
-http_event_handler(esp_http_client_event_t *p_evt)
+http_post_event_handler(esp_http_client_event_t *p_evt)
 {
     switch (p_evt->event_id)
     {
@@ -80,7 +80,7 @@ http_event_handler(esp_http_client_event_t *p_evt)
             break;
 
         case HTTP_EVENT_ON_DATA:
-            LOG_DBG("HTTP_EVENT_ON_DATA, len=%d: %.*s", p_evt->data_len, p_evt->data_len, (char *)p_evt->data);
+            LOG_ERR("HTTP_EVENT_ON_DATA, len=%d: %.*s", p_evt->data_len, p_evt->data_len, (char *)p_evt->data);
             break;
 
         case HTTP_EVENT_ON_FINISH:
@@ -116,7 +116,7 @@ http_send(const char *const p_msg)
         .timeout_ms      = 0,
         .disable_auto_redirect       = false,
         .max_redirection_count       = 0,
-        .event_handler               = &http_event_handler,
+        .event_handler               = &http_post_event_handler,
         .transport_type              = HTTP_TRANSPORT_UNKNOWN,
         .buffer_size                 = 0,
         .buffer_size_tx              = 0,
@@ -125,6 +125,9 @@ http_send(const char *const p_msg)
         .use_global_ca_store         = false,
         .skip_cert_common_name_check = false,
     };
+
+    LOG_INFO("HTTP POST to URL=%s, DATA:\n%s", http_config.url, p_msg);
+
     esp_http_client_handle_t http_handle = esp_http_client_init(&http_config);
     if (NULL == http_handle)
     {
@@ -146,11 +149,16 @@ http_send(const char *const p_msg)
     esp_err_t err = esp_http_client_perform(http_handle);
     if (ESP_OK == err)
     {
-        LOG_DBG(
-            "HTTP POST to URL=%s: Status=%d, content_length=%d",
-            http_config.url,
-            esp_http_client_get_status_code(http_handle),
-            esp_http_client_get_content_length(http_handle));
+        const int http_status = esp_http_client_get_status_code(http_handle);
+        if (HTTP_RESP_CODE_200 == http_status)
+        {
+            LOG_INFO("HTTP POST to URL=%s: STATUS=%d", http_config.url, http_status);
+        }
+        else
+        {
+            LOG_ERR("HTTP POST to URL=%s: STATUS=%d", http_config.url, http_status);
+            result = false;
+        }
     }
     else
     {
@@ -182,7 +190,6 @@ http_send_advs(const adv_report_table_t *const p_reports, const uint32_t nonce)
         LOG_ERR("Not enough memory to generate json");
         return;
     }
-    LOG_INFO("HTTP POST: %s", json_str.p_str);
     if (http_send(json_str.p_str))
     {
         leds_indication_on_network_ok();
