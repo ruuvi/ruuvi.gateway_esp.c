@@ -672,7 +672,7 @@ http_server_resp_t
 http_server_cb_on_get(const char *p_path, const bool flag_access_from_lan, const http_server_resp_t *const p_resp_auth)
 {
     const char *p_file_ext = strrchr(p_path, '.');
-    LOG_INFO("GET /%s", p_path);
+    LOG_INFO("http_server_cb_on_get /%s", p_path);
 
     if ((NULL != p_file_ext) && (0 == strcmp(p_file_ext, ".json")))
     {
