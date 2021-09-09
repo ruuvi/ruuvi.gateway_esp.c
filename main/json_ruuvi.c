@@ -172,9 +172,12 @@ json_ruuvi_parse(const cJSON *p_json_root, ruuvi_gateway_config_t *const p_gw_cf
     {
         *p_flag_network_cfg = false;
 
-        const ruuvi_gw_cfg_eth_t saved_eth_cfg = p_gw_cfg->eth;
-        *p_gw_cfg                              = g_gateway_config_default;
-        p_gw_cfg->eth                          = saved_eth_cfg;
+        const ruuvi_gw_cfg_eth_t      saved_eth_cfg  = p_gw_cfg->eth;
+        const ruuvi_gw_cfg_lan_auth_t saved_lan_auth = p_gw_cfg->lan_auth;
+
+        *p_gw_cfg          = g_gateway_config_default;
+        p_gw_cfg->eth      = saved_eth_cfg;
+        p_gw_cfg->lan_auth = saved_lan_auth;
 
         json_ruuvi_get_bool_val(p_json_root, "use_mqtt", &p_gw_cfg->mqtt.use_mqtt, true);
         json_ruuvi_copy_string_val(
@@ -239,24 +242,23 @@ json_ruuvi_parse(const cJSON *p_json_root, ruuvi_gateway_config_t *const p_gw_cf
                 sizeof(p_gw_cfg->lan_auth.lan_auth_type),
                 true))
         {
-            snprintf(
-                p_gw_cfg->lan_auth.lan_auth_type,
-                sizeof(p_gw_cfg->lan_auth.lan_auth_type),
-                "%s",
-                HTTP_SERVER_AUTH_TYPE_STR_DENY);
+            LOG_INFO("Use previous LAN auth settings");
         }
-        json_ruuvi_copy_string_val(
-            p_json_root,
-            "lan_auth_user",
-            p_gw_cfg->lan_auth.lan_auth_user,
-            sizeof(p_gw_cfg->lan_auth.lan_auth_user),
-            true);
-        json_ruuvi_copy_string_val(
-            p_json_root,
-            "lan_auth_pass",
-            p_gw_cfg->lan_auth.lan_auth_pass,
-            sizeof(p_gw_cfg->lan_auth.lan_auth_pass),
-            true);
+        else
+        {
+            json_ruuvi_copy_string_val(
+                p_json_root,
+                "lan_auth_user",
+                p_gw_cfg->lan_auth.lan_auth_user,
+                sizeof(p_gw_cfg->lan_auth.lan_auth_user),
+                true);
+            json_ruuvi_copy_string_val(
+                p_json_root,
+                "lan_auth_pass",
+                p_gw_cfg->lan_auth.lan_auth_pass,
+                sizeof(p_gw_cfg->lan_auth.lan_auth_pass),
+                true);
+        }
 
         char auto_update_cycle[AUTO_UPDATE_CYCLE_TYPE_STR_MAX_LEN];
         json_ruuvi_copy_string_val(

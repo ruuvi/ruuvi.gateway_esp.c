@@ -21,6 +21,7 @@
 #include "str_buf.h"
 #include "ruuvi_device_id.h"
 #include "os_malloc.h"
+#include "gw_cfg_default.h"
 
 using namespace std;
 
@@ -1227,6 +1228,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok) // NOLINT
 {
     const char *expected_resp = "{}";
     memset(&g_gateway_config, 0, sizeof(g_gateway_config));
+    g_gateway_config              = g_gateway_config_default;
     const http_server_resp_t resp = http_server_cb_on_post_ruuvi(
         "{"
         "\"use_mqtt\":true,"
@@ -1270,8 +1272,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_user: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_pass: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_type not found");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_user not found");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_pass not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, "Use previous LAN auth settings");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_cycle not found");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_weekdays_bitmask not found or invalid");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_interval_from not found or invalid");
@@ -1288,7 +1289,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_channel_39 not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("Gateway SETTINGS:"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth dhcp: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth dhcp: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth static ip: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth netmask: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth gw: "));
@@ -1327,6 +1328,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok) // NOLINT
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed) // NOLINT
 {
     memset(&g_gateway_config, 0, sizeof(g_gateway_config));
+    g_gateway_config              = g_gateway_config_default;
     this->m_malloc_fail_on_cnt    = 1;
     const http_server_resp_t resp = http_server_cb_on_post_ruuvi(
         "{"
@@ -1361,10 +1363,18 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed) // NOLINT
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
-TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
+TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth) // NOLINT
 {
     const char *expected_resp = "{}";
     memset(&g_gateway_config, 0, sizeof(g_gateway_config));
+    g_gateway_config = g_gateway_config_default;
+    snprintf(
+        g_gateway_config.lan_auth.lan_auth_type,
+        sizeof(g_gateway_config.lan_auth.lan_auth_type),
+        "%s",
+        HTTP_SERVER_AUTH_TYPE_STR_RUUVI);
+    snprintf(g_gateway_config.lan_auth.lan_auth_user, sizeof(g_gateway_config.lan_auth.lan_auth_user), "user1");
+    snprintf(g_gateway_config.lan_auth.lan_auth_pass, sizeof(g_gateway_config.lan_auth.lan_auth_pass), "password1");
     const http_server_resp_t resp = http_server_cb_on_post(
         "ruuvi.json",
         "{"
@@ -1409,8 +1419,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_user: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_pass: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_type not found");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_user not found");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_pass not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, "Use previous LAN auth settings");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_cycle not found");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_weekdays_bitmask not found or invalid");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_interval_from not found or invalid");
@@ -1427,7 +1436,222 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_channel_39 not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("Gateway SETTINGS:"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth dhcp: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth dhcp: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth static ip: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth netmask: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth gw: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth dns1: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth dns2: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use mqtt: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/30:AE:A4:02:84:A4"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt client id: 30:AE:A4:02:84:A4"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt user: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt password: ********"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: https://network.ruuvi.com/record"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http user: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http pass: ********"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_ruuvi"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth user: user1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update cycle: manual"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update weekdays_bitmask: 0x7f"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update interval: 00:00..24:00"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update TZ: UTC+3"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: coordinates: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use company id filter: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: company id: 0x0499"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan coded phy: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan 1mbit/phy: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan extended payload: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 37: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 38: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth) // NOLINT
+{
+    const char *expected_resp = "{}";
+    memset(&g_gateway_config, 0, sizeof(g_gateway_config));
+    g_gateway_config = g_gateway_config_default;
+    snprintf(
+        g_gateway_config.lan_auth.lan_auth_type,
+        sizeof(g_gateway_config.lan_auth.lan_auth_type),
+        "%s",
+        HTTP_SERVER_AUTH_TYPE_STR_RUUVI);
+    snprintf(g_gateway_config.lan_auth.lan_auth_user, sizeof(g_gateway_config.lan_auth.lan_auth_user), "user1");
+    snprintf(g_gateway_config.lan_auth.lan_auth_pass, sizeof(g_gateway_config.lan_auth.lan_auth_pass), "password1");
+    const http_server_resp_t resp = http_server_cb_on_post(
+        "ruuvi.json",
+        "{"
+        "\"use_mqtt\":true,"
+        "\"mqtt_server\":\"test.mosquitto.org\","
+        "\"mqtt_port\":1883,"
+        "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
+        "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
+        "\"mqtt_user\":\"\","
+        "\"mqtt_pass\":\"\","
+        "\"use_http\":false,"
+        "\"http_url\":\"https://network.ruuvi.com/record\","
+        "\"http_user\":\"\","
+        "\"http_pass\":\"\","
+        "\"lan_auth_type\":\"lan_auth_digest\","
+        "\"lan_auth_user\":\"user2\","
+        "\"lan_auth_pass\":\"password2\","
+        "\"use_filtering\":true"
+        "}");
+
+    ASSERT_TRUE(this->m_flag_settings_saved_to_flash);
+    ASSERT_TRUE(this->m_flag_settings_sent_to_nrf);
+    ASSERT_TRUE(this->m_flag_settings_ethernet_ip_updated);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_FLASH_MEM, resp.content_location);
+    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(strlen(expected_resp), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Got SETTINGS:");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_mqtt: 1");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_prefix: ruuvi/30:AE:A4:02:84:A4");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_client_id: 30:AE:A4:02:84:A4");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_port: 1883");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_user: ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_pass: ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_url: https://network.ruuvi.com/record");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_user: ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_pass: ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "lan_auth_type: lan_auth_digest");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "lan_auth_user: user2");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "lan_auth_pass: password2");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_cycle not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_weekdays_bitmask not found or invalid");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_interval_from not found or invalid");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_interval_to not found or invalid");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_tz_offset_hours not found or invalid");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_filtering: 1");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "company_id not found or invalid");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "coordinates not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_coded_phy not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_1mbit_phy not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_extended_payload not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_channel_37 not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_channel_38 not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_channel_39 not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("Gateway SETTINGS:"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth dhcp: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth static ip: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth netmask: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth gw: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth dns1: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth dns2: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use mqtt: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/30:AE:A4:02:84:A4"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt client id: 30:AE:A4:02:84:A4"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt user: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt password: ********"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: https://network.ruuvi.com/record"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http user: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http pass: ********"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_digest"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth user: user2"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update cycle: manual"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update weekdays_bitmask: 0x7f"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update interval: 00:00..24:00"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update TZ: UTC+3"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: coordinates: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use company id filter: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: company id: 0x0499"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan coded phy: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan 1mbit/phy: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan extended payload: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 37: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 38: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
+{
+    const char *expected_resp = "{}";
+    memset(&g_gateway_config, 0, sizeof(g_gateway_config));
+    g_gateway_config              = g_gateway_config_default;
+    const http_server_resp_t resp = http_server_cb_on_post(
+        "ruuvi.json",
+        "{"
+        "\"use_mqtt\":true,"
+        "\"mqtt_server\":\"test.mosquitto.org\","
+        "\"mqtt_port\":1883,"
+        "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
+        "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
+        "\"mqtt_user\":\"\","
+        "\"mqtt_pass\":\"\","
+        "\"use_http\":false,"
+        "\"http_url\":\"https://network.ruuvi.com/record\","
+        "\"http_user\":\"\","
+        "\"http_pass\":\"\","
+        "\"use_filtering\":true"
+        "}");
+
+    ASSERT_TRUE(this->m_flag_settings_saved_to_flash);
+    ASSERT_TRUE(this->m_flag_settings_sent_to_nrf);
+    ASSERT_TRUE(this->m_flag_settings_ethernet_ip_updated);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_FLASH_MEM, resp.content_location);
+    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(strlen(expected_resp), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Got SETTINGS:");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_mqtt: 1");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_prefix: ruuvi/30:AE:A4:02:84:A4");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_client_id: 30:AE:A4:02:84:A4");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_port: 1883");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_user: ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_pass: ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_url: https://network.ruuvi.com/record");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_user: ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_pass: ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_type not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, "Use previous LAN auth settings");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_cycle not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_weekdays_bitmask not found or invalid");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_interval_from not found or invalid");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_interval_to not found or invalid");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_tz_offset_hours not found or invalid");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_filtering: 1");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "company_id not found or invalid");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "coordinates not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_coded_phy not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_1mbit_phy not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_extended_payload not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_channel_37 not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_channel_38 not found");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_channel_39 not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("Gateway SETTINGS:"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth dhcp: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth static ip: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth netmask: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth gw: "));
@@ -1466,6 +1690,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
 TEST_F(TestHttpServerCb, http_server_cb_on_post_unknown_json) // NOLINT
 {
     memset(&g_gateway_config, 0, sizeof(g_gateway_config));
+    g_gateway_config              = g_gateway_config_default;
     const http_server_resp_t resp = http_server_cb_on_post(
         "unknown.json",
         "{"
