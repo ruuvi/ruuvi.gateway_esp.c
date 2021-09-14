@@ -23,6 +23,8 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/json_ruuvi.c
         ${RUUVI_GW_SRC}/json_ruuvi.h
         ${RUUVI_GW_SRC}/metrics.h
+        ${RUUVI_GW_SRC}/ruuvi_auth.c
+        ${RUUVI_GW_SRC}/ruuvi_auth.h
         ${RUUVI_GW_SRC}/ruuvi_device_id.c
         ${RUUVI_GW_SRC}/ruuvi_device_id.h
         ${RUUVI_GW_SRC}/time_str.c
@@ -44,9 +46,13 @@ add_executable(${ProjectId}
         ${WIFI_MANAGER_INC}/wifi_manager_defs.h
         ${WIFI_MANAGER_SRC}/wifiman_sha256.c
         ${WIFI_MANAGER_SRC}/wifiman_sha256.h
+        ${WIFI_MANAGER_SRC}/wifiman_md5.c
+        ${WIFI_MANAGER_SRC}/include/wifiman_md5.h
         $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.h
+        $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/md5.c
+        $ENV{IDF_PATH}/components/mbedtls/mbedtls/include/mbedtls/md5.h
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/sha256.c
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/include/mbedtls/sha256.h
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/platform_util.c

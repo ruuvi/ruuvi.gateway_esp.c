@@ -15,6 +15,9 @@
 extern "C" {
 #endif
 
+#define RUUVI_GATEWAY_AUTH_DEFAULT_USER               "Admin"
+#define RUUVI_GATEWAY_AUTH_DEFAULT_PASS_USE_DEVICE_ID "\xff"
+
 // clang-format off
 #define RUUVI_GATEWAY_DEFAULT_CONFIGURATION \
     { \
@@ -45,9 +48,9 @@ extern "C" {
             .http_pass = { 0 }, \
         }, \
         .lan_auth = { \
-            .lan_auth_type = { HTTP_SERVER_AUTH_TYPE_STR_DENY }, \
-            .lan_auth_user = { 0 }, \
-            .lan_auth_pass = { 0 }, \
+            .lan_auth_type = { HTTP_SERVER_AUTH_TYPE_STR_RUUVI }, \
+            .lan_auth_user = { RUUVI_GATEWAY_AUTH_DEFAULT_USER }, \
+            .lan_auth_pass = { RUUVI_GATEWAY_AUTH_DEFAULT_PASS_USE_DEVICE_ID }, \
         }, \
         .auto_update = { \
             .auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR, \

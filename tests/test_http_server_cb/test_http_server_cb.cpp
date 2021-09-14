@@ -530,8 +530,8 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
           "\t\"mqtt_prefix\":\t\"ruuvi/30:AE:A4:02:84:A4\",\n"
           "\t\"mqtt_client_id\":\t\"30:AE:A4:02:84:A4\",\n"
           "\t\"mqtt_user\":\t\"\",\n"
-          "\t\"lan_auth_type\":\t\"lan_auth_deny\",\n"
-          "\t\"lan_auth_user\":\t\"\",\n"
+          "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
+          "\t\"lan_auth_user\":\t\"Admin\",\n"
           "\t\"auto_update_cycle\":\t\"regular\",\n"
           "\t\"auto_update_weekdays_bitmask\":\t127,\n"
           "\t\"auto_update_interval_from\":\t0,\n"
@@ -656,8 +656,8 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
           "\t\"mqtt_prefix\":\t\"ruuvi/30:AE:A4:02:84:A4\",\n"
           "\t\"mqtt_client_id\":\t\"30:AE:A4:02:84:A4\",\n"
           "\t\"mqtt_user\":\t\"\",\n"
-          "\t\"lan_auth_type\":\t\"lan_auth_deny\",\n"
-          "\t\"lan_auth_user\":\t\"\",\n"
+          "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
+          "\t\"lan_auth_user\":\t\"Admin\",\n"
           "\t\"auto_update_cycle\":\t\"beta\",\n"
           "\t\"auto_update_weekdays_bitmask\":\t126,\n"
           "\t\"auto_update_interval_from\":\t1,\n"
@@ -1074,8 +1074,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
           "\t\"mqtt_prefix\":\t\"ruuvi/30:AE:A4:02:84:A4\",\n"
           "\t\"mqtt_client_id\":\t\"30:AE:A4:02:84:A4\",\n"
           "\t\"mqtt_user\":\t\"\",\n"
-          "\t\"lan_auth_type\":\t\"lan_auth_deny\",\n"
-          "\t\"lan_auth_user\":\t\"\",\n"
+          "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
+          "\t\"lan_auth_user\":\t\"Admin\",\n"
           "\t\"auto_update_cycle\":\t\"manual\",\n"
           "\t\"auto_update_weekdays_bitmask\":\t127,\n"
           "\t\"auto_update_interval_from\":\t0,\n"
@@ -1306,8 +1306,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: https://network.ruuvi.com/record"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http user: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http pass: ********"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_deny"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth user: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_ruuvi"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth user: Admin"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update cycle: manual"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update weekdays_bitmask: 0x7f"));
@@ -1322,6 +1322,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 37: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 38: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_INFO,
+        string("Set default LAN auth: user=Admin, password=00:00:00:00:00:00:00:00, "
+               "md5=a54439b7a379620e26445a27b2785d76"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1668,8 +1672,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: https://network.ruuvi.com/record"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http user: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http pass: ********"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_deny"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth user: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_ruuvi"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth user: Admin"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update cycle: manual"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update weekdays_bitmask: 0x7f"));
@@ -1684,6 +1688,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 37: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 38: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_INFO,
+        string("Set default LAN auth: user=Admin, password=00:00:00:00:00:00:00:00, "
+               "md5=a54439b7a379620e26445a27b2785d76"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
