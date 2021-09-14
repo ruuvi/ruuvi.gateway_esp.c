@@ -148,10 +148,13 @@ extern mac_address_str_t      g_gw_mac_sta_str;
 extern wifi_ssid_t            g_gw_wifi_ssid;
 
 void
+gw_cfg_init(void);
+
+void
 gw_cfg_print_to_log(const ruuvi_gateway_config_t *p_config);
 
 bool
-gw_cfg_generate_json_str(cjson_wrap_str_t *p_json_str);
+gw_cfg_generate_json_str(cjson_wrap_str_t *p_json_str, const char *const p_fw_ver, const char *const p_nrf52_fw_ver);
 
 #ifdef __cplusplus
 }

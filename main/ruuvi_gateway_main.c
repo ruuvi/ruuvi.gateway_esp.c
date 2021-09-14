@@ -38,7 +38,7 @@
 #include "ruuvi_device_id.h"
 #include "gw_cfg_default.h"
 #include "os_time.h"
-#include "time_str.h"
+#include "ruuvi_auth.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -212,12 +212,9 @@ ethernet_connection_ok_cb(const tcpip_adapter_ip_info_t *p_ip_info)
         g_gateway_config.eth.eth_dhcp = true;
         gw_cfg_print_to_log(&g_gateway_config);
         settings_save_to_flash(&g_gateway_config);
-        if (!http_server_set_auth(
-                g_gateway_config.lan_auth.lan_auth_type,
-                g_gateway_config.lan_auth.lan_auth_user,
-                g_gateway_config.lan_auth.lan_auth_pass))
+        if (!ruuvi_auth_set_from_config())
         {
-            LOG_ERR("%s failed", "http_server_set_auth");
+            LOG_ERR("%s failed", "gw_cfg_set_auth_from_config");
         }
     }
     xEventGroupSetBits(status_bits, ETH_CONNECTED_BIT);
@@ -399,6 +396,13 @@ cb_before_nrf52_fw_updating(void)
     set_gw_mac_sta(&nrf52_mac_addr, &g_gw_mac_sta_str, &g_gw_wifi_ssid);
     LOG_INFO("Mac address: %s", g_gw_mac_sta_str.str_buf);
     LOG_INFO("WiFi SSID / Hostname: %s", g_gw_wifi_ssid.ssid_buf);
+
+    // Here we do not yet know the value of nRF52 DeviceID, so we cannot use it as the default password.
+    http_server_cb_prohibit_cfg_updating();
+    if (!http_server_set_auth(HTTP_SERVER_AUTH_TYPE_STR_ALLOW, "", ""))
+    {
+        LOG_ERR("%s failed", "http_server_set_auth");
+    }
 
     if (!wifi_init(false, true, &g_gw_wifi_ssid, fw_update_get_current_fatfs_gwui_partition_name()))
     {
@@ -727,6 +731,7 @@ main_task_init(void)
 {
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
     cjson_wrap_init();
+    gw_cfg_init();
 
     g_p_signal_main_task = os_signal_create_static(&g_signal_main_task_mem);
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_LOG_HEAP_USAGE));
@@ -802,15 +807,6 @@ main_task_init(void)
 
     settings_get_from_flash(&g_gateway_config);
 
-    if (!http_server_set_auth(
-            g_gateway_config.lan_auth.lan_auth_type,
-            g_gateway_config.lan_auth.lan_auth_user,
-            g_gateway_config.lan_auth.lan_auth_pass))
-    {
-        LOG_ERR("%s failed", "http_server_set_auth");
-        return false;
-    }
-
     leds_indication_on_nrf52_fw_updating();
     nrf52fw_update_fw_if_necessary(
         fw_update_get_current_fatfs_nrf52_partition_name(),
@@ -834,6 +830,8 @@ main_task_init(void)
 
     time_task_init();
     ruuvi_send_nrf_settings(&g_gateway_config);
+
+    ruuvi_auth_set_from_config();
 
     if (!wifi_init(
             g_gateway_config.eth.use_eth,

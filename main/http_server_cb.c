@@ -29,6 +29,7 @@
 #include "time_str.h"
 #include "reset_task.h"
 #include "os_timer_sig.h"
+#include "ruuvi_auth.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -44,6 +45,8 @@ static const char TAG[] = "http_server";
 static const char g_empty_json[] = "{}";
 
 static const flash_fat_fs_t *gp_ffs_gwui;
+
+static bool g_http_server_cb_flag_prohibit_cfg_updating = false;
 
 #if !RUUVI_TESTS_HTTP_SERVER_CB
 static time_t
@@ -83,7 +86,7 @@ http_server_resp_t
 http_server_resp_json_ruuvi(void)
 {
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
-    if (!gw_cfg_generate_json_str(&json_str))
+    if (!gw_cfg_generate_json_str(&json_str, fw_update_get_cur_version(), g_nrf52_firmware_version))
     {
         return http_server_resp_503();
     }
@@ -713,12 +716,9 @@ http_server_cb_on_post_ruuvi(const char *p_body)
         adv_post_disable_retransmission();
     }
     settings_save_to_flash(&g_gateway_config);
-    if (!http_server_set_auth(
-            g_gateway_config.lan_auth.lan_auth_type,
-            g_gateway_config.lan_auth.lan_auth_user,
-            g_gateway_config.lan_auth.lan_auth_pass))
+    if (!ruuvi_auth_set_from_config())
     {
-        LOG_ERR("%s failed", "http_server_set_auth");
+        LOG_ERR("%s failed", "ruuvi_auth_set_from_config");
     }
     ruuvi_send_nrf_settings(&g_gateway_config);
     ethernet_update_ip();
@@ -767,6 +767,10 @@ http_server_cb_on_post_fw_update(const char *p_body)
 http_server_resp_t
 http_server_cb_on_post(const char *p_file_name, const char *p_body)
 {
+    if (g_http_server_cb_flag_prohibit_cfg_updating)
+    {
+        return http_server_resp_404();
+    }
     if (0 == strcmp(p_file_name, "ruuvi.json"))
     {
         return http_server_cb_on_post_ruuvi(p_body);
@@ -789,4 +793,16 @@ http_server_cb_on_delete(
     (void)p_resp_auth;
     LOG_WARN("DELETE /%s", p_path);
     return http_server_resp_404();
+}
+
+void
+http_server_cb_prohibit_cfg_updating(void)
+{
+    g_http_server_cb_flag_prohibit_cfg_updating = true;
+}
+
+void
+http_server_cb_allow_cfg_updating(void)
+{
+    g_http_server_cb_flag_prohibit_cfg_updating = false;
 }

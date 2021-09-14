@@ -60,6 +60,12 @@ http_server_cb_on_delete(
 download_github_latest_release_info_t
 http_download_latest_release_info(void);
 
+void
+http_server_cb_prohibit_cfg_updating(void);
+
+void
+http_server_cb_allow_cfg_updating(void);
+
 #if RUUVI_TESTS_HTTP_SERVER_CB
 
 time_t

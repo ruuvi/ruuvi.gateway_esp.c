@@ -7,9 +7,9 @@
 
 #include "gw_cfg.h"
 #include "gw_cfg_default.h"
+#include <string.h>
 #include <stdio.h>
 #include "http_server_auth_type.h"
-#include "fw_update.h"
 #include "nrf52fw.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -27,6 +27,20 @@ wifi_ssid_t            g_gw_wifi_ssid    = {
 };
 
 static const char TAG[] = "gw_cfg";
+
+void
+gw_cfg_init(void)
+{
+    g_gateway_config = g_gateway_config_default;
+    memset(&g_gw_mac_eth, 0, sizeof(g_gw_mac_eth));
+    memset(&g_gw_mac_eth_str, 0, sizeof(g_gw_mac_eth_str));
+    memset(&g_gw_mac_wifi, 0, sizeof(g_gw_mac_wifi));
+    memset(&g_gw_mac_wifi_str, 0, sizeof(g_gw_mac_wifi_str));
+    memset(&g_gw_mac_sta, 0, sizeof(g_gw_mac_sta));
+    memset(&g_gw_mac_sta_str, 0, sizeof(g_gw_mac_sta_str));
+    memset(&g_gw_wifi_ssid, 0, sizeof(g_gw_wifi_ssid));
+    snprintf(&g_gw_wifi_ssid.ssid_buf[0], sizeof(g_gw_wifi_ssid.ssid_buf), "%s", DEFAULT_AP_SSID);
+}
 
 void
 gw_cfg_print_to_log(const ruuvi_gateway_config_t *p_config)
@@ -127,13 +141,13 @@ gw_cfg_json_add_number(cJSON *p_json_root, const char *p_item_name, const cjson_
 }
 
 static bool
-gw_cfg_json_add_items_fw_version(cJSON *p_json_root)
+gw_cfg_json_add_items_fw_version(cJSON *p_json_root, const char *const p_fw_ver, const char *const p_nrf52_fw_ver)
 {
-    if (!gw_cfg_json_add_string(p_json_root, "fw_ver", fw_update_get_cur_version()))
+    if (!gw_cfg_json_add_string(p_json_root, "fw_ver", p_fw_ver))
     {
         return false;
     }
-    if (!gw_cfg_json_add_string(p_json_root, "nrf52_fw_ver", g_nrf52_firmware_version))
+    if (!gw_cfg_json_add_string(p_json_root, "nrf52_fw_ver", p_nrf52_fw_ver))
     {
         return false;
     }
@@ -335,9 +349,14 @@ gw_cfg_json_add_items_scan(cJSON *p_json_root, const ruuvi_gateway_config_t *p_c
 }
 
 static bool
-gw_cfg_json_add_items(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg, const mac_address_str_t *p_mac_sta)
+gw_cfg_json_add_items(
+    cJSON *                       p_json_root,
+    const ruuvi_gateway_config_t *p_cfg,
+    const mac_address_str_t *     p_mac_sta,
+    const char *const             p_fw_ver,
+    const char *const             p_nrf52_fw_ver)
 {
-    if (!gw_cfg_json_add_items_fw_version(p_json_root))
+    if (!gw_cfg_json_add_items_fw_version(p_json_root, p_fw_ver, p_nrf52_fw_ver))
     {
         return false;
     }
@@ -381,7 +400,7 @@ gw_cfg_json_add_items(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg, c
 }
 
 bool
-gw_cfg_generate_json_str(cjson_wrap_str_t *p_json_str)
+gw_cfg_generate_json_str(cjson_wrap_str_t *p_json_str, const char *const p_fw_ver, const char *const p_nrf52_fw_ver)
 {
     const ruuvi_gateway_config_t *p_cfg     = &g_gateway_config;
     const mac_address_str_t *     p_mac_sta = &g_gw_mac_sta_str;
@@ -394,7 +413,7 @@ gw_cfg_generate_json_str(cjson_wrap_str_t *p_json_str)
         LOG_ERR("Can't create json object");
         return false;
     }
-    if (!gw_cfg_json_add_items(p_json_root, p_cfg, p_mac_sta))
+    if (!gw_cfg_json_add_items(p_json_root, p_cfg, p_mac_sta, p_fw_ver, p_nrf52_fw_ver))
     {
         cjson_wrap_delete(&p_json_root);
         return false;
