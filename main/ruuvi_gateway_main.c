@@ -966,3 +966,13 @@ main_task_schedule_retry_check_for_fw_updates(void)
 {
     os_signal_send(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_SCHEDULE_RETRY_CHECK_FOR_FW_UPDATES));
 }
+
+/*
+ * This function is called by task_wdt_isr function (ISR for when TWDT times out).
+ * Note: It has the same limitations as the interrupt function.
+ *       Do not use ESP_LOGI functions inside.
+ */
+void esp_task_wdt_isr_user_handler(void)
+{
+    esp_restart();
+}
