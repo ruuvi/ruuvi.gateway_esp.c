@@ -174,7 +174,7 @@ http_send(const char *const p_msg)
     return result;
 }
 
-void
+bool
 http_send_advs(const adv_report_table_t *const p_reports, const uint32_t nonce)
 {
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -188,10 +188,12 @@ http_send_advs(const adv_report_table_t *const p_reports, const uint32_t nonce)
             &json_str))
     {
         LOG_ERR("Not enough memory to generate json");
-        return;
+        return false;
     }
+    bool is_post_successful = false;
     if (http_send(json_str.p_str))
     {
+        is_post_successful = true;
         leds_indication_on_network_ok();
         if (!fw_update_mark_app_valid_cancel_rollback())
         {
@@ -203,6 +205,7 @@ http_send_advs(const adv_report_table_t *const p_reports, const uint32_t nonce)
         leds_indication_network_no_connection();
     }
     cjson_wrap_free_json_str(&json_str);
+    return is_post_successful;
 }
 
 static esp_err_t

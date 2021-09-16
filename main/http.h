@@ -28,7 +28,7 @@ typedef bool (*http_download_cb_on_data_t)(
 bool
 http_send(const char *const p_msg);
 
-void
+bool
 http_send_advs(const adv_report_table_t *const p_reports, const uint32_t nonce);
 
 bool
