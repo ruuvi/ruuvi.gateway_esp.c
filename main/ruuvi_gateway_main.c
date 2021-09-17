@@ -525,8 +525,20 @@ main_task_handle_sig(const main_task_sig_e main_task_sig)
     switch (main_task_sig)
     {
         case MAIN_TASK_SIG_LOG_HEAP_USAGE:
-            LOG_INFO("free heap: %u", esp_get_free_heap_size());
+        {
+            const uint32_t free_heap = esp_get_free_heap_size();
+            LOG_INFO("free heap: %lu", (printf_ulong_t)free_heap);
+            if (free_heap < (RUUVI_FREE_HEAP_LIM_KIB * 1024U))
+            {
+                // TODO: in ESP-IDF v4.x there is API heap_caps_register_failed_alloc_callback,
+                //       which allows to catch 'no memory' event and reboot.
+                LOG_ERR(
+                    "Only %uKiB of free memory left - probably due to a memory leak. Reboot the Gateway.",
+                    (printf_uint_t)(free_heap / 1024U));
+                esp_restart();
+            }
             break;
+        }
         case MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES:
         {
             if (check_if_checking_for_fw_updates_allowed())
