@@ -327,7 +327,8 @@ http_download_latest_release_info(void)
     if (!http_download(
             "https://api.github.com/repos/ruuvi/ruuvi.gateway_esp.c/releases/latest",
             &cb_on_http_data_json_github_latest_release,
-            &info))
+            &info,
+            true))
     {
         LOG_ERR("http_download failed");
         info.is_error = true;
@@ -425,7 +426,11 @@ http_server_resp_metrics(void)
 
 HTTP_SERVER_CB_STATIC
 bool
-http_server_read_history(cjson_wrap_str_t *p_json_str, const time_t cur_time, const uint32_t time_interval_seconds)
+http_server_read_history(
+    cjson_wrap_str_t *   p_json_str,
+    const time_t         cur_time,
+    const uint32_t       time_interval_seconds,
+    num_of_advs_t *const p_num_of_advs)
 {
     adv_report_table_t *p_reports = os_malloc(sizeof(*p_reports));
     if (NULL == p_reports)
@@ -433,6 +438,7 @@ http_server_read_history(cjson_wrap_str_t *p_json_str, const time_t cur_time, co
         return false;
     }
     adv_table_history_read(p_reports, cur_time, time_interval_seconds);
+    *p_num_of_advs = p_reports->num_of_advs;
 
     const bool res = http_create_json_str(
         p_reports,
@@ -460,9 +466,10 @@ http_server_resp_history(const char *const p_params)
             time_interval_seconds = (uint32_t)strtoul(&p_params[time_prefix_len], NULL, 0);
         }
     }
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-    const time_t     cur_time = http_server_get_cur_time();
-    if (!http_server_read_history(&json_str, cur_time, time_interval_seconds))
+    cjson_wrap_str_t json_str    = cjson_wrap_str_null();
+    const time_t     cur_time    = http_server_get_cur_time();
+    num_of_advs_t    num_of_advs = 0;
+    if (!http_server_read_history(&json_str, cur_time, time_interval_seconds, &num_of_advs))
     {
         LOG_ERR("Not enough memory");
         return http_server_resp_503();
@@ -471,6 +478,11 @@ http_server_resp_history(const char *const p_params)
     const bool flag_no_cache        = true;
     const bool flag_add_header_date = true;
     LOG_INFO("History on %u seconds interval: %s", (unsigned)time_interval_seconds, json_str.p_str);
+    if (0 != num_of_advs)
+    {
+        adv_post_update_last_successful_network_comm_timestamp();
+    }
+
     return http_server_resp_data_in_heap(
         HTTP_CONENT_TYPE_APPLICATION_JSON,
         NULL,

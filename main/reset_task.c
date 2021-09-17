@@ -6,6 +6,7 @@
  */
 
 #include "reset_task.h"
+#include <esp_task_wdt.h>
 #include "os_signal.h"
 #include "os_timer_sig.h"
 #include "ethernet.h"
@@ -21,10 +22,11 @@ typedef enum reset_task_sig_e
     RESET_TASK_SIG_CONFIGURE_BUTTON_PRESSED   = OS_SIGNAL_NUM_0,
     RESET_TASK_SIG_CONFIGURE_BUTTON_RELEASED  = OS_SIGNAL_NUM_1,
     RESET_TASK_SIG_REBOOT_BY_CONFIGURE_BUTTON = OS_SIGNAL_NUM_2,
+    RESET_TASK_SIG_TASK_WATCHDOG_FEED         = OS_SIGNAL_NUM_3,
 } reset_task_sig_e;
 
 #define RESET_TASK_SIG_FIRST (RESET_TASK_SIG_CONFIGURE_BUTTON_PRESSED)
-#define RESET_TASK_SIG_LAST  (RESET_TASK_SIG_REBOOT_BY_CONFIGURE_BUTTON)
+#define RESET_TASK_SIG_LAST  (RESET_TASK_SIG_TASK_WATCHDOG_FEED)
 
 #define RESET_TASK_TIMEOUT_AFTER_PRESSING_CONFIGURE_BUTTON (5)
 
@@ -32,6 +34,8 @@ static const char *TAG = "reset_task";
 
 static os_timer_sig_one_shot_t *      g_p_timer_sig_reset_by_configure_button;
 static os_timer_sig_one_shot_static_t g_timer_sig_reset_by_configure_button_mem;
+static os_timer_sig_periodic_t *      g_p_timer_sig_watchdog_feed;
+static os_timer_sig_periodic_static_t g_timer_sig_watchdog_feed_mem;
 static os_signal_t *                  g_p_signal_reset_task;
 static os_signal_static_t             signal_reset_task_mem;
 
@@ -109,11 +113,33 @@ reset_task_handle_sig(const reset_task_sig_e reset_task_sig)
             // settings in flash.
             esp_restart();
             break;
+        case RESET_TASK_SIG_TASK_WATCHDOG_FEED:
+        {
+            const esp_err_t err = esp_task_wdt_reset();
+            if (ESP_OK != err)
+            {
+                LOG_ERR_ESP(err, "%s failed", "esp_task_wdt_reset");
+            }
+            break;
+        }
         default:
             LOG_ERR("Unhanded sig: %d", (int)reset_task_sig);
             assert(0);
             break;
     }
+}
+
+static void
+reset_task_wdt_add_and_start(void)
+{
+    LOG_INFO("TaskWatchdog: Register current thread");
+    const esp_err_t err = esp_task_wdt_add(xTaskGetCurrentTaskHandle());
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "%s failed", "esp_task_wdt_add");
+    }
+    LOG_INFO("TaskWatchdog: Start timer");
+    os_timer_sig_periodic_start(g_p_timer_sig_watchdog_feed);
 }
 
 ATTR_NORETURN
@@ -126,6 +152,9 @@ reset_task(void)
     }
 
     LOG_INFO("Reset task started");
+
+    reset_task_wdt_add_and_start();
+
     for (;;)
     {
         os_signal_events_t sig_events = { 0 };
@@ -153,6 +182,7 @@ reset_task_init(void)
     os_signal_add(g_p_signal_reset_task, reset_task_conv_to_sig_num(RESET_TASK_SIG_CONFIGURE_BUTTON_PRESSED));
     os_signal_add(g_p_signal_reset_task, reset_task_conv_to_sig_num(RESET_TASK_SIG_CONFIGURE_BUTTON_RELEASED));
     os_signal_add(g_p_signal_reset_task, reset_task_conv_to_sig_num(RESET_TASK_SIG_REBOOT_BY_CONFIGURE_BUTTON));
+    os_signal_add(g_p_signal_reset_task, reset_task_conv_to_sig_num(RESET_TASK_SIG_TASK_WATCHDOG_FEED));
 
     g_p_timer_sig_reset_by_configure_button = os_timer_sig_one_shot_create_static(
         &g_timer_sig_reset_by_configure_button_mem,
@@ -160,6 +190,14 @@ reset_task_init(void)
         g_p_signal_reset_task,
         reset_task_conv_to_sig_num(RESET_TASK_SIG_REBOOT_BY_CONFIGURE_BUTTON),
         pdMS_TO_TICKS(RESET_TASK_TIMEOUT_AFTER_PRESSING_CONFIGURE_BUTTON * 1000));
+
+    LOG_INFO("TaskWatchdog: reset_task: Create timer");
+    g_p_timer_sig_watchdog_feed = os_timer_sig_periodic_create_static(
+        &g_timer_sig_watchdog_feed_mem,
+        "reset:wdog",
+        g_p_signal_reset_task,
+        reset_task_conv_to_sig_num(RESET_TASK_SIG_TASK_WATCHDOG_FEED),
+        pdMS_TO_TICKS(CONFIG_ESP_TASK_WDT_TIMEOUT_S * 1000U / 3U));
 
     const uint32_t   stack_size_for_reset_task = 4 * 1024;
     os_task_handle_t ph_task_reset             = NULL;

@@ -11,6 +11,7 @@
 #include <assert.h>
 #include "driver/ledc.h"
 #include "driver/gpio.h"
+#include <esp_task_wdt.h>
 #include "os_task.h"
 #include "os_mutex.h"
 #include "os_signal.h"
@@ -57,12 +58,13 @@ static const char *TAG = "LEDS";
 
 typedef enum leds_task_sig_e
 {
-    LEDS_TASK_SIG_TURN_ON  = OS_SIGNAL_NUM_0,
-    LEDS_TASK_SIG_TURN_OFF = OS_SIGNAL_NUM_1,
+    LEDS_TASK_SIG_TURN_ON            = OS_SIGNAL_NUM_0,
+    LEDS_TASK_SIG_TURN_OFF           = OS_SIGNAL_NUM_1,
+    LEDS_TASK_SIG_TASK_WATCHDOG_FEED = OS_SIGNAL_NUM_2,
 } leds_task_sig_e;
 
 #define LEDS_TASK_SIG_FIRST (LEDS_TASK_SIG_TURN_ON)
-#define LEDS_TASK_SIG_LAST  (LEDS_TASK_SIG_TURN_OFF)
+#define LEDS_TASK_SIG_LAST  (LEDS_TASK_SIG_TASK_WATCHDOG_FEED)
 
 static ledc_channel_config_t ledc_channel[1] = {
     {
@@ -84,6 +86,8 @@ static os_timer_sig_periodic_t *      g_p_leds_timer_sig_turn_on;
 static os_timer_sig_periodic_static_t g_leds_timer_sig_turn_on_mem;
 static os_timer_sig_one_shot_t *      g_p_leds_timer_sig_turn_off;
 static os_timer_sig_one_shot_static_t g_leds_timer_sig_turn_off_mem;
+static os_timer_sig_periodic_t *      g_p_leds_timer_sig_watchdog_feed;
+static os_timer_sig_periodic_static_t g_leds_timer_sig_watchdog_feed_mem;
 static TimeUnitsMilliSeconds_t        g_leds_period_ms;
 static uint32_t                       g_leds_duty_cycle_percent;
 static bool                           g_leds_gpio_switch_ctrl_activated;
@@ -242,11 +246,34 @@ leds_task_handle_sig(
             }
             break;
 
+        case LEDS_TASK_SIG_TASK_WATCHDOG_FEED:
+        {
+            const esp_err_t err = esp_task_wdt_reset();
+            if (ESP_OK != err)
+            {
+                LOG_ERR_ESP(err, "%s failed", "esp_task_wdt_reset");
+            }
+            break;
+        }
+
         default:
             LOG_ERR("Unhanded sig: %d", (int)leds_task_sig);
             assert(0);
             break;
     }
+}
+
+static void
+leds_wdt_add_and_start(void)
+{
+    LOG_INFO("TaskWatchdog: Register current thread");
+    const esp_err_t err = esp_task_wdt_add(xTaskGetCurrentTaskHandle());
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "%s failed", "esp_task_wdt_add");
+    }
+    LOG_INFO("TaskWatchdog: Start timer");
+    os_timer_sig_periodic_start(g_p_leds_timer_sig_watchdog_feed);
 }
 
 ATTR_NORETURN
@@ -256,6 +283,8 @@ leds_task(void)
     LOG_INFO("%s started", __func__);
 
     os_signal_register_cur_thread(g_p_leds_signal);
+
+    leds_wdt_add_and_start();
 
     for (;;)
     {
@@ -288,6 +317,7 @@ leds_init(void)
     g_p_leds_signal = os_signal_create_static(&g_leds_signal_mem);
     os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_TURN_ON));
     os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_TURN_OFF));
+    os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_TASK_WATCHDOG_FEED));
 
     g_p_leds_timer_sig_turn_on = os_timer_sig_periodic_create_static(
         &g_leds_timer_sig_turn_on_mem,
@@ -302,6 +332,14 @@ leds_init(void)
         g_p_leds_signal,
         leds_task_conv_to_sig_num(LEDS_TASK_SIG_TURN_OFF),
         pdMS_TO_TICKS(LEDS_DEFAULT_TIMER_PERIOD_MS));
+
+    LOG_INFO("TaskWatchdog: leds_task: Create timer");
+    g_p_leds_timer_sig_watchdog_feed = os_timer_sig_periodic_create_static(
+        &g_leds_timer_sig_watchdog_feed_mem,
+        "leds:wdog",
+        g_p_leds_signal,
+        leds_task_conv_to_sig_num(LEDS_TASK_SIG_TASK_WATCHDOG_FEED),
+        pdMS_TO_TICKS(CONFIG_ESP_TASK_WDT_TIMEOUT_S * 1000U / 3U));
 
     ledc_timer_config_t ledc_timer = {
         .duty_resolution = LEDC_TIMER_10_BIT, // resolution of PWM duty

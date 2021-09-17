@@ -53,27 +53,32 @@ mqtt_create_full_topic(
     }
 }
 
-static void
+static bool
 mqtt_publish_adv(const adv_report_t *p_adv)
 {
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
     if (!mqtt_create_json_str(p_adv, time(NULL), &g_gw_mac_sta_str, g_gateway_config.coordinates, &json_str))
     {
         LOG_ERR("%s failed", "mqtt_create_json_str");
-        return;
+        return false;
     }
     const mac_address_str_t tag_mac_str = mac_address_to_str(&p_adv->tag_mac);
     mqtt_topic_buf_t        topic;
     mqtt_create_full_topic(&topic, g_gateway_config.mqtt.mqtt_prefix, tag_mac_str.str_buf);
     LOG_DBG("publish: topic: %s, data: %s", topic.buf, json_str.p_str);
-    const int32_t mqtt_len         = 0;
-    const int32_t mqtt_qos         = 1;
-    const int32_t mqtt_flag_retain = 0;
-    esp_mqtt_client_publish(gp_mqtt_client, topic.buf, json_str.p_str, mqtt_len, mqtt_qos, mqtt_flag_retain);
+    const int32_t mqtt_len              = 0;
+    const int32_t mqtt_qos              = 1;
+    const int32_t mqtt_flag_retain      = 0;
+    bool          is_publish_successful = false;
+    if (esp_mqtt_client_publish(gp_mqtt_client, topic.buf, json_str.p_str, mqtt_len, mqtt_qos, mqtt_flag_retain) >= 0)
+    {
+        is_publish_successful = true;
+    }
     cjson_wrap_free_json_str(&json_str);
+    return is_publish_successful;
 }
 
-void
+bool
 mqtt_publish_table(const adv_report_table_t *p_table)
 {
     LOG_INFO("sending advertisement table (%d items) to MQTT", p_table->num_of_advs);
@@ -81,8 +86,13 @@ mqtt_publish_table(const adv_report_table_t *p_table)
     for (num_of_advs_t i = 0; i < p_table->num_of_advs; ++i)
     {
         const adv_report_t adv = p_table->table[i];
-        mqtt_publish_adv(&adv);
+        if (!mqtt_publish_adv(&adv))
+        {
+            LOG_ERR("%s failed", "mqtt_publish_adv");
+            return false;
+        }
     }
+    return true;
 }
 
 static void

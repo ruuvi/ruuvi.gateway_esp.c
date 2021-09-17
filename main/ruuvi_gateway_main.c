@@ -11,6 +11,7 @@
 #include "cJSON.h"
 #include "driver/gpio.h"
 #include "esp_system.h"
+#include <esp_task_wdt.h>
 #include "ethernet.h"
 #include "os_task.h"
 #include "os_timer_sig.h"
@@ -59,10 +60,11 @@ typedef enum main_task_sig_e
     MAIN_TASK_SIG_SCHEDULE_NEXT_CHECK_FOR_FW_UPDATES  = OS_SIGNAL_NUM_2,
     MAIN_TASK_SIG_SCHEDULE_RETRY_CHECK_FOR_FW_UPDATES = OS_SIGNAL_NUM_3,
     MAIN_TASK_SIG_DEACTIVATE_WIFI_AP                  = OS_SIGNAL_NUM_4,
+    MAIN_TASK_SIG_TASK_WATCHDOG_FEED                  = OS_SIGNAL_NUM_5,
 } main_task_sig_e;
 
 #define MAIN_TASK_SIG_FIRST (MAIN_TASK_SIG_LOG_HEAP_USAGE)
-#define MAIN_TASK_SIG_LAST  (MAIN_TASK_SIG_DEACTIVATE_WIFI_AP)
+#define MAIN_TASK_SIG_LAST  (MAIN_TASK_SIG_TASK_WATCHDOG_FEED)
 
 EventGroupHandle_t status_bits;
 
@@ -74,6 +76,8 @@ static os_timer_sig_one_shot_t *      g_p_timer_sig_check_for_fw_updates;
 static os_timer_sig_one_shot_static_t g_timer_sig_check_for_fw_updates_mem;
 static os_timer_sig_one_shot_t *      g_p_timer_sig_deactivate_wifi_ap;
 static os_timer_sig_one_shot_static_t g_p_timer_sig_deactivate_wifi_ap_mem;
+static os_timer_sig_periodic_t *      g_p_timer_sig_task_watchdog_feed;
+static os_timer_sig_periodic_static_t g_timer_sig_task_watchdog_feed_mem;
 
 ATTR_PURE
 static os_signal_num_e
@@ -573,6 +577,15 @@ main_task_handle_sig(const main_task_sig_e main_task_sig)
 
             leds_indication_network_no_connection();
             break;
+        case MAIN_TASK_SIG_TASK_WATCHDOG_FEED:
+        {
+            const esp_err_t err = esp_task_wdt_reset();
+            if (ESP_OK != err)
+            {
+                LOG_ERR_ESP(err, "%s failed", "esp_task_wdt_reset");
+            }
+            break;
+        }
     }
 }
 
@@ -726,6 +739,19 @@ configure_wifi_country_and_max_tx_power(void)
     }
 }
 
+static void
+main_wdt_add_and_start(void)
+{
+    LOG_INFO("TaskWatchdog: Register current thread");
+    const esp_err_t err = esp_task_wdt_add(xTaskGetCurrentTaskHandle());
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "%s failed", "esp_task_wdt_add");
+    }
+    LOG_INFO("TaskWatchdog: Start timer");
+    os_timer_sig_periodic_start(g_p_timer_sig_task_watchdog_feed);
+}
+
 static bool
 main_task_init(void)
 {
@@ -739,6 +765,7 @@ main_task_init(void)
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_SCHEDULE_NEXT_CHECK_FOR_FW_UPDATES));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_SCHEDULE_RETRY_CHECK_FOR_FW_UPDATES));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_DEACTIVATE_WIFI_AP));
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_WATCHDOG_FEED));
 
     g_p_timer_sig_log_heap_usage = os_timer_sig_periodic_create_static(
         &g_timer_sig_log_heap_usage,
@@ -758,6 +785,12 @@ main_task_init(void)
         g_p_signal_main_task,
         main_task_conv_to_sig_num(MAIN_TASK_SIG_DEACTIVATE_WIFI_AP),
         pdMS_TO_TICKS(MAIN_TASK_TIMEOUT_AFTER_MANUAL_HOTSPOT_ACTIVATION_SEC * 1000));
+    g_p_timer_sig_task_watchdog_feed = os_timer_sig_periodic_create_static(
+        &g_timer_sig_task_watchdog_feed_mem,
+        "main_wgod",
+        g_p_signal_main_task,
+        main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_WATCHDOG_FEED),
+        pdMS_TO_TICKS(CONFIG_ESP_TASK_WDT_TIMEOUT_S * 1000U / 3U));
 
     if (!os_signal_register_cur_thread(g_p_signal_main_task))
     {
@@ -902,6 +935,8 @@ main_task_init(void)
         LOG_INFO("Firmware auto-updating is not active");
     }
 
+    main_wdt_add_and_start();
+
     return true;
 }
 
@@ -965,4 +1000,15 @@ void
 main_task_schedule_retry_check_for_fw_updates(void)
 {
     os_signal_send(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_SCHEDULE_RETRY_CHECK_FOR_FW_UPDATES));
+}
+
+/*
+ * This function is called by task_wdt_isr function (ISR for when TWDT times out).
+ * Note: It has the same limitations as the interrupt function.
+ *       Do not use ESP_LOGI functions inside.
+ */
+void
+esp_task_wdt_isr_user_handler(void)
+{
+    esp_restart();
 }

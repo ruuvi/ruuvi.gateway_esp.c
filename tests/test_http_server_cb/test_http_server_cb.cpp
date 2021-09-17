@@ -64,7 +64,11 @@ fw_update_get_cur_version(void)
 char g_nrf52_firmware_version[] = "v0.7.1";
 
 bool
-http_download(const char *const p_url, http_download_cb_on_data_t cb_on_data, void *const p_user_data)
+http_download(
+    const char *const          p_url,
+    http_download_cb_on_data_t cb_on_data,
+    void *const                p_user_data,
+    const bool                 flag_feed_task_watchdog)
 {
     return false;
 }
@@ -145,6 +149,11 @@ main_task_schedule_next_check_for_fw_updates(void)
 
 void
 main_task_schedule_retry_check_for_fw_updates(void)
+{
+}
+
+void
+adv_post_update_last_successful_network_comm_timestamp(void)
 {
 }
 

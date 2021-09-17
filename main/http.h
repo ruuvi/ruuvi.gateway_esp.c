@@ -28,11 +28,15 @@ typedef bool (*http_download_cb_on_data_t)(
 bool
 http_send(const char *const p_msg);
 
-void
+bool
 http_send_advs(const adv_report_table_t *const p_reports, const uint32_t nonce);
 
 bool
-http_download(const char *const p_url, http_download_cb_on_data_t cb_on_data, void *const p_user_data);
+http_download(
+    const char *const          p_url,
+    http_download_cb_on_data_t cb_on_data,
+    void *const                p_user_data,
+    const bool                 flag_feed_task_watchdog);
 
 #ifdef __cplusplus
 }
