@@ -8,6 +8,7 @@
 #include "http.h"
 #include <string.h>
 #include <time.h>
+#include <esp_task_wdt.h>
 #include "cJSON.h"
 #include "cjson_wrap.h"
 #include "esp_http_client.h"
@@ -33,6 +34,7 @@ typedef struct http_download_cb_info_t
     esp_http_client_handle_t   http_handle;
     uint32_t                   content_length;
     uint32_t                   offset;
+    bool                       flag_feed_task_watchdog;
 } http_download_cb_info_t;
 
 static const char TAG[] = "http";
@@ -208,6 +210,19 @@ http_send_advs(const adv_report_table_t *const p_reports, const uint32_t nonce)
     return is_post_successful;
 }
 
+static void
+http_download_feed_task_watchdog_if_needed(const http_download_cb_info_t *const p_cb_info)
+{
+    if (p_cb_info->flag_feed_task_watchdog)
+    {
+        const esp_err_t err = esp_task_wdt_reset();
+        if (ESP_OK != err)
+        {
+            LOG_ERR_ESP(err, "%s failed", "esp_task_wdt_reset");
+        }
+    }
+}
+
 static esp_err_t
 http_download_event_handler(esp_http_client_event_t *p_evt)
 {
@@ -216,19 +231,23 @@ http_download_event_handler(esp_http_client_event_t *p_evt)
     {
         case HTTP_EVENT_ERROR:
             LOG_ERR("HTTP_EVENT_ERROR");
+            http_download_feed_task_watchdog_if_needed(p_cb_info);
             break;
 
         case HTTP_EVENT_ON_CONNECTED:
             LOG_INFO("HTTP_EVENT_ON_CONNECTED");
+            http_download_feed_task_watchdog_if_needed(p_cb_info);
             p_cb_info->offset = 0;
             break;
 
         case HTTP_EVENT_HEADER_SENT:
             LOG_INFO("HTTP_EVENT_HEADER_SENT");
+            http_download_feed_task_watchdog_if_needed(p_cb_info);
             break;
 
         case HTTP_EVENT_ON_HEADER:
             LOG_INFO("HTTP_EVENT_ON_HEADER, key=%s, value=%s", p_evt->header_key, p_evt->header_value);
+            http_download_feed_task_watchdog_if_needed(p_cb_info);
             if (0 == strcasecmp(p_evt->header_key, "Content-Length"))
             {
                 p_cb_info->offset         = 0;
@@ -239,6 +258,7 @@ http_download_event_handler(esp_http_client_event_t *p_evt)
         case HTTP_EVENT_ON_DATA:
             LOG_DBG("HTTP_EVENT_ON_DATA, len=%d", p_evt->data_len);
             LOG_DUMP_VERBOSE(p_evt->data, p_evt->data_len, "<--:");
+            http_download_feed_task_watchdog_if_needed(p_cb_info);
             if (!p_cb_info->cb_on_data(
                     p_evt->data,
                     p_evt->data_len,
@@ -254,10 +274,12 @@ http_download_event_handler(esp_http_client_event_t *p_evt)
 
         case HTTP_EVENT_ON_FINISH:
             LOG_INFO("HTTP_EVENT_ON_FINISH");
+            http_download_feed_task_watchdog_if_needed(p_cb_info);
             break;
 
         case HTTP_EVENT_DISCONNECTED:
             LOG_INFO("HTTP_EVENT_DISCONNECTED");
+            http_download_feed_task_watchdog_if_needed(p_cb_info);
             break;
 
         default:
@@ -300,14 +322,19 @@ http_download_firmware_via_handle(esp_http_client_handle_t http_handle)
 }
 
 bool
-http_download(const char *const p_url, http_download_cb_on_data_t cb_on_data, void *const p_user_data)
+http_download(
+    const char *const          p_url,
+    http_download_cb_on_data_t cb_on_data,
+    void *const                p_user_data,
+    const bool                 flag_feed_task_watchdog)
 {
     http_download_cb_info_t cb_info = {
-        .cb_on_data     = cb_on_data,
-        .p_user_data    = p_user_data,
-        .http_handle    = NULL,
-        .content_length = 0,
-        .offset         = 0,
+        .cb_on_data              = cb_on_data,
+        .p_user_data             = p_user_data,
+        .http_handle             = NULL,
+        .content_length          = 0,
+        .offset                  = 0,
+        .flag_feed_task_watchdog = flag_feed_task_watchdog,
     };
     const esp_http_client_config_t http_config = {
         .url                         = p_url,

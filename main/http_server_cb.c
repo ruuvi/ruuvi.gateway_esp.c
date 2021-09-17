@@ -327,7 +327,8 @@ http_download_latest_release_info(void)
     if (!http_download(
             "https://api.github.com/repos/ruuvi/ruuvi.gateway_esp.c/releases/latest",
             &cb_on_http_data_json_github_latest_release,
-            &info))
+            &info,
+            true))
     {
         LOG_ERR("http_download failed");
         info.is_error = true;

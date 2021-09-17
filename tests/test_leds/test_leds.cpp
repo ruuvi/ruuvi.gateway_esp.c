@@ -141,6 +141,18 @@ gpio_switch_ctrl_deactivate(void)
 {
 }
 
+esp_err_t
+esp_task_wdt_reset()
+{
+    return ESP_OK;
+}
+
+esp_err_t
+esp_task_wdt_add(TaskHandle_t handle)
+{
+    return ESP_OK;
+}
+
 #ifdef __cplusplus
 }
 #endif

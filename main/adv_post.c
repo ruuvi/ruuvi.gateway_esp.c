@@ -6,6 +6,7 @@
  */
 
 #include "adv_post.h"
+#include <esp_task_wdt.h>
 #include "bin2hex.h"
 #include "cJSON.h"
 #include "esp_err.h"
@@ -39,15 +40,16 @@
 
 typedef enum adv_post_sig_e
 {
-    ADV_POST_SIG_STOP             = OS_SIGNAL_NUM_0,
-    ADV_POST_SIG_RETRANSMIT       = OS_SIGNAL_NUM_1,
-    ADV_POST_SIG_DISABLE          = OS_SIGNAL_NUM_2,
-    ADV_POST_SIG_ENABLE           = OS_SIGNAL_NUM_3,
-    ADV_POST_SIG_NETWORK_WATCHDOG = OS_SIGNAL_NUM_4,
+    ADV_POST_SIG_STOP               = OS_SIGNAL_NUM_0,
+    ADV_POST_SIG_RETRANSMIT         = OS_SIGNAL_NUM_1,
+    ADV_POST_SIG_DISABLE            = OS_SIGNAL_NUM_2,
+    ADV_POST_SIG_ENABLE             = OS_SIGNAL_NUM_3,
+    ADV_POST_SIG_NETWORK_WATCHDOG   = OS_SIGNAL_NUM_4,
+    ADV_POST_SIG_TASK_WATCHDOG_FEED = OS_SIGNAL_NUM_5,
 } adv_post_sig_e;
 
 #define ADV_POST_SIG_FIRST (ADV_POST_SIG_STOP)
-#define ADV_POST_SIG_LAST  (ADV_POST_SIG_NETWORK_WATCHDOG)
+#define ADV_POST_SIG_LAST  (ADV_POST_SIG_TASK_WATCHDOG_FEED)
 
 static void
 adv_post_send_report(void *arg);
@@ -75,6 +77,8 @@ static os_signal_t *                  g_p_adv_post_sig;
 static os_signal_static_t             g_adv_post_sig_mem;
 static os_timer_sig_periodic_t *      g_p_adv_post_timer_sig_retransmit;
 static os_timer_sig_periodic_static_t g_adv_post_timer_sig_retransmit_mem;
+static os_timer_sig_periodic_t *      g_p_adv_post_timer_sig_watchdog_feed;
+static os_timer_sig_periodic_static_t g_adv_post_timer_sig_watchdog_feed_mem;
 static uint32_t                       g_adv_post_interval_ms = ADV_POST_DEFAULT_INTERVAL_SECONDS * 1000U;
 static bool                           g_adv_post_flag_retransmission_disabled = false;
 static TickType_t                     g_adv_post_last_successful_network_comm_timestamp;
@@ -340,6 +344,19 @@ adv_post_do_retransmission(bool *const p_flag_connected)
 }
 
 static void
+adv_post_wdt_add_and_start(void)
+{
+    LOG_INFO("TaskWatchdog: Register current thread");
+    const esp_err_t err = esp_task_wdt_add(xTaskGetCurrentTaskHandle());
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "%s failed", "esp_task_wdt_add");
+    }
+    LOG_INFO("TaskWatchdog: Start timer");
+    os_timer_sig_periodic_start(g_p_adv_post_timer_sig_watchdog_feed);
+}
+
+static void
 adv_post_task(void)
 {
     esp_log_level_set(TAG, ESP_LOG_INFO);
@@ -353,6 +370,8 @@ adv_post_task(void)
     LOG_INFO("%s started", __func__);
     os_timer_sig_periodic_start(g_p_adv_post_timer_sig_retransmit);
     os_timer_sig_periodic_start(g_p_adv_post_timer_sig_network_watchdog);
+
+    adv_post_wdt_add_and_start();
 
     bool flag_stop      = false;
     bool flag_connected = false;
@@ -403,13 +422,32 @@ adv_post_task(void)
                     }
                     break;
                 }
+                case ADV_POST_SIG_TASK_WATCHDOG_FEED:
+                {
+                    const esp_err_t err = esp_task_wdt_reset();
+                    if (ESP_OK != err)
+                    {
+                        LOG_ERR_ESP(err, "%s failed", "esp_task_wdt_reset");
+                    }
+                    break;
+                }
             }
         }
     }
     LOG_INFO("Stop task adv_post");
-    os_signal_unregister_cur_thread(g_p_adv_post_sig);
+    LOG_INFO("TaskWatchdog: Unregister current thread");
+    esp_task_wdt_delete(xTaskGetCurrentTaskHandle());
     os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_retransmit);
     os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_retransmit);
+    os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_network_watchdog);
+    os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_network_watchdog);
+
+    LOG_INFO("TaskWatchdog: Stop timer");
+    os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_watchdog_feed);
+    LOG_INFO("TaskWatchdog: Delete timer");
+    os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_watchdog_feed);
+
+    os_signal_unregister_cur_thread(g_p_adv_post_sig);
     os_signal_delete(&g_p_adv_post_sig);
 }
 
@@ -422,6 +460,7 @@ adv_post_init(void)
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DISABLE));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_ENABLE));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_NETWORK_WATCHDOG));
+    os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_TASK_WATCHDOG_FEED));
 
     g_p_adv_post_timer_sig_retransmit = os_timer_sig_periodic_create_static(
         &g_adv_post_timer_sig_retransmit_mem,
@@ -436,6 +475,14 @@ adv_post_init(void)
         g_p_adv_post_sig,
         adv_post_conv_to_sig_num(ADV_POST_SIG_NETWORK_WATCHDOG),
         pdMS_TO_TICKS(RUUVI_NETWORK_WATCHDOG_PERIOD_SECONDS * 1000));
+
+    LOG_INFO("TaskWatchdog: adv_post: Create timer");
+    g_p_adv_post_timer_sig_watchdog_feed = os_timer_sig_periodic_create_static(
+        &g_adv_post_timer_sig_watchdog_feed_mem,
+        "adv_post:wdog",
+        g_p_adv_post_sig,
+        adv_post_conv_to_sig_num(ADV_POST_SIG_TASK_WATCHDOG_FEED),
+        pdMS_TO_TICKS(CONFIG_ESP_TASK_WDT_TIMEOUT_S * 1000U / 3U));
 
     g_adv_post_nonce = esp_random();
     adv_table_init();
