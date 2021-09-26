@@ -43,7 +43,7 @@ mqtt_create_full_topic(
         return;
     }
 
-    if (NULL != p_prefix_str)
+    if ((NULL != p_prefix_str) && ('\0' != p_prefix_str[0]))
     {
         snprintf(p_full_topic->buf, sizeof(p_full_topic->buf), "%s/%s", p_prefix_str, p_topic_str);
     }

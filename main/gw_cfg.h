@@ -61,6 +61,7 @@ typedef struct ruuvi_gw_cfg_eth_t
 typedef struct ruuvi_gw_cfg_mqtt_t
 {
     bool     use_mqtt;
+    bool     mqtt_use_default_prefix;
     char     mqtt_server[MAX_MQTT_SERVER_LEN];
     uint16_t mqtt_port;
     char     mqtt_prefix[MAX_MQTT_PREFIX_LEN];

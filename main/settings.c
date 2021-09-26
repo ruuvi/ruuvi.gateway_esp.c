@@ -101,8 +101,8 @@ settings_clear_in_flash(void)
     if (!settings_nvs_set_blob(
             handle,
             RUUVI_GATEWAY_NVS_CONFIGURATION_KEY,
-            &g_gateway_config_default,
-            sizeof(g_gateway_config_default)))
+            gw_cfg_default_get_ptr(),
+            sizeof(ruuvi_gateway_config_t)))
     {
         nvs_close(handle);
         return false;
@@ -171,14 +171,14 @@ settings_get_from_flash(ruuvi_gateway_config_t *p_gateway_config)
     if (!settings_nvs_open(NVS_READONLY, &handle))
     {
         LOG_WARN("Using default config:");
-        *p_gateway_config = g_gateway_config_default;
+        gw_cfg_default_get(p_gateway_config);
     }
     else
     {
         if (!settings_get_gw_cfg_from_nvs(handle, p_gateway_config))
         {
             LOG_INFO("Using default config:");
-            *p_gateway_config = g_gateway_config_default;
+            gw_cfg_default_get(p_gateway_config);
         }
         else
         {

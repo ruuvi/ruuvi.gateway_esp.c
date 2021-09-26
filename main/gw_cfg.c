@@ -15,7 +15,7 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
 
-ruuvi_gateway_config_t g_gateway_config  = RUUVI_GATEWAY_DEFAULT_CONFIGURATION;
+ruuvi_gateway_config_t g_gateway_config  = { 0 };
 mac_address_bin_t      g_gw_mac_eth      = { 0 };
 mac_address_str_t      g_gw_mac_eth_str  = { 0 };
 mac_address_bin_t      g_gw_mac_wifi     = { 0 };
@@ -31,7 +31,7 @@ static const char TAG[] = "gw_cfg";
 void
 gw_cfg_init(void)
 {
-    g_gateway_config = g_gateway_config_default;
+    gw_cfg_default_get(&g_gateway_config);
     memset(&g_gw_mac_eth, 0, sizeof(g_gw_mac_eth));
     memset(&g_gw_mac_eth_str, 0, sizeof(g_gw_mac_eth_str));
     memset(&g_gw_mac_wifi, 0, sizeof(g_gw_mac_wifi));
@@ -266,7 +266,7 @@ gw_cfg_json_add_items_auto_update(cJSON *p_json_root, const ruuvi_gateway_config
 }
 
 static bool
-gw_cfg_json_add_items_mqtt(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg)
+gw_cfg_json_add_items_mqtt(cJSON *const p_json_root, const ruuvi_gateway_config_t *const p_cfg)
 {
     if (!gw_cfg_json_add_bool(p_json_root, "use_mqtt", p_cfg->mqtt.use_mqtt))
     {
@@ -280,9 +280,21 @@ gw_cfg_json_add_items_mqtt(cJSON *p_json_root, const ruuvi_gateway_config_t *p_c
     {
         return false;
     }
-    if (!gw_cfg_json_add_string(p_json_root, "mqtt_prefix", p_cfg->mqtt.mqtt_prefix))
+    if (p_cfg->mqtt.mqtt_use_default_prefix)
     {
-        return false;
+        char mqtt_prefix[MAX_MQTT_PREFIX_LEN];
+        snprintf(mqtt_prefix, sizeof(mqtt_prefix), "ruuvi/%s", g_gw_mac_sta_str.str_buf);
+        if (!gw_cfg_json_add_string(p_json_root, "mqtt_prefix", mqtt_prefix))
+        {
+            return false;
+        }
+    }
+    else
+    {
+        if (!gw_cfg_json_add_string(p_json_root, "mqtt_prefix", p_cfg->mqtt.mqtt_prefix))
+        {
+            return false;
+        }
     }
     if (!gw_cfg_json_add_string(p_json_root, "mqtt_client_id", p_cfg->mqtt.mqtt_client_id))
     {

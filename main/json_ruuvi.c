@@ -127,7 +127,7 @@ json_ruuvi_parse(const cJSON *p_json_root, ruuvi_gateway_config_t *const p_gw_cf
         LOG_DBG("%s: %d", "use_eth", use_eth);
         *p_flag_network_cfg = true;
 
-        p_gw_cfg->eth         = g_gateway_config_default.eth;
+        p_gw_cfg->eth         = gw_cfg_default_get_eth();
         p_gw_cfg->eth.use_eth = use_eth;
 
         if (use_eth)
@@ -175,11 +175,12 @@ json_ruuvi_parse(const cJSON *p_json_root, ruuvi_gateway_config_t *const p_gw_cf
         const ruuvi_gw_cfg_eth_t      saved_eth_cfg  = p_gw_cfg->eth;
         const ruuvi_gw_cfg_lan_auth_t saved_lan_auth = p_gw_cfg->lan_auth;
 
-        *p_gw_cfg          = g_gateway_config_default;
+        gw_cfg_default_get(p_gw_cfg);
         p_gw_cfg->eth      = saved_eth_cfg;
         p_gw_cfg->lan_auth = saved_lan_auth;
 
         json_ruuvi_get_bool_val(p_json_root, "use_mqtt", &p_gw_cfg->mqtt.use_mqtt, true);
+        p_gw_cfg->mqtt.mqtt_use_default_prefix = false;
         json_ruuvi_copy_string_val(
             p_json_root,
             "mqtt_server",

@@ -211,7 +211,7 @@ ethernet_connection_ok_cb(const tcpip_adapter_ip_info_t *p_ip_info)
     {
         LOG_INFO("The Ethernet cable was connected, but the Ethernet was not configured");
         LOG_INFO("Set the default configuration with Ethernet and DHCP enabled");
-        g_gateway_config              = g_gateway_config_default;
+        gw_cfg_default_get(&g_gateway_config);
         g_gateway_config.eth.use_eth  = true;
         g_gateway_config.eth.eth_dhcp = true;
         gw_cfg_print_to_log(&g_gateway_config);
