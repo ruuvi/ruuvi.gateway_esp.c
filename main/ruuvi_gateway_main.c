@@ -298,6 +298,15 @@ start_services(void)
     }
 }
 
+void
+stop_services(void)
+{
+    if (g_gateway_config.mqtt.use_mqtt)
+    {
+        mqtt_app_stop();
+    }
+}
+
 static bool
 wifi_init(
     const bool               flag_use_eth,

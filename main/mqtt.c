@@ -14,6 +14,7 @@
 #include "mqtt_json.h"
 #include "leds.h"
 #include "fw_update.h"
+#include "os_mutex.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -27,9 +28,31 @@ typedef struct mqtt_topic_buf_t
     char buf[TOPIC_LEN];
 } mqtt_topic_buf_t;
 
-static esp_mqtt_client_handle_t gp_mqtt_client = NULL;
+static esp_mqtt_client_handle_t g_p_mqtt_client          = NULL;
+static bool                     g_mqtt_mutex_initialized = false;
+static os_mutex_t               g_mqtt_mutex;
+static os_mutex_static_t        g_mqtt_mutex_mem;
 
 static const char *TAG = "MQTT";
+
+static esp_mqtt_client_handle_t
+mqtt_mutex_lock(void)
+{
+    if (!g_mqtt_mutex_initialized)
+    {
+        g_mqtt_mutex             = os_mutex_create_static(&g_mqtt_mutex_mem);
+        g_mqtt_mutex_initialized = true;
+    }
+    os_mutex_lock(g_mqtt_mutex);
+    return g_p_mqtt_client;
+}
+
+static void
+mqtt_mutex_unlock(esp_mqtt_client_handle_t *const p_client)
+{
+    *p_client = NULL;
+    os_mutex_unlock(g_mqtt_mutex);
+}
 
 static void
 mqtt_create_full_topic(
@@ -70,10 +93,14 @@ mqtt_publish_adv(const adv_report_t *p_adv)
     const int32_t mqtt_qos              = 1;
     const int32_t mqtt_flag_retain      = 0;
     bool          is_publish_successful = false;
-    if (esp_mqtt_client_publish(gp_mqtt_client, topic.buf, json_str.p_str, mqtt_len, mqtt_qos, mqtt_flag_retain) >= 0)
+
+    esp_mqtt_client_handle_t p_mqtt_client = mqtt_mutex_lock();
+    if (esp_mqtt_client_publish(p_mqtt_client, topic.buf, json_str.p_str, mqtt_len, mqtt_qos, mqtt_flag_retain) >= 0)
     {
         is_publish_successful = true;
     }
+    mqtt_mutex_unlock(&p_mqtt_client);
+
     cjson_wrap_free_json_str(&json_str);
     return is_publish_successful;
 }
@@ -106,8 +133,43 @@ mqtt_publish_connect(void)
     const int32_t mqtt_qos         = 1;
     const int32_t mqtt_flag_retain = 1;
 
-    const mqtt_message_id_t message_id
-        = esp_mqtt_client_publish(gp_mqtt_client, topic.buf, p_message, strlen(p_message), mqtt_qos, mqtt_flag_retain);
+    esp_mqtt_client_handle_t p_mqtt_client = mqtt_mutex_lock();
+    const mqtt_message_id_t  message_id    = esp_mqtt_client_publish(
+        p_mqtt_client,
+        topic.buf,
+        p_message,
+        (int)strlen(p_message),
+        mqtt_qos,
+        mqtt_flag_retain);
+    mqtt_mutex_unlock(&p_mqtt_client);
+    if (-1 == message_id)
+    {
+        LOG_ERR("esp_mqtt_client_publish failed");
+    }
+    else
+    {
+        LOG_INFO("esp_mqtt_client_publish: message_id=%d", message_id);
+    }
+}
+
+static void
+mqtt_publish_state_offline(esp_mqtt_client_handle_t p_mqtt_client)
+{
+    char *p_message = "{\"state\": \"offline\"}";
+
+    mqtt_topic_buf_t topic;
+    mqtt_create_full_topic(&topic, g_gateway_config.mqtt.mqtt_prefix, "gw_status");
+    LOG_INFO("esp_mqtt_client_publish: topic:'%s', message:'%s'", topic.buf, p_message);
+    const int32_t mqtt_qos         = 0;
+    const int32_t mqtt_flag_retain = 0;
+
+    const mqtt_message_id_t message_id = esp_mqtt_client_publish(
+        p_mqtt_client,
+        topic.buf,
+        p_message,
+        (int)strlen(p_message),
+        mqtt_qos,
+        mqtt_flag_retain);
     if (-1 == message_id)
     {
         LOG_ERR("esp_mqtt_client_publish failed");
@@ -171,19 +233,9 @@ mqtt_event_handler(esp_mqtt_event_handle_t h_event)
     return ESP_OK;
 }
 
-void
-mqtt_app_start(void)
+static void
+mqtt_app_start_internal(void)
 {
-    LOG_INFO("%s", __func__);
-
-    if (NULL != gp_mqtt_client)
-    {
-        LOG_INFO("MQTT destroy");
-        esp_mqtt_client_destroy(gp_mqtt_client);
-        gp_mqtt_client = NULL;
-        xEventGroupClearBits(status_bits, MQTT_CONNECTED_BIT);
-    }
-
     mqtt_topic_buf_t lwt_topic_buf;
     mqtt_create_full_topic(&lwt_topic_buf, g_gateway_config.mqtt.mqtt_prefix, "gw_status");
     const char *p_lwt_message = "{\"state\": \"offline\"}";
@@ -245,12 +297,47 @@ mqtt_app_start(void)
         .clientkey_password          = NULL,
         .clientkey_password_len      = 0,
     };
-    gp_mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
-    if (NULL == gp_mqtt_client)
+    g_p_mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
+    if (NULL == g_p_mqtt_client)
     {
         LOG_ERR("%s failed", "esp_mqtt_client_init");
         return;
     }
-    esp_mqtt_client_start(gp_mqtt_client);
+    esp_mqtt_client_start(g_p_mqtt_client);
     // TODO handle connection fails, wrong server, user, pass etc
+}
+
+void
+mqtt_app_start(void)
+{
+    LOG_INFO("%s", __func__);
+
+    esp_mqtt_client_handle_t p_mqtt_client = mqtt_mutex_lock();
+    if (NULL != p_mqtt_client)
+    {
+        LOG_INFO("MQTT destroy");
+        esp_mqtt_client_destroy(p_mqtt_client);
+        g_p_mqtt_client = NULL;
+        xEventGroupClearBits(status_bits, MQTT_CONNECTED_BIT);
+    }
+
+    mqtt_app_start_internal();
+
+    mqtt_mutex_unlock(&p_mqtt_client);
+}
+
+void
+mqtt_app_stop(void)
+{
+    LOG_INFO("%s", __func__);
+    esp_mqtt_client_handle_t p_mqtt_client = mqtt_mutex_lock();
+    if (NULL != p_mqtt_client)
+    {
+        mqtt_publish_state_offline(p_mqtt_client);
+        LOG_INFO("MQTT destroy");
+        esp_mqtt_client_destroy(p_mqtt_client);
+        g_p_mqtt_client = NULL;
+        xEventGroupClearBits(status_bits, MQTT_CONNECTED_BIT);
+    }
+    mqtt_mutex_unlock(&p_mqtt_client);
 }

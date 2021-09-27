@@ -17,6 +17,9 @@ extern "C" {
 void
 mqtt_app_start(void);
 
+void
+mqtt_app_stop(void);
+
 bool
 mqtt_publish_table(const adv_report_table_t *p_table);
 
