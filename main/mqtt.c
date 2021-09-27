@@ -160,8 +160,8 @@ mqtt_publish_state_offline(esp_mqtt_client_handle_t p_mqtt_client)
     mqtt_topic_buf_t topic;
     mqtt_create_full_topic(&topic, g_gateway_config.mqtt.mqtt_prefix, "gw_status");
     LOG_INFO("esp_mqtt_client_publish: topic:'%s', message:'%s'", topic.buf, p_message);
-    const int32_t mqtt_qos         = 0;
-    const int32_t mqtt_flag_retain = 0;
+    const int32_t mqtt_qos         = 1;
+    const int32_t mqtt_flag_retain = 1;
 
     const mqtt_message_id_t message_id = esp_mqtt_client_publish(
         p_mqtt_client,
