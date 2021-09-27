@@ -193,6 +193,24 @@ adv_post_send_report(void *arg)
     {
         LOG_WARN("Adv report table full, adv dropped");
     }
+    if (g_gateway_config.mqtt.use_mqtt)
+    {
+        if (0 == (xEventGroupGetBits(status_bits) & MQTT_CONNECTED_BIT))
+        {
+            LOG_WARN("Can't send, MQTT is not connected yet");
+        }
+        else
+        {
+            if (mqtt_publish_adv(&adv_report))
+            {
+                adv_post_update_last_successful_network_comm_timestamp();
+            }
+            else
+            {
+                LOG_ERR("%s failed", "mqtt_publish_adv");
+            }
+        }
+    }
 }
 
 static void
@@ -279,35 +297,20 @@ adv_post_retransmit_advs(const adv_report_table_t *p_reports, const bool flag_co
     }
     if (!time_is_valid(p_reports->table[0].timestamp))
     {
-        LOG_WARN("Can't send, time have not synchronized yet");
+        LOG_WARN("Can't send, the time has not yet been synchronized");
         return;
     }
 
-    bool is_post_successful_http = false;
-    if (g_gateway_config.http.use_http)
+    if (!wifi_manager_is_connected_to_wifi_or_ethernet())
     {
-        if (!wifi_manager_is_connected_to_wifi_or_ethernet())
-        {
-            LOG_WARN("Can't send, no network connection");
-            return;
-        }
-        is_post_successful_http = http_send_advs(p_reports, g_adv_post_nonce);
-        g_adv_post_nonce += 1;
+        LOG_WARN("Can't send, no network connection");
+        return;
     }
-    bool is_post_successful_mqtt = false;
-    if (g_gateway_config.mqtt.use_mqtt)
-    {
-        if (0 == (xEventGroupGetBits(status_bits) & MQTT_CONNECTED_BIT))
-        {
-            LOG_WARN("Can't send, MQTT is not connected yet");
-            return;
-        }
-        is_post_successful_mqtt = mqtt_publish_table(p_reports);
-    }
-    if (is_post_successful_http || is_post_successful_mqtt)
+    if (http_send_advs(p_reports, g_adv_post_nonce))
     {
         adv_post_update_last_successful_network_comm_timestamp();
     }
+    g_adv_post_nonce += 1;
 }
 
 static void
@@ -397,7 +400,7 @@ adv_post_task(void)
                     flag_stop = true;
                     break;
                 case ADV_POST_SIG_RETRANSMIT:
-                    if (!g_adv_post_flag_retransmission_disabled)
+                    if (g_gateway_config.http.use_http && !g_adv_post_flag_retransmission_disabled)
                     {
                         adv_post_do_retransmission(&flag_connected);
                     }

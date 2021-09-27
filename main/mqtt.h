@@ -21,7 +21,7 @@ void
 mqtt_app_stop(void);
 
 bool
-mqtt_publish_table(const adv_report_table_t *p_table);
+mqtt_publish_adv(const adv_report_t *const p_adv);
 
 #ifdef __cplusplus
 }
