@@ -235,6 +235,9 @@ protected:
         this->m_flag_settings_saved_to_flash      = false;
         this->m_flag_settings_sent_to_nrf         = false;
         this->m_flag_settings_ethernet_ip_updated = false;
+
+        memset(&g_gateway_config, 0, sizeof(g_gateway_config));
+        gw_cfg_default_get(&g_gateway_config);
     }
 
     void
@@ -1235,10 +1238,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_with_time_interval_20) //
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok) // NOLINT
 {
-    const char *expected_resp = "{}";
-    memset(&g_gateway_config, 0, sizeof(g_gateway_config));
-    g_gateway_config              = g_gateway_config_default;
-    const http_server_resp_t resp = http_server_cb_on_post_ruuvi(
+    const char *             expected_resp = "{}";
+    const http_server_resp_t resp          = http_server_cb_on_post_ruuvi(
         "{"
         "\"use_mqtt\":true,"
         "\"mqtt_server\":\"test.mosquitto.org\","
@@ -1340,8 +1341,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok) // NOLINT
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed) // NOLINT
 {
-    memset(&g_gateway_config, 0, sizeof(g_gateway_config));
-    g_gateway_config              = g_gateway_config_default;
     this->m_malloc_fail_on_cnt    = 1;
     const http_server_resp_t resp = http_server_cb_on_post_ruuvi(
         "{"
@@ -1379,8 +1378,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed) // NOLINT
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth) // NOLINT
 {
     const char *expected_resp = "{}";
-    memset(&g_gateway_config, 0, sizeof(g_gateway_config));
-    g_gateway_config = g_gateway_config_default;
     snprintf(
         g_gateway_config.lan_auth.lan_auth_type,
         sizeof(g_gateway_config.lan_auth.lan_auth_type),
@@ -1488,8 +1485,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth) // NOLINT
 {
     const char *expected_resp = "{}";
-    memset(&g_gateway_config, 0, sizeof(g_gateway_config));
-    g_gateway_config = g_gateway_config_default;
     snprintf(
         g_gateway_config.lan_auth.lan_auth_type,
         sizeof(g_gateway_config.lan_auth.lan_auth_type),
@@ -1600,10 +1595,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
 {
-    const char *expected_resp = "{}";
-    memset(&g_gateway_config, 0, sizeof(g_gateway_config));
-    g_gateway_config              = g_gateway_config_default;
-    const http_server_resp_t resp = http_server_cb_on_post(
+    const char *             expected_resp = "{}";
+    const http_server_resp_t resp          = http_server_cb_on_post(
         "ruuvi.json",
         "{"
         "\"use_mqtt\":true,"
@@ -1706,8 +1699,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_unknown_json) // NOLINT
 {
-    memset(&g_gateway_config, 0, sizeof(g_gateway_config));
-    g_gateway_config              = g_gateway_config_default;
     const http_server_resp_t resp = http_server_cb_on_post(
         "unknown.json",
         "{"
