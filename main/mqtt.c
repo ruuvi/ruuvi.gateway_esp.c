@@ -16,7 +16,7 @@
 #include "fw_update.h"
 #include "os_mutex.h"
 
-#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
+#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
 #define TOPIC_LEN 512
@@ -76,8 +76,8 @@ mqtt_create_full_topic(
     }
 }
 
-static bool
-mqtt_publish_adv(const adv_report_t *p_adv)
+bool
+mqtt_publish_adv(const adv_report_t *const p_adv)
 {
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
     if (!mqtt_create_json_str(p_adv, time(NULL), &g_gw_mac_sta_str, g_gateway_config.coordinates, &json_str))
@@ -103,23 +103,6 @@ mqtt_publish_adv(const adv_report_t *p_adv)
 
     cjson_wrap_free_json_str(&json_str);
     return is_publish_successful;
-}
-
-bool
-mqtt_publish_table(const adv_report_table_t *p_table)
-{
-    LOG_INFO("sending advertisement table (%d items) to MQTT", p_table->num_of_advs);
-
-    for (num_of_advs_t i = 0; i < p_table->num_of_advs; ++i)
-    {
-        const adv_report_t adv = p_table->table[i];
-        if (!mqtt_publish_adv(&adv))
-        {
-            LOG_ERR("%s failed", "mqtt_publish_adv");
-            return false;
-        }
-    }
-    return true;
 }
 
 static void
@@ -211,7 +194,7 @@ mqtt_event_handler(esp_mqtt_event_handle_t h_event)
             break;
 
         case MQTT_EVENT_PUBLISHED:
-            LOG_INFO("MQTT_EVENT_PUBLISHED, msg_id=%d", h_event->msg_id);
+            LOG_DBG("MQTT_EVENT_PUBLISHED, msg_id=%d", h_event->msg_id);
             break;
 
         case MQTT_EVENT_DATA:
