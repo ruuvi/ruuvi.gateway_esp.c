@@ -8,10 +8,12 @@
 #include "ruuvi_auth.h"
 #include "gtest/gtest.h"
 #include <string>
+#include "os_mutex_recursive.h"
 #include "ruuvi_device_id.h"
 #include "esp_log_wrapper.hpp"
 #include "http_server_auth.h"
 #include "gw_cfg.h"
+#include "gw_cfg_default.h"
 
 using namespace std;
 
@@ -20,6 +22,53 @@ static TestRuuviAuth *g_pTestClass;
 
 /*** Google-test class implementation
  * *********************************************************************************/
+
+class MemAllocTrace
+{
+    vector<void *> allocated_mem;
+
+    std::vector<void *>::iterator
+    find(void *ptr)
+    {
+        for (auto iter = this->allocated_mem.begin(); iter != this->allocated_mem.end(); ++iter)
+        {
+            if (*iter == ptr)
+            {
+                return iter;
+            }
+        }
+        return this->allocated_mem.end();
+    }
+
+public:
+    void
+    add(void *ptr)
+    {
+        auto iter = find(ptr);
+        assert(iter == this->allocated_mem.end()); // ptr was found in the list of allocated memory blocks
+        this->allocated_mem.push_back(ptr);
+    }
+
+    void
+    remove(void *ptr)
+    {
+        auto iter = find(ptr);
+        assert(iter != this->allocated_mem.end()); // ptr was not found in the list of allocated memory blocks
+        this->allocated_mem.erase(iter);
+    }
+
+    bool
+    is_empty()
+    {
+        return this->allocated_mem.empty();
+    }
+
+    void
+    clear()
+    {
+        this->allocated_mem.clear();
+    }
+};
 
 class TestRuuviAuth : public ::testing::Test
 {
@@ -31,6 +80,10 @@ protected:
         esp_log_wrapper_init();
         g_pTestClass = this;
         gw_cfg_init();
+
+        this->m_mem_alloc_trace.clear();
+        this->m_malloc_cnt         = 0;
+        this->m_malloc_fail_on_cnt = 0;
     }
 
     void
@@ -45,7 +98,10 @@ public:
 
     ~TestRuuviAuth() override;
 
-    string m_device_id {};
+    string        m_device_id {};
+    MemAllocTrace m_mem_alloc_trace {};
+    uint32_t      m_malloc_cnt {};
+    uint32_t      m_malloc_fail_on_cnt {};
 
     void
     setDeviceId(const string &device_id)
@@ -78,6 +134,55 @@ ruuvi_device_id_get_str(void)
     snprintf(&device_id_str.str_buf[0], sizeof(device_id_str.str_buf), "%s", g_pTestClass->m_device_id.c_str());
     return device_id_str;
 }
+
+void *
+os_malloc(const size_t size)
+{
+    if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
+    {
+        return nullptr;
+    }
+    void *ptr = malloc(size);
+    assert(nullptr != ptr);
+    g_pTestClass->m_mem_alloc_trace.add(ptr);
+    return ptr;
+}
+
+void
+os_free_internal(void *ptr)
+{
+    g_pTestClass->m_mem_alloc_trace.remove(ptr);
+    free(ptr);
+}
+
+void *
+os_calloc(const size_t nmemb, const size_t size)
+{
+    if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
+    {
+        return nullptr;
+    }
+    void *ptr = calloc(nmemb, size);
+    assert(nullptr != ptr);
+    g_pTestClass->m_mem_alloc_trace.add(ptr);
+    return ptr;
+}
+
+os_mutex_recursive_t
+os_mutex_recursive_create_static(os_mutex_recursive_static_t *const p_mutex_static)
+{
+    return nullptr;
+}
+
+void
+os_mutex_recursive_lock(os_mutex_recursive_t const h_mutex)
+{
+}
+
+void
+os_mutex_recursive_unlock(os_mutex_recursive_t const h_mutex)
+{
+}
 }
 
 /*** Unit-Tests
@@ -108,7 +213,9 @@ TEST_F(TestRuuviAuth, test_default_auth_non_zero_id) // NOLINT
 TEST_F(TestRuuviAuth, test_non_default_auth_password) // NOLINT
 {
     this->setDeviceId("01:02:03:04:05:06:0A:0B");
-    snprintf(&g_gateway_config.lan_auth.lan_auth_pass[0], sizeof(g_gateway_config.lan_auth.lan_auth_pass), "qwe");
+    ruuvi_gateway_config_t gw_cfg_tmp = g_gateway_config_default;
+    snprintf(&gw_cfg_tmp.lan_auth.lan_auth_pass[0], sizeof(gw_cfg_tmp.lan_auth.lan_auth_pass), "qwe");
+    gw_cfg_update(&gw_cfg_tmp, false);
     ASSERT_TRUE(ruuvi_auth_set_from_config());
     const http_server_auth_info_t *const p_auth_info = http_server_get_auth();
     ASSERT_NE(nullptr, p_auth_info);
@@ -120,8 +227,10 @@ TEST_F(TestRuuviAuth, test_non_default_auth_password) // NOLINT
 TEST_F(TestRuuviAuth, test_non_default_auth_user_password) // NOLINT
 {
     this->setDeviceId("01:02:03:04:05:06:0A:0B");
-    snprintf(&g_gateway_config.lan_auth.lan_auth_user[0], sizeof(g_gateway_config.lan_auth.lan_auth_user), "user1");
-    snprintf(&g_gateway_config.lan_auth.lan_auth_pass[0], sizeof(g_gateway_config.lan_auth.lan_auth_pass), "qwe");
+    ruuvi_gateway_config_t gw_cfg_tmp = g_gateway_config_default;
+    snprintf(&gw_cfg_tmp.lan_auth.lan_auth_user[0], sizeof(gw_cfg_tmp.lan_auth.lan_auth_user), "user1");
+    snprintf(&gw_cfg_tmp.lan_auth.lan_auth_pass[0], sizeof(gw_cfg_tmp.lan_auth.lan_auth_pass), "qwe");
+    gw_cfg_update(&gw_cfg_tmp, false);
     ASSERT_TRUE(ruuvi_auth_set_from_config());
     const http_server_auth_info_t *const p_auth_info = http_server_get_auth();
     ASSERT_NE(nullptr, p_auth_info);
@@ -133,12 +242,14 @@ TEST_F(TestRuuviAuth, test_non_default_auth_user_password) // NOLINT
 TEST_F(TestRuuviAuth, test_non_default_auth_type_user_password) // NOLINT
 {
     this->setDeviceId("01:02:03:04:05:06:0A:0B");
+    ruuvi_gateway_config_t gw_cfg_tmp = g_gateway_config_default;
     snprintf(
-        &g_gateway_config.lan_auth.lan_auth_type[0],
-        sizeof(g_gateway_config.lan_auth.lan_auth_type),
+        &gw_cfg_tmp.lan_auth.lan_auth_type[0],
+        sizeof(gw_cfg_tmp.lan_auth.lan_auth_type),
         HTTP_SERVER_AUTH_TYPE_STR_DIGEST);
-    snprintf(&g_gateway_config.lan_auth.lan_auth_user[0], sizeof(g_gateway_config.lan_auth.lan_auth_user), "user1");
-    snprintf(&g_gateway_config.lan_auth.lan_auth_pass[0], sizeof(g_gateway_config.lan_auth.lan_auth_pass), "qwe");
+    snprintf(&gw_cfg_tmp.lan_auth.lan_auth_user[0], sizeof(gw_cfg_tmp.lan_auth.lan_auth_user), "user1");
+    snprintf(&gw_cfg_tmp.lan_auth.lan_auth_pass[0], sizeof(gw_cfg_tmp.lan_auth.lan_auth_pass), "qwe");
+    gw_cfg_update(&gw_cfg_tmp, false);
     ASSERT_TRUE(ruuvi_auth_set_from_config());
     const http_server_auth_info_t *const p_auth_info = http_server_get_auth();
     ASSERT_NE(nullptr, p_auth_info);

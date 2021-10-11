@@ -79,15 +79,19 @@ mqtt_create_full_topic(
 bool
 mqtt_publish_adv(const adv_report_t *const p_adv)
 {
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-    if (!mqtt_create_json_str(p_adv, time(NULL), &g_gw_mac_sta_str, g_gateway_config.coordinates, &json_str))
+    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
+    cjson_wrap_str_t              json_str = cjson_wrap_str_null();
+    if (!mqtt_create_json_str(p_adv, time(NULL), &g_gw_mac_sta_str, p_gw_cfg->coordinates.buf, &json_str))
     {
         LOG_ERR("%s failed", "mqtt_create_json_str");
+        gw_cfg_unlock_ro(&p_gw_cfg);
         return false;
     }
     const mac_address_str_t tag_mac_str = mac_address_to_str(&p_adv->tag_mac);
     mqtt_topic_buf_t        topic;
-    mqtt_create_full_topic(&topic, g_gateway_config.mqtt.mqtt_prefix, tag_mac_str.str_buf);
+    mqtt_create_full_topic(&topic, p_gw_cfg->mqtt.mqtt_prefix, tag_mac_str.str_buf);
+    gw_cfg_unlock_ro(&p_gw_cfg);
+
     LOG_DBG("publish: topic: %s, data: %s", topic.buf, json_str.p_str);
     const int32_t mqtt_len              = 0;
     const int32_t mqtt_qos              = 1;
@@ -110,8 +114,10 @@ mqtt_publish_connect(void)
 {
     char *p_message = "{\"state\": \"online\"}";
 
-    mqtt_topic_buf_t topic;
-    mqtt_create_full_topic(&topic, g_gateway_config.mqtt.mqtt_prefix, "gw_status");
+    mqtt_topic_buf_t              topic    = { 0 };
+    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
+    mqtt_create_full_topic(&topic, p_gw_cfg->mqtt.mqtt_prefix, "gw_status");
+    gw_cfg_unlock_ro(&p_gw_cfg);
     LOG_INFO("esp_mqtt_client_publish: topic:'%s', message:'%s'", topic.buf, p_message);
     const int32_t mqtt_qos         = 1;
     const int32_t mqtt_flag_retain = 1;
@@ -140,8 +146,10 @@ mqtt_publish_state_offline(esp_mqtt_client_handle_t p_mqtt_client)
 {
     char *p_message = "{\"state\": \"offline\"}";
 
-    mqtt_topic_buf_t topic;
-    mqtt_create_full_topic(&topic, g_gateway_config.mqtt.mqtt_prefix, "gw_status");
+    mqtt_topic_buf_t              topic;
+    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
+    mqtt_create_full_topic(&topic, p_gw_cfg->mqtt.mqtt_prefix, "gw_status");
+    gw_cfg_unlock_ro(&p_gw_cfg);
     LOG_INFO("esp_mqtt_client_publish: topic:'%s', message:'%s'", topic.buf, p_message);
     const int32_t mqtt_qos         = 1;
     const int32_t mqtt_flag_retain = 1;
@@ -219,40 +227,42 @@ mqtt_event_handler(esp_mqtt_event_handle_t h_event)
 static void
 mqtt_app_start_internal(void)
 {
-    mqtt_topic_buf_t lwt_topic_buf;
-    mqtt_create_full_topic(&lwt_topic_buf, g_gateway_config.mqtt.mqtt_prefix, "gw_status");
+    mqtt_topic_buf_t              lwt_topic_buf = { 0 };
+    const ruuvi_gateway_config_t *p_gw_cfg      = gw_cfg_lock_ro();
+    mqtt_create_full_topic(&lwt_topic_buf, p_gw_cfg->mqtt.mqtt_prefix, "gw_status");
     const char *p_lwt_message = "{\"state\": \"offline\"}";
 
-    if ('\0' == g_gateway_config.mqtt.mqtt_server[0])
+    if ('\0' == p_gw_cfg->mqtt.mqtt_server[0])
     {
         LOG_ERR(
             "Invalid MQTT parameters: server: %s, topic prefix: '%s', port: %u, user: '%s', password: '%s'",
-            g_gateway_config.mqtt.mqtt_server,
-            g_gateway_config.mqtt.mqtt_prefix,
-            g_gateway_config.mqtt.mqtt_port,
-            g_gateway_config.mqtt.mqtt_user,
+            p_gw_cfg->mqtt.mqtt_server,
+            p_gw_cfg->mqtt.mqtt_prefix,
+            p_gw_cfg->mqtt.mqtt_port,
+            p_gw_cfg->mqtt.mqtt_user,
             "******");
+        gw_cfg_unlock_ro(&p_gw_cfg);
         return;
     }
 
     LOG_INFO(
         "Using server: %s, client id: '%s', topic prefix: '%s', port: %u, user: '%s', password: '%s'",
-        g_gateway_config.mqtt.mqtt_server,
-        g_gateway_config.mqtt.mqtt_client_id,
-        g_gateway_config.mqtt.mqtt_prefix,
-        g_gateway_config.mqtt.mqtt_port,
-        g_gateway_config.mqtt.mqtt_user,
+        p_gw_cfg->mqtt.mqtt_server,
+        p_gw_cfg->mqtt.mqtt_client_id,
+        p_gw_cfg->mqtt.mqtt_prefix,
+        p_gw_cfg->mqtt.mqtt_port,
+        p_gw_cfg->mqtt.mqtt_user,
         "******");
 
     const esp_mqtt_client_config_t mqtt_cfg = {
         .event_handle                = &mqtt_event_handler,
         .event_loop_handle           = NULL,
-        .host                        = g_gateway_config.mqtt.mqtt_server,
+        .host                        = p_gw_cfg->mqtt.mqtt_server,
         .uri                         = NULL,
-        .port                        = g_gateway_config.mqtt.mqtt_port,
-        .client_id                   = g_gateway_config.mqtt.mqtt_client_id,
-        .username                    = g_gateway_config.mqtt.mqtt_user,
-        .password                    = g_gateway_config.mqtt.mqtt_pass,
+        .port                        = p_gw_cfg->mqtt.mqtt_port,
+        .client_id                   = p_gw_cfg->mqtt.mqtt_client_id,
+        .username                    = p_gw_cfg->mqtt.mqtt_user,
+        .password                    = p_gw_cfg->mqtt.mqtt_pass,
         .lwt_topic                   = lwt_topic_buf.buf,
         .lwt_msg                     = p_lwt_message,
         .lwt_qos                     = 1,
@@ -280,6 +290,8 @@ mqtt_app_start_internal(void)
         .clientkey_password          = NULL,
         .clientkey_password_len      = 0,
     };
+    gw_cfg_unlock_rw(&p_gw_cfg);
+
     g_p_mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
     if (NULL == g_p_mqtt_client)
     {

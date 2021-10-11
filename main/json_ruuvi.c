@@ -127,7 +127,7 @@ json_ruuvi_parse(const cJSON *p_json_root, ruuvi_gateway_config_t *const p_gw_cf
         LOG_DBG("%s: %d", "use_eth", use_eth);
         *p_flag_network_cfg = true;
 
-        p_gw_cfg->eth         = gw_cfg_default_get_eth();
+        p_gw_cfg->eth         = g_gateway_config_default.eth;
         p_gw_cfg->eth.use_eth = use_eth;
 
         if (use_eth)
@@ -175,7 +175,7 @@ json_ruuvi_parse(const cJSON *p_json_root, ruuvi_gateway_config_t *const p_gw_cf
         const ruuvi_gw_cfg_eth_t      saved_eth_cfg  = p_gw_cfg->eth;
         const ruuvi_gw_cfg_lan_auth_t saved_lan_auth = p_gw_cfg->lan_auth;
 
-        gw_cfg_default_get(p_gw_cfg);
+        *p_gw_cfg          = g_gateway_config_default;
         p_gw_cfg->eth      = saved_eth_cfg;
         p_gw_cfg->lan_auth = saved_lan_auth;
 
@@ -305,14 +305,14 @@ json_ruuvi_parse(const cJSON *p_json_root, ruuvi_gateway_config_t *const p_gw_cf
             &p_gw_cfg->auto_update.auto_update_tz_offset_hours,
             true);
 
-        json_ruuvi_get_bool_val(p_json_root, "use_filtering", &p_gw_cfg->filter.company_filter, true);
+        json_ruuvi_get_bool_val(p_json_root, "use_filtering", &p_gw_cfg->filter.company_use_filtering, true);
         json_ruuvi_get_uint16_val(p_json_root, "company_id", &p_gw_cfg->filter.company_id, true);
 
         json_ruuvi_copy_string_val(
             p_json_root,
             "coordinates",
-            p_gw_cfg->coordinates,
-            sizeof(p_gw_cfg->coordinates),
+            p_gw_cfg->coordinates.buf,
+            sizeof(p_gw_cfg->coordinates.buf),
             true);
 
         json_ruuvi_get_bool_val(p_json_root, "use_coded_phy", &p_gw_cfg->scan.scan_coded_phy, true);

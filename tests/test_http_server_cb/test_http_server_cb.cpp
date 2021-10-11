@@ -21,6 +21,7 @@
 #include "str_buf.h"
 #include "ruuvi_device_id.h"
 #include "os_malloc.h"
+#include "os_mutex_recursive.h"
 #include "gw_cfg_default.h"
 
 using namespace std;
@@ -246,8 +247,8 @@ protected:
         this->m_flag_settings_sent_to_nrf         = false;
         this->m_flag_settings_ethernet_ip_updated = false;
 
-        memset(&g_gateway_config, 0, sizeof(g_gateway_config));
-        gw_cfg_default_get(&g_gateway_config);
+        gw_cfg_init();
+        snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
     }
 
     void
@@ -342,6 +343,22 @@ os_realloc_safe_and_clean(void **const p_ptr, const size_t size)
     return true;
 }
 
+os_mutex_recursive_t
+os_mutex_recursive_create_static(os_mutex_recursive_static_t *const p_mutex_static)
+{
+    return nullptr;
+}
+
+void
+os_mutex_recursive_lock(os_mutex_recursive_t const h_mutex)
+{
+}
+
+void
+os_mutex_recursive_unlock(os_mutex_recursive_t const h_mutex)
+{
+}
+
 char *
 metrics_generate(void)
 {
@@ -393,10 +410,11 @@ adv_table_history_read(adv_report_table_t *const p_reports, const time_t cur_tim
     }
 }
 
-void
-settings_save_to_flash(const ruuvi_gateway_config_t *p_config)
+bool
+settings_save_to_flash(const char *const p_json_str)
 {
     g_pTestClass->m_flag_settings_saved_to_flash = true;
+    return true;
 }
 
 void
@@ -544,7 +562,8 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
           "\t\"eth_dns1\":\t\"\",\n"
           "\t\"eth_dns2\":\t\"\",\n"
           "\t\"use_http\":\tfalse,\n"
-          "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
+          "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+          "\",\n"
           "\t\"http_user\":\t\"\",\n"
           "\t\"use_mqtt\":\ttrue,\n"
           "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
@@ -570,7 +589,8 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
           "\t\"use_channel_38\":\ttrue,\n"
           "\t\"use_channel_39\":\ttrue\n"
           "}";
-    bool flag_network_cfg = false;
+    bool                   flag_network_cfg = false;
+    ruuvi_gateway_config_t gw_cfg           = g_gateway_config_default;
     ASSERT_TRUE(json_ruuvi_parse_http_body(
         "{"
         "\"use_mqtt\":true,"
@@ -581,7 +601,8 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
         "\"mqtt_user\":\"\","
         "\"mqtt_pass\":\"\","
         "\"use_http\":false,"
-        "\"http_url\":\"https://network.ruuvi.com/record\","
+        "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+        "\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
         "\"auto_update_cycle\":\"regular\","
@@ -591,8 +612,9 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
         "\"auto_update_tz_offset_hours\":3,"
         "\"use_filtering\":true"
         "}",
-        &g_gateway_config,
+        &gw_cfg,
         &flag_network_cfg));
+    gw_cfg_update(&gw_cfg, false);
     ASSERT_FALSE(flag_network_cfg);
     snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
 
@@ -614,7 +636,8 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
 
 TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed) // NOLINT
 {
-    bool flag_network_cfg = false;
+    bool                   flag_network_cfg = false;
+    ruuvi_gateway_config_t gw_cfg           = g_gateway_config_default;
     ASSERT_TRUE(json_ruuvi_parse_http_body(
         "{"
         "\"use_mqtt\":true,"
@@ -625,14 +648,16 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed) // NOLINT
         "\"mqtt_user\":\"\","
         "\"mqtt_pass\":\"\","
         "\"use_http\":false,"
-        "\"http_url\":\"https://network.ruuvi.com/record\","
+        "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+        "\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
         "\"use_filtering\":true"
         "}",
-        &g_gateway_config,
+        &gw_cfg,
         &flag_network_cfg));
     ASSERT_FALSE(flag_network_cfg);
+    gw_cfg_update(&gw_cfg, false);
     snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
     cJSON_Hooks hooks = {
         .malloc_fn = &os_malloc,
@@ -670,7 +695,8 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
           "\t\"eth_dns1\":\t\"\",\n"
           "\t\"eth_dns2\":\t\"\",\n"
           "\t\"use_http\":\tfalse,\n"
-          "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
+          "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+          "\",\n"
           "\t\"http_user\":\t\"\",\n"
           "\t\"use_mqtt\":\ttrue,\n"
           "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
@@ -696,7 +722,8 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
           "\t\"use_channel_38\":\ttrue,\n"
           "\t\"use_channel_39\":\ttrue\n"
           "}";
-    bool flag_network_cfg = false;
+    bool                   flag_network_cfg = false;
+    ruuvi_gateway_config_t gw_cfg           = g_gateway_config_default;
     ASSERT_TRUE(json_ruuvi_parse_http_body(
         "{"
         "\"use_mqtt\":true,"
@@ -707,7 +734,8 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
         "\"mqtt_user\":\"\","
         "\"mqtt_pass\":\"\","
         "\"use_http\":false,"
-        "\"http_url\":\"https://network.ruuvi.com/record\","
+        "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+        "\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
         "\"auto_update_cycle\":\"beta\","
@@ -717,9 +745,10 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
         "\"auto_update_tz_offset_hours\":-3,"
         "\"use_filtering\":true"
         "}",
-        &g_gateway_config,
+        &gw_cfg,
         &flag_network_cfg));
     ASSERT_FALSE(flag_network_cfg);
+    gw_cfg_update(&gw_cfg, false);
     snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
 
     esp_log_wrapper_clear();
@@ -1088,7 +1117,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
           "\t\"eth_dns1\":\t\"\",\n"
           "\t\"eth_dns2\":\t\"\",\n"
           "\t\"use_http\":\tfalse,\n"
-          "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
+          "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+          "\",\n"
           "\t\"http_user\":\t\"\",\n"
           "\t\"use_mqtt\":\ttrue,\n"
           "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
@@ -1114,7 +1144,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
           "\t\"use_channel_38\":\ttrue,\n"
           "\t\"use_channel_39\":\ttrue\n"
           "}";
-    bool flag_network_cfg = false;
+    bool                   flag_network_cfg = false;
+    ruuvi_gateway_config_t gw_cfg           = g_gateway_config_default;
     ASSERT_TRUE(json_ruuvi_parse_http_body(
         "{"
         "\"use_mqtt\":true,"
@@ -1125,14 +1156,16 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
         "\"mqtt_user\":\"\","
         "\"mqtt_pass\":\"\","
         "\"use_http\":false,"
-        "\"http_url\":\"https://network.ruuvi.com/record\","
+        "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+        "\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
         "\"use_filtering\":true"
         "}",
-        &g_gateway_config,
+        &gw_cfg,
         &flag_network_cfg));
     ASSERT_FALSE(flag_network_cfg);
+    gw_cfg_update(&gw_cfg, false);
     snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
 
     esp_log_wrapper_clear();
@@ -1200,10 +1233,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history) // NOLINT
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(strlen(expected_resp), resp.content_len);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("http_server_cb_on_get /history"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("History on 60 seconds interval: ") + string(expected_resp));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1259,7 +1292,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok) // NOLINT
         "\"mqtt_user\":\"\","
         "\"mqtt_pass\":\"\","
         "\"use_http\":false,"
-        "\"http_url\":\"https://network.ruuvi.com/record\","
+        "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+        "\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
         "\"use_filtering\":true"
@@ -1288,7 +1322,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_user: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_pass: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_url: https://network.ruuvi.com/record");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_user: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_pass: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_type not found");
@@ -1318,12 +1352,13 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use mqtt: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt use default prefix: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/30:AE:A4:02:84:A4"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt client id: 30:AE:A4:02:84:A4"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt user: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt password: ********"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: https://network.ruuvi.com/record"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http user: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http pass: ********"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_ruuvi"));
@@ -1349,7 +1384,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok) // NOLINT
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
-TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed) // NOLINT
+TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed1) // NOLINT
 {
     this->m_malloc_fail_on_cnt    = 1;
     const http_server_resp_t resp = http_server_cb_on_post_ruuvi(
@@ -1362,7 +1397,45 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed) // NOLINT
         "\"mqtt_user\":\"\","
         "\"mqtt_pass\":\"\","
         "\"use_http\":false,"
-        "\"http_url\":\"https://network.ruuvi.com/record\","
+        "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+        "\","
+        "\"http_user\":\"\","
+        "\"http_pass\":\"\","
+        "\"use_filtering\":true"
+        "}");
+
+    ASSERT_FALSE(this->m_flag_settings_saved_to_flash);
+    ASSERT_FALSE(this->m_flag_settings_sent_to_nrf);
+    ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
+
+    ASSERT_EQ(HTTP_RESP_CODE_503, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(0, resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Failed to allocate memory for gw_cfg"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed2) // NOLINT
+{
+    this->m_malloc_fail_on_cnt    = 2;
+    const http_server_resp_t resp = http_server_cb_on_post_ruuvi(
+        "{"
+        "\"use_mqtt\":true,"
+        "\"mqtt_server\":\"test.mosquitto.org\","
+        "\"mqtt_port\":1883,"
+        "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
+        "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
+        "\"mqtt_user\":\"\","
+        "\"mqtt_pass\":\"\","
+        "\"use_http\":false,"
+        "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+        "\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
         "\"use_filtering\":true"
@@ -1388,13 +1461,17 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed) // NOLINT
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth) // NOLINT
 {
     const char *expected_resp = "{}";
-    snprintf(
-        g_gateway_config.lan_auth.lan_auth_type,
-        sizeof(g_gateway_config.lan_auth.lan_auth_type),
-        "%s",
-        HTTP_SERVER_AUTH_TYPE_STR_RUUVI);
-    snprintf(g_gateway_config.lan_auth.lan_auth_user, sizeof(g_gateway_config.lan_auth.lan_auth_user), "user1");
-    snprintf(g_gateway_config.lan_auth.lan_auth_pass, sizeof(g_gateway_config.lan_auth.lan_auth_pass), "password1");
+    {
+        ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_rw();
+        snprintf(
+            p_gw_cfg->lan_auth.lan_auth_type,
+            sizeof(p_gw_cfg->lan_auth.lan_auth_type),
+            "%s",
+            HTTP_SERVER_AUTH_TYPE_STR_RUUVI);
+        snprintf(p_gw_cfg->lan_auth.lan_auth_user, sizeof(p_gw_cfg->lan_auth.lan_auth_user), "user1");
+        snprintf(p_gw_cfg->lan_auth.lan_auth_pass, sizeof(p_gw_cfg->lan_auth.lan_auth_pass), "password1");
+        gw_cfg_unlock_rw(&p_gw_cfg);
+    }
     const http_server_resp_t resp = http_server_cb_on_post(
         "ruuvi.json",
         "{"
@@ -1406,7 +1483,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
         "\"mqtt_user\":\"\","
         "\"mqtt_pass\":\"\","
         "\"use_http\":false,"
-        "\"http_url\":\"https://network.ruuvi.com/record\","
+        "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+        "\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
         "\"use_filtering\":true"
@@ -1435,7 +1513,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_user: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_pass: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_url: https://network.ruuvi.com/record");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_user: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_pass: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_type not found");
@@ -1465,12 +1543,13 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use mqtt: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt use default prefix: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/30:AE:A4:02:84:A4"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt client id: 30:AE:A4:02:84:A4"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt user: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt password: ********"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: https://network.ruuvi.com/record"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http user: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http pass: ********"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_ruuvi"));
@@ -1495,13 +1574,19 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth) // NOLINT
 {
     const char *expected_resp = "{}";
-    snprintf(
-        g_gateway_config.lan_auth.lan_auth_type,
-        sizeof(g_gateway_config.lan_auth.lan_auth_type),
-        "%s",
-        HTTP_SERVER_AUTH_TYPE_STR_RUUVI);
-    snprintf(g_gateway_config.lan_auth.lan_auth_user, sizeof(g_gateway_config.lan_auth.lan_auth_user), "user1");
-    snprintf(g_gateway_config.lan_auth.lan_auth_pass, sizeof(g_gateway_config.lan_auth.lan_auth_pass), "password1");
+
+    {
+        ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_rw();
+        snprintf(
+            p_gw_cfg->lan_auth.lan_auth_type,
+            sizeof(p_gw_cfg->lan_auth.lan_auth_type),
+            "%s",
+            HTTP_SERVER_AUTH_TYPE_STR_RUUVI);
+        snprintf(p_gw_cfg->lan_auth.lan_auth_user, sizeof(p_gw_cfg->lan_auth.lan_auth_user), "user1");
+        snprintf(p_gw_cfg->lan_auth.lan_auth_pass, sizeof(p_gw_cfg->lan_auth.lan_auth_pass), "password1");
+        gw_cfg_unlock_rw(&p_gw_cfg);
+    }
+
     const http_server_resp_t resp = http_server_cb_on_post(
         "ruuvi.json",
         "{"
@@ -1513,7 +1598,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
         "\"mqtt_user\":\"\","
         "\"mqtt_pass\":\"\","
         "\"use_http\":false,"
-        "\"http_url\":\"https://network.ruuvi.com/record\","
+        "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+        "\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
         "\"lan_auth_type\":\"lan_auth_digest\","
@@ -1545,7 +1631,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_user: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_pass: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_url: https://network.ruuvi.com/record");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_user: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_pass: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "lan_auth_type: lan_auth_digest");
@@ -1576,12 +1662,13 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use mqtt: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt use default prefix: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/30:AE:A4:02:84:A4"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt client id: 30:AE:A4:02:84:A4"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt user: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt password: ********"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: https://network.ruuvi.com/record"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http user: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http pass: ********"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_digest"));
@@ -1617,7 +1704,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
         "\"mqtt_user\":\"\","
         "\"mqtt_pass\":\"\","
         "\"use_http\":false,"
-        "\"http_url\":\"https://network.ruuvi.com/record\","
+        "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+        "\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
         "\"use_filtering\":true"
@@ -1646,7 +1734,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_user: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "mqtt_pass: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_url: https://network.ruuvi.com/record");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_user: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_pass: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_type not found");
@@ -1676,12 +1764,13 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use mqtt: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt use default prefix: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/30:AE:A4:02:84:A4"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt client id: 30:AE:A4:02:84:A4"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt user: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt password: ********"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: https://network.ruuvi.com/record"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http user: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http pass: ********"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_ruuvi"));
@@ -1720,7 +1809,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_unknown_json) // NOLINT
         "\"mqtt_user\":\"\","
         "\"mqtt_pass\":\"\","
         "\"use_http\":false,"
-        "\"http_url\":\"https://network.ruuvi.com/record\","
+        "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+        "\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
         "\"use_filtering\":true"

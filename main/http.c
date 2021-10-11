@@ -102,31 +102,33 @@ http_post_event_handler(esp_http_client_event_t *p_evt)
 bool
 http_send(const char *const p_msg)
 {
+    const ruuvi_gateway_config_t * p_gw_cfg    = gw_cfg_lock_ro();
     const esp_http_client_config_t http_config = {
-        .url             = g_gateway_config.http.http_url,
-        .host            = NULL,
-        .port            = 0,
-        .username        = g_gateway_config.http.http_user,
-        .password        = g_gateway_config.http.http_pass,
-        .auth_type       = ('\0' != g_gateway_config.http.http_user[0]) ? HTTP_AUTH_TYPE_BASIC : HTTP_AUTH_TYPE_NONE,
-        .path            = NULL,
-        .query           = NULL,
-        .cert_pem        = NULL,
-        .client_cert_pem = NULL,
-        .client_key_pem  = NULL,
-        .method          = HTTP_METHOD_POST,
-        .timeout_ms      = 0,
-        .disable_auto_redirect       = false,
-        .max_redirection_count       = 0,
-        .event_handler               = &http_post_event_handler,
-        .transport_type              = HTTP_TRANSPORT_UNKNOWN,
-        .buffer_size                 = 0,
-        .buffer_size_tx              = 0,
-        .user_data                   = NULL,
-        .is_async                    = false,
-        .use_global_ca_store         = false,
+        .url                   = p_gw_cfg->http.http_url,
+        .host                  = NULL,
+        .port                  = 0,
+        .username              = p_gw_cfg->http.http_user,
+        .password              = p_gw_cfg->http.http_pass,
+        .auth_type             = ('\0' != p_gw_cfg->http.http_user[0]) ? HTTP_AUTH_TYPE_BASIC : HTTP_AUTH_TYPE_NONE,
+        .path                  = NULL,
+        .query                 = NULL,
+        .cert_pem              = NULL,
+        .client_cert_pem       = NULL,
+        .client_key_pem        = NULL,
+        .method                = HTTP_METHOD_POST,
+        .timeout_ms            = 0,
+        .disable_auto_redirect = false,
+        .max_redirection_count = 0,
+        .event_handler         = &http_post_event_handler,
+        .transport_type        = HTTP_TRANSPORT_UNKNOWN,
+        .buffer_size           = 0,
+        .buffer_size_tx        = 0,
+        .user_data             = NULL,
+        .is_async              = false,
+        .use_global_ca_store   = false,
         .skip_cert_common_name_check = false,
     };
+    gw_cfg_unlock_ro(&p_gw_cfg);
 
     LOG_INFO("HTTP POST to URL=%s, DATA:\n%s", http_config.url, p_msg);
 
@@ -179,15 +181,9 @@ http_send(const char *const p_msg)
 bool
 http_send_advs(const adv_report_table_t *const p_reports, const uint32_t nonce)
 {
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-    if (!http_create_json_str(
-            p_reports,
-            time(NULL),
-            &g_gw_mac_sta_str,
-            g_gateway_config.coordinates,
-            true,
-            nonce,
-            &json_str))
+    const ruuvi_gw_cfg_coordinates_t coordinates = gw_cfg_get_coordinates();
+    cjson_wrap_str_t                 json_str    = cjson_wrap_str_null();
+    if (!http_create_json_str(p_reports, time(NULL), &g_gw_mac_sta_str, coordinates.buf, true, nonce, &json_str))
     {
         LOG_ERR("Not enough memory to generate json");
         return false;

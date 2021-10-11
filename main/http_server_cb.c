@@ -30,6 +30,10 @@
 #include "reset_task.h"
 #include "os_timer_sig.h"
 #include "ruuvi_auth.h"
+#include "gw_cfg.h"
+#include "gw_cfg_default.h"
+#include "gw_cfg_json.h"
+#include "gw_cfg_ruuvi_json.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -85,11 +89,20 @@ HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_json_ruuvi(void)
 {
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-    if (!gw_cfg_generate_json_str(&json_str, fw_update_get_cur_version(), g_nrf52_firmware_version))
+    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
+    cjson_wrap_str_t              json_str = cjson_wrap_str_null();
+    if (!gw_cfg_ruuvi_json_generate(
+            p_gw_cfg,
+            &g_gw_mac_sta_str,
+            fw_update_get_cur_version(),
+            g_nrf52_firmware_version,
+            &json_str))
     {
+        gw_cfg_unlock_ro(&p_gw_cfg);
         return http_server_resp_503();
     }
+    gw_cfg_unlock_ro(&p_gw_cfg);
+
     LOG_INFO("ruuvi.json: %s", json_str.p_str);
     const bool flag_no_cache        = true;
     const bool flag_add_header_date = true;
@@ -176,10 +189,9 @@ json_info_add_items(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg, con
 }
 
 static bool
-json_info_generate_str(cjson_wrap_str_t *p_json_str)
+generate_json_info_str(const ruuvi_gateway_config_t *const p_gw_cfg, cjson_wrap_str_t *p_json_str)
 {
-    const ruuvi_gateway_config_t *p_cfg     = &g_gateway_config;
-    const mac_address_str_t *     p_mac_sta = &g_gw_mac_sta_str;
+    const mac_address_str_t *p_mac_sta = &g_gw_mac_sta_str;
 
     p_json_str->p_str = NULL;
 
@@ -189,7 +201,7 @@ json_info_generate_str(cjson_wrap_str_t *p_json_str)
         LOG_ERR("Can't create json object");
         return false;
     }
-    if (!json_info_add_items(p_json_root, p_cfg, p_mac_sta))
+    if (!json_info_add_items(p_json_root, p_gw_cfg, p_mac_sta))
     {
         cjson_wrap_delete(&p_json_root);
         return false;
@@ -208,11 +220,14 @@ HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_json_info(void)
 {
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-    if (!json_info_generate_str(&json_str))
+    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
+    cjson_wrap_str_t              json_str = cjson_wrap_str_null();
+    if (!generate_json_info_str(p_gw_cfg, &json_str))
     {
+        gw_cfg_unlock_ro(&p_gw_cfg);
         return http_server_resp_503();
     }
+    gw_cfg_unlock_ro(&p_gw_cfg);
     LOG_INFO("info.json: %s", json_str.p_str);
     const bool flag_no_cache        = true;
     const bool flag_add_header_date = true;
@@ -440,14 +455,11 @@ http_server_read_history(
     adv_table_history_read(p_reports, cur_time, time_interval_seconds);
     *p_num_of_advs = p_reports->num_of_advs;
 
-    const bool res = http_create_json_str(
-        p_reports,
-        cur_time,
-        &g_gw_mac_sta_str,
-        g_gateway_config.coordinates,
-        false,
-        0,
-        p_json_str);
+    const ruuvi_gw_cfg_coordinates_t coordinates = gw_cfg_get_coordinates();
+
+    const bool res
+        = http_create_json_str(p_reports, cur_time, &g_gw_mac_sta_str, coordinates.buf, false, 0, p_json_str);
+
     os_free(p_reports);
     return res;
 }
@@ -652,8 +664,7 @@ http_server_cb_on_user_req_download_latest_release_info(void)
         return;
     }
 
-    const ruuvi_gw_cfg_auto_update_t *const p_cfg_auto_update = &g_gateway_config.auto_update;
-    if (AUTO_UPDATE_CYCLE_TYPE_REGULAR == p_cfg_auto_update->auto_update_cycle)
+    if (AUTO_UPDATE_CYCLE_TYPE_REGULAR == gw_cfg_get_auto_update_cycle())
     {
         const time_t cur_unix_time = http_server_get_cur_time();
         if ((cur_unix_time - unix_time_published_at) < (time_t)FW_UPDATING_REGULAR_CYCLE_DELAY_SECONDS)
@@ -719,11 +730,20 @@ http_server_cb_on_post_ruuvi(const char *p_body)
     LOG_DBG("POST /ruuvi.json");
     bool flag_network_cfg = false;
     stop_services();
-    if (!json_ruuvi_parse_http_body(p_body, &g_gateway_config, &flag_network_cfg))
+    ruuvi_gateway_config_t *p_gw_cfg_tmp = os_calloc(1, sizeof(*p_gw_cfg_tmp));
+    if (NULL == p_gw_cfg_tmp)
     {
+        LOG_ERR("Failed to allocate memory for gw_cfg");
         return http_server_resp_503();
     }
-    gw_cfg_print_to_log(&g_gateway_config);
+    gw_cfg_get_copy(p_gw_cfg_tmp);
+    if (!json_ruuvi_parse_http_body(p_body, p_gw_cfg_tmp, &flag_network_cfg))
+    {
+        os_free(p_gw_cfg_tmp);
+        return http_server_resp_503();
+    }
+    gw_cfg_update(p_gw_cfg_tmp, flag_network_cfg);
+    gw_cfg_print_to_log(p_gw_cfg_tmp);
     if (flag_network_cfg)
     {
         adv_post_disable_retransmission();
@@ -732,12 +752,24 @@ http_server_cb_on_post_ruuvi(const char *p_body)
     {
         start_services();
     }
-    settings_save_to_flash(&g_gateway_config);
+
+    cjson_wrap_str_t cjson_str = { 0 };
+    if (!gw_cfg_json_generate(p_gw_cfg_tmp, &cjson_str))
+    {
+        LOG_ERR("%s failed", "gw_cfg_json_generate");
+    }
+    else
+    {
+        settings_save_to_flash(cjson_str.p_str);
+    }
+    cjson_wrap_free_json_str(&cjson_str);
+    os_free(p_gw_cfg_tmp);
+
     if (!ruuvi_auth_set_from_config())
     {
         LOG_ERR("%s failed", "ruuvi_auth_set_from_config");
     }
-    ruuvi_send_nrf_settings(&g_gateway_config);
+    ruuvi_send_nrf_settings();
     ethernet_update_ip();
     if (!flag_network_cfg)
     {

@@ -10,18 +10,23 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "cjson_wrap.h"
 #include "gw_cfg.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void
-settings_save_to_flash(const ruuvi_gateway_config_t *p_config);
+bool
+settings_check_in_flash(void);
+
+bool
+settings_save_to_flash(const char *const p_json_str);
+
+bool
+settings_clear_in_flash(void);
 
 void
-settings_get_from_flash(ruuvi_gateway_config_t *p_gateway_config);
+settings_get_from_flash(void);
 
 mac_address_bin_t
 settings_read_mac_addr(void);

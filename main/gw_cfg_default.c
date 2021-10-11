@@ -7,9 +7,7 @@
 
 #include "gw_cfg_default.h"
 
-static ruuvi_gateway_config_t g_gateway_config_default = {
-        .header = RUUVI_GATEWAY_CONFIG_HEADER,
-        .fmt_version = RUUVI_GATEWAY_CONFIG_FMT_VERSION,
+const ruuvi_gateway_config_t g_gateway_config_default = {
         .eth = {
             .use_eth = false,
             .eth_dhcp = true,
@@ -31,7 +29,7 @@ static ruuvi_gateway_config_t g_gateway_config_default = {
         },
         .http = {
             .use_http = true,
-            .http_url = { "https://network.ruuvi.com/record" },
+            .http_url = { RUUVI_GATEWAY_HTTP_DEFAULT_URL },
             .http_user = { 0 },
             .http_pass = { 0 },
         },
@@ -49,7 +47,7 @@ static ruuvi_gateway_config_t g_gateway_config_default = {
         },
         .filter = {
             .company_id = RUUVI_COMPANY_ID,
-            .company_filter = true,
+            .company_use_filtering = true,
         },
         .scan = {
             .scan_coded_phy = false,
@@ -59,23 +57,5 @@ static ruuvi_gateway_config_t g_gateway_config_default = {
             .scan_channel_38 = true,
             .scan_channel_39 = true,
         },
-        .coordinates = { 0 },
+        .coordinates = { { 0 } },
     };
-
-const ruuvi_gateway_config_t *
-gw_cfg_default_get_ptr(void)
-{
-    return &g_gateway_config_default;
-}
-
-void
-gw_cfg_default_get(ruuvi_gateway_config_t *const p_gw_cfg)
-{
-    *p_gw_cfg = g_gateway_config_default;
-}
-
-ruuvi_gw_cfg_eth_t
-gw_cfg_default_get_eth(void)
-{
-    return g_gateway_config_default.eth;
-}
