@@ -322,7 +322,17 @@ stop_services(void)
 {
     if (gw_cfg_get_mqtt_use_mqtt())
     {
+        LOG_INFO("TaskWatchdog: Temporary unregister current thread before stopping MQTT");
+        esp_task_wdt_delete(xTaskGetCurrentTaskHandle());
+
         mqtt_app_stop();
+
+        LOG_INFO("TaskWatchdog: Register current thread after stopping MQTT");
+        const esp_err_t err = esp_task_wdt_add(xTaskGetCurrentTaskHandle());
+        if (ESP_OK != err)
+        {
+            LOG_ERR_ESP(err, "%s failed", "esp_task_wdt_add");
+        }
     }
 }
 
