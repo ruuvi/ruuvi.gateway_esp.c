@@ -254,6 +254,24 @@ mqtt_app_start_internal(void)
         p_gw_cfg->mqtt.mqtt_user,
         "******");
 
+    esp_mqtt_transport_t mqtt_transport = MQTT_TRANSPORT_OVER_TCP;
+    if (0 == strcmp(p_gw_cfg->mqtt.mqtt_transport, MQTT_TRANSPORT_TCP))
+    {
+        mqtt_transport = MQTT_TRANSPORT_OVER_TCP;
+    }
+    else if (0 == strcmp(p_gw_cfg->mqtt.mqtt_transport, MQTT_TRANSPORT_SSL))
+    {
+        mqtt_transport = MQTT_TRANSPORT_OVER_SSL;
+    }
+    else if (0 == strcmp(p_gw_cfg->mqtt.mqtt_transport, MQTT_TRANSPORT_WS))
+    {
+        mqtt_transport = MQTT_TRANSPORT_OVER_WS;
+    }
+    else if (0 == strcmp(p_gw_cfg->mqtt.mqtt_transport, MQTT_TRANSPORT_WSS))
+    {
+        mqtt_transport = MQTT_TRANSPORT_OVER_WSS;
+    }
+
     const esp_mqtt_client_config_t mqtt_cfg = {
         .event_handle                = &mqtt_event_handler,
         .event_loop_handle           = NULL,
@@ -281,7 +299,7 @@ mqtt_app_start_internal(void)
         .client_cert_len             = 0,
         .client_key_pem              = NULL,
         .client_key_len              = 0,
-        .transport                   = MQTT_TRANSPORT_OVER_TCP,
+        .transport                   = mqtt_transport,
         .refresh_connection_after_ms = 0,
         .psk_hint_key                = NULL,
         .use_global_ca_store         = false,
@@ -290,7 +308,7 @@ mqtt_app_start_internal(void)
         .clientkey_password          = NULL,
         .clientkey_password_len      = 0,
     };
-    gw_cfg_unlock_rw(&p_gw_cfg);
+    gw_cfg_unlock_ro(&p_gw_cfg);
 
     g_p_mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
     if (NULL == g_p_mqtt_client)

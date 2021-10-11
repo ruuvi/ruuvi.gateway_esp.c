@@ -198,6 +198,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth dns1: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth dns2: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use mqtt: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt server: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt port: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt use default prefix: 1"));

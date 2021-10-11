@@ -31,6 +31,7 @@ extern "C" {
 #define MAX_HTTP_URL_LEN       256
 #define MAX_HTTP_USER_LEN      51
 #define MAX_HTTP_PASS_LEN      51
+#define MAX_MQTT_TRANSPORT_LEN 8
 #define MAX_MQTT_SERVER_LEN    256
 #define MAX_MQTT_PREFIX_LEN    51
 #define MAX_MQTT_USER_LEN      51
@@ -54,10 +55,16 @@ typedef struct ruuvi_gw_cfg_eth_t
     char eth_dns2[IP_STR_LEN];
 } ruuvi_gw_cfg_eth_t;
 
+#define MQTT_TRANSPORT_TCP "TCP"
+#define MQTT_TRANSPORT_SSL "SSL"
+#define MQTT_TRANSPORT_WS  "WS"
+#define MQTT_TRANSPORT_WSS "WSS"
+
 typedef struct ruuvi_gw_cfg_mqtt_t
 {
     bool     use_mqtt;
     bool     mqtt_use_default_prefix;
+    char     mqtt_transport[MAX_MQTT_TRANSPORT_LEN];
     char     mqtt_server[MAX_MQTT_SERVER_LEN];
     uint16_t mqtt_port;
     char     mqtt_prefix[MAX_MQTT_PREFIX_LEN];

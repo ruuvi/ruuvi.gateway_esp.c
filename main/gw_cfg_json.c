@@ -92,6 +92,10 @@ gw_cfg_json_add_items_mqtt(cJSON *const p_json_root, const ruuvi_gateway_config_
     {
         return false;
     }
+    if (!gw_cfg_json_add_string(p_json_root, "mqtt_transport", p_cfg->mqtt.mqtt_transport))
+    {
+        return false;
+    }
     if (!gw_cfg_json_add_string(p_json_root, "mqtt_server", p_cfg->mqtt.mqtt_server))
     {
         return false;
@@ -363,6 +367,14 @@ gw_cfg_json_parse_mqtt(const cJSON *const p_json_root, ruuvi_gw_cfg_mqtt_t *cons
     if (!json_wrap_get_bool_val(p_json_root, "mqtt_use_default_prefix", &p_gw_cfg_mqtt->mqtt_use_default_prefix))
     {
         LOG_WARN("Can't find key '%s' in config-json", "mqtt_use_default_prefix");
+    }
+    if (!json_wrap_copy_string_val(
+            p_json_root,
+            "mqtt_transport",
+            &p_gw_cfg_mqtt->mqtt_transport[0],
+            sizeof(p_gw_cfg_mqtt->mqtt_transport)))
+    {
+        LOG_WARN("Can't find key '%s' in config-json", "mqtt_transport");
     }
     if (!json_wrap_copy_string_val(
             p_json_root,

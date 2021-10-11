@@ -138,6 +138,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_1) // NOLINT
 
     ASSERT_EQ(false, gw_cfg.mqtt.use_mqtt);
     ASSERT_EQ(true, gw_cfg.mqtt.mqtt_use_default_prefix);
+    ASSERT_EQ(string("TCP"), gw_cfg.mqtt.mqtt_transport);
     ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_server);
     ASSERT_EQ(0, gw_cfg.mqtt.mqtt_port);
     ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_prefix);
@@ -243,6 +244,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_2) // NOLINT
 
     ASSERT_EQ(true, gw_cfg.mqtt.use_mqtt);
     ASSERT_EQ(false, gw_cfg.mqtt.mqtt_use_default_prefix);
+    ASSERT_EQ(string("TCP"), gw_cfg.mqtt.mqtt_transport);
     ASSERT_EQ(string("test.mosquitto.org"), gw_cfg.mqtt.mqtt_server);
     ASSERT_EQ(1883, gw_cfg.mqtt.mqtt_port);
     ASSERT_EQ(string("prefix1"), gw_cfg.mqtt.mqtt_prefix);
@@ -348,6 +350,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_with_incorrect_header) // NOLINT
 
     ASSERT_EQ(false, gw_cfg.mqtt.use_mqtt);
     ASSERT_EQ(true, gw_cfg.mqtt.mqtt_use_default_prefix);
+    ASSERT_EQ(string("TCP"), gw_cfg.mqtt.mqtt_transport);
     ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_server);
     ASSERT_EQ(0, gw_cfg.mqtt.mqtt_port);
     ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_prefix);
@@ -453,6 +456,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_with_incorrect_fmt_version) // NO
 
     ASSERT_EQ(false, gw_cfg.mqtt.use_mqtt);
     ASSERT_EQ(true, gw_cfg.mqtt.mqtt_use_default_prefix);
+    ASSERT_EQ(string("TCP"), gw_cfg.mqtt.mqtt_transport);
     ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_server);
     ASSERT_EQ(0, gw_cfg.mqtt.mqtt_port);
     ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_prefix);
