@@ -182,10 +182,9 @@ eth_tcpip_adapter_set_dns_info(const char *p_dns_ip, const tcpip_adapter_dns_typ
 }
 
 static bool
-ethernet_update_ip_static(void)
+ethernet_update_ip_static(const ruuvi_gateway_config_t *const p_gw_cfg)
 {
-    ruuvi_gateway_config_t *p_gw_cfg = &g_gateway_config;
-    tcpip_adapter_ip_info_t ip_info  = { 0 };
+    tcpip_adapter_ip_info_t ip_info = { 0 };
 
     LOG_INFO("Using static IP");
 
@@ -227,8 +226,10 @@ ethernet_update_ip_static(void)
 void
 ethernet_update_ip(void)
 {
-    if (g_gateway_config.eth.eth_dhcp)
+    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
+    if (p_gw_cfg->eth.eth_dhcp)
     {
+        gw_cfg_unlock_ro(&p_gw_cfg);
         if (!ethernet_update_ip_dhcp())
         {
             return;
@@ -236,11 +237,13 @@ ethernet_update_ip(void)
     }
     else
     {
-        if (!ethernet_update_ip_static())
+        if (!ethernet_update_ip_static(p_gw_cfg))
         {
+            gw_cfg_unlock_ro(&p_gw_cfg);
             return;
         }
     }
+    gw_cfg_unlock_ro(&p_gw_cfg);
 
     // set DNS fallback also for DHCP settings
     eth_tcpip_adapter_set_dns_info(dns_fallback_server, TCPIP_ADAPTER_DNS_FALLBACK);

@@ -1,25 +1,15 @@
 cmake_minimum_required(VERSION 3.7)
 
-project(ruuvi_gateway_esp-test-gw_cfg)
-set(ProjectId ruuvi_gateway_esp-test-gw_cfg)
+project(ruuvi_gateway_esp-test-gw_cfg_blob)
+set(ProjectId ruuvi_gateway_esp-test-gw_cfg_blob)
 
 add_executable(${ProjectId}
-        test_gw_cfg.cpp
-        ${RUUVI_GW_SRC}/gw_cfg.c
+        test_gw_cfg_blob.cpp
         ${RUUVI_GW_SRC}/gw_cfg.h
         ${RUUVI_GW_SRC}/gw_cfg_blob.c
         ${RUUVI_GW_SRC}/gw_cfg_blob.h
         ${RUUVI_GW_SRC}/gw_cfg_default.c
         ${RUUVI_GW_SRC}/gw_cfg_default.h
-        ${RUUVI_GW_SRC}/gw_cfg_json.c
-        ${RUUVI_GW_SRC}/gw_cfg_json.h
-        ${RUUVI_GW_SRC}/gw_cfg_ruuvi_json.c
-        ${RUUVI_GW_SRC}/gw_cfg_ruuvi_json.h
-        ${RUUVI_GW_SRC}/cjson_wrap.c
-        ${RUUVI_GW_SRC}/cjson_wrap.h
-        $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
-        $ENV{IDF_PATH}/components/json/cJSON/cJSON.c
-        $ENV{IDF_PATH}/components/json/cJSON/cJSON.h
 )
 
 set_target_properties(${ProjectId} PROPERTIES
@@ -33,17 +23,11 @@ target_include_directories(${ProjectId} PUBLIC
         ${RUUVI_GW_SRC}
         ${WIFI_MANAGER_INC}
         include
-        $ENV{IDF_PATH}/components/json/cJSON
-        $ENV{IDF_PATH}/components/app_update/include
-        $ENV{IDF_PATH}/components/spi_flash/include
-        $ENV{IDF_PATH}/components/soc/include
-        $ENV{IDF_PATH}/components/esp_common/include
-        $ENV{IDF_PATH}/components/bootloader_support/include
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 target_compile_definitions(${ProjectId} PUBLIC
-        RUUVI_TESTS_GW_CFG=1
+        RUUVI_TESTS_GW_CFG_BLOB=1
         CONFIG_DEFAULT_AP_SSID=\"RuuviGateway\"
 )
 

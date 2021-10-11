@@ -37,7 +37,9 @@
 #include "fw_update.h"
 #include "hmac_sha256.h"
 #include "ruuvi_device_id.h"
+#include "gw_cfg.h"
 #include "gw_cfg_default.h"
+#include "gw_cfg_json.h"
 #include "os_time.h"
 #include "ruuvi_auth.h"
 
@@ -100,8 +102,11 @@ conv_bool_to_u8(const bool x)
 }
 
 void
-ruuvi_send_nrf_settings(const ruuvi_gateway_config_t *p_config)
+ruuvi_send_nrf_settings(void)
 {
+    const ruuvi_gateway_config_t *     p_gw_cfg = gw_cfg_lock_ro();
+    const ruuvi_gw_cfg_filter_t *const p_filter = &p_gw_cfg->filter;
+    const ruuvi_gw_cfg_scan_t *const   p_scan   = &p_gw_cfg->scan;
     LOG_INFO(
         "sending settings to NRF: use filter: %d, "
         "company id: 0x%04x,"
@@ -111,25 +116,26 @@ ruuvi_send_nrf_settings(const ruuvi_gateway_config_t *p_config)
         "use scan channel 37: %d,"
         "use scan channel 38: %d,"
         "use scan channel 39: %d",
-        p_config->filter.company_filter,
-        p_config->filter.company_id,
-        p_config->scan.scan_coded_phy,
-        p_config->scan.scan_1mbit_phy,
-        p_config->scan.scan_extended_payload,
-        p_config->scan.scan_channel_37,
-        p_config->scan.scan_channel_38,
-        p_config->scan.scan_channel_39);
+        p_filter->company_use_filtering,
+        p_filter->company_id,
+        p_scan->scan_coded_phy,
+        p_scan->scan_1mbit_phy,
+        p_scan->scan_extended_payload,
+        p_scan->scan_channel_37,
+        p_scan->scan_channel_38,
+        p_scan->scan_channel_39);
 
     api_send_all(
         RE_CA_UART_SET_ALL,
-        p_config->filter.company_id,
-        conv_bool_to_u8(p_config->filter.company_filter),
-        conv_bool_to_u8(p_config->scan.scan_coded_phy),
-        conv_bool_to_u8(p_config->scan.scan_extended_payload),
-        conv_bool_to_u8(p_config->scan.scan_1mbit_phy),
-        conv_bool_to_u8(p_config->scan.scan_channel_37),
-        conv_bool_to_u8(p_config->scan.scan_channel_38),
-        conv_bool_to_u8(p_config->scan.scan_channel_39));
+        p_filter->company_id,
+        conv_bool_to_u8(p_filter->company_use_filtering),
+        conv_bool_to_u8(p_scan->scan_coded_phy),
+        conv_bool_to_u8(p_scan->scan_extended_payload),
+        conv_bool_to_u8(p_scan->scan_1mbit_phy),
+        conv_bool_to_u8(p_scan->scan_channel_37),
+        conv_bool_to_u8(p_scan->scan_channel_38),
+        conv_bool_to_u8(p_scan->scan_channel_39));
+    gw_cfg_unlock_ro(&p_gw_cfg);
 }
 
 void
@@ -207,15 +213,28 @@ ethernet_connection_ok_cb(const tcpip_adapter_ip_info_t *p_ip_info)
     LOG_INFO("Ethernet connected");
     leds_indication_on_network_ok();
     wifi_manager_update_network_connection_info(UPDATE_CONNECTION_OK, NULL, p_ip_info);
-    if (!g_gateway_config.eth.use_eth)
+    if (!gw_cfg_get_eth_use_eth())
     {
         LOG_INFO("The Ethernet cable was connected, but the Ethernet was not configured");
         LOG_INFO("Set the default configuration with Ethernet and DHCP enabled");
-        gw_cfg_default_get(&g_gateway_config);
-        g_gateway_config.eth.use_eth  = true;
-        g_gateway_config.eth.eth_dhcp = true;
-        gw_cfg_print_to_log(&g_gateway_config);
-        settings_save_to_flash(&g_gateway_config);
+        ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_rw();
+        *p_gw_cfg                        = g_gateway_config_default;
+        p_gw_cfg->eth.use_eth            = true;
+        p_gw_cfg->eth.eth_dhcp           = true;
+        gw_cfg_print_to_log(p_gw_cfg);
+
+        cjson_wrap_str_t cjson_str = { 0 };
+        if (!gw_cfg_json_generate(p_gw_cfg, &cjson_str))
+        {
+            LOG_ERR("%s failed", "gw_cfg_json_generate");
+        }
+        else
+        {
+            settings_save_to_flash(cjson_str.p_str);
+        }
+        cjson_wrap_free_json_str(&cjson_str);
+        gw_cfg_unlock_rw(&p_gw_cfg);
+
         if (!ruuvi_auth_set_from_config())
         {
             LOG_ERR("%s failed", "gw_cfg_set_auth_from_config");
@@ -292,7 +311,7 @@ wifi_disconnect_cb(void *p_param)
 void
 start_services(void)
 {
-    if (g_gateway_config.mqtt.use_mqtt)
+    if (gw_cfg_get_mqtt_use_mqtt())
     {
         mqtt_app_start();
     }
@@ -301,7 +320,7 @@ start_services(void)
 void
 stop_services(void)
 {
-    if (g_gateway_config.mqtt.use_mqtt)
+    if (gw_cfg_get_mqtt_use_mqtt())
     {
         LOG_INFO("TaskWatchdog: Temporary unregister current thread before stopping MQTT");
         esp_task_wdt_delete(xTaskGetCurrentTaskHandle());
@@ -487,20 +506,8 @@ get_wday_if_set_in_bitmask(const auto_update_weekdays_bitmask_t auto_update_week
 }
 
 static bool
-check_if_checking_for_fw_updates_allowed(void)
+check_if_checking_for_fw_updates_allowed2(const ruuvi_gw_cfg_auto_update_t *const p_cfg_auto_update)
 {
-    if (!wifi_manager_is_connected_to_wifi_or_ethernet())
-    {
-        LOG_INFO("Check for fw updates - skip (not connected to WiFi or Ethernet)");
-        return false;
-    }
-    if (!time_is_synchronized())
-    {
-        LOG_INFO("Check for fw updates - skip (time is not synchronized)");
-        return false;
-    }
-    const ruuvi_gw_cfg_auto_update_t *const p_cfg_auto_update = &g_gateway_config.auto_update;
-
     const time_t unix_time = os_time_get();
     time_t       cur_time  = unix_time + (time_t)((int32_t)p_cfg_auto_update->auto_update_tz_offset_hours * 60 * 60);
     struct tm    tm_time   = { 0 };
@@ -536,6 +543,27 @@ check_if_checking_for_fw_updates_allowed(void)
         return false;
     }
     return true;
+}
+
+static bool
+check_if_checking_for_fw_updates_allowed(void)
+{
+    if (!wifi_manager_is_connected_to_wifi_or_ethernet())
+    {
+        LOG_INFO("Check for fw updates - skip (not connected to WiFi or Ethernet)");
+        return false;
+    }
+    if (!time_is_synchronized())
+    {
+        LOG_INFO("Check for fw updates - skip (time is not synchronized)");
+        return false;
+    }
+    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
+
+    const bool res = check_if_checking_for_fw_updates_allowed2(&p_gw_cfg->auto_update);
+
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    return res;
 }
 
 static void
@@ -597,7 +625,7 @@ main_task_handle_sig(const main_task_sig_e main_task_sig)
         case MAIN_TASK_SIG_DEACTIVATE_WIFI_AP:
             LOG_INFO("MAIN_TASK_SIG_DEACTIVATE_WIFI_AP");
             wifi_manager_stop_ap();
-            if (g_gateway_config.eth.use_eth || (!wifi_manager_is_sta_configured()))
+            if (gw_cfg_get_eth_use_eth() || (!wifi_manager_is_sta_configured()))
             {
                 ethernet_start(g_gw_wifi_ssid.ssid_buf);
             }
@@ -869,7 +897,7 @@ main_task_init(void)
     gateway_read_mac_addr(ESP_MAC_WIFI_STA, &g_gw_mac_wifi, &g_gw_mac_wifi_str);
     gateway_read_mac_addr(ESP_MAC_ETH, &g_gw_mac_eth, &g_gw_mac_eth_str);
 
-    settings_get_from_flash(&g_gateway_config);
+    settings_get_from_flash();
 
     leds_indication_on_nrf52_fw_updating();
     nrf52fw_update_fw_if_necessary(
@@ -893,15 +921,11 @@ main_task_init(void)
     settings_update_mac_addr(&nrf52_mac_addr);
 
     time_task_init();
-    ruuvi_send_nrf_settings(&g_gateway_config);
+    ruuvi_send_nrf_settings();
 
     ruuvi_auth_set_from_config();
 
-    if (!wifi_init(
-            g_gateway_config.eth.use_eth,
-            false,
-            &g_gw_wifi_ssid,
-            fw_update_get_current_fatfs_gwui_partition_name()))
+    if (!wifi_init(gw_cfg_get_eth_use_eth(), false, &g_gw_wifi_ssid, fw_update_get_current_fatfs_gwui_partition_name()))
     {
         LOG_ERR("%s failed", "wifi_init");
         return false;
@@ -928,7 +952,7 @@ main_task_init(void)
     }
     else
     {
-        if (g_gateway_config.eth.use_eth || (!wifi_manager_is_sta_configured()))
+        if (gw_cfg_get_eth_use_eth() || (!wifi_manager_is_sta_configured()))
         {
             ethernet_start(g_gw_wifi_ssid.ssid_buf);
         }
@@ -954,7 +978,7 @@ main_task_init(void)
     }
 
     os_timer_sig_periodic_start(g_p_timer_sig_log_heap_usage);
-    if (AUTO_UPDATE_CYCLE_TYPE_MANUAL != g_gateway_config.auto_update.auto_update_cycle)
+    if (AUTO_UPDATE_CYCLE_TYPE_MANUAL != gw_cfg_get_auto_update_cycle())
     {
         LOG_INFO(
             "Firmware auto-updating is active, run next check after %lu seconds",

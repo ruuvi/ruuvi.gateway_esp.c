@@ -13,6 +13,8 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/gw_cfg_default.h
         ${RUUVI_GW_SRC}/ruuvi_auth.c
         ${RUUVI_GW_SRC}/ruuvi_auth.h
+        ${RUUVI_ESP_WRAPPERS}/src/str_buf.c
+        ${RUUVI_ESP_WRAPPERS}/include/str_buf.h
         ${WIFI_MANAGER_SRC}/http_server_auth.c
         ${WIFI_MANAGER_SRC}/http_server_auth.h
         ${WIFI_MANAGER_SRC}/wifiman_md5.c
@@ -64,7 +66,6 @@ target_link_libraries(${ProjectId}
         gtest
         gtest_main
         gcov
-        ruuvi_esp_wrappers
         ruuvi_esp_wrappers-common_test_funcs
         --coverage
 )

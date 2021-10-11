@@ -48,14 +48,8 @@ typedef enum nrf_command_e
 
 extern EventGroupHandle_t status_bits;
 
-bool
-settings_check_in_flash(void);
-
-bool
-settings_clear_in_flash(void);
-
 void
-ruuvi_send_nrf_settings(const ruuvi_gateway_config_t *p_config);
+ruuvi_send_nrf_settings(void);
 
 void
 start_services(void);

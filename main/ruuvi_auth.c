@@ -22,9 +22,11 @@ static const char TAG[] = "gw_cfg";
 bool
 ruuvi_auth_set_from_config(void)
 {
-    if ((0 == strcmp(HTTP_SERVER_AUTH_TYPE_STR_RUUVI, g_gateway_config.lan_auth.lan_auth_type))
-        && (0 == strcmp(RUUVI_GATEWAY_AUTH_DEFAULT_USER, g_gateway_config.lan_auth.lan_auth_user))
-        && (0 == strcmp(RUUVI_GATEWAY_AUTH_DEFAULT_PASS_USE_DEVICE_ID, g_gateway_config.lan_auth.lan_auth_pass)))
+    const ruuvi_gw_cfg_lan_auth_t lan_auth = gw_cfg_get_lan_auth();
+
+    if ((0 == strcmp(HTTP_SERVER_AUTH_TYPE_STR_RUUVI, lan_auth.lan_auth_type))
+        && (0 == strcmp(RUUVI_GATEWAY_AUTH_DEFAULT_USER, lan_auth.lan_auth_user))
+        && (0 == strcmp(RUUVI_GATEWAY_AUTH_DEFAULT_PASS_USE_DEVICE_ID, lan_auth.lan_auth_pass)))
     {
         const nrf52_device_id_str_t device_id = ruuvi_device_id_get_str();
 
@@ -50,9 +52,6 @@ ruuvi_auth_set_from_config(void)
     }
     else
     {
-        return http_server_set_auth(
-            g_gateway_config.lan_auth.lan_auth_type,
-            g_gateway_config.lan_auth.lan_auth_user,
-            g_gateway_config.lan_auth.lan_auth_pass);
+        return http_server_set_auth(lan_auth.lan_auth_type, lan_auth.lan_auth_user, lan_auth.lan_auth_pass);
     }
 }
