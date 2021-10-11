@@ -24,6 +24,12 @@ idf_component_register(
             gpio_switch_ctrl.h
             gw_cfg.c
             gw_cfg.h
+            gw_cfg_blob.c
+            gw_cfg_blob.h
+            gw_cfg_json.c
+            gw_cfg_json.h
+            gw_cfg_ruuvi_json.c
+            gw_cfg_ruuvi_json.h
             gw_cfg_default.c
             gw_cfg_default.h
             hmac_sha256.c
@@ -76,4 +82,9 @@ idf_component_register(
             ruuvi.endpoints.c
             libSWD-esp32
             ruuvi.esp_wrappers.c
+)
+
+target_compile_options(${COMPONENT_LIB} PRIVATE
+        -Wstack-usage=512
+        -fstack-usage
 )

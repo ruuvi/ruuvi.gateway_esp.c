@@ -10,6 +10,7 @@
 
 #include <stdbool.h>
 #include "settings.h"
+#include "cJSON.h"
 
 #if !defined(RUUVI_TESTS_JSON_RUUVI)
 #define RUUVI_TESTS_JSON_RUUVI (0)

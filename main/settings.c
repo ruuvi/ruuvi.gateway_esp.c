@@ -13,12 +13,17 @@
 #include "nvs_flash.h"
 #include "ruuvi_gateway.h"
 #include "cjson_wrap.h"
+#include "gw_cfg.h"
 #include "gw_cfg_default.h"
+#include "gw_cfg_blob.h"
+#include "gw_cfg_json.h"
 #include "log.h"
+#include "os_malloc.h"
 
-#define RUUVI_GATEWAY_NVS_NAMESPACE         "ruuvi_gateway"
-#define RUUVI_GATEWAY_NVS_CONFIGURATION_KEY "ruuvi_config"
-#define RUUVI_GATEWAY_NVS_MAC_ADDR_KEY      "ruuvi_mac_addr"
+#define RUUVI_GATEWAY_NVS_NAMESPACE    "ruuvi_gateway"
+#define RUUVI_GATEWAY_NVS_CFG_BLOB_KEY "ruuvi_config" /* deprecated */
+#define RUUVI_GATEWAY_NVS_CFG_JSON_KEY "ruuvi_cfg_json"
+#define RUUVI_GATEWAY_NVS_MAC_ADDR_KEY "ruuvi_mac_addr"
 
 #define RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_KEY   "ruuvi_auto_udp"
 #define RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_VALUE (0xAACC5533U)
@@ -27,6 +32,8 @@
 #define RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_VALUE (0xAACC5533U)
 
 static const char TAG[] = "settings";
+
+static bool g_flag_cfg_blob_used;
 
 static bool
 settings_nvs_open(nvs_open_mode_t open_mode, nvs_handle_t *p_handle)
@@ -43,11 +50,22 @@ settings_nvs_open(nvs_open_mode_t open_mode, nvs_handle_t *p_handle)
         else if (ESP_ERR_NVS_NOT_FOUND == err)
         {
             LOG_WARN("NVS namespace '%s' doesn't exist and mode is NVS_READONLY, try to create it", nvs_name);
-            if (!settings_clear_in_flash())
+            nvs_handle handle = 0;
+            err               = nvs_open(nvs_name, NVS_READWRITE, &handle);
+            if (ESP_OK != err)
             {
-                LOG_ERR("Failed to create NVS namespace '%s'", nvs_name);
+                LOG_ERR_ESP(err, "Can't open NVS for writing");
                 return false;
             }
+            err = nvs_set_str(handle, RUUVI_GATEWAY_NVS_CFG_JSON_KEY, "");
+            if (ESP_OK != err)
+            {
+                LOG_ERR_ESP(err, "Can't save config to NVS");
+                nvs_close(handle);
+                return false;
+            }
+            nvs_close(handle);
+
             LOG_INFO("NVS namespace '%s' created successfully", nvs_name);
             err = nvs_open(nvs_name, open_mode, p_handle);
             if (ESP_OK != err)
@@ -65,18 +83,6 @@ settings_nvs_open(nvs_open_mode_t open_mode, nvs_handle_t *p_handle)
     return true;
 }
 
-static bool
-settings_nvs_set_blob(nvs_handle_t handle, const char *key, const void *value, size_t length)
-{
-    const esp_err_t esp_err = nvs_set_blob(handle, key, value, length);
-    if (ESP_OK != esp_err)
-    {
-        LOG_ERR_ESP(esp_err, "Can't save config to NVS");
-        return false;
-    }
-    return true;
-}
-
 bool
 settings_check_in_flash(void)
 {
@@ -90,103 +96,188 @@ settings_check_in_flash(void)
 }
 
 bool
-settings_clear_in_flash(void)
+settings_save_to_flash(const char *const p_json_str)
 {
     LOG_DBG(".");
+
     nvs_handle handle = 0;
     if (!settings_nvs_open(NVS_READWRITE, &handle))
     {
+        LOG_ERR("Failed to open NVS for writing");
         return false;
     }
-    if (!settings_nvs_set_blob(
-            handle,
-            RUUVI_GATEWAY_NVS_CONFIGURATION_KEY,
-            gw_cfg_default_get_ptr(),
-            sizeof(ruuvi_gateway_config_t)))
+
+    if (g_flag_cfg_blob_used)
     {
-        nvs_close(handle);
+        g_flag_cfg_blob_used = false;
+        LOG_INFO("Erase deprecated cfg BLOB");
+        const esp_err_t err = nvs_erase_key(handle, RUUVI_GATEWAY_NVS_CFG_BLOB_KEY);
+        if (ESP_OK != err)
+        {
+            LOG_ERR_ESP(err, "Failed to erase deprecated cfg BLOB");
+        }
+    }
+
+    const esp_err_t err = nvs_set_str(handle, RUUVI_GATEWAY_NVS_CFG_JSON_KEY, (NULL != p_json_str) ? p_json_str : "");
+    nvs_close(handle);
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "Failed to save config to flash");
         return false;
     }
-    nvs_close(handle);
     return true;
 }
 
-void
-settings_save_to_flash(const ruuvi_gateway_config_t *p_config)
+bool
+settings_clear_in_flash(void)
 {
     LOG_DBG(".");
-    nvs_handle handle = 0;
-    if (!settings_nvs_open(NVS_READWRITE, &handle))
-    {
-        return;
-    }
-    (void)settings_nvs_set_blob(handle, RUUVI_GATEWAY_NVS_CONFIGURATION_KEY, p_config, sizeof(*p_config));
-    nvs_close(handle);
+    return settings_save_to_flash("");
 }
 
 static bool
-settings_get_gw_cfg_from_nvs(nvs_handle handle, ruuvi_gateway_config_t *p_gw_cfg)
+settings_get_gw_cfg_from_nvs(nvs_handle handle, ruuvi_gateway_config_t *const p_gw_cfg)
+{
+    *p_gw_cfg = g_gateway_config_default;
+
+    size_t    sz      = 0;
+    esp_err_t esp_err = nvs_get_str(handle, RUUVI_GATEWAY_NVS_CFG_JSON_KEY, NULL, &sz);
+    if (ESP_OK != esp_err)
+    {
+        LOG_ERR_ESP(esp_err, "Can't find config key '%s' in flash", RUUVI_GATEWAY_NVS_CFG_JSON_KEY);
+        return false;
+    }
+
+    char *p_cfg_json = os_malloc(sz);
+    if (NULL == p_cfg_json)
+    {
+        LOG_ERR("Can't allocate %lu bytes for configuration", (printf_ulong_t)sz);
+        return false;
+    }
+
+    esp_err = nvs_get_str(handle, RUUVI_GATEWAY_NVS_CFG_JSON_KEY, p_cfg_json, &sz);
+    if (ESP_OK != esp_err)
+    {
+        LOG_ERR_ESP(esp_err, "Can't read config-json from flash by key '%s'", RUUVI_GATEWAY_NVS_CFG_JSON_KEY);
+        os_free(p_cfg_json);
+        return false;
+    }
+
+    if (!gw_cfg_json_parse(p_cfg_json, p_gw_cfg))
+    {
+        LOG_ERR("Failed to parse config-json or no memory");
+        os_free(p_cfg_json);
+        return false;
+    }
+    os_free(p_cfg_json);
+
+    return true;
+}
+
+static bool
+settings_get_gw_cfg_blob_from_nvs(nvs_handle handle, ruuvi_gateway_config_blob_t *const p_gw_cfg_blob)
 {
     size_t    sz      = 0;
-    esp_err_t esp_err = nvs_get_blob(handle, RUUVI_GATEWAY_NVS_CONFIGURATION_KEY, NULL, &sz);
+    esp_err_t esp_err = nvs_get_blob(handle, RUUVI_GATEWAY_NVS_CFG_BLOB_KEY, NULL, &sz);
     if (ESP_OK != esp_err)
     {
         LOG_ERR_ESP(esp_err, "Can't read config from flash");
         return false;
     }
 
-    if (sizeof(*p_gw_cfg) != sz)
+    g_flag_cfg_blob_used = true;
+
+    if (sizeof(*p_gw_cfg_blob) != sz)
     {
         LOG_WARN("Size of config in flash differs");
         return false;
     }
 
-    esp_err = nvs_get_blob(handle, RUUVI_GATEWAY_NVS_CONFIGURATION_KEY, p_gw_cfg, &sz);
+    esp_err = nvs_get_blob(handle, RUUVI_GATEWAY_NVS_CFG_BLOB_KEY, p_gw_cfg_blob, &sz);
     if (ESP_OK != esp_err)
     {
         LOG_ERR_ESP(esp_err, "Can't read config from flash");
         return false;
     }
 
-    if (RUUVI_GATEWAY_CONFIG_HEADER != p_gw_cfg->header)
+    if (RUUVI_GATEWAY_CONFIG_BLOB_HEADER != p_gw_cfg_blob->header)
     {
-        LOG_WARN("Incorrect config header (0x%02X)", p_gw_cfg->header);
+        LOG_WARN("Incorrect config header (0x%02X)", p_gw_cfg_blob->header);
         return false;
     }
-    if (RUUVI_GATEWAY_CONFIG_FMT_VERSION != p_gw_cfg->fmt_version)
+    if (RUUVI_GATEWAY_CONFIG_BLOB_FMT_VERSION != p_gw_cfg_blob->fmt_version)
     {
         LOG_WARN(
             "Incorrect config fmt version (exp 0x%02x, act 0x%02x)",
-            RUUVI_GATEWAY_CONFIG_FMT_VERSION,
-            p_gw_cfg->fmt_version);
+            RUUVI_GATEWAY_CONFIG_BLOB_FMT_VERSION,
+            p_gw_cfg_blob->fmt_version);
         return false;
     }
     return true;
 }
 
 void
-settings_get_from_flash(ruuvi_gateway_config_t *p_gateway_config)
+settings_get_from_flash(void)
 {
-    nvs_handle handle = 0;
-    if (!settings_nvs_open(NVS_READONLY, &handle))
+    ruuvi_gateway_config_t *p_gw_cfg                = gw_cfg_lock_rw();
+    bool                    flag_use_default_config = false;
+    nvs_handle              handle                  = 0;
+    if (!settings_nvs_open(NVS_READWRITE, &handle))
     {
-        LOG_WARN("Using default config:");
-        gw_cfg_default_get(p_gateway_config);
+        flag_use_default_config = true;
     }
     else
     {
-        if (!settings_get_gw_cfg_from_nvs(handle, p_gateway_config))
+        if (!settings_get_gw_cfg_from_nvs(handle, p_gw_cfg))
         {
-            LOG_INFO("Using default config:");
-            gw_cfg_default_get(p_gateway_config);
-        }
-        else
-        {
-            LOG_INFO("Configuration from flash:");
+            LOG_WARN("Try to read config from BLOB");
+            ruuvi_gateway_config_blob_t *p_gw_cfg_blob = os_calloc(1, sizeof(*p_gw_cfg_blob));
+            if (NULL == p_gw_cfg_blob)
+            {
+                flag_use_default_config = true;
+            }
+            else
+            {
+                if (!settings_get_gw_cfg_blob_from_nvs(handle, p_gw_cfg_blob))
+                {
+                    flag_use_default_config = true;
+                }
+                else
+                {
+                    gw_cfg_blob_convert(p_gw_cfg, p_gw_cfg_blob);
+                }
+                os_free(p_gw_cfg_blob);
+            }
         }
         nvs_close(handle);
     }
-    gw_cfg_print_to_log(p_gateway_config);
+    if (g_flag_cfg_blob_used)
+    {
+        LOG_INFO("Convert Cfg BLOB to json");
+        cjson_wrap_str_t cjson_str = { 0 };
+        if (!gw_cfg_json_generate(p_gw_cfg, &cjson_str))
+        {
+            LOG_ERR("%s failed", "gw_cfg_json_generate");
+        }
+        else
+        {
+            settings_save_to_flash(cjson_str.p_str);
+        }
+        cjson_wrap_free_json_str(&cjson_str);
+    }
+
+    if (flag_use_default_config)
+    {
+        LOG_WARN("Using default config:");
+        *p_gw_cfg = g_gateway_config_default;
+    }
+    else
+    {
+        LOG_INFO("Configuration from flash:");
+    }
+
+    gw_cfg_print_to_log(p_gw_cfg);
+    gw_cfg_unlock_rw(&p_gw_cfg);
 }
 
 mac_address_bin_t
@@ -221,9 +312,10 @@ settings_write_mac_addr(const mac_address_bin_t *const p_mac_addr)
     }
     else
     {
-        if (!settings_nvs_set_blob(handle, RUUVI_GATEWAY_NVS_MAC_ADDR_KEY, p_mac_addr, sizeof(*p_mac_addr)))
+        const esp_err_t esp_err = nvs_set_blob(handle, RUUVI_GATEWAY_NVS_MAC_ADDR_KEY, p_mac_addr, sizeof(*p_mac_addr));
+        if (ESP_OK != esp_err)
         {
-            LOG_ERR("%s failed", "settings_nvs_set_blob");
+            LOG_ERR_ESP(esp_err, "%s failed", "nvs_set_blob");
         }
         nvs_close(handle);
     }
@@ -287,13 +379,14 @@ settings_write_flag_rebooting_after_auto_update(const bool flag_rebooting_after_
     const uint32_t flag_rebooting_after_auto_update_val = flag_rebooting_after_auto_update
                                                               ? RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_VALUE
                                                               : 0;
-    if (!settings_nvs_set_blob(
-            handle,
-            RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_KEY,
-            &flag_rebooting_after_auto_update_val,
-            sizeof(flag_rebooting_after_auto_update_val)))
+    const esp_err_t esp_err = nvs_set_blob(
+        handle,
+        RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_KEY,
+        &flag_rebooting_after_auto_update_val,
+        sizeof(flag_rebooting_after_auto_update_val));
+    if (ESP_OK != esp_err)
     {
-        LOG_ERR("%s failed", "settings_nvs_set_blob");
+        LOG_ERR_ESP(esp_err, "%s failed", "nvs_set_blob");
     }
     nvs_close(handle);
 }
@@ -344,13 +437,14 @@ settings_write_flag_force_start_wifi_hotspot(const bool flag_force_start_wifi_ho
     const uint32_t flag_force_start_wifi_hotspot_val = flag_force_start_wifi_hotspot
                                                            ? RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_VALUE
                                                            : 0;
-    if (!settings_nvs_set_blob(
-            handle,
-            RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_KEY,
-            &flag_force_start_wifi_hotspot_val,
-            sizeof(flag_force_start_wifi_hotspot_val)))
+    const esp_err_t esp_err = nvs_set_blob(
+        handle,
+        RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_KEY,
+        &flag_force_start_wifi_hotspot_val,
+        sizeof(flag_force_start_wifi_hotspot_val));
+    if (ESP_OK != esp_err)
     {
-        LOG_ERR("%s failed", "settings_nvs_set_blob");
+        LOG_ERR_ESP(esp_err, "%s failed", "nvs_set_blob");
     }
     nvs_close(handle);
 }

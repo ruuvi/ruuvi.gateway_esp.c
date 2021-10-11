@@ -193,7 +193,7 @@ adv_post_send_report(void *arg)
     {
         LOG_WARN("Adv report table full, adv dropped");
     }
-    if (g_gateway_config.mqtt.use_mqtt)
+    if (gw_cfg_get_mqtt_use_mqtt())
     {
         if (0 == (xEventGroupGetBits(status_bits) & MQTT_CONNECTED_BIT))
         {
@@ -217,7 +217,7 @@ static void
 adv_post_send_get_all(void *arg)
 {
     (void)arg;
-    ruuvi_send_nrf_settings(&g_gateway_config);
+    ruuvi_send_nrf_settings();
 }
 
 static void
@@ -248,13 +248,14 @@ adv_post_check_is_connected(const uint32_t nonce)
     {
         return false;
     }
-    if (g_gateway_config.http.use_http)
+    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
+    if (p_gw_cfg->http.use_http)
     {
         cjson_wrap_str_t json_str = cjson_wrap_str_null();
         if (!http_create_status_online_json_str(
                 time(NULL),
                 &g_gw_mac_sta_str,
-                g_gateway_config.coordinates,
+                p_gw_cfg->coordinates.buf,
                 nonce,
                 &json_str))
         {
@@ -262,11 +263,12 @@ adv_post_check_is_connected(const uint32_t nonce)
         }
         else
         {
-            LOG_INFO("HTTP POST %s: %s", g_gateway_config.http.http_url, json_str.p_str);
+            LOG_INFO("HTTP POST %s: %s", p_gw_cfg->http.http_url, json_str.p_str);
             http_send(json_str.p_str);
             cjson_wrap_free_json_str(&json_str);
         }
     }
+    gw_cfg_unlock_ro(&p_gw_cfg);
     return true;
 }
 
@@ -400,7 +402,7 @@ adv_post_task(void)
                     flag_stop = true;
                     break;
                 case ADV_POST_SIG_RETRANSMIT:
-                    if (g_gateway_config.http.use_http && !g_adv_post_flag_retransmission_disabled)
+                    if (gw_cfg_get_mqtt_use_http() && !g_adv_post_flag_retransmission_disabled)
                     {
                         adv_post_do_retransmission(&flag_connected);
                     }

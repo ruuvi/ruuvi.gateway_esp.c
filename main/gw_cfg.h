@@ -10,7 +10,6 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "cjson_wrap.h"
 #include "mac_addr.h"
 #include "wifi_manager_defs.h"
 
@@ -43,9 +42,6 @@ extern "C" {
 #define IP_STR_LEN             17
 
 #define RUUVI_COMPANY_ID 0x0499
-
-#define RUUVI_GATEWAY_CONFIG_HEADER      (0xAABBU)
-#define RUUVI_GATEWAY_CONFIG_FMT_VERSION (0x0008U)
 
 typedef struct ruuvi_gw_cfg_eth_t
 {
@@ -113,7 +109,7 @@ typedef struct ruuvi_gw_cfg_auto_update_t
 typedef struct ruuvi_gw_cfg_filter_t
 {
     uint16_t company_id;
-    bool     company_filter;
+    bool     company_use_filtering;
 } ruuvi_gw_cfg_filter_t;
 
 typedef struct ruuvi_gw_cfg_scan_t
@@ -126,10 +122,13 @@ typedef struct ruuvi_gw_cfg_scan_t
     bool scan_channel_39;
 } ruuvi_gw_cfg_scan_t;
 
+typedef struct ruuvi_gw_cfg_coordinates_t
+{
+    char buf[MAX_CONFIG_STR_LEN];
+} ruuvi_gw_cfg_coordinates_t;
+
 typedef struct ruuvi_gateway_config_t
 {
-    uint16_t                   header;
-    uint16_t                   fmt_version;
     ruuvi_gw_cfg_eth_t         eth;
     ruuvi_gw_cfg_mqtt_t        mqtt;
     ruuvi_gw_cfg_http_t        http;
@@ -137,25 +136,57 @@ typedef struct ruuvi_gateway_config_t
     ruuvi_gw_cfg_auto_update_t auto_update;
     ruuvi_gw_cfg_filter_t      filter;
     ruuvi_gw_cfg_scan_t        scan;
-    char                       coordinates[MAX_CONFIG_STR_LEN];
+    ruuvi_gw_cfg_coordinates_t coordinates;
 } ruuvi_gateway_config_t;
 
-extern ruuvi_gateway_config_t g_gateway_config;
-extern mac_address_bin_t      g_gw_mac_eth;
-extern mac_address_str_t      g_gw_mac_eth_str;
-extern mac_address_bin_t      g_gw_mac_wifi;
-extern mac_address_str_t      g_gw_mac_wifi_str;
-extern mac_address_str_t      g_gw_mac_sta_str;
-extern wifi_ssid_t            g_gw_wifi_ssid;
+extern mac_address_bin_t g_gw_mac_eth;
+extern mac_address_str_t g_gw_mac_eth_str;
+extern mac_address_bin_t g_gw_mac_wifi;
+extern mac_address_str_t g_gw_mac_wifi_str;
+extern mac_address_str_t g_gw_mac_sta_str;
+extern wifi_ssid_t       g_gw_wifi_ssid;
 
 void
 gw_cfg_init(void);
 
+ruuvi_gateway_config_t *
+gw_cfg_lock_rw(void);
+
 void
-gw_cfg_print_to_log(const ruuvi_gateway_config_t *p_config);
+gw_cfg_unlock_rw(ruuvi_gateway_config_t **const p_p_gw_cfg);
+
+const ruuvi_gateway_config_t *
+gw_cfg_lock_ro(void);
+
+void
+gw_cfg_unlock_ro(const ruuvi_gateway_config_t **const p_p_gw_cfg);
+
+void
+gw_cfg_print_to_log(const ruuvi_gateway_config_t *const p_config);
+
+void
+gw_cfg_update(const ruuvi_gateway_config_t *const p_gw_cfg_new, const bool flag_network_cfg);
+
+void
+gw_cfg_get_copy(ruuvi_gateway_config_t *const p_gw_cfg);
 
 bool
-gw_cfg_generate_json_str(cjson_wrap_str_t *p_json_str, const char *const p_fw_ver, const char *const p_nrf52_fw_ver);
+gw_cfg_get_eth_use_eth(void);
+
+bool
+gw_cfg_get_mqtt_use_mqtt(void);
+
+bool
+gw_cfg_get_mqtt_use_http(void);
+
+auto_update_cycle_type_e
+gw_cfg_get_auto_update_cycle(void);
+
+ruuvi_gw_cfg_lan_auth_t
+gw_cfg_get_lan_auth(void);
+
+ruuvi_gw_cfg_coordinates_t
+gw_cfg_get_coordinates(void);
 
 #ifdef __cplusplus
 }

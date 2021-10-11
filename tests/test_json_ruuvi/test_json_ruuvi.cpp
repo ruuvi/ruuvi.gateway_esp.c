@@ -11,6 +11,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log_wrapper.hpp"
+#include "gw_cfg_default.h"
 
 using namespace std;
 
@@ -397,9 +398,9 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.http.http_url);
     ASSERT_EQ(string("user567"), gw_cfg.http.http_user);
     ASSERT_EQ(string("pass567"), gw_cfg.http.http_pass);
-    ASSERT_TRUE(gw_cfg.filter.company_filter);
+    ASSERT_TRUE(gw_cfg.filter.company_use_filtering);
     ASSERT_EQ(888, gw_cfg.filter.company_id);
-    ASSERT_EQ(string("coord:123,456"), gw_cfg.coordinates);
+    ASSERT_EQ(string("coord:123,456"), gw_cfg.coordinates.buf);
     ASSERT_EQ(true, gw_cfg.scan.scan_coded_phy);
     ASSERT_EQ(true, gw_cfg.scan.scan_1mbit_phy);
     ASSERT_EQ(true, gw_cfg.scan.scan_extended_payload);
@@ -494,9 +495,9 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_mqtt_pass) // NOLINT
     ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.http.http_url);
     ASSERT_EQ(string("user567"), gw_cfg.http.http_user);
     ASSERT_EQ(string("pass567"), gw_cfg.http.http_pass);
-    ASSERT_TRUE(gw_cfg.filter.company_filter);
+    ASSERT_TRUE(gw_cfg.filter.company_use_filtering);
     ASSERT_EQ(888, gw_cfg.filter.company_id);
-    ASSERT_EQ(string("coord:123,456"), gw_cfg.coordinates);
+    ASSERT_EQ(string("coord:123,456"), gw_cfg.coordinates.buf);
     ASSERT_EQ(true, gw_cfg.scan.scan_coded_phy);
     ASSERT_EQ(true, gw_cfg.scan.scan_1mbit_phy);
     ASSERT_EQ(true, gw_cfg.scan.scan_extended_payload);
@@ -556,7 +557,8 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
         "\"mqtt_user\":\"\","
         "\"mqtt_pass\":\"\","
         "\"use_http\":false,"
-        "\"http_url\":\"https://network.ruuvi.com/record\","
+        "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+        "\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
         "\"lan_auth_type\":\"lan_auth_ruuvi\","
@@ -587,12 +589,12 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_user);
     ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_pass);
     ASSERT_FALSE(gw_cfg.http.use_http);
-    ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg.http.http_url);
+    ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_DEFAULT_URL), gw_cfg.http.http_url);
     ASSERT_EQ(string(""), gw_cfg.http.http_user);
     ASSERT_EQ(string(""), gw_cfg.http.http_pass);
-    ASSERT_TRUE(gw_cfg.filter.company_filter);
+    ASSERT_TRUE(gw_cfg.filter.company_use_filtering);
     ASSERT_EQ(RUUVI_COMPANY_ID, gw_cfg.filter.company_id);
-    ASSERT_EQ(string(""), gw_cfg.coordinates);
+    ASSERT_EQ(string(""), gw_cfg.coordinates.buf);
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Got SETTINGS:");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_mqtt: 1");
@@ -603,7 +605,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_user: ");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_pass: ");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_url: https://network.ruuvi.com/record");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_user: ");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_pass: ");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_type: lan_auth_ruuvi");
@@ -647,7 +649,8 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body_malloc_failed) // NOLINT
         "\"mqtt_user\":\"\","
         "\"mqtt_pass\":\"\","
         "\"use_http\":false,"
-        "\"http_url\":\"https://network.ruuvi.com/record\","
+        "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+        "\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
         "\"use_filtering\":true"

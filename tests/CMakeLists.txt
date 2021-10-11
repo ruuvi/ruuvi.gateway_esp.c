@@ -56,6 +56,9 @@ add_subdirectory(test_flashfatfs)
 add_subdirectory(test_json_helper)
 add_subdirectory(test_json_ruuvi)
 add_subdirectory(test_gw_cfg)
+add_subdirectory(test_gw_cfg_blob)
+add_subdirectory(test_gw_cfg_json)
+add_subdirectory(test_gw_cfg_ruuvi_json_generate)
 add_subdirectory(test_hmac_sha256)
 add_subdirectory(test_http_json)
 add_subdirectory(test_http_server_cb)
@@ -105,6 +108,21 @@ add_test(NAME test_json_ruuvi
 add_test(NAME test_gw_cfg
         COMMAND ruuvi_gateway_esp-test-gw_cfg
         --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-gw_cfg>/gtestresults.xml
+)
+
+add_test(NAME test_gw_cfg_json
+        COMMAND ruuvi_gateway_esp-test-gw_cfg_json
+        --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-gw_cfg_json>/gtestresults.xml
+)
+
+add_test(NAME test_gw_cfg_blob
+        COMMAND ruuvi_gateway_esp-test-gw_cfg_blob
+        --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-gw_cfg_blob>/gtestresults.xml
+)
+
+add_test(NAME test_gw_cfg_ruuvi_json_generate
+        COMMAND ruuvi_gateway_esp-test-gw_cfg_ruuvi_json_generate
+        --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-gw_cfg_ruuvi_json_generate>/gtestresults.xml
 )
 
 add_test(NAME test_hmac_sha256
