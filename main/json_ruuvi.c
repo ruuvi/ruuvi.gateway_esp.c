@@ -183,6 +183,12 @@ json_ruuvi_parse(const cJSON *p_json_root, ruuvi_gateway_config_t *const p_gw_cf
         p_gw_cfg->mqtt.mqtt_use_default_prefix = false;
         json_ruuvi_copy_string_val(
             p_json_root,
+            "mqtt_transport",
+            p_gw_cfg->mqtt.mqtt_transport,
+            sizeof(p_gw_cfg->mqtt.mqtt_transport),
+            true);
+        json_ruuvi_copy_string_val(
+            p_json_root,
             "mqtt_server",
             p_gw_cfg->mqtt.mqtt_server,
             sizeof(p_gw_cfg->mqtt.mqtt_server),

@@ -87,6 +87,7 @@ gw_cfg_print_to_log(const ruuvi_gateway_config_t *const p_config)
     LOG_INFO("config: eth dns1: %s", p_config->eth.eth_dns1);
     LOG_INFO("config: eth dns2: %s", p_config->eth.eth_dns2);
     LOG_INFO("config: use mqtt: %d", p_config->mqtt.use_mqtt);
+    LOG_INFO("config: mqtt transport: %s", p_config->mqtt.mqtt_transport);
     LOG_INFO("config: mqtt server: %s", p_config->mqtt.mqtt_server);
     LOG_INFO("config: mqtt port: %u", p_config->mqtt.mqtt_port);
     LOG_INFO("config: mqtt use default prefix: %d", p_config->mqtt.mqtt_use_default_prefix);

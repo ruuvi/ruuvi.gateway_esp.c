@@ -185,6 +185,10 @@ gw_cfg_ruuvi_json_add_items_mqtt(cJSON *const p_json_root, const ruuvi_gateway_c
     {
         return false;
     }
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "mqtt_transport", p_cfg->mqtt.mqtt_transport))
+    {
+        return false;
+    }
     if (!gw_cfg_ruuvi_json_add_string(p_json_root, "mqtt_server", p_cfg->mqtt.mqtt_server))
     {
         return false;
