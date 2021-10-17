@@ -130,15 +130,37 @@ gw_cfg_json_add_items_http(cJSON *p_json_root, const ruuvi_gateway_config_t *p_c
     {
         return false;
     }
-    if (!gw_cfg_json_add_string(p_json_root, "http_url", p_cfg->http.http_url))
+    if (!gw_cfg_json_add_string(p_json_root, "http_url", p_cfg->http.http_url.buf))
     {
         return false;
     }
-    if (!gw_cfg_json_add_string(p_json_root, "http_user", p_cfg->http.http_user))
+    if (!gw_cfg_json_add_string(p_json_root, "http_user", p_cfg->http.http_user.buf))
     {
         return false;
     }
-    if (!gw_cfg_json_add_string(p_json_root, "http_pass", p_cfg->http.http_pass))
+    if (!gw_cfg_json_add_string(p_json_root, "http_pass", p_cfg->http.http_pass.buf))
+    {
+        return false;
+    }
+    return true;
+}
+
+static bool
+gw_cfg_json_add_items_http_stat(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg)
+{
+    if (!gw_cfg_json_add_bool(p_json_root, "use_http_stat", p_cfg->http_stat.use_http_stat))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_string(p_json_root, "http_stat_url", p_cfg->http_stat.http_stat_url.buf))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_string(p_json_root, "http_stat_user", p_cfg->http_stat.http_stat_user.buf))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_string(p_json_root, "http_stat_pass", p_cfg->http_stat.http_stat_pass.buf))
     {
         return false;
     }
@@ -260,6 +282,10 @@ gw_cfg_json_add_items(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg)
         return false;
     }
     if (!gw_cfg_json_add_items_http(p_json_root, p_cfg))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_items_http_stat(p_json_root, p_cfg))
     {
         return false;
     }
@@ -432,26 +458,59 @@ gw_cfg_json_parse_http(const cJSON *const p_json_root, ruuvi_gw_cfg_http_t *cons
     if (!json_wrap_copy_string_val(
             p_json_root,
             "http_url",
-            &p_gw_cfg_http->http_url[0],
-            sizeof(p_gw_cfg_http->http_url)))
+            &p_gw_cfg_http->http_url.buf[0],
+            sizeof(p_gw_cfg_http->http_url.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "http_url");
     }
     if (!json_wrap_copy_string_val(
             p_json_root,
             "http_user",
-            &p_gw_cfg_http->http_user[0],
-            sizeof(p_gw_cfg_http->http_user)))
+            &p_gw_cfg_http->http_user.buf[0],
+            sizeof(p_gw_cfg_http->http_user.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "http_user");
     }
     if (!json_wrap_copy_string_val(
             p_json_root,
             "http_pass",
-            &p_gw_cfg_http->http_pass[0],
-            sizeof(p_gw_cfg_http->http_pass)))
+            &p_gw_cfg_http->http_pass.buf[0],
+            sizeof(p_gw_cfg_http->http_pass.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "http_pass");
+    }
+}
+
+static void
+gw_cfg_json_parse_http_stat(const cJSON *const p_json_root, ruuvi_gw_cfg_http_stat_t *const p_gw_cfg_http_stat)
+{
+    if (!json_wrap_get_bool_val(p_json_root, "use_http", &p_gw_cfg_http_stat->use_http_stat))
+    {
+        LOG_WARN("Can't find key '%s' in config-json", "use_http_stat");
+    }
+    if (!json_wrap_copy_string_val(
+            p_json_root,
+            "http_stat_url",
+            &p_gw_cfg_http_stat->http_stat_url.buf[0],
+            sizeof(p_gw_cfg_http_stat->http_stat_url.buf)))
+    {
+        LOG_WARN("Can't find key '%s' in config-json", "http_stat_url");
+    }
+    if (!json_wrap_copy_string_val(
+            p_json_root,
+            "http_stat_user",
+            &p_gw_cfg_http_stat->http_stat_user.buf[0],
+            sizeof(p_gw_cfg_http_stat->http_stat_user.buf)))
+    {
+        LOG_WARN("Can't find key '%s' in config-json", "http_stat_user");
+    }
+    if (!json_wrap_copy_string_val(
+            p_json_root,
+            "http_stat_pass",
+            &p_gw_cfg_http_stat->http_stat_pass.buf[0],
+            sizeof(p_gw_cfg_http_stat->http_stat_pass.buf)))
+    {
+        LOG_WARN("Can't find key '%s' in config-json", "http_stat_pass");
     }
 }
 
@@ -588,6 +647,7 @@ gw_cfg_json_parse_cjson(const cJSON *const p_json_root, ruuvi_gateway_config_t *
     gw_cfg_json_parse_eth(p_json_root, &p_gw_cfg->eth);
     gw_cfg_json_parse_mqtt(p_json_root, &p_gw_cfg->mqtt);
     gw_cfg_json_parse_http(p_json_root, &p_gw_cfg->http);
+    gw_cfg_json_parse_http_stat(p_json_root, &p_gw_cfg->http_stat);
     gw_cfg_json_parse_lan_auth(p_json_root, &p_gw_cfg->lan_auth);
     gw_cfg_json_parse_auto_update(p_json_root, &p_gw_cfg->auto_update);
     gw_cfg_json_parse_filter(p_json_root, &p_gw_cfg->filter);

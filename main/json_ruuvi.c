@@ -226,20 +226,40 @@ json_ruuvi_parse(const cJSON *p_json_root, ruuvi_gateway_config_t *const p_gw_cf
         json_ruuvi_copy_string_val(
             p_json_root,
             "http_url",
-            p_gw_cfg->http.http_url,
-            sizeof(p_gw_cfg->http.http_url),
+            p_gw_cfg->http.http_url.buf,
+            sizeof(p_gw_cfg->http.http_url.buf),
             true);
         json_ruuvi_copy_string_val(
             p_json_root,
             "http_user",
-            p_gw_cfg->http.http_user,
-            sizeof(p_gw_cfg->http.http_user),
+            p_gw_cfg->http.http_user.buf,
+            sizeof(p_gw_cfg->http.http_user.buf),
             true);
         json_ruuvi_copy_string_val(
             p_json_root,
             "http_pass",
-            p_gw_cfg->http.http_pass,
-            sizeof(p_gw_cfg->http.http_pass),
+            p_gw_cfg->http.http_pass.buf,
+            sizeof(p_gw_cfg->http.http_pass.buf),
+            true);
+
+        json_ruuvi_get_bool_val(p_json_root, "use_http_stat", &p_gw_cfg->http_stat.use_http_stat, true);
+        json_ruuvi_copy_string_val(
+            p_json_root,
+            "http_stat_url",
+            p_gw_cfg->http_stat.http_stat_url.buf,
+            sizeof(p_gw_cfg->http_stat.http_stat_url.buf),
+            true);
+        json_ruuvi_copy_string_val(
+            p_json_root,
+            "http_stat_user",
+            p_gw_cfg->http_stat.http_stat_user.buf,
+            sizeof(p_gw_cfg->http_stat.http_stat_user.buf),
+            true);
+        json_ruuvi_copy_string_val(
+            p_json_root,
+            "http_stat_pass",
+            p_gw_cfg->http_stat.http_stat_pass.buf,
+            sizeof(p_gw_cfg->http_stat.http_stat_pass.buf),
             true);
 
         if (!json_ruuvi_copy_string_val(

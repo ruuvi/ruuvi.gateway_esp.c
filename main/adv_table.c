@@ -13,9 +13,9 @@
 #include "sys/queue.h"
 
 #if defined(__XTENSA__)
-#define ADV_REPORT_EXPECTED_SIZE (12U + 32U)
-#elif defined(__linux__) && defined(__x86_64__)
 #define ADV_REPORT_EXPECTED_SIZE (16U + 32U)
+#elif defined(__linux__) && defined(__x86_64__)
+#define ADV_REPORT_EXPECTED_SIZE (24U + 32U)
 #endif
 
 _Static_assert(sizeof(adv_report_t) == ADV_REPORT_EXPECTED_SIZE, "sizeof(adv_report_t)");
@@ -159,7 +159,9 @@ adv_table_put_unsafe(const adv_report_t *const p_adv)
     }
     else
     {
-        p_elem->adv_report = *p_adv; // Update data
+        adv_counter_t prev_counter         = p_elem->adv_report.samples_counter;
+        p_elem->adv_report                 = *p_adv; // Update data
+        p_elem->adv_report.samples_counter = prev_counter + 1;
     }
     if (!p_elem->is_in_retransmission_list)
     {
@@ -243,5 +245,35 @@ adv_table_history_read(adv_report_table_t *const p_reports, const time_t cur_tim
 {
     os_mutex_lock(gp_adv_reports_mutex);
     adv_table_read_history_unsafe(p_reports, cur_time, time_interval_seconds);
+    os_mutex_unlock(gp_adv_reports_mutex);
+}
+
+static void
+adv_table_read_statistics_unsafe(adv_report_table_t *const p_reports)
+{
+    p_reports->num_of_advs = 0;
+
+    adv_reports_list_elem_t *p_elem = NULL;
+    TAILQ_FOREACH(p_elem, &g_adv_reports_hist_list, hist_list)
+    {
+        if (p_reports->num_of_advs >= (sizeof(p_reports->table) / sizeof(p_reports->table[0])))
+        {
+            break;
+        }
+        if (0 == p_elem->adv_report.timestamp)
+        {
+            break;
+        }
+        p_reports->table[p_reports->num_of_advs] = p_elem->adv_report;
+        p_elem->adv_report.samples_counter       = 0;
+        p_reports->num_of_advs += 1;
+    }
+}
+
+void
+adv_table_statistics_read(adv_report_table_t *const p_reports)
+{
+    os_mutex_lock(gp_adv_reports_mutex);
+    adv_table_read_statistics_unsafe(p_reports);
     os_mutex_unlock(gp_adv_reports_mutex);
 }
