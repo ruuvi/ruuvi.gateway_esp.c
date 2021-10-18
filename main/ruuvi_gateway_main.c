@@ -69,6 +69,7 @@ typedef enum main_task_sig_e
 #define MAIN_TASK_SIG_LAST  (MAIN_TASK_SIG_TASK_WATCHDOG_FEED)
 
 EventGroupHandle_t status_bits;
+uint32_t volatile g_network_disconnect_cnt;
 
 static os_signal_t *                  g_p_signal_main_task;
 static os_signal_static_t             g_signal_main_task_mem;
@@ -201,6 +202,7 @@ static void
 ethernet_link_down_cb(void)
 {
     LOG_INFO("Ethernet lost connection");
+    g_network_disconnect_cnt += 1;
     wifi_manager_update_network_connection_info(UPDATE_LOST_CONNECTION, NULL, NULL);
     xEventGroupClearBits(status_bits, ETH_CONNECTED_BIT);
     leds_indication_network_no_connection();
@@ -303,6 +305,7 @@ wifi_disconnect_cb(void *p_param)
 {
     (void)p_param;
     LOG_WARN("Wifi disconnected");
+    g_network_disconnect_cnt += 1;
     xEventGroupClearBits(status_bits, WIFI_CONNECTED_BIT);
     leds_indication_network_no_connection();
     event_mgr_notify(EVENT_MGR_EV_WIFI_DISCONNECTED);

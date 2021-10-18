@@ -34,18 +34,25 @@
 #include "ruuvi_device_id.h"
 #include "os_signal.h"
 #include "os_timer_sig.h"
+#include "event_mgr.h"
+#include "fw_update.h"
+#include "nrf52fw.h"
+#include "reset_task.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
 typedef enum adv_post_sig_e
 {
-    ADV_POST_SIG_STOP               = OS_SIGNAL_NUM_0,
-    ADV_POST_SIG_RETRANSMIT         = OS_SIGNAL_NUM_1,
-    ADV_POST_SIG_DISABLE            = OS_SIGNAL_NUM_2,
-    ADV_POST_SIG_ENABLE             = OS_SIGNAL_NUM_3,
-    ADV_POST_SIG_NETWORK_WATCHDOG   = OS_SIGNAL_NUM_4,
-    ADV_POST_SIG_TASK_WATCHDOG_FEED = OS_SIGNAL_NUM_5,
+    ADV_POST_SIG_STOP                 = OS_SIGNAL_NUM_0,
+    ADV_POST_SIG_NETWORK_DISCONNECTED = OS_SIGNAL_NUM_1,
+    ADV_POST_SIG_NETWORK_CONNECTED    = OS_SIGNAL_NUM_2,
+    ADV_POST_SIG_RETRANSMIT           = OS_SIGNAL_NUM_3,
+    ADV_POST_SIG_SEND_STATISTICS      = OS_SIGNAL_NUM_4,
+    ADV_POST_SIG_DISABLE              = OS_SIGNAL_NUM_5,
+    ADV_POST_SIG_ENABLE               = OS_SIGNAL_NUM_6,
+    ADV_POST_SIG_NETWORK_WATCHDOG     = OS_SIGNAL_NUM_7,
+    ADV_POST_SIG_TASK_WATCHDOG_FEED   = OS_SIGNAL_NUM_8,
 } adv_post_sig_e;
 
 #define ADV_POST_SIG_FIRST (ADV_POST_SIG_STOP)
@@ -77,9 +84,12 @@ static os_signal_t *                  g_p_adv_post_sig;
 static os_signal_static_t             g_adv_post_sig_mem;
 static os_timer_sig_periodic_t *      g_p_adv_post_timer_sig_retransmit;
 static os_timer_sig_periodic_static_t g_adv_post_timer_sig_retransmit_mem;
+static os_timer_sig_periodic_t *      g_p_adv_post_timer_sig_send_statistics;
+static os_timer_sig_periodic_static_t g_adv_post_timer_sig_send_statistics_mem;
 static os_timer_sig_periodic_t *      g_p_adv_post_timer_sig_watchdog_feed;
 static os_timer_sig_periodic_static_t g_adv_post_timer_sig_watchdog_feed_mem;
 static uint32_t                       g_adv_post_interval_ms = ADV_POST_DEFAULT_INTERVAL_SECONDS * 1000U;
+static bool                           g_adv_post_flag_need_to_send_statistics = true;
 static bool                           g_adv_post_flag_retransmission_disabled = false;
 static TickType_t                     g_adv_post_last_successful_network_comm_timestamp;
 static os_timer_sig_periodic_t *      g_p_adv_post_timer_sig_network_watchdog;
@@ -147,9 +157,10 @@ parse_adv_report_from_uart(const re_ca_uart_payload_t *const p_msg, adv_report_t
         return false;
     }
     mac_address_bin_init(&p_adv->tag_mac, p_report->mac);
-    p_adv->timestamp = time(NULL);
-    p_adv->rssi      = p_report->rssi_db;
-    p_adv->data_len  = p_report->adv_len;
+    p_adv->timestamp       = time(NULL);
+    p_adv->samples_counter = 0;
+    p_adv->rssi            = p_report->rssi_db;
+    p_adv->data_len        = p_report->adv_len;
     memcpy(p_adv->data_buf, p_report->adv, p_report->adv_len);
 
     return true;
@@ -240,59 +251,14 @@ adv_post_log(const adv_report_table_t *p_reports)
     }
 }
 
-static bool
-adv_post_check_is_connected(const uint32_t nonce)
-{
-    const EventBits_t status = xEventGroupGetBits(status_bits);
-    if (0 == (status & (WIFI_CONNECTED_BIT | ETH_CONNECTED_BIT)))
-    {
-        return false;
-    }
-    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
-    if (p_gw_cfg->http.use_http)
-    {
-        cjson_wrap_str_t json_str = cjson_wrap_str_null();
-        if (!http_create_status_online_json_str(
-                time(NULL),
-                &g_gw_mac_sta_str,
-                p_gw_cfg->coordinates.buf,
-                nonce,
-                &json_str))
-        {
-            LOG_ERR("Not enough memory to generate json");
-        }
-        else
-        {
-            LOG_INFO("HTTP POST %s: %s", p_gw_cfg->http.http_url, json_str.p_str);
-            http_send(json_str.p_str);
-            cjson_wrap_free_json_str(&json_str);
-        }
-    }
-    gw_cfg_unlock_ro(&p_gw_cfg);
-    return true;
-}
-
-static bool
-adv_post_check_is_disconnected(void)
-{
-    bool flag_connected = true;
-
-    const EventBits_t status = xEventGroupGetBits(status_bits);
-    if (0 == (status & (WIFI_CONNECTED_BIT | ETH_CONNECTED_BIT)))
-    {
-        flag_connected = false;
-    }
-    return flag_connected;
-}
-
 static void
-adv_post_retransmit_advs(const adv_report_table_t *p_reports, const bool flag_connected)
+adv_post_retransmit_advs(const adv_report_table_t *p_reports, const bool flag_network_connected)
 {
     if (0 == p_reports->num_of_advs)
     {
         return;
     }
-    if (!flag_connected)
+    if (!flag_network_connected)
     {
         LOG_WARN("Can't send, no network connection");
         return;
@@ -303,20 +269,14 @@ adv_post_retransmit_advs(const adv_report_table_t *p_reports, const bool flag_co
         return;
     }
 
-    if (!wifi_manager_is_connected_to_wifi_or_ethernet())
-    {
-        LOG_WARN("Can't send, no network connection");
-        return;
-    }
     if (http_send_advs(p_reports, g_adv_post_nonce))
     {
         adv_post_update_last_successful_network_comm_timestamp();
     }
-    g_adv_post_nonce += 1;
 }
 
 static void
-adv_post_do_retransmission(bool *const p_flag_connected)
+adv_post_do_retransmission(const bool flag_network_connected)
 {
     static adv_report_table_t g_adv_reports_buf;
 
@@ -325,27 +285,33 @@ adv_post_do_retransmission(bool *const p_flag_connected)
 
     adv_post_log(&g_adv_reports_buf);
 
-    if (!*p_flag_connected)
-    {
-        *p_flag_connected = adv_post_check_is_connected(g_adv_post_nonce);
-        g_adv_post_nonce += 1;
-    }
-    else
-    {
-        *p_flag_connected = adv_post_check_is_disconnected();
-    }
+    adv_post_retransmit_advs(&g_adv_reports_buf, flag_network_connected);
+}
 
-    if (0 != g_adv_reports_buf.num_of_advs)
+static bool
+adv_post_do_send_statistics(void)
+{
+    const mac_address_str_t nrf52_mac_addr = ruuvi_device_id_get_nrf52_mac_address_str();
+
+    adv_report_table_t *p_reports = os_malloc(sizeof(*p_reports));
+    if (NULL == p_reports)
     {
-        if (*p_flag_connected)
-        {
-            adv_post_retransmit_advs(&g_adv_reports_buf, *p_flag_connected);
-        }
-        else
-        {
-            LOG_WARN("Can't send, no network connection");
-        }
+        LOG_ERR("Can't allocate memory for statistics");
+        return false;
     }
+    adv_table_statistics_read(p_reports);
+
+    const bool res = http_send_statistics(
+        nrf52_mac_addr,
+        fw_update_get_cur_version(),
+        g_nrf52_firmware_version,
+        g_uptime_counter,
+        wifi_manager_is_connected_to_wifi(),
+        g_network_disconnect_cnt,
+        p_reports,
+        g_adv_post_nonce);
+    os_free(p_reports);
+    return res;
 }
 
 static void
@@ -362,6 +328,25 @@ adv_post_wdt_add_and_start(void)
 }
 
 static void
+adv_post_task_handle_sig_send_statistics(const bool flag_network_connected)
+{
+    g_adv_post_flag_need_to_send_statistics = true;
+    if (!g_adv_post_flag_retransmission_disabled && gw_cfg_get_http_stat_use_http_stat())
+    {
+        if (!flag_network_connected)
+        {
+            LOG_WARN("Can't send statistics, no network connection");
+        }
+        else
+        {
+            adv_post_do_send_statistics();
+            g_adv_post_flag_need_to_send_statistics = false;
+        }
+        g_adv_post_nonce += 1;
+    }
+}
+
+static void
 adv_post_task(void)
 {
     esp_log_level_set(TAG, ESP_LOG_INFO);
@@ -374,12 +359,13 @@ adv_post_task(void)
 
     LOG_INFO("%s started", __func__);
     os_timer_sig_periodic_start(g_p_adv_post_timer_sig_retransmit);
+    os_timer_sig_periodic_start(g_p_adv_post_timer_sig_send_statistics);
     os_timer_sig_periodic_start(g_p_adv_post_timer_sig_network_watchdog);
 
     adv_post_wdt_add_and_start();
 
-    bool flag_stop      = false;
-    bool flag_connected = false;
+    bool flag_network_connected = false;
+    bool flag_stop              = false;
     while (!flag_stop)
     {
         os_signal_events_t sig_events = { 0 };
@@ -401,11 +387,30 @@ adv_post_task(void)
                     LOG_INFO("Got ADV_POST_SIG_STOP");
                     flag_stop = true;
                     break;
-                case ADV_POST_SIG_RETRANSMIT:
-                    if (gw_cfg_get_mqtt_use_http() && !g_adv_post_flag_retransmission_disabled)
+                case ADV_POST_SIG_NETWORK_DISCONNECTED:
+                    LOG_INFO("Handle event: NETWORK_DISCONNECTED");
+                    flag_network_connected = false;
+                    break;
+                case ADV_POST_SIG_NETWORK_CONNECTED:
+                    LOG_INFO("Handle event: NETWORK_CONNECTED");
+                    flag_network_connected = true;
+                    if (g_adv_post_flag_need_to_send_statistics)
                     {
-                        adv_post_do_retransmission(&flag_connected);
+                        os_timer_sig_periodic_simulate(g_p_adv_post_timer_sig_send_statistics);
+                        os_timer_sig_periodic_restart(
+                            g_p_adv_post_timer_sig_send_statistics,
+                            pdMS_TO_TICKS(ADV_POST_STATISTICS_INTERVAL_SECONDS) * 1000);
                     }
+                    break;
+                case ADV_POST_SIG_RETRANSMIT:
+                    if (!g_adv_post_flag_retransmission_disabled && gw_cfg_get_http_use_http())
+                    {
+                        adv_post_do_retransmission(flag_network_connected);
+                        g_adv_post_nonce += 1;
+                    }
+                    break;
+                case ADV_POST_SIG_SEND_STATISTICS:
+                    adv_post_task_handle_sig_send_statistics(flag_network_connected);
                     break;
                 case ADV_POST_SIG_DISABLE:
                     g_adv_post_flag_retransmission_disabled = true;
@@ -444,6 +449,8 @@ adv_post_task(void)
     esp_task_wdt_delete(xTaskGetCurrentTaskHandle());
     os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_retransmit);
     os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_retransmit);
+    os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_send_statistics);
+    os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_send_statistics);
     os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_network_watchdog);
     os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_network_watchdog);
 
@@ -461,11 +468,32 @@ adv_post_init(void)
 {
     g_p_adv_post_sig = os_signal_create_static(&g_adv_post_sig_mem);
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_STOP));
+    os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_NETWORK_DISCONNECTED));
+    os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_NETWORK_CONNECTED));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT));
+    os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_SEND_STATISTICS));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DISABLE));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_ENABLE));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_NETWORK_WATCHDOG));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_TASK_WATCHDOG_FEED));
+
+    event_mgr_subscribe_sig(
+        EVENT_MGR_EV_WIFI_DISCONNECTED,
+        g_p_adv_post_sig,
+        adv_post_conv_to_sig_num(ADV_POST_SIG_NETWORK_DISCONNECTED));
+    event_mgr_subscribe_sig(
+        EVENT_MGR_EV_ETH_DISCONNECTED,
+        g_p_adv_post_sig,
+        adv_post_conv_to_sig_num(ADV_POST_SIG_NETWORK_DISCONNECTED));
+
+    event_mgr_subscribe_sig(
+        EVENT_MGR_EV_WIFI_CONNECTED,
+        g_p_adv_post_sig,
+        adv_post_conv_to_sig_num(ADV_POST_SIG_NETWORK_CONNECTED));
+    event_mgr_subscribe_sig(
+        EVENT_MGR_EV_ETH_CONNECTED,
+        g_p_adv_post_sig,
+        adv_post_conv_to_sig_num(ADV_POST_SIG_NETWORK_CONNECTED));
 
     g_p_adv_post_timer_sig_retransmit = os_timer_sig_periodic_create_static(
         &g_adv_post_timer_sig_retransmit_mem,
@@ -473,6 +501,13 @@ adv_post_init(void)
         g_p_adv_post_sig,
         adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT),
         pdMS_TO_TICKS(ADV_POST_DEFAULT_INTERVAL_SECONDS * 1000));
+
+    g_p_adv_post_timer_sig_send_statistics = os_timer_sig_periodic_create_static(
+        &g_adv_post_timer_sig_send_statistics_mem,
+        "adv_post_send_status",
+        g_p_adv_post_sig,
+        adv_post_conv_to_sig_num(ADV_POST_SIG_SEND_STATISTICS),
+        pdMS_TO_TICKS(ADV_POST_STATISTICS_INTERVAL_SECONDS) * 1000);
 
     g_p_adv_post_timer_sig_network_watchdog = os_timer_sig_periodic_create_static(
         &g_adv_post_timer_sig_network_watchdog_mem,

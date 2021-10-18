@@ -26,10 +26,18 @@ typedef bool (*http_download_cb_on_data_t)(
     void *                 p_user_data);
 
 bool
-http_send(const char *const p_msg);
+http_send_advs(const adv_report_table_t *const p_reports, const uint32_t nonce);
 
 bool
-http_send_advs(const adv_report_table_t *const p_reports, const uint32_t nonce);
+http_send_statistics(
+    const mac_address_str_t         nrf52_mac_addr,
+    const char *const               p_esp_fw,
+    const char *const               p_nrf_fw,
+    const uint32_t                  uptime,
+    const bool                      is_connected_to_wifi,
+    const uint32_t                  network_disconnect_cnt,
+    const adv_report_table_t *const p_reports,
+    const uint32_t                  nonce);
 
 bool
 http_download(

@@ -96,9 +96,13 @@ gw_cfg_print_to_log(const ruuvi_gateway_config_t *const p_config)
     LOG_INFO("config: mqtt user: %s", p_config->mqtt.mqtt_user);
     LOG_INFO("config: mqtt password: %s", "********");
     LOG_INFO("config: use http: %d", p_config->http.use_http);
-    LOG_INFO("config: http url: %s", p_config->http.http_url);
-    LOG_INFO("config: http user: %s", p_config->http.http_user);
+    LOG_INFO("config: http url: %s", p_config->http.http_url.buf);
+    LOG_INFO("config: http user: %s", p_config->http.http_user.buf);
     LOG_INFO("config: http pass: %s", "********");
+    LOG_INFO("config: use http_stat: %d", p_config->http_stat.use_http_stat);
+    LOG_INFO("config: http_stat url: %s", p_config->http_stat.http_stat_url.buf);
+    LOG_INFO("config: http_stat user: %s", p_config->http_stat.http_stat_user.buf);
+    LOG_INFO("config: http_stat pass: %s", "********");
     LOG_INFO("config: LAN auth type: %s", p_config->lan_auth.lan_auth_type);
     LOG_INFO("config: LAN auth user: %s", p_config->lan_auth.lan_auth_user);
     LOG_INFO("config: LAN auth pass: %s", "********");
@@ -186,10 +190,19 @@ gw_cfg_get_mqtt_use_mqtt(void)
 }
 
 bool
-gw_cfg_get_mqtt_use_http(void)
+gw_cfg_get_http_use_http(void)
 {
     const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
     const bool                    use_http = p_gw_cfg->http.use_http;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    return use_http;
+}
+
+bool
+gw_cfg_get_http_stat_use_http_stat(void)
+{
+    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
+    const bool                    use_http = p_gw_cfg->http_stat.use_http_stat;
     gw_cfg_unlock_ro(&p_gw_cfg);
     return use_http;
 }

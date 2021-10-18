@@ -16,6 +16,7 @@ extern "C" {
 #endif
 
 extern volatile uint32_t g_cnt_cfg_button_pressed;
+extern volatile uint32_t g_uptime_counter;
 
 bool
 reset_task_init(void);

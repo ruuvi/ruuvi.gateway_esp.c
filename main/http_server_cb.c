@@ -458,7 +458,7 @@ http_server_read_history(
     const ruuvi_gw_cfg_coordinates_t coordinates = gw_cfg_get_coordinates();
 
     const bool res
-        = http_create_json_str(p_reports, cur_time, &g_gw_mac_sta_str, coordinates.buf, false, 0, p_json_str);
+        = http_json_create_records_str(p_reports, cur_time, &g_gw_mac_sta_str, coordinates.buf, false, 0, p_json_str);
 
     os_free(p_reports);
     return res;
