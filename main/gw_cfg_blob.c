@@ -33,16 +33,24 @@ gw_cfg_blob_convert(ruuvi_gateway_config_t *const p_cfg_dst, const ruuvi_gateway
 
     p_cfg_dst->mqtt.use_mqtt                = p_cfg_src->mqtt.use_mqtt;
     p_cfg_dst->mqtt.mqtt_use_default_prefix = p_cfg_src->mqtt.mqtt_use_default_prefix;
-    snprintf(p_cfg_dst->mqtt.mqtt_server, sizeof(p_cfg_dst->mqtt.mqtt_server), "%s", p_cfg_src->mqtt.mqtt_server);
-    p_cfg_dst->mqtt.mqtt_port = p_cfg_src->mqtt.mqtt_port;
-    snprintf(p_cfg_dst->mqtt.mqtt_prefix, sizeof(p_cfg_dst->mqtt.mqtt_prefix), "%s", p_cfg_src->mqtt.mqtt_prefix);
     snprintf(
-        p_cfg_dst->mqtt.mqtt_client_id,
-        sizeof(p_cfg_dst->mqtt.mqtt_client_id),
+        p_cfg_dst->mqtt.mqtt_server.buf,
+        sizeof(p_cfg_dst->mqtt.mqtt_server.buf),
+        "%s",
+        p_cfg_src->mqtt.mqtt_server);
+    p_cfg_dst->mqtt.mqtt_port = p_cfg_src->mqtt.mqtt_port;
+    snprintf(
+        p_cfg_dst->mqtt.mqtt_prefix.buf,
+        sizeof(p_cfg_dst->mqtt.mqtt_prefix.buf),
+        "%s",
+        p_cfg_src->mqtt.mqtt_prefix);
+    snprintf(
+        p_cfg_dst->mqtt.mqtt_client_id.buf,
+        sizeof(p_cfg_dst->mqtt.mqtt_client_id.buf),
         "%s",
         p_cfg_src->mqtt.mqtt_client_id);
-    snprintf(p_cfg_dst->mqtt.mqtt_user, sizeof(p_cfg_dst->mqtt.mqtt_user), "%s", p_cfg_src->mqtt.mqtt_user);
-    snprintf(p_cfg_dst->mqtt.mqtt_pass, sizeof(p_cfg_dst->mqtt.mqtt_pass), "%s", p_cfg_src->mqtt.mqtt_pass);
+    snprintf(p_cfg_dst->mqtt.mqtt_user.buf, sizeof(p_cfg_dst->mqtt.mqtt_user), "%s", p_cfg_src->mqtt.mqtt_user);
+    snprintf(p_cfg_dst->mqtt.mqtt_pass.buf, sizeof(p_cfg_dst->mqtt.mqtt_pass), "%s", p_cfg_src->mqtt.mqtt_pass);
 
     p_cfg_dst->http.use_http = p_cfg_src->http.use_http;
     snprintf(p_cfg_dst->http.http_url.buf, sizeof(p_cfg_dst->http.http_url.buf), "%s", p_cfg_src->http.http_url);

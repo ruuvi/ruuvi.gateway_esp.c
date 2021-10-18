@@ -184,39 +184,39 @@ json_ruuvi_parse(const cJSON *p_json_root, ruuvi_gateway_config_t *const p_gw_cf
         json_ruuvi_copy_string_val(
             p_json_root,
             "mqtt_transport",
-            p_gw_cfg->mqtt.mqtt_transport,
+            p_gw_cfg->mqtt.mqtt_transport.buf,
             sizeof(p_gw_cfg->mqtt.mqtt_transport),
             true);
         json_ruuvi_copy_string_val(
             p_json_root,
             "mqtt_server",
-            p_gw_cfg->mqtt.mqtt_server,
+            p_gw_cfg->mqtt.mqtt_server.buf,
             sizeof(p_gw_cfg->mqtt.mqtt_server),
             true);
         json_ruuvi_copy_string_val(
             p_json_root,
             "mqtt_prefix",
-            p_gw_cfg->mqtt.mqtt_prefix,
+            p_gw_cfg->mqtt.mqtt_prefix.buf,
             sizeof(p_gw_cfg->mqtt.mqtt_prefix),
             true);
         json_ruuvi_copy_string_val(
             p_json_root,
             "mqtt_client_id",
-            p_gw_cfg->mqtt.mqtt_client_id,
-            sizeof(p_gw_cfg->mqtt.mqtt_client_id),
+            p_gw_cfg->mqtt.mqtt_client_id.buf,
+            sizeof(p_gw_cfg->mqtt.mqtt_client_id.buf),
             true);
         json_ruuvi_get_uint16_val(p_json_root, "mqtt_port", &p_gw_cfg->mqtt.mqtt_port, true);
         json_ruuvi_copy_string_val(
             p_json_root,
             "mqtt_user",
-            p_gw_cfg->mqtt.mqtt_user,
-            sizeof(p_gw_cfg->mqtt.mqtt_user),
+            p_gw_cfg->mqtt.mqtt_user.buf,
+            sizeof(p_gw_cfg->mqtt.mqtt_user.buf),
             true);
         if (!json_ruuvi_copy_string_val(
                 p_json_root,
                 "mqtt_pass",
-                p_gw_cfg->mqtt.mqtt_pass,
-                sizeof(p_gw_cfg->mqtt.mqtt_pass),
+                p_gw_cfg->mqtt.mqtt_pass.buf,
+                sizeof(p_gw_cfg->mqtt.mqtt_pass.buf),
                 false))
         {
             LOG_WARN("mqtt_pass not found or not changed");

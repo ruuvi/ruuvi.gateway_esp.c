@@ -138,13 +138,13 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_1) // NOLINT
 
     ASSERT_EQ(false, gw_cfg.mqtt.use_mqtt);
     ASSERT_EQ(true, gw_cfg.mqtt.mqtt_use_default_prefix);
-    ASSERT_EQ(string("TCP"), gw_cfg.mqtt.mqtt_transport);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_server);
+    ASSERT_EQ(string("TCP"), gw_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(0, gw_cfg.mqtt.mqtt_port);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_prefix);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_client_id);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_user);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_pass);
+    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_prefix.buf);
+    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_client_id.buf);
+    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_user.buf);
+    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_pass.buf);
 
     ASSERT_EQ(true, gw_cfg.http.use_http);
     ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_DEFAULT_URL), gw_cfg.http.http_url.buf);
@@ -249,13 +249,13 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_2) // NOLINT
 
     ASSERT_EQ(true, gw_cfg.mqtt.use_mqtt);
     ASSERT_EQ(false, gw_cfg.mqtt.mqtt_use_default_prefix);
-    ASSERT_EQ(string("TCP"), gw_cfg.mqtt.mqtt_transport);
-    ASSERT_EQ(string("test.mosquitto.org"), gw_cfg.mqtt.mqtt_server);
+    ASSERT_EQ(string("TCP"), gw_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(string("test.mosquitto.org"), gw_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(1883, gw_cfg.mqtt.mqtt_port);
-    ASSERT_EQ(string("prefix1"), gw_cfg.mqtt.mqtt_prefix);
-    ASSERT_EQ(string("my_client"), gw_cfg.mqtt.mqtt_client_id);
-    ASSERT_EQ(string("m_user1"), gw_cfg.mqtt.mqtt_user);
-    ASSERT_EQ(string("m_pass1"), gw_cfg.mqtt.mqtt_pass);
+    ASSERT_EQ(string("prefix1"), gw_cfg.mqtt.mqtt_prefix.buf);
+    ASSERT_EQ(string("my_client"), gw_cfg.mqtt.mqtt_client_id.buf);
+    ASSERT_EQ(string("m_user1"), gw_cfg.mqtt.mqtt_user.buf);
+    ASSERT_EQ(string("m_pass1"), gw_cfg.mqtt.mqtt_pass.buf);
 
     ASSERT_EQ(false, gw_cfg.http.use_http);
     ASSERT_EQ(string("https://myserver.com/record"), gw_cfg.http.http_url.buf);
@@ -360,13 +360,13 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_with_incorrect_header) // NOLINT
 
     ASSERT_EQ(false, gw_cfg.mqtt.use_mqtt);
     ASSERT_EQ(true, gw_cfg.mqtt.mqtt_use_default_prefix);
-    ASSERT_EQ(string("TCP"), gw_cfg.mqtt.mqtt_transport);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_server);
+    ASSERT_EQ(string("TCP"), gw_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(0, gw_cfg.mqtt.mqtt_port);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_prefix);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_client_id);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_user);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_pass);
+    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_prefix.buf);
+    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_client_id.buf);
+    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_user.buf);
+    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_pass.buf);
 
     ASSERT_EQ(true, gw_cfg.http.use_http);
     ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_DEFAULT_URL), gw_cfg.http.http_url.buf);
@@ -471,13 +471,13 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_with_incorrect_fmt_version) // NO
 
     ASSERT_EQ(false, gw_cfg.mqtt.use_mqtt);
     ASSERT_EQ(true, gw_cfg.mqtt.mqtt_use_default_prefix);
-    ASSERT_EQ(string("TCP"), gw_cfg.mqtt.mqtt_transport);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_server);
+    ASSERT_EQ(string("TCP"), gw_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(0, gw_cfg.mqtt.mqtt_port);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_prefix);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_client_id);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_user);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_pass);
+    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_prefix.buf);
+    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_client_id.buf);
+    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_user.buf);
+    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_pass.buf);
 
     ASSERT_EQ(true, gw_cfg.http.use_http);
     ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_DEFAULT_URL), gw_cfg.http.http_url.buf);

@@ -60,17 +60,47 @@ typedef struct ruuvi_gw_cfg_eth_t
 #define MQTT_TRANSPORT_WS  "WS"
 #define MQTT_TRANSPORT_WSS "WSS"
 
+typedef struct ruuvi_gw_cfg_mqtt_transport_t
+{
+    char buf[MAX_MQTT_TRANSPORT_LEN];
+} ruuvi_gw_cfg_mqtt_transport_t;
+
+typedef struct ruuvi_gw_cfg_mqtt_server_t
+{
+    char buf[MAX_MQTT_SERVER_LEN];
+} ruuvi_gw_cfg_mqtt_server_t;
+
+typedef struct ruuvi_gw_cfg_mqtt_prefix_t
+{
+    char buf[MAX_MQTT_PREFIX_LEN];
+} ruuvi_gw_cfg_mqtt_prefix_t;
+
+typedef struct ruuvi_gw_cfg_mqtt_client_id_t
+{
+    char buf[MAX_MQTT_CLIENT_ID_LEN];
+} ruuvi_gw_cfg_mqtt_client_id_t;
+
+typedef struct ruuvi_gw_cfg_mqtt_user_t
+{
+    char buf[MAX_MQTT_USER_LEN];
+} ruuvi_gw_cfg_mqtt_user_t;
+
+typedef struct ruuvi_gw_cfg_mqtt_password_t
+{
+    char buf[MAX_MQTT_PASS_LEN];
+} ruuvi_gw_cfg_mqtt_password_t;
+
 typedef struct ruuvi_gw_cfg_mqtt_t
 {
-    bool     use_mqtt;
-    bool     mqtt_use_default_prefix;
-    char     mqtt_transport[MAX_MQTT_TRANSPORT_LEN];
-    char     mqtt_server[MAX_MQTT_SERVER_LEN];
-    uint16_t mqtt_port;
-    char     mqtt_prefix[MAX_MQTT_PREFIX_LEN];
-    char     mqtt_client_id[MAX_MQTT_CLIENT_ID_LEN];
-    char     mqtt_user[MAX_MQTT_USER_LEN];
-    char     mqtt_pass[MAX_MQTT_PASS_LEN];
+    bool                          use_mqtt;
+    bool                          mqtt_use_default_prefix;
+    ruuvi_gw_cfg_mqtt_transport_t mqtt_transport;
+    ruuvi_gw_cfg_mqtt_server_t    mqtt_server;
+    uint16_t                      mqtt_port;
+    ruuvi_gw_cfg_mqtt_prefix_t    mqtt_prefix;
+    ruuvi_gw_cfg_mqtt_client_id_t mqtt_client_id;
+    ruuvi_gw_cfg_mqtt_user_t      mqtt_user;
+    ruuvi_gw_cfg_mqtt_password_t  mqtt_pass;
 } ruuvi_gw_cfg_mqtt_t;
 
 typedef struct ruuvi_gw_cfg_http_url_t
@@ -212,6 +242,9 @@ gw_cfg_get_http_use_http(void);
 
 bool
 gw_cfg_get_http_stat_use_http_stat(void);
+
+ruuvi_gw_cfg_mqtt_prefix_t
+gw_cfg_get_mqtt_prefix(void);
 
 auto_update_cycle_type_e
 gw_cfg_get_auto_update_cycle(void);

@@ -92,11 +92,11 @@ gw_cfg_json_add_items_mqtt(cJSON *const p_json_root, const ruuvi_gateway_config_
     {
         return false;
     }
-    if (!gw_cfg_json_add_string(p_json_root, "mqtt_transport", p_cfg->mqtt.mqtt_transport))
+    if (!gw_cfg_json_add_string(p_json_root, "mqtt_transport", p_cfg->mqtt.mqtt_transport.buf))
     {
         return false;
     }
-    if (!gw_cfg_json_add_string(p_json_root, "mqtt_server", p_cfg->mqtt.mqtt_server))
+    if (!gw_cfg_json_add_string(p_json_root, "mqtt_server", p_cfg->mqtt.mqtt_server.buf))
     {
         return false;
     }
@@ -104,19 +104,19 @@ gw_cfg_json_add_items_mqtt(cJSON *const p_json_root, const ruuvi_gateway_config_
     {
         return false;
     }
-    if (!gw_cfg_json_add_string(p_json_root, "mqtt_prefix", p_cfg->mqtt.mqtt_prefix))
+    if (!gw_cfg_json_add_string(p_json_root, "mqtt_prefix", p_cfg->mqtt.mqtt_prefix.buf))
     {
         return false;
     }
-    if (!gw_cfg_json_add_string(p_json_root, "mqtt_client_id", p_cfg->mqtt.mqtt_client_id))
+    if (!gw_cfg_json_add_string(p_json_root, "mqtt_client_id", p_cfg->mqtt.mqtt_client_id.buf))
     {
         return false;
     }
-    if (!gw_cfg_json_add_string(p_json_root, "mqtt_user", p_cfg->mqtt.mqtt_user))
+    if (!gw_cfg_json_add_string(p_json_root, "mqtt_user", p_cfg->mqtt.mqtt_user.buf))
     {
         return false;
     }
-    if (!gw_cfg_json_add_string(p_json_root, "mqtt_pass", p_cfg->mqtt.mqtt_pass))
+    if (!gw_cfg_json_add_string(p_json_root, "mqtt_pass", p_cfg->mqtt.mqtt_pass.buf))
     {
         return false;
     }
@@ -397,16 +397,16 @@ gw_cfg_json_parse_mqtt(const cJSON *const p_json_root, ruuvi_gw_cfg_mqtt_t *cons
     if (!json_wrap_copy_string_val(
             p_json_root,
             "mqtt_transport",
-            &p_gw_cfg_mqtt->mqtt_transport[0],
-            sizeof(p_gw_cfg_mqtt->mqtt_transport)))
+            &p_gw_cfg_mqtt->mqtt_transport.buf[0],
+            sizeof(p_gw_cfg_mqtt->mqtt_transport.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "mqtt_transport");
     }
     if (!json_wrap_copy_string_val(
             p_json_root,
             "mqtt_server",
-            &p_gw_cfg_mqtt->mqtt_server[0],
-            sizeof(p_gw_cfg_mqtt->mqtt_server)))
+            &p_gw_cfg_mqtt->mqtt_server.buf[0],
+            sizeof(p_gw_cfg_mqtt->mqtt_server.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "mqtt_server");
     }
@@ -417,32 +417,32 @@ gw_cfg_json_parse_mqtt(const cJSON *const p_json_root, ruuvi_gw_cfg_mqtt_t *cons
     if (!json_wrap_copy_string_val(
             p_json_root,
             "mqtt_prefix",
-            &p_gw_cfg_mqtt->mqtt_prefix[0],
-            sizeof(p_gw_cfg_mqtt->mqtt_prefix)))
+            &p_gw_cfg_mqtt->mqtt_prefix.buf[0],
+            sizeof(p_gw_cfg_mqtt->mqtt_prefix.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "mqtt_prefix");
     }
     if (!json_wrap_copy_string_val(
             p_json_root,
             "mqtt_client_id",
-            &p_gw_cfg_mqtt->mqtt_client_id[0],
-            sizeof(p_gw_cfg_mqtt->mqtt_client_id)))
+            &p_gw_cfg_mqtt->mqtt_client_id.buf[0],
+            sizeof(p_gw_cfg_mqtt->mqtt_client_id.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "mqtt_client_id");
     }
     if (!json_wrap_copy_string_val(
             p_json_root,
             "mqtt_user",
-            &p_gw_cfg_mqtt->mqtt_user[0],
-            sizeof(p_gw_cfg_mqtt->mqtt_user)))
+            &p_gw_cfg_mqtt->mqtt_user.buf[0],
+            sizeof(p_gw_cfg_mqtt->mqtt_user.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "mqtt_user");
     }
     if (!json_wrap_copy_string_val(
             p_json_root,
             "mqtt_pass",
-            &p_gw_cfg_mqtt->mqtt_pass[0],
-            sizeof(p_gw_cfg_mqtt->mqtt_pass)))
+            &p_gw_cfg_mqtt->mqtt_pass.buf[0],
+            sizeof(p_gw_cfg_mqtt->mqtt_pass.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "mqtt_pass");
     }

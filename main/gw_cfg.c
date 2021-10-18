@@ -87,13 +87,13 @@ gw_cfg_print_to_log(const ruuvi_gateway_config_t *const p_config)
     LOG_INFO("config: eth dns1: %s", p_config->eth.eth_dns1);
     LOG_INFO("config: eth dns2: %s", p_config->eth.eth_dns2);
     LOG_INFO("config: use mqtt: %d", p_config->mqtt.use_mqtt);
-    LOG_INFO("config: mqtt transport: %s", p_config->mqtt.mqtt_transport);
-    LOG_INFO("config: mqtt server: %s", p_config->mqtt.mqtt_server);
+    LOG_INFO("config: mqtt transport: %s", p_config->mqtt.mqtt_transport.buf);
+    LOG_INFO("config: mqtt server: %s", p_config->mqtt.mqtt_server.buf);
     LOG_INFO("config: mqtt port: %u", p_config->mqtt.mqtt_port);
     LOG_INFO("config: mqtt use default prefix: %d", p_config->mqtt.mqtt_use_default_prefix);
-    LOG_INFO("config: mqtt prefix: %s", p_config->mqtt.mqtt_prefix);
-    LOG_INFO("config: mqtt client id: %s", p_config->mqtt.mqtt_client_id);
-    LOG_INFO("config: mqtt user: %s", p_config->mqtt.mqtt_user);
+    LOG_INFO("config: mqtt prefix: %s", p_config->mqtt.mqtt_prefix.buf);
+    LOG_INFO("config: mqtt client id: %s", p_config->mqtt.mqtt_client_id.buf);
+    LOG_INFO("config: mqtt user: %s", p_config->mqtt.mqtt_user.buf);
     LOG_INFO("config: mqtt password: %s", "********");
     LOG_INFO("config: use http: %d", p_config->http.use_http);
     LOG_INFO("config: http url: %s", p_config->http.http_url.buf);
@@ -205,6 +205,15 @@ gw_cfg_get_http_stat_use_http_stat(void)
     const bool                    use_http = p_gw_cfg->http_stat.use_http_stat;
     gw_cfg_unlock_ro(&p_gw_cfg);
     return use_http;
+}
+
+ruuvi_gw_cfg_mqtt_prefix_t
+gw_cfg_get_mqtt_prefix(void)
+{
+    const ruuvi_gateway_config_t *   p_gw_cfg    = gw_cfg_lock_ro();
+    const ruuvi_gw_cfg_mqtt_prefix_t mqtt_prefix = p_gw_cfg->mqtt.mqtt_prefix;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    return mqtt_prefix;
 }
 
 auto_update_cycle_type_e
