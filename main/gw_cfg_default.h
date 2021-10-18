@@ -16,6 +16,7 @@ extern "C" {
 #endif
 
 #define RUUVI_GATEWAY_HTTP_DEFAULT_URL "https://network.ruuvi.com/record"
+#define RUUVI_GATEWAY_HTTP_STATUS_URL  "https://network.ruuvi.com/status"
 
 #define RUUVI_GATEWAY_AUTH_DEFAULT_USER               "Admin"
 #define RUUVI_GATEWAY_AUTH_DEFAULT_PASS_USE_DEVICE_ID "\xff"

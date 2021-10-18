@@ -30,9 +30,15 @@ const ruuvi_gateway_config_t g_gateway_config_default = {
         },
         .http = {
             .use_http = true,
-            .http_url = { RUUVI_GATEWAY_HTTP_DEFAULT_URL },
-            .http_user = { 0 },
-            .http_pass = { 0 },
+            .http_url = { { RUUVI_GATEWAY_HTTP_DEFAULT_URL } },
+            .http_user = {{ 0 } },
+            .http_pass = {{ 0 } },
+        },
+        .http_stat = {
+            .use_http_stat = true,
+            .http_stat_url = {{ RUUVI_GATEWAY_HTTP_STATUS_URL }},
+            .http_stat_user = {{ 0 }},
+            .http_stat_pass = {{ 0 }},
         },
         .lan_auth = {
             .lan_auth_type = { HTTP_SERVER_AUTH_TYPE_STR_RUUVI },

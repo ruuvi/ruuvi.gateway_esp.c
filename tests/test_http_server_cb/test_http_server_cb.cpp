@@ -565,6 +565,10 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
           "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
           "\",\n"
           "\t\"http_user\":\t\"\",\n"
+          "\t\"use_http_stat\":\ttrue,\n"
+          "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL
+          "\",\n"
+          "\t\"http_stat_user\":\t\"\",\n"
           "\t\"use_mqtt\":\ttrue,\n"
           "\t\"mqtt_transport\":\t\"TCP\",\n"
           "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
@@ -592,29 +596,33 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
           "}";
     bool                   flag_network_cfg = false;
     ruuvi_gateway_config_t gw_cfg           = g_gateway_config_default;
-    ASSERT_TRUE(json_ruuvi_parse_http_body(
-        "{"
-        "\"use_mqtt\":true,"
-        "\"mqtt_server\":\"test.mosquitto.org\","
-        "\"mqtt_port\":1883,"
-        "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
-        "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
-        "\"mqtt_user\":\"\","
-        "\"mqtt_pass\":\"\","
-        "\"use_http\":false,"
-        "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
-        "\","
-        "\"http_user\":\"\","
-        "\"http_pass\":\"\","
-        "\"auto_update_cycle\":\"regular\","
-        "\"auto_update_weekdays_bitmask\":127,"
-        "\"auto_update_interval_from\":0,"
-        "\"auto_update_interval_to\":24,"
-        "\"auto_update_tz_offset_hours\":3,"
-        "\"use_filtering\":true"
-        "}",
-        &gw_cfg,
-        &flag_network_cfg));
+    ASSERT_TRUE(
+        json_ruuvi_parse_http_body(
+            "{"
+            "\"use_mqtt\":true,"
+            "\"mqtt_server\":\"test.mosquitto.org\","
+            "\"mqtt_port\":1883,"
+            "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
+            "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
+            "\"mqtt_user\":\"\","
+            "\"mqtt_pass\":\"\","
+            "\"use_http\":false,"
+            "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\","
+            "\"http_user\":\"\","
+            "\"http_pass\":\"\","
+            "\"use_http_stat\":true,"
+            "\"http_stat_url\":\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\","
+            "\"http_stat_user\":\"\","
+            "\"http_stat_pass\":\"\","
+            "\"auto_update_cycle\":\"regular\","
+            "\"auto_update_weekdays_bitmask\":127,"
+            "\"auto_update_interval_from\":0,"
+            "\"auto_update_interval_to\":24,"
+            "\"auto_update_tz_offset_hours\":3,"
+            "\"use_filtering\":true"
+            "}",
+            &gw_cfg,
+            &flag_network_cfg));
     gw_cfg_update(&gw_cfg, false);
     ASSERT_FALSE(flag_network_cfg);
     snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
@@ -639,24 +647,28 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed) // NOLINT
 {
     bool                   flag_network_cfg = false;
     ruuvi_gateway_config_t gw_cfg           = g_gateway_config_default;
-    ASSERT_TRUE(json_ruuvi_parse_http_body(
-        "{"
-        "\"use_mqtt\":true,"
-        "\"mqtt_server\":\"test.mosquitto.org\","
-        "\"mqtt_port\":1883,"
-        "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
-        "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
-        "\"mqtt_user\":\"\","
-        "\"mqtt_pass\":\"\","
-        "\"use_http\":false,"
-        "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
-        "\","
-        "\"http_user\":\"\","
-        "\"http_pass\":\"\","
-        "\"use_filtering\":true"
-        "}",
-        &gw_cfg,
-        &flag_network_cfg));
+    ASSERT_TRUE(
+        json_ruuvi_parse_http_body(
+            "{"
+            "\"use_mqtt\":true,"
+            "\"mqtt_server\":\"test.mosquitto.org\","
+            "\"mqtt_port\":1883,"
+            "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
+            "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
+            "\"mqtt_user\":\"\","
+            "\"mqtt_pass\":\"\","
+            "\"use_http\":false,"
+            "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\","
+            "\"http_user\":\"\","
+            "\"http_pass\":\"\","
+            "\"use_http_stat\":false,"
+            "\"http_stat_url\":\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\","
+            "\"http_stat_user\":\"\","
+            "\"http_stat_pass\":\"\","
+            "\"use_filtering\":true"
+            "}",
+            &gw_cfg,
+            &flag_network_cfg));
     ASSERT_FALSE(flag_network_cfg);
     gw_cfg_update(&gw_cfg, false);
     snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
@@ -699,6 +711,10 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
           "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
           "\",\n"
           "\t\"http_user\":\t\"\",\n"
+          "\t\"use_http_stat\":\ttrue,\n"
+          "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL
+          "\",\n"
+          "\t\"http_stat_user\":\t\"\",\n"
           "\t\"use_mqtt\":\ttrue,\n"
           "\t\"mqtt_transport\":\t\"TCP\",\n"
           "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
@@ -726,29 +742,33 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
           "}";
     bool                   flag_network_cfg = false;
     ruuvi_gateway_config_t gw_cfg           = g_gateway_config_default;
-    ASSERT_TRUE(json_ruuvi_parse_http_body(
-        "{"
-        "\"use_mqtt\":true,"
-        "\"mqtt_server\":\"test.mosquitto.org\","
-        "\"mqtt_port\":1883,"
-        "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
-        "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
-        "\"mqtt_user\":\"\","
-        "\"mqtt_pass\":\"\","
-        "\"use_http\":false,"
-        "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
-        "\","
-        "\"http_user\":\"\","
-        "\"http_pass\":\"\","
-        "\"auto_update_cycle\":\"beta\","
-        "\"auto_update_weekdays_bitmask\":126,"
-        "\"auto_update_interval_from\":1,"
-        "\"auto_update_interval_to\":23,"
-        "\"auto_update_tz_offset_hours\":-3,"
-        "\"use_filtering\":true"
-        "}",
-        &gw_cfg,
-        &flag_network_cfg));
+    ASSERT_TRUE(
+        json_ruuvi_parse_http_body(
+            "{"
+            "\"use_mqtt\":true,"
+            "\"mqtt_server\":\"test.mosquitto.org\","
+            "\"mqtt_port\":1883,"
+            "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
+            "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
+            "\"mqtt_user\":\"\","
+            "\"mqtt_pass\":\"\","
+            "\"use_http\":false,"
+            "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\","
+            "\"http_user\":\"\","
+            "\"http_pass\":\"\","
+            "\"use_http_stat\":true,"
+            "\"http_stat_url\":\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\","
+            "\"http_stat_user\":\"\","
+            "\"http_stat_pass\":\"\","
+            "\"auto_update_cycle\":\"beta\","
+            "\"auto_update_weekdays_bitmask\":126,"
+            "\"auto_update_interval_from\":1,"
+            "\"auto_update_interval_to\":23,"
+            "\"auto_update_tz_offset_hours\":-3,"
+            "\"use_filtering\":true"
+            "}",
+            &gw_cfg,
+            &flag_network_cfg));
     ASSERT_FALSE(flag_network_cfg);
     gw_cfg_update(&gw_cfg, false);
     snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
@@ -1122,6 +1142,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
           "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
           "\",\n"
           "\t\"http_user\":\t\"\",\n"
+          "\t\"use_http_stat\":\ttrue,\n"
+          "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL
+          "\",\n"
+          "\t\"http_stat_user\":\t\"\",\n"
           "\t\"use_mqtt\":\ttrue,\n"
           "\t\"mqtt_transport\":\t\"TCP\",\n"
           "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
@@ -1149,24 +1173,28 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
           "}";
     bool                   flag_network_cfg = false;
     ruuvi_gateway_config_t gw_cfg           = g_gateway_config_default;
-    ASSERT_TRUE(json_ruuvi_parse_http_body(
-        "{"
-        "\"use_mqtt\":true,"
-        "\"mqtt_server\":\"test.mosquitto.org\","
-        "\"mqtt_port\":1883,"
-        "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
-        "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
-        "\"mqtt_user\":\"\","
-        "\"mqtt_pass\":\"\","
-        "\"use_http\":false,"
-        "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
-        "\","
-        "\"http_user\":\"\","
-        "\"http_pass\":\"\","
-        "\"use_filtering\":true"
-        "}",
-        &gw_cfg,
-        &flag_network_cfg));
+    ASSERT_TRUE(
+        json_ruuvi_parse_http_body(
+            "{"
+            "\"use_mqtt\":true,"
+            "\"mqtt_server\":\"test.mosquitto.org\","
+            "\"mqtt_port\":1883,"
+            "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
+            "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
+            "\"mqtt_user\":\"\","
+            "\"mqtt_pass\":\"\","
+            "\"use_http\":false,"
+            "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\","
+            "\"http_user\":\"\","
+            "\"http_pass\":\"\","
+            "\"use_http_stat\":true,"
+            "\"http_stat_url\":\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\","
+            "\"http_stat_user\":\"\","
+            "\"http_stat_pass\":\"\","
+            "\"use_filtering\":true"
+            "}",
+            &gw_cfg,
+            &flag_network_cfg));
     ASSERT_FALSE(flag_network_cfg);
     gw_cfg_update(&gw_cfg, false);
     snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
@@ -1300,6 +1328,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
         "\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
+        "\"use_http_stat\":true,"
+        "\"http_stat_url\":\"" RUUVI_GATEWAY_HTTP_STATUS_URL
+        "\","
+        "\"http_stat_user\":\"\","
+        "\"http_stat_pass\":\"\","
         "\"use_filtering\":true"
         "}");
 
@@ -1330,6 +1363,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_user: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_pass: ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_http_stat: 1");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_stat_user: ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_stat_pass: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_type not found");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, "Use previous LAN auth settings");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_cycle not found");
@@ -1367,6 +1404,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http user: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http pass: ********"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http_stat: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat user: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat pass: ********"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_ruuvi"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth user: Admin"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
@@ -1407,6 +1448,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed1) // NOLINT
         "\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
+        "\"use_http_stat\":true,"
+        "\"http_stat_url\":\"" RUUVI_GATEWAY_HTTP_STATUS_URL
+        "\","
+        "\"http_stat_user\":\"\","
+        "\"http_stat_pass\":\"\","
         "\"use_filtering\":true"
         "}");
 
@@ -1444,6 +1490,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed2) // NOLINT
         "\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
+        "\"use_http_stat\":true,"
+        "\"http_stat_url\":\"" RUUVI_GATEWAY_HTTP_STATUS_URL
+        "\","
+        "\"http_stat_user\":\"\","
+        "\"http_stat_pass\":\"\","
         "\"use_filtering\":true"
         "}");
 
@@ -1494,6 +1545,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
         "\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
+        "\"use_http_stat\":true,"
+        "\"http_stat_url\":\"" RUUVI_GATEWAY_HTTP_STATUS_URL
+        "\","
+        "\"http_stat_user\":\"\","
+        "\"http_stat_pass\":\"\","
         "\"use_filtering\":true"
         "}");
 
@@ -1524,6 +1580,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_user: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_pass: ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_http_stat: 1");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_stat_user: ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_stat_pass: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_type not found");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, "Use previous LAN auth settings");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_cycle not found");
@@ -1561,6 +1621,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http user: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http pass: ********"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http_stat: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat user: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat pass: ********"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_ruuvi"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth user: user1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
@@ -1612,6 +1676,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
         "\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
+        "\"use_http_stat\":true,"
+        "\"http_stat_url\":\"" RUUVI_GATEWAY_HTTP_STATUS_URL
+        "\","
+        "\"http_stat_user\":\"\","
+        "\"http_stat_pass\":\"\","
         "\"lan_auth_type\":\"lan_auth_digest\","
         "\"lan_auth_user\":\"user2\","
         "\"lan_auth_pass\":\"password2\","
@@ -1645,6 +1714,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_user: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_pass: ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_http_stat: 1");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_stat_user: ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_stat_pass: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "lan_auth_type: lan_auth_digest");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "lan_auth_user: user2");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "lan_auth_pass: password2");
@@ -1683,6 +1756,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http user: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http pass: ********"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http_stat: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat user: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat pass: ********"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_digest"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth user: user2"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
@@ -1721,6 +1798,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
         "\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
+        "\"use_http_stat\":true,"
+        "\"http_stat_url\":\"" RUUVI_GATEWAY_HTTP_STATUS_URL
+        "\","
+        "\"http_stat_user\":\"\","
+        "\"http_stat_pass\":\"\","
         "\"use_filtering\":true"
         "}");
 
@@ -1751,6 +1833,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_user: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_pass: ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "use_http_stat: 1");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_stat_user: ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "http_stat_pass: ");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "lan_auth_type not found");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, "Use previous LAN auth settings");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "auto_update_cycle not found");
@@ -1788,6 +1874,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http user: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http pass: ********"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http_stat: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat user: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat pass: ********"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_ruuvi"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth user: Admin"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
@@ -1828,6 +1918,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_unknown_json) // NOLINT
         "\","
         "\"http_user\":\"\","
         "\"http_pass\":\"\","
+        "\"use_http_stat\":true,"
+        "\"http_stat_url\":\"" RUUVI_GATEWAY_HTTP_STATUS_URL
+        "\","
+        "\"http_stat_user\":\"\","
+        "\"http_stat_pass\":\"\","
         "\"use_filtering\":true"
         "}");
 

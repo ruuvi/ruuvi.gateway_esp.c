@@ -45,9 +45,9 @@ gw_cfg_blob_convert(ruuvi_gateway_config_t *const p_cfg_dst, const ruuvi_gateway
     snprintf(p_cfg_dst->mqtt.mqtt_pass, sizeof(p_cfg_dst->mqtt.mqtt_pass), "%s", p_cfg_src->mqtt.mqtt_pass);
 
     p_cfg_dst->http.use_http = p_cfg_src->http.use_http;
-    snprintf(p_cfg_dst->http.http_url, sizeof(p_cfg_dst->http.http_url), "%s", p_cfg_src->http.http_url);
-    snprintf(p_cfg_dst->http.http_user, sizeof(p_cfg_dst->http.http_user), "%s", p_cfg_src->http.http_user);
-    snprintf(p_cfg_dst->http.http_pass, sizeof(p_cfg_dst->http.http_pass), "%s", p_cfg_src->http.http_pass);
+    snprintf(p_cfg_dst->http.http_url.buf, sizeof(p_cfg_dst->http.http_url.buf), "%s", p_cfg_src->http.http_url);
+    snprintf(p_cfg_dst->http.http_user.buf, sizeof(p_cfg_dst->http.http_user.buf), "%s", p_cfg_src->http.http_user);
+    snprintf(p_cfg_dst->http.http_pass.buf, sizeof(p_cfg_dst->http.http_pass.buf), "%s", p_cfg_src->http.http_pass);
 
     snprintf(
         p_cfg_dst->lan_auth.lan_auth_type,

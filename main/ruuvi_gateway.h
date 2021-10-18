@@ -23,7 +23,9 @@ extern "C" {
 
 #define RUUVI_FREE_HEAP_LIM_KIB (10U)
 
-#define ADV_POST_DEFAULT_INTERVAL_SECONDS 10
+#define ADV_POST_DEFAULT_INTERVAL_SECONDS (10)
+
+#define ADV_POST_STATISTICS_INTERVAL_SECONDS (60 * 60)
 
 #define HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO (HTTP_SERVER_USER_REQ_CODE_1)
 
@@ -47,6 +49,7 @@ typedef enum nrf_command_e
 } nrf_command_e;
 
 extern EventGroupHandle_t status_bits;
+extern volatile uint32_t  g_network_disconnect_cnt;
 
 void
 ruuvi_send_nrf_settings(void);

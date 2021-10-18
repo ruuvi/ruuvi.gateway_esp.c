@@ -30,12 +30,14 @@ extern "C" {
 #define ADV_DATA_MAX_LEN (32)
 #define MAX_ADVS_TABLE   (100U)
 
-typedef int8_t  wifi_rssi_t;
-typedef uint8_t ble_data_len_t;
+typedef int8_t   wifi_rssi_t;
+typedef uint8_t  ble_data_len_t;
+typedef uint32_t adv_counter_t;
 
 typedef struct adv_report_t
 {
     time_t            timestamp;
+    adv_counter_t     samples_counter;
     mac_address_bin_t tag_mac;
     wifi_rssi_t       rssi;
     ble_data_len_t    data_len;
@@ -67,6 +69,9 @@ adv_table_history_read(
     adv_report_table_t *const p_reports,
     const time_t              cur_time,
     const uint32_t            time_interval_seconds);
+
+void
+adv_table_statistics_read(adv_report_table_t *const p_reports);
 
 #if RUUVI_TESTS_ADV_TABLE
 

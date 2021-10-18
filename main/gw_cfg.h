@@ -73,13 +73,36 @@ typedef struct ruuvi_gw_cfg_mqtt_t
     char     mqtt_pass[MAX_MQTT_PASS_LEN];
 } ruuvi_gw_cfg_mqtt_t;
 
+typedef struct ruuvi_gw_cfg_http_url_t
+{
+    char buf[MAX_HTTP_URL_LEN];
+} ruuvi_gw_cfg_http_url_t;
+
+typedef struct ruuvi_gw_cfg_http_user_t
+{
+    char buf[MAX_HTTP_USER_LEN];
+} ruuvi_gw_cfg_http_user_t;
+
+typedef struct ruuvi_gw_cfg_http_password_t
+{
+    char buf[MAX_HTTP_PASS_LEN];
+} ruuvi_gw_cfg_http_password_t;
+
 typedef struct ruuvi_gw_cfg_http_t
 {
-    bool use_http;
-    char http_url[MAX_HTTP_URL_LEN];
-    char http_user[MAX_HTTP_USER_LEN];
-    char http_pass[MAX_HTTP_PASS_LEN];
+    bool                         use_http;
+    ruuvi_gw_cfg_http_url_t      http_url;
+    ruuvi_gw_cfg_http_user_t     http_user;
+    ruuvi_gw_cfg_http_password_t http_pass;
 } ruuvi_gw_cfg_http_t;
+
+typedef struct ruuvi_gw_cfg_http_stat_t
+{
+    bool                         use_http_stat;
+    ruuvi_gw_cfg_http_url_t      http_stat_url;
+    ruuvi_gw_cfg_http_user_t     http_stat_user;
+    ruuvi_gw_cfg_http_password_t http_stat_pass;
+} ruuvi_gw_cfg_http_stat_t;
 
 typedef struct ruuvi_gw_cfg_lan_auth_t
 {
@@ -139,6 +162,7 @@ typedef struct ruuvi_gateway_config_t
     ruuvi_gw_cfg_eth_t         eth;
     ruuvi_gw_cfg_mqtt_t        mqtt;
     ruuvi_gw_cfg_http_t        http;
+    ruuvi_gw_cfg_http_stat_t   http_stat;
     ruuvi_gw_cfg_lan_auth_t    lan_auth;
     ruuvi_gw_cfg_auto_update_t auto_update;
     ruuvi_gw_cfg_filter_t      filter;
@@ -184,7 +208,10 @@ bool
 gw_cfg_get_mqtt_use_mqtt(void);
 
 bool
-gw_cfg_get_mqtt_use_http(void);
+gw_cfg_get_http_use_http(void);
+
+bool
+gw_cfg_get_http_stat_use_http_stat(void);
 
 auto_update_cycle_type_e
 gw_cfg_get_auto_update_cycle(void);

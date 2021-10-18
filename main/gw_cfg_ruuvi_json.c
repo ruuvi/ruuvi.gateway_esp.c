@@ -102,11 +102,29 @@ gw_cfg_ruuvi_json_add_items_http(cJSON *p_json_root, const ruuvi_gateway_config_
     {
         return false;
     }
-    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "http_url", p_cfg->http.http_url))
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "http_url", p_cfg->http.http_url.buf))
     {
         return false;
     }
-    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "http_user", p_cfg->http.http_user))
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "http_user", p_cfg->http.http_user.buf))
+    {
+        return false;
+    }
+    return true;
+}
+
+static bool
+gw_cfg_ruuvi_json_add_items_http_stat(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg)
+{
+    if (!gw_cfg_ruuvi_json_add_bool(p_json_root, "use_http_stat", p_cfg->http_stat.use_http_stat))
+    {
+        return false;
+    }
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "http_stat_url", p_cfg->http_stat.http_stat_url.buf))
+    {
+        return false;
+    }
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "http_stat_user", p_cfg->http_stat.http_stat_user.buf))
     {
         return false;
     }
@@ -294,6 +312,10 @@ gw_cfg_ruuvi_json_add_items(
         return false;
     }
     if (!gw_cfg_ruuvi_json_add_items_http(p_json_root, p_cfg))
+    {
+        return false;
+    }
+    if (!gw_cfg_ruuvi_json_add_items_http_stat(p_json_root, p_cfg))
     {
         return false;
     }
