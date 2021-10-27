@@ -33,7 +33,7 @@ extern "C" {
 #define MAX_HTTP_PASS_LEN      51
 #define MAX_MQTT_TRANSPORT_LEN 8
 #define MAX_MQTT_SERVER_LEN    256
-#define MAX_MQTT_PREFIX_LEN    51
+#define MAX_MQTT_PREFIX_LEN    257
 #define MAX_MQTT_USER_LEN      129
 #define MAX_MQTT_PASS_LEN      257
 #define MAX_MQTT_CLIENT_ID_LEN 51
