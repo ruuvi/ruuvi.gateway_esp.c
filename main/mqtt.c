@@ -156,7 +156,7 @@ mqtt_publish_connect(void)
 }
 
 static void
-mqtt_publish_state_offline(mqtt_protected_data_t * const p_mqtt_data)
+mqtt_publish_state_offline(mqtt_protected_data_t *const p_mqtt_data)
 {
     char *p_message = "{\"state\": \"offline\"}";
 
