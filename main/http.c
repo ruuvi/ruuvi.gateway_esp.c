@@ -8,6 +8,7 @@
 #include "http.h"
 #include <string.h>
 #include <time.h>
+#include <errno.h>
 #include <esp_task_wdt.h>
 #include "cJSON.h"
 #include "cjson_wrap.h"
@@ -38,7 +39,25 @@ typedef struct http_download_cb_info_t
     bool                       flag_feed_task_watchdog;
 } http_download_cb_info_t;
 
+typedef struct http_client_config_t
+{
+    esp_http_client_config_t     esp_http_client_config;
+    ruuvi_gw_cfg_http_url_t      http_url;
+    ruuvi_gw_cfg_http_user_t     http_user;
+    ruuvi_gw_cfg_http_password_t http_pass;
+} http_client_config_t;
+
+typedef struct http_async_info_t
+{
+    http_client_config_t     http_client_config;
+    esp_http_client_handle_t p_http_client_handle;
+    cjson_wrap_str_t         cjson_str;
+    bool                     flag_sending_advs;
+} http_async_info_t;
+
 static const char TAG[] = "http";
+
+static http_async_info_t g_http_async_info;
 
 static esp_err_t
 http_post_event_handler(esp_http_client_event_t *p_evt)
@@ -100,32 +119,19 @@ http_post_event_handler(esp_http_client_event_t *p_evt)
     return ESP_OK;
 }
 
-typedef struct http_client_config_t
-{
-    esp_http_client_config_t     esp_http_client_config;
-    ruuvi_gw_cfg_http_url_t      http_url;
-    ruuvi_gw_cfg_http_user_t     http_user;
-    ruuvi_gw_cfg_http_password_t http_pass;
-} http_client_config_t;
-
-static http_client_config_t *
-http_create_client_config(
+static void
+http_init_client_config(
+    http_client_config_t *const               p_http_client_config,
     const ruuvi_gw_cfg_http_url_t *const      p_url,
     const ruuvi_gw_cfg_http_user_t *const     p_user,
     const ruuvi_gw_cfg_http_password_t *const p_password)
 {
-    http_client_config_t *const p_http_config = os_calloc(1, sizeof(*p_http_config));
-    if (NULL == p_http_config)
-    {
-        LOG_ERR("Can't allocate memory for http_client_config_t");
-        return NULL;
-    }
-    p_http_config->esp_http_client_config = (esp_http_client_config_t) {
-        .url                         = &p_http_config->http_url.buf[0],
+    p_http_client_config->esp_http_client_config = (esp_http_client_config_t) {
+        .url                         = &p_http_client_config->http_url.buf[0],
         .host                        = NULL,
         .port                        = 0,
-        .username                    = &p_http_config->http_user.buf[0],
-        .password                    = &p_http_config->http_pass.buf[0],
+        .username                    = &p_http_client_config->http_user.buf[0],
+        .password                    = &p_http_client_config->http_pass.buf[0],
         .auth_type                   = ('\0' != p_user->buf[0]) ? HTTP_AUTH_TYPE_BASIC : HTTP_AUTH_TYPE_NONE,
         .path                        = NULL,
         .query                       = NULL,
@@ -141,117 +147,75 @@ http_create_client_config(
         .buffer_size                 = 0,
         .buffer_size_tx              = 0,
         .user_data                   = NULL,
-        .is_async                    = false,
+        .is_async                    = true,
         .use_global_ca_store         = false,
         .skip_cert_common_name_check = false,
     };
-    p_http_config->http_url  = *p_url;
-    p_http_config->http_user = *p_user;
-    p_http_config->http_pass = *p_password;
-    return p_http_config;
+    p_http_client_config->http_url  = *p_url;
+    p_http_client_config->http_user = *p_user;
+    p_http_client_config->http_pass = *p_password;
 }
 
-static const http_client_config_t *
-http_create_client_config_for_http_record(void)
+static void
+http_init_client_config_for_http_record(http_client_config_t *const p_http_client_config)
 {
-    const ruuvi_gateway_config_t *    p_gw_cfg      = gw_cfg_lock_ro();
-    const http_client_config_t *const p_http_config = http_create_client_config(
+    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
+    http_init_client_config(
+        p_http_client_config,
         &p_gw_cfg->http.http_url,
         &p_gw_cfg->http.http_user,
         &p_gw_cfg->http.http_pass);
     gw_cfg_unlock_ro(&p_gw_cfg);
-    return p_http_config;
 }
 
-static const http_client_config_t *
-http_init_client_config_for_http_status(void)
+static void
+http_init_client_config_for_http_status(http_client_config_t *const p_http_client_config)
 {
-    const ruuvi_gateway_config_t *    p_gw_cfg      = gw_cfg_lock_ro();
-    const http_client_config_t *const p_http_config = http_create_client_config(
+    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
+    http_init_client_config(
+        p_http_client_config,
         &p_gw_cfg->http_stat.http_stat_url,
         &p_gw_cfg->http_stat.http_stat_user,
         &p_gw_cfg->http_stat.http_stat_pass);
     gw_cfg_unlock_ro(&p_gw_cfg);
-    return p_http_config;
 }
 
 static bool
-http_send(const esp_http_client_config_t *const p_http_config, const char *const p_msg)
+http_send_async(http_async_info_t *const p_http_async_info)
 {
+    const esp_http_client_config_t *const p_http_config = &p_http_async_info->http_client_config.esp_http_client_config;
+
+    const char *const p_msg = p_http_async_info->cjson_str.p_str;
     LOG_INFO("HTTP POST to URL=%s, DATA:\n%s", p_http_config->url, p_msg);
 
-    esp_http_client_handle_t http_handle = esp_http_client_init(p_http_config);
-    if (NULL == http_handle)
-    {
-        LOG_ERR("HTTP POST to URL=%s: Can't init http client", p_http_config->url);
-        return false;
-    }
-
-    esp_http_client_set_post_field(http_handle, p_msg, (int)strlen(p_msg));
-    esp_http_client_set_header(http_handle, "Content-Type", "application/json");
+    esp_http_client_set_post_field(p_http_async_info->p_http_client_handle, p_msg, (int)strlen(p_msg));
+    esp_http_client_set_header(p_http_async_info->p_http_client_handle, "Content-Type", "application/json");
 
     const hmac_sha256_str_t hmac_sha256_str = hmac_sha256_calc_str(p_msg);
     if (hmac_sha256_is_str_valid(&hmac_sha256_str))
     {
-        esp_http_client_set_header(http_handle, "Ruuvi-HMAC-SHA256", hmac_sha256_str.buf);
+        esp_http_client_set_header(p_http_async_info->p_http_client_handle, "Ruuvi-HMAC-SHA256", hmac_sha256_str.buf);
     }
 
-    bool result = true;
-
-    esp_err_t err = esp_http_client_perform(http_handle);
-    if (ESP_OK == err)
-    {
-        const int http_status = esp_http_client_get_status_code(http_handle);
-        if (HTTP_RESP_CODE_200 == http_status)
-        {
-            LOG_INFO("HTTP POST to URL=%s: STATUS=%d", p_http_config->url, http_status);
-        }
-        else
-        {
-            LOG_ERR("HTTP POST to URL=%s: STATUS=%d", p_http_config->url, http_status);
-            result = false;
-        }
-    }
-    else
+    const esp_err_t err = esp_http_client_perform(p_http_async_info->p_http_client_handle);
+    if (ESP_ERR_HTTP_EAGAIN != err)
     {
         LOG_ERR_ESP(err, "HTTP POST to URL=%s: request failed", p_http_config->url);
-        result = false;
+        esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
+        p_http_async_info->p_http_client_handle = NULL;
+        return false;
     }
-
-    err = esp_http_client_cleanup(http_handle);
-    if (ESP_OK != err)
-    {
-        LOG_ERR_ESP(err, "HTTP POST to URL=%s: esp_http_client_cleanup failed", p_http_config->url);
-    }
-    return result;
-}
-
-static bool
-http_send_cjson_and_free(const esp_http_client_config_t *const p_http_config, cjson_wrap_str_t *const p_json_str)
-{
-    bool is_post_successful = false;
-    if (http_send(p_http_config, p_json_str->p_str))
-    {
-        is_post_successful = true;
-        leds_indication_on_network_ok();
-        if (!fw_update_mark_app_valid_cancel_rollback())
-        {
-            LOG_ERR("%s failed", "fw_update_mark_app_valid_cancel_rollback");
-        }
-    }
-    else
-    {
-        leds_indication_network_no_connection();
-    }
-    cjson_wrap_free_json_str(p_json_str);
-    return is_post_successful;
+    return true;
 }
 
 bool
 http_send_advs(const adv_report_table_t *const p_reports, const uint32_t nonce)
 {
-    const ruuvi_gw_cfg_coordinates_t coordinates = gw_cfg_get_coordinates();
-    cjson_wrap_str_t                 json_str    = cjson_wrap_str_null();
+    const ruuvi_gw_cfg_coordinates_t coordinates       = gw_cfg_get_coordinates();
+    http_async_info_t *              p_http_async_info = &g_http_async_info;
+
+    p_http_async_info->flag_sending_advs = true;
+    p_http_async_info->cjson_str         = cjson_wrap_str_null();
     if (!http_json_create_records_str(
             p_reports,
             time(NULL),
@@ -259,21 +223,31 @@ http_send_advs(const adv_report_table_t *const p_reports, const uint32_t nonce)
             coordinates.buf,
             true,
             nonce,
-            &json_str))
+            &p_http_async_info->cjson_str))
     {
         LOG_ERR("Not enough memory to generate json");
         return false;
     }
 
-    const http_client_config_t *p_http_config = http_create_client_config_for_http_record();
-    if (NULL == p_http_config)
+    http_init_client_config_for_http_record(&p_http_async_info->http_client_config);
+
+    p_http_async_info->p_http_client_handle = esp_http_client_init(
+        &p_http_async_info->http_client_config.esp_http_client_config);
+    if (NULL == p_http_async_info->p_http_client_handle)
     {
-        LOG_ERR("Not enough memory to create http_client_config");
+        LOG_ERR("HTTP POST to URL=%s: Can't init http client", p_http_async_info->http_client_config.http_url.buf);
+        cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
         return false;
     }
-    const bool res = http_send_cjson_and_free(&p_http_config->esp_http_client_config, &json_str);
-    os_free(p_http_config);
-    return res;
+
+    if (!http_send_async(p_http_async_info))
+    {
+        esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
+        p_http_async_info->p_http_client_handle = NULL;
+        cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
+        return false;
+    }
+    return true;
 }
 
 bool
@@ -287,7 +261,10 @@ http_send_statistics(
     const adv_report_table_t *const p_reports,
     const uint32_t                  nonce)
 {
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+    http_async_info_t *p_http_async_info = &g_http_async_info;
+
+    p_http_async_info->flag_sending_advs = false;
+    p_http_async_info->cjson_str         = cjson_wrap_str_null();
     if (!http_json_create_status_str(
             nrf52_mac_addr,
             p_esp_fw,
@@ -297,21 +274,91 @@ http_send_statistics(
             network_disconnect_cnt,
             p_reports,
             nonce,
-            &json_str))
+            &p_http_async_info->cjson_str))
     {
         LOG_ERR("Not enough memory to generate status json");
         return false;
     }
 
-    const http_client_config_t *p_http_config = http_init_client_config_for_http_status();
-    if (NULL == p_http_config)
+    http_init_client_config_for_http_status(&p_http_async_info->http_client_config);
+
+    p_http_async_info->p_http_client_handle = esp_http_client_init(
+        &p_http_async_info->http_client_config.esp_http_client_config);
+    if (NULL == p_http_async_info->p_http_client_handle)
     {
-        LOG_ERR("Not enough memory to create http_client_config");
+        LOG_ERR("HTTP POST to URL=%s: Can't init http client", p_http_async_info->http_client_config.http_url.buf);
+        cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
         return false;
     }
-    const bool res = http_send_cjson_and_free(&p_http_config->esp_http_client_config, &json_str);
-    os_free(p_http_config);
-    return res;
+
+    if (!http_send_async(p_http_async_info))
+    {
+        esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
+        p_http_async_info->p_http_client_handle = NULL;
+        cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
+        return false;
+    }
+    return true;
+}
+
+bool
+http_async_poll(void)
+{
+    http_async_info_t *p_http_async_info = &g_http_async_info;
+
+    const esp_err_t err = esp_http_client_perform(p_http_async_info->p_http_client_handle);
+    if (ESP_ERR_HTTP_EAGAIN == err)
+    {
+        return false;
+    }
+
+    bool flag_success = false;
+    if (ESP_OK == err)
+    {
+        const int http_status = esp_http_client_get_status_code(p_http_async_info->p_http_client_handle);
+        if (HTTP_RESP_CODE_200 == http_status)
+        {
+            LOG_INFO(
+                "HTTP POST to URL=%s: STATUS=%d",
+                p_http_async_info->http_client_config.esp_http_client_config.url,
+                http_status);
+            if (p_http_async_info->flag_sending_advs)
+            {
+                adv_post_update_last_successful_network_comm_timestamp();
+            }
+            flag_success = true;
+        }
+        else
+        {
+            LOG_ERR(
+                "HTTP POST to URL=%s: STATUS=%d",
+                p_http_async_info->http_client_config.esp_http_client_config.url,
+                http_status);
+        }
+    }
+
+    esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
+    p_http_async_info->p_http_client_handle = NULL;
+
+    cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
+    p_http_async_info->cjson_str = cjson_wrap_str_null();
+
+    if (p_http_async_info->flag_sending_advs)
+    {
+        if (flag_success)
+        {
+            leds_indication_on_network_ok();
+            if (!fw_update_mark_app_valid_cancel_rollback())
+            {
+                LOG_ERR("%s failed", "fw_update_mark_app_valid_cancel_rollback");
+            }
+        }
+        else
+        {
+            leds_indication_network_no_connection();
+        }
+    }
+    return true;
 }
 
 static void
