@@ -40,6 +40,9 @@ http_send_statistics(
     const uint32_t                  nonce);
 
 bool
+http_async_poll(void);
+
+bool
 http_download(
     const char *const          p_url,
     http_download_cb_on_data_t cb_on_data,
