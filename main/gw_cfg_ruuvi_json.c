@@ -203,11 +203,11 @@ gw_cfg_ruuvi_json_add_items_mqtt(cJSON *const p_json_root, const ruuvi_gateway_c
     {
         return false;
     }
-    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "mqtt_transport", p_cfg->mqtt.mqtt_transport))
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "mqtt_transport", p_cfg->mqtt.mqtt_transport.buf))
     {
         return false;
     }
-    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "mqtt_server", p_cfg->mqtt.mqtt_server))
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "mqtt_server", p_cfg->mqtt.mqtt_server.buf))
     {
         return false;
     }
@@ -226,16 +226,16 @@ gw_cfg_ruuvi_json_add_items_mqtt(cJSON *const p_json_root, const ruuvi_gateway_c
     }
     else
     {
-        if (!gw_cfg_ruuvi_json_add_string(p_json_root, "mqtt_prefix", p_cfg->mqtt.mqtt_prefix))
+        if (!gw_cfg_ruuvi_json_add_string(p_json_root, "mqtt_prefix", p_cfg->mqtt.mqtt_prefix.buf))
         {
             return false;
         }
     }
-    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "mqtt_client_id", p_cfg->mqtt.mqtt_client_id))
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "mqtt_client_id", p_cfg->mqtt.mqtt_client_id.buf))
     {
         return false;
     }
-    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "mqtt_user", p_cfg->mqtt.mqtt_user))
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "mqtt_user", p_cfg->mqtt.mqtt_user.buf))
     {
         return false;
     }
