@@ -156,27 +156,24 @@ mqtt_publish_connect(void)
 }
 
 static void
-mqtt_publish_state_offline(esp_mqtt_client_handle_t p_mqtt_client)
+mqtt_publish_state_offline(mqtt_protected_data_t *const p_mqtt_data)
 {
     char *p_message = "{\"state\": \"offline\"}";
 
     const ruuvi_gw_cfg_mqtt_prefix_t mqtt_prefix = gw_cfg_get_mqtt_prefix();
 
-    mqtt_protected_data_t *p_mqtt_data = mqtt_mutex_lock();
     mqtt_create_full_topic(&p_mqtt_data->mqtt_topic, mqtt_prefix.buf, "gw_status");
     LOG_INFO("esp_mqtt_client_publish: topic:'%s', message:'%s'", p_mqtt_data->mqtt_topic.buf, p_message);
     const int32_t mqtt_qos         = 1;
     const int32_t mqtt_flag_retain = 1;
 
     const mqtt_message_id_t message_id = esp_mqtt_client_publish(
-        p_mqtt_client,
+        p_mqtt_data->p_mqtt_client,
         p_mqtt_data->mqtt_topic.buf,
         p_message,
         (int)strlen(p_message),
         mqtt_qos,
         mqtt_flag_retain);
-
-    mqtt_mutex_unlock(&p_mqtt_data);
 
     if (-1 == message_id)
     {
@@ -362,7 +359,7 @@ mqtt_app_stop(void)
     mqtt_protected_data_t *p_mqtt_data = mqtt_mutex_lock();
     if (NULL != p_mqtt_data->p_mqtt_client)
     {
-        mqtt_publish_state_offline(p_mqtt_data->p_mqtt_client);
+        mqtt_publish_state_offline(p_mqtt_data);
         LOG_INFO("MQTT destroy");
         esp_mqtt_client_destroy(p_mqtt_data->p_mqtt_client);
         p_mqtt_data->p_mqtt_client = NULL;
