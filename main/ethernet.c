@@ -23,6 +23,7 @@
 #include "wifi_manager.h"
 #include <stdio.h>
 #include <string.h>
+#include "event_mgr.h"
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
 
@@ -81,6 +82,7 @@ eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void
 
         case ETHERNET_EVENT_STOP:
             LOG_INFO("Ethernet Stopped");
+            event_mgr_notify(EVENT_MGR_EV_ETH_DISCONNECTED);
             break;
 
         default:
