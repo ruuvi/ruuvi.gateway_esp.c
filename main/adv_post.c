@@ -261,7 +261,7 @@ adv_post_retransmit_advs(const adv_report_table_t *p_reports, const bool flag_ne
     }
     if (!flag_network_connected)
     {
-        LOG_WARN("Can't send, no network connection");
+        LOG_WARN("Can't send advs, no network connection");
         return false;
     }
     if (!time_is_valid(p_reports->table[0].timestamp))
@@ -434,12 +434,19 @@ adv_post_task(void)
                     }
                     if (!flag_async_comm_in_progress && flag_need_to_send_statistics)
                     {
-                        flag_need_to_send_statistics = false;
-                        if (adv_post_do_send_statistics())
+                        if (flag_network_connected)
                         {
-                            flag_async_comm_in_progress = true;
+                            flag_need_to_send_statistics = false;
+                            if (adv_post_do_send_statistics())
+                            {
+                                flag_async_comm_in_progress = true;
+                            }
+                            g_adv_post_nonce += 1;
                         }
-                        g_adv_post_nonce += 1;
+                        else
+                        {
+                            LOG_WARN("Can't send statistics, no network connection");
+                        }
                     }
                     break;
                 case ADV_POST_SIG_DISABLE:
