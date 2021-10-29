@@ -235,6 +235,9 @@ bool
 gw_cfg_get_eth_use_eth(void);
 
 bool
+gw_cfg_get_eth_use_dhcp(void);
+
+bool
 gw_cfg_get_mqtt_use_mqtt(void);
 
 bool

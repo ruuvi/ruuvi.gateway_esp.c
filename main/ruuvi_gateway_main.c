@@ -42,6 +42,8 @@
 #include "gw_cfg_json.h"
 #include "os_time.h"
 #include "ruuvi_auth.h"
+#include "lwip/dhcp.h"
+#include "lwip/sockets.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -203,7 +205,7 @@ ethernet_link_down_cb(void)
 {
     LOG_INFO("Ethernet lost connection");
     g_network_disconnect_cnt += 1;
-    wifi_manager_update_network_connection_info(UPDATE_LOST_CONNECTION, NULL, NULL);
+    wifi_manager_update_network_connection_info(UPDATE_LOST_CONNECTION, NULL, NULL, NULL);
     xEventGroupClearBits(status_bits, ETH_CONNECTED_BIT);
     leds_indication_network_no_connection();
     event_mgr_notify(EVENT_MGR_EV_ETH_DISCONNECTED);
@@ -214,7 +216,6 @@ ethernet_connection_ok_cb(const tcpip_adapter_ip_info_t *p_ip_info)
 {
     LOG_INFO("Ethernet connected");
     leds_indication_on_network_ok();
-    wifi_manager_update_network_connection_info(UPDATE_CONNECTION_OK, NULL, p_ip_info);
     if (!gw_cfg_get_eth_use_eth())
     {
         LOG_INFO("The Ethernet cable was connected, but the Ethernet was not configured");
@@ -242,6 +243,25 @@ ethernet_connection_ok_cb(const tcpip_adapter_ip_info_t *p_ip_info)
             LOG_ERR("%s failed", "gw_cfg_set_auth_from_config");
         }
     }
+    ip4_addr_t *p_dhcp_ip = NULL;
+    if (gw_cfg_get_eth_use_dhcp())
+    {
+        struct netif *p_netif = NULL;
+        esp_err_t     err     = tcpip_adapter_get_netif(TCPIP_ADAPTER_IF_ETH, (void **)&p_netif);
+        if (ESP_OK != err)
+        {
+            LOG_ERR_ESP(err, "%s failed", "tcpip_adapter_get_netif");
+        }
+        else
+        {
+            struct dhcp *const p_dhcp = netif_dhcp_data(p_netif);
+            if (NULL != p_dhcp)
+            {
+                p_dhcp_ip = &p_dhcp->server_ip_addr.u_addr.ip4;
+            }
+        }
+    }
+    wifi_manager_update_network_connection_info(UPDATE_CONNECTION_OK, NULL, p_ip_info, p_dhcp_ip);
     xEventGroupSetBits(status_bits, ETH_CONNECTED_BIT);
     start_services();
     event_mgr_notify(EVENT_MGR_EV_ETH_CONNECTED);
@@ -269,7 +289,7 @@ static void
 cb_on_disconnect_eth_cmd(void)
 {
     LOG_INFO("callback: on_disconnect_eth_cmd");
-    wifi_manager_update_network_connection_info(UPDATE_USER_DISCONNECT, NULL, NULL);
+    wifi_manager_update_network_connection_info(UPDATE_USER_DISCONNECT, NULL, NULL, NULL);
     xEventGroupClearBits(status_bits, ETH_CONNECTED_BIT);
     ethernet_stop();
 }
