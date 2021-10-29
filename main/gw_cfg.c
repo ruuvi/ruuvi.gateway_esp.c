@@ -181,6 +181,15 @@ gw_cfg_get_eth_use_eth(void)
 }
 
 bool
+gw_cfg_get_eth_use_dhcp(void)
+{
+    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
+    const bool                    use_dhcp = p_gw_cfg->eth.eth_dhcp;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    return use_dhcp;
+}
+
+bool
 gw_cfg_get_mqtt_use_mqtt(void)
 {
     const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
