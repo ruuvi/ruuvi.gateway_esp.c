@@ -456,7 +456,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
-TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_mqtt_pass) // NOLINT
+TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_http_and_mqtt_pass) // NOLINT
 {
     cJSON *root = cJSON_CreateObject();
     ASSERT_NE(nullptr, root);
@@ -472,12 +472,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_mqtt_pass) // NOLINT
     cJSON_AddBoolToObject(root, "use_http", false);
     cJSON_AddStringToObject(root, "http_url", "https://api.ruuvi.com:456/api");
     cJSON_AddStringToObject(root, "http_user", "user567");
-    cJSON_AddStringToObject(root, "http_pass", "pass567");
 
     cJSON_AddBoolToObject(root, "use_http_stat", true);
     cJSON_AddStringToObject(root, "http_stat_url", "https://api.ruuvi.com:456/status");
     cJSON_AddStringToObject(root, "http_stat_user", "user678");
-    cJSON_AddStringToObject(root, "http_stat_pass", "pass678");
 
     cJSON_AddStringToObject(root, "lan_auth_type", "lan_auth_ruuvi");
     cJSON_AddStringToObject(root, "lan_auth_user", "user1");
@@ -503,6 +501,9 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_mqtt_pass) // NOLINT
 
     ruuvi_gateway_config_t gw_cfg           = { 0 };
     bool                   flag_network_cfg = false;
+    snprintf(gw_cfg.http.http_pass.buf, sizeof(gw_cfg.http.http_pass.buf), "prev_http_pass");
+    snprintf(gw_cfg.http_stat.http_stat_pass.buf, sizeof(gw_cfg.http_stat.http_stat_pass.buf), "prev_http_stat_pass");
+    snprintf(gw_cfg.mqtt.mqtt_pass.buf, sizeof(gw_cfg.mqtt.mqtt_pass.buf), "prev_mqtt_pass");
     ASSERT_TRUE(json_ruuvi_parse(root, &gw_cfg, &flag_network_cfg));
     cJSON_Delete(root);
     ASSERT_FALSE(flag_network_cfg);
@@ -513,15 +514,15 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_mqtt_pass) // NOLINT
     ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.mqtt.mqtt_client_id.buf);
     ASSERT_EQ(1234, gw_cfg.mqtt.mqtt_port);
     ASSERT_EQ(string("user123"), gw_cfg.mqtt.mqtt_user.buf);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_pass.buf);
+    ASSERT_EQ(string("prev_mqtt_pass"), gw_cfg.mqtt.mqtt_pass.buf);
     ASSERT_FALSE(gw_cfg.http.use_http);
     ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.http.http_url.buf);
     ASSERT_EQ(string("user567"), gw_cfg.http.http_user.buf);
-    ASSERT_EQ(string("pass567"), gw_cfg.http.http_pass.buf);
+    ASSERT_EQ(string("prev_http_pass"), gw_cfg.http.http_pass.buf);
     ASSERT_TRUE(gw_cfg.http_stat.use_http_stat);
     ASSERT_EQ(string("https://api.ruuvi.com:456/status"), gw_cfg.http_stat.http_stat_url.buf);
     ASSERT_EQ(string("user678"), gw_cfg.http_stat.http_stat_user.buf);
-    ASSERT_EQ(string("pass678"), gw_cfg.http_stat.http_stat_pass.buf);
+    ASSERT_EQ(string("prev_http_stat_pass"), gw_cfg.http_stat.http_stat_pass.buf);
     ASSERT_TRUE(gw_cfg.filter.company_use_filtering);
     ASSERT_EQ(888, gw_cfg.filter.company_id);
     ASSERT_EQ(string("coord:123,456"), gw_cfg.coordinates.buf);
@@ -540,15 +541,15 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_mqtt_pass) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_client_id: AA:BB:CC:DD:EE:FF");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_port: 1234");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_user: user123");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, "mqtt_pass not found or not changed");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "mqtt_pass was not changed");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_http: 0");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_user: user567");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_pass: pass567");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "http_pass was not changed");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_stat_user: user678");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_stat_pass: pass678");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "http_stat_pass was not changed");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_type: lan_auth_ruuvi");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
@@ -653,7 +654,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_client_id: AA:BB:CC:DD:EE:FF");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_port: 8883");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_user: user123");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, "mqtt_pass not found or not changed");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "mqtt_pass was not changed");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_http: 0");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_user: user567");
@@ -766,7 +767,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_client_id: AA:BB:CC:DD:EE:FF");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_port: 8080");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_user: user123");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, "mqtt_pass not found or not changed");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "mqtt_pass was not changed");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_http: 0");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_user: user567");
@@ -879,7 +880,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_client_id: AA:BB:CC:DD:EE:FF");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_port: 8081");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "mqtt_user: user123");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, "mqtt_pass not found or not changed");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "mqtt_pass was not changed");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_http: 0");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "http_user: user567");

@@ -239,6 +239,12 @@ protected:
         esp_log_wrapper_init();
         g_pTestClass = this;
 
+        cJSON_Hooks hooks = {
+            .malloc_fn = &os_malloc,
+            .free_fn   = &os_free_internal,
+        };
+        cJSON_InitHooks(&hooks);
+
         g_cnt_cfg_button_pressed = 0;
 
         this->m_malloc_cnt                        = 0;
@@ -643,7 +649,39 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
-TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed) // NOLINT
+TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed_1) // NOLINT
+{
+    g_pTestClass->m_malloc_cnt         = 0;
+    g_pTestClass->m_malloc_fail_on_cnt = 1;
+
+    bool                   flag_network_cfg = false;
+    ruuvi_gateway_config_t gw_cfg           = g_gateway_config_default;
+    ASSERT_FALSE(
+        json_ruuvi_parse_http_body(
+            "{"
+            "\"use_mqtt\":true,"
+            "\"mqtt_server\":\"test.mosquitto.org\","
+            "\"mqtt_port\":1883,"
+            "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
+            "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
+            "\"mqtt_user\":\"\","
+            "\"mqtt_pass\":\"\","
+            "\"use_http\":false,"
+            "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\","
+            "\"http_user\":\"\","
+            "\"http_pass\":\"\","
+            "\"use_http_stat\":false,"
+            "\"http_stat_url\":\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\","
+            "\"http_stat_user\":\"\","
+            "\"http_stat_pass\":\"\","
+            "\"use_filtering\":true"
+            "}",
+            &gw_cfg,
+            &flag_network_cfg));
+    ASSERT_FALSE(flag_network_cfg);
+}
+
+TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed_2) // NOLINT
 {
     bool                   flag_network_cfg = false;
     ruuvi_gateway_config_t gw_cfg           = g_gateway_config_default;
@@ -672,12 +710,9 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed) // NOLINT
     ASSERT_FALSE(flag_network_cfg);
     gw_cfg_update(&gw_cfg, false);
     snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    g_pTestClass->m_malloc_fail_on_cnt = 1;
-    cJSON_InitHooks(&hooks);
+
+    g_pTestClass->m_malloc_cnt         = 0;
+    g_pTestClass->m_malloc_fail_on_cnt = 2;
 
     esp_log_wrapper_clear();
     const http_server_resp_t resp = http_server_resp_json_ruuvi();
@@ -690,7 +725,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed) // NOLINT
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_ERROR, string("Can't create json object"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_ERROR, string("Can't add json item: fw_ver"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1433,6 +1468,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed1) // NOLINT
 {
+    this->m_malloc_cnt            = 0;
     this->m_malloc_fail_on_cnt    = 1;
     const http_server_resp_t resp = http_server_cb_on_post_ruuvi(
         "{"
@@ -1475,7 +1511,51 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed1) // NOLINT
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed2) // NOLINT
 {
+    this->m_malloc_cnt            = 0;
     this->m_malloc_fail_on_cnt    = 2;
+    const http_server_resp_t resp = http_server_cb_on_post_ruuvi(
+        "{"
+        "\"use_mqtt\":true,"
+        "\"mqtt_server\":\"test.mosquitto.org\","
+        "\"mqtt_port\":1883,"
+        "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
+        "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
+        "\"mqtt_user\":\"\","
+        "\"mqtt_pass\":\"\","
+        "\"use_http\":false,"
+        "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+        "\","
+        "\"http_user\":\"\","
+        "\"http_pass\":\"\","
+        "\"use_http_stat\":true,"
+        "\"http_stat_url\":\"" RUUVI_GATEWAY_HTTP_STATUS_URL
+        "\","
+        "\"http_stat_user\":\"\","
+        "\"http_stat_pass\":\"\","
+        "\"use_filtering\":true"
+        "}");
+
+    ASSERT_FALSE(this->m_flag_settings_saved_to_flash);
+    ASSERT_FALSE(this->m_flag_settings_sent_to_nrf);
+    ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
+
+    ASSERT_EQ(HTTP_RESP_CODE_503, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(0, resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Failed to parse json or no memory"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed3) // NOLINT
+{
+    this->m_malloc_cnt            = 0;
+    this->m_malloc_fail_on_cnt    = 3;
     const http_server_resp_t resp = http_server_cb_on_post_ruuvi(
         "{"
         "\"use_mqtt\":true,"

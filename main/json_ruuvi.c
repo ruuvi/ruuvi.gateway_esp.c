@@ -12,6 +12,7 @@
 #include "cjson_wrap.h"
 #include "http_server_auth_type.h"
 #include "gw_cfg_default.h"
+#include "os_malloc.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -172,12 +173,21 @@ json_ruuvi_parse(const cJSON *p_json_root, ruuvi_gateway_config_t *const p_gw_cf
     {
         *p_flag_network_cfg = false;
 
-        const ruuvi_gw_cfg_eth_t      saved_eth_cfg  = p_gw_cfg->eth;
-        const ruuvi_gw_cfg_lan_auth_t saved_lan_auth = p_gw_cfg->lan_auth;
-
-        *p_gw_cfg          = g_gateway_config_default;
-        p_gw_cfg->eth      = saved_eth_cfg;
-        p_gw_cfg->lan_auth = saved_lan_auth;
+        ruuvi_gateway_config_t *p_saved_cfg = os_malloc(sizeof(*p_saved_cfg));
+        if (NULL == p_saved_cfg)
+        {
+            LOG_ERR("Can't allocate memory for gw_cfg copy");
+            return false;
+        }
+        *p_saved_cfg                       = *p_gw_cfg;
+        *p_gw_cfg                          = g_gateway_config_default;
+        p_gw_cfg->eth                      = p_saved_cfg->eth;
+        p_gw_cfg->lan_auth                 = p_saved_cfg->lan_auth;
+        p_gw_cfg->mqtt.mqtt_pass           = p_saved_cfg->mqtt.mqtt_pass;
+        p_gw_cfg->http.http_pass           = p_saved_cfg->http.http_pass;
+        p_gw_cfg->http_stat.http_stat_pass = p_saved_cfg->http_stat.http_stat_pass;
+        os_free(p_saved_cfg);
+        p_saved_cfg = NULL;
 
         json_ruuvi_get_bool_val(p_json_root, "use_mqtt", &p_gw_cfg->mqtt.use_mqtt, true);
         p_gw_cfg->mqtt.mqtt_use_default_prefix = false;
@@ -219,7 +229,7 @@ json_ruuvi_parse(const cJSON *p_json_root, ruuvi_gateway_config_t *const p_gw_cf
                 sizeof(p_gw_cfg->mqtt.mqtt_pass.buf),
                 false))
         {
-            LOG_WARN("mqtt_pass not found or not changed");
+            LOG_INFO("mqtt_pass was not changed");
         }
 
         json_ruuvi_get_bool_val(p_json_root, "use_http", &p_gw_cfg->http.use_http, true);
@@ -235,12 +245,15 @@ json_ruuvi_parse(const cJSON *p_json_root, ruuvi_gateway_config_t *const p_gw_cf
             p_gw_cfg->http.http_user.buf,
             sizeof(p_gw_cfg->http.http_user.buf),
             true);
-        json_ruuvi_copy_string_val(
-            p_json_root,
-            "http_pass",
-            p_gw_cfg->http.http_pass.buf,
-            sizeof(p_gw_cfg->http.http_pass.buf),
-            true);
+        if (!json_ruuvi_copy_string_val(
+                p_json_root,
+                "http_pass",
+                p_gw_cfg->http.http_pass.buf,
+                sizeof(p_gw_cfg->http.http_pass.buf),
+                false))
+        {
+            LOG_INFO("http_pass was not changed");
+        }
 
         json_ruuvi_get_bool_val(p_json_root, "use_http_stat", &p_gw_cfg->http_stat.use_http_stat, true);
         json_ruuvi_copy_string_val(
@@ -255,12 +268,15 @@ json_ruuvi_parse(const cJSON *p_json_root, ruuvi_gateway_config_t *const p_gw_cf
             p_gw_cfg->http_stat.http_stat_user.buf,
             sizeof(p_gw_cfg->http_stat.http_stat_user.buf),
             true);
-        json_ruuvi_copy_string_val(
-            p_json_root,
-            "http_stat_pass",
-            p_gw_cfg->http_stat.http_stat_pass.buf,
-            sizeof(p_gw_cfg->http_stat.http_stat_pass.buf),
-            true);
+        if (!json_ruuvi_copy_string_val(
+                p_json_root,
+                "http_stat_pass",
+                p_gw_cfg->http_stat.http_stat_pass.buf,
+                sizeof(p_gw_cfg->http_stat.http_stat_pass.buf),
+                false))
+        {
+            LOG_INFO("http_stat_pass was not changed");
+        }
 
         if (!json_ruuvi_copy_string_val(
                 p_json_root,
