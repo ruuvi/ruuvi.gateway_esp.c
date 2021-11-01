@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include "os_mutex_recursive.h"
 
-#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
+#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
 mac_address_bin_t g_gw_mac_eth      = { 0 };
@@ -95,13 +95,16 @@ gw_cfg_print_to_log(const ruuvi_gateway_config_t *const p_config)
     LOG_INFO("config: mqtt client id: %s", p_config->mqtt.mqtt_client_id.buf);
     LOG_INFO("config: mqtt user: %s", p_config->mqtt.mqtt_user.buf);
     LOG_INFO("config: mqtt password: %s", "********");
+    LOG_DBG("config: mqtt password: %s", p_config->mqtt.mqtt_pass.buf);
     LOG_INFO("config: use http: %d", p_config->http.use_http);
     LOG_INFO("config: http url: %s", p_config->http.http_url.buf);
     LOG_INFO("config: http user: %s", p_config->http.http_user.buf);
     LOG_INFO("config: http pass: %s", "********");
+    LOG_DBG("config: http pass: %s", p_config->http.http_pass.buf);
     LOG_INFO("config: use http_stat: %d", p_config->http_stat.use_http_stat);
     LOG_INFO("config: http_stat url: %s", p_config->http_stat.http_stat_url.buf);
     LOG_INFO("config: http_stat user: %s", p_config->http_stat.http_stat_user.buf);
+    LOG_DBG("config: http_stat pass: %s", p_config->http_stat.http_stat_pass.buf);
     LOG_INFO("config: http_stat pass: %s", "********");
     LOG_INFO("config: LAN auth type: %s", p_config->lan_auth.lan_auth_type);
     LOG_INFO("config: LAN auth user: %s", p_config->lan_auth.lan_auth_user);
