@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include "os_mutex_recursive.h"
 
+// Warning: Debug log level prints out the passwords as a "plaintext" so accidents won't happen.
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
