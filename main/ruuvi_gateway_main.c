@@ -64,7 +64,8 @@ typedef enum main_task_sig_e
     MAIN_TASK_SIG_SCHEDULE_NEXT_CHECK_FOR_FW_UPDATES  = OS_SIGNAL_NUM_2,
     MAIN_TASK_SIG_SCHEDULE_RETRY_CHECK_FOR_FW_UPDATES = OS_SIGNAL_NUM_3,
     MAIN_TASK_SIG_DEACTIVATE_WIFI_AP                  = OS_SIGNAL_NUM_4,
-    MAIN_TASK_SIG_TASK_WATCHDOG_FEED                  = OS_SIGNAL_NUM_5,
+    MAIN_TASK_SIG_TASK_RESTART_SERVICES               = OS_SIGNAL_NUM_5,
+    MAIN_TASK_SIG_TASK_WATCHDOG_FEED                  = OS_SIGNAL_NUM_6,
 } main_task_sig_e;
 
 #define MAIN_TASK_SIG_FIRST (MAIN_TASK_SIG_LOG_HEAP_USAGE)
@@ -334,6 +335,7 @@ wifi_disconnect_cb(void *p_param)
 void
 start_services(void)
 {
+    LOG_INFO("Start services");
     if (gw_cfg_get_mqtt_use_mqtt())
     {
         mqtt_app_start();
@@ -341,22 +343,26 @@ start_services(void)
 }
 
 void
-stop_services(void)
+restart_services(void)
 {
-    if (gw_cfg_get_mqtt_use_mqtt())
+    os_signal_send(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_RESTART_SERVICES));
+}
+
+static void
+restart_services_internal(void)
+{
+    LOG_INFO("Restart services");
+    if (mqtt_app_is_working())
     {
-        LOG_INFO("TaskWatchdog: Temporary unregister current thread before stopping MQTT");
-        esp_task_wdt_delete(xTaskGetCurrentTaskHandle());
-
-        mqtt_app_stop();
-
-        LOG_INFO("TaskWatchdog: Register current thread after stopping MQTT");
-        const esp_err_t err = esp_task_wdt_add(xTaskGetCurrentTaskHandle());
+        // mqtt_app_stop can take up to 4500 ms, so we need to feed the task watchdog here
+        const esp_err_t err = esp_task_wdt_reset();
         if (ESP_OK != err)
         {
-            LOG_ERR_ESP(err, "%s failed", "esp_task_wdt_add");
+            LOG_ERR_ESP(err, "%s failed", "esp_task_wdt_reset");
         }
+        mqtt_app_stop();
     }
+    start_services();
 }
 
 static bool
@@ -659,6 +665,9 @@ main_task_handle_sig(const main_task_sig_e main_task_sig)
 
             leds_indication_network_no_connection();
             break;
+        case MAIN_TASK_SIG_TASK_RESTART_SERVICES:
+            restart_services_internal();
+            break;
         case MAIN_TASK_SIG_TASK_WATCHDOG_FEED:
         {
             const esp_err_t err = esp_task_wdt_reset();
@@ -847,6 +856,7 @@ main_task_init(void)
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_SCHEDULE_NEXT_CHECK_FOR_FW_UPDATES));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_SCHEDULE_RETRY_CHECK_FOR_FW_UPDATES));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_DEACTIVATE_WIFI_AP));
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_RESTART_SERVICES));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_WATCHDOG_FEED));
 
     g_p_timer_sig_log_heap_usage = os_timer_sig_periodic_create_static(

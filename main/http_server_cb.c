@@ -728,9 +728,8 @@ http_server_resp_t
 http_server_cb_on_post_ruuvi(const char *p_body)
 {
     LOG_DBG("POST /ruuvi.json");
-    bool flag_network_cfg = false;
-    stop_services();
-    ruuvi_gateway_config_t *p_gw_cfg_tmp = os_calloc(1, sizeof(*p_gw_cfg_tmp));
+    bool                    flag_network_cfg = false;
+    ruuvi_gateway_config_t *p_gw_cfg_tmp     = os_calloc(1, sizeof(*p_gw_cfg_tmp));
     if (NULL == p_gw_cfg_tmp)
     {
         LOG_ERR("Failed to allocate memory for gw_cfg");
@@ -750,7 +749,7 @@ http_server_cb_on_post_ruuvi(const char *p_body)
     }
     else
     {
-        start_services();
+        restart_services();
     }
 
     cjson_wrap_str_t cjson_str = { 0 };

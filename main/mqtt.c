@@ -97,9 +97,16 @@ mqtt_publish_adv(const adv_report_t *const p_adv)
     const ruuvi_gw_cfg_mqtt_prefix_t mqtt_prefix = gw_cfg_get_mqtt_prefix();
 
     mqtt_protected_data_t *p_mqtt_data = mqtt_mutex_lock();
+    if (NULL == p_mqtt_data->p_mqtt_client)
+    {
+        LOG_ERR("Can't send advs - MQTT was stopped");
+        mqtt_mutex_unlock(&p_mqtt_data);
+        cjson_wrap_free_json_str(&json_str);
+        return false;
+    }
     mqtt_create_full_topic(&p_mqtt_data->mqtt_topic, mqtt_prefix.buf, tag_mac_str.str_buf);
 
-    LOG_DBG("publish: topic: %s, data: %s", topic.buf, json_str.p_str);
+    LOG_DBG("publish: topic: %s, data: %s", p_mqtt_data->mqtt_topic.buf, json_str.p_str);
     const int32_t mqtt_len              = 0;
     const int32_t mqtt_qos              = 1;
     const int32_t mqtt_flag_retain      = 0;
@@ -320,6 +327,7 @@ mqtt_app_start_internal(mqtt_protected_data_t *const p_mqtt_data)
         .alpn_protos                 = NULL,
         .clientkey_password          = NULL,
         .clientkey_password_len      = 0,
+        .network_timeout_ms          = CONFIG_ESP_TASK_WDT_TIMEOUT_S * 1000 - 500,
     };
     gw_cfg_unlock_ro(&p_gw_cfg);
 
@@ -329,7 +337,12 @@ mqtt_app_start_internal(mqtt_protected_data_t *const p_mqtt_data)
         LOG_ERR("%s failed", "esp_mqtt_client_init");
         return;
     }
-    esp_mqtt_client_start(p_mqtt_data->p_mqtt_client);
+    const esp_err_t err = esp_mqtt_client_start(p_mqtt_data->p_mqtt_client);
+    if (ESP_OK != err)
+    {
+        esp_mqtt_client_destroy(p_mqtt_data->p_mqtt_client);
+        p_mqtt_data->p_mqtt_client = NULL;
+    }
     // TODO handle connection fails, wrong server, user, pass etc
 }
 
@@ -359,11 +372,25 @@ mqtt_app_stop(void)
     mqtt_protected_data_t *p_mqtt_data = mqtt_mutex_lock();
     if (NULL != p_mqtt_data->p_mqtt_client)
     {
-        mqtt_publish_state_offline(p_mqtt_data);
+        if (0 != (xEventGroupGetBits(status_bits) & MQTT_CONNECTED_BIT))
+        {
+            mqtt_publish_state_offline(p_mqtt_data);
+            vTaskDelay(pdMS_TO_TICKS(500));
+        }
+        xEventGroupClearBits(status_bits, MQTT_CONNECTED_BIT);
         LOG_INFO("MQTT destroy");
         esp_mqtt_client_destroy(p_mqtt_data->p_mqtt_client);
+        LOG_INFO("MQTT destroyed");
         p_mqtt_data->p_mqtt_client = NULL;
-        xEventGroupClearBits(status_bits, MQTT_CONNECTED_BIT);
     }
     mqtt_mutex_unlock(&p_mqtt_data);
+}
+
+bool
+mqtt_app_is_working(void)
+{
+    mqtt_protected_data_t *p_mqtt_data = mqtt_mutex_lock();
+    const bool             is_working  = (NULL != p_mqtt_data->p_mqtt_client) ? true : false;
+    mqtt_mutex_unlock(&p_mqtt_data);
+    return is_working;
 }
