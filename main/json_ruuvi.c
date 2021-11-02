@@ -14,7 +14,8 @@
 #include "gw_cfg_default.h"
 #include "os_malloc.h"
 
-#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
+// Warning: Debug log level prints out the passwords as a "plaintext" so accidents won't happen.
+#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
 static const char TAG[] = "http_server";
