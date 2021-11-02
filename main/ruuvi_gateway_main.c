@@ -315,7 +315,10 @@ cb_on_ap_sta_disconnected(void)
     LOG_INFO("callback: on_ap_sta_disconnected");
     if (!wifi_manager_is_connected_to_wifi_or_ethernet())
     {
-        ethernet_start(g_gw_wifi_ssid.ssid_buf);
+        if (gw_cfg_get_eth_use_eth() || (!wifi_manager_is_sta_configured()))
+        {
+            ethernet_start(g_gw_wifi_ssid.ssid_buf);
+        }
         main_task_start_timer_after_hotspot_activation();
     }
     adv_post_enable_retransmission();
