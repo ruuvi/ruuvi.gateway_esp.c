@@ -14,7 +14,12 @@
 #include "gw_cfg_default.h"
 #include "os_malloc.h"
 
+#if RUUVI_TESTS_HTTP_SERVER_CB || RUUVI_TESTS_JSON_RUUVI
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
+#else
+// Warning: Debug log level prints out the passwords as a "plaintext" so accidents won't happen.
+#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
+#endif
 #include "log.h"
 
 static const char TAG[] = "http_server";
