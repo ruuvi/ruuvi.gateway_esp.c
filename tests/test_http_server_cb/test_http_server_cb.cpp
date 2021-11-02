@@ -159,12 +159,7 @@ adv_post_update_last_successful_network_comm_timestamp(void)
 }
 
 void
-start_services(void)
-{
-}
-
-void
-stop_services(void)
+restart_services(void)
 {
 }
 

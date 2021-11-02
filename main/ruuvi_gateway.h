@@ -59,7 +59,7 @@ void
 start_services(void);
 
 void
-stop_services(void);
+restart_services(void);
 
 void
 main_task_start_timer_after_hotspot_activation();
