@@ -354,13 +354,12 @@ mqtt_app_start(void)
     mqtt_protected_data_t *p_mqtt_data = mqtt_mutex_lock();
     if (NULL != p_mqtt_data->p_mqtt_client)
     {
-        LOG_INFO("MQTT destroy");
-        esp_mqtt_client_destroy(p_mqtt_data->p_mqtt_client);
-        p_mqtt_data->p_mqtt_client = NULL;
-        xEventGroupClearBits(status_bits, MQTT_CONNECTED_BIT);
+        LOG_INFO("MQTT client is already running");
     }
-
-    mqtt_app_start_internal(p_mqtt_data);
+    else
+    {
+        mqtt_app_start_internal(p_mqtt_data);
+    }
 
     mqtt_mutex_unlock(&p_mqtt_data);
 }
