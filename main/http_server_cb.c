@@ -383,7 +383,7 @@ http_server_resp_json_github_latest_release(void)
         return http_server_resp_504();
     }
 
-    LOG_INFO("github_latest_release.json: %s", info.p_json_buf);
+    LOG_DBG("github_latest_release.json: %s", info.p_json_buf);
     const bool flag_no_cache        = true;
     const bool flag_add_header_date = true;
     return http_server_resp_data_in_heap(
@@ -784,7 +784,7 @@ http_server_cb_on_post_ruuvi(const char *p_body)
 
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
-http_server_cb_on_post_fw_update(const char *p_body)
+http_server_cb_on_post_fw_update(const char *p_body, const bool flag_access_from_lan)
 {
     LOG_DBG("POST /fw_update.json");
     fw_update_set_extra_info_for_status_json_update_start();
@@ -799,7 +799,7 @@ http_server_cb_on_post_fw_update(const char *p_body)
         fw_update_set_extra_info_for_status_json_update_failed("Bad URL");
         return http_server_resp_400();
     }
-    if (!fw_update_run(false))
+    if (!fw_update_run(flag_access_from_lan ? FW_UPDATE_REASON_MANUAL_VIA_LAN : FW_UPDATE_REASON_MANUAL_VIA_HOTSPOT))
     {
         fw_update_set_extra_info_for_status_json_update_failed("Internal error");
         return http_server_resp_503();
@@ -813,7 +813,7 @@ http_server_cb_on_post_fw_update(const char *p_body)
 }
 
 http_server_resp_t
-http_server_cb_on_post(const char *p_file_name, const char *p_body)
+http_server_cb_on_post(const char *p_file_name, const char *p_body, const bool flag_access_from_lan)
 {
     if (g_http_server_cb_flag_prohibit_cfg_updating)
     {
@@ -825,7 +825,7 @@ http_server_cb_on_post(const char *p_file_name, const char *p_body)
     }
     else if (0 == strcmp(p_file_name, "fw_update.json"))
     {
-        return http_server_cb_on_post_fw_update(p_body);
+        return http_server_cb_on_post_fw_update(p_body, flag_access_from_lan);
     }
     LOG_WARN("POST /%s", p_file_name);
     return http_server_resp_404();

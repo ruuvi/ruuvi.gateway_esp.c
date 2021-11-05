@@ -72,10 +72,10 @@ fw_update_set_extra_info_for_status_json(
 
 static const char TAG[] = "fw_update";
 
-static ruuvi_flash_info_t g_ruuvi_flash_info;
-static fw_update_config_t g_fw_update_cfg;
-static fw_update_stage_e  g_update_progress_stage;
-static bool               g_flag_auto_updating;
+static ruuvi_flash_info_t   g_ruuvi_flash_info;
+static fw_update_config_t   g_fw_update_cfg;
+static fw_update_stage_e    g_update_progress_stage;
+static fw_updating_reason_e g_fw_updating_reason;
 
 static const esp_partition_t *
 find_data_fat_partition_by_name(const char *const p_partition_name)
@@ -722,20 +722,28 @@ fw_update_task(void)
     if (!fw_update_do_actions())
     {
         LOG_ERR("Firmware updating failed");
-        g_flag_auto_updating = false;
+        g_fw_updating_reason = FW_UPDATE_REASON_NONE;
     }
     else
     {
-        LOG_INFO("Firmware updating completed successfully");
+        switch (g_fw_updating_reason)
+        {
+            case FW_UPDATE_REASON_NONE:
+                LOG_INFO("Firmware updating completed successfully (unknown reason)");
+                break;
+            case FW_UPDATE_REASON_AUTO:
+                LOG_INFO("Firmware updating completed successfully (auto-updating)");
+                settings_write_flag_rebooting_after_auto_update(true);
+                break;
+            case FW_UPDATE_REASON_MANUAL_VIA_HOTSPOT:
+                LOG_INFO("Firmware updating completed successfully (manual updating via WiFi hotspot)");
+                settings_write_flag_force_start_wifi_hotspot(true);
+                break;
+            case FW_UPDATE_REASON_MANUAL_VIA_LAN:
+                LOG_INFO("Firmware updating completed successfully (manual updating via LAN)");
+                break;
+        }
         LOG_INFO("Wait 5 seconds before reboot");
-        if (g_flag_auto_updating)
-        {
-            settings_write_flag_rebooting_after_auto_update(true);
-        }
-        else
-        {
-            settings_write_flag_force_start_wifi_hotspot(true);
-        }
         vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_BEFORE_REBOOT_MS));
     }
     LOG_INFO("Restart system");
@@ -770,14 +778,14 @@ fw_update_get_url(void)
 }
 
 bool
-fw_update_run(const bool flag_auto_updating)
+fw_update_run(const fw_updating_reason_e fw_updating_reason)
 {
     const uint32_t stack_size_for_fw_update_task = 6 * 1024;
-    g_flag_auto_updating                         = flag_auto_updating;
+    g_fw_updating_reason                         = fw_updating_reason;
     if (!os_task_create_finite_without_param(&fw_update_task, "fw_update_task", stack_size_for_fw_update_task, 1))
     {
         LOG_ERR("Can't create thread");
-        g_flag_auto_updating = false;
+        g_fw_updating_reason = FW_UPDATE_REASON_NONE;
         return false;
     }
     return true;
