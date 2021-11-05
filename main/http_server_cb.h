@@ -49,7 +49,7 @@ http_server_resp_t
 http_server_cb_on_get(const char *p_path, const bool flag_access_from_lan, const http_server_resp_t *const p_resp_auth);
 
 http_server_resp_t
-http_server_cb_on_post(const char *p_file_name, const char *p_body);
+http_server_cb_on_post(const char *p_file_name, const char *p_body, const bool flag_access_from_lan);
 
 http_server_resp_t
 http_server_cb_on_delete(

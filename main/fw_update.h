@@ -29,6 +29,14 @@ typedef struct ruuvi_flash_info_t
     const esp_partition_t *p_next_fatfs_nrf52_partition;
 } ruuvi_flash_info_t;
 
+typedef enum fw_update_reason_e
+{
+    FW_UPDATE_REASON_NONE = 0,
+    FW_UPDATE_REASON_AUTO,
+    FW_UPDATE_REASON_MANUAL_VIA_HOTSPOT,
+    FW_UPDATE_REASON_MANUAL_VIA_LAN,
+} fw_updating_reason_e;
+
 bool
 fw_update_read_flash_info(void);
 
@@ -58,7 +66,7 @@ const char *
 fw_update_get_url(void);
 
 bool
-fw_update_run(const bool flag_auto_updating);
+fw_update_run(const fw_updating_reason_e fw_updating_reason);
 
 void
 fw_update_set_extra_info_for_status_json_update_start(void);

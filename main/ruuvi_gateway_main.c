@@ -961,7 +961,11 @@ main_task_init(void)
 
     ruuvi_auth_set_from_config();
 
-    if (!wifi_init(gw_cfg_get_eth_use_eth(), false, &g_gw_wifi_ssid, fw_update_get_current_fatfs_gwui_partition_name()))
+    if (!wifi_init(
+            gw_cfg_get_eth_use_eth(),
+            settings_read_flag_force_start_wifi_hotspot(),
+            &g_gw_wifi_ssid,
+            fw_update_get_current_fatfs_gwui_partition_name()))
     {
         LOG_ERR("%s failed", "wifi_init");
         return false;

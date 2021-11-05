@@ -1626,7 +1626,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
         "\"http_stat_user\":\"\","
         "\"http_stat_pass\":\"\","
         "\"use_filtering\":true"
-        "}");
+        "}",
+        false);
 
     ASSERT_TRUE(this->m_flag_settings_saved_to_flash);
     ASSERT_TRUE(this->m_flag_settings_sent_to_nrf);
@@ -1760,7 +1761,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
         "\"lan_auth_user\":\"user2\","
         "\"lan_auth_pass\":\"password2\","
         "\"use_filtering\":true"
-        "}");
+        "}",
+        false);
 
     ASSERT_TRUE(this->m_flag_settings_saved_to_flash);
     ASSERT_TRUE(this->m_flag_settings_sent_to_nrf);
@@ -1879,7 +1881,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
         "\"http_stat_user\":\"\","
         "\"http_stat_pass\":\"\","
         "\"use_filtering\":true"
-        "}");
+        "}",
+        false);
 
     ASSERT_TRUE(this->m_flag_settings_saved_to_flash);
     ASSERT_TRUE(this->m_flag_settings_sent_to_nrf);
@@ -1999,7 +2002,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_unknown_json) // NOLINT
         "\"http_stat_user\":\"\","
         "\"http_stat_pass\":\"\","
         "\"use_filtering\":true"
-        "}");
+        "}",
+        false);
 
     ASSERT_FALSE(this->m_flag_settings_saved_to_flash);
     ASSERT_FALSE(this->m_flag_settings_sent_to_nrf);
