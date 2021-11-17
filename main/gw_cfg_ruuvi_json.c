@@ -7,7 +7,9 @@
 
 #include "gw_cfg_ruuvi_json.h"
 #include <stdio.h>
+#include <string.h>
 #include "gw_cfg.h"
+#include "gw_cfg_default.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -139,6 +141,12 @@ gw_cfg_ruuvi_json_add_items_lan_auth(cJSON *p_json_root, const ruuvi_gateway_con
         return false;
     }
     if (!gw_cfg_ruuvi_json_add_string(p_json_root, "lan_auth_user", p_cfg->lan_auth.lan_auth_user))
+    {
+        return false;
+    }
+    const bool flag_use_default_password
+        = (0 == strcmp(p_cfg->lan_auth.lan_auth_pass, RUUVI_GATEWAY_AUTH_DEFAULT_PASS_USE_DEVICE_ID)) ? true : false;
+    if (!gw_cfg_ruuvi_json_add_bool(p_json_root, "lan_auth_default", flag_use_default_password))
     {
         return false;
     }
