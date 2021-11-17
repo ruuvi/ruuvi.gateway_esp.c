@@ -349,6 +349,21 @@ void
 restart_services(void)
 {
     os_signal_send(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_RESTART_SERVICES));
+
+    if (AUTO_UPDATE_CYCLE_TYPE_MANUAL != gw_cfg_get_auto_update_cycle())
+    {
+        const os_delta_ticks_t delay_ticks = pdMS_TO_TICKS(RUUVI_CHECK_FOR_FW_UPDATES_DELAY_BEFORE_RETRY_SECONDS)
+                                             * 1000;
+        LOG_INFO(
+            "Restarting services: Restart firmware auto-updating, run next check after %lu seconds",
+            (printf_ulong_t)RUUVI_CHECK_FOR_FW_UPDATES_DELAY_AFTER_REBOOT_SECONDS);
+        os_timer_sig_one_shot_restart(g_p_timer_sig_check_for_fw_updates, delay_ticks);
+    }
+    else
+    {
+        LOG_INFO("Restarting services: Stop firmware auto-updating");
+        os_timer_sig_one_shot_stop(g_p_timer_sig_check_for_fw_updates);
+    }
 }
 
 static void
@@ -544,6 +559,12 @@ check_if_checking_for_fw_updates_allowed2(const ruuvi_gw_cfg_auto_update_t *cons
     time_t       cur_time  = unix_time + (time_t)((int32_t)p_cfg_auto_update->auto_update_tz_offset_hours * 60 * 60);
     struct tm    tm_time   = { 0 };
     gmtime_r(&cur_time, &tm_time);
+
+    if (AUTO_UPDATE_CYCLE_TYPE_MANUAL == p_cfg_auto_update->auto_update_cycle)
+    {
+        LOG_INFO("Check for fw updates - skip (manual updating mode)");
+        return false;
+    }
 
     LOG_INFO(
         "Check for fw updates: configured weekdays: %s %s %s %s %s %s %s, current: %s",
