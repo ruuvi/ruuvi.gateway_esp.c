@@ -11,6 +11,7 @@
 #include "cJSON.h"
 #include "driver/gpio.h"
 #include "esp_system.h"
+#include "esp_wifi.h"
 #include <esp_task_wdt.h>
 #include "ethernet.h"
 #include "os_task.h"
@@ -390,7 +391,7 @@ wifi_init(
     const wifi_ssid_t *const p_gw_wifi_ssid,
     const char *const        p_fatfs_gwui_partition_name)
 {
-    static const WiFiAntConfig_t wiFiAntConfig = {
+    static const wifi_manager_antenna_config_t wifi_antenna_config = {
         .wifi_ant_gpio_config = {
             .gpio_cfg = {
                 [0] = {
@@ -435,7 +436,7 @@ wifi_init(
         .cb_on_ap_sta_connected    = &cb_on_ap_sta_connected,
         .cb_on_ap_sta_disconnected = &cb_on_ap_sta_disconnected,
     };
-    wifi_manager_start(!flag_use_eth, flag_start_ap_only, p_gw_wifi_ssid, &wiFiAntConfig, &wifi_callbacks);
+    wifi_manager_start(!flag_use_eth, flag_start_ap_only, p_gw_wifi_ssid, &wifi_antenna_config, &wifi_callbacks);
     wifi_manager_set_callback(EVENT_STA_GOT_IP, &wifi_connection_ok_cb);
     wifi_manager_set_callback(EVENT_STA_DISCONNECTED, &wifi_disconnect_cb);
     return true;
