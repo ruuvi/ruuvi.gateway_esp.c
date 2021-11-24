@@ -62,10 +62,10 @@ void
 restart_services(void);
 
 void
-main_task_start_timer_after_hotspot_activation();
+main_task_start_timer_after_hotspot_activation(void);
 
 void
-main_task_stop_timer_after_hotspot_activation();
+main_task_stop_timer_after_hotspot_activation(void);
 
 void
 main_task_schedule_next_check_for_fw_updates(void);

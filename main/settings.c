@@ -216,6 +216,31 @@ settings_get_gw_cfg_blob_from_nvs(nvs_handle handle, ruuvi_gateway_config_blob_t
     return true;
 }
 
+static bool
+settings_read_from_blob(nvs_handle handle, ruuvi_gateway_config_t *const p_gw_cfg)
+{
+    LOG_WARN("Try to read config from BLOB");
+    bool                         flag_use_default_config = false;
+    ruuvi_gateway_config_blob_t *p_gw_cfg_blob           = os_calloc(1, sizeof(*p_gw_cfg_blob));
+    if (NULL == p_gw_cfg_blob)
+    {
+        flag_use_default_config = true;
+    }
+    else
+    {
+        if (!settings_get_gw_cfg_blob_from_nvs(handle, p_gw_cfg_blob))
+        {
+            flag_use_default_config = true;
+        }
+        else
+        {
+            gw_cfg_blob_convert(p_gw_cfg, p_gw_cfg_blob);
+        }
+        os_free(p_gw_cfg_blob);
+    }
+    return flag_use_default_config;
+}
+
 void
 settings_get_from_flash(void)
 {
@@ -230,24 +255,7 @@ settings_get_from_flash(void)
     {
         if (!settings_get_gw_cfg_from_nvs(handle, p_gw_cfg))
         {
-            LOG_WARN("Try to read config from BLOB");
-            ruuvi_gateway_config_blob_t *p_gw_cfg_blob = os_calloc(1, sizeof(*p_gw_cfg_blob));
-            if (NULL == p_gw_cfg_blob)
-            {
-                flag_use_default_config = true;
-            }
-            else
-            {
-                if (!settings_get_gw_cfg_blob_from_nvs(handle, p_gw_cfg_blob))
-                {
-                    flag_use_default_config = true;
-                }
-                else
-                {
-                    gw_cfg_blob_convert(p_gw_cfg, p_gw_cfg_blob);
-                }
-                os_free(p_gw_cfg_blob);
-            }
+            flag_use_default_config = settings_read_from_blob(handle, p_gw_cfg);
         }
         nvs_close(handle);
     }

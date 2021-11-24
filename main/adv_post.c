@@ -38,6 +38,7 @@
 #include "fw_update.h"
 #include "nrf52fw.h"
 #include "reset_task.h"
+#include "time_units.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -55,6 +56,15 @@ typedef enum adv_post_sig_e
     ADV_POST_SIG_NETWORK_WATCHDOG     = OS_SIGNAL_NUM_8,
     ADV_POST_SIG_TASK_WATCHDOG_FEED   = OS_SIGNAL_NUM_9,
 } adv_post_sig_e;
+
+typedef struct adv_post_state_t
+{
+    bool flag_network_connected;
+    bool flag_async_comm_in_progress;
+    bool flag_need_to_send_advs;
+    bool flag_need_to_send_statistics;
+    bool flag_retransmission_disabled;
+} adv_post_state_t;
 
 #define ADV_POST_SIG_FIRST (ADV_POST_SIG_STOP)
 #define ADV_POST_SIG_LAST  (ADV_POST_SIG_TASK_WATCHDOG_FEED)
@@ -331,6 +341,136 @@ adv_post_wdt_add_and_start(void)
 }
 
 static void
+adv_post_do_async_comm(adv_post_state_t *const p_adv_post_state)
+{
+    if (p_adv_post_state->flag_async_comm_in_progress)
+    {
+        if (http_async_poll())
+        {
+            p_adv_post_state->flag_async_comm_in_progress = false;
+        }
+        else
+        {
+            os_timer_sig_one_shot_start(g_p_adv_post_timer_sig_do_async_comm);
+        }
+    }
+    if (!p_adv_post_state->flag_async_comm_in_progress && p_adv_post_state->flag_need_to_send_advs)
+    {
+        p_adv_post_state->flag_need_to_send_advs = false;
+        if (adv_post_do_retransmission(p_adv_post_state->flag_network_connected))
+        {
+            p_adv_post_state->flag_async_comm_in_progress = true;
+        }
+        g_adv_post_nonce += 1;
+    }
+    if (!p_adv_post_state->flag_async_comm_in_progress && p_adv_post_state->flag_need_to_send_statistics)
+    {
+        if (p_adv_post_state->flag_network_connected)
+        {
+            p_adv_post_state->flag_need_to_send_statistics = false;
+            if (adv_post_do_send_statistics())
+            {
+                p_adv_post_state->flag_async_comm_in_progress = true;
+            }
+            g_adv_post_nonce += 1;
+        }
+        else
+        {
+            LOG_WARN("Can't send statistics, no network connection");
+        }
+    }
+}
+
+static void
+adv_post_handle_sig_network_watchdog(void)
+{
+    const TickType_t delta_ticks   = xTaskGetTickCount() - g_adv_post_last_successful_network_comm_timestamp;
+    const TickType_t timeout_ticks = pdMS_TO_TICKS(RUUVI_NETWORK_WATCHDOG_TIMEOUT_SECONDS) * 1000;
+    if (delta_ticks > timeout_ticks)
+    {
+        LOG_INFO(
+            "No networking for %lu seconds - reboot the gateway",
+            (printf_ulong_t)RUUVI_NETWORK_WATCHDOG_TIMEOUT_SECONDS);
+        esp_restart();
+    }
+}
+
+static void
+adv_post_handle_sig_task_watchdog_feed(void)
+{
+    const esp_err_t err = esp_task_wdt_reset();
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "%s failed", "esp_task_wdt_reset");
+    }
+}
+
+static bool
+adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t *const p_adv_post_state)
+{
+    bool flag_stop = false;
+    switch (adv_post_sig)
+    {
+        case ADV_POST_SIG_STOP:
+            LOG_INFO("Got ADV_POST_SIG_STOP");
+            flag_stop = true;
+            break;
+        case ADV_POST_SIG_NETWORK_DISCONNECTED:
+            LOG_INFO("Handle event: NETWORK_DISCONNECTED");
+            p_adv_post_state->flag_network_connected = false;
+            break;
+        case ADV_POST_SIG_NETWORK_CONNECTED:
+            LOG_INFO("Handle event: NETWORK_CONNECTED");
+            p_adv_post_state->flag_network_connected = true;
+            if (p_adv_post_state->flag_need_to_send_statistics)
+            {
+                os_timer_sig_periodic_simulate(g_p_adv_post_timer_sig_send_statistics);
+                os_timer_sig_periodic_restart(
+                    g_p_adv_post_timer_sig_send_statistics,
+                    pdMS_TO_TICKS(ADV_POST_STATISTICS_INTERVAL_SECONDS) * TIME_UNITS_MS_PER_SECOND);
+            }
+            break;
+        case ADV_POST_SIG_RETRANSMIT:
+            if (!p_adv_post_state->flag_retransmission_disabled && gw_cfg_get_http_use_http())
+            {
+                p_adv_post_state->flag_need_to_send_advs = true;
+                os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DO_ASYNC_COMM));
+            }
+            break;
+        case ADV_POST_SIG_SEND_STATISTICS:
+            p_adv_post_state->flag_need_to_send_statistics = true;
+            if (!p_adv_post_state->flag_retransmission_disabled && gw_cfg_get_http_stat_use_http_stat())
+            {
+                if (!p_adv_post_state->flag_network_connected)
+                {
+                    LOG_WARN("Can't send statistics, no network connection");
+                }
+                else
+                {
+                    os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DO_ASYNC_COMM));
+                }
+            }
+            break;
+        case ADV_POST_SIG_DO_ASYNC_COMM:
+            adv_post_do_async_comm(p_adv_post_state);
+            break;
+        case ADV_POST_SIG_DISABLE:
+            p_adv_post_state->flag_retransmission_disabled = true;
+            break;
+        case ADV_POST_SIG_ENABLE:
+            p_adv_post_state->flag_retransmission_disabled = false;
+            break;
+        case ADV_POST_SIG_NETWORK_WATCHDOG:
+            adv_post_handle_sig_network_watchdog();
+            break;
+        case ADV_POST_SIG_TASK_WATCHDOG_FEED:
+            adv_post_handle_sig_task_watchdog_feed();
+            break;
+    }
+    return flag_stop;
+}
+
+static void
 adv_post_task(void)
 {
     esp_log_level_set(TAG, ESP_LOG_INFO);
@@ -348,13 +488,15 @@ adv_post_task(void)
 
     adv_post_wdt_add_and_start();
 
-    bool flag_network_connected       = false;
-    bool flag_stop                    = false;
-    bool flag_async_comm_in_progress  = false;
-    bool flag_need_to_send_advs       = false;
-    bool flag_need_to_send_statistics = true;
-    bool flag_retransmission_disabled = false;
-    while (!flag_stop)
+    adv_post_state_t adv_post_state = {
+        .flag_network_connected       = false,
+        .flag_async_comm_in_progress  = false,
+        .flag_need_to_send_advs       = false,
+        .flag_need_to_send_statistics = true,
+        .flag_retransmission_disabled = false,
+    };
+
+    for (;;)
     {
         os_signal_events_t sig_events = { 0 };
         if (!os_signal_wait_with_timeout(g_p_adv_post_sig, OS_DELTA_TICKS_INFINITE, &sig_events))
@@ -369,115 +511,9 @@ adv_post_task(void)
                 break;
             }
             const adv_post_sig_e adv_post_sig = adv_post_conv_from_sig_num(sig_num);
-            switch (adv_post_sig)
+            if (adv_post_handle_sig(adv_post_sig, &adv_post_state))
             {
-                case ADV_POST_SIG_STOP:
-                    LOG_INFO("Got ADV_POST_SIG_STOP");
-                    flag_stop = true;
-                    break;
-                case ADV_POST_SIG_NETWORK_DISCONNECTED:
-                    LOG_INFO("Handle event: NETWORK_DISCONNECTED");
-                    flag_network_connected = false;
-                    break;
-                case ADV_POST_SIG_NETWORK_CONNECTED:
-                    LOG_INFO("Handle event: NETWORK_CONNECTED");
-                    flag_network_connected = true;
-                    if (flag_need_to_send_statistics)
-                    {
-                        os_timer_sig_periodic_simulate(g_p_adv_post_timer_sig_send_statistics);
-                        os_timer_sig_periodic_restart(
-                            g_p_adv_post_timer_sig_send_statistics,
-                            pdMS_TO_TICKS(ADV_POST_STATISTICS_INTERVAL_SECONDS) * 1000);
-                    }
-                    break;
-                case ADV_POST_SIG_RETRANSMIT:
-                    if (!flag_retransmission_disabled && gw_cfg_get_http_use_http())
-                    {
-                        flag_need_to_send_advs = true;
-                        os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DO_ASYNC_COMM));
-                    }
-                    break;
-                case ADV_POST_SIG_SEND_STATISTICS:
-                    flag_need_to_send_statistics = true;
-                    if (!flag_retransmission_disabled && gw_cfg_get_http_stat_use_http_stat())
-                    {
-                        if (!flag_network_connected)
-                        {
-                            LOG_WARN("Can't send statistics, no network connection");
-                        }
-                        else
-                        {
-                            os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DO_ASYNC_COMM));
-                        }
-                    }
-                    break;
-                case ADV_POST_SIG_DO_ASYNC_COMM:
-                    if (flag_async_comm_in_progress)
-                    {
-                        if (http_async_poll())
-                        {
-                            flag_async_comm_in_progress = false;
-                        }
-                        else
-                        {
-                            os_timer_sig_one_shot_start(g_p_adv_post_timer_sig_do_async_comm);
-                        }
-                    }
-                    if (!flag_async_comm_in_progress && flag_need_to_send_advs)
-                    {
-                        flag_need_to_send_advs = false;
-                        if (adv_post_do_retransmission(flag_network_connected))
-                        {
-                            flag_async_comm_in_progress = true;
-                        }
-                        g_adv_post_nonce += 1;
-                    }
-                    if (!flag_async_comm_in_progress && flag_need_to_send_statistics)
-                    {
-                        if (flag_network_connected)
-                        {
-                            flag_need_to_send_statistics = false;
-                            if (adv_post_do_send_statistics())
-                            {
-                                flag_async_comm_in_progress = true;
-                            }
-                            g_adv_post_nonce += 1;
-                        }
-                        else
-                        {
-                            LOG_WARN("Can't send statistics, no network connection");
-                        }
-                    }
-                    break;
-                case ADV_POST_SIG_DISABLE:
-                    flag_retransmission_disabled = true;
-                    break;
-                case ADV_POST_SIG_ENABLE:
-                    flag_retransmission_disabled = false;
-                    break;
-                case ADV_POST_SIG_NETWORK_WATCHDOG:
-                {
-                    const TickType_t delta_ticks = xTaskGetTickCount()
-                                                   - g_adv_post_last_successful_network_comm_timestamp;
-                    const TickType_t timeout_ticks = pdMS_TO_TICKS(RUUVI_NETWORK_WATCHDOG_TIMEOUT_SECONDS) * 1000;
-                    if (delta_ticks > timeout_ticks)
-                    {
-                        LOG_INFO(
-                            "No networking for %lu seconds - reboot the gateway",
-                            (printf_ulong_t)RUUVI_NETWORK_WATCHDOG_TIMEOUT_SECONDS);
-                        esp_restart();
-                    }
-                    break;
-                }
-                case ADV_POST_SIG_TASK_WATCHDOG_FEED:
-                {
-                    const esp_err_t err = esp_task_wdt_reset();
-                    if (ESP_OK != err)
-                    {
-                        LOG_ERR_ESP(err, "%s failed", "esp_task_wdt_reset");
-                    }
-                    break;
-                }
+                break;
             }
         }
     }

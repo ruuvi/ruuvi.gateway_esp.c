@@ -14,6 +14,10 @@
 #include "gw_cfg_default.h"
 #include "os_malloc.h"
 
+#if !defined(RUUVI_TESTS_HTTP_SERVER_CB)
+#define RUUVI_TESTS_HTTP_SERVER_CB (0)
+#endif
+
 #if RUUVI_TESTS_HTTP_SERVER_CB || RUUVI_TESTS_JSON_RUUVI
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #else

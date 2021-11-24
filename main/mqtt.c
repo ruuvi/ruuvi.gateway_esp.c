@@ -291,6 +291,10 @@ mqtt_app_start_internal(mqtt_protected_data_t *const p_mqtt_data)
     {
         mqtt_transport = MQTT_TRANSPORT_OVER_WSS;
     }
+    else
+    {
+        LOG_WARN("Unknown MQTT transport='%s', use TCP", p_gw_cfg->mqtt.mqtt_transport.buf);
+    }
 
     const esp_mqtt_client_config_t mqtt_cfg = {
         .event_handle                = &mqtt_event_handler,

@@ -163,6 +163,46 @@ http_json_create_records_str(
 }
 
 static bool
+http_json_generate_attributes_for_sensors(
+    const adv_report_table_t *const p_reports,
+    cJSON *const                    p_json_active_sensors,
+    cJSON *const                    p_json_inactive_sensors)
+{
+    for (num_of_advs_t i = 0; i < p_reports->num_of_advs; ++i)
+    {
+        const adv_report_t *const p_adv   = &p_reports->table[i];
+        const mac_address_str_t   mac_str = mac_address_to_str(&p_adv->tag_mac);
+        if (0 != p_adv->samples_counter)
+        {
+            cJSON *p_json_obj = cJSON_CreateObject();
+            if (NULL == p_json_obj)
+            {
+                return false;
+            }
+            cJSON_AddItemToArray(p_json_active_sensors, p_json_obj);
+            if (NULL == cJSON_AddStringToObject(p_json_obj, "MAC", mac_str.str_buf))
+            {
+                return false;
+            }
+            if (!cjson_wrap_add_uint32(p_json_obj, "COUNTER", p_adv->samples_counter))
+            {
+                return false;
+            }
+        }
+        else
+        {
+            cJSON *p_json_str = cJSON_CreateString(mac_str.str_buf);
+            if (NULL == p_json_str)
+            {
+                return false;
+            }
+            cJSON_AddItemToArray(p_json_inactive_sensors, p_json_str);
+        }
+    }
+    return true;
+}
+
+static bool
 http_json_generate_status_attributes(
     cJSON *const                    p_json_root,
     const mac_address_str_t         nrf52_mac_addr,
@@ -225,38 +265,7 @@ http_json_generate_status_attributes(
     {
         return false;
     }
-    for (num_of_advs_t i = 0; i < p_reports->num_of_advs; ++i)
-    {
-        const adv_report_t *const p_adv   = &p_reports->table[i];
-        const mac_address_str_t   mac_str = mac_address_to_str(&p_adv->tag_mac);
-        if (0 != p_adv->samples_counter)
-        {
-            cJSON *p_json_obj = cJSON_CreateObject();
-            if (NULL == p_json_obj)
-            {
-                return false;
-            }
-            cJSON_AddItemToArray(p_json_active_sensors, p_json_obj);
-            if (NULL == cJSON_AddStringToObject(p_json_obj, "MAC", mac_str.str_buf))
-            {
-                return false;
-            }
-            if (!cjson_wrap_add_uint32(p_json_obj, "COUNTER", p_adv->samples_counter))
-            {
-                return false;
-            }
-        }
-        else
-        {
-            cJSON *p_json_str = cJSON_CreateString(mac_str.str_buf);
-            if (NULL == p_json_str)
-            {
-                return false;
-            }
-            cJSON_AddItemToArray(p_json_inactive_sensors, p_json_str);
-        }
-    }
-    return true;
+    return http_json_generate_attributes_for_sensors(p_reports, p_json_active_sensors, p_json_inactive_sensors);
 }
 
 static cJSON *
