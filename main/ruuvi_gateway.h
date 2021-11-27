@@ -21,6 +21,9 @@
 extern "C" {
 #endif
 
+#define RUUVI_BITS_PER_BYTE (8U)
+#define RUUVI_BYTE_MASK     (0xFFU)
+
 #define RUUVI_FREE_HEAP_LIM_KIB (10U)
 
 #define ADV_POST_DEFAULT_INTERVAL_SECONDS (10)

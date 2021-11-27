@@ -58,6 +58,12 @@ static const char TAG[] = "ruuvi_gateway";
 
 #define MAIN_TASK_TIMEOUT_AFTER_MANUAL_HOTSPOT_ACTIVATION_SEC (60)
 
+#define RUUVI_GET_NRF52_ID_NUM_RETRIES (3U)
+#define RUUVI_GET_NRF52_ID_DELAY_MS    (1000U)
+#define RUUVI_GET_NRF52_ID_STEP_MS     (100U)
+
+#define RUUVI_NUM_BYTES_IN_1KB (1024U)
+
 typedef enum main_task_sig_e
 {
     MAIN_TASK_SIG_LOG_HEAP_USAGE                      = OS_SIGNAL_NUM_0,
@@ -445,14 +451,18 @@ wifi_init(
 static void
 request_and_wait_nrf52_id(void)
 {
-    const uint32_t delay_ms = 1000U;
-    const uint32_t step_ms  = 100U;
-    for (uint32_t i = 0; (i < 3U) && (!ruuvi_device_id_is_set()); ++i)
+    const uint32_t delay_ms = RUUVI_GET_NRF52_ID_DELAY_MS;
+    const uint32_t step_ms  = RUUVI_GET_NRF52_ID_STEP_MS;
+    for (uint32_t i = 0; i < RUUVI_GET_NRF52_ID_NUM_RETRIES; ++i)
     {
+        if (ruuvi_device_id_is_set())
+        {
+            break;
+        }
         LOG_INFO("Request nRF52 ID");
         ruuvi_send_nrf_get_id();
 
-        for (uint32_t j = 0; j < delay_ms / step_ms; ++j)
+        for (uint32_t j = 0; j < (delay_ms / step_ms); ++j)
         {
             vTaskDelay(step_ms / portTICK_PERIOD_MS);
             if (ruuvi_device_id_is_set())
@@ -557,8 +567,11 @@ static bool
 check_if_checking_for_fw_updates_allowed2(const ruuvi_gw_cfg_auto_update_t *const p_cfg_auto_update)
 {
     const time_t unix_time = os_time_get();
-    time_t       cur_time  = unix_time + (time_t)((int32_t)p_cfg_auto_update->auto_update_tz_offset_hours * 60 * 60);
-    struct tm    tm_time   = { 0 };
+    time_t       cur_time  = (time_t)(
+        unix_time
+        + ((int32_t)p_cfg_auto_update->auto_update_tz_offset_hours * TIME_UNITS_MINUTES_PER_HOUR
+           * TIME_UNITS_SECONDS_PER_MINUTE));
+    struct tm tm_time = { 0 };
     gmtime_r(&cur_time, &tm_time);
 
     if (AUTO_UPDATE_CYCLE_TYPE_MANUAL == p_cfg_auto_update->auto_update_cycle)
@@ -621,87 +634,113 @@ check_if_checking_for_fw_updates_allowed(void)
 }
 
 static void
+main_task_handle_sig_log_heap_usage(void)
+{
+    const uint32_t free_heap = esp_get_free_heap_size();
+    LOG_INFO("free heap: %lu", (printf_ulong_t)free_heap);
+    if (free_heap < (RUUVI_FREE_HEAP_LIM_KIB * RUUVI_NUM_BYTES_IN_1KB))
+    {
+        // TODO: in ESP-IDF v4.x there is API heap_caps_register_failed_alloc_callback,
+        //       which allows to catch 'no memory' event and reboot.
+        LOG_ERR(
+            "Only %uKiB of free memory left - probably due to a memory leak. Reboot the Gateway.",
+            (printf_uint_t)(free_heap / RUUVI_NUM_BYTES_IN_1KB));
+        esp_restart();
+    }
+}
+
+static void
+main_task_handle_sig_check_for_fw_updates(void)
+{
+    if (check_if_checking_for_fw_updates_allowed())
+    {
+        LOG_INFO("Check for fw updates: activate");
+        http_server_user_req(HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO);
+    }
+    else
+    {
+        main_task_schedule_retry_check_for_fw_updates();
+    }
+}
+
+static void
+main_task_handle_sig_schedule_next_check_for_fw_updates(void)
+{
+    const os_delta_ticks_t delay_ticks = pdMS_TO_TICKS(RUUVI_CHECK_FOR_FW_UPDATES_DELAY_AFTER_SUCCESS_SECONDS)
+                                         * TIME_UNITS_MS_PER_SECOND;
+    LOG_INFO(
+        "Schedule next check for fw updates (after successful release_info downloading) after %lu seconds (%lu "
+        "ticks)",
+        (printf_ulong_t)RUUVI_CHECK_FOR_FW_UPDATES_DELAY_AFTER_SUCCESS_SECONDS,
+        (printf_ulong_t)delay_ticks);
+    os_timer_sig_one_shot_restart(g_p_timer_sig_check_for_fw_updates, delay_ticks);
+}
+
+static void
+main_task_handle_sig_schedule_retry_check_for_fw_updates(void)
+{
+    const os_delta_ticks_t delay_ticks = pdMS_TO_TICKS(RUUVI_CHECK_FOR_FW_UPDATES_DELAY_BEFORE_RETRY_SECONDS)
+                                         * TIME_UNITS_MS_PER_SECOND;
+    LOG_INFO(
+        "Schedule a recheck for fw updates after %lu seconds (%lu ticks)",
+        (printf_ulong_t)RUUVI_CHECK_FOR_FW_UPDATES_DELAY_BEFORE_RETRY_SECONDS,
+        (printf_ulong_t)delay_ticks);
+    os_timer_sig_one_shot_restart(g_p_timer_sig_check_for_fw_updates, delay_ticks);
+}
+
+static void
+main_task_handle_sig_deactivate_wifi_ap(void)
+{
+    LOG_INFO("MAIN_TASK_SIG_DEACTIVATE_WIFI_AP");
+    wifi_manager_stop_ap();
+    if (gw_cfg_get_eth_use_eth() || (!wifi_manager_is_sta_configured()))
+    {
+        ethernet_start(g_gw_wifi_ssid.ssid_buf);
+    }
+    else
+    {
+        wifi_manager_connect_async();
+    }
+
+    leds_indication_network_no_connection();
+}
+
+static void
+main_task_handle_sig_task_watchdog_feed(void)
+{
+    const esp_err_t err = esp_task_wdt_reset();
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "%s failed", "esp_task_wdt_reset");
+    }
+}
+
+static void
 main_task_handle_sig(const main_task_sig_e main_task_sig)
 {
     switch (main_task_sig)
     {
         case MAIN_TASK_SIG_LOG_HEAP_USAGE:
-        {
-            const uint32_t free_heap = esp_get_free_heap_size();
-            LOG_INFO("free heap: %lu", (printf_ulong_t)free_heap);
-            if (free_heap < (RUUVI_FREE_HEAP_LIM_KIB * 1024U))
-            {
-                // TODO: in ESP-IDF v4.x there is API heap_caps_register_failed_alloc_callback,
-                //       which allows to catch 'no memory' event and reboot.
-                LOG_ERR(
-                    "Only %uKiB of free memory left - probably due to a memory leak. Reboot the Gateway.",
-                    (printf_uint_t)(free_heap / 1024U));
-                esp_restart();
-            }
+            main_task_handle_sig_log_heap_usage();
             break;
-        }
         case MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES:
-        {
-            if (check_if_checking_for_fw_updates_allowed())
-            {
-                LOG_INFO("Check for fw updates: activate");
-                http_server_user_req(HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO);
-            }
-            else
-            {
-                main_task_schedule_retry_check_for_fw_updates();
-            }
+            main_task_handle_sig_check_for_fw_updates();
             break;
-        }
         case MAIN_TASK_SIG_SCHEDULE_NEXT_CHECK_FOR_FW_UPDATES:
-        {
-            const os_delta_ticks_t delay_ticks = pdMS_TO_TICKS(RUUVI_CHECK_FOR_FW_UPDATES_DELAY_AFTER_SUCCESS_SECONDS)
-                                                 * 1000;
-            LOG_INFO(
-                "Schedule next check for fw updates (after successful release_info downloading) after %lu seconds (%lu "
-                "ticks)",
-                (printf_ulong_t)RUUVI_CHECK_FOR_FW_UPDATES_DELAY_AFTER_SUCCESS_SECONDS,
-                (printf_ulong_t)delay_ticks);
-            os_timer_sig_one_shot_restart(g_p_timer_sig_check_for_fw_updates, delay_ticks);
+            main_task_handle_sig_schedule_next_check_for_fw_updates();
             break;
-        }
         case MAIN_TASK_SIG_SCHEDULE_RETRY_CHECK_FOR_FW_UPDATES:
-        {
-            const os_delta_ticks_t delay_ticks = pdMS_TO_TICKS(RUUVI_CHECK_FOR_FW_UPDATES_DELAY_BEFORE_RETRY_SECONDS)
-                                                 * 1000;
-            LOG_INFO(
-                "Schedule a recheck for fw updates after %lu seconds (%lu ticks)",
-                (printf_ulong_t)RUUVI_CHECK_FOR_FW_UPDATES_DELAY_BEFORE_RETRY_SECONDS,
-                (printf_ulong_t)delay_ticks);
-            os_timer_sig_one_shot_restart(g_p_timer_sig_check_for_fw_updates, delay_ticks);
+            main_task_handle_sig_schedule_retry_check_for_fw_updates();
             break;
-        }
         case MAIN_TASK_SIG_DEACTIVATE_WIFI_AP:
-            LOG_INFO("MAIN_TASK_SIG_DEACTIVATE_WIFI_AP");
-            wifi_manager_stop_ap();
-            if (gw_cfg_get_eth_use_eth() || (!wifi_manager_is_sta_configured()))
-            {
-                ethernet_start(g_gw_wifi_ssid.ssid_buf);
-            }
-            else
-            {
-                wifi_manager_connect_async();
-            }
-
-            leds_indication_network_no_connection();
+            main_task_handle_sig_deactivate_wifi_ap();
             break;
         case MAIN_TASK_SIG_TASK_RESTART_SERVICES:
             restart_services_internal();
             break;
         case MAIN_TASK_SIG_TASK_WATCHDOG_FEED:
-        {
-            const esp_err_t err = esp_task_wdt_reset();
-            if (ESP_OK != err)
-            {
-                LOG_ERR_ESP(err, "%s failed", "esp_task_wdt_reset");
-            }
+            main_task_handle_sig_task_watchdog_feed();
             break;
-        }
     }
 }
 
@@ -869,12 +908,60 @@ main_wdt_add_and_start(void)
 }
 
 static bool
-main_task_init(void)
+network_subsystem_init(void)
 {
-    esp_log_level_set(TAG, ESP_LOG_DEBUG);
-    cjson_wrap_init();
-    gw_cfg_init();
+    if (!wifi_init(
+            gw_cfg_get_eth_use_eth(),
+            settings_read_flag_force_start_wifi_hotspot(),
+            &g_gw_wifi_ssid,
+            fw_update_get_current_fatfs_gwui_partition_name()))
+    {
+        LOG_ERR("%s failed", "wifi_init");
+        return false;
+    }
+    configure_wifi_country_and_max_tx_power();
+    ethernet_init(&ethernet_link_up_cb, &ethernet_link_down_cb, &ethernet_connection_ok_cb);
 
+    if (settings_read_flag_force_start_wifi_hotspot())
+    {
+        LOG_INFO("Force start WiFi hotspot");
+        settings_write_flag_force_start_wifi_hotspot(false);
+        if (!wifi_manager_is_ap_active())
+        {
+            wifi_manager_start_ap();
+        }
+        else
+        {
+            LOG_INFO("WiFi hotspot is already active");
+        }
+        main_task_start_timer_after_hotspot_activation();
+    }
+    else
+    {
+        if (gw_cfg_get_eth_use_eth() || (!wifi_manager_is_sta_configured()))
+        {
+            ethernet_start(g_gw_wifi_ssid.ssid_buf);
+        }
+        else
+        {
+            LOG_INFO("Gateway already configured to use WiFi connection, so Ethernet is not needed");
+        }
+    }
+
+    if (wifi_manager_is_ap_active())
+    {
+        leds_indication_on_hotspot_activation();
+    }
+    else
+    {
+        leds_indication_network_no_connection();
+    }
+    return true;
+}
+
+static void
+main_task_init_signals(void)
+{
     g_p_signal_main_task = os_signal_create_static(&g_signal_main_task_mem);
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_LOG_HEAP_USAGE));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES));
@@ -883,31 +970,46 @@ main_task_init(void)
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_DEACTIVATE_WIFI_AP));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_RESTART_SERVICES));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_WATCHDOG_FEED));
+}
 
+static void
+main_task_init_timers(void)
+{
     g_p_timer_sig_log_heap_usage = os_timer_sig_periodic_create_static(
         &g_timer_sig_log_heap_usage,
         "log_heap_usage",
         g_p_signal_main_task,
         main_task_conv_to_sig_num(MAIN_TASK_SIG_LOG_HEAP_USAGE),
-        pdMS_TO_TICKS(MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS * 1000U));
+        pdMS_TO_TICKS(MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS * TIME_UNITS_MS_PER_SECOND));
     g_p_timer_sig_check_for_fw_updates = os_timer_sig_one_shot_create_static(
         &g_timer_sig_check_for_fw_updates_mem,
         "check_fw_updates",
         g_p_signal_main_task,
         main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES),
-        pdMS_TO_TICKS(RUUVI_CHECK_FOR_FW_UPDATES_DELAY_AFTER_REBOOT_SECONDS) * 1000U);
+        pdMS_TO_TICKS(RUUVI_CHECK_FOR_FW_UPDATES_DELAY_AFTER_REBOOT_SECONDS) * TIME_UNITS_MS_PER_SECOND);
     g_p_timer_sig_deactivate_wifi_ap = os_timer_sig_one_shot_create_static(
         &g_p_timer_sig_deactivate_wifi_ap_mem,
         "deactivate_ap",
         g_p_signal_main_task,
         main_task_conv_to_sig_num(MAIN_TASK_SIG_DEACTIVATE_WIFI_AP),
-        pdMS_TO_TICKS(MAIN_TASK_TIMEOUT_AFTER_MANUAL_HOTSPOT_ACTIVATION_SEC * 1000));
+        pdMS_TO_TICKS(MAIN_TASK_TIMEOUT_AFTER_MANUAL_HOTSPOT_ACTIVATION_SEC * TIME_UNITS_MS_PER_SECOND));
     g_p_timer_sig_task_watchdog_feed = os_timer_sig_periodic_create_static(
         &g_timer_sig_task_watchdog_feed_mem,
         "main_wgod",
         g_p_signal_main_task,
         main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_WATCHDOG_FEED),
-        pdMS_TO_TICKS(CONFIG_ESP_TASK_WDT_TIMEOUT_S * 1000U / 3U));
+        pdMS_TO_TICKS(CONFIG_ESP_TASK_WDT_TIMEOUT_S * TIME_UNITS_MS_PER_SECOND / 3U));
+}
+
+static bool
+main_task_init(void)
+{
+    esp_log_level_set(TAG, ESP_LOG_DEBUG);
+    cjson_wrap_init();
+    gw_cfg_init();
+
+    main_task_init_signals();
+    main_task_init_timers();
 
     if (!os_signal_register_cur_thread(g_p_signal_main_task))
     {
@@ -928,7 +1030,6 @@ main_task_init(void)
     }
 
     status_bits = xEventGroupCreate();
-
     if (NULL == status_bits)
     {
         LOG_ERR("Can't create event group");
@@ -945,7 +1046,7 @@ main_task_init(void)
 
     ruuvi_nvs_flash_init();
 
-    if (!wifi_manager_check_sta_config() || !settings_check_in_flash())
+    if ((!wifi_manager_check_sta_config()) || (!settings_check_in_flash()))
     {
         ruuvi_nvs_flash_deinit();
         ruuvi_nvs_flash_erase();
@@ -983,54 +1084,10 @@ main_task_init(void)
 
     ruuvi_auth_set_from_config();
 
-    if (!wifi_init(
-            gw_cfg_get_eth_use_eth(),
-            settings_read_flag_force_start_wifi_hotspot(),
-            &g_gw_wifi_ssid,
-            fw_update_get_current_fatfs_gwui_partition_name()))
+    if (!network_subsystem_init())
     {
-        LOG_ERR("%s failed", "wifi_init");
+        LOG_ERR("%s failed", "network_subsystem_init");
         return false;
-    }
-    else
-    {
-        configure_wifi_country_and_max_tx_power();
-    }
-    ethernet_init(&ethernet_link_up_cb, &ethernet_link_down_cb, &ethernet_connection_ok_cb);
-
-    if (settings_read_flag_force_start_wifi_hotspot())
-    {
-        LOG_INFO("Force start WiFi hotspot");
-        settings_write_flag_force_start_wifi_hotspot(false);
-        if (!wifi_manager_is_ap_active())
-        {
-            wifi_manager_start_ap();
-        }
-        else
-        {
-            LOG_INFO("WiFi hotspot is already active");
-        }
-        main_task_start_timer_after_hotspot_activation();
-    }
-    else
-    {
-        if (gw_cfg_get_eth_use_eth() || (!wifi_manager_is_sta_configured()))
-        {
-            ethernet_start(g_gw_wifi_ssid.ssid_buf);
-        }
-        else
-        {
-            LOG_INFO("Gateway already configured to use WiFi connection, so Ethernet is not needed");
-        }
-    }
-
-    if (wifi_manager_is_ap_active())
-    {
-        leds_indication_on_hotspot_activation();
-    }
-    else
-    {
-        leds_indication_network_no_connection();
     }
 
     if (!reset_task_init())

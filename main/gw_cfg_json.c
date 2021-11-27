@@ -58,23 +58,23 @@ gw_cfg_json_add_items_eth(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cf
     {
         return false;
     }
-    if (!gw_cfg_json_add_string(p_json_root, "eth_static_ip", p_cfg->eth.eth_static_ip))
+    if (!gw_cfg_json_add_string(p_json_root, "eth_static_ip", p_cfg->eth.eth_static_ip.buf))
     {
         return false;
     }
-    if (!gw_cfg_json_add_string(p_json_root, "eth_netmask", p_cfg->eth.eth_netmask))
+    if (!gw_cfg_json_add_string(p_json_root, "eth_netmask", p_cfg->eth.eth_netmask.buf))
     {
         return false;
     }
-    if (!gw_cfg_json_add_string(p_json_root, "eth_gw", p_cfg->eth.eth_gw))
+    if (!gw_cfg_json_add_string(p_json_root, "eth_gw", p_cfg->eth.eth_gw.buf))
     {
         return false;
     }
-    if (!gw_cfg_json_add_string(p_json_root, "eth_dns1", p_cfg->eth.eth_dns1))
+    if (!gw_cfg_json_add_string(p_json_root, "eth_dns1", p_cfg->eth.eth_dns1.buf))
     {
         return false;
     }
-    if (!gw_cfg_json_add_string(p_json_root, "eth_dns2", p_cfg->eth.eth_dns2))
+    if (!gw_cfg_json_add_string(p_json_root, "eth_dns2", p_cfg->eth.eth_dns2.buf))
     {
         return false;
     }
@@ -356,28 +356,40 @@ gw_cfg_json_parse_eth(const cJSON *const p_json_root, ruuvi_gw_cfg_eth_t *const 
     if (!json_wrap_copy_string_val(
             p_json_root,
             "eth_static_ip",
-            &p_gw_cfg_eth->eth_static_ip[0],
-            sizeof(p_gw_cfg_eth->eth_static_ip)))
+            &p_gw_cfg_eth->eth_static_ip.buf[0],
+            sizeof(p_gw_cfg_eth->eth_static_ip.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "eth_static_ip");
     }
     if (!json_wrap_copy_string_val(
             p_json_root,
             "eth_netmask",
-            &p_gw_cfg_eth->eth_netmask[0],
-            sizeof(p_gw_cfg_eth->eth_netmask)))
+            &p_gw_cfg_eth->eth_netmask.buf[0],
+            sizeof(p_gw_cfg_eth->eth_netmask.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "eth_netmask");
     }
-    if (!json_wrap_copy_string_val(p_json_root, "eth_gw", &p_gw_cfg_eth->eth_gw[0], sizeof(p_gw_cfg_eth->eth_gw)))
+    if (!json_wrap_copy_string_val(
+            p_json_root,
+            "eth_gw",
+            &p_gw_cfg_eth->eth_gw.buf[0],
+            sizeof(p_gw_cfg_eth->eth_gw.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "eth_gw");
     }
-    if (!json_wrap_copy_string_val(p_json_root, "eth_dns1", &p_gw_cfg_eth->eth_dns1[0], sizeof(p_gw_cfg_eth->eth_dns1)))
+    if (!json_wrap_copy_string_val(
+            p_json_root,
+            "eth_dns1",
+            &p_gw_cfg_eth->eth_dns1.buf[0],
+            sizeof(p_gw_cfg_eth->eth_dns1.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "eth_dns1");
     }
-    if (!json_wrap_copy_string_val(p_json_root, "eth_dns2", &p_gw_cfg_eth->eth_dns2[0], sizeof(p_gw_cfg_eth->eth_dns2)))
+    if (!json_wrap_copy_string_val(
+            p_json_root,
+            "eth_dns2",
+            &p_gw_cfg_eth->eth_dns2.buf[0],
+            sizeof(p_gw_cfg_eth->eth_dns2.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "eth_dns2");
     }

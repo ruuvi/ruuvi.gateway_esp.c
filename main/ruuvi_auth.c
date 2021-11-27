@@ -50,8 +50,5 @@ ruuvi_auth_set_from_config(void)
 
         return http_server_set_auth(HTTP_SERVER_AUTH_TYPE_STR_RUUVI, RUUVI_GATEWAY_AUTH_DEFAULT_USER, password_md5.buf);
     }
-    else
-    {
-        return http_server_set_auth(lan_auth.lan_auth_type, lan_auth.lan_auth_user, lan_auth.lan_auth_pass);
-    }
+    return http_server_set_auth(lan_auth.lan_auth_type, lan_auth.lan_auth_user, lan_auth.lan_auth_pass);
 }

@@ -130,11 +130,11 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_1) // NOLINT
 
     ASSERT_EQ(false, gw_cfg.eth.use_eth);
     ASSERT_EQ(true, gw_cfg.eth.eth_dhcp);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_static_ip);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_netmask);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_gw);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns1);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns2);
+    ASSERT_EQ(string(""), gw_cfg.eth.eth_static_ip.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth.eth_netmask.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth.eth_gw.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns1.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns2.buf);
 
     ASSERT_EQ(false, gw_cfg.mqtt.use_mqtt);
     ASSERT_EQ(true, gw_cfg.mqtt.mqtt_use_default_prefix);
@@ -241,11 +241,11 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_2) // NOLINT
 
     ASSERT_EQ(true, gw_cfg.eth.use_eth);
     ASSERT_EQ(false, gw_cfg.eth.eth_dhcp);
-    ASSERT_EQ(string("192.168.1.10"), gw_cfg.eth.eth_static_ip);
-    ASSERT_EQ(string("255.255.255.0"), gw_cfg.eth.eth_netmask);
-    ASSERT_EQ(string("192.168.1.1"), gw_cfg.eth.eth_gw);
-    ASSERT_EQ(string("8.8.8.8"), gw_cfg.eth.eth_dns1);
-    ASSERT_EQ(string("4.4.4.4"), gw_cfg.eth.eth_dns2);
+    ASSERT_EQ(string("192.168.1.10"), gw_cfg.eth.eth_static_ip.buf);
+    ASSERT_EQ(string("255.255.255.0"), gw_cfg.eth.eth_netmask.buf);
+    ASSERT_EQ(string("192.168.1.1"), gw_cfg.eth.eth_gw.buf);
+    ASSERT_EQ(string("8.8.8.8"), gw_cfg.eth.eth_dns1.buf);
+    ASSERT_EQ(string("4.4.4.4"), gw_cfg.eth.eth_dns2.buf);
 
     ASSERT_EQ(true, gw_cfg.mqtt.use_mqtt);
     ASSERT_EQ(false, gw_cfg.mqtt.mqtt_use_default_prefix);
@@ -352,11 +352,11 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_with_incorrect_header) // NOLINT
 
     ASSERT_EQ(false, gw_cfg.eth.use_eth);
     ASSERT_EQ(true, gw_cfg.eth.eth_dhcp);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_static_ip);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_netmask);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_gw);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns1);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns2);
+    ASSERT_EQ(string(""), gw_cfg.eth.eth_static_ip.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth.eth_netmask.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth.eth_gw.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns1.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns2.buf);
 
     ASSERT_EQ(false, gw_cfg.mqtt.use_mqtt);
     ASSERT_EQ(true, gw_cfg.mqtt.mqtt_use_default_prefix);
@@ -463,11 +463,11 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_with_incorrect_fmt_version) // NO
 
     ASSERT_EQ(false, gw_cfg.eth.use_eth);
     ASSERT_EQ(true, gw_cfg.eth.eth_dhcp);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_static_ip);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_netmask);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_gw);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns1);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns2);
+    ASSERT_EQ(string(""), gw_cfg.eth.eth_static_ip.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth.eth_netmask.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth.eth_gw.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns1.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns2.buf);
 
     ASSERT_EQ(false, gw_cfg.mqtt.use_mqtt);
     ASSERT_EQ(true, gw_cfg.mqtt.mqtt_use_default_prefix);

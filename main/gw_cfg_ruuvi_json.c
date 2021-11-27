@@ -72,23 +72,23 @@ gw_cfg_ruuvi_json_add_items_eth(cJSON *p_json_root, const ruuvi_gateway_config_t
     {
         return false;
     }
-    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "eth_static_ip", p_cfg->eth.eth_static_ip))
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "eth_static_ip", p_cfg->eth.eth_static_ip.buf))
     {
         return false;
     }
-    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "eth_netmask", p_cfg->eth.eth_netmask))
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "eth_netmask", p_cfg->eth.eth_netmask.buf))
     {
         return false;
     }
-    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "eth_gw", p_cfg->eth.eth_gw))
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "eth_gw", p_cfg->eth.eth_gw.buf))
     {
         return false;
     }
-    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "eth_dns1", p_cfg->eth.eth_dns1))
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "eth_dns1", p_cfg->eth.eth_dns1.buf))
     {
         return false;
     }
-    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "eth_dns2", p_cfg->eth.eth_dns2))
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "eth_dns2", p_cfg->eth.eth_dns2.buf))
     {
         return false;
     }

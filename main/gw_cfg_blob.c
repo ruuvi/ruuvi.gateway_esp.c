@@ -25,11 +25,15 @@ gw_cfg_blob_convert(ruuvi_gateway_config_t *const p_cfg_dst, const ruuvi_gateway
 
     p_cfg_dst->eth.use_eth  = p_cfg_src->eth.use_eth;
     p_cfg_dst->eth.eth_dhcp = p_cfg_src->eth.eth_dhcp;
-    snprintf(p_cfg_dst->eth.eth_static_ip, sizeof(p_cfg_dst->eth.eth_static_ip), "%s", p_cfg_src->eth.eth_static_ip);
-    snprintf(p_cfg_dst->eth.eth_netmask, sizeof(p_cfg_dst->eth.eth_netmask), "%s", p_cfg_src->eth.eth_netmask);
-    snprintf(p_cfg_dst->eth.eth_gw, sizeof(p_cfg_dst->eth.eth_gw), "%s", p_cfg_src->eth.eth_gw);
-    snprintf(p_cfg_dst->eth.eth_dns1, sizeof(p_cfg_dst->eth.eth_dns1), "%s", p_cfg_src->eth.eth_dns1);
-    snprintf(p_cfg_dst->eth.eth_dns2, sizeof(p_cfg_dst->eth.eth_dns2), "%s", p_cfg_src->eth.eth_dns2);
+    snprintf(
+        p_cfg_dst->eth.eth_static_ip.buf,
+        sizeof(p_cfg_dst->eth.eth_static_ip.buf),
+        "%s",
+        p_cfg_src->eth.eth_static_ip);
+    snprintf(p_cfg_dst->eth.eth_netmask.buf, sizeof(p_cfg_dst->eth.eth_netmask.buf), "%s", p_cfg_src->eth.eth_netmask);
+    snprintf(p_cfg_dst->eth.eth_gw.buf, sizeof(p_cfg_dst->eth.eth_gw.buf), "%s", p_cfg_src->eth.eth_gw);
+    snprintf(p_cfg_dst->eth.eth_dns1.buf, sizeof(p_cfg_dst->eth.eth_dns1.buf), "%s", p_cfg_src->eth.eth_dns1);
+    snprintf(p_cfg_dst->eth.eth_dns2.buf, sizeof(p_cfg_dst->eth.eth_dns2.buf), "%s", p_cfg_src->eth.eth_dns2);
 
     p_cfg_dst->mqtt.use_mqtt                = p_cfg_src->mqtt.use_mqtt;
     p_cfg_dst->mqtt.mqtt_use_default_prefix = p_cfg_src->mqtt.mqtt_use_default_prefix;

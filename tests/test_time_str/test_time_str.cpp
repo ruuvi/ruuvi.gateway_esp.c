@@ -285,3 +285,10 @@ TEST_F(TestTimeStr, time_str_conv_YYYYMMDDhhmmss_minux_ovf_tz) // NOLINT
     uint16_t  ms      = 0;
     ASSERT_FALSE(time_str_conv_to_tm("20210719012810-13", &tm_time, &ms));
 }
+
+TEST_F(TestTimeStr, time_str_conv_to_tm_YYYY_bad_delimiter_MM_DDThh_mm_ss_mmm_plus_00_00) // NOLINT
+{
+    struct tm tm_time = {};
+    uint16_t  ms      = 0;
+    ASSERT_FALSE(time_str_conv_to_tm("2021!07-19T01:28:10.096+00:00", &tm_time, &ms));
+}

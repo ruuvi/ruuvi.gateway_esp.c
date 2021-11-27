@@ -276,11 +276,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_network_cfg_eth_dhcp) // NOLINT
     ASSERT_TRUE(flag_network_cfg);
     ASSERT_TRUE(gw_cfg.eth.use_eth);
     ASSERT_TRUE(gw_cfg.eth.eth_dhcp);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_static_ip);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_netmask);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_gw);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns1);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns2);
+    ASSERT_EQ(string(""), gw_cfg.eth.eth_static_ip.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth.eth_netmask.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth.eth_gw.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns1.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns2.buf);
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Got SETTINGS:");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_eth: 1");
@@ -307,11 +307,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_network_cfg_eth_static) // NOLINT
     ASSERT_TRUE(flag_network_cfg);
     ASSERT_TRUE(gw_cfg.eth.use_eth);
     ASSERT_FALSE(gw_cfg.eth.eth_dhcp);
-    ASSERT_EQ(string("192.168.1.1"), gw_cfg.eth.eth_static_ip);
-    ASSERT_EQ(string("255.255.255.0"), gw_cfg.eth.eth_netmask);
-    ASSERT_EQ(string("192.168.0.1"), gw_cfg.eth.eth_gw);
-    ASSERT_EQ(string("8.8.8.8"), gw_cfg.eth.eth_dns1);
-    ASSERT_EQ(string("4.4.4.4"), gw_cfg.eth.eth_dns2);
+    ASSERT_EQ(string("192.168.1.1"), gw_cfg.eth.eth_static_ip.buf);
+    ASSERT_EQ(string("255.255.255.0"), gw_cfg.eth.eth_netmask.buf);
+    ASSERT_EQ(string("192.168.0.1"), gw_cfg.eth.eth_gw.buf);
+    ASSERT_EQ(string("8.8.8.8"), gw_cfg.eth.eth_dns1.buf);
+    ASSERT_EQ(string("4.4.4.4"), gw_cfg.eth.eth_dns2.buf);
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Got SETTINGS:");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "use_eth: 1");

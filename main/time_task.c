@@ -29,6 +29,8 @@
 
 #define TIME_TASK_BUF_SIZE_TIME_STR (20)
 
+#define TIME_TASK_NUM_OF_TIME_SERVERS (4)
+
 typedef enum time_task_sig_e
 {
     TIME_TASK_SIG_WIFI_CONNECTED    = OS_SIGNAL_NUM_0,
@@ -233,16 +235,17 @@ time_task_init(void)
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     LOG_INFO("Set time sync mode to IMMED");
     sntp_set_sync_mode(SNTP_SYNC_MODE_IMMED);
-    static const char *const arr_of_time_servers[] = {
+    static const char *const arr_of_time_servers[TIME_TASK_NUM_OF_TIME_SERVERS] = {
         "time.google.com",
         "time.cloudflare.com",
         "time.nist.gov",
         "pool.ntp.org",
     };
-    for (uint32_t server_idx = 0; server_idx < sizeof(arr_of_time_servers) / sizeof(*arr_of_time_servers); ++server_idx)
+    for (uint32_t server_idx = 0; server_idx < (sizeof(arr_of_time_servers) / sizeof(*arr_of_time_servers));
+         ++server_idx)
     {
         LOG_INFO("Add time server: %s", arr_of_time_servers[server_idx]);
-        sntp_setservername(server_idx, arr_of_time_servers[server_idx]);
+        sntp_setservername((u8_t)server_idx, arr_of_time_servers[server_idx]);
     }
     sntp_set_time_sync_notification_cb(time_task_cb_notification_on_sync);
 

@@ -75,7 +75,12 @@ typedef struct nrf52fw_progress_info_t
     void *const         p_param_cb_progress;
 } nrf52fw_progress_info_t;
 
-extern char g_nrf52_firmware_version[NRF52FW_FIRMWARE_VERSION_SIZE];
+typedef struct nrf52fw_version_str_t
+{
+    char buf[NRF52FW_FIRMWARE_VERSION_SIZE];
+} nrf52fw_version_str_t;
+
+extern nrf52fw_version_str_t g_nrf52_firmware_version;
 
 void
 nrf52fw_hw_reset_nrf52(const bool flag_reset);

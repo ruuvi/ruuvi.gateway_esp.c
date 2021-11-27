@@ -8,18 +8,61 @@
 #include "time_str.h"
 #include <string.h>
 #include <ctype.h>
+#include <assert.h>
 #include "os_str.h"
 #include "os_mkgmtime.h"
+#include "time_units.h"
 
-#define BASE_10 (10)
+#define BASE_10               (10)
+#define TIME_STR_TMP_BUF_SIZE (32)
+
+#define FRACTIONAL_PART_NUM_DIGITS_0            (0U)
+#define FRACTIONAL_PART_NUM_DIGITS_1            (1U)
+#define FRACTIONAL_PART_NUM_DIGITS_1_MULTIPLIER (100U)
+#define FRACTIONAL_PART_NUM_DIGITS_2            (2U)
+#define FRACTIONAL_PART_NUM_DIGITS_2_MULTIPLIER (10U)
+#define FRACTIONAL_PART_NUM_DIGITS_3            (3U)
+#define FRACTIONAL_PART_NUM_DIGITS_3_MULTIPLIER (1U)
+#define FRACTIONAL_PART_NUM_DIGITS_4            (4U)
+#define FRACTIONAL_PART_NUM_DIGITS_4_DIVIDER    (10U)
+#define FRACTIONAL_PART_NUM_DIGITS_5            (5U)
+#define FRACTIONAL_PART_NUM_DIGITS_5_DIVIDER    (100U)
+#define FRACTIONAL_PART_NUM_DIGITS_6            (6U)
+#define FRACTIONAL_PART_NUM_DIGITS_6_DIVIDER    (1000U)
+
+#define TIME_STR_YEAR_MIN      (1970)
+#define TIME_STR_YEAR_MAX      (2106)
+#define TIME_STR_YEAR_BASE     (1900)
+#define TIME_STR_MONTH_MIN     (1)
+#define TIME_STR_MONTH_MAX     (12)
+#define TIME_STR_MONTH_DAY_MIN (1)
+#define TIME_STR_MONTH_DAY_MAX (31)
+#define TIME_STR_HOUR_MIN      (0)
+#define TIME_STR_HOUR_MAX      (TIME_UNITS_HOURS_PER_DAY - 1)
+#define TIME_STR_MINUTE_MIN    (0)
+#define TIME_STR_MINUTE_MAX    (TIME_UNITS_MINUTES_PER_HOUR - 1)
+#define TIME_STR_SECOND_MIN    (0)
+// 60 because of leap seconds: https://en.wikipedia.org/wiki/Leap_second
+#define TIME_STR_SECOND_MAX (TIME_UNITS_SECONDS_PER_MINUTE)
+
+#define TIME_STR_YEAR_LEN      (4U)
+#define TIME_STR_MONTH_LEN     (2U)
+#define TIME_STR_MONTH_DAY_LEN (2U)
+#define TIME_STR_HOUR_LEN      (2U)
+#define TIME_STR_MINUTE_LEN    (2U)
+#define TIME_STR_SECOND_LEN    (2U)
+
+#define TIME_STR_TZ_HOURS_MAX_POSITIVE_OFFSET       (14U)
+#define TIME_STR_TZ_HOURS_MAX_NEGATIVE_OFFSET       (12U)
+#define TIME_STR_TZ_MINUTES_MUST_BE_MULTIPLE_OF_VAL (15U)
 
 static uint32_t
 time_str_conv_to_uint32_cptr(const char *const p_str, const char **const pp_end, const os_str2num_base_t base)
 {
     if ((NULL != pp_end) && (NULL != *pp_end))
     {
-        char         tmp_buf[32];
-        const size_t max_len = *pp_end - p_str;
+        const size_t max_len = (size_t)(*pp_end - p_str);
+        char         tmp_buf[TIME_STR_TMP_BUF_SIZE];
         if (max_len >= sizeof(tmp_buf))
         {
             return UINT32_MAX;
@@ -28,7 +71,7 @@ time_str_conv_to_uint32_cptr(const char *const p_str, const char **const pp_end,
         tmp_buf[max_len]             = '\0';
         const char *   p_tmp_buf_end = NULL;
         const uint32_t result        = os_str_to_uint32_cptr(tmp_buf, &p_tmp_buf_end, base);
-        const size_t   end_offset    = p_tmp_buf_end - &tmp_buf[0];
+        const size_t   end_offset    = (size_t)(p_tmp_buf_end - &tmp_buf[0]);
         *pp_end                      = &p_str[end_offset];
         return result;
     }
@@ -38,47 +81,45 @@ time_str_conv_to_uint32_cptr(const char *const p_str, const char **const pp_end,
 static bool
 parse_val_of_tm(
     const char **const p_p_cur,
-    const char *const  p_end1,
+    const size_t       val_len,
     const char *const  p_end2,
     const uint32_t     min_val,
     const uint32_t     max_val,
     const char         delimiter,
-    bool *const        p_res,
-    int *const         p_val)
+    int32_t *const     p_val)
 {
-    const char *   p_end = (p_end1 < p_end2) ? p_end1 : p_end2;
-    const uint32_t val   = time_str_conv_to_uint32_cptr(*p_p_cur, &p_end, BASE_10);
-    *p_res               = false;
+    assert(min_val <= INT32_MAX);
+    assert(max_val <= INT32_MAX);
+    const char *const p_end1 = &(*p_p_cur)[val_len];
+    const char *      p_end  = (p_end1 < p_end2) ? p_end1 : p_end2;
+    const uint32_t    val    = time_str_conv_to_uint32_cptr(*p_p_cur, &p_end, BASE_10);
     if ((val < min_val) || (val > max_val))
     {
+        *p_val = INT32_MIN;
         return true;
     }
-    *p_val = (int)val;
+    *p_val = (int32_t)val;
     if ('\0' == *p_end)
     {
         *p_p_cur = p_end;
-        *p_res   = true;
         return true;
     }
     if ('\0' != delimiter)
     {
+        if (delimiter == *p_end)
+        {
+            *p_p_cur = p_end + 1;
+            return false;
+        }
         if (0 != isdigit(*p_end))
         {
             *p_p_cur = p_end;
+            return false;
         }
-        else if (delimiter == *p_end)
-        {
-            *p_p_cur = p_end + 1;
-        }
-        else
-        {
-            return true;
-        }
+        *p_val = INT32_MIN;
+        return true;
     }
-    else
-    {
-        *p_p_cur = p_end;
-    }
+    *p_p_cur = p_end;
     return false;
 }
 
@@ -87,30 +128,30 @@ parse_ms(const char **const p_p_cur, const char *p_end, uint16_t *const p_ms)
 {
     const char *const p_cur     = *p_p_cur + 1;
     const uint32_t    fract_sec = time_str_conv_to_uint32_cptr(p_cur, &p_end, BASE_10);
-    const size_t      len       = p_end - p_cur;
+    const size_t      len       = (size_t)(p_end - p_cur);
     uint16_t          ms        = 0;
     switch (len)
     {
-        case 0:
+        case FRACTIONAL_PART_NUM_DIGITS_0:
             ms = 0;
             break;
-        case 1:
-            ms = (uint16_t)(fract_sec * 100U);
+        case FRACTIONAL_PART_NUM_DIGITS_1:
+            ms = (uint16_t)(fract_sec * FRACTIONAL_PART_NUM_DIGITS_1_MULTIPLIER);
             break;
-        case 2:
-            ms = (uint16_t)(fract_sec * 10U);
+        case FRACTIONAL_PART_NUM_DIGITS_2:
+            ms = (uint16_t)(fract_sec * FRACTIONAL_PART_NUM_DIGITS_2_MULTIPLIER);
             break;
-        case 3:
-            ms = (uint16_t)(fract_sec);
+        case FRACTIONAL_PART_NUM_DIGITS_3:
+            ms = (uint16_t)(fract_sec * FRACTIONAL_PART_NUM_DIGITS_3_MULTIPLIER);
             break;
-        case 4:
-            ms = (uint16_t)(fract_sec / 10U);
+        case FRACTIONAL_PART_NUM_DIGITS_4:
+            ms = (uint16_t)(fract_sec / FRACTIONAL_PART_NUM_DIGITS_4_DIVIDER);
             break;
-        case 5:
-            ms = (uint16_t)(fract_sec / 100U);
+        case FRACTIONAL_PART_NUM_DIGITS_5:
+            ms = (uint16_t)(fract_sec / FRACTIONAL_PART_NUM_DIGITS_5_DIVIDER);
             break;
-        case 6:
-            ms = (uint16_t)(fract_sec / 1000U);
+        case FRACTIONAL_PART_NUM_DIGITS_6:
+            ms = (uint16_t)(fract_sec / FRACTIONAL_PART_NUM_DIGITS_6_DIVIDER);
             break;
         default:
             return false;
@@ -145,42 +186,198 @@ parse_tz(const char **const p_p_cur, const char *const p_end, int32_t *const p_t
         return false;
     }
 
-    bool res        = false;
-    int  tz_hours   = 0;
-    int  tz_minutes = 0;
-    if (parse_val_of_tm(&p_cur, &p_cur[2], p_end, 0, 23, ':', &res, &tz_hours))
+    int32_t tz_hours   = 0;
+    int32_t tz_minutes = 0;
+    if (parse_val_of_tm(&p_cur, TIME_STR_HOUR_LEN, p_end, 0, TIME_UNITS_HOURS_PER_DAY - 1, ':', &tz_hours)
+        && (INT32_MIN == tz_hours))
     {
-        if (!res)
-        {
-            return false;
-        }
+        return false;
     }
 
     if ('\0' != *p_cur)
     {
-        if (!parse_val_of_tm(&p_cur, &p_cur[2], p_end, 0, 59, '\0', &res, &tz_minutes))
+        if (!parse_val_of_tm(&p_cur, TIME_STR_MINUTE_LEN, p_end, 0, TIME_UNITS_MINUTES_PER_HOUR - 1, '\0', &tz_minutes))
         {
             return false;
         }
-        if (!res)
+        if (INT32_MIN == tz_minutes)
         {
             return false;
         }
     }
-    if (flag_tz_offset_positive && (tz_hours > 14))
+    if (flag_tz_offset_positive && (tz_hours > TIME_STR_TZ_HOURS_MAX_POSITIVE_OFFSET))
     {
         return false;
     }
-    if (!flag_tz_offset_positive && (tz_hours > 12))
+    if ((!flag_tz_offset_positive) && (tz_hours > TIME_STR_TZ_HOURS_MAX_NEGATIVE_OFFSET))
     {
         return false;
     }
-    if (0 != (tz_minutes % 15))
+    if (0 != (tz_minutes % TIME_STR_TZ_MINUTES_MUST_BE_MULTIPLE_OF_VAL))
     {
         return false;
     }
-    *p_tz_offset_seconds = (flag_tz_offset_positive ? 1 : -1) * (tz_hours * 60 + tz_minutes) * 60;
+    const int32_t tz_offset_seconds_abs
+        = (((tz_hours * (int32_t)TIME_UNITS_MINUTES_PER_HOUR) + tz_minutes) * (int32_t)TIME_UNITS_SECONDS_PER_MINUTE);
+    *p_tz_offset_seconds = flag_tz_offset_positive ? tz_offset_seconds_abs : -tz_offset_seconds_abs;
     return true;
+}
+
+static bool
+time_str_parse_tm_year(
+    const char **const p_p_cur,
+    const char *const  p_end,
+    struct tm *const   p_tm_time,
+    bool *const        p_res)
+{
+    int32_t tm_year = 0;
+    if (parse_val_of_tm(p_p_cur, TIME_STR_YEAR_LEN, p_end, TIME_STR_YEAR_MIN, TIME_STR_YEAR_MAX, '-', &tm_year))
+    {
+        if (INT32_MIN == tm_year)
+        {
+            *p_res = false;
+        }
+        else
+        {
+            p_tm_time->tm_year = tm_year - TIME_STR_YEAR_BASE;
+            *p_res             = true;
+        }
+        return true;
+    }
+    p_tm_time->tm_year = tm_year - TIME_STR_YEAR_BASE;
+    return false;
+}
+
+static bool
+time_str_parse_tm_mon(
+    const char **const p_p_cur,
+    const char *const  p_end,
+    struct tm *const   p_tm_time,
+    bool *const        p_res)
+{
+    int32_t tm_month = 0;
+    if (parse_val_of_tm(p_p_cur, TIME_STR_MONTH_LEN, p_end, TIME_STR_MONTH_MIN, TIME_STR_MONTH_MAX, '-', &tm_month))
+    {
+        if (INT32_MIN == tm_month)
+        {
+            *p_res = false;
+        }
+        else
+        {
+            p_tm_time->tm_mon = tm_month - 1;
+            *p_res            = true;
+        }
+        return true;
+    }
+    p_tm_time->tm_mon = tm_month - 1;
+    return false;
+}
+
+static bool
+time_str_parse_tm_mday(
+    const char **const p_p_cur,
+    const char *const  p_end,
+    struct tm *const   p_tm_time,
+    bool *const        p_res)
+{
+    int32_t tm_mday = 0;
+    if (parse_val_of_tm(
+            p_p_cur,
+            TIME_STR_MONTH_DAY_LEN,
+            p_end,
+            TIME_STR_MONTH_DAY_MIN,
+            TIME_STR_MONTH_DAY_MAX,
+            'T',
+            &tm_mday))
+    {
+        if (INT32_MIN == tm_mday)
+        {
+            *p_res = false;
+        }
+        else
+        {
+            p_tm_time->tm_mday = tm_mday;
+            *p_res             = true;
+        }
+        return true;
+    }
+    p_tm_time->tm_mday = tm_mday;
+    return false;
+}
+
+static bool
+time_str_parse_tm_hour(
+    const char **const p_p_cur,
+    const char *const  p_end,
+    struct tm *const   p_tm_time,
+    bool *const        p_res)
+{
+    int32_t tm_hour = 0;
+    if (parse_val_of_tm(p_p_cur, TIME_STR_HOUR_LEN, p_end, TIME_STR_HOUR_MIN, TIME_STR_HOUR_MAX, ':', &tm_hour))
+    {
+        if (INT32_MIN == tm_hour)
+        {
+            *p_res = false;
+        }
+        else
+        {
+            p_tm_time->tm_hour = tm_hour;
+            *p_res             = true;
+        }
+        return true;
+    }
+    p_tm_time->tm_hour = tm_hour;
+    return false;
+}
+
+static bool
+time_str_parse_tm_min(
+    const char **const p_p_cur,
+    const char *const  p_end,
+    struct tm *const   p_tm_time,
+    bool *const        p_res)
+{
+    int32_t tm_min = 0;
+    if (parse_val_of_tm(p_p_cur, TIME_STR_MINUTE_LEN, p_end, TIME_STR_MINUTE_MIN, TIME_STR_MINUTE_MAX, ':', &tm_min))
+    {
+        if (INT32_MIN == tm_min)
+        {
+            *p_res = false;
+        }
+        else
+        {
+            p_tm_time->tm_min = tm_min;
+            *p_res            = true;
+        }
+        return true;
+    }
+    p_tm_time->tm_min = tm_min;
+    return false;
+}
+
+static bool
+time_str_parse_tm_sec(
+    const char **const p_p_cur,
+    const char *const  p_end,
+    struct tm *const   p_tm_time,
+    bool *const        p_res)
+{
+    int32_t tm_sec = 0;
+    if (parse_val_of_tm(p_p_cur, TIME_STR_SECOND_LEN, p_end, TIME_STR_SECOND_MIN, TIME_STR_SECOND_MAX, '\0', &tm_sec))
+    {
+        if (INT32_MIN == tm_sec)
+        {
+            *p_res = false;
+        }
+        else
+        {
+            p_tm_time->tm_sec = tm_sec;
+            *p_res            = true;
+        }
+        return true;
+    }
+    p_tm_time->tm_sec = tm_sec;
+    return false;
 }
 
 bool
@@ -199,57 +396,39 @@ time_str_conv_to_tm(const char *const p_time_str, struct tm *const p_tm_time, ui
         *p_ms = 0;
     }
 
-    const size_t time_str_len = strlen(p_time_str);
-    const char * p_cur        = p_time_str;
+    const char *const p_end = &p_time_str[strlen(p_time_str)];
+    const char *      p_cur = p_time_str;
 
     bool res = false;
-    if (parse_val_of_tm(&p_cur, &p_cur[4], &p_time_str[time_str_len], 1970U, 2106U, '-', &res, &p_tm_time->tm_year))
-    {
-        if (res)
-        {
-            p_tm_time->tm_year -= 1900;
-        }
-        return res;
-    }
-    p_tm_time->tm_year -= 1900;
 
-    if (parse_val_of_tm(&p_cur, &p_cur[2], &p_time_str[time_str_len], 1, 12, '-', &res, &p_tm_time->tm_mon))
-    {
-        if (res)
-        {
-            p_tm_time->tm_mon -= 1;
-        }
-        return res;
-    }
-    p_tm_time->tm_mon -= 1;
-
-    if (parse_val_of_tm(&p_cur, &p_cur[2], &p_time_str[time_str_len], 1, 31, 'T', &res, &p_tm_time->tm_mday))
+    if (time_str_parse_tm_year(&p_cur, p_end, p_tm_time, &res))
     {
         return res;
     }
-
-    if (parse_val_of_tm(&p_cur, &p_cur[2], &p_time_str[time_str_len], 0, 23, ':', &res, &p_tm_time->tm_hour))
+    if (time_str_parse_tm_mon(&p_cur, p_end, p_tm_time, &res))
+    {
+        return res;
+    }
+    if (time_str_parse_tm_mday(&p_cur, p_end, p_tm_time, &res))
+    {
+        return res;
+    }
+    if (time_str_parse_tm_hour(&p_cur, p_end, p_tm_time, &res))
+    {
+        return res;
+    }
+    if (time_str_parse_tm_min(&p_cur, p_end, p_tm_time, &res))
+    {
+        return res;
+    }
+    if (time_str_parse_tm_sec(&p_cur, p_end, p_tm_time, &res))
     {
         return res;
     }
 
-    if (parse_val_of_tm(&p_cur, &p_cur[2], &p_time_str[time_str_len], 0, 59, ':', &res, &p_tm_time->tm_min))
+    if (('.' == *p_cur) && (!parse_ms(&p_cur, p_end, p_ms)))
     {
-        return res;
-    }
-
-    // 60 because of leap seconds: https://en.wikipedia.org/wiki/Leap_second
-    if (parse_val_of_tm(&p_cur, &p_cur[2], &p_time_str[time_str_len], 0, 60, '\0', &res, &p_tm_time->tm_sec))
-    {
-        return res;
-    }
-
-    if ('.' == *p_cur)
-    {
-        if (!parse_ms(&p_cur, &p_time_str[time_str_len], p_ms))
-        {
-            return false;
-        }
+        return false;
     }
     if (('\0' == *p_cur) || (0 == strcmp("Z", p_cur)))
     {
@@ -257,7 +436,7 @@ time_str_conv_to_tm(const char *const p_time_str, struct tm *const p_tm_time, ui
     }
 
     int32_t tz_offset_seconds = 0;
-    if (!parse_tz(&p_cur, &p_time_str[time_str_len], &tz_offset_seconds))
+    if (!parse_tz(&p_cur, p_end, &tz_offset_seconds))
     {
         return false;
     }

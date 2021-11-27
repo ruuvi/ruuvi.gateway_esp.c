@@ -22,7 +22,7 @@ json_helper_find_token_start_and_end(const char *const p_val, const char **p_p_b
         *p_p_begin          = p_begin;
         for (;;)
         {
-            const char *const p_end = strpbrk(p_begin, "\\\"");
+            const char *p_end = strpbrk(p_begin, "\\\"");
             if (NULL == p_end)
             {
                 return false;
@@ -32,11 +32,13 @@ json_helper_find_token_start_and_end(const char *const p_val, const char **p_p_b
                 *p_p_end = p_end;
                 break;
             }
-            if ('\0' == p_end[1])
+            p_end += 1;
+            if ('\0' == *p_end)
             {
                 return false;
             }
-            p_begin = &p_end[2];
+            p_end += 1;
+            p_begin = p_end;
         }
     }
     else
@@ -47,7 +49,7 @@ json_helper_find_token_start_and_end(const char *const p_val, const char **p_p_b
         {
             return false;
         }
-        const size_t len = p_end - p_val;
+        const size_t len = (size_t)(p_end - p_val);
         if ((0 == isdigit(*p_val)) && (0 != strncmp("null", p_val, len)) && (0 != strncmp("true", p_val, len))
             && (0 != strncmp("false", p_val, len)))
         {
@@ -76,7 +78,7 @@ json_helper_get_by_key(const char *const p_json, const char *const p_key)
             {
                 return str_buf_init_null();
             }
-            p_token += 2;
+            p_token += 1 + 1;
             continue;
         }
         if ((0 == strncmp(&p_token[1], p_key, key_len)) && ('"' == p_token[1 + key_len]))

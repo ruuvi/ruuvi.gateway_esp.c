@@ -82,11 +82,11 @@ gw_cfg_print_to_log(const ruuvi_gateway_config_t *const p_config)
     LOG_INFO("Gateway SETTINGS:");
     LOG_INFO("config: use eth: %d", p_config->eth.use_eth);
     LOG_INFO("config: use eth dhcp: %d", p_config->eth.eth_dhcp);
-    LOG_INFO("config: eth static ip: %s", p_config->eth.eth_static_ip);
-    LOG_INFO("config: eth netmask: %s", p_config->eth.eth_netmask);
-    LOG_INFO("config: eth gw: %s", p_config->eth.eth_gw);
-    LOG_INFO("config: eth dns1: %s", p_config->eth.eth_dns1);
-    LOG_INFO("config: eth dns2: %s", p_config->eth.eth_dns2);
+    LOG_INFO("config: eth static ip: %s", p_config->eth.eth_static_ip.buf);
+    LOG_INFO("config: eth netmask: %s", p_config->eth.eth_netmask.buf);
+    LOG_INFO("config: eth gw: %s", p_config->eth.eth_gw.buf);
+    LOG_INFO("config: eth dns1: %s", p_config->eth.eth_dns1.buf);
+    LOG_INFO("config: eth dns2: %s", p_config->eth.eth_dns2.buf);
     LOG_INFO("config: use mqtt: %d", p_config->mqtt.use_mqtt);
     LOG_INFO("config: mqtt transport: %s", p_config->mqtt.mqtt_transport.buf);
     LOG_INFO("config: mqtt server: %s", p_config->mqtt.mqtt_server.buf);

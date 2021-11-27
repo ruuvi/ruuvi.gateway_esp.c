@@ -87,13 +87,14 @@ http_post_event_handler(esp_http_client_event_t *p_evt)
             }
             else if (0 == strcasecmp("X-Ruuvi-Gateway-Rate", p_evt->header_key))
             {
-                uint32_t period_seconds = os_str_to_uint32_cptr(p_evt->header_value, NULL, 10U);
-                if ((0 == period_seconds) || (period_seconds > (60U * 60U)))
+                uint32_t period_seconds = os_str_to_uint32_cptr(p_evt->header_value, NULL, BASE_10);
+                if ((0 == period_seconds)
+                    || (period_seconds > (TIME_UNITS_MINUTES_PER_HOUR * TIME_UNITS_SECONDS_PER_MINUTE)))
                 {
                     LOG_WARN("X-Ruuvi-Gateway-Rate: Got incorrect value: %s", p_evt->header_value);
                     period_seconds = ADV_POST_DEFAULT_INTERVAL_SECONDS;
                 }
-                adv_post_set_period(period_seconds * 1000U);
+                adv_post_set_period(period_seconds * TIME_UNITS_MS_PER_SECOND);
             }
             else
             {
@@ -251,30 +252,13 @@ http_send_advs(const adv_report_table_t *const p_reports, const uint32_t nonce)
 }
 
 bool
-http_send_statistics(
-    const mac_address_str_t         nrf52_mac_addr,
-    const char *const               p_esp_fw,
-    const char *const               p_nrf_fw,
-    const uint32_t                  uptime,
-    const bool                      is_connected_to_wifi,
-    const uint32_t                  network_disconnect_cnt,
-    const adv_report_table_t *const p_reports,
-    const uint32_t                  nonce)
+http_send_statistics(const http_json_statistics_info_t *const p_stat_info, const adv_report_table_t *const p_reports)
 {
     http_async_info_t *p_http_async_info = &g_http_async_info;
 
     p_http_async_info->flag_sending_advs = false;
     p_http_async_info->cjson_str         = cjson_wrap_str_null();
-    if (!http_json_create_status_str(
-            nrf52_mac_addr,
-            p_esp_fw,
-            p_nrf_fw,
-            uptime,
-            is_connected_to_wifi,
-            network_disconnect_cnt,
-            p_reports,
-            nonce,
-            &p_http_async_info->cjson_str))
+    if (!http_json_create_status_str(p_stat_info, p_reports, &p_http_async_info->cjson_str))
     {
         LOG_ERR("Not enough memory to generate status json");
         return false;
@@ -499,6 +483,7 @@ http_download(
         .cert_pem                    = NULL,
         .client_cert_pem             = NULL,
         .client_key_pem              = NULL,
+        .user_agent                  = NULL,
         .method                      = HTTP_METHOD_GET,
         .timeout_ms                  = HTTP_DOWNLOAD_TIMEOUT_SECONDS * 1000,
         .disable_auto_redirect       = false,
@@ -511,6 +496,10 @@ http_download(
         .is_async                    = false,
         .use_global_ca_store         = false,
         .skip_cert_common_name_check = false,
+        .keep_alive_enable           = false,
+        .keep_alive_idle             = 0,
+        .keep_alive_interval         = 0,
+        .keep_alive_count            = 0,
     };
     LOG_INFO("http_download");
     cb_info.http_handle = esp_http_client_init(&http_config);
