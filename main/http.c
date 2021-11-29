@@ -29,6 +29,9 @@
 
 #define HTTP_DOWNLOAD_TIMEOUT_SECONDS (25)
 
+typedef int esp_http_client_len_t;
+typedef int esp_http_client_http_status_code_t;
+
 typedef struct http_download_cb_info_t
 {
     http_download_cb_on_data_t cb_on_data;
@@ -189,7 +192,10 @@ http_send_async(http_async_info_t *const p_http_async_info)
     const char *const p_msg = p_http_async_info->cjson_str.p_str;
     LOG_INFO("HTTP POST to URL=%s, DATA:\n%s", p_http_config->url, p_msg);
 
-    esp_http_client_set_post_field(p_http_async_info->p_http_client_handle, p_msg, (int)strlen(p_msg));
+    esp_http_client_set_post_field(
+        p_http_async_info->p_http_client_handle,
+        p_msg,
+        (esp_http_client_len_t)strlen(p_msg));
     esp_http_client_set_header(p_http_async_info->p_http_client_handle, "Content-Type", "application/json");
 
     const hmac_sha256_str_t hmac_sha256_str = hmac_sha256_calc_str(p_msg);
@@ -299,7 +305,8 @@ http_async_poll(void)
     bool flag_success = false;
     if (ESP_OK == err)
     {
-        const int http_status = esp_http_client_get_status_code(p_http_async_info->p_http_client_handle);
+        const esp_http_client_http_status_code_t http_status = esp_http_client_get_status_code(
+            p_http_async_info->p_http_client_handle);
         if (HTTP_RESP_CODE_200 == http_status)
         {
             LOG_INFO(

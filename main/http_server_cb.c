@@ -44,6 +44,8 @@
 
 #define HTTP_SERVER_DEFAULT_HISTORY_INTERVAL_SECONDS (60U)
 
+typedef double cjson_double_t;
+
 static const char TAG[] = "http_server";
 
 static const char g_empty_json[] = "{}";
@@ -130,7 +132,7 @@ json_info_add_string(cJSON *p_json_root, const char *p_item_name, const char *p_
 static bool
 json_info_add_uint32(cJSON *p_json_root, const char *p_item_name, const uint32_t val)
 {
-    if (NULL == cJSON_AddNumberToObject(p_json_root, p_item_name, (double)val))
+    if (NULL == cJSON_AddNumberToObject(p_json_root, p_item_name, (cjson_double_t)val))
     {
         LOG_ERR("Can't add json item: %s", p_item_name);
         return false;
@@ -665,7 +667,7 @@ http_server_cb_on_user_req_download_latest_release_info(void)
     if (AUTO_UPDATE_CYCLE_TYPE_REGULAR == gw_cfg_get_auto_update_cycle())
     {
         const time_t cur_unix_time = http_server_get_cur_time();
-        if ((time_t)(cur_unix_time - unix_time_published_at) < FW_UPDATING_REGULAR_CYCLE_DELAY_SECONDS)
+        if ((cur_unix_time - unix_time_published_at) < FW_UPDATING_REGULAR_CYCLE_DELAY_SECONDS)
         {
             LOG_INFO(
                 "github_latest_release.json: postpone the update because less than 14 days have passed since the "
@@ -681,14 +683,13 @@ http_server_cb_on_user_req_download_latest_release_info(void)
 void
 http_server_cb_on_user_req(const http_server_user_req_code_e req_code)
 {
-    switch (req_code)
+    if (HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO == req_code)
     {
-        case HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO:
-            http_server_cb_on_user_req_download_latest_release_info();
-            break;
-        default:
-            LOG_ERR("Unknown req_code=%d", (printf_int_t)req_code);
-            break;
+        http_server_cb_on_user_req_download_latest_release_info();
+    }
+    else
+    {
+        LOG_ERR("Unknown req_code=%d", (printf_int_t)req_code);
     }
 }
 

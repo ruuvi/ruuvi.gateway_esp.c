@@ -44,7 +44,7 @@ hmac_sha256_calc(const uint8_t *const p_msg_buf, const size_t msg_len, hmac_sha2
             p_md_info,
             (const unsigned char *)g_hmac_sha256_key,
             g_hmac_sha256_key_size,
-            (const unsigned char *)p_msg_buf,
+            p_msg_buf,
             msg_len,
             &p_hmac_sha256->buf[0]))
     {

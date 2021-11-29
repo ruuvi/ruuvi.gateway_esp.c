@@ -70,7 +70,7 @@ main_task_conv_from_sig_num(const os_signal_num_e sig_num)
 static const char *
 get_wday_if_set_in_bitmask(const auto_update_weekdays_bitmask_t auto_update_weekdays_bitmask, const os_time_wday_e wday)
 {
-    if (0 != (auto_update_weekdays_bitmask & (1U << (unsigned)wday)))
+    if (0 != (auto_update_weekdays_bitmask & (1U << (uint32_t)wday)))
     {
         return os_time_wday_name_mid(wday);
     }
@@ -83,8 +83,8 @@ check_if_checking_for_fw_updates_allowed2(const ruuvi_gw_cfg_auto_update_t *cons
     const time_t unix_time = os_time_get();
     time_t       cur_time  = (time_t)(
         unix_time
-        + ((int32_t)p_cfg_auto_update->auto_update_tz_offset_hours * TIME_UNITS_MINUTES_PER_HOUR
-           * TIME_UNITS_SECONDS_PER_MINUTE));
+        + ((int32_t)p_cfg_auto_update->auto_update_tz_offset_hours
+           * (TIME_UNITS_MINUTES_PER_HOUR * TIME_UNITS_SECONDS_PER_MINUTE)));
     struct tm tm_time = { 0 };
     gmtime_r(&cur_time, &tm_time);
 

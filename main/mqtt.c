@@ -23,6 +23,8 @@
 
 typedef int mqtt_message_id_t;
 
+typedef int esp_mqtt_client_data_len_t;
+
 typedef struct mqtt_topic_buf_t
 {
     char buf[TOPIC_LEN];
@@ -146,7 +148,7 @@ mqtt_publish_connect(void)
         p_mqtt_data->p_mqtt_client,
         p_mqtt_data->mqtt_topic.buf,
         p_message,
-        (int)strlen(p_message),
+        (esp_mqtt_client_data_len_t)strlen(p_message),
         mqtt_qos,
         mqtt_flag_retain);
 
@@ -178,7 +180,7 @@ mqtt_publish_state_offline(mqtt_protected_data_t *const p_mqtt_data)
         p_mqtt_data->p_mqtt_client,
         p_mqtt_data->mqtt_topic.buf,
         p_message,
-        (int)strlen(p_message),
+        (esp_mqtt_client_data_len_t)strlen(p_message),
         mqtt_qos,
         mqtt_flag_retain);
 

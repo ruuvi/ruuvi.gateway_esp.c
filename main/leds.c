@@ -196,6 +196,16 @@ leds_start_blink(const TimeUnitsMilliSeconds_t interval_ms, const uint32_t duty_
 }
 
 static void
+leds_task_watchdog_feed(void)
+{
+    const esp_err_t err = esp_task_wdt_reset();
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "%s failed", "esp_task_wdt_reset");
+    }
+}
+
+static void
 leds_task_handle_sig(
     const leds_task_sig_e         leds_task_sig,
     const TimeUnitsMilliSeconds_t period_ms,
@@ -247,14 +257,8 @@ leds_task_handle_sig(
             break;
 
         case LEDS_TASK_SIG_TASK_WATCHDOG_FEED:
-        {
-            const esp_err_t err = esp_task_wdt_reset();
-            if (ESP_OK != err)
-            {
-                LOG_ERR_ESP(err, "%s failed", "esp_task_wdt_reset");
-            }
+            leds_task_watchdog_feed();
             break;
-        }
 
         default:
             LOG_ERR("Unhanded sig: %d", (int)leds_task_sig);
