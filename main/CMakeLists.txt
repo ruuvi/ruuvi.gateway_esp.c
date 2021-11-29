@@ -46,6 +46,7 @@ idf_component_register(
             http_server_cb.h
             leds.c
             leds.h
+            main_loop.c
             metrics.c
             metrics.h
             mqtt.c
