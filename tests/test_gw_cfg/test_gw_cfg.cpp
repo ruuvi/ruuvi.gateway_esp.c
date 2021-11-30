@@ -99,6 +99,8 @@ protected:
         this->m_mem_alloc_trace.clear();
         this->m_malloc_cnt         = 0;
         this->m_malloc_fail_on_cnt = 0;
+
+        gw_cfg_default_set_lan_auth_password("\xFFpassword_md5\xFF");
     }
 
     void
@@ -182,12 +184,20 @@ TestGwCfg::~TestGwCfg() = default;
 
 #define TEST_CHECK_LOG_RECORD(level_, msg_) ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("gw_cfg", level_, msg_)
 
+static ruuvi_gateway_config_t
+get_gateway_config_default()
+{
+    ruuvi_gateway_config_t gw_cfg {};
+    gw_cfg_default_get(&gw_cfg);
+    return gw_cfg;
+}
+
 /*** Unit-Tests
  * *******************************************************************************************************/
 
 TEST_F(TestGwCfg, gw_cfg_print_to_log_default) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg = get_gateway_config_default();
     gw_cfg_print_to_log(&gw_cfg);
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS:"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use eth: 0"));

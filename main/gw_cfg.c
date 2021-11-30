@@ -36,7 +36,7 @@ gw_cfg_init(void)
 {
     g_gw_cfg_mutex = os_mutex_recursive_create_static(&g_gw_cfg_mutex_mem);
     os_mutex_recursive_lock(g_gw_cfg_mutex);
-    g_gateway_config = g_gateway_config_default;
+    gw_cfg_default_get(&g_gateway_config);
     memset(&g_gw_mac_eth, 0, sizeof(g_gw_mac_eth));
     memset(&g_gw_mac_eth_str, 0, sizeof(g_gw_mac_eth_str));
     memset(&g_gw_mac_wifi, 0, sizeof(g_gw_mac_wifi));
@@ -254,4 +254,12 @@ gw_cfg_get_coordinates(void)
     const ruuvi_gw_cfg_coordinates_t coordinates = p_gw_cfg->coordinates;
     gw_cfg_unlock_ro(&p_gw_cfg);
     return coordinates;
+}
+
+void
+gw_cfg_set_default_lan_auth(void)
+{
+    ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_rw();
+    p_gw_cfg->lan_auth               = gw_cfg_default_get_lan_auth();
+    gw_cfg_unlock_rw(&p_gw_cfg);
 }

@@ -138,7 +138,7 @@ settings_clear_in_flash(void)
 static bool
 settings_get_gw_cfg_from_nvs(nvs_handle handle, ruuvi_gateway_config_t *const p_gw_cfg)
 {
-    *p_gw_cfg = g_gateway_config_default;
+    gw_cfg_default_get(p_gw_cfg);
 
     size_t    sz      = 0;
     esp_err_t esp_err = nvs_get_str(handle, RUUVI_GATEWAY_NVS_CFG_JSON_KEY, NULL, &sz);
@@ -216,7 +216,7 @@ settings_get_gw_cfg_blob_from_nvs(nvs_handle handle, ruuvi_gateway_config_blob_t
     return true;
 }
 
-void
+bool
 settings_get_from_flash(void)
 {
     ruuvi_gateway_config_t *p_gw_cfg                = gw_cfg_lock_rw();
@@ -269,7 +269,7 @@ settings_get_from_flash(void)
     if (flag_use_default_config)
     {
         LOG_WARN("Using default config:");
-        *p_gw_cfg = g_gateway_config_default;
+        gw_cfg_default_get(p_gw_cfg);
     }
     else
     {
@@ -278,6 +278,7 @@ settings_get_from_flash(void)
 
     gw_cfg_print_to_log(p_gw_cfg);
     gw_cfg_unlock_rw(&p_gw_cfg);
+    return flag_use_default_config;
 }
 
 mac_address_bin_t

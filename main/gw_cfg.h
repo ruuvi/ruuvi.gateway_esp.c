@@ -37,7 +37,7 @@ extern "C" {
 #define MAX_MQTT_USER_LEN      129
 #define MAX_MQTT_PASS_LEN      257
 #define MAX_MQTT_CLIENT_ID_LEN 51
-#define MAX_LAN_AUTH_TYPE_LEN  16
+#define MAX_LAN_AUTH_TYPE_LEN  20
 #define MAX_LAN_AUTH_USER_LEN  51
 #define MAX_LAN_AUTH_PASS_LEN  51
 #define IP_STR_LEN             17
@@ -257,6 +257,9 @@ gw_cfg_get_lan_auth(void);
 
 ruuvi_gw_cfg_coordinates_t
 gw_cfg_get_coordinates(void);
+
+void
+gw_cfg_set_default_lan_auth(void);
 
 #ifdef __cplusplus
 }
