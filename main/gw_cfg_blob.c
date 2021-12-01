@@ -12,7 +12,7 @@
 void
 gw_cfg_blob_convert(ruuvi_gateway_config_t *const p_cfg_dst, const ruuvi_gateway_config_blob_t *const p_cfg_src)
 {
-    *p_cfg_dst = g_gateway_config_default;
+    gw_cfg_default_get(p_cfg_dst);
 
     if (RUUVI_GATEWAY_CONFIG_BLOB_HEADER != p_cfg_src->header)
     {

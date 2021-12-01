@@ -684,7 +684,7 @@ gw_cfg_json_parse_cjson(const cJSON *const p_json_root, ruuvi_gateway_config_t *
 bool
 gw_cfg_json_parse(const char *const p_json_str, ruuvi_gateway_config_t *const p_gw_cfg)
 {
-    *p_gw_cfg = g_gateway_config_default;
+    gw_cfg_default_get(p_gw_cfg);
 
     if ('\0' == p_json_str[0])
     {

@@ -6,8 +6,9 @@
  */
 
 #include "gw_cfg_default.h"
+#include <stdio.h>
 
-const ruuvi_gateway_config_t g_gateway_config_default = {
+static const ruuvi_gateway_config_t g_gateway_config_default = {
         .eth = {
             .use_eth = false,
             .eth_dhcp = true,
@@ -43,7 +44,7 @@ const ruuvi_gateway_config_t g_gateway_config_default = {
         .lan_auth = {
             .lan_auth_type = { HTTP_SERVER_AUTH_TYPE_STR_RUUVI },
             .lan_auth_user = { RUUVI_GATEWAY_AUTH_DEFAULT_USER },
-            .lan_auth_pass = { RUUVI_GATEWAY_AUTH_DEFAULT_PASS_USE_DEVICE_ID },
+            .lan_auth_pass = { "" },
         },
         .auto_update = {
             .auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR,
@@ -66,3 +67,53 @@ const ruuvi_gateway_config_t g_gateway_config_default = {
         },
         .coordinates = {{ "" }},
     };
+
+static const char *g_lan_auth_default_password_md5;
+
+bool
+gw_cfg_default_set_lan_auth_password(const char *const p_password_md5)
+{
+    if (NULL == p_password_md5)
+    {
+        return false;
+    }
+    g_lan_auth_default_password_md5 = p_password_md5;
+    return true;
+}
+
+const char *
+gw_cfg_default_get_lan_auth_password(void)
+{
+    return g_lan_auth_default_password_md5;
+}
+
+void
+gw_cfg_default_get(ruuvi_gateway_config_t *const p_gw_cfg)
+{
+    *p_gw_cfg = g_gateway_config_default;
+    if (NULL != g_lan_auth_default_password_md5)
+    {
+        snprintf(
+            p_gw_cfg->lan_auth.lan_auth_pass,
+            sizeof(p_gw_cfg->lan_auth.lan_auth_pass),
+            "%s",
+            g_lan_auth_default_password_md5);
+    }
+}
+
+ruuvi_gw_cfg_lan_auth_t
+gw_cfg_default_get_lan_auth(void)
+{
+    ruuvi_gw_cfg_lan_auth_t lan_auth = g_gateway_config_default.lan_auth;
+    if (NULL != g_lan_auth_default_password_md5)
+    {
+        snprintf(lan_auth.lan_auth_pass, sizeof(lan_auth.lan_auth_pass), "%s", g_lan_auth_default_password_md5);
+    }
+    return lan_auth;
+}
+
+ruuvi_gw_cfg_eth_t
+gw_cfg_default_get_eth(void)
+{
+    return g_gateway_config_default.eth;
+}

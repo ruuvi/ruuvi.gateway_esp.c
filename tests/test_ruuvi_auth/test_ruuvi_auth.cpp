@@ -14,6 +14,8 @@
 #include "http_server_auth.h"
 #include "gw_cfg.h"
 #include "gw_cfg_default.h"
+#include "str_buf.h"
+#include "wifiman_md5.h"
 
 using namespace std;
 
@@ -84,6 +86,8 @@ protected:
         this->m_mem_alloc_trace.clear();
         this->m_malloc_cnt         = 0;
         this->m_malloc_fail_on_cnt = 0;
+
+        gw_cfg_default_set_lan_auth_password("\xFFpassword_md5\xFF");
     }
 
     void
@@ -98,15 +102,27 @@ public:
 
     ~TestRuuviAuth() override;
 
-    string        m_device_id {};
-    MemAllocTrace m_mem_alloc_trace {};
-    uint32_t      m_malloc_cnt {};
-    uint32_t      m_malloc_fail_on_cnt {};
+    string                       m_device_id {};
+    MemAllocTrace                m_mem_alloc_trace {};
+    uint32_t                     m_malloc_cnt {};
+    uint32_t                     m_malloc_fail_on_cnt {};
+    wifiman_md5_digest_hex_str_t password_md5 {};
 
     void
     setDeviceId(const string &device_id)
     {
         this->m_device_id = device_id;
+
+        str_buf_t str_buf = str_buf_printf_with_alloc(
+            "%s:%s:%s",
+            RUUVI_GATEWAY_AUTH_DEFAULT_USER,
+            g_gw_wifi_ssid.ssid_buf,
+            device_id.c_str());
+
+        this->password_md5 = wifiman_md5_calc_hex_str(str_buf.buf, str_buf_get_len(&str_buf));
+
+        gw_cfg_default_set_lan_auth_password(password_md5.buf);
+        gw_cfg_set_default_lan_auth();
     }
 };
 
@@ -185,6 +201,14 @@ os_mutex_recursive_unlock(os_mutex_recursive_t const h_mutex)
 }
 }
 
+static ruuvi_gateway_config_t
+get_gateway_config_default()
+{
+    ruuvi_gateway_config_t gw_cfg {};
+    gw_cfg_default_get(&gw_cfg);
+    return gw_cfg;
+}
+
 /*** Unit-Tests
  * *******************************************************************************************************/
 
@@ -213,7 +237,7 @@ TEST_F(TestRuuviAuth, test_default_auth_non_zero_id) // NOLINT
 TEST_F(TestRuuviAuth, test_non_default_auth_password) // NOLINT
 {
     this->setDeviceId("01:02:03:04:05:06:0A:0B");
-    ruuvi_gateway_config_t gw_cfg_tmp = g_gateway_config_default;
+    ruuvi_gateway_config_t gw_cfg_tmp = get_gateway_config_default();
     snprintf(&gw_cfg_tmp.lan_auth.lan_auth_pass[0], sizeof(gw_cfg_tmp.lan_auth.lan_auth_pass), "qwe");
     gw_cfg_update(&gw_cfg_tmp, false);
     ASSERT_TRUE(ruuvi_auth_set_from_config());
@@ -227,7 +251,7 @@ TEST_F(TestRuuviAuth, test_non_default_auth_password) // NOLINT
 TEST_F(TestRuuviAuth, test_non_default_auth_user_password) // NOLINT
 {
     this->setDeviceId("01:02:03:04:05:06:0A:0B");
-    ruuvi_gateway_config_t gw_cfg_tmp = g_gateway_config_default;
+    ruuvi_gateway_config_t gw_cfg_tmp = get_gateway_config_default();
     snprintf(&gw_cfg_tmp.lan_auth.lan_auth_user[0], sizeof(gw_cfg_tmp.lan_auth.lan_auth_user), "user1");
     snprintf(&gw_cfg_tmp.lan_auth.lan_auth_pass[0], sizeof(gw_cfg_tmp.lan_auth.lan_auth_pass), "qwe");
     gw_cfg_update(&gw_cfg_tmp, false);
@@ -242,7 +266,7 @@ TEST_F(TestRuuviAuth, test_non_default_auth_user_password) // NOLINT
 TEST_F(TestRuuviAuth, test_non_default_auth_type_user_password) // NOLINT
 {
     this->setDeviceId("01:02:03:04:05:06:0A:0B");
-    ruuvi_gateway_config_t gw_cfg_tmp = g_gateway_config_default;
+    ruuvi_gateway_config_t gw_cfg_tmp = get_gateway_config_default();
     snprintf(
         &gw_cfg_tmp.lan_auth.lan_auth_type[0],
         sizeof(gw_cfg_tmp.lan_auth.lan_auth_type),
