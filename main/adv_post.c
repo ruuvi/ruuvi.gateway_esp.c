@@ -119,13 +119,14 @@ adv_post_conv_from_sig_num(const os_signal_num_e sig_num)
 
 /** @brief serialise up to U64 into given buffer, MSB first. */
 static inline void
-u64_to_array(const uint64_t u64, uint8_t *const p_array, uint8_t num_bytes)
+u64_to_array(const uint64_t u64, uint8_t *const p_array, const uint8_t num_bytes)
 {
     const uint8_t offset = num_bytes - 1;
-    uint8_t       bytes  = num_bytes;
-    while (0 != bytes--)
+    uint8_t       cnt    = num_bytes;
+    while (0 != cnt)
     {
-        p_array[offset - bytes] = (u64 >> (RUUVI_BITS_PER_BYTE * bytes)) & RUUVI_BYTE_MASK;
+        cnt -= 1;
+        p_array[offset - cnt] = (u64 >> (RUUVI_BITS_PER_BYTE * cnt)) & RUUVI_BYTE_MASK;
     }
 }
 
