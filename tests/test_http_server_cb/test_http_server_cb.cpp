@@ -353,6 +353,11 @@ os_mutex_recursive_create_static(os_mutex_recursive_static_t *const p_mutex_stat
 }
 
 void
+os_mutex_recursive_delete(os_mutex_recursive_t *const ph_mutex)
+{
+}
+
+void
 os_mutex_recursive_lock(os_mutex_recursive_t const h_mutex)
 {
 }

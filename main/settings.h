@@ -25,7 +25,7 @@ settings_save_to_flash(const char *const p_json_str);
 bool
 settings_clear_in_flash(void);
 
-bool
+void
 settings_get_from_flash(void);
 
 mac_address_bin_t

@@ -210,6 +210,12 @@ extern wifi_ssid_t       g_gw_wifi_ssid;
 void
 gw_cfg_init(void);
 
+void
+gw_cfg_deinit(void);
+
+bool
+gw_cfg_is_initialized(void);
+
 ruuvi_gateway_config_t *
 gw_cfg_lock_rw(void);
 
@@ -257,9 +263,6 @@ gw_cfg_get_lan_auth(void);
 
 ruuvi_gw_cfg_coordinates_t
 gw_cfg_get_coordinates(void);
-
-void
-gw_cfg_set_default_lan_auth(void);
 
 #ifdef __cplusplus
 }

@@ -205,6 +205,11 @@ adv_post_send_report(void *arg)
     {
         LOG_WARN("Adv report table full, adv dropped");
     }
+    if (!gw_cfg_is_initialized())
+    {
+        LOG_WARN("gw_cfg is not ready yet");
+        return;
+    }
     if (gw_cfg_get_mqtt_use_mqtt())
     {
         if (0 == (xEventGroupGetBits(status_bits) & MQTT_CONNECTED_BIT))

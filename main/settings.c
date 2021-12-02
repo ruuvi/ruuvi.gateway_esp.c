@@ -136,26 +136,29 @@ settings_clear_in_flash(void)
 }
 
 static bool
-settings_get_gw_cfg_from_nvs(nvs_handle handle, ruuvi_gateway_config_t *const p_gw_cfg)
+settings_get_gw_cfg_from_nvs(
+    nvs_handle                    handle,
+    ruuvi_gateway_config_t *const p_gw_cfg,
+    bool *const                   p_flag_use_default_config)
 {
     gw_cfg_default_get(p_gw_cfg);
 
-    size_t    sz      = 0;
-    esp_err_t esp_err = nvs_get_str(handle, RUUVI_GATEWAY_NVS_CFG_JSON_KEY, NULL, &sz);
+    size_t    cfg_json_size = 0;
+    esp_err_t esp_err       = nvs_get_str(handle, RUUVI_GATEWAY_NVS_CFG_JSON_KEY, NULL, &cfg_json_size);
     if (ESP_OK != esp_err)
     {
         LOG_ERR_ESP(esp_err, "Can't find config key '%s' in flash", RUUVI_GATEWAY_NVS_CFG_JSON_KEY);
         return false;
     }
 
-    char *p_cfg_json = os_malloc(sz);
+    char *p_cfg_json = os_malloc(cfg_json_size);
     if (NULL == p_cfg_json)
     {
-        LOG_ERR("Can't allocate %lu bytes for configuration", (printf_ulong_t)sz);
+        LOG_ERR("Can't allocate %lu bytes for configuration", (printf_ulong_t)cfg_json_size);
         return false;
     }
 
-    esp_err = nvs_get_str(handle, RUUVI_GATEWAY_NVS_CFG_JSON_KEY, p_cfg_json, &sz);
+    esp_err = nvs_get_str(handle, RUUVI_GATEWAY_NVS_CFG_JSON_KEY, p_cfg_json, &cfg_json_size);
     if (ESP_OK != esp_err)
     {
         LOG_ERR_ESP(esp_err, "Can't read config-json from flash by key '%s'", RUUVI_GATEWAY_NVS_CFG_JSON_KEY);
@@ -216,7 +219,7 @@ settings_get_gw_cfg_blob_from_nvs(nvs_handle handle, ruuvi_gateway_config_blob_t
     return true;
 }
 
-bool
+void
 settings_get_from_flash(void)
 {
     ruuvi_gateway_config_t *p_gw_cfg                = gw_cfg_lock_rw();
@@ -228,7 +231,7 @@ settings_get_from_flash(void)
     }
     else
     {
-        if (!settings_get_gw_cfg_from_nvs(handle, p_gw_cfg))
+        if (!settings_get_gw_cfg_from_nvs(handle, p_gw_cfg, &flag_use_default_config))
         {
             LOG_WARN("Try to read config from BLOB");
             ruuvi_gateway_config_blob_t *p_gw_cfg_blob = os_calloc(1, sizeof(*p_gw_cfg_blob));
@@ -278,7 +281,6 @@ settings_get_from_flash(void)
 
     gw_cfg_print_to_log(p_gw_cfg);
     gw_cfg_unlock_rw(&p_gw_cfg);
-    return flag_use_default_config;
 }
 
 mac_address_bin_t

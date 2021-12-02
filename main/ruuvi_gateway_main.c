@@ -485,11 +485,6 @@ cb_before_nrf52_fw_updating(void)
 {
     fw_update_set_stage_nrf52_updating();
 
-    const mac_address_bin_t nrf52_mac_addr = settings_read_mac_addr();
-    set_gw_mac_sta(&nrf52_mac_addr, &g_gw_mac_sta_str, &g_gw_wifi_ssid);
-    LOG_INFO("Mac address: %s", g_gw_mac_sta_str.str_buf);
-    LOG_INFO("WiFi SSID / Hostname: %s", g_gw_wifi_ssid.ssid_buf);
-
     // Here we do not yet know the value of nRF52 DeviceID, so we cannot use it as the default password.
     http_server_cb_prohibit_cfg_updating();
     if (!http_server_set_auth(HTTP_SERVER_AUTH_TYPE_STR_ALLOW, "", ""))
@@ -904,7 +899,6 @@ main_task_init(void)
 {
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
     cjson_wrap_init();
-    gw_cfg_init();
 
     g_p_signal_main_task = os_signal_create_static(&g_signal_main_task_mem);
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_LOG_HEAP_USAGE));
@@ -986,7 +980,10 @@ main_task_init(void)
     gateway_read_mac_addr(ESP_MAC_WIFI_STA, &g_gw_mac_wifi, &g_gw_mac_wifi_str);
     gateway_read_mac_addr(ESP_MAC_ETH, &g_gw_mac_eth, &g_gw_mac_eth_str);
 
-    const bool flag_use_default_config = settings_get_from_flash();
+    mac_address_bin_t nrf52_mac_addr = settings_read_mac_addr();
+    set_gw_mac_sta(&nrf52_mac_addr, &g_gw_mac_sta_str, &g_gw_wifi_ssid);
+    LOG_INFO("Read saved Mac address: %s", g_gw_mac_sta_str.str_buf);
+    LOG_INFO("Read saved WiFi SSID / Hostname: %s", g_gw_wifi_ssid.ssid_buf);
 
     leds_indication_on_nrf52_fw_updating();
     nrf52fw_update_fw_if_necessary(
@@ -1002,25 +999,23 @@ main_task_init(void)
     api_process(true);
     request_and_wait_nrf52_id();
 
-    const mac_address_bin_t nrf52_mac_addr = ruuvi_device_id_get_nrf52_mac_address();
+    nrf52_mac_addr = ruuvi_device_id_get_nrf52_mac_address();
     set_gw_mac_sta(&nrf52_mac_addr, &g_gw_mac_sta_str, &g_gw_wifi_ssid);
     LOG_INFO("Mac address: %s", g_gw_mac_sta_str.str_buf);
     LOG_INFO("WiFi SSID / Hostname: %s", g_gw_wifi_ssid.ssid_buf);
 
     settings_update_mac_addr(&nrf52_mac_addr);
 
-    time_task_init();
-    ruuvi_send_nrf_settings();
-
     if (!gw_cfg_default_set_lan_auth_password(generate_default_lan_auth_password()))
     {
         LOG_ERR("%s failed", "generate_default_lan_auth_password");
         return false;
     }
-    if (flag_use_default_config)
-    {
-        gw_cfg_set_default_lan_auth();
-    }
+    gw_cfg_init();
+    settings_get_from_flash();
+
+    time_task_init();
+    ruuvi_send_nrf_settings();
     ruuvi_auth_set_from_config();
 
     if (!wifi_init(

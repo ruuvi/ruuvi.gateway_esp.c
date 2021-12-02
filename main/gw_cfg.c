@@ -43,9 +43,24 @@ gw_cfg_init(void)
     memset(&g_gw_mac_wifi_str, 0, sizeof(g_gw_mac_wifi_str));
     memset(&g_gw_mac_sta, 0, sizeof(g_gw_mac_sta));
     memset(&g_gw_mac_sta_str, 0, sizeof(g_gw_mac_sta_str));
-    memset(&g_gw_wifi_ssid, 0, sizeof(g_gw_wifi_ssid));
-    snprintf(&g_gw_wifi_ssid.ssid_buf[0], sizeof(g_gw_wifi_ssid.ssid_buf), "%s", DEFAULT_AP_SSID);
     os_mutex_recursive_unlock(g_gw_cfg_mutex);
+}
+
+void
+gw_cfg_deinit(void)
+{
+    os_mutex_recursive_delete(&g_gw_cfg_mutex);
+    g_gw_cfg_mutex = NULL;
+}
+
+bool
+gw_cfg_is_initialized(void)
+{
+    if (NULL != g_gw_cfg_mutex)
+    {
+        return true;
+    }
+    return false;
 }
 
 ruuvi_gateway_config_t *
@@ -254,12 +269,4 @@ gw_cfg_get_coordinates(void)
     const ruuvi_gw_cfg_coordinates_t coordinates = p_gw_cfg->coordinates;
     gw_cfg_unlock_ro(&p_gw_cfg);
     return coordinates;
-}
-
-void
-gw_cfg_set_default_lan_auth(void)
-{
-    ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_rw();
-    p_gw_cfg->lan_auth               = gw_cfg_default_get_lan_auth();
-    gw_cfg_unlock_rw(&p_gw_cfg);
 }
