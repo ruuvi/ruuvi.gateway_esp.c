@@ -37,7 +37,7 @@ extern "C" {
 #define MAX_MQTT_USER_LEN      129
 #define MAX_MQTT_PASS_LEN      257
 #define MAX_MQTT_CLIENT_ID_LEN 51
-#define MAX_LAN_AUTH_TYPE_LEN  16
+#define MAX_LAN_AUTH_TYPE_LEN  20
 #define MAX_LAN_AUTH_USER_LEN  51
 #define MAX_LAN_AUTH_PASS_LEN  51
 #define IP_STR_LEN             17
@@ -209,6 +209,12 @@ extern wifi_ssid_t       g_gw_wifi_ssid;
 
 void
 gw_cfg_init(void);
+
+void
+gw_cfg_deinit(void);
+
+bool
+gw_cfg_is_initialized(void);
 
 ruuvi_gateway_config_t *
 gw_cfg_lock_rw(void);

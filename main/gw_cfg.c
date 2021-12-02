@@ -36,16 +36,31 @@ gw_cfg_init(void)
 {
     g_gw_cfg_mutex = os_mutex_recursive_create_static(&g_gw_cfg_mutex_mem);
     os_mutex_recursive_lock(g_gw_cfg_mutex);
-    g_gateway_config = g_gateway_config_default;
+    gw_cfg_default_get(&g_gateway_config);
     memset(&g_gw_mac_eth, 0, sizeof(g_gw_mac_eth));
     memset(&g_gw_mac_eth_str, 0, sizeof(g_gw_mac_eth_str));
     memset(&g_gw_mac_wifi, 0, sizeof(g_gw_mac_wifi));
     memset(&g_gw_mac_wifi_str, 0, sizeof(g_gw_mac_wifi_str));
     memset(&g_gw_mac_sta, 0, sizeof(g_gw_mac_sta));
     memset(&g_gw_mac_sta_str, 0, sizeof(g_gw_mac_sta_str));
-    memset(&g_gw_wifi_ssid, 0, sizeof(g_gw_wifi_ssid));
-    snprintf(&g_gw_wifi_ssid.ssid_buf[0], sizeof(g_gw_wifi_ssid.ssid_buf), "%s", DEFAULT_AP_SSID);
     os_mutex_recursive_unlock(g_gw_cfg_mutex);
+}
+
+void
+gw_cfg_deinit(void)
+{
+    os_mutex_recursive_delete(&g_gw_cfg_mutex);
+    g_gw_cfg_mutex = NULL;
+}
+
+bool
+gw_cfg_is_initialized(void)
+{
+    if (NULL != g_gw_cfg_mutex)
+    {
+        return true;
+    }
+    return false;
 }
 
 ruuvi_gateway_config_t *

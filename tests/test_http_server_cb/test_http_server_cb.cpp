@@ -250,6 +250,8 @@ protected:
 
         gw_cfg_init();
         snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
+
+        gw_cfg_default_set_lan_auth_password("\xFFpassword_md5\xFF");
     }
 
     void
@@ -348,6 +350,11 @@ os_mutex_recursive_t
 os_mutex_recursive_create_static(os_mutex_recursive_static_t *const p_mutex_static)
 {
     return nullptr;
+}
+
+void
+os_mutex_recursive_delete(os_mutex_recursive_t *const ph_mutex)
+{
 }
 
 void
@@ -517,6 +524,14 @@ TestHttpServerCb::~TestHttpServerCb() = default;
 
 #define TEST_CHECK_LOG_RECORD_GW_CFG(level_, msg_) ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("gw_cfg", level_, msg_)
 
+static ruuvi_gateway_config_t
+get_gateway_config_default()
+{
+    ruuvi_gateway_config_t gw_cfg {};
+    gw_cfg_default_get(&gw_cfg);
+    return gw_cfg;
+}
+
 /*** Unit-Tests
  * *******************************************************************************************************/
 
@@ -577,7 +592,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
           "\t\"mqtt_prefix\":\t\"ruuvi/30:AE:A4:02:84:A4\",\n"
           "\t\"mqtt_client_id\":\t\"30:AE:A4:02:84:A4\",\n"
           "\t\"mqtt_user\":\t\"\",\n"
-          "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
+          "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
           "\t\"lan_auth_user\":\t\"Admin\",\n"
           "\t\"auto_update_cycle\":\t\"regular\",\n"
           "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -596,7 +611,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
           "\t\"use_channel_39\":\ttrue\n"
           "}";
     bool                   flag_network_cfg = false;
-    ruuvi_gateway_config_t gw_cfg           = g_gateway_config_default;
+    ruuvi_gateway_config_t gw_cfg           = get_gateway_config_default();
     ASSERT_TRUE(
         json_ruuvi_parse_http_body(
             "{"
@@ -650,7 +665,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed_1) // NOLINT
     g_pTestClass->m_malloc_fail_on_cnt = 1;
 
     bool                   flag_network_cfg = false;
-    ruuvi_gateway_config_t gw_cfg           = g_gateway_config_default;
+    ruuvi_gateway_config_t gw_cfg           = get_gateway_config_default();
     ASSERT_FALSE(
         json_ruuvi_parse_http_body(
             "{"
@@ -679,7 +694,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed_1) // NOLINT
 TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed_2) // NOLINT
 {
     bool                   flag_network_cfg = false;
-    ruuvi_gateway_config_t gw_cfg           = g_gateway_config_default;
+    ruuvi_gateway_config_t gw_cfg           = get_gateway_config_default();
     ASSERT_TRUE(
         json_ruuvi_parse_http_body(
             "{"
@@ -752,7 +767,7 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
           "\t\"mqtt_prefix\":\t\"ruuvi/30:AE:A4:02:84:A4\",\n"
           "\t\"mqtt_client_id\":\t\"30:AE:A4:02:84:A4\",\n"
           "\t\"mqtt_user\":\t\"\",\n"
-          "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
+          "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
           "\t\"lan_auth_user\":\t\"Admin\",\n"
           "\t\"auto_update_cycle\":\t\"beta\",\n"
           "\t\"auto_update_weekdays_bitmask\":\t126,\n"
@@ -771,7 +786,7 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
           "\t\"use_channel_39\":\ttrue\n"
           "}";
     bool                   flag_network_cfg = false;
-    ruuvi_gateway_config_t gw_cfg           = g_gateway_config_default;
+    ruuvi_gateway_config_t gw_cfg           = get_gateway_config_default();
     ASSERT_TRUE(
         json_ruuvi_parse_http_body(
             "{"
@@ -1183,7 +1198,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
           "\t\"mqtt_prefix\":\t\"ruuvi/30:AE:A4:02:84:A4\",\n"
           "\t\"mqtt_client_id\":\t\"30:AE:A4:02:84:A4\",\n"
           "\t\"mqtt_user\":\t\"\",\n"
-          "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
+          "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
           "\t\"lan_auth_user\":\t\"Admin\",\n"
           "\t\"auto_update_cycle\":\t\"manual\",\n"
           "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -1202,7 +1217,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
           "\t\"use_channel_39\":\ttrue\n"
           "}";
     bool                   flag_network_cfg = false;
-    ruuvi_gateway_config_t gw_cfg           = g_gateway_config_default;
+    ruuvi_gateway_config_t gw_cfg           = get_gateway_config_default();
     ASSERT_TRUE(
         json_ruuvi_parse_http_body(
             "{"
@@ -1454,10 +1469,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 37: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 38: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(
-        ESP_LOG_INFO,
-        string("Set default LAN auth: user=Admin, password=00:00:00:00:00:00:00:00, "
-               "md5=a54439b7a379620e26445a27b2785d76"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1972,10 +1983,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 37: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 38: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(
-        ESP_LOG_INFO,
-        string("Set default LAN auth: user=Admin, password=00:00:00:00:00:00:00:00, "
-               "md5=a54439b7a379620e26445a27b2785d76"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 

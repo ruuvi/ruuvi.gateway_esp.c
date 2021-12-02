@@ -7,7 +7,10 @@
 
 #include "gw_cfg_ruuvi_json.h"
 #include <stdio.h>
+#include <string.h>
 #include "gw_cfg.h"
+#include "gw_cfg_default.h"
+#include "json_ruuvi.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -134,9 +137,21 @@ gw_cfg_ruuvi_json_add_items_http_stat(cJSON *p_json_root, const ruuvi_gateway_co
 static bool
 gw_cfg_ruuvi_json_add_items_lan_auth(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg)
 {
-    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "lan_auth_type", p_cfg->lan_auth.lan_auth_type))
+    if ((0 == strcmp(p_cfg->lan_auth.lan_auth_type, HTTP_SERVER_AUTH_TYPE_STR_RUUVI))
+        && (0 == strcmp(p_cfg->lan_auth.lan_auth_user, RUUVI_GATEWAY_AUTH_DEFAULT_USER))
+        && (0 == strcmp(p_cfg->lan_auth.lan_auth_pass, gw_cfg_default_get_lan_auth_password())))
     {
-        return false;
+        if (!gw_cfg_ruuvi_json_add_string(p_json_root, "lan_auth_type", "lan_auth_default"))
+        {
+            return false;
+        }
+    }
+    else
+    {
+        if (!gw_cfg_ruuvi_json_add_string(p_json_root, "lan_auth_type", p_cfg->lan_auth.lan_auth_type))
+        {
+            return false;
+        }
     }
     if (!gw_cfg_ruuvi_json_add_string(p_json_root, "lan_auth_user", p_cfg->lan_auth.lan_auth_user))
     {

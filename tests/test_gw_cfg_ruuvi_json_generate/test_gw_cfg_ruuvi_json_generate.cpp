@@ -96,6 +96,8 @@ protected:
         this->m_mem_alloc_trace.clear();
         this->m_malloc_cnt         = 0;
         this->m_malloc_fail_on_cnt = 0;
+
+        gw_cfg_default_set_lan_auth_password("\xFFpassword_md5\xFF");
     }
 
     void
@@ -164,6 +166,11 @@ os_mutex_recursive_create_static(os_mutex_recursive_static_t *const p_mutex_stat
 }
 
 void
+os_mutex_recursive_delete(os_mutex_recursive_t *const ph_mutex)
+{
+}
+
+void
 os_mutex_recursive_lock(os_mutex_recursive_t const h_mutex)
 {
 }
@@ -179,12 +186,20 @@ TestGwCfgRuuviJsonGenerate::~TestGwCfgRuuviJsonGenerate() = default;
 
 #define TEST_CHECK_LOG_RECORD(level_, msg_) ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("gw_cfg", level_, msg_)
 
+static ruuvi_gateway_config_t
+get_gateway_config_default()
+{
+    ruuvi_gateway_config_t gw_cfg {};
+    gw_cfg_default_get(&gw_cfg);
+    return gw_cfg;
+}
+
 /*** Unit-Tests
  * *******************************************************************************************************/
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "AA:BB:CC:DD:EE:FF");
@@ -220,7 +235,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default) // NOLINT
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_client_id\":\t\"\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
-               "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
+               "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -364,7 +379,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_non_default) // NO
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_json_creation) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -388,7 +403,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_j
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_fw_ver) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -412,7 +427,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_f
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_fw_ver_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -436,7 +451,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_f
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_fw_ver_3) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -460,7 +475,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_f
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_nrf52_fw_ver) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -484,7 +499,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_n
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_nrf52_fw_ver_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -508,7 +523,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_n
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_nrf52_fw_ver_3) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -532,7 +547,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_n
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_use_eth) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -556,7 +571,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_use_eth_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -580,7 +595,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_eth_dhcp) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -604,7 +619,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_eth_dhcp_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -628,7 +643,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_eth_static_ip) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -652,7 +667,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_eth_static_ip_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -676,7 +691,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_eth_static_ip_3) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -700,7 +715,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_eth_netmask) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -724,7 +739,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_eth_netmask_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -748,7 +763,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_eth_netmask_3) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -772,7 +787,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_eth_gw) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -796,7 +811,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_eth_gw_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -820,7 +835,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_eth_gw_3) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -844,7 +859,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_eth_dns1) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -868,7 +883,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_eth_dns1_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -892,7 +907,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_eth_dns1_3) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -916,7 +931,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_eth_dns2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -940,7 +955,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_eth_dns2_1) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -964,7 +979,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_eth_dns2_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -988,7 +1003,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_use_http) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1012,7 +1027,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_use_http_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1036,7 +1051,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_http_url) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1060,7 +1075,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_http_url_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1084,7 +1099,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_http_url_3) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1108,7 +1123,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_http_user) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1132,7 +1147,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_http_user_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1156,7 +1171,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_http_user_3) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1180,7 +1195,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_use_http_stat) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1204,7 +1219,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_use_http_stat_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1228,7 +1243,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_http_stat_url) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1252,7 +1267,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_http_stat_url_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1276,7 +1291,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_http_stat_url_3) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1300,7 +1315,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_http_stat_user) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1324,7 +1339,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_http_stat_user_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1348,7 +1363,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_http_stat_user_3) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1372,7 +1387,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_use_mqtt) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1396,7 +1411,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_use_mqtt_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1420,7 +1435,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_mqtt_transport) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1444,7 +1459,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_mqtt_transport_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1468,7 +1483,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_mqtt_transport_3) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1492,7 +1507,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_mqtt_server) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1516,7 +1531,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_mqtt_server_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1540,7 +1555,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_mqtt_server_3) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1564,7 +1579,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_mqtt_port) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1588,7 +1603,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_mqtt_port_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1612,7 +1627,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_mqtt_prefix) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1636,7 +1651,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_mqtt_prefix_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1660,7 +1675,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_mqtt_prefix_3) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1684,7 +1699,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_mqtt_client_id) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1708,7 +1723,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_mqtt_client_id_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1732,7 +1747,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_mqtt_client_id_3) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1756,7 +1771,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_mqtt_user) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1780,7 +1795,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_mqtt_user_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1804,7 +1819,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_mqtt_user_3) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1828,7 +1843,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_lan_auth_type) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1852,7 +1867,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_l
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_lan_auth_type_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1876,7 +1891,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_l
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_lan_auth_type_3) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1900,7 +1915,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_l
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_lan_auth_user) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1924,7 +1939,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_l
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_lan_auth_user_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1948,7 +1963,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_l
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_lan_auth_user_3) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1972,7 +1987,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_l
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_auto_update_cycle) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -1996,7 +2011,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_auto_update_cycle_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2020,7 +2035,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_auto_update_cycle_3) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2044,7 +2059,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_auto_update_weekdays_bitmask) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2068,7 +2083,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_auto_update_weekdays_bitmask_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2092,7 +2107,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_auto_update_interval_from) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2116,7 +2131,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_auto_update_interval_from_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2140,7 +2155,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_auto_update_interval_to) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2164,7 +2179,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_auto_update_interval_to_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2188,7 +2203,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_auto_update_tz) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2212,7 +2227,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_auto_update_tz_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2236,7 +2251,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_gw_mac) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2260,7 +2275,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_g
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_gw_mac_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2284,7 +2299,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_g
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_gw_mac_3) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2308,7 +2323,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_g
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_use_filtering) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2332,7 +2347,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_use_filtering_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2356,7 +2371,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_company_id) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2380,7 +2395,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_c
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_company_id_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2404,7 +2419,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_c
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_company_id_3) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2428,7 +2443,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_c
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_coordinates) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2452,7 +2467,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_c
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_coordinates_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2476,7 +2491,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_c
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_coordinates_3) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2500,7 +2515,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_c
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_use_coded_phy) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2524,7 +2539,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_use_coded_phy_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2548,7 +2563,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_use_1mbit_phy) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2572,7 +2587,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_use_1mbit_phy_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2596,7 +2611,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_use_extended_payload) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2620,7 +2635,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_use_extended_payload_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2644,7 +2659,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_use_channel_37) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2668,7 +2683,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_use_channel_37_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2692,7 +2707,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_use_channel_38) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2716,7 +2731,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_use_channel_38_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2740,7 +2755,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_use_channel_39) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2764,7 +2779,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_use_channel_39_2) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -2788,7 +2803,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
 
 TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_converting_to_json_string) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg   = g_gateway_config_default;
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
