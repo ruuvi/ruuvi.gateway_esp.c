@@ -19,7 +19,6 @@ mac_address_bin_t g_gw_mac_eth      = { 0 };
 mac_address_str_t g_gw_mac_eth_str  = { 0 };
 mac_address_bin_t g_gw_mac_wifi     = { 0 };
 mac_address_str_t g_gw_mac_wifi_str = { 0 };
-mac_address_bin_t g_gw_mac_sta      = { 0 };
 mac_address_str_t g_gw_mac_sta_str  = { 0 };
 wifi_ssid_t       g_gw_wifi_ssid    = {
     .ssid_buf = DEFAULT_AP_SSID, // RuuviGatewayXXXX where XXXX - last 4 digits of the MAC-address
@@ -37,12 +36,6 @@ gw_cfg_init(void)
     g_gw_cfg_mutex = os_mutex_recursive_create_static(&g_gw_cfg_mutex_mem);
     os_mutex_recursive_lock(g_gw_cfg_mutex);
     gw_cfg_default_get(&g_gateway_config);
-    memset(&g_gw_mac_eth, 0, sizeof(g_gw_mac_eth));
-    memset(&g_gw_mac_eth_str, 0, sizeof(g_gw_mac_eth_str));
-    memset(&g_gw_mac_wifi, 0, sizeof(g_gw_mac_wifi));
-    memset(&g_gw_mac_wifi_str, 0, sizeof(g_gw_mac_wifi_str));
-    memset(&g_gw_mac_sta, 0, sizeof(g_gw_mac_sta));
-    memset(&g_gw_mac_sta_str, 0, sizeof(g_gw_mac_sta_str));
     os_mutex_recursive_unlock(g_gw_cfg_mutex);
 }
 
