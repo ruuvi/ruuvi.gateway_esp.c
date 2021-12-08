@@ -136,10 +136,7 @@ settings_clear_in_flash(void)
 }
 
 static bool
-settings_get_gw_cfg_from_nvs(
-    nvs_handle                    handle,
-    ruuvi_gateway_config_t *const p_gw_cfg,
-    bool *const                   p_flag_use_default_config)
+settings_get_gw_cfg_from_nvs(nvs_handle handle, ruuvi_gateway_config_t *const p_gw_cfg)
 {
     gw_cfg_default_get(p_gw_cfg);
 
@@ -256,7 +253,7 @@ settings_get_from_flash(void)
     }
     else
     {
-        if (!settings_get_gw_cfg_from_nvs(handle, p_gw_cfg, &flag_use_default_config))
+        if (!settings_get_gw_cfg_from_nvs(handle, p_gw_cfg))
         {
             flag_use_default_config = settings_read_from_blob(handle, p_gw_cfg);
         }
