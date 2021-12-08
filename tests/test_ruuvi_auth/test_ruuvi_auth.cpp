@@ -94,6 +94,7 @@ protected:
     TearDown() override
     {
         g_pTestClass = nullptr;
+        gw_cfg_deinit();
         esp_log_wrapper_deinit();
     }
 
@@ -122,7 +123,8 @@ public:
         this->password_md5 = wifiman_md5_calc_hex_str(str_buf.buf, str_buf_get_len(&str_buf));
 
         gw_cfg_default_set_lan_auth_password(password_md5.buf);
-        gw_cfg_set_default_lan_auth();
+        gw_cfg_deinit();
+        gw_cfg_init();
     }
 };
 
@@ -188,6 +190,11 @@ os_mutex_recursive_t
 os_mutex_recursive_create_static(os_mutex_recursive_static_t *const p_mutex_static)
 {
     return nullptr;
+}
+
+void
+os_mutex_recursive_delete(os_mutex_recursive_t *const ph_mutex)
+{
 }
 
 void

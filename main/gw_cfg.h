@@ -215,6 +215,12 @@ extern wifi_ssid_t       g_gw_wifi_ssid;
 void
 gw_cfg_init(void);
 
+void
+gw_cfg_deinit(void);
+
+bool
+gw_cfg_is_initialized(void);
+
 ruuvi_gateway_config_t *
 gw_cfg_lock_rw(void);
 
