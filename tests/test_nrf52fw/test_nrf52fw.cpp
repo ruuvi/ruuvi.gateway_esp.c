@@ -7,6 +7,7 @@
 
 #include "nrf52fw.h"
 #include <string>
+#include <list>
 #include <sys/stat.h>
 #include <ftw.h>
 #include "gtest/gtest.h"
@@ -79,6 +80,14 @@ public:
     {
         return this->allocated_mem.empty();
     }
+};
+
+class ProgressInfo
+{
+public:
+    size_t      num_bytes_flashed;
+    size_t      total_size;
+    void *const p_param;
 };
 
 class MemSegment
@@ -156,6 +165,7 @@ protected:
         }
         this->m_fd    = nullptr;
         this->m_p_ffs = nullptr;
+        this->m_progress.clear();
         esp_log_wrapper_init();
         g_pTestClass = this;
 
@@ -179,6 +189,9 @@ protected:
     TearDown() override
     {
         g_pTestClass = nullptr;
+        this->m_progress.clear();
+        this->cb_before_updating_cnt = 0;
+        this->cb_after_updating_cnt  = 0;
         this->m_memSegmentsRead.clear();
         this->m_memSegmentsWrite.clear();
         nrf52fw_simulate_file_read_error(false);
@@ -225,6 +238,9 @@ public:
     vector<MemSegment>        m_memSegmentsWrite;
     vector<MemSegment>        m_memSegmentsRead;
     MemAllocTrace             m_mem_alloc_trace;
+    list<ProgressInfo>        m_progress;
+    uint32_t                  cb_before_updating_cnt;
+    uint32_t                  cb_after_updating_cnt;
 
     bool
     write_mem(const uint32_t addr, const uint32_t num_words, const uint32_t *p_buf)
@@ -272,6 +288,7 @@ public:
 
 TestNRF52Fw::TestNRF52Fw()
     : Test()
+    , m_progress()
 {
 }
 
@@ -1132,6 +1149,209 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_ok_257_words) // NOLINT
         ASSERT_EQ(this->m_memSegmentsRead[0].data, this->m_memSegmentsWrite[0].data);
     }
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001000...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001100...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001200...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001300...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001400...");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_ok_513_words_with_progress_info) // NOLINT
+{
+    const char *   segment_path    = "segment_1.bin";
+    const uint32_t num_words_total = 513;
+    uint32_t       segment_buf[num_words_total];
+    for (int i = 0; i < sizeof(segment_buf) / sizeof(segment_buf[0]); ++i)
+    {
+        segment_buf[i] = 0xAA000000 + i;
+    }
+
+    {
+        this->m_fd = this->open_file(segment_path, "wb");
+        ASSERT_NE(nullptr, this->m_fd);
+        fwrite(segment_buf, sizeof(segment_buf[0]), sizeof(segment_buf) / sizeof(segment_buf[0]), this->m_fd);
+        fclose(this->m_fd);
+        this->m_fd = nullptr;
+    }
+
+    this->m_fd = this->open_file(segment_path, "rb");
+    ASSERT_NE(nullptr, this->m_fd);
+
+    nrf52fw_tmp_buf_t tmp_buf = { 0 };
+
+    const uint32_t segment_addr = 0x00001000;
+    this->m_memSegmentsRead.emplace_back(
+        MemSegment(segment_addr, sizeof(segment_buf) / sizeof(segment_buf[0]), segment_buf));
+
+    nrf52fw_progress_info_t progress_info = {
+        .accum_num_bytes_flashed = 0,
+        .total_size              = num_words_total * sizeof(uint32_t),
+        .cb_progress             = nullptr,
+        .p_param_cb_progress     = nullptr,
+    };
+
+    ASSERT_TRUE(
+        nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf), &progress_info));
+    ASSERT_EQ(1, this->m_memSegmentsWrite.size());
+    {
+        ASSERT_EQ(this->m_memSegmentsRead[0].segmentAddr, this->m_memSegmentsWrite[0].segmentAddr);
+        ASSERT_EQ(this->m_memSegmentsRead[0].data, this->m_memSegmentsWrite[0].data);
+    }
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001000...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001100...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001200...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001300...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001400...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001500...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001600...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001700...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001800...");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(num_words_total * sizeof(uint32_t), progress_info.accum_num_bytes_flashed);
+    ASSERT_EQ(num_words_total * sizeof(uint32_t), progress_info.total_size);
+}
+
+static void
+cb_progress(const size_t num_bytes_flashed, const size_t total_size, void *const p_param)
+{
+    if (nullptr != p_param)
+    {
+        auto p_cnt = static_cast<uint32_t *const>(p_param);
+        *p_cnt += 1;
+    }
+    const ProgressInfo progress_info = {
+        .num_bytes_flashed = num_bytes_flashed,
+        .total_size        = total_size,
+        .p_param           = p_param,
+    };
+    g_pTestClass->m_progress.emplace_back(progress_info);
+}
+
+TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_ok_513_words_with_progress_info_and_callback) // NOLINT
+{
+    const char *   segment_path    = "segment_1.bin";
+    const uint32_t num_words_total = 513;
+    uint32_t       segment_buf[num_words_total];
+    for (int i = 0; i < sizeof(segment_buf) / sizeof(segment_buf[0]); ++i)
+    {
+        segment_buf[i] = 0xAA000000 + i;
+    }
+
+    {
+        this->m_fd = this->open_file(segment_path, "wb");
+        ASSERT_NE(nullptr, this->m_fd);
+        fwrite(segment_buf, sizeof(segment_buf[0]), sizeof(segment_buf) / sizeof(segment_buf[0]), this->m_fd);
+        fclose(this->m_fd);
+        this->m_fd = nullptr;
+    }
+
+    this->m_fd = this->open_file(segment_path, "rb");
+    ASSERT_NE(nullptr, this->m_fd);
+
+    nrf52fw_tmp_buf_t tmp_buf = { 0 };
+
+    const uint32_t segment_addr = 0x00001000;
+    this->m_memSegmentsRead.emplace_back(
+        MemSegment(segment_addr, sizeof(segment_buf) / sizeof(segment_buf[0]), segment_buf));
+
+    uint32_t                cb_progress_cnt = 0;
+    nrf52fw_progress_info_t progress_info   = {
+        .accum_num_bytes_flashed = 0,
+        .total_size              = num_words_total * sizeof(uint32_t),
+        .cb_progress             = &cb_progress,
+        .p_param_cb_progress     = &cb_progress_cnt,
+    };
+
+    ASSERT_TRUE(
+        nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf), &progress_info));
+    ASSERT_EQ(1, this->m_memSegmentsWrite.size());
+    {
+        ASSERT_EQ(this->m_memSegmentsRead[0].segmentAddr, this->m_memSegmentsWrite[0].segmentAddr);
+        ASSERT_EQ(this->m_memSegmentsRead[0].data, this->m_memSegmentsWrite[0].data);
+    }
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001000...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001100...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001200...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001300...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001400...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001500...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001600...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001700...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001800...");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+
+    ASSERT_EQ(9, cb_progress_cnt);
+    ASSERT_EQ(num_words_total * sizeof(uint32_t), progress_info.accum_num_bytes_flashed);
+    ASSERT_EQ(num_words_total * sizeof(uint32_t), progress_info.total_size);
+
+    auto progress_iter = this->m_progress.begin();
+    ASSERT_NE(this->m_progress.end(), progress_iter);
+    {
+        ASSERT_EQ(progress_iter->total_size, progress_info.total_size);
+        ASSERT_EQ(progress_iter->p_param, progress_info.p_param_cb_progress);
+        ASSERT_EQ(progress_iter->num_bytes_flashed, 256 * 1);
+    }
+    progress_iter++;
+    ASSERT_NE(this->m_progress.end(), progress_iter);
+    {
+        ASSERT_EQ(progress_iter->total_size, progress_info.total_size);
+        ASSERT_EQ(progress_iter->p_param, progress_info.p_param_cb_progress);
+        ASSERT_EQ(progress_iter->num_bytes_flashed, 256 * 2);
+    }
+    progress_iter++;
+    ASSERT_NE(this->m_progress.end(), progress_iter);
+    {
+        ASSERT_EQ(progress_iter->total_size, progress_info.total_size);
+        ASSERT_EQ(progress_iter->p_param, progress_info.p_param_cb_progress);
+        ASSERT_EQ(progress_iter->num_bytes_flashed, 256 * 3);
+    }
+    progress_iter++;
+    ASSERT_NE(this->m_progress.end(), progress_iter);
+    {
+        ASSERT_EQ(progress_iter->total_size, progress_info.total_size);
+        ASSERT_EQ(progress_iter->p_param, progress_info.p_param_cb_progress);
+        ASSERT_EQ(progress_iter->num_bytes_flashed, 256 * 4);
+    }
+    progress_iter++;
+    ASSERT_NE(this->m_progress.end(), progress_iter);
+    {
+        ASSERT_EQ(progress_iter->total_size, progress_info.total_size);
+        ASSERT_EQ(progress_iter->p_param, progress_info.p_param_cb_progress);
+        ASSERT_EQ(progress_iter->num_bytes_flashed, 256 * 5);
+    }
+    progress_iter++;
+    ASSERT_NE(this->m_progress.end(), progress_iter);
+    {
+        ASSERT_EQ(progress_iter->total_size, progress_info.total_size);
+        ASSERT_EQ(progress_iter->p_param, progress_info.p_param_cb_progress);
+        ASSERT_EQ(progress_iter->num_bytes_flashed, 256 * 6);
+    }
+    progress_iter++;
+    ASSERT_NE(this->m_progress.end(), progress_iter);
+    {
+        ASSERT_EQ(progress_iter->total_size, progress_info.total_size);
+        ASSERT_EQ(progress_iter->p_param, progress_info.p_param_cb_progress);
+        ASSERT_EQ(progress_iter->num_bytes_flashed, 256 * 7);
+    }
+    progress_iter++;
+    ASSERT_NE(this->m_progress.end(), progress_iter);
+    {
+        ASSERT_EQ(progress_iter->total_size, progress_info.total_size);
+        ASSERT_EQ(progress_iter->p_param, progress_info.p_param_cb_progress);
+        ASSERT_EQ(progress_iter->num_bytes_flashed, 256 * 8);
+    }
+    progress_iter++;
+    ASSERT_NE(this->m_progress.end(), progress_iter);
+    {
+        ASSERT_EQ(progress_iter->total_size, progress_info.total_size);
+        ASSERT_EQ(progress_iter->p_param, progress_info.p_param_cb_progress);
+        ASSERT_EQ(progress_iter->num_bytes_flashed, num_words_total * sizeof(uint32_t));
+    }
+    progress_iter++;
+    ASSERT_EQ(this->m_progress.end(), progress_iter);
 }
 
 TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_error_on_verify) // NOLINT
@@ -2474,6 +2694,160 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required) // NO
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
+static void
+cb_before_updating()
+{
+    g_pTestClass->cb_before_updating_cnt += 1;
+}
+
+static void
+cb_after_updating()
+{
+    g_pTestClass->cb_after_updating_cnt += 1;
+}
+
+TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required__with_callbacks) // NOLINT
+{
+    const char *segment1_path = "segment_1.bin";
+    const char *segment2_path = "segment_2.bin";
+    const char *segment3_path = "segment_3.bin";
+
+    const size_t segment1_size = 2816;
+    const size_t segment2_size = 151016;
+    const size_t segment3_size = 24448;
+
+    uint32_t segment1_crc = 0;
+    uint32_t segment2_crc = 0;
+    uint32_t segment3_crc = 0;
+
+    std::unique_ptr<uint32_t[]> segment1_buf(new uint32_t[segment1_size / sizeof(uint32_t)]);
+    {
+        for (int i = 0; i < segment1_size / sizeof(uint32_t); ++i)
+        {
+            segment1_buf[i] = 0xAA000000 + i;
+        }
+        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment1_buf.get()), segment1_size);
+        {
+            this->m_fd = this->open_file(segment1_path, "wb");
+            ASSERT_NE(nullptr, this->m_fd);
+            fwrite(segment1_buf.get(), 1, segment1_size, this->m_fd);
+            fclose(this->m_fd);
+            this->m_fd = nullptr;
+        }
+    }
+
+    std::unique_ptr<uint32_t[]> segment2_buf(new uint32_t[segment2_size / sizeof(uint32_t)]);
+    {
+        for (int i = 0; i < segment2_size / sizeof(uint32_t); ++i)
+        {
+            segment2_buf[i] = 0xBB000000 + i;
+        }
+        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
+        {
+            this->m_fd = this->open_file(segment2_path, "wb");
+            ASSERT_NE(nullptr, this->m_fd);
+            fwrite(segment2_buf.get(), 1, segment2_size, this->m_fd);
+            fclose(this->m_fd);
+            this->m_fd = nullptr;
+        }
+    }
+
+    std::unique_ptr<uint32_t[]> segment3_buf(new uint32_t[segment3_size / sizeof(uint32_t)]);
+    {
+        for (int i = 0; i < segment3_size / sizeof(uint32_t); ++i)
+        {
+            segment3_buf[i] = 0xCC000000 + i;
+        }
+        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment3_buf.get()), segment3_size);
+        {
+            this->m_fd = this->open_file(segment3_path, "wb");
+            ASSERT_NE(nullptr, this->m_fd);
+            fwrite(segment3_buf.get(), 1, segment3_size, this->m_fd);
+            fclose(this->m_fd);
+            this->m_fd = nullptr;
+        }
+    }
+
+    {
+        this->m_fd = this->open_file("info.txt", "w");
+        ASSERT_NE(nullptr, this->m_fd);
+        fprintf(this->m_fd, "# v1.2.3\n");
+        fprintf(this->m_fd, "0x00000000 %u %s 0x%08x\n", (unsigned)segment1_size, segment1_path, segment1_crc);
+        fprintf(this->m_fd, "0x00001000 %u %s 0x%08x\n", (unsigned)segment2_size, segment2_path, segment2_crc);
+        fprintf(this->m_fd, "0x00026000 %u %s 0x%08x\n", (unsigned)segment3_size, segment3_path, segment3_crc);
+        fclose(this->m_fd);
+        this->m_fd = nullptr;
+    }
+
+    {
+        const uint32_t version = 0x01020000;
+        this->m_memSegmentsRead.emplace_back(MemSegment(0x10001080, 1, &version));
+    }
+    this->m_memSegmentsRead.emplace_back(MemSegment(0x00000000, segment1_size / sizeof(uint32_t), segment1_buf.get()));
+    this->m_memSegmentsRead.emplace_back(MemSegment(0x00001000, segment2_size / sizeof(uint32_t), segment2_buf.get()));
+    this->m_memSegmentsRead.emplace_back(MemSegment(0x00026000, segment3_size / sizeof(uint32_t), segment3_buf.get()));
+
+    this->cb_before_updating_cnt = 0;
+    this->cb_after_updating_cnt  = 0;
+    uint32_t cb_progress_cnt     = 0;
+    ASSERT_TRUE(nrf52fw_update_fw_if_necessary(
+        GW_NRF_PARTITION,
+        &cb_progress,
+        &cb_progress_cnt,
+        &cb_before_updating,
+        &cb_after_updating));
+
+    ASSERT_EQ(697, cb_progress_cnt);
+    ASSERT_EQ(1, this->cb_before_updating_cnt);
+    ASSERT_EQ(1, this->cb_after_updating_cnt);
+
+    ASSERT_EQ(1, this->m_cnt_nrf52swd_erase_all);
+    ASSERT_EQ(4, this->m_memSegmentsWrite.size());
+
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on nRF52: v1.2.0");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Need to update firmware on nRF52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Erasing flash memory...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash 3 segments");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 0: 0x00000000 size=2816 from segment_1.bin");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000000...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000100...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000200...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000300...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000400...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000500...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000600...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000700...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000800...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000900...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000a00...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 1: 0x00001000 size=151016 from segment_2.bin");
+    for (uint32_t offset = 0; offset < segment2_size; offset += 256)
+    {
+        char buf[80];
+        snprintf(buf, sizeof(buf), "Writing 0x%08x...", (unsigned)(0x00001000U + offset));
+        TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, buf);
+    }
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 2: 0x00026000 size=24448 from segment_3.bin");
+    for (uint32_t offset = 0; offset < segment3_size; offset += 256)
+    {
+        char buf[80];
+        snprintf(buf, sizeof(buf), "Writing 0x%08x...", (unsigned)(0x00026000U + offset));
+        TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, buf);
+    }
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
 TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52swd_init) // NOLINT
 {
     const char *segment1_path = "segment_1.bin";
@@ -3737,4 +4111,37 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_write_firmware) 
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestNRF52Fw, nrf52fw_software_reset_ok) // NOLINT
+{
+    ASSERT_TRUE(nrf52fw_software_reset());
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nrf52fw_software_reset");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestNRF52Fw, nrf52fw_software_reset_failed_nrf52swd_init_swd_failed) // NOLINT
+{
+    this->m_result_nrf52swd_init = false;
+    ASSERT_FALSE(nrf52fw_software_reset());
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nrf52fw_software_reset");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_init failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_init_swd failed");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestNRF52Fw, nrf52fw_software_reset_failed_nrf52swd_debug_run_failed) // NOLINT
+{
+    this->m_result_nrf52swd_debug_run = false;
+    ASSERT_FALSE(nrf52fw_software_reset());
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nrf52fw_software_reset");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_debug_run failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
 }

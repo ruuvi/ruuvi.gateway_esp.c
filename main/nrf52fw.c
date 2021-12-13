@@ -857,6 +857,8 @@ nrf52fw_software_reset(void)
     if (!nrf52swd_debug_run())
     {
         LOG_ERR("%s failed", "nrf52swd_debug_run");
+        nrf52fw_deinit_swd();
+        return false;
     }
     nrf52fw_deinit_swd();
     return true;

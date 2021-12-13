@@ -225,8 +225,8 @@ http_json_generate_status_attributes(
     {
         return false;
     }
-    if (NULL
-        == cJSON_AddStringToObject(p_json_root, "CONNECTION", p_stat_info->is_connected_to_wifi ? "WIFI" : "ETHERNET"))
+    const char *const p_connection_type = p_stat_info->is_connected_to_wifi ? "WIFI" : "ETHERNET";
+    if (NULL == cJSON_AddStringToObject(p_json_root, "CONNECTION", p_connection_type))
     {
         return false;
     }

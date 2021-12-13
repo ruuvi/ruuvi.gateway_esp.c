@@ -70,6 +70,12 @@ static const ruuvi_gateway_config_t g_gateway_config_default = {
 
 static const char *g_lan_auth_default_password_md5;
 
+void
+gw_cfg_default_init(void)
+{
+    g_lan_auth_default_password_md5 = NULL;
+}
+
 bool
 gw_cfg_default_set_lan_auth_password(const char *const p_password_md5)
 {
@@ -84,6 +90,10 @@ gw_cfg_default_set_lan_auth_password(const char *const p_password_md5)
 const char *
 gw_cfg_default_get_lan_auth_password(void)
 {
+    if (NULL == g_lan_auth_default_password_md5)
+    {
+        return "";
+    }
     return g_lan_auth_default_password_md5;
 }
 

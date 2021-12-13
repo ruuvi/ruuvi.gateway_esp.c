@@ -1,4 +1,5 @@
 #include "TQueue.hpp"
+#include <cstdio>
 #include "driver/ledc.h"
 #include "esp_err.h"
 #include "esp_timer.h"
@@ -7,7 +8,6 @@
 #include "gtest/gtest.h"
 #include <mqueue.h>
 #include <semaphore.h>
-#include <stdio.h>
 #include "esp_log_wrapper.hpp"
 
 #define LEDC_TEST_DUTY_OFF  (1023 - 0 /* 0% */)
@@ -37,14 +37,13 @@ class TestLeds : public ::testing::Test
 {
 private:
 protected:
-    pthread_t pid;
-
     void
     SetUp() override
     {
         esp_log_wrapper_init();
         sem_init(&semaFreeRTOS, 0, 0);
-        const int err = pthread_create(&pid, nullptr, &freertosStartup, this);
+        pid_test      = pthread_self();
+        const int err = pthread_create(&pid_freertos, nullptr, &freertosStartup, this);
         assert(0 == err);
         while (0 != sem_wait(&semaFreeRTOS))
         {
@@ -57,12 +56,14 @@ protected:
         cmdQueue.push_and_wait(MainTaskCmd_Exit);
         vTaskEndScheduler();
         void *ret_code = nullptr;
-        pthread_join(pid, &ret_code);
+        pthread_join(pid_freertos, &ret_code);
         sem_destroy(&semaFreeRTOS);
         esp_log_wrapper_deinit();
     }
 
 public:
+    pthread_t                pid_test;
+    pthread_t                pid_freertos;
     sem_t                    semaFreeRTOS;
     TQueue<MainTaskCmd_e>    cmdQueue;
     std::vector<TestEvent *> testEvents;
@@ -88,6 +89,49 @@ TestLeds::~TestLeds()
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/*** System functions
+ * *****************************************************************************************/
+
+void
+tdd_assert_trap(void)
+{
+    printf("assert\n");
+}
+
+static volatile int32_t g_flagDisableCheckIsThreadFreeRTOS;
+
+void
+disableCheckingIfCurThreadIsFreeRTOS(void)
+{
+    ++g_flagDisableCheckIsThreadFreeRTOS;
+}
+
+void
+enableCheckingIfCurThreadIsFreeRTOS(void)
+{
+    --g_flagDisableCheckIsThreadFreeRTOS;
+    assert(g_flagDisableCheckIsThreadFreeRTOS >= 0);
+}
+
+int
+checkIfCurThreadIsFreeRTOS(void)
+{
+    if (nullptr == g_pTestLeds)
+    {
+        return false;
+    }
+    if (g_flagDisableCheckIsThreadFreeRTOS)
+    {
+        return true;
+    }
+    const pthread_t cur_thread_pid = pthread_self();
+    if (cur_thread_pid == g_pTestLeds->pid_test)
+    {
+        return false;
+    }
+    return true;
+}
 
 /*** driver/ledc.c stub functions
  * *************************************************************************************/
@@ -205,8 +249,9 @@ cmdHandlerTask(void *parameters)
 static void *
 freertosStartup(void *arg)
 {
-    auto *     pObj = static_cast<TestLeds *>(arg);
-    BaseType_t res  = xTaskCreate(
+    auto *pObj = static_cast<TestLeds *>(arg);
+    disableCheckingIfCurThreadIsFreeRTOS();
+    BaseType_t res = xTaskCreate(
         cmdHandlerTask,
         "cmdHandlerTask",
         configMINIMAL_STACK_SIZE,

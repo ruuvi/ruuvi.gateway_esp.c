@@ -188,7 +188,7 @@ gw_cfg_json_add_items_lan_auth(cJSON *p_json_root, const ruuvi_gateway_config_t 
 static bool
 gw_cfg_json_add_items_auto_update(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg)
 {
-    const char *p_auto_update_cycle_str = AUTO_UPDATE_CYCLE_TYPE_STR_MANUAL;
+    const char *p_auto_update_cycle_str = AUTO_UPDATE_CYCLE_TYPE_STR_REGULAR;
     switch (p_cfg->auto_update.auto_update_cycle)
     {
         case AUTO_UPDATE_CYCLE_TYPE_REGULAR:

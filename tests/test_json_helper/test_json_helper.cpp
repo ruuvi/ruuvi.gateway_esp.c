@@ -62,8 +62,8 @@ TEST_F(TestJsonHelper, test_json_get_by_key_with_eol) // NOLINT
     const char *const p_json
         = "{\n"
           "\"node_id\": \"MDc6UmVsZWFzZTQ2NDE0Nzcy\",\n"
-          "\"tag_name\": \"v1.6.0\",\n"
-          "\"created_at\": \"2021-07-19T11:38:50Z\",\n"
+          "\"tag_name\"  : \"v1.6.0\",\n"
+          "\"created_at\" : \"2021-07-19T11:38:50Z\",\n"
           "\"published_at\": \"2021-07-19T14:08:10Z\"\n"
           "}";
     ASSERT_EQ(string("MDc6UmVsZWFzZTQ2NDE0Nzcy"), json_helper_get_by_key_wrapper(p_json, "node_id"));
@@ -115,6 +115,49 @@ TEST_F(TestJsonHelper, test_json_get_by_key_without_eol_unquoted_numbers) // NOL
     ASSERT_EQ(string("1.5"), json_helper_get_by_key_wrapper(p_json, "tag_name"));
     ASSERT_EQ(string("true"), json_helper_get_by_key_wrapper(p_json, "created_at"));
     ASSERT_EQ(string("false"), json_helper_get_by_key_wrapper(p_json, "published_at"));
+}
+
+TEST_F(TestJsonHelper, test_json_get_by_key_cropped_json_1) // NOLINT
+{
+    const char *const p_json
+        = "{\n"
+          "\"node_id\": \"MDc6UmVsZWFzZTQ2NDE0Nzcy\",\n"
+          "\"tag_name\": \"v1.6.0\",\n"
+          "\"created_at\": \"2021-07-19T11:38:50Z\",\n"
+          "\"published_at\": \"2021-07-19T14:08:10Z\\";
+    ASSERT_EQ(string(""), json_helper_get_by_key_wrapper(p_json, "published_at"));
+}
+
+TEST_F(TestJsonHelper, test_json_get_by_key_cropped_json_2) // NOLINT
+{
+    const char *const p_json
+        = "{\n"
+          "\"node_id\": \"MDc6UmVsZWFzZTQ2NDE0Nzcy\",\n"
+          "\"tag_name\": \"v1.6.0\",\n"
+          "\"created_at\": \"2021-07-19T11:38:50Z\",\n"
+          "\"published_at\": 10";
+    ASSERT_EQ(string(""), json_helper_get_by_key_wrapper(p_json, "published_at"));
+}
+
+TEST_F(TestJsonHelper, test_json_get_by_key_cropped_json_3) // NOLINT
+{
+    const char *const p_json
+        = "{\n"
+          "\"node_id\": \"MDc6UmVsZWFzZTQ2NDE0Nzcy\",\n"
+          "\"tag_name\": \"v1.6.0\",\n"
+          "\"created_at\": \"2021-07-19T11:38:50Z\",\n"
+          "\\";
+    ASSERT_EQ(string(""), json_helper_get_by_key_wrapper(p_json, "published_at"));
+}
+
+TEST_F(TestJsonHelper, test_json_get_by_key_cropped_json_4) // NOLINT
+{
+    const char *const p_json
+        = "{\n"
+          "\"node_id\": \"MDc6UmVsZWFzZTQ2NDE0Nzcy\",\n"
+          "\"tag_name\": \"v1.6.0\",\n"
+          "\"created_at\"";
+    ASSERT_EQ(string(""), json_helper_get_by_key_wrapper(p_json, "created_at"));
 }
 
 TEST_F(TestJsonHelper, test_json_get_by_key_error) // NOLINT

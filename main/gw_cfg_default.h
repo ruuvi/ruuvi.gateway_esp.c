@@ -21,6 +21,9 @@ extern "C" {
 
 #define RUUVI_GATEWAY_AUTH_DEFAULT_USER "Admin"
 
+void
+gw_cfg_default_init(void);
+
 bool
 gw_cfg_default_set_lan_auth_password(const char *const p_password_md5);
 

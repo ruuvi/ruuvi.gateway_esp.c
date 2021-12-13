@@ -232,7 +232,442 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"\",\n"
                "\t\"mqtt_port\":\t0,\n"
-               "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
+               "\t\"mqtt_client_id\":\t\"\",\n"
+               "\t\"mqtt_user\":\t\"\",\n"
+               "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
+               "\t\"lan_auth_user\":\t\"Admin\",\n"
+               "\t\"auto_update_cycle\":\t\"regular\",\n"
+               "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+               "\t\"auto_update_interval_from\":\t0,\n"
+               "\t\"auto_update_interval_to\":\t24,\n"
+               "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"use_filtering\":\ttrue,\n"
+               "\t\"company_id\":\t\"0x0499\",\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"use_coded_phy\":\tfalse,\n"
+               "\t\"use_1mbit_phy\":\ttrue,\n"
+               "\t\"use_extended_payload\":\ttrue,\n"
+               "\t\"use_channel_37\":\ttrue,\n"
+               "\t\"use_channel_38\":\ttrue,\n"
+               "\t\"use_channel_39\":\ttrue\n"
+               "}"),
+        string(json_str.p_str));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    cjson_wrap_free_json_str(&json_str);
+}
+
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_auth_type) // NOLINT
+{
+    ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t       json_str = cjson_wrap_str_null();
+
+    snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "AA:BB:CC:DD:EE:FF");
+
+    snprintf(gw_cfg.lan_auth.lan_auth_type, sizeof(gw_cfg.lan_auth.lan_auth_type), HTTP_SERVER_AUTH_TYPE_STR_ALLOW);
+    ASSERT_TRUE(gw_cfg_ruuvi_json_generate(
+        &gw_cfg,
+        &g_gw_mac_sta_str,
+        this->m_fw_ver.c_str(),
+        this->m_nrf52_fw_ver.c_str(),
+        &json_str));
+    ASSERT_NE(nullptr, json_str.p_str);
+    ASSERT_EQ(
+        string("{\n"
+               "\t\"fw_ver\":\t\"v1.3.3\",\n"
+               "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
+               "\t\"use_eth\":\tfalse,\n"
+               "\t\"eth_dhcp\":\ttrue,\n"
+               "\t\"eth_static_ip\":\t\"\",\n"
+               "\t\"eth_netmask\":\t\"\",\n"
+               "\t\"eth_gw\":\t\"\",\n"
+               "\t\"eth_dns1\":\t\"\",\n"
+               "\t\"eth_dns2\":\t\"\",\n"
+               "\t\"use_http\":\ttrue,\n"
+               "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"use_http_stat\":\ttrue,\n"
+               "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
+               "\t\"http_stat_user\":\t\"\",\n"
+               "\t\"use_mqtt\":\tfalse,\n"
+               "\t\"mqtt_transport\":\t\"TCP\",\n"
+               "\t\"mqtt_server\":\t\"\",\n"
+               "\t\"mqtt_port\":\t0,\n"
+               "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
+               "\t\"mqtt_client_id\":\t\"\",\n"
+               "\t\"mqtt_user\":\t\"\",\n"
+               "\t\"lan_auth_type\":\t\"lan_auth_allow\",\n"
+               "\t\"lan_auth_user\":\t\"Admin\",\n"
+               "\t\"auto_update_cycle\":\t\"regular\",\n"
+               "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+               "\t\"auto_update_interval_from\":\t0,\n"
+               "\t\"auto_update_interval_to\":\t24,\n"
+               "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"use_filtering\":\ttrue,\n"
+               "\t\"company_id\":\t\"0x0499\",\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"use_coded_phy\":\tfalse,\n"
+               "\t\"use_1mbit_phy\":\ttrue,\n"
+               "\t\"use_extended_payload\":\ttrue,\n"
+               "\t\"use_channel_37\":\ttrue,\n"
+               "\t\"use_channel_38\":\ttrue,\n"
+               "\t\"use_channel_39\":\ttrue\n"
+               "}"),
+        string(json_str.p_str));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    cjson_wrap_free_json_str(&json_str);
+}
+
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_auth_user) // NOLINT
+{
+    ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t       json_str = cjson_wrap_str_null();
+
+    snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "AA:BB:CC:DD:EE:FF");
+
+    snprintf(gw_cfg.lan_auth.lan_auth_user, sizeof(gw_cfg.lan_auth.lan_auth_user), "user2");
+    ASSERT_TRUE(gw_cfg_ruuvi_json_generate(
+        &gw_cfg,
+        &g_gw_mac_sta_str,
+        this->m_fw_ver.c_str(),
+        this->m_nrf52_fw_ver.c_str(),
+        &json_str));
+    ASSERT_NE(nullptr, json_str.p_str);
+    ASSERT_EQ(
+        string("{\n"
+               "\t\"fw_ver\":\t\"v1.3.3\",\n"
+               "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
+               "\t\"use_eth\":\tfalse,\n"
+               "\t\"eth_dhcp\":\ttrue,\n"
+               "\t\"eth_static_ip\":\t\"\",\n"
+               "\t\"eth_netmask\":\t\"\",\n"
+               "\t\"eth_gw\":\t\"\",\n"
+               "\t\"eth_dns1\":\t\"\",\n"
+               "\t\"eth_dns2\":\t\"\",\n"
+               "\t\"use_http\":\ttrue,\n"
+               "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"use_http_stat\":\ttrue,\n"
+               "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
+               "\t\"http_stat_user\":\t\"\",\n"
+               "\t\"use_mqtt\":\tfalse,\n"
+               "\t\"mqtt_transport\":\t\"TCP\",\n"
+               "\t\"mqtt_server\":\t\"\",\n"
+               "\t\"mqtt_port\":\t0,\n"
+               "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
+               "\t\"mqtt_client_id\":\t\"\",\n"
+               "\t\"mqtt_user\":\t\"\",\n"
+               "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
+               "\t\"lan_auth_user\":\t\"user2\",\n"
+               "\t\"auto_update_cycle\":\t\"regular\",\n"
+               "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+               "\t\"auto_update_interval_from\":\t0,\n"
+               "\t\"auto_update_interval_to\":\t24,\n"
+               "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"use_filtering\":\ttrue,\n"
+               "\t\"company_id\":\t\"0x0499\",\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"use_coded_phy\":\tfalse,\n"
+               "\t\"use_1mbit_phy\":\ttrue,\n"
+               "\t\"use_extended_payload\":\ttrue,\n"
+               "\t\"use_channel_37\":\ttrue,\n"
+               "\t\"use_channel_38\":\ttrue,\n"
+               "\t\"use_channel_39\":\ttrue\n"
+               "}"),
+        string(json_str.p_str));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    cjson_wrap_free_json_str(&json_str);
+}
+
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_auth_pass) // NOLINT
+{
+    ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t       json_str = cjson_wrap_str_null();
+
+    snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "AA:BB:CC:DD:EE:FF");
+
+    snprintf(gw_cfg.lan_auth.lan_auth_pass, sizeof(gw_cfg.lan_auth.lan_auth_pass), "qwe");
+    ASSERT_TRUE(gw_cfg_ruuvi_json_generate(
+        &gw_cfg,
+        &g_gw_mac_sta_str,
+        this->m_fw_ver.c_str(),
+        this->m_nrf52_fw_ver.c_str(),
+        &json_str));
+    ASSERT_NE(nullptr, json_str.p_str);
+    ASSERT_EQ(
+        string("{\n"
+               "\t\"fw_ver\":\t\"v1.3.3\",\n"
+               "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
+               "\t\"use_eth\":\tfalse,\n"
+               "\t\"eth_dhcp\":\ttrue,\n"
+               "\t\"eth_static_ip\":\t\"\",\n"
+               "\t\"eth_netmask\":\t\"\",\n"
+               "\t\"eth_gw\":\t\"\",\n"
+               "\t\"eth_dns1\":\t\"\",\n"
+               "\t\"eth_dns2\":\t\"\",\n"
+               "\t\"use_http\":\ttrue,\n"
+               "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"use_http_stat\":\ttrue,\n"
+               "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
+               "\t\"http_stat_user\":\t\"\",\n"
+               "\t\"use_mqtt\":\tfalse,\n"
+               "\t\"mqtt_transport\":\t\"TCP\",\n"
+               "\t\"mqtt_server\":\t\"\",\n"
+               "\t\"mqtt_port\":\t0,\n"
+               "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
+               "\t\"mqtt_client_id\":\t\"\",\n"
+               "\t\"mqtt_user\":\t\"\",\n"
+               "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
+               "\t\"lan_auth_user\":\t\"Admin\",\n"
+               "\t\"auto_update_cycle\":\t\"regular\",\n"
+               "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+               "\t\"auto_update_interval_from\":\t0,\n"
+               "\t\"auto_update_interval_to\":\t24,\n"
+               "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"use_filtering\":\ttrue,\n"
+               "\t\"company_id\":\t\"0x0499\",\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"use_coded_phy\":\tfalse,\n"
+               "\t\"use_1mbit_phy\":\ttrue,\n"
+               "\t\"use_extended_payload\":\ttrue,\n"
+               "\t\"use_channel_37\":\ttrue,\n"
+               "\t\"use_channel_38\":\ttrue,\n"
+               "\t\"use_channel_39\":\ttrue\n"
+               "}"),
+        string(json_str.p_str));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    cjson_wrap_free_json_str(&json_str);
+}
+
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_auto_update_cycle_beta) // NOLINT
+{
+    ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t       json_str = cjson_wrap_str_null();
+
+    snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "AA:BB:CC:DD:EE:FF");
+
+    gw_cfg.auto_update.auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER;
+    ASSERT_TRUE(gw_cfg_ruuvi_json_generate(
+        &gw_cfg,
+        &g_gw_mac_sta_str,
+        this->m_fw_ver.c_str(),
+        this->m_nrf52_fw_ver.c_str(),
+        &json_str));
+    ASSERT_NE(nullptr, json_str.p_str);
+    ASSERT_EQ(
+        string("{\n"
+               "\t\"fw_ver\":\t\"v1.3.3\",\n"
+               "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
+               "\t\"use_eth\":\tfalse,\n"
+               "\t\"eth_dhcp\":\ttrue,\n"
+               "\t\"eth_static_ip\":\t\"\",\n"
+               "\t\"eth_netmask\":\t\"\",\n"
+               "\t\"eth_gw\":\t\"\",\n"
+               "\t\"eth_dns1\":\t\"\",\n"
+               "\t\"eth_dns2\":\t\"\",\n"
+               "\t\"use_http\":\ttrue,\n"
+               "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"use_http_stat\":\ttrue,\n"
+               "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
+               "\t\"http_stat_user\":\t\"\",\n"
+               "\t\"use_mqtt\":\tfalse,\n"
+               "\t\"mqtt_transport\":\t\"TCP\",\n"
+               "\t\"mqtt_server\":\t\"\",\n"
+               "\t\"mqtt_port\":\t0,\n"
+               "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
+               "\t\"mqtt_client_id\":\t\"\",\n"
+               "\t\"mqtt_user\":\t\"\",\n"
+               "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
+               "\t\"lan_auth_user\":\t\"Admin\",\n"
+               "\t\"auto_update_cycle\":\t\"beta\",\n"
+               "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+               "\t\"auto_update_interval_from\":\t0,\n"
+               "\t\"auto_update_interval_to\":\t24,\n"
+               "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"use_filtering\":\ttrue,\n"
+               "\t\"company_id\":\t\"0x0499\",\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"use_coded_phy\":\tfalse,\n"
+               "\t\"use_1mbit_phy\":\ttrue,\n"
+               "\t\"use_extended_payload\":\ttrue,\n"
+               "\t\"use_channel_37\":\ttrue,\n"
+               "\t\"use_channel_38\":\ttrue,\n"
+               "\t\"use_channel_39\":\ttrue\n"
+               "}"),
+        string(json_str.p_str));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    cjson_wrap_free_json_str(&json_str);
+}
+
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_auto_update_cycle_manual) // NOLINT
+{
+    ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t       json_str = cjson_wrap_str_null();
+
+    snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "AA:BB:CC:DD:EE:FF");
+
+    gw_cfg.auto_update.auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_MANUAL;
+    ASSERT_TRUE(gw_cfg_ruuvi_json_generate(
+        &gw_cfg,
+        &g_gw_mac_sta_str,
+        this->m_fw_ver.c_str(),
+        this->m_nrf52_fw_ver.c_str(),
+        &json_str));
+    ASSERT_NE(nullptr, json_str.p_str);
+    ASSERT_EQ(
+        string("{\n"
+               "\t\"fw_ver\":\t\"v1.3.3\",\n"
+               "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
+               "\t\"use_eth\":\tfalse,\n"
+               "\t\"eth_dhcp\":\ttrue,\n"
+               "\t\"eth_static_ip\":\t\"\",\n"
+               "\t\"eth_netmask\":\t\"\",\n"
+               "\t\"eth_gw\":\t\"\",\n"
+               "\t\"eth_dns1\":\t\"\",\n"
+               "\t\"eth_dns2\":\t\"\",\n"
+               "\t\"use_http\":\ttrue,\n"
+               "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"use_http_stat\":\ttrue,\n"
+               "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
+               "\t\"http_stat_user\":\t\"\",\n"
+               "\t\"use_mqtt\":\tfalse,\n"
+               "\t\"mqtt_transport\":\t\"TCP\",\n"
+               "\t\"mqtt_server\":\t\"\",\n"
+               "\t\"mqtt_port\":\t0,\n"
+               "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
+               "\t\"mqtt_client_id\":\t\"\",\n"
+               "\t\"mqtt_user\":\t\"\",\n"
+               "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
+               "\t\"lan_auth_user\":\t\"Admin\",\n"
+               "\t\"auto_update_cycle\":\t\"manual\",\n"
+               "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+               "\t\"auto_update_interval_from\":\t0,\n"
+               "\t\"auto_update_interval_to\":\t24,\n"
+               "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"use_filtering\":\ttrue,\n"
+               "\t\"company_id\":\t\"0x0499\",\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"use_coded_phy\":\tfalse,\n"
+               "\t\"use_1mbit_phy\":\ttrue,\n"
+               "\t\"use_extended_payload\":\ttrue,\n"
+               "\t\"use_channel_37\":\ttrue,\n"
+               "\t\"use_channel_38\":\ttrue,\n"
+               "\t\"use_channel_39\":\ttrue\n"
+               "}"),
+        string(json_str.p_str));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    cjson_wrap_free_json_str(&json_str);
+}
+
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_auto_update_cycle_unknown) // NOLINT
+{
+    ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t       json_str = cjson_wrap_str_null();
+
+    snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "AA:BB:CC:DD:EE:FF");
+
+    gw_cfg.auto_update.auto_update_cycle = (auto_update_cycle_type_e)-1;
+    ASSERT_TRUE(gw_cfg_ruuvi_json_generate(
+        &gw_cfg,
+        &g_gw_mac_sta_str,
+        this->m_fw_ver.c_str(),
+        this->m_nrf52_fw_ver.c_str(),
+        &json_str));
+    ASSERT_NE(nullptr, json_str.p_str);
+    ASSERT_EQ(
+        string("{\n"
+               "\t\"fw_ver\":\t\"v1.3.3\",\n"
+               "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
+               "\t\"use_eth\":\tfalse,\n"
+               "\t\"eth_dhcp\":\ttrue,\n"
+               "\t\"eth_static_ip\":\t\"\",\n"
+               "\t\"eth_netmask\":\t\"\",\n"
+               "\t\"eth_gw\":\t\"\",\n"
+               "\t\"eth_dns1\":\t\"\",\n"
+               "\t\"eth_dns2\":\t\"\",\n"
+               "\t\"use_http\":\ttrue,\n"
+               "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"use_http_stat\":\ttrue,\n"
+               "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
+               "\t\"http_stat_user\":\t\"\",\n"
+               "\t\"use_mqtt\":\tfalse,\n"
+               "\t\"mqtt_transport\":\t\"TCP\",\n"
+               "\t\"mqtt_server\":\t\"\",\n"
+               "\t\"mqtt_port\":\t0,\n"
+               "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
+               "\t\"mqtt_client_id\":\t\"\",\n"
+               "\t\"mqtt_user\":\t\"\",\n"
+               "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
+               "\t\"lan_auth_user\":\t\"Admin\",\n"
+               "\t\"auto_update_cycle\":\t\"regular\",\n"
+               "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+               "\t\"auto_update_interval_from\":\t0,\n"
+               "\t\"auto_update_interval_to\":\t24,\n"
+               "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"use_filtering\":\ttrue,\n"
+               "\t\"company_id\":\t\"0x0499\",\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"use_coded_phy\":\tfalse,\n"
+               "\t\"use_1mbit_phy\":\ttrue,\n"
+               "\t\"use_extended_payload\":\ttrue,\n"
+               "\t\"use_channel_37\":\ttrue,\n"
+               "\t\"use_channel_38\":\ttrue,\n"
+               "\t\"use_channel_39\":\ttrue\n"
+               "}"),
+        string(json_str.p_str));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    cjson_wrap_free_json_str(&json_str);
+}
+
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_mqtt_prefix_non_default) // NOLINT
+{
+    ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t       json_str = cjson_wrap_str_null();
+
+    snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "AA:BB:CC:DD:EE:FF");
+
+    gw_cfg.mqtt.mqtt_use_default_prefix = false;
+    snprintf(gw_cfg.mqtt.mqtt_prefix.buf, sizeof(gw_cfg.mqtt.mqtt_prefix.buf), "qwe/");
+    ASSERT_TRUE(gw_cfg_ruuvi_json_generate(
+        &gw_cfg,
+        &g_gw_mac_sta_str,
+        this->m_fw_ver.c_str(),
+        this->m_nrf52_fw_ver.c_str(),
+        &json_str));
+    ASSERT_NE(nullptr, json_str.p_str);
+    ASSERT_EQ(
+        string("{\n"
+               "\t\"fw_ver\":\t\"v1.3.3\",\n"
+               "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
+               "\t\"use_eth\":\tfalse,\n"
+               "\t\"eth_dhcp\":\ttrue,\n"
+               "\t\"eth_static_ip\":\t\"\",\n"
+               "\t\"eth_netmask\":\t\"\",\n"
+               "\t\"eth_gw\":\t\"\",\n"
+               "\t\"eth_dns1\":\t\"\",\n"
+               "\t\"eth_dns2\":\t\"\",\n"
+               "\t\"use_http\":\ttrue,\n"
+               "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"use_http_stat\":\ttrue,\n"
+               "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
+               "\t\"http_stat_user\":\t\"\",\n"
+               "\t\"use_mqtt\":\tfalse,\n"
+               "\t\"mqtt_transport\":\t\"TCP\",\n"
+               "\t\"mqtt_server\":\t\"\",\n"
+               "\t\"mqtt_port\":\t0,\n"
+               "\t\"mqtt_prefix\":\t\"qwe/\",\n"
                "\t\"mqtt_client_id\":\t\"\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"

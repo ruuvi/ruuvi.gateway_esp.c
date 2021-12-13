@@ -759,6 +759,7 @@ main_task_init(void)
 
     settings_update_mac_addr(&nrf52_mac_addr);
 
+    gw_cfg_default_init();
     if (!gw_cfg_default_set_lan_auth_password(generate_default_lan_auth_password()))
     {
         LOG_ERR("%s failed", "generate_default_lan_auth_password");
