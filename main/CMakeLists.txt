@@ -80,7 +80,7 @@ idf_component_register(
             esp32-wifi-manager
             ruuvi.boards.c
             ruuvi.comm_tester.c
-            ruuvi.endpoints.c
+#            ruuvi.endpoints.c
             libSWD-esp32
             ruuvi.esp_wrappers.c
 )
