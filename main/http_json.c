@@ -26,12 +26,9 @@ http_json_generate_records_data_attributes(
     {
         return NULL;
     }
-    if (flag_use_nonce)
+    if (flag_use_nonce && (!cjson_wrap_add_uint32(p_json_data, "nonce", nonce)))
     {
-        if (!cjson_wrap_add_uint32(p_json_data, "nonce", nonce))
-        {
-            return NULL;
-        }
+        return NULL;
     }
     if (NULL == cJSON_AddStringToObject(p_json_data, "gw_mac", p_mac_addr->str_buf))
     {
@@ -163,68 +160,11 @@ http_json_create_records_str(
 }
 
 static bool
-http_json_generate_status_attributes(
-    cJSON *const                    p_json_root,
-    const mac_address_str_t         nrf52_mac_addr,
-    const char *                    p_esp_fw,
-    const char *                    p_nrf_fw,
-    const uint32_t                  uptime,
-    const bool                      flag_is_wifi,
-    const uint32_t                  network_disconnect_cnt,
+http_json_generate_attributes_for_sensors(
     const adv_report_table_t *const p_reports,
-    const uint32_t                  nonce)
+    cJSON *const                    p_json_active_sensors,
+    cJSON *const                    p_json_inactive_sensors)
 {
-    if (NULL == cJSON_AddStringToObject(p_json_root, "DEVICE_ADDR", nrf52_mac_addr.str_buf))
-    {
-        return false;
-    }
-    if (NULL == cJSON_AddStringToObject(p_json_root, "ESP_FW", p_esp_fw))
-    {
-        return false;
-    }
-    if (NULL == cJSON_AddStringToObject(p_json_root, "NRF_FW", p_nrf_fw))
-    {
-        return false;
-    }
-    if (!cjson_wrap_add_uint32(p_json_root, "UPTIME", uptime))
-    {
-        return false;
-    }
-    if (!cjson_wrap_add_uint32(p_json_root, "NONCE", nonce))
-    {
-        return false;
-    }
-    if (NULL == cJSON_AddStringToObject(p_json_root, "CONNECTION", flag_is_wifi ? "WIFI" : "ETHERNET"))
-    {
-        return false;
-    }
-    if (!cjson_wrap_add_uint32(p_json_root, "NUM_CONN_LOST", network_disconnect_cnt))
-    {
-        return false;
-    }
-    uint32_t num_sensors_seen = 0;
-    for (num_of_advs_t i = 0; i < p_reports->num_of_advs; ++i)
-    {
-        const adv_report_t *const p_adv = &p_reports->table[i];
-        if (0 != p_adv->samples_counter)
-        {
-            num_sensors_seen += 1;
-        }
-    }
-    if (!cjson_wrap_add_uint32(p_json_root, "SENSORS_SEEN", num_sensors_seen))
-    {
-        return false;
-    }
-    cJSON *p_json_active_sensors = cJSON_AddArrayToObject(p_json_root, "ACTIVE_SENSORS");
-    if (NULL == p_json_active_sensors)
-    {
-        return false;
-    }
-    cJSON *p_json_inactive_sensors = cJSON_AddArrayToObject(p_json_root, "INACTIVE_SENSORS");
-    if (NULL == p_json_inactive_sensors)
-    {
-        return false;
-    }
     for (num_of_advs_t i = 0; i < p_reports->num_of_advs; ++i)
     {
         const adv_report_t *const p_adv   = &p_reports->table[i];
@@ -259,32 +199,78 @@ http_json_generate_status_attributes(
     return true;
 }
 
+static bool
+http_json_generate_status_attributes(
+    cJSON *const                             p_json_root,
+    const http_json_statistics_info_t *const p_stat_info,
+    const adv_report_table_t *const          p_reports)
+{
+    if (NULL == cJSON_AddStringToObject(p_json_root, "DEVICE_ADDR", p_stat_info->nrf52_mac_addr.str_buf))
+    {
+        return false;
+    }
+    if (NULL == cJSON_AddStringToObject(p_json_root, "ESP_FW", p_stat_info->esp_fw.buf))
+    {
+        return false;
+    }
+    if (NULL == cJSON_AddStringToObject(p_json_root, "NRF_FW", p_stat_info->nrf_fw.buf))
+    {
+        return false;
+    }
+    if (!cjson_wrap_add_uint32(p_json_root, "UPTIME", p_stat_info->uptime))
+    {
+        return false;
+    }
+    if (!cjson_wrap_add_uint32(p_json_root, "NONCE", p_stat_info->nonce))
+    {
+        return false;
+    }
+    const char *const p_connection_type = p_stat_info->is_connected_to_wifi ? "WIFI" : "ETHERNET";
+    if (NULL == cJSON_AddStringToObject(p_json_root, "CONNECTION", p_connection_type))
+    {
+        return false;
+    }
+    if (!cjson_wrap_add_uint32(p_json_root, "NUM_CONN_LOST", p_stat_info->network_disconnect_cnt))
+    {
+        return false;
+    }
+    uint32_t num_sensors_seen = 0;
+    for (num_of_advs_t i = 0; i < p_reports->num_of_advs; ++i)
+    {
+        const adv_report_t *const p_adv = &p_reports->table[i];
+        if (0 != p_adv->samples_counter)
+        {
+            num_sensors_seen += 1;
+        }
+    }
+    if (!cjson_wrap_add_uint32(p_json_root, "SENSORS_SEEN", num_sensors_seen))
+    {
+        return false;
+    }
+    cJSON *p_json_active_sensors = cJSON_AddArrayToObject(p_json_root, "ACTIVE_SENSORS");
+    if (NULL == p_json_active_sensors)
+    {
+        return false;
+    }
+    cJSON *p_json_inactive_sensors = cJSON_AddArrayToObject(p_json_root, "INACTIVE_SENSORS");
+    if (NULL == p_json_inactive_sensors)
+    {
+        return false;
+    }
+    return http_json_generate_attributes_for_sensors(p_reports, p_json_active_sensors, p_json_inactive_sensors);
+}
+
 static cJSON *
 http_json_generate_status(
-    const mac_address_str_t         nrf52_mac_addr,
-    const char *                    p_esp_fw,
-    const char *                    p_nrf_fw,
-    const uint32_t                  uptime,
-    const bool                      flag_is_wifi,
-    const uint32_t                  network_disconnect_cnt,
-    const adv_report_table_t *const p_reports,
-    const uint32_t                  nonce)
+    const http_json_statistics_info_t *const p_stat_info,
+    const adv_report_table_t *const          p_reports)
 {
     cJSON *p_json_root = cJSON_CreateObject();
     if (NULL == p_json_root)
     {
         return NULL;
     }
-    if (!http_json_generate_status_attributes(
-            p_json_root,
-            nrf52_mac_addr,
-            p_esp_fw,
-            p_nrf_fw,
-            uptime,
-            flag_is_wifi,
-            network_disconnect_cnt,
-            p_reports,
-            nonce))
+    if (!http_json_generate_status_attributes(p_json_root, p_stat_info, p_reports))
     {
         cjson_wrap_delete(&p_json_root);
         return NULL;
@@ -294,25 +280,11 @@ http_json_generate_status(
 
 bool
 http_json_create_status_str(
-    const mac_address_str_t         nrf52_mac_addr,
-    const char *                    p_esp_fw,
-    const char *                    p_nrf_fw,
-    const uint32_t                  uptime,
-    const bool                      flag_is_wifi,
-    const uint32_t                  network_disconnect_cnt,
-    const adv_report_table_t *const p_reports,
-    const uint32_t                  nonce,
-    cjson_wrap_str_t *const         p_json_str)
+    const http_json_statistics_info_t *const p_stat_info,
+    const adv_report_table_t *const          p_reports,
+    cjson_wrap_str_t *const                  p_json_str)
 {
-    cJSON *p_json_root = http_json_generate_status(
-        nrf52_mac_addr,
-        p_esp_fw,
-        p_nrf_fw,
-        uptime,
-        flag_is_wifi,
-        network_disconnect_cnt,
-        p_reports,
-        nonce);
+    cJSON *p_json_root = http_json_generate_status(p_stat_info, p_reports);
     if (NULL == p_json_root)
     {
         return false;

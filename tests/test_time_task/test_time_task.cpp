@@ -1,6 +1,6 @@
+#include <cstdio>
 #include "TQueue.hpp"
 #include "time_task.h"
-#include "esp_err.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "test_events.hpp"
@@ -8,9 +8,9 @@
 #include "sntp.h"
 #include "gtest/gtest.h"
 #include <semaphore.h>
-#include <stdio.h>
 #include "esp_log_wrapper.hpp"
 #include "event_mgr.h"
+#include "os_mkgmtime.h"
 
 #define CMD_HANDLER_TASK_NAME "cmd_handler"
 
@@ -18,9 +18,20 @@ using namespace std;
 
 typedef enum main_task_cmd_e
 {
+    MAIN_TASK_CMD_INIT_EVENT_MGR,
+    MAIN_TASK_CMD_EVENT_MGR_EV_WIFI_CONNECTED,
+    MAIN_TASK_CMD_EVENT_MGR_EV_WIFI_DISCONNECTED,
+    MAIN_TASK_EVENT_MGR_EV_ETH_CONNECTED,
+    MAIN_TASK_CMD_EVENT_MGR_EV_ETH_DISCONNECTED,
     MAIN_TASK_CMD_EXIT,
     MAIN_TASK_CMD_TIME_TASK_INIT,
+    MAIN_TASK_CMD_TIME_TASK_STOP,
+    MAIN_TASK_CMD_SNTP_SYNC_TIME_CB_BAD_TIMESTAMP,
+    MAIN_TASK_CMD_SNTP_SYNC_TIME_CB_GOOD_TIMESTAMP,
 } main_task_cmd_e;
+
+class TestTimeTask;
+static TestTimeTask *gp_obj;
 
 extern "C" {
 
@@ -66,16 +77,16 @@ class TestTimeTask : public ::testing::Test
 {
 private:
 protected:
-    pthread_t pid;
-
     void
     SetUp() override
     {
         this->result_time_task_init = false;
+        this->result_time_task_stop = false;
         this->sync_mode             = SNTP_SYNC_MODE_IMMED;
         esp_log_wrapper_init();
         sem_init(&semaFreeRTOS, 0, 0);
-        const int err = pthread_create(&pid, nullptr, &freertos_startup, this);
+        this->pid_test = pthread_self();
+        const int err  = pthread_create(&this->pid_freertos, nullptr, &freertos_startup, this);
         assert(0 == err);
         while (0 != sem_wait(&semaFreeRTOS))
         {
@@ -86,18 +97,22 @@ protected:
     TearDown() override
     {
         cmdQueue.push_and_wait(MAIN_TASK_CMD_EXIT);
+        sleep(1);
         vTaskEndScheduler();
         void *p_ret_code = nullptr;
-        pthread_join(pid, &p_ret_code);
+        pthread_join(pid_freertos, &p_ret_code);
         sem_destroy(&semaFreeRTOS);
         esp_log_wrapper_deinit();
     }
 
 public:
+    pthread_t                pid_test;
+    pthread_t                pid_freertos;
     sem_t                    semaFreeRTOS;
     TQueue<main_task_cmd_e>  cmdQueue;
     std::vector<TestEvent *> testEvents;
     bool                     result_time_task_init;
+    bool                     result_time_task_stop;
     time_t                   cur_time;
     sntp_sync_time_cb_t      sntp_sync_time_cb;
     sntp_sync_mode_t         sync_mode {};
@@ -124,13 +139,13 @@ public:
     }
 };
 
-static TestTimeTask *gp_obj;
-
 TestTimeTask::TestTimeTask()
     : Test()
-    , pid(0)
+    , pid_test(0)
+    , pid_freertos(0)
     , semaFreeRTOS({ 0 })
     , result_time_task_init(false)
+    , result_time_task_stop(false)
     , cur_time(0)
     , sntp_sync_time_cb(nullptr)
 {
@@ -143,6 +158,49 @@ TestTimeTask::~TestTimeTask()
 }
 
 extern "C" {
+
+/*** System functions
+ * *****************************************************************************************/
+
+void
+tdd_assert_trap(void)
+{
+    printf("assert\n");
+}
+
+static volatile int32_t g_flagDisableCheckIsThreadFreeRTOS;
+
+void
+disableCheckingIfCurThreadIsFreeRTOS(void)
+{
+    ++g_flagDisableCheckIsThreadFreeRTOS;
+}
+
+void
+enableCheckingIfCurThreadIsFreeRTOS(void)
+{
+    --g_flagDisableCheckIsThreadFreeRTOS;
+    assert(g_flagDisableCheckIsThreadFreeRTOS >= 0);
+}
+
+int
+checkIfCurThreadIsFreeRTOS(void)
+{
+    if (nullptr == gp_obj)
+    {
+        return false;
+    }
+    if (g_flagDisableCheckIsThreadFreeRTOS)
+    {
+        return true;
+    }
+    const pthread_t cur_thread_pid = pthread_self();
+    if (cur_thread_pid == gp_obj->pid_test)
+    {
+        return false;
+    }
+    return true;
+}
 
 /*** SNTP stub functions
  * *****************************************************************************************/
@@ -220,12 +278,59 @@ cmd_handler_task(void *p_param)
         const main_task_cmd_e cmd = p_obj->cmdQueue.pop();
         switch (cmd)
         {
+            case MAIN_TASK_CMD_INIT_EVENT_MGR:
+                assert(event_mgr_init());
+                break;
+            case MAIN_TASK_CMD_EVENT_MGR_EV_WIFI_CONNECTED:
+                event_mgr_notify(EVENT_MGR_EV_WIFI_CONNECTED);
+                break;
+            case MAIN_TASK_CMD_EVENT_MGR_EV_WIFI_DISCONNECTED:
+                event_mgr_notify(EVENT_MGR_EV_WIFI_DISCONNECTED);
+                break;
+            case MAIN_TASK_EVENT_MGR_EV_ETH_CONNECTED:
+                event_mgr_notify(EVENT_MGR_EV_ETH_CONNECTED);
+                break;
+            case MAIN_TASK_CMD_EVENT_MGR_EV_ETH_DISCONNECTED:
+                event_mgr_notify(EVENT_MGR_EV_ETH_DISCONNECTED);
+                break;
             case MAIN_TASK_CMD_EXIT:
                 flag_exit = true;
                 break;
             case MAIN_TASK_CMD_TIME_TASK_INIT:
                 p_obj->result_time_task_init = time_task_init();
                 break;
+            case MAIN_TASK_CMD_TIME_TASK_STOP:
+                p_obj->result_time_task_stop = time_task_stop();
+                break;
+            case MAIN_TASK_CMD_SNTP_SYNC_TIME_CB_BAD_TIMESTAMP:
+            {
+                struct tm tm_2020_12_31 = {
+                    .tm_sec   = 59,
+                    .tm_min   = 59,
+                    .tm_hour  = 23,
+                    .tm_mday  = 31,
+                    .tm_mon   = 11,
+                    .tm_year  = 2020 - 1900,
+                    .tm_wday  = 0,
+                    .tm_yday  = 0,
+                    .tm_isdst = -1,
+                };
+                struct timeval tv = {
+                    .tv_sec  = os_mkgmtime(&tm_2020_12_31),
+                    .tv_usec = 0,
+                };
+                gp_obj->sntp_sync_time_cb(&tv);
+                break;
+            }
+            case MAIN_TASK_CMD_SNTP_SYNC_TIME_CB_GOOD_TIMESTAMP:
+            {
+                struct timeval tv = {
+                    .tv_sec  = 1630152456,
+                    .tv_usec = 0,
+                };
+                gp_obj->sntp_sync_time_cb(&tv);
+                break;
+            }
             default:
                 printf("Error: Unknown cmd %d\n", (int)cmd);
                 exit(1);
@@ -239,8 +344,9 @@ cmd_handler_task(void *p_param)
 static void *
 freertos_startup(void *p_arg)
 {
-    auto *     p_obj = static_cast<TestTimeTask *>(p_arg);
-    BaseType_t res   = xTaskCreate(
+    auto *p_obj = static_cast<TestTimeTask *>(p_arg);
+    disableCheckingIfCurThreadIsFreeRTOS();
+    BaseType_t res = xTaskCreate(
         &cmd_handler_task,
         CMD_HANDLER_TASK_NAME,
         configMINIMAL_STACK_SIZE,
@@ -263,7 +369,7 @@ freertos_startup(void *p_arg)
 
 TEST_F(TestTimeTask, test_all) // NOLINT
 {
-    ASSERT_TRUE(event_mgr_init());
+    cmdQueue.push_and_wait(MAIN_TASK_CMD_INIT_EVENT_MGR);
 
     cmdQueue.push_and_wait(MAIN_TASK_CMD_TIME_TASK_INIT);
     ASSERT_TRUE(this->result_time_task_init);
@@ -279,6 +385,11 @@ TEST_F(TestTimeTask, test_all) // NOLINT
     TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "time_task started");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_NE(nullptr, this->sntp_sync_time_cb);
+
+    cmdQueue.push_and_wait(MAIN_TASK_CMD_TIME_TASK_INIT);
+    ASSERT_FALSE(this->result_time_task_init);
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_ERROR, "cmd_handler", "time_task was already initialized");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
 
     {
         const int exp_num_events = 6;
@@ -327,7 +438,7 @@ TEST_F(TestTimeTask, test_all) // NOLINT
     }
     testEvents.clear();
 
-    event_mgr_notify(EVENT_MGR_EV_WIFI_CONNECTED);
+    cmdQueue.push_and_wait(MAIN_TASK_CMD_EVENT_MGR_EV_WIFI_CONNECTED);
     ASSERT_TRUE(this->wait_for_events());
     TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Activate SNTP time synchronization");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -343,11 +454,17 @@ TEST_F(TestTimeTask, test_all) // NOLINT
     testEvents.clear();
 
     ASSERT_NE(nullptr, gp_obj->sntp_sync_time_cb);
-    struct timeval tv = {
-        .tv_sec  = 1630152456,
-        .tv_usec = 0,
-    };
-    gp_obj->sntp_sync_time_cb(&tv);
+    cmdQueue.push_and_wait(MAIN_TASK_CMD_SNTP_SYNC_TIME_CB_BAD_TIMESTAMP);
+    ASSERT_EQ(0, testEvents.size());
+    testEvents.clear();
+    TEST_CHECK_LOG_RECORD_TIME(
+        ESP_LOG_WARN,
+        "cmd_handler",
+        "Time has been synchronized but timestamp is bad: 2020-12-31 23:59:59.000");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+
+    ASSERT_NE(nullptr, gp_obj->sntp_sync_time_cb);
+    cmdQueue.push_and_wait(MAIN_TASK_CMD_SNTP_SYNC_TIME_CB_GOOD_TIMESTAMP);
     ASSERT_EQ(1, testEvents.size());
     {
         auto *p_base_ev = testEvents[0];
@@ -356,11 +473,11 @@ TEST_F(TestTimeTask, test_all) // NOLINT
         ASSERT_EQ(SNTP_SYNC_MODE_SMOOTH, p_ev->sync_mode);
     }
     testEvents.clear();
-
     TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "Time has been synchronized: 2021-08-28 12:07:36.000");
     TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "Switch time sync mode to SMOOTH");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    event_mgr_notify(EVENT_MGR_EV_WIFI_DISCONNECTED);
+    cmdQueue.push_and_wait(MAIN_TASK_CMD_EVENT_MGR_EV_WIFI_DISCONNECTED);
     ASSERT_TRUE(this->wait_for_events());
     TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Deactivate SNTP time synchronization");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -375,7 +492,7 @@ TEST_F(TestTimeTask, test_all) // NOLINT
     }
     testEvents.clear();
 
-    event_mgr_notify(EVENT_MGR_EV_ETH_CONNECTED);
+    cmdQueue.push_and_wait(MAIN_TASK_EVENT_MGR_EV_ETH_CONNECTED);
     ASSERT_TRUE(this->wait_for_events());
     TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Activate SNTP time synchronization");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -390,7 +507,7 @@ TEST_F(TestTimeTask, test_all) // NOLINT
     }
     testEvents.clear();
 
-    event_mgr_notify(EVENT_MGR_EV_ETH_DISCONNECTED);
+    cmdQueue.push_and_wait(MAIN_TASK_CMD_EVENT_MGR_EV_ETH_DISCONNECTED);
     ASSERT_TRUE(this->wait_for_events());
     TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Deactivate SNTP time synchronization");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -404,4 +521,14 @@ TEST_F(TestTimeTask, test_all) // NOLINT
         }
     }
     testEvents.clear();
+
+    cmdQueue.push_and_wait(MAIN_TASK_CMD_TIME_TASK_STOP);
+    ASSERT_TRUE(this->result_time_task_stop);
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Stop time_task");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+
+    cmdQueue.push_and_wait(MAIN_TASK_CMD_TIME_TASK_STOP);
+    ASSERT_FALSE(this->result_time_task_stop);
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_ERROR, "cmd_handler", "Can't send signal to stop thread");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
 }

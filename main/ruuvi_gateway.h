@@ -12,14 +12,19 @@
 #include "freertos/event_groups.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "attribs.h"
 #include "mac_addr.h"
 #include "cjson_wrap.h"
 #include "settings.h"
 #include "http_server.h"
+#include "os_wrapper_types.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define RUUVI_BITS_PER_BYTE (8U)
+#define RUUVI_BYTE_MASK     (0xFFU)
 
 #define RUUVI_FREE_HEAP_LIM_KIB (10U)
 
@@ -62,16 +67,32 @@ void
 restart_services(void);
 
 void
-main_task_start_timer_after_hotspot_activation();
+main_task_start_timer_after_hotspot_activation(void);
 
 void
-main_task_stop_timer_after_hotspot_activation();
+main_task_stop_timer_after_hotspot_activation(void);
 
 void
 main_task_schedule_next_check_for_fw_updates(void);
 
 void
 main_task_schedule_retry_check_for_fw_updates(void);
+
+void
+main_task_send_sig_restart_services(void);
+
+void
+main_task_timer_sig_check_for_fw_updates_restart(const os_delta_ticks_t delay_ticks);
+
+void
+main_task_timer_sig_check_for_fw_updates_stop(void);
+
+bool
+main_loop_init(void);
+
+ATTR_NORETURN
+void
+main_loop(void);
 
 #ifdef __cplusplus
 }

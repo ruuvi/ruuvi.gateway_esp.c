@@ -72,6 +72,16 @@ reset_task_notify_configure_button_released(void)
 }
 
 static void
+reset_task_watchdog_feed(void)
+{
+    const esp_err_t err = esp_task_wdt_reset();
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "%s failed", "esp_task_wdt_reset");
+    }
+}
+
+static void
 reset_task_handle_sig(const reset_task_sig_e reset_task_sig)
 {
     switch (reset_task_sig)
@@ -121,14 +131,8 @@ reset_task_handle_sig(const reset_task_sig_e reset_task_sig)
             esp_restart();
             break;
         case RESET_TASK_SIG_TASK_WATCHDOG_FEED:
-        {
-            const esp_err_t err = esp_task_wdt_reset();
-            if (ESP_OK != err)
-            {
-                LOG_ERR_ESP(err, "%s failed", "esp_task_wdt_reset");
-            }
+            reset_task_watchdog_feed();
             break;
-        }
         default:
             LOG_ERR("Unhanded sig: %d", (int)reset_task_sig);
             assert(0);

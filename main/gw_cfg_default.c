@@ -12,34 +12,34 @@ static const ruuvi_gateway_config_t g_gateway_config_default = {
         .eth = {
             .use_eth = false,
             .eth_dhcp = true,
-            .eth_static_ip = { 0 },
-            .eth_netmask = { 0 },
-            .eth_gw = { 0 },
-            .eth_dns1 = { 0 },
-            .eth_dns2 = { 0 },
+            .eth_static_ip = {{ "" }},
+            .eth_netmask = {{ "" }},
+            .eth_gw = {{ "" }},
+            .eth_dns1 = {{ "" }},
+            .eth_dns2 = {{ "" }},
         },
         .mqtt = {
             .use_mqtt = false,
             .mqtt_use_default_prefix = true,
-            .mqtt_transport = { {MQTT_TRANSPORT_TCP} },
-            .mqtt_server = { {0} },
+            .mqtt_transport = {{ MQTT_TRANSPORT_TCP }},
+            .mqtt_server = {{ "" }},
             .mqtt_port = 0,
-            .mqtt_prefix = { {0} },
-            .mqtt_client_id = { {0} },
-            .mqtt_user = { {0} },
-            .mqtt_pass = { {0} },
+            .mqtt_prefix = {{ "" }},
+            .mqtt_client_id = {{ "" }},
+            .mqtt_user = {{ "" }},
+            .mqtt_pass = {{ "" }},
         },
         .http = {
             .use_http = true,
             .http_url = { { RUUVI_GATEWAY_HTTP_DEFAULT_URL } },
-            .http_user = {{ 0 } },
-            .http_pass = {{ 0 } },
+            .http_user = {{ "" }},
+            .http_pass = {{ "" }},
         },
         .http_stat = {
             .use_http_stat = true,
             .http_stat_url = {{ RUUVI_GATEWAY_HTTP_STATUS_URL }},
-            .http_stat_user = {{ 0 }},
-            .http_stat_pass = {{ 0 }},
+            .http_stat_user = {{ "" }},
+            .http_stat_pass = {{ "" }},
         },
         .lan_auth = {
             .lan_auth_type = { HTTP_SERVER_AUTH_TYPE_STR_RUUVI },
@@ -65,10 +65,16 @@ static const ruuvi_gateway_config_t g_gateway_config_default = {
             .scan_channel_38 = true,
             .scan_channel_39 = true,
         },
-        .coordinates = { { 0 } },
+        .coordinates = {{ "" }},
     };
 
 static const char *g_lan_auth_default_password_md5;
+
+void
+gw_cfg_default_init(void)
+{
+    g_lan_auth_default_password_md5 = NULL;
+}
 
 bool
 gw_cfg_default_set_lan_auth_password(const char *const p_password_md5)
@@ -84,6 +90,10 @@ gw_cfg_default_set_lan_auth_password(const char *const p_password_md5)
 const char *
 gw_cfg_default_get_lan_auth_password(void)
 {
+    if (NULL == g_lan_auth_default_password_md5)
+    {
+        return "";
+    }
     return g_lan_auth_default_password_md5;
 }
 

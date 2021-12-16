@@ -244,6 +244,15 @@ fw_update_get_cur_version(void)
     return p_flash_info->p_app_desc->version;
 }
 
+fw_update_app_version_str_t
+fw_update_get_cur_version2(void)
+{
+    const ruuvi_flash_info_t *const p_flash_info = &g_ruuvi_flash_info;
+    fw_update_app_version_str_t     version_str;
+    snprintf(&version_str.buf[0], sizeof(version_str.buf), "%s", p_flash_info->p_app_desc->version);
+    return version_str;
+}
+
 esp_err_t
 erase_partition_with_sleep(const esp_partition_t *const p_partition)
 {
@@ -271,6 +280,28 @@ erase_partition_with_sleep(const esp_partition_t *const p_partition)
 }
 
 static bool
+fw_update_handle_http_resp_code(
+    const http_resp_code_e http_resp_code,
+    const uint8_t *const   p_buf,
+    const size_t           buf_size,
+    bool *const            p_result)
+{
+    if (HTTP_RESP_CODE_200 != http_resp_code)
+    {
+        if (HTTP_RESP_CODE_302 == http_resp_code)
+        {
+            LOG_INFO("Got HTTP error %d: Redirect to another location", (printf_int_t)http_resp_code);
+            *p_result = true;
+            return true;
+        }
+        LOG_ERR("Got HTTP error %d: %.*s", (printf_int_t)http_resp_code, (printf_int_t)buf_size, (const char *)p_buf);
+        *p_result = false;
+        return true;
+    }
+    return false;
+}
+
+static bool
 fw_update_data_partition_cb_on_recv_data(
     const uint8_t *const   p_buf,
     const size_t           buf_size,
@@ -284,26 +315,18 @@ fw_update_data_partition_cb_on_recv_data(
     {
         return false;
     }
-    if (HTTP_RESP_CODE_200 != http_resp_code)
+    bool result = false;
+    if (fw_update_handle_http_resp_code(http_resp_code, p_buf, buf_size, &result))
     {
-        if (HTTP_RESP_CODE_302 == http_resp_code)
+        if (!result)
         {
-            LOG_INFO("Got HTTP error %d: Redirect to another location", (printf_int_t)http_resp_code);
-            return true;
-        }
-        else
-        {
-            LOG_ERR(
-                "Got HTTP error %d: %.*s",
-                (printf_int_t)http_resp_code,
-                (printf_int_t)buf_size,
-                (const char *)p_buf);
             p_info->is_error = true;
-            return false;
         }
+        return result;
     }
+
     LOG_INFO(
-        "Write to partition %s, offset %lu, size %lu",
+        "Write to data partition %s, offset %lu, size %lu",
         p_info->p_partition->label,
         (printf_ulong_t)offset,
         (printf_ulong_t)buf_size);
@@ -409,24 +432,16 @@ fw_update_ota_partition_cb_on_recv_data(
         LOG_INFO("Drop data after an error, offset %lu, size %lu", (printf_ulong_t)offset, (printf_ulong_t)buf_size);
         return false;
     }
-    if (HTTP_RESP_CODE_200 != http_resp_code)
+    bool result = false;
+    if (fw_update_handle_http_resp_code(http_resp_code, p_buf, buf_size, &result))
     {
-        if (HTTP_RESP_CODE_302 == http_resp_code)
+        if (!result)
         {
-            LOG_INFO("Got HTTP error %d: Redirect to another location", (printf_int_t)http_resp_code);
-            return true;
-        }
-        else
-        {
-            LOG_ERR(
-                "Got HTTP error %d: %.*s",
-                (printf_int_t)http_resp_code,
-                (printf_int_t)buf_size,
-                (const char *)p_buf);
             p_info->is_error = true;
-            return false;
         }
+        return result;
     }
+
     LOG_INFO(
         "Write to OTA-partition %s, offset %lu, size %lu",
         p_info->p_partition->label,

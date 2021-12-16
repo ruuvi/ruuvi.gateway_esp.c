@@ -44,15 +44,20 @@ extern "C" {
 
 #define RUUVI_COMPANY_ID 0x0499
 
+typedef struct ruuvi_gw_cfg_ip_addr_str_t
+{
+    char buf[IP_STR_LEN];
+} ruuvi_gw_cfg_ip_addr_str_t;
+
 typedef struct ruuvi_gw_cfg_eth_t
 {
-    bool use_eth;
-    bool eth_dhcp;
-    char eth_static_ip[IP_STR_LEN];
-    char eth_netmask[IP_STR_LEN];
-    char eth_gw[IP_STR_LEN];
-    char eth_dns1[IP_STR_LEN];
-    char eth_dns2[IP_STR_LEN];
+    bool                       use_eth;
+    bool                       eth_dhcp;
+    ruuvi_gw_cfg_ip_addr_str_t eth_static_ip;
+    ruuvi_gw_cfg_ip_addr_str_t eth_netmask;
+    ruuvi_gw_cfg_ip_addr_str_t eth_gw;
+    ruuvi_gw_cfg_ip_addr_str_t eth_dns1;
+    ruuvi_gw_cfg_ip_addr_str_t eth_dns2;
 } ruuvi_gw_cfg_eth_t;
 
 #define MQTT_TRANSPORT_TCP "TCP"
@@ -263,6 +268,9 @@ gw_cfg_get_lan_auth(void);
 
 ruuvi_gw_cfg_coordinates_t
 gw_cfg_get_coordinates(void);
+
+void
+gw_cfg_set_default_lan_auth(void);
 
 #ifdef __cplusplus
 }

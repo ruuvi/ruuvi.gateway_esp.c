@@ -386,3 +386,187 @@ TEST_F(TestCJsonWrap, test_get_uint16_val_not_found) // NOLINT
     cJSON_Delete(p_root);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
+
+TEST_F(TestCJsonWrap, test_get_uint8_val_0) // NOLINT
+{
+    cJSON *p_root = cJSON_CreateObject();
+    ASSERT_NE(nullptr, p_root);
+    cJSON_AddNumberToObject(p_root, "attr", 0.0);
+    uint8_t val = 0;
+    ASSERT_TRUE(json_wrap_get_uint8_val(p_root, "attr", &val));
+    ASSERT_EQ(0, val);
+    cJSON_Delete(p_root);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestCJsonWrap, test_get_uint8_val_1) // NOLINT
+{
+    cJSON *p_root = cJSON_CreateObject();
+    ASSERT_NE(nullptr, p_root);
+    cJSON_AddNumberToObject(p_root, "attr", 1.0);
+    uint8_t val = 0;
+    ASSERT_TRUE(json_wrap_get_uint8_val(p_root, "attr", &val));
+    ASSERT_EQ(1, val);
+    cJSON_Delete(p_root);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestCJsonWrap, test_get_uint8_val_255) // NOLINT
+{
+    cJSON *p_root = cJSON_CreateObject();
+    ASSERT_NE(nullptr, p_root);
+    cJSON_AddNumberToObject(p_root, "attr", 255.0);
+    uint8_t val = 0;
+    ASSERT_TRUE(json_wrap_get_uint8_val(p_root, "attr", &val));
+    ASSERT_EQ(255, val);
+    cJSON_Delete(p_root);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestCJsonWrap, test_get_uint8_val_minus_1) // NOLINT
+{
+    cJSON *p_root = cJSON_CreateObject();
+    ASSERT_NE(nullptr, p_root);
+    cJSON_AddNumberToObject(p_root, "attr", -1.0);
+    uint8_t val = 0;
+    ASSERT_FALSE(json_wrap_get_uint8_val(p_root, "attr", &val));
+    cJSON_Delete(p_root);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestCJsonWrap, test_get_uint8_val_256) // NOLINT
+{
+    cJSON *p_root = cJSON_CreateObject();
+    ASSERT_NE(nullptr, p_root);
+    cJSON_AddNumberToObject(p_root, "attr", 256.0);
+    uint8_t val = 0;
+    ASSERT_FALSE(json_wrap_get_uint8_val(p_root, "attr", &val));
+    cJSON_Delete(p_root);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestCJsonWrap, test_get_uint8_val_wrong_type) // NOLINT
+{
+    cJSON *p_root = cJSON_CreateObject();
+    ASSERT_NE(nullptr, p_root);
+    cJSON_AddStringToObject(p_root, "attr", "1");
+    uint8_t val = 0;
+    ASSERT_FALSE(json_wrap_get_uint8_val(p_root, "attr", &val));
+    cJSON_Delete(p_root);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestCJsonWrap, test_get_uint8_val_not_found) // NOLINT
+{
+    cJSON *p_root = cJSON_CreateObject();
+    ASSERT_NE(nullptr, p_root);
+    cJSON_AddNumberToObject(p_root, "attr", 0);
+    uint8_t val = 0;
+    ASSERT_FALSE(json_wrap_get_uint8_val(p_root, "attr2", &val));
+    cJSON_Delete(p_root);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestCJsonWrap, test_get_int8_val_0) // NOLINT
+{
+    cJSON *p_root = cJSON_CreateObject();
+    ASSERT_NE(nullptr, p_root);
+    cJSON_AddNumberToObject(p_root, "attr", 0.0);
+    int8_t val = 0;
+    ASSERT_TRUE(json_wrap_get_int8_val(p_root, "attr", &val));
+    ASSERT_EQ(0, val);
+    cJSON_Delete(p_root);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestCJsonWrap, test_get_int8_val_1) // NOLINT
+{
+    cJSON *p_root = cJSON_CreateObject();
+    ASSERT_NE(nullptr, p_root);
+    cJSON_AddNumberToObject(p_root, "attr", 1.0);
+    int8_t val = 0;
+    ASSERT_TRUE(json_wrap_get_int8_val(p_root, "attr", &val));
+    ASSERT_EQ(1, val);
+    cJSON_Delete(p_root);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestCJsonWrap, test_get_int8_val_127) // NOLINT
+{
+    cJSON *p_root = cJSON_CreateObject();
+    ASSERT_NE(nullptr, p_root);
+    cJSON_AddNumberToObject(p_root, "attr", 127.0);
+    int8_t val = 0;
+    ASSERT_TRUE(json_wrap_get_int8_val(p_root, "attr", &val));
+    ASSERT_EQ(127, val);
+    cJSON_Delete(p_root);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestCJsonWrap, test_get_int8_val_minus_1) // NOLINT
+{
+    cJSON *p_root = cJSON_CreateObject();
+    ASSERT_NE(nullptr, p_root);
+    cJSON_AddNumberToObject(p_root, "attr", -1.0);
+    int8_t val = 0;
+    ASSERT_TRUE(json_wrap_get_int8_val(p_root, "attr", &val));
+    ASSERT_EQ(-1, val);
+    cJSON_Delete(p_root);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestCJsonWrap, test_get_int8_val_minus_128) // NOLINT
+{
+    cJSON *p_root = cJSON_CreateObject();
+    ASSERT_NE(nullptr, p_root);
+    cJSON_AddNumberToObject(p_root, "attr", -128.0);
+    int8_t val = 0;
+    ASSERT_TRUE(json_wrap_get_int8_val(p_root, "attr", &val));
+    ASSERT_EQ(-128, val);
+    cJSON_Delete(p_root);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestCJsonWrap, test_get_int8_val_128) // NOLINT
+{
+    cJSON *p_root = cJSON_CreateObject();
+    ASSERT_NE(nullptr, p_root);
+    cJSON_AddNumberToObject(p_root, "attr", 128.0);
+    int8_t val = 0;
+    ASSERT_FALSE(json_wrap_get_int8_val(p_root, "attr", &val));
+    cJSON_Delete(p_root);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestCJsonWrap, test_get_int8_minus_val_129) // NOLINT
+{
+    cJSON *p_root = cJSON_CreateObject();
+    ASSERT_NE(nullptr, p_root);
+    cJSON_AddNumberToObject(p_root, "attr", -129.0);
+    int8_t val = 0;
+    ASSERT_FALSE(json_wrap_get_int8_val(p_root, "attr", &val));
+    cJSON_Delete(p_root);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestCJsonWrap, test_get_int8_val_wrong_type) // NOLINT
+{
+    cJSON *p_root = cJSON_CreateObject();
+    ASSERT_NE(nullptr, p_root);
+    cJSON_AddStringToObject(p_root, "attr", "1");
+    int8_t val = 0;
+    ASSERT_FALSE(json_wrap_get_int8_val(p_root, "attr", &val));
+    cJSON_Delete(p_root);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestCJsonWrap, test_get_int8_val_not_found) // NOLINT
+{
+    cJSON *p_root = cJSON_CreateObject();
+    ASSERT_NE(nullptr, p_root);
+    cJSON_AddNumberToObject(p_root, "attr", 0);
+    int8_t val = 0;
+    ASSERT_FALSE(json_wrap_get_int8_val(p_root, "attr2", &val));
+    cJSON_Delete(p_root);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}

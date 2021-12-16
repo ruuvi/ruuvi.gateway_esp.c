@@ -58,23 +58,23 @@ gw_cfg_json_add_items_eth(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cf
     {
         return false;
     }
-    if (!gw_cfg_json_add_string(p_json_root, "eth_static_ip", p_cfg->eth.eth_static_ip))
+    if (!gw_cfg_json_add_string(p_json_root, "eth_static_ip", p_cfg->eth.eth_static_ip.buf))
     {
         return false;
     }
-    if (!gw_cfg_json_add_string(p_json_root, "eth_netmask", p_cfg->eth.eth_netmask))
+    if (!gw_cfg_json_add_string(p_json_root, "eth_netmask", p_cfg->eth.eth_netmask.buf))
     {
         return false;
     }
-    if (!gw_cfg_json_add_string(p_json_root, "eth_gw", p_cfg->eth.eth_gw))
+    if (!gw_cfg_json_add_string(p_json_root, "eth_gw", p_cfg->eth.eth_gw.buf))
     {
         return false;
     }
-    if (!gw_cfg_json_add_string(p_json_root, "eth_dns1", p_cfg->eth.eth_dns1))
+    if (!gw_cfg_json_add_string(p_json_root, "eth_dns1", p_cfg->eth.eth_dns1.buf))
     {
         return false;
     }
-    if (!gw_cfg_json_add_string(p_json_root, "eth_dns2", p_cfg->eth.eth_dns2))
+    if (!gw_cfg_json_add_string(p_json_root, "eth_dns2", p_cfg->eth.eth_dns2.buf))
     {
         return false;
     }
@@ -188,7 +188,7 @@ gw_cfg_json_add_items_lan_auth(cJSON *p_json_root, const ruuvi_gateway_config_t 
 static bool
 gw_cfg_json_add_items_auto_update(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg)
 {
-    const char *p_auto_update_cycle_str = AUTO_UPDATE_CYCLE_TYPE_STR_MANUAL;
+    const char *p_auto_update_cycle_str = AUTO_UPDATE_CYCLE_TYPE_STR_REGULAR;
     switch (p_cfg->auto_update.auto_update_cycle)
     {
         case AUTO_UPDATE_CYCLE_TYPE_REGULAR:
@@ -356,28 +356,40 @@ gw_cfg_json_parse_eth(const cJSON *const p_json_root, ruuvi_gw_cfg_eth_t *const 
     if (!json_wrap_copy_string_val(
             p_json_root,
             "eth_static_ip",
-            &p_gw_cfg_eth->eth_static_ip[0],
-            sizeof(p_gw_cfg_eth->eth_static_ip)))
+            &p_gw_cfg_eth->eth_static_ip.buf[0],
+            sizeof(p_gw_cfg_eth->eth_static_ip.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "eth_static_ip");
     }
     if (!json_wrap_copy_string_val(
             p_json_root,
             "eth_netmask",
-            &p_gw_cfg_eth->eth_netmask[0],
-            sizeof(p_gw_cfg_eth->eth_netmask)))
+            &p_gw_cfg_eth->eth_netmask.buf[0],
+            sizeof(p_gw_cfg_eth->eth_netmask.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "eth_netmask");
     }
-    if (!json_wrap_copy_string_val(p_json_root, "eth_gw", &p_gw_cfg_eth->eth_gw[0], sizeof(p_gw_cfg_eth->eth_gw)))
+    if (!json_wrap_copy_string_val(
+            p_json_root,
+            "eth_gw",
+            &p_gw_cfg_eth->eth_gw.buf[0],
+            sizeof(p_gw_cfg_eth->eth_gw.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "eth_gw");
     }
-    if (!json_wrap_copy_string_val(p_json_root, "eth_dns1", &p_gw_cfg_eth->eth_dns1[0], sizeof(p_gw_cfg_eth->eth_dns1)))
+    if (!json_wrap_copy_string_val(
+            p_json_root,
+            "eth_dns1",
+            &p_gw_cfg_eth->eth_dns1.buf[0],
+            sizeof(p_gw_cfg_eth->eth_dns1.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "eth_dns1");
     }
-    if (!json_wrap_copy_string_val(p_json_root, "eth_dns2", &p_gw_cfg_eth->eth_dns2[0], sizeof(p_gw_cfg_eth->eth_dns2)))
+    if (!json_wrap_copy_string_val(
+            p_json_root,
+            "eth_dns2",
+            &p_gw_cfg_eth->eth_dns2.buf[0],
+            sizeof(p_gw_cfg_eth->eth_dns2.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "eth_dns2");
     }
@@ -546,6 +558,7 @@ gw_cfg_json_parse_lan_auth(const cJSON *const p_json_root, ruuvi_gw_cfg_lan_auth
 static void
 gw_cfg_json_parse_auto_update(const cJSON *const p_json_root, ruuvi_gw_cfg_auto_update_t *const p_gw_cfg_auto_update)
 {
+    p_gw_cfg_auto_update->auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR;
     char auto_update_cycle_str[AUTO_UPDATE_CYCLE_TYPE_STR_MAX_LEN];
     if (!json_wrap_copy_string_val(
             p_json_root,
@@ -555,18 +568,24 @@ gw_cfg_json_parse_auto_update(const cJSON *const p_json_root, ruuvi_gw_cfg_auto_
     {
         LOG_WARN("Can't find key '%s' in config-json", "auto_update_cycle");
     }
-    p_gw_cfg_auto_update->auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR;
-    if (0 == strcmp(AUTO_UPDATE_CYCLE_TYPE_STR_REGULAR, auto_update_cycle_str))
+    else
     {
-        p_gw_cfg_auto_update->auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR;
-    }
-    else if (0 == strcmp(AUTO_UPDATE_CYCLE_TYPE_STR_BETA_TESTER, auto_update_cycle_str))
-    {
-        p_gw_cfg_auto_update->auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER;
-    }
-    else if (0 == strcmp(AUTO_UPDATE_CYCLE_TYPE_STR_MANUAL, auto_update_cycle_str))
-    {
-        p_gw_cfg_auto_update->auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_MANUAL;
+        if (0 == strcmp(AUTO_UPDATE_CYCLE_TYPE_STR_REGULAR, auto_update_cycle_str))
+        {
+            p_gw_cfg_auto_update->auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR;
+        }
+        else if (0 == strcmp(AUTO_UPDATE_CYCLE_TYPE_STR_BETA_TESTER, auto_update_cycle_str))
+        {
+            p_gw_cfg_auto_update->auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER;
+        }
+        else if (0 == strcmp(AUTO_UPDATE_CYCLE_TYPE_STR_MANUAL, auto_update_cycle_str))
+        {
+            p_gw_cfg_auto_update->auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_MANUAL;
+        }
+        else
+        {
+            LOG_WARN("Unknown auto_update_cycle='%s', use REGULAR", auto_update_cycle_str);
+        }
     }
 
     if (!json_wrap_get_uint8_val(

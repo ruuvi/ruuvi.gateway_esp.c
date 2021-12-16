@@ -508,6 +508,20 @@ TEST_F(TestNRF52Swd, init_gpio_cfg_nreset_ok) // NOLINT
     ASSERT_EQ(0, this->m_gpio_config[GPIO_NUM_17].pull_down_en);
     ASSERT_EQ(GPIO_INTR_DISABLE, this->m_gpio_config[GPIO_NUM_17].intr_type);
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(nrf52swd_deinit_gpio_cfg_nreset());
+    ASSERT_TRUE(nrf52swd_deinit_gpio_cfg_nreset()); // try to deinit twice
+}
+
+TEST_F(TestNRF52Swd, init_gpio_cfg_nreset_twice) // NOLINT
+{
+    ASSERT_TRUE(nrf52swd_init_gpio_cfg_nreset());
+    ASSERT_TRUE(nrf52swd_init_gpio_cfg_nreset());
+    ASSERT_EQ(1ULL << (unsigned)GPIO_NUM_17, this->m_gpio_config[GPIO_NUM_17].pin_bit_mask);
+    ASSERT_EQ(GPIO_MODE_OUTPUT, this->m_gpio_config[GPIO_NUM_17].mode);
+    ASSERT_EQ(1, this->m_gpio_config[GPIO_NUM_17].pull_up_en);
+    ASSERT_EQ(0, this->m_gpio_config[GPIO_NUM_17].pull_down_en);
+    ASSERT_EQ(GPIO_INTR_DISABLE, this->m_gpio_config[GPIO_NUM_17].intr_type);
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
 TEST_F(TestNRF52Swd, init_gpio_cfg_nreset_fail) // NOLINT
@@ -520,6 +534,19 @@ TEST_F(TestNRF52Swd, init_gpio_cfg_nreset_fail) // NOLINT
         "nrf52swd_init_gpio_cfg_nreset",
         "gpio_config(nRF52 nRESET) failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestNRF52Swd, init_gpio_cfg_nreset_ok_deinit_fail) // NOLINT
+{
+    ASSERT_TRUE(nrf52swd_init_gpio_cfg_nreset());
+    ASSERT_EQ(1ULL << (unsigned)GPIO_NUM_17, this->m_gpio_config[GPIO_NUM_17].pin_bit_mask);
+    ASSERT_EQ(GPIO_MODE_OUTPUT, this->m_gpio_config[GPIO_NUM_17].mode);
+    ASSERT_EQ(1, this->m_gpio_config[GPIO_NUM_17].pull_up_en);
+    ASSERT_EQ(0, this->m_gpio_config[GPIO_NUM_17].pull_down_en);
+    ASSERT_EQ(GPIO_INTR_DISABLE, this->m_gpio_config[GPIO_NUM_17].intr_type);
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    this->m_gpio_config_result = ESP_FAIL;
+    ASSERT_FALSE(nrf52swd_deinit_gpio_cfg_nreset());
 }
 
 TEST_F(TestNRF52Swd, init_spi_init_ok) // NOLINT

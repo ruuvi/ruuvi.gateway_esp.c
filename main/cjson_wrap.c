@@ -167,7 +167,11 @@ json_wrap_get_int8_val(const cJSON *p_json_root, const char *p_attr_name, int8_t
     {
         return false;
     }
-    if (!((p_json_attr->valueint >= INT8_MIN) && (p_json_attr->valueint <= INT8_MAX)))
+    if (p_json_attr->valueint < INT8_MIN)
+    {
+        return false;
+    }
+    if (p_json_attr->valueint > INT8_MAX)
     {
         return false;
     }

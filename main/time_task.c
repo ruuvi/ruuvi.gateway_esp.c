@@ -18,6 +18,7 @@
 #include "os_signal.h"
 #include "esp_type_wrapper.h"
 #include "event_mgr.h"
+#include "os_mkgmtime.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -29,16 +30,21 @@
 
 #define TIME_TASK_BUF_SIZE_TIME_STR (20)
 
+#define TIME_TASK_NUM_OF_TIME_SERVERS (4)
+
+#define TIME_TASK_NAME "time_task"
+
 typedef enum time_task_sig_e
 {
     TIME_TASK_SIG_WIFI_CONNECTED    = OS_SIGNAL_NUM_0,
     TIME_TASK_SIG_WIFI_DISCONNECTED = OS_SIGNAL_NUM_1,
     TIME_TASK_SIG_ETH_CONNECTED     = OS_SIGNAL_NUM_2,
     TIME_TASK_SIG_ETH_DISCONNECTED  = OS_SIGNAL_NUM_3,
+    TIME_TASK_SIG_STOP              = OS_SIGNAL_NUM_4,
 } time_task_sig_e;
 
 #define TIME_TASK_SIG_FIRST (TIME_TASK_SIG_WIFI_CONNECTED)
-#define TIME_TASK_SIG_LAST  (TIME_TASK_SIG_ETH_DISCONNECTED)
+#define TIME_TASK_SIG_LAST  (TIME_TASK_SIG_STOP)
 
 static os_signal_static_t g_time_task_signal_mem;
 static os_signal_t *      gp_time_task_signal;
@@ -46,8 +52,7 @@ static os_signal_t *      gp_time_task_signal;
 static os_task_stack_type_t g_time_task_stack_mem[RUUVI_STACK_SIZE_TIME_TASK];
 static os_task_static_t     g_time_task_mem;
 
-static os_task_handle_t gp_time_task;
-static time_t           g_time_min_valid;
+static time_t g_time_min_valid;
 
 static bool g_time_is_synchronized;
 
@@ -56,7 +61,7 @@ static const char TAG[] = "TIME";
 static time_t
 time_task_get_min_valid_time(void)
 {
-    struct tm tm_2020_01_01 = {
+    struct tm tm_2021_01_01 = {
         .tm_sec   = 0,
         .tm_min   = 0,
         .tm_hour  = 0,
@@ -67,7 +72,8 @@ time_task_get_min_valid_time(void)
         .tm_yday  = 0,
         .tm_isdst = -1,
     };
-    return mktime(&tm_2020_01_01);
+
+    return os_mkgmtime(&tm_2021_01_01);
 }
 
 bool
@@ -127,9 +133,10 @@ time_task_cb_notification_on_sync(struct timeval *p_tv)
     }
 }
 
-static void
+static bool
 time_task_handle_sig(const time_task_sig_e time_task_sig)
 {
+    bool flag_stop_task = false;
     switch (time_task_sig)
     {
         case TIME_TASK_SIG_WIFI_CONNECTED:
@@ -143,20 +150,35 @@ time_task_handle_sig(const time_task_sig_e time_task_sig)
             LOG_INFO("Deactivate SNTP time synchronization");
             sntp_stop();
             break;
+        case TIME_TASK_SIG_STOP:
+            LOG_INFO("Stop time_task");
+            flag_stop_task = true;
+            break;
         default:
             LOG_ERR("Unhanded sig: %d", (int)time_task_sig);
             assert(0);
             break;
     }
+    return flag_stop_task;
 }
 
-ATTR_NORETURN
+static void
+time_task_destroy_resources(void)
+{
+    if (NULL != gp_time_task_signal)
+    {
+        os_signal_delete(&gp_time_task_signal);
+    }
+    g_time_min_valid = 0;
+}
+
 static void
 time_task_thread(void)
 {
     LOG_INFO("time_task started");
     os_signal_register_cur_thread(gp_time_task_signal);
-    for (;;)
+    bool flag_stop_task = false;
+    while (!flag_stop_task)
     {
         os_signal_events_t sig_events = { 0 };
         os_signal_wait(gp_time_task_signal, &sig_events);
@@ -168,19 +190,10 @@ time_task_thread(void)
                 break;
             }
             const time_task_sig_e time_task_sig = time_task_conv_from_sig_num(sig_num);
-            time_task_handle_sig(time_task_sig);
+            flag_stop_task                      = time_task_handle_sig(time_task_sig);
         }
     }
-}
-
-static void
-time_task_destroy_resources(void)
-{
-    if (NULL != gp_time_task_signal)
-    {
-        os_signal_delete(&gp_time_task_signal);
-    }
-    g_time_min_valid = 0;
+    os_signal_unregister_cur_thread(gp_time_task_signal);
 }
 
 static bool
@@ -233,30 +246,30 @@ time_task_init(void)
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     LOG_INFO("Set time sync mode to IMMED");
     sntp_set_sync_mode(SNTP_SYNC_MODE_IMMED);
-    static const char *const arr_of_time_servers[] = {
+    static const char *const arr_of_time_servers[TIME_TASK_NUM_OF_TIME_SERVERS] = {
         "time.google.com",
         "time.cloudflare.com",
         "time.nist.gov",
         "pool.ntp.org",
     };
-    for (uint32_t server_idx = 0; server_idx < sizeof(arr_of_time_servers) / sizeof(*arr_of_time_servers); ++server_idx)
+    for (uint32_t server_idx = 0; server_idx < (sizeof(arr_of_time_servers) / sizeof(*arr_of_time_servers));
+         ++server_idx)
     {
         LOG_INFO("Add time server: %s", arr_of_time_servers[server_idx]);
-        sntp_setservername(server_idx, arr_of_time_servers[server_idx]);
+        sntp_setservername((u8_t)server_idx, arr_of_time_servers[server_idx]);
     }
     sntp_set_time_sync_notification_cb(time_task_cb_notification_on_sync);
 
     g_time_min_valid = time_task_get_min_valid_time();
 
     const UBaseType_t task_priority = 1;
-    if (!os_task_create_static_without_param(
+    if (!os_task_create_static_finite_without_param(
             &time_task_thread,
             "time_task",
             g_time_task_stack_mem,
             RUUVI_STACK_SIZE_TIME_TASK,
             task_priority,
-            &g_time_task_mem,
-            &gp_time_task))
+            &g_time_task_mem))
     {
         LOG_ERR("Can't create thread");
         time_task_destroy_resources();
@@ -268,3 +281,33 @@ time_task_init(void)
     }
     return true;
 }
+
+#if RUUVI_TESTS_TIME_TASK
+bool
+time_task_stop(void)
+{
+    if (!os_signal_send(gp_time_task_signal, time_task_conv_to_sig_num(TIME_TASK_SIG_STOP)))
+    {
+        LOG_ERR("Can't send signal to stop thread");
+        return false;
+    }
+    bool             result = false;
+    const TickType_t t0     = xTaskGetTickCount();
+    for (;;)
+    {
+        TaskHandle_t p_task = xTaskGetHandle(TIME_TASK_NAME);
+        if (NULL == p_task)
+        {
+            result = true;
+            time_task_destroy_resources();
+            break;
+        }
+        if ((xTaskGetTickCount() - t0) > pdMS_TO_TICKS(1000))
+        {
+            break;
+        }
+        vTaskDelay(1);
+    }
+    return result;
+}
+#endif

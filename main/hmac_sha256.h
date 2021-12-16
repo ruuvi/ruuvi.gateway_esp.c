@@ -27,7 +27,7 @@ typedef struct hmac_sha256_t
 
 typedef struct hmac_sha256_str_t
 {
-    char buf[HMAC_SHA256_SIZE * 2 + 1];
+    char buf[(HMAC_SHA256_SIZE * 2) + 1];
 } hmac_sha256_str_t;
 
 /**

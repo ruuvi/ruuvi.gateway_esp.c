@@ -75,23 +75,23 @@ gw_cfg_ruuvi_json_add_items_eth(cJSON *p_json_root, const ruuvi_gateway_config_t
     {
         return false;
     }
-    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "eth_static_ip", p_cfg->eth.eth_static_ip))
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "eth_static_ip", p_cfg->eth.eth_static_ip.buf))
     {
         return false;
     }
-    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "eth_netmask", p_cfg->eth.eth_netmask))
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "eth_netmask", p_cfg->eth.eth_netmask.buf))
     {
         return false;
     }
-    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "eth_gw", p_cfg->eth.eth_gw))
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "eth_gw", p_cfg->eth.eth_gw.buf))
     {
         return false;
     }
-    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "eth_dns1", p_cfg->eth.eth_dns1))
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "eth_dns1", p_cfg->eth.eth_dns1.buf))
     {
         return false;
     }
-    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "eth_dns2", p_cfg->eth.eth_dns2))
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "eth_dns2", p_cfg->eth.eth_dns2.buf))
     {
         return false;
     }
@@ -137,21 +137,15 @@ gw_cfg_ruuvi_json_add_items_http_stat(cJSON *p_json_root, const ruuvi_gateway_co
 static bool
 gw_cfg_ruuvi_json_add_items_lan_auth(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg)
 {
-    if ((0 == strcmp(p_cfg->lan_auth.lan_auth_type, HTTP_SERVER_AUTH_TYPE_STR_RUUVI))
-        && (0 == strcmp(p_cfg->lan_auth.lan_auth_user, RUUVI_GATEWAY_AUTH_DEFAULT_USER))
-        && (0 == strcmp(p_cfg->lan_auth.lan_auth_pass, gw_cfg_default_get_lan_auth_password())))
+    const char *const p_lan_auth_type
+        = ((0 == strcmp(p_cfg->lan_auth.lan_auth_type, HTTP_SERVER_AUTH_TYPE_STR_RUUVI))
+           && (0 == strcmp(p_cfg->lan_auth.lan_auth_user, RUUVI_GATEWAY_AUTH_DEFAULT_USER))
+           && (0 == strcmp(p_cfg->lan_auth.lan_auth_pass, gw_cfg_default_get_lan_auth_password())))
+              ? "lan_auth_default"
+              : &p_cfg->lan_auth.lan_auth_type[0];
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "lan_auth_type", p_lan_auth_type))
     {
-        if (!gw_cfg_ruuvi_json_add_string(p_json_root, "lan_auth_type", "lan_auth_default"))
-        {
-            return false;
-        }
-    }
-    else
-    {
-        if (!gw_cfg_ruuvi_json_add_string(p_json_root, "lan_auth_type", p_cfg->lan_auth.lan_auth_type))
-        {
-            return false;
-        }
+        return false;
     }
     if (!gw_cfg_ruuvi_json_add_string(p_json_root, "lan_auth_user", p_cfg->lan_auth.lan_auth_user))
     {
@@ -163,7 +157,7 @@ gw_cfg_ruuvi_json_add_items_lan_auth(cJSON *p_json_root, const ruuvi_gateway_con
 static bool
 gw_cfg_ruuvi_json_add_items_auto_update(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg)
 {
-    const char *p_auto_update_cycle_str = AUTO_UPDATE_CYCLE_TYPE_STR_MANUAL;
+    const char *p_auto_update_cycle_str = AUTO_UPDATE_CYCLE_TYPE_STR_REGULAR;
     switch (p_cfg->auto_update.auto_update_cycle)
     {
         case AUTO_UPDATE_CYCLE_TYPE_REGULAR:
@@ -230,21 +224,18 @@ gw_cfg_ruuvi_json_add_items_mqtt(cJSON *const p_json_root, const ruuvi_gateway_c
     {
         return false;
     }
+    ruuvi_gw_cfg_mqtt_prefix_t mqtt_prefix = { '\0' };
     if (p_cfg->mqtt.mqtt_use_default_prefix)
     {
-        char mqtt_prefix[MAX_MQTT_PREFIX_LEN];
-        snprintf(mqtt_prefix, sizeof(mqtt_prefix), "ruuvi/%s", g_gw_mac_sta_str.str_buf);
-        if (!gw_cfg_ruuvi_json_add_string(p_json_root, "mqtt_prefix", mqtt_prefix))
-        {
-            return false;
-        }
+        snprintf(mqtt_prefix.buf, sizeof(mqtt_prefix.buf), "ruuvi/%s/", g_gw_mac_sta_str.str_buf);
     }
     else
     {
-        if (!gw_cfg_ruuvi_json_add_string(p_json_root, "mqtt_prefix", p_cfg->mqtt.mqtt_prefix.buf))
-        {
-            return false;
-        }
+        snprintf(mqtt_prefix.buf, sizeof(mqtt_prefix.buf), "%s", p_cfg->mqtt.mqtt_prefix.buf);
+    }
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "mqtt_prefix", mqtt_prefix.buf))
+    {
+        return false;
     }
     if (!gw_cfg_ruuvi_json_add_string(p_json_root, "mqtt_client_id", p_cfg->mqtt.mqtt_client_id.buf))
     {

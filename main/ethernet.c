@@ -190,21 +190,21 @@ ethernet_update_ip_static(const ruuvi_gateway_config_t *const p_gw_cfg)
 
     LOG_INFO("Using static IP");
 
-    if (0 == ip4addr_aton(p_gw_cfg->eth.eth_static_ip, &ip_info.ip))
+    if (0 == ip4addr_aton(p_gw_cfg->eth.eth_static_ip.buf, &ip_info.ip))
     {
-        LOG_ERR("Invalid eth static ip: %s", p_gw_cfg->eth.eth_static_ip);
+        LOG_ERR("Invalid eth static ip: %s", p_gw_cfg->eth.eth_static_ip.buf);
         return false;
     }
 
-    if (0 == ip4addr_aton(p_gw_cfg->eth.eth_netmask, &ip_info.netmask))
+    if (0 == ip4addr_aton(p_gw_cfg->eth.eth_netmask.buf, &ip_info.netmask))
     {
-        LOG_ERR("invalid eth netmask: %s", p_gw_cfg->eth.eth_netmask);
+        LOG_ERR("invalid eth netmask: %s", p_gw_cfg->eth.eth_netmask.buf);
         return false;
     }
 
-    if (0 == ip4addr_aton(p_gw_cfg->eth.eth_gw, &ip_info.gw))
+    if (0 == ip4addr_aton(p_gw_cfg->eth.eth_gw.buf, &ip_info.gw))
     {
-        LOG_ERR("invalid eth gw: %s", p_gw_cfg->eth.eth_gw);
+        LOG_ERR("invalid eth gw: %s", p_gw_cfg->eth.eth_gw.buf);
         return false;
     }
 
@@ -220,8 +220,8 @@ ethernet_update_ip_static(const ruuvi_gateway_config_t *const p_gw_cfg)
         return false;
     }
 
-    eth_tcpip_adapter_set_dns_info(p_gw_cfg->eth.eth_dns1, TCPIP_ADAPTER_DNS_MAIN);
-    eth_tcpip_adapter_set_dns_info(p_gw_cfg->eth.eth_dns2, TCPIP_ADAPTER_DNS_BACKUP);
+    eth_tcpip_adapter_set_dns_info(p_gw_cfg->eth.eth_dns1.buf, TCPIP_ADAPTER_DNS_MAIN);
+    eth_tcpip_adapter_set_dns_info(p_gw_cfg->eth.eth_dns2.buf, TCPIP_ADAPTER_DNS_BACKUP);
     return true;
 }
 

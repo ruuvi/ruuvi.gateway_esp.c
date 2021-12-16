@@ -44,6 +44,8 @@
 
 #define HTTP_SERVER_DEFAULT_HISTORY_INTERVAL_SECONDS (60U)
 
+typedef double cjson_double_t;
+
 static const char TAG[] = "http_server";
 
 static const char g_empty_json[] = "{}";
@@ -95,7 +97,7 @@ http_server_resp_json_ruuvi(void)
             p_gw_cfg,
             &g_gw_mac_sta_str,
             fw_update_get_cur_version(),
-            g_nrf52_firmware_version,
+            g_nrf52_firmware_version.buf,
             &json_str))
     {
         gw_cfg_unlock_ro(&p_gw_cfg);
@@ -130,7 +132,7 @@ json_info_add_string(cJSON *p_json_root, const char *p_item_name, const char *p_
 static bool
 json_info_add_uint32(cJSON *p_json_root, const char *p_item_name, const uint32_t val)
 {
-    if (NULL == cJSON_AddNumberToObject(p_json_root, p_item_name, (double)val))
+    if (NULL == cJSON_AddNumberToObject(p_json_root, p_item_name, (cjson_double_t)val))
     {
         LOG_ERR("Can't add json item: %s", p_item_name);
         return false;
@@ -139,13 +141,13 @@ json_info_add_uint32(cJSON *p_json_root, const char *p_item_name, const uint32_t
 }
 
 static bool
-json_info_add_items(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg, const mac_address_str_t *p_mac_sta)
+json_info_add_items(cJSON *p_json_root)
 {
     if (!json_info_add_string(p_json_root, "ESP_FW", fw_update_get_cur_version()))
     {
         return false;
     }
-    if (!json_info_add_string(p_json_root, "NRF_FW", g_nrf52_firmware_version))
+    if (!json_info_add_string(p_json_root, "NRF_FW", g_nrf52_firmware_version.buf))
     {
         return false;
     }
@@ -189,10 +191,8 @@ json_info_add_items(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg, con
 }
 
 static bool
-generate_json_info_str(const ruuvi_gateway_config_t *const p_gw_cfg, cjson_wrap_str_t *p_json_str)
+generate_json_info_str(cjson_wrap_str_t *p_json_str)
 {
-    const mac_address_str_t *p_mac_sta = &g_gw_mac_sta_str;
-
     p_json_str->p_str = NULL;
 
     cJSON *p_json_root = cJSON_CreateObject();
@@ -201,7 +201,7 @@ generate_json_info_str(const ruuvi_gateway_config_t *const p_gw_cfg, cjson_wrap_
         LOG_ERR("Can't create json object");
         return false;
     }
-    if (!json_info_add_items(p_json_root, p_gw_cfg, p_mac_sta))
+    if (!json_info_add_items(p_json_root))
     {
         cjson_wrap_delete(&p_json_root);
         return false;
@@ -222,7 +222,7 @@ http_server_resp_json_info(void)
 {
     const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
     cjson_wrap_str_t              json_str = cjson_wrap_str_null();
-    if (!generate_json_info_str(p_gw_cfg, &json_str))
+    if (!generate_json_info_str(&json_str))
     {
         gw_cfg_unlock_ro(&p_gw_cfg);
         return http_server_resp_503();
@@ -667,7 +667,7 @@ http_server_cb_on_user_req_download_latest_release_info(void)
     if (AUTO_UPDATE_CYCLE_TYPE_REGULAR == gw_cfg_get_auto_update_cycle())
     {
         const time_t cur_unix_time = http_server_get_cur_time();
-        if ((cur_unix_time - unix_time_published_at) < (time_t)FW_UPDATING_REGULAR_CYCLE_DELAY_SECONDS)
+        if ((cur_unix_time - unix_time_published_at) < FW_UPDATING_REGULAR_CYCLE_DELAY_SECONDS)
         {
             LOG_INFO(
                 "github_latest_release.json: postpone the update because less than 14 days have passed since the "
@@ -683,19 +683,21 @@ http_server_cb_on_user_req_download_latest_release_info(void)
 void
 http_server_cb_on_user_req(const http_server_user_req_code_e req_code)
 {
-    switch (req_code)
+    if (HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO == req_code)
     {
-        case HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO:
-            http_server_cb_on_user_req_download_latest_release_info();
-            break;
-        default:
-            LOG_ERR("Unknown req_code=%d", (printf_int_t)req_code);
-            break;
+        http_server_cb_on_user_req_download_latest_release_info();
+    }
+    else
+    {
+        LOG_ERR("Unknown req_code=%d", (printf_int_t)req_code);
     }
 }
 
 http_server_resp_t
-http_server_cb_on_get(const char *p_path, const bool flag_access_from_lan, const http_server_resp_t *const p_resp_auth)
+http_server_cb_on_get(
+    const char *const               p_path,
+    const bool                      flag_access_from_lan,
+    const http_server_resp_t *const p_resp_auth)
 {
     const char *p_file_ext = strrchr(p_path, '.');
     LOG_DBG("http_server_cb_on_get /%s", p_path);
@@ -813,7 +815,7 @@ http_server_cb_on_post_fw_update(const char *p_body, const bool flag_access_from
 }
 
 http_server_resp_t
-http_server_cb_on_post(const char *p_file_name, const char *p_body, const bool flag_access_from_lan)
+http_server_cb_on_post(const char *const p_file_name, const char *const p_body, const bool flag_access_from_lan)
 {
     if (g_http_server_cb_flag_prohibit_cfg_updating)
     {
@@ -823,7 +825,7 @@ http_server_cb_on_post(const char *p_file_name, const char *p_body, const bool f
     {
         return http_server_cb_on_post_ruuvi(p_body);
     }
-    else if (0 == strcmp(p_file_name, "fw_update.json"))
+    if (0 == strcmp(p_file_name, "fw_update.json"))
     {
         return http_server_cb_on_post_fw_update(p_body, flag_access_from_lan);
     }
@@ -833,11 +835,12 @@ http_server_cb_on_post(const char *p_file_name, const char *p_body, const bool f
 
 http_server_resp_t
 http_server_cb_on_delete(
-    const char *                    p_path,
+    const char *const               p_path,
     const bool                      flag_access_from_lan,
     const http_server_resp_t *const p_resp_auth)
 {
     (void)p_path;
+    (void)flag_access_from_lan;
     (void)p_resp_auth;
     LOG_WARN("DELETE /%s", p_path);
     return http_server_resp_404();

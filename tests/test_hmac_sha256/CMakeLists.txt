@@ -17,6 +17,7 @@ add_executable(${ProjectId}
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/sha1.c
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/sha256.c
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/sha512.c
+        $ENV{IDF_PATH}/components/mbedtls/port/include/mbedtls/esp_config.h
 )
 
 set_target_properties(${ProjectId} PROPERTIES
@@ -34,6 +35,7 @@ target_include_directories(${ProjectId} PUBLIC
 
 target_compile_definitions(${ProjectId} PUBLIC
         RUUVI_TESTS_HMAC_SHA256=1
+        MBEDTLS_PLATFORM_MEMORY=1
 )
 
 target_compile_options(${ProjectId} PUBLIC

@@ -136,10 +136,7 @@ settings_clear_in_flash(void)
 }
 
 static bool
-settings_get_gw_cfg_from_nvs(
-    nvs_handle                    handle,
-    ruuvi_gateway_config_t *const p_gw_cfg,
-    bool *const                   p_flag_use_default_config)
+settings_get_gw_cfg_from_nvs(nvs_handle handle, ruuvi_gateway_config_t *const p_gw_cfg)
 {
     gw_cfg_default_get(p_gw_cfg);
 
@@ -219,7 +216,32 @@ settings_get_gw_cfg_blob_from_nvs(nvs_handle handle, ruuvi_gateway_config_blob_t
     return true;
 }
 
-void
+static bool
+settings_read_from_blob(nvs_handle handle, ruuvi_gateway_config_t *const p_gw_cfg)
+{
+    LOG_WARN("Try to read config from BLOB");
+    bool                         flag_use_default_config = false;
+    ruuvi_gateway_config_blob_t *p_gw_cfg_blob           = os_calloc(1, sizeof(*p_gw_cfg_blob));
+    if (NULL == p_gw_cfg_blob)
+    {
+        flag_use_default_config = true;
+    }
+    else
+    {
+        if (!settings_get_gw_cfg_blob_from_nvs(handle, p_gw_cfg_blob))
+        {
+            flag_use_default_config = true;
+        }
+        else
+        {
+            gw_cfg_blob_convert(p_gw_cfg, p_gw_cfg_blob);
+        }
+        os_free(p_gw_cfg_blob);
+    }
+    return flag_use_default_config;
+}
+
+bool
 settings_get_from_flash(void)
 {
     ruuvi_gateway_config_t *p_gw_cfg                = gw_cfg_lock_rw();
@@ -231,26 +253,9 @@ settings_get_from_flash(void)
     }
     else
     {
-        if (!settings_get_gw_cfg_from_nvs(handle, p_gw_cfg, &flag_use_default_config))
+        if (!settings_get_gw_cfg_from_nvs(handle, p_gw_cfg))
         {
-            LOG_WARN("Try to read config from BLOB");
-            ruuvi_gateway_config_blob_t *p_gw_cfg_blob = os_calloc(1, sizeof(*p_gw_cfg_blob));
-            if (NULL == p_gw_cfg_blob)
-            {
-                flag_use_default_config = true;
-            }
-            else
-            {
-                if (!settings_get_gw_cfg_blob_from_nvs(handle, p_gw_cfg_blob))
-                {
-                    flag_use_default_config = true;
-                }
-                else
-                {
-                    gw_cfg_blob_convert(p_gw_cfg, p_gw_cfg_blob);
-                }
-                os_free(p_gw_cfg_blob);
-            }
+            flag_use_default_config = settings_read_from_blob(handle, p_gw_cfg);
         }
         nvs_close(handle);
     }
@@ -281,6 +286,7 @@ settings_get_from_flash(void)
 
     gw_cfg_print_to_log(p_gw_cfg);
     gw_cfg_unlock_rw(&p_gw_cfg);
+    return flag_use_default_config;
 }
 
 mac_address_bin_t

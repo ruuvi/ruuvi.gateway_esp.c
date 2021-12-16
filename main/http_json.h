@@ -12,10 +12,23 @@
 #include <time.h>
 #include "adv_table.h"
 #include "cjson_wrap.h"
+#include "fw_update.h"
+#include "nrf52fw.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+typedef struct http_json_statistics_info_t
+{
+    mac_address_str_t           nrf52_mac_addr;
+    fw_update_app_version_str_t esp_fw;
+    nrf52fw_version_str_t       nrf_fw;
+    uint32_t                    uptime;
+    uint32_t                    nonce;
+    bool                        is_connected_to_wifi;
+    uint32_t                    network_disconnect_cnt;
+} http_json_statistics_info_t;
 
 bool
 http_json_create_records_str(
@@ -29,15 +42,9 @@ http_json_create_records_str(
 
 bool
 http_json_create_status_str(
-    const mac_address_str_t         nrf52_mac_addr,
-    const char *                    p_esp_fw,
-    const char *                    p_nrf_fw,
-    const uint32_t                  uptime,
-    const bool                      flag_is_wifi,
-    const uint32_t                  network_disconnect_cnt,
-    const adv_report_table_t *const p_reports,
-    const uint32_t                  nonce,
-    cjson_wrap_str_t *const         p_json_str);
+    const http_json_statistics_info_t *const p_stat_info,
+    const adv_report_table_t *const          p_reports,
+    cjson_wrap_str_t *const                  p_json_str);
 
 #ifdef __cplusplus
 }

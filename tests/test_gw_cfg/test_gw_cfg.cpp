@@ -5,15 +5,11 @@
  * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
  */
 
-#include "json_ruuvi.h"
 #include <cstring>
 #include "gtest/gtest.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "gw_cfg.h"
 #include "gw_cfg_default.h"
-#include "gw_cfg_ruuvi_json.h"
-#include "gw_cfg_json.h"
 #include "esp_log_wrapper.hpp"
 #include "os_mutex_recursive.h"
 

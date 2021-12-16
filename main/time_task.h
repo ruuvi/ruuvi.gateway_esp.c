@@ -28,6 +28,11 @@ extern "C" {
 bool
 time_task_init(void);
 
+#if RUUVI_TESTS_TIME_TASK
+bool
+time_task_stop(void);
+#endif
+
 bool
 time_is_valid(const time_t timestamp);
 

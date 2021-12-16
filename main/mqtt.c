@@ -23,6 +23,8 @@
 
 typedef int mqtt_message_id_t;
 
+typedef int esp_mqtt_client_data_len_t;
+
 typedef struct mqtt_topic_buf_t
 {
     char buf[TOPIC_LEN];
@@ -146,7 +148,7 @@ mqtt_publish_connect(void)
         p_mqtt_data->p_mqtt_client,
         p_mqtt_data->mqtt_topic.buf,
         p_message,
-        (int)strlen(p_message),
+        (esp_mqtt_client_data_len_t)strlen(p_message),
         mqtt_qos,
         mqtt_flag_retain);
 
@@ -178,7 +180,7 @@ mqtt_publish_state_offline(mqtt_protected_data_t *const p_mqtt_data)
         p_mqtt_data->p_mqtt_client,
         p_mqtt_data->mqtt_topic.buf,
         p_message,
-        (int)strlen(p_message),
+        (esp_mqtt_client_data_len_t)strlen(p_message),
         mqtt_qos,
         mqtt_flag_retain);
 
@@ -245,6 +247,60 @@ mqtt_event_handler(esp_mqtt_event_handle_t h_event)
     return ESP_OK;
 }
 
+static esp_mqtt_client_config_t
+mqtt_generate_client_config(
+    const ruuvi_gw_cfg_mqtt_t *const p_cfg_mqtt,
+    const mqtt_topic_buf_t *const    p_mqtt_topic,
+    const char *const                p_lwt_message,
+    const esp_mqtt_transport_t       mqtt_transport)
+{
+    const esp_mqtt_client_config_t mqtt_cfg = {
+        .event_handle                = &mqtt_event_handler,
+        .event_loop_handle           = NULL,
+        .host                        = p_cfg_mqtt->mqtt_server.buf,
+        .uri                         = NULL,
+        .port                        = p_cfg_mqtt->mqtt_port,
+        .client_id                   = p_cfg_mqtt->mqtt_client_id.buf,
+        .username                    = p_cfg_mqtt->mqtt_user.buf,
+        .password                    = p_cfg_mqtt->mqtt_pass.buf,
+        .lwt_topic                   = p_mqtt_topic->buf,
+        .lwt_msg                     = p_lwt_message,
+        .lwt_qos                     = 1,
+        .lwt_retain                  = true,
+        .lwt_msg_len                 = 0,
+        .disable_clean_session       = 0,
+        .keepalive                   = 0,
+        .disable_auto_reconnect      = false,
+        .user_context                = NULL,
+        .task_prio                   = 0,
+        .task_stack                  = 0,
+        .buffer_size                 = 0,
+        .cert_pem                    = NULL,
+        .cert_len                    = 0,
+        .client_cert_pem             = NULL,
+        .client_cert_len             = 0,
+        .client_key_pem              = NULL,
+        .client_key_len              = 0,
+        .transport                   = mqtt_transport,
+        .refresh_connection_after_ms = 0,
+        .psk_hint_key                = NULL,
+        .use_global_ca_store         = false,
+        .reconnect_timeout_ms        = 0,
+        .alpn_protos                 = NULL,
+        .clientkey_password          = NULL,
+        .clientkey_password_len      = 0,
+        .protocol_ver                = MQTT_PROTOCOL_UNDEFINED,
+        .out_buffer_size             = 0,
+        .skip_cert_common_name_check = false,
+        .use_secure_element          = false,
+        .ds_data                     = NULL,
+        .network_timeout_ms          = (CONFIG_ESP_TASK_WDT_TIMEOUT_S * TIME_UNITS_MS_PER_SECOND)
+                              - (TIME_UNITS_MS_PER_SECOND / 2),
+        .disable_keepalive = false,
+    };
+    return mqtt_cfg;
+}
+
 static void
 mqtt_app_start_internal(mqtt_protected_data_t *const p_mqtt_data)
 {
@@ -291,44 +347,16 @@ mqtt_app_start_internal(mqtt_protected_data_t *const p_mqtt_data)
     {
         mqtt_transport = MQTT_TRANSPORT_OVER_WSS;
     }
+    else
+    {
+        LOG_WARN("Unknown MQTT transport='%s', use TCP", p_gw_cfg->mqtt.mqtt_transport.buf);
+    }
 
-    const esp_mqtt_client_config_t mqtt_cfg = {
-        .event_handle                = &mqtt_event_handler,
-        .event_loop_handle           = NULL,
-        .host                        = p_gw_cfg->mqtt.mqtt_server.buf,
-        .uri                         = NULL,
-        .port                        = p_gw_cfg->mqtt.mqtt_port,
-        .client_id                   = p_gw_cfg->mqtt.mqtt_client_id.buf,
-        .username                    = p_gw_cfg->mqtt.mqtt_user.buf,
-        .password                    = p_gw_cfg->mqtt.mqtt_pass.buf,
-        .lwt_topic                   = p_mqtt_data->mqtt_topic.buf,
-        .lwt_msg                     = p_lwt_message,
-        .lwt_qos                     = 1,
-        .lwt_retain                  = true,
-        .lwt_msg_len                 = 0,
-        .disable_clean_session       = 0,
-        .keepalive                   = 0,
-        .disable_auto_reconnect      = false,
-        .user_context                = NULL,
-        .task_prio                   = 0,
-        .task_stack                  = 0,
-        .buffer_size                 = 0,
-        .cert_pem                    = NULL,
-        .cert_len                    = 0,
-        .client_cert_pem             = NULL,
-        .client_cert_len             = 0,
-        .client_key_pem              = NULL,
-        .client_key_len              = 0,
-        .transport                   = mqtt_transport,
-        .refresh_connection_after_ms = 0,
-        .psk_hint_key                = NULL,
-        .use_global_ca_store         = false,
-        .reconnect_timeout_ms        = 0,
-        .alpn_protos                 = NULL,
-        .clientkey_password          = NULL,
-        .clientkey_password_len      = 0,
-        .network_timeout_ms          = CONFIG_ESP_TASK_WDT_TIMEOUT_S * 1000 - 500,
-    };
+    const esp_mqtt_client_config_t mqtt_cfg = mqtt_generate_client_config(
+        &p_gw_cfg->mqtt,
+        &p_mqtt_data->mqtt_topic,
+        p_lwt_message,
+        mqtt_transport);
     gw_cfg_unlock_ro(&p_gw_cfg);
 
     p_mqtt_data->p_mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
