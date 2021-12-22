@@ -268,7 +268,7 @@ ethernet_init(
     ethernet_cb_connection_ok_t ethernet_connection_ok_cb)
 {
     LOG_INFO("Ethernet init");
-    return false;
+
     g_ethernet_link_up_cb       = ethernet_link_up_cb;
     g_ethernet_link_down_cb     = ethernet_link_down_cb;
     g_ethernet_connection_ok_cb = ethernet_connection_ok_cb;
@@ -324,6 +324,20 @@ ethernet_init(
     if (ESP_OK != err_code)
     {
         LOG_ERR_ESP(err_code, "Ethernet driver install failed");
+        return false;
+    }
+
+    void* p_eth_glue = esp_eth_new_netif_glue(g_eth_handle);
+    if (NULL == p_eth_glue)
+    {
+        LOG_ERR_ESP(err_code, "esp_eth_new_netif_glue failed");
+        return false;
+    }
+
+    err_code = esp_netif_attach(p_netif_eth, p_eth_glue);
+    if (ESP_OK != err_code)
+    {
+        LOG_ERR_ESP(err_code, "esp_netif_attach failed");
         return false;
     }
 
