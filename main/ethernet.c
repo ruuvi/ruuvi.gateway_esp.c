@@ -327,7 +327,7 @@ ethernet_init(
         return false;
     }
 
-    void* p_eth_glue = esp_eth_new_netif_glue(g_eth_handle);
+    void *p_eth_glue = esp_eth_new_netif_glue(g_eth_handle);
     if (NULL == p_eth_glue)
     {
         LOG_ERR_ESP(err_code, "esp_eth_new_netif_glue failed");
