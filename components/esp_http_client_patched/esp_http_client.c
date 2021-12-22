@@ -600,6 +600,8 @@ esp_http_client_handle_t esp_http_client_init(const esp_http_client_config_t *co
         esp_transport_ssl_enable_global_ca_store(ssl);
     } else if (config->cert_pem) {
         esp_transport_ssl_set_cert_data(ssl, config->cert_pem, strlen(config->cert_pem));
+    } else {
+        esp_transport_ssl_crt_bundle_attach(ssl);
     }
 
     if (config->client_cert_pem) {
