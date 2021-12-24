@@ -1,0 +1,62 @@
+This is a patched version of ${ESP-IDF}/components/esp_http_client
+
+"ESP x509 Certificate Bundle" is included into ESP-IDF, but the implementation of esp_http_client doesn't allow to use it.
+The main purpose of this patch is to add support for "ESP x509 Certificate Bundle" to esp_http_client.
+
+
+The patch diff: https://github.com/ruuvi/ruuvi.gateway_esp.c/pull/448/commits/12f9c44deb4d1a9db21b2f8438898a9109ea2210
+========================================================================================================================
+
+diff --git a/components/esp_http_client_patched/esp_http_client.c b/components/esp_http_client_patched/esp_http_client.c
+index d3f00ec..64d3474 100644
+--- a/components/esp_http_client_patched/esp_http_client.c
++++ b/components/esp_http_client_patched/esp_http_client.c
+@@ -600,6 +600,8 @@ esp_http_client_handle_t esp_http_client_init(const esp_http_client_config_t *co
+         esp_transport_ssl_enable_global_ca_store(ssl);
+     } else if (config->cert_pem) {
+         esp_transport_ssl_set_cert_data(ssl, config->cert_pem, strlen(config->cert_pem));
++    } else {
++        esp_transport_ssl_crt_bundle_attach(ssl);
+     }
+
+     if (config->client_cert_pem) {
+diff --git a/components/tcp_transport_patched/include/esp_transport_ssl.h b/components/tcp_transport_patched/include/esp_transport_ssl.h
+index 2711abf..766da6b 100644
+--- a/components/tcp_transport_patched/include/esp_transport_ssl.h
++++ b/components/tcp_transport_patched/include/esp_transport_ssl.h
+@@ -59,6 +59,8 @@ void esp_transport_ssl_set_cert_data_der(esp_transport_handle_t t, const char *d
+  */
+ void esp_transport_ssl_enable_global_ca_store(esp_transport_handle_t t);
+
++void esp_transport_ssl_crt_bundle_attach(esp_transport_handle_t t);
++
+ /**
+  * @brief      Set SSL client certificate data for mutual authentication (as PEM format).
+  *             Note that, this function stores the pointer to data, rather than making a copy.
+diff --git a/components/tcp_transport_patched/transport_ssl.c b/components/tcp_transport_patched/transport_ssl.c
+index 573782e..7839eb0 100644
+--- a/components/tcp_transport_patched/transport_ssl.c
++++ b/components/tcp_transport_patched/transport_ssl.c
+@@ -26,6 +26,7 @@
+ #include "esp_transport_utils.h"
+ #include "esp_transport_ssl_internal.h"
+ #include "esp_transport_internal.h"
++#include "esp_crt_bundle.h"
+
+ static const char *TAG = "TRANS_SSL";
+
+@@ -203,6 +204,14 @@ void esp_transport_ssl_enable_global_ca_store(esp_transport_handle_t t)
+     }
+ }
+
++void esp_transport_ssl_crt_bundle_attach(esp_transport_handle_t t)
++{
++  transport_ssl_t *ssl = esp_transport_get_context_data(t);
++  if (t && ssl) {
++    ssl->cfg.crt_bundle_attach = &esp_crt_bundle_attach;
++  }
++}
++
+ #ifdef CONFIG_ESP_TLS_PSK_VERIFICATION
+ void esp_transport_ssl_set_psk_key_hint(esp_transport_handle_t t, const psk_hint_key_t* psk_hint_key)
+ {
