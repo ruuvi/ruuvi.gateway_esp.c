@@ -12,6 +12,7 @@
 #include "driver/gpio.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
+#include "esp_netif_net_stack.h"
 #include "ethernet.h"
 #include "os_task.h"
 #include "os_malloc.h"
@@ -180,7 +181,7 @@ ethernet_link_down_cb(void)
 }
 
 static void
-ethernet_connection_ok_cb(const tcpip_adapter_ip_info_t *p_ip_info)
+ethernet_connection_ok_cb(const esp_netif_ip_info_t *p_ip_info)
 {
     LOG_INFO("Ethernet connected");
     leds_indication_on_network_ok();
@@ -211,25 +212,22 @@ ethernet_connection_ok_cb(const tcpip_adapter_ip_info_t *p_ip_info)
             LOG_ERR("%s failed", "gw_cfg_set_auth_from_config");
         }
     }
-    const ip4_addr_t *p_dhcp_ip = NULL;
+    const struct dhcp *p_dhcp  = NULL;
+    esp_ip4_addr_t     dhcp_ip = { 0 };
     if (gw_cfg_get_eth_use_dhcp())
     {
-        struct netif *p_netif = NULL;
-        esp_err_t     err     = tcpip_adapter_get_netif(TCPIP_ADAPTER_IF_ETH, (void **)&p_netif);
-        if (ESP_OK != err)
-        {
-            LOG_ERR_ESP(err, "%s failed", "tcpip_adapter_get_netif");
-        }
-        else
-        {
-            const struct dhcp *const p_dhcp = netif_dhcp_data(p_netif);
-            if (NULL != p_dhcp)
-            {
-                p_dhcp_ip = &p_dhcp->server_ip_addr.u_addr.ip4;
-            }
-        }
+        esp_netif_t *const p_netif_eth = esp_netif_get_handle_from_ifkey("ETH_DEF");
+        p_dhcp                         = netif_dhcp_data((struct netif *)esp_netif_get_netif_impl(p_netif_eth));
     }
-    wifi_manager_update_network_connection_info(UPDATE_CONNECTION_OK, NULL, p_ip_info, p_dhcp_ip);
+    if (NULL != p_dhcp)
+    {
+        dhcp_ip.addr = p_dhcp->server_ip_addr.u_addr.ip4.addr;
+    }
+    wifi_manager_update_network_connection_info(
+        UPDATE_CONNECTION_OK,
+        NULL,
+        p_ip_info,
+        (NULL != p_dhcp) ? &dhcp_ip : NULL);
     xEventGroupSetBits(status_bits, ETH_CONNECTED_BIT);
     start_services();
     event_mgr_notify(EVENT_MGR_EV_ETH_CONNECTED);

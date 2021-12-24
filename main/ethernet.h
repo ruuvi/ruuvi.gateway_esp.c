@@ -9,7 +9,7 @@
 #define RUUVI_ETHERNET_H
 
 #include <stdbool.h>
-#include "tcpip_adapter.h"
+#include "esp_netif.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,7 +17,7 @@ extern "C" {
 
 typedef void (*ethernet_cb_link_up_t)(void);
 typedef void (*ethernet_cb_link_down_t)(void);
-typedef void (*ethernet_cb_connection_ok_t)(const tcpip_adapter_ip_info_t *p_ip_info);
+typedef void (*ethernet_cb_connection_ok_t)(const esp_netif_ip_info_t *p_ip_info);
 
 bool
 ethernet_init(

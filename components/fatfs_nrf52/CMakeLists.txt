@@ -20,11 +20,6 @@ ExternalProject_Add(fatfs_nrf52_ext
         BUILD_ALWAYS 1
 )
 
-esptool_py_flash_project_args(fatfs_nrf52_ext
-        ${FATFS_NRF52_ADDR}
-        ${FATFS_NRF32_IMG}
-        FLASH_IN_PROJECT
-)
+esptool_py_flash_target_image(flash fatfs_nrf52_ext "${FATFS_NRF52_ADDR}" "${FATFS_NRF32_IMG}")
 
-esptool_py_custom_target(fatfs_nrf52-flash fatfs_nrf52_ext "fatfs_nrf52")
 add_dependencies(fatfs_nrf52_ext partition_table)

@@ -18,7 +18,7 @@
 #include "mqtt.h"
 #include "ruuvi_gateway.h"
 #include "sdkconfig.h"
-#include "tcpip_adapter.h"
+#include "esp_netif.h"
 #include "time_task.h"
 #include "wifi_manager.h"
 #include <stdio.h>
@@ -97,8 +97,8 @@ got_ip_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, v
     (void)arg;
     (void)event_base;
     (void)event_id;
-    const ip_event_got_ip_t *      p_event   = (ip_event_got_ip_t *)event_data;
-    const tcpip_adapter_ip_info_t *p_ip_info = &p_event->ip_info;
+    const ip_event_got_ip_t *  p_event   = (ip_event_got_ip_t *)event_data;
+    const esp_netif_ip_info_t *p_ip_info = &p_event->ip_info;
     LOG_INFO("Ethernet Got IP Address");
     LOG_INFO("~~~~~~~~~~~");
     LOG_INFO("ETH:IP:" IPSTR, IP2STR(&p_ip_info->ip));
@@ -111,29 +111,31 @@ got_ip_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, v
 static bool
 ethernet_update_ip_dhcp(void)
 {
+    esp_netif_t *const p_netif_eth = esp_netif_get_handle_from_ifkey("ETH_DEF");
     LOG_INFO("Using ETH DHCP");
-    const esp_err_t ret = tcpip_adapter_dhcpc_start(TCPIP_ADAPTER_IF_ETH);
+    const esp_err_t ret = esp_netif_dhcpc_start(p_netif_eth);
     if (ESP_OK != ret)
     {
-        LOG_ERR_ESP(ret, "%s failed", "tcpip_adapter_dhcpc_start");
+        LOG_ERR_ESP(ret, "%s failed", "esp_netif_dhcpc_start");
         return false;
     }
     return true;
 }
 
 static bool
-eth_tcpip_adapter_dhcpc_stop(void)
+eth_netif_dhcpc_stop(void)
 {
-    const esp_err_t ret = tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_ETH);
+    esp_netif_t *const p_netif_eth = esp_netif_get_handle_from_ifkey("ETH_DEF");
+    const esp_err_t    ret         = esp_netif_dhcpc_stop(p_netif_eth);
     if (ESP_OK != ret)
     {
-        if ((ESP_ERR_TCPIP_ADAPTER_DHCP_ALREADY_STOPPED) == ret)
+        if ((ESP_ERR_ESP_NETIF_DHCP_ALREADY_STOPPED) == ret)
         {
             LOG_WARN("DHCP client already stopped");
         }
         else
         {
-            LOG_ERR_ESP(ret, "%s failed", "tcpip_adapter_dhcpc_stop");
+            LOG_ERR_ESP(ret, "%s failed", "esp_netif_dhcpc_stop");
             return false;
         }
     }
@@ -141,44 +143,46 @@ eth_tcpip_adapter_dhcpc_stop(void)
 }
 
 static void
-eth_tcpip_adapter_set_dns_info(const char *p_dns_ip, const tcpip_adapter_dns_type_t type)
+eth_netif_set_dns_info(const char *p_dns_ip, const esp_netif_dns_type_t type)
 {
-    const char *dns_server = "Undef";
+    esp_netif_t *const p_netif_eth = esp_netif_get_handle_from_ifkey("ETH_DEF");
+    const char *       dns_server  = "Undef";
     switch (type)
     {
-        case TCPIP_ADAPTER_DNS_MAIN:
+        case ESP_NETIF_DNS_MAIN:
             dns_server = "DNS1";
             break;
-        case TCPIP_ADAPTER_DNS_BACKUP:
+        case ESP_NETIF_DNS_BACKUP:
             dns_server = "DNS2";
             break;
-        case TCPIP_ADAPTER_DNS_FALLBACK:
+        case ESP_NETIF_DNS_FALLBACK:
             dns_server = "DNS_FALLBACK";
             break;
         default:
             break;
     }
 
-    tcpip_adapter_dns_info_t dns_info = {
+    esp_netif_dns_info_t dns_info = {
         .ip = {
             .u_addr = {
                 .ip4 = {
                     .addr = 0,
                 },
             },
-            .type = IPADDR_TYPE_V4,
+            .type = ESP_IPADDR_TYPE_V4,
         },
     };
 
-    if (0 == ip4addr_aton(p_dns_ip, &dns_info.ip.u_addr.ip4))
+    dns_info.ip.u_addr.ip4.addr = esp_ip4addr_aton(p_dns_ip);
+    if (0 == dns_info.ip.u_addr.ip4.addr)
     {
         LOG_ERR("Set DNS info failed for %s, invalid server: %s", dns_server, p_dns_ip);
         return;
     }
-    const esp_err_t ret = tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_ETH, type, &dns_info);
+    const esp_err_t ret = esp_netif_set_dns_info(p_netif_eth, type, &dns_info);
     if (ESP_OK != ret)
     {
-        LOG_ERR_ESP(ret, "%s failed for DNS: '%s'", "tcpip_adapter_set_dns_info", dns_server);
+        LOG_ERR_ESP(ret, "%s failed for DNS: '%s'", "esp_netif_set_dns_info", dns_server);
         return;
     }
 }
@@ -186,42 +190,46 @@ eth_tcpip_adapter_set_dns_info(const char *p_dns_ip, const tcpip_adapter_dns_typ
 static bool
 ethernet_update_ip_static(const ruuvi_gateway_config_t *const p_gw_cfg)
 {
-    tcpip_adapter_ip_info_t ip_info = { 0 };
+    esp_netif_ip_info_t ip_info = { 0 };
 
     LOG_INFO("Using static IP");
 
-    if (0 == ip4addr_aton(p_gw_cfg->eth.eth_static_ip.buf, &ip_info.ip))
+    ip_info.ip.addr = esp_ip4addr_aton(p_gw_cfg->eth.eth_static_ip.buf);
+    if (0 == ip_info.ip.addr)
     {
         LOG_ERR("Invalid eth static ip: %s", p_gw_cfg->eth.eth_static_ip.buf);
         return false;
     }
 
-    if (0 == ip4addr_aton(p_gw_cfg->eth.eth_netmask.buf, &ip_info.netmask))
+    ip_info.netmask.addr = esp_ip4addr_aton(p_gw_cfg->eth.eth_netmask.buf);
+    if (0 == ip_info.netmask.addr)
     {
         LOG_ERR("invalid eth netmask: %s", p_gw_cfg->eth.eth_netmask.buf);
         return false;
     }
 
-    if (0 == ip4addr_aton(p_gw_cfg->eth.eth_gw.buf, &ip_info.gw))
+    ip_info.gw.addr = esp_ip4addr_aton(p_gw_cfg->eth.eth_gw.buf);
+    if (0 == ip_info.gw.addr)
     {
         LOG_ERR("invalid eth gw: %s", p_gw_cfg->eth.eth_gw.buf);
         return false;
     }
 
-    if (!eth_tcpip_adapter_dhcpc_stop())
+    if (!eth_netif_dhcpc_stop())
     {
         return false;
     }
 
-    const esp_err_t ret = tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_ETH, &ip_info);
+    esp_netif_t *const p_netif_eth = esp_netif_get_handle_from_ifkey("ETH_DEF");
+    const esp_err_t    ret         = esp_netif_set_ip_info(p_netif_eth, &ip_info);
     if (ESP_OK != ret)
     {
-        LOG_ERR_ESP(ret, "%s failed", "tcpip_adapter_set_ip_info");
+        LOG_ERR_ESP(ret, "%s failed", "esp_netif_set_ip_info");
         return false;
     }
 
-    eth_tcpip_adapter_set_dns_info(p_gw_cfg->eth.eth_dns1.buf, TCPIP_ADAPTER_DNS_MAIN);
-    eth_tcpip_adapter_set_dns_info(p_gw_cfg->eth.eth_dns2.buf, TCPIP_ADAPTER_DNS_BACKUP);
+    eth_netif_set_dns_info(p_gw_cfg->eth.eth_dns1.buf, ESP_NETIF_DNS_MAIN);
+    eth_netif_set_dns_info(p_gw_cfg->eth.eth_dns2.buf, ESP_NETIF_DNS_BACKUP);
     return true;
 }
 
@@ -248,7 +256,7 @@ ethernet_update_ip(void)
     gw_cfg_unlock_ro(&p_gw_cfg);
 
     // set DNS fallback also for DHCP settings
-    eth_tcpip_adapter_set_dns_info(dns_fallback_server, TCPIP_ADAPTER_DNS_FALLBACK);
+    eth_netif_set_dns_info(dns_fallback_server, ESP_NETIF_DNS_FALLBACK);
 
     LOG_INFO("ETH ip updated");
 }
@@ -260,20 +268,28 @@ ethernet_init(
     ethernet_cb_connection_ok_t ethernet_connection_ok_cb)
 {
     LOG_INFO("Ethernet init");
+
     g_ethernet_link_up_cb       = ethernet_link_up_cb;
     g_ethernet_link_down_cb     = ethernet_link_down_cb;
     g_ethernet_connection_ok_cb = ethernet_connection_ok_cb;
     gpio_set_direction(LAN_CLOCK_ENABLE, GPIO_MODE_OUTPUT);
     gpio_set_level(LAN_CLOCK_ENABLE, 1);
-    ethernet_update_ip();
-    tcpip_adapter_init();
+    esp_netif_init();
 
-    esp_err_t err_code = tcpip_adapter_set_default_eth_handlers();
-    if (ESP_OK != err_code)
+    const esp_netif_config_t netif_cfg   = ESP_NETIF_DEFAULT_ETH();
+    esp_netif_t *const       p_netif_eth = esp_netif_new(&netif_cfg);
+    if (NULL == p_netif_eth)
     {
-        LOG_ERR_ESP(err_code, "%s failed", "tcpip_adapter_set_default_eth_handlers");
+        LOG_ERR("%s failed", "esp_netif_new");
         return false;
     }
+    esp_err_t err_code = esp_eth_set_default_handlers(p_netif_eth);
+    if (ESP_OK != err_code)
+    {
+        LOG_ERR_ESP(err_code, "%s failed", "esp_eth_set_default_handlers");
+        return false;
+    }
+
     err_code = esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, &eth_event_handler, NULL);
     if (ESP_OK != err_code)
     {
@@ -286,6 +302,10 @@ ethernet_init(
         LOG_ERR_ESP(err_code, "%s failed", "esp_event_handler_register");
         return false;
     }
+
+    LOG_INFO("ethernet_update_ip");
+    ethernet_update_ip();
+
     eth_mac_config_t mac_config = ETH_MAC_DEFAULT_CONFIG();
     eth_phy_config_t phy_config = ETH_PHY_DEFAULT_CONFIG();
 
@@ -299,10 +319,25 @@ ethernet_init(
     esp_eth_mac_t *  mac    = esp_eth_mac_new_esp32(&mac_config);
     esp_eth_phy_t *  phy    = esp_eth_phy_new_lan8720(&phy_config);
     esp_eth_config_t config = ETH_DEFAULT_CONFIG(mac, phy);
-    err_code                = esp_eth_driver_install(&config, &g_eth_handle);
+    LOG_INFO("esp_eth_driver_install");
+    err_code = esp_eth_driver_install(&config, &g_eth_handle);
     if (ESP_OK != err_code)
     {
         LOG_ERR_ESP(err_code, "Ethernet driver install failed");
+        return false;
+    }
+
+    void *p_eth_glue = esp_eth_new_netif_glue(g_eth_handle);
+    if (NULL == p_eth_glue)
+    {
+        LOG_ERR_ESP(err_code, "esp_eth_new_netif_glue failed");
+        return false;
+    }
+
+    err_code = esp_netif_attach(p_netif_eth, p_eth_glue);
+    if (ESP_OK != err_code)
+    {
+        LOG_ERR_ESP(err_code, "esp_netif_attach failed");
         return false;
     }
 
@@ -343,8 +378,6 @@ ethernet_deinit(void)
     {
         LOG_ERR_ESP(err_code, "Ethernet event handler unregister failed: %s", "IP_EVENT_ETH_GOT_IP");
     }
-
-    tcpip_adapter_clear_default_eth_handlers();
 }
 
 void
@@ -361,11 +394,13 @@ ethernet_start(const char *const hostname)
         LOG_ERR_ESP(err, "Ethernet start failed");
     }
 
+    esp_netif_t *const p_netif_eth = esp_netif_get_handle_from_ifkey("ETH_DEF");
+
     LOG_INFO("Set hostname for Ethernet interface: %s", hostname);
-    err = tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_ETH, hostname);
+    err = esp_netif_set_hostname(p_netif_eth, hostname);
     if (ESP_OK != err)
     {
-        LOG_ERR_ESP(err, "%s failed", "tcpip_adapter_set_hostname");
+        LOG_ERR_ESP(err, "%s failed", "esp_netif_set_hostname");
     }
 }
 

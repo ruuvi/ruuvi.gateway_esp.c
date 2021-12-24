@@ -74,7 +74,7 @@ idf_component_register(
             app_update
             mqtt
             lwip
-            esp_http_client
+            esp_http_client_patched
             json
             fatfs
             esp32-wifi-manager
