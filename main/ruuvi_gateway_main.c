@@ -67,7 +67,6 @@ static const char TAG[] = "ruuvi_gateway";
 EventGroupHandle_t status_bits;
 uint32_t volatile g_network_disconnect_cnt;
 
-
 static inline uint8_t
 conv_bool_to_u8(const bool x)
 {
