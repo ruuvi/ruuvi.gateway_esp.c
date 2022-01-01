@@ -29,8 +29,22 @@
 
 static const char *TAG = "TRANS_TCP";
 
+typedef enum {
+    TRANS_TCP_INIT = 0,
+    TRANS_TCP_CONNECTING,
+    TRANS_TCP_CONNECTED,
+    TRANS_TCP_FAIL,
+} transport_tcp_conn_state_t;
+
 typedef struct {
     int sock;
+    transport_tcp_conn_state_t conn_state;
+    bool non_block; /*!< Configure non-blocking mode. If set to true the
+                         underneath socket will be configured in non
+                         blocking mode after tls session is established */
+    fd_set rset;    /*!< read file descriptors */
+    fd_set wset;    /*!< write file descriptors */
+    struct timeval timer_start;
 } transport_tcp_t;
 
 static int resolve_dns(const char *host, struct sockaddr_in *ip)
@@ -86,6 +100,8 @@ static int tcp_connect(esp_transport_handle_t t, const char *host, int port, int
     struct timeval tv = { 0 };
     transport_tcp_t *tcp = esp_transport_get_context_data(t);
 
+    ESP_LOGD(TAG, "tcp_connect: %s:%d, timeout=%d ms, non_block=%d", host, port, timeout_ms, tcp->non_block);
+
     bzero(&remote_ip, sizeof(struct sockaddr_in));
 
     //if stream_host is not ip address, resolve it AF_INET,servername,&serveraddr.sin_addr
@@ -131,7 +147,7 @@ static int tcp_connect(esp_transport_handle_t t, const char *host, int port, int
             tcp->sock, ipaddr_ntoa((const ip_addr_t*)&remote_ip.sin_addr.s_addr), port);
 
     if (connect(tcp->sock, (struct sockaddr *)(&remote_ip), sizeof(struct sockaddr)) < 0) {
-        if (errno == EINPROGRESS) {
+        if (!tcp->non_block && (errno == EINPROGRESS)) {
             fd_set fdset;
 
             esp_transport_utils_ms_to_timeval(timeout_ms, &tv);
@@ -162,24 +178,101 @@ static int tcp_connect(esp_transport_handle_t t, const char *host, int port, int
                     goto error;
                 }
             }
-        } else {
+        } else if (!tcp->non_block || (errno != EINPROGRESS)) {
             ESP_LOGE(TAG, "[sock=%d] connect() error: %s", tcp->sock, strerror(errno));
             goto error;
         }
     }
-    // Reset socket to blocking
-    if ((flags = fcntl(tcp->sock, F_GETFL, NULL)) < 0) {
-        ESP_LOGE(TAG, "[sock=%d] get file flags error: %s", tcp->sock, strerror(errno));
-        goto error;
-    }
-    if (fcntl(tcp->sock, F_SETFL, flags & ~O_NONBLOCK) < 0) {
-        ESP_LOGE(TAG, "[sock=%d] reset blocking error: %s", tcp->sock, strerror(errno));
-        goto error;
+    if (!tcp->non_block) {
+        // Reset socket to blocking
+        if ((flags = fcntl(tcp->sock, F_GETFL, NULL)) < 0) {
+            ESP_LOGE(TAG, "[sock=%d] get file flags error: %s", tcp->sock, strerror(errno));
+            goto error;
+        }
+        if (fcntl(tcp->sock, F_SETFL, flags & ~O_NONBLOCK) < 0) {
+            ESP_LOGE(TAG, "[sock=%d] reset blocking error: %s", tcp->sock, strerror(errno));
+            goto error;
+        }
     }
     return tcp->sock;
 error:
     close(tcp->sock);
     tcp->sock = -1;
+    return -1;
+}
+
+static int esp_transport_tcp_connect_async(esp_transport_handle_t t, const char *host, int port, int timeout_ms)
+{
+    transport_tcp_t *tcp = esp_transport_get_context_data(t);
+    /* These states are used to keep a tab on connection progress in case of non-blocking connect,
+    and in case of blocking connect these cases will get executed one after the other */
+    switch (tcp->conn_state) {
+        case TRANS_TCP_INIT:
+            tcp->non_block = true;
+            tcp->sock = tcp_connect(t, host, port, timeout_ms);
+            if (tcp->sock < 0) {
+                return -1;
+            }
+            FD_ZERO(&tcp->rset);
+            FD_SET(tcp->sock, &tcp->rset);
+            tcp->wset = tcp->rset;
+            gettimeofday(&tcp->timer_start, NULL);
+            tcp->conn_state = TRANS_TCP_CONNECTING;
+            return 0; // Connection has not yet established
+
+        case TRANS_TCP_CONNECTING:
+        {
+            struct timeval tv = { .tv_sec = 0, .tv_usec = 0 };
+            if (select(tcp->sock + 1, &tcp->rset, &tcp->wset, NULL, &tv) < 0)
+            {
+                ESP_LOGD(TAG, "Non blocking connecting failed");
+                tcp->conn_state = TRANS_TCP_FAIL;
+                return -1;
+            }
+
+            if (FD_ISSET(tcp->sock, &tcp->rset) || FD_ISSET(tcp->sock, &tcp->wset))
+            {
+                int       error = 0;
+                socklen_t len   = sizeof(error);
+                /* pending error check */
+                if (getsockopt(tcp->sock, SOL_SOCKET, SO_ERROR, &error, &len) < 0)
+                {
+                    ESP_LOGD(TAG, "Non blocking connect failed");
+                    tcp->conn_state = TRANS_TCP_FAIL;
+                    return -1;
+                }
+            }
+            else
+            {
+                struct timeval now = { .tv_sec = 0, .tv_usec = 0 };
+                gettimeofday(&now, NULL);
+                unsigned long delta_ms = (now.tv_sec - tcp->timer_start.tv_sec) * 1000ul
+                                         + (now.tv_usec - tcp->timer_start.tv_usec) / 1000;
+                if (delta_ms > timeout_ms)
+                {
+                    ESP_LOGD(TAG, "select() timed out");
+                    tcp->conn_state = TRANS_TCP_FAIL;
+                    return -1;
+                }
+                return 0; // Connection has not yet established
+            }
+            /* By now, the connection has been established */
+            tcp->conn_state = TRANS_TCP_CONNECTED;
+
+#if defined(__GNUC__) && (__GNUC__ >= 7)
+            __attribute__((fallthrough));
+#endif
+        }
+        case TRANS_TCP_CONNECTED:
+            ESP_LOGD(TAG, "%s: connected", __func__);
+            return 1;
+        case TRANS_TCP_FAIL:
+            ESP_LOGE(TAG, "%s: failed to open a new connection", __func__);
+            break;
+        default:
+            ESP_LOGE(TAG, "%s: invalid TCP conn-state", __func__);
+            break;
+    }
     return -1;
 }
 
@@ -302,8 +395,10 @@ esp_transport_handle_t esp_transport_tcp_init(void)
     });
 
     tcp->sock = -1;
+    tcp->non_block = false;
     esp_transport_set_func(t, tcp_connect, tcp_read, tcp_write, tcp_close, tcp_poll_read, tcp_poll_write, tcp_destroy);
     esp_transport_set_context_data(t, tcp);
+    esp_transport_set_async_connect_func(t, &esp_transport_tcp_connect_async);
     t->_get_socket = tcp_get_socket;
 
     return t;

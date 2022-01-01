@@ -78,6 +78,7 @@ typedef struct {
 typedef enum {
     HTTP_STATE_UNINIT = 0,
     HTTP_STATE_INIT,
+    HTTP_STATE_CONNECTING,
     HTTP_STATE_CONNECTED,
     HTTP_STATE_REQ_COMPLETE_HEADER,
     HTTP_STATE_REQ_COMPLETE_DATA,
@@ -998,11 +999,33 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
             case HTTP_STATE_INIT:
                 if ((err = esp_http_client_connect(client)) != ESP_OK) {
                     if (client->is_async && err == ESP_ERR_HTTP_CONNECTING) {
+                        client->state = HTTP_STATE_CONNECTING;
                         return ESP_ERR_HTTP_EAGAIN;
                     }
                     return err;
                 }
+                client->state = HTTP_STATE_CONNECTING;
                 /* falls through */
+#if defined(__GNUC__) && (__GNUC__ >= 7)
+                __attribute__((fallthrough));
+#endif
+            case HTTP_STATE_CONNECTING:
+                if (client->is_async) {
+                    int ret = esp_transport_connect_async(client->transport, client->connection_info.host,
+                                                          client->connection_info.port, client->timeout_ms);
+                    if (ret == ASYNC_TRANS_CONNECT_FAIL) {
+                        ESP_LOGE(TAG, "Connection failed");
+                        return ESP_ERR_HTTP_CONNECT;
+                    } else if (ret == ASYNC_TRANS_CONNECTING) {
+                        ESP_LOGD(TAG, "Connection not yet established");
+                        return ESP_ERR_HTTP_CONNECTING;
+                    }
+                }
+                client->state = HTTP_STATE_CONNECTED;
+                /* falls through */
+#if defined(__GNUC__) && (__GNUC__ >= 7)
+                __attribute__((fallthrough));
+#endif
             case HTTP_STATE_CONNECTED:
                 if ((err = esp_http_client_request_send(client, client->post_len)) != ESP_OK) {
                     if (client->is_async && errno == EAGAIN) {
@@ -1011,6 +1034,9 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                     return err;
                 }
                 /* falls through */
+#if defined(__GNUC__) && (__GNUC__ >= 7)
+                __attribute__((fallthrough));
+#endif
             case HTTP_STATE_REQ_COMPLETE_HEADER:
                 if ((err = esp_http_client_send_post_data(client)) != ESP_OK) {
                     if (client->is_async && errno == EAGAIN) {
@@ -1019,6 +1045,9 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                     return err;
                 }
                 /* falls through */
+#if defined(__GNUC__) && (__GNUC__ >= 7)
+                __attribute__((fallthrough));
+#endif
             case HTTP_STATE_REQ_COMPLETE_DATA:
                 if (esp_http_client_fetch_headers(client) < 0) {
                     if (client->is_async && errno == EAGAIN) {
@@ -1027,6 +1056,9 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                     return ESP_ERR_HTTP_FETCH_HEADER;
                 }
                 /* falls through */
+#if defined(__GNUC__) && (__GNUC__ >= 7)
+                __attribute__((fallthrough));
+#endif
             case HTTP_STATE_RES_COMPLETE_HEADER:
                 if ((err = esp_http_check_response(client)) != ESP_OK) {
                     ESP_LOGE(TAG, "Error response");
@@ -1131,10 +1163,6 @@ static esp_err_t esp_http_client_connect(esp_http_client_handle_t client)
             int ret = esp_transport_connect_async(client->transport, client->connection_info.host, client->connection_info.port, client->timeout_ms);
             if (ret == ASYNC_TRANS_CONNECT_FAIL) {
                 ESP_LOGE(TAG, "Connection failed");
-                if (strcasecmp(client->connection_info.scheme, "http") == 0) {
-                    ESP_LOGE(TAG, "Asynchronous mode doesn't work for HTTP based connection");
-                    return ESP_ERR_INVALID_ARG;
-                }
                 return ESP_ERR_HTTP_CONNECT;
             } else if (ret == ASYNC_TRANS_CONNECTING) {
                 ESP_LOGD(TAG, "Connection not yet established");
