@@ -44,7 +44,7 @@ typedef struct {
                          blocking mode after tls session is established */
     fd_set rset;    /*!< read file descriptors */
     fd_set wset;    /*!< write file descriptors */
-    struct timeval timer_start;
+    TickType_t timer_start;
 } transport_tcp_t;
 
 static int resolve_dns(const char *host, struct sockaddr_in *ip)
@@ -216,7 +216,7 @@ static int esp_transport_tcp_connect_async(esp_transport_handle_t t, const char 
             FD_ZERO(&tcp->rset);
             FD_SET(tcp->sock, &tcp->rset);
             tcp->wset = tcp->rset;
-            gettimeofday(&tcp->timer_start, NULL);
+            tcp->timer_start = xTaskGetTickCount();
             tcp->conn_state = TRANS_TCP_CONNECTING;
             return 0; // Connection has not yet established
 
@@ -244,11 +244,9 @@ static int esp_transport_tcp_connect_async(esp_transport_handle_t t, const char 
             }
             else
             {
-                struct timeval now = { .tv_sec = 0, .tv_usec = 0 };
-                gettimeofday(&now, NULL);
-                unsigned long delta_ms = (now.tv_sec - tcp->timer_start.tv_sec) * 1000ul
-                                         + (now.tv_usec - tcp->timer_start.tv_usec) / 1000;
-                if (delta_ms > timeout_ms)
+                const TickType_t now = xTaskGetTickCount();
+                const uint32_t delta_ticks = now - tcp->timer_start;
+                if (delta_ticks > pdMS_TO_TICKS(timeout_ms))
                 {
                     ESP_LOGD(TAG, "select() timed out");
                     tcp->conn_state = TRANS_TCP_FAIL;
