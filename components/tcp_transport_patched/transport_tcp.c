@@ -45,6 +45,8 @@ typedef struct {
     fd_set rset;    /*!< read file descriptors */
     fd_set wset;    /*!< write file descriptors */
     TickType_t timer_start;
+    int timer_read_initialized;
+    int timer_write_initialized;
 } transport_tcp_t;
 
 static int resolve_dns(const char *host, struct sockaddr_in *ip)
@@ -213,9 +215,6 @@ static int esp_transport_tcp_connect_async(esp_transport_handle_t t, const char 
             if (tcp->sock < 0) {
                 return -1;
             }
-            FD_ZERO(&tcp->rset);
-            FD_SET(tcp->sock, &tcp->rset);
-            tcp->wset = tcp->rset;
             tcp->timer_start = xTaskGetTickCount();
             tcp->conn_state = TRANS_TCP_CONNECTING;
             return 0; // Connection has not yet established
@@ -223,6 +222,9 @@ static int esp_transport_tcp_connect_async(esp_transport_handle_t t, const char 
         case TRANS_TCP_CONNECTING:
         {
             struct timeval tv = { .tv_sec = 0, .tv_usec = 0 };
+            FD_ZERO(&tcp->rset);
+            FD_SET(tcp->sock, &tcp->rset);
+            tcp->wset = tcp->rset;
             if (select(tcp->sock + 1, &tcp->rset, &tcp->wset, NULL, &tv) < 0)
             {
                 ESP_LOGD(TAG, "Non blocking connecting failed");
@@ -248,7 +250,7 @@ static int esp_transport_tcp_connect_async(esp_transport_handle_t t, const char 
                 const uint32_t delta_ticks = now - tcp->timer_start;
                 if (delta_ticks > pdMS_TO_TICKS(timeout_ms))
                 {
-                    ESP_LOGD(TAG, "select() timed out");
+                    ESP_LOGE(TAG, "connection timeout");
                     tcp->conn_state = TRANS_TCP_FAIL;
                     return -1;
                 }
@@ -276,24 +278,89 @@ static int esp_transport_tcp_connect_async(esp_transport_handle_t t, const char 
 
 static int tcp_write(esp_transport_handle_t t, const char *buffer, int len, int timeout_ms)
 {
-    int poll;
     transport_tcp_t *tcp = esp_transport_get_context_data(t);
-    if ((poll = esp_transport_poll_write(t, timeout_ms)) <= 0) {
-        return poll;
+    if (!tcp->non_block) {
+        int poll;
+        if ((poll = esp_transport_poll_write(t, timeout_ms)) <= 0) {
+            return poll;
+        }
+    } else {
+        tcp->timer_read_initialized = false;
+        if (!tcp->timer_write_initialized) {
+            ESP_LOGD(TAG, "%s: start timer", __func__);
+            tcp->timer_start = xTaskGetTickCount();
+            tcp->timer_write_initialized = true;
+        }
     }
-    return write(tcp->sock, buffer, len);
+    const int wlen = write(tcp->sock, buffer, len);
+    if (wlen < 0) {
+        return -1;
+    }
+    if (tcp->non_block) {
+        if (wlen > 0) {
+            if (tcp->non_block) {
+                ESP_LOGD(TAG, "%s: restart timer", __func__);
+                tcp->timer_start = xTaskGetTickCount();
+            }
+        } else {
+            if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
+                const TickType_t delta_ticks = xTaskGetTickCount() - tcp->timer_start;
+                if (delta_ticks > pdMS_TO_TICKS(timeout_ms)) {
+                    ESP_LOGE(TAG, "%s: timeout", __func__);
+                    errno = -1;
+                    tcp->timer_write_initialized = false;
+                    return -1;
+                }
+            } else {
+                tcp->timer_write_initialized = false;
+            }
+        }
+    }
+    return wlen;
 }
 
 static int tcp_read(esp_transport_handle_t t, char *buffer, int len, int timeout_ms)
 {
     transport_tcp_t *tcp = esp_transport_get_context_data(t);
-    int poll = -1;
-    if ((poll = esp_transport_poll_read(t, timeout_ms)) <= 0) {
-        return poll;
+    if (!tcp->non_block) {
+        int poll = -1;
+        if ((poll = esp_transport_poll_read(t, timeout_ms)) <= 0) {
+            return poll;
+        }
+    } else {
+        tcp->timer_write_initialized = false;
+        if (!tcp->timer_read_initialized) {
+            ESP_LOGD(TAG, "%s: start timer", __func__);
+            tcp->timer_start = xTaskGetTickCount();
+            tcp->timer_read_initialized = true;
+        }
     }
     int read_len = read(tcp->sock, buffer, len);
-    if (read_len == 0) {
-        return -1;
+    if (!tcp->non_block)
+    {
+        if (read_len == 0) {
+            return -1;
+        }
+    } else {
+        if (read_len > 0) {
+            if (tcp->non_block) {
+                ESP_LOGD(TAG, "%s: restart timer", __func__);
+                tcp->timer_start = xTaskGetTickCount();
+            }
+        } else {
+            if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
+                const TickType_t delta_ticks = xTaskGetTickCount() - tcp->timer_start;
+                if (delta_ticks > pdMS_TO_TICKS(timeout_ms)) {
+                    ESP_LOGE(TAG, "%s: timeout", __func__);
+                    errno = -1;
+                    tcp->timer_read_initialized = false;
+                    return -1;
+                }
+                read_len = 0;
+            } else {
+                tcp->timer_read_initialized = false;
+            }
+        }
     }
     return read_len;
 }
