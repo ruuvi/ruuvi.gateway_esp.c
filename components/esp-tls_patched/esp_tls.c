@@ -297,24 +297,31 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
             return 1;
         }
         if (cfg->non_block) {
-            FD_ZERO(&tls->rset);
-            FD_SET(tls->sockfd, &tls->rset);
-            tls->wset = tls->rset;
+            tls->timer_start = xTaskGetTickCount();
+            ESP_LOGD(TAG, "%s: ESP_TLS_INIT: start timer: %u", __func__, tls->timer_start);
         }
         tls->conn_state = ESP_TLS_CONNECTING;
+#if defined(__GNUC__) && (__GNUC__ >= 7)
+          __attribute__((fallthrough));
+#endif
     /* falls through */
     case ESP_TLS_CONNECTING:
         if (cfg->non_block) {
             ESP_LOGD(TAG, "connecting...");
-            struct timeval tv;
-            ms_to_timeval(cfg->timeout_ms, &tv);
+            struct timeval tv = { .tv_sec = 0, .tv_usec = 0 };
+
+            FD_ZERO(&tls->rset);
+            FD_SET(tls->sockfd, &tls->rset);
+            tls->wset = tls->rset;
 
             /* In case of non-blocking I/O, we use the select() API to check whether
                connection has been established or not*/
-            if (select(tls->sockfd + 1, &tls->rset, &tls->wset, NULL,
-                       cfg->timeout_ms>0 ? &tv : NULL) == 0) {
-                ESP_LOGD(TAG, "select() timed out");
-                return 0;
+            if (select(tls->sockfd + 1, &tls->rset, &tls->wset, NULL, &tv) < 0) {
+                ESP_LOGD(TAG, "Non blocking connecting failed");
+                tls->conn_state = ESP_TLS_FAIL;
+                close(tls->sockfd);
+                tls->sockfd = -1;
+                return -1;
             }
             if (FD_ISSET(tls->sockfd, &tls->rset) || FD_ISSET(tls->sockfd, &tls->wset)) {
                 int error;
@@ -329,6 +336,19 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
                     tls->sockfd = -1;
                     return -1;
                 }
+            } else {
+                const TickType_t now = xTaskGetTickCount();
+                const uint32_t delta_ticks = now - tls->timer_start;
+                ESP_LOGD(TAG, "%s: ESP_TLS_CONNECTING: timer delta_ticks: %u", __func__, delta_ticks);
+                if (delta_ticks > pdMS_TO_TICKS(cfg->timeout_ms))
+                {
+                    ESP_LOGE(TAG, "connection timeout");
+                    tls->conn_state = ESP_TLS_FAIL;
+                    close(tls->sockfd);
+                    tls->sockfd = -1;
+                    return -1;
+                }
+                return 0; // Connection has not yet established
             }
         }
         /* By now, the connection has been established */

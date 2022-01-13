@@ -354,6 +354,7 @@ typedef struct esp_tls {
 #ifdef CONFIG_ESP_TLS_USING_MBEDTLS
     mbedtls_timing_delay_context timer;
 #endif
+    TickType_t timer_start;
 } esp_tls_t;
 
 
