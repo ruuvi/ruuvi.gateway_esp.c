@@ -5,4 +5,4 @@ idf_component_register(SRCS "esp_http_client.c"
                     INCLUDE_DIRS "include"
                     PRIV_INCLUDE_DIRS "lib/include"
                     REQUIRES nghttp
-                    PRIV_REQUIRES lwip esp-tls tcp_transport_patched)
+                    PRIV_REQUIRES lwip esp-tls_patched tcp_transport_patched)

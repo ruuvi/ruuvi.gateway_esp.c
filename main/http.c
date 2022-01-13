@@ -327,6 +327,13 @@ http_async_poll(void)
                 http_status);
         }
     }
+    else
+    {
+        LOG_ERR_ESP(
+            err,
+            "HTTP POST to URL=%s: failed",
+            p_http_async_info->http_client_config.esp_http_client_config.url);
+    }
 
     esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
     p_http_async_info->p_http_client_handle = NULL;

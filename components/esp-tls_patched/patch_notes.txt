@@ -1,0 +1,223 @@
+This is a patched version of ${ESP-IDF}/components/esp-tls
+
+1. #452: esp-tls_patched: Add timing_delay_context and configure read_timeout
+   https://github.com/ruuvi/ruuvi.gateway_esp.c/pull/457/commits/0d07f02b249bc109792a55c2b7738a046b1a69f6
+
+2. #452: esp-tls_patched: Fix the resource leakage - socket stays open in case of an error during connection establishment
+   https://github.com/ruuvi/ruuvi.gateway_esp.c/pull/457/commits/8cd26d3cf1312b97e03314e7105b591cb00ee598
+
+3. #452: esp-tls_patched: refactoring to get rid of the blocking waiting for TCP-connection to be established
+   https://github.com/ruuvi/ruuvi.gateway_esp.c/pull/457/commits/b9fbbb375c6939c3bee2d06a53fa5a320d41c05d
+
+4. #452: esp-tls_patched: implement timeout checking during TLS handshake
+   https://github.com/ruuvi/ruuvi.gateway_esp.c/pull/457/commits/001d31c366afd1fdcc6782878529ed01cfad65d8
+
+========================================================================================================================
+1. #452: esp-tls_patched: Add timing_delay_context and configure read_timeout
+   https://github.com/ruuvi/ruuvi.gateway_esp.c/pull/457/commits/0d07f02b249bc109792a55c2b7738a046b1a69f6
+========================================================================================================================
+diff --git a/components/esp-tls_patched/esp_tls.h b/components/esp-tls_patched/esp_tls.h
+index a3ab33b..044abc2 100644
+--- a/components/esp-tls_patched/esp_tls.h
++++ b/components/esp-tls_patched/esp_tls.h
+@@ -27,6 +27,7 @@
+ #include "mbedtls/ctr_drbg.h"
+ #include "mbedtls/error.h"
+ #include "mbedtls/certs.h"
++#include "mbedtls/timing.h"
+ #elif CONFIG_ESP_TLS_USING_WOLFSSL
+ #include "wolfssl/wolfcrypt/settings.h"
+ #include "wolfssl/ssl.h"
+@@ -350,6 +351,9 @@ typedef struct esp_tls {
+
+     esp_tls_error_handle_t error_handle;                                        /*!< handle to error descriptor */
+
++#ifdef CONFIG_ESP_TLS_USING_MBEDTLS
++    mbedtls_timing_delay_context timer;
++#endif
+ } esp_tls_t;
+
+
+diff --git a/components/esp-tls_patched/esp_tls_mbedtls.c b/components/esp-tls_patched/esp_tls_mbedtls.c
+index 10db363..9feaabd 100644
+--- a/components/esp-tls_patched/esp_tls_mbedtls.c
++++ b/components/esp-tls_patched/esp_tls_mbedtls.c
+@@ -23,6 +23,7 @@
+ #include <http_parser.h>
+ #include "esp_tls_mbedtls.h"
+ #include "esp_tls_error_capture_internal.h"
++#include "mbedtls/timing.h"
+ #include <errno.h>
+ #include "esp_log.h"
+
+@@ -118,6 +119,7 @@ esp_err_t esp_create_mbedtls_handle(const char *hostname, size_t hostlen, const
+         goto exit;
+     }
+     mbedtls_ssl_set_bio(&tls->ssl, &tls->server_fd, mbedtls_net_send, mbedtls_net_recv, NULL);
++    mbedtls_ssl_set_timer_cb(&tls->ssl, &tls->timer, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
+
+     return ESP_OK;
+
+@@ -442,6 +444,7 @@ esp_err_t set_client_config(const char *hostname, size_t hostlen, esp_tls_cfg_t
+         ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_MBEDTLS, -ret);
+         return ESP_ERR_MBEDTLS_SSL_CONFIG_DEFAULTS_FAILED;
+     }
++    mbedtls_ssl_conf_read_timeout(&tls->conf, cfg->timeout_ms);
+
+ #ifdef CONFIG_MBEDTLS_SSL_RENEGOTIATION
+     mbedtls_ssl_conf_renegotiation(&tls->conf, MBEDTLS_SSL_RENEGOTIATION_ENABLED);
+
+
+========================================================================================================================
+2. #452: esp-tls_patched: Fix the resource leakage - socket stays open in case of an error during connection establishment
+   https://github.com/ruuvi/ruuvi.gateway_esp.c/pull/457/commits/8cd26d3cf1312b97e03314e7105b591cb00ee598
+========================================================================================================================
+diff --git a/components/esp-tls_patched/esp_tls.c b/components/esp-tls_patched/esp_tls.c
+index d5f710c..9d90387 100644
+--- a/components/esp-tls_patched/esp_tls.c
++++ b/components/esp-tls_patched/esp_tls.c
+@@ -325,6 +325,8 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
+                     ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_SYSTEM, errno);
+                     ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, ESP_ERR_ESP_TLS_SOCKET_SETOPT_FAILED);
+                     tls->conn_state = ESP_TLS_FAIL;
++                    close(tls->sockfd);
++                    tls->sockfd = -1;
+                     return -1;
+                 }
+             }
+@@ -335,6 +337,8 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
+             ESP_LOGE(TAG, "create_ssl_handle failed");
+             ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, esp_ret);
+             tls->conn_state = ESP_TLS_FAIL;
++            close(tls->sockfd);
++            tls->sockfd = -1;
+             return -1;
+         }
+         tls->read = _esp_tls_read;
+
+
+========================================================================================================================
+3. #452: esp-tls_patched: refactoring to get rid of the blocking waiting for TCP-connection to be established
+   https://github.com/ruuvi/ruuvi.gateway_esp.c/pull/457/commits/b9fbbb375c6939c3bee2d06a53fa5a320d41c05d
+========================================================================================================================
+diff --git a/components/esp-tls_patched/esp_tls.c b/components/esp-tls_patched/esp_tls.c
+index 9d90387..53717ee 100644
+--- a/components/esp-tls_patched/esp_tls.c
++++ b/components/esp-tls_patched/esp_tls.c
+@@ -297,24 +297,31 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
+             return 1;
+         }
+         if (cfg->non_block) {
+-            FD_ZERO(&tls->rset);
+-            FD_SET(tls->sockfd, &tls->rset);
+-            tls->wset = tls->rset;
++            tls->timer_start = xTaskGetTickCount();
++            ESP_LOGD(TAG, "%s: ESP_TLS_INIT: start timer: %u", __func__, tls->timer_start);
+         }
+         tls->conn_state = ESP_TLS_CONNECTING;
++#if defined(__GNUC__) && (__GNUC__ >= 7)
++          __attribute__((fallthrough));
++#endif
+     /* falls through */
+     case ESP_TLS_CONNECTING:
+         if (cfg->non_block) {
+             ESP_LOGD(TAG, "connecting...");
+-            struct timeval tv;
+-            ms_to_timeval(cfg->timeout_ms, &tv);
++            struct timeval tv = { .tv_sec = 0, .tv_usec = 0 };
++
++            FD_ZERO(&tls->rset);
++            FD_SET(tls->sockfd, &tls->rset);
++            tls->wset = tls->rset;
+
+             /* In case of non-blocking I/O, we use the select() API to check whether
+                connection has been established or not*/
+-            if (select(tls->sockfd + 1, &tls->rset, &tls->wset, NULL,
+-                       cfg->timeout_ms>0 ? &tv : NULL) == 0) {
+-                ESP_LOGD(TAG, "select() timed out");
+-                return 0;
++            if (select(tls->sockfd + 1, &tls->rset, &tls->wset, NULL, &tv) < 0) {
++                ESP_LOGD(TAG, "Non blocking connecting failed");
++                tls->conn_state = ESP_TLS_FAIL;
++                close(tls->sockfd);
++                tls->sockfd = -1;
++                return -1;
+             }
+             if (FD_ISSET(tls->sockfd, &tls->rset) || FD_ISSET(tls->sockfd, &tls->wset)) {
+                 int error;
+@@ -329,6 +336,19 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
+                     tls->sockfd = -1;
+                     return -1;
+                 }
++            } else {
++                const TickType_t now = xTaskGetTickCount();
++                const uint32_t delta_ticks = now - tls->timer_start;
++                ESP_LOGD(TAG, "%s: ESP_TLS_CONNECTING: timer delta_ticks: %u", __func__, delta_ticks);
++                if (delta_ticks > pdMS_TO_TICKS(cfg->timeout_ms))
++                {
++                    ESP_LOGE(TAG, "connection timeout");
++                    tls->conn_state = ESP_TLS_FAIL;
++                    close(tls->sockfd);
++                    tls->sockfd = -1;
++                    return -1;
++                }
++                return 0; // Connection has not yet established
+             }
+         }
+         /* By now, the connection has been established */
+diff --git a/components/esp-tls_patched/esp_tls.h b/components/esp-tls_patched/esp_tls.h
+index 044abc2..ca1ba63 100644
+--- a/components/esp-tls_patched/esp_tls.h
++++ b/components/esp-tls_patched/esp_tls.h
+@@ -354,6 +354,7 @@ typedef struct esp_tls {
+ #ifdef CONFIG_ESP_TLS_USING_MBEDTLS
+     mbedtls_timing_delay_context timer;
+ #endif
++    TickType_t timer_start;
+ } esp_tls_t;
+
+
+========================================================================================================================
+4. #452: esp-tls_patched: implement timeout checking during TLS handshake
+   https://github.com/ruuvi/ruuvi.gateway_esp.c/pull/457/commits/001d31c366afd1fdcc6782878529ed01cfad65d8
+========================================================================================================================
+diff --git a/components/esp-tls_patched/esp_tls.c b/components/esp-tls_patched/esp_tls.c
+index 53717ee..59392bd 100644
+--- a/components/esp-tls_patched/esp_tls.c
++++ b/components/esp-tls_patched/esp_tls.c
+@@ -364,11 +364,33 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
+         tls->read = _esp_tls_read;
+         tls->write = _esp_tls_write;
+         tls->conn_state = ESP_TLS_HANDSHAKE;
++        if (cfg->non_block) {
++            tls->timer_start = xTaskGetTickCount();
++            ESP_LOGD(TAG, "%s: ESP_TLS_CONNECTING: start timer: %u", __func__, tls->timer_start);
++        }
++#if defined(__GNUC__) && (__GNUC__ >= 7)
++          __attribute__((fallthrough));
++#endif
+     /* falls through */
+     case ESP_TLS_HANDSHAKE:
++    {
+         ESP_LOGD(TAG, "handshake in progress...");
+-        return esp_tls_handshake(tls, cfg);
+-        break;
++        const int res = esp_tls_handshake(tls, cfg);
++        if (res == 0) {
++            const TickType_t now = xTaskGetTickCount();
++            const uint32_t delta_ticks = now - tls->timer_start;
++            ESP_LOGD(TAG, "%s: ESP_TLS_HANDSHAKE: timer delta_ticks: %u", __func__, delta_ticks);
++            if (delta_ticks > pdMS_TO_TICKS(cfg->timeout_ms))
++            {
++                ESP_LOGE(TAG, "connection timeout");
++                tls->conn_state = ESP_TLS_FAIL;
++                // after create_ssl_handle we don't need to close the socket manually
++                return -1;
++            }
++            return 0; // Connection has not yet established
++        }
++        return res;
++    }
+     case ESP_TLS_FAIL:
+         ESP_LOGE(TAG, "failed to open a new connection");;
+         break;

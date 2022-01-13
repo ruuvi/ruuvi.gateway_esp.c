@@ -5,6 +5,8 @@ The main purpose of this patch is to add support for "ESP x509 Certificate Bundl
 
 2. Implement asynchronous mode support for HTTP connections
 
+3. #452: Patch esp_http_client and transport_tcp in order to get rid of waiting in asynchronous mode for HTTP connections
+
 
 ========================================================================================================================
 The patch diff: https://github.com/ruuvi/ruuvi.gateway_esp.c/pull/448/commits/12f9c44deb4d1a9db21b2f8438898a9109ea2210
@@ -155,3 +157,57 @@ index 64d3474..63f3708 100644
                  return ESP_ERR_HTTP_CONNECT;
              } else if (ret == ASYNC_TRANS_CONNECTING) {
                  ESP_LOGD(TAG, "Connection not yet established");
+
+
+========================================================================================================================
+https://github.com/ruuvi/ruuvi.gateway_esp.c/pull/457/commits/a87da6b5bb6e68aeb4d1dddd22ee08df57ec2f44
+========================================================================================================================
+
+diff --git a/components/esp_http_client_patched/esp_http_client.c b/components/esp_http_client_patched/esp_http_client.c
+index 63f3708..4edc562 100644
+--- a/components/esp_http_client_patched/esp_http_client.c
++++ b/components/esp_http_client_patched/esp_http_client.c
+@@ -1018,7 +1018,7 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
+                         return ESP_ERR_HTTP_CONNECT;
+                     } else if (ret == ASYNC_TRANS_CONNECTING) {
+                         ESP_LOGD(TAG, "Connection not yet established");
+-                        return ESP_ERR_HTTP_CONNECTING;
++                        return ESP_ERR_HTTP_EAGAIN;
+                     }
+                 }
+                 client->state = HTTP_STATE_CONNECTED;
+@@ -1230,6 +1230,9 @@ static esp_err_t esp_http_client_request_send(esp_http_client_handle_t client, i
+         /* sending leftover data from previous call to esp_http_client_request_send() API */
+         int wret = 0;
+         if (((wret = esp_http_client_write(client, client->request->buffer->data + client->data_written_index, client->data_write_left)) < 0)) {
++            if (client->is_async && ((errno == EAGAIN) || (errno == EWOULDBLOCK))) {
++                return ESP_ERR_HTTP_WRITE_DATA; // In case of EAGAIN error, we return ESP_ERR_HTTP_WRITE_DATA
++            }
+             ESP_LOGE(TAG, "Error write request");
+             return ESP_ERR_HTTP_WRITE_DATA;
+         }
+@@ -1257,7 +1260,15 @@ static esp_err_t esp_http_client_request_send(esp_http_client_handle_t client, i
+         client->data_written_index = 0;
+         while (client->data_write_left > 0) {
+             int wret = esp_transport_write(client->transport, client->request->buffer->data + client->data_written_index, client->data_write_left, client->timeout_ms);
++            if (client->is_async && (wret >= 0) && (wret < client->data_write_left)) {
++                client->data_write_left -= wret;
++                client->data_written_index += wret;
++                return ESP_ERR_HTTP_WRITE_DATA; // In case of EAGAIN error, we return ESP_ERR_HTTP_WRITE_DATA
++            }
+             if (wret <= 0) {
++                if (client->is_async && ((errno == EAGAIN) || (errno == EWOULDBLOCK))) {
++                    return ESP_ERR_HTTP_WRITE_DATA; // In case of EAGAIN error, we return ESP_ERR_HTTP_WRITE_DATA
++                }
+                 ESP_LOGE(TAG, "Error write request");
+                 esp_http_client_close(client);
+                 return ESP_ERR_HTTP_WRITE_DATA;
+@@ -1318,7 +1329,7 @@ esp_err_t esp_http_client_open(esp_http_client_handle_t client, int write_len)
+
+ int esp_http_client_write(esp_http_client_handle_t client, const char *buffer, int len)
+ {
+-    if (client->state < HTTP_STATE_REQ_COMPLETE_HEADER) {
++    if (client->state < HTTP_STATE_CONNECTED) {
+         return ESP_FAIL;
+     }
+
