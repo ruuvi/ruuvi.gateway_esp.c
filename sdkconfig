@@ -1130,6 +1130,11 @@ CONFIG_WPA_MBEDTLS_CRYPTO=y
 # end of Supplicant
 
 #
+# ESP-TLS
+#
+# end of ESP-TLS
+
+#
 # Wifi Manager Configuration
 #
 CONFIG_WIFI_MANAGER_TASK_PRIORITY=5
