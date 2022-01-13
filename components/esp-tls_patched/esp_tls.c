@@ -364,11 +364,33 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
         tls->read = _esp_tls_read;
         tls->write = _esp_tls_write;
         tls->conn_state = ESP_TLS_HANDSHAKE;
+        if (cfg->non_block) {
+            tls->timer_start = xTaskGetTickCount();
+            ESP_LOGD(TAG, "%s: ESP_TLS_CONNECTING: start timer: %u", __func__, tls->timer_start);
+        }
+#if defined(__GNUC__) && (__GNUC__ >= 7)
+          __attribute__((fallthrough));
+#endif
     /* falls through */
     case ESP_TLS_HANDSHAKE:
+    {
         ESP_LOGD(TAG, "handshake in progress...");
-        return esp_tls_handshake(tls, cfg);
-        break;
+        const int res = esp_tls_handshake(tls, cfg);
+        if (res == 0) {
+            const TickType_t now = xTaskGetTickCount();
+            const uint32_t delta_ticks = now - tls->timer_start;
+            ESP_LOGD(TAG, "%s: ESP_TLS_HANDSHAKE: timer delta_ticks: %u", __func__, delta_ticks);
+            if (delta_ticks > pdMS_TO_TICKS(cfg->timeout_ms))
+            {
+                ESP_LOGE(TAG, "connection timeout");
+                tls->conn_state = ESP_TLS_FAIL;
+                // after create_ssl_handle we don't need to close the socket manually
+                return -1;
+            }
+            return 0; // Connection has not yet established
+        }
+        return res;
+    }
     case ESP_TLS_FAIL:
         ESP_LOGE(TAG, "failed to open a new connection");;
         break;
