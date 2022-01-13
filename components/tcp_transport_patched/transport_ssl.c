@@ -43,6 +43,9 @@ typedef struct {
     esp_tls_cfg_t            cfg;
     bool                     ssl_initialized;
     transport_ssl_conn_state_t conn_state;
+    TickType_t timer_start;
+    int timer_read_initialized;
+    int timer_write_initialized;
 } transport_ssl_t;
 
 static int ssl_close(esp_transport_handle_t t);
@@ -145,14 +148,44 @@ static int ssl_write(esp_transport_handle_t t, const char *buffer, int len, int 
     int poll, ret;
     transport_ssl_t *ssl = esp_transport_get_context_data(t);
 
-    if ((poll = esp_transport_poll_write(t, timeout_ms)) <= 0) {
-        ESP_LOGW(TAG, "Poll timeout or error, errno=%s, fd=%d, timeout_ms=%d", strerror(errno), ssl->tls->sockfd, timeout_ms);
-        return poll;
+    if (!ssl->cfg.non_block) {
+        if ((poll = esp_transport_poll_write(t, timeout_ms)) <= 0) {
+            ESP_LOGW(TAG, "Poll timeout or error, errno=%s, fd=%d, timeout_ms=%d", strerror(errno), ssl->tls->sockfd, timeout_ms);
+            return poll;
+        }
+    } else {
+        ssl->timer_read_initialized = false;
+        if (!ssl->timer_write_initialized) {
+            ESP_LOGD(TAG, "%s: start timer", __func__);
+            ssl->timer_start = xTaskGetTickCount();
+            ssl->timer_write_initialized = true;
+        }
     }
     ret = esp_tls_conn_write(ssl->tls, (const unsigned char *) buffer, len);
-    if (ret < 0) {
-        ESP_LOGE(TAG, "esp_tls_conn_write error, errno=%s", strerror(errno));
-        esp_transport_set_errors(t, ssl->tls->error_handle);
+    if (ret <= 0) {
+        if (ssl->cfg.non_block) {
+            if (((errno == EAGAIN) || (errno == EWOULDBLOCK))) {
+                ESP_LOGD(TAG, "esp_tls_conn_write error, errno=%s", strerror(errno));
+                const TickType_t delta_ticks = xTaskGetTickCount() - ssl->timer_start;
+                if (delta_ticks > pdMS_TO_TICKS(timeout_ms)) {
+                    ESP_LOGE(TAG, "%s: timeout", __func__);
+                    errno = -1;
+                    ssl->timer_write_initialized = false;
+                    return -1;
+                }
+            } else {
+                ESP_LOGE(TAG, "esp_tls_conn_write error, errno=%s", strerror(errno));
+                ssl->timer_write_initialized = false;
+            }
+        } else {
+            ESP_LOGE(TAG, "esp_tls_conn_write error, errno=%s", strerror(errno));
+            esp_transport_set_errors(t, ssl->tls->error_handle);
+        }
+    } else {
+        if (ssl->cfg.non_block) {
+            ESP_LOGD(TAG, "%s: restart timer", __func__);
+            ssl->timer_start = xTaskGetTickCount();
+        }
     }
     return ret;
 }
@@ -162,13 +195,43 @@ static int ssl_read(esp_transport_handle_t t, char *buffer, int len, int timeout
     int poll, ret;
     transport_ssl_t *ssl = esp_transport_get_context_data(t);
 
-    if ((poll = esp_transport_poll_read(t, timeout_ms)) <= 0) {
-        return poll;
+    if (!ssl->cfg.non_block) {
+        if ((poll = esp_transport_poll_read(t, timeout_ms)) <= 0) {
+            return poll;
+        }
+    } else {
+        ssl->timer_write_initialized = false;
+        if (!ssl->timer_read_initialized) {
+            ESP_LOGD(TAG, "%s: start timer", __func__);
+            ssl->timer_start = xTaskGetTickCount();
+            ssl->timer_read_initialized = true;
+        }
     }
     ret = esp_tls_conn_read(ssl->tls, (unsigned char *)buffer, len);
-    if (ret < 0) {
-        ESP_LOGE(TAG, "esp_tls_conn_read error, errno=%s", strerror(errno));
-        esp_transport_set_errors(t, ssl->tls->error_handle);
+    if (ret <= 0) {
+        if (ssl->cfg.non_block) {
+            if (((errno == EAGAIN) || (errno == EWOULDBLOCK))) {
+                ESP_LOGD(TAG, "esp_tls_conn_read error, errno=%s", strerror(errno));
+                const TickType_t delta_ticks = xTaskGetTickCount() - ssl->timer_start;
+                if (delta_ticks > pdMS_TO_TICKS(timeout_ms)) {
+                    ESP_LOGE(TAG, "%s: timeout", __func__);
+                    errno = -1;
+                    ssl->timer_read_initialized = false;
+                    return -1;
+                }
+            } else {
+                ESP_LOGE(TAG, "esp_tls_conn_read error, errno=%s", strerror(errno));
+                ssl->timer_read_initialized = false;
+            }
+        } else {
+            ESP_LOGE(TAG, "esp_tls_conn_read error, errno=%s", strerror(errno));
+            esp_transport_set_errors(t, ssl->tls->error_handle);
+        }
+    } else {
+        if (ssl->cfg.non_block) {
+            ESP_LOGD(TAG, "%s: restart timer", __func__);
+            ssl->timer_start = xTaskGetTickCount();
+        }
     }
     if (ret == 0) {
         ret = -1;
