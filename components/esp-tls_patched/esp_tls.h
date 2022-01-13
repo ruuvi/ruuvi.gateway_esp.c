@@ -27,6 +27,7 @@
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/error.h"
 #include "mbedtls/certs.h"
+#include "mbedtls/timing.h"
 #elif CONFIG_ESP_TLS_USING_WOLFSSL
 #include "wolfssl/wolfcrypt/settings.h"
 #include "wolfssl/ssl.h"
@@ -350,6 +351,9 @@ typedef struct esp_tls {
 
     esp_tls_error_handle_t error_handle;                                        /*!< handle to error descriptor */
 
+#ifdef CONFIG_ESP_TLS_USING_MBEDTLS
+    mbedtls_timing_delay_context timer;
+#endif
 } esp_tls_t;
 
 
