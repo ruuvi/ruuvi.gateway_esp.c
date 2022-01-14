@@ -12,6 +12,10 @@
 #include "os_malloc.h"
 #include "os_mutex.h"
 #include "esp_type_wrapper.h"
+#include "mac_addr.h"
+#include "nrf52fw.h"
+#include "fw_ver.h"
+#include "fw_update.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -64,6 +68,9 @@ typedef struct metrics_info_t
     int64_t                     uptime_us;
     metrics_total_free_info_t   total_free_bytes;
     metrics_largest_free_info_t largest_free_block;
+    mac_address_str_t           mac_addr_str;
+    nrf52fw_version_str_t       nrf_fw;
+    fw_ver_str_t                esp_fw;
 } metrics_info_t;
 
 static const char TAG[] = "metrics";
@@ -159,6 +166,9 @@ gen_metrics(void)
         .largest_free_block.size_spiram   = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM),
         .largest_free_block.size_internal = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
         .largest_free_block.size_default  = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT),
+        .mac_addr_str                     = g_gw_mac_sta_str,
+        .esp_fw                           = fw_update_get_cur_version2(),
+        .nrf_fw                           = g_nrf52_firmware_version,
     };
     return metrics;
 }
@@ -278,6 +288,18 @@ metrics_print_largest_free_blk(str_buf_t *p_str_buf, const metrics_info_t *p_met
 }
 
 static void
+metrics_print_gwinfo(str_buf_t *p_str_buf, const metrics_info_t *p_metrics)
+{
+    str_buf_printf(
+        p_str_buf,
+        METRICS_PREFIX "info{mac=\"%s\",esp_fw=\"%s\",nrf_fw=\"%s\"} %u\n",
+        p_metrics->mac_addr_str.str_buf,
+        p_metrics->esp_fw.buf,
+        p_metrics->nrf_fw.buf,
+        1);
+}
+
+static void
 metrics_print(str_buf_t *p_str_buf, const metrics_info_t *p_metrics)
 {
     str_buf_printf(
@@ -287,6 +309,7 @@ metrics_print(str_buf_t *p_str_buf, const metrics_info_t *p_metrics)
     str_buf_printf(p_str_buf, METRICS_PREFIX "uptime_us %lld\n", (printf_long_long_t)p_metrics->uptime_us);
     metrics_print_total_free_bytes(p_str_buf, p_metrics);
     metrics_print_largest_free_blk(p_str_buf, p_metrics);
+    metrics_print_gwinfo(p_str_buf, p_metrics);
 }
 
 char *

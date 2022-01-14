@@ -238,7 +238,8 @@ TEST_F(TestMetrics, test_metrics_generate) // NOLINT
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_PID7\"} 65545\n"
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_SPIRAM\"} 65546\n"
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_INTERNAL\"} 65547\n"
-               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_DEFAULT\"} 65548\n"),
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_DEFAULT\"} 65548\n"
+               "ruuvigw_info{mac=\"AA:BB:CC:DD:EE:FF\",esp_fw=\"v1.9.2-12-ga6893d9\",nrf_fw=\"v0.7.2\"} 1\n"),
         string(p_metrics_str));
     os_free(p_metrics_str);
 
@@ -274,7 +275,8 @@ TEST_F(TestMetrics, test_metrics_generate) // NOLINT
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_PID7\"} 65545\n"
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_SPIRAM\"} 65546\n"
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_INTERNAL\"} 65547\n"
-               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_DEFAULT\"} 65548\n"),
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_DEFAULT\"} 65548\n"
+               "ruuvigw_info{mac=\"AA:BB:CC:DD:EE:FF\",esp_fw=\"v1.9.2-12-ga6893d9\",nrf_fw=\"v0.7.2\"} 1\n"),
         string(p_metrics_str));
     os_free(p_metrics_str);
 }
