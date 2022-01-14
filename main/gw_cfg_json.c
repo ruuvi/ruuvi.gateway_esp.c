@@ -496,7 +496,7 @@ gw_cfg_json_parse_http(const cJSON *const p_json_root, ruuvi_gw_cfg_http_t *cons
 static void
 gw_cfg_json_parse_http_stat(const cJSON *const p_json_root, ruuvi_gw_cfg_http_stat_t *const p_gw_cfg_http_stat)
 {
-    if (!json_wrap_get_bool_val(p_json_root, "use_http", &p_gw_cfg_http_stat->use_http_stat))
+    if (!json_wrap_get_bool_val(p_json_root, "use_http_stat", &p_gw_cfg_http_stat->use_http_stat))
     {
         LOG_WARN("Can't find key '%s' in config-json", "use_http_stat");
     }
