@@ -21,6 +21,7 @@
 #include "hmac_sha256.h"
 #include "adv_post.h"
 #include "fw_update.h"
+#include "gw_mac.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"

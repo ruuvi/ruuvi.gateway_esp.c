@@ -24,16 +24,14 @@
 #include "adv_post.h"
 #include "ruuvi_device_id.h"
 #include "json_helper.h"
-#include "os_str.h"
 #include "os_time.h"
 #include "time_str.h"
 #include "reset_task.h"
-#include "os_timer_sig.h"
 #include "ruuvi_auth.h"
 #include "gw_cfg.h"
-#include "gw_cfg_default.h"
 #include "gw_cfg_json.h"
 #include "gw_cfg_ruuvi_json.h"
+#include "gw_mac.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG

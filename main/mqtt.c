@@ -15,6 +15,7 @@
 #include "leds.h"
 #include "fw_update.h"
 #include "os_mutex.h"
+#include "gw_mac.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"

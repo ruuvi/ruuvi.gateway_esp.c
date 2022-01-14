@@ -6,7 +6,7 @@
  */
 
 #include "esp_heap_caps.h"
-#include "ruuvi_gateway.h"
+#include "gw_mac.h"
 #include "str_buf.h"
 #include "os_malloc.h"
 #include "log.h"

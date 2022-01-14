@@ -15,6 +15,8 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/gw_cfg_json.h
         ${RUUVI_GW_SRC}/gw_cfg_ruuvi_json.c
         ${RUUVI_GW_SRC}/gw_cfg_ruuvi_json.h
+        ${RUUVI_GW_SRC}/gw_mac.c
+        ${RUUVI_GW_SRC}/gw_mac.h
         ${RUUVI_GW_SRC}/cjson_wrap.c
         ${RUUVI_GW_SRC}/cjson_wrap.h
         $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
