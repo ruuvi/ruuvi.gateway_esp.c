@@ -130,6 +130,7 @@ time_task_cb_notification_on_sync(struct timeval *p_tv)
             LOG_INFO("Switch time sync mode to SMOOTH");
             sntp_set_sync_mode(SNTP_SYNC_MODE_SMOOTH);
         }
+        event_mgr_notify(EVENT_MGR_EV_TIME_SYNCHRONIZED);
     }
 }
 
@@ -148,6 +149,7 @@ time_task_handle_sig(const time_task_sig_e time_task_sig)
         case TIME_TASK_SIG_WIFI_DISCONNECTED:
         case TIME_TASK_SIG_ETH_DISCONNECTED:
             LOG_INFO("Deactivate SNTP time synchronization");
+            g_time_is_synchronized = false;
             sntp_stop();
             break;
         case TIME_TASK_SIG_STOP:
