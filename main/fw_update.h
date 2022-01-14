@@ -11,16 +11,11 @@
 #include <stdbool.h>
 #include "esp_ota_ops.h"
 #include "attribs.h"
-#include "esp_app_format.h"
+#include "fw_ver.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-typedef struct fw_update_app_version_str_t
-{
-    char buf[sizeof(((esp_app_desc_t *)0)->version)];
-} fw_update_app_version_str_t;
 
 typedef struct ruuvi_flash_info_t
 {
@@ -58,7 +53,7 @@ fw_update_get_current_fatfs_gwui_partition_name(void);
 const char *
 fw_update_get_cur_version(void);
 
-fw_update_app_version_str_t
+fw_ver_str_t
 fw_update_get_cur_version2(void);
 
 bool

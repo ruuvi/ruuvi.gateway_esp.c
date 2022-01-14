@@ -18,6 +18,8 @@ idf_component_register(
             flashfatfs.h
             fw_update.c
             fw_update.h
+            fw_ver.c
+            fw_ver.h
             gpio.c
             gpio.h
             gpio_switch_ctrl.c

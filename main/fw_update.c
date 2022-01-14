@@ -244,11 +244,11 @@ fw_update_get_cur_version(void)
     return p_flash_info->p_app_desc->version;
 }
 
-fw_update_app_version_str_t
+fw_ver_str_t
 fw_update_get_cur_version2(void)
 {
     const ruuvi_flash_info_t *const p_flash_info = &g_ruuvi_flash_info;
-    fw_update_app_version_str_t     version_str;
+    fw_ver_str_t                    version_str;
     snprintf(&version_str.buf[0], sizeof(version_str.buf), "%s", p_flash_info->p_app_desc->version);
     return version_str;
 }
