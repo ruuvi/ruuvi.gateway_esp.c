@@ -44,13 +44,14 @@ typedef enum adv_post_sig_e
     ADV_POST_SIG_STOP                 = OS_SIGNAL_NUM_0,
     ADV_POST_SIG_NETWORK_DISCONNECTED = OS_SIGNAL_NUM_1,
     ADV_POST_SIG_NETWORK_CONNECTED    = OS_SIGNAL_NUM_2,
-    ADV_POST_SIG_RETRANSMIT           = OS_SIGNAL_NUM_3,
-    ADV_POST_SIG_SEND_STATISTICS      = OS_SIGNAL_NUM_4,
-    ADV_POST_SIG_DO_ASYNC_COMM        = OS_SIGNAL_NUM_5,
-    ADV_POST_SIG_DISABLE              = OS_SIGNAL_NUM_6,
-    ADV_POST_SIG_ENABLE               = OS_SIGNAL_NUM_7,
-    ADV_POST_SIG_NETWORK_WATCHDOG     = OS_SIGNAL_NUM_8,
-    ADV_POST_SIG_TASK_WATCHDOG_FEED   = OS_SIGNAL_NUM_9,
+    ADV_POST_SIG_TIME_SYNCHRONIZED    = OS_SIGNAL_NUM_3,
+    ADV_POST_SIG_RETRANSMIT           = OS_SIGNAL_NUM_4,
+    ADV_POST_SIG_SEND_STATISTICS      = OS_SIGNAL_NUM_5,
+    ADV_POST_SIG_DO_ASYNC_COMM        = OS_SIGNAL_NUM_6,
+    ADV_POST_SIG_DISABLE              = OS_SIGNAL_NUM_7,
+    ADV_POST_SIG_ENABLE               = OS_SIGNAL_NUM_8,
+    ADV_POST_SIG_NETWORK_WATCHDOG     = OS_SIGNAL_NUM_9,
+    ADV_POST_SIG_TASK_WATCHDOG_FEED   = OS_SIGNAL_NUM_10,
 } adv_post_sig_e;
 
 typedef struct adv_post_state_t
@@ -100,6 +101,11 @@ static os_timer_sig_periodic_static_t g_adv_post_timer_sig_watchdog_feed_mem;
 static TickType_t                     g_adv_post_last_successful_network_comm_timestamp;
 static os_timer_sig_periodic_t *      g_p_adv_post_timer_sig_network_watchdog;
 static os_timer_sig_periodic_static_t g_adv_post_timer_sig_network_watchdog_mem;
+static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_wifi_disconnected;
+static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_eth_disconnected;
+static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_wifi_connected;
+static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_eth_connected;
+static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_time_synchronized;
 
 static uint32_t g_adv_post_interval_ms = ADV_POST_DEFAULT_INTERVAL_SECONDS * TIME_UNITS_MS_PER_SECOND;
 
@@ -279,7 +285,7 @@ adv_post_retransmit_advs(const adv_report_table_t *p_reports, const bool flag_ne
     }
     if (!time_is_valid(p_reports->table[0].timestamp))
     {
-        LOG_WARN("Can't send, the time has not yet been synchronized");
+        LOG_WARN("Can't send advs, the accumulated data has an invalid timestamp");
         return false;
     }
 
@@ -359,27 +365,47 @@ adv_post_do_async_comm(adv_post_state_t *const p_adv_post_state)
     }
     if ((!p_adv_post_state->flag_async_comm_in_progress) && p_adv_post_state->flag_need_to_send_advs)
     {
-        p_adv_post_state->flag_need_to_send_advs = false;
-        if (adv_post_do_retransmission(p_adv_post_state->flag_network_connected))
+        if (!p_adv_post_state->flag_network_connected)
         {
-            p_adv_post_state->flag_async_comm_in_progress = true;
+            LOG_WARN("Can't send advs, no network connection");
         }
-        g_adv_post_nonce += 1;
-    }
-    if ((!p_adv_post_state->flag_async_comm_in_progress) && p_adv_post_state->flag_need_to_send_statistics)
-    {
-        if (p_adv_post_state->flag_network_connected)
+        else if (!time_is_synchronized())
         {
-            p_adv_post_state->flag_need_to_send_statistics = false;
-            if (adv_post_do_send_statistics())
+            LOG_WARN("Can't send advs, the time is not yet synchronized");
+        }
+        else
+        {
+            p_adv_post_state->flag_need_to_send_advs = false;
+            if (adv_post_do_retransmission(p_adv_post_state->flag_network_connected))
             {
                 p_adv_post_state->flag_async_comm_in_progress = true;
             }
             g_adv_post_nonce += 1;
         }
-        else
+    }
+    if ((!p_adv_post_state->flag_async_comm_in_progress) && p_adv_post_state->flag_need_to_send_statistics)
+    {
+        if (!p_adv_post_state->flag_network_connected)
         {
             LOG_WARN("Can't send statistics, no network connection");
+        }
+        else if (!time_is_synchronized())
+        {
+            LOG_WARN("Can't send statistics, the time is not yet synchronized");
+        }
+        else
+        {
+            p_adv_post_state->flag_need_to_send_statistics = false;
+            if (adv_post_do_send_statistics())
+            {
+                p_adv_post_state->flag_async_comm_in_progress = true;
+                os_timer_sig_one_shot_start(g_p_adv_post_timer_sig_do_async_comm);
+            }
+            else
+            {
+                LOG_ERR("Failed to send statistics");
+            }
+            g_adv_post_nonce += 1;
         }
     }
 }
@@ -417,12 +443,22 @@ adv_post_handle_sig_send_statistics(adv_post_state_t *const p_adv_post_state)
         if (!p_adv_post_state->flag_network_connected)
         {
             LOG_WARN("Can't send statistics, no network connection");
+            return;
         }
-        else
+        if (!time_is_synchronized())
         {
-            os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DO_ASYNC_COMM));
+            LOG_WARN("Can't send statistics, the time is not yet synchronized");
+            return;
         }
+        LOG_INFO("%s: os_signal_send: ADV_POST_SIG_DO_ASYNC_COMM", __func__);
+        os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DO_ASYNC_COMM));
     }
+}
+
+static void
+adv_post_timer_restart(void)
+{
+    os_timer_sig_periodic_restart(g_p_adv_post_timer_sig_retransmit, pdMS_TO_TICKS(g_adv_post_interval_ms));
 }
 
 static bool
@@ -442,8 +478,17 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t *const p
         case ADV_POST_SIG_NETWORK_CONNECTED:
             LOG_INFO("Handle event: NETWORK_CONNECTED");
             p_adv_post_state->flag_network_connected = true;
-            if (p_adv_post_state->flag_need_to_send_statistics)
+            break;
+        case ADV_POST_SIG_TIME_SYNCHRONIZED:
+            if (p_adv_post_state->flag_need_to_send_advs)
             {
+                LOG_INFO("Time has been synchronized - activate advs retransmission");
+                os_timer_sig_periodic_simulate(g_p_adv_post_timer_sig_retransmit);
+                adv_post_timer_restart();
+            }
+            else if (p_adv_post_state->flag_need_to_send_statistics)
+            {
+                LOG_INFO("Time has been synchronized - activate statistics retransmission");
                 os_timer_sig_periodic_simulate(g_p_adv_post_timer_sig_send_statistics);
                 os_timer_sig_periodic_restart(
                     g_p_adv_post_timer_sig_send_statistics,
@@ -554,6 +599,7 @@ adv_post_init(void)
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_STOP));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_NETWORK_DISCONNECTED));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_NETWORK_CONNECTED));
+    os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_TIME_SYNCHRONIZED));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_SEND_STATISTICS));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DO_ASYNC_COMM));
@@ -562,23 +608,35 @@ adv_post_init(void)
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_NETWORK_WATCHDOG));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_TASK_WATCHDOG_FEED));
 
-    event_mgr_subscribe_sig(
+    event_mgr_subscribe_sig_static(
+        &g_adv_post_ev_info_mem_wifi_disconnected,
         EVENT_MGR_EV_WIFI_DISCONNECTED,
         g_p_adv_post_sig,
         adv_post_conv_to_sig_num(ADV_POST_SIG_NETWORK_DISCONNECTED));
-    event_mgr_subscribe_sig(
+
+    event_mgr_subscribe_sig_static(
+        &g_adv_post_ev_info_mem_eth_disconnected,
         EVENT_MGR_EV_ETH_DISCONNECTED,
         g_p_adv_post_sig,
         adv_post_conv_to_sig_num(ADV_POST_SIG_NETWORK_DISCONNECTED));
 
-    event_mgr_subscribe_sig(
+    event_mgr_subscribe_sig_static(
+        &g_adv_post_ev_info_mem_wifi_connected,
         EVENT_MGR_EV_WIFI_CONNECTED,
         g_p_adv_post_sig,
         adv_post_conv_to_sig_num(ADV_POST_SIG_NETWORK_CONNECTED));
-    event_mgr_subscribe_sig(
+
+    event_mgr_subscribe_sig_static(
+        &g_adv_post_ev_info_mem_eth_connected,
         EVENT_MGR_EV_ETH_CONNECTED,
         g_p_adv_post_sig,
         adv_post_conv_to_sig_num(ADV_POST_SIG_NETWORK_CONNECTED));
+
+    event_mgr_subscribe_sig_static(
+        &g_adv_post_ev_info_mem_time_synchronized,
+        EVENT_MGR_EV_TIME_SYNCHRONIZED,
+        g_p_adv_post_sig,
+        adv_post_conv_to_sig_num(ADV_POST_SIG_TIME_SYNCHRONIZED));
 
     g_p_adv_post_timer_sig_retransmit = os_timer_sig_periodic_create_static(
         &g_adv_post_timer_sig_retransmit_mem,
@@ -636,7 +694,7 @@ adv_post_set_period(const uint32_t period_ms)
             (printf_uint_t)g_adv_post_interval_ms,
             (printf_uint_t)period_ms);
         g_adv_post_interval_ms = period_ms;
-        os_timer_sig_periodic_restart(g_p_adv_post_timer_sig_retransmit, pdMS_TO_TICKS(period_ms));
+        adv_post_timer_restart();
     }
 }
 
