@@ -11,6 +11,7 @@
 #include "str_buf.h"
 #include "os_malloc.h"
 #include "os_mutex.h"
+#include "esp_type_wrapper.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -279,8 +280,11 @@ metrics_print_largest_free_blk(str_buf_t *p_str_buf, const metrics_info_t *p_met
 static void
 metrics_print(str_buf_t *p_str_buf, const metrics_info_t *p_metrics)
 {
-    str_buf_printf(p_str_buf, METRICS_PREFIX "received_advertisements %lld\n", p_metrics->received_advertisements);
-    str_buf_printf(p_str_buf, METRICS_PREFIX "uptime_us %lld\n", p_metrics->uptime_us);
+    str_buf_printf(
+        p_str_buf,
+        METRICS_PREFIX "received_advertisements %lld\n",
+        (printf_long_long_t)p_metrics->received_advertisements);
+    str_buf_printf(p_str_buf, METRICS_PREFIX "uptime_us %lld\n", (printf_long_long_t)p_metrics->uptime_us);
     metrics_print_total_free_bytes(p_str_buf, p_metrics);
     metrics_print_largest_free_blk(p_str_buf, p_metrics);
 }
