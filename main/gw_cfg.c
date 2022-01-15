@@ -118,6 +118,7 @@ gw_cfg_print_to_log(const ruuvi_gateway_config_t *const p_config)
     LOG_INFO("config: LAN auth type: %s", p_config->lan_auth.lan_auth_type);
     LOG_INFO("config: LAN auth user: %s", p_config->lan_auth.lan_auth_user);
     LOG_INFO("config: LAN auth pass: %s", "********");
+    LOG_INFO("config: LAN auth API key: %s", p_config->lan_auth.lan_auth_api_key);
 
     switch (p_config->auto_update.auto_update_cycle)
     {

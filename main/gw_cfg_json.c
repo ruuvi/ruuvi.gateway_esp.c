@@ -182,6 +182,10 @@ gw_cfg_json_add_items_lan_auth(cJSON *p_json_root, const ruuvi_gateway_config_t 
     {
         return false;
     }
+    if (!gw_cfg_json_add_string(p_json_root, "lan_auth_api_key", p_cfg->lan_auth.lan_auth_api_key))
+    {
+        return false;
+    }
     return true;
 }
 
@@ -552,6 +556,14 @@ gw_cfg_json_parse_lan_auth(const cJSON *const p_json_root, ruuvi_gw_cfg_lan_auth
             sizeof(p_gw_cfg_lan_auth->lan_auth_pass)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "lan_auth_pass");
+    }
+    if (!json_wrap_copy_string_val(
+            p_json_root,
+            "lan_auth_api_key",
+            &p_gw_cfg_lan_auth->lan_auth_api_key[0],
+            sizeof(p_gw_cfg_lan_auth->lan_auth_api_key)))
+    {
+        LOG_WARN("Can't find key '%s' in config-json", "lan_auth_api_key");
     }
 }
 

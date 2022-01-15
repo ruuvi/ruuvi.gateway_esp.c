@@ -435,7 +435,7 @@ cb_before_nrf52_fw_updating(void)
 
     // Here we do not yet know the value of nRF52 DeviceID, so we cannot use it as the default password.
     http_server_cb_prohibit_cfg_updating();
-    if (!http_server_set_auth(HTTP_SERVER_AUTH_TYPE_STR_ALLOW, "", ""))
+    if (!http_server_set_auth(HTTP_SERVER_AUTH_TYPE_STR_ALLOW, "", "", ""))
     {
         LOG_ERR("%s failed", "http_server_set_auth");
     }
