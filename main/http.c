@@ -502,6 +502,7 @@ http_download(
         .timeout_ms                  = HTTP_DOWNLOAD_TIMEOUT_SECONDS * 1000,
         .disable_auto_redirect       = false,
         .max_redirection_count       = 0,
+        .max_authorization_retries   = 0,
         .event_handler               = &http_download_event_handler,
         .transport_type              = HTTP_TRANSPORT_UNKNOWN,
         .buffer_size                 = 2048,
