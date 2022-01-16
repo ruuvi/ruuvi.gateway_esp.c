@@ -369,6 +369,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     cJSON_AddStringToObject(root, "lan_auth_type", "lan_auth_ruuvi");
     cJSON_AddStringToObject(root, "lan_auth_user", "user1");
     cJSON_AddStringToObject(root, "lan_auth_pass", "qwe");
+    cJSON_AddStringToObject(root, "lan_auth_api_key", "6kl/fd/c+3qvWm3Mhmwgh3BWNp+HDRQiLp/X0PuwG8Q=");
 
     cJSON_AddStringToObject(root, "auto_update_cycle", "regular");
     cJSON_AddNumberToObject(root, "auto_update_weekdays_bitmask", 127);
@@ -409,6 +410,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     ASSERT_EQ(string("https://api.ruuvi.com:456/status"), gw_cfg.http_stat.http_stat_url.buf);
     ASSERT_EQ(string("user678"), gw_cfg.http_stat.http_stat_user.buf);
     ASSERT_EQ(string("pass678"), gw_cfg.http_stat.http_stat_pass.buf);
+    ASSERT_EQ(string("lan_auth_ruuvi"), gw_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("user1"), gw_cfg.lan_auth.lan_auth_user);
+    ASSERT_EQ(string("qwe"), gw_cfg.lan_auth.lan_auth_pass);
+    ASSERT_EQ(string("6kl/fd/c+3qvWm3Mhmwgh3BWNp+HDRQiLp/X0PuwG8Q="), gw_cfg.lan_auth.lan_auth_api_key);
     ASSERT_TRUE(gw_cfg.filter.company_use_filtering);
     ASSERT_EQ(888, gw_cfg.filter.company_id);
     ASSERT_EQ(string("coord:123,456"), gw_cfg.coordinates.buf);
@@ -439,6 +444,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_type: lan_auth_ruuvi");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_api_key: 6kl/fd/c+3qvWm3Mhmwgh3BWNp+HDRQiLp/X0PuwG8Q=");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_cycle: regular");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_weekdays_bitmask: 127");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_interval_from: 0");
@@ -480,6 +486,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_http_and_mqtt_pass) // NOLINT
     cJSON_AddStringToObject(root, "lan_auth_type", "lan_auth_ruuvi");
     cJSON_AddStringToObject(root, "lan_auth_user", "user1");
     cJSON_AddStringToObject(root, "lan_auth_pass", "qwe");
+    cJSON_AddStringToObject(root, "lan_auth_api_key", "");
 
     cJSON_AddStringToObject(root, "auto_update_cycle", "beta");
     cJSON_AddNumberToObject(root, "auto_update_weekdays_bitmask", 126);
@@ -523,6 +530,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_http_and_mqtt_pass) // NOLINT
     ASSERT_EQ(string("https://api.ruuvi.com:456/status"), gw_cfg.http_stat.http_stat_url.buf);
     ASSERT_EQ(string("user678"), gw_cfg.http_stat.http_stat_user.buf);
     ASSERT_EQ(string("prev_http_stat_pass"), gw_cfg.http_stat.http_stat_pass.buf);
+    ASSERT_EQ(string("lan_auth_ruuvi"), gw_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("user1"), gw_cfg.lan_auth.lan_auth_user);
+    ASSERT_EQ(string("qwe"), gw_cfg.lan_auth.lan_auth_pass);
+    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key);
     ASSERT_TRUE(gw_cfg.filter.company_use_filtering);
     ASSERT_EQ(888, gw_cfg.filter.company_id);
     ASSERT_EQ(string("coord:123,456"), gw_cfg.coordinates.buf);
@@ -553,6 +564,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_http_and_mqtt_pass) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_type: lan_auth_ruuvi");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_api_key: ");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_cycle: beta");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_weekdays_bitmask: 126");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_interval_from: 1");
@@ -596,6 +608,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
     cJSON_AddStringToObject(root, "lan_auth_type", "lan_auth_ruuvi");
     cJSON_AddStringToObject(root, "lan_auth_user", "user1");
     cJSON_AddStringToObject(root, "lan_auth_pass", "qwe");
+    cJSON_AddStringToObject(root, "lan_auth_api_key", "");
 
     cJSON_AddStringToObject(root, "auto_update_cycle", "beta");
     cJSON_AddNumberToObject(root, "auto_update_weekdays_bitmask", 126);
@@ -636,6 +649,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
     ASSERT_EQ(string("https://api.ruuvi.com:456/status"), gw_cfg.http_stat.http_stat_url.buf);
     ASSERT_EQ(string("user678"), gw_cfg.http_stat.http_stat_user.buf);
     ASSERT_EQ(string("pass678"), gw_cfg.http_stat.http_stat_pass.buf);
+    ASSERT_EQ(string("lan_auth_ruuvi"), gw_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("user1"), gw_cfg.lan_auth.lan_auth_user);
+    ASSERT_EQ(string("qwe"), gw_cfg.lan_auth.lan_auth_pass);
+    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key);
     ASSERT_TRUE(gw_cfg.filter.company_use_filtering);
     ASSERT_EQ(888, gw_cfg.filter.company_id);
     ASSERT_EQ(string("coord:123,456"), gw_cfg.coordinates.buf);
@@ -666,6 +683,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_type: lan_auth_ruuvi");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_api_key: ");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_cycle: beta");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_weekdays_bitmask: 126");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_interval_from: 1");
@@ -709,6 +727,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket) // NOLINT
     cJSON_AddStringToObject(root, "lan_auth_type", "lan_auth_ruuvi");
     cJSON_AddStringToObject(root, "lan_auth_user", "user1");
     cJSON_AddStringToObject(root, "lan_auth_pass", "qwe");
+    cJSON_AddStringToObject(root, "lan_auth_api_key", "");
 
     cJSON_AddStringToObject(root, "auto_update_cycle", "beta");
     cJSON_AddNumberToObject(root, "auto_update_weekdays_bitmask", 126);
@@ -749,6 +768,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket) // NOLINT
     ASSERT_EQ(string("https://api.ruuvi.com:456/status"), gw_cfg.http_stat.http_stat_url.buf);
     ASSERT_EQ(string("user678"), gw_cfg.http_stat.http_stat_user.buf);
     ASSERT_EQ(string("pass678"), gw_cfg.http_stat.http_stat_pass.buf);
+    ASSERT_EQ(string("lan_auth_ruuvi"), gw_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("user1"), gw_cfg.lan_auth.lan_auth_user);
+    ASSERT_EQ(string("qwe"), gw_cfg.lan_auth.lan_auth_pass);
+    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key);
     ASSERT_TRUE(gw_cfg.filter.company_use_filtering);
     ASSERT_EQ(888, gw_cfg.filter.company_id);
     ASSERT_EQ(string("coord:123,456"), gw_cfg.coordinates.buf);
@@ -779,6 +802,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_type: lan_auth_ruuvi");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_api_key: ");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_cycle: beta");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_weekdays_bitmask: 126");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_interval_from: 1");
@@ -822,6 +846,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
     cJSON_AddStringToObject(root, "lan_auth_type", "lan_auth_ruuvi");
     cJSON_AddStringToObject(root, "lan_auth_user", "user1");
     cJSON_AddStringToObject(root, "lan_auth_pass", "qwe");
+    cJSON_AddStringToObject(root, "lan_auth_api_key", "");
 
     cJSON_AddStringToObject(root, "auto_update_cycle", "beta");
     cJSON_AddNumberToObject(root, "auto_update_weekdays_bitmask", 126);
@@ -862,6 +887,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
     ASSERT_EQ(string("https://api.ruuvi.com:456/status"), gw_cfg.http_stat.http_stat_url.buf);
     ASSERT_EQ(string("user678"), gw_cfg.http_stat.http_stat_user.buf);
     ASSERT_EQ(string("pass678"), gw_cfg.http_stat.http_stat_pass.buf);
+    ASSERT_EQ(string("lan_auth_ruuvi"), gw_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("user1"), gw_cfg.lan_auth.lan_auth_user);
+    ASSERT_EQ(string("qwe"), gw_cfg.lan_auth.lan_auth_pass);
+    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key);
     ASSERT_TRUE(gw_cfg.filter.company_use_filtering);
     ASSERT_EQ(888, gw_cfg.filter.company_id);
     ASSERT_EQ(string("coord:123,456"), gw_cfg.coordinates.buf);
@@ -892,6 +921,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_type: lan_auth_ruuvi");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_api_key: ");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_cycle: beta");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_weekdays_bitmask: 126");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_interval_from: 1");
@@ -941,6 +971,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
             "\"lan_auth_type\":\"lan_auth_ruuvi\","
             "\"lan_auth_user\":\"user1\","
             "\"lan_auth_pass\":\"qwe\","
+            "\"lan_auth_api_key\":\"\","
             "\"auto_update_cycle\":\"regular\","
             "\"auto_update_weekdays_bitmask\":127,"
             "\"auto_update_interval_from\":0,"
@@ -974,6 +1005,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_STATUS_URL), gw_cfg.http_stat.http_stat_url.buf);
     ASSERT_EQ(string(""), gw_cfg.http_stat.http_stat_user.buf);
     ASSERT_EQ(string(""), gw_cfg.http_stat.http_stat_pass.buf);
+    ASSERT_EQ(string("lan_auth_ruuvi"), gw_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("user1"), gw_cfg.lan_auth.lan_auth_user);
+    ASSERT_EQ(string("qwe"), gw_cfg.lan_auth.lan_auth_pass);
+    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key);
     ASSERT_TRUE(gw_cfg.filter.company_use_filtering);
     ASSERT_EQ(RUUVI_COMPANY_ID, gw_cfg.filter.company_id);
     ASSERT_EQ(string(""), gw_cfg.coordinates.buf);
@@ -998,6 +1033,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_type: lan_auth_ruuvi");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "lan_auth_api_key: ");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_cycle: regular");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_weekdays_bitmask: 127");
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "auto_update_interval_from: 0");

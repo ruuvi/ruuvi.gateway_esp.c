@@ -233,6 +233,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_default) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -296,6 +297,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_disabled) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -360,6 +362,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_enabled) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -429,6 +432,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_disabled) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -492,6 +496,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_disabled) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -563,6 +568,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_TCP) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -634,6 +640,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_SSL) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -705,6 +712,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WS) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -776,6 +784,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WSS) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -838,6 +847,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_disabled) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -905,6 +915,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -967,6 +978,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_disabled) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -1035,6 +1047,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_enabled) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -1068,6 +1081,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi) // NOLINT
     snprintf(gw_cfg.lan_auth.lan_auth_type, sizeof(gw_cfg.lan_auth.lan_auth_type), HTTP_SERVER_AUTH_TYPE_STR_RUUVI);
     snprintf(gw_cfg.lan_auth.lan_auth_user, sizeof(gw_cfg.lan_auth.lan_auth_user), "user1");
     snprintf(gw_cfg.lan_auth.lan_auth_pass, sizeof(gw_cfg.lan_auth.lan_auth_pass), "pass1");
+    gw_cfg.lan_auth.lan_auth_api_key[0] = '\0';
 
     ASSERT_TRUE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
@@ -1100,6 +1114,77 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"user1\",\n"
                "\t\"lan_auth_pass\":\t\"pass1\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
+               "\t\"auto_update_cycle\":\t\"regular\",\n"
+               "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+               "\t\"auto_update_interval_from\":\t0,\n"
+               "\t\"auto_update_interval_to\":\t24,\n"
+               "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"company_id\":\t1177,\n"
+               "\t\"company_use_filtering\":\ttrue,\n"
+               "\t\"scan_coded_phy\":\tfalse,\n"
+               "\t\"scan_1mbit_phy\":\ttrue,\n"
+               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_channel_37\":\ttrue,\n"
+               "\t\"scan_channel_38\":\ttrue,\n"
+               "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"coordinates\":\t\"\"\n"
+               "}"),
+        string(json_str.p_str));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+
+    ruuvi_gateway_config_t gw_cfg2 = {};
+    ASSERT_TRUE(gw_cfg_json_parse(json_str.p_str, &gw_cfg2));
+    cjson_wrap_free_json_str(&json_str);
+
+    ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi_with_api_key) // NOLINT
+{
+    ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t       json_str = cjson_wrap_str_null();
+
+    snprintf(gw_cfg.lan_auth.lan_auth_type, sizeof(gw_cfg.lan_auth.lan_auth_type), HTTP_SERVER_AUTH_TYPE_STR_RUUVI);
+    snprintf(gw_cfg.lan_auth.lan_auth_user, sizeof(gw_cfg.lan_auth.lan_auth_user), "user1");
+    snprintf(gw_cfg.lan_auth.lan_auth_pass, sizeof(gw_cfg.lan_auth.lan_auth_pass), "pass1");
+    snprintf(
+        gw_cfg.lan_auth.lan_auth_api_key,
+        sizeof(gw_cfg.lan_auth.lan_auth_api_key),
+        "wH3F9SIiAA3rhG32aJki2Z7ekdFc0vtxuDhxl39zFvw=");
+
+    ASSERT_TRUE(gw_cfg_json_generate(&gw_cfg, &json_str));
+    ASSERT_NE(nullptr, json_str.p_str);
+    ASSERT_EQ(
+        string("{\n"
+               "\t\"use_eth\":\tfalse,\n"
+               "\t\"eth_dhcp\":\ttrue,\n"
+               "\t\"eth_static_ip\":\t\"\",\n"
+               "\t\"eth_netmask\":\t\"\",\n"
+               "\t\"eth_gw\":\t\"\",\n"
+               "\t\"eth_dns1\":\t\"\",\n"
+               "\t\"eth_dns2\":\t\"\",\n"
+               "\t\"use_http\":\ttrue,\n"
+               "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_pass\":\t\"\",\n"
+               "\t\"use_http_stat\":\ttrue,\n"
+               "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
+               "\t\"http_stat_user\":\t\"\",\n"
+               "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"use_mqtt\":\tfalse,\n"
+               "\t\"mqtt_use_default_prefix\":\ttrue,\n"
+               "\t\"mqtt_transport\":\t\"TCP\",\n"
+               "\t\"mqtt_server\":\t\"\",\n"
+               "\t\"mqtt_port\":\t0,\n"
+               "\t\"mqtt_prefix\":\t\"\",\n"
+               "\t\"mqtt_client_id\":\t\"\",\n"
+               "\t\"mqtt_user\":\t\"\",\n"
+               "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
+               "\t\"lan_auth_user\":\t\"user1\",\n"
+               "\t\"lan_auth_pass\":\t\"pass1\",\n"
+               "\t\"lan_auth_api_key\":\t\"wH3F9SIiAA3rhG32aJki2Z7ekdFc0vtxuDhxl39zFvw=\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -1133,6 +1218,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_digest) // NOLINT
     snprintf(gw_cfg.lan_auth.lan_auth_type, sizeof(gw_cfg.lan_auth.lan_auth_type), HTTP_SERVER_AUTH_TYPE_STR_DIGEST);
     snprintf(gw_cfg.lan_auth.lan_auth_user, sizeof(gw_cfg.lan_auth.lan_auth_user), "user1");
     snprintf(gw_cfg.lan_auth.lan_auth_pass, sizeof(gw_cfg.lan_auth.lan_auth_pass), "pass1");
+    gw_cfg.lan_auth.lan_auth_api_key[0] = '\0';
 
     ASSERT_TRUE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
@@ -1165,6 +1251,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_digest) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_digest\",\n"
                "\t\"lan_auth_user\":\t\"user1\",\n"
                "\t\"lan_auth_pass\":\t\"pass1\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -1198,6 +1285,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_basic) // NOLINT
     snprintf(gw_cfg.lan_auth.lan_auth_type, sizeof(gw_cfg.lan_auth.lan_auth_type), HTTP_SERVER_AUTH_TYPE_STR_BASIC);
     snprintf(gw_cfg.lan_auth.lan_auth_user, sizeof(gw_cfg.lan_auth.lan_auth_user), "user1");
     snprintf(gw_cfg.lan_auth.lan_auth_pass, sizeof(gw_cfg.lan_auth.lan_auth_pass), "pass1");
+    gw_cfg.lan_auth.lan_auth_api_key[0] = '\0';
 
     ASSERT_TRUE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
@@ -1230,6 +1318,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_basic) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_basic\",\n"
                "\t\"lan_auth_user\":\t\"user1\",\n"
                "\t\"lan_auth_pass\":\t\"pass1\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -1261,8 +1350,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_allow) // NOLINT
     cjson_wrap_str_t       json_str = cjson_wrap_str_null();
 
     snprintf(gw_cfg.lan_auth.lan_auth_type, sizeof(gw_cfg.lan_auth.lan_auth_type), HTTP_SERVER_AUTH_TYPE_STR_ALLOW);
-    gw_cfg.lan_auth.lan_auth_user[0] = '\0';
-    gw_cfg.lan_auth.lan_auth_pass[0] = '\0';
+    gw_cfg.lan_auth.lan_auth_user[0]    = '\0';
+    gw_cfg.lan_auth.lan_auth_pass[0]    = '\0';
+    gw_cfg.lan_auth.lan_auth_api_key[0] = '\0';
 
     ASSERT_TRUE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
@@ -1295,6 +1385,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_allow) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_allow\",\n"
                "\t\"lan_auth_user\":\t\"\",\n"
                "\t\"lan_auth_pass\":\t\"\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -1326,8 +1417,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_deny) // NOLINT
     cjson_wrap_str_t       json_str = cjson_wrap_str_null();
 
     snprintf(gw_cfg.lan_auth.lan_auth_type, sizeof(gw_cfg.lan_auth.lan_auth_type), HTTP_SERVER_AUTH_TYPE_STR_DENY);
-    gw_cfg.lan_auth.lan_auth_user[0] = '\0';
-    gw_cfg.lan_auth.lan_auth_pass[0] = '\0';
+    gw_cfg.lan_auth.lan_auth_user[0]    = '\0';
+    gw_cfg.lan_auth.lan_auth_pass[0]    = '\0';
+    gw_cfg.lan_auth.lan_auth_api_key[0] = '\0';
 
     ASSERT_TRUE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
@@ -1360,6 +1452,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_deny) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_deny\",\n"
                "\t\"lan_auth_user\":\t\"\",\n"
                "\t\"lan_auth_pass\":\t\"\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -1426,6 +1519,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_beta_tester) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"beta\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t126,\n"
                "\t\"auto_update_interval_from\":\t1,\n"
@@ -1492,6 +1586,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_manual) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"manual\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t125,\n"
                "\t\"auto_update_interval_from\":\t2,\n"
@@ -1554,6 +1649,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_unknown) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -1613,6 +1709,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_enabled) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -1677,6 +1774,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_disabled) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -1745,6 +1843,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_default) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -1813,6 +1912,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_coded_phy_true) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -1881,6 +1981,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_1mbit_phy_false) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -1949,6 +2050,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_extended_payload_false) // NOLIN
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -2017,6 +2119,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_37_false) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -2085,6 +2188,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_38_false) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -2153,6 +2257,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_39_false) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -2216,6 +2321,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_coordinates) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -2283,6 +2389,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_default) // NOLINT
     ASSERT_EQ(string(HTTP_SERVER_AUTH_TYPE_STR_RUUVI), gw_cfg2.lan_auth.lan_auth_type);
     ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), gw_cfg2.lan_auth.lan_auth_user);
     ASSERT_EQ(string("\xFFpassword_md5\xFF"), gw_cfg2.lan_auth.lan_auth_pass);
+    ASSERT_EQ(string(""), gw_cfg2.lan_auth.lan_auth_api_key);
 
     ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_REGULAR, gw_cfg2.auto_update.auto_update_cycle);
     ASSERT_EQ(0x7F, gw_cfg2.auto_update.auto_update_weekdays_bitmask);
@@ -2334,6 +2441,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_default) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -2393,6 +2501,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
             HTTP_SERVER_AUTH_TYPE_STR_DIGEST,
             "l_user1",
             "l_pass1",
+            "",
         },
         .auto_update = {
             .auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR,
@@ -2455,6 +2564,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
     ASSERT_EQ(string(HTTP_SERVER_AUTH_TYPE_STR_DIGEST), gw_cfg2.lan_auth.lan_auth_type);
     ASSERT_EQ(string("l_user1"), gw_cfg2.lan_auth.lan_auth_user);
     ASSERT_EQ(string("l_pass1"), gw_cfg2.lan_auth.lan_auth_pass);
+    ASSERT_EQ(string(""), gw_cfg2.lan_auth.lan_auth_api_key);
 
     ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_REGULAR, gw_cfg2.auto_update.auto_update_cycle);
     ASSERT_EQ(0x3F, gw_cfg2.auto_update.auto_update_weekdays_bitmask);
@@ -2504,6 +2614,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
                "\t\"lan_auth_type\":\t\"lan_auth_digest\",\n"
                "\t\"lan_auth_user\":\t\"l_user1\",\n"
                "\t\"lan_auth_pass\":\t\"l_pass1\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t63,\n"
                "\t\"auto_update_interval_from\":\t2,\n"
@@ -2563,6 +2674,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
             HTTP_SERVER_AUTH_TYPE_STR_DIGEST,
             "l_user1",
             "l_pass1",
+            "",
         },
         .auto_update = {
             .auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER,
@@ -2625,6 +2737,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
     ASSERT_EQ(string(HTTP_SERVER_AUTH_TYPE_STR_DIGEST), gw_cfg2.lan_auth.lan_auth_type);
     ASSERT_EQ(string("l_user1"), gw_cfg2.lan_auth.lan_auth_user);
     ASSERT_EQ(string("l_pass1"), gw_cfg2.lan_auth.lan_auth_pass);
+    ASSERT_EQ(string(""), gw_cfg2.lan_auth.lan_auth_api_key);
 
     ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER, gw_cfg2.auto_update.auto_update_cycle);
     ASSERT_EQ(0x3F, gw_cfg2.auto_update.auto_update_weekdays_bitmask);
@@ -2674,6 +2787,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
                "\t\"lan_auth_type\":\t\"lan_auth_digest\",\n"
                "\t\"lan_auth_user\":\t\"l_user1\",\n"
                "\t\"lan_auth_pass\":\t\"l_pass1\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"beta\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t63,\n"
                "\t\"auto_update_interval_from\":\t2,\n"
@@ -2733,6 +2847,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
             HTTP_SERVER_AUTH_TYPE_STR_DIGEST,
             "l_user1",
             "l_pass1",
+            "",
         },
         .auto_update = {
             .auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_MANUAL,
@@ -2795,6 +2910,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
     ASSERT_EQ(string(HTTP_SERVER_AUTH_TYPE_STR_DIGEST), gw_cfg2.lan_auth.lan_auth_type);
     ASSERT_EQ(string("l_user1"), gw_cfg2.lan_auth.lan_auth_user);
     ASSERT_EQ(string("l_pass1"), gw_cfg2.lan_auth.lan_auth_pass);
+    ASSERT_EQ(string(""), gw_cfg2.lan_auth.lan_auth_api_key);
 
     ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_MANUAL, gw_cfg2.auto_update.auto_update_cycle);
     ASSERT_EQ(0x3F, gw_cfg2.auto_update.auto_update_weekdays_bitmask);
@@ -2844,6 +2960,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
                "\t\"lan_auth_type\":\t\"lan_auth_digest\",\n"
                "\t\"lan_auth_user\":\t\"l_user1\",\n"
                "\t\"lan_auth_pass\":\t\"l_pass1\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"manual\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t63,\n"
                "\t\"auto_update_interval_from\":\t2,\n"
@@ -2867,21 +2984,50 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) // NOLINT
 {
     const char *const p_json_str
-        = "{\n\t\"use_eth\":\ttrue,\n\t\"eth_dhcp\":\tfalse,\n\t\"eth_static_ip\":\t\"192.168.1.10\",\n\t\"eth_"
-          "netmask\":\t\"255.255.255.0\",\n\t\"eth_gw\":\t\"192.168.1.1\",\n\t\"eth_dns1\":\t\"8.8.8.8\",\n\t\"eth_"
-          "dns2\":\t\"4.4.4.4\",\n\t\"use_http\":\tfalse,\n\t\"http_url\":\t\"https://"
-          "myserver1.com\",\n\t\"http_user\":\t\"h_user1\",\n\t\"http_pass\":\t\"h_pass1\",\n\t\"use_http_stat\":"
-          "\tfalse,\n\t\"http_stat_url\":\t\"https://myserver1.com/"
-          "status\",\n\t\"http_stat_user\":\t\"h_user2\",\n\t\"http_stat_pass\":\t\"h_pass2\",\n\t\"use_mqtt\":\ttrue,"
-          "\n\t\"mqtt_use_default_prefix\":\tfalse,\n\t\"mqtt_transport\":\t\"SSL\",\n\t\"mqtt_server\":\t\"test."
-          "mosquitto.org\",\n\t\"mqtt_port\":\t1338,\n\t\"mqtt_prefix\":\t\"my_prefix\",\n\t\"mqtt_client_id\":\t\"my_"
-          "client\",\n\t\"mqtt_user\":\t\"m_user1\",\n\t\"mqtt_pass\":\t\"m_pass1\",\n\t\"lan_auth_type\":\t\"lan_auth_"
-          "digest\",\n\t\"lan_auth_user\":\t\"l_user1\",\n\t\"lan_auth_pass\":\t\"l_pass1\",\n\t\"auto_update_cycle\":"
-          "\t\"unknown\",\n\t\"auto_update_weekdays_bitmask\":\t63,\n\t\"auto_update_interval_from\":\t2,\n\t\"auto_"
-          "update_interval_to\":\t22,\n\t\"auto_update_tz_offset_hours\":\t5,\n\t\"company_id\":\t1178,\n\t\"company_"
-          "use_filtering\":\tfalse,\n\t\"scan_coded_phy\":\ttrue,\n\t\"scan_1mbit_phy\":\tfalse,\n\t\"scan_extended_"
-          "payload\":\tfalse,\n\t\"scan_channel_37\":\tfalse,\n\t\"scan_channel_38\":\tfalse,\n\t\"scan_channel_39\":"
-          "\tfalse,\n\t\"coordinates\":\t\"coordinates1\"\n}";
+        = "{\n"
+          "\t\"use_eth\":\ttrue,\n"
+          "\t\"eth_dhcp\":\tfalse,\n"
+          "\t\"eth_static_ip\":\t\"192.168.1.10\",\n"
+          "\t\"eth_netmask\":\t\"255.255.255.0\",\n"
+          "\t\"eth_gw\":\t\"192.168.1.1\",\n"
+          "\t\"eth_dns1\":\t\"8.8.8.8\",\n"
+          "\t\"eth_dns2\":\t\"4.4.4.4\",\n"
+          "\t\"use_http\":\tfalse,\n"
+          "\t\"http_url\":\t\"https://myserver1.com\",\n"
+          "\t\"http_user\":\t\"h_user1\",\n"
+          "\t\"http_pass\":\t\"h_pass1\",\n"
+          "\t\"use_http_stat\":\tfalse,\n"
+          "\t\"http_stat_url\":\t\"https://myserver1.com/status\",\n"
+          "\t\"http_stat_user\":\t\"h_user2\",\n"
+          "\t\"http_stat_pass\":\t\"h_pass2\",\n"
+          "\t\"use_mqtt\":\ttrue,\n"
+          "\t\"mqtt_use_default_prefix\":\tfalse,\n"
+          "\t\"mqtt_transport\":\t\"SSL\",\n"
+          "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+          "\t\"mqtt_port\":\t1338,\n"
+          "\t\"mqtt_prefix\":\t\"my_prefix\",\n"
+          "\t\"mqtt_client_id\":\t\"my_client\",\n"
+          "\t\"mqtt_user\":\t\"m_user1\",\n"
+          "\t\"mqtt_pass\":\t\"m_pass1\",\n"
+          "\t\"lan_auth_type\":\t\"lan_auth_digest\",\n"
+          "\t\"lan_auth_user\":\t\"l_user1\",\n"
+          "\t\"lan_auth_pass\":\t\"l_pass1\",\n"
+          "\t\"lan_auth_api_key\":\t\"\",\n"
+          "\t\"auto_update_cycle\":\t\"unknown\",\n"
+          "\t\"auto_update_weekdays_bitmask\":\t63,\n"
+          "\t\"auto_update_interval_from\":\t2,\n"
+          "\t\"auto_update_interval_to\":\t22,\n"
+          "\t\"auto_update_tz_offset_hours\":\t5,\n"
+          "\t\"company_id\":\t1178,\n"
+          "\t\"company_use_filtering\":\tfalse,\n"
+          "\t\"scan_coded_phy\":\ttrue,\n"
+          "\t\"scan_1mbit_phy\":\tfalse,\n"
+          "\t\"scan_extended_payload\":\tfalse,\n"
+          "\t\"scan_channel_37\":\tfalse,\n"
+          "\t\"scan_channel_38\":\tfalse,\n"
+          "\t\"scan_channel_39\":\tfalse,\n"
+          "\t\"coordinates\":\t\"coordinates1\"\n"
+          "}";
 
     ruuvi_gateway_config_t gw_cfg2 = {};
     ASSERT_TRUE(gw_cfg_json_parse(p_json_str, &gw_cfg2));
@@ -2919,6 +3065,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
     ASSERT_EQ(string(HTTP_SERVER_AUTH_TYPE_STR_DIGEST), gw_cfg2.lan_auth.lan_auth_type);
     ASSERT_EQ(string("l_user1"), gw_cfg2.lan_auth.lan_auth_user);
     ASSERT_EQ(string("l_pass1"), gw_cfg2.lan_auth.lan_auth_pass);
+    ASSERT_EQ(string(""), gw_cfg2.lan_auth.lan_auth_api_key);
 
     ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_REGULAR, gw_cfg2.auto_update.auto_update_cycle);
     ASSERT_EQ(0x3F, gw_cfg2.auto_update.auto_update_weekdays_bitmask);
@@ -2969,6 +3116,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
                "\t\"lan_auth_type\":\t\"lan_auth_digest\",\n"
                "\t\"lan_auth_user\":\t\"l_user1\",\n"
                "\t\"lan_auth_pass\":\t\"l_pass1\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t63,\n"
                "\t\"auto_update_interval_from\":\t2,\n"
@@ -3027,6 +3175,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
     ASSERT_EQ(string(HTTP_SERVER_AUTH_TYPE_STR_RUUVI), gw_cfg2.lan_auth.lan_auth_type);
     ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), gw_cfg2.lan_auth.lan_auth_user);
     ASSERT_EQ(string("\xFFpassword_md5\xFF"), gw_cfg2.lan_auth.lan_auth_pass);
+    ASSERT_EQ(string(""), gw_cfg2.lan_auth.lan_auth_api_key);
 
     ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_REGULAR, gw_cfg2.auto_update.auto_update_cycle);
     ASSERT_EQ(0x7F, gw_cfg2.auto_update.auto_update_weekdays_bitmask);
@@ -3080,6 +3229,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -3123,6 +3273,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'lan_auth_type' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'lan_auth_user' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'lan_auth_pass' in config-json"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'lan_auth_api_key' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'auto_update_cycle' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'auto_update_weekdays_bitmask' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'auto_update_interval_from' in config-json"));
@@ -3179,6 +3330,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_string) // NOLINT
     ASSERT_EQ(string(HTTP_SERVER_AUTH_TYPE_STR_RUUVI), gw_cfg2.lan_auth.lan_auth_type);
     ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), gw_cfg2.lan_auth.lan_auth_user);
     ASSERT_EQ(string("\xFFpassword_md5\xFF"), gw_cfg2.lan_auth.lan_auth_pass);
+    ASSERT_EQ(string(""), gw_cfg2.lan_auth.lan_auth_api_key);
 
     ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_REGULAR, gw_cfg2.auto_update.auto_update_cycle);
     ASSERT_EQ(0x7F, gw_cfg2.auto_update.auto_update_weekdays_bitmask);
@@ -3232,6 +3384,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_string) // NOLINT
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"\xFFpassword_md5\xFF\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
                "\t\"auto_update_interval_from\":\t0,\n"
@@ -3289,6 +3442,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_malloc_failed) // NOLINT
           "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
           "\t\"lan_auth_user\":\t\"Admin\",\n"
           "\t\"lan_auth_pass\":\t\"\377password_md5\377\",\n"
+          "\t\"lan_auth_api_key\":\t\"\",\n"
           "\t\"auto_update_cycle\":\t\"regular\",\n"
           "\t\"auto_update_weekdays_bitmask\":\t127,\n"
           "\t\"auto_update_interval_from\":\t0,\n"
@@ -3304,7 +3458,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_malloc_failed) // NOLINT
           "\t\"scan_channel_39\":\ttrue,\n"
           "\t\"coordinates\":\t\"\"\n"
           "}";
-    for (uint32_t i = 0; i < 105; ++i)
+    for (uint32_t i = 0; i < 108; ++i)
     {
         this->m_malloc_cnt             = 0;
         this->m_malloc_fail_on_cnt     = i + 1;
@@ -3319,7 +3473,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_malloc_failed) // NOLINT
 
     {
         this->m_malloc_cnt             = 0;
-        this->m_malloc_fail_on_cnt     = 106;
+        this->m_malloc_fail_on_cnt     = 109;
         ruuvi_gateway_config_t gw_cfg2 = {};
         ASSERT_TRUE(gw_cfg_json_parse(p_json_str, &gw_cfg2));
         ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -4752,7 +4906,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_pass_3) // 
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_cycle) // NOLINT
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key) // NOLINT
 {
     const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
@@ -4763,6 +4917,63 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_cycle) /
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 76;
+
+    ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_api_key"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_2) // NOLINT
+{
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t             json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 77;
+
+    ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_api_key"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_3) // NOLINT
+{
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t             json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 78;
+
+    ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_api_key"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_cycle) // NOLINT
+{
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t             json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 79;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -4781,7 +4992,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_cycle_2)
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 77;
+    this->m_malloc_fail_on_cnt = 80;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -4800,7 +5011,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_cycle_3)
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 78;
+    this->m_malloc_fail_on_cnt = 81;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -4819,7 +5030,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_weekdays
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 79;
+    this->m_malloc_fail_on_cnt = 82;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -4838,7 +5049,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_weekdays
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 80;
+    this->m_malloc_fail_on_cnt = 83;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -4857,7 +5068,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 81;
+    this->m_malloc_fail_on_cnt = 84;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -4876,7 +5087,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 82;
+    this->m_malloc_fail_on_cnt = 85;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -4895,7 +5106,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 83;
+    this->m_malloc_fail_on_cnt = 86;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -4914,7 +5125,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 84;
+    this->m_malloc_fail_on_cnt = 87;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -4933,7 +5144,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_tz) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 85;
+    this->m_malloc_fail_on_cnt = 88;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -4952,7 +5163,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_tz_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 86;
+    this->m_malloc_fail_on_cnt = 89;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -4971,7 +5182,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_company_id) // NOLIN
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 87;
+    this->m_malloc_fail_on_cnt = 90;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -4990,7 +5201,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_company_id_2) // NOL
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 88;
+    this->m_malloc_fail_on_cnt = 91;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -5009,7 +5220,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_filtering) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 89;
+    this->m_malloc_fail_on_cnt = 92;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -5028,7 +5239,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_filtering_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 90;
+    this->m_malloc_fail_on_cnt = 93;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -5047,7 +5258,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_coded_phy) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 91;
+    this->m_malloc_fail_on_cnt = 94;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -5066,7 +5277,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_coded_phy_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 92;
+    this->m_malloc_fail_on_cnt = 95;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -5085,7 +5296,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_1mbit_phy) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 93;
+    this->m_malloc_fail_on_cnt = 96;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -5104,7 +5315,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_1mbit_phy_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 94;
+    this->m_malloc_fail_on_cnt = 97;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -5123,7 +5334,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_extended_payload
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 95;
+    this->m_malloc_fail_on_cnt = 98;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -5142,7 +5353,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_extended_payload
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 96;
+    this->m_malloc_fail_on_cnt = 99;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -5161,7 +5372,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_37) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 97;
+    this->m_malloc_fail_on_cnt = 100;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -5180,7 +5391,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_37_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 98;
+    this->m_malloc_fail_on_cnt = 101;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -5199,7 +5410,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_38) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 99;
+    this->m_malloc_fail_on_cnt = 102;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -5218,7 +5429,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_38_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 100;
+    this->m_malloc_fail_on_cnt = 103;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -5237,7 +5448,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_39) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 101;
+    this->m_malloc_fail_on_cnt = 104;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -5256,7 +5467,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_39_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 102;
+    this->m_malloc_fail_on_cnt = 105;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -5275,7 +5486,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 103;
+    this->m_malloc_fail_on_cnt = 106;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -5294,7 +5505,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 104;
+    this->m_malloc_fail_on_cnt = 107;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -5313,7 +5524,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 105;
+    this->m_malloc_fail_on_cnt = 108;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -5332,7 +5543,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_converting_to_json_s
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 106;
+    this->m_malloc_fail_on_cnt = 109;
 
     ASSERT_FALSE(gw_cfg_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
