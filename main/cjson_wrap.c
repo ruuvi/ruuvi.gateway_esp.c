@@ -85,7 +85,7 @@ cjson_wrap_free_json_str(cjson_wrap_str_t *p_json_str)
 bool
 json_wrap_copy_string_val(const cJSON *p_json_root, const char *p_attr_name, char *buf, const size_t buf_len)
 {
-    const cJSON * const p_json_attr = cJSON_GetObjectItem(p_json_root, p_attr_name);
+    const cJSON *const p_json_attr = cJSON_GetObjectItem(p_json_root, p_attr_name);
     if (NULL == p_json_attr)
     {
         return false;

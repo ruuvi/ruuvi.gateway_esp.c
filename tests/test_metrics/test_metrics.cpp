@@ -91,7 +91,7 @@ protected:
         memset(&g_gw_mac_sta_str, 0, sizeof(g_gw_mac_sta_str));
         memset(&g_nrf52_firmware_version, 0, sizeof(g_nrf52_firmware_version));
         this->m_uptime = 0;
-        g_pTestClass = this;
+        g_pTestClass   = this;
         this->m_mem_alloc_trace.clear();
         this->m_malloc_cnt         = 0;
         this->m_malloc_fail_on_cnt = 0;
