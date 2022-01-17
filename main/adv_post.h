@@ -32,7 +32,7 @@ void
 adv_post_enable_retransmission(void);
 
 void
-adv_post_update_last_successful_network_comm_timestamp(void);
+adv_post_last_successful_network_comm_timestamp_update(void);
 
 #ifdef __cplusplus
 }

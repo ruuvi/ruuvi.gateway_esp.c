@@ -6,30 +6,31 @@
  */
 
 #include "adv_post.h"
-#include <esp_task_wdt.h>
+#include <string.h>
+#include <time.h>
+#include "freertos/FreeRTOS.h"
+#include "esp_task_wdt.h"
+#include "esp_err.h"
+#include "esp_type_wrapper.h"
+#include "os_task.h"
+#include "os_malloc.h"
+#include "os_mutex.h"
+#include "os_signal.h"
+#include "os_timer_sig.h"
 #include "bin2hex.h"
 #include "cJSON.h"
-#include "esp_err.h"
-#include "os_task.h"
-#include "freertos/FreeRTOS.h"
 #include "http.h"
 #include "mqtt.h"
 #include "api.h"
 #include "types_def.h"
 #include "ruuvi_endpoint_ca_uart.h"
 #include "ruuvi_gateway.h"
-#include <string.h>
-#include <time.h>
 #include "time_task.h"
 #include "attribs.h"
 #include "metrics.h"
-#include "os_malloc.h"
-#include "esp_type_wrapper.h"
 #include "wifi_manager.h"
 #include "mac_addr.h"
 #include "ruuvi_device_id.h"
-#include "os_signal.h"
-#include "os_timer_sig.h"
 #include "event_mgr.h"
 #include "fw_update.h"
 #include "nrf52fw.h"
@@ -99,6 +100,8 @@ static os_timer_sig_one_shot_static_t g_adv_post_timer_sig_do_async_comm_mem;
 static os_timer_sig_periodic_t *      g_p_adv_post_timer_sig_watchdog_feed;
 static os_timer_sig_periodic_static_t g_adv_post_timer_sig_watchdog_feed_mem;
 static TickType_t                     g_adv_post_last_successful_network_comm_timestamp;
+static os_mutex_t                     g_p_adv_port_last_successful_network_comm_mutex;
+static os_mutex_static_t              g_adv_port_last_successful_network_comm_mutex_mem;
 static os_timer_sig_periodic_t *      g_p_adv_post_timer_sig_network_watchdog;
 static os_timer_sig_periodic_static_t g_adv_post_timer_sig_network_watchdog_mem;
 static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_wifi_disconnected;
@@ -234,7 +237,7 @@ adv_post_send_report(void *arg)
         {
             if (mqtt_publish_adv(&adv_report))
             {
-                adv_post_update_last_successful_network_comm_timestamp();
+                adv_post_last_successful_network_comm_timestamp_update();
             }
             else
             {
@@ -411,11 +414,46 @@ adv_post_do_async_comm(adv_post_state_t *const p_adv_post_state)
 }
 
 static void
+adv_post_last_successful_network_comm_timestamp_lock(void)
+{
+    if (NULL == g_p_adv_port_last_successful_network_comm_mutex)
+    {
+        g_p_adv_port_last_successful_network_comm_mutex = os_mutex_create_static(
+            &g_adv_port_last_successful_network_comm_mutex_mem);
+    }
+    os_mutex_lock(g_p_adv_port_last_successful_network_comm_mutex);
+}
+
+static void
+adv_post_last_successful_network_comm_timestamp_unlock(void)
+{
+    os_mutex_unlock(g_p_adv_port_last_successful_network_comm_mutex);
+}
+
+void
+adv_post_last_successful_network_comm_timestamp_update(void)
+{
+    adv_post_last_successful_network_comm_timestamp_lock();
+    g_adv_post_last_successful_network_comm_timestamp = xTaskGetTickCount();
+    adv_post_last_successful_network_comm_timestamp_unlock();
+}
+
+static bool
+adv_post_last_successful_network_comm_timestamp_check_timeout(void)
+{
+    const TickType_t timeout_ticks = pdMS_TO_TICKS(RUUVI_NETWORK_WATCHDOG_TIMEOUT_SECONDS) * 1000;
+
+    adv_post_last_successful_network_comm_timestamp_lock();
+    const TickType_t delta_ticks = xTaskGetTickCount() - g_adv_post_last_successful_network_comm_timestamp;
+    adv_post_last_successful_network_comm_timestamp_unlock();
+
+    return (delta_ticks > timeout_ticks) ? true : false;
+}
+
+static void
 adv_post_handle_sig_network_watchdog(void)
 {
-    const TickType_t delta_ticks   = xTaskGetTickCount() - g_adv_post_last_successful_network_comm_timestamp;
-    const TickType_t timeout_ticks = pdMS_TO_TICKS(RUUVI_NETWORK_WATCHDOG_TIMEOUT_SECONDS) * 1000;
-    if (delta_ticks > timeout_ticks)
+    if (adv_post_last_successful_network_comm_timestamp_check_timeout())
     {
         LOG_INFO(
             "No networking for %lu seconds - reboot the gateway",
@@ -726,10 +764,4 @@ adv_post_enable_retransmission(void)
     {
         LOG_ERR("%s failed", "os_signal_send");
     }
-}
-
-void
-adv_post_update_last_successful_network_comm_timestamp(void)
-{
-    g_adv_post_last_successful_network_comm_timestamp = xTaskGetTickCount();
 }
