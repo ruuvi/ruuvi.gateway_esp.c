@@ -16,6 +16,7 @@
 #include "gw_mac.h"
 #include "nrf52fw.h"
 #include "fw_ver.h"
+#include "esp_log_wrapper.hpp"
 
 using namespace std;
 
@@ -32,6 +33,53 @@ nrf52fw_version_str_t g_nrf52_firmware_version;
 /*** Google-test class implementation
  * *********************************************************************************/
 
+class MemAllocTrace
+{
+    vector<void *> allocated_mem;
+
+    std::vector<void *>::iterator
+    find(void *ptr)
+    {
+        for (auto iter = this->allocated_mem.begin(); iter != this->allocated_mem.end(); ++iter)
+        {
+            if (*iter == ptr)
+            {
+                return iter;
+            }
+        }
+        return this->allocated_mem.end();
+    }
+
+public:
+    void
+    add(void *ptr)
+    {
+        auto iter = find(ptr);
+        assert(iter == this->allocated_mem.end()); // ptr was found in the list of allocated memory blocks
+        this->allocated_mem.push_back(ptr);
+    }
+
+    void
+    remove(void *ptr)
+    {
+        auto iter = find(ptr);
+        assert(iter != this->allocated_mem.end()); // ptr was not found in the list of allocated memory blocks
+        this->allocated_mem.erase(iter);
+    }
+
+    bool
+    is_empty()
+    {
+        return this->allocated_mem.empty();
+    }
+
+    void
+    clear()
+    {
+        this->allocated_mem.clear();
+    }
+};
+
 class TestMetrics : public ::testing::Test
 {
 private:
@@ -39,11 +87,14 @@ protected:
     void
     SetUp() override
     {
+        esp_log_wrapper_init();
         memset(&g_gw_mac_sta_str, 0, sizeof(g_gw_mac_sta_str));
         memset(&g_nrf52_firmware_version, 0, sizeof(g_nrf52_firmware_version));
         this->m_uptime = 0;
-        metrics_init();
         g_pTestClass = this;
+        this->m_mem_alloc_trace.clear();
+        this->m_malloc_cnt         = 0;
+        this->m_malloc_fail_on_cnt = 0;
     }
 
     void
@@ -51,10 +102,14 @@ protected:
     {
         metrics_deinit();
         g_pTestClass = nullptr;
+        esp_log_wrapper_deinit();
     }
 
 public:
-    int64_t m_uptime;
+    int64_t       m_uptime;
+    MemAllocTrace m_mem_alloc_trace;
+    uint32_t      m_malloc_cnt {};
+    uint32_t      m_malloc_fail_on_cnt {};
 
     TestMetrics();
 
@@ -70,6 +125,39 @@ TestMetrics::TestMetrics()
 TestMetrics::~TestMetrics() = default;
 
 extern "C" {
+
+void *
+os_malloc(const size_t size)
+{
+    if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
+    {
+        return nullptr;
+    }
+    void *ptr = malloc(size);
+    assert(nullptr != ptr);
+    g_pTestClass->m_mem_alloc_trace.add(ptr);
+    return ptr;
+}
+
+void
+os_free_internal(void *ptr)
+{
+    g_pTestClass->m_mem_alloc_trace.remove(ptr);
+    free(ptr);
+}
+
+void *
+os_calloc(const size_t nmemb, const size_t size)
+{
+    if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
+    {
+        return nullptr;
+    }
+    void *ptr = calloc(nmemb, size);
+    assert(nullptr != ptr);
+    g_pTestClass->m_mem_alloc_trace.add(ptr);
+    return ptr;
+}
 
 const char *
 os_task_get_name(void)
@@ -200,11 +288,28 @@ fw_update_get_cur_version2(void)
 
 } // extern "C"
 
+#define TEST_CHECK_LOG_RECORD(level_, msg_) ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("metrics", level_, msg_)
+
 /*** Unit-Tests
  * *******************************************************************************************************/
 
+TEST_F(TestMetrics, test_metrics_init_deinit) // NOLINT
+{
+    metrics_init();
+    metrics_received_advs_increment();
+    metrics_deinit();
+}
+
+TEST_F(TestMetrics, test_metrics_received_advs_increment_without_init) // NOLINT
+{
+    metrics_received_advs_increment();
+    metrics_deinit();
+}
+
 TEST_F(TestMetrics, test_metrics_generate) // NOLINT
 {
+    metrics_init();
+
     snprintf(&g_gw_mac_sta_str.str_buf[0], sizeof(g_gw_mac_sta_str), "AA:BB:CC:DD:EE:FF");
     snprintf(&g_nrf52_firmware_version.buf[0], sizeof(g_nrf52_firmware_version), "v0.7.2");
 
@@ -279,4 +384,21 @@ TEST_F(TestMetrics, test_metrics_generate) // NOLINT
                "ruuvigw_info{mac=\"AA:BB:CC:DD:EE:FF\",esp_fw=\"v1.9.2-12-ga6893d9\",nrf_fw=\"v0.7.2\"} 1\n"),
         string(p_metrics_str));
     os_free(p_metrics_str);
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestMetrics, test_metrics_generate_malloc_failed) // NOLINT
+{
+    this->m_malloc_fail_on_cnt = 1;
+
+    snprintf(&g_gw_mac_sta_str.str_buf[0], sizeof(g_gw_mac_sta_str), "AA:BB:CC:DD:EE:FF");
+    snprintf(&g_nrf52_firmware_version.buf[0], sizeof(g_nrf52_firmware_version), "v0.7.2");
+
+    this->m_uptime = 15317668796;
+    ASSERT_EQ(nullptr, metrics_generate());
+
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't allocate memory"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }

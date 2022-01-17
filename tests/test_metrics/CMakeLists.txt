@@ -12,7 +12,6 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/metrics.h
         ${RUUVI_ESP_WRAPPERS}/src/str_buf.c
         ${RUUVI_ESP_WRAPPERS}/include/str_buf.h
-        ${RUUVI_ESP_WRAPPERS}/src/os_malloc.c
         ${RUUVI_ESP_WRAPPERS}/include/os_malloc.h
         ${RUUVI_ESP_WRAPPERS}/src/mac_addr.c
         ${RUUVI_ESP_WRAPPERS}/include/mac_addr.h
