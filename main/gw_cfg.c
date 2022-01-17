@@ -19,7 +19,6 @@ mac_address_bin_t g_gw_mac_eth      = { 0 };
 mac_address_str_t g_gw_mac_eth_str  = { 0 };
 mac_address_bin_t g_gw_mac_wifi     = { 0 };
 mac_address_str_t g_gw_mac_wifi_str = { 0 };
-mac_address_str_t g_gw_mac_sta_str  = { 0 };
 wifi_ssid_t       g_gw_wifi_ssid    = {
     .ssid_buf = DEFAULT_AP_SSID, // RuuviGatewayXXXX where XXXX - last 4 digits of the MAC-address
 };

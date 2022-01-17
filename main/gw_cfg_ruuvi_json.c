@@ -11,6 +11,7 @@
 #include "gw_cfg.h"
 #include "gw_cfg_default.h"
 #include "json_ruuvi.h"
+#include "gw_mac.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"

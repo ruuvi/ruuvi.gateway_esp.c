@@ -6,9 +6,18 @@
  */
 
 #include "esp_heap_caps.h"
-#include "ruuvi_gateway.h"
+#include "esp_timer.h"
+#include "gw_mac.h"
 #include "str_buf.h"
 #include "os_malloc.h"
+#include "os_mutex.h"
+#include "esp_type_wrapper.h"
+#include "mac_addr.h"
+#include "nrf52fw.h"
+#include "fw_ver.h"
+#include "fw_update.h"
+
+#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
 #define METRICS_PREFIX "ruuvigw_"
@@ -59,27 +68,60 @@ typedef struct metrics_info_t
     int64_t                     uptime_us;
     metrics_total_free_info_t   total_free_bytes;
     metrics_largest_free_info_t largest_free_block;
+    mac_address_str_t           mac_addr_str;
+    nrf52fw_version_str_t       nrf_fw;
+    fw_ver_str_t                esp_fw;
 } metrics_info_t;
 
 static const char TAG[] = "metrics";
 
-static uint64_t     g_received_advertisements;
-static portMUX_TYPE g_received_advertisements_mux = portMUX_INITIALIZER_UNLOCKED;
+static uint64_t          g_received_advertisements;
+static os_mutex_t        g_p_metrics_mutex;
+static os_mutex_static_t g_metrics_mutex_mem;
+
+void
+metrics_init(void)
+{
+    g_received_advertisements = 0;
+    g_p_metrics_mutex         = os_mutex_create_static(&g_metrics_mutex_mem);
+}
+
+void
+metrics_deinit(void)
+{
+    os_mutex_delete(&g_p_metrics_mutex);
+}
+
+static void
+metrics_lock(void)
+{
+    if (NULL == g_p_metrics_mutex)
+    {
+        metrics_init();
+    }
+    os_mutex_lock(g_p_metrics_mutex);
+}
+
+static void
+metrics_unlock(void)
+{
+    os_mutex_unlock(g_p_metrics_mutex);
+}
 
 void
 metrics_received_advs_increment(void)
 {
-    portENTER_CRITICAL(&g_received_advertisements_mux);
+    metrics_lock();
     g_received_advertisements += 1;
-    portEXIT_CRITICAL(&g_received_advertisements_mux);
+    metrics_unlock();
 }
 
 static uint64_t
 metrics_received_advs_get(void)
 {
-    portENTER_CRITICAL(&g_received_advertisements_mux);
+    metrics_lock();
     const uint64_t num_received_advertisements = g_received_advertisements;
-    portEXIT_CRITICAL(&g_received_advertisements_mux);
+    metrics_unlock();
     return num_received_advertisements;
 }
 
@@ -95,21 +137,22 @@ static metrics_info_t
 gen_metrics(void)
 {
     const metrics_info_t metrics = {
-        .received_advertisements          = metrics_received_advs_get(),
-        .uptime_us                        = esp_timer_get_time(),
-        .total_free_bytes.size_exec       = (ulong_t)get_total_free_bytes(MALLOC_CAP_EXEC),
-        .total_free_bytes.size_32bit      = (ulong_t)get_total_free_bytes(MALLOC_CAP_32BIT),
-        .total_free_bytes.size_8bit       = (ulong_t)get_total_free_bytes(MALLOC_CAP_8BIT),
-        .total_free_bytes.size_dma        = (ulong_t)get_total_free_bytes(MALLOC_CAP_DMA),
-        .total_free_bytes.size_pid2       = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID2),
-        .total_free_bytes.size_pid3       = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID3),
-        .total_free_bytes.size_pid4       = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID4),
-        .total_free_bytes.size_pid5       = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID5),
-        .total_free_bytes.size_pid6       = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID6),
-        .total_free_bytes.size_pid7       = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID7),
-        .total_free_bytes.size_spiram     = (ulong_t)get_total_free_bytes(MALLOC_CAP_SPIRAM),
-        .total_free_bytes.size_internal   = (ulong_t)get_total_free_bytes(MALLOC_CAP_INTERNAL),
-        .total_free_bytes.size_default    = (ulong_t)get_total_free_bytes(MALLOC_CAP_DEFAULT),
+        .received_advertisements        = metrics_received_advs_get(),
+        .uptime_us                      = esp_timer_get_time(),
+        .total_free_bytes.size_exec     = (ulong_t)get_total_free_bytes(MALLOC_CAP_EXEC),
+        .total_free_bytes.size_32bit    = (ulong_t)get_total_free_bytes(MALLOC_CAP_32BIT),
+        .total_free_bytes.size_8bit     = (ulong_t)get_total_free_bytes(MALLOC_CAP_8BIT),
+        .total_free_bytes.size_dma      = (ulong_t)get_total_free_bytes(MALLOC_CAP_DMA),
+        .total_free_bytes.size_pid2     = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID2),
+        .total_free_bytes.size_pid3     = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID3),
+        .total_free_bytes.size_pid4     = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID4),
+        .total_free_bytes.size_pid5     = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID5),
+        .total_free_bytes.size_pid6     = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID6),
+        .total_free_bytes.size_pid7     = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID7),
+        .total_free_bytes.size_spiram   = (ulong_t)get_total_free_bytes(MALLOC_CAP_SPIRAM),
+        .total_free_bytes.size_internal = (ulong_t)get_total_free_bytes(MALLOC_CAP_INTERNAL),
+        .total_free_bytes.size_default  = (ulong_t)get_total_free_bytes(MALLOC_CAP_DEFAULT),
+
         .largest_free_block.size_exec     = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_EXEC),
         .largest_free_block.size_32bit    = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_32BIT),
         .largest_free_block.size_8bit     = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT),
@@ -123,6 +166,9 @@ gen_metrics(void)
         .largest_free_block.size_spiram   = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM),
         .largest_free_block.size_internal = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
         .largest_free_block.size_default  = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT),
+        .mac_addr_str                     = g_gw_mac_sta_str,
+        .esp_fw                           = fw_update_get_cur_version2(),
+        .nrf_fw                           = g_nrf52_firmware_version,
     };
     return metrics;
 }
@@ -242,12 +288,28 @@ metrics_print_largest_free_blk(str_buf_t *p_str_buf, const metrics_info_t *p_met
 }
 
 static void
+metrics_print_gwinfo(str_buf_t *p_str_buf, const metrics_info_t *p_metrics)
+{
+    str_buf_printf(
+        p_str_buf,
+        METRICS_PREFIX "info{mac=\"%s\",esp_fw=\"%s\",nrf_fw=\"%s\"} %u\n",
+        p_metrics->mac_addr_str.str_buf,
+        p_metrics->esp_fw.buf,
+        p_metrics->nrf_fw.buf,
+        1);
+}
+
+static void
 metrics_print(str_buf_t *p_str_buf, const metrics_info_t *p_metrics)
 {
-    str_buf_printf(p_str_buf, METRICS_PREFIX "received_advertisements %lld\n", p_metrics->received_advertisements);
-    str_buf_printf(p_str_buf, METRICS_PREFIX "uptime_us %lld\n", p_metrics->uptime_us);
+    str_buf_printf(
+        p_str_buf,
+        METRICS_PREFIX "received_advertisements %lld\n",
+        (printf_long_long_t)p_metrics->received_advertisements);
+    str_buf_printf(p_str_buf, METRICS_PREFIX "uptime_us %lld\n", (printf_long_long_t)p_metrics->uptime_us);
     metrics_print_total_free_bytes(p_str_buf, p_metrics);
     metrics_print_largest_free_blk(p_str_buf, p_metrics);
+    metrics_print_gwinfo(p_str_buf, p_metrics);
 }
 
 char *

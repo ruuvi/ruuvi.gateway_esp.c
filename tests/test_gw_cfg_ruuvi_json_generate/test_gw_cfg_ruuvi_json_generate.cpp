@@ -8,6 +8,7 @@
 #include "json_ruuvi.h"
 #include <cstring>
 #include "gtest/gtest.h"
+#include "gw_mac.h"
 #include "gw_cfg.h"
 #include "gw_cfg_default.h"
 #include "gw_cfg_ruuvi_json.h"

@@ -18,6 +18,8 @@ idf_component_register(
             flashfatfs.h
             fw_update.c
             fw_update.h
+            fw_ver.c
+            fw_ver.h
             gpio.c
             gpio.h
             gpio_switch_ctrl.c
@@ -32,6 +34,8 @@ idf_component_register(
             gw_cfg_ruuvi_json.h
             gw_cfg_default.c
             gw_cfg_default.h
+            gw_mac.c
+            gw_mac.h
             hmac_sha256.c
             hmac_sha256.h
             http.c
