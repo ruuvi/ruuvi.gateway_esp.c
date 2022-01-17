@@ -461,6 +461,25 @@ adv_post_timer_restart(void)
     os_timer_sig_periodic_restart(g_p_adv_post_timer_sig_retransmit, pdMS_TO_TICKS(g_adv_post_interval_ms));
 }
 
+static void
+adv_post_handle_sig_time_synchronized(const adv_post_state_t *const p_adv_post_state)
+{
+    if (p_adv_post_state->flag_need_to_send_advs)
+    {
+        LOG_INFO("Time has been synchronized - activate advs retransmission");
+        os_timer_sig_periodic_simulate(g_p_adv_post_timer_sig_retransmit);
+        adv_post_timer_restart();
+    }
+    if (p_adv_post_state->flag_need_to_send_statistics)
+    {
+        LOG_INFO("Time has been synchronized - activate statistics retransmission");
+        os_timer_sig_periodic_simulate(g_p_adv_post_timer_sig_send_statistics);
+        os_timer_sig_periodic_restart(
+            g_p_adv_post_timer_sig_send_statistics,
+            pdMS_TO_TICKS(ADV_POST_STATISTICS_INTERVAL_SECONDS) * TIME_UNITS_MS_PER_SECOND);
+    }
+}
+
 static bool
 adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t *const p_adv_post_state)
 {
@@ -480,20 +499,7 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t *const p
             p_adv_post_state->flag_network_connected = true;
             break;
         case ADV_POST_SIG_TIME_SYNCHRONIZED:
-            if (p_adv_post_state->flag_need_to_send_advs)
-            {
-                LOG_INFO("Time has been synchronized - activate advs retransmission");
-                os_timer_sig_periodic_simulate(g_p_adv_post_timer_sig_retransmit);
-                adv_post_timer_restart();
-            }
-            else if (p_adv_post_state->flag_need_to_send_statistics)
-            {
-                LOG_INFO("Time has been synchronized - activate statistics retransmission");
-                os_timer_sig_periodic_simulate(g_p_adv_post_timer_sig_send_statistics);
-                os_timer_sig_periodic_restart(
-                    g_p_adv_post_timer_sig_send_statistics,
-                    pdMS_TO_TICKS(ADV_POST_STATISTICS_INTERVAL_SECONDS) * TIME_UNITS_MS_PER_SECOND);
-            }
+            adv_post_handle_sig_time_synchronized(p_adv_post_state);
             break;
         case ADV_POST_SIG_RETRANSMIT:
             if ((!p_adv_post_state->flag_retransmission_disabled) && gw_cfg_get_http_use_http())

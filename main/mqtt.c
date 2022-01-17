@@ -286,6 +286,7 @@ mqtt_generate_client_config(
         .refresh_connection_after_ms = 0,
         .psk_hint_key                = NULL,
         .use_global_ca_store         = false,
+        .crt_bundle_attach           = NULL,
         .reconnect_timeout_ms        = 0,
         .alpn_protos                 = NULL,
         .clientkey_password          = NULL,
@@ -298,6 +299,7 @@ mqtt_generate_client_config(
         .network_timeout_ms          = (CONFIG_ESP_TASK_WDT_TIMEOUT_S * TIME_UNITS_MS_PER_SECOND)
                               - (TIME_UNITS_MS_PER_SECOND / 2),
         .disable_keepalive = false,
+        .path              = NULL,
     };
     return mqtt_cfg;
 }
