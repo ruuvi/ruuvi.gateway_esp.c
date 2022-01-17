@@ -470,17 +470,13 @@ adv_post_handle_sig_time_synchronized(const adv_post_state_t *const p_adv_post_s
         os_timer_sig_periodic_simulate(g_p_adv_post_timer_sig_retransmit);
         adv_post_timer_restart();
     }
-    else if (p_adv_post_state->flag_need_to_send_statistics)
+    if (p_adv_post_state->flag_need_to_send_statistics)
     {
         LOG_INFO("Time has been synchronized - activate statistics retransmission");
         os_timer_sig_periodic_simulate(g_p_adv_post_timer_sig_send_statistics);
         os_timer_sig_periodic_restart(
             g_p_adv_post_timer_sig_send_statistics,
             pdMS_TO_TICKS(ADV_POST_STATISTICS_INTERVAL_SECONDS) * TIME_UNITS_MS_PER_SECOND);
-    }
-    else
-    {
-        // MISRA C:2012, 15.7 - All if...else if constructs shall be terminated with an else statement
     }
 }
 
