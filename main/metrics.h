@@ -13,6 +13,12 @@ extern "C" {
 #endif
 
 void
+metrics_init(void);
+
+void
+metrics_deinit(void);
+
+void
 metrics_received_advs_increment(void);
 
 char *

@@ -47,6 +47,7 @@
 #include "str_buf.h"
 #include "wifiman_md5.h"
 #include "json_ruuvi.h"
+#include "gw_mac.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"

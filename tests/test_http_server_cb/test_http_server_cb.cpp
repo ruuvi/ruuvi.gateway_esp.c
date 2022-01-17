@@ -12,6 +12,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log_wrapper.hpp"
+#include "gw_mac.h"
 #include "gw_cfg.h"
 #include "json_ruuvi.h"
 #include "flashfatfs.h"
