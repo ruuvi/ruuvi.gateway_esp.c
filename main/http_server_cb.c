@@ -490,7 +490,7 @@ http_server_resp_history(const char *const p_params)
     LOG_INFO("History on %u seconds interval: %s", (unsigned)time_interval_seconds, json_str.p_str);
     if (0 != num_of_advs)
     {
-        adv_post_update_last_successful_network_comm_timestamp();
+        adv_post_last_successful_network_comm_timestamp_update();
     }
 
     return http_server_resp_data_in_heap(
