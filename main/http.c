@@ -316,7 +316,7 @@ http_async_poll(void)
                 http_status);
             if (p_http_async_info->flag_sending_advs)
             {
-                adv_post_update_last_successful_network_comm_timestamp();
+                adv_post_last_successful_network_comm_timestamp_update();
             }
             flag_success = true;
         }
