@@ -45,6 +45,7 @@ static const ruuvi_gateway_config_t g_gateway_config_default = {
             .lan_auth_type = { HTTP_SERVER_AUTH_TYPE_STR_RUUVI },
             .lan_auth_user = { RUUVI_GATEWAY_AUTH_DEFAULT_USER },
             .lan_auth_pass = { "" },
+            .lan_auth_api_key = { "" },
         },
         .auto_update = {
             .auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR,

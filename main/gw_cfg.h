@@ -27,20 +27,21 @@
 extern "C" {
 #endif
 
-#define MAX_CONFIG_STR_LEN     64
-#define MAX_HTTP_URL_LEN       256
-#define MAX_HTTP_USER_LEN      51
-#define MAX_HTTP_PASS_LEN      51
-#define MAX_MQTT_TRANSPORT_LEN 8
-#define MAX_MQTT_SERVER_LEN    256
-#define MAX_MQTT_PREFIX_LEN    257
-#define MAX_MQTT_USER_LEN      129
-#define MAX_MQTT_PASS_LEN      257
-#define MAX_MQTT_CLIENT_ID_LEN 51
-#define MAX_LAN_AUTH_TYPE_LEN  20
-#define MAX_LAN_AUTH_USER_LEN  51
-#define MAX_LAN_AUTH_PASS_LEN  51
-#define IP_STR_LEN             17
+#define MAX_CONFIG_STR_LEN       64
+#define MAX_HTTP_URL_LEN         256
+#define MAX_HTTP_USER_LEN        51
+#define MAX_HTTP_PASS_LEN        51
+#define MAX_MQTT_TRANSPORT_LEN   8
+#define MAX_MQTT_SERVER_LEN      256
+#define MAX_MQTT_PREFIX_LEN      257
+#define MAX_MQTT_USER_LEN        129
+#define MAX_MQTT_PASS_LEN        257
+#define MAX_MQTT_CLIENT_ID_LEN   51
+#define MAX_LAN_AUTH_TYPE_LEN    20
+#define MAX_LAN_AUTH_USER_LEN    51
+#define MAX_LAN_AUTH_PASS_LEN    51
+#define MAX_LAN_AUTH_API_KEY_LEN 64
+#define IP_STR_LEN               17
 
 #define RUUVI_COMPANY_ID 0x0499
 
@@ -144,6 +145,7 @@ typedef struct ruuvi_gw_cfg_lan_auth_t
     char lan_auth_type[MAX_LAN_AUTH_TYPE_LEN];
     char lan_auth_user[MAX_LAN_AUTH_USER_LEN];
     char lan_auth_pass[MAX_LAN_AUTH_PASS_LEN];
+    char lan_auth_api_key[MAX_LAN_AUTH_API_KEY_LEN];
 } ruuvi_gw_cfg_lan_auth_t;
 
 #define AUTO_UPDATE_CYCLE_TYPE_STR_REGULAR     "regular"

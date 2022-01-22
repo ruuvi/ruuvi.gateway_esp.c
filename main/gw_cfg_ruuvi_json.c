@@ -152,6 +152,10 @@ gw_cfg_ruuvi_json_add_items_lan_auth(cJSON *p_json_root, const ruuvi_gateway_con
     {
         return false;
     }
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "lan_auth_api_key", p_cfg->lan_auth.lan_auth_api_key))
+    {
+        return false;
+    }
     return true;
 }
 

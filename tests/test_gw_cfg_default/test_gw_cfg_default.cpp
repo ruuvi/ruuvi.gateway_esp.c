@@ -94,6 +94,7 @@ TEST_F(TestGwCfgDefault, test_1) // NOLINT
     ASSERT_EQ(string(HTTP_SERVER_AUTH_TYPE_STR_RUUVI), string(gw_cfg.lan_auth.lan_auth_type));
     ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), string(gw_cfg.lan_auth.lan_auth_user));
     ASSERT_EQ(string(""), string(gw_cfg.lan_auth.lan_auth_pass));
+    ASSERT_EQ(string(""), string(gw_cfg.lan_auth.lan_auth_api_key));
 
     ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_REGULAR, gw_cfg.auto_update.auto_update_cycle);
     ASSERT_EQ(0x7F, gw_cfg.auto_update.auto_update_weekdays_bitmask);

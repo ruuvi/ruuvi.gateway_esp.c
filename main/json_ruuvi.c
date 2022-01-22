@@ -358,6 +358,12 @@ json_ruuvi_parse_main_cfg_lan_auth(const cJSON *p_json_root, ruuvi_gw_cfg_lan_au
                 gw_cfg_default_get_lan_auth_password());
         }
     }
+    json_ruuvi_copy_string_val(
+        p_json_root,
+        "lan_auth_api_key",
+        p_gw_cfg_lan_auth->lan_auth_api_key,
+        sizeof(p_gw_cfg_lan_auth->lan_auth_api_key),
+        true);
     return true;
 }
 
