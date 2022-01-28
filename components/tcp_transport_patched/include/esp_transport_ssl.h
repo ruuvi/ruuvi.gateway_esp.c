@@ -59,7 +59,7 @@ void esp_transport_ssl_set_cert_data_der(esp_transport_handle_t t, const char *d
  */
 void esp_transport_ssl_enable_global_ca_store(esp_transport_handle_t t);
 
-void esp_transport_ssl_crt_bundle_attach(esp_transport_handle_t t);
+void esp_transport_ssl_crt_bundle_attach(esp_transport_handle_t t, esp_err_t (*crt_bundle_attach)(void *conf));
 
 /**
  * @brief      Set SSL client certificate data for mutual authentication (as PEM format).

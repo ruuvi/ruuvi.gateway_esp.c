@@ -267,12 +267,12 @@ void esp_transport_ssl_enable_global_ca_store(esp_transport_handle_t t)
     }
 }
 
-void esp_transport_ssl_crt_bundle_attach(esp_transport_handle_t t)
+void esp_transport_ssl_crt_bundle_attach(esp_transport_handle_t t, esp_err_t (*crt_bundle_attach)(void *conf))
 {
-  transport_ssl_t *ssl = esp_transport_get_context_data(t);
-  if (t && ssl) {
-    ssl->cfg.crt_bundle_attach = &esp_crt_bundle_attach;
-  }
+    transport_ssl_t *ssl = esp_transport_get_context_data(t);
+    if (t && ssl) {
+        ssl->cfg.crt_bundle_attach = crt_bundle_attach;
+    }
 }
 
 #ifdef CONFIG_ESP_TLS_PSK_VERIFICATION
