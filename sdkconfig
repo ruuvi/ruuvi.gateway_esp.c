@@ -1155,6 +1155,11 @@ CONFIG_DEFAULT_AP_BEACON_INTERVAL=100
 # end of ESP HTTP client
 
 #
+# ESP-MQTT Configurations
+#
+# end of ESP-MQTT Configurations
+
+#
 # TCP Transport
 #
 
