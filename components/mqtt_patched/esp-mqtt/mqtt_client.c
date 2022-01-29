@@ -206,6 +206,8 @@ static esp_err_t esp_mqtt_set_ssl_transport_properties(esp_transport_list_handle
         esp_transport_ssl_enable_global_ca_store(ssl);
     } else if (cfg->crt_bundle_attach != NULL) {
 #ifdef MQTT_SUPPORTED_FEATURE_CERTIFICATE_BUNDLE
+            // esp_transport_ssl_crt_bundle_attach is implemented in components/tcp_transport_patched,
+            // so, it's possible to enable this feature for ESP_IDF v4.3
             esp_transport_ssl_crt_bundle_attach(ssl, cfg->crt_bundle_attach);
 #else   
             ESP_LOGE(TAG, "Certificate bundle feature is not available in IDF version %s", IDF_VER);
