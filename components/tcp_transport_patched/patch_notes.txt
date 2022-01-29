@@ -10,6 +10,8 @@ This is a patched version of ${ESP-IDF}/components/tcp_transport
 
 4. #452: Patch transport_tcp in order to get rid of waiting in asynchronous mode for HTTPS connections
 
+5. #473: esp_transport_ssl: make API esp_transport_ssl_crt_bundle_attach compatible with ESP_IDF v4.4
+
 ========================================================================================================================
 The patch diff: https://github.com/ruuvi/ruuvi.gateway_esp.c/pull/448/commits/12f9c44deb4d1a9db21b2f8438898a9109ea2210
 ========================================================================================================================
@@ -506,3 +508,43 @@ index 7839eb0..abd7b4f 100644
      }
      if (ret == 0) {
          ret = -1;
+
+========================================================================================================================
+https://github.com/ruuvi/ruuvi.gateway_esp.c/commit/06835efa3b825117c336d0ff120449aa0ae854aa
+========================================================================================================================
+
+diff --git a/components/tcp_transport_patched/include/esp_transport_ssl.h b/components/tcp_transport_patched/include/esp_transport_ssl.h
+index 766da6b..0bd9ec3 100644
+--- a/components/tcp_transport_patched/include/esp_transport_ssl.h
++++ b/components/tcp_transport_patched/include/esp_transport_ssl.h
+@@ -59,7 +59,7 @@ void esp_transport_ssl_set_cert_data_der(esp_transport_handle_t t, const char *d
+  */
+ void esp_transport_ssl_enable_global_ca_store(esp_transport_handle_t t);
+
+-void esp_transport_ssl_crt_bundle_attach(esp_transport_handle_t t);
++void esp_transport_ssl_crt_bundle_attach(esp_transport_handle_t t, esp_err_t (*crt_bundle_attach)(void *conf));
+
+ /**
+  * @brief      Set SSL client certificate data for mutual authentication (as PEM format).
+diff --git a/components/tcp_transport_patched/transport_ssl.c b/components/tcp_transport_patched/transport_ssl.c
+index abd7b4f..a3a8f46 100644
+--- a/components/tcp_transport_patched/transport_ssl.c
++++ b/components/tcp_transport_patched/transport_ssl.c
+@@ -267,12 +267,12 @@ void esp_transport_ssl_enable_global_ca_store(esp_transport_handle_t t)
+     }
+ }
+
+-void esp_transport_ssl_crt_bundle_attach(esp_transport_handle_t t)
++void esp_transport_ssl_crt_bundle_attach(esp_transport_handle_t t, esp_err_t (*crt_bundle_attach)(void *conf))
+ {
+-  transport_ssl_t *ssl = esp_transport_get_context_data(t);
+-  if (t && ssl) {
+-    ssl->cfg.crt_bundle_attach = &esp_crt_bundle_attach;
+-  }
++    transport_ssl_t *ssl = esp_transport_get_context_data(t);
++    if (t && ssl) {
++        ssl->cfg.crt_bundle_attach = crt_bundle_attach;
++    }
+ }
+
+ #ifdef CONFIG_ESP_TLS_PSK_VERIFICATION
