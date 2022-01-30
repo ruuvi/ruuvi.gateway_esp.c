@@ -26,6 +26,7 @@
 #include "sdkconfig.h"
 #include "esp_http_client.h"
 #include "errno.h"
+#include "esp_crt_bundle.h"
 
 #ifdef CONFIG_ESP_HTTP_CLIENT_ENABLE_HTTPS
 #include "esp_transport_ssl.h"
@@ -602,7 +603,7 @@ esp_http_client_handle_t esp_http_client_init(const esp_http_client_config_t *co
     } else if (config->cert_pem) {
         esp_transport_ssl_set_cert_data(ssl, config->cert_pem, strlen(config->cert_pem));
     } else {
-        esp_transport_ssl_crt_bundle_attach(ssl);
+        esp_transport_ssl_crt_bundle_attach(ssl, &esp_crt_bundle_attach);
     }
 
     if (config->client_cert_pem) {

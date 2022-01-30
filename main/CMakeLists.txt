@@ -76,7 +76,7 @@ idf_component_register(
             time_task.h
         REQUIRES
             app_update
-            mqtt
+            mqtt_patched
             lwip
             esp_http_client_patched
             json

@@ -1,0 +1,38 @@
+This is a patched version of ${ESP-IDF}/components/mqtt
+
+1. "ESP x509 Certificate Bundle" is included into ESP-IDF,
+   but the implementation of the "mqtt" component in ESP-IDF v4.3 doesn't allow to use it.
+
+
+========================================================================================================================
+https://github.com/ruuvi/ruuvi.gateway_esp.c/commit/4725cb3875499a5783ed87fbfa821eba8af787d5
+========================================================================================================================
+
+diff --git a/components/mqtt_patched/esp-mqtt/include/mqtt_supported_features.h b/components/mqtt_patched/esp-mqtt/include/mqtt_supported_features.h
+index 6e49182..e57d7bc 100644
+--- a/components/mqtt_patched/esp-mqtt/include/mqtt_supported_features.h
++++ b/components/mqtt_patched/esp-mqtt/include/mqtt_supported_features.h
+@@ -59,8 +59,8 @@
+ #define MQTT_SUPPORTED_FEATURE_TRANSPORT_SOCK_ERRNO_REPORTING
+ #endif
+
+-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 4, 0)
+-// Features supported in 4.4
++#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 3, 0)
++// Features supported in 4.3
+ #define MQTT_SUPPORTED_FEATURE_CERTIFICATE_BUNDLE
+ #endif
+
+diff --git a/components/mqtt_patched/esp-mqtt/mqtt_client.c b/components/mqtt_patched/esp-mqtt/mqtt_client.c
+index f015de9..7233e67 100644
+--- a/components/mqtt_patched/esp-mqtt/mqtt_client.c
++++ b/components/mqtt_patched/esp-mqtt/mqtt_client.c
+@@ -206,6 +206,8 @@ static esp_err_t esp_mqtt_set_ssl_transport_properties(esp_transport_list_handle
+         esp_transport_ssl_enable_global_ca_store(ssl);
+     } else if (cfg->crt_bundle_attach != NULL) {
+ #ifdef MQTT_SUPPORTED_FEATURE_CERTIFICATE_BUNDLE
++            // esp_transport_ssl_crt_bundle_attach is implemented in components/tcp_transport_patched,
++            // so, it's possible to enable this feature for ESP_IDF v4.3
+             esp_transport_ssl_crt_bundle_attach(ssl, cfg->crt_bundle_attach);
+ #else
+             ESP_LOGE(TAG, "Certificate bundle feature is not available in IDF version %s", IDF_VER);

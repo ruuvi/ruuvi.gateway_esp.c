@@ -16,6 +16,7 @@
 #include "fw_update.h"
 #include "os_mutex.h"
 #include "gw_mac.h"
+#include "esp_crt_bundle.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -286,7 +287,7 @@ mqtt_generate_client_config(
         .refresh_connection_after_ms = 0,
         .psk_hint_key                = NULL,
         .use_global_ca_store         = false,
-        .crt_bundle_attach           = NULL,
+        .crt_bundle_attach           = &esp_crt_bundle_attach,
         .reconnect_timeout_ms        = 0,
         .alpn_protos                 = NULL,
         .clientkey_password          = NULL,
