@@ -6,7 +6,7 @@ Developed with:
 * Waveshare LAN8720 ETH board
 * nRF52832 devkit
 
-or Ruuvi Gateway boards. 
+or Ruuvi Gateway boards.
 
 ### Features
 
