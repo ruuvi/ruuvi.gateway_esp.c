@@ -14,6 +14,8 @@
 #include "esp_wifi.h"
 #include "esp_netif_net_stack.h"
 #include "ethernet.h"
+#include "mbedtls/ctr_drbg.h"
+#include "mbedtls/entropy.h"
 #include "os_task.h"
 #include "os_malloc.h"
 #include "freertos/FreeRTOS.h"
@@ -67,6 +69,9 @@ static const char TAG[] = "ruuvi_gateway";
 
 EventGroupHandle_t status_bits;
 uint32_t volatile g_network_disconnect_cnt;
+
+static mbedtls_entropy_context  g_entropy;
+static mbedtls_ctr_drbg_context g_ctr_drbg;
 
 static inline uint8_t
 conv_bool_to_u8(const bool x)
@@ -384,7 +389,14 @@ wifi_init(
         .cb_on_ap_sta_connected    = &cb_on_ap_sta_connected,
         .cb_on_ap_sta_disconnected = &cb_on_ap_sta_disconnected,
     };
-    wifi_manager_start(!flag_use_eth, flag_start_ap_only, p_gw_wifi_ssid, &wifi_antenna_config, &wifi_callbacks);
+    wifi_manager_start(
+        !flag_use_eth,
+        flag_start_ap_only,
+        p_gw_wifi_ssid,
+        &wifi_antenna_config,
+        &wifi_callbacks,
+        &mbedtls_ctr_drbg_random,
+        &g_ctr_drbg);
     wifi_manager_set_callback(EVENT_STA_GOT_IP, &wifi_connection_ok_cb);
     wifi_manager_set_callback(EVENT_STA_DISCONNECTED, &wifi_disconnect_cb);
     return true;
@@ -601,9 +613,38 @@ configure_wifi_country_and_max_tx_power(void)
     read_wifi_max_tx_power_and_print_to_log("Max WiFi TX power after esp_wifi_set_max_tx_power");
 }
 
+static void
+configure_mbedtls_rng(void)
+{
+    mbedtls_entropy_init(&g_entropy);
+    mbedtls_ctr_drbg_init(&g_ctr_drbg);
+
+    LOG_INFO("Seeding the random number generator...");
+
+    const nrf52_device_id_str_t nrf52_device_id_str = ruuvi_device_id_get_str();
+    str_buf_t                   custom_seed         = str_buf_printf_with_alloc(
+        "%s:%lu:%lu",
+        nrf52_device_id_str.str_buf,
+        (printf_ulong_t)time(NULL),
+        (printf_ulong_t)xTaskGetTickCount());
+
+    if (0
+        != mbedtls_ctr_drbg_seed(
+            &g_ctr_drbg,
+            mbedtls_entropy_func,
+            &g_entropy,
+            (const unsigned char *)custom_seed.buf,
+            strlen(custom_seed.buf)))
+    {
+        LOG_ERR("%s: failed", "mbedtls_ctr_drbg_seed");
+    }
+}
+
 static bool
 network_subsystem_init(void)
 {
+    configure_mbedtls_rng();
+
     if (!wifi_init(
             gw_cfg_get_eth_use_eth(),
             settings_read_flag_force_start_wifi_hotspot(),
