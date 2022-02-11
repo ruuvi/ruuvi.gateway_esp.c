@@ -7,6 +7,7 @@
 
 import argparse
 import os
+import subprocess
 import sys
 import shutil
 import gzip
@@ -20,6 +21,10 @@ def main():
     args = parser.parse_args()
     input_dir = args.input
     output_dir = args.output
+    res = subprocess.call(f'{input_dir}/../scripts/gen_crypto_browserify_js.sh', shell=True)
+    if res != 0:
+        print('Error: gen_crypto_browserify_js.sh failed', file=sys.stderr)
+        sys.exit(res)
     if os.path.exists(output_dir):
         if os.path.isfile(output_dir):
             print('Error: %s is a file, but it should be a dir' % output_dir, file=sys.stderr)
