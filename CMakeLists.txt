@@ -45,6 +45,15 @@ endif()
 set(FATFS_NRF52_ADDR ${CMAKE_MATCH_1})
 set(FATFS_NRF52_SIZE ${CMAKE_MATCH_2})
 
+set(GW_CFG_PARTITION fatfs_cfg)
+file(STRINGS "partitions.csv" PARTITIONS_CSV)
+string(REGEX MATCH "${GW_CFG_PARTITION}, *data, *fat, *(0x[0-9a-fA-F]+), *([x0-9a-fA-F]+)," PARTITION_FATFS_CFG ${PARTITIONS_CSV})
+if("${PARTITION_FATFS_CFG}" STREQUAL "")
+    message(FATAL_ERROR "Can't find 'fatfs_cfg' partition in partitions.csv")
+endif()
+set(FATFS_CFG_ADDR ${CMAKE_MATCH_1})
+set(FATFS_CFG_SIZE ${CMAKE_MATCH_2})
+
 execute_process (
         COMMAND bash -c "git describe --always --tags --dirty"
         OUTPUT_VARIABLE PROJECT_VER
@@ -73,5 +82,6 @@ target_compile_definitions(__idf_main PUBLIC
         RUUVI_ESP
         GW_GWUI_PARTITION="${GW_GWUI_PARTITION}"
         GW_NRF_PARTITION="${GW_NRF_PARTITION}"
+        GW_CFG_PARTITION="${GW_CFG_PARTITION}"
         BOARD_RUUVIGW_ESP
 )
