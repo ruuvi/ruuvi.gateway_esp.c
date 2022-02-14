@@ -102,22 +102,39 @@ gw_cfg_print_to_log(const ruuvi_gateway_config_t *const p_config)
     LOG_INFO("config: mqtt prefix: %s", p_config->mqtt.mqtt_prefix.buf);
     LOG_INFO("config: mqtt client id: %s", p_config->mqtt.mqtt_client_id.buf);
     LOG_INFO("config: mqtt user: %s", p_config->mqtt.mqtt_user.buf);
-    LOG_INFO("config: mqtt password: %s", "********");
+#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
     LOG_DBG("config: mqtt password: %s", p_config->mqtt.mqtt_pass.buf);
+#else
+    LOG_INFO("config: mqtt password: %s", "********");
+#endif
     LOG_INFO("config: use http: %d", p_config->http.use_http);
     LOG_INFO("config: http url: %s", p_config->http.http_url.buf);
     LOG_INFO("config: http user: %s", p_config->http.http_user.buf);
-    LOG_INFO("config: http pass: %s", "********");
+#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
     LOG_DBG("config: http pass: %s", p_config->http.http_pass.buf);
+#else
+    LOG_INFO("config: http pass: %s", "********");
+#endif
     LOG_INFO("config: use http_stat: %d", p_config->http_stat.use_http_stat);
     LOG_INFO("config: http_stat url: %s", p_config->http_stat.http_stat_url.buf);
     LOG_INFO("config: http_stat user: %s", p_config->http_stat.http_stat_user.buf);
+#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
     LOG_DBG("config: http_stat pass: %s", p_config->http_stat.http_stat_pass.buf);
+#else
     LOG_INFO("config: http_stat pass: %s", "********");
+#endif
     LOG_INFO("config: LAN auth type: %s", p_config->lan_auth.lan_auth_type);
     LOG_INFO("config: LAN auth user: %s", p_config->lan_auth.lan_auth_user);
+#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
+    LOG_DBG("config: LAN auth pass: %s", p_config->lan_auth.lan_auth_pass);
+#else
     LOG_INFO("config: LAN auth pass: %s", "********");
-    LOG_INFO("config: LAN auth API key: %s", p_config->lan_auth.lan_auth_api_key);
+#endif
+#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
+    LOG_DBG("config: LAN auth API key: %s", p_config->lan_auth.lan_auth_api_key);
+#else
+    LOG_INFO("config: LAN auth API key: %s", "********");
+#endif
 
     switch (p_config->auto_update.auto_update_cycle)
     {
