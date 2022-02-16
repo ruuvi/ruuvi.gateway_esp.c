@@ -76,4 +76,4 @@ esptool.py -p (PORT) -b 460800 --before default_reset --after hard_reset write_f
 ```
 
 or using the Windows GUI tool `Flash Download Tools` ([download](https://www.espressif.com/en/support/download/other-tools)) with these settings:
-![alt text](docs/guiflasher.png "Bootloader 0x1000, partition table 0x8000, ota_data_initial 0xd000, ruuvi_gateway_esp 0x100000, fatfs_gwui 0x500000, fatfs_nrf52 0x5C0000")     
+![alt text](docs/guiflasher.png "Bootloader 0x1000, partition table 0x8000, ota_data_initial 0xd000, ruuvi_gateway_esp 0x100000, fatfs_gwui 0x500000, fatfs_nrf52 0x5C0000")      
