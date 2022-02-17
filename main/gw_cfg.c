@@ -11,8 +11,13 @@
 #include <stdio.h>
 #include "os_mutex_recursive.h"
 
+#if defined(RUUVI_TESTS_HTTP_SERVER_CB)
+#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
+#else
 // Warning: Debug log level prints out the passwords as a "plaintext" so accidents won't happen.
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
+#endif
+
 #include "log.h"
 
 mac_address_bin_t g_gw_mac_eth      = { 0 };
