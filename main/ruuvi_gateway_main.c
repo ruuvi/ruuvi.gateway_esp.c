@@ -348,7 +348,7 @@ wifi_init(
         .wifi_ant_gpio_config = {
             .gpio_cfg = {
                 [0] = {
-                    .gpio_select = 0, // TODO: enable the use of LNA_CRX after fixing this bug: https://github.com/espressif/esp-idf/issues/6930
+                    .gpio_select = 1,
                     .gpio_num = RB_GWBUS_LNA,
                 },
                 [1] = {
@@ -373,7 +373,6 @@ wifi_init(
             .enabled_ant1 = 1,
         },
     };
-    (void)gpio_set_level(RB_GWBUS_LNA, 1);
     if (!http_server_cb_init(p_fatfs_gwui_partition_name))
     {
         LOG_ERR("%s failed", "http_server_cb_init");
