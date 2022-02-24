@@ -694,34 +694,6 @@ network_subsystem_init(void)
     return true;
 }
 
-static const char *
-generate_default_lan_auth_password(void)
-{
-    const nrf52_device_id_str_t device_id = ruuvi_device_id_get_str();
-
-    str_buf_t str_buf = str_buf_printf_with_alloc(
-        "%s:%s:%s",
-        RUUVI_GATEWAY_AUTH_DEFAULT_USER,
-        g_gw_wifi_ssid.ssid_buf,
-        device_id.str_buf);
-    if (0 == str_buf_get_len(&str_buf))
-    {
-        return NULL;
-    }
-
-    const wifiman_md5_digest_hex_str_t password_md5 = wifiman_md5_calc_hex_str(str_buf.buf, str_buf_get_len(&str_buf));
-
-    str_buf_free_buf(&str_buf);
-    const size_t password_md5_len   = strlen(password_md5.buf);
-    char *const  p_password_md5_str = os_malloc(password_md5_len + 1);
-    if (NULL == p_password_md5_str)
-    {
-        return NULL;
-    }
-    snprintf(p_password_md5_str, password_md5_len + 1, "%s", password_md5.buf);
-    return p_password_md5_str;
-}
-
 static bool
 main_task_init(void)
 {
@@ -799,12 +771,7 @@ main_task_init(void)
 
     settings_update_mac_addr(&nrf52_mac_addr);
 
-    gw_cfg_default_init();
-    if (!gw_cfg_default_set_lan_auth_password(generate_default_lan_auth_password()))
-    {
-        LOG_ERR("%s failed", "generate_default_lan_auth_password");
-        return false;
-    }
+    gw_cfg_default_init(&g_gw_wifi_ssid, ruuvi_device_id_get_str());
     gw_cfg_init();
     settings_get_from_flash();
 

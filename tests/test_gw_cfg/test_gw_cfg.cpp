@@ -96,7 +96,9 @@ protected:
         this->m_malloc_cnt         = 0;
         this->m_malloc_fail_on_cnt = 0;
 
-        gw_cfg_default_set_lan_auth_password("\xFFpassword_md5\xFF");
+        snprintf(g_gw_wifi_ssid.ssid_buf, sizeof(g_gw_wifi_ssid.ssid_buf), "my_ssid1");
+        const nrf52_device_id_str_t device_id_str = { "11:22:33:44:55:66:77:88" };
+        gw_cfg_default_init(&g_gw_wifi_ssid, device_id_str);
     }
 
     void

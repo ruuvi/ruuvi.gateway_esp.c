@@ -290,6 +290,6 @@ void
 gw_cfg_set_default_lan_auth(void)
 {
     ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_rw();
-    p_gw_cfg->lan_auth               = gw_cfg_default_get_lan_auth();
+    p_gw_cfg->lan_auth               = *gw_cfg_default_get_lan_auth();
     gw_cfg_unlock_rw(&p_gw_cfg);
 }

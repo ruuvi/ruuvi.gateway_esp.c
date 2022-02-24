@@ -262,7 +262,9 @@ protected:
         gw_cfg_init();
         snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
 
-        gw_cfg_default_set_lan_auth_password("\xFFpassword_md5\xFF");
+        snprintf(g_gw_wifi_ssid.ssid_buf, sizeof(g_gw_wifi_ssid.ssid_buf), "my_ssid1");
+        const nrf52_device_id_str_t device_id_str = { "00:11:22:33:44:55:66:77" };
+        gw_cfg_default_init(&g_gw_wifi_ssid, device_id_str);
     }
 
     void
@@ -654,7 +656,6 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
             &flag_network_cfg));
     gw_cfg_update(&gw_cfg, false);
     ASSERT_FALSE(flag_network_cfg);
-    snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
 
     esp_log_wrapper_clear();
     const http_server_resp_t resp = http_server_resp_json_ruuvi();
@@ -732,7 +733,6 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed_2) // NOLINT
             &flag_network_cfg));
     ASSERT_FALSE(flag_network_cfg);
     gw_cfg_update(&gw_cfg, false);
-    snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
 
     g_pTestClass->m_malloc_cnt         = 0;
     g_pTestClass->m_malloc_fail_on_cnt = 2;
@@ -831,7 +831,6 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
             &flag_network_cfg));
     ASSERT_FALSE(flag_network_cfg);
     gw_cfg_update(&gw_cfg, false);
-    snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
 
     esp_log_wrapper_clear();
     const http_server_resp_t resp = http_server_resp_json("ruuvi.json", false);
@@ -1259,7 +1258,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
             &flag_network_cfg));
     ASSERT_FALSE(flag_network_cfg);
     gw_cfg_update(&gw_cfg, false);
-    snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
 
     esp_log_wrapper_clear();
     const http_server_resp_t resp = http_server_cb_on_get("ruuvi.json", false, nullptr);
@@ -1473,7 +1471,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, string("config: http_stat pass: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_ruuvi"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth user: Admin"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, string("config: LAN auth pass: \xFFpassword_md5\xFF"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, string("config: LAN auth pass: f32dd273cd874d98ec4fc21d534e3e61"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, string("config: LAN auth API key: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update cycle: regular"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update weekdays_bitmask: 0x7f"));
@@ -1999,7 +1997,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, string("config: http_stat pass: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_ruuvi"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth user: Admin"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, string("config: LAN auth pass: \xFFpassword_md5\xFF"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, string("config: LAN auth pass: f32dd273cd874d98ec4fc21d534e3e61"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, string("config: LAN auth API key: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update cycle: regular"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update weekdays_bitmask: 0x7f"));
