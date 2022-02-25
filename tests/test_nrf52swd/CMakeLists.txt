@@ -30,6 +30,8 @@ target_include_directories(${ProjectId} PUBLIC
         $ENV{IDF_PATH}/components/esp_common/include
         $ENV{IDF_PATH}/components/esp_rom/include
         $ENV{IDF_PATH}/components/esp32/include
+        $ENV{IDF_PATH}/components/soc/soc/esp32/include
+        $ENV{IDF_PATH}/components/soc/soc/include
 )
 
 target_compile_definitions(${ProjectId} PUBLIC
