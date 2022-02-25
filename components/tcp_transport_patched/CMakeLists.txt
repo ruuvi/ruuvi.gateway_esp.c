@@ -12,4 +12,4 @@ endif()
 idf_component_register(SRCS "${srcs}"
                     INCLUDE_DIRS "include"
                     PRIV_INCLUDE_DIRS "private_include"
-                    REQUIRES lwip esp-tls)
+                    REQUIRES lwip esp-tls_patched)

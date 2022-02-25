@@ -19,7 +19,7 @@
 
 #include "esp_netif.h"
 #include "lwip/sockets.h"
-#include "esp_rom_md5.h"
+#include "mbedtls/md5.h"
 #include "esp_tls_crypto.h"
 
 #include "esp_system.h"
@@ -46,7 +46,7 @@ static int md5_printf(char *md, const char *fmt, ...)
     unsigned char *buf;
     unsigned char digest[MD5_MAX_LEN];
     int len, i;
-    struct MD5Context md5_ctx;
+    mbedtls_md5_context md5_ctx;
     va_list ap;
     va_start(ap, fmt);
     len = vasprintf((char **)&buf, fmt, ap);
@@ -55,9 +55,11 @@ static int md5_printf(char *md, const char *fmt, ...)
         return ESP_FAIL;
     }
 
-    esp_rom_md5_init(&md5_ctx);
-    esp_rom_md5_update(&md5_ctx, buf, len);
-    esp_rom_md5_final(digest, &md5_ctx);
+    mbedtls_md5_init(&md5_ctx);
+    mbedtls_md5_starts_ret(&md5_ctx);
+    mbedtls_md5_update_ret(&md5_ctx, buf, len);
+    mbedtls_md5_finish_ret(&md5_ctx, digest);
+    mbedtls_md5_free(&md5_ctx);
 
     for (i = 0; i < 16; ++i) {
         sprintf(&md[i * 2], "%02x", (unsigned int)digest[i]);
