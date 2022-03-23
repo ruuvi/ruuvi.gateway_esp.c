@@ -12,7 +12,7 @@ ExternalProject_Add(fatfs_cfg_ext
         BUILD_BYPRODUCTS ${FATFS_CFG_IMG}
         CONFIGURE_COMMAND ""
         BUILD_COMMAND
-            cp -R ${RUUVI_GW_CFG_DEFAULT}/ ${FATFS_CFG_TMP_DIR}/ &&
+            cp -R ${RUUVI_GW_CFG_DEFAULT}/. ${FATFS_CFG_TMP_DIR}/ &&
             ${MKFATFS} -c ${FATFS_CFG_TMP_DIR} -s ${FATFS_CFG_SIZE} ${FATFS_CFG_IMG}
         INSTALL_COMMAND ""
         BUILD_ALWAYS 1
