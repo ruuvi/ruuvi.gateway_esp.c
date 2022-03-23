@@ -1,4 +1,8 @@
 {
+  "wifi_sta_config": {
+    "ssid": "",
+    "password": ""
+  },
   "use_eth": false,
   "eth_dhcp": true,
   "eth_static_ip": "",
@@ -6,8 +10,6 @@
   "eth_gw": "",
   "eth_dns1": "",
   "eth_dns2": "",
-  "wifi_ssid": "",
-  "wifi_password": "",
   "use_http": true,
   "http_url": "https://network.ruuvi.com/record",
   "http_user": "",
@@ -17,6 +19,7 @@
   "http_stat_user": "",
   "http_stat_pass": "",
   "use_mqtt": false,
+  "mqtt_use_default_prefix": true,
   "mqtt_transport": "TCP",
   "mqtt_server": "test.mosquitto.org",
   "mqtt_port": 1883,
@@ -34,14 +37,14 @@
   "auto_update_interval_from": 0,
   "auto_update_interval_to": 24,
   "auto_update_tz_offset_hours": 3,
-  "use_filtering": true,
-  "company_id": "0x0499",
+  "company_use_filtering": true,
+  "company_id": 1177,
   "coordinates": "",
-  "use_coded_phy": false,
-  "use_1mbit_phy": true,
-  "use_extended_payload": true,
-  "use_channel_37": true,
-  "use_channel_38": true,
-  "use_channel_39": true
+  "scan_coded_phy": false,
+  "scan_1mbit_phy": true,
+  "scan_extended_payload": true,
+  "scan_channel_37": true,
+  "scan_channel_38": true,
+  "scan_channel_39": true
 }
 
