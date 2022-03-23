@@ -3281,8 +3281,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'auto_update_interval_from' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'auto_update_interval_to' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'auto_update_tz_offset_hours' in config-json"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'company_id' in config-json"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'company_use_filtering' in config-json"));
+    TEST_CHECK_LOG_RECORD(
+        ESP_LOG_WARN,
+        string("Can't find key 'company_id' in config-json, use default value: 0x0499"));
+    TEST_CHECK_LOG_RECORD(
+        ESP_LOG_WARN,
+        string("Can't find key 'company_use_filtering' in config-json, use default value: 'true'"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'scan_coded_phy' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'scan_1mbit_phy' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'scan_extended_payload' in config-json"));

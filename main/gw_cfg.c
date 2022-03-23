@@ -89,9 +89,9 @@ gw_cfg_unlock_ro(const ruuvi_gateway_config_t **const p_p_gw_cfg)
 }
 
 void
-gw_cfg_print_to_log(const ruuvi_gateway_config_t *const p_config)
+gw_cfg_print_to_log(const ruuvi_gateway_config_t *const p_config, const char *const p_title)
 {
-    LOG_INFO("Gateway SETTINGS:");
+    LOG_INFO("%s:", p_title);
     LOG_INFO("config: use eth: %d", p_config->eth.use_eth);
     LOG_INFO("config: use eth dhcp: %d", p_config->eth.eth_dhcp);
     LOG_INFO("config: eth static ip: %s", p_config->eth.eth_static_ip.buf);

@@ -37,7 +37,10 @@ protected:
     void
     SetUp() override
     {
-        g_pTestClass = this;
+        g_pTestClass                          = this;
+        const wifi_ssid_t           wifi_ssid = { "" };
+        const nrf52_device_id_str_t device_id = { "00:11:22:33:44:55:66:77" };
+        gw_cfg_default_init(&wifi_ssid, device_id);
     }
 
     void
@@ -606,7 +609,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_with_incorrect_header) // NOLINT
 
     ASSERT_EQ(string(HTTP_SERVER_AUTH_TYPE_STR_RUUVI), gw_cfg.lan_auth.lan_auth_type);
     ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), gw_cfg.lan_auth.lan_auth_user);
-    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_pass);
+    ASSERT_EQ(string("f7cdba00dfe46bdbc72d26de5286c971"), gw_cfg.lan_auth.lan_auth_pass);
     ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key);
 
     ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_REGULAR, gw_cfg.auto_update.auto_update_cycle);
@@ -718,7 +721,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_with_incorrect_fmt_version) // NO
 
     ASSERT_EQ(string(HTTP_SERVER_AUTH_TYPE_STR_RUUVI), gw_cfg.lan_auth.lan_auth_type);
     ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), gw_cfg.lan_auth.lan_auth_user);
-    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_pass);
+    ASSERT_EQ(string("f7cdba00dfe46bdbc72d26de5286c971"), gw_cfg.lan_auth.lan_auth_pass);
     ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key);
 
     ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_REGULAR, gw_cfg.auto_update.auto_update_cycle);

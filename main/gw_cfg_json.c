@@ -635,11 +635,17 @@ gw_cfg_json_parse_filter(const cJSON *const p_json_root, ruuvi_gw_cfg_filter_t *
 {
     if (!json_wrap_get_uint16_val(p_json_root, "company_id", &p_gw_cfg_filter->company_id))
     {
-        LOG_WARN("Can't find key '%s' in config-json", "company_id");
+        LOG_WARN(
+            "Can't find key '%s' in config-json, use default value: 0x%04x",
+            "company_id",
+            p_gw_cfg_filter->company_id);
     }
     if (!json_wrap_get_bool_val(p_json_root, "company_use_filtering", &p_gw_cfg_filter->company_use_filtering))
     {
-        LOG_WARN("Can't find key '%s' in config-json", "company_use_filtering");
+        LOG_WARN(
+            "Can't find key '%s' in config-json, use default value: '%s'",
+            "company_use_filtering",
+            p_gw_cfg_filter->company_use_filtering ? "true" : "false");
     }
 }
 
@@ -672,7 +678,7 @@ gw_cfg_json_parse_scan(const cJSON *const p_json_root, ruuvi_gw_cfg_scan_t *cons
     }
 }
 
-static void
+void
 gw_cfg_json_parse_cjson(const cJSON *const p_json_root, ruuvi_gateway_config_t *const p_gw_cfg)
 {
     gw_cfg_json_parse_eth(p_json_root, &p_gw_cfg->eth);

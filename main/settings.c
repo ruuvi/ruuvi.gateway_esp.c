@@ -276,15 +276,11 @@ settings_get_from_flash(void)
 
     if (flag_use_default_config)
     {
-        LOG_WARN("Using default config:");
+        LOG_WARN("Using default config");
         gw_cfg_default_get(p_gw_cfg);
     }
-    else
-    {
-        LOG_INFO("Configuration from flash:");
-    }
 
-    gw_cfg_print_to_log(p_gw_cfg);
+    gw_cfg_print_to_log(p_gw_cfg, "Gateway SETTINGS (from flash)");
     gw_cfg_unlock_rw(&p_gw_cfg);
     return flag_use_default_config;
 }

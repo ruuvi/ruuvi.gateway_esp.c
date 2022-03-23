@@ -27,6 +27,8 @@ target_include_directories(${ProjectId} PUBLIC
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/include
         include
         ${CMAKE_CURRENT_SOURCE_DIR}
+        $ENV{IDF_PATH}/components/esp_wifi/include
+        $ENV{IDF_PATH}/components/esp_common/include
 )
 
 target_compile_definitions(${ProjectId} PUBLIC

@@ -36,6 +36,9 @@ target_include_directories(${ProjectId} PUBLIC
         $ENV{IDF_PATH}/components/json/cJSON
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/include
         ${CMAKE_CURRENT_SOURCE_DIR}
+        $ENV{IDF_PATH}/components/esp_wifi/include
+        $ENV{IDF_PATH}/components/esp_common/include
+        $ENV{IDF_PATH}/components/esp_event/include
 )
 
 target_compile_definitions(${ProjectId} PUBLIC
