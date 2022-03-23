@@ -77,3 +77,13 @@ esptool.py -p (PORT) -b 460800 --before default_reset --after hard_reset --chip 
 
 or using the Windows GUI tool `Flash Download Tools` ([download](https://www.espressif.com/en/support/download/other-tools)) with these settings:
 ![alt text](docs/guiflasher.png "Bootloader 0x1000, partition table 0x8000, ota_data_initial 0xd000, ruuvi_gateway_esp 0x100000, fatfs_gwui 0x500000, fatfs_nrf52 0x5C0000, fatfs_cfg 0xB00000")
+
+
+### Creating a custom default gateway configuration
+
+1. Build "mkfatfs" utility for your platform from https://github.com/jkearins/ESP32_mkfatfs.git
+2. Create "fatfs_cfg" folder and copy original gw_cfg_default.json there, modify this file as you require.
+3. Execute command to generate binary fatfs_cfg.bin with the content from "fatfs_cfg" folder:
+```
+mkfatfs -c fatfs_cfg -s 0x40000 fatfs_cfg.bin
+```
