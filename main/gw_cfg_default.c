@@ -7,6 +7,9 @@
 
 #include "gw_cfg_default.h"
 #include <stdio.h>
+#include <string.h>
+#include "os_malloc.h"
+#include "wifiman_md5.h"
 
 static const ruuvi_gateway_config_t g_gateway_config_default = {
         .eth = {
@@ -17,17 +20,6 @@ static const ruuvi_gateway_config_t g_gateway_config_default = {
             .eth_gw = {{ "" }},
             .eth_dns1 = {{ "" }},
             .eth_dns2 = {{ "" }},
-        },
-        .mqtt = {
-            .use_mqtt = false,
-            .mqtt_use_default_prefix = true,
-            .mqtt_transport = {{ MQTT_TRANSPORT_TCP }},
-            .mqtt_server = {{ "" }},
-            .mqtt_port = 0,
-            .mqtt_prefix = {{ "" }},
-            .mqtt_client_id = {{ "" }},
-            .mqtt_user = {{ "" }},
-            .mqtt_pass = {{ "" }},
         },
         .http = {
             .use_http = true,
@@ -40,6 +32,17 @@ static const ruuvi_gateway_config_t g_gateway_config_default = {
             .http_stat_url = {{ RUUVI_GATEWAY_HTTP_STATUS_URL }},
             .http_stat_user = {{ "" }},
             .http_stat_pass = {{ "" }},
+        },
+        .mqtt = {
+            .use_mqtt = false,
+            .mqtt_use_default_prefix = true,
+            .mqtt_transport = {{ MQTT_TRANSPORT_TCP }},
+            .mqtt_server = {{ "" }},
+            .mqtt_port = 0,
+            .mqtt_prefix = {{ "" }},
+            .mqtt_client_id = {{ "" }},
+            .mqtt_user = {{ "" }},
+            .mqtt_pass = {{ "" }},
         },
         .lan_auth = {
             .lan_auth_type = { HTTP_SERVER_AUTH_TYPE_STR_RUUVI },
@@ -69,62 +72,71 @@ static const ruuvi_gateway_config_t g_gateway_config_default = {
         .coordinates = {{ "" }},
     };
 
-static const char *g_lan_auth_default_password_md5;
+static gw_cfg_default_t g_gw_cfg_default;
+
+static void
+gw_cfg_default_generate_lan_auth_password(
+    const wifi_ssid_t *const            p_gw_wifi_ssid,
+    const nrf52_device_id_str_t *const  p_device_id,
+    wifiman_md5_digest_hex_str_t *const p_lan_auth_default_password_md5)
+{
+    char tmp_buf[sizeof(RUUVI_GATEWAY_AUTH_DEFAULT_USER) + 1 + MAX_SSID_SIZE + 1 + sizeof(nrf52_device_id_str_t)];
+    snprintf(
+        tmp_buf,
+        sizeof(tmp_buf),
+        "%s:%s:%s",
+        RUUVI_GATEWAY_AUTH_DEFAULT_USER,
+        p_gw_wifi_ssid->ssid_buf,
+        p_device_id->str_buf);
+
+    *p_lan_auth_default_password_md5 = wifiman_md5_calc_hex_str(tmp_buf, strlen(tmp_buf));
+}
 
 void
-gw_cfg_default_init(void)
+gw_cfg_default_init(const wifi_ssid_t *const p_gw_wifi_ssid, const nrf52_device_id_str_t device_id_str)
 {
-    g_lan_auth_default_password_md5 = NULL;
-}
+    memset(&g_gw_cfg_default, 0, sizeof(g_gw_cfg_default));
+    g_gw_cfg_default.ruuvi_gw_cfg = g_gateway_config_default;
 
-bool
-gw_cfg_default_set_lan_auth_password(const char *const p_password_md5)
-{
-    if (NULL == p_password_md5)
-    {
-        return false;
-    }
-    g_lan_auth_default_password_md5 = p_password_md5;
-    return true;
-}
+    wifiman_md5_digest_hex_str_t lan_auth_default_password_md5 = { 0 };
+    gw_cfg_default_generate_lan_auth_password(p_gw_wifi_ssid, &device_id_str, &lan_auth_default_password_md5);
 
-const char *
-gw_cfg_default_get_lan_auth_password(void)
-{
-    if (NULL == g_lan_auth_default_password_md5)
-    {
-        return "";
-    }
-    return g_lan_auth_default_password_md5;
+    _Static_assert(
+        sizeof(g_gw_cfg_default.ruuvi_gw_cfg.lan_auth.lan_auth_pass) >= sizeof(lan_auth_default_password_md5),
+        "sizeof lan_auth_pass >= sizeof wifiman_md5_digest_hex_str_t");
+    snprintf(
+        g_gw_cfg_default.ruuvi_gw_cfg.lan_auth.lan_auth_pass,
+        sizeof(g_gw_cfg_default.ruuvi_gw_cfg.lan_auth.lan_auth_pass),
+        "%s",
+        lan_auth_default_password_md5.buf);
 }
 
 void
 gw_cfg_default_get(ruuvi_gateway_config_t *const p_gw_cfg)
 {
-    *p_gw_cfg = g_gateway_config_default;
-    if (NULL != g_lan_auth_default_password_md5)
-    {
-        snprintf(
-            p_gw_cfg->lan_auth.lan_auth_pass,
-            sizeof(p_gw_cfg->lan_auth.lan_auth_pass),
-            "%s",
-            g_lan_auth_default_password_md5);
-    }
+    *p_gw_cfg = g_gw_cfg_default.ruuvi_gw_cfg;
 }
 
-ruuvi_gw_cfg_lan_auth_t
+gw_cfg_default_t *
+gw_cfg_default_get_ptr(void)
+{
+    return &g_gw_cfg_default;
+}
+
+const ruuvi_gw_cfg_lan_auth_t *
 gw_cfg_default_get_lan_auth(void)
 {
-    ruuvi_gw_cfg_lan_auth_t lan_auth = g_gateway_config_default.lan_auth;
-    if (NULL != g_lan_auth_default_password_md5)
-    {
-        snprintf(lan_auth.lan_auth_pass, sizeof(lan_auth.lan_auth_pass), "%s", g_lan_auth_default_password_md5);
-    }
-    return lan_auth;
+    return &g_gw_cfg_default.ruuvi_gw_cfg.lan_auth;
 }
 
 ruuvi_gw_cfg_eth_t
 gw_cfg_default_get_eth(void)
 {
-    return g_gateway_config_default.eth;
+    return g_gw_cfg_default.ruuvi_gw_cfg.eth;
+}
+
+const wifi_sta_config_t *
+gw_cfg_default_get_wifi_sta_config_ptr(void)
+{
+    return &g_gw_cfg_default.wifi_sta_config;
 }

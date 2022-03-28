@@ -138,10 +138,11 @@ gw_cfg_ruuvi_json_add_items_http_stat(cJSON *p_json_root, const ruuvi_gateway_co
 static bool
 gw_cfg_ruuvi_json_add_items_lan_auth(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg)
 {
-    const char *const p_lan_auth_type
-        = ((0 == strcmp(p_cfg->lan_auth.lan_auth_type, HTTP_SERVER_AUTH_TYPE_STR_RUUVI))
-           && (0 == strcmp(p_cfg->lan_auth.lan_auth_user, RUUVI_GATEWAY_AUTH_DEFAULT_USER))
-           && (0 == strcmp(p_cfg->lan_auth.lan_auth_pass, gw_cfg_default_get_lan_auth_password())))
+    const ruuvi_gw_cfg_lan_auth_t *const p_default_lan_auth = gw_cfg_default_get_lan_auth();
+    const char *const                    p_lan_auth_type
+        = ((0 == strcmp(p_cfg->lan_auth.lan_auth_type, p_default_lan_auth->lan_auth_type))
+           && (0 == strcmp(p_cfg->lan_auth.lan_auth_user, p_default_lan_auth->lan_auth_user))
+           && (0 == strcmp(p_cfg->lan_auth.lan_auth_pass, p_default_lan_auth->lan_auth_pass)))
               ? "lan_auth_default"
               : &p_cfg->lan_auth.lan_auth_type[0];
     if (!gw_cfg_ruuvi_json_add_string(p_json_root, "lan_auth_type", p_lan_auth_type))

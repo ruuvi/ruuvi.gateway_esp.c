@@ -81,6 +81,10 @@ protected:
         esp_log_wrapper_init();
         g_pTestClass = this;
 
+        const wifi_ssid_t           wifi_ssid = { "" };
+        const nrf52_device_id_str_t device_id = { "00:11:22:33:44:55:66:77" };
+        gw_cfg_default_init(&wifi_ssid, device_id);
+
         this->m_malloc_cnt         = 0;
         this->m_malloc_fail_on_cnt = 0;
     }

@@ -34,6 +34,8 @@ idf_component_register(
             gw_cfg_ruuvi_json.h
             gw_cfg_default.c
             gw_cfg_default.h
+            gw_cfg_default_json.c
+            gw_cfg_default_json.h
             gw_mac.c
             gw_mac.h
             hmac_sha256.c

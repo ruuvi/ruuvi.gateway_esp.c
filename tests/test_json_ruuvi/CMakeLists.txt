@@ -12,9 +12,14 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/gw_cfg.h
         ${RUUVI_GW_SRC}/gw_cfg_default.c
         ${RUUVI_GW_SRC}/gw_cfg_default.h
+        ${WIFI_MANAGER_SRC}/wifiman_md5.c
+        ${WIFI_MANAGER_INC}/wifiman_md5.h
         $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.h
+        $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/md5.c
+        $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/platform_util.c
+        $ENV{IDF_PATH}/components/mbedtls/mbedtls/include/mbedtls/platform_util.h
 )
 
 set_target_properties(${ProjectId} PROPERTIES
@@ -29,7 +34,11 @@ target_include_directories(${ProjectId} PUBLIC
         ${WIFI_MANAGER_INC}
         include
         $ENV{IDF_PATH}/components/json/cJSON
+        $ENV{IDF_PATH}/components/mbedtls/mbedtls/include
         ${CMAKE_CURRENT_SOURCE_DIR}
+        $ENV{IDF_PATH}/components/esp_wifi/include
+        $ENV{IDF_PATH}/components/esp_common/include
+        $ENV{IDF_PATH}/components/esp_event/include
 )
 
 target_compile_definitions(${ProjectId} PUBLIC

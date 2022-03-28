@@ -742,7 +742,7 @@ http_server_cb_on_post_ruuvi(const char *p_body)
         return http_server_resp_503();
     }
     gw_cfg_update(p_gw_cfg_tmp, flag_network_cfg);
-    gw_cfg_print_to_log(p_gw_cfg_tmp);
+    gw_cfg_print_to_log(p_gw_cfg_tmp, "Gateway SETTINGS");
     if (flag_network_cfg)
     {
         adv_post_disable_retransmission();

@@ -42,6 +42,7 @@
 #include "ruuvi_device_id.h"
 #include "gw_cfg.h"
 #include "gw_cfg_default.h"
+#include "gw_cfg_default_json.h"
 #include "gw_cfg_json.h"
 #include "ruuvi_auth.h"
 #include "lwip/dhcp.h"
@@ -199,7 +200,7 @@ ethernet_connection_ok_cb(const esp_netif_ip_info_t *p_ip_info)
         gw_cfg_default_get(p_gw_cfg);
         p_gw_cfg->eth.use_eth  = true;
         p_gw_cfg->eth.eth_dhcp = true;
-        gw_cfg_print_to_log(p_gw_cfg);
+        gw_cfg_print_to_log(p_gw_cfg, "Gateway SETTINGS");
 
         cjson_wrap_str_t cjson_str = { 0 };
         if (!gw_cfg_json_generate(p_gw_cfg, &cjson_str))
@@ -339,10 +340,11 @@ restart_services(void)
 
 static bool
 wifi_init(
-    const bool               flag_use_eth,
-    const bool               flag_start_ap_only,
-    const wifi_ssid_t *const p_gw_wifi_ssid,
-    const char *const        p_fatfs_gwui_partition_name)
+    const bool                     flag_use_eth,
+    const bool                     flag_start_ap_only,
+    const wifi_ssid_t *const       p_gw_wifi_ssid,
+    const wifi_sta_config_t *const p_wifi_sta_default_cfg,
+    const char *const              p_fatfs_gwui_partition_name)
 {
     static const wifi_manager_antenna_config_t wifi_antenna_config = {
         .wifi_ant_gpio_config = {
@@ -393,6 +395,7 @@ wifi_init(
         !flag_use_eth,
         flag_start_ap_only,
         p_gw_wifi_ssid,
+        p_wifi_sta_default_cfg,
         &wifi_antenna_config,
         &wifi_callbacks,
         &mbedtls_ctr_drbg_random,
@@ -453,7 +456,7 @@ cb_before_nrf52_fw_updating(void)
         LOG_ERR("%s failed", "http_server_set_auth");
     }
 
-    if (!wifi_init(false, true, &g_gw_wifi_ssid, fw_update_get_current_fatfs_gwui_partition_name()))
+    if (!wifi_init(false, true, &g_gw_wifi_ssid, NULL, fw_update_get_current_fatfs_gwui_partition_name()))
     {
         LOG_ERR("%s failed", "wifi_init");
         return;
@@ -504,7 +507,9 @@ ruuvi_nvs_flash_erase(void)
 
 ATTR_NORETURN
 static void
-handle_reset_button_is_pressed_during_boot(void)
+handle_reset_button_is_pressed_during_boot(
+    const wifi_ssid_t *const       p_gw_wifi_ssid,
+    const wifi_sta_config_t *const p_wifi_sta_default_cfg)
 {
     LOG_INFO("Reset button is pressed during boot - clear settings in flash");
     nrf52fw_hw_reset_nrf52(true);
@@ -513,7 +518,7 @@ handle_reset_button_is_pressed_during_boot(void)
     ruuvi_nvs_flash_init();
 
     LOG_INFO("Writing the default wifi-manager configuration to NVS");
-    if (!wifi_manager_clear_sta_config(&g_gw_wifi_ssid))
+    if (!wifi_manager_clear_sta_config(p_gw_wifi_ssid, p_wifi_sta_default_cfg))
     {
         LOG_ERR("Failed to clear the wifi-manager settings in NVS");
     }
@@ -641,7 +646,7 @@ configure_mbedtls_rng(void)
 }
 
 static bool
-network_subsystem_init(void)
+network_subsystem_init(const wifi_sta_config_t *const p_wifi_sta_default_cfg)
 {
     configure_mbedtls_rng();
 
@@ -649,6 +654,7 @@ network_subsystem_init(void)
             gw_cfg_get_eth_use_eth(),
             settings_read_flag_force_start_wifi_hotspot(),
             &g_gw_wifi_ssid,
+            p_wifi_sta_default_cfg,
             fw_update_get_current_fatfs_gwui_partition_name()))
     {
         LOG_ERR("%s failed", "wifi_init");
@@ -694,34 +700,6 @@ network_subsystem_init(void)
     return true;
 }
 
-static const char *
-generate_default_lan_auth_password(void)
-{
-    const nrf52_device_id_str_t device_id = ruuvi_device_id_get_str();
-
-    str_buf_t str_buf = str_buf_printf_with_alloc(
-        "%s:%s:%s",
-        RUUVI_GATEWAY_AUTH_DEFAULT_USER,
-        g_gw_wifi_ssid.ssid_buf,
-        device_id.str_buf);
-    if (0 == str_buf_get_len(&str_buf))
-    {
-        return NULL;
-    }
-
-    const wifiman_md5_digest_hex_str_t password_md5 = wifiman_md5_calc_hex_str(str_buf.buf, str_buf_get_len(&str_buf));
-
-    str_buf_free_buf(&str_buf);
-    const size_t password_md5_len   = strlen(password_md5.buf);
-    char *const  p_password_md5_str = os_malloc(password_md5_len + 1);
-    if (NULL == p_password_md5_str)
-    {
-        return NULL;
-    }
-    snprintf(p_password_md5_str, password_md5_len + 1, "%s", password_md5.buf);
-    return p_password_md5_str;
-}
-
 static bool
 main_task_init(void)
 {
@@ -755,11 +733,6 @@ main_task_init(void)
 
     gpio_init();
     leds_init();
-
-    if (0 == gpio_get_level(RB_BUTTON_RESET_PIN))
-    {
-        handle_reset_button_is_pressed_during_boot();
-    }
 
     ruuvi_nvs_flash_init();
 
@@ -799,20 +772,23 @@ main_task_init(void)
 
     settings_update_mac_addr(&nrf52_mac_addr);
 
-    gw_cfg_default_init();
-    if (!gw_cfg_default_set_lan_auth_password(generate_default_lan_auth_password()))
-    {
-        LOG_ERR("%s failed", "generate_default_lan_auth_password");
-        return false;
-    }
+    gw_cfg_default_init(&g_gw_wifi_ssid, ruuvi_device_id_get_str());
+    gw_cfg_default_json_read();
+
     gw_cfg_init();
     settings_get_from_flash();
+
+    if (0 == gpio_get_level(RB_BUTTON_RESET_PIN))
+    {
+        ruuvi_nvs_flash_deinit();
+        handle_reset_button_is_pressed_during_boot(&g_gw_wifi_ssid, gw_cfg_default_get_wifi_sta_config_ptr());
+    }
 
     time_task_init();
     ruuvi_send_nrf_settings();
     ruuvi_auth_set_from_config();
 
-    if (!network_subsystem_init())
+    if (!network_subsystem_init(gw_cfg_default_get_wifi_sta_config_ptr()))
     {
         LOG_ERR("%s failed", "network_subsystem_init");
         return false;

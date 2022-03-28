@@ -23,8 +23,10 @@ protected:
     void
     SetUp() override
     {
-        g_pTestClass = this;
-        gw_cfg_default_init();
+        g_pTestClass                              = this;
+        const wifi_ssid_t           wifi_ssid     = { "my_ssid1" };
+        const nrf52_device_id_str_t device_id_str = { "11:22:33:44:55:66:77:88" };
+        gw_cfg_default_init(&wifi_ssid, device_id_str);
     }
 
     void
@@ -93,7 +95,7 @@ TEST_F(TestGwCfgDefault, test_1) // NOLINT
 
     ASSERT_EQ(string(HTTP_SERVER_AUTH_TYPE_STR_RUUVI), string(gw_cfg.lan_auth.lan_auth_type));
     ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), string(gw_cfg.lan_auth.lan_auth_user));
-    ASSERT_EQ(string(""), string(gw_cfg.lan_auth.lan_auth_pass));
+    ASSERT_EQ(string("0d6c6f1c27ca628806eb9247740d8ba1"), string(gw_cfg.lan_auth.lan_auth_pass));
     ASSERT_EQ(string(""), string(gw_cfg.lan_auth.lan_auth_api_key));
 
     ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_REGULAR, gw_cfg.auto_update.auto_update_cycle);
@@ -115,35 +117,13 @@ TEST_F(TestGwCfgDefault, test_1) // NOLINT
     ASSERT_EQ(string(""), string(gw_cfg.coordinates.buf));
 }
 
-TEST_F(TestGwCfgDefault, test_gw_cfg_default_set_lan_auth_password) // NOLINT
-{
-    ASSERT_FALSE(gw_cfg_default_set_lan_auth_password(nullptr));
-    ASSERT_EQ(string(""), string(gw_cfg_default_get_lan_auth_password()));
-
-    ASSERT_TRUE(gw_cfg_default_set_lan_auth_password("qwe"));
-    ASSERT_EQ(string("qwe"), string(gw_cfg_default_get_lan_auth_password()));
-
-    ruuvi_gateway_config_t gw_cfg {};
-    gw_cfg_default_get(&gw_cfg);
-    ASSERT_EQ(string("qwe"), string(gw_cfg.lan_auth.lan_auth_pass));
-}
-
 TEST_F(TestGwCfgDefault, test_gw_cfg_default_get_lan_auth) // NOLINT
 {
     {
-        const ruuvi_gw_cfg_lan_auth_t lan_auth = gw_cfg_default_get_lan_auth();
-        ASSERT_EQ(string(HTTP_SERVER_AUTH_TYPE_STR_RUUVI), string(lan_auth.lan_auth_type));
-        ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), string(lan_auth.lan_auth_user));
-        ASSERT_EQ(string(""), string(lan_auth.lan_auth_pass));
-    }
-
-    ASSERT_TRUE(gw_cfg_default_set_lan_auth_password("qwe"));
-
-    {
-        const ruuvi_gw_cfg_lan_auth_t lan_auth = gw_cfg_default_get_lan_auth();
-        ASSERT_EQ(string(HTTP_SERVER_AUTH_TYPE_STR_RUUVI), string(lan_auth.lan_auth_type));
-        ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), string(lan_auth.lan_auth_user));
-        ASSERT_EQ(string("qwe"), string(lan_auth.lan_auth_pass));
+        const ruuvi_gw_cfg_lan_auth_t *const p_lan_auth = gw_cfg_default_get_lan_auth();
+        ASSERT_EQ(string(HTTP_SERVER_AUTH_TYPE_STR_RUUVI), string(p_lan_auth->lan_auth_type));
+        ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), string(p_lan_auth->lan_auth_user));
+        ASSERT_EQ(string("0d6c6f1c27ca628806eb9247740d8ba1"), string(p_lan_auth->lan_auth_pass));
     }
 }
 
@@ -158,16 +138,4 @@ TEST_F(TestGwCfgDefault, test_gw_cfg_default_get_eth) // NOLINT
     ASSERT_EQ(string(""), string(gw_cfg_eth.eth_gw.buf));
     ASSERT_EQ(string(""), string(gw_cfg_eth.eth_dns1.buf));
     ASSERT_EQ(string(""), string(gw_cfg_eth.eth_dns2.buf));
-}
-
-TEST_F(TestGwCfgDefault, test_gw_cfg_default_init) // NOLINT
-{
-    ASSERT_FALSE(gw_cfg_default_set_lan_auth_password(nullptr));
-    ASSERT_EQ(string(""), string(gw_cfg_default_get_lan_auth_password()));
-
-    ASSERT_TRUE(gw_cfg_default_set_lan_auth_password("qwe"));
-    ASSERT_EQ(string("qwe"), string(gw_cfg_default_get_lan_auth_password()));
-
-    gw_cfg_default_init();
-    ASSERT_EQ(string(""), string(gw_cfg_default_get_lan_auth_password()));
 }

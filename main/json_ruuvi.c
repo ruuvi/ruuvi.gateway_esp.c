@@ -341,21 +341,22 @@ json_ruuvi_parse_main_cfg_lan_auth(const cJSON *p_json_root, ruuvi_gw_cfg_lan_au
         }
         else
         {
+            const ruuvi_gw_cfg_lan_auth_t *const p_default_lan_auth = gw_cfg_default_get_lan_auth();
             snprintf(
                 p_gw_cfg_lan_auth->lan_auth_type,
                 sizeof(p_gw_cfg_lan_auth->lan_auth_type),
                 "%s",
-                HTTP_SERVER_AUTH_TYPE_STR_RUUVI);
+                p_default_lan_auth->lan_auth_type);
             snprintf(
                 p_gw_cfg_lan_auth->lan_auth_user,
                 sizeof(p_gw_cfg_lan_auth->lan_auth_user),
                 "%s",
-                RUUVI_GATEWAY_AUTH_DEFAULT_USER);
+                p_default_lan_auth->lan_auth_user);
             snprintf(
                 p_gw_cfg_lan_auth->lan_auth_pass,
                 sizeof(p_gw_cfg_lan_auth->lan_auth_pass),
                 "%s",
-                gw_cfg_default_get_lan_auth_password());
+                p_default_lan_auth->lan_auth_pass);
         }
     }
     json_ruuvi_copy_string_val(

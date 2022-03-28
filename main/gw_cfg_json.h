@@ -22,6 +22,9 @@ gw_cfg_json_generate(const ruuvi_gateway_config_t *const p_gw_cfg, cjson_wrap_st
 bool
 gw_cfg_json_parse(const char *const p_json_str, ruuvi_gateway_config_t *const p_gw_cfg);
 
+void
+gw_cfg_json_parse_cjson(const cJSON *const p_json_root, ruuvi_gateway_config_t *const p_gw_cfg);
+
 #ifdef __cplusplus
 }
 #endif

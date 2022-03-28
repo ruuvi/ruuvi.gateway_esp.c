@@ -7,6 +7,11 @@ add_executable(${ProjectId}
         test_gw_cfg_default.cpp
         ${RUUVI_GW_SRC}/gw_cfg_default.c
         ${RUUVI_GW_SRC}/gw_cfg_default.h
+        ${WIFI_MANAGER_SRC}/wifiman_md5.c
+        ${WIFI_MANAGER_INC}/wifiman_md5.h
+        $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/md5.c
+        $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/platform_util.c
+        $ENV{IDF_PATH}/components/mbedtls/mbedtls/include/mbedtls/platform_util.h
 )
 
 set_target_properties(${ProjectId} PROPERTIES
@@ -19,8 +24,11 @@ target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}
         ${RUUVI_GW_SRC}
         ${WIFI_MANAGER_INC}
+        $ENV{IDF_PATH}/components/mbedtls/mbedtls/include
         include
         ${CMAKE_CURRENT_SOURCE_DIR}
+        $ENV{IDF_PATH}/components/esp_wifi/include
+        $ENV{IDF_PATH}/components/esp_common/include
 )
 
 target_compile_definitions(${ProjectId} PUBLIC
@@ -44,7 +52,7 @@ target_link_libraries(${ProjectId}
         gtest
         gtest_main
         gcov
-#        ruuvi_esp_wrappers
+        ruuvi_esp_wrappers
         ruuvi_esp_wrappers-common_test_funcs
         --coverage
 )

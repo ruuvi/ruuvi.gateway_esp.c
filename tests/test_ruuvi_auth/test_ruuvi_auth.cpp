@@ -87,7 +87,9 @@ protected:
         this->m_malloc_cnt         = 0;
         this->m_malloc_fail_on_cnt = 0;
 
-        gw_cfg_default_set_lan_auth_password("\xFFpassword_md5\xFF");
+        snprintf(g_gw_wifi_ssid.ssid_buf, sizeof(g_gw_wifi_ssid.ssid_buf), "my_ssid1");
+        const nrf52_device_id_str_t device_id_str = { "11:22:33:44:55:66:77:88" };
+        gw_cfg_default_init(&g_gw_wifi_ssid, device_id_str);
     }
 
     void
@@ -114,15 +116,10 @@ public:
     {
         this->m_device_id = device_id;
 
-        str_buf_t str_buf = str_buf_printf_with_alloc(
-            "%s:%s:%s",
-            RUUVI_GATEWAY_AUTH_DEFAULT_USER,
-            g_gw_wifi_ssid.ssid_buf,
-            device_id.c_str());
+        nrf52_device_id_str_t device_id_str = {};
+        snprintf(device_id_str.str_buf, sizeof(device_id_str.str_buf), "%s", device_id.c_str());
+        gw_cfg_default_init(&g_gw_wifi_ssid, device_id_str);
 
-        this->password_md5 = wifiman_md5_calc_hex_str(str_buf.buf, str_buf_get_len(&str_buf));
-
-        gw_cfg_default_set_lan_auth_password(password_md5.buf);
         gw_cfg_deinit();
         gw_cfg_init();
     }
@@ -227,7 +224,7 @@ TEST_F(TestRuuviAuth, test_default_auth_zero_id) // NOLINT
     ASSERT_NE(nullptr, p_auth_info);
     ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, p_auth_info->auth_type);
     ASSERT_EQ("Admin", string(p_auth_info->auth_user));
-    ASSERT_EQ("a54439b7a379620e26445a27b2785d76", string(p_auth_info->auth_pass));
+    ASSERT_EQ("6bd2d4090d98c5a5c9992fbb35d6b821", string(p_auth_info->auth_pass));
 }
 
 TEST_F(TestRuuviAuth, test_default_auth_non_zero_id) // NOLINT
@@ -238,7 +235,7 @@ TEST_F(TestRuuviAuth, test_default_auth_non_zero_id) // NOLINT
     ASSERT_NE(nullptr, p_auth_info);
     ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, p_auth_info->auth_type);
     ASSERT_EQ("Admin", string(p_auth_info->auth_user));
-    ASSERT_EQ("d39f824d982960f45c28a4823e97b087", string(p_auth_info->auth_pass));
+    ASSERT_EQ("cc6b2a4405af90c7a738f72b64f3c34e", string(p_auth_info->auth_pass));
 }
 
 TEST_F(TestRuuviAuth, test_non_default_auth_password) // NOLINT
