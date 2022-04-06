@@ -93,10 +93,17 @@ gw_cfg_default_generate_lan_auth_password(
 }
 
 void
-gw_cfg_default_init(const wifi_ssid_t *const p_gw_wifi_ssid, const nrf52_device_id_str_t device_id_str)
+gw_cfg_default_init(
+    const wifi_ssid_t *const       p_gw_wifi_ssid,
+    const nrf52_device_id_str_t    device_id_str,
+    const ruuvi_esp32_fw_ver_str_t esp32_fw_ver,
+    const ruuvi_nrf52_fw_ver_str_t nrf52_fw_ver)
 {
     memset(&g_gw_cfg_default, 0, sizeof(g_gw_cfg_default));
     g_gw_cfg_default.ruuvi_gw_cfg = g_gateway_config_default;
+
+    g_gw_cfg_default.ruuvi_gw_cfg.device_info.esp32_fw_ver = esp32_fw_ver;
+    g_gw_cfg_default.ruuvi_gw_cfg.device_info.nrf52_fw_ver = nrf52_fw_ver;
 
     wifiman_md5_digest_hex_str_t lan_auth_default_password_md5 = { 0 };
     gw_cfg_default_generate_lan_auth_password(p_gw_wifi_ssid, &device_id_str, &lan_auth_default_password_md5);
@@ -114,6 +121,7 @@ gw_cfg_default_init(const wifi_ssid_t *const p_gw_wifi_ssid, const nrf52_device_
 void
 gw_cfg_default_get(ruuvi_gateway_config_t *const p_gw_cfg)
 {
+    memset(p_gw_cfg, 0, sizeof(*p_gw_cfg));
     *p_gw_cfg = g_gw_cfg_default.ruuvi_gw_cfg;
 }
 

@@ -81,9 +81,11 @@ protected:
         esp_log_wrapper_init();
         g_pTestClass = this;
 
-        const wifi_ssid_t           wifi_ssid = { "" };
-        const nrf52_device_id_str_t device_id = { "00:11:22:33:44:55:66:77" };
-        gw_cfg_default_init(&wifi_ssid, device_id);
+        const wifi_ssid_t              wifi_ssid    = { "" };
+        const nrf52_device_id_str_t    device_id    = { "00:11:22:33:44:55:66:77" };
+        const ruuvi_esp32_fw_ver_str_t esp32_fw_ver = { "v1.10.0" };
+        const ruuvi_nrf52_fw_ver_str_t nrf52_fw_ver = { "v0.7.1" };
+        gw_cfg_default_init(&wifi_ssid, device_id, esp32_fw_ver, nrf52_fw_ver);
 
         this->m_malloc_cnt         = 0;
         this->m_malloc_fail_on_cnt = 0;

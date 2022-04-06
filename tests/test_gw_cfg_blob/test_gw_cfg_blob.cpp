@@ -37,10 +37,12 @@ protected:
     void
     SetUp() override
     {
-        g_pTestClass                          = this;
-        const wifi_ssid_t           wifi_ssid = { "" };
-        const nrf52_device_id_str_t device_id = { "00:11:22:33:44:55:66:77" };
-        gw_cfg_default_init(&wifi_ssid, device_id);
+        g_pTestClass                                = this;
+        const wifi_ssid_t              wifi_ssid    = { "" };
+        const nrf52_device_id_str_t    device_id    = { "00:11:22:33:44:55:66:77" };
+        const ruuvi_esp32_fw_ver_str_t esp32_fw_ver = { "v1.10.0" };
+        const ruuvi_nrf52_fw_ver_str_t nrf52_fw_ver = { "v0.7.2" };
+        gw_cfg_default_init(&wifi_ssid, device_id, esp32_fw_ver, nrf52_fw_ver);
     }
 
     void

@@ -751,13 +751,20 @@ main_task_init(void)
     LOG_INFO("Read saved Mac address: %s", g_gw_mac_sta_str.str_buf);
     LOG_INFO("Read saved WiFi SSID / Hostname: %s", g_gw_wifi_ssid.ssid_buf);
 
+    ruuvi_nrf52_fw_ver_t nrf52_fw_ver = { 0 };
+
     leds_indication_on_nrf52_fw_updating();
-    nrf52fw_update_fw_if_necessary(
-        fw_update_get_current_fatfs_nrf52_partition_name(),
-        &fw_update_nrf52fw_cb_progress,
-        NULL,
-        &cb_before_nrf52_fw_updating,
-        &cb_after_nrf52_fw_updating);
+    if (!nrf52fw_update_fw_if_necessary(
+            fw_update_get_current_fatfs_nrf52_partition_name(),
+            &fw_update_nrf52fw_cb_progress,
+            NULL,
+            &cb_before_nrf52_fw_updating,
+            &cb_after_nrf52_fw_updating,
+            &nrf52_fw_ver))
+    {
+        LOG_ERR("%s failed", "nrf52fw_update_fw_if_necessary");
+        return false;
+    }
     leds_indication_network_no_connection();
 
     adv_post_init();
@@ -772,7 +779,11 @@ main_task_init(void)
 
     settings_update_mac_addr(&nrf52_mac_addr);
 
-    gw_cfg_default_init(&g_gw_wifi_ssid, ruuvi_device_id_get_str());
+    gw_cfg_default_init(
+        &g_gw_wifi_ssid,
+        ruuvi_device_id_get_str(),
+        fw_update_get_cur_version(),
+        nrf52_fw_ver_get_str(&nrf52_fw_ver));
     gw_cfg_default_json_read();
 
     gw_cfg_init();

@@ -91,12 +91,7 @@ http_server_resp_json_ruuvi(void)
 {
     const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
     cjson_wrap_str_t              json_str = cjson_wrap_str_null();
-    if (!gw_cfg_ruuvi_json_generate(
-            p_gw_cfg,
-            &g_gw_mac_sta_str,
-            fw_update_get_cur_version(),
-            g_nrf52_firmware_version.buf,
-            &json_str))
+    if (!gw_cfg_ruuvi_json_generate(p_gw_cfg, &g_gw_mac_sta_str, &json_str))
     {
         gw_cfg_unlock_ro(&p_gw_cfg);
         return http_server_resp_503();
@@ -141,11 +136,13 @@ json_info_add_uint32(cJSON *p_json_root, const char *p_item_name, const uint32_t
 static bool
 json_info_add_items(cJSON *p_json_root)
 {
-    if (!json_info_add_string(p_json_root, "ESP_FW", fw_update_get_cur_version()))
+    const ruuvi_esp32_fw_ver_str_t *const p_esp32_fw_ver = gw_cfg_get_esp32_fw_ver();
+    if (!json_info_add_string(p_json_root, "ESP_FW", p_esp32_fw_ver->buf))
     {
         return false;
     }
-    if (!json_info_add_string(p_json_root, "NRF_FW", g_nrf52_firmware_version.buf))
+    const ruuvi_nrf52_fw_ver_str_t *const p_nrf52_fw_ver = gw_cfg_get_nrf52_fw_ver();
+    if (!json_info_add_string(p_json_root, "NRF_FW", p_nrf52_fw_ver->buf))
     {
         return false;
     }
@@ -631,8 +628,8 @@ http_server_cb_on_user_req_download_latest_release_info(void)
     if (NULL != tag_name.buf)
     {
         LOG_INFO("github_latest_release.json: tag_name: %s", tag_name.buf);
-        const char *p_cur_fw_ver = fw_update_get_cur_version();
-        if (0 == strcmp(p_cur_fw_ver, tag_name.buf))
+        const ruuvi_esp32_fw_ver_str_t *const p_esp32_fw_ver = gw_cfg_get_esp32_fw_ver();
+        if (0 == strcmp(p_esp32_fw_ver->buf, tag_name.buf))
         {
             LOG_INFO("github_latest_release.json: No update is required, the latest version is already installed");
             os_free(latest_release_info.p_json_buf);
@@ -640,7 +637,7 @@ http_server_cb_on_user_req_download_latest_release_info(void)
         }
         LOG_INFO(
             "github_latest_release.json: Update is required (current version: %s, latest version: %s)",
-            p_cur_fw_ver,
+            p_esp32_fw_ver->buf,
             tag_name.buf);
 
         fw_update_set_url("https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/%s", tag_name.buf);

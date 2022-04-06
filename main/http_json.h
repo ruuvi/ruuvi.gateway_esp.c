@@ -21,13 +21,13 @@ extern "C" {
 
 typedef struct http_json_statistics_info_t
 {
-    mac_address_str_t     nrf52_mac_addr;
-    fw_ver_str_t          esp_fw;
-    nrf52fw_version_str_t nrf_fw;
-    uint32_t              uptime;
-    uint32_t              nonce;
-    bool                  is_connected_to_wifi;
-    uint32_t              network_disconnect_cnt;
+    mac_address_str_t        nrf52_mac_addr;
+    ruuvi_esp32_fw_ver_str_t esp_fw;
+    ruuvi_nrf52_fw_ver_str_t nrf_fw;
+    uint32_t                 uptime;
+    uint32_t                 nonce;
+    bool                     is_connected_to_wifi;
+    uint32_t                 network_disconnect_cnt;
 } http_json_statistics_info_t;
 
 bool

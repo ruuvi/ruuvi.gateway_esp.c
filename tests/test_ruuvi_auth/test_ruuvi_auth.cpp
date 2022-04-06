@@ -88,8 +88,10 @@ protected:
         this->m_malloc_fail_on_cnt = 0;
 
         snprintf(g_gw_wifi_ssid.ssid_buf, sizeof(g_gw_wifi_ssid.ssid_buf), "my_ssid1");
-        const nrf52_device_id_str_t device_id_str = { "11:22:33:44:55:66:77:88" };
-        gw_cfg_default_init(&g_gw_wifi_ssid, device_id_str);
+        const nrf52_device_id_str_t    device_id_str = { "11:22:33:44:55:66:77:88" };
+        const ruuvi_esp32_fw_ver_str_t esp32_fw_ver  = { "v1.10.0" };
+        const ruuvi_nrf52_fw_ver_str_t nrf52_fw_ver  = { "v0.7.1" };
+        gw_cfg_default_init(&g_gw_wifi_ssid, device_id_str, esp32_fw_ver, nrf52_fw_ver);
     }
 
     void
@@ -118,7 +120,9 @@ public:
 
         nrf52_device_id_str_t device_id_str = {};
         snprintf(device_id_str.str_buf, sizeof(device_id_str.str_buf), "%s", device_id.c_str());
-        gw_cfg_default_init(&g_gw_wifi_ssid, device_id_str);
+        const ruuvi_esp32_fw_ver_str_t esp32_fw_ver = { "v1.10.0" };
+        const ruuvi_nrf52_fw_ver_str_t nrf52_fw_ver = { "v0.7.1" };
+        gw_cfg_default_init(&g_gw_wifi_ssid, device_id_str, esp32_fw_ver, nrf52_fw_ver);
 
         gw_cfg_deinit();
         gw_cfg_init();

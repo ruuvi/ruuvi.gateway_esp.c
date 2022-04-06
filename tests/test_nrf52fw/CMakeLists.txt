@@ -8,6 +8,8 @@ add_executable(${ProjectId}
         crc.cpp
         ${RUUVI_GW_SRC}/nrf52fw.c
         ${RUUVI_GW_SRC}/nrf52fw.h
+        ${RUUVI_GW_SRC}/nrf52_fw_ver.c
+        ${RUUVI_GW_SRC}/nrf52_fw_ver.h
         ${RUUVI_GW_SRC}/flashfatfs.c
         ${RUUVI_GW_SRC}/flashfatfs.h
         ${RUUVI_ESP_WRAPPERS}/src/os_str.c
@@ -24,9 +26,13 @@ target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
         ${RUUVI_GW_SRC}
+        ${WIFI_MANAGER_INC}
         include
         ${CMAKE_CURRENT_SOURCE_DIR}
         $ENV{IDF_PATH}/components/esp_rom/include
+        $ENV{IDF_PATH}/components/esp_wifi/include
+        $ENV{IDF_PATH}/components/esp_common/include
+        $ENV{IDF_PATH}/components/esp_event/include
 )
 
 target_compile_definitions(${ProjectId} PUBLIC

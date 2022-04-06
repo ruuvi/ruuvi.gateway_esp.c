@@ -52,13 +52,13 @@ gw_cfg_ruuvi_json_add_number(cJSON *p_json_root, const char *p_item_name, const 
 }
 
 static bool
-gw_cfg_ruuvi_json_add_items_fw_version(cJSON *p_json_root, const char *const p_fw_ver, const char *const p_nrf52_fw_ver)
+gw_cfg_ruuvi_json_add_items_fw_version(cJSON *p_json_root, const ruuvi_gateway_config_t *const p_cfg)
 {
-    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "fw_ver", p_fw_ver))
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "fw_ver", p_cfg->device_info.esp32_fw_ver.buf))
     {
         return false;
     }
-    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "nrf52_fw_ver", p_nrf52_fw_ver))
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "nrf52_fw_ver", p_cfg->device_info.nrf52_fw_ver.buf))
     {
         return false;
     }
@@ -309,13 +309,11 @@ gw_cfg_ruuvi_json_add_items_scan(cJSON *p_json_root, const ruuvi_gateway_config_
 
 static bool
 gw_cfg_ruuvi_json_add_items(
-    cJSON *                       p_json_root,
-    const ruuvi_gateway_config_t *p_cfg,
-    const mac_address_str_t *     p_mac_sta,
-    const char *const             p_fw_ver,
-    const char *const             p_nrf52_fw_ver)
+    cJSON *const                        p_json_root,
+    const ruuvi_gateway_config_t *const p_cfg,
+    const mac_address_str_t *const      p_mac_sta)
 {
-    if (!gw_cfg_ruuvi_json_add_items_fw_version(p_json_root, p_fw_ver, p_nrf52_fw_ver))
+    if (!gw_cfg_ruuvi_json_add_items_fw_version(p_json_root, p_cfg))
     {
         return false;
     }
@@ -366,8 +364,6 @@ bool
 gw_cfg_ruuvi_json_generate(
     const ruuvi_gateway_config_t *const p_cfg,
     const mac_address_str_t *const      p_mac_sta,
-    const char *const                   p_fw_ver,
-    const char *const                   p_nrf52_fw_ver,
     cjson_wrap_str_t *const             p_json_str)
 {
     p_json_str->p_str = NULL;
@@ -378,7 +374,7 @@ gw_cfg_ruuvi_json_generate(
         LOG_ERR("Can't create json object");
         return false;
     }
-    if (!gw_cfg_ruuvi_json_add_items(p_json_root, p_cfg, p_mac_sta, p_fw_ver, p_nrf52_fw_ver))
+    if (!gw_cfg_ruuvi_json_add_items(p_json_root, p_cfg, p_mac_sta))
     {
         cjson_wrap_delete(&p_json_root);
         return false;

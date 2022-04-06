@@ -237,18 +237,11 @@ fw_update_get_current_fatfs_gwui_partition_name(void)
     return p_flash_info->is_ota0_active ? GW_GWUI_PARTITION : GW_GWUI_PARTITION_2;
 }
 
-const char *
+ruuvi_esp32_fw_ver_str_t
 fw_update_get_cur_version(void)
 {
     const ruuvi_flash_info_t *const p_flash_info = &g_ruuvi_flash_info;
-    return p_flash_info->p_app_desc->version;
-}
-
-fw_ver_str_t
-fw_update_get_cur_version2(void)
-{
-    const ruuvi_flash_info_t *const p_flash_info = &g_ruuvi_flash_info;
-    fw_ver_str_t                    version_str;
+    ruuvi_esp32_fw_ver_str_t        version_str  = { 0 };
     snprintf(&version_str.buf[0], sizeof(version_str.buf), "%s", p_flash_info->p_app_desc->version);
     return version_str;
 }
@@ -699,6 +692,7 @@ fw_update_do_actions(void)
     nrf52fw_update_fw_if_necessary(
         fw_update_get_current_fatfs_nrf52_partition_name(),
         &fw_update_nrf52fw_cb_progress,
+        NULL,
         NULL,
         NULL,
         NULL);

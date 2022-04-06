@@ -48,6 +48,20 @@ gw_cfg_json_add_number(cJSON *p_json_root, const char *p_item_name, const cjson_
 }
 
 static bool
+gw_cfg_json_add_items_device_info(cJSON *p_json_root, const ruuvi_gw_cfg_device_info_t *const p_dev_info)
+{
+    if (!gw_cfg_json_add_string(p_json_root, "fw_ver", p_dev_info->esp32_fw_ver.buf))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_string(p_json_root, "nrf52_fw_ver", p_dev_info->nrf52_fw_ver.buf))
+    {
+        return false;
+    }
+    return true;
+}
+
+static bool
 gw_cfg_json_add_items_eth(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg)
 {
     if (!gw_cfg_json_add_bool(p_json_root, "use_eth", p_cfg->eth.use_eth))
@@ -281,6 +295,10 @@ gw_cfg_json_add_items_scan(cJSON *p_json_root, const ruuvi_gateway_config_t *p_c
 static bool
 gw_cfg_json_add_items(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg)
 {
+    if (!gw_cfg_json_add_items_device_info(p_json_root, &p_cfg->device_info))
+    {
+        return false;
+    }
     if (!gw_cfg_json_add_items_eth(p_json_root, p_cfg))
     {
         return false;
@@ -344,6 +362,23 @@ gw_cfg_json_generate(const ruuvi_gateway_config_t *const p_gw_cfg, cjson_wrap_st
         return false;
     }
     return true;
+}
+
+static void
+gw_cfg_json_parse_device_info(const cJSON *const p_json_root, ruuvi_gw_cfg_device_info_t *const p_gw_cfg_dev_info)
+{
+    memset(p_gw_cfg_dev_info, 0, sizeof(*p_gw_cfg_dev_info));
+
+    json_wrap_copy_string_val(
+        p_json_root,
+        "fw_ver",
+        &p_gw_cfg_dev_info->esp32_fw_ver.buf[0],
+        sizeof(p_gw_cfg_dev_info->esp32_fw_ver.buf));
+    json_wrap_copy_string_val(
+        p_json_root,
+        "nrf52_fw_ver",
+        &p_gw_cfg_dev_info->nrf52_fw_ver.buf[0],
+        sizeof(p_gw_cfg_dev_info->nrf52_fw_ver.buf));
 }
 
 static void
@@ -679,8 +714,16 @@ gw_cfg_json_parse_scan(const cJSON *const p_json_root, ruuvi_gw_cfg_scan_t *cons
 }
 
 void
-gw_cfg_json_parse_cjson(const cJSON *const p_json_root, ruuvi_gateway_config_t *const p_gw_cfg)
+gw_cfg_json_parse_cjson(
+    const cJSON *const                p_json_root,
+    ruuvi_gateway_config_t *const     p_gw_cfg,
+    ruuvi_gw_cfg_device_info_t *const p_dev_info)
 {
+    if (NULL != p_dev_info)
+    {
+        gw_cfg_json_parse_device_info(p_json_root, p_dev_info);
+    }
+
     gw_cfg_json_parse_eth(p_json_root, &p_gw_cfg->eth);
     gw_cfg_json_parse_mqtt(p_json_root, &p_gw_cfg->mqtt);
     gw_cfg_json_parse_http(p_json_root, &p_gw_cfg->http);
@@ -699,9 +742,27 @@ gw_cfg_json_parse_cjson(const cJSON *const p_json_root, ruuvi_gateway_config_t *
     }
 }
 
-bool
-gw_cfg_json_parse(const char *const p_json_str, ruuvi_gateway_config_t *const p_gw_cfg)
+static bool
+gw_cfg_json_compare_device_info(
+    const ruuvi_gw_cfg_device_info_t *const p_val1,
+    const ruuvi_gw_cfg_device_info_t *const p_val2)
 {
+    if (0 != strcmp(p_val1->esp32_fw_ver.buf, p_val2->esp32_fw_ver.buf))
+    {
+        return false;
+    }
+    if (0 != strcmp(p_val1->nrf52_fw_ver.buf, p_val2->nrf52_fw_ver.buf))
+    {
+        return false;
+    }
+    return true;
+}
+
+bool
+gw_cfg_json_parse(const char *const p_json_str, ruuvi_gateway_config_t *const p_gw_cfg, bool *const p_flag_modified)
+{
+    *p_flag_modified = false;
+
     gw_cfg_default_get(p_gw_cfg);
 
     if ('\0' == p_json_str[0])
@@ -715,7 +776,22 @@ gw_cfg_json_parse(const char *const p_json_str, ruuvi_gateway_config_t *const p_
         return false;
     }
 
-    gw_cfg_json_parse_cjson(p_json_root, p_gw_cfg);
+    ruuvi_gw_cfg_device_info_t dev_info = { 0 };
+    gw_cfg_json_parse_cjson(p_json_root, p_gw_cfg, &dev_info);
+
+    if (!gw_cfg_json_compare_device_info(&dev_info, &p_gw_cfg->device_info))
+    {
+        LOG_INFO("gw_cfg: device_info differs:");
+        LOG_INFO(
+            "gw_cfg: esp32_fw_ver: cur=%s, prev=%s",
+            p_gw_cfg->device_info.esp32_fw_ver.buf,
+            dev_info.esp32_fw_ver.buf);
+        LOG_INFO(
+            "gw_cfg: nrf52_fw_ver: cur=%s, prev=%s",
+            p_gw_cfg->device_info.nrf52_fw_ver.buf,
+            dev_info.nrf52_fw_ver.buf);
+        *p_flag_modified = true;
+    }
 
     cJSON_Delete(p_json_root);
     return true;

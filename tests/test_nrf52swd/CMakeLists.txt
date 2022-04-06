@@ -19,6 +19,7 @@ target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
         ${RUUVI_GW_SRC}
+        ${WIFI_MANAGER_INC}
         ../../components/libSWD-esp32/include
         ../../components/ruuvi.boards.c
         include
@@ -32,6 +33,9 @@ target_include_directories(${ProjectId} PUBLIC
         $ENV{IDF_PATH}/components/esp32/include
         $ENV{IDF_PATH}/components/soc/soc/esp32/include
         $ENV{IDF_PATH}/components/soc/soc/include
+        $ENV{IDF_PATH}/components/esp_wifi/include
+        $ENV{IDF_PATH}/components/esp_common/include
+        $ENV{IDF_PATH}/components/esp_event/include
 )
 
 target_compile_definitions(${ProjectId} PUBLIC

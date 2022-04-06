@@ -92,6 +92,8 @@ void
 gw_cfg_print_to_log(const ruuvi_gateway_config_t *const p_config, const char *const p_title)
 {
     LOG_INFO("%s:", p_title);
+    LOG_INFO("config: device_info: ESP32 fw ver: %s", p_config->device_info.esp32_fw_ver.buf);
+    LOG_INFO("config: device_info: NRF52 fw ver: %s", p_config->device_info.nrf52_fw_ver.buf);
     LOG_INFO("config: use eth: %d", p_config->eth.use_eth);
     LOG_INFO("config: use eth dhcp: %d", p_config->eth.eth_dhcp);
     LOG_INFO("config: eth static ip: %s", p_config->eth.eth_static_ip.buf);
@@ -292,4 +294,26 @@ gw_cfg_set_default_lan_auth(void)
     ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_rw();
     p_gw_cfg->lan_auth               = *gw_cfg_default_get_lan_auth();
     gw_cfg_unlock_rw(&p_gw_cfg);
+}
+
+const ruuvi_esp32_fw_ver_str_t *
+gw_cfg_get_esp32_fw_ver(void)
+{
+    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
+    // device_info is set at initialization and is not changed afterwards,
+    // so we can just return a pointer to it without blocking access to the global variable
+    const ruuvi_esp32_fw_ver_str_t *const p_esp32_fw_ver = &p_gw_cfg->device_info.esp32_fw_ver;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    return p_esp32_fw_ver;
+}
+
+const ruuvi_nrf52_fw_ver_str_t *
+gw_cfg_get_nrf52_fw_ver(void)
+{
+    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
+    // device_info is set at initialization and is not changed afterwards,
+    // so we can just return a pointer to it without blocking access to the global variable
+    const ruuvi_nrf52_fw_ver_str_t *const p_nrf52_fw_ver = &p_gw_cfg->device_info.nrf52_fw_ver;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    return p_nrf52_fw_ver;
 }

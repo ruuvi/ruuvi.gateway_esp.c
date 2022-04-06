@@ -97,8 +97,10 @@ protected:
         this->m_malloc_fail_on_cnt = 0;
 
         snprintf(g_gw_wifi_ssid.ssid_buf, sizeof(g_gw_wifi_ssid.ssid_buf), "my_ssid1");
-        const nrf52_device_id_str_t device_id_str = { "11:22:33:44:55:66:77:88" };
-        gw_cfg_default_init(&g_gw_wifi_ssid, device_id_str);
+        const nrf52_device_id_str_t    device_id_str = { "11:22:33:44:55:66:77:88" };
+        const ruuvi_esp32_fw_ver_str_t esp32_fw_ver  = { "v1.10.0" };
+        const ruuvi_nrf52_fw_ver_str_t nrf52_fw_ver  = { "v0.7.2" };
+        gw_cfg_default_init(&g_gw_wifi_ssid, device_id_str, esp32_fw_ver, nrf52_fw_ver);
     }
 
     void
@@ -203,6 +205,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default) // NOLINT
     const ruuvi_gateway_config_t gw_cfg = get_gateway_config_default();
     gw_cfg_print_to_log(&gw_cfg, "Gateway SETTINGS");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS:"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 fw ver: v1.10.0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use eth: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use eth dhcp: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth static ip: "));
@@ -256,6 +260,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_beta_tester_and_
     gw_cfg_print_to_log(&gw_cfg, "Gateway SETTINGS");
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS:"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 fw ver: v1.10.0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use eth: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use eth dhcp: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth static ip: "));
@@ -308,6 +314,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_manual) // NOLIN
     gw_cfg_print_to_log(&gw_cfg, "Gateway SETTINGS");
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS:"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 fw ver: v1.10.0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use eth: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use eth dhcp: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth static ip: "));
@@ -360,6 +368,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_invalid) // NOLI
     gw_cfg_print_to_log(&gw_cfg, "Gateway SETTINGS");
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS:"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 fw ver: v1.10.0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use eth: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use eth dhcp: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth static ip: "));

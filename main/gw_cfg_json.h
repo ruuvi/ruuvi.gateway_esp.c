@@ -20,10 +20,13 @@ bool
 gw_cfg_json_generate(const ruuvi_gateway_config_t *const p_gw_cfg, cjson_wrap_str_t *const p_json_str);
 
 bool
-gw_cfg_json_parse(const char *const p_json_str, ruuvi_gateway_config_t *const p_gw_cfg);
+gw_cfg_json_parse(const char *const p_json_str, ruuvi_gateway_config_t *const p_gw_cfg, bool *const p_flag_modified);
 
 void
-gw_cfg_json_parse_cjson(const cJSON *const p_json_root, ruuvi_gateway_config_t *const p_gw_cfg);
+gw_cfg_json_parse_cjson(
+    const cJSON *const                p_json_root,
+    ruuvi_gateway_config_t *const     p_gw_cfg,
+    ruuvi_gw_cfg_device_info_t *const p_dev_info);
 
 #ifdef __cplusplus
 }

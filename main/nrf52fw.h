@@ -11,6 +11,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
+#include "gw_cfg.h"
+#include "nrf52_fw_ver.h"
 
 #if !defined(RUUVI_TESTS_NRF52FW)
 #define RUUVI_TESTS_NRF52FW (0)
@@ -29,16 +31,9 @@
 
 #define NRF52FW_ENABLE_FLASH_VERIFICATION 1
 
-#define NRF52FW_FIRMWARE_VERSION_SIZE (64U)
-
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-typedef struct nrf52fw_version_t
-{
-    uint32_t version;
-} nrf52fw_version_t;
 
 typedef struct nrf52fw_segment_t
 {
@@ -50,9 +45,9 @@ typedef struct nrf52fw_segment_t
 
 typedef struct nrf52fw_info_t
 {
-    nrf52fw_version_t fw_ver;
-    uint32_t          num_segments;
-    nrf52fw_segment_t segments[5];
+    ruuvi_nrf52_fw_ver_t fw_ver;
+    uint32_t             num_segments;
+    nrf52fw_segment_t    segments[5];
 } nrf52fw_info_t;
 
 typedef struct nrf52fw_tmp_buf_t
@@ -75,23 +70,17 @@ typedef struct nrf52fw_progress_info_t
     void *const         p_param_cb_progress;
 } nrf52fw_progress_info_t;
 
-typedef struct nrf52fw_version_str_t
-{
-    char buf[NRF52FW_FIRMWARE_VERSION_SIZE];
-} nrf52fw_version_str_t;
-
-extern nrf52fw_version_str_t g_nrf52_firmware_version;
-
 void
 nrf52fw_hw_reset_nrf52(const bool flag_reset);
 
 bool
 nrf52fw_update_fw_if_necessary(
-    const char *const          p_fatfs_nrf52_partition_name,
-    nrf52fw_cb_progress        cb_progress,
-    void *const                p_param_cb_progress,
-    nrf52fw_cb_before_updating cb_before_updating,
-    nrf52fw_cb_after_updating  cb_after_updating);
+    const char *const           p_fatfs_nrf52_partition_name,
+    nrf52fw_cb_progress         cb_progress,
+    void *const                 p_param_cb_progress,
+    nrf52fw_cb_before_updating  cb_before_updating,
+    nrf52fw_cb_after_updating   cb_after_updating,
+    ruuvi_nrf52_fw_ver_t *const p_nrf52_fw_ver);
 
 bool
 nrf52fw_software_reset(void);
@@ -128,22 +117,22 @@ nrf52fw_parse_digit_update_ver(
 /**
  * @brief Parse a version string (like "1.2.3")
  * @param p_version_str - ptr to a string
- * @param[out] p_version - ptr to the output variable @ref nrf52fw_version_t
+ * @param[out] p_version - ptr to the output variable @ref ruuvi_nrf52_fw_ver_t
  * @return true if successful
  */
 NRF52FW_STATIC
 bool
-nrf52fw_parse_version(const char *p_version_str, nrf52fw_version_t *p_version);
+nrf52fw_parse_version(const char *p_version_str, ruuvi_nrf52_fw_ver_t *p_version);
 
 /**
  * @brief Parse a version line string (like "# v1.2.3")
  * @param p_version_str - ptr to a string
- * @param[out] p_version - ptr to the output variable @ref nrf52fw_version_t
+ * @param[out] p_version - ptr to the output variable @ref ruuvi_nrf52_fw_ver_t
  * @return true if successful
  */
 NRF52FW_STATIC
 bool
-nrf52fw_parse_version_line(const char *p_version_line, nrf52fw_version_t *p_version);
+nrf52fw_parse_version_line(const char *p_version_line, ruuvi_nrf52_fw_ver_t *p_version);
 
 /**
  * @brief Remove CR, LF, Tab, Space from the right end of the string, force put EOL and end of the buffer with the
@@ -194,16 +183,16 @@ nrf52fw_read_info_txt(const flash_fat_fs_t *p_ffs, const char *p_path_info_txt, 
  */
 NRF52FW_STATIC
 bool
-nrf52fw_read_current_fw_ver(uint32_t *p_fw_ver);
+nrf52fw_read_current_fw_ver(ruuvi_nrf52_fw_ver_t *const p_fw_ver);
 
 /**
  * @brief Write current firmware version to nRF52
- * @param fw_ver - firmware version
+ * @param device_info - firmware version
  * @return true if successful
  */
 NRF52FW_STATIC
 bool
-nrf52fw_write_current_fw_ver(const uint32_t fw_ver);
+nrf52fw_write_current_fw_ver(const uint32_t device_info);
 
 /**
  * @brief Set error generation mode on subsequent calls to nrf52fw_file_read

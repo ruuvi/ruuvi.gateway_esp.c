@@ -9,4 +9,6 @@
 #include <stdint.h>
 #include "esp_app_format.h"
 
-_Static_assert(sizeof(fw_ver_str_t) == sizeof(((esp_app_desc_t *)0)->version), "sizeof fw_ver_str_t");
+_Static_assert(
+    sizeof(ruuvi_esp32_fw_ver_str_t) == sizeof(((esp_app_desc_t *)0)->version),
+    "sizeof ruuvi_esp32_fw_ver_str_t");

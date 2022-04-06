@@ -24,12 +24,6 @@ class TestMetrics;
 
 static TestMetrics *g_pTestClass;
 
-extern "C" {
-
-nrf52fw_version_str_t g_nrf52_firmware_version;
-
-} // extern "C"
-
 /*** Google-test class implementation
  * *********************************************************************************/
 
@@ -89,7 +83,6 @@ protected:
     {
         esp_log_wrapper_init();
         memset(&g_gw_mac_sta_str, 0, sizeof(g_gw_mac_sta_str));
-        memset(&g_nrf52_firmware_version, 0, sizeof(g_nrf52_firmware_version));
         this->m_uptime = 0;
         g_pTestClass   = this;
         this->m_mem_alloc_trace.clear();
@@ -278,12 +271,18 @@ heap_caps_get_largest_free_block(uint32_t caps)
     return 0;
 }
 
-fw_ver_str_t
-fw_update_get_cur_version2(void)
+const ruuvi_esp32_fw_ver_str_t *
+gw_cfg_get_esp32_fw_ver(void)
 {
-    fw_ver_str_t version_str;
-    snprintf(&version_str.buf[0], sizeof(version_str.buf), "v1.9.2-12-ga6893d9");
-    return version_str;
+    static const ruuvi_esp32_fw_ver_str_t g_esp32_fw_ver = { "v1.9.2-12-ga6893d9" };
+    return &g_esp32_fw_ver;
+}
+
+const ruuvi_nrf52_fw_ver_str_t *
+gw_cfg_get_nrf52_fw_ver(void)
+{
+    static const ruuvi_nrf52_fw_ver_str_t g_nrf52_fw_ver = { "v0.7.2" };
+    return &g_nrf52_fw_ver;
 }
 
 } // extern "C"
@@ -311,7 +310,6 @@ TEST_F(TestMetrics, test_metrics_generate) // NOLINT
     metrics_init();
 
     snprintf(&g_gw_mac_sta_str.str_buf[0], sizeof(g_gw_mac_sta_str), "AA:BB:CC:DD:EE:FF");
-    snprintf(&g_nrf52_firmware_version.buf[0], sizeof(g_nrf52_firmware_version), "v0.7.2");
 
     this->m_uptime            = 15317668796;
     const char *p_metrics_str = metrics_generate();
@@ -393,7 +391,6 @@ TEST_F(TestMetrics, test_metrics_generate_malloc_failed) // NOLINT
     this->m_malloc_fail_on_cnt = 1;
 
     snprintf(&g_gw_mac_sta_str.str_buf[0], sizeof(g_gw_mac_sta_str), "AA:BB:CC:DD:EE:FF");
-    snprintf(&g_nrf52_firmware_version.buf[0], sizeof(g_nrf52_firmware_version), "v0.7.2");
 
     this->m_uptime = 15317668796;
     ASSERT_EQ(nullptr, metrics_generate());

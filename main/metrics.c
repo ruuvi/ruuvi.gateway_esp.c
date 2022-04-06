@@ -69,8 +69,8 @@ typedef struct metrics_info_t
     metrics_total_free_info_t   total_free_bytes;
     metrics_largest_free_info_t largest_free_block;
     mac_address_str_t           mac_addr_str;
-    nrf52fw_version_str_t       nrf_fw;
-    fw_ver_str_t                esp_fw;
+    ruuvi_nrf52_fw_ver_str_t    nrf_fw;
+    ruuvi_esp32_fw_ver_str_t    esp_fw;
 } metrics_info_t;
 
 static const char TAG[] = "metrics";
@@ -167,8 +167,8 @@ gen_metrics(void)
         .largest_free_block.size_internal = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
         .largest_free_block.size_default  = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT),
         .mac_addr_str                     = g_gw_mac_sta_str,
-        .esp_fw                           = fw_update_get_cur_version2(),
-        .nrf_fw                           = g_nrf52_firmware_version,
+        .esp_fw                           = *gw_cfg_get_esp32_fw_ver(),
+        .nrf_fw                           = *gw_cfg_get_nrf52_fw_ver(),
     };
     return metrics;
 }

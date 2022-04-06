@@ -29,7 +29,11 @@ typedef struct gw_cfg_default_t
 } gw_cfg_default_t;
 
 void
-gw_cfg_default_init(const wifi_ssid_t *const p_gw_wifi_ssid, const nrf52_device_id_str_t device_id_str);
+gw_cfg_default_init(
+    const wifi_ssid_t *const       p_gw_wifi_ssid,
+    const nrf52_device_id_str_t    device_id_str,
+    const ruuvi_esp32_fw_ver_str_t esp32_fw_ver,
+    const ruuvi_nrf52_fw_ver_str_t nrf52_fw_ver);
 
 void
 gw_cfg_default_get(ruuvi_gateway_config_t *const p_gw_cfg);

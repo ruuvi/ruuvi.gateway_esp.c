@@ -12,6 +12,8 @@
 #include <stdbool.h>
 #include "mac_addr.h"
 #include "wifi_manager_defs.h"
+#include "fw_ver.h"
+#include "nrf52_fw_ver.h"
 
 #if !defined(RUUVI_TESTS_GW_CFG)
 #define RUUVI_TESTS_GW_CFG (0)
@@ -44,6 +46,12 @@ extern "C" {
 #define IP_STR_LEN               17
 
 #define RUUVI_COMPANY_ID 0x0499
+
+typedef struct ruuvi_gw_cfg_device_info_t
+{
+    ruuvi_esp32_fw_ver_str_t esp32_fw_ver;
+    ruuvi_nrf52_fw_ver_str_t nrf52_fw_ver;
+} ruuvi_gw_cfg_device_info_t;
 
 typedef struct ruuvi_gw_cfg_ip_addr_str_t
 {
@@ -196,6 +204,7 @@ typedef struct ruuvi_gw_cfg_coordinates_t
 
 typedef struct ruuvi_gateway_config_t
 {
+    ruuvi_gw_cfg_device_info_t device_info;
     ruuvi_gw_cfg_eth_t         eth;
     ruuvi_gw_cfg_mqtt_t        mqtt;
     ruuvi_gw_cfg_http_t        http;
@@ -272,6 +281,12 @@ gw_cfg_get_coordinates(void);
 
 void
 gw_cfg_set_default_lan_auth(void);
+
+const ruuvi_esp32_fw_ver_str_t *
+gw_cfg_get_esp32_fw_ver(void);
+
+const ruuvi_nrf52_fw_ver_str_t *
+gw_cfg_get_nrf52_fw_ver(void);
 
 #ifdef __cplusplus
 }

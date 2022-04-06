@@ -54,7 +54,7 @@ gw_cfg_default_json_parse_cjson_wifi_sta_config(
 static void
 gw_cfg_default_json_parse_cjson(const cJSON *const p_json_root, gw_cfg_default_t *const p_gw_cfg)
 {
-    gw_cfg_json_parse_cjson(p_json_root, &p_gw_cfg->ruuvi_gw_cfg);
+    gw_cfg_json_parse_cjson(p_json_root, &p_gw_cfg->ruuvi_gw_cfg, NULL);
 
     const cJSON *const p_json_wifi_sta_cfg = cJSON_GetObjectItem(p_json_root, "wifi_sta_config");
     if (NULL == p_json_wifi_sta_cfg)
@@ -68,8 +68,6 @@ gw_cfg_default_json_parse_cjson(const cJSON *const p_json_root, gw_cfg_default_t
 bool
 gw_cfg_default_json_parse(const char *const p_json_str, gw_cfg_default_t *const p_gw_cfg)
 {
-    gw_cfg_default_get(&p_gw_cfg->ruuvi_gw_cfg);
-
     if ('\0' == p_json_str[0])
     {
         LOG_WARN("gw_cfg_default.json is empty");
