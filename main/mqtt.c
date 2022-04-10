@@ -91,7 +91,7 @@ mqtt_publish_adv(const adv_report_t *const p_adv)
 {
     cjson_wrap_str_t                 json_str    = cjson_wrap_str_null();
     const ruuvi_gw_cfg_coordinates_t coordinates = gw_cfg_get_coordinates();
-    if (!mqtt_create_json_str(p_adv, time(NULL), &g_gw_mac_sta_str, coordinates.buf, &json_str))
+    if (!mqtt_create_json_str(p_adv, time(NULL), gw_cfg_get_nrf52_mac_addr(), coordinates.buf, &json_str))
     {
         LOG_ERR("%s failed", "mqtt_create_json_str");
         return false;

@@ -31,8 +31,6 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/metrics.h
         ${RUUVI_GW_SRC}/ruuvi_auth.c
         ${RUUVI_GW_SRC}/ruuvi_auth.h
-        ${RUUVI_GW_SRC}/ruuvi_device_id.c
-        ${RUUVI_GW_SRC}/ruuvi_device_id.h
         ${RUUVI_GW_SRC}/time_str.c
         ${RUUVI_GW_SRC}/time_str.h
         ${RUUVI_ESP_WRAPPERS_INC}/log.h
@@ -46,6 +44,8 @@ add_executable(${ProjectId}
         ${RUUVI_ESP_WRAPPERS}/src/str_buf.c
         ${WIFI_MANAGER_SRC}/http_server_auth.c
         ${WIFI_MANAGER_SRC}/http_server_auth.h
+        ${WIFI_MANAGER_SRC}/http_server_auth_type.c
+        ${WIFI_MANAGER_INC}/http_server_auth_type.h
         ${WIFI_MANAGER_SRC}/http_server_resp.c
         ${WIFI_MANAGER_INC}/http_server_resp.h
         ${WIFI_MANAGER_INC}/wifi_manager.h

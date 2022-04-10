@@ -52,13 +52,17 @@ gw_cfg_ruuvi_json_add_number(cJSON *p_json_root, const char *p_item_name, const 
 }
 
 static bool
-gw_cfg_ruuvi_json_add_items_fw_version(cJSON *p_json_root, const ruuvi_gateway_config_t *const p_cfg)
+gw_cfg_ruuvi_json_add_items_device_info(cJSON *p_json_root, const ruuvi_gateway_config_t *const p_cfg)
 {
     if (!gw_cfg_ruuvi_json_add_string(p_json_root, "fw_ver", p_cfg->device_info.esp32_fw_ver.buf))
     {
         return false;
     }
     if (!gw_cfg_ruuvi_json_add_string(p_json_root, "nrf52_fw_ver", p_cfg->device_info.nrf52_fw_ver.buf))
+    {
+        return false;
+    }
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "gw_mac", p_cfg->device_info.nrf52_mac_addr.str_buf))
     {
         return false;
     }
@@ -138,22 +142,16 @@ gw_cfg_ruuvi_json_add_items_http_stat(cJSON *p_json_root, const ruuvi_gateway_co
 static bool
 gw_cfg_ruuvi_json_add_items_lan_auth(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg)
 {
-    const ruuvi_gw_cfg_lan_auth_t *const p_default_lan_auth = gw_cfg_default_get_lan_auth();
-    const char *const                    p_lan_auth_type
-        = ((0 == strcmp(p_cfg->lan_auth.lan_auth_type, p_default_lan_auth->lan_auth_type))
-           && (0 == strcmp(p_cfg->lan_auth.lan_auth_user, p_default_lan_auth->lan_auth_user))
-           && (0 == strcmp(p_cfg->lan_auth.lan_auth_pass, p_default_lan_auth->lan_auth_pass)))
-              ? "lan_auth_default"
-              : &p_cfg->lan_auth.lan_auth_type[0];
-    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "lan_auth_type", p_lan_auth_type))
+    const char *const p_lan_auth_type_str = gw_cfg_auth_type_to_str(&p_cfg->lan_auth);
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "lan_auth_type", p_lan_auth_type_str))
     {
         return false;
     }
-    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "lan_auth_user", p_cfg->lan_auth.lan_auth_user))
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "lan_auth_user", p_cfg->lan_auth.lan_auth_user.buf))
     {
         return false;
     }
-    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "lan_auth_api_key", p_cfg->lan_auth.lan_auth_api_key))
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "lan_auth_api_key", p_cfg->lan_auth.lan_auth_api_key.buf))
     {
         return false;
     }
@@ -231,14 +229,7 @@ gw_cfg_ruuvi_json_add_items_mqtt(cJSON *const p_json_root, const ruuvi_gateway_c
         return false;
     }
     ruuvi_gw_cfg_mqtt_prefix_t mqtt_prefix = { '\0' };
-    if (p_cfg->mqtt.mqtt_use_default_prefix)
-    {
-        snprintf(mqtt_prefix.buf, sizeof(mqtt_prefix.buf), "ruuvi/%s/", g_gw_mac_sta_str.str_buf);
-    }
-    else
-    {
-        snprintf(mqtt_prefix.buf, sizeof(mqtt_prefix.buf), "%s", p_cfg->mqtt.mqtt_prefix.buf);
-    }
+    snprintf(mqtt_prefix.buf, sizeof(mqtt_prefix.buf), "%s", p_cfg->mqtt.mqtt_prefix.buf);
     if (!gw_cfg_ruuvi_json_add_string(p_json_root, "mqtt_prefix", mqtt_prefix.buf))
     {
         return false;
@@ -308,12 +299,9 @@ gw_cfg_ruuvi_json_add_items_scan(cJSON *p_json_root, const ruuvi_gateway_config_
 }
 
 static bool
-gw_cfg_ruuvi_json_add_items(
-    cJSON *const                        p_json_root,
-    const ruuvi_gateway_config_t *const p_cfg,
-    const mac_address_str_t *const      p_mac_sta)
+gw_cfg_ruuvi_json_add_items(cJSON *const p_json_root, const ruuvi_gateway_config_t *const p_cfg)
 {
-    if (!gw_cfg_ruuvi_json_add_items_fw_version(p_json_root, p_cfg))
+    if (!gw_cfg_ruuvi_json_add_items_device_info(p_json_root, p_cfg))
     {
         return false;
     }
@@ -341,15 +329,7 @@ gw_cfg_ruuvi_json_add_items(
     {
         return false;
     }
-    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "gw_mac", p_mac_sta->str_buf))
-    {
-        return false;
-    }
     if (!gw_cfg_ruuvi_json_add_items_filter(p_json_root, p_cfg))
-    {
-        return false;
-    }
-    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "coordinates", p_cfg->coordinates.buf))
     {
         return false;
     }
@@ -357,14 +337,15 @@ gw_cfg_ruuvi_json_add_items(
     {
         return false;
     }
+    if (!gw_cfg_ruuvi_json_add_string(p_json_root, "coordinates", p_cfg->coordinates.buf))
+    {
+        return false;
+    }
     return true;
 }
 
 bool
-gw_cfg_ruuvi_json_generate(
-    const ruuvi_gateway_config_t *const p_cfg,
-    const mac_address_str_t *const      p_mac_sta,
-    cjson_wrap_str_t *const             p_json_str)
+gw_cfg_ruuvi_json_generate(const ruuvi_gateway_config_t *const p_cfg, cjson_wrap_str_t *const p_json_str)
 {
     p_json_str->p_str = NULL;
 
@@ -374,7 +355,8 @@ gw_cfg_ruuvi_json_generate(
         LOG_ERR("Can't create json object");
         return false;
     }
-    if (!gw_cfg_ruuvi_json_add_items(p_json_root, p_cfg, p_mac_sta))
+
+    if (!gw_cfg_ruuvi_json_add_items(p_json_root, p_cfg))
     {
         cjson_wrap_delete(&p_json_root);
         return false;

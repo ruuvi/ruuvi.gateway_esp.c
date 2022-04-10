@@ -91,7 +91,7 @@ http_server_resp_json_ruuvi(void)
 {
     const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
     cjson_wrap_str_t              json_str = cjson_wrap_str_null();
-    if (!gw_cfg_ruuvi_json_generate(p_gw_cfg, &g_gw_mac_sta_str, &json_str))
+    if (!gw_cfg_ruuvi_json_generate(p_gw_cfg, &json_str))
     {
         gw_cfg_unlock_ro(&p_gw_cfg);
         return http_server_resp_503();
@@ -136,31 +136,27 @@ json_info_add_uint32(cJSON *p_json_root, const char *p_item_name, const uint32_t
 static bool
 json_info_add_items(cJSON *p_json_root)
 {
-    const ruuvi_esp32_fw_ver_str_t *const p_esp32_fw_ver = gw_cfg_get_esp32_fw_ver();
-    if (!json_info_add_string(p_json_root, "ESP_FW", p_esp32_fw_ver->buf))
+    if (!json_info_add_string(p_json_root, "ESP_FW", gw_cfg_get_esp32_fw_ver()->buf))
     {
         return false;
     }
-    const ruuvi_nrf52_fw_ver_str_t *const p_nrf52_fw_ver = gw_cfg_get_nrf52_fw_ver();
-    if (!json_info_add_string(p_json_root, "NRF_FW", p_nrf52_fw_ver->buf))
+    if (!json_info_add_string(p_json_root, "NRF_FW", gw_cfg_get_nrf52_fw_ver()->buf))
     {
         return false;
     }
-    const mac_address_str_t nrf52_mac_addr = ruuvi_device_id_get_nrf52_mac_address_str();
-    if (!json_info_add_string(p_json_root, "DEVICE_ADDR", nrf52_mac_addr.str_buf))
+    if (!json_info_add_string(p_json_root, "DEVICE_ADDR", gw_cfg_get_nrf52_mac_addr()->str_buf))
     {
         return false;
     }
-    const nrf52_device_id_str_t nrf52_device_id = ruuvi_device_id_get_str();
-    if (!json_info_add_string(p_json_root, "DEVICE_ID", nrf52_device_id.str_buf))
+    if (!json_info_add_string(p_json_root, "DEVICE_ID", gw_cfg_get_nrf52_device_id()->str_buf))
     {
         return false;
     }
-    if (!json_info_add_string(p_json_root, "ETHERNET_MAC", g_gw_mac_eth_str.str_buf))
+    if (!json_info_add_string(p_json_root, "ETHERNET_MAC", gw_cfg_get_esp32_mac_addr_eth()->str_buf))
     {
         return false;
     }
-    if (!json_info_add_string(p_json_root, "WIFI_MAC", g_gw_mac_wifi_str.str_buf))
+    if (!json_info_add_string(p_json_root, "WIFI_MAC", gw_cfg_get_esp32_mac_addr_wifi()->str_buf))
     {
         return false;
     }
@@ -452,8 +448,14 @@ http_server_read_history(
 
     const ruuvi_gw_cfg_coordinates_t coordinates = gw_cfg_get_coordinates();
 
-    const bool res
-        = http_json_create_records_str(p_reports, cur_time, &g_gw_mac_sta_str, coordinates.buf, false, 0, p_json_str);
+    const bool res = http_json_create_records_str(
+        p_reports,
+        cur_time,
+        gw_cfg_get_nrf52_mac_addr(),
+        coordinates.buf,
+        false,
+        0,
+        p_json_str);
 
     os_free(p_reports);
     return res;

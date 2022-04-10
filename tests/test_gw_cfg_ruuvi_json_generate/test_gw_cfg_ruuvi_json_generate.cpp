@@ -96,11 +96,16 @@ protected:
         this->m_malloc_cnt         = 0;
         this->m_malloc_fail_on_cnt = 0;
 
-        snprintf(g_gw_wifi_ssid.ssid_buf, sizeof(g_gw_wifi_ssid.ssid_buf), "my_ssid1");
-        const nrf52_device_id_str_t    device_id_str = { "11:22:33:44:55:66:77:88" };
-        const ruuvi_esp32_fw_ver_str_t esp32_fw_ver  = { "v1.3.3" };
-        const ruuvi_nrf52_fw_ver_str_t nrf52_fw_ver  = { "v0.7.1" };
-        gw_cfg_default_init(&g_gw_wifi_ssid, device_id_str, esp32_fw_ver, nrf52_fw_ver);
+        const gw_cfg_default_init_param_t init_params = {
+            .wifi_ap_ssid        = { "my_ssid1" },
+            .device_id           = { 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88 },
+            .esp32_fw_ver        = { "v1.3.3" },
+            .nrf52_fw_ver        = { "v0.7.1" },
+            .nrf52_mac_addr      = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF },
+            .esp32_mac_addr_wifi = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x11 },
+            .esp32_mac_addr_eth  = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x22 },
+        };
+        gw_cfg_default_init(&init_params, nullptr);
     }
 
     void
@@ -203,14 +208,13 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default) // NOLINT
     const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t             json_str = cjson_wrap_str_null();
 
-    snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "AA:BB:CC:DD:EE:FF");
-
-    ASSERT_TRUE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_TRUE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
                "\t\"fw_ver\":\t\"v1.3.3\",\n"
                "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"use_eth\":\tfalse,\n"
                "\t\"eth_dhcp\":\ttrue,\n"
                "\t\"eth_static_ip\":\t\"\",\n"
@@ -226,10 +230,10 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default) // NOLINT
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
-               "\t\"mqtt_server\":\t\"\",\n"
-               "\t\"mqtt_port\":\t0,\n"
+               "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+               "\t\"mqtt_port\":\t1883,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
-               "\t\"mqtt_client_id\":\t\"\",\n"
+               "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
@@ -239,16 +243,15 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"use_filtering\":\ttrue,\n"
                "\t\"company_id\":\t\"0x0499\",\n"
-               "\t\"coordinates\":\t\"\",\n"
                "\t\"use_coded_phy\":\tfalse,\n"
                "\t\"use_1mbit_phy\":\ttrue,\n"
                "\t\"use_extended_payload\":\ttrue,\n"
                "\t\"use_channel_37\":\ttrue,\n"
                "\t\"use_channel_38\":\ttrue,\n"
-               "\t\"use_channel_39\":\ttrue\n"
+               "\t\"use_channel_39\":\ttrue,\n"
+               "\t\"coordinates\":\t\"\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -260,15 +263,14 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
     ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t       json_str = cjson_wrap_str_null();
 
-    snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "AA:BB:CC:DD:EE:FF");
-
-    snprintf(gw_cfg.lan_auth.lan_auth_type, sizeof(gw_cfg.lan_auth.lan_auth_type), HTTP_SERVER_AUTH_TYPE_STR_ALLOW);
-    ASSERT_TRUE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    gw_cfg.lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_ALLOW;
+    ASSERT_TRUE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
                "\t\"fw_ver\":\t\"v1.3.3\",\n"
                "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"use_eth\":\tfalse,\n"
                "\t\"eth_dhcp\":\ttrue,\n"
                "\t\"eth_static_ip\":\t\"\",\n"
@@ -284,10 +286,10 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
-               "\t\"mqtt_server\":\t\"\",\n"
-               "\t\"mqtt_port\":\t0,\n"
+               "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+               "\t\"mqtt_port\":\t1883,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
-               "\t\"mqtt_client_id\":\t\"\",\n"
+               "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_allow\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
@@ -297,16 +299,15 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"use_filtering\":\ttrue,\n"
                "\t\"company_id\":\t\"0x0499\",\n"
-               "\t\"coordinates\":\t\"\",\n"
                "\t\"use_coded_phy\":\tfalse,\n"
                "\t\"use_1mbit_phy\":\ttrue,\n"
                "\t\"use_extended_payload\":\ttrue,\n"
                "\t\"use_channel_37\":\ttrue,\n"
                "\t\"use_channel_38\":\ttrue,\n"
-               "\t\"use_channel_39\":\ttrue\n"
+               "\t\"use_channel_39\":\ttrue,\n"
+               "\t\"coordinates\":\t\"\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -318,15 +319,16 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
     ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t       json_str = cjson_wrap_str_null();
 
-    snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "AA:BB:CC:DD:EE:FF");
-
-    snprintf(gw_cfg.lan_auth.lan_auth_user, sizeof(gw_cfg.lan_auth.lan_auth_user), "user2");
-    ASSERT_TRUE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    gw_cfg.lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI;
+    snprintf(gw_cfg.lan_auth.lan_auth_user.buf, sizeof(gw_cfg.lan_auth.lan_auth_user.buf), "user2");
+    snprintf(gw_cfg.lan_auth.lan_auth_pass.buf, sizeof(gw_cfg.lan_auth.lan_auth_pass.buf), "pass2");
+    ASSERT_TRUE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
                "\t\"fw_ver\":\t\"v1.3.3\",\n"
                "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"use_eth\":\tfalse,\n"
                "\t\"eth_dhcp\":\ttrue,\n"
                "\t\"eth_static_ip\":\t\"\",\n"
@@ -342,10 +344,10 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
-               "\t\"mqtt_server\":\t\"\",\n"
-               "\t\"mqtt_port\":\t0,\n"
+               "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+               "\t\"mqtt_port\":\t1883,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
-               "\t\"mqtt_client_id\":\t\"\",\n"
+               "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"user2\",\n"
@@ -355,16 +357,15 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"use_filtering\":\ttrue,\n"
                "\t\"company_id\":\t\"0x0499\",\n"
-               "\t\"coordinates\":\t\"\",\n"
                "\t\"use_coded_phy\":\tfalse,\n"
                "\t\"use_1mbit_phy\":\ttrue,\n"
                "\t\"use_extended_payload\":\ttrue,\n"
                "\t\"use_channel_37\":\ttrue,\n"
                "\t\"use_channel_38\":\ttrue,\n"
-               "\t\"use_channel_39\":\ttrue\n"
+               "\t\"use_channel_39\":\ttrue,\n"
+               "\t\"coordinates\":\t\"\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -376,16 +377,15 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
     ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t       json_str = cjson_wrap_str_null();
 
-    snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "AA:BB:CC:DD:EE:FF");
+    snprintf(gw_cfg.lan_auth.lan_auth_pass.buf, sizeof(gw_cfg.lan_auth.lan_auth_pass.buf), "qwe");
 
-    snprintf(gw_cfg.lan_auth.lan_auth_pass, sizeof(gw_cfg.lan_auth.lan_auth_pass), "qwe");
-
-    ASSERT_TRUE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_TRUE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
                "\t\"fw_ver\":\t\"v1.3.3\",\n"
                "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"use_eth\":\tfalse,\n"
                "\t\"eth_dhcp\":\ttrue,\n"
                "\t\"eth_static_ip\":\t\"\",\n"
@@ -401,10 +401,10 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
-               "\t\"mqtt_server\":\t\"\",\n"
-               "\t\"mqtt_port\":\t0,\n"
+               "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+               "\t\"mqtt_port\":\t1883,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
-               "\t\"mqtt_client_id\":\t\"\",\n"
+               "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
@@ -414,16 +414,15 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"use_filtering\":\ttrue,\n"
                "\t\"company_id\":\t\"0x0499\",\n"
-               "\t\"coordinates\":\t\"\",\n"
                "\t\"use_coded_phy\":\tfalse,\n"
                "\t\"use_1mbit_phy\":\ttrue,\n"
                "\t\"use_extended_payload\":\ttrue,\n"
                "\t\"use_channel_37\":\ttrue,\n"
                "\t\"use_channel_38\":\ttrue,\n"
-               "\t\"use_channel_39\":\ttrue\n"
+               "\t\"use_channel_39\":\ttrue,\n"
+               "\t\"coordinates\":\t\"\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -435,19 +434,18 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
     ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t       json_str = cjson_wrap_str_null();
 
-    snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "AA:BB:CC:DD:EE:FF");
-
     snprintf(
-        gw_cfg.lan_auth.lan_auth_api_key,
-        sizeof(gw_cfg.lan_auth.lan_auth_api_key),
+        gw_cfg.lan_auth.lan_auth_api_key.buf,
+        sizeof(gw_cfg.lan_auth.lan_auth_api_key.buf),
         "6kl/fd/c+3qvWm3Mhmwgh3BWNp+HDRQiLp/X0PuwG8Q=");
 
-    ASSERT_TRUE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_TRUE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
                "\t\"fw_ver\":\t\"v1.3.3\",\n"
                "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"use_eth\":\tfalse,\n"
                "\t\"eth_dhcp\":\ttrue,\n"
                "\t\"eth_static_ip\":\t\"\",\n"
@@ -463,10 +461,10 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
-               "\t\"mqtt_server\":\t\"\",\n"
-               "\t\"mqtt_port\":\t0,\n"
+               "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+               "\t\"mqtt_port\":\t1883,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
-               "\t\"mqtt_client_id\":\t\"\",\n"
+               "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
@@ -476,16 +474,15 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"use_filtering\":\ttrue,\n"
                "\t\"company_id\":\t\"0x0499\",\n"
-               "\t\"coordinates\":\t\"\",\n"
                "\t\"use_coded_phy\":\tfalse,\n"
                "\t\"use_1mbit_phy\":\ttrue,\n"
                "\t\"use_extended_payload\":\ttrue,\n"
                "\t\"use_channel_37\":\ttrue,\n"
                "\t\"use_channel_38\":\ttrue,\n"
-               "\t\"use_channel_39\":\ttrue\n"
+               "\t\"use_channel_39\":\ttrue,\n"
+               "\t\"coordinates\":\t\"\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -497,15 +494,14 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_auto_updat
     ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t       json_str = cjson_wrap_str_null();
 
-    snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "AA:BB:CC:DD:EE:FF");
-
     gw_cfg.auto_update.auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER;
-    ASSERT_TRUE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_TRUE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
                "\t\"fw_ver\":\t\"v1.3.3\",\n"
                "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"use_eth\":\tfalse,\n"
                "\t\"eth_dhcp\":\ttrue,\n"
                "\t\"eth_static_ip\":\t\"\",\n"
@@ -521,10 +517,10 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_auto_updat
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
-               "\t\"mqtt_server\":\t\"\",\n"
-               "\t\"mqtt_port\":\t0,\n"
+               "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+               "\t\"mqtt_port\":\t1883,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
-               "\t\"mqtt_client_id\":\t\"\",\n"
+               "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
@@ -534,16 +530,15 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_auto_updat
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"use_filtering\":\ttrue,\n"
                "\t\"company_id\":\t\"0x0499\",\n"
-               "\t\"coordinates\":\t\"\",\n"
                "\t\"use_coded_phy\":\tfalse,\n"
                "\t\"use_1mbit_phy\":\ttrue,\n"
                "\t\"use_extended_payload\":\ttrue,\n"
                "\t\"use_channel_37\":\ttrue,\n"
                "\t\"use_channel_38\":\ttrue,\n"
-               "\t\"use_channel_39\":\ttrue\n"
+               "\t\"use_channel_39\":\ttrue,\n"
+               "\t\"coordinates\":\t\"\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -555,15 +550,14 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_auto_updat
     ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t       json_str = cjson_wrap_str_null();
 
-    snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "AA:BB:CC:DD:EE:FF");
-
     gw_cfg.auto_update.auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_MANUAL;
-    ASSERT_TRUE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_TRUE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
                "\t\"fw_ver\":\t\"v1.3.3\",\n"
                "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"use_eth\":\tfalse,\n"
                "\t\"eth_dhcp\":\ttrue,\n"
                "\t\"eth_static_ip\":\t\"\",\n"
@@ -579,10 +573,10 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_auto_updat
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
-               "\t\"mqtt_server\":\t\"\",\n"
-               "\t\"mqtt_port\":\t0,\n"
+               "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+               "\t\"mqtt_port\":\t1883,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
-               "\t\"mqtt_client_id\":\t\"\",\n"
+               "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
@@ -592,16 +586,15 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_auto_updat
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"use_filtering\":\ttrue,\n"
                "\t\"company_id\":\t\"0x0499\",\n"
-               "\t\"coordinates\":\t\"\",\n"
                "\t\"use_coded_phy\":\tfalse,\n"
                "\t\"use_1mbit_phy\":\ttrue,\n"
                "\t\"use_extended_payload\":\ttrue,\n"
                "\t\"use_channel_37\":\ttrue,\n"
                "\t\"use_channel_38\":\ttrue,\n"
-               "\t\"use_channel_39\":\ttrue\n"
+               "\t\"use_channel_39\":\ttrue,\n"
+               "\t\"coordinates\":\t\"\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -613,15 +606,14 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_auto_updat
     ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t       json_str = cjson_wrap_str_null();
 
-    snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "AA:BB:CC:DD:EE:FF");
-
     gw_cfg.auto_update.auto_update_cycle = (auto_update_cycle_type_e)-1;
-    ASSERT_TRUE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_TRUE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
                "\t\"fw_ver\":\t\"v1.3.3\",\n"
                "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"use_eth\":\tfalse,\n"
                "\t\"eth_dhcp\":\ttrue,\n"
                "\t\"eth_static_ip\":\t\"\",\n"
@@ -637,10 +629,10 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_auto_updat
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
-               "\t\"mqtt_server\":\t\"\",\n"
-               "\t\"mqtt_port\":\t0,\n"
+               "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+               "\t\"mqtt_port\":\t1883,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
-               "\t\"mqtt_client_id\":\t\"\",\n"
+               "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
@@ -650,75 +642,15 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_auto_updat
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"use_filtering\":\ttrue,\n"
                "\t\"company_id\":\t\"0x0499\",\n"
-               "\t\"coordinates\":\t\"\",\n"
                "\t\"use_coded_phy\":\tfalse,\n"
                "\t\"use_1mbit_phy\":\ttrue,\n"
                "\t\"use_extended_payload\":\ttrue,\n"
                "\t\"use_channel_37\":\ttrue,\n"
                "\t\"use_channel_38\":\ttrue,\n"
-               "\t\"use_channel_39\":\ttrue\n"
-               "}"),
-        string(json_str.p_str));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    cjson_wrap_free_json_str(&json_str);
-}
-
-TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_mqtt_prefix_non_default) // NOLINT
-{
-    ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
-    cjson_wrap_str_t       json_str = cjson_wrap_str_null();
-
-    snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "AA:BB:CC:DD:EE:FF");
-
-    gw_cfg.mqtt.mqtt_use_default_prefix = false;
-    snprintf(gw_cfg.mqtt.mqtt_prefix.buf, sizeof(gw_cfg.mqtt.mqtt_prefix.buf), "qwe/");
-    ASSERT_TRUE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
-    ASSERT_NE(nullptr, json_str.p_str);
-    ASSERT_EQ(
-        string("{\n"
-               "\t\"fw_ver\":\t\"v1.3.3\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
-               "\t\"use_eth\":\tfalse,\n"
-               "\t\"eth_dhcp\":\ttrue,\n"
-               "\t\"eth_static_ip\":\t\"\",\n"
-               "\t\"eth_netmask\":\t\"\",\n"
-               "\t\"eth_gw\":\t\"\",\n"
-               "\t\"eth_dns1\":\t\"\",\n"
-               "\t\"eth_dns2\":\t\"\",\n"
-               "\t\"use_http\":\ttrue,\n"
-               "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"use_http_stat\":\ttrue,\n"
-               "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
-               "\t\"http_stat_user\":\t\"\",\n"
-               "\t\"use_mqtt\":\tfalse,\n"
-               "\t\"mqtt_transport\":\t\"TCP\",\n"
-               "\t\"mqtt_server\":\t\"\",\n"
-               "\t\"mqtt_port\":\t0,\n"
-               "\t\"mqtt_prefix\":\t\"qwe/\",\n"
-               "\t\"mqtt_client_id\":\t\"\",\n"
-               "\t\"mqtt_user\":\t\"\",\n"
-               "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
-               "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_api_key\":\t\"\",\n"
-               "\t\"auto_update_cycle\":\t\"regular\",\n"
-               "\t\"auto_update_weekdays_bitmask\":\t127,\n"
-               "\t\"auto_update_interval_from\":\t0,\n"
-               "\t\"auto_update_interval_to\":\t24,\n"
-               "\t\"auto_update_tz_offset_hours\":\t3,\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
-               "\t\"use_filtering\":\ttrue,\n"
-               "\t\"company_id\":\t\"0x0499\",\n"
-               "\t\"coordinates\":\t\"\",\n"
-               "\t\"use_coded_phy\":\tfalse,\n"
-               "\t\"use_1mbit_phy\":\ttrue,\n"
-               "\t\"use_extended_payload\":\ttrue,\n"
-               "\t\"use_channel_37\":\ttrue,\n"
-               "\t\"use_channel_38\":\ttrue,\n"
-               "\t\"use_channel_39\":\ttrue\n"
+               "\t\"use_channel_39\":\ttrue,\n"
+               "\t\"coordinates\":\t\"\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -731,6 +663,8 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_non_default) // NO
         .device_info = {
             .esp32_fw_ver = { "v1.3.3", },
             .nrf52_fw_ver = { "v0.7.1", },
+            .nrf52_mac_addr = { "AA:BB:CC:DD:EE:FF" },
+            .nrf52_device_id = { "11:22:33:44:55:66:77:88" },
         },
         .eth = {
             true,
@@ -743,7 +677,6 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_non_default) // NO
         },
         .mqtt = {
             true,
-            false,
             MQTT_TRANSPORT_SSL,
             "ssl.test.mosquitto.org",
             1234,
@@ -765,7 +698,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_non_default) // NO
             "h_pass2",
         },
         .lan_auth = {
-            HTTP_SERVER_AUTH_TYPE_STR_DIGEST,
+            HTTP_SERVER_AUTH_TYPE_DIGEST,
             "l_user1",
             "l_pass1",
             "wH3F9SIiAA3rhG32aJki2Z7ekdFc0vtxuDhxl39zFvw=",
@@ -793,14 +726,13 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_non_default) // NO
     };
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "AA:BB:CC:DD:EE:FF");
-
-    ASSERT_TRUE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_TRUE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
                "\t\"fw_ver\":\t\"v1.3.3\",\n"
                "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"use_eth\":\ttrue,\n"
                "\t\"eth_dhcp\":\tfalse,\n"
                "\t\"eth_static_ip\":\t\"192.168.1.10\",\n"
@@ -829,16 +761,15 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_non_default) // NO
                "\t\"auto_update_interval_from\":\t2,\n"
                "\t\"auto_update_interval_to\":\t22,\n"
                "\t\"auto_update_tz_offset_hours\":\t5,\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"use_filtering\":\tfalse,\n"
                "\t\"company_id\":\t\"0x049a\",\n"
-               "\t\"coordinates\":\t\"qwe\",\n"
                "\t\"use_coded_phy\":\ttrue,\n"
                "\t\"use_1mbit_phy\":\tfalse,\n"
                "\t\"use_extended_payload\":\tfalse,\n"
                "\t\"use_channel_37\":\tfalse,\n"
                "\t\"use_channel_38\":\tfalse,\n"
-               "\t\"use_channel_39\":\tfalse\n"
+               "\t\"use_channel_39\":\tfalse,\n"
+               "\t\"coordinates\":\t\"qwe\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -857,7 +788,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_j
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 1;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't create json object"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -876,7 +807,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_f
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 2;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: fw_ver"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -895,7 +826,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_f
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 3;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: fw_ver"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -914,7 +845,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_f
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 4;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: fw_ver"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -933,7 +864,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_n
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 5;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: nrf52_fw_ver"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -952,7 +883,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_n
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 6;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: nrf52_fw_ver"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -971,9 +902,66 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_n
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 7;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: nrf52_fw_ver"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_gw_mac) // NOLINT
+{
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t             json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 8;
+
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: gw_mac"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_nrf52_gw_mac_2) // NOLINT
+{
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t             json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 9;
+
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: gw_mac"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_nrf52_gw_mac_3) // NOLINT
+{
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t             json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 10;
+
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: gw_mac"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -988,9 +976,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 8;
+    this->m_malloc_fail_on_cnt = 11;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_eth"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1007,9 +995,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 9;
+    this->m_malloc_fail_on_cnt = 12;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_eth"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1026,9 +1014,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 10;
+    this->m_malloc_fail_on_cnt = 13;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dhcp"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1045,9 +1033,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 11;
+    this->m_malloc_fail_on_cnt = 14;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dhcp"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1064,9 +1052,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 12;
+    this->m_malloc_fail_on_cnt = 15;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_static_ip"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1083,9 +1071,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 13;
+    this->m_malloc_fail_on_cnt = 16;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_static_ip"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1102,9 +1090,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 14;
+    this->m_malloc_fail_on_cnt = 17;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_static_ip"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1121,9 +1109,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 15;
+    this->m_malloc_fail_on_cnt = 18;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_netmask"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1140,9 +1128,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 16;
+    this->m_malloc_fail_on_cnt = 19;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_netmask"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1159,9 +1147,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 17;
+    this->m_malloc_fail_on_cnt = 20;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_netmask"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1178,9 +1166,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 18;
+    this->m_malloc_fail_on_cnt = 21;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_gw"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1197,9 +1185,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 19;
+    this->m_malloc_fail_on_cnt = 22;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_gw"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1216,9 +1204,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 20;
+    this->m_malloc_fail_on_cnt = 23;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_gw"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1235,9 +1223,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 21;
+    this->m_malloc_fail_on_cnt = 24;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dns1"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1254,9 +1242,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 22;
+    this->m_malloc_fail_on_cnt = 25;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dns1"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1273,9 +1261,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 23;
+    this->m_malloc_fail_on_cnt = 26;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dns1"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1292,9 +1280,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 24;
+    this->m_malloc_fail_on_cnt = 27;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dns2"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1311,9 +1299,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 25;
+    this->m_malloc_fail_on_cnt = 28;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dns2"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1330,9 +1318,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_e
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 26;
+    this->m_malloc_fail_on_cnt = 29;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dns2"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1349,9 +1337,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 27;
+    this->m_malloc_fail_on_cnt = 30;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_http"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1368,9 +1356,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 28;
+    this->m_malloc_fail_on_cnt = 31;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_http"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1387,9 +1375,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 29;
+    this->m_malloc_fail_on_cnt = 32;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_url"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1406,9 +1394,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 30;
+    this->m_malloc_fail_on_cnt = 33;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_url"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1425,9 +1413,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 31;
+    this->m_malloc_fail_on_cnt = 34;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_url"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1444,9 +1432,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 32;
+    this->m_malloc_fail_on_cnt = 35;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1463,9 +1451,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 33;
+    this->m_malloc_fail_on_cnt = 36;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1482,9 +1470,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 34;
+    this->m_malloc_fail_on_cnt = 37;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1501,9 +1489,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 35;
+    this->m_malloc_fail_on_cnt = 38;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_http_stat"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1520,9 +1508,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 36;
+    this->m_malloc_fail_on_cnt = 39;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_http_stat"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1539,9 +1527,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 37;
+    this->m_malloc_fail_on_cnt = 40;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_url"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1558,9 +1546,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 38;
+    this->m_malloc_fail_on_cnt = 41;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_url"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1577,9 +1565,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 39;
+    this->m_malloc_fail_on_cnt = 42;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_url"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1596,9 +1584,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 40;
+    this->m_malloc_fail_on_cnt = 43;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1615,9 +1603,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 41;
+    this->m_malloc_fail_on_cnt = 44;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1634,9 +1622,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 42;
+    this->m_malloc_fail_on_cnt = 45;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1653,9 +1641,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 43;
+    this->m_malloc_fail_on_cnt = 46;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_mqtt"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1672,9 +1660,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 44;
+    this->m_malloc_fail_on_cnt = 47;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_mqtt"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1691,9 +1679,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 45;
+    this->m_malloc_fail_on_cnt = 48;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_transport"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1710,9 +1698,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 46;
+    this->m_malloc_fail_on_cnt = 49;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_transport"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1729,9 +1717,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 47;
+    this->m_malloc_fail_on_cnt = 50;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_transport"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1748,9 +1736,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 48;
+    this->m_malloc_fail_on_cnt = 51;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_server"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1767,9 +1755,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 49;
+    this->m_malloc_fail_on_cnt = 52;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_server"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1786,9 +1774,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 50;
+    this->m_malloc_fail_on_cnt = 53;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_server"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1805,9 +1793,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 51;
+    this->m_malloc_fail_on_cnt = 54;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_port"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1824,9 +1812,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 52;
+    this->m_malloc_fail_on_cnt = 55;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_port"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1843,9 +1831,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 53;
+    this->m_malloc_fail_on_cnt = 56;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_prefix"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1862,9 +1850,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 54;
+    this->m_malloc_fail_on_cnt = 57;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_prefix"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1881,9 +1869,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 55;
+    this->m_malloc_fail_on_cnt = 58;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_prefix"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1900,9 +1888,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 56;
+    this->m_malloc_fail_on_cnt = 59;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_client_id"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1919,9 +1907,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 57;
+    this->m_malloc_fail_on_cnt = 60;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_client_id"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1938,9 +1926,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 58;
+    this->m_malloc_fail_on_cnt = 61;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_client_id"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1957,9 +1945,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 59;
+    this->m_malloc_fail_on_cnt = 62;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1976,9 +1964,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 60;
+    this->m_malloc_fail_on_cnt = 63;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1995,9 +1983,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 61;
+    this->m_malloc_fail_on_cnt = 64;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2014,9 +2002,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_l
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 62;
+    this->m_malloc_fail_on_cnt = 65;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_type"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2033,9 +2021,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_l
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 63;
+    this->m_malloc_fail_on_cnt = 66;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_type"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2052,9 +2040,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_l
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 64;
+    this->m_malloc_fail_on_cnt = 67;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_type"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2071,9 +2059,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_l
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 65;
+    this->m_malloc_fail_on_cnt = 68;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2090,9 +2078,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_l
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 66;
+    this->m_malloc_fail_on_cnt = 69;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2109,9 +2097,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_l
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 67;
+    this->m_malloc_fail_on_cnt = 70;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2128,9 +2116,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_l
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 68;
+    this->m_malloc_fail_on_cnt = 71;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_api_key"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2147,9 +2135,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_l
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 69;
+    this->m_malloc_fail_on_cnt = 72;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_api_key"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2166,9 +2154,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_l
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 70;
+    this->m_malloc_fail_on_cnt = 73;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_api_key"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2185,9 +2173,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 71;
+    this->m_malloc_fail_on_cnt = 74;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_cycle"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2204,9 +2192,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 72;
+    this->m_malloc_fail_on_cnt = 75;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_cycle"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2223,9 +2211,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 73;
+    this->m_malloc_fail_on_cnt = 76;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_cycle"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2242,9 +2230,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 74;
+    this->m_malloc_fail_on_cnt = 77;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_weekdays_bitmask"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2261,9 +2249,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 75;
+    this->m_malloc_fail_on_cnt = 78;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_weekdays_bitmask"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2280,9 +2268,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 76;
+    this->m_malloc_fail_on_cnt = 79;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_interval_from"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2299,9 +2287,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 77;
+    this->m_malloc_fail_on_cnt = 80;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_interval_from"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2318,9 +2306,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 78;
+    this->m_malloc_fail_on_cnt = 81;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_interval_to"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2337,9 +2325,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 79;
+    this->m_malloc_fail_on_cnt = 82;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_interval_to"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2356,9 +2344,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 80;
+    this->m_malloc_fail_on_cnt = 83;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_tz_offset_hours"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2375,68 +2363,11 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 81;
-
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_tz_offset_hours"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_gw_mac) // NOLINT
-{
-    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
-    cjson_wrap_str_t             json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 82;
-
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: gw_mac"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_gw_mac_2) // NOLINT
-{
-    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
-    cjson_wrap_str_t             json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 83;
-
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: gw_mac"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_gw_mac_3) // NOLINT
-{
-    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
-    cjson_wrap_str_t             json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 84;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: gw_mac"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_tz_offset_hours"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -2453,7 +2384,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 85;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_filtering"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2472,7 +2403,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 86;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_filtering"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2491,7 +2422,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_c
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 87;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: company_id"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2510,7 +2441,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_c
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 88;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: company_id"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2529,66 +2460,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_c
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 89;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: company_id"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_coordinates) // NOLINT
-{
-    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
-    cjson_wrap_str_t             json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 90;
-
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: coordinates"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_coordinates_2) // NOLINT
-{
-    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
-    cjson_wrap_str_t             json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 91;
-
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: coordinates"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_coordinates_3) // NOLINT
-{
-    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
-    cjson_wrap_str_t             json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 92;
-
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: coordinates"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -2603,9 +2477,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 93;
+    this->m_malloc_fail_on_cnt = 90;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_coded_phy"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2622,9 +2496,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 94;
+    this->m_malloc_fail_on_cnt = 91;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_coded_phy"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2641,9 +2515,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 95;
+    this->m_malloc_fail_on_cnt = 92;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_1mbit_phy"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2660,9 +2534,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 96;
+    this->m_malloc_fail_on_cnt = 93;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_1mbit_phy"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2679,9 +2553,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 97;
+    this->m_malloc_fail_on_cnt = 94;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_extended_payload"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2698,9 +2572,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 98;
+    this->m_malloc_fail_on_cnt = 95;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_extended_payload"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2717,9 +2591,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 99;
+    this->m_malloc_fail_on_cnt = 96;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_channel_37"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2736,9 +2610,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 100;
+    this->m_malloc_fail_on_cnt = 97;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_channel_37"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2755,9 +2629,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 101;
+    this->m_malloc_fail_on_cnt = 98;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_channel_38"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2774,9 +2648,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 102;
+    this->m_malloc_fail_on_cnt = 99;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_channel_38"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2793,9 +2667,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 103;
+    this->m_malloc_fail_on_cnt = 100;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_channel_39"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2812,11 +2686,68 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 104;
+    this->m_malloc_fail_on_cnt = 101;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_channel_39"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_coordinates) // NOLINT
+{
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t             json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 102;
+
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: coordinates"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_coordinates_2) // NOLINT
+{
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t             json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 103;
+
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: coordinates"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_coordinates_3) // NOLINT
+{
+    const ruuvi_gateway_config_t gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t             json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 104;
+
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: coordinates"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -2833,7 +2764,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_c
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 105;
 
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &g_gw_mac_sta_str, &json_str));
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't create json string"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());

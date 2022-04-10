@@ -9,15 +9,14 @@
 #define RUUVI_GATEWAY_ESP_GW_CFG_DEFAULT_JSON_H
 
 #include <stdbool.h>
-#include "gw_cfg.h"
-#include "wifi_manager_defs.h"
+#include "gw_cfg_default.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 bool
-gw_cfg_default_json_read(void);
+gw_cfg_default_json_read(gw_cfg_default_t *const p_gw_cfg_default);
 
 #ifdef __cplusplus
 }

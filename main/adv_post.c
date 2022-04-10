@@ -325,7 +325,7 @@ adv_post_do_send_statistics(void)
     adv_table_statistics_read(p_reports);
 
     const http_json_statistics_info_t stat_info = {
-        .nrf52_mac_addr         = ruuvi_device_id_get_nrf52_mac_address_str(),
+        .nrf52_mac_addr         = *gw_cfg_get_nrf52_mac_addr(),
         .esp_fw                 = *gw_cfg_get_esp32_fw_ver(),
         .nrf_fw                 = *gw_cfg_get_nrf52_fw_ver(),
         .uptime                 = g_uptime_counter,

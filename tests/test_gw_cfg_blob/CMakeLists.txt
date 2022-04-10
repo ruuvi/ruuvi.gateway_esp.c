@@ -12,6 +12,8 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/gw_cfg_default.h
         ${WIFI_MANAGER_SRC}/wifiman_md5.c
         ${WIFI_MANAGER_INC}/wifiman_md5.h
+        ${WIFI_MANAGER_SRC}/http_server_auth_type.c
+        ${WIFI_MANAGER_INC}/http_server_auth_type.h
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/md5.c
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/platform_util.c
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/include/mbedtls/platform_util.h

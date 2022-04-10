@@ -23,12 +23,18 @@ protected:
     void
     SetUp() override
     {
-        g_pTestClass                                 = this;
-        const wifi_ssid_t              wifi_ssid     = { "my_ssid1" };
-        const nrf52_device_id_str_t    device_id_str = { "11:22:33:44:55:66:77:88" };
-        const ruuvi_esp32_fw_ver_str_t esp32_fw_ver  = { "v1.10.0" };
-        const ruuvi_nrf52_fw_ver_str_t nrf52_fw_ver  = { "v0.7.2" };
-        gw_cfg_default_init(&wifi_ssid, device_id_str, esp32_fw_ver, nrf52_fw_ver);
+        g_pTestClass                                  = this;
+        const gw_cfg_default_init_param_t init_params = {
+            .wifi_ap_ssid        = { "my_ssid1" },
+            .device_id           = { 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88 },
+            .esp32_fw_ver        = { "v1.10.0" },
+            .nrf52_fw_ver        = { "v0.7.2" },
+            .nrf52_mac_addr      = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF },
+            .esp32_mac_addr_wifi = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x11 },
+            .esp32_mac_addr_eth  = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x22 },
+        };
+
+        gw_cfg_default_init(&init_params, nullptr);
     }
 
     void
@@ -76,12 +82,11 @@ TEST_F(TestGwCfgDefault, test_1) // NOLINT
     ASSERT_EQ(string(""), string(gw_cfg.eth.eth_dns2.buf));
 
     ASSERT_FALSE(gw_cfg.mqtt.use_mqtt);
-    ASSERT_TRUE(gw_cfg.mqtt.mqtt_use_default_prefix);
     ASSERT_EQ(string(MQTT_TRANSPORT_TCP), string(gw_cfg.mqtt.mqtt_transport.buf));
-    ASSERT_EQ(string(""), string(gw_cfg.mqtt.mqtt_server.buf));
-    ASSERT_EQ(0, gw_cfg.mqtt.mqtt_port);
-    ASSERT_EQ(string(""), string(gw_cfg.mqtt.mqtt_prefix.buf));
-    ASSERT_EQ(string(""), string(gw_cfg.mqtt.mqtt_client_id.buf));
+    ASSERT_EQ(string("test.mosquitto.org"), string(gw_cfg.mqtt.mqtt_server.buf));
+    ASSERT_EQ(1883, gw_cfg.mqtt.mqtt_port);
+    ASSERT_EQ(string("ruuvi/AA:BB:CC:DD:EE:FF/"), string(gw_cfg.mqtt.mqtt_prefix.buf));
+    ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), string(gw_cfg.mqtt.mqtt_client_id.buf));
     ASSERT_EQ(string(""), string(gw_cfg.mqtt.mqtt_user.buf));
     ASSERT_EQ(string(""), string(gw_cfg.mqtt.mqtt_pass.buf));
 
@@ -95,10 +100,10 @@ TEST_F(TestGwCfgDefault, test_1) // NOLINT
     ASSERT_EQ(string(""), string(gw_cfg.http_stat.http_stat_user.buf));
     ASSERT_EQ(string(""), string(gw_cfg.http_stat.http_stat_pass.buf));
 
-    ASSERT_EQ(string(HTTP_SERVER_AUTH_TYPE_STR_RUUVI), string(gw_cfg.lan_auth.lan_auth_type));
-    ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), string(gw_cfg.lan_auth.lan_auth_user));
-    ASSERT_EQ(string("0d6c6f1c27ca628806eb9247740d8ba1"), string(gw_cfg.lan_auth.lan_auth_pass));
-    ASSERT_EQ(string(""), string(gw_cfg.lan_auth.lan_auth_api_key));
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), string(gw_cfg.lan_auth.lan_auth_user.buf));
+    ASSERT_EQ(string("0d6c6f1c27ca628806eb9247740d8ba1"), string(gw_cfg.lan_auth.lan_auth_pass.buf));
+    ASSERT_EQ(string(""), string(gw_cfg.lan_auth.lan_auth_api_key.buf));
 
     ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_REGULAR, gw_cfg.auto_update.auto_update_cycle);
     ASSERT_EQ(0x7F, gw_cfg.auto_update.auto_update_weekdays_bitmask);
@@ -121,12 +126,10 @@ TEST_F(TestGwCfgDefault, test_1) // NOLINT
 
 TEST_F(TestGwCfgDefault, test_gw_cfg_default_get_lan_auth) // NOLINT
 {
-    {
-        const ruuvi_gw_cfg_lan_auth_t *const p_lan_auth = gw_cfg_default_get_lan_auth();
-        ASSERT_EQ(string(HTTP_SERVER_AUTH_TYPE_STR_RUUVI), string(p_lan_auth->lan_auth_type));
-        ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), string(p_lan_auth->lan_auth_user));
-        ASSERT_EQ(string("0d6c6f1c27ca628806eb9247740d8ba1"), string(p_lan_auth->lan_auth_pass));
-    }
+    const ruuvi_gw_cfg_lan_auth_t *const p_lan_auth = gw_cfg_default_get_lan_auth();
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, p_lan_auth->lan_auth_type);
+    ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), string(p_lan_auth->lan_auth_user.buf));
+    ASSERT_EQ(string("0d6c6f1c27ca628806eb9247740d8ba1"), string(p_lan_auth->lan_auth_pass.buf));
 }
 
 TEST_F(TestGwCfgDefault, test_gw_cfg_default_get_eth) // NOLINT

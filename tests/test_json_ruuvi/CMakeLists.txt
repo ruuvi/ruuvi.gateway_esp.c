@@ -10,10 +10,17 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/cjson_wrap.c
         ${RUUVI_GW_SRC}/cjson_wrap.h
         ${RUUVI_GW_SRC}/gw_cfg.h
+        ${RUUVI_GW_SRC}/gw_cfg.c
         ${RUUVI_GW_SRC}/gw_cfg_default.c
         ${RUUVI_GW_SRC}/gw_cfg_default.h
         ${WIFI_MANAGER_SRC}/wifiman_md5.c
         ${WIFI_MANAGER_INC}/wifiman_md5.h
+        ${WIFI_MANAGER_SRC}/http_server_auth_type.c
+        ${WIFI_MANAGER_INC}/http_server_auth_type.h
+        ${RUUVI_ESP_WRAPPERS}/src/mac_addr.c
+        ${RUUVI_ESP_WRAPPERS}/include/mac_addr.h
+        ${RUUVI_ESP_WRAPPERS}/src/str_buf.c
+        ${RUUVI_ESP_WRAPPERS}/include/str_buf.h
         $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.h
@@ -62,7 +69,6 @@ target_link_libraries(${ProjectId}
         gtest
         gtest_main
         gcov
-        ruuvi_esp_wrappers
         ruuvi_esp_wrappers-common_test_funcs
         --coverage
 )

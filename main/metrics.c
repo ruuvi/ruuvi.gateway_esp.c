@@ -166,7 +166,7 @@ gen_metrics(void)
         .largest_free_block.size_spiram   = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM),
         .largest_free_block.size_internal = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
         .largest_free_block.size_default  = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT),
-        .mac_addr_str                     = g_gw_mac_sta_str,
+        .mac_addr_str                     = *gw_cfg_get_nrf52_mac_addr(),
         .esp_fw                           = *gw_cfg_get_esp32_fw_ver(),
         .nrf_fw                           = *gw_cfg_get_nrf52_fw_ver(),
     };

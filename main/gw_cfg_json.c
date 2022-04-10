@@ -58,6 +58,10 @@ gw_cfg_json_add_items_device_info(cJSON *p_json_root, const ruuvi_gw_cfg_device_
     {
         return false;
     }
+    if (!gw_cfg_json_add_string(p_json_root, "gw_mac", p_dev_info->nrf52_mac_addr.str_buf))
+    {
+        return false;
+    }
     return true;
 }
 
@@ -99,10 +103,6 @@ static bool
 gw_cfg_json_add_items_mqtt(cJSON *const p_json_root, const ruuvi_gateway_config_t *const p_cfg)
 {
     if (!gw_cfg_json_add_bool(p_json_root, "use_mqtt", p_cfg->mqtt.use_mqtt))
-    {
-        return false;
-    }
-    if (!gw_cfg_json_add_bool(p_json_root, "mqtt_use_default_prefix", p_cfg->mqtt.mqtt_use_default_prefix))
     {
         return false;
     }
@@ -184,19 +184,29 @@ gw_cfg_json_add_items_http_stat(cJSON *p_json_root, const ruuvi_gateway_config_t
 static bool
 gw_cfg_json_add_items_lan_auth(cJSON *p_json_root, const ruuvi_gateway_config_t *p_cfg)
 {
-    if (!gw_cfg_json_add_string(p_json_root, "lan_auth_type", p_cfg->lan_auth.lan_auth_type))
+    const char *const p_lan_auth_type_str = gw_cfg_auth_type_to_str(&p_cfg->lan_auth);
+    if (!gw_cfg_json_add_string(p_json_root, "lan_auth_type", p_lan_auth_type_str))
     {
         return false;
     }
-    if (!gw_cfg_json_add_string(p_json_root, "lan_auth_user", p_cfg->lan_auth.lan_auth_user))
+    if (!gw_cfg_json_add_string(p_json_root, "lan_auth_user", p_cfg->lan_auth.lan_auth_user.buf))
     {
         return false;
     }
-    if (!gw_cfg_json_add_string(p_json_root, "lan_auth_pass", p_cfg->lan_auth.lan_auth_pass))
+    switch (p_cfg->lan_auth.lan_auth_type)
     {
-        return false;
+        case HTTP_SERVER_AUTH_TYPE_BASIC:
+        case HTTP_SERVER_AUTH_TYPE_DIGEST:
+        case HTTP_SERVER_AUTH_TYPE_RUUVI:
+            if (!gw_cfg_json_add_string(p_json_root, "lan_auth_pass", p_cfg->lan_auth.lan_auth_pass.buf))
+            {
+                return false;
+            }
+            break;
+        default:
+            break;
     }
-    if (!gw_cfg_json_add_string(p_json_root, "lan_auth_api_key", p_cfg->lan_auth.lan_auth_api_key))
+    if (!gw_cfg_json_add_string(p_json_root, "lan_auth_api_key", p_cfg->lan_auth.lan_auth_api_key.buf))
     {
         return false;
     }
@@ -379,6 +389,11 @@ gw_cfg_json_parse_device_info(const cJSON *const p_json_root, ruuvi_gw_cfg_devic
         "nrf52_fw_ver",
         &p_gw_cfg_dev_info->nrf52_fw_ver.buf[0],
         sizeof(p_gw_cfg_dev_info->nrf52_fw_ver.buf));
+    json_wrap_copy_string_val(
+        p_json_root,
+        "gw_mac",
+        &p_gw_cfg_dev_info->nrf52_mac_addr.str_buf[0],
+        sizeof(p_gw_cfg_dev_info->nrf52_mac_addr.str_buf));
 }
 
 static void
@@ -440,10 +455,6 @@ gw_cfg_json_parse_mqtt(const cJSON *const p_json_root, ruuvi_gw_cfg_mqtt_t *cons
     if (!json_wrap_get_bool_val(p_json_root, "use_mqtt", &p_gw_cfg_mqtt->use_mqtt))
     {
         LOG_WARN("Can't find key '%s' in config-json", "use_mqtt");
-    }
-    if (!json_wrap_get_bool_val(p_json_root, "mqtt_use_default_prefix", &p_gw_cfg_mqtt->mqtt_use_default_prefix))
-    {
-        LOG_WARN("Can't find key '%s' in config-json", "mqtt_use_default_prefix");
     }
     if (!json_wrap_copy_string_val(
             p_json_root,
@@ -568,34 +579,60 @@ gw_cfg_json_parse_http_stat(const cJSON *const p_json_root, ruuvi_gw_cfg_http_st
 static void
 gw_cfg_json_parse_lan_auth(const cJSON *const p_json_root, ruuvi_gw_cfg_lan_auth_t *const p_gw_cfg_lan_auth)
 {
-    if (!json_wrap_copy_string_val(
-            p_json_root,
-            "lan_auth_type",
-            &p_gw_cfg_lan_auth->lan_auth_type[0],
-            sizeof(p_gw_cfg_lan_auth->lan_auth_type)))
+    http_server_auth_type_str_t lan_auth_type_str     = { 0 };
+    bool                        flag_use_default_auth = false;
+    if (!json_wrap_copy_string_val(p_json_root, "lan_auth_type", lan_auth_type_str.buf, sizeof(lan_auth_type_str.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "lan_auth_type");
     }
-    if (!json_wrap_copy_string_val(
-            p_json_root,
-            "lan_auth_user",
-            &p_gw_cfg_lan_auth->lan_auth_user[0],
-            sizeof(p_gw_cfg_lan_auth->lan_auth_user)))
+    else
     {
-        LOG_WARN("Can't find key '%s' in config-json", "lan_auth_user");
+        p_gw_cfg_lan_auth->lan_auth_type = http_server_auth_type_from_str(
+            lan_auth_type_str.buf,
+            &flag_use_default_auth);
     }
-    if (!json_wrap_copy_string_val(
-            p_json_root,
-            "lan_auth_pass",
-            &p_gw_cfg_lan_auth->lan_auth_pass[0],
-            sizeof(p_gw_cfg_lan_auth->lan_auth_pass)))
+
+    if (flag_use_default_auth)
     {
-        LOG_WARN("Can't find key '%s' in config-json", "lan_auth_pass");
+        p_gw_cfg_lan_auth->lan_auth_user = gw_cfg_default_get_lan_auth()->lan_auth_user;
+        p_gw_cfg_lan_auth->lan_auth_pass = gw_cfg_default_get_lan_auth()->lan_auth_pass;
+    }
+    else
+    {
+        switch (p_gw_cfg_lan_auth->lan_auth_type)
+        {
+            case HTTP_SERVER_AUTH_TYPE_BASIC:
+            case HTTP_SERVER_AUTH_TYPE_DIGEST:
+            case HTTP_SERVER_AUTH_TYPE_RUUVI:
+                if (!json_wrap_copy_string_val(
+                        p_json_root,
+                        "lan_auth_user",
+                        &p_gw_cfg_lan_auth->lan_auth_user.buf[0],
+                        sizeof(p_gw_cfg_lan_auth->lan_auth_user.buf)))
+                {
+                    LOG_WARN("Can't find key '%s' in config-json", "lan_auth_user");
+                }
+                if (!json_wrap_copy_string_val(
+                        p_json_root,
+                        "lan_auth_pass",
+                        &p_gw_cfg_lan_auth->lan_auth_pass.buf[0],
+                        sizeof(p_gw_cfg_lan_auth->lan_auth_pass.buf)))
+                {
+                    LOG_WARN("Can't find key '%s' in config-json", "lan_auth_pass");
+                }
+                break;
+
+            case HTTP_SERVER_AUTH_TYPE_ALLOW:
+            case HTTP_SERVER_AUTH_TYPE_DENY:
+                p_gw_cfg_lan_auth->lan_auth_user.buf[0] = '\0';
+                p_gw_cfg_lan_auth->lan_auth_pass.buf[0] = '\0';
+                break;
+        }
     }
     if (!json_wrap_copy_string_val(
             p_json_root,
             "lan_auth_api_key",
-            &p_gw_cfg_lan_auth->lan_auth_api_key[0],
+            &p_gw_cfg_lan_auth->lan_auth_api_key.buf[0],
             sizeof(p_gw_cfg_lan_auth->lan_auth_api_key)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "lan_auth_api_key");
@@ -755,6 +792,10 @@ gw_cfg_json_compare_device_info(
     {
         return false;
     }
+    if (0 != strcmp(p_val1->nrf52_mac_addr.str_buf, p_val2->nrf52_mac_addr.str_buf))
+    {
+        return false;
+    }
     return true;
 }
 
@@ -790,6 +831,10 @@ gw_cfg_json_parse(const char *const p_json_str, ruuvi_gateway_config_t *const p_
             "gw_cfg: nrf52_fw_ver: cur=%s, prev=%s",
             p_gw_cfg->device_info.nrf52_fw_ver.buf,
             dev_info.nrf52_fw_ver.buf);
+        LOG_INFO(
+            "gw_cfg: nrf52_mac_addr: cur=%s, prev=%s",
+            p_gw_cfg->device_info.nrf52_mac_addr.str_buf,
+            dev_info.nrf52_mac_addr.str_buf);
         *p_flag_modified = true;
     }
 

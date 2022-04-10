@@ -13,10 +13,14 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/gw_cfg_default.h
         ${RUUVI_GW_SRC}/ruuvi_auth.c
         ${RUUVI_GW_SRC}/ruuvi_auth.h
+        ${RUUVI_ESP_WRAPPERS}/src/mac_addr.c
+        ${RUUVI_ESP_WRAPPERS}/include/mac_addr.h
         ${RUUVI_ESP_WRAPPERS}/src/str_buf.c
         ${RUUVI_ESP_WRAPPERS}/include/str_buf.h
         ${WIFI_MANAGER_SRC}/http_server_auth.c
         ${WIFI_MANAGER_SRC}/http_server_auth.h
+        ${WIFI_MANAGER_SRC}/http_server_auth_type.c
+        ${WIFI_MANAGER_INC}/http_server_auth_type.h
         ${WIFI_MANAGER_SRC}/wifiman_md5.c
         ${WIFI_MANAGER_SRC}/include/wifiman_md5.h
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.c

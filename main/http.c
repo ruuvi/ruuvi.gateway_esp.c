@@ -227,7 +227,7 @@ http_send_advs(const adv_report_table_t *const p_reports, const uint32_t nonce)
     if (!http_json_create_records_str(
             p_reports,
             time(NULL),
-            &g_gw_mac_sta_str,
+            gw_cfg_get_nrf52_mac_addr(),
             coordinates.buf,
             true,
             nonce,

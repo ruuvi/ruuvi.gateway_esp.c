@@ -333,14 +333,14 @@ settings_write_mac_addr(const mac_address_bin_t *const p_mac_addr)
 }
 
 void
-settings_update_mac_addr(const mac_address_bin_t *const p_mac_addr)
+settings_update_mac_addr(const mac_address_bin_t new_mac_addr)
 {
-    const mac_address_bin_t mac_addr = settings_read_mac_addr();
-    if (0 != memcmp(&mac_addr, p_mac_addr, sizeof(*p_mac_addr)))
+    const mac_address_bin_t saved_mac_addr = settings_read_mac_addr();
+    if (0 != memcmp(&saved_mac_addr, &new_mac_addr, sizeof(new_mac_addr)))
     {
-        const mac_address_str_t new_mac_addr_str = mac_address_to_str(p_mac_addr);
+        const mac_address_str_t new_mac_addr_str = mac_address_to_str(&new_mac_addr);
         LOG_INFO("Save new MAC-address: %s", new_mac_addr_str.str_buf);
-        settings_write_mac_addr(p_mac_addr);
+        settings_write_mac_addr(&new_mac_addr);
     }
 }
 

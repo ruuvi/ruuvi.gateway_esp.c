@@ -10,7 +10,6 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "gw_cfg.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,6 +31,12 @@ extern "C" {
 
 #define RUUVI_GATEWAY_CONFIG_BLOB_HEADER      (0xAABBU)
 #define RUUVI_GATEWAY_CONFIG_BLOB_FMT_VERSION (0x0008U)
+
+#define RUUVI_GW_CFG_BLOB_AUTH_TYPE_STR_ALLOW  "lan_auth_allow"
+#define RUUVI_GW_CFG_BLOB_AUTH_TYPE_STR_BASIC  "lan_auth_basic"
+#define RUUVI_GW_CFG_BLOB_AUTH_TYPE_STR_DIGEST "lan_auth_digest"
+#define RUUVI_GW_CFG_BLOB_AUTH_TYPE_STR_RUUVI  "lan_auth_ruuvi"
+#define RUUVI_GW_CFG_BLOB_AUTH_TYPE_STR_DENY   "lan_auth_deny"
 
 typedef struct ruuvi_gw_cfg_blob_eth_t
 {
@@ -120,6 +125,8 @@ typedef struct ruuvi_gateway_config_blob_t
     ruuvi_gw_cfg_blob_scan_t        scan;
     char                            coordinates[RUUVI_GW_CFG_BLOB_MAX_CONFIG_STR_LEN];
 } ruuvi_gateway_config_blob_t;
+
+typedef struct ruuvi_gateway_config_t ruuvi_gateway_config_t;
 
 void
 gw_cfg_blob_convert(ruuvi_gateway_config_t *const p_cfg_dst, const ruuvi_gateway_config_blob_t *const p_cfg_src);

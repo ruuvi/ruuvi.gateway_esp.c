@@ -20,17 +20,10 @@
 
 #include "log.h"
 
-mac_address_bin_t g_gw_mac_eth      = { 0 };
-mac_address_str_t g_gw_mac_eth_str  = { 0 };
-mac_address_bin_t g_gw_mac_wifi     = { 0 };
-mac_address_str_t g_gw_mac_wifi_str = { 0 };
-wifi_ssid_t       g_gw_wifi_ssid    = {
-    .ssid_buf = DEFAULT_AP_SSID, // RuuviGatewayXXXX where XXXX - last 4 digits of the MAC-address
-};
-
-static ruuvi_gateway_config_t      g_gateway_config = { 0 };
-static os_mutex_recursive_t        g_gw_cfg_mutex;
-static os_mutex_recursive_static_t g_gw_cfg_mutex_mem;
+static ruuvi_gateway_config_t            g_gateway_config = { 0 };
+static os_mutex_recursive_t              g_gw_cfg_mutex;
+static os_mutex_recursive_static_t       g_gw_cfg_mutex_mem;
+static ruuvi_gw_cfg_device_info_t *const g_gw_cfg_p_device_info = &g_gateway_config.device_info;
 
 static const char TAG[] = "gw_cfg";
 
@@ -92,8 +85,13 @@ void
 gw_cfg_print_to_log(const ruuvi_gateway_config_t *const p_config, const char *const p_title)
 {
     LOG_INFO("%s:", p_title);
+    LOG_INFO("config: device_info: WiFi AP SSID / Hostname: %s", gw_cfg_default_get_wifi_ap_ssid()->ssid_buf);
     LOG_INFO("config: device_info: ESP32 fw ver: %s", p_config->device_info.esp32_fw_ver.buf);
+    LOG_INFO("config: device_info: ESP32 WiFi MAC ADDR: %s", p_config->device_info.esp32_mac_addr_wifi.str_buf);
+    LOG_INFO("config: device_info: ESP32 Eth MAC ADDR: %s", p_config->device_info.esp32_mac_addr_eth.str_buf);
     LOG_INFO("config: device_info: NRF52 fw ver: %s", p_config->device_info.nrf52_fw_ver.buf);
+    LOG_INFO("config: device_info: NRF52 MAC ADDR: %s", p_config->device_info.nrf52_mac_addr.str_buf);
+    LOG_INFO("config: device_info: NRF52 DEVICE ID: %s", p_config->device_info.nrf52_device_id.str_buf);
     LOG_INFO("config: use eth: %d", p_config->eth.use_eth);
     LOG_INFO("config: use eth dhcp: %d", p_config->eth.eth_dhcp);
     LOG_INFO("config: eth static ip: %s", p_config->eth.eth_static_ip.buf);
@@ -105,7 +103,6 @@ gw_cfg_print_to_log(const ruuvi_gateway_config_t *const p_config, const char *co
     LOG_INFO("config: mqtt transport: %s", p_config->mqtt.mqtt_transport.buf);
     LOG_INFO("config: mqtt server: %s", p_config->mqtt.mqtt_server.buf);
     LOG_INFO("config: mqtt port: %u", p_config->mqtt.mqtt_port);
-    LOG_INFO("config: mqtt use default prefix: %d", p_config->mqtt.mqtt_use_default_prefix);
     LOG_INFO("config: mqtt prefix: %s", p_config->mqtt.mqtt_prefix.buf);
     LOG_INFO("config: mqtt client id: %s", p_config->mqtt.mqtt_client_id.buf);
     LOG_INFO("config: mqtt user: %s", p_config->mqtt.mqtt_user.buf);
@@ -130,15 +127,15 @@ gw_cfg_print_to_log(const ruuvi_gateway_config_t *const p_config, const char *co
 #else
     LOG_INFO("config: http_stat pass: %s", "********");
 #endif
-    LOG_INFO("config: LAN auth type: %s", p_config->lan_auth.lan_auth_type);
-    LOG_INFO("config: LAN auth user: %s", p_config->lan_auth.lan_auth_user);
+    LOG_INFO("config: LAN auth type: %s", gw_cfg_auth_type_to_str(&p_config->lan_auth));
+    LOG_INFO("config: LAN auth user: %s", p_config->lan_auth.lan_auth_user.buf);
 #if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
-    LOG_DBG("config: LAN auth pass: %s", p_config->lan_auth.lan_auth_pass);
+    LOG_DBG("config: LAN auth pass: %s", p_config->lan_auth.lan_auth_pass.buf);
 #else
     LOG_INFO("config: LAN auth pass: %s", "********");
 #endif
 #if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
-    LOG_DBG("config: LAN auth API key: %s", p_config->lan_auth.lan_auth_api_key);
+    LOG_DBG("config: LAN auth API key: %s", p_config->lan_auth.lan_auth_api_key.buf);
 #else
     LOG_INFO("config: LAN auth API key: %s", "********");
 #endif
@@ -299,21 +296,61 @@ gw_cfg_set_default_lan_auth(void)
 const ruuvi_esp32_fw_ver_str_t *
 gw_cfg_get_esp32_fw_ver(void)
 {
-    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
-    // device_info is set at initialization and is not changed afterwards,
-    // so we can just return a pointer to it without blocking access to the global variable
-    const ruuvi_esp32_fw_ver_str_t *const p_esp32_fw_ver = &p_gw_cfg->device_info.esp32_fw_ver;
-    gw_cfg_unlock_ro(&p_gw_cfg);
-    return p_esp32_fw_ver;
+    assert(NULL != g_gw_cfg_mutex);
+    return &g_gw_cfg_p_device_info->esp32_fw_ver;
 }
 
 const ruuvi_nrf52_fw_ver_str_t *
 gw_cfg_get_nrf52_fw_ver(void)
 {
-    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
-    // device_info is set at initialization and is not changed afterwards,
-    // so we can just return a pointer to it without blocking access to the global variable
-    const ruuvi_nrf52_fw_ver_str_t *const p_nrf52_fw_ver = &p_gw_cfg->device_info.nrf52_fw_ver;
-    gw_cfg_unlock_ro(&p_gw_cfg);
-    return p_nrf52_fw_ver;
+    assert(NULL != g_gw_cfg_mutex);
+    return &g_gw_cfg_p_device_info->nrf52_fw_ver;
+}
+
+const nrf52_device_id_str_t *
+gw_cfg_get_nrf52_device_id(void)
+{
+    assert(NULL != g_gw_cfg_mutex);
+    return &g_gw_cfg_p_device_info->nrf52_device_id;
+}
+
+const mac_address_str_t *
+gw_cfg_get_nrf52_mac_addr(void)
+{
+    assert(NULL != g_gw_cfg_mutex);
+    return &g_gw_cfg_p_device_info->nrf52_mac_addr;
+}
+
+const mac_address_str_t *
+gw_cfg_get_esp32_mac_addr_wifi(void)
+{
+    assert(NULL != g_gw_cfg_mutex);
+    return &g_gw_cfg_p_device_info->esp32_mac_addr_wifi;
+}
+
+const mac_address_str_t *
+gw_cfg_get_esp32_mac_addr_eth(void)
+{
+    assert(NULL != g_gw_cfg_mutex);
+    return &g_gw_cfg_p_device_info->esp32_mac_addr_eth;
+}
+
+const wifi_ssid_t *
+gw_cfg_get_wifi_ap_ssid(void)
+{
+    return gw_cfg_default_get_wifi_ap_ssid();
+}
+
+const char *
+gw_cfg_auth_type_to_str(const ruuvi_gw_cfg_lan_auth_t *const p_lan_auth)
+{
+    const ruuvi_gw_cfg_lan_auth_t *const p_default_lan_auth    = gw_cfg_default_get_lan_auth();
+    bool                                 flag_use_default_auth = false;
+    if ((HTTP_SERVER_AUTH_TYPE_RUUVI == p_lan_auth->lan_auth_type)
+        && (0 == strcmp(p_lan_auth->lan_auth_user.buf, p_default_lan_auth->lan_auth_user.buf))
+        && (0 == strcmp(p_lan_auth->lan_auth_pass.buf, p_default_lan_auth->lan_auth_pass.buf)))
+    {
+        flag_use_default_auth = true;
+    }
+    return http_server_auth_type_to_str(p_lan_auth->lan_auth_type, flag_use_default_auth);
 }

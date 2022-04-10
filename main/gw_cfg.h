@@ -14,6 +14,7 @@
 #include "wifi_manager_defs.h"
 #include "fw_ver.h"
 #include "nrf52_fw_ver.h"
+#include "ruuvi_device_id.h"
 
 #if !defined(RUUVI_TESTS_GW_CFG)
 #define RUUVI_TESTS_GW_CFG (0)
@@ -29,21 +30,17 @@
 extern "C" {
 #endif
 
-#define MAX_CONFIG_STR_LEN       64
-#define MAX_HTTP_URL_LEN         256
-#define MAX_HTTP_USER_LEN        51
-#define MAX_HTTP_PASS_LEN        51
-#define MAX_MQTT_TRANSPORT_LEN   8
-#define MAX_MQTT_SERVER_LEN      256
-#define MAX_MQTT_PREFIX_LEN      257
-#define MAX_MQTT_USER_LEN        129
-#define MAX_MQTT_PASS_LEN        257
-#define MAX_MQTT_CLIENT_ID_LEN   51
-#define MAX_LAN_AUTH_TYPE_LEN    20
-#define MAX_LAN_AUTH_USER_LEN    51
-#define MAX_LAN_AUTH_PASS_LEN    51
-#define MAX_LAN_AUTH_API_KEY_LEN 64
-#define IP_STR_LEN               17
+#define MAX_CONFIG_STR_LEN     64
+#define MAX_HTTP_URL_LEN       256
+#define MAX_HTTP_USER_LEN      51
+#define MAX_HTTP_PASS_LEN      51
+#define MAX_MQTT_TRANSPORT_LEN 8
+#define MAX_MQTT_SERVER_LEN    256
+#define MAX_MQTT_PREFIX_LEN    257
+#define MAX_MQTT_USER_LEN      129
+#define MAX_MQTT_PASS_LEN      257
+#define MAX_MQTT_CLIENT_ID_LEN 51
+#define IP_STR_LEN             17
 
 #define RUUVI_COMPANY_ID 0x0499
 
@@ -51,6 +48,10 @@ typedef struct ruuvi_gw_cfg_device_info_t
 {
     ruuvi_esp32_fw_ver_str_t esp32_fw_ver;
     ruuvi_nrf52_fw_ver_str_t nrf52_fw_ver;
+    mac_address_str_t        nrf52_mac_addr;
+    nrf52_device_id_str_t    nrf52_device_id;
+    mac_address_str_t        esp32_mac_addr_wifi;
+    mac_address_str_t        esp32_mac_addr_eth;
 } ruuvi_gw_cfg_device_info_t;
 
 typedef struct ruuvi_gw_cfg_ip_addr_str_t
@@ -107,7 +108,6 @@ typedef struct ruuvi_gw_cfg_mqtt_password_t
 typedef struct ruuvi_gw_cfg_mqtt_t
 {
     bool                          use_mqtt;
-    bool                          mqtt_use_default_prefix;
     ruuvi_gw_cfg_mqtt_transport_t mqtt_transport;
     ruuvi_gw_cfg_mqtt_server_t    mqtt_server;
     uint16_t                      mqtt_port;
@@ -150,10 +150,10 @@ typedef struct ruuvi_gw_cfg_http_stat_t
 
 typedef struct ruuvi_gw_cfg_lan_auth_t
 {
-    char lan_auth_type[MAX_LAN_AUTH_TYPE_LEN];
-    char lan_auth_user[MAX_LAN_AUTH_USER_LEN];
-    char lan_auth_pass[MAX_LAN_AUTH_PASS_LEN];
-    char lan_auth_api_key[MAX_LAN_AUTH_API_KEY_LEN];
+    http_server_auth_type_e    lan_auth_type;
+    http_server_auth_user_t    lan_auth_user;
+    http_server_auth_pass_t    lan_auth_pass;
+    http_server_auth_api_key_t lan_auth_api_key;
 } ruuvi_gw_cfg_lan_auth_t;
 
 #define AUTO_UPDATE_CYCLE_TYPE_STR_REGULAR     "regular"
@@ -215,12 +215,6 @@ typedef struct ruuvi_gateway_config_t
     ruuvi_gw_cfg_scan_t        scan;
     ruuvi_gw_cfg_coordinates_t coordinates;
 } ruuvi_gateway_config_t;
-
-extern mac_address_bin_t g_gw_mac_eth;
-extern mac_address_str_t g_gw_mac_eth_str;
-extern mac_address_bin_t g_gw_mac_wifi;
-extern mac_address_str_t g_gw_mac_wifi_str;
-extern wifi_ssid_t       g_gw_wifi_ssid;
 
 void
 gw_cfg_init(void);
@@ -287,6 +281,24 @@ gw_cfg_get_esp32_fw_ver(void);
 
 const ruuvi_nrf52_fw_ver_str_t *
 gw_cfg_get_nrf52_fw_ver(void);
+
+const nrf52_device_id_str_t *
+gw_cfg_get_nrf52_device_id(void);
+
+const mac_address_str_t *
+gw_cfg_get_nrf52_mac_addr(void);
+
+const mac_address_str_t *
+gw_cfg_get_esp32_mac_addr_wifi(void);
+
+const mac_address_str_t *
+gw_cfg_get_esp32_mac_addr_eth(void);
+
+const wifi_ssid_t *
+gw_cfg_get_wifi_ap_ssid(void);
+
+const char *
+gw_cfg_auth_type_to_str(const ruuvi_gw_cfg_lan_auth_t *const p_lan_auth);
 
 #ifdef __cplusplus
 }

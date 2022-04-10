@@ -82,7 +82,6 @@ protected:
     SetUp() override
     {
         esp_log_wrapper_init();
-        memset(&g_gw_mac_sta_str, 0, sizeof(g_gw_mac_sta_str));
         this->m_uptime = 0;
         g_pTestClass   = this;
         this->m_mem_alloc_trace.clear();
@@ -285,6 +284,13 @@ gw_cfg_get_nrf52_fw_ver(void)
     return &g_nrf52_fw_ver;
 }
 
+const mac_address_str_t *
+gw_cfg_get_nrf52_mac_addr(void)
+{
+    static const mac_address_str_t g_nrf52_mac_addr = { "AA:BB:CC:DD:EE:FF" };
+    return &g_nrf52_mac_addr;
+}
+
 } // extern "C"
 
 #define TEST_CHECK_LOG_RECORD(level_, msg_) ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("metrics", level_, msg_)
@@ -308,8 +314,6 @@ TEST_F(TestMetrics, test_metrics_received_advs_increment_without_init) // NOLINT
 TEST_F(TestMetrics, test_metrics_generate) // NOLINT
 {
     metrics_init();
-
-    snprintf(&g_gw_mac_sta_str.str_buf[0], sizeof(g_gw_mac_sta_str), "AA:BB:CC:DD:EE:FF");
 
     this->m_uptime            = 15317668796;
     const char *p_metrics_str = metrics_generate();
@@ -389,8 +393,6 @@ TEST_F(TestMetrics, test_metrics_generate) // NOLINT
 TEST_F(TestMetrics, test_metrics_generate_malloc_failed) // NOLINT
 {
     this->m_malloc_fail_on_cnt = 1;
-
-    snprintf(&g_gw_mac_sta_str.str_buf[0], sizeof(g_gw_mac_sta_str), "AA:BB:CC:DD:EE:FF");
 
     this->m_uptime = 15317668796;
     ASSERT_EQ(nullptr, metrics_generate());

@@ -209,7 +209,7 @@ main_task_handle_sig_deactivate_wifi_ap(void)
     wifi_manager_stop_ap();
     if (gw_cfg_get_eth_use_eth() || (!wifi_manager_is_sta_configured()))
     {
-        ethernet_start(g_gw_wifi_ssid.ssid_buf);
+        ethernet_start(gw_cfg_get_wifi_ap_ssid()->ssid_buf);
     }
     else
     {

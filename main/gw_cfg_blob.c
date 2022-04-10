@@ -7,7 +7,9 @@
 
 #include "gw_cfg_blob.h"
 #include "gw_cfg_default.h"
+#include "gw_cfg.h"
 #include <stdio.h>
+#include <string.h>
 
 void
 gw_cfg_blob_convert(ruuvi_gateway_config_t *const p_cfg_dst, const ruuvi_gateway_config_blob_t *const p_cfg_src)
@@ -35,8 +37,7 @@ gw_cfg_blob_convert(ruuvi_gateway_config_t *const p_cfg_dst, const ruuvi_gateway
     snprintf(p_cfg_dst->eth.eth_dns1.buf, sizeof(p_cfg_dst->eth.eth_dns1.buf), "%s", p_cfg_src->eth.eth_dns1);
     snprintf(p_cfg_dst->eth.eth_dns2.buf, sizeof(p_cfg_dst->eth.eth_dns2.buf), "%s", p_cfg_src->eth.eth_dns2);
 
-    p_cfg_dst->mqtt.use_mqtt                = p_cfg_src->mqtt.use_mqtt;
-    p_cfg_dst->mqtt.mqtt_use_default_prefix = p_cfg_src->mqtt.mqtt_use_default_prefix;
+    p_cfg_dst->mqtt.use_mqtt = p_cfg_src->mqtt.use_mqtt;
     snprintf(
         p_cfg_dst->mqtt.mqtt_server.buf,
         sizeof(p_cfg_dst->mqtt.mqtt_server.buf),
@@ -47,12 +48,24 @@ gw_cfg_blob_convert(ruuvi_gateway_config_t *const p_cfg_dst, const ruuvi_gateway
         p_cfg_dst->mqtt.mqtt_prefix.buf,
         sizeof(p_cfg_dst->mqtt.mqtt_prefix.buf),
         "%s",
-        p_cfg_src->mqtt.mqtt_prefix);
-    snprintf(
-        p_cfg_dst->mqtt.mqtt_client_id.buf,
-        sizeof(p_cfg_dst->mqtt.mqtt_client_id.buf),
-        "%s",
-        p_cfg_src->mqtt.mqtt_client_id);
+        p_cfg_src->mqtt.mqtt_use_default_prefix ? gw_cfg_default_get_mqtt()->mqtt_prefix.buf
+                                                : p_cfg_src->mqtt.mqtt_prefix);
+    if ('\0' != p_cfg_src->mqtt.mqtt_client_id[0])
+    {
+        snprintf(
+            p_cfg_dst->mqtt.mqtt_client_id.buf,
+            sizeof(p_cfg_dst->mqtt.mqtt_client_id.buf),
+            "%s",
+            p_cfg_src->mqtt.mqtt_client_id);
+    }
+    else
+    {
+        snprintf(
+            p_cfg_dst->mqtt.mqtt_client_id.buf,
+            sizeof(p_cfg_dst->mqtt.mqtt_client_id.buf),
+            "%s",
+            gw_cfg_default_get_mqtt()->mqtt_client_id.buf);
+    }
     snprintf(p_cfg_dst->mqtt.mqtt_user.buf, sizeof(p_cfg_dst->mqtt.mqtt_user), "%s", p_cfg_src->mqtt.mqtt_user);
     snprintf(p_cfg_dst->mqtt.mqtt_pass.buf, sizeof(p_cfg_dst->mqtt.mqtt_pass), "%s", p_cfg_src->mqtt.mqtt_pass);
 
@@ -61,19 +74,39 @@ gw_cfg_blob_convert(ruuvi_gateway_config_t *const p_cfg_dst, const ruuvi_gateway
     snprintf(p_cfg_dst->http.http_user.buf, sizeof(p_cfg_dst->http.http_user.buf), "%s", p_cfg_src->http.http_user);
     snprintf(p_cfg_dst->http.http_pass.buf, sizeof(p_cfg_dst->http.http_pass.buf), "%s", p_cfg_src->http.http_pass);
 
+    p_cfg_dst->lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_DENY;
+    if (0 == strcmp(RUUVI_GW_CFG_BLOB_AUTH_TYPE_STR_ALLOW, p_cfg_src->lan_auth.lan_auth_type))
+    {
+        p_cfg_dst->lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_ALLOW;
+    }
+    else if (0 == strcmp(RUUVI_GW_CFG_BLOB_AUTH_TYPE_STR_BASIC, p_cfg_src->lan_auth.lan_auth_type))
+    {
+        p_cfg_dst->lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_BASIC;
+    }
+    else if (0 == strcmp(RUUVI_GW_CFG_BLOB_AUTH_TYPE_STR_DIGEST, p_cfg_src->lan_auth.lan_auth_type))
+    {
+        p_cfg_dst->lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_DIGEST;
+    }
+    else if (0 == strcmp(RUUVI_GW_CFG_BLOB_AUTH_TYPE_STR_RUUVI, p_cfg_src->lan_auth.lan_auth_type))
+    {
+        p_cfg_dst->lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI;
+    }
+    else if (0 == strcmp(RUUVI_GW_CFG_BLOB_AUTH_TYPE_STR_DENY, p_cfg_src->lan_auth.lan_auth_type))
+    {
+        p_cfg_dst->lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_DENY;
+    }
+    else
+    {
+        p_cfg_dst->lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_DENY;
+    }
     snprintf(
-        p_cfg_dst->lan_auth.lan_auth_type,
-        sizeof(p_cfg_dst->lan_auth.lan_auth_type),
-        "%s",
-        p_cfg_src->lan_auth.lan_auth_type);
-    snprintf(
-        p_cfg_dst->lan_auth.lan_auth_user,
-        sizeof(p_cfg_dst->lan_auth.lan_auth_user),
+        p_cfg_dst->lan_auth.lan_auth_user.buf,
+        sizeof(p_cfg_dst->lan_auth.lan_auth_user.buf),
         "%s",
         p_cfg_src->lan_auth.lan_auth_user);
     snprintf(
-        p_cfg_dst->lan_auth.lan_auth_pass,
-        sizeof(p_cfg_dst->lan_auth.lan_auth_pass),
+        p_cfg_dst->lan_auth.lan_auth_pass.buf,
+        sizeof(p_cfg_dst->lan_auth.lan_auth_pass.buf),
         "%s",
         p_cfg_src->lan_auth.lan_auth_pass);
 

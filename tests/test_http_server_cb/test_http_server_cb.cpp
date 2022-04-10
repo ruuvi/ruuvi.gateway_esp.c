@@ -252,15 +252,17 @@ protected:
         this->m_flag_settings_sent_to_nrf         = false;
         this->m_flag_settings_ethernet_ip_updated = false;
 
+        const gw_cfg_default_init_param_t init_params = {
+            .wifi_ap_ssid        = { "my_ssid1" },
+            .device_id           = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77 },
+            .esp32_fw_ver        = { "v1.3.3" },
+            .nrf52_fw_ver        = { "v0.7.1" },
+            .nrf52_mac_addr      = { 0x11, 0x22, 0x33, 0x44, 0x55, 0x66 },
+            .esp32_mac_addr_wifi = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x11 },
+            .esp32_mac_addr_eth  = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x22 },
+        };
+        gw_cfg_default_init(&init_params, nullptr);
         gw_cfg_init();
-        snprintf(g_gw_mac_sta_str.str_buf, sizeof(g_gw_mac_sta_str.str_buf), "11:22:33:44:55:66");
-
-        snprintf(g_gw_wifi_ssid.ssid_buf, sizeof(g_gw_wifi_ssid.ssid_buf), "my_ssid1");
-        const nrf52_device_id_str_t    device_id_str = { "00:11:22:33:44:55:66:77" };
-        const ruuvi_esp32_fw_ver_str_t esp32_fw_ver  = { "v1.3.3" };
-        const ruuvi_nrf52_fw_ver_str_t nrf52_fw_ver  = { "v0.7.1" };
-
-        gw_cfg_default_init(&g_gw_wifi_ssid, device_id_str, esp32_fw_ver, nrf52_fw_ver);
     }
 
     void
@@ -358,7 +360,7 @@ os_realloc_safe_and_clean(void **const p_ptr, const size_t size)
 os_mutex_recursive_t
 os_mutex_recursive_create_static(os_mutex_recursive_static_t *const p_mutex_static)
 {
-    return nullptr;
+    return (os_mutex_recursive_t)p_mutex_static;
 }
 
 void
@@ -579,6 +581,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
         = "{\n"
           "\t\"fw_ver\":\t\"v1.3.3\",\n"
           "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
+          "\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
           "\t\"use_eth\":\tfalse,\n"
           "\t\"eth_dhcp\":\ttrue,\n"
           "\t\"eth_static_ip\":\t\"\",\n"
@@ -609,16 +612,15 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
           "\t\"auto_update_interval_from\":\t0,\n"
           "\t\"auto_update_interval_to\":\t24,\n"
           "\t\"auto_update_tz_offset_hours\":\t3,\n"
-          "\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
           "\t\"use_filtering\":\ttrue,\n"
           "\t\"company_id\":\t\"0x0499\",\n"
-          "\t\"coordinates\":\t\"\",\n"
           "\t\"use_coded_phy\":\tfalse,\n"
           "\t\"use_1mbit_phy\":\ttrue,\n"
           "\t\"use_extended_payload\":\ttrue,\n"
           "\t\"use_channel_37\":\ttrue,\n"
           "\t\"use_channel_38\":\ttrue,\n"
-          "\t\"use_channel_39\":\ttrue\n"
+          "\t\"use_channel_39\":\ttrue,\n"
+          "\t\"coordinates\":\t\"\"\n"
           "}";
     bool                   flag_network_cfg = false;
     ruuvi_gateway_config_t gw_cfg           = get_gateway_config_default();
@@ -754,6 +756,7 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
         = "{\n"
           "\t\"fw_ver\":\t\"v1.3.3\",\n"
           "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
+          "\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
           "\t\"use_eth\":\tfalse,\n"
           "\t\"eth_dhcp\":\ttrue,\n"
           "\t\"eth_static_ip\":\t\"\",\n"
@@ -784,16 +787,15 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
           "\t\"auto_update_interval_from\":\t1,\n"
           "\t\"auto_update_interval_to\":\t23,\n"
           "\t\"auto_update_tz_offset_hours\":\t-3,\n"
-          "\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
           "\t\"use_filtering\":\ttrue,\n"
           "\t\"company_id\":\t\"0x0499\",\n"
-          "\t\"coordinates\":\t\"\",\n"
           "\t\"use_coded_phy\":\tfalse,\n"
           "\t\"use_1mbit_phy\":\ttrue,\n"
           "\t\"use_extended_payload\":\ttrue,\n"
           "\t\"use_channel_37\":\ttrue,\n"
           "\t\"use_channel_38\":\ttrue,\n"
-          "\t\"use_channel_39\":\ttrue\n"
+          "\t\"use_channel_39\":\ttrue,\n"
+          "\t\"coordinates\":\t\"\"\n"
           "}";
     bool                   flag_network_cfg = false;
     ruuvi_gateway_config_t gw_cfg           = get_gateway_config_default();
@@ -1186,6 +1188,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
         = "{\n"
           "\t\"fw_ver\":\t\"v1.3.3\",\n"
           "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
+          "\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
           "\t\"use_eth\":\tfalse,\n"
           "\t\"eth_dhcp\":\ttrue,\n"
           "\t\"eth_static_ip\":\t\"\",\n"
@@ -1216,16 +1219,15 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
           "\t\"auto_update_interval_from\":\t0,\n"
           "\t\"auto_update_interval_to\":\t24,\n"
           "\t\"auto_update_tz_offset_hours\":\t3,\n"
-          "\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
           "\t\"use_filtering\":\ttrue,\n"
           "\t\"company_id\":\t\"0x0499\",\n"
-          "\t\"coordinates\":\t\"\",\n"
           "\t\"use_coded_phy\":\tfalse,\n"
           "\t\"use_1mbit_phy\":\ttrue,\n"
           "\t\"use_extended_payload\":\ttrue,\n"
           "\t\"use_channel_37\":\ttrue,\n"
           "\t\"use_channel_38\":\ttrue,\n"
-          "\t\"use_channel_39\":\ttrue\n"
+          "\t\"use_channel_39\":\ttrue,\n"
+          "\t\"coordinates\":\t\"\"\n"
           "}";
     bool                   flag_network_cfg = false;
     ruuvi_gateway_config_t gw_cfg           = get_gateway_config_default();
@@ -1441,8 +1443,13 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_channel_38 not found");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_channel_39 not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("Gateway SETTINGS:"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID / Hostname: my_ssid1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: ESP32 fw ver: v1.3.3"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: ESP32 WiFi MAC ADDR: AA:BB:CC:DD:EE:11"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: ESP32 Eth MAC ADDR: AA:BB:CC:DD:EE:22"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: 11:22:33:44:55:66"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 00:11:22:33:44:55:66:77"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth dhcp: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth static ip: "));
@@ -1454,7 +1461,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt port: 1883"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt use default prefix: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/30:AE:A4:02:84:A4"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt client id: 30:AE:A4:02:84:A4"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt user: "));
@@ -1467,7 +1473,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat user: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, string("config: http_stat pass: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_ruuvi"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_default"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth user: Admin"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, string("config: LAN auth pass: f32dd273cd874d98ec4fc21d534e3e61"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, string("config: LAN auth API key: "));
@@ -1621,13 +1627,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     const char *expected_resp = "{}";
     {
         ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_rw();
-        snprintf(
-            p_gw_cfg->lan_auth.lan_auth_type,
-            sizeof(p_gw_cfg->lan_auth.lan_auth_type),
-            "%s",
-            HTTP_SERVER_AUTH_TYPE_STR_RUUVI);
-        snprintf(p_gw_cfg->lan_auth.lan_auth_user, sizeof(p_gw_cfg->lan_auth.lan_auth_user), "user1");
-        snprintf(p_gw_cfg->lan_auth.lan_auth_pass, sizeof(p_gw_cfg->lan_auth.lan_auth_pass), "password1");
+        p_gw_cfg->lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI;
+        snprintf(p_gw_cfg->lan_auth.lan_auth_user.buf, sizeof(p_gw_cfg->lan_auth.lan_auth_user.buf), "user1");
+        snprintf(p_gw_cfg->lan_auth.lan_auth_pass.buf, sizeof(p_gw_cfg->lan_auth.lan_auth_pass.buf), "password1");
         gw_cfg_unlock_rw(&p_gw_cfg);
     }
     const http_server_resp_t resp = http_server_cb_on_post(
@@ -1705,8 +1707,13 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_channel_38 not found");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_channel_39 not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("Gateway SETTINGS:"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID / Hostname: my_ssid1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: ESP32 fw ver: v1.3.3"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: ESP32 WiFi MAC ADDR: AA:BB:CC:DD:EE:11"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: ESP32 Eth MAC ADDR: AA:BB:CC:DD:EE:22"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: 11:22:33:44:55:66"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 00:11:22:33:44:55:66:77"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth dhcp: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth static ip: "));
@@ -1718,7 +1725,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt port: 1883"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt use default prefix: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/30:AE:A4:02:84:A4"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt client id: 30:AE:A4:02:84:A4"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt user: "));
@@ -1759,13 +1765,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
 
     {
         ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_rw();
-        snprintf(
-            p_gw_cfg->lan_auth.lan_auth_type,
-            sizeof(p_gw_cfg->lan_auth.lan_auth_type),
-            "%s",
-            HTTP_SERVER_AUTH_TYPE_STR_RUUVI);
-        snprintf(p_gw_cfg->lan_auth.lan_auth_user, sizeof(p_gw_cfg->lan_auth.lan_auth_user), "user1");
-        snprintf(p_gw_cfg->lan_auth.lan_auth_pass, sizeof(p_gw_cfg->lan_auth.lan_auth_pass), "password1");
+        p_gw_cfg->lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI;
+        snprintf(p_gw_cfg->lan_auth.lan_auth_user.buf, sizeof(p_gw_cfg->lan_auth.lan_auth_user.buf), "user1");
+        snprintf(p_gw_cfg->lan_auth.lan_auth_pass.buf, sizeof(p_gw_cfg->lan_auth.lan_auth_pass.buf), "password1");
         gw_cfg_unlock_rw(&p_gw_cfg);
     }
 
@@ -1848,8 +1850,13 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_channel_38 not found");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_channel_39 not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("Gateway SETTINGS:"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID / Hostname: my_ssid1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: ESP32 fw ver: v1.3.3"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: ESP32 WiFi MAC ADDR: AA:BB:CC:DD:EE:11"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: ESP32 Eth MAC ADDR: AA:BB:CC:DD:EE:22"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: 11:22:33:44:55:66"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 00:11:22:33:44:55:66:77"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth dhcp: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth static ip: "));
@@ -1861,7 +1868,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt port: 1883"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt use default prefix: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/30:AE:A4:02:84:A4"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt client id: 30:AE:A4:02:84:A4"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt user: "));
@@ -1973,8 +1979,13 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_channel_38 not found");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "use_channel_39 not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("Gateway SETTINGS:"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID / Hostname: my_ssid1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: ESP32 fw ver: v1.3.3"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: ESP32 WiFi MAC ADDR: AA:BB:CC:DD:EE:11"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: ESP32 Eth MAC ADDR: AA:BB:CC:DD:EE:22"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: 11:22:33:44:55:66"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 00:11:22:33:44:55:66:77"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth dhcp: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth static ip: "));
@@ -1986,7 +1997,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt port: 1883"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt use default prefix: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/30:AE:A4:02:84:A4"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt client id: 30:AE:A4:02:84:A4"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt user: "));
@@ -1999,7 +2009,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat user: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, string("config: http_stat pass: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_ruuvi"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_default"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth user: Admin"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, string("config: LAN auth pass: f32dd273cd874d98ec4fc21d534e3e61"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, string("config: LAN auth API key: "));

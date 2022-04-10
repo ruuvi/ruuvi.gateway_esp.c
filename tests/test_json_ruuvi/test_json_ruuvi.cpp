@@ -10,6 +10,7 @@
 #include "gtest/gtest.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "os_mutex_recursive.h"
 #include "esp_log_wrapper.hpp"
 #include "gw_cfg_default.h"
 
@@ -81,11 +82,17 @@ protected:
         esp_log_wrapper_init();
         g_pTestClass = this;
 
-        const wifi_ssid_t              wifi_ssid    = { "" };
-        const nrf52_device_id_str_t    device_id    = { "00:11:22:33:44:55:66:77" };
-        const ruuvi_esp32_fw_ver_str_t esp32_fw_ver = { "v1.10.0" };
-        const ruuvi_nrf52_fw_ver_str_t nrf52_fw_ver = { "v0.7.1" };
-        gw_cfg_default_init(&wifi_ssid, device_id, esp32_fw_ver, nrf52_fw_ver);
+        const gw_cfg_default_init_param_t init_params = {
+            .wifi_ap_ssid        = { "" },
+            .device_id           = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77 },
+            .esp32_fw_ver        = { "v1.10.0" },
+            .nrf52_fw_ver        = { "v0.7.1" },
+            .nrf52_mac_addr      = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF },
+            .esp32_mac_addr_wifi = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x11 },
+            .esp32_mac_addr_eth  = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x22 },
+        };
+        gw_cfg_default_init(&init_params, nullptr);
+        gw_cfg_init();
 
         this->m_malloc_cnt         = 0;
         this->m_malloc_fail_on_cnt = 0;
@@ -148,6 +155,27 @@ os_calloc(const size_t nmemb, const size_t size)
     assert(nullptr != ptr);
     g_pTestClass->m_mem_alloc_trace.add(ptr);
     return ptr;
+}
+
+os_mutex_recursive_t
+os_mutex_recursive_create_static(os_mutex_recursive_static_t *const p_mutex_static)
+{
+    return (os_mutex_recursive_t)p_mutex_static;
+}
+
+void
+os_mutex_recursive_delete(os_mutex_recursive_t *const ph_mutex)
+{
+}
+
+void
+os_mutex_recursive_lock(os_mutex_recursive_t const h_mutex)
+{
+}
+
+void
+os_mutex_recursive_unlock(os_mutex_recursive_t const h_mutex)
+{
 }
 
 } // extern "C"
@@ -416,10 +444,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     ASSERT_EQ(string("https://api.ruuvi.com:456/status"), gw_cfg.http_stat.http_stat_url.buf);
     ASSERT_EQ(string("user678"), gw_cfg.http_stat.http_stat_user.buf);
     ASSERT_EQ(string("pass678"), gw_cfg.http_stat.http_stat_pass.buf);
-    ASSERT_EQ(string("lan_auth_ruuvi"), gw_cfg.lan_auth.lan_auth_type);
-    ASSERT_EQ(string("user1"), gw_cfg.lan_auth.lan_auth_user);
-    ASSERT_EQ(string("qwe"), gw_cfg.lan_auth.lan_auth_pass);
-    ASSERT_EQ(string("6kl/fd/c+3qvWm3Mhmwgh3BWNp+HDRQiLp/X0PuwG8Q="), gw_cfg.lan_auth.lan_auth_api_key);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("user1"), gw_cfg.lan_auth.lan_auth_user.buf);
+    ASSERT_EQ(string("qwe"), gw_cfg.lan_auth.lan_auth_pass.buf);
+    ASSERT_EQ(string("6kl/fd/c+3qvWm3Mhmwgh3BWNp+HDRQiLp/X0PuwG8Q="), gw_cfg.lan_auth.lan_auth_api_key.buf);
     ASSERT_TRUE(gw_cfg.filter.company_use_filtering);
     ASSERT_EQ(888, gw_cfg.filter.company_id);
     ASSERT_EQ(string("coord:123,456"), gw_cfg.coordinates.buf);
@@ -536,10 +564,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_http_and_mqtt_pass) // NOLINT
     ASSERT_EQ(string("https://api.ruuvi.com:456/status"), gw_cfg.http_stat.http_stat_url.buf);
     ASSERT_EQ(string("user678"), gw_cfg.http_stat.http_stat_user.buf);
     ASSERT_EQ(string("prev_http_stat_pass"), gw_cfg.http_stat.http_stat_pass.buf);
-    ASSERT_EQ(string("lan_auth_ruuvi"), gw_cfg.lan_auth.lan_auth_type);
-    ASSERT_EQ(string("user1"), gw_cfg.lan_auth.lan_auth_user);
-    ASSERT_EQ(string("qwe"), gw_cfg.lan_auth.lan_auth_pass);
-    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("user1"), gw_cfg.lan_auth.lan_auth_user.buf);
+    ASSERT_EQ(string("qwe"), gw_cfg.lan_auth.lan_auth_pass.buf);
+    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key.buf);
     ASSERT_TRUE(gw_cfg.filter.company_use_filtering);
     ASSERT_EQ(888, gw_cfg.filter.company_id);
     ASSERT_EQ(string("coord:123,456"), gw_cfg.coordinates.buf);
@@ -655,10 +683,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
     ASSERT_EQ(string("https://api.ruuvi.com:456/status"), gw_cfg.http_stat.http_stat_url.buf);
     ASSERT_EQ(string("user678"), gw_cfg.http_stat.http_stat_user.buf);
     ASSERT_EQ(string("pass678"), gw_cfg.http_stat.http_stat_pass.buf);
-    ASSERT_EQ(string("lan_auth_ruuvi"), gw_cfg.lan_auth.lan_auth_type);
-    ASSERT_EQ(string("user1"), gw_cfg.lan_auth.lan_auth_user);
-    ASSERT_EQ(string("qwe"), gw_cfg.lan_auth.lan_auth_pass);
-    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("user1"), gw_cfg.lan_auth.lan_auth_user.buf);
+    ASSERT_EQ(string("qwe"), gw_cfg.lan_auth.lan_auth_pass.buf);
+    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key.buf);
     ASSERT_TRUE(gw_cfg.filter.company_use_filtering);
     ASSERT_EQ(888, gw_cfg.filter.company_id);
     ASSERT_EQ(string("coord:123,456"), gw_cfg.coordinates.buf);
@@ -774,10 +802,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket) // NOLINT
     ASSERT_EQ(string("https://api.ruuvi.com:456/status"), gw_cfg.http_stat.http_stat_url.buf);
     ASSERT_EQ(string("user678"), gw_cfg.http_stat.http_stat_user.buf);
     ASSERT_EQ(string("pass678"), gw_cfg.http_stat.http_stat_pass.buf);
-    ASSERT_EQ(string("lan_auth_ruuvi"), gw_cfg.lan_auth.lan_auth_type);
-    ASSERT_EQ(string("user1"), gw_cfg.lan_auth.lan_auth_user);
-    ASSERT_EQ(string("qwe"), gw_cfg.lan_auth.lan_auth_pass);
-    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("user1"), gw_cfg.lan_auth.lan_auth_user.buf);
+    ASSERT_EQ(string("qwe"), gw_cfg.lan_auth.lan_auth_pass.buf);
+    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key.buf);
     ASSERT_TRUE(gw_cfg.filter.company_use_filtering);
     ASSERT_EQ(888, gw_cfg.filter.company_id);
     ASSERT_EQ(string("coord:123,456"), gw_cfg.coordinates.buf);
@@ -893,10 +921,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
     ASSERT_EQ(string("https://api.ruuvi.com:456/status"), gw_cfg.http_stat.http_stat_url.buf);
     ASSERT_EQ(string("user678"), gw_cfg.http_stat.http_stat_user.buf);
     ASSERT_EQ(string("pass678"), gw_cfg.http_stat.http_stat_pass.buf);
-    ASSERT_EQ(string("lan_auth_ruuvi"), gw_cfg.lan_auth.lan_auth_type);
-    ASSERT_EQ(string("user1"), gw_cfg.lan_auth.lan_auth_user);
-    ASSERT_EQ(string("qwe"), gw_cfg.lan_auth.lan_auth_pass);
-    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("user1"), gw_cfg.lan_auth.lan_auth_user.buf);
+    ASSERT_EQ(string("qwe"), gw_cfg.lan_auth.lan_auth_pass.buf);
+    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key.buf);
     ASSERT_TRUE(gw_cfg.filter.company_use_filtering);
     ASSERT_EQ(888, gw_cfg.filter.company_id);
     ASSERT_EQ(string("coord:123,456"), gw_cfg.coordinates.buf);
@@ -1011,10 +1039,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_STATUS_URL), gw_cfg.http_stat.http_stat_url.buf);
     ASSERT_EQ(string(""), gw_cfg.http_stat.http_stat_user.buf);
     ASSERT_EQ(string(""), gw_cfg.http_stat.http_stat_pass.buf);
-    ASSERT_EQ(string("lan_auth_ruuvi"), gw_cfg.lan_auth.lan_auth_type);
-    ASSERT_EQ(string("user1"), gw_cfg.lan_auth.lan_auth_user);
-    ASSERT_EQ(string("qwe"), gw_cfg.lan_auth.lan_auth_pass);
-    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("user1"), gw_cfg.lan_auth.lan_auth_user.buf);
+    ASSERT_EQ(string("qwe"), gw_cfg.lan_auth.lan_auth_pass.buf);
+    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key.buf);
     ASSERT_TRUE(gw_cfg.filter.company_use_filtering);
     ASSERT_EQ(RUUVI_COMPANY_ID, gw_cfg.filter.company_id);
     ASSERT_EQ(string(""), gw_cfg.coordinates.buf);
