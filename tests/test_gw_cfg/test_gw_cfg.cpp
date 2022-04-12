@@ -204,7 +204,7 @@ get_gateway_config_default()
 TEST_F(TestGwCfg, gw_cfg_print_to_log_default) // NOLINT
 {
     const ruuvi_gateway_config_t gw_cfg = get_gateway_config_default();
-    gw_cfg_print_to_log(&gw_cfg, "Gateway SETTINGS");
+    gw_cfg_print_to_log(&gw_cfg, "Gateway SETTINGS", true);
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS:"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID / Hostname: my_ssid1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 fw ver: v1.10.0"));
@@ -262,7 +262,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_beta_tester_and_
     gw_cfg.auto_update.auto_update_cycle           = AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER;
     gw_cfg.auto_update.auto_update_tz_offset_hours = -5;
 
-    gw_cfg_print_to_log(&gw_cfg, "Gateway SETTINGS");
+    gw_cfg_print_to_log(&gw_cfg, "Gateway SETTINGS", true);
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS:"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID / Hostname: my_ssid1"));
@@ -320,7 +320,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_manual) // NOLIN
     ruuvi_gateway_config_t gw_cfg        = get_gateway_config_default();
     gw_cfg.auto_update.auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_MANUAL;
 
-    gw_cfg_print_to_log(&gw_cfg, "Gateway SETTINGS");
+    gw_cfg_print_to_log(&gw_cfg, "Gateway SETTINGS", true);
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS:"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID / Hostname: my_ssid1"));
@@ -378,7 +378,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_invalid) // NOLI
     ruuvi_gateway_config_t gw_cfg        = get_gateway_config_default();
     gw_cfg.auto_update.auto_update_cycle = (auto_update_cycle_type_e)-1;
 
-    gw_cfg_print_to_log(&gw_cfg, "Gateway SETTINGS");
+    gw_cfg_print_to_log(&gw_cfg, "Gateway SETTINGS", true);
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS:"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID / Hostname: my_ssid1"));

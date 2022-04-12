@@ -274,7 +274,7 @@ settings_get_from_flash(void)
     {
         LOG_INFO("Update config in flash");
         cjson_wrap_str_t cjson_str = { 0 };
-        if (!gw_cfg_json_generate(p_gw_cfg, &cjson_str))
+        if (!gw_cfg_json_generate_full(p_gw_cfg, &cjson_str))
         {
             LOG_ERR("%s failed", "gw_cfg_json_generate");
         }
@@ -286,7 +286,7 @@ settings_get_from_flash(void)
     }
     settings_erase_gw_cfg_blob_if_exist(handle);
 
-    gw_cfg_print_to_log(p_gw_cfg, "Gateway SETTINGS (from flash)");
+    gw_cfg_print_to_log(p_gw_cfg, "Gateway SETTINGS (from flash)", false);
     gw_cfg_unlock_rw(&p_gw_cfg);
     return flag_use_default_config;
 }

@@ -82,16 +82,22 @@ gw_cfg_unlock_ro(const ruuvi_gateway_config_t **const p_p_gw_cfg)
 }
 
 void
-gw_cfg_print_to_log(const ruuvi_gateway_config_t *const p_config, const char *const p_title)
+gw_cfg_print_to_log(
+    const ruuvi_gateway_config_t *const p_config,
+    const char *const                   p_title,
+    const bool                          flag_print_device_info)
 {
     LOG_INFO("%s:", p_title);
-    LOG_INFO("config: device_info: WiFi AP SSID / Hostname: %s", gw_cfg_default_get_wifi_ap_ssid()->ssid_buf);
-    LOG_INFO("config: device_info: ESP32 fw ver: %s", p_config->device_info.esp32_fw_ver.buf);
-    LOG_INFO("config: device_info: ESP32 WiFi MAC ADDR: %s", p_config->device_info.esp32_mac_addr_wifi.str_buf);
-    LOG_INFO("config: device_info: ESP32 Eth MAC ADDR: %s", p_config->device_info.esp32_mac_addr_eth.str_buf);
-    LOG_INFO("config: device_info: NRF52 fw ver: %s", p_config->device_info.nrf52_fw_ver.buf);
-    LOG_INFO("config: device_info: NRF52 MAC ADDR: %s", p_config->device_info.nrf52_mac_addr.str_buf);
-    LOG_INFO("config: device_info: NRF52 DEVICE ID: %s", p_config->device_info.nrf52_device_id.str_buf);
+    if (flag_print_device_info)
+    {
+        LOG_INFO("config: device_info: WiFi AP SSID / Hostname: %s", gw_cfg_default_get_wifi_ap_ssid()->ssid_buf);
+        LOG_INFO("config: device_info: ESP32 fw ver: %s", p_config->device_info.esp32_fw_ver.buf);
+        LOG_INFO("config: device_info: ESP32 WiFi MAC ADDR: %s", p_config->device_info.esp32_mac_addr_wifi.str_buf);
+        LOG_INFO("config: device_info: ESP32 Eth MAC ADDR: %s", p_config->device_info.esp32_mac_addr_eth.str_buf);
+        LOG_INFO("config: device_info: NRF52 fw ver: %s", p_config->device_info.nrf52_fw_ver.buf);
+        LOG_INFO("config: device_info: NRF52 MAC ADDR: %s", p_config->device_info.nrf52_mac_addr.str_buf);
+        LOG_INFO("config: device_info: NRF52 DEVICE ID: %s", p_config->device_info.nrf52_device_id.str_buf);
+    }
     LOG_INFO("config: use eth: %d", p_config->eth.use_eth);
     LOG_INFO("config: use eth dhcp: %d", p_config->eth.eth_dhcp);
     LOG_INFO("config: eth static ip: %s", p_config->eth.eth_static_ip.buf);

@@ -185,10 +185,10 @@ ethernet_connection_ok_cb(const esp_netif_ip_info_t *p_ip_info)
         gw_cfg_default_get(p_gw_cfg);
         p_gw_cfg->eth.use_eth  = true;
         p_gw_cfg->eth.eth_dhcp = true;
-        gw_cfg_print_to_log(p_gw_cfg, "Gateway SETTINGS");
+        gw_cfg_print_to_log(p_gw_cfg, "Gateway SETTINGS", false);
 
         cjson_wrap_str_t cjson_str = { 0 };
-        if (!gw_cfg_json_generate(p_gw_cfg, &cjson_str))
+        if (!gw_cfg_json_generate_full(p_gw_cfg, &cjson_str))
         {
             LOG_ERR("%s failed", "gw_cfg_json_generate");
         }

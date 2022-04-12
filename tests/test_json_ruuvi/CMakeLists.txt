@@ -9,10 +9,12 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/json_ruuvi.h
         ${RUUVI_GW_SRC}/cjson_wrap.c
         ${RUUVI_GW_SRC}/cjson_wrap.h
-        ${RUUVI_GW_SRC}/gw_cfg.h
         ${RUUVI_GW_SRC}/gw_cfg.c
+        ${RUUVI_GW_SRC}/gw_cfg.h
         ${RUUVI_GW_SRC}/gw_cfg_default.c
         ${RUUVI_GW_SRC}/gw_cfg_default.h
+        ${RUUVI_GW_SRC}/gw_cfg_json.c
+        ${RUUVI_GW_SRC}/gw_cfg_json.h
         ${WIFI_MANAGER_SRC}/wifiman_md5.c
         ${WIFI_MANAGER_INC}/wifiman_md5.h
         ${WIFI_MANAGER_SRC}/http_server_auth_type.c

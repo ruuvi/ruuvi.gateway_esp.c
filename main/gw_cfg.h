@@ -238,7 +238,10 @@ void
 gw_cfg_unlock_ro(const ruuvi_gateway_config_t **const p_p_gw_cfg);
 
 void
-gw_cfg_print_to_log(const ruuvi_gateway_config_t *const p_config, const char *const p_title);
+gw_cfg_print_to_log(
+    const ruuvi_gateway_config_t *const p_config,
+    const char *const                   p_title,
+    const bool                          flag_print_device_info);
 
 void
 gw_cfg_update(const ruuvi_gateway_config_t *const p_gw_cfg_new, const bool flag_network_cfg);

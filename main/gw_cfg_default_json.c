@@ -57,7 +57,7 @@ gw_cfg_default_json_parse_cjson(const cJSON *const p_json_root, gw_cfg_default_t
     const ruuvi_gw_cfg_mqtt_prefix_t    default_mqtt_prefix    = p_gw_cfg_default->ruuvi_gw_cfg.mqtt.mqtt_prefix;
     const ruuvi_gw_cfg_mqtt_client_id_t default_mqtt_client_id = p_gw_cfg_default->ruuvi_gw_cfg.mqtt.mqtt_client_id;
 
-    gw_cfg_json_parse_cjson(p_json_root, &p_gw_cfg_default->ruuvi_gw_cfg, NULL);
+    gw_cfg_json_parse_cjson(p_json_root, false, &p_gw_cfg_default->ruuvi_gw_cfg, NULL);
 
     if ('\0' == p_gw_cfg_default->ruuvi_gw_cfg.mqtt.mqtt_prefix.buf[0])
     {
@@ -222,7 +222,7 @@ gw_cfg_default_json_read(gw_cfg_default_t *const p_gw_cfg_default)
 
     flashfatfs_unmount(&p_ffs);
 
-    gw_cfg_print_to_log(&p_gw_cfg_default->ruuvi_gw_cfg, "Gateway SETTINGS (default)");
+    gw_cfg_print_to_log(&p_gw_cfg_default->ruuvi_gw_cfg, "Gateway SETTINGS (default)", true);
     gw_cfg_default_json_print_to_log_wifi_sta_config(&p_gw_cfg_default->wifi_sta_config);
 
     return res;

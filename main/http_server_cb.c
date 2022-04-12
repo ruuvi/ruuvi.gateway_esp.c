@@ -22,7 +22,6 @@
 #include "fw_update.h"
 #include "nrf52fw.h"
 #include "adv_post.h"
-#include "ruuvi_device_id.h"
 #include "json_helper.h"
 #include "os_time.h"
 #include "time_str.h"
@@ -30,8 +29,6 @@
 #include "ruuvi_auth.h"
 #include "gw_cfg.h"
 #include "gw_cfg_json.h"
-#include "gw_cfg_ruuvi_json.h"
-#include "gw_mac.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -91,7 +88,7 @@ http_server_resp_json_ruuvi(void)
 {
     const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
     cjson_wrap_str_t              json_str = cjson_wrap_str_null();
-    if (!gw_cfg_ruuvi_json_generate(p_gw_cfg, &json_str))
+    if (!gw_cfg_json_generate_without_passwords(p_gw_cfg, &json_str))
     {
         gw_cfg_unlock_ro(&p_gw_cfg);
         return http_server_resp_503();
@@ -741,7 +738,7 @@ http_server_cb_on_post_ruuvi(const char *p_body)
         return http_server_resp_503();
     }
     gw_cfg_update(p_gw_cfg_tmp, flag_network_cfg);
-    gw_cfg_print_to_log(p_gw_cfg_tmp, "Gateway SETTINGS");
+    gw_cfg_print_to_log(p_gw_cfg_tmp, "Gateway SETTINGS", false);
     if (flag_network_cfg)
     {
         adv_post_disable_retransmission();
@@ -752,7 +749,7 @@ http_server_cb_on_post_ruuvi(const char *p_body)
     }
 
     cjson_wrap_str_t cjson_str = { 0 };
-    if (!gw_cfg_json_generate(p_gw_cfg_tmp, &cjson_str))
+    if (!gw_cfg_json_generate_full(p_gw_cfg_tmp, &cjson_str))
     {
         LOG_ERR("%s failed", "gw_cfg_json_generate");
     }
