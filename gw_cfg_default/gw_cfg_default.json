@@ -3,6 +3,9 @@
     "ssid": "",
     "password": ""
   },
+  "wifi_ap_config": {
+    "password": ""
+  },
   "use_eth": false,
   "eth_dhcp": true,
   "eth_static_ip": "",
@@ -36,12 +39,12 @@
   "auto_update_tz_offset_hours": 3,
   "company_use_filtering": true,
   "company_id": 1177,
-  "coordinates": "",
   "scan_coded_phy": false,
   "scan_1mbit_phy": true,
   "scan_extended_payload": true,
   "scan_channel_37": true,
   "scan_channel_38": true,
-  "scan_channel_39": true
+  "scan_channel_39": true,
+  "coordinates": ""
 }
 

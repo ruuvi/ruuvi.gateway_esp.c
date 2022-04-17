@@ -20,7 +20,7 @@ bool
 settings_check_in_flash(void);
 
 bool
-settings_save_to_flash(const char *const p_json_str);
+settings_save_to_flash(void);
 
 bool
 settings_clear_in_flash(void);

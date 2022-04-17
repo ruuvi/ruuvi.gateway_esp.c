@@ -139,9 +139,9 @@ check_if_checking_for_fw_updates_allowed(void)
         LOG_INFO("Check for fw updates - skip (time is not synchronized)");
         return false;
     }
-    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
+    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
 
-    const bool res = check_if_checking_for_fw_updates_allowed2(&p_gw_cfg->auto_update);
+    const bool res = check_if_checking_for_fw_updates_allowed2(&p_gw_cfg->ruuvi_cfg.auto_update);
 
     gw_cfg_unlock_ro(&p_gw_cfg);
     return res;

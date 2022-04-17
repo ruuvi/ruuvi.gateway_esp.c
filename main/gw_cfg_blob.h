@@ -126,10 +126,10 @@ typedef struct ruuvi_gateway_config_blob_t
     char                            coordinates[RUUVI_GW_CFG_BLOB_MAX_CONFIG_STR_LEN];
 } ruuvi_gateway_config_blob_t;
 
-typedef struct ruuvi_gateway_config_t ruuvi_gateway_config_t;
+typedef struct gw_cfg_t gw_cfg_t;
 
 void
-gw_cfg_blob_convert(ruuvi_gateway_config_t *const p_cfg_dst, const ruuvi_gateway_config_blob_t *const p_cfg_src);
+gw_cfg_blob_convert(gw_cfg_t *const p_cfg_dst, const ruuvi_gateway_config_blob_t *const p_cfg_src);
 
 #ifdef __cplusplus
 }

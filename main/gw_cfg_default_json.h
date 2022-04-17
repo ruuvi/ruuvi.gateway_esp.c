@@ -16,7 +16,7 @@ extern "C" {
 #endif
 
 bool
-gw_cfg_default_json_read(gw_cfg_default_t *const p_gw_cfg_default);
+gw_cfg_default_json_read(gw_cfg_t *const p_gw_cfg_default);
 
 #ifdef __cplusplus
 }

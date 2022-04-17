@@ -164,24 +164,24 @@ http_init_client_config(
 static void
 http_init_client_config_for_http_record(http_client_config_t *const p_http_client_config)
 {
-    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
+    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
     http_init_client_config(
         p_http_client_config,
-        &p_gw_cfg->http.http_url,
-        &p_gw_cfg->http.http_user,
-        &p_gw_cfg->http.http_pass);
+        &p_gw_cfg->ruuvi_cfg.http.http_url,
+        &p_gw_cfg->ruuvi_cfg.http.http_user,
+        &p_gw_cfg->ruuvi_cfg.http.http_pass);
     gw_cfg_unlock_ro(&p_gw_cfg);
 }
 
 static void
 http_init_client_config_for_http_status(http_client_config_t *const p_http_client_config)
 {
-    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
+    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
     http_init_client_config(
         p_http_client_config,
-        &p_gw_cfg->http_stat.http_stat_url,
-        &p_gw_cfg->http_stat.http_stat_user,
-        &p_gw_cfg->http_stat.http_stat_pass);
+        &p_gw_cfg->ruuvi_cfg.http_stat.http_stat_url,
+        &p_gw_cfg->ruuvi_cfg.http_stat.http_stat_user,
+        &p_gw_cfg->ruuvi_cfg.http_stat.http_stat_pass);
     gw_cfg_unlock_ro(&p_gw_cfg);
 }
 

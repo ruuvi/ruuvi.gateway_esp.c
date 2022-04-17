@@ -305,65 +305,50 @@ mqtt_generate_client_config(
     return mqtt_cfg;
 }
 
-static void
-mqtt_app_start_internal(mqtt_protected_data_t *const p_mqtt_data)
+static esp_mqtt_client_config_t
+mqtt_prep_client_config(const ruuvi_gw_cfg_mqtt_t *const p_cfg_mqtt, mqtt_protected_data_t *const p_mqtt_data)
 {
-    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
-    mqtt_create_full_topic(&p_mqtt_data->mqtt_topic, p_gw_cfg->mqtt.mqtt_prefix.buf, "gw_status");
+    mqtt_create_full_topic(&p_mqtt_data->mqtt_topic, p_cfg_mqtt->mqtt_prefix.buf, "gw_status");
     const char *p_lwt_message = "{\"state\": \"offline\"}";
-
-    if ('\0' == p_gw_cfg->mqtt.mqtt_server.buf[0])
-    {
-        LOG_ERR(
-            "Invalid MQTT parameters: server: %s, topic prefix: '%s', port: %u, user: '%s', password: '%s'",
-            p_gw_cfg->mqtt.mqtt_server.buf,
-            p_gw_cfg->mqtt.mqtt_prefix.buf,
-            p_gw_cfg->mqtt.mqtt_port,
-            p_gw_cfg->mqtt.mqtt_user.buf,
-            "******");
-        gw_cfg_unlock_ro(&p_gw_cfg);
-        return;
-    }
 
     LOG_INFO(
         "Using server: %s, client id: '%s', topic prefix: '%s', port: %u, user: '%s', password: '%s'",
-        p_gw_cfg->mqtt.mqtt_server.buf,
-        p_gw_cfg->mqtt.mqtt_client_id.buf,
-        p_gw_cfg->mqtt.mqtt_prefix.buf,
-        p_gw_cfg->mqtt.mqtt_port,
-        p_gw_cfg->mqtt.mqtt_user.buf,
+        p_cfg_mqtt->mqtt_server.buf,
+        p_cfg_mqtt->mqtt_client_id.buf,
+        p_cfg_mqtt->mqtt_prefix.buf,
+        p_cfg_mqtt->mqtt_port,
+        p_cfg_mqtt->mqtt_user.buf,
         "******");
 
     esp_mqtt_transport_t mqtt_transport = MQTT_TRANSPORT_OVER_TCP;
-    if (0 == strcmp(p_gw_cfg->mqtt.mqtt_transport.buf, MQTT_TRANSPORT_TCP))
+    if (0 == strcmp(p_cfg_mqtt->mqtt_transport.buf, MQTT_TRANSPORT_TCP))
     {
         mqtt_transport = MQTT_TRANSPORT_OVER_TCP;
     }
-    else if (0 == strcmp(p_gw_cfg->mqtt.mqtt_transport.buf, MQTT_TRANSPORT_SSL))
+    else if (0 == strcmp(p_cfg_mqtt->mqtt_transport.buf, MQTT_TRANSPORT_SSL))
     {
         mqtt_transport = MQTT_TRANSPORT_OVER_SSL;
     }
-    else if (0 == strcmp(p_gw_cfg->mqtt.mqtt_transport.buf, MQTT_TRANSPORT_WS))
+    else if (0 == strcmp(p_cfg_mqtt->mqtt_transport.buf, MQTT_TRANSPORT_WS))
     {
         mqtt_transport = MQTT_TRANSPORT_OVER_WS;
     }
-    else if (0 == strcmp(p_gw_cfg->mqtt.mqtt_transport.buf, MQTT_TRANSPORT_WSS))
+    else if (0 == strcmp(p_cfg_mqtt->mqtt_transport.buf, MQTT_TRANSPORT_WSS))
     {
         mqtt_transport = MQTT_TRANSPORT_OVER_WSS;
     }
     else
     {
-        LOG_WARN("Unknown MQTT transport='%s', use TCP", p_gw_cfg->mqtt.mqtt_transport.buf);
+        LOG_WARN("Unknown MQTT transport='%s', use TCP", p_cfg_mqtt->mqtt_transport.buf);
     }
 
-    const esp_mqtt_client_config_t mqtt_cfg = mqtt_generate_client_config(
-        &p_gw_cfg->mqtt,
-        &p_mqtt_data->mqtt_topic,
-        p_lwt_message,
-        mqtt_transport);
-    gw_cfg_unlock_ro(&p_gw_cfg);
+    return mqtt_generate_client_config(p_cfg_mqtt, &p_mqtt_data->mqtt_topic, p_lwt_message, mqtt_transport);
+}
 
-    p_mqtt_data->p_mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
+static void
+mqtt_app_start_internal(const esp_mqtt_client_config_t *const p_mqtt_cfg, mqtt_protected_data_t *const p_mqtt_data)
+{
+    p_mqtt_data->p_mqtt_client = esp_mqtt_client_init(p_mqtt_cfg);
     if (NULL == p_mqtt_data->p_mqtt_client)
     {
         LOG_ERR("%s failed", "esp_mqtt_client_init");
@@ -390,7 +375,28 @@ mqtt_app_start(void)
     }
     else
     {
-        mqtt_app_start_internal(p_mqtt_data);
+        const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
+
+        if (('\0' == p_gw_cfg->ruuvi_cfg.mqtt.mqtt_server.buf[0]) || (0 == p_gw_cfg->ruuvi_cfg.mqtt.mqtt_port))
+        {
+            LOG_ERR(
+                "Invalid MQTT parameters: server: %s, topic prefix: '%s', port: %u, user: '%s', password: '%s'",
+                p_gw_cfg->ruuvi_cfg.mqtt.mqtt_server.buf,
+                p_gw_cfg->ruuvi_cfg.mqtt.mqtt_prefix.buf,
+                p_gw_cfg->ruuvi_cfg.mqtt.mqtt_port,
+                p_gw_cfg->ruuvi_cfg.mqtt.mqtt_user.buf,
+                "******");
+            gw_cfg_unlock_ro(&p_gw_cfg);
+        }
+        else
+        {
+            const esp_mqtt_client_config_t mqtt_cli_cfg = mqtt_prep_client_config(
+                &p_gw_cfg->ruuvi_cfg.mqtt,
+                p_mqtt_data);
+            gw_cfg_unlock_ro(&p_gw_cfg);
+
+            mqtt_app_start_internal(&mqtt_cli_cfg, p_mqtt_data);
+        }
     }
 
     mqtt_mutex_unlock(&p_mqtt_data);

@@ -27,7 +27,7 @@ extern "C" {
 #endif
 
 bool
-json_ruuvi_parse_http_body(const char *p_body, ruuvi_gateway_config_t *const p_gw_cfg, bool *const p_flag_network_cfg);
+json_ruuvi_parse_http_body(const char *p_body, gw_cfg_t *const p_gw_cfg, bool *const p_flag_network_cfg);
 
 #if RUUVI_TESTS_JSON_RUUVI
 
@@ -50,7 +50,7 @@ json_ruuvi_get_uint16_val(
     bool         flag_log_err_if_not_found);
 
 bool
-json_ruuvi_parse(const cJSON *p_json_root, ruuvi_gateway_config_t *const p_gw_cfg, bool *const p_flag_network_cfg);
+json_ruuvi_parse(const cJSON *p_json_root, gw_cfg_t *const p_gw_cfg, bool *const p_flag_network_cfg);
 
 #endif
 

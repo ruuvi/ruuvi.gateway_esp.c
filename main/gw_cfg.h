@@ -44,22 +44,23 @@ extern "C" {
 
 #define RUUVI_COMPANY_ID 0x0499
 
-typedef struct ruuvi_gw_cfg_device_info_t
+typedef struct gw_cfg_device_info_t
 {
+    wifiman_wifi_ssid_t      wifi_ap_hostname;
     ruuvi_esp32_fw_ver_str_t esp32_fw_ver;
     ruuvi_nrf52_fw_ver_str_t nrf52_fw_ver;
     mac_address_str_t        nrf52_mac_addr;
     nrf52_device_id_str_t    nrf52_device_id;
     mac_address_str_t        esp32_mac_addr_wifi;
     mac_address_str_t        esp32_mac_addr_eth;
-} ruuvi_gw_cfg_device_info_t;
+} gw_cfg_device_info_t;
 
 typedef struct ruuvi_gw_cfg_ip_addr_str_t
 {
     char buf[IP_STR_LEN];
 } ruuvi_gw_cfg_ip_addr_str_t;
 
-typedef struct ruuvi_gw_cfg_eth_t
+typedef struct gw_cfg_eth_t
 {
     bool                       use_eth;
     bool                       eth_dhcp;
@@ -68,7 +69,7 @@ typedef struct ruuvi_gw_cfg_eth_t
     ruuvi_gw_cfg_ip_addr_str_t eth_gw;
     ruuvi_gw_cfg_ip_addr_str_t eth_dns1;
     ruuvi_gw_cfg_ip_addr_str_t eth_dns2;
-} ruuvi_gw_cfg_eth_t;
+} gw_cfg_eth_t;
 
 #define MQTT_TRANSPORT_TCP "TCP"
 #define MQTT_TRANSPORT_SSL "SSL"
@@ -202,19 +203,25 @@ typedef struct ruuvi_gw_cfg_coordinates_t
     char buf[MAX_CONFIG_STR_LEN];
 } ruuvi_gw_cfg_coordinates_t;
 
-typedef struct ruuvi_gateway_config_t
+typedef struct ruuvi_gw_cfg_t
 {
-    ruuvi_gw_cfg_device_info_t device_info;
-    ruuvi_gw_cfg_eth_t         eth;
-    ruuvi_gw_cfg_mqtt_t        mqtt;
     ruuvi_gw_cfg_http_t        http;
     ruuvi_gw_cfg_http_stat_t   http_stat;
+    ruuvi_gw_cfg_mqtt_t        mqtt;
     ruuvi_gw_cfg_lan_auth_t    lan_auth;
     ruuvi_gw_cfg_auto_update_t auto_update;
     ruuvi_gw_cfg_filter_t      filter;
     ruuvi_gw_cfg_scan_t        scan;
     ruuvi_gw_cfg_coordinates_t coordinates;
-} ruuvi_gateway_config_t;
+} gw_cfg_ruuvi_t;
+
+typedef struct gw_cfg_t
+{
+    gw_cfg_device_info_t device_info;
+    gw_cfg_ruuvi_t       ruuvi_cfg;
+    gw_cfg_eth_t         eth_cfg;
+    wifiman_config_t     wifi_cfg;
+} gw_cfg_t;
 
 void
 gw_cfg_init(void);
@@ -225,29 +232,29 @@ gw_cfg_deinit(void);
 bool
 gw_cfg_is_initialized(void);
 
-ruuvi_gateway_config_t *
+gw_cfg_t *
 gw_cfg_lock_rw(void);
 
 void
-gw_cfg_unlock_rw(ruuvi_gateway_config_t **const p_p_gw_cfg);
+gw_cfg_unlock_rw(gw_cfg_t **const p_p_gw_cfg);
 
-const ruuvi_gateway_config_t *
+const gw_cfg_t *
 gw_cfg_lock_ro(void);
 
 void
-gw_cfg_unlock_ro(const ruuvi_gateway_config_t **const p_p_gw_cfg);
+gw_cfg_unlock_ro(const gw_cfg_t **const p_p_gw_cfg);
 
 void
-gw_cfg_print_to_log(
-    const ruuvi_gateway_config_t *const p_config,
-    const char *const                   p_title,
-    const bool                          flag_print_device_info);
+gw_cfg_update_eth_cfg(const gw_cfg_eth_t *const p_gw_cfg_eth_new);
 
 void
-gw_cfg_update(const ruuvi_gateway_config_t *const p_gw_cfg_new, const bool flag_network_cfg);
+gw_cfg_update_ruuvi_cfg(const gw_cfg_ruuvi_t *const p_gw_cfg_ruuvi_new);
 
 void
-gw_cfg_get_copy(ruuvi_gateway_config_t *const p_gw_cfg);
+gw_cfg_update_wifi_config(const wifiman_config_t *const p_wifi_cfg);
+
+void
+gw_cfg_get_copy(gw_cfg_t *const p_gw_cfg);
 
 bool
 gw_cfg_get_eth_use_eth(void);
@@ -276,9 +283,6 @@ gw_cfg_get_lan_auth(void);
 ruuvi_gw_cfg_coordinates_t
 gw_cfg_get_coordinates(void);
 
-void
-gw_cfg_set_default_lan_auth(void);
-
 const ruuvi_esp32_fw_ver_str_t *
 gw_cfg_get_esp32_fw_ver(void);
 
@@ -297,11 +301,14 @@ gw_cfg_get_esp32_mac_addr_wifi(void);
 const mac_address_str_t *
 gw_cfg_get_esp32_mac_addr_eth(void);
 
-const wifi_ssid_t *
+const wifiman_wifi_ssid_t *
 gw_cfg_get_wifi_ap_ssid(void);
 
 const char *
 gw_cfg_auth_type_to_str(const ruuvi_gw_cfg_lan_auth_t *const p_lan_auth);
+
+wifiman_config_t
+gw_cfg_get_wifi_cfg(void);
 
 #ifdef __cplusplus
 }

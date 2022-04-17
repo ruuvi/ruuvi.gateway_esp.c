@@ -20,7 +20,6 @@
 #include "http_server.h"
 #include "http.h"
 #include "fw_update.h"
-#include "nrf52fw.h"
 #include "adv_post.h"
 #include "json_helper.h"
 #include "os_time.h"
@@ -28,7 +27,7 @@
 #include "reset_task.h"
 #include "ruuvi_auth.h"
 #include "gw_cfg.h"
-#include "gw_cfg_json.h"
+#include "gw_cfg_ruuvi_json.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -86,9 +85,9 @@ HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_json_ruuvi(void)
 {
-    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
-    cjson_wrap_str_t              json_str = cjson_wrap_str_null();
-    if (!gw_cfg_json_generate_without_passwords(p_gw_cfg, &json_str))
+    const gw_cfg_t * p_gw_cfg = gw_cfg_lock_ro();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+    if (!gw_cfg_ruuvi_json_generate(p_gw_cfg, &json_str))
     {
         gw_cfg_unlock_ro(&p_gw_cfg);
         return http_server_resp_503();
@@ -208,8 +207,8 @@ HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_json_info(void)
 {
-    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
-    cjson_wrap_str_t              json_str = cjson_wrap_str_null();
+    const gw_cfg_t * p_gw_cfg = gw_cfg_lock_ro();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
     if (!generate_json_info_str(&json_str))
     {
         gw_cfg_unlock_ro(&p_gw_cfg);
@@ -724,8 +723,8 @@ http_server_resp_t
 http_server_cb_on_post_ruuvi(const char *p_body)
 {
     LOG_DBG("POST /ruuvi.json");
-    bool                    flag_network_cfg = false;
-    ruuvi_gateway_config_t *p_gw_cfg_tmp     = os_calloc(1, sizeof(*p_gw_cfg_tmp));
+    bool      flag_network_cfg = false;
+    gw_cfg_t *p_gw_cfg_tmp     = os_calloc(1, sizeof(*p_gw_cfg_tmp));
     if (NULL == p_gw_cfg_tmp)
     {
         LOG_ERR("Failed to allocate memory for gw_cfg");
@@ -737,28 +736,18 @@ http_server_cb_on_post_ruuvi(const char *p_body)
         os_free(p_gw_cfg_tmp);
         return http_server_resp_503();
     }
-    gw_cfg_update(p_gw_cfg_tmp, flag_network_cfg);
-    gw_cfg_print_to_log(p_gw_cfg_tmp, "Gateway SETTINGS", false);
     if (flag_network_cfg)
     {
+        gw_cfg_update_eth_cfg(&p_gw_cfg_tmp->eth_cfg);
         adv_post_disable_retransmission();
     }
     else
     {
+        gw_cfg_update_ruuvi_cfg(&p_gw_cfg_tmp->ruuvi_cfg);
         restart_services();
     }
 
-    cjson_wrap_str_t cjson_str = { 0 };
-    if (!gw_cfg_json_generate_full(p_gw_cfg_tmp, &cjson_str))
-    {
-        LOG_ERR("%s failed", "gw_cfg_json_generate");
-    }
-    else
-    {
-        settings_save_to_flash(cjson_str.p_str);
-    }
-    cjson_wrap_free_json_str(&cjson_str);
-    os_free(p_gw_cfg_tmp);
+    settings_save_to_flash();
 
     if (!ruuvi_auth_set_from_config())
     {
