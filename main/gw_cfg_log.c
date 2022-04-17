@@ -240,7 +240,7 @@ gw_cfg_log_ruuvi_cfg(const gw_cfg_ruuvi_t *const p_gw_cfg_ruuvi, const char *con
     LOG_INFO("config: http url: %s", p_gw_cfg_ruuvi->http.http_url.buf);
     LOG_INFO("config: http user: %s", p_gw_cfg_ruuvi->http.http_user.buf);
 #if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
-    LOG_DBG("config: http pass: %s", p_gw_cfg->http.http_pass.buf);
+    LOG_DBG("config: http pass: %s", p_gw_cfg_ruuvi->http.http_pass.buf);
 #else
     LOG_INFO("config: http pass: %s", "********");
 #endif

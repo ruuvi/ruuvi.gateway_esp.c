@@ -16,6 +16,8 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/gw_cfg_default.h
         ${RUUVI_GW_SRC}/gw_cfg_json.c
         ${RUUVI_GW_SRC}/gw_cfg_json.h
+        ${RUUVI_GW_SRC}/gw_cfg_log.c
+        ${RUUVI_GW_SRC}/gw_cfg_log.h
         ${RUUVI_GW_SRC}/gw_cfg_ruuvi_json.c
         ${RUUVI_GW_SRC}/gw_cfg_ruuvi_json.h
         ${RUUVI_GW_SRC}/gw_mac.c
@@ -48,13 +50,19 @@ add_executable(${ProjectId}
         ${WIFI_MANAGER_INC}/http_server_auth_type.h
         ${WIFI_MANAGER_SRC}/http_server_resp.c
         ${WIFI_MANAGER_INC}/http_server_resp.h
+        ${WIFI_MANAGER_SRC}/wifiman_config.c
+        ${WIFI_MANAGER_SRC}/wifiman_config.h
         ${WIFI_MANAGER_INC}/wifi_manager.h
         ${WIFI_MANAGER_INC}/wifi_manager_defs.h
         ${WIFI_MANAGER_SRC}/wifiman_sha256.c
         ${WIFI_MANAGER_SRC}/wifiman_sha256.h
         ${WIFI_MANAGER_SRC}/wifiman_md5.c
         ${WIFI_MANAGER_SRC}/include/wifiman_md5.h
+        ${WIFI_MANAGER_SRC}/wifi_manager_default_config.c
+        ${WIFI_MANAGER_INC}/wifi_manager.h
         $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
+        $ENV{IDF_PATH}/components/lwip/lwip/src/core/ipv4/ip4_addr.c
+        $ENV{IDF_PATH}/components/lwip/lwip/src/core/def.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.h
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/md5.c

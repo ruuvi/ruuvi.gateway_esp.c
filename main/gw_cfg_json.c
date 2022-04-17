@@ -539,8 +539,6 @@ gw_cfg_json_parse_device_info(const cJSON *const p_json_root, gw_cfg_device_info
 {
     memset(p_gw_cfg_dev_info, 0, sizeof(*p_gw_cfg_dev_info));
 
-    *p_gw_cfg_dev_info = gw_cfg_default_device_info();
-
     gw_cfg_json_copy_string_val(
         p_json_root,
         "fw_ver",
@@ -551,6 +549,11 @@ gw_cfg_json_parse_device_info(const cJSON *const p_json_root, gw_cfg_device_info
         "nrf52_fw_ver",
         &p_gw_cfg_dev_info->nrf52_fw_ver.buf[0],
         sizeof(p_gw_cfg_dev_info->nrf52_fw_ver.buf));
+    gw_cfg_json_copy_string_val(
+        p_json_root,
+        "gw_mac",
+        &p_gw_cfg_dev_info->nrf52_mac_addr.str_buf[0],
+        sizeof(p_gw_cfg_dev_info->nrf52_mac_addr.str_buf));
 }
 
 void

@@ -13,6 +13,8 @@
 #include "os_mutex_recursive.h"
 #include "esp_log_wrapper.hpp"
 #include "gw_cfg_default.h"
+#include "os_mutex.h"
+#include "lwip/ip4_addr.h"
 
 using namespace std;
 
@@ -93,6 +95,8 @@ protected:
         };
         gw_cfg_default_init(&init_params, nullptr);
         gw_cfg_init();
+
+        esp_log_wrapper_clear();
 
         this->m_malloc_cnt         = 0;
         this->m_malloc_fail_on_cnt = 0;
@@ -178,6 +182,47 @@ os_mutex_recursive_unlock(os_mutex_recursive_t const h_mutex)
 {
 }
 
+os_mutex_t
+os_mutex_create_static(os_mutex_static_t *const p_mutex_static)
+{
+    return reinterpret_cast<os_mutex_t>(p_mutex_static);
+}
+
+void
+os_mutex_delete(os_mutex_t *const ph_mutex)
+{
+    (void)ph_mutex;
+}
+
+void
+os_mutex_lock(os_mutex_t const h_mutex)
+{
+    (void)h_mutex;
+}
+
+void
+os_mutex_unlock(os_mutex_t const h_mutex)
+{
+    (void)h_mutex;
+}
+
+char *
+esp_ip4addr_ntoa(const esp_ip4_addr_t *addr, char *buf, int buflen)
+{
+    return ip4addr_ntoa_r((ip4_addr_t *)addr, buf, buflen);
+}
+
+uint32_t
+esp_ip4addr_aton(const char *addr)
+{
+    return ipaddr_addr(addr);
+}
+
+void
+wifi_manager_cb_save_wifi_config(const wifiman_config_t *const p_cfg)
+{
+}
+
 } // extern "C"
 
 TestJsonRuuvi::~TestJsonRuuvi() = default;
@@ -191,61 +236,65 @@ TestJsonRuuvi::~TestJsonRuuvi() = default;
 
 TEST_F(TestJsonRuuvi, json_ruuvi_parse_network_cfg_eth_dhcp) // NOLINT
 {
-    cJSON *root = cJSON_CreateObject();
-    ASSERT_NE(nullptr, root);
-    cJSON_AddBoolToObject(root, "use_eth", true);
-    cJSON_AddBoolToObject(root, "eth_dhcp", true);
+    const string http_body = string(
+        "{\n"
+        "\t\"use_eth\":\ttrue,\n"
+        "\t\"eth_dhcp\":\ttrue\n"
+        "}");
 
-    ruuvi_gateway_config_t gw_cfg           = { 0 };
-    bool                   flag_network_cfg = false;
-    ASSERT_TRUE(json_ruuvi_parse(root, &gw_cfg, &flag_network_cfg));
-    cJSON_Delete(root);
+    gw_cfg_t gw_cfg = { 0 };
+    gw_cfg_default_get(&gw_cfg);
+    bool flag_network_cfg = false;
+    ASSERT_TRUE(json_ruuvi_parse_http_body(http_body.c_str(), &gw_cfg, &flag_network_cfg));
     ASSERT_TRUE(flag_network_cfg);
-    ASSERT_TRUE(gw_cfg.eth.use_eth);
-    ASSERT_TRUE(gw_cfg.eth.eth_dhcp);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_static_ip.buf);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_netmask.buf);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_gw.buf);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns1.buf);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns2.buf);
+    ASSERT_TRUE(gw_cfg.eth_cfg.use_eth);
+    ASSERT_TRUE(gw_cfg.eth_cfg.eth_dhcp);
+    ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_static_ip.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_netmask.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_gw.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_dns1.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_dns2.buf);
 
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Got SETTINGS:");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, "Got SETTINGS:");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, "use_eth: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_eth: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "eth_dhcp: 1");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, "eth_dhcp: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: Use eth: yes");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: use DHCP: yes");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: static IP: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: netmask: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: GW: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: DNS1: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: DNS2: ");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
 TEST_F(TestJsonRuuvi, json_ruuvi_parse_network_cfg_eth_static) // NOLINT
 {
-    cJSON *root = cJSON_CreateObject();
-    ASSERT_NE(nullptr, root);
-    cJSON_AddBoolToObject(root, "use_eth", true);
-    cJSON_AddBoolToObject(root, "eth_dhcp", false);
-    cJSON_AddStringToObject(root, "eth_static_ip", "192.168.1.1");
-    cJSON_AddStringToObject(root, "eth_netmask", "255.255.255.0");
-    cJSON_AddStringToObject(root, "eth_gw", "192.168.0.1");
-    cJSON_AddStringToObject(root, "eth_dns1", "8.8.8.8");
-    cJSON_AddStringToObject(root, "eth_dns2", "4.4.4.4");
+    const string http_body = string(
+        "{\n"
+        "\t\"use_eth\":\ttrue,\n"
+        "\t\"eth_dhcp\":\tfalse,\n"
+        "\t\"eth_static_ip\":\t\"192.168.1.1\",\n"
+        "\t\"eth_netmask\":\t\"255.255.255.0\",\n"
+        "\t\"eth_gw\":\t\"192.168.0.1\",\n"
+        "\t\"eth_dns1\":\t\"8.8.8.8\",\n"
+        "\t\"eth_dns2\":\t\"4.4.4.4\"\n"
+        "}");
 
-    ruuvi_gateway_config_t gw_cfg           = { 0 };
-    bool                   flag_network_cfg = false;
-    ASSERT_TRUE(json_ruuvi_parse(root, &gw_cfg, &flag_network_cfg));
-    cJSON_Delete(root);
+    gw_cfg_t gw_cfg = { 0 };
+    gw_cfg_default_get(&gw_cfg);
+    bool flag_network_cfg = false;
+    ASSERT_TRUE(json_ruuvi_parse_http_body(http_body.c_str(), &gw_cfg, &flag_network_cfg));
     ASSERT_TRUE(flag_network_cfg);
-    ASSERT_TRUE(gw_cfg.eth.use_eth);
-    ASSERT_FALSE(gw_cfg.eth.eth_dhcp);
-    ASSERT_EQ(string("192.168.1.1"), gw_cfg.eth.eth_static_ip.buf);
-    ASSERT_EQ(string("255.255.255.0"), gw_cfg.eth.eth_netmask.buf);
-    ASSERT_EQ(string("192.168.0.1"), gw_cfg.eth.eth_gw.buf);
-    ASSERT_EQ(string("8.8.8.8"), gw_cfg.eth.eth_dns1.buf);
-    ASSERT_EQ(string("4.4.4.4"), gw_cfg.eth.eth_dns2.buf);
+    ASSERT_TRUE(gw_cfg.eth_cfg.use_eth);
+    ASSERT_FALSE(gw_cfg.eth_cfg.eth_dhcp);
+    ASSERT_EQ(string("192.168.1.1"), gw_cfg.eth_cfg.eth_static_ip.buf);
+    ASSERT_EQ(string("255.255.255.0"), gw_cfg.eth_cfg.eth_netmask.buf);
+    ASSERT_EQ(string("192.168.0.1"), gw_cfg.eth_cfg.eth_gw.buf);
+    ASSERT_EQ(string("8.8.8.8"), gw_cfg.eth_cfg.eth_dns1.buf);
+    ASSERT_EQ(string("4.4.4.4"), gw_cfg.eth_cfg.eth_dns2.buf);
 
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Got SETTINGS:");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, "Got SETTINGS:");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, "use_eth: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_eth: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "eth_dhcp: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "eth_static_ip: 192.168.1.1");
@@ -253,117 +302,125 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_network_cfg_eth_static) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "eth_gw: 192.168.0.1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "eth_dns1: 8.8.8.8");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "eth_dns2: 4.4.4.4");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, "eth_dhcp: 0");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, "eth_static_ip: 192.168.1.1");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, "eth_netmask: 255.255.255.0");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, "eth_gw: 192.168.0.1");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, "eth_dns1: 8.8.8.8");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, "eth_dns2: 4.4.4.4");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: Use eth: yes");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: use DHCP: no");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: static IP: 192.168.1.1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: netmask: 255.255.255.0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: GW: 192.168.0.1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: DNS1: 8.8.8.8");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: DNS2: 4.4.4.4");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
 TEST_F(TestJsonRuuvi, json_ruuvi_parse_network_cfg_wifi) // NOLINT
 {
-    cJSON *root = cJSON_CreateObject();
-    ASSERT_NE(nullptr, root);
-    cJSON_AddBoolToObject(root, "use_eth", false);
+    const string http_body = string(
+        "{\n"
+        "\t\"use_eth\":\tfalse\n"
+        "}");
 
-    ruuvi_gateway_config_t gw_cfg           = { 0 };
-    bool                   flag_network_cfg = false;
-    ASSERT_TRUE(json_ruuvi_parse(root, &gw_cfg, &flag_network_cfg));
-    cJSON_Delete(root);
+    gw_cfg_t gw_cfg = { 0 };
+    gw_cfg_default_get(&gw_cfg);
+    bool flag_network_cfg = false;
+    ASSERT_TRUE(json_ruuvi_parse_http_body(http_body.c_str(), &gw_cfg, &flag_network_cfg));
     ASSERT_TRUE(flag_network_cfg);
-    ASSERT_FALSE(gw_cfg.eth.use_eth);
+    ASSERT_FALSE(gw_cfg.eth_cfg.use_eth);
 
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Got SETTINGS:");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, "Got SETTINGS:");
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, "use_eth: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_eth: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: Use eth: no");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: use DHCP: yes");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: static IP: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: netmask: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: GW: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: DNS1: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: DNS2: ");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
 TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
 {
-    cJSON *root = cJSON_CreateObject();
-    ASSERT_NE(nullptr, root);
+    const string http_body = string(
+        "{\n"
+        "\t\"use_mqtt\":\ttrue,\n"
+        "\t\"mqtt_transport\":\t\"TCP\",\n"
+        "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
+        "\t\"mqtt_prefix\":\t\"prefix\",\n"
+        "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+        "\t\"mqtt_port\":\t1234,\n"
+        "\t\"mqtt_user\":\t\"user123\",\n"
+        "\t\"mqtt_pass\":\t\"pass123\",\n"
 
-    cJSON_AddBoolToObject(root, "use_mqtt", true);
-    cJSON_AddStringToObject(root, "mqtt_transport", "TCP");
-    cJSON_AddStringToObject(root, "mqtt_server", "mqtt.server.org");
-    cJSON_AddStringToObject(root, "mqtt_prefix", "prefix");
-    cJSON_AddStringToObject(root, "mqtt_client_id", "AA:BB:CC:DD:EE:FF");
-    cJSON_AddNumberToObject(root, "mqtt_port", 1234);
-    cJSON_AddStringToObject(root, "mqtt_user", "user123");
-    cJSON_AddStringToObject(root, "mqtt_pass", "pass123");
+        "\t\"use_http\":\tfalse,\n"
+        "\t\"http_url\":\t\"https://api.ruuvi.com:456/api\",\n"
+        "\t\"http_user\":\t\"user567\",\n"
+        "\t\"http_pass\":\t\"pass567\",\n"
 
-    cJSON_AddBoolToObject(root, "use_http", false);
-    cJSON_AddStringToObject(root, "http_url", "https://api.ruuvi.com:456/api");
-    cJSON_AddStringToObject(root, "http_user", "user567");
-    cJSON_AddStringToObject(root, "http_pass", "pass567");
+        "\t\"use_http_stat\":\ttrue,\n"
+        "\t\"http_stat_url\":\t\"https://api.ruuvi.com:456/status\",\n"
+        "\t\"http_stat_user\":\t\"user678\",\n"
+        "\t\"http_stat_pass\":\t\"pass678\",\n"
 
-    cJSON_AddBoolToObject(root, "use_http_stat", true);
-    cJSON_AddStringToObject(root, "http_stat_url", "https://api.ruuvi.com:456/status");
-    cJSON_AddStringToObject(root, "http_stat_user", "user678");
-    cJSON_AddStringToObject(root, "http_stat_pass", "pass678");
+        "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
+        "\t\"lan_auth_user\":\t\"user1\",\n"
+        "\t\"lan_auth_pass\":\t\"qwe\",\n"
+        "\t\"lan_auth_api_key\":\t\"6kl/fd/c+3qvWm3Mhmwgh3BWNp+HDRQiLp/X0PuwG8Q=\",\n"
 
-    cJSON_AddStringToObject(root, "lan_auth_type", "lan_auth_ruuvi");
-    cJSON_AddStringToObject(root, "lan_auth_user", "user1");
-    cJSON_AddStringToObject(root, "lan_auth_pass", "qwe");
-    cJSON_AddStringToObject(root, "lan_auth_api_key", "6kl/fd/c+3qvWm3Mhmwgh3BWNp+HDRQiLp/X0PuwG8Q=");
+        "\t\"auto_update_cycle\":\t\"regular\",\n"
+        "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+        "\t\"auto_update_interval_from\":\t0,\n"
+        "\t\"auto_update_interval_to\":\t24,\n"
+        "\t\"auto_update_tz_offset_hours\":\t3,\n"
 
-    cJSON_AddStringToObject(root, "auto_update_cycle", "regular");
-    cJSON_AddNumberToObject(root, "auto_update_weekdays_bitmask", 127);
-    cJSON_AddNumberToObject(root, "auto_update_interval_from", 0);
-    cJSON_AddNumberToObject(root, "auto_update_interval_to", 24);
-    cJSON_AddNumberToObject(root, "auto_update_tz_offset_hours", 3);
+        "\t\"company_use_filtering\":\ttrue,\n"
+        "\t\"company_id\":\t888,\n"
 
-    cJSON_AddBoolToObject(root, "company_use_filtering", true);
-    cJSON_AddNumberToObject(root, "company_id", 888);
+        "\t\"coordinates\":\t\"coord:123,456\",\n"
 
-    cJSON_AddStringToObject(root, "coordinates", "coord:123,456");
+        "\t\"scan_coded_phy\":\ttrue,\n"
+        "\t\"scan_1mbit_phy\":\ttrue,\n"
+        "\t\"scan_extended_payload\":\ttrue,\n"
+        "\t\"scan_channel_37\":\ttrue,\n"
+        "\t\"scan_channel_38\":\ttrue,\n"
+        "\t\"scan_channel_39\":\ttrue\n"
+        "}");
 
-    cJSON_AddBoolToObject(root, "scan_coded_phy", true);
-    cJSON_AddBoolToObject(root, "scan_1mbit_phy", true);
-    cJSON_AddBoolToObject(root, "scan_extended_payload", true);
-    cJSON_AddBoolToObject(root, "scan_channel_37", true);
-    cJSON_AddBoolToObject(root, "scan_channel_38", true);
-    cJSON_AddBoolToObject(root, "scan_channel_39", true);
-
-    ruuvi_gateway_config_t gw_cfg           = { 0 };
-    bool                   flag_network_cfg = false;
-    ASSERT_TRUE(json_ruuvi_parse(root, &gw_cfg, &flag_network_cfg));
-    cJSON_Delete(root);
+    gw_cfg_t gw_cfg = { 0 };
+    gw_cfg_default_get(&gw_cfg);
+    bool flag_network_cfg = false;
+    ASSERT_TRUE(json_ruuvi_parse_http_body(http_body.c_str(), &gw_cfg, &flag_network_cfg));
     ASSERT_FALSE(flag_network_cfg);
-    ASSERT_TRUE(gw_cfg.mqtt.use_mqtt);
-    ASSERT_EQ(string("TCP"), gw_cfg.mqtt.mqtt_transport.buf);
-    ASSERT_EQ(string("mqtt.server.org"), gw_cfg.mqtt.mqtt_server.buf);
-    ASSERT_EQ(string("prefix"), gw_cfg.mqtt.mqtt_prefix.buf);
-    ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.mqtt.mqtt_client_id.buf);
-    ASSERT_EQ(1234, gw_cfg.mqtt.mqtt_port);
-    ASSERT_EQ(string("user123"), gw_cfg.mqtt.mqtt_user.buf);
-    ASSERT_EQ(string("pass123"), gw_cfg.mqtt.mqtt_pass.buf);
-    ASSERT_FALSE(gw_cfg.http.use_http);
-    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.http.http_url.buf);
-    ASSERT_EQ(string("user567"), gw_cfg.http.http_user.buf);
-    ASSERT_EQ(string("pass567"), gw_cfg.http.http_pass.buf);
-    ASSERT_TRUE(gw_cfg.http_stat.use_http_stat);
-    ASSERT_EQ(string("https://api.ruuvi.com:456/status"), gw_cfg.http_stat.http_stat_url.buf);
-    ASSERT_EQ(string("user678"), gw_cfg.http_stat.http_stat_user.buf);
-    ASSERT_EQ(string("pass678"), gw_cfg.http_stat.http_stat_pass.buf);
-    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.lan_auth.lan_auth_type);
-    ASSERT_EQ(string("user1"), gw_cfg.lan_auth.lan_auth_user.buf);
-    ASSERT_EQ(string("qwe"), gw_cfg.lan_auth.lan_auth_pass.buf);
-    ASSERT_EQ(string("6kl/fd/c+3qvWm3Mhmwgh3BWNp+HDRQiLp/X0PuwG8Q="), gw_cfg.lan_auth.lan_auth_api_key.buf);
-    ASSERT_TRUE(gw_cfg.filter.company_use_filtering);
-    ASSERT_EQ(888, gw_cfg.filter.company_id);
-    ASSERT_EQ(string("coord:123,456"), gw_cfg.coordinates.buf);
-    ASSERT_EQ(true, gw_cfg.scan.scan_coded_phy);
-    ASSERT_EQ(true, gw_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg.scan.scan_extended_payload);
-    ASSERT_EQ(true, gw_cfg.scan.scan_channel_37);
-    ASSERT_EQ(true, gw_cfg.scan.scan_channel_38);
-    ASSERT_EQ(true, gw_cfg.scan.scan_channel_39);
+    ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
+    ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
+    ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
+    ASSERT_EQ(1234, gw_cfg.ruuvi_cfg.mqtt.mqtt_port);
+    ASSERT_EQ(string("user123"), gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf);
+    ASSERT_EQ(string("pass123"), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
+    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("user567"), gw_cfg.ruuvi_cfg.http.http_user.buf);
+    ASSERT_EQ(string("pass567"), gw_cfg.ruuvi_cfg.http.http_pass.buf);
+    ASSERT_TRUE(gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
+    ASSERT_EQ(string("https://api.ruuvi.com:456/status"), gw_cfg.ruuvi_cfg.http_stat.http_stat_url.buf);
+    ASSERT_EQ(string("user678"), gw_cfg.ruuvi_cfg.http_stat.http_stat_user.buf);
+    ASSERT_EQ(string("pass678"), gw_cfg.ruuvi_cfg.http_stat.http_stat_pass.buf);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("user1"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
+    ASSERT_EQ(string("qwe"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
+    ASSERT_EQ(string("6kl/fd/c+3qvWm3Mhmwgh3BWNp+HDRQiLp/X0PuwG8Q="), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+    ASSERT_TRUE(gw_cfg.ruuvi_cfg.filter.company_use_filtering);
+    ASSERT_EQ(888, gw_cfg.ruuvi_cfg.filter.company_id);
+    ASSERT_EQ(string("coord:123,456"), gw_cfg.ruuvi_cfg.coordinates.buf);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
 
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Got SETTINGS:");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
@@ -398,92 +455,97 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_38: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_39: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "coordinates: coord:123,456");
+
+    esp_log_wrapper_clear();
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
 TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_http_and_mqtt_pass) // NOLINT
 {
-    cJSON *root = cJSON_CreateObject();
-    ASSERT_NE(nullptr, root);
+    const string http_body = string(
+        "{\n"
+        "\t\"use_mqtt\":\ttrue,\n"
+        "\t\"mqtt_transport\":\t\"TCP\",\n"
+        "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
+        "\t\"mqtt_prefix\":\t\"prefix\",\n"
+        "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+        "\t\"mqtt_port\":\t1234,\n"
+        "\t\"mqtt_user\":\t\"user123\",\n"
 
-    cJSON_AddBoolToObject(root, "use_mqtt", true);
-    cJSON_AddStringToObject(root, "mqtt_transport", "TCP");
-    cJSON_AddStringToObject(root, "mqtt_server", "mqtt.server.org");
-    cJSON_AddStringToObject(root, "mqtt_prefix", "prefix");
-    cJSON_AddStringToObject(root, "mqtt_client_id", "AA:BB:CC:DD:EE:FF");
-    cJSON_AddNumberToObject(root, "mqtt_port", 1234);
-    cJSON_AddStringToObject(root, "mqtt_user", "user123");
+        "\t\"use_http\":\tfalse,\n"
+        "\t\"http_url\":\t\"https://api.ruuvi.com:456/api\",\n"
+        "\t\"http_user\":\t\"user567\",\n"
 
-    cJSON_AddBoolToObject(root, "use_http", false);
-    cJSON_AddStringToObject(root, "http_url", "https://api.ruuvi.com:456/api");
-    cJSON_AddStringToObject(root, "http_user", "user567");
+        "\t\"use_http_stat\":\ttrue,\n"
+        "\t\"http_stat_url\":\t\"https://api.ruuvi.com:456/status\",\n"
+        "\t\"http_stat_user\":\t\"user678\",\n"
 
-    cJSON_AddBoolToObject(root, "use_http_stat", true);
-    cJSON_AddStringToObject(root, "http_stat_url", "https://api.ruuvi.com:456/status");
-    cJSON_AddStringToObject(root, "http_stat_user", "user678");
+        "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
+        "\t\"lan_auth_user\":\t\"user1\",\n"
+        "\t\"lan_auth_pass\":\t\"qwe\",\n"
+        "\t\"lan_auth_api_key\":\t\"\",\n"
 
-    cJSON_AddStringToObject(root, "lan_auth_type", "lan_auth_ruuvi");
-    cJSON_AddStringToObject(root, "lan_auth_user", "user1");
-    cJSON_AddStringToObject(root, "lan_auth_pass", "qwe");
-    cJSON_AddStringToObject(root, "lan_auth_api_key", "");
+        "\t\"auto_update_cycle\":\t\"beta\",\n"
+        "\t\"auto_update_weekdays_bitmask\":\t126,\n"
+        "\t\"auto_update_interval_from\":\t1,\n"
+        "\t\"auto_update_interval_to\":\t23,\n"
+        "\t\"auto_update_tz_offset_hours\":\t7,\n"
 
-    cJSON_AddStringToObject(root, "auto_update_cycle", "beta");
-    cJSON_AddNumberToObject(root, "auto_update_weekdays_bitmask", 126);
-    cJSON_AddNumberToObject(root, "auto_update_interval_from", 1);
-    cJSON_AddNumberToObject(root, "auto_update_interval_to", 23);
-    cJSON_AddNumberToObject(root, "auto_update_tz_offset_hours", 7);
+        "\t\"company_use_filtering\":\ttrue,\n"
+        "\t\"company_id\":\t888,\n"
 
-    cJSON_AddBoolToObject(root, "company_use_filtering", true);
-    cJSON_AddNumberToObject(root, "company_id", 888);
+        "\t\"coordinates\":\t\"coord:123,456\",\n"
 
-    cJSON_AddStringToObject(root, "coordinates", "coord:123,456");
+        "\t\"scan_coded_phy\":\ttrue,\n"
+        "\t\"scan_1mbit_phy\":\ttrue,\n"
+        "\t\"scan_extended_payload\":\ttrue,\n"
+        "\t\"scan_channel_37\":\ttrue,\n"
+        "\t\"scan_channel_38\":\ttrue,\n"
+        "\t\"scan_channel_39\":\ttrue\n"
+        "}");
 
-    cJSON_AddBoolToObject(root, "scan_coded_phy", true);
-    cJSON_AddBoolToObject(root, "scan_1mbit_phy", true);
-    cJSON_AddBoolToObject(root, "scan_extended_payload", true);
-    cJSON_AddBoolToObject(root, "scan_channel_37", true);
-    cJSON_AddBoolToObject(root, "scan_channel_38", true);
-    cJSON_AddBoolToObject(root, "scan_channel_39", true);
-
-    ruuvi_gateway_config_t gw_cfg           = { 0 };
-    bool                   flag_network_cfg = false;
-    snprintf(gw_cfg.http.http_pass.buf, sizeof(gw_cfg.http.http_pass.buf), "prev_http_pass");
-    snprintf(gw_cfg.http_stat.http_stat_pass.buf, sizeof(gw_cfg.http_stat.http_stat_pass.buf), "prev_http_stat_pass");
-    snprintf(gw_cfg.mqtt.mqtt_pass.buf, sizeof(gw_cfg.mqtt.mqtt_pass.buf), "prev_mqtt_pass");
-    ASSERT_TRUE(json_ruuvi_parse(root, &gw_cfg, &flag_network_cfg));
-    cJSON_Delete(root);
+    gw_cfg_t gw_cfg = { 0 };
+    gw_cfg_default_get(&gw_cfg);
+    bool flag_network_cfg = false;
+    snprintf(gw_cfg.ruuvi_cfg.http.http_pass.buf, sizeof(gw_cfg.ruuvi_cfg.http.http_pass.buf), "prev_http_pass");
+    snprintf(
+        gw_cfg.ruuvi_cfg.http_stat.http_stat_pass.buf,
+        sizeof(gw_cfg.ruuvi_cfg.http_stat.http_stat_pass.buf),
+        "prev_http_stat_pass");
+    snprintf(gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf, sizeof(gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf), "prev_mqtt_pass");
+    ASSERT_TRUE(json_ruuvi_parse_http_body(http_body.c_str(), &gw_cfg, &flag_network_cfg));
     ASSERT_FALSE(flag_network_cfg);
-    ASSERT_TRUE(gw_cfg.mqtt.use_mqtt);
-    ASSERT_EQ(string("TCP"), gw_cfg.mqtt.mqtt_transport.buf);
-    ASSERT_EQ(string("mqtt.server.org"), gw_cfg.mqtt.mqtt_server.buf);
-    ASSERT_EQ(string("prefix"), gw_cfg.mqtt.mqtt_prefix.buf);
-    ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.mqtt.mqtt_client_id.buf);
-    ASSERT_EQ(1234, gw_cfg.mqtt.mqtt_port);
-    ASSERT_EQ(string("user123"), gw_cfg.mqtt.mqtt_user.buf);
-    ASSERT_EQ(string("prev_mqtt_pass"), gw_cfg.mqtt.mqtt_pass.buf);
-    ASSERT_FALSE(gw_cfg.http.use_http);
-    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.http.http_url.buf);
-    ASSERT_EQ(string("user567"), gw_cfg.http.http_user.buf);
-    ASSERT_EQ(string("prev_http_pass"), gw_cfg.http.http_pass.buf);
-    ASSERT_TRUE(gw_cfg.http_stat.use_http_stat);
-    ASSERT_EQ(string("https://api.ruuvi.com:456/status"), gw_cfg.http_stat.http_stat_url.buf);
-    ASSERT_EQ(string("user678"), gw_cfg.http_stat.http_stat_user.buf);
-    ASSERT_EQ(string("prev_http_stat_pass"), gw_cfg.http_stat.http_stat_pass.buf);
-    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.lan_auth.lan_auth_type);
-    ASSERT_EQ(string("user1"), gw_cfg.lan_auth.lan_auth_user.buf);
-    ASSERT_EQ(string("qwe"), gw_cfg.lan_auth.lan_auth_pass.buf);
-    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key.buf);
-    ASSERT_TRUE(gw_cfg.filter.company_use_filtering);
-    ASSERT_EQ(888, gw_cfg.filter.company_id);
-    ASSERT_EQ(string("coord:123,456"), gw_cfg.coordinates.buf);
-    ASSERT_EQ(true, gw_cfg.scan.scan_coded_phy);
-    ASSERT_EQ(true, gw_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg.scan.scan_extended_payload);
-    ASSERT_EQ(true, gw_cfg.scan.scan_channel_37);
-    ASSERT_EQ(true, gw_cfg.scan.scan_channel_38);
-    ASSERT_EQ(true, gw_cfg.scan.scan_channel_39);
+    ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
+    ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
+    ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
+    ASSERT_EQ(1234, gw_cfg.ruuvi_cfg.mqtt.mqtt_port);
+    ASSERT_EQ(string("user123"), gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf);
+    ASSERT_EQ(string("prev_mqtt_pass"), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
+    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("user567"), gw_cfg.ruuvi_cfg.http.http_user.buf);
+    ASSERT_EQ(string("prev_http_pass"), gw_cfg.ruuvi_cfg.http.http_pass.buf);
+    ASSERT_TRUE(gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
+    ASSERT_EQ(string("https://api.ruuvi.com:456/status"), gw_cfg.ruuvi_cfg.http_stat.http_stat_url.buf);
+    ASSERT_EQ(string("user678"), gw_cfg.ruuvi_cfg.http_stat.http_stat_user.buf);
+    ASSERT_EQ(string("prev_http_stat_pass"), gw_cfg.ruuvi_cfg.http_stat.http_stat_pass.buf);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("user1"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
+    ASSERT_EQ(string("qwe"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+    ASSERT_TRUE(gw_cfg.ruuvi_cfg.filter.company_use_filtering);
+    ASSERT_EQ(888, gw_cfg.ruuvi_cfg.filter.company_id);
+    ASSERT_EQ(string("coord:123,456"), gw_cfg.ruuvi_cfg.coordinates.buf);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
 
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Got SETTINGS:");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
@@ -527,91 +589,92 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_http_and_mqtt_pass) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_38: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_39: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "coordinates: coord:123,456");
+    esp_log_wrapper_clear();
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
 TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
 {
-    cJSON *root = cJSON_CreateObject();
-    ASSERT_NE(nullptr, root);
+    const string http_body = string(
+        "{\n"
+        "\t\"use_mqtt\":\ttrue,\n"
+        "\t\"mqtt_transport\":\t\"SSL\",\n"
+        "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
+        "\t\"mqtt_prefix\":\t\"prefix\",\n"
+        "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+        "\t\"mqtt_port\":\t8883,\n"
+        "\t\"mqtt_user\":\t\"user123\",\n"
 
-    cJSON_AddBoolToObject(root, "use_mqtt", true);
-    cJSON_AddStringToObject(root, "mqtt_transport", "SSL");
-    cJSON_AddStringToObject(root, "mqtt_server", "mqtt.server.org");
-    cJSON_AddStringToObject(root, "mqtt_prefix", "prefix");
-    cJSON_AddStringToObject(root, "mqtt_client_id", "AA:BB:CC:DD:EE:FF");
-    cJSON_AddNumberToObject(root, "mqtt_port", 8883);
-    cJSON_AddStringToObject(root, "mqtt_user", "user123");
+        "\t\"use_http\":\tfalse,\n"
+        "\t\"http_url\":\t\"https://api.ruuvi.com:456/api\",\n"
+        "\t\"http_user\":\t\"user567\",\n"
+        "\t\"http_pass\":\t\"pass567\",\n"
 
-    cJSON_AddBoolToObject(root, "use_http", false);
-    cJSON_AddStringToObject(root, "http_url", "https://api.ruuvi.com:456/api");
-    cJSON_AddStringToObject(root, "http_user", "user567");
-    cJSON_AddStringToObject(root, "http_pass", "pass567");
+        "\t\"use_http_stat\":\ttrue,\n"
+        "\t\"http_stat_url\":\t\"https://api.ruuvi.com:456/status\",\n"
+        "\t\"http_stat_user\":\t\"user678\",\n"
+        "\t\"http_stat_pass\":\t\"pass678\",\n"
 
-    cJSON_AddBoolToObject(root, "use_http_stat", true);
-    cJSON_AddStringToObject(root, "http_stat_url", "https://api.ruuvi.com:456/status");
-    cJSON_AddStringToObject(root, "http_stat_user", "user678");
-    cJSON_AddStringToObject(root, "http_stat_pass", "pass678");
+        "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
+        "\t\"lan_auth_user\":\t\"user1\",\n"
+        "\t\"lan_auth_pass\":\t\"qwe\",\n"
+        "\t\"lan_auth_api_key\":\t\"\",\n"
 
-    cJSON_AddStringToObject(root, "lan_auth_type", "lan_auth_ruuvi");
-    cJSON_AddStringToObject(root, "lan_auth_user", "user1");
-    cJSON_AddStringToObject(root, "lan_auth_pass", "qwe");
-    cJSON_AddStringToObject(root, "lan_auth_api_key", "");
+        "\t\"auto_update_cycle\":\t\"beta\",\n"
+        "\t\"auto_update_weekdays_bitmask\":\t126,\n"
+        "\t\"auto_update_interval_from\":\t1,\n"
+        "\t\"auto_update_interval_to\":\t23,\n"
+        "\t\"auto_update_tz_offset_hours\":\t7,\n"
 
-    cJSON_AddStringToObject(root, "auto_update_cycle", "beta");
-    cJSON_AddNumberToObject(root, "auto_update_weekdays_bitmask", 126);
-    cJSON_AddNumberToObject(root, "auto_update_interval_from", 1);
-    cJSON_AddNumberToObject(root, "auto_update_interval_to", 23);
-    cJSON_AddNumberToObject(root, "auto_update_tz_offset_hours", 7);
+        "\t\"company_use_filtering\":\ttrue,\n"
+        "\t\"company_id\":\t888,\n"
 
-    cJSON_AddBoolToObject(root, "company_use_filtering", true);
-    cJSON_AddNumberToObject(root, "company_id", 888);
+        "\t\"coordinates\":\t\"coord:123,456\",\n"
 
-    cJSON_AddStringToObject(root, "coordinates", "coord:123,456");
+        "\t\"scan_coded_phy\":\ttrue,\n"
+        "\t\"scan_1mbit_phy\":\ttrue,\n"
+        "\t\"scan_extended_payload\":\ttrue,\n"
+        "\t\"scan_channel_37\":\ttrue,\n"
+        "\t\"scan_channel_38\":\ttrue,\n"
+        "\t\"scan_channel_39\":\ttrue\n"
+        "}");
 
-    cJSON_AddBoolToObject(root, "scan_coded_phy", true);
-    cJSON_AddBoolToObject(root, "scan_1mbit_phy", true);
-    cJSON_AddBoolToObject(root, "scan_extended_payload", true);
-    cJSON_AddBoolToObject(root, "scan_channel_37", true);
-    cJSON_AddBoolToObject(root, "scan_channel_38", true);
-    cJSON_AddBoolToObject(root, "scan_channel_39", true);
-
-    ruuvi_gateway_config_t gw_cfg           = { 0 };
-    bool                   flag_network_cfg = false;
-    ASSERT_TRUE(json_ruuvi_parse(root, &gw_cfg, &flag_network_cfg));
-    cJSON_Delete(root);
+    gw_cfg_t gw_cfg = { 0 };
+    gw_cfg_default_get(&gw_cfg);
+    bool flag_network_cfg = false;
+    ASSERT_TRUE(json_ruuvi_parse_http_body(http_body.c_str(), &gw_cfg, &flag_network_cfg));
     ASSERT_FALSE(flag_network_cfg);
-    ASSERT_TRUE(gw_cfg.mqtt.use_mqtt);
-    ASSERT_EQ(string("SSL"), gw_cfg.mqtt.mqtt_transport.buf);
-    ASSERT_EQ(string("mqtt.server.org"), gw_cfg.mqtt.mqtt_server.buf);
-    ASSERT_EQ(string("prefix"), gw_cfg.mqtt.mqtt_prefix.buf);
-    ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.mqtt.mqtt_client_id.buf);
-    ASSERT_EQ(8883, gw_cfg.mqtt.mqtt_port);
-    ASSERT_EQ(string("user123"), gw_cfg.mqtt.mqtt_user.buf);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_pass.buf);
-    ASSERT_FALSE(gw_cfg.http.use_http);
-    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.http.http_url.buf);
-    ASSERT_EQ(string("user567"), gw_cfg.http.http_user.buf);
-    ASSERT_EQ(string("pass567"), gw_cfg.http.http_pass.buf);
-    ASSERT_TRUE(gw_cfg.http_stat.use_http_stat);
-    ASSERT_EQ(string("https://api.ruuvi.com:456/status"), gw_cfg.http_stat.http_stat_url.buf);
-    ASSERT_EQ(string("user678"), gw_cfg.http_stat.http_stat_user.buf);
-    ASSERT_EQ(string("pass678"), gw_cfg.http_stat.http_stat_pass.buf);
-    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.lan_auth.lan_auth_type);
-    ASSERT_EQ(string("user1"), gw_cfg.lan_auth.lan_auth_user.buf);
-    ASSERT_EQ(string("qwe"), gw_cfg.lan_auth.lan_auth_pass.buf);
-    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key.buf);
-    ASSERT_TRUE(gw_cfg.filter.company_use_filtering);
-    ASSERT_EQ(888, gw_cfg.filter.company_id);
-    ASSERT_EQ(string("coord:123,456"), gw_cfg.coordinates.buf);
-    ASSERT_EQ(true, gw_cfg.scan.scan_coded_phy);
-    ASSERT_EQ(true, gw_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg.scan.scan_extended_payload);
-    ASSERT_EQ(true, gw_cfg.scan.scan_channel_37);
-    ASSERT_EQ(true, gw_cfg.scan.scan_channel_38);
-    ASSERT_EQ(true, gw_cfg.scan.scan_channel_39);
+    ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_EQ(string("SSL"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
+    ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
+    ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
+    ASSERT_EQ(8883, gw_cfg.ruuvi_cfg.mqtt.mqtt_port);
+    ASSERT_EQ(string("user123"), gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
+    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("user567"), gw_cfg.ruuvi_cfg.http.http_user.buf);
+    ASSERT_EQ(string("pass567"), gw_cfg.ruuvi_cfg.http.http_pass.buf);
+    ASSERT_TRUE(gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
+    ASSERT_EQ(string("https://api.ruuvi.com:456/status"), gw_cfg.ruuvi_cfg.http_stat.http_stat_url.buf);
+    ASSERT_EQ(string("user678"), gw_cfg.ruuvi_cfg.http_stat.http_stat_user.buf);
+    ASSERT_EQ(string("pass678"), gw_cfg.ruuvi_cfg.http_stat.http_stat_pass.buf);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("user1"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
+    ASSERT_EQ(string("qwe"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+    ASSERT_TRUE(gw_cfg.ruuvi_cfg.filter.company_use_filtering);
+    ASSERT_EQ(888, gw_cfg.ruuvi_cfg.filter.company_id);
+    ASSERT_EQ(string("coord:123,456"), gw_cfg.ruuvi_cfg.coordinates.buf);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
 
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Got SETTINGS:");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: SSL");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
@@ -649,91 +712,92 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_38: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_39: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "coordinates: coord:123,456");
+    esp_log_wrapper_clear();
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
 TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket) // NOLINT
 {
-    cJSON *root = cJSON_CreateObject();
-    ASSERT_NE(nullptr, root);
+    const string http_body = string(
+        "{\n"
+        "\t\"use_mqtt\":\ttrue,\n"
+        "\t\"mqtt_transport\":\t\"WS\",\n"
+        "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
+        "\t\"mqtt_prefix\":\t\"prefix\",\n"
+        "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+        "\t\"mqtt_port\":\t8080,\n"
+        "\t\"mqtt_user\":\t\"user123\",\n"
 
-    cJSON_AddBoolToObject(root, "use_mqtt", true);
-    cJSON_AddStringToObject(root, "mqtt_transport", "WS");
-    cJSON_AddStringToObject(root, "mqtt_server", "mqtt.server.org");
-    cJSON_AddStringToObject(root, "mqtt_prefix", "prefix");
-    cJSON_AddStringToObject(root, "mqtt_client_id", "AA:BB:CC:DD:EE:FF");
-    cJSON_AddNumberToObject(root, "mqtt_port", 8080);
-    cJSON_AddStringToObject(root, "mqtt_user", "user123");
+        "\t\"use_http\":\tfalse,\n"
+        "\t\"http_url\":\t\"https://api.ruuvi.com:456/api\",\n"
+        "\t\"http_user\":\t\"user567\",\n"
+        "\t\"http_pass\":\t\"pass567\",\n"
 
-    cJSON_AddBoolToObject(root, "use_http", false);
-    cJSON_AddStringToObject(root, "http_url", "https://api.ruuvi.com:456/api");
-    cJSON_AddStringToObject(root, "http_user", "user567");
-    cJSON_AddStringToObject(root, "http_pass", "pass567");
+        "\t\"use_http_stat\":\ttrue,\n"
+        "\t\"http_stat_url\":\t\"https://api.ruuvi.com:456/status\",\n"
+        "\t\"http_stat_user\":\t\"user678\",\n"
+        "\t\"http_stat_pass\":\t\"pass678\",\n"
 
-    cJSON_AddBoolToObject(root, "use_http_stat", true);
-    cJSON_AddStringToObject(root, "http_stat_url", "https://api.ruuvi.com:456/status");
-    cJSON_AddStringToObject(root, "http_stat_user", "user678");
-    cJSON_AddStringToObject(root, "http_stat_pass", "pass678");
+        "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
+        "\t\"lan_auth_user\":\t\"user1\",\n"
+        "\t\"lan_auth_pass\":\t\"qwe\",\n"
+        "\t\"lan_auth_api_key\":\t\"\",\n"
 
-    cJSON_AddStringToObject(root, "lan_auth_type", "lan_auth_ruuvi");
-    cJSON_AddStringToObject(root, "lan_auth_user", "user1");
-    cJSON_AddStringToObject(root, "lan_auth_pass", "qwe");
-    cJSON_AddStringToObject(root, "lan_auth_api_key", "");
+        "\t\"auto_update_cycle\":\t\"beta\",\n"
+        "\t\"auto_update_weekdays_bitmask\":\t126,\n"
+        "\t\"auto_update_interval_from\":\t1,\n"
+        "\t\"auto_update_interval_to\":\t23,\n"
+        "\t\"auto_update_tz_offset_hours\":\t7,\n"
 
-    cJSON_AddStringToObject(root, "auto_update_cycle", "beta");
-    cJSON_AddNumberToObject(root, "auto_update_weekdays_bitmask", 126);
-    cJSON_AddNumberToObject(root, "auto_update_interval_from", 1);
-    cJSON_AddNumberToObject(root, "auto_update_interval_to", 23);
-    cJSON_AddNumberToObject(root, "auto_update_tz_offset_hours", 7);
+        "\t\"company_use_filtering\":\ttrue,\n"
+        "\t\"company_id\":\t888,\n"
 
-    cJSON_AddBoolToObject(root, "company_use_filtering", true);
-    cJSON_AddNumberToObject(root, "company_id", 888);
+        "\t\"coordinates\":\t\"coord:123,456\",\n"
 
-    cJSON_AddStringToObject(root, "coordinates", "coord:123,456");
+        "\t\"scan_coded_phy\":\ttrue,\n"
+        "\t\"scan_1mbit_phy\":\ttrue,\n"
+        "\t\"scan_extended_payload\":\ttrue,\n"
+        "\t\"scan_channel_37\":\ttrue,\n"
+        "\t\"scan_channel_38\":\ttrue,\n"
+        "\t\"scan_channel_39\":\ttrue\n"
+        "}");
 
-    cJSON_AddBoolToObject(root, "scan_coded_phy", true);
-    cJSON_AddBoolToObject(root, "scan_1mbit_phy", true);
-    cJSON_AddBoolToObject(root, "scan_extended_payload", true);
-    cJSON_AddBoolToObject(root, "scan_channel_37", true);
-    cJSON_AddBoolToObject(root, "scan_channel_38", true);
-    cJSON_AddBoolToObject(root, "scan_channel_39", true);
-
-    ruuvi_gateway_config_t gw_cfg           = { 0 };
-    bool                   flag_network_cfg = false;
-    ASSERT_TRUE(json_ruuvi_parse(root, &gw_cfg, &flag_network_cfg));
-    cJSON_Delete(root);
+    gw_cfg_t gw_cfg = { 0 };
+    gw_cfg_default_get(&gw_cfg);
+    bool flag_network_cfg = false;
+    ASSERT_TRUE(json_ruuvi_parse_http_body(http_body.c_str(), &gw_cfg, &flag_network_cfg));
     ASSERT_FALSE(flag_network_cfg);
-    ASSERT_TRUE(gw_cfg.mqtt.use_mqtt);
-    ASSERT_EQ(string("WS"), gw_cfg.mqtt.mqtt_transport.buf);
-    ASSERT_EQ(string("mqtt.server.org"), gw_cfg.mqtt.mqtt_server.buf);
-    ASSERT_EQ(string("prefix"), gw_cfg.mqtt.mqtt_prefix.buf);
-    ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.mqtt.mqtt_client_id.buf);
-    ASSERT_EQ(8080, gw_cfg.mqtt.mqtt_port);
-    ASSERT_EQ(string("user123"), gw_cfg.mqtt.mqtt_user.buf);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_pass.buf);
-    ASSERT_FALSE(gw_cfg.http.use_http);
-    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.http.http_url.buf);
-    ASSERT_EQ(string("user567"), gw_cfg.http.http_user.buf);
-    ASSERT_EQ(string("pass567"), gw_cfg.http.http_pass.buf);
-    ASSERT_TRUE(gw_cfg.http_stat.use_http_stat);
-    ASSERT_EQ(string("https://api.ruuvi.com:456/status"), gw_cfg.http_stat.http_stat_url.buf);
-    ASSERT_EQ(string("user678"), gw_cfg.http_stat.http_stat_user.buf);
-    ASSERT_EQ(string("pass678"), gw_cfg.http_stat.http_stat_pass.buf);
-    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.lan_auth.lan_auth_type);
-    ASSERT_EQ(string("user1"), gw_cfg.lan_auth.lan_auth_user.buf);
-    ASSERT_EQ(string("qwe"), gw_cfg.lan_auth.lan_auth_pass.buf);
-    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key.buf);
-    ASSERT_TRUE(gw_cfg.filter.company_use_filtering);
-    ASSERT_EQ(888, gw_cfg.filter.company_id);
-    ASSERT_EQ(string("coord:123,456"), gw_cfg.coordinates.buf);
-    ASSERT_EQ(true, gw_cfg.scan.scan_coded_phy);
-    ASSERT_EQ(true, gw_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg.scan.scan_extended_payload);
-    ASSERT_EQ(true, gw_cfg.scan.scan_channel_37);
-    ASSERT_EQ(true, gw_cfg.scan.scan_channel_38);
-    ASSERT_EQ(true, gw_cfg.scan.scan_channel_39);
+    ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_EQ(string("WS"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
+    ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
+    ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
+    ASSERT_EQ(8080, gw_cfg.ruuvi_cfg.mqtt.mqtt_port);
+    ASSERT_EQ(string("user123"), gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
+    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("user567"), gw_cfg.ruuvi_cfg.http.http_user.buf);
+    ASSERT_EQ(string("pass567"), gw_cfg.ruuvi_cfg.http.http_pass.buf);
+    ASSERT_TRUE(gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
+    ASSERT_EQ(string("https://api.ruuvi.com:456/status"), gw_cfg.ruuvi_cfg.http_stat.http_stat_url.buf);
+    ASSERT_EQ(string("user678"), gw_cfg.ruuvi_cfg.http_stat.http_stat_user.buf);
+    ASSERT_EQ(string("pass678"), gw_cfg.ruuvi_cfg.http_stat.http_stat_pass.buf);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("user1"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
+    ASSERT_EQ(string("qwe"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+    ASSERT_TRUE(gw_cfg.ruuvi_cfg.filter.company_use_filtering);
+    ASSERT_EQ(888, gw_cfg.ruuvi_cfg.filter.company_id);
+    ASSERT_EQ(string("coord:123,456"), gw_cfg.ruuvi_cfg.coordinates.buf);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
 
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Got SETTINGS:");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: WS");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
@@ -771,91 +835,92 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_38: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_39: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "coordinates: coord:123,456");
+    esp_log_wrapper_clear();
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
 TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
 {
-    cJSON *root = cJSON_CreateObject();
-    ASSERT_NE(nullptr, root);
+    const string http_body = string(
+        "{\n"
+        "\t\"use_mqtt\":\ttrue,\n"
+        "\t\"mqtt_transport\":\t\"WSS\",\n"
+        "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
+        "\t\"mqtt_prefix\":\t\"prefix\",\n"
+        "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+        "\t\"mqtt_port\":\t8081,\n"
+        "\t\"mqtt_user\":\t\"user123\",\n"
 
-    cJSON_AddBoolToObject(root, "use_mqtt", true);
-    cJSON_AddStringToObject(root, "mqtt_transport", "WSS");
-    cJSON_AddStringToObject(root, "mqtt_server", "mqtt.server.org");
-    cJSON_AddStringToObject(root, "mqtt_prefix", "prefix");
-    cJSON_AddStringToObject(root, "mqtt_client_id", "AA:BB:CC:DD:EE:FF");
-    cJSON_AddNumberToObject(root, "mqtt_port", 8081);
-    cJSON_AddStringToObject(root, "mqtt_user", "user123");
+        "\t\"use_http\":\tfalse,\n"
+        "\t\"http_url\":\t\"https://api.ruuvi.com:456/api\",\n"
+        "\t\"http_user\":\t\"user567\",\n"
+        "\t\"http_pass\":\t\"pass567\",\n"
 
-    cJSON_AddBoolToObject(root, "use_http", false);
-    cJSON_AddStringToObject(root, "http_url", "https://api.ruuvi.com:456/api");
-    cJSON_AddStringToObject(root, "http_user", "user567");
-    cJSON_AddStringToObject(root, "http_pass", "pass567");
+        "\t\"use_http_stat\":\ttrue,\n"
+        "\t\"http_stat_url\":\t\"https://api.ruuvi.com:456/status\",\n"
+        "\t\"http_stat_user\":\t\"user678\",\n"
+        "\t\"http_stat_pass\":\t\"pass678\",\n"
 
-    cJSON_AddBoolToObject(root, "use_http_stat", true);
-    cJSON_AddStringToObject(root, "http_stat_url", "https://api.ruuvi.com:456/status");
-    cJSON_AddStringToObject(root, "http_stat_user", "user678");
-    cJSON_AddStringToObject(root, "http_stat_pass", "pass678");
+        "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
+        "\t\"lan_auth_user\":\t\"user1\",\n"
+        "\t\"lan_auth_pass\":\t\"qwe\",\n"
+        "\t\"lan_auth_api_key\":\t\"\",\n"
 
-    cJSON_AddStringToObject(root, "lan_auth_type", "lan_auth_ruuvi");
-    cJSON_AddStringToObject(root, "lan_auth_user", "user1");
-    cJSON_AddStringToObject(root, "lan_auth_pass", "qwe");
-    cJSON_AddStringToObject(root, "lan_auth_api_key", "");
+        "\t\"auto_update_cycle\":\t\"beta\",\n"
+        "\t\"auto_update_weekdays_bitmask\":\t126,\n"
+        "\t\"auto_update_interval_from\":\t1,\n"
+        "\t\"auto_update_interval_to\":\t23,\n"
+        "\t\"auto_update_tz_offset_hours\":\t7,\n"
 
-    cJSON_AddStringToObject(root, "auto_update_cycle", "beta");
-    cJSON_AddNumberToObject(root, "auto_update_weekdays_bitmask", 126);
-    cJSON_AddNumberToObject(root, "auto_update_interval_from", 1);
-    cJSON_AddNumberToObject(root, "auto_update_interval_to", 23);
-    cJSON_AddNumberToObject(root, "auto_update_tz_offset_hours", 7);
+        "\t\"company_use_filtering\":\ttrue,\n"
+        "\t\"company_id\":\t888,\n"
 
-    cJSON_AddBoolToObject(root, "company_use_filtering", true);
-    cJSON_AddNumberToObject(root, "company_id", 888);
+        "\t\"coordinates\":\t\"coord:123,456\",\n"
 
-    cJSON_AddStringToObject(root, "coordinates", "coord:123,456");
+        "\t\"scan_coded_phy\":\ttrue,\n"
+        "\t\"scan_1mbit_phy\":\ttrue,\n"
+        "\t\"scan_extended_payload\":\ttrue,\n"
+        "\t\"scan_channel_37\":\ttrue,\n"
+        "\t\"scan_channel_38\":\ttrue,\n"
+        "\t\"scan_channel_39\":\ttrue\n"
+        "}");
 
-    cJSON_AddBoolToObject(root, "scan_coded_phy", true);
-    cJSON_AddBoolToObject(root, "scan_1mbit_phy", true);
-    cJSON_AddBoolToObject(root, "scan_extended_payload", true);
-    cJSON_AddBoolToObject(root, "scan_channel_37", true);
-    cJSON_AddBoolToObject(root, "scan_channel_38", true);
-    cJSON_AddBoolToObject(root, "scan_channel_39", true);
-
-    ruuvi_gateway_config_t gw_cfg           = { 0 };
-    bool                   flag_network_cfg = false;
-    ASSERT_TRUE(json_ruuvi_parse(root, &gw_cfg, &flag_network_cfg));
-    cJSON_Delete(root);
+    gw_cfg_t gw_cfg = { 0 };
+    gw_cfg_default_get(&gw_cfg);
+    bool flag_network_cfg = false;
+    ASSERT_TRUE(json_ruuvi_parse_http_body(http_body.c_str(), &gw_cfg, &flag_network_cfg));
     ASSERT_FALSE(flag_network_cfg);
-    ASSERT_TRUE(gw_cfg.mqtt.use_mqtt);
-    ASSERT_EQ(string("WSS"), gw_cfg.mqtt.mqtt_transport.buf);
-    ASSERT_EQ(string("mqtt.server.org"), gw_cfg.mqtt.mqtt_server.buf);
-    ASSERT_EQ(string("prefix"), gw_cfg.mqtt.mqtt_prefix.buf);
-    ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.mqtt.mqtt_client_id.buf);
-    ASSERT_EQ(8081, gw_cfg.mqtt.mqtt_port);
-    ASSERT_EQ(string("user123"), gw_cfg.mqtt.mqtt_user.buf);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_pass.buf);
-    ASSERT_FALSE(gw_cfg.http.use_http);
-    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.http.http_url.buf);
-    ASSERT_EQ(string("user567"), gw_cfg.http.http_user.buf);
-    ASSERT_EQ(string("pass567"), gw_cfg.http.http_pass.buf);
-    ASSERT_TRUE(gw_cfg.http_stat.use_http_stat);
-    ASSERT_EQ(string("https://api.ruuvi.com:456/status"), gw_cfg.http_stat.http_stat_url.buf);
-    ASSERT_EQ(string("user678"), gw_cfg.http_stat.http_stat_user.buf);
-    ASSERT_EQ(string("pass678"), gw_cfg.http_stat.http_stat_pass.buf);
-    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.lan_auth.lan_auth_type);
-    ASSERT_EQ(string("user1"), gw_cfg.lan_auth.lan_auth_user.buf);
-    ASSERT_EQ(string("qwe"), gw_cfg.lan_auth.lan_auth_pass.buf);
-    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key.buf);
-    ASSERT_TRUE(gw_cfg.filter.company_use_filtering);
-    ASSERT_EQ(888, gw_cfg.filter.company_id);
-    ASSERT_EQ(string("coord:123,456"), gw_cfg.coordinates.buf);
-    ASSERT_EQ(true, gw_cfg.scan.scan_coded_phy);
-    ASSERT_EQ(true, gw_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg.scan.scan_extended_payload);
-    ASSERT_EQ(true, gw_cfg.scan.scan_channel_37);
-    ASSERT_EQ(true, gw_cfg.scan.scan_channel_38);
-    ASSERT_EQ(true, gw_cfg.scan.scan_channel_39);
+    ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_EQ(string("WSS"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
+    ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
+    ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
+    ASSERT_EQ(8081, gw_cfg.ruuvi_cfg.mqtt.mqtt_port);
+    ASSERT_EQ(string("user123"), gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
+    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("user567"), gw_cfg.ruuvi_cfg.http.http_user.buf);
+    ASSERT_EQ(string("pass567"), gw_cfg.ruuvi_cfg.http.http_pass.buf);
+    ASSERT_TRUE(gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
+    ASSERT_EQ(string("https://api.ruuvi.com:456/status"), gw_cfg.ruuvi_cfg.http_stat.http_stat_url.buf);
+    ASSERT_EQ(string("user678"), gw_cfg.ruuvi_cfg.http_stat.http_stat_user.buf);
+    ASSERT_EQ(string("pass678"), gw_cfg.ruuvi_cfg.http_stat.http_stat_pass.buf);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("user1"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
+    ASSERT_EQ(string("qwe"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+    ASSERT_TRUE(gw_cfg.ruuvi_cfg.filter.company_use_filtering);
+    ASSERT_EQ(888, gw_cfg.ruuvi_cfg.filter.company_id);
+    ASSERT_EQ(string("coord:123,456"), gw_cfg.ruuvi_cfg.coordinates.buf);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
 
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Got SETTINGS:");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: WSS");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
@@ -893,13 +958,15 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_38: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_39: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "coordinates: coord:123,456");
+    esp_log_wrapper_clear();
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
 TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
 {
-    ruuvi_gateway_config_t gw_cfg = { 0 };
-    cJSON_Hooks            hooks  = {
+    gw_cfg_t gw_cfg = { 0 };
+    gw_cfg_default_get(&gw_cfg);
+    cJSON_Hooks hooks = {
         .malloc_fn = &os_malloc,
         .free_fn   = &os_free_internal,
     };
@@ -946,31 +1013,31 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
             &flag_network_cfg));
 
     ASSERT_FALSE(flag_network_cfg);
-    ASSERT_TRUE(gw_cfg.mqtt.use_mqtt);
-    ASSERT_EQ(string("TCP"), gw_cfg.mqtt.mqtt_transport.buf);
-    ASSERT_EQ(string("test.mosquitto.org"), gw_cfg.mqtt.mqtt_server.buf);
-    ASSERT_EQ(string("ruuvi/30:AE:A4:02:84:A4"), gw_cfg.mqtt.mqtt_prefix.buf);
-    ASSERT_EQ(string("30:AE:A4:02:84:A4"), gw_cfg.mqtt.mqtt_client_id.buf);
-    ASSERT_EQ(1883, gw_cfg.mqtt.mqtt_port);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_user.buf);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_pass.buf);
-    ASSERT_FALSE(gw_cfg.http.use_http);
-    ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_DEFAULT_URL), gw_cfg.http.http_url.buf);
-    ASSERT_EQ(string(""), gw_cfg.http.http_user.buf);
-    ASSERT_EQ(string(""), gw_cfg.http.http_pass.buf);
-    ASSERT_TRUE(gw_cfg.http_stat.use_http_stat);
-    ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_STATUS_URL), gw_cfg.http_stat.http_stat_url.buf);
-    ASSERT_EQ(string(""), gw_cfg.http_stat.http_stat_user.buf);
-    ASSERT_EQ(string(""), gw_cfg.http_stat.http_stat_pass.buf);
-    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.lan_auth.lan_auth_type);
-    ASSERT_EQ(string("user1"), gw_cfg.lan_auth.lan_auth_user.buf);
-    ASSERT_EQ(string("qwe"), gw_cfg.lan_auth.lan_auth_pass.buf);
-    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key.buf);
-    ASSERT_TRUE(gw_cfg.filter.company_use_filtering);
-    ASSERT_EQ(RUUVI_COMPANY_ID, gw_cfg.filter.company_id);
-    ASSERT_EQ(string(""), gw_cfg.coordinates.buf);
+    ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(string("test.mosquitto.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
+    ASSERT_EQ(string("ruuvi/30:AE:A4:02:84:A4"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
+    ASSERT_EQ(string("30:AE:A4:02:84:A4"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
+    ASSERT_EQ(1883, gw_cfg.ruuvi_cfg.mqtt.mqtt_port);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
+    ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_DEFAULT_URL), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http.http_user.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http.http_pass.buf);
+    ASSERT_TRUE(gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
+    ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_STATUS_URL), gw_cfg.ruuvi_cfg.http_stat.http_stat_url.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http_stat.http_stat_user.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http_stat.http_stat_pass.buf);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("user1"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
+    ASSERT_EQ(string("qwe"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+    ASSERT_TRUE(gw_cfg.ruuvi_cfg.filter.company_use_filtering);
+    ASSERT_EQ(RUUVI_COMPANY_ID, gw_cfg.ruuvi_cfg.filter.company_id);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.coordinates.buf);
 
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Got SETTINGS:");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
@@ -1007,14 +1074,16 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_39: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "coordinates: not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'coordinates' in config-json");
+    esp_log_wrapper_clear();
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
 TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body_malloc_failed) // NOLINT
 {
-    ruuvi_gateway_config_t gw_cfg = { 0 };
-    cJSON_Hooks            hooks  = {
+    gw_cfg_t gw_cfg = { 0 };
+    gw_cfg_default_get(&gw_cfg);
+    cJSON_Hooks hooks = {
         .malloc_fn = &os_malloc,
         .free_fn   = &os_free_internal,
     };

@@ -16,6 +16,8 @@
 #include "gw_cfg_default.h"
 #include "str_buf.h"
 #include "wifiman_md5.h"
+#include "os_mutex.h"
+#include "lwip/ip4_addr.h"
 
 using namespace std;
 
@@ -190,12 +192,54 @@ void
 os_mutex_recursive_unlock(os_mutex_recursive_t const h_mutex)
 {
 }
+
+os_mutex_t
+os_mutex_create_static(os_mutex_static_t *const p_mutex_static)
+{
+    return reinterpret_cast<os_mutex_t>(p_mutex_static);
 }
 
-static ruuvi_gateway_config_t
+void
+os_mutex_delete(os_mutex_t *const ph_mutex)
+{
+    (void)ph_mutex;
+}
+
+void
+os_mutex_lock(os_mutex_t const h_mutex)
+{
+    (void)h_mutex;
+}
+
+void
+os_mutex_unlock(os_mutex_t const h_mutex)
+{
+    (void)h_mutex;
+}
+
+char *
+esp_ip4addr_ntoa(const esp_ip4_addr_t *addr, char *buf, int buflen)
+{
+    return ip4addr_ntoa_r((ip4_addr_t *)addr, buf, buflen);
+}
+
+uint32_t
+esp_ip4addr_aton(const char *addr)
+{
+    return ipaddr_addr(addr);
+}
+
+void
+wifi_manager_cb_save_wifi_config(const wifiman_config_t *const p_cfg)
+{
+}
+
+} // extern "C"
+
+static gw_cfg_t
 get_gateway_config_default()
 {
-    ruuvi_gateway_config_t gw_cfg {};
+    gw_cfg_t gw_cfg {};
     gw_cfg_default_get(&gw_cfg);
     return gw_cfg;
 }
@@ -228,9 +272,12 @@ TEST_F(TestRuuviAuth, test_default_auth_non_zero_id) // NOLINT
 TEST_F(TestRuuviAuth, test_non_default_auth_password) // NOLINT
 {
     this->initGwCfg((nrf52_device_id_t) { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x0A, 0x0B });
-    ruuvi_gateway_config_t gw_cfg_tmp = get_gateway_config_default();
-    snprintf(&gw_cfg_tmp.lan_auth.lan_auth_pass.buf[0], sizeof(gw_cfg_tmp.lan_auth.lan_auth_pass.buf), "qwe");
-    gw_cfg_update(&gw_cfg_tmp, false);
+    gw_cfg_t gw_cfg_tmp = get_gateway_config_default();
+    snprintf(
+        &gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_pass.buf[0],
+        sizeof(gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_pass.buf),
+        "qwe");
+    gw_cfg_update_ruuvi_cfg(&gw_cfg_tmp.ruuvi_cfg);
     ASSERT_TRUE(ruuvi_auth_set_from_config());
     const http_server_auth_info_t *const p_auth_info = http_server_get_auth();
     ASSERT_NE(nullptr, p_auth_info);
@@ -242,10 +289,16 @@ TEST_F(TestRuuviAuth, test_non_default_auth_password) // NOLINT
 TEST_F(TestRuuviAuth, test_non_default_auth_user_password) // NOLINT
 {
     this->initGwCfg((nrf52_device_id_t) { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x0A, 0x0B });
-    ruuvi_gateway_config_t gw_cfg_tmp = get_gateway_config_default();
-    snprintf(&gw_cfg_tmp.lan_auth.lan_auth_user.buf[0], sizeof(gw_cfg_tmp.lan_auth.lan_auth_user.buf), "user1");
-    snprintf(&gw_cfg_tmp.lan_auth.lan_auth_pass.buf[0], sizeof(gw_cfg_tmp.lan_auth.lan_auth_pass.buf), "qwe");
-    gw_cfg_update(&gw_cfg_tmp, false);
+    gw_cfg_t gw_cfg_tmp = get_gateway_config_default();
+    snprintf(
+        &gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_user.buf[0],
+        sizeof(gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_user.buf),
+        "user1");
+    snprintf(
+        &gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_pass.buf[0],
+        sizeof(gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_pass.buf),
+        "qwe");
+    gw_cfg_update_ruuvi_cfg(&gw_cfg_tmp.ruuvi_cfg);
     ASSERT_TRUE(ruuvi_auth_set_from_config());
     const http_server_auth_info_t *const p_auth_info = http_server_get_auth();
     ASSERT_NE(nullptr, p_auth_info);
@@ -257,11 +310,17 @@ TEST_F(TestRuuviAuth, test_non_default_auth_user_password) // NOLINT
 TEST_F(TestRuuviAuth, test_non_default_auth_type_user_password) // NOLINT
 {
     this->initGwCfg((nrf52_device_id_t) { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x0A, 0x0B });
-    ruuvi_gateway_config_t gw_cfg_tmp = get_gateway_config_default();
-    gw_cfg_tmp.lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_DIGEST;
-    snprintf(&gw_cfg_tmp.lan_auth.lan_auth_user.buf[0], sizeof(gw_cfg_tmp.lan_auth.lan_auth_user.buf), "user1");
-    snprintf(&gw_cfg_tmp.lan_auth.lan_auth_pass.buf[0], sizeof(gw_cfg_tmp.lan_auth.lan_auth_pass.buf), "qwe");
-    gw_cfg_update(&gw_cfg_tmp, false);
+    gw_cfg_t gw_cfg_tmp                         = get_gateway_config_default();
+    gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_DIGEST;
+    snprintf(
+        &gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_user.buf[0],
+        sizeof(gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_user.buf),
+        "user1");
+    snprintf(
+        &gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_pass.buf[0],
+        sizeof(gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_pass.buf),
+        "qwe");
+    gw_cfg_update_ruuvi_cfg(&gw_cfg_tmp.ruuvi_cfg);
     ASSERT_TRUE(ruuvi_auth_set_from_config());
     const http_server_auth_info_t *const p_auth_info = http_server_get_auth();
     ASSERT_NE(nullptr, p_auth_info);

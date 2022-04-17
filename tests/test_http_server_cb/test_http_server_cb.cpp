@@ -22,9 +22,10 @@
 #include "ruuvi_device_id.h"
 #include "os_malloc.h"
 #include "os_mutex_recursive.h"
+#include "os_mutex.h"
 #include "gw_cfg_default.h"
-#include "nrf52fw.h"
 #include "fw_ver.h"
+#include "lwip/ip4_addr.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -104,32 +105,6 @@ bool
 fw_update_run(const fw_updating_reason_e fw_updating_reason)
 {
     return true;
-}
-
-mac_address_str_t
-nrf52_get_mac_address_str(void)
-{
-    mac_address_str_t mac_str = { 0 };
-    str_buf_t         str_buf = {
-        .buf  = mac_str.str_buf,
-        .size = sizeof(mac_str.str_buf),
-        .idx  = 0,
-    };
-    str_buf_printf(&str_buf, "AA:BB:CC:DD:EE:FF");
-    return mac_str;
-}
-
-nrf52_device_id_str_t
-nrf52_get_device_id_str(void)
-{
-    nrf52_device_id_str_t dev_id_str = { 0 };
-    str_buf_t             str_buf    = {
-        .buf  = dev_id_str.str_buf,
-        .size = sizeof(dev_id_str.str_buf),
-        .idx  = 0,
-    };
-    str_buf_printf(&str_buf, "11:22:33:44:55:66:77:88");
-    return dev_id_str;
 }
 
 void
@@ -263,6 +238,7 @@ protected:
         };
         gw_cfg_default_init(&init_params, nullptr);
         gw_cfg_init();
+        esp_log_wrapper_clear();
     }
 
     void
@@ -378,6 +354,47 @@ os_mutex_recursive_unlock(os_mutex_recursive_t const h_mutex)
 {
 }
 
+os_mutex_t
+os_mutex_create_static(os_mutex_static_t *const p_mutex_static)
+{
+    return reinterpret_cast<os_mutex_t>(p_mutex_static);
+}
+
+void
+os_mutex_delete(os_mutex_t *const ph_mutex)
+{
+    (void)ph_mutex;
+}
+
+void
+os_mutex_lock(os_mutex_t const h_mutex)
+{
+    (void)h_mutex;
+}
+
+void
+os_mutex_unlock(os_mutex_t const h_mutex)
+{
+    (void)h_mutex;
+}
+
+char *
+esp_ip4addr_ntoa(const esp_ip4_addr_t *addr, char *buf, int buflen)
+{
+    return ip4addr_ntoa_r((ip4_addr_t *)addr, buf, buflen);
+}
+
+uint32_t
+esp_ip4addr_aton(const char *addr)
+{
+    return ipaddr_addr(addr);
+}
+
+void
+wifi_manager_cb_save_wifi_config(const wifiman_config_t *const p_cfg)
+{
+}
+
 char *
 metrics_generate(void)
 {
@@ -430,7 +447,7 @@ adv_table_history_read(adv_report_table_t *const p_reports, const time_t cur_tim
 }
 
 bool
-settings_save_to_flash(const char *const p_json_str)
+settings_save_to_flash(void)
 {
     g_pTestClass->m_flag_settings_saved_to_flash = true;
     return true;
@@ -443,7 +460,7 @@ ethernet_update_ip(void)
 }
 
 void
-ruuvi_send_nrf_settings(const ruuvi_gateway_config_t *p_config)
+ruuvi_send_nrf_settings(const gw_cfg_t *p_config)
 {
     g_pTestClass->m_flag_settings_sent_to_nrf = true;
 }
@@ -535,10 +552,10 @@ TestHttpServerCb::~TestHttpServerCb() = default;
 
 #define TEST_CHECK_LOG_RECORD_GW_CFG(level_, msg_) ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("gw_cfg", level_, msg_)
 
-static ruuvi_gateway_config_t
+static gw_cfg_t
 get_gateway_config_default()
 {
-    ruuvi_gateway_config_t gw_cfg {};
+    gw_cfg_t gw_cfg {};
     gw_cfg_default_get(&gw_cfg);
     return gw_cfg;
 }
@@ -622,8 +639,8 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
           "\t\"scan_channel_39\":\ttrue,\n"
           "\t\"coordinates\":\t\"\"\n"
           "}";
-    bool                   flag_network_cfg = false;
-    ruuvi_gateway_config_t gw_cfg           = get_gateway_config_default();
+    bool     flag_network_cfg = false;
+    gw_cfg_t gw_cfg           = get_gateway_config_default();
     ASSERT_TRUE(
         json_ruuvi_parse_http_body(
             "{"
@@ -652,8 +669,8 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
             "}",
             &gw_cfg,
             &flag_network_cfg));
-    gw_cfg_update(&gw_cfg, false);
     ASSERT_FALSE(flag_network_cfg);
+    gw_cfg_update_ruuvi_cfg(&gw_cfg.ruuvi_cfg);
 
     esp_log_wrapper_clear();
     const http_server_resp_t resp = http_server_resp_json_ruuvi();
@@ -676,8 +693,8 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed_1) // NOLINT
     g_pTestClass->m_malloc_cnt         = 0;
     g_pTestClass->m_malloc_fail_on_cnt = 1;
 
-    bool                   flag_network_cfg = false;
-    ruuvi_gateway_config_t gw_cfg           = get_gateway_config_default();
+    bool     flag_network_cfg = false;
+    gw_cfg_t gw_cfg           = get_gateway_config_default();
     ASSERT_FALSE(
         json_ruuvi_parse_http_body(
             "{"
@@ -705,8 +722,8 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed_1) // NOLINT
 
 TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed_2) // NOLINT
 {
-    bool                   flag_network_cfg = false;
-    ruuvi_gateway_config_t gw_cfg           = get_gateway_config_default();
+    bool     flag_network_cfg = false;
+    gw_cfg_t gw_cfg           = get_gateway_config_default();
     ASSERT_TRUE(
         json_ruuvi_parse_http_body(
             "{"
@@ -730,7 +747,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed_2) // NOLINT
             &gw_cfg,
             &flag_network_cfg));
     ASSERT_FALSE(flag_network_cfg);
-    gw_cfg_update(&gw_cfg, false);
+    gw_cfg_update_ruuvi_cfg(&gw_cfg.ruuvi_cfg);
 
     g_pTestClass->m_malloc_cnt         = 0;
     g_pTestClass->m_malloc_fail_on_cnt = 2;
@@ -797,8 +814,8 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
           "\t\"scan_channel_39\":\ttrue,\n"
           "\t\"coordinates\":\t\"\"\n"
           "}";
-    bool                   flag_network_cfg = false;
-    ruuvi_gateway_config_t gw_cfg           = get_gateway_config_default();
+    bool     flag_network_cfg = false;
+    gw_cfg_t gw_cfg           = get_gateway_config_default();
     ASSERT_TRUE(
         json_ruuvi_parse_http_body(
             "{"
@@ -828,7 +845,7 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
             &gw_cfg,
             &flag_network_cfg));
     ASSERT_FALSE(flag_network_cfg);
-    gw_cfg_update(&gw_cfg, false);
+    gw_cfg_update_ruuvi_cfg(&gw_cfg.ruuvi_cfg);
 
     esp_log_wrapper_clear();
     const http_server_resp_t resp = http_server_resp_json("ruuvi.json", false);
@@ -1229,8 +1246,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
           "\t\"scan_channel_39\":\ttrue,\n"
           "\t\"coordinates\":\t\"\"\n"
           "}";
-    bool                   flag_network_cfg = false;
-    ruuvi_gateway_config_t gw_cfg           = get_gateway_config_default();
+    bool     flag_network_cfg = false;
+    gw_cfg_t gw_cfg           = get_gateway_config_default();
     ASSERT_TRUE(
         json_ruuvi_parse_http_body(
             "{"
@@ -1255,7 +1272,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
             &gw_cfg,
             &flag_network_cfg));
     ASSERT_FALSE(flag_network_cfg);
-    gw_cfg_update(&gw_cfg, false);
+    gw_cfg_update_ruuvi_cfg(&gw_cfg.ruuvi_cfg);
 
     esp_log_wrapper_clear();
     const http_server_resp_t resp = http_server_cb_on_get("ruuvi.json", false, nullptr);
@@ -1408,7 +1425,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Got SETTINGS:");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
@@ -1460,14 +1477,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'scan_channel_39' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "coordinates: not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'coordinates' in config-json");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS:");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth dhcp: 1"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth static ip: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth netmask: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth gw: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth dns1: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth dns2: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use mqtt: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
@@ -1637,10 +1646,16 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
 {
     const char *expected_resp = "{}";
     {
-        ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_rw();
-        p_gw_cfg->lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI;
-        snprintf(p_gw_cfg->lan_auth.lan_auth_user.buf, sizeof(p_gw_cfg->lan_auth.lan_auth_user.buf), "user1");
-        snprintf(p_gw_cfg->lan_auth.lan_auth_pass.buf, sizeof(p_gw_cfg->lan_auth.lan_auth_pass.buf), "password1");
+        gw_cfg_t *p_gw_cfg                         = gw_cfg_lock_rw();
+        p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI;
+        snprintf(
+            p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_user.buf,
+            sizeof(p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_user.buf),
+            "user1");
+        snprintf(
+            p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_pass.buf,
+            sizeof(p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_pass.buf),
+            "password1");
         gw_cfg_unlock_rw(&p_gw_cfg);
     }
     const http_server_resp_t resp = http_server_cb_on_post(
@@ -1683,7 +1698,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Got SETTINGS:");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
@@ -1732,14 +1747,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'scan_channel_39' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "coordinates: not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'coordinates' in config-json");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS:");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth dhcp: 1"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth static ip: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth netmask: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth gw: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth dns1: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth dns2: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use mqtt: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
@@ -1783,10 +1790,16 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     const char *expected_resp = "{}";
 
     {
-        ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_rw();
-        p_gw_cfg->lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI;
-        snprintf(p_gw_cfg->lan_auth.lan_auth_user.buf, sizeof(p_gw_cfg->lan_auth.lan_auth_user.buf), "user1");
-        snprintf(p_gw_cfg->lan_auth.lan_auth_pass.buf, sizeof(p_gw_cfg->lan_auth.lan_auth_pass.buf), "password1");
+        gw_cfg_t *p_gw_cfg                         = gw_cfg_lock_rw();
+        p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI;
+        snprintf(
+            p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_user.buf,
+            sizeof(p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_user.buf),
+            "user1");
+        snprintf(
+            p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_pass.buf,
+            sizeof(p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_pass.buf),
+            "password1");
         gw_cfg_unlock_rw(&p_gw_cfg);
     }
 
@@ -1833,7 +1846,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Got SETTINGS:");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
@@ -1881,14 +1894,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'scan_channel_39' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "coordinates: not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'coordinates' in config-json");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS:");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth dhcp: 1"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth static ip: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth netmask: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth gw: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth dns1: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth dns2: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use mqtt: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
@@ -1970,7 +1975,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
 
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Got SETTINGS:");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
@@ -2022,14 +2027,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'scan_channel_39' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "coordinates: not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'coordinates' in config-json");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS:");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use eth dhcp: 1"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth static ip: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth netmask: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth gw: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth dns1: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: eth dns2: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use mqtt: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));

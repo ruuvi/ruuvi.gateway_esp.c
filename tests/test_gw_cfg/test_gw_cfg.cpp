@@ -9,9 +9,12 @@
 #include "gtest/gtest.h"
 #include "freertos/FreeRTOS.h"
 #include "gw_cfg.h"
+#include "gw_cfg_log.h"
 #include "gw_cfg_default.h"
 #include "esp_log_wrapper.hpp"
 #include "os_mutex_recursive.h"
+#include "os_mutex.h"
+#include "lwip/ip4_addr.h"
 
 using namespace std;
 
@@ -184,16 +187,57 @@ os_mutex_recursive_unlock(os_mutex_recursive_t const h_mutex)
 {
 }
 
+os_mutex_t
+os_mutex_create_static(os_mutex_static_t *const p_mutex_static)
+{
+    return reinterpret_cast<os_mutex_t>(p_mutex_static);
+}
+
+void
+os_mutex_delete(os_mutex_t *const ph_mutex)
+{
+    (void)ph_mutex;
+}
+
+void
+os_mutex_lock(os_mutex_t const h_mutex)
+{
+    (void)h_mutex;
+}
+
+void
+os_mutex_unlock(os_mutex_t const h_mutex)
+{
+    (void)h_mutex;
+}
+
+char *
+esp_ip4addr_ntoa(const esp_ip4_addr_t *addr, char *buf, int buflen)
+{
+    return ip4addr_ntoa_r((ip4_addr_t *)addr, buf, buflen);
+}
+
+uint32_t
+esp_ip4addr_aton(const char *addr)
+{
+    return ipaddr_addr(addr);
+}
+
+void
+wifi_manager_cb_save_wifi_config(const wifiman_config_t *const p_cfg)
+{
+}
+
 } // extern "C"
 
 TestGwCfg::~TestGwCfg() = default;
 
 #define TEST_CHECK_LOG_RECORD(level_, msg_) ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("gw_cfg", level_, msg_)
 
-static ruuvi_gateway_config_t
+static gw_cfg_t
 get_gateway_config_default()
 {
-    ruuvi_gateway_config_t gw_cfg {};
+    gw_cfg_t gw_cfg {};
     gw_cfg_default_get(&gw_cfg);
     return gw_cfg;
 }
@@ -203,9 +247,8 @@ get_gateway_config_default()
 
 TEST_F(TestGwCfg, gw_cfg_print_to_log_default) // NOLINT
 {
-    const ruuvi_gateway_config_t gw_cfg = get_gateway_config_default();
-    gw_cfg_print_to_log(&gw_cfg, "Gateway SETTINGS", true);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS:"));
+    const gw_cfg_t gw_cfg = get_gateway_config_default();
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS (default):"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID / Hostname: my_ssid1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 fw ver: v1.10.0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 WiFi MAC ADDR: AA:BB:CC:DD:EE:11"));
@@ -213,13 +256,13 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use eth: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use eth dhcp: 1"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth static ip: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth netmask: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth gw: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth dns1: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth dns2: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: netmask: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: GW: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: DNS1: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: DNS2: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use mqtt: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
@@ -253,16 +296,42 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan channel 37: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan channel 38: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: SSID: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: password: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: ssid_len: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: channel: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: auth_mode: OPEN"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: ssid_hidden: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: max_connections: 4"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: beacon_interval: 100"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_settings: bandwidth: 20MHz"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_settings: IP: 10.10.0.1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_settings: GW: 10.10.0.1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_settings: Netmask: 255.255.255.0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: SSID:'', password:'********'"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: scan_method: Fast"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Use BSSID: false"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Channel: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Listen interval: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Sort method: by RSSI"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Fast scan: min RSSI: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Fast scan: weakest auth mode: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Capable: false"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Required: false"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Power save: NONE"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Use Static IP: no"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
 TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_beta_tester_and_negative_tz) // NOLINT
 {
-    ruuvi_gateway_config_t gw_cfg                  = get_gateway_config_default();
-    gw_cfg.auto_update.auto_update_cycle           = AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER;
-    gw_cfg.auto_update.auto_update_tz_offset_hours = -5;
+    gw_cfg_t gw_cfg                                          = get_gateway_config_default();
+    gw_cfg.ruuvi_cfg.auto_update.auto_update_cycle           = AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER;
+    gw_cfg.ruuvi_cfg.auto_update.auto_update_tz_offset_hours = -5;
 
-    gw_cfg_print_to_log(&gw_cfg, "Gateway SETTINGS", true);
+    esp_log_wrapper_clear();
+
+    gw_cfg_log(&gw_cfg, "Gateway SETTINGS", true);
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS:"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID / Hostname: my_ssid1"));
@@ -272,13 +341,13 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_beta_tester_and_
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use eth: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use eth dhcp: 1"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth static ip: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth netmask: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth gw: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth dns1: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth dns2: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: netmask: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: GW: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: DNS1: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: DNS2: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use mqtt: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
@@ -312,15 +381,41 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_beta_tester_and_
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan channel 37: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan channel 38: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: SSID: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: password: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: ssid_len: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: channel: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: auth_mode: OPEN"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: ssid_hidden: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: max_connections: 4"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: beacon_interval: 100"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_settings: bandwidth: 20MHz"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_settings: IP: 10.10.0.1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_settings: GW: 10.10.0.1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_settings: Netmask: 255.255.255.0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: SSID:'', password:'********'"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: scan_method: Fast"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Use BSSID: false"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Channel: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Listen interval: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Sort method: by RSSI"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Fast scan: min RSSI: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Fast scan: weakest auth mode: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Capable: false"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Required: false"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Power save: NONE"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Use Static IP: no"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
 TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_manual) // NOLINT
 {
-    ruuvi_gateway_config_t gw_cfg        = get_gateway_config_default();
-    gw_cfg.auto_update.auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_MANUAL;
+    gw_cfg_t gw_cfg                                = get_gateway_config_default();
+    gw_cfg.ruuvi_cfg.auto_update.auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_MANUAL;
 
-    gw_cfg_print_to_log(&gw_cfg, "Gateway SETTINGS", true);
+    esp_log_wrapper_clear();
+
+    gw_cfg_log(&gw_cfg, "Gateway SETTINGS", true);
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS:"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID / Hostname: my_ssid1"));
@@ -330,13 +425,13 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_manual) // NOLIN
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use eth: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use eth dhcp: 1"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth static ip: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth netmask: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth gw: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth dns1: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth dns2: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: netmask: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: GW: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: DNS1: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: DNS2: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use mqtt: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
@@ -370,15 +465,41 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_manual) // NOLIN
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan channel 37: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan channel 38: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: SSID: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: password: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: ssid_len: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: channel: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: auth_mode: OPEN"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: ssid_hidden: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: max_connections: 4"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: beacon_interval: 100"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_settings: bandwidth: 20MHz"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_settings: IP: 10.10.0.1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_settings: GW: 10.10.0.1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_settings: Netmask: 255.255.255.0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: SSID:'', password:'********'"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: scan_method: Fast"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Use BSSID: false"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Channel: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Listen interval: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Sort method: by RSSI"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Fast scan: min RSSI: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Fast scan: weakest auth mode: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Capable: false"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Required: false"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Power save: NONE"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Use Static IP: no"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
 TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_invalid) // NOLINT
 {
-    ruuvi_gateway_config_t gw_cfg        = get_gateway_config_default();
-    gw_cfg.auto_update.auto_update_cycle = (auto_update_cycle_type_e)-1;
+    gw_cfg_t gw_cfg                                = get_gateway_config_default();
+    gw_cfg.ruuvi_cfg.auto_update.auto_update_cycle = (auto_update_cycle_type_e)-1;
 
-    gw_cfg_print_to_log(&gw_cfg, "Gateway SETTINGS", true);
+    esp_log_wrapper_clear();
+
+    gw_cfg_log(&gw_cfg, "Gateway SETTINGS", true);
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS:"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID / Hostname: my_ssid1"));
@@ -388,13 +509,13 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_invalid) // NOLI
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use eth: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use eth dhcp: 1"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth static ip: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth netmask: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth gw: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth dns1: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth dns2: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: netmask: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: GW: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: DNS1: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: DNS2: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use mqtt: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
@@ -428,5 +549,29 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_invalid) // NOLI
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan channel 37: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan channel 38: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: SSID: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: password: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: ssid_len: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: channel: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: auth_mode: OPEN"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: ssid_hidden: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: max_connections: 4"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: beacon_interval: 100"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_settings: bandwidth: 20MHz"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_settings: IP: 10.10.0.1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_settings: GW: 10.10.0.1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_settings: Netmask: 255.255.255.0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: SSID:'', password:'********'"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: scan_method: Fast"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Use BSSID: false"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Channel: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Listen interval: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Sort method: by RSSI"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Fast scan: min RSSI: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Fast scan: weakest auth mode: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Capable: false"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Required: false"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Power save: NONE"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Use Static IP: no"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }

@@ -31,7 +31,7 @@
 static const char TAG[] = "http_server";
 
 bool
-json_ruuvi_parse_http_body(const char *p_body, gw_cfg_t *const p_gw_cfg, bool *const p_flag_network_cfg)
+json_ruuvi_parse_http_body(const char *const p_body, gw_cfg_t *const p_gw_cfg, bool *const p_flag_network_cfg)
 {
     cJSON *p_json_root = cJSON_Parse(p_body);
     if (NULL == p_json_root)
@@ -45,11 +45,11 @@ json_ruuvi_parse_http_body(const char *p_body, gw_cfg_t *const p_gw_cfg, bool *c
     if (*p_flag_network_cfg)
     {
         p_gw_cfg->eth_cfg = gw_cfg_default_get_eth();
-        gw_cfg_json_parse_cjson_eth(p_json_root, "Gateway SETTINGS (via HTTP)", &p_gw_cfg->eth_cfg);
+        gw_cfg_json_parse_cjson_eth(p_json_root, "Gateway SETTINGS (via HTTP):", &p_gw_cfg->eth_cfg);
     }
     else
     {
-        gw_cfg_json_parse_cjson_ruuvi(p_json_root, "Gateway SETTINGS (via HTTP)", &p_gw_cfg->ruuvi_cfg);
+        gw_cfg_json_parse_cjson_ruuvi(p_json_root, "Gateway SETTINGS (via HTTP):", &p_gw_cfg->ruuvi_cfg);
     }
 
     cJSON_Delete(p_json_root);
