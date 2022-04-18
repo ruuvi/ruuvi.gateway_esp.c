@@ -25,6 +25,18 @@ static const gw_cfg_eth_t g_gateway_config_default_eth = {
 };
 
 static const gw_cfg_ruuvi_t g_gateway_config_default_ruuvi = {
+        .remote = {
+            .use_remote_cfg = false,
+            .url = {{ "" }},
+            .auth_type = GW_CFG_REMOTE_AUTH_TYPE_NO,
+            .auth = {
+                .auth_basic = {
+                    .user = {{ "" }},
+                    .password = {{ "" }},
+                },
+            },
+            .refresh_interval_minutes = 0,
+        },
         .http = {
             .use_http = true,
             .http_url = { { RUUVI_GATEWAY_HTTP_DEFAULT_URL } },

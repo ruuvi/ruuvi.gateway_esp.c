@@ -10,6 +10,10 @@
 #include <string.h>
 #include "os_mutex_recursive.h"
 
+_Static_assert(sizeof(GW_CFG_REMOTE_AUTH_TYPE_STR_NO) <= GW_CFG_REMOTE_AUTH_TYPE_STR_SIZE, "");
+_Static_assert(sizeof(GW_CFG_REMOTE_AUTH_TYPE_STR_BASIC) <= GW_CFG_REMOTE_AUTH_TYPE_STR_SIZE, "");
+_Static_assert(sizeof(GW_CFG_REMOTE_AUTH_TYPE_STR_BEARER) <= GW_CFG_REMOTE_AUTH_TYPE_STR_SIZE, "");
+
 static gw_cfg_t                    g_gateway_config = { 0 };
 static os_mutex_recursive_t        g_gw_cfg_mutex;
 static os_mutex_recursive_static_t g_gw_cfg_mutex_mem;

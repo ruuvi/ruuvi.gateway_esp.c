@@ -342,14 +342,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
 {
     const string http_body = string(
         "{\n"
-        "\t\"use_mqtt\":\ttrue,\n"
-        "\t\"mqtt_transport\":\t\"TCP\",\n"
-        "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
-        "\t\"mqtt_prefix\":\t\"prefix\",\n"
-        "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
-        "\t\"mqtt_port\":\t1234,\n"
-        "\t\"mqtt_user\":\t\"user123\",\n"
-        "\t\"mqtt_pass\":\t\"pass123\",\n"
+        "\t\"remote_cfg_use\":\tfalse,\n"
+        "\t\"remote_cfg_url\":\t\"\",\n"
+        "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+        "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
 
         "\t\"use_http\":\tfalse,\n"
         "\t\"http_url\":\t\"https://api.ruuvi.com:456/api\",\n"
@@ -360,6 +356,15 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
         "\t\"http_stat_url\":\t\"https://api.ruuvi.com:456/status\",\n"
         "\t\"http_stat_user\":\t\"user678\",\n"
         "\t\"http_stat_pass\":\t\"pass678\",\n"
+
+        "\t\"use_mqtt\":\ttrue,\n"
+        "\t\"mqtt_transport\":\t\"TCP\",\n"
+        "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
+        "\t\"mqtt_prefix\":\t\"prefix\",\n"
+        "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+        "\t\"mqtt_port\":\t1234,\n"
+        "\t\"mqtt_user\":\t\"user123\",\n"
+        "\t\"mqtt_pass\":\t\"pass123\",\n"
 
         "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
         "\t\"lan_auth_user\":\t\"user1\",\n"
@@ -390,6 +395,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     bool flag_network_cfg = false;
     ASSERT_TRUE(json_ruuvi_parse_http_body(http_body.c_str(), &gw_cfg, &flag_network_cfg));
     ASSERT_FALSE(flag_network_cfg);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.remote.use_remote_cfg);
+    ASSERT_EQ(string(""), string(gw_cfg.ruuvi_cfg.remote.url.buf));
+    ASSERT_EQ(GW_CFG_REMOTE_AUTH_TYPE_NO, gw_cfg.ruuvi_cfg.remote.auth_type);
+    ASSERT_EQ(0, gw_cfg.ruuvi_cfg.remote.refresh_interval_minutes);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
     ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
@@ -421,14 +430,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1234");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: prefix");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_client_id: AA:BB:CC:DD:EE:FF");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_user: user123");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_pass: pass123");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_url: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_auth_type: no");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_user: user567");
@@ -437,6 +442,14 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_pass: pass678");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1234");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: prefix");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_client_id: AA:BB:CC:DD:EE:FF");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_user: user123");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_pass: pass123");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_type: lan_auth_ruuvi");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
@@ -464,13 +477,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_http_and_mqtt_pass) // NOLINT
 {
     const string http_body = string(
         "{\n"
-        "\t\"use_mqtt\":\ttrue,\n"
-        "\t\"mqtt_transport\":\t\"TCP\",\n"
-        "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
-        "\t\"mqtt_prefix\":\t\"prefix\",\n"
-        "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
-        "\t\"mqtt_port\":\t1234,\n"
-        "\t\"mqtt_user\":\t\"user123\",\n"
+        "\t\"remote_cfg_use\":\tfalse,\n"
+        "\t\"remote_cfg_url\":\t\"\",\n"
+        "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+        "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
 
         "\t\"use_http\":\tfalse,\n"
         "\t\"http_url\":\t\"https://api.ruuvi.com:456/api\",\n"
@@ -479,6 +489,14 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_http_and_mqtt_pass) // NOLINT
         "\t\"use_http_stat\":\ttrue,\n"
         "\t\"http_stat_url\":\t\"https://api.ruuvi.com:456/status\",\n"
         "\t\"http_stat_user\":\t\"user678\",\n"
+
+        "\t\"use_mqtt\":\ttrue,\n"
+        "\t\"mqtt_transport\":\t\"TCP\",\n"
+        "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
+        "\t\"mqtt_prefix\":\t\"prefix\",\n"
+        "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+        "\t\"mqtt_port\":\t1234,\n"
+        "\t\"mqtt_user\":\t\"user123\",\n"
 
         "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
         "\t\"lan_auth_user\":\t\"user1\",\n"
@@ -515,6 +533,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_http_and_mqtt_pass) // NOLINT
     snprintf(gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf, sizeof(gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf), "prev_mqtt_pass");
     ASSERT_TRUE(json_ruuvi_parse_http_body(http_body.c_str(), &gw_cfg, &flag_network_cfg));
     ASSERT_FALSE(flag_network_cfg);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.remote.use_remote_cfg);
+    ASSERT_EQ(string(""), string(gw_cfg.ruuvi_cfg.remote.url.buf));
+    ASSERT_EQ(GW_CFG_REMOTE_AUTH_TYPE_NO, gw_cfg.ruuvi_cfg.remote.auth_type);
+    ASSERT_EQ(0, gw_cfg.ruuvi_cfg.remote.refresh_interval_minutes);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
     ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
@@ -546,17 +568,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_http_and_mqtt_pass) // NOLINT
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1234");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: prefix");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_client_id: AA:BB:CC:DD:EE:FF");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_user: user123");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_pass: not found");
-    TEST_CHECK_LOG_RECORD_GW_CFG(
-        ESP_LOG_INFO,
-        "Can't find key 'mqtt_pass' in config-json, leave the previous value unchanged");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_url: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_auth_type: no");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_user: user567");
@@ -571,6 +586,17 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_http_and_mqtt_pass) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(
         ESP_LOG_INFO,
         "Can't find key 'http_stat_pass' in config-json, leave the previous value unchanged");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1234");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: prefix");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_client_id: AA:BB:CC:DD:EE:FF");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_user: user123");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_pass: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_INFO,
+        "Can't find key 'mqtt_pass' in config-json, leave the previous value unchanged");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_type: lan_auth_ruuvi");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
@@ -597,13 +623,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
 {
     const string http_body = string(
         "{\n"
-        "\t\"use_mqtt\":\ttrue,\n"
-        "\t\"mqtt_transport\":\t\"SSL\",\n"
-        "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
-        "\t\"mqtt_prefix\":\t\"prefix\",\n"
-        "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
-        "\t\"mqtt_port\":\t8883,\n"
-        "\t\"mqtt_user\":\t\"user123\",\n"
+        "\t\"remote_cfg_use\":\tfalse,\n"
+        "\t\"remote_cfg_url\":\t\"\",\n"
+        "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+        "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
 
         "\t\"use_http\":\tfalse,\n"
         "\t\"http_url\":\t\"https://api.ruuvi.com:456/api\",\n"
@@ -614,6 +637,14 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
         "\t\"http_stat_url\":\t\"https://api.ruuvi.com:456/status\",\n"
         "\t\"http_stat_user\":\t\"user678\",\n"
         "\t\"http_stat_pass\":\t\"pass678\",\n"
+
+        "\t\"use_mqtt\":\ttrue,\n"
+        "\t\"mqtt_transport\":\t\"SSL\",\n"
+        "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
+        "\t\"mqtt_prefix\":\t\"prefix\",\n"
+        "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+        "\t\"mqtt_port\":\t8883,\n"
+        "\t\"mqtt_user\":\t\"user123\",\n"
 
         "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
         "\t\"lan_auth_user\":\t\"user1\",\n"
@@ -644,6 +675,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
     bool flag_network_cfg = false;
     ASSERT_TRUE(json_ruuvi_parse_http_body(http_body.c_str(), &gw_cfg, &flag_network_cfg));
     ASSERT_FALSE(flag_network_cfg);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.remote.use_remote_cfg);
+    ASSERT_EQ(string(""), string(gw_cfg.ruuvi_cfg.remote.url.buf));
+    ASSERT_EQ(GW_CFG_REMOTE_AUTH_TYPE_NO, gw_cfg.ruuvi_cfg.remote.auth_type);
+    ASSERT_EQ(0, gw_cfg.ruuvi_cfg.remote.refresh_interval_minutes);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
     ASSERT_EQ(string("SSL"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
@@ -675,6 +710,18 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_url: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_auth_type: no");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_user: user567");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_pass: pass567");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_pass: pass678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: SSL");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
@@ -686,14 +733,6 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(
         ESP_LOG_INFO,
         "Can't find key 'mqtt_pass' in config-json, leave the previous value unchanged");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_user: user567");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_pass: pass567");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_pass: pass678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_type: lan_auth_ruuvi");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
@@ -720,13 +759,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket) // NOLINT
 {
     const string http_body = string(
         "{\n"
-        "\t\"use_mqtt\":\ttrue,\n"
-        "\t\"mqtt_transport\":\t\"WS\",\n"
-        "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
-        "\t\"mqtt_prefix\":\t\"prefix\",\n"
-        "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
-        "\t\"mqtt_port\":\t8080,\n"
-        "\t\"mqtt_user\":\t\"user123\",\n"
+        "\t\"remote_cfg_use\":\tfalse,\n"
+        "\t\"remote_cfg_url\":\t\"\",\n"
+        "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+        "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
 
         "\t\"use_http\":\tfalse,\n"
         "\t\"http_url\":\t\"https://api.ruuvi.com:456/api\",\n"
@@ -737,6 +773,14 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket) // NOLINT
         "\t\"http_stat_url\":\t\"https://api.ruuvi.com:456/status\",\n"
         "\t\"http_stat_user\":\t\"user678\",\n"
         "\t\"http_stat_pass\":\t\"pass678\",\n"
+
+        "\t\"use_mqtt\":\ttrue,\n"
+        "\t\"mqtt_transport\":\t\"WS\",\n"
+        "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
+        "\t\"mqtt_prefix\":\t\"prefix\",\n"
+        "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+        "\t\"mqtt_port\":\t8080,\n"
+        "\t\"mqtt_user\":\t\"user123\",\n"
 
         "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
         "\t\"lan_auth_user\":\t\"user1\",\n"
@@ -767,6 +811,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket) // NOLINT
     bool flag_network_cfg = false;
     ASSERT_TRUE(json_ruuvi_parse_http_body(http_body.c_str(), &gw_cfg, &flag_network_cfg));
     ASSERT_FALSE(flag_network_cfg);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.remote.use_remote_cfg);
+    ASSERT_EQ(string(""), string(gw_cfg.ruuvi_cfg.remote.url.buf));
+    ASSERT_EQ(GW_CFG_REMOTE_AUTH_TYPE_NO, gw_cfg.ruuvi_cfg.remote.auth_type);
+    ASSERT_EQ(0, gw_cfg.ruuvi_cfg.remote.refresh_interval_minutes);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
     ASSERT_EQ(string("WS"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
@@ -798,6 +846,18 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket) // NOLINT
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_url: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_auth_type: no");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_user: user567");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_pass: pass567");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_pass: pass678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: WS");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
@@ -809,14 +869,6 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(
         ESP_LOG_INFO,
         "Can't find key 'mqtt_pass' in config-json, leave the previous value unchanged");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_user: user567");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_pass: pass567");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_pass: pass678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_type: lan_auth_ruuvi");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
@@ -843,13 +895,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
 {
     const string http_body = string(
         "{\n"
-        "\t\"use_mqtt\":\ttrue,\n"
-        "\t\"mqtt_transport\":\t\"WSS\",\n"
-        "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
-        "\t\"mqtt_prefix\":\t\"prefix\",\n"
-        "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
-        "\t\"mqtt_port\":\t8081,\n"
-        "\t\"mqtt_user\":\t\"user123\",\n"
+        "\t\"remote_cfg_use\":\tfalse,\n"
+        "\t\"remote_cfg_url\":\t\"\",\n"
+        "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+        "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
 
         "\t\"use_http\":\tfalse,\n"
         "\t\"http_url\":\t\"https://api.ruuvi.com:456/api\",\n"
@@ -860,6 +909,14 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
         "\t\"http_stat_url\":\t\"https://api.ruuvi.com:456/status\",\n"
         "\t\"http_stat_user\":\t\"user678\",\n"
         "\t\"http_stat_pass\":\t\"pass678\",\n"
+
+        "\t\"use_mqtt\":\ttrue,\n"
+        "\t\"mqtt_transport\":\t\"WSS\",\n"
+        "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
+        "\t\"mqtt_prefix\":\t\"prefix\",\n"
+        "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+        "\t\"mqtt_port\":\t8081,\n"
+        "\t\"mqtt_user\":\t\"user123\",\n"
 
         "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
         "\t\"lan_auth_user\":\t\"user1\",\n"
@@ -890,6 +947,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
     bool flag_network_cfg = false;
     ASSERT_TRUE(json_ruuvi_parse_http_body(http_body.c_str(), &gw_cfg, &flag_network_cfg));
     ASSERT_FALSE(flag_network_cfg);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.remote.use_remote_cfg);
+    ASSERT_EQ(string(""), string(gw_cfg.ruuvi_cfg.remote.url.buf));
+    ASSERT_EQ(GW_CFG_REMOTE_AUTH_TYPE_NO, gw_cfg.ruuvi_cfg.remote.auth_type);
+    ASSERT_EQ(0, gw_cfg.ruuvi_cfg.remote.refresh_interval_minutes);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
     ASSERT_EQ(string("WSS"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
@@ -921,6 +982,18 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_url: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_auth_type: no");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_user: user567");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_pass: pass567");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_pass: pass678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: WSS");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
@@ -932,14 +1005,6 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(
         ESP_LOG_INFO,
         "Can't find key 'mqtt_pass' in config-json, leave the previous value unchanged");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_user: user567");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_pass: pass567");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_pass: pass678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_type: lan_auth_ruuvi");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
@@ -976,6 +1041,21 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     ASSERT_TRUE(
         json_ruuvi_parse_http_body(
             "{"
+            "\t\"remote_cfg_use\":\tfalse,\n"
+            "\t\"remote_cfg_url\":\t\"\",\n"
+            "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+            "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+
+            "\"use_http\":false,"
+            "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\","
+            "\"http_user\":\"\","
+            "\"http_pass\":\"\","
+
+            "\"use_http_stat\":true,"
+            "\"http_stat_url\":\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\","
+            "\"http_stat_user\":\"\","
+            "\"http_stat_pass\":\"\","
+
             "\"use_mqtt\":true,"
             "\"mqtt_transport\":\"TCP\","
             "\"mqtt_server\":\"test.mosquitto.org\","
@@ -984,14 +1064,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
             "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
             "\"mqtt_user\":\"\","
             "\"mqtt_pass\":\"\","
-            "\"use_http\":false,"
-            "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\","
-            "\"http_user\":\"\","
-            "\"http_pass\":\"\","
-            "\"use_http_stat\":true,"
-            "\"http_stat_url\":\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\","
-            "\"http_stat_user\":\"\","
-            "\"http_stat_pass\":\"\","
+
             "\"lan_auth_type\":\"lan_auth_ruuvi\","
             "\"lan_auth_user\":\"user1\","
             "\"lan_auth_pass\":\"qwe\","
@@ -1014,6 +1087,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
 
     ASSERT_FALSE(flag_network_cfg);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.remote.use_remote_cfg);
+    ASSERT_EQ(string(""), string(gw_cfg.ruuvi_cfg.remote.url.buf));
+    ASSERT_EQ(GW_CFG_REMOTE_AUTH_TYPE_NO, gw_cfg.ruuvi_cfg.remote.auth_type);
+    ASSERT_EQ(0, gw_cfg.ruuvi_cfg.remote.refresh_interval_minutes);
     ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
     ASSERT_EQ(string("test.mosquitto.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("ruuvi/30:AE:A4:02:84:A4"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
@@ -1038,14 +1115,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.coordinates.buf);
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1883");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: ruuvi/30:AE:A4:02:84:A4");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_client_id: 30:AE:A4:02:84:A4");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_user: ");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_pass: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_url: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_auth_type: no");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_user: ");
@@ -1054,6 +1127,14 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: ");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_pass: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1883");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: ruuvi/30:AE:A4:02:84:A4");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_client_id: 30:AE:A4:02:84:A4");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_user: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_pass: ");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_type: lan_auth_ruuvi");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_pass: qwe");

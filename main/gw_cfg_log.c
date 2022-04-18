@@ -217,55 +217,101 @@ gw_cfg_log_eth_cfg(const gw_cfg_eth_t *const p_gw_cfg_eth, const char *const p_t
     LOG_INFO("config: eth: DNS2: %s", p_gw_cfg_eth->eth_dns2.buf);
 }
 
-void
-gw_cfg_log_ruuvi_cfg(const gw_cfg_ruuvi_t *const p_gw_cfg_ruuvi, const char *const p_title)
+static void
+gw_cfg_log_ruuvi_cfg_remote(const ruuvi_gw_cfg_remote_t *const p_remote)
 {
-    if (NULL != p_title)
+    LOG_INFO("config: use remote cfg: %d", p_remote->use_remote_cfg);
+    LOG_INFO("config: remote cfg: URL: %s", p_remote->url.buf);
+    switch (p_remote->auth_type)
     {
-        LOG_INFO("%s", p_title);
-    }
-    LOG_INFO("config: use mqtt: %d", p_gw_cfg_ruuvi->mqtt.use_mqtt);
-    LOG_INFO("config: mqtt transport: %s", p_gw_cfg_ruuvi->mqtt.mqtt_transport.buf);
-    LOG_INFO("config: mqtt server: %s", p_gw_cfg_ruuvi->mqtt.mqtt_server.buf);
-    LOG_INFO("config: mqtt port: %u", p_gw_cfg_ruuvi->mqtt.mqtt_port);
-    LOG_INFO("config: mqtt prefix: %s", p_gw_cfg_ruuvi->mqtt.mqtt_prefix.buf);
-    LOG_INFO("config: mqtt client id: %s", p_gw_cfg_ruuvi->mqtt.mqtt_client_id.buf);
-    LOG_INFO("config: mqtt user: %s", p_gw_cfg_ruuvi->mqtt.mqtt_user.buf);
+        case GW_CFG_REMOTE_AUTH_TYPE_NO:
+            LOG_INFO("config: remote cfg: auth_type: %s", GW_CFG_REMOTE_AUTH_TYPE_STR_NO);
+            break;
+        case GW_CFG_REMOTE_AUTH_TYPE_BASIC:
+            LOG_INFO("config: remote cfg: auth_type: %s", GW_CFG_REMOTE_AUTH_TYPE_STR_BASIC);
+            LOG_INFO("config: remote cfg: auth user: %s", p_remote->auth.auth_basic.user.buf);
 #if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
-    LOG_DBG("config: mqtt password: %s", p_gw_cfg_ruuvi->mqtt.mqtt_pass.buf);
+            LOG_DBG("config: remote cfg: auth pass: %s", p_remote->auth.auth_basic.password.buf);
 #else
-    LOG_INFO("config: mqtt password: %s", "********");
+            LOG_INFO("config: remote cfg: auth pass: %s", "********");
 #endif
-    LOG_INFO("config: use http: %d", p_gw_cfg_ruuvi->http.use_http);
-    LOG_INFO("config: http url: %s", p_gw_cfg_ruuvi->http.http_url.buf);
-    LOG_INFO("config: http user: %s", p_gw_cfg_ruuvi->http.http_user.buf);
+            break;
+        case GW_CFG_REMOTE_AUTH_TYPE_BEARER:
+            LOG_INFO("config: remote cfg: auth_type: %s", GW_CFG_REMOTE_AUTH_TYPE_STR_BEARER);
 #if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
-    LOG_DBG("config: http pass: %s", p_gw_cfg_ruuvi->http.http_pass.buf);
+            LOG_DBG("config: remote cfg: auth bearer token: %s", p_remote->auth.auth_bearer.token.buf);
+#else
+            LOG_INFO("config: remote cfg: auth bearer token: %s", "********");
+#endif
+            break;
+    }
+    LOG_INFO("config: remote cfg: refresh_interval_minutes: %u", (printf_uint_t)p_remote->refresh_interval_minutes);
+}
+
+static void
+gw_cfg_log_ruuvi_cfg_http(const ruuvi_gw_cfg_http_t *const p_http)
+{
+    LOG_INFO("config: use http: %d", p_http->use_http);
+    LOG_INFO("config: http url: %s", p_http->http_url.buf);
+    LOG_INFO("config: http user: %s", p_http->http_user.buf);
+#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
+    LOG_DBG("config: http pass: %s", p_http->http_pass.buf);
 #else
     LOG_INFO("config: http pass: %s", "********");
 #endif
-    LOG_INFO("config: use http_stat: %d", p_gw_cfg_ruuvi->http_stat.use_http_stat);
-    LOG_INFO("config: http_stat url: %s", p_gw_cfg_ruuvi->http_stat.http_stat_url.buf);
-    LOG_INFO("config: http_stat user: %s", p_gw_cfg_ruuvi->http_stat.http_stat_user.buf);
+}
+
+static void
+gw_cfg_log_ruuvi_cfg_http_stat(const ruuvi_gw_cfg_http_stat_t *const p_http_stat)
+{
+    LOG_INFO("config: use http_stat: %d", p_http_stat->use_http_stat);
+    LOG_INFO("config: http_stat url: %s", p_http_stat->http_stat_url.buf);
+    LOG_INFO("config: http_stat user: %s", p_http_stat->http_stat_user.buf);
 #if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
-    LOG_DBG("config: http_stat pass: %s", p_gw_cfg_ruuvi->http_stat.http_stat_pass.buf);
+    LOG_DBG("config: http_stat pass: %s", p_http_stat->http_stat_pass.buf);
 #else
     LOG_INFO("config: http_stat pass: %s", "********");
 #endif
-    LOG_INFO("config: LAN auth type: %s", gw_cfg_auth_type_to_str(&p_gw_cfg_ruuvi->lan_auth));
-    LOG_INFO("config: LAN auth user: %s", p_gw_cfg_ruuvi->lan_auth.lan_auth_user.buf);
+}
+
+static void
+gw_cfg_log_ruuvi_cfg_mqtt(const ruuvi_gw_cfg_mqtt_t *const p_mqtt)
+{
+    LOG_INFO("config: use mqtt: %d", p_mqtt->use_mqtt);
+    LOG_INFO("config: mqtt transport: %s", p_mqtt->mqtt_transport.buf);
+    LOG_INFO("config: mqtt server: %s", p_mqtt->mqtt_server.buf);
+    LOG_INFO("config: mqtt port: %u", p_mqtt->mqtt_port);
+    LOG_INFO("config: mqtt prefix: %s", p_mqtt->mqtt_prefix.buf);
+    LOG_INFO("config: mqtt client id: %s", p_mqtt->mqtt_client_id.buf);
+    LOG_INFO("config: mqtt user: %s", p_mqtt->mqtt_user.buf);
 #if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
-    LOG_DBG("config: LAN auth pass: %s", p_gw_cfg_ruuvi->lan_auth.lan_auth_pass.buf);
+    LOG_DBG("config: mqtt password: %s", p_mqtt->mqtt_pass.buf);
+#else
+    LOG_INFO("config: mqtt password: %s", "********");
+#endif
+}
+
+static void
+gw_cfg_log_ruuvi_cfg_lan_auth(const ruuvi_gw_cfg_lan_auth_t *const p_lan_auth)
+{
+    LOG_INFO("config: LAN auth type: %s", gw_cfg_auth_type_to_str(p_lan_auth));
+    LOG_INFO("config: LAN auth user: %s", p_lan_auth->lan_auth_user.buf);
+#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
+    LOG_DBG("config: LAN auth pass: %s", p_lan_auth->lan_auth_pass.buf);
 #else
     LOG_INFO("config: LAN auth pass: %s", "********");
 #endif
 #if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
-    LOG_DBG("config: LAN auth API key: %s", p_gw_cfg_ruuvi->lan_auth.lan_auth_api_key.buf);
+    LOG_DBG("config: LAN auth API key: %s", p_lan_auth->lan_auth_api_key.buf);
 #else
     LOG_INFO("config: LAN auth API key: %s", "********");
 #endif
+}
 
-    switch (p_gw_cfg_ruuvi->auto_update.auto_update_cycle)
+static void
+gw_cfg_log_ruuvi_cfg_auto_update(const ruuvi_gw_cfg_auto_update_t *const p_auto_update)
+{
+    switch (p_auto_update->auto_update_cycle)
     {
         case AUTO_UPDATE_CYCLE_TYPE_REGULAR:
             LOG_INFO("config: Auto update cycle: %s", AUTO_UPDATE_CYCLE_TYPE_STR_REGULAR);
@@ -280,28 +326,56 @@ gw_cfg_log_ruuvi_cfg(const gw_cfg_ruuvi_t *const p_gw_cfg_ruuvi, const char *con
             LOG_INFO(
                 "config: Auto update cycle: %s (%d)",
                 AUTO_UPDATE_CYCLE_TYPE_STR_MANUAL,
-                p_gw_cfg_ruuvi->auto_update.auto_update_cycle);
+                p_auto_update->auto_update_cycle);
             break;
     }
-    LOG_INFO("config: Auto update weekdays_bitmask: 0x%02x", p_gw_cfg_ruuvi->auto_update.auto_update_weekdays_bitmask);
+    LOG_INFO("config: Auto update weekdays_bitmask: 0x%02x", p_auto_update->auto_update_weekdays_bitmask);
     LOG_INFO(
         "config: Auto update interval: %02u:00..%02u:00",
-        p_gw_cfg_ruuvi->auto_update.auto_update_interval_from,
-        p_gw_cfg_ruuvi->auto_update.auto_update_interval_to);
+        p_auto_update->auto_update_interval_from,
+        p_auto_update->auto_update_interval_to);
     LOG_INFO(
         "config: Auto update TZ: UTC%s%d",
-        ((p_gw_cfg_ruuvi->auto_update.auto_update_tz_offset_hours < 0) ? "" : "+"),
-        (printf_int_t)p_gw_cfg_ruuvi->auto_update.auto_update_tz_offset_hours);
+        ((p_auto_update->auto_update_tz_offset_hours < 0) ? "" : "+"),
+        (printf_int_t)p_auto_update->auto_update_tz_offset_hours);
+}
+
+static void
+gw_cfg_log_ruuvi_cfg_filter(const ruuvi_gw_cfg_filter_t *const p_filter)
+{
+    LOG_INFO("config: use company id filter: %d", p_filter->company_use_filtering);
+    LOG_INFO("config: company id: 0x%04x", p_filter->company_id);
+}
+
+static void
+gw_cfg_log_ruuvi_cfg_scan(const ruuvi_gw_cfg_scan_t *const p_scan)
+{
+    LOG_INFO("config: use scan coded phy: %d", p_scan->scan_coded_phy);
+    LOG_INFO("config: use scan 1mbit/phy: %d", p_scan->scan_1mbit_phy);
+    LOG_INFO("config: use scan extended payload: %d", p_scan->scan_extended_payload);
+    LOG_INFO("config: use scan channel 37: %d", p_scan->scan_channel_37);
+    LOG_INFO("config: use scan channel 38: %d", p_scan->scan_channel_38);
+    LOG_INFO("config: use scan channel 39: %d", p_scan->scan_channel_39);
+}
+
+void
+gw_cfg_log_ruuvi_cfg(const gw_cfg_ruuvi_t *const p_gw_cfg_ruuvi, const char *const p_title)
+{
+    if (NULL != p_title)
+    {
+        LOG_INFO("%s", p_title);
+    }
+
+    gw_cfg_log_ruuvi_cfg_remote(&p_gw_cfg_ruuvi->remote);
+    gw_cfg_log_ruuvi_cfg_http(&p_gw_cfg_ruuvi->http);
+    gw_cfg_log_ruuvi_cfg_http_stat(&p_gw_cfg_ruuvi->http_stat);
+    gw_cfg_log_ruuvi_cfg_mqtt(&p_gw_cfg_ruuvi->mqtt);
+    gw_cfg_log_ruuvi_cfg_lan_auth(&p_gw_cfg_ruuvi->lan_auth);
+    gw_cfg_log_ruuvi_cfg_auto_update(&p_gw_cfg_ruuvi->auto_update);
+    gw_cfg_log_ruuvi_cfg_filter(&p_gw_cfg_ruuvi->filter);
+    gw_cfg_log_ruuvi_cfg_scan(&p_gw_cfg_ruuvi->scan);
 
     LOG_INFO("config: coordinates: %s", p_gw_cfg_ruuvi->coordinates.buf);
-    LOG_INFO("config: use company id filter: %d", p_gw_cfg_ruuvi->filter.company_use_filtering);
-    LOG_INFO("config: company id: 0x%04x", p_gw_cfg_ruuvi->filter.company_id);
-    LOG_INFO("config: use scan coded phy: %d", p_gw_cfg_ruuvi->scan.scan_coded_phy);
-    LOG_INFO("config: use scan 1mbit/phy: %d", p_gw_cfg_ruuvi->scan.scan_1mbit_phy);
-    LOG_INFO("config: use scan extended payload: %d", p_gw_cfg_ruuvi->scan.scan_extended_payload);
-    LOG_INFO("config: use scan channel 37: %d", p_gw_cfg_ruuvi->scan.scan_channel_37);
-    LOG_INFO("config: use scan channel 38: %d", p_gw_cfg_ruuvi->scan.scan_channel_38);
-    LOG_INFO("config: use scan channel 39: %d", p_gw_cfg_ruuvi->scan.scan_channel_39);
 }
 
 void

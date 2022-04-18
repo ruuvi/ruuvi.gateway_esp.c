@@ -30,17 +30,18 @@
 extern "C" {
 #endif
 
-#define MAX_CONFIG_STR_LEN     64
-#define MAX_HTTP_URL_LEN       256
-#define MAX_HTTP_USER_LEN      51
-#define MAX_HTTP_PASS_LEN      51
-#define MAX_MQTT_TRANSPORT_LEN 8
-#define MAX_MQTT_SERVER_LEN    256
-#define MAX_MQTT_PREFIX_LEN    257
-#define MAX_MQTT_USER_LEN      129
-#define MAX_MQTT_PASS_LEN      257
-#define MAX_MQTT_CLIENT_ID_LEN 51
-#define IP_STR_LEN             17
+#define GW_CFG_MAX_HTTP_BEARER_TOKEN_LEN 256
+#define GW_CFG_MAX_HTTP_URL_LEN          256
+#define GW_CFG_MAX_HTTP_USER_LEN         51
+#define GW_CFG_MAX_HTTP_PASS_LEN         51
+#define GW_CFG_MAX_MQTT_TRANSPORT_LEN    8
+#define GW_CFG_MAX_MQTT_SERVER_LEN       256
+#define GW_CFG_MAX_MQTT_PREFIX_LEN       257
+#define GW_CFG_MAX_MQTT_USER_LEN         129
+#define GW_CFG_MAX_MQTT_PASS_LEN         257
+#define GW_CFG_MAX_MQTT_CLIENT_ID_LEN    51
+#define GW_CFG_MAX_COORDINATES_STR_LEN   64
+#define GW_CFG_MAX_IP_ADDR_STR_LEN       17
 
 #define RUUVI_COMPANY_ID 0x0499
 
@@ -57,7 +58,7 @@ typedef struct gw_cfg_device_info_t
 
 typedef struct ruuvi_gw_cfg_ip_addr_str_t
 {
-    char buf[IP_STR_LEN];
+    char buf[GW_CFG_MAX_IP_ADDR_STR_LEN];
 } ruuvi_gw_cfg_ip_addr_str_t;
 
 typedef struct gw_cfg_eth_t
@@ -78,32 +79,32 @@ typedef struct gw_cfg_eth_t
 
 typedef struct ruuvi_gw_cfg_mqtt_transport_t
 {
-    char buf[MAX_MQTT_TRANSPORT_LEN];
+    char buf[GW_CFG_MAX_MQTT_TRANSPORT_LEN];
 } ruuvi_gw_cfg_mqtt_transport_t;
 
 typedef struct ruuvi_gw_cfg_mqtt_server_t
 {
-    char buf[MAX_MQTT_SERVER_LEN];
+    char buf[GW_CFG_MAX_MQTT_SERVER_LEN];
 } ruuvi_gw_cfg_mqtt_server_t;
 
 typedef struct ruuvi_gw_cfg_mqtt_prefix_t
 {
-    char buf[MAX_MQTT_PREFIX_LEN];
+    char buf[GW_CFG_MAX_MQTT_PREFIX_LEN];
 } ruuvi_gw_cfg_mqtt_prefix_t;
 
 typedef struct ruuvi_gw_cfg_mqtt_client_id_t
 {
-    char buf[MAX_MQTT_CLIENT_ID_LEN];
+    char buf[GW_CFG_MAX_MQTT_CLIENT_ID_LEN];
 } ruuvi_gw_cfg_mqtt_client_id_t;
 
 typedef struct ruuvi_gw_cfg_mqtt_user_t
 {
-    char buf[MAX_MQTT_USER_LEN];
+    char buf[GW_CFG_MAX_MQTT_USER_LEN];
 } ruuvi_gw_cfg_mqtt_user_t;
 
 typedef struct ruuvi_gw_cfg_mqtt_password_t
 {
-    char buf[MAX_MQTT_PASS_LEN];
+    char buf[GW_CFG_MAX_MQTT_PASS_LEN];
 } ruuvi_gw_cfg_mqtt_password_t;
 
 typedef struct ruuvi_gw_cfg_mqtt_t
@@ -120,18 +121,58 @@ typedef struct ruuvi_gw_cfg_mqtt_t
 
 typedef struct ruuvi_gw_cfg_http_url_t
 {
-    char buf[MAX_HTTP_URL_LEN];
+    char buf[GW_CFG_MAX_HTTP_URL_LEN];
 } ruuvi_gw_cfg_http_url_t;
 
 typedef struct ruuvi_gw_cfg_http_user_t
 {
-    char buf[MAX_HTTP_USER_LEN];
+    char buf[GW_CFG_MAX_HTTP_USER_LEN];
 } ruuvi_gw_cfg_http_user_t;
 
 typedef struct ruuvi_gw_cfg_http_password_t
 {
-    char buf[MAX_HTTP_PASS_LEN];
+    char buf[GW_CFG_MAX_HTTP_PASS_LEN];
 } ruuvi_gw_cfg_http_password_t;
+
+typedef struct ruuvi_gw_cfg_http_bearer_token_t
+{
+    char buf[GW_CFG_MAX_HTTP_BEARER_TOKEN_LEN];
+} ruuvi_gw_cfg_http_bearer_token_t;
+
+#define GW_CFG_REMOTE_AUTH_TYPE_STR_SIZE 16
+
+#define GW_CFG_REMOTE_AUTH_TYPE_STR_NO     "no"
+#define GW_CFG_REMOTE_AUTH_TYPE_STR_BASIC  "basic"
+#define GW_CFG_REMOTE_AUTH_TYPE_STR_BEARER "bearer"
+
+typedef enum gw_cfg_remote_auth_type_e
+{
+    GW_CFG_REMOTE_AUTH_TYPE_NO     = 0,
+    GW_CFG_REMOTE_AUTH_TYPE_BASIC  = 1,
+    GW_CFG_REMOTE_AUTH_TYPE_BEARER = 2,
+} gw_cfg_remote_auth_type_e;
+
+typedef uint16_t gw_cfg_remote_refresh_interval_minutes_t;
+
+typedef struct ruuvi_gw_cfg_remote_t
+{
+    bool                      use_remote_cfg;
+    ruuvi_gw_cfg_http_url_t   url;
+    gw_cfg_remote_auth_type_e auth_type;
+    union
+    {
+        struct
+        {
+            ruuvi_gw_cfg_http_user_t     user;
+            ruuvi_gw_cfg_http_password_t password;
+        } auth_basic;
+        struct
+        {
+            ruuvi_gw_cfg_http_bearer_token_t token;
+        } auth_bearer;
+    } auth;
+    gw_cfg_remote_refresh_interval_minutes_t refresh_interval_minutes;
+} ruuvi_gw_cfg_remote_t;
 
 typedef struct ruuvi_gw_cfg_http_t
 {
@@ -200,11 +241,12 @@ typedef struct ruuvi_gw_cfg_scan_t
 
 typedef struct ruuvi_gw_cfg_coordinates_t
 {
-    char buf[MAX_CONFIG_STR_LEN];
+    char buf[GW_CFG_MAX_COORDINATES_STR_LEN];
 } ruuvi_gw_cfg_coordinates_t;
 
 typedef struct ruuvi_gw_cfg_t
 {
+    ruuvi_gw_cfg_remote_t      remote;
     ruuvi_gw_cfg_http_t        http;
     ruuvi_gw_cfg_http_stat_t   http_stat;
     ruuvi_gw_cfg_mqtt_t        mqtt;
