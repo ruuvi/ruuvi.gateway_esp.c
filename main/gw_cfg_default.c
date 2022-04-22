@@ -211,16 +211,22 @@ gw_cfg_default_get_mqtt(void)
     return &g_gw_cfg_default.ruuvi_cfg.mqtt;
 }
 
+const ruuvi_gw_cfg_filter_t *
+gw_cfg_default_get_filter(void)
+{
+    return &g_gw_cfg_default.ruuvi_cfg.filter;
+}
+
 const ruuvi_gw_cfg_lan_auth_t *
 gw_cfg_default_get_lan_auth(void)
 {
     return &g_gw_cfg_default.ruuvi_cfg.lan_auth;
 }
 
-gw_cfg_eth_t
+const gw_cfg_eth_t *
 gw_cfg_default_get_eth(void)
 {
-    return g_gw_cfg_default.eth_cfg;
+    return &g_gw_cfg_default.eth_cfg;
 }
 
 const wifi_sta_config_t *

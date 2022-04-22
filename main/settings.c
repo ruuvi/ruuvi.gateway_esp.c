@@ -18,9 +18,12 @@
 #include "os_malloc.h"
 #include "wifi_manager.h"
 
-// Warning: Debug log level prints out the passwords as a "plaintext" so accidents won't happen.
-#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
+#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
+
+#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
+#warning Debug log level prints out the passwords as a "plaintext".
+#endif
 
 #define RUUVI_GATEWAY_NVS_NAMESPACE    "ruuvi_gateway"
 #define RUUVI_GATEWAY_NVS_CFG_BLOB_KEY "ruuvi_config" /* deprecated */

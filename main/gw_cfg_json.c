@@ -13,10 +13,13 @@
 #if RUUVI_TESTS_HTTP_SERVER_CB || RUUVI_TESTS_JSON_RUUVI
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #else
-// Warning: Debug log level prints out the passwords as a "plaintext" so accidents won't happen.
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #endif
 #include "log.h"
+
+#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
+#warning Debug log level prints out the passwords as a "plaintext".
+#endif
 
 static const char TAG[] = "gw_cfg";
 
@@ -177,12 +180,15 @@ gw_cfg_json_add_items_remote(
             {
                 return false;
             }
-            if (!gw_cfg_json_add_string(
-                    p_json_root,
-                    "remote_cfg_auth_basic_pass",
-                    p_cfg_remote->auth.auth_basic.password.buf))
+            if (!flag_hide_passwords)
             {
-                return false;
+                if (!gw_cfg_json_add_string(
+                        p_json_root,
+                        "remote_cfg_auth_basic_pass",
+                        p_cfg_remote->auth.auth_basic.password.buf))
+                {
+                    return false;
+                }
             }
             break;
         case GW_CFG_REMOTE_AUTH_TYPE_BEARER:
@@ -190,15 +196,12 @@ gw_cfg_json_add_items_remote(
             {
                 return false;
             }
-            if (!flag_hide_passwords)
+            if (!gw_cfg_json_add_string(
+                    p_json_root,
+                    "remote_cfg_auth_bearer_token",
+                    p_cfg_remote->auth.auth_bearer.token.buf))
             {
-                if (!gw_cfg_json_add_string(
-                        p_json_root,
-                        "remote_cfg_auth_bearer_token",
-                        p_cfg_remote->auth.auth_bearer.token.buf))
-                {
-                    return false;
-                }
+                return false;
             }
             break;
     }
@@ -644,12 +647,14 @@ gw_cfg_json_parse_eth(const cJSON *const p_json_root, gw_cfg_eth_t *const p_gw_c
         }
         if (!p_gw_cfg_eth->eth_dhcp)
         {
+            const gw_cfg_eth_t *const p_default_eth = gw_cfg_default_get_eth();
             if (!gw_cfg_json_copy_string_val(
                     p_json_root,
                     "eth_static_ip",
                     &p_gw_cfg_eth->eth_static_ip.buf[0],
                     sizeof(p_gw_cfg_eth->eth_static_ip.buf)))
             {
+                p_gw_cfg_eth->eth_static_ip = p_default_eth->eth_static_ip;
                 LOG_WARN(
                     "Can't find key '%s' in config-json, use default value: '%s'",
                     "eth_static_ip",
@@ -661,6 +666,7 @@ gw_cfg_json_parse_eth(const cJSON *const p_json_root, gw_cfg_eth_t *const p_gw_c
                     &p_gw_cfg_eth->eth_netmask.buf[0],
                     sizeof(p_gw_cfg_eth->eth_netmask.buf)))
             {
+                p_gw_cfg_eth->eth_netmask = p_default_eth->eth_netmask;
                 LOG_WARN(
                     "Can't find key '%s' in config-json, use default value: '%s'",
                     "eth_netmask",
@@ -672,6 +678,7 @@ gw_cfg_json_parse_eth(const cJSON *const p_json_root, gw_cfg_eth_t *const p_gw_c
                     &p_gw_cfg_eth->eth_gw.buf[0],
                     sizeof(p_gw_cfg_eth->eth_gw.buf)))
             {
+                p_gw_cfg_eth->eth_gw = p_default_eth->eth_gw;
                 LOG_WARN(
                     "Can't find key '%s' in config-json, use default value: '%s'",
                     "eth_gw",
@@ -683,6 +690,7 @@ gw_cfg_json_parse_eth(const cJSON *const p_json_root, gw_cfg_eth_t *const p_gw_c
                     &p_gw_cfg_eth->eth_dns1.buf[0],
                     sizeof(p_gw_cfg_eth->eth_dns1.buf)))
             {
+                p_gw_cfg_eth->eth_dns1 = p_default_eth->eth_dns1;
                 LOG_WARN(
                     "Can't find key '%s' in config-json, use default value: '%s'",
                     "eth_dns1",
@@ -694,6 +702,7 @@ gw_cfg_json_parse_eth(const cJSON *const p_json_root, gw_cfg_eth_t *const p_gw_c
                     &p_gw_cfg_eth->eth_dns2.buf[0],
                     sizeof(p_gw_cfg_eth->eth_dns2.buf)))
             {
+                p_gw_cfg_eth->eth_dns2 = p_default_eth->eth_dns2;
                 LOG_WARN(
                     "Can't find key '%s' in config-json, use default value: '%s'",
                     "eth_dns2",
@@ -878,7 +887,12 @@ gw_cfg_json_parse_mqtt(const cJSON *const p_json_root, ruuvi_gw_cfg_mqtt_t *cons
             &p_gw_cfg_mqtt->mqtt_prefix.buf[0],
             sizeof(p_gw_cfg_mqtt->mqtt_prefix.buf)))
     {
-        LOG_WARN("Can't find key '%s' in config-json", "mqtt_prefix");
+        const ruuvi_gw_cfg_mqtt_t *const p_default_mqtt = gw_cfg_default_get_mqtt();
+        p_gw_cfg_mqtt->mqtt_prefix                      = p_default_mqtt->mqtt_prefix;
+        LOG_WARN(
+            "Can't find key '%s' in config-json, use default value: %s",
+            "mqtt_prefix",
+            p_gw_cfg_mqtt->mqtt_prefix.buf);
     }
     if (!gw_cfg_json_copy_string_val(
             p_json_root,
@@ -886,7 +900,12 @@ gw_cfg_json_parse_mqtt(const cJSON *const p_json_root, ruuvi_gw_cfg_mqtt_t *cons
             &p_gw_cfg_mqtt->mqtt_client_id.buf[0],
             sizeof(p_gw_cfg_mqtt->mqtt_client_id.buf)))
     {
-        LOG_WARN("Can't find key '%s' in config-json", "mqtt_client_id");
+        const ruuvi_gw_cfg_mqtt_t *const p_default_mqtt = gw_cfg_default_get_mqtt();
+        p_gw_cfg_mqtt->mqtt_client_id                   = p_default_mqtt->mqtt_client_id;
+        LOG_WARN(
+            "Can't find key '%s' in config-json, use default value: %s",
+            "mqtt_client_id",
+            p_gw_cfg_mqtt->mqtt_client_id.buf);
     }
     if (!gw_cfg_json_copy_string_val(
             p_json_root,
@@ -1043,6 +1062,8 @@ gw_cfg_json_parse_filter(const cJSON *const p_json_root, ruuvi_gw_cfg_filter_t *
 {
     if (!gw_cfg_json_get_uint16_val(p_json_root, "company_id", &p_gw_cfg_filter->company_id))
     {
+        const ruuvi_gw_cfg_filter_t *const p_default_filter = gw_cfg_default_get_filter();
+        p_gw_cfg_filter->company_id                         = p_default_filter->company_id;
         LOG_WARN(
             "Can't find key '%s' in config-json, use default value: 0x%04x",
             "company_id",
@@ -1050,6 +1071,8 @@ gw_cfg_json_parse_filter(const cJSON *const p_json_root, ruuvi_gw_cfg_filter_t *
     }
     if (!gw_cfg_json_get_bool_val(p_json_root, "company_use_filtering", &p_gw_cfg_filter->company_use_filtering))
     {
+        const ruuvi_gw_cfg_filter_t *const p_default_filter = gw_cfg_default_get_filter();
+        p_gw_cfg_filter->company_use_filtering              = p_default_filter->company_use_filtering;
         LOG_WARN(
             "Can't find key '%s' in config-json, use default value: '%s'",
             "company_use_filtering",

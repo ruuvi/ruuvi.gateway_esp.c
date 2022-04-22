@@ -34,6 +34,7 @@ extern "C" {
 #define ADV_POST_DO_ASYNC_COMM_INTERVAL_MS   (100)
 
 #define HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO (HTTP_SERVER_USER_REQ_CODE_1)
+#define HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_GW_CFG              (HTTP_SERVER_USER_REQ_CODE_2)
 
 #define FW_UPDATING_REGULAR_CYCLE_DELAY_SECONDS (14U * 24U * 60U * 60U)
 
@@ -89,6 +90,12 @@ main_task_timer_sig_check_for_fw_updates_stop(void);
 
 bool
 main_loop_init(void);
+
+void
+main_task_init_timers(void);
+
+void
+main_task_configure_periodic_remote_cfg_check(void);
 
 ATTR_NORETURN
 void

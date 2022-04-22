@@ -23,10 +23,13 @@
 #if RUUVI_TESTS_HTTP_SERVER_CB || RUUVI_TESTS_JSON_RUUVI
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #else
-// Warning: Debug log level prints out the passwords as a "plaintext" so accidents won't happen.
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #endif
 #include "log.h"
+
+#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
+#warning Debug log level prints out the passwords as a "plaintext".
+#endif
 
 static const char TAG[] = "http_server";
 
@@ -40,11 +43,15 @@ json_ruuvi_parse_http_body(const char *const p_body, gw_cfg_t *const p_gw_cfg, b
         return false;
     }
 
-    bool use_eth        = false;
-    *p_flag_network_cfg = json_wrap_get_bool_val(p_json_root, "use_eth", &use_eth);
-    if (*p_flag_network_cfg)
+    bool       use_eth          = false;
+    const bool flag_network_cfg = json_wrap_get_bool_val(p_json_root, "use_eth", &use_eth);
+    if (NULL != p_flag_network_cfg)
     {
-        p_gw_cfg->eth_cfg = gw_cfg_default_get_eth();
+        *p_flag_network_cfg = flag_network_cfg;
+    }
+    if (flag_network_cfg)
+    {
+        p_gw_cfg->eth_cfg = *gw_cfg_default_get_eth();
         gw_cfg_json_parse_cjson_eth(p_json_root, "Gateway SETTINGS (via HTTP):", &p_gw_cfg->eth_cfg);
     }
     else

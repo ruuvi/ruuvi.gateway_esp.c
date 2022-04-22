@@ -18,10 +18,13 @@
 #if defined(RUUVI_TESTS_GW_CFG_DEFAULT_JSON)
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #else
-// Warning: Debug log level prints out the passwords as a "plaintext" so accidents won't happen.
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #endif
 #include "log.h"
+
+#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
+#warning Debug log level prints out the passwords as a "plaintext".
+#endif
 
 static const char TAG[] = "gw_cfg";
 

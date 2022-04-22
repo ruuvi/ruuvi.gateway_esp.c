@@ -98,11 +98,65 @@ gw_cfg_update_wifi_config(const wifiman_config_t *const p_wifi_cfg)
 }
 
 void
+gw_cfg_update(const gw_cfg_t *const p_gw_cfg_src)
+{
+    gw_cfg_t *p_gw_cfg_dst  = gw_cfg_lock_rw();
+    p_gw_cfg_dst->ruuvi_cfg = p_gw_cfg_src->ruuvi_cfg;
+    p_gw_cfg_dst->eth_cfg   = p_gw_cfg_src->eth_cfg;
+    p_gw_cfg_dst->wifi_cfg  = p_gw_cfg_src->wifi_cfg;
+    gw_cfg_unlock_rw(&p_gw_cfg_dst);
+}
+
+bool
+gw_cfg_cmp(
+    const gw_cfg_t *const p_gw_cfg_src,
+    bool *const           p_flag_eq_ruuvi_cfg,
+    bool *const           p_flag_eq_eth_cfg,
+    bool *const           p_flag_eq_wifi_cfg)
+{
+    bool flag_is_equal     = true;
+    *p_flag_eq_ruuvi_cfg   = true;
+    *p_flag_eq_eth_cfg     = true;
+    *p_flag_eq_wifi_cfg    = true;
+    gw_cfg_t *p_gw_cfg_dst = gw_cfg_lock_rw();
+    if (0 != memcmp(&p_gw_cfg_dst->ruuvi_cfg, &p_gw_cfg_src->ruuvi_cfg, sizeof(p_gw_cfg_dst->ruuvi_cfg)))
+    {
+        flag_is_equal        = false;
+        *p_flag_eq_ruuvi_cfg = false;
+    }
+    if (0 != memcmp(&p_gw_cfg_dst->eth_cfg, &p_gw_cfg_src->eth_cfg, sizeof(p_gw_cfg_dst->eth_cfg)))
+    {
+        flag_is_equal      = false;
+        *p_flag_eq_eth_cfg = false;
+    }
+    if (0 != memcmp(&p_gw_cfg_dst->wifi_cfg, &p_gw_cfg_src->wifi_cfg, sizeof(p_gw_cfg_dst->wifi_cfg)))
+    {
+        flag_is_equal       = false;
+        *p_flag_eq_wifi_cfg = false;
+    }
+    gw_cfg_unlock_rw(&p_gw_cfg_dst);
+    return flag_is_equal;
+}
+
+void
 gw_cfg_get_copy(gw_cfg_t *const p_gw_cfg_dst)
 {
     const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
     *p_gw_cfg_dst            = *p_gw_cfg;
     gw_cfg_unlock_ro(&p_gw_cfg);
+}
+
+bool
+gw_cfg_get_remote_cfg_use(gw_cfg_remote_refresh_interval_minutes_t *const p_interval_minutes)
+{
+    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
+    if (NULL != p_interval_minutes)
+    {
+        *p_interval_minutes = p_gw_cfg->ruuvi_cfg.remote.refresh_interval_minutes;
+    }
+    const bool flag_use_remote_cfg = p_gw_cfg->ruuvi_cfg.remote.use_remote_cfg;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    return flag_use_remote_cfg;
 }
 
 bool

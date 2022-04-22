@@ -154,23 +154,25 @@ typedef enum gw_cfg_remote_auth_type_e
 
 typedef uint16_t gw_cfg_remote_refresh_interval_minutes_t;
 
+typedef union ruuvi_gw_cfg_http_auth_t
+{
+    struct
+    {
+        ruuvi_gw_cfg_http_user_t     user;
+        ruuvi_gw_cfg_http_password_t password;
+    } auth_basic;
+    struct
+    {
+        ruuvi_gw_cfg_http_bearer_token_t token;
+    } auth_bearer;
+} ruuvi_gw_cfg_http_auth_t;
+
 typedef struct ruuvi_gw_cfg_remote_t
 {
-    bool                      use_remote_cfg;
-    ruuvi_gw_cfg_http_url_t   url;
-    gw_cfg_remote_auth_type_e auth_type;
-    union
-    {
-        struct
-        {
-            ruuvi_gw_cfg_http_user_t     user;
-            ruuvi_gw_cfg_http_password_t password;
-        } auth_basic;
-        struct
-        {
-            ruuvi_gw_cfg_http_bearer_token_t token;
-        } auth_bearer;
-    } auth;
+    bool                                     use_remote_cfg;
+    ruuvi_gw_cfg_http_url_t                  url;
+    gw_cfg_remote_auth_type_e                auth_type;
+    ruuvi_gw_cfg_http_auth_t                 auth;
     gw_cfg_remote_refresh_interval_minutes_t refresh_interval_minutes;
 } ruuvi_gw_cfg_remote_t;
 
@@ -296,7 +298,20 @@ void
 gw_cfg_update_wifi_config(const wifiman_config_t *const p_wifi_cfg);
 
 void
+gw_cfg_update(const gw_cfg_t *const p_gw_cfg_src);
+
+bool
+gw_cfg_cmp(
+    const gw_cfg_t *const p_gw_cfg_src,
+    bool *const           p_flag_eq_ruuvi_cfg,
+    bool *const           p_flag_eq_eth_cfg,
+    bool *const           p_flag_eq_wifi_cfg);
+
+void
 gw_cfg_get_copy(gw_cfg_t *const p_gw_cfg);
+
+bool
+gw_cfg_get_remote_cfg_use(gw_cfg_remote_refresh_interval_minutes_t *const p_interval_minutes);
 
 bool
 gw_cfg_get_eth_use_eth(void);

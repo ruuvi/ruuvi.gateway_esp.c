@@ -737,6 +737,8 @@ main_task_init(void)
         handle_reset_button_is_pressed_during_boot();
     }
 
+    main_task_init_timers();
+
     time_task_init();
     ruuvi_send_nrf_settings();
     ruuvi_auth_set_from_config();
