@@ -4327,8 +4327,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'mqtt_transport' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'mqtt_server' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'mqtt_port' in config-json"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'mqtt_prefix' in config-json"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'mqtt_client_id' in config-json"));
+    TEST_CHECK_LOG_RECORD(
+        ESP_LOG_WARN,
+        string("Can't find key 'mqtt_prefix' in config-json, use default value: ruuvi/AA:BB:CC:DD:EE:FF/"));
+    TEST_CHECK_LOG_RECORD(
+        ESP_LOG_WARN,
+        string("Can't find key 'mqtt_client_id' in config-json, use default value: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'mqtt_user' in config-json"));
     TEST_CHECK_LOG_RECORD(
         ESP_LOG_INFO,

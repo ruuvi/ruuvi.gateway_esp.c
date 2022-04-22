@@ -291,6 +291,25 @@ gw_cfg_get_nrf52_mac_addr(void)
     return &g_nrf52_mac_addr;
 }
 
+const gw_cfg_t *
+gw_cfg_lock_ro(void)
+{
+    static const gw_cfg_t g_gw_cfg = { 0 };
+    return &g_gw_cfg;
+}
+
+void
+gw_cfg_unlock_ro(const gw_cfg_t **const p_p_gw_cfg)
+{
+    *p_p_gw_cfg = nullptr;
+}
+
+uint32_t
+crc32_le(uint32_t crc, uint8_t const *buf, uint32_t len)
+{
+    return 0xAABBCCDD;
+}
+
 } // extern "C"
 
 #define TEST_CHECK_LOG_RECORD(level_, msg_) ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("metrics", level_, msg_)
@@ -346,7 +365,9 @@ TEST_F(TestMetrics, test_metrics_generate) // NOLINT
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_SPIRAM\"} 65546\n"
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_INTERNAL\"} 65547\n"
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_DEFAULT\"} 65548\n"
-               "ruuvigw_info{mac=\"AA:BB:CC:DD:EE:FF\",esp_fw=\"v1.9.2-12-ga6893d9\",nrf_fw=\"v0.7.2\"} 1\n"),
+               "ruuvigw_info{mac=\"AA:BB:CC:DD:EE:FF\",esp_fw=\"v1.9.2-12-ga6893d9\",nrf_fw=\"v0.7.2\"} 1\n"
+               "ruuvigw_gw_cfg_crc32 0xaabbccdd\n"
+               "ruuvigw_gw_cfg_sha256 2c8b84f6b624896a8d24f48ab771057c92e566e8c9840632a0b6ecbe487a87bf\n"),
         string(p_metrics_str));
     os_free(p_metrics_str);
 
@@ -383,7 +404,9 @@ TEST_F(TestMetrics, test_metrics_generate) // NOLINT
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_SPIRAM\"} 65546\n"
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_INTERNAL\"} 65547\n"
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_DEFAULT\"} 65548\n"
-               "ruuvigw_info{mac=\"AA:BB:CC:DD:EE:FF\",esp_fw=\"v1.9.2-12-ga6893d9\",nrf_fw=\"v0.7.2\"} 1\n"),
+               "ruuvigw_info{mac=\"AA:BB:CC:DD:EE:FF\",esp_fw=\"v1.9.2-12-ga6893d9\",nrf_fw=\"v0.7.2\"} 1\n"
+               "ruuvigw_gw_cfg_crc32 0xaabbccdd\n"
+               "ruuvigw_gw_cfg_sha256 2c8b84f6b624896a8d24f48ab771057c92e566e8c9840632a0b6ecbe487a87bf\n"),
         string(p_metrics_str));
     os_free(p_metrics_str);
     ASSERT_TRUE(esp_log_wrapper_is_empty());

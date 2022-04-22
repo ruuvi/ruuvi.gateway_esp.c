@@ -379,7 +379,6 @@ http_download_json(
         info.http_resp_code = HTTP_RESP_CODE_400;
     }
     const TickType_t download_completed_in_tick = xTaskGetTickCount() - download_started_at_tick;
-    LOG_INFO("%s: completed in %u ms", __func__, (printf_uint_t)pdTICKS_TO_MS(download_completed_in_tick));
     return info;
 }
 

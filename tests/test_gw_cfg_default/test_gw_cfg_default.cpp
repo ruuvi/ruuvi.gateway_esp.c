@@ -300,7 +300,7 @@ TEST_F(TestGwCfgDefault, test_gw_cfg_default_get_lan_auth) // NOLINT
 
 TEST_F(TestGwCfgDefault, test_gw_cfg_default_get_eth) // NOLINT
 {
-    const gw_cfg_eth_t gw_cfg_eth = gw_cfg_default_get_eth();
+    const gw_cfg_eth_t gw_cfg_eth = *gw_cfg_default_get_eth();
 
     ASSERT_FALSE(gw_cfg_eth.use_eth);
     ASSERT_TRUE(gw_cfg_eth.eth_dhcp);

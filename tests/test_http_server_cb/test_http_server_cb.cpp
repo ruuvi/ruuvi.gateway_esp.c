@@ -79,6 +79,29 @@ http_download(
     return false;
 }
 
+bool
+http_download_with_auth(
+    const char *const                     p_url,
+    const gw_cfg_remote_auth_type_e       gw_cfg_http_auth_type,
+    const ruuvi_gw_cfg_http_auth_t *const p_http_auth,
+    const http_header_item_t *const       p_extra_header_item,
+    http_download_cb_on_data_t            p_cb_on_data,
+    void *const                           p_user_data,
+    const bool                            flag_feed_task_watchdog)
+{
+    return false;
+}
+
+void
+reset_task_reboot_after_timeout(void)
+{
+}
+
+void
+main_task_configure_periodic_remote_cfg_check(void)
+{
+}
+
 void
 fw_update_set_extra_info_for_status_json_update_start(void)
 {
@@ -1442,7 +1465,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
 
     ASSERT_TRUE(this->m_flag_settings_saved_to_flash);
     ASSERT_TRUE(this->m_flag_settings_sent_to_nrf);
-    ASSERT_TRUE(this->m_flag_settings_ethernet_ip_updated);
+    ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FLASH_MEM, resp.content_location);
@@ -1727,7 +1750,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
 
     ASSERT_TRUE(this->m_flag_settings_saved_to_flash);
     ASSERT_TRUE(this->m_flag_settings_sent_to_nrf);
-    ASSERT_TRUE(this->m_flag_settings_ethernet_ip_updated);
+    ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FLASH_MEM, resp.content_location);
@@ -1887,7 +1910,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
 
     ASSERT_TRUE(this->m_flag_settings_saved_to_flash);
     ASSERT_TRUE(this->m_flag_settings_sent_to_nrf);
-    ASSERT_TRUE(this->m_flag_settings_ethernet_ip_updated);
+    ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FLASH_MEM, resp.content_location);
@@ -2027,7 +2050,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
 
     ASSERT_TRUE(this->m_flag_settings_saved_to_flash);
     ASSERT_TRUE(this->m_flag_settings_sent_to_nrf);
-    ASSERT_TRUE(this->m_flag_settings_ethernet_ip_updated);
+    ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FLASH_MEM, resp.content_location);
