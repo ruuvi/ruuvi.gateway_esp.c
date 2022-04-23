@@ -29,7 +29,6 @@
 #include "gw_cfg.h"
 #include "gw_cfg_ruuvi_json.h"
 #include "gw_cfg_json.h"
-#include "gw_cfg_default.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG

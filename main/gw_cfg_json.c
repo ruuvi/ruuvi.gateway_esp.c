@@ -196,12 +196,15 @@ gw_cfg_json_add_items_remote(
             {
                 return false;
             }
-            if (!gw_cfg_json_add_string(
+            if (!flag_hide_passwords)
+            {
+                if (!gw_cfg_json_add_string(
                     p_json_root,
                     "remote_cfg_auth_bearer_token",
                     p_cfg_remote->auth.auth_bearer.token.buf))
-            {
-                return false;
+                {
+                    return false;
+                }
             }
             break;
     }
@@ -759,7 +762,9 @@ gw_cfg_json_parse_remote(const cJSON *const p_json_root, ruuvi_gw_cfg_remote_t *
                     &p_gw_cfg_remote->auth.auth_basic.password.buf[0],
                     sizeof(p_gw_cfg_remote->auth.auth_basic.password.buf)))
             {
-                LOG_WARN("Can't find key '%s' in config-json", "remote_cfg_auth_basic_pass");
+                LOG_INFO(
+                    "Can't find key '%s' in config-json, leave the previous value unchanged",
+                    "remote_cfg_auth_basic_pass");
             }
         }
         else if (0 == strcmp(GW_CFG_REMOTE_AUTH_TYPE_STR_BEARER, auth_type_str))
@@ -771,7 +776,9 @@ gw_cfg_json_parse_remote(const cJSON *const p_json_root, ruuvi_gw_cfg_remote_t *
                     &p_gw_cfg_remote->auth.auth_bearer.token.buf[0],
                     sizeof(p_gw_cfg_remote->auth.auth_bearer.token.buf)))
             {
-                LOG_WARN("Can't find key '%s' in config-json", "remote_cfg_auth_bearer_token");
+                LOG_INFO(
+                    "Can't find key '%s' in config-json, leave the previous value unchanged",
+                    "remote_cfg_auth_bearer_token");
             }
         }
         else
