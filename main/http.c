@@ -24,7 +24,7 @@
 #include "gw_mac.h"
 #include "str_buf.h"
 
-#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
+#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
 #define BASE_10 (10U)
