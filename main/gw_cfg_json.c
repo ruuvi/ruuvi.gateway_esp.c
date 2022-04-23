@@ -199,9 +199,9 @@ gw_cfg_json_add_items_remote(
             if (!flag_hide_passwords)
             {
                 if (!gw_cfg_json_add_string(
-                    p_json_root,
-                    "remote_cfg_auth_bearer_token",
-                    p_cfg_remote->auth.auth_bearer.token.buf))
+                        p_json_root,
+                        "remote_cfg_auth_bearer_token",
+                        p_cfg_remote->auth.auth_bearer.token.buf))
                 {
                     return false;
                 }
