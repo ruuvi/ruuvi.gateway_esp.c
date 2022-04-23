@@ -349,9 +349,12 @@ gw_cfg_json_add_items_lan_auth(
                 break;
         }
     }
-    if (!gw_cfg_json_add_string(p_json_root, "lan_auth_api_key", p_cfg_lan_auth->lan_auth_api_key.buf))
+    if (!flag_hide_passwords)
     {
-        return false;
+        if (!gw_cfg_json_add_string(p_json_root, "lan_auth_api_key", p_cfg_lan_auth->lan_auth_api_key.buf))
+        {
+            return false;
+        }
     }
     return true;
 }
