@@ -38,7 +38,7 @@ typedef enum main_task_sig_e
     MAIN_TASK_SIG_DEACTIVATE_WIFI_AP                  = OS_SIGNAL_NUM_4,
     MAIN_TASK_SIG_TASK_RESTART_SERVICES               = OS_SIGNAL_NUM_5,
     MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG                = OS_SIGNAL_NUM_6,
-    MAIN_TASK_SIG_CHECK_NETWORK_CONNECTED             = OS_SIGNAL_NUM_7,
+    MAIN_TASK_SIG_NETWORK_CONNECTED                   = OS_SIGNAL_NUM_7,
     MAIN_TASK_SIG_TASK_WATCHDOG_FEED                  = OS_SIGNAL_NUM_8,
 } main_task_sig_e;
 
@@ -301,7 +301,7 @@ main_task_handle_sig(const main_task_sig_e main_task_sig)
         case MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG:
             main_task_handle_sig_check_for_remote_cfg();
             break;
-        case MAIN_TASK_SIG_CHECK_NETWORK_CONNECTED:
+        case MAIN_TASK_SIG_NETWORK_CONNECTED:
             main_task_handle_sig_network_connected();
             break;
         case MAIN_TASK_SIG_TASK_WATCHDOG_FEED:
@@ -408,7 +408,7 @@ main_task_init_signals(void)
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_DEACTIVATE_WIFI_AP));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_RESTART_SERVICES));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG));
-    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_NETWORK_CONNECTED));
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_NETWORK_CONNECTED));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_WATCHDOG_FEED));
 }
 
@@ -452,13 +452,13 @@ main_task_init_timers(void)
         &g_main_loop_ev_info_mem_wifi_connected,
         EVENT_MGR_EV_WIFI_CONNECTED,
         g_p_signal_main_task,
-        main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_NETWORK_CONNECTED));
+        main_task_conv_to_sig_num(MAIN_TASK_SIG_NETWORK_CONNECTED));
 
     event_mgr_subscribe_sig_static(
         &g_main_loop_ev_info_mem_eth_connected,
         EVENT_MGR_EV_ETH_CONNECTED,
         g_p_signal_main_task,
-        main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_NETWORK_CONNECTED));
+        main_task_conv_to_sig_num(MAIN_TASK_SIG_NETWORK_CONNECTED));
 }
 
 bool
