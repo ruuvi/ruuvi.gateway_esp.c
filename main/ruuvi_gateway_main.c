@@ -305,6 +305,7 @@ void
 restart_services(void)
 {
     main_task_send_sig_restart_services();
+    main_task_configure_periodic_remote_cfg_check();
 
     if (AUTO_UPDATE_CYCLE_TYPE_MANUAL != gw_cfg_get_auto_update_cycle())
     {

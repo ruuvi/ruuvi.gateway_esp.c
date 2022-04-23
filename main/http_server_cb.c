@@ -912,7 +912,6 @@ http_server_cb_on_post_gw_cfg_download(void)
             }
             else if (!flag_eq_ruuvi_cfg)
             {
-                main_task_configure_periodic_remote_cfg_check();
                 restart_services();
             }
         }

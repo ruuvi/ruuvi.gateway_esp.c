@@ -340,7 +340,6 @@ main_task_configure_periodic_remote_cfg_check(void)
                 g_p_timer_sig_check_for_remote_cfg,
                 pdMS_TO_TICKS(
                     remote_cfg_refresh_interval_minutes * TIME_UNITS_SECONDS_PER_MINUTE * TIME_UNITS_MS_PER_SECOND));
-            os_timer_sig_periodic_start(g_p_timer_sig_check_for_remote_cfg);
         }
         else
         {
