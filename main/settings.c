@@ -21,7 +21,7 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
-#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
+#if (LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG) && !RUUVI_TESTS
 #warning Debug log level prints out the passwords as a "plaintext".
 #endif
 
