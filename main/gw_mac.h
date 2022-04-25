@@ -14,8 +14,6 @@
 extern "C" {
 #endif
 
-extern mac_address_str_t g_gw_mac_sta_str;
-
 #ifdef __cplusplus
 }
 #endif

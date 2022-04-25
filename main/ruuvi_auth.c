@@ -21,7 +21,7 @@ ruuvi_auth_set_from_config(void)
 
     return http_server_set_auth(
         lan_auth.lan_auth_type,
-        lan_auth.lan_auth_user,
-        lan_auth.lan_auth_pass,
-        lan_auth.lan_auth_api_key);
+        &lan_auth.lan_auth_user,
+        &lan_auth.lan_auth_pass,
+        &lan_auth.lan_auth_api_key);
 }

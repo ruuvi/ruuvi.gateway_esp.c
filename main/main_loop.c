@@ -16,6 +16,7 @@
 #include "leds.h"
 #include "mqtt.h"
 #include "time_task.h"
+#include "event_mgr.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -37,7 +38,9 @@ typedef enum main_task_sig_e
     MAIN_TASK_SIG_DEACTIVATE_WIFI_AP                  = OS_SIGNAL_NUM_4,
     MAIN_TASK_SIG_TASK_RESTART_SERVICES               = OS_SIGNAL_NUM_5,
     MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT                = OS_SIGNAL_NUM_6,
-    MAIN_TASK_SIG_TASK_WATCHDOG_FEED                  = OS_SIGNAL_NUM_7,
+    MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG                = OS_SIGNAL_NUM_7,
+    MAIN_TASK_SIG_NETWORK_CONNECTED                   = OS_SIGNAL_NUM_8,
+    MAIN_TASK_SIG_TASK_WATCHDOG_FEED                  = OS_SIGNAL_NUM_9,
 } main_task_sig_e;
 
 #define MAIN_TASK_SIG_FIRST (MAIN_TASK_SIG_LOG_HEAP_USAGE)
@@ -51,8 +54,12 @@ static os_timer_sig_one_shot_t *      g_p_timer_sig_check_for_fw_updates;
 static os_timer_sig_one_shot_static_t g_timer_sig_check_for_fw_updates_mem;
 static os_timer_sig_one_shot_t *      g_p_timer_sig_deactivate_wifi_ap;
 static os_timer_sig_one_shot_static_t g_p_timer_sig_deactivate_wifi_ap_mem;
+static os_timer_sig_periodic_t *      g_p_timer_sig_check_for_remote_cfg;
+static os_timer_sig_periodic_static_t g_timer_sig_check_for_remote_cfg_mem;
 static os_timer_sig_periodic_t *      g_p_timer_sig_task_watchdog_feed;
 static os_timer_sig_periodic_static_t g_timer_sig_task_watchdog_feed_mem;
+static event_mgr_ev_info_static_t     g_main_loop_ev_info_mem_wifi_connected;
+static event_mgr_ev_info_static_t     g_main_loop_ev_info_mem_eth_connected;
 
 ATTR_PURE
 static os_signal_num_e
@@ -140,9 +147,9 @@ check_if_checking_for_fw_updates_allowed(void)
         LOG_INFO("Check for fw updates - skip (time is not synchronized)");
         return false;
     }
-    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
+    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
 
-    const bool res = check_if_checking_for_fw_updates_allowed2(&p_gw_cfg->auto_update);
+    const bool res = check_if_checking_for_fw_updates_allowed2(&p_gw_cfg->ruuvi_cfg.auto_update);
 
     gw_cfg_unlock_ro(&p_gw_cfg);
     return res;
@@ -210,7 +217,7 @@ main_task_handle_sig_deactivate_wifi_ap(void)
     wifi_manager_stop_ap();
     if (gw_cfg_get_eth_use_eth() || (!wifi_manager_is_sta_configured()))
     {
-        ethernet_start(g_gw_wifi_ssid.ssid_buf);
+        ethernet_start(gw_cfg_get_wifi_ap_ssid()->ssid_buf);
     }
     else
     {
@@ -218,6 +225,28 @@ main_task_handle_sig_deactivate_wifi_ap(void)
     }
 
     leds_indication_network_no_connection();
+}
+
+static void
+main_task_handle_sig_check_for_remote_cfg(void)
+{
+    LOG_INFO("Check for remote_cfg: activate");
+    http_server_user_req(HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_GW_CFG);
+}
+
+static void
+main_task_handle_sig_network_connected(void)
+{
+    LOG_INFO("Handle event: NETWORK_CONNECTED");
+    gw_cfg_remote_refresh_interval_minutes_t remote_cfg_refresh_interval_minutes = 0;
+    const bool  flag_use_remote_cfg = gw_cfg_get_remote_cfg_use(&remote_cfg_refresh_interval_minutes);
+    static bool g_flag_initial_request_for_remote_cfg_performed = false;
+    if (flag_use_remote_cfg && !g_flag_initial_request_for_remote_cfg_performed)
+    {
+        g_flag_initial_request_for_remote_cfg_performed = true;
+        LOG_INFO("Activate checking for remote cfg");
+        os_signal_send(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG));
+    }
 }
 
 static void
@@ -273,6 +302,12 @@ main_task_handle_sig(const main_task_sig_e main_task_sig)
         case MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT:
             mqtt_publish_connect();
             break;
+        case MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG:
+            main_task_handle_sig_check_for_remote_cfg();
+            break;
+        case MAIN_TASK_SIG_NETWORK_CONNECTED:
+            main_task_handle_sig_network_connected();
+            break;
         case MAIN_TASK_SIG_TASK_WATCHDOG_FEED:
             main_task_handle_sig_task_watchdog_feed();
             break;
@@ -292,6 +327,37 @@ main_wdt_add_and_start(void)
     os_timer_sig_periodic_start(g_p_timer_sig_task_watchdog_feed);
 }
 
+void
+main_task_configure_periodic_remote_cfg_check(void)
+{
+    gw_cfg_remote_refresh_interval_minutes_t remote_cfg_refresh_interval_minutes = 0;
+
+    const bool flag_use_remote_cfg = gw_cfg_get_remote_cfg_use(&remote_cfg_refresh_interval_minutes);
+    if (flag_use_remote_cfg)
+    {
+        if (0 != remote_cfg_refresh_interval_minutes)
+        {
+            LOG_INFO(
+                "Reading of the configuration from the remote server is active, period: %u minutes",
+                (printf_uint_t)remote_cfg_refresh_interval_minutes);
+            os_timer_sig_periodic_restart(
+                g_p_timer_sig_check_for_remote_cfg,
+                pdMS_TO_TICKS(
+                    remote_cfg_refresh_interval_minutes * TIME_UNITS_SECONDS_PER_MINUTE * TIME_UNITS_MS_PER_SECOND));
+        }
+        else
+        {
+            LOG_WARN("Reading of the configuration from the remote server is active, but period is not set");
+            os_timer_sig_periodic_stop(g_p_timer_sig_check_for_remote_cfg);
+        }
+    }
+    else
+    {
+        LOG_INFO("Reading of the configuration from the remote server is not active");
+        os_timer_sig_periodic_stop(g_p_timer_sig_check_for_remote_cfg);
+    }
+}
+
 ATTR_NORETURN
 void
 main_loop(void)
@@ -300,6 +366,9 @@ main_loop(void)
     main_wdt_add_and_start();
 
     os_timer_sig_periodic_start(g_p_timer_sig_log_heap_usage);
+
+    main_task_configure_periodic_remote_cfg_check();
+
     if (AUTO_UPDATE_CYCLE_TYPE_MANUAL != gw_cfg_get_auto_update_cycle())
     {
         LOG_INFO(
@@ -343,10 +412,12 @@ main_task_init_signals(void)
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_DEACTIVATE_WIFI_AP));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_RESTART_SERVICES));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT));
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG));
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_NETWORK_CONNECTED));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_WATCHDOG_FEED));
 }
 
-static void
+void
 main_task_init_timers(void)
 {
     g_p_timer_sig_log_heap_usage = os_timer_sig_periodic_create_static(
@@ -367,19 +438,38 @@ main_task_init_timers(void)
         g_p_signal_main_task,
         main_task_conv_to_sig_num(MAIN_TASK_SIG_DEACTIVATE_WIFI_AP),
         pdMS_TO_TICKS(MAIN_TASK_TIMEOUT_AFTER_MANUAL_HOTSPOT_ACTIVATION_SEC * TIME_UNITS_MS_PER_SECOND));
+
+    g_p_timer_sig_check_for_remote_cfg = os_timer_sig_periodic_create_static(
+        &g_timer_sig_check_for_remote_cfg_mem,
+        "remote_cfg",
+        g_p_signal_main_task,
+        main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG),
+        pdMS_TO_TICKS(60U * TIME_UNITS_MINUTES_PER_HOUR * TIME_UNITS_MS_PER_SECOND));
+
     g_p_timer_sig_task_watchdog_feed = os_timer_sig_periodic_create_static(
         &g_timer_sig_task_watchdog_feed_mem,
         "main_wgod",
         g_p_signal_main_task,
         main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_WATCHDOG_FEED),
         pdMS_TO_TICKS(CONFIG_ESP_TASK_WDT_TIMEOUT_S * TIME_UNITS_MS_PER_SECOND / 3U));
+
+    event_mgr_subscribe_sig_static(
+        &g_main_loop_ev_info_mem_wifi_connected,
+        EVENT_MGR_EV_WIFI_CONNECTED,
+        g_p_signal_main_task,
+        main_task_conv_to_sig_num(MAIN_TASK_SIG_NETWORK_CONNECTED));
+
+    event_mgr_subscribe_sig_static(
+        &g_main_loop_ev_info_mem_eth_connected,
+        EVENT_MGR_EV_ETH_CONNECTED,
+        g_p_signal_main_task,
+        main_task_conv_to_sig_num(MAIN_TASK_SIG_NETWORK_CONNECTED));
 }
 
 bool
 main_loop_init(void)
 {
     main_task_init_signals();
-    main_task_init_timers();
     if (!os_signal_register_cur_thread(g_p_signal_main_task))
     {
         LOG_ERR("%s failed", "os_signal_register_cur_thread");

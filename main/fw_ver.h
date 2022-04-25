@@ -12,12 +12,12 @@
 extern "C" {
 #endif
 
-#define FW_VER_SIZE (32U)
+#define RUUVI_ESP32_FW_VER_SIZE (32U)
 
-typedef struct fw_update_app_version_str_t
+typedef struct ruuvi_esp32_fw_ver_str_t
 {
-    char buf[FW_VER_SIZE];
-} fw_ver_str_t;
+    char buf[RUUVI_ESP32_FW_VER_SIZE];
+} ruuvi_esp32_fw_ver_str_t;
 
 #ifdef __cplusplus
 }

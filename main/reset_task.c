@@ -23,18 +23,22 @@ typedef enum reset_task_sig_e
     RESET_TASK_SIG_CONFIGURE_BUTTON_RELEASED  = OS_SIGNAL_NUM_1,
     RESET_TASK_SIG_INCREMENT_UPTIME_COUNTER   = OS_SIGNAL_NUM_2,
     RESET_TASK_SIG_REBOOT_BY_CONFIGURE_BUTTON = OS_SIGNAL_NUM_3,
-    RESET_TASK_SIG_TASK_WATCHDOG_FEED         = OS_SIGNAL_NUM_4,
+    RESET_TASK_SIG_REBOOT_BY_COMMAND          = OS_SIGNAL_NUM_4,
+    RESET_TASK_SIG_TASK_WATCHDOG_FEED         = OS_SIGNAL_NUM_5,
 } reset_task_sig_e;
 
 #define RESET_TASK_SIG_FIRST (RESET_TASK_SIG_CONFIGURE_BUTTON_PRESSED)
 #define RESET_TASK_SIG_LAST  (RESET_TASK_SIG_TASK_WATCHDOG_FEED)
 
 #define RESET_TASK_TIMEOUT_AFTER_PRESSING_CONFIGURE_BUTTON (5)
+#define RESET_TASK_TIMEOUT_AFTER_COMMAND                   (3)
 
 static const char *TAG = "reset_task";
 
 static os_timer_sig_one_shot_t *      g_p_timer_sig_reset_by_configure_button;
 static os_timer_sig_one_shot_static_t g_timer_sig_reset_by_configure_button_mem;
+static os_timer_sig_one_shot_t *      g_p_timer_sig_reset_by_command;
+static os_timer_sig_one_shot_static_t g_timer_sig_reset_by_command_mem;
 static os_timer_sig_periodic_t *      g_p_timer_sig_uptime_counter;
 static os_timer_sig_periodic_static_t g_timer_sig_uptime_counter_mem;
 static os_timer_sig_periodic_t *      g_p_timer_sig_watchdog_feed;
@@ -130,6 +134,10 @@ reset_task_handle_sig(const reset_task_sig_e reset_task_sig)
             // settings in flash.
             esp_restart();
             break;
+        case RESET_TASK_SIG_REBOOT_BY_COMMAND:
+            LOG_INFO("System restart is activated by the Command");
+            esp_restart();
+            break;
         case RESET_TASK_SIG_TASK_WATCHDOG_FEED:
             reset_task_watchdog_feed();
             break;
@@ -195,6 +203,7 @@ reset_task_init(void)
     os_signal_add(g_p_signal_reset_task, reset_task_conv_to_sig_num(RESET_TASK_SIG_CONFIGURE_BUTTON_RELEASED));
     os_signal_add(g_p_signal_reset_task, reset_task_conv_to_sig_num(RESET_TASK_SIG_INCREMENT_UPTIME_COUNTER));
     os_signal_add(g_p_signal_reset_task, reset_task_conv_to_sig_num(RESET_TASK_SIG_REBOOT_BY_CONFIGURE_BUTTON));
+    os_signal_add(g_p_signal_reset_task, reset_task_conv_to_sig_num(RESET_TASK_SIG_REBOOT_BY_COMMAND));
     os_signal_add(g_p_signal_reset_task, reset_task_conv_to_sig_num(RESET_TASK_SIG_TASK_WATCHDOG_FEED));
 
     g_p_timer_sig_reset_by_configure_button = os_timer_sig_one_shot_create_static(
@@ -203,6 +212,13 @@ reset_task_init(void)
         g_p_signal_reset_task,
         reset_task_conv_to_sig_num(RESET_TASK_SIG_REBOOT_BY_CONFIGURE_BUTTON),
         pdMS_TO_TICKS(RESET_TASK_TIMEOUT_AFTER_PRESSING_CONFIGURE_BUTTON * 1000));
+
+    g_p_timer_sig_reset_by_command = os_timer_sig_one_shot_create_static(
+        &g_timer_sig_reset_by_command_mem,
+        "reset_by_cmd",
+        g_p_signal_reset_task,
+        reset_task_conv_to_sig_num(RESET_TASK_SIG_REBOOT_BY_COMMAND),
+        pdMS_TO_TICKS(RESET_TASK_TIMEOUT_AFTER_COMMAND * 1000));
 
     g_p_timer_sig_uptime_counter = os_timer_sig_periodic_create_static(
         &g_timer_sig_uptime_counter_mem,
@@ -227,4 +243,11 @@ reset_task_init(void)
         return false;
     }
     return true;
+}
+
+void
+reset_task_reboot_after_timeout(void)
+{
+    LOG_INFO("Got the command to reboot the gateway after %u seconds", RESET_TASK_TIMEOUT_AFTER_COMMAND);
+    os_timer_sig_one_shot_start(g_p_timer_sig_reset_by_command);
 }

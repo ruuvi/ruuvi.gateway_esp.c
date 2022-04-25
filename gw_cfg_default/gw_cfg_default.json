@@ -3,6 +3,9 @@
     "ssid": "",
     "password": ""
   },
+  "wifi_ap_config": {
+    "password": ""
+  },
   "use_eth": false,
   "eth_dhcp": true,
   "eth_static_ip": "",
@@ -10,6 +13,13 @@
   "eth_gw": "",
   "eth_dns1": "",
   "eth_dns2": "",
+  "remote_cfg_use": false,
+  "remote_cfg_url": "",
+  "remote_cfg_auth_type": "no",
+  "remote_cfg_auth_bearer_token": "",
+  "remote_cfg_auth_basic_user": "",
+  "remote_cfg_auth_basic_pass": "",
+  "remote_cfg_refresh_interval_minutes": 0,
   "use_http": true,
   "http_url": "https://network.ruuvi.com/record",
   "http_user": "",
@@ -19,13 +29,10 @@
   "http_stat_user": "",
   "http_stat_pass": "",
   "use_mqtt": false,
-  "mqtt_use_default_prefix": true,
   "mqtt_transport": "TCP",
   "mqtt_server": "test.mosquitto.org",
   "mqtt_port": 1883,
-  "mqtt_prefix_default": true,
   "mqtt_prefix": "",
-  "mqtt_client_id_default": true,
   "mqtt_client_id": "",
   "mqtt_user": "",
   "mqtt_pass": "",
@@ -39,12 +46,12 @@
   "auto_update_tz_offset_hours": 3,
   "company_use_filtering": true,
   "company_id": 1177,
-  "coordinates": "",
   "scan_coded_phy": false,
   "scan_1mbit_phy": true,
   "scan_extended_payload": true,
   "scan_channel_37": true,
   "scan_channel_38": true,
-  "scan_channel_39": true
+  "scan_channel_39": true,
+  "coordinates": ""
 }
 

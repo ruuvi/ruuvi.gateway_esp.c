@@ -17,12 +17,7 @@ extern "C" {
 #endif
 
 bool
-gw_cfg_ruuvi_json_generate(
-    const ruuvi_gateway_config_t *const p_cfg,
-    const mac_address_str_t *const      p_mac_sta,
-    const char *const                   p_fw_ver,
-    const char *const                   p_nrf52_fw_ver,
-    cjson_wrap_str_t *const             p_json_str);
+gw_cfg_ruuvi_json_generate(const gw_cfg_t *const p_cfg, cjson_wrap_str_t *const p_json_str);
 
 #ifdef __cplusplus
 }

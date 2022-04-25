@@ -6,19 +6,24 @@
  */
 
 #include "settings.h"
-#include <stdio.h>
 #include <string.h>
 #include "cJSON.h"
 #include "nvs.h"
-#include "nvs_flash.h"
-#include "ruuvi_gateway.h"
 #include "cjson_wrap.h"
 #include "gw_cfg.h"
 #include "gw_cfg_default.h"
 #include "gw_cfg_blob.h"
 #include "gw_cfg_json.h"
-#include "log.h"
+#include "gw_cfg_log.h"
 #include "os_malloc.h"
+#include "wifi_manager.h"
+
+#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
+#include "log.h"
+
+#if (LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG) && !RUUVI_TESTS
+#warning Debug log level prints out the passwords as a "plaintext".
+#endif
 
 #define RUUVI_GATEWAY_NVS_NAMESPACE    "ruuvi_gateway"
 #define RUUVI_GATEWAY_NVS_CFG_BLOB_KEY "ruuvi_config" /* deprecated */
@@ -32,8 +37,6 @@
 #define RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_VALUE (0xAACC5533U)
 
 static const char TAG[] = "settings";
-
-static bool g_flag_cfg_blob_used;
 
 static bool
 settings_nvs_open(nvs_open_mode_t open_mode, nvs_handle_t *p_handle)
@@ -95,27 +98,16 @@ settings_check_in_flash(void)
     return true;
 }
 
-bool
-settings_save_to_flash(const char *const p_json_str)
+static bool
+settings_save_to_flash_cjson(const char *const p_json_str)
 {
-    LOG_DBG(".");
+    LOG_DBG("Save to flash: %s", (NULL != p_json_str) ? p_json_str : "");
 
     nvs_handle handle = 0;
     if (!settings_nvs_open(NVS_READWRITE, &handle))
     {
         LOG_ERR("Failed to open NVS for writing");
         return false;
-    }
-
-    if (g_flag_cfg_blob_used)
-    {
-        g_flag_cfg_blob_used = false;
-        LOG_INFO("Erase deprecated cfg BLOB");
-        const esp_err_t err = nvs_erase_key(handle, RUUVI_GATEWAY_NVS_CFG_BLOB_KEY);
-        if (ESP_OK != err)
-        {
-            LOG_ERR_ESP(err, "Failed to erase deprecated cfg BLOB");
-        }
     }
 
     const esp_err_t err = nvs_set_str(handle, RUUVI_GATEWAY_NVS_CFG_JSON_KEY, (NULL != p_json_str) ? p_json_str : "");
@@ -129,14 +121,40 @@ settings_save_to_flash(const char *const p_json_str)
 }
 
 bool
+settings_save_to_flash(void)
+{
+    gw_cfg_t *p_gw_cfg_tmp = os_calloc(1, sizeof(*p_gw_cfg_tmp));
+    if (NULL == p_gw_cfg_tmp)
+    {
+        LOG_ERR("Failed to allocate memory for gw_cfg");
+        return false;
+    }
+    gw_cfg_get_copy(p_gw_cfg_tmp);
+
+    bool             res       = false;
+    cjson_wrap_str_t cjson_str = { 0 };
+    if (!gw_cfg_json_generate_full(p_gw_cfg_tmp, &cjson_str))
+    {
+        LOG_ERR("%s failed", "gw_cfg_json_generate");
+    }
+    else
+    {
+        res = settings_save_to_flash_cjson(cjson_str.p_str);
+    }
+    cjson_wrap_free_json_str(&cjson_str);
+    os_free(p_gw_cfg_tmp);
+    return res;
+}
+
+bool
 settings_clear_in_flash(void)
 {
     LOG_DBG(".");
-    return settings_save_to_flash("");
+    return settings_save_to_flash_cjson("");
 }
 
 static bool
-settings_get_gw_cfg_from_nvs(nvs_handle handle, ruuvi_gateway_config_t *const p_gw_cfg)
+settings_get_gw_cfg_from_nvs(nvs_handle handle, gw_cfg_t *const p_gw_cfg, bool *const p_flag_modified)
 {
     gw_cfg_default_get(p_gw_cfg);
 
@@ -163,7 +181,9 @@ settings_get_gw_cfg_from_nvs(nvs_handle handle, ruuvi_gateway_config_t *const p_
         return false;
     }
 
-    if (!gw_cfg_json_parse(p_cfg_json, p_gw_cfg))
+    gw_cfg_default_get(p_gw_cfg);
+
+    if (!gw_cfg_json_parse("NVS", "Read config from NVS:", p_cfg_json, p_gw_cfg, p_flag_modified))
     {
         LOG_ERR("Failed to parse config-json or no memory");
         os_free(p_cfg_json);
@@ -172,6 +192,23 @@ settings_get_gw_cfg_from_nvs(nvs_handle handle, ruuvi_gateway_config_t *const p_
     os_free(p_cfg_json);
 
     return true;
+}
+
+static void
+settings_erase_gw_cfg_blob_if_exist(nvs_handle handle)
+{
+    size_t    sz      = 0;
+    esp_err_t esp_err = nvs_get_blob(handle, RUUVI_GATEWAY_NVS_CFG_BLOB_KEY, NULL, &sz);
+    if (ESP_OK != esp_err)
+    {
+        return;
+    }
+    LOG_INFO("Erase deprecated cfg BLOB");
+    const esp_err_t err = nvs_erase_key(handle, RUUVI_GATEWAY_NVS_CFG_BLOB_KEY);
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "Failed to erase deprecated cfg BLOB");
+    }
 }
 
 static bool
@@ -184,8 +221,6 @@ settings_get_gw_cfg_blob_from_nvs(nvs_handle handle, ruuvi_gateway_config_blob_t
         LOG_ERR_ESP(esp_err, "Can't read config from flash");
         return false;
     }
-
-    g_flag_cfg_blob_used = true;
 
     if (sizeof(*p_gw_cfg_blob) != sz)
     {
@@ -217,7 +252,7 @@ settings_get_gw_cfg_blob_from_nvs(nvs_handle handle, ruuvi_gateway_config_blob_t
 }
 
 static bool
-settings_read_from_blob(nvs_handle handle, ruuvi_gateway_config_t *const p_gw_cfg)
+settings_read_from_blob(nvs_handle handle, gw_cfg_t *const p_gw_cfg)
 {
     LOG_WARN("Try to read config from BLOB");
     bool                         flag_use_default_config = false;
@@ -234,6 +269,7 @@ settings_read_from_blob(nvs_handle handle, ruuvi_gateway_config_t *const p_gw_cf
         }
         else
         {
+            LOG_INFO("Convert Cfg BLOB");
             gw_cfg_blob_convert(p_gw_cfg, p_gw_cfg_blob);
         }
         os_free(p_gw_cfg_blob);
@@ -244,43 +280,51 @@ settings_read_from_blob(nvs_handle handle, ruuvi_gateway_config_t *const p_gw_cf
 bool
 settings_get_from_flash(void)
 {
-    ruuvi_gateway_config_t *p_gw_cfg                = gw_cfg_lock_rw();
-    bool                    flag_use_default_config = false;
-    nvs_handle              handle                  = 0;
+    gw_cfg_t * p_gw_cfg                = gw_cfg_lock_rw();
+    bool       flag_use_default_config = false;
+    bool       flag_modified           = false;
+    nvs_handle handle                  = 0;
     if (!settings_nvs_open(NVS_READWRITE, &handle))
     {
         flag_use_default_config = true;
     }
     else
     {
-        if (!settings_get_gw_cfg_from_nvs(handle, p_gw_cfg))
+        if (!settings_get_gw_cfg_from_nvs(handle, p_gw_cfg, &flag_modified))
         {
+            flag_modified           = true;
             flag_use_default_config = settings_read_from_blob(handle, p_gw_cfg);
         }
         nvs_close(handle);
     }
-    if (g_flag_cfg_blob_used)
-    {
-        LOG_INFO("Convert Cfg BLOB to json");
-        cjson_wrap_str_t cjson_str = { 0 };
-        if (!gw_cfg_json_generate(p_gw_cfg, &cjson_str))
-        {
-            LOG_ERR("%s failed", "gw_cfg_json_generate");
-        }
-        else
-        {
-            settings_save_to_flash(cjson_str.p_str);
-        }
-        cjson_wrap_free_json_str(&cjson_str);
-    }
-
     if (flag_use_default_config)
     {
         LOG_WARN("Using default config");
+        flag_modified = true;
         gw_cfg_default_get(p_gw_cfg);
     }
 
-    gw_cfg_print_to_log(p_gw_cfg, "Gateway SETTINGS (from flash)");
+    const bool flag_wifi_cfg_blob_used = wifi_manager_cfg_blob_read(&p_gw_cfg->wifi_cfg);
+    if (flag_wifi_cfg_blob_used)
+    {
+        gw_cfg_log_wifi_cfg(&p_gw_cfg->wifi_cfg, "Got wifi_cfg from NVS BLOB:");
+    }
+
+    if (flag_modified || flag_wifi_cfg_blob_used)
+    {
+        LOG_INFO("Update config in flash");
+        settings_save_to_flash();
+    }
+    settings_erase_gw_cfg_blob_if_exist(handle);
+    if (flag_wifi_cfg_blob_used)
+    {
+        if (!wifi_manager_cfg_blob_erase_if_exist())
+        {
+            LOG_ERR("Failed to erase wifi_cfg_blob");
+        }
+    }
+
+    gw_cfg_log(p_gw_cfg, "Gateway SETTINGS (from flash)", false);
     gw_cfg_unlock_rw(&p_gw_cfg);
     return flag_use_default_config;
 }
@@ -327,14 +371,14 @@ settings_write_mac_addr(const mac_address_bin_t *const p_mac_addr)
 }
 
 void
-settings_update_mac_addr(const mac_address_bin_t *const p_mac_addr)
+settings_update_mac_addr(const mac_address_bin_t new_mac_addr)
 {
-    const mac_address_bin_t mac_addr = settings_read_mac_addr();
-    if (0 != memcmp(&mac_addr, p_mac_addr, sizeof(*p_mac_addr)))
+    const mac_address_bin_t saved_mac_addr = settings_read_mac_addr();
+    if (0 != memcmp(&saved_mac_addr, &new_mac_addr, sizeof(new_mac_addr)))
     {
-        const mac_address_str_t new_mac_addr_str = mac_address_to_str(p_mac_addr);
+        const mac_address_str_t new_mac_addr_str = mac_address_to_str(&new_mac_addr);
         LOG_INFO("Save new MAC-address: %s", new_mac_addr_str.str_buf);
-        settings_write_mac_addr(p_mac_addr);
+        settings_write_mac_addr(&new_mac_addr);
     }
 }
 

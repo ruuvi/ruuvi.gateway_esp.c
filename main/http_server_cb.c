@@ -20,18 +20,15 @@
 #include "http_server.h"
 #include "http.h"
 #include "fw_update.h"
-#include "nrf52fw.h"
 #include "adv_post.h"
-#include "ruuvi_device_id.h"
 #include "json_helper.h"
 #include "os_time.h"
 #include "time_str.h"
 #include "reset_task.h"
 #include "ruuvi_auth.h"
 #include "gw_cfg.h"
-#include "gw_cfg_json.h"
 #include "gw_cfg_ruuvi_json.h"
-#include "gw_mac.h"
+#include "gw_cfg_json.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -39,6 +36,10 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #endif
 #include "log.h"
+
+#if (LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG) && !RUUVI_TESTS
+#warning Debug log level prints out the passwords as a "plaintext".
+#endif
 
 #define HTTP_SERVER_DEFAULT_HISTORY_INTERVAL_SECONDS (60U)
 
@@ -51,6 +52,10 @@ static const char g_empty_json[] = "{}";
 static const flash_fat_fs_t *gp_ffs_gwui;
 
 static bool g_http_server_cb_flag_prohibit_cfg_updating = false;
+
+HTTP_SERVER_CB_STATIC
+http_server_resp_t
+http_server_cb_on_post_gw_cfg_download(void);
 
 #if !RUUVI_TESTS_HTTP_SERVER_CB
 static time_t
@@ -89,14 +94,9 @@ HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_json_ruuvi(void)
 {
-    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
-    cjson_wrap_str_t              json_str = cjson_wrap_str_null();
-    if (!gw_cfg_ruuvi_json_generate(
-            p_gw_cfg,
-            &g_gw_mac_sta_str,
-            fw_update_get_cur_version(),
-            g_nrf52_firmware_version.buf,
-            &json_str))
+    const gw_cfg_t * p_gw_cfg = gw_cfg_lock_ro();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+    if (!gw_cfg_ruuvi_json_generate(p_gw_cfg, &json_str))
     {
         gw_cfg_unlock_ro(&p_gw_cfg);
         return http_server_resp_503();
@@ -141,29 +141,27 @@ json_info_add_uint32(cJSON *p_json_root, const char *p_item_name, const uint32_t
 static bool
 json_info_add_items(cJSON *p_json_root)
 {
-    if (!json_info_add_string(p_json_root, "ESP_FW", fw_update_get_cur_version()))
+    if (!json_info_add_string(p_json_root, "ESP_FW", gw_cfg_get_esp32_fw_ver()->buf))
     {
         return false;
     }
-    if (!json_info_add_string(p_json_root, "NRF_FW", g_nrf52_firmware_version.buf))
+    if (!json_info_add_string(p_json_root, "NRF_FW", gw_cfg_get_nrf52_fw_ver()->buf))
     {
         return false;
     }
-    const mac_address_str_t nrf52_mac_addr = ruuvi_device_id_get_nrf52_mac_address_str();
-    if (!json_info_add_string(p_json_root, "DEVICE_ADDR", nrf52_mac_addr.str_buf))
+    if (!json_info_add_string(p_json_root, "DEVICE_ADDR", gw_cfg_get_nrf52_mac_addr()->str_buf))
     {
         return false;
     }
-    const nrf52_device_id_str_t nrf52_device_id = ruuvi_device_id_get_str();
-    if (!json_info_add_string(p_json_root, "DEVICE_ID", nrf52_device_id.str_buf))
+    if (!json_info_add_string(p_json_root, "DEVICE_ID", gw_cfg_get_nrf52_device_id()->str_buf))
     {
         return false;
     }
-    if (!json_info_add_string(p_json_root, "ETHERNET_MAC", g_gw_mac_eth_str.str_buf))
+    if (!json_info_add_string(p_json_root, "ETHERNET_MAC", gw_cfg_get_esp32_mac_addr_eth()->str_buf))
     {
         return false;
     }
-    if (!json_info_add_string(p_json_root, "WIFI_MAC", g_gw_mac_wifi_str.str_buf))
+    if (!json_info_add_string(p_json_root, "WIFI_MAC", gw_cfg_get_esp32_mac_addr_wifi()->str_buf))
     {
         return false;
     }
@@ -218,8 +216,8 @@ HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_json_info(void)
 {
-    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
-    cjson_wrap_str_t              json_str = cjson_wrap_str_null();
+    const gw_cfg_t * p_gw_cfg = gw_cfg_lock_ro();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
     if (!generate_json_info_str(&json_str))
     {
         gw_cfg_unlock_ro(&p_gw_cfg);
@@ -240,7 +238,7 @@ http_server_resp_json_info(void)
 }
 
 static bool
-cb_on_http_data_json_github_latest_release(
+cb_on_http_download_json_data(
     const uint8_t *const   p_buf,
     const size_t           buf_size,
     const size_t           offset,
@@ -248,9 +246,9 @@ cb_on_http_data_json_github_latest_release(
     const http_resp_code_e http_resp_code,
     void *                 p_user_data)
 {
-    LOG_INFO("cb_on_http_data_json_github_latest_release: buf_size=%lu", (printf_ulong_t)buf_size);
+    LOG_INFO("%s: buf_size=%lu", __func__, (printf_ulong_t)buf_size);
 
-    download_github_latest_release_info_t *const p_info = p_user_data;
+    http_server_download_info_t *const p_info = p_user_data;
     if (p_info->is_error)
     {
         LOG_ERR("Error occurred while downloading");
@@ -288,7 +286,7 @@ cb_on_http_data_json_github_latest_release(
         if (NULL == p_info->p_json_buf)
         {
             p_info->is_error = true;
-            LOG_ERR("Can't allocate %lu bytes for github_latest_release.json", (printf_ulong_t)p_info->json_buf_size);
+            LOG_ERR("Can't allocate %lu bytes for json file", (printf_ulong_t)p_info->json_buf_size);
             return false;
         }
     }
@@ -301,9 +299,7 @@ cb_on_http_data_json_github_latest_release(
             if (!os_realloc_safe_and_clean((void **)&p_info->p_json_buf, p_info->json_buf_size))
             {
                 p_info->is_error = true;
-                LOG_ERR(
-                    "Can't allocate %lu bytes for github_latest_release.json",
-                    (printf_ulong_t)p_info->json_buf_size);
+                LOG_ERR("Can't allocate %lu bytes for json file", (printf_ulong_t)p_info->json_buf_size);
                 return false;
             }
         }
@@ -317,7 +313,7 @@ cb_on_http_data_json_github_latest_release(
             p_info->p_json_buf = NULL;
         }
         LOG_ERR(
-            "Buffer overflow while downloading github_latest_release.json: json_buf_size=%lu, offset=%lu, len=%lu",
+            "Buffer overflow while downloading json file: json_buf_size=%lu, offset=%lu, len=%lu",
             (printf_ulong_t)p_info->json_buf_size,
             (printf_ulong_t)offset,
             (printf_ulong_t)buf_size);
@@ -328,22 +324,31 @@ cb_on_http_data_json_github_latest_release(
     return true;
 }
 
-download_github_latest_release_info_t
-http_download_latest_release_info(void)
+static http_server_download_info_t
+http_download_json(
+    const char *const                     p_url,
+    const gw_cfg_remote_auth_type_e       auth_type,
+    const ruuvi_gw_cfg_http_auth_t *const p_http_auth,
+    const http_header_item_t *const       p_extra_header_item)
 {
-    download_github_latest_release_info_t info = {
+    http_server_download_info_t info = {
         .is_error       = false,
         .http_resp_code = HTTP_RESP_CODE_200,
         .p_json_buf     = NULL,
         .json_buf_size  = 0,
     };
-    if (!http_download(
-            "https://api.github.com/repos/ruuvi/ruuvi.gateway_esp.c/releases/latest",
-            &cb_on_http_data_json_github_latest_release,
+    const TickType_t download_started_at_tick = xTaskGetTickCount();
+    const bool       flag_feed_task_watchdog  = true;
+    if (!http_download_with_auth(
+            p_url,
+            auth_type,
+            p_http_auth,
+            p_extra_header_item,
+            &cb_on_http_download_json_data,
             &info,
-            true))
+            flag_feed_task_watchdog))
     {
-        LOG_ERR("http_download failed");
+        LOG_ERR("http_download failed for URL: %s", p_url);
         info.is_error = true;
     }
     if (HTTP_RESP_CODE_200 != info.http_resp_code)
@@ -368,14 +373,27 @@ http_download_latest_release_info(void)
     {
         // MISRA C:2012, 15.7 - All if...else if constructs shall be terminated with an else statement
     }
+    if (info.is_error && (HTTP_RESP_CODE_200 == info.http_resp_code))
+    {
+        info.http_resp_code = HTTP_RESP_CODE_400;
+    }
+    const TickType_t download_completed_within_ticks = xTaskGetTickCount() - download_started_at_tick;
+    LOG_INFO("%s: completed within %u ticks", __func__, (printf_uint_t)download_completed_within_ticks);
     return info;
+}
+
+http_server_download_info_t
+http_download_latest_release_info(void)
+{
+    const char *const p_url = "https://api.github.com/repos/ruuvi/ruuvi.gateway_esp.c/releases/latest";
+    return http_download_json(p_url, GW_CFG_REMOTE_AUTH_TYPE_NO, NULL, NULL);
 }
 
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_json_github_latest_release(void)
 {
-    const download_github_latest_release_info_t info = http_download_latest_release_info();
+    const http_server_download_info_t info = http_download_latest_release_info();
     if (info.is_error)
     {
         return http_server_resp_504();
@@ -402,11 +420,11 @@ http_server_resp_json(const char *p_file_name, const bool flag_access_from_lan)
     {
         return http_server_resp_json_ruuvi();
     }
-    else if (0 == strcmp(p_file_name, "github_latest_release.json"))
+    if (0 == strcmp(p_file_name, "github_latest_release.json"))
     {
         return http_server_resp_json_github_latest_release();
     }
-    else if ((0 == strcmp(p_file_name, "info.json")) && (!flag_access_from_lan))
+    if ((0 == strcmp(p_file_name, "info.json")) && (!flag_access_from_lan))
     {
         return http_server_resp_json_info();
     }
@@ -455,8 +473,14 @@ http_server_read_history(
 
     const ruuvi_gw_cfg_coordinates_t coordinates = gw_cfg_get_coordinates();
 
-    const bool res
-        = http_json_create_records_str(p_reports, cur_time, &g_gw_mac_sta_str, coordinates.buf, false, 0, p_json_str);
+    const bool res = http_json_create_records_str(
+        p_reports,
+        cur_time,
+        gw_cfg_get_nrf52_mac_addr(),
+        coordinates.buf,
+        false,
+        0,
+        p_json_str);
 
     os_free(p_reports);
     return res;
@@ -610,11 +634,11 @@ http_server_is_url_prefix_eq(
     return true;
 }
 
-void
+static void
 http_server_cb_on_user_req_download_latest_release_info(void)
 {
     LOG_INFO("Download latest release info");
-    download_github_latest_release_info_t latest_release_info = http_download_latest_release_info();
+    http_server_download_info_t latest_release_info = http_download_latest_release_info();
     if (latest_release_info.is_error)
     {
         LOG_ERR("Failed to download latest firmware release info");
@@ -631,8 +655,8 @@ http_server_cb_on_user_req_download_latest_release_info(void)
     if (NULL != tag_name.buf)
     {
         LOG_INFO("github_latest_release.json: tag_name: %s", tag_name.buf);
-        const char *p_cur_fw_ver = fw_update_get_cur_version();
-        if (0 == strcmp(p_cur_fw_ver, tag_name.buf))
+        const ruuvi_esp32_fw_ver_str_t *const p_esp32_fw_ver = gw_cfg_get_esp32_fw_ver();
+        if (0 == strcmp(p_esp32_fw_ver->buf, tag_name.buf))
         {
             LOG_INFO("github_latest_release.json: No update is required, the latest version is already installed");
             os_free(latest_release_info.p_json_buf);
@@ -640,7 +664,7 @@ http_server_cb_on_user_req_download_latest_release_info(void)
         }
         LOG_INFO(
             "github_latest_release.json: Update is required (current version: %s, latest version: %s)",
-            p_cur_fw_ver,
+            p_esp32_fw_ver->buf,
             tag_name.buf);
 
         fw_update_set_url("https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/%s", tag_name.buf);
@@ -678,16 +702,41 @@ http_server_cb_on_user_req_download_latest_release_info(void)
     fw_update_run(true);
 }
 
+static http_server_download_info_t
+http_server_download_gw_cfg(void)
+{
+    const mac_address_str_t *const p_nrf52_mac_addr = gw_cfg_get_nrf52_mac_addr();
+    const gw_cfg_t *               p_gw_cfg         = gw_cfg_lock_ro();
+
+    const http_header_item_t extra_header_item = {
+        .p_key   = "ruuvi_gw_mac",
+        .p_value = p_nrf52_mac_addr->str_buf,
+    };
+
+    const http_server_download_info_t info = http_download_json(
+        p_gw_cfg->ruuvi_cfg.remote.url.buf,
+        p_gw_cfg->ruuvi_cfg.remote.auth_type,
+        &p_gw_cfg->ruuvi_cfg.remote.auth,
+        &extra_header_item);
+
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    return info;
+}
+
 void
 http_server_cb_on_user_req(const http_server_user_req_code_e req_code)
 {
-    if (HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO == req_code)
+    switch (req_code)
     {
-        http_server_cb_on_user_req_download_latest_release_info();
-    }
-    else
-    {
-        LOG_ERR("Unknown req_code=%d", (printf_int_t)req_code);
+        case HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO:
+            http_server_cb_on_user_req_download_latest_release_info();
+            break;
+        case HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_GW_CFG:
+            (void)http_server_cb_on_post_gw_cfg_download();
+            break;
+        default:
+            LOG_ERR("Unknown req_code=%d", (printf_int_t)req_code);
+            break;
     }
 }
 
@@ -728,8 +777,8 @@ http_server_resp_t
 http_server_cb_on_post_ruuvi(const char *p_body)
 {
     LOG_DBG("POST /ruuvi.json");
-    bool                    flag_network_cfg = false;
-    ruuvi_gateway_config_t *p_gw_cfg_tmp     = os_calloc(1, sizeof(*p_gw_cfg_tmp));
+    bool      flag_network_cfg = false;
+    gw_cfg_t *p_gw_cfg_tmp     = os_calloc(1, sizeof(*p_gw_cfg_tmp));
     if (NULL == p_gw_cfg_tmp)
     {
         LOG_ERR("Failed to allocate memory for gw_cfg");
@@ -741,36 +790,29 @@ http_server_cb_on_post_ruuvi(const char *p_body)
         os_free(p_gw_cfg_tmp);
         return http_server_resp_503();
     }
-    gw_cfg_update(p_gw_cfg_tmp, flag_network_cfg);
-    gw_cfg_print_to_log(p_gw_cfg_tmp, "Gateway SETTINGS");
     if (flag_network_cfg)
     {
+        gw_cfg_update_eth_cfg(&p_gw_cfg_tmp->eth_cfg);
         adv_post_disable_retransmission();
     }
     else
     {
+        gw_cfg_update_ruuvi_cfg(&p_gw_cfg_tmp->ruuvi_cfg);
         restart_services();
     }
 
-    cjson_wrap_str_t cjson_str = { 0 };
-    if (!gw_cfg_json_generate(p_gw_cfg_tmp, &cjson_str))
-    {
-        LOG_ERR("%s failed", "gw_cfg_json_generate");
-    }
-    else
-    {
-        settings_save_to_flash(cjson_str.p_str);
-    }
-    cjson_wrap_free_json_str(&cjson_str);
-    os_free(p_gw_cfg_tmp);
+    settings_save_to_flash();
 
     if (!ruuvi_auth_set_from_config())
     {
         LOG_ERR("%s failed", "ruuvi_auth_set_from_config");
     }
     ruuvi_send_nrf_settings();
-    ethernet_update_ip();
-    if (!flag_network_cfg)
+    if (flag_network_cfg)
+    {
+        ethernet_update_ip();
+    }
+    else
     {
         adv_post_enable_retransmission();
     }
@@ -812,6 +854,87 @@ http_server_cb_on_post_fw_update(const char *p_body, const bool flag_access_from
         (const uint8_t *)g_empty_json);
 }
 
+HTTP_SERVER_CB_STATIC
+http_server_resp_t
+http_server_cb_on_post_gw_cfg_download(void)
+{
+    LOG_DBG("POST /gw_cfg_download");
+    const char *                p_resp_content = g_empty_json;
+    http_server_download_info_t download_info  = http_server_download_gw_cfg();
+    if (download_info.is_error)
+    {
+        LOG_ERR("POST /gw_cfg_download: failed, http_resp_code=%u", (printf_uint_t)download_info.http_resp_code);
+    }
+    else
+    {
+        LOG_INFO("POST /gw_cfg_download: gw_cfg.json was successfully downloaded");
+        LOG_DBG("gw_cfg.json: %s", download_info.p_json_buf);
+
+        gw_cfg_t *p_gw_cfg_tmp = os_calloc(1, sizeof(*p_gw_cfg_tmp));
+        if (NULL == p_gw_cfg_tmp)
+        {
+            LOG_ERR("Failed to allocate memory for gw_cfg");
+            os_free(download_info.p_json_buf);
+            return http_server_resp_503();
+        }
+        gw_cfg_get_copy(p_gw_cfg_tmp);
+
+        if (!gw_cfg_json_parse(
+                "gw_cfg.json",
+                "Read Gateway SETTINGS from remote server:",
+                download_info.p_json_buf,
+                p_gw_cfg_tmp,
+                NULL))
+        {
+            LOG_ERR("Failed to parse gw_cfg.json or no memory");
+            os_free(p_gw_cfg_tmp);
+            os_free(download_info.p_json_buf);
+            return http_server_resp_503();
+        }
+
+        bool flag_eq_ruuvi_cfg = false;
+        bool flag_eq_eth_cfg   = false;
+        bool flag_eq_wifi_cfg  = false;
+        if (!gw_cfg_cmp(p_gw_cfg_tmp, &flag_eq_ruuvi_cfg, &flag_eq_eth_cfg, &flag_eq_wifi_cfg))
+        {
+            LOG_INFO("Update settings in flash");
+            gw_cfg_update(p_gw_cfg_tmp);
+            settings_save_to_flash();
+            if (!flag_eq_eth_cfg || !flag_eq_wifi_cfg)
+            {
+                LOG_INFO(
+                    "Network configuration in gw_cfg.json differs from the current settings, need to restart gateway");
+                p_resp_content
+                    = "{\"message\":"
+                      "\"Network configuration in gw_cfg.json on the server is different from the current one, "
+                      "the gateway will be rebooted.\"}";
+                reset_task_reboot_after_timeout();
+            }
+            else if (!flag_eq_ruuvi_cfg)
+            {
+                restart_services();
+            }
+        }
+        else
+        {
+            LOG_INFO("Gateway SETTINGS (from remote server) are the same as the current ones");
+        }
+        os_free(p_gw_cfg_tmp);
+    }
+    http_server_resp_t resp = {
+        .http_resp_code               = download_info.http_resp_code,
+        .content_location             = HTTP_CONTENT_LOCATION_FLASH_MEM,
+        .flag_no_cache                = true,
+        .flag_add_header_date         = true,
+        .content_type                 = HTTP_CONENT_TYPE_APPLICATION_JSON,
+        .p_content_type_param         = NULL,
+        .content_len                  = strlen(p_resp_content),
+        .content_encoding             = HTTP_CONENT_ENCODING_NONE,
+        .select_location.memory.p_buf = (const uint8_t *)p_resp_content,
+    };
+    return resp;
+}
+
 http_server_resp_t
 http_server_cb_on_post(const char *const p_file_name, const char *const p_body, const bool flag_access_from_lan)
 {
@@ -826,6 +949,10 @@ http_server_cb_on_post(const char *const p_file_name, const char *const p_body, 
     if (0 == strcmp(p_file_name, "fw_update.json"))
     {
         return http_server_cb_on_post_fw_update(p_body, flag_access_from_lan);
+    }
+    if (0 == strcmp(p_file_name, "gw_cfg_download"))
+    {
+        return http_server_cb_on_post_gw_cfg_download();
     }
     LOG_WARN("POST /%s", p_file_name);
     return http_server_resp_404();

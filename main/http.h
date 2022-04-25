@@ -18,6 +18,12 @@
 extern "C" {
 #endif
 
+typedef struct http_header_item_t
+{
+    const char *p_key;
+    const char *p_value;
+} http_header_item_t;
+
 typedef bool (*http_download_cb_on_data_t)(
     const uint8_t *const   p_buf,
     const size_t           buf_size,
@@ -38,9 +44,19 @@ http_async_poll(void);
 bool
 http_download(
     const char *const          p_url,
-    http_download_cb_on_data_t cb_on_data,
+    http_download_cb_on_data_t p_cb_on_data,
     void *const                p_user_data,
     const bool                 flag_feed_task_watchdog);
+
+bool
+http_download_with_auth(
+    const char *const                     p_url,
+    const gw_cfg_remote_auth_type_e       gw_cfg_http_auth_type,
+    const ruuvi_gw_cfg_http_auth_t *const p_http_auth,
+    const http_header_item_t *const       p_extra_header_item,
+    http_download_cb_on_data_t            p_cb_on_data,
+    void *const                           p_user_data,
+    const bool                            flag_feed_task_watchdog);
 
 #ifdef __cplusplus
 }

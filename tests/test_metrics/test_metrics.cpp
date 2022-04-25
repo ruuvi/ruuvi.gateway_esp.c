@@ -24,12 +24,6 @@ class TestMetrics;
 
 static TestMetrics *g_pTestClass;
 
-extern "C" {
-
-nrf52fw_version_str_t g_nrf52_firmware_version;
-
-} // extern "C"
-
 /*** Google-test class implementation
  * *********************************************************************************/
 
@@ -88,8 +82,6 @@ protected:
     SetUp() override
     {
         esp_log_wrapper_init();
-        memset(&g_gw_mac_sta_str, 0, sizeof(g_gw_mac_sta_str));
-        memset(&g_nrf52_firmware_version, 0, sizeof(g_nrf52_firmware_version));
         this->m_uptime = 0;
         g_pTestClass   = this;
         this->m_mem_alloc_trace.clear();
@@ -278,12 +270,44 @@ heap_caps_get_largest_free_block(uint32_t caps)
     return 0;
 }
 
-fw_ver_str_t
-fw_update_get_cur_version2(void)
+const ruuvi_esp32_fw_ver_str_t *
+gw_cfg_get_esp32_fw_ver(void)
 {
-    fw_ver_str_t version_str;
-    snprintf(&version_str.buf[0], sizeof(version_str.buf), "v1.9.2-12-ga6893d9");
-    return version_str;
+    static const ruuvi_esp32_fw_ver_str_t g_esp32_fw_ver = { "v1.9.2-12-ga6893d9" };
+    return &g_esp32_fw_ver;
+}
+
+const ruuvi_nrf52_fw_ver_str_t *
+gw_cfg_get_nrf52_fw_ver(void)
+{
+    static const ruuvi_nrf52_fw_ver_str_t g_nrf52_fw_ver = { "v0.7.2" };
+    return &g_nrf52_fw_ver;
+}
+
+const mac_address_str_t *
+gw_cfg_get_nrf52_mac_addr(void)
+{
+    static const mac_address_str_t g_nrf52_mac_addr = { "AA:BB:CC:DD:EE:FF" };
+    return &g_nrf52_mac_addr;
+}
+
+const gw_cfg_t *
+gw_cfg_lock_ro(void)
+{
+    static const gw_cfg_t g_gw_cfg = { 0 };
+    return &g_gw_cfg;
+}
+
+void
+gw_cfg_unlock_ro(const gw_cfg_t **const p_p_gw_cfg)
+{
+    *p_p_gw_cfg = nullptr;
+}
+
+uint32_t
+crc32_le(uint32_t crc, uint8_t const *buf, uint32_t len)
+{
+    return 0xAABBCCDD;
 }
 
 } // extern "C"
@@ -309,9 +333,6 @@ TEST_F(TestMetrics, test_metrics_received_advs_increment_without_init) // NOLINT
 TEST_F(TestMetrics, test_metrics_generate) // NOLINT
 {
     metrics_init();
-
-    snprintf(&g_gw_mac_sta_str.str_buf[0], sizeof(g_gw_mac_sta_str), "AA:BB:CC:DD:EE:FF");
-    snprintf(&g_nrf52_firmware_version.buf[0], sizeof(g_nrf52_firmware_version), "v0.7.2");
 
     this->m_uptime            = 15317668796;
     const char *p_metrics_str = metrics_generate();
@@ -344,7 +365,9 @@ TEST_F(TestMetrics, test_metrics_generate) // NOLINT
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_SPIRAM\"} 65546\n"
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_INTERNAL\"} 65547\n"
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_DEFAULT\"} 65548\n"
-               "ruuvigw_info{mac=\"AA:BB:CC:DD:EE:FF\",esp_fw=\"v1.9.2-12-ga6893d9\",nrf_fw=\"v0.7.2\"} 1\n"),
+               "ruuvigw_info{mac=\"AA:BB:CC:DD:EE:FF\",esp_fw=\"v1.9.2-12-ga6893d9\",nrf_fw=\"v0.7.2\"} 1\n"
+               "ruuvigw_gw_cfg_crc32 0xaabbccdd\n"
+               "ruuvigw_gw_cfg_sha256 2c8b84f6b624896a8d24f48ab771057c92e566e8c9840632a0b6ecbe487a87bf\n"),
         string(p_metrics_str));
     os_free(p_metrics_str);
 
@@ -381,7 +404,9 @@ TEST_F(TestMetrics, test_metrics_generate) // NOLINT
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_SPIRAM\"} 65546\n"
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_INTERNAL\"} 65547\n"
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_DEFAULT\"} 65548\n"
-               "ruuvigw_info{mac=\"AA:BB:CC:DD:EE:FF\",esp_fw=\"v1.9.2-12-ga6893d9\",nrf_fw=\"v0.7.2\"} 1\n"),
+               "ruuvigw_info{mac=\"AA:BB:CC:DD:EE:FF\",esp_fw=\"v1.9.2-12-ga6893d9\",nrf_fw=\"v0.7.2\"} 1\n"
+               "ruuvigw_gw_cfg_crc32 0xaabbccdd\n"
+               "ruuvigw_gw_cfg_sha256 2c8b84f6b624896a8d24f48ab771057c92e566e8c9840632a0b6ecbe487a87bf\n"),
         string(p_metrics_str));
     os_free(p_metrics_str);
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -391,9 +416,6 @@ TEST_F(TestMetrics, test_metrics_generate) // NOLINT
 TEST_F(TestMetrics, test_metrics_generate_malloc_failed) // NOLINT
 {
     this->m_malloc_fail_on_cnt = 1;
-
-    snprintf(&g_gw_mac_sta_str.str_buf[0], sizeof(g_gw_mac_sta_str), "AA:BB:CC:DD:EE:FF");
-    snprintf(&g_nrf52_firmware_version.buf[0], sizeof(g_nrf52_firmware_version), "v0.7.2");
 
     this->m_uptime = 15317668796;
     ASSERT_EQ(nullptr, metrics_generate());

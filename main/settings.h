@@ -20,7 +20,7 @@ bool
 settings_check_in_flash(void);
 
 bool
-settings_save_to_flash(const char *const p_json_str);
+settings_save_to_flash(void);
 
 bool
 settings_clear_in_flash(void);
@@ -35,7 +35,7 @@ void
 settings_write_mac_addr(const mac_address_bin_t *const p_mac_addr);
 
 void
-settings_update_mac_addr(const mac_address_bin_t *const p_mac_addr);
+settings_update_mac_addr(const mac_address_bin_t mac_addr);
 
 bool
 settings_read_flag_rebooting_after_auto_update(void);

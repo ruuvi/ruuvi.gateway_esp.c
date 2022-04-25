@@ -28,13 +28,13 @@
 extern "C" {
 #endif
 
-typedef struct download_github_latest_release_info_t
+typedef struct http_server_download_info_t
 {
     bool             is_error;
     http_resp_code_e http_resp_code;
     char *           p_json_buf;
     size_t           json_buf_size;
-} download_github_latest_release_info_t;
+} http_server_download_info_t;
 
 bool
 http_server_cb_init(const char *const p_fatfs_gwui_partition_name);
@@ -60,7 +60,7 @@ http_server_cb_on_delete(
     const bool                      flag_access_from_lan,
     const http_server_resp_t *const p_resp_auth);
 
-download_github_latest_release_info_t
+http_server_download_info_t
 http_download_latest_release_info(void);
 
 void

@@ -28,13 +28,11 @@ protected:
         g_pObj             = this;
         malloc_fail_on_cnt = 0;
         malloc_cnt         = 0;
-        ruuvi_device_id_init();
     }
 
     void
     TearDown() override
     {
-        ruuvi_device_id_deinit();
         g_pObj = nullptr;
     }
 
@@ -115,11 +113,7 @@ TEST_F(TestHMAC_SHA256, test_hmac_sha256_in_str_buf) // NOLINT
 
 TEST_F(TestHMAC_SHA256, test1_hmac_sha256_with_device_id_as_encryption_key) // NOLINT
 {
-    const nrf52_device_id_t nrf52_device_id = { 0x40, 0x98, 0xA7, 0x78, 0x58, 0x1A, 0xE1, 0x38 };
-    const mac_address_bin_t nrf52_mac_addr  = { 0xC8, 0x25, 0x2D, 0x8E, 0x9C, 0x2C };
-    ruuvi_device_id_set(&nrf52_device_id, &nrf52_mac_addr);
-    const nrf52_device_id_str_t hmac_key = ruuvi_device_id_get_str();
-    ASSERT_EQ(string("40:98:A7:78:58:1A:E1:38"), string(hmac_key.str_buf));
+    const nrf52_device_id_str_t hmac_key = { "40:98:A7:78:58:1A:E1:38" };
     ASSERT_TRUE(hmac_sha256_set_key_str(hmac_key.str_buf));
     const hmac_sha256_str_t hmac_sha256_str = hmac_sha256_calc_str("The quick brown fox jumps over the lazy dog");
     ASSERT_TRUE(hmac_sha256_is_str_valid(&hmac_sha256_str));
@@ -128,11 +122,7 @@ TEST_F(TestHMAC_SHA256, test1_hmac_sha256_with_device_id_as_encryption_key) // N
 
 TEST_F(TestHMAC_SHA256, test2_hmac_sha256_with_device_id_as_encryption_key) // NOLINT
 {
-    const nrf52_device_id_t nrf52_device_id = { 0x40, 0x98, 0xA7, 0x78, 0x58, 0x1A, 0xE1, 0x38 };
-    const mac_address_bin_t nrf52_mac_addr  = { 0xC8, 0x25, 0x2D, 0x8E, 0x9C, 0x2C };
-    ruuvi_device_id_set(&nrf52_device_id, &nrf52_mac_addr);
-    const nrf52_device_id_str_t hmac_key = ruuvi_device_id_get_str();
-    ASSERT_EQ(string("40:98:A7:78:58:1A:E1:38"), string(hmac_key.str_buf));
+    const nrf52_device_id_str_t hmac_key = { "40:98:A7:78:58:1A:E1:38" };
     ASSERT_TRUE(hmac_sha256_set_key_str(hmac_key.str_buf));
 
     const string json_str = R"({
@@ -149,11 +139,7 @@ TEST_F(TestHMAC_SHA256, test2_hmac_sha256_with_device_id_as_encryption_key) // N
 
 TEST_F(TestHMAC_SHA256, test1_hmac_sha256_twice_with_the_same_key) // NOLINT
 {
-    const nrf52_device_id_t nrf52_device_id = { 0x40, 0x98, 0xA7, 0x78, 0x58, 0x1A, 0xE1, 0x38 };
-    const mac_address_bin_t nrf52_mac_addr  = { 0xC8, 0x25, 0x2D, 0x8E, 0x9C, 0x2C };
-    ruuvi_device_id_set(&nrf52_device_id, &nrf52_mac_addr);
-    const nrf52_device_id_str_t hmac_key = ruuvi_device_id_get_str();
-    ASSERT_EQ(string("40:98:A7:78:58:1A:E1:38"), string(hmac_key.str_buf));
+    const nrf52_device_id_str_t hmac_key = { "40:98:A7:78:58:1A:E1:38" };
     ASSERT_TRUE(hmac_sha256_set_key_str(hmac_key.str_buf));
     ASSERT_TRUE(hmac_sha256_set_key_str(hmac_key.str_buf));
     const hmac_sha256_str_t hmac_sha256_str = hmac_sha256_calc_str("The quick brown fox jumps over the lazy dog");
@@ -164,10 +150,7 @@ TEST_F(TestHMAC_SHA256, test1_hmac_sha256_twice_with_the_same_key) // NOLINT
 TEST_F(TestHMAC_SHA256, test1_hmac_sha256_twice_with_the_different_key) // NOLINT
 {
     {
-        const nrf52_device_id_t nrf52_device_id = { 0x40, 0x98, 0xA7, 0x78, 0x58, 0x1A, 0xE1, 0x38 };
-        const mac_address_bin_t nrf52_mac_addr  = { 0xC8, 0x25, 0x2D, 0x8E, 0x9C, 0x2C };
-        ruuvi_device_id_set(&nrf52_device_id, &nrf52_mac_addr);
-        const nrf52_device_id_str_t hmac_key = ruuvi_device_id_get_str();
+        const nrf52_device_id_str_t hmac_key = { "40:98:A7:78:58:1A:E1:38" };
         ASSERT_TRUE(hmac_sha256_set_key_str(hmac_key.str_buf));
         const hmac_sha256_str_t hmac_sha256_str = hmac_sha256_calc_str("The quick brown fox jumps over the lazy dog");
         ASSERT_TRUE(hmac_sha256_is_str_valid(&hmac_sha256_str));
@@ -176,10 +159,7 @@ TEST_F(TestHMAC_SHA256, test1_hmac_sha256_twice_with_the_different_key) // NOLIN
             string(hmac_sha256_str.buf));
     }
     {
-        const nrf52_device_id_t nrf52_device_id = { 0x40, 0x98, 0xA7, 0x78, 0x58, 0x1A, 0xE1, 0x39 };
-        const mac_address_bin_t nrf52_mac_addr  = { 0xC8, 0x25, 0x2D, 0x8E, 0x9C, 0x2D };
-        ruuvi_device_id_set(&nrf52_device_id, &nrf52_mac_addr);
-        const nrf52_device_id_str_t hmac_key = ruuvi_device_id_get_str();
+        const nrf52_device_id_str_t hmac_key = { "40:98:A7:78:58:1A:E1:39" };
         ASSERT_TRUE(hmac_sha256_set_key_str(hmac_key.str_buf));
         const hmac_sha256_str_t hmac_sha256_str = hmac_sha256_calc_str("The quick brown fox jumps over the lazy dog");
         ASSERT_TRUE(hmac_sha256_is_str_valid(&hmac_sha256_str));
@@ -196,12 +176,8 @@ TEST_F(TestHMAC_SHA256, test_hmac_sha256_with_long_encryption_key) // NOLINT
 
 TEST_F(TestHMAC_SHA256, test_hmac_sha256_malloc_fail_1) // NOLINT
 {
-    g_pObj->malloc_fail_on_cnt              = 1;
-    const nrf52_device_id_t nrf52_device_id = { 0x40, 0x98, 0xA7, 0x78, 0x58, 0x1A, 0xE1, 0x38 };
-    const mac_address_bin_t nrf52_mac_addr  = { 0xC8, 0x25, 0x2D, 0x8E, 0x9C, 0x2C };
-    ruuvi_device_id_set(&nrf52_device_id, &nrf52_mac_addr);
-    const nrf52_device_id_str_t hmac_key = ruuvi_device_id_get_str();
-    ASSERT_EQ(string("40:98:A7:78:58:1A:E1:38"), string(hmac_key.str_buf));
+    g_pObj->malloc_fail_on_cnt           = 1;
+    const nrf52_device_id_str_t hmac_key = { "40:98:A7:78:58:1A:E1:38" };
     ASSERT_TRUE(hmac_sha256_set_key_str(hmac_key.str_buf));
     const hmac_sha256_str_t hmac_sha256_str = hmac_sha256_calc_str("The quick brown fox jumps over the lazy dog");
     ASSERT_FALSE(hmac_sha256_is_str_valid(&hmac_sha256_str));
@@ -209,12 +185,8 @@ TEST_F(TestHMAC_SHA256, test_hmac_sha256_malloc_fail_1) // NOLINT
 
 TEST_F(TestHMAC_SHA256, test_hmac_sha256_malloc_fail_2) // NOLINT
 {
-    g_pObj->malloc_fail_on_cnt              = 2;
-    const nrf52_device_id_t nrf52_device_id = { 0x40, 0x98, 0xA7, 0x78, 0x58, 0x1A, 0xE1, 0x38 };
-    const mac_address_bin_t nrf52_mac_addr  = { 0xC8, 0x25, 0x2D, 0x8E, 0x9C, 0x2C };
-    ruuvi_device_id_set(&nrf52_device_id, &nrf52_mac_addr);
-    const nrf52_device_id_str_t hmac_key = ruuvi_device_id_get_str();
-    ASSERT_EQ(string("40:98:A7:78:58:1A:E1:38"), string(hmac_key.str_buf));
+    g_pObj->malloc_fail_on_cnt           = 2;
+    const nrf52_device_id_str_t hmac_key = { "40:98:A7:78:58:1A:E1:38" };
     ASSERT_TRUE(hmac_sha256_set_key_str(hmac_key.str_buf));
     const hmac_sha256_str_t hmac_sha256_str = hmac_sha256_calc_str("The quick brown fox jumps over the lazy dog");
     ASSERT_FALSE(hmac_sha256_is_str_valid(&hmac_sha256_str));

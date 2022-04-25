@@ -237,18 +237,11 @@ fw_update_get_current_fatfs_gwui_partition_name(void)
     return p_flash_info->is_ota0_active ? GW_GWUI_PARTITION : GW_GWUI_PARTITION_2;
 }
 
-const char *
+ruuvi_esp32_fw_ver_str_t
 fw_update_get_cur_version(void)
 {
     const ruuvi_flash_info_t *const p_flash_info = &g_ruuvi_flash_info;
-    return p_flash_info->p_app_desc->version;
-}
-
-fw_ver_str_t
-fw_update_get_cur_version2(void)
-{
-    const ruuvi_flash_info_t *const p_flash_info = &g_ruuvi_flash_info;
-    fw_ver_str_t                    version_str;
+    ruuvi_esp32_fw_ver_str_t        version_str  = { 0 };
     snprintf(&version_str.buf[0], sizeof(version_str.buf), "%s", p_flash_info->p_app_desc->version);
     return version_str;
 }
@@ -379,7 +372,8 @@ fw_update_data_partition(const esp_partition_t *const p_partition, const char *c
         return false;
     }
     LOG_INFO("fw_update_data_partition: Download and write partition data");
-    if (!http_download(p_url, &fw_update_data_partition_cb_on_recv_data, &fw_update_info, false))
+    const bool flag_feed_task_watchdog = false;
+    if (!http_download(p_url, &fw_update_data_partition_cb_on_recv_data, &fw_update_info, flag_feed_task_watchdog))
     {
         LOG_ERR("Failed to update partition %s - failed to download %s", p_partition->label, p_url);
         return false;
@@ -482,7 +476,8 @@ fw_update_ota_partition(
         .is_error    = false,
     };
 
-    if (!http_download(p_url, &fw_update_ota_partition_cb_on_recv_data, &fw_update_info, false))
+    const bool flag_feed_task_watchdog = false;
+    if (!http_download(p_url, &fw_update_ota_partition_cb_on_recv_data, &fw_update_info, flag_feed_task_watchdog))
     {
         LOG_ERR("Failed to update OTA-partition %s - failed to download %s", p_partition->label, p_url);
         return false;
@@ -699,6 +694,7 @@ fw_update_do_actions(void)
     nrf52fw_update_fw_if_necessary(
         fw_update_get_current_fatfs_nrf52_partition_name(),
         &fw_update_nrf52fw_cb_progress,
+        NULL,
         NULL,
         NULL,
         NULL);

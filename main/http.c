@@ -22,6 +22,7 @@
 #include "adv_post.h"
 #include "fw_update.h"
 #include "gw_mac.h"
+#include "str_buf.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -164,24 +165,24 @@ http_init_client_config(
 static void
 http_init_client_config_for_http_record(http_client_config_t *const p_http_client_config)
 {
-    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
+    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
     http_init_client_config(
         p_http_client_config,
-        &p_gw_cfg->http.http_url,
-        &p_gw_cfg->http.http_user,
-        &p_gw_cfg->http.http_pass);
+        &p_gw_cfg->ruuvi_cfg.http.http_url,
+        &p_gw_cfg->ruuvi_cfg.http.http_user,
+        &p_gw_cfg->ruuvi_cfg.http.http_pass);
     gw_cfg_unlock_ro(&p_gw_cfg);
 }
 
 static void
 http_init_client_config_for_http_status(http_client_config_t *const p_http_client_config)
 {
-    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
+    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
     http_init_client_config(
         p_http_client_config,
-        &p_gw_cfg->http_stat.http_stat_url,
-        &p_gw_cfg->http_stat.http_stat_user,
-        &p_gw_cfg->http_stat.http_stat_pass);
+        &p_gw_cfg->ruuvi_cfg.http_stat.http_stat_url,
+        &p_gw_cfg->ruuvi_cfg.http_stat.http_stat_user,
+        &p_gw_cfg->ruuvi_cfg.http_stat.http_stat_pass);
     gw_cfg_unlock_ro(&p_gw_cfg);
 }
 
@@ -227,7 +228,7 @@ http_send_advs(const adv_report_table_t *const p_reports, const uint32_t nonce)
     if (!http_json_create_records_str(
             p_reports,
             time(NULL),
-            &g_gw_mac_sta_str,
+            gw_cfg_get_nrf52_mac_addr(),
             coordinates.buf,
             true,
             nonce,
@@ -365,6 +366,7 @@ http_download_feed_task_watchdog_if_needed(const http_download_cb_info_t *const 
 {
     if (p_cb_info->flag_feed_task_watchdog)
     {
+        LOG_DBG("Feed watchdog");
         const esp_err_t err = esp_task_wdt_reset();
         if (ESP_OK != err)
         {
@@ -439,7 +441,7 @@ http_download_event_handler(esp_http_client_event_t *p_evt)
 }
 
 static bool
-http_download_firmware_via_handle(esp_http_client_handle_t http_handle)
+http_download_by_handle(esp_http_client_handle_t http_handle)
 {
     esp_err_t err = esp_http_client_set_header(http_handle, "Accept", "text/html,application/octet-stream,*/*");
     if (ESP_OK != err)
@@ -454,6 +456,7 @@ http_download_firmware_via_handle(esp_http_client_handle_t http_handle)
         return false;
     }
 
+    LOG_DBG("esp_http_client_perform");
     err = esp_http_client_perform(http_handle);
     if (ESP_OK != err)
     {
@@ -472,27 +475,41 @@ http_download_firmware_via_handle(esp_http_client_handle_t http_handle)
 }
 
 bool
-http_download(
-    const char *const          p_url,
-    http_download_cb_on_data_t cb_on_data,
-    void *const                p_user_data,
-    const bool                 flag_feed_task_watchdog)
+http_download_with_auth(
+    const char *const                     p_url,
+    const gw_cfg_remote_auth_type_e       gw_cfg_http_auth_type,
+    const ruuvi_gw_cfg_http_auth_t *const p_http_auth,
+    const http_header_item_t *const       p_extra_header_item,
+    http_download_cb_on_data_t            p_cb_on_data,
+    void *const                           p_user_data,
+    const bool                            flag_feed_task_watchdog)
 {
     http_download_cb_info_t cb_info = {
-        .cb_on_data              = cb_on_data,
+        .cb_on_data              = p_cb_on_data,
         .p_user_data             = p_user_data,
         .http_handle             = NULL,
         .content_length          = 0,
         .offset                  = 0,
         .flag_feed_task_watchdog = flag_feed_task_watchdog,
     };
+
+    if ((GW_CFG_REMOTE_AUTH_TYPE_NO != gw_cfg_http_auth_type) && (NULL == p_http_auth))
+    {
+        LOG_ERR("Auth type is not NONE, but p_http_auth is NULL");
+        return false;
+    }
+    const esp_http_client_auth_type_t http_client_auth_type = (GW_CFG_REMOTE_AUTH_TYPE_BASIC == gw_cfg_http_auth_type)
+                                                                  ? HTTP_AUTH_TYPE_BASIC
+                                                                  : HTTP_AUTH_TYPE_NONE;
     const esp_http_client_config_t http_config = {
-        .url                         = p_url,
-        .host                        = NULL,
-        .port                        = 0,
-        .username                    = NULL,
-        .password                    = NULL,
-        .auth_type                   = HTTP_AUTH_TYPE_NONE,
+        .url  = p_url,
+        .host = NULL,
+        .port = 0,
+
+        .username  = (HTTP_AUTH_TYPE_BASIC == http_client_auth_type) ? p_http_auth->auth_basic.user.buf : NULL,
+        .password  = (HTTP_AUTH_TYPE_BASIC == http_client_auth_type) ? p_http_auth->auth_basic.password.buf : NULL,
+        .auth_type = http_client_auth_type,
+
         .path                        = NULL,
         .query                       = NULL,
         .cert_pem                    = NULL,
@@ -517,7 +534,7 @@ http_download(
         .keep_alive_interval         = 0,
         .keep_alive_count            = 0,
     };
-    LOG_INFO("http_download");
+    LOG_INFO("http_download: %s", p_url);
     cb_info.http_handle = esp_http_client_init(&http_config);
     if (NULL == cb_info.http_handle)
     {
@@ -525,12 +542,49 @@ http_download(
         return false;
     }
 
-    const bool result = http_download_firmware_via_handle(cb_info.http_handle);
+    if (GW_CFG_REMOTE_AUTH_TYPE_BEARER == gw_cfg_http_auth_type)
+    {
+        str_buf_t str_buf = str_buf_printf_with_alloc("Bearer %s", p_http_auth->auth_bearer.token.buf);
+        if (NULL == str_buf.buf)
+        {
+            LOG_ERR("Can't allocate memory for bearer token");
+            return false;
+        }
+        LOG_DBG("Add HTTP header: %s: %s", "Authorization", str_buf.buf);
+        esp_http_client_set_header(cb_info.http_handle, "Authorization", str_buf.buf);
+        str_buf_free_buf(&str_buf);
+    }
+    if (NULL != p_extra_header_item)
+    {
+        LOG_DBG("Add HTTP header: %s: %s", p_extra_header_item->p_key, p_extra_header_item->p_value);
+        esp_http_client_set_header(cb_info.http_handle, p_extra_header_item->p_key, p_extra_header_item->p_value);
+    }
 
+    LOG_DBG("http_download_by_handle");
+    const bool result = http_download_by_handle(cb_info.http_handle);
+
+    LOG_DBG("esp_http_client_cleanup");
     const esp_err_t err = esp_http_client_cleanup(cb_info.http_handle);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(err, "esp_http_client_cleanup failed");
     }
     return result;
+}
+
+bool
+http_download(
+    const char *const          p_url,
+    http_download_cb_on_data_t p_cb_on_data,
+    void *const                p_user_data,
+    const bool                 flag_feed_task_watchdog)
+{
+    return http_download_with_auth(
+        p_url,
+        GW_CFG_REMOTE_AUTH_TYPE_NO,
+        NULL,
+        NULL,
+        p_cb_on_data,
+        p_user_data,
+        flag_feed_task_watchdog);
 }

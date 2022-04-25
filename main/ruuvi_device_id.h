@@ -28,29 +28,23 @@ typedef struct nrf52_device_id_str_t
     char str_buf[(NRF52_DEVICE_ID_SIZE * 2) + (NRF52_DEVICE_ID_SIZE - 1) + 1]; // format: XX:XX:XX:XX:XX:XX:XX:XX
 } nrf52_device_id_str_t;
 
+typedef struct nrf52_device_info_t
+{
+    nrf52_device_id_t nrf52_device_id;
+    mac_address_bin_t nrf52_mac_addr;
+} nrf52_device_info_t;
+
 void
 ruuvi_device_id_init(void);
 
 void
 ruuvi_device_id_deinit(void);
 
-mac_address_bin_t
-ruuvi_device_id_get_nrf52_mac_address(void);
-
-mac_address_str_t
-ruuvi_device_id_get_nrf52_mac_address_str(void);
-
-nrf52_device_id_t
-ruuvi_device_id_get(void);
-
-nrf52_device_id_str_t
-ruuvi_device_id_get_str(void);
-
 void
 ruuvi_device_id_set(const nrf52_device_id_t *const p_nrf52_device_id, const mac_address_bin_t *const p_nrf52_mac_addr);
 
-bool
-ruuvi_device_id_is_set(void);
+nrf52_device_info_t
+ruuvi_device_id_request_and_wait(void);
 
 #ifdef __cplusplus
 }

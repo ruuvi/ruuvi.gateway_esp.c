@@ -6,5 +6,3 @@
  */
 
 #include "gw_mac.h"
-
-mac_address_str_t g_gw_mac_sta_str = { 0 };

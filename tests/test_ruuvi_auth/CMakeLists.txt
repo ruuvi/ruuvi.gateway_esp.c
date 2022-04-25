@@ -11,14 +11,26 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/gw_cfg.h
         ${RUUVI_GW_SRC}/gw_cfg_default.c
         ${RUUVI_GW_SRC}/gw_cfg_default.h
+        ${RUUVI_GW_SRC}/gw_cfg_log.c
+        ${RUUVI_GW_SRC}/gw_cfg_log.h
         ${RUUVI_GW_SRC}/ruuvi_auth.c
         ${RUUVI_GW_SRC}/ruuvi_auth.h
+        ${RUUVI_ESP_WRAPPERS}/src/mac_addr.c
+        ${RUUVI_ESP_WRAPPERS}/include/mac_addr.h
         ${RUUVI_ESP_WRAPPERS}/src/str_buf.c
         ${RUUVI_ESP_WRAPPERS}/include/str_buf.h
         ${WIFI_MANAGER_SRC}/http_server_auth.c
         ${WIFI_MANAGER_SRC}/http_server_auth.h
+        ${WIFI_MANAGER_SRC}/http_server_auth_type.c
+        ${WIFI_MANAGER_INC}/http_server_auth_type.h
+        ${WIFI_MANAGER_SRC}/wifiman_config.c
+        ${WIFI_MANAGER_SRC}/wifiman_config.h
         ${WIFI_MANAGER_SRC}/wifiman_md5.c
         ${WIFI_MANAGER_SRC}/include/wifiman_md5.h
+        ${WIFI_MANAGER_SRC}/wifi_manager_default_config.c
+        ${WIFI_MANAGER_INC}/wifi_manager.h
+        $ENV{IDF_PATH}/components/lwip/lwip/src/core/ipv4/ip4_addr.c
+        $ENV{IDF_PATH}/components/lwip/lwip/src/core/def.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.h
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/md5.c

@@ -8,6 +8,7 @@
 #include "cjson_wrap.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "os_malloc.h"
 #include "esp_type_wrapper.h"
 
@@ -123,15 +124,29 @@ json_wrap_get_uint16_val(const cJSON *p_json_root, const char *p_attr_name, uint
     {
         return false;
     }
-    if (!(bool)cJSON_IsNumber(p_json_attr))
+    if ((bool)cJSON_IsNumber(p_json_attr))
     {
-        return false;
+        if (!((p_json_attr->valueint >= 0) && (p_json_attr->valueint <= UINT16_MAX)))
+        {
+            return false;
+        }
+        *p_val = (uint16_t)p_json_attr->valueint;
     }
-    if (!((p_json_attr->valueint >= 0) && (p_json_attr->valueint <= UINT16_MAX)))
+    else
     {
-        return false;
+        const char *const p_prefix_hex   = "0x";
+        const size_t      prefix_hex_len = strlen(p_prefix_hex);
+        if (0 != strncmp(p_json_attr->valuestring, p_prefix_hex, prefix_hex_len))
+        {
+            return false;
+        }
+        const unsigned long val = strtoul(p_json_attr->valuestring, NULL, 16);
+        if (!(val <= UINT16_MAX))
+        {
+            return false;
+        }
+        *p_val = (uint16_t)val;
     }
-    *p_val = (uint16_t)p_json_attr->valueint;
     return true;
 }
 
@@ -143,15 +158,29 @@ json_wrap_get_uint8_val(const cJSON *p_json_root, const char *p_attr_name, uint8
     {
         return false;
     }
-    if (!(bool)cJSON_IsNumber(p_json_attr))
+    if ((bool)cJSON_IsNumber(p_json_attr))
     {
-        return false;
+        if (!((p_json_attr->valueint >= 0) && (p_json_attr->valueint <= UINT8_MAX)))
+        {
+            return false;
+        }
+        *p_val = (uint8_t)p_json_attr->valueint;
     }
-    if (!((p_json_attr->valueint >= 0) && (p_json_attr->valueint <= UINT8_MAX)))
+    else
     {
-        return false;
+        const char *const p_prefix_hex   = "0x";
+        const size_t      prefix_hex_len = strlen(p_prefix_hex);
+        if (0 != strncmp(p_json_attr->valuestring, p_prefix_hex, prefix_hex_len))
+        {
+            return false;
+        }
+        const unsigned long val = strtoul(p_json_attr->valuestring, NULL, 16);
+        if (!(val <= UINT8_MAX))
+        {
+            return false;
+        }
+        *p_val = (uint8_t)val;
     }
-    *p_val = (uint8_t)p_json_attr->valueint;
     return true;
 }
 
@@ -163,18 +192,32 @@ json_wrap_get_int8_val(const cJSON *p_json_root, const char *p_attr_name, int8_t
     {
         return false;
     }
-    if (!(bool)cJSON_IsNumber(p_json_attr))
+    if ((bool)cJSON_IsNumber(p_json_attr))
     {
-        return false;
+        if (p_json_attr->valueint < INT8_MIN)
+        {
+            return false;
+        }
+        if (p_json_attr->valueint > INT8_MAX)
+        {
+            return false;
+        }
+        *p_val = (int8_t)p_json_attr->valueint;
     }
-    if (p_json_attr->valueint < INT8_MIN)
+    else
     {
-        return false;
+        const char *const p_prefix_hex   = "0x";
+        const size_t      prefix_hex_len = strlen(p_prefix_hex);
+        if (0 != strncmp(p_json_attr->valuestring, p_prefix_hex, prefix_hex_len))
+        {
+            return false;
+        }
+        const long val = strtol(p_json_attr->valuestring, NULL, 16);
+        if (!((val >= 0) && (val <= INT8_MAX)))
+        {
+            return false;
+        }
+        *p_val = (int8_t)val;
     }
-    if (p_json_attr->valueint > INT8_MAX)
-    {
-        return false;
-    }
-    *p_val = (int8_t)p_json_attr->valueint;
     return true;
 }

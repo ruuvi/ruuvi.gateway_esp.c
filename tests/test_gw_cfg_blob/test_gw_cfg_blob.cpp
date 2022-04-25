@@ -7,9 +7,13 @@
 
 #include <cstring>
 #include "gtest/gtest.h"
+#include "esp_log_wrapper.hpp"
 #include "gw_cfg.h"
 #include "gw_cfg_blob.h"
 #include "gw_cfg_default.h"
+#include "os_mutex_recursive.h"
+#include "os_mutex.h"
+#include "lwip/ip4_addr.h"
 
 using namespace std;
 
@@ -37,16 +41,26 @@ protected:
     void
     SetUp() override
     {
-        g_pTestClass                          = this;
-        const wifi_ssid_t           wifi_ssid = { "" };
-        const nrf52_device_id_str_t device_id = { "00:11:22:33:44:55:66:77" };
-        gw_cfg_default_init(&wifi_ssid, device_id);
+        esp_log_wrapper_init();
+        g_pTestClass                                  = this;
+        const gw_cfg_default_init_param_t init_params = {
+            .wifi_ap_ssid        = { "my_wifi1" },
+            .device_id           = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77 },
+            .esp32_fw_ver        = { "v1.10.0" },
+            .nrf52_fw_ver        = { "v0.7.2" },
+            .nrf52_mac_addr      = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF },
+            .esp32_mac_addr_wifi = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x11 },
+            .esp32_mac_addr_eth  = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x22 },
+        };
+        gw_cfg_default_init(&init_params, nullptr);
+        esp_log_wrapper_clear();
     }
 
     void
     TearDown() override
     {
         g_pTestClass = nullptr;
+        esp_log_wrapper_deinit();
     }
 
 public:
@@ -61,6 +75,68 @@ TestGwCfgBlob::TestGwCfgBlob()
 }
 
 extern "C" {
+
+os_mutex_recursive_t
+os_mutex_recursive_create_static(os_mutex_recursive_static_t *const p_mutex_static)
+{
+    return (os_mutex_recursive_t)p_mutex_static;
+}
+
+void
+os_mutex_recursive_delete(os_mutex_recursive_t *const ph_mutex)
+{
+}
+
+void
+os_mutex_recursive_lock(os_mutex_recursive_t const h_mutex)
+{
+}
+
+void
+os_mutex_recursive_unlock(os_mutex_recursive_t const h_mutex)
+{
+}
+
+os_mutex_t
+os_mutex_create_static(os_mutex_static_t *const p_mutex_static)
+{
+    return reinterpret_cast<os_mutex_t>(p_mutex_static);
+}
+
+void
+os_mutex_delete(os_mutex_t *const ph_mutex)
+{
+    (void)ph_mutex;
+}
+
+void
+os_mutex_lock(os_mutex_t const h_mutex)
+{
+    (void)h_mutex;
+}
+
+void
+os_mutex_unlock(os_mutex_t const h_mutex)
+{
+    (void)h_mutex;
+}
+
+char *
+esp_ip4addr_ntoa(const esp_ip4_addr_t *addr, char *buf, int buflen)
+{
+    return ip4addr_ntoa_r((ip4_addr_t *)addr, buf, buflen);
+}
+
+uint32_t
+esp_ip4addr_aton(const char *addr)
+{
+    return ipaddr_addr(addr);
+}
+
+void
+wifi_manager_cb_save_wifi_config(const wifiman_config_t *const p_cfg)
+{
+}
 
 } // extern "C"
 
@@ -102,7 +178,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_update_cycle_regular) // NOLINT
             "",
         },
         .lan_auth = {
-            HTTP_SERVER_AUTH_TYPE_STR_RUUVI,
+            RUUVI_GW_CFG_BLOB_AUTH_TYPE_STR_RUUVI,
             RUUVI_GATEWAY_AUTH_DEFAULT_USER,
             "",
         },
@@ -128,59 +204,56 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_update_cycle_regular) // NOLINT
         .coordinates = { 0 },
     };
 
-    ruuvi_gateway_config_t gw_cfg {};
+    gw_cfg_t gw_cfg {};
     gw_cfg_blob_convert(&gw_cfg, &gw_cfg_blob);
 
-    ASSERT_EQ(false, gw_cfg.eth.use_eth);
-    ASSERT_EQ(true, gw_cfg.eth.eth_dhcp);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_static_ip.buf);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_netmask.buf);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_gw.buf);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns1.buf);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns2.buf);
+    ASSERT_EQ(false, gw_cfg.eth_cfg.use_eth);
+    ASSERT_EQ(true, gw_cfg.eth_cfg.eth_dhcp);
+    ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_static_ip.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_netmask.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_gw.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_dns1.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_dns2.buf);
 
-    ASSERT_EQ(false, gw_cfg.mqtt.use_mqtt);
-    ASSERT_EQ(true, gw_cfg.mqtt.mqtt_use_default_prefix);
-    ASSERT_EQ(string("TCP"), gw_cfg.mqtt.mqtt_transport.buf);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_server.buf);
-    ASSERT_EQ(0, gw_cfg.mqtt.mqtt_port);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_prefix.buf);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_client_id.buf);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_user.buf);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_pass.buf);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
+    ASSERT_EQ(0, gw_cfg.ruuvi_cfg.mqtt.mqtt_port);
+    ASSERT_EQ(string("ruuvi/AA:BB:CC:DD:EE:FF/"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
+    ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
 
-    ASSERT_EQ(true, gw_cfg.http.use_http);
-    ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_DEFAULT_URL), gw_cfg.http.http_url.buf);
-    ASSERT_EQ(string(""), gw_cfg.http.http_user.buf);
-    ASSERT_EQ(string(""), gw_cfg.http.http_pass.buf);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.http.use_http);
+    ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_DEFAULT_URL), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http.http_user.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http.http_pass.buf);
 
-    ASSERT_EQ(true, gw_cfg.http_stat.use_http_stat);
-    ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_STATUS_URL), gw_cfg.http_stat.http_stat_url.buf);
-    ASSERT_EQ(string(""), gw_cfg.http_stat.http_stat_user.buf);
-    ASSERT_EQ(string(""), gw_cfg.http_stat.http_stat_pass.buf);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
+    ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_STATUS_URL), gw_cfg.ruuvi_cfg.http_stat.http_stat_url.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http_stat.http_stat_user.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http_stat.http_stat_pass.buf);
 
-    ASSERT_EQ(string(HTTP_SERVER_AUTH_TYPE_STR_RUUVI), gw_cfg.lan_auth.lan_auth_type);
-    ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), gw_cfg.lan_auth.lan_auth_user);
-    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_pass);
-    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
 
-    ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_REGULAR, gw_cfg.auto_update.auto_update_cycle);
-    ASSERT_EQ(0x7F, gw_cfg.auto_update.auto_update_weekdays_bitmask);
-    ASSERT_EQ(0, gw_cfg.auto_update.auto_update_interval_from);
-    ASSERT_EQ(24, gw_cfg.auto_update.auto_update_interval_to);
-    ASSERT_EQ(3, gw_cfg.auto_update.auto_update_tz_offset_hours);
+    ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_REGULAR, gw_cfg.ruuvi_cfg.auto_update.auto_update_cycle);
+    ASSERT_EQ(0x7F, gw_cfg.ruuvi_cfg.auto_update.auto_update_weekdays_bitmask);
+    ASSERT_EQ(0, gw_cfg.ruuvi_cfg.auto_update.auto_update_interval_from);
+    ASSERT_EQ(24, gw_cfg.ruuvi_cfg.auto_update.auto_update_interval_to);
+    ASSERT_EQ(3, gw_cfg.ruuvi_cfg.auto_update.auto_update_tz_offset_hours);
 
-    ASSERT_EQ(RUUVI_COMPANY_ID, gw_cfg.filter.company_id);
-    ASSERT_EQ(true, gw_cfg.filter.company_use_filtering);
+    ASSERT_EQ(RUUVI_COMPANY_ID, gw_cfg.ruuvi_cfg.filter.company_id);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.filter.company_use_filtering);
 
-    ASSERT_EQ(false, gw_cfg.scan.scan_coded_phy);
-    ASSERT_EQ(true, gw_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg.scan.scan_extended_payload);
-    ASSERT_EQ(true, gw_cfg.scan.scan_channel_37);
-    ASSERT_EQ(true, gw_cfg.scan.scan_channel_38);
-    ASSERT_EQ(true, gw_cfg.scan.scan_channel_39);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
 
-    ASSERT_EQ(string(""), gw_cfg.coordinates.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.coordinates.buf);
 }
 
 TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_update_cycle_beta) // NOLINT
@@ -214,7 +287,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_update_cycle_beta) // NOLINT
             "h_pass1",
         },
         .lan_auth = {
-            HTTP_SERVER_AUTH_TYPE_STR_DIGEST,
+            RUUVI_GW_CFG_BLOB_AUTH_TYPE_STR_DIGEST,
             "l_user1",
             "l_pass1",
         },
@@ -240,59 +313,58 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_update_cycle_beta) // NOLINT
         .coordinates = { 'q', 'w', 'e', '\0', },
     };
 
-    ruuvi_gateway_config_t gw_cfg {};
+    gw_cfg_t gw_cfg {};
     gw_cfg_blob_convert(&gw_cfg, &gw_cfg_blob);
 
-    ASSERT_EQ(true, gw_cfg.eth.use_eth);
-    ASSERT_EQ(false, gw_cfg.eth.eth_dhcp);
-    ASSERT_EQ(string("192.168.1.10"), gw_cfg.eth.eth_static_ip.buf);
-    ASSERT_EQ(string("255.255.255.0"), gw_cfg.eth.eth_netmask.buf);
-    ASSERT_EQ(string("192.168.1.1"), gw_cfg.eth.eth_gw.buf);
-    ASSERT_EQ(string("8.8.8.8"), gw_cfg.eth.eth_dns1.buf);
-    ASSERT_EQ(string("4.4.4.4"), gw_cfg.eth.eth_dns2.buf);
+    ASSERT_EQ(true, gw_cfg.eth_cfg.use_eth);
+    ASSERT_EQ(false, gw_cfg.eth_cfg.eth_dhcp);
+    ASSERT_EQ(string("192.168.1.10"), gw_cfg.eth_cfg.eth_static_ip.buf);
+    ASSERT_EQ(string("255.255.255.0"), gw_cfg.eth_cfg.eth_netmask.buf);
+    ASSERT_EQ(string("192.168.1.1"), gw_cfg.eth_cfg.eth_gw.buf);
+    ASSERT_EQ(string("8.8.8.8"), gw_cfg.eth_cfg.eth_dns1.buf);
+    ASSERT_EQ(string("4.4.4.4"), gw_cfg.eth_cfg.eth_dns2.buf);
 
-    ASSERT_EQ(true, gw_cfg.mqtt.use_mqtt);
-    ASSERT_EQ(false, gw_cfg.mqtt.mqtt_use_default_prefix);
-    ASSERT_EQ(string("TCP"), gw_cfg.mqtt.mqtt_transport.buf);
-    ASSERT_EQ(string("test.mosquitto.org"), gw_cfg.mqtt.mqtt_server.buf);
-    ASSERT_EQ(1883, gw_cfg.mqtt.mqtt_port);
-    ASSERT_EQ(string("prefix1"), gw_cfg.mqtt.mqtt_prefix.buf);
-    ASSERT_EQ(string("my_client"), gw_cfg.mqtt.mqtt_client_id.buf);
-    ASSERT_EQ(string("m_user1"), gw_cfg.mqtt.mqtt_user.buf);
-    ASSERT_EQ(string("m_pass1"), gw_cfg.mqtt.mqtt_pass.buf);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(string("test.mosquitto.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
+    ASSERT_EQ(1883, gw_cfg.ruuvi_cfg.mqtt.mqtt_port);
+    ASSERT_EQ(string("prefix1"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
+    ASSERT_EQ(string("my_client"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
+    ASSERT_EQ(string("m_user1"), gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf);
+    ASSERT_EQ(string("m_pass1"), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
 
-    ASSERT_EQ(false, gw_cfg.http.use_http);
-    ASSERT_EQ(string("https://myserver.com/record"), gw_cfg.http.http_url.buf);
-    ASSERT_EQ(string("h_user1"), gw_cfg.http.http_user.buf);
-    ASSERT_EQ(string("h_pass1"), gw_cfg.http.http_pass.buf);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.http.use_http);
+    ASSERT_EQ(string("https://myserver.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("h_user1"), gw_cfg.ruuvi_cfg.http.http_user.buf);
+    ASSERT_EQ(string("h_pass1"), gw_cfg.ruuvi_cfg.http.http_pass.buf);
 
-    ASSERT_EQ(true, gw_cfg.http_stat.use_http_stat);
-    ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_STATUS_URL), gw_cfg.http_stat.http_stat_url.buf);
-    ASSERT_EQ(string(""), gw_cfg.http_stat.http_stat_user.buf);
-    ASSERT_EQ(string(""), gw_cfg.http_stat.http_stat_pass.buf);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
+    ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_STATUS_URL), gw_cfg.ruuvi_cfg.http_stat.http_stat_url.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http_stat.http_stat_user.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http_stat.http_stat_pass.buf);
 
-    ASSERT_EQ(string(HTTP_SERVER_AUTH_TYPE_STR_DIGEST), gw_cfg.lan_auth.lan_auth_type);
-    ASSERT_EQ(string("l_user1"), gw_cfg.lan_auth.lan_auth_user);
-    ASSERT_EQ(string("l_pass1"), gw_cfg.lan_auth.lan_auth_pass);
-    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_DIGEST, gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("l_user1"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
+    ASSERT_EQ(string("l_pass1"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
 
-    ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER, gw_cfg.auto_update.auto_update_cycle);
-    ASSERT_EQ(0x0F, gw_cfg.auto_update.auto_update_weekdays_bitmask);
-    ASSERT_EQ(1, gw_cfg.auto_update.auto_update_interval_from);
-    ASSERT_EQ(23, gw_cfg.auto_update.auto_update_interval_to);
-    ASSERT_EQ(2, gw_cfg.auto_update.auto_update_tz_offset_hours);
+    ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER, gw_cfg.ruuvi_cfg.auto_update.auto_update_cycle);
+    ASSERT_EQ(0x0F, gw_cfg.ruuvi_cfg.auto_update.auto_update_weekdays_bitmask);
+    ASSERT_EQ(1, gw_cfg.ruuvi_cfg.auto_update.auto_update_interval_from);
+    ASSERT_EQ(23, gw_cfg.ruuvi_cfg.auto_update.auto_update_interval_to);
+    ASSERT_EQ(2, gw_cfg.ruuvi_cfg.auto_update.auto_update_tz_offset_hours);
 
-    ASSERT_EQ(RUUVI_COMPANY_ID - 1, gw_cfg.filter.company_id);
-    ASSERT_EQ(false, gw_cfg.filter.company_use_filtering);
+    ASSERT_EQ(RUUVI_COMPANY_ID - 1, gw_cfg.ruuvi_cfg.filter.company_id);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.filter.company_use_filtering);
 
-    ASSERT_EQ(true, gw_cfg.scan.scan_coded_phy);
-    ASSERT_EQ(false, gw_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(false, gw_cfg.scan.scan_extended_payload);
-    ASSERT_EQ(false, gw_cfg.scan.scan_channel_37);
-    ASSERT_EQ(false, gw_cfg.scan.scan_channel_38);
-    ASSERT_EQ(false, gw_cfg.scan.scan_channel_39);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
 
-    ASSERT_EQ(string("qwe"), gw_cfg.coordinates.buf);
+    ASSERT_EQ(string("qwe"), gw_cfg.ruuvi_cfg.coordinates.buf);
 }
 
 TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_update_cycle_manual) // NOLINT
@@ -326,7 +398,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_update_cycle_manual) // NOLINT
             "h_pass1",
         },
         .lan_auth = {
-            HTTP_SERVER_AUTH_TYPE_STR_DIGEST,
+            RUUVI_GW_CFG_BLOB_AUTH_TYPE_STR_DIGEST,
             "l_user1",
             "l_pass1",
         },
@@ -352,59 +424,58 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_update_cycle_manual) // NOLINT
         .coordinates = { 'q', 'w', 'e', '\0', },
     };
 
-    ruuvi_gateway_config_t gw_cfg {};
+    gw_cfg_t gw_cfg {};
     gw_cfg_blob_convert(&gw_cfg, &gw_cfg_blob);
 
-    ASSERT_EQ(true, gw_cfg.eth.use_eth);
-    ASSERT_EQ(false, gw_cfg.eth.eth_dhcp);
-    ASSERT_EQ(string("192.168.1.10"), gw_cfg.eth.eth_static_ip.buf);
-    ASSERT_EQ(string("255.255.255.0"), gw_cfg.eth.eth_netmask.buf);
-    ASSERT_EQ(string("192.168.1.1"), gw_cfg.eth.eth_gw.buf);
-    ASSERT_EQ(string("8.8.8.8"), gw_cfg.eth.eth_dns1.buf);
-    ASSERT_EQ(string("4.4.4.4"), gw_cfg.eth.eth_dns2.buf);
+    ASSERT_EQ(true, gw_cfg.eth_cfg.use_eth);
+    ASSERT_EQ(false, gw_cfg.eth_cfg.eth_dhcp);
+    ASSERT_EQ(string("192.168.1.10"), gw_cfg.eth_cfg.eth_static_ip.buf);
+    ASSERT_EQ(string("255.255.255.0"), gw_cfg.eth_cfg.eth_netmask.buf);
+    ASSERT_EQ(string("192.168.1.1"), gw_cfg.eth_cfg.eth_gw.buf);
+    ASSERT_EQ(string("8.8.8.8"), gw_cfg.eth_cfg.eth_dns1.buf);
+    ASSERT_EQ(string("4.4.4.4"), gw_cfg.eth_cfg.eth_dns2.buf);
 
-    ASSERT_EQ(true, gw_cfg.mqtt.use_mqtt);
-    ASSERT_EQ(false, gw_cfg.mqtt.mqtt_use_default_prefix);
-    ASSERT_EQ(string("TCP"), gw_cfg.mqtt.mqtt_transport.buf);
-    ASSERT_EQ(string("test.mosquitto.org"), gw_cfg.mqtt.mqtt_server.buf);
-    ASSERT_EQ(1883, gw_cfg.mqtt.mqtt_port);
-    ASSERT_EQ(string("prefix1"), gw_cfg.mqtt.mqtt_prefix.buf);
-    ASSERT_EQ(string("my_client"), gw_cfg.mqtt.mqtt_client_id.buf);
-    ASSERT_EQ(string("m_user1"), gw_cfg.mqtt.mqtt_user.buf);
-    ASSERT_EQ(string("m_pass1"), gw_cfg.mqtt.mqtt_pass.buf);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(string("test.mosquitto.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
+    ASSERT_EQ(1883, gw_cfg.ruuvi_cfg.mqtt.mqtt_port);
+    ASSERT_EQ(string("prefix1"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
+    ASSERT_EQ(string("my_client"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
+    ASSERT_EQ(string("m_user1"), gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf);
+    ASSERT_EQ(string("m_pass1"), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
 
-    ASSERT_EQ(false, gw_cfg.http.use_http);
-    ASSERT_EQ(string("https://myserver.com/record"), gw_cfg.http.http_url.buf);
-    ASSERT_EQ(string("h_user1"), gw_cfg.http.http_user.buf);
-    ASSERT_EQ(string("h_pass1"), gw_cfg.http.http_pass.buf);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.http.use_http);
+    ASSERT_EQ(string("https://myserver.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("h_user1"), gw_cfg.ruuvi_cfg.http.http_user.buf);
+    ASSERT_EQ(string("h_pass1"), gw_cfg.ruuvi_cfg.http.http_pass.buf);
 
-    ASSERT_EQ(true, gw_cfg.http_stat.use_http_stat);
-    ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_STATUS_URL), gw_cfg.http_stat.http_stat_url.buf);
-    ASSERT_EQ(string(""), gw_cfg.http_stat.http_stat_user.buf);
-    ASSERT_EQ(string(""), gw_cfg.http_stat.http_stat_pass.buf);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
+    ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_STATUS_URL), gw_cfg.ruuvi_cfg.http_stat.http_stat_url.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http_stat.http_stat_user.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http_stat.http_stat_pass.buf);
 
-    ASSERT_EQ(string(HTTP_SERVER_AUTH_TYPE_STR_DIGEST), gw_cfg.lan_auth.lan_auth_type);
-    ASSERT_EQ(string("l_user1"), gw_cfg.lan_auth.lan_auth_user);
-    ASSERT_EQ(string("l_pass1"), gw_cfg.lan_auth.lan_auth_pass);
-    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_DIGEST, gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("l_user1"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
+    ASSERT_EQ(string("l_pass1"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
 
-    ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_MANUAL, gw_cfg.auto_update.auto_update_cycle);
-    ASSERT_EQ(0x0F, gw_cfg.auto_update.auto_update_weekdays_bitmask);
-    ASSERT_EQ(1, gw_cfg.auto_update.auto_update_interval_from);
-    ASSERT_EQ(23, gw_cfg.auto_update.auto_update_interval_to);
-    ASSERT_EQ(2, gw_cfg.auto_update.auto_update_tz_offset_hours);
+    ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_MANUAL, gw_cfg.ruuvi_cfg.auto_update.auto_update_cycle);
+    ASSERT_EQ(0x0F, gw_cfg.ruuvi_cfg.auto_update.auto_update_weekdays_bitmask);
+    ASSERT_EQ(1, gw_cfg.ruuvi_cfg.auto_update.auto_update_interval_from);
+    ASSERT_EQ(23, gw_cfg.ruuvi_cfg.auto_update.auto_update_interval_to);
+    ASSERT_EQ(2, gw_cfg.ruuvi_cfg.auto_update.auto_update_tz_offset_hours);
 
-    ASSERT_EQ(RUUVI_COMPANY_ID - 1, gw_cfg.filter.company_id);
-    ASSERT_EQ(false, gw_cfg.filter.company_use_filtering);
+    ASSERT_EQ(RUUVI_COMPANY_ID - 1, gw_cfg.ruuvi_cfg.filter.company_id);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.filter.company_use_filtering);
 
-    ASSERT_EQ(true, gw_cfg.scan.scan_coded_phy);
-    ASSERT_EQ(false, gw_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(false, gw_cfg.scan.scan_extended_payload);
-    ASSERT_EQ(false, gw_cfg.scan.scan_channel_37);
-    ASSERT_EQ(false, gw_cfg.scan.scan_channel_38);
-    ASSERT_EQ(false, gw_cfg.scan.scan_channel_39);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
 
-    ASSERT_EQ(string("qwe"), gw_cfg.coordinates.buf);
+    ASSERT_EQ(string("qwe"), gw_cfg.ruuvi_cfg.coordinates.buf);
 }
 
 TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_update_cycle_unknown) // NOLINT
@@ -438,7 +509,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_update_cycle_unknown) // NOLINT
             "h_pass1",
         },
         .lan_auth = {
-            HTTP_SERVER_AUTH_TYPE_STR_DIGEST,
+            RUUVI_GW_CFG_BLOB_AUTH_TYPE_STR_DIGEST,
             "l_user1",
             "l_pass1",
         },
@@ -464,59 +535,58 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_update_cycle_unknown) // NOLINT
         .coordinates = { 'q', 'w', 'e', '\0', },
     };
 
-    ruuvi_gateway_config_t gw_cfg {};
+    gw_cfg_t gw_cfg {};
     gw_cfg_blob_convert(&gw_cfg, &gw_cfg_blob);
 
-    ASSERT_EQ(true, gw_cfg.eth.use_eth);
-    ASSERT_EQ(false, gw_cfg.eth.eth_dhcp);
-    ASSERT_EQ(string("192.168.1.10"), gw_cfg.eth.eth_static_ip.buf);
-    ASSERT_EQ(string("255.255.255.0"), gw_cfg.eth.eth_netmask.buf);
-    ASSERT_EQ(string("192.168.1.1"), gw_cfg.eth.eth_gw.buf);
-    ASSERT_EQ(string("8.8.8.8"), gw_cfg.eth.eth_dns1.buf);
-    ASSERT_EQ(string("4.4.4.4"), gw_cfg.eth.eth_dns2.buf);
+    ASSERT_EQ(true, gw_cfg.eth_cfg.use_eth);
+    ASSERT_EQ(false, gw_cfg.eth_cfg.eth_dhcp);
+    ASSERT_EQ(string("192.168.1.10"), gw_cfg.eth_cfg.eth_static_ip.buf);
+    ASSERT_EQ(string("255.255.255.0"), gw_cfg.eth_cfg.eth_netmask.buf);
+    ASSERT_EQ(string("192.168.1.1"), gw_cfg.eth_cfg.eth_gw.buf);
+    ASSERT_EQ(string("8.8.8.8"), gw_cfg.eth_cfg.eth_dns1.buf);
+    ASSERT_EQ(string("4.4.4.4"), gw_cfg.eth_cfg.eth_dns2.buf);
 
-    ASSERT_EQ(true, gw_cfg.mqtt.use_mqtt);
-    ASSERT_EQ(false, gw_cfg.mqtt.mqtt_use_default_prefix);
-    ASSERT_EQ(string("TCP"), gw_cfg.mqtt.mqtt_transport.buf);
-    ASSERT_EQ(string("test.mosquitto.org"), gw_cfg.mqtt.mqtt_server.buf);
-    ASSERT_EQ(1883, gw_cfg.mqtt.mqtt_port);
-    ASSERT_EQ(string("prefix1"), gw_cfg.mqtt.mqtt_prefix.buf);
-    ASSERT_EQ(string("my_client"), gw_cfg.mqtt.mqtt_client_id.buf);
-    ASSERT_EQ(string("m_user1"), gw_cfg.mqtt.mqtt_user.buf);
-    ASSERT_EQ(string("m_pass1"), gw_cfg.mqtt.mqtt_pass.buf);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(string("test.mosquitto.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
+    ASSERT_EQ(1883, gw_cfg.ruuvi_cfg.mqtt.mqtt_port);
+    ASSERT_EQ(string("prefix1"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
+    ASSERT_EQ(string("my_client"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
+    ASSERT_EQ(string("m_user1"), gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf);
+    ASSERT_EQ(string("m_pass1"), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
 
-    ASSERT_EQ(false, gw_cfg.http.use_http);
-    ASSERT_EQ(string("https://myserver.com/record"), gw_cfg.http.http_url.buf);
-    ASSERT_EQ(string("h_user1"), gw_cfg.http.http_user.buf);
-    ASSERT_EQ(string("h_pass1"), gw_cfg.http.http_pass.buf);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.http.use_http);
+    ASSERT_EQ(string("https://myserver.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("h_user1"), gw_cfg.ruuvi_cfg.http.http_user.buf);
+    ASSERT_EQ(string("h_pass1"), gw_cfg.ruuvi_cfg.http.http_pass.buf);
 
-    ASSERT_EQ(true, gw_cfg.http_stat.use_http_stat);
-    ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_STATUS_URL), gw_cfg.http_stat.http_stat_url.buf);
-    ASSERT_EQ(string(""), gw_cfg.http_stat.http_stat_user.buf);
-    ASSERT_EQ(string(""), gw_cfg.http_stat.http_stat_pass.buf);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
+    ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_STATUS_URL), gw_cfg.ruuvi_cfg.http_stat.http_stat_url.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http_stat.http_stat_user.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http_stat.http_stat_pass.buf);
 
-    ASSERT_EQ(string(HTTP_SERVER_AUTH_TYPE_STR_DIGEST), gw_cfg.lan_auth.lan_auth_type);
-    ASSERT_EQ(string("l_user1"), gw_cfg.lan_auth.lan_auth_user);
-    ASSERT_EQ(string("l_pass1"), gw_cfg.lan_auth.lan_auth_pass);
-    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_DIGEST, gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("l_user1"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
+    ASSERT_EQ(string("l_pass1"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
 
-    ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_REGULAR, gw_cfg.auto_update.auto_update_cycle);
-    ASSERT_EQ(0x0F, gw_cfg.auto_update.auto_update_weekdays_bitmask);
-    ASSERT_EQ(1, gw_cfg.auto_update.auto_update_interval_from);
-    ASSERT_EQ(23, gw_cfg.auto_update.auto_update_interval_to);
-    ASSERT_EQ(2, gw_cfg.auto_update.auto_update_tz_offset_hours);
+    ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_REGULAR, gw_cfg.ruuvi_cfg.auto_update.auto_update_cycle);
+    ASSERT_EQ(0x0F, gw_cfg.ruuvi_cfg.auto_update.auto_update_weekdays_bitmask);
+    ASSERT_EQ(1, gw_cfg.ruuvi_cfg.auto_update.auto_update_interval_from);
+    ASSERT_EQ(23, gw_cfg.ruuvi_cfg.auto_update.auto_update_interval_to);
+    ASSERT_EQ(2, gw_cfg.ruuvi_cfg.auto_update.auto_update_tz_offset_hours);
 
-    ASSERT_EQ(RUUVI_COMPANY_ID - 1, gw_cfg.filter.company_id);
-    ASSERT_EQ(false, gw_cfg.filter.company_use_filtering);
+    ASSERT_EQ(RUUVI_COMPANY_ID - 1, gw_cfg.ruuvi_cfg.filter.company_id);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.filter.company_use_filtering);
 
-    ASSERT_EQ(true, gw_cfg.scan.scan_coded_phy);
-    ASSERT_EQ(false, gw_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(false, gw_cfg.scan.scan_extended_payload);
-    ASSERT_EQ(false, gw_cfg.scan.scan_channel_37);
-    ASSERT_EQ(false, gw_cfg.scan.scan_channel_38);
-    ASSERT_EQ(false, gw_cfg.scan.scan_channel_39);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
 
-    ASSERT_EQ(string("qwe"), gw_cfg.coordinates.buf);
+    ASSERT_EQ(string("qwe"), gw_cfg.ruuvi_cfg.coordinates.buf);
 }
 
 TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_with_incorrect_header) // NOLINT
@@ -550,7 +620,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_with_incorrect_header) // NOLINT
             "h_pass1",
         },
         .lan_auth = {
-            HTTP_SERVER_AUTH_TYPE_STR_DIGEST,
+            RUUVI_GW_CFG_BLOB_AUTH_TYPE_STR_DIGEST,
             "l_user1",
             "l_pass1",
         },
@@ -576,59 +646,58 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_with_incorrect_header) // NOLINT
         .coordinates = { 'q', 'w', 'e', '\0', },
     };
 
-    ruuvi_gateway_config_t gw_cfg {};
+    gw_cfg_t gw_cfg {};
     gw_cfg_blob_convert(&gw_cfg, &gw_cfg_blob);
 
-    ASSERT_EQ(false, gw_cfg.eth.use_eth);
-    ASSERT_EQ(true, gw_cfg.eth.eth_dhcp);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_static_ip.buf);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_netmask.buf);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_gw.buf);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns1.buf);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns2.buf);
+    ASSERT_EQ(false, gw_cfg.eth_cfg.use_eth);
+    ASSERT_EQ(true, gw_cfg.eth_cfg.eth_dhcp);
+    ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_static_ip.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_netmask.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_gw.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_dns1.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_dns2.buf);
 
-    ASSERT_EQ(false, gw_cfg.mqtt.use_mqtt);
-    ASSERT_EQ(true, gw_cfg.mqtt.mqtt_use_default_prefix);
-    ASSERT_EQ(string("TCP"), gw_cfg.mqtt.mqtt_transport.buf);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_server.buf);
-    ASSERT_EQ(0, gw_cfg.mqtt.mqtt_port);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_prefix.buf);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_client_id.buf);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_user.buf);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_pass.buf);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(string("test.mosquitto.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
+    ASSERT_EQ(1883, gw_cfg.ruuvi_cfg.mqtt.mqtt_port);
+    ASSERT_EQ(string("ruuvi/AA:BB:CC:DD:EE:FF/"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
+    ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
 
-    ASSERT_EQ(true, gw_cfg.http.use_http);
-    ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_DEFAULT_URL), gw_cfg.http.http_url.buf);
-    ASSERT_EQ(string(""), gw_cfg.http.http_user.buf);
-    ASSERT_EQ(string(""), gw_cfg.http.http_pass.buf);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.http.use_http);
+    ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_DEFAULT_URL), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http.http_user.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http.http_pass.buf);
 
-    ASSERT_EQ(true, gw_cfg.http_stat.use_http_stat);
-    ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_STATUS_URL), gw_cfg.http_stat.http_stat_url.buf);
-    ASSERT_EQ(string(""), gw_cfg.http_stat.http_stat_user.buf);
-    ASSERT_EQ(string(""), gw_cfg.http_stat.http_stat_pass.buf);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
+    ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_STATUS_URL), gw_cfg.ruuvi_cfg.http_stat.http_stat_url.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http_stat.http_stat_user.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http_stat.http_stat_pass.buf);
 
-    ASSERT_EQ(string(HTTP_SERVER_AUTH_TYPE_STR_RUUVI), gw_cfg.lan_auth.lan_auth_type);
-    ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), gw_cfg.lan_auth.lan_auth_user);
-    ASSERT_EQ(string("f7cdba00dfe46bdbc72d26de5286c971"), gw_cfg.lan_auth.lan_auth_pass);
-    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
+    ASSERT_EQ(string("1d45bdb0aab662c03ac3fac45da43f8b"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
 
-    ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_REGULAR, gw_cfg.auto_update.auto_update_cycle);
-    ASSERT_EQ(0x7F, gw_cfg.auto_update.auto_update_weekdays_bitmask);
-    ASSERT_EQ(0, gw_cfg.auto_update.auto_update_interval_from);
-    ASSERT_EQ(24, gw_cfg.auto_update.auto_update_interval_to);
-    ASSERT_EQ(3, gw_cfg.auto_update.auto_update_tz_offset_hours);
+    ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_REGULAR, gw_cfg.ruuvi_cfg.auto_update.auto_update_cycle);
+    ASSERT_EQ(0x7F, gw_cfg.ruuvi_cfg.auto_update.auto_update_weekdays_bitmask);
+    ASSERT_EQ(0, gw_cfg.ruuvi_cfg.auto_update.auto_update_interval_from);
+    ASSERT_EQ(24, gw_cfg.ruuvi_cfg.auto_update.auto_update_interval_to);
+    ASSERT_EQ(3, gw_cfg.ruuvi_cfg.auto_update.auto_update_tz_offset_hours);
 
-    ASSERT_EQ(RUUVI_COMPANY_ID, gw_cfg.filter.company_id);
-    ASSERT_EQ(true, gw_cfg.filter.company_use_filtering);
+    ASSERT_EQ(RUUVI_COMPANY_ID, gw_cfg.ruuvi_cfg.filter.company_id);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.filter.company_use_filtering);
 
-    ASSERT_EQ(false, gw_cfg.scan.scan_coded_phy);
-    ASSERT_EQ(true, gw_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg.scan.scan_extended_payload);
-    ASSERT_EQ(true, gw_cfg.scan.scan_channel_37);
-    ASSERT_EQ(true, gw_cfg.scan.scan_channel_38);
-    ASSERT_EQ(true, gw_cfg.scan.scan_channel_39);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
 
-    ASSERT_EQ(string(""), gw_cfg.coordinates.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.coordinates.buf);
 }
 
 TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_with_incorrect_fmt_version) // NOLINT
@@ -662,7 +731,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_with_incorrect_fmt_version) // NO
             "h_pass1",
         },
         .lan_auth = {
-            HTTP_SERVER_AUTH_TYPE_STR_DIGEST,
+            RUUVI_GW_CFG_BLOB_AUTH_TYPE_STR_DIGEST,
             "l_user1",
             "l_pass1",
         },
@@ -688,57 +757,56 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_with_incorrect_fmt_version) // NO
         .coordinates = { 'q', 'w', 'e', '\0', },
     };
 
-    ruuvi_gateway_config_t gw_cfg {};
+    gw_cfg_t gw_cfg {};
     gw_cfg_blob_convert(&gw_cfg, &gw_cfg_blob);
 
-    ASSERT_EQ(false, gw_cfg.eth.use_eth);
-    ASSERT_EQ(true, gw_cfg.eth.eth_dhcp);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_static_ip.buf);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_netmask.buf);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_gw.buf);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns1.buf);
-    ASSERT_EQ(string(""), gw_cfg.eth.eth_dns2.buf);
+    ASSERT_EQ(false, gw_cfg.eth_cfg.use_eth);
+    ASSERT_EQ(true, gw_cfg.eth_cfg.eth_dhcp);
+    ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_static_ip.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_netmask.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_gw.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_dns1.buf);
+    ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_dns2.buf);
 
-    ASSERT_EQ(false, gw_cfg.mqtt.use_mqtt);
-    ASSERT_EQ(true, gw_cfg.mqtt.mqtt_use_default_prefix);
-    ASSERT_EQ(string("TCP"), gw_cfg.mqtt.mqtt_transport.buf);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_server.buf);
-    ASSERT_EQ(0, gw_cfg.mqtt.mqtt_port);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_prefix.buf);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_client_id.buf);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_user.buf);
-    ASSERT_EQ(string(""), gw_cfg.mqtt.mqtt_pass.buf);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(string("test.mosquitto.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
+    ASSERT_EQ(1883, gw_cfg.ruuvi_cfg.mqtt.mqtt_port);
+    ASSERT_EQ(string("ruuvi/AA:BB:CC:DD:EE:FF/"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
+    ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
 
-    ASSERT_EQ(true, gw_cfg.http.use_http);
-    ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_DEFAULT_URL), gw_cfg.http.http_url.buf);
-    ASSERT_EQ(string(""), gw_cfg.http.http_user.buf);
-    ASSERT_EQ(string(""), gw_cfg.http.http_pass.buf);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.http.use_http);
+    ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_DEFAULT_URL), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http.http_user.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http.http_pass.buf);
 
-    ASSERT_EQ(true, gw_cfg.http_stat.use_http_stat);
-    ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_STATUS_URL), gw_cfg.http_stat.http_stat_url.buf);
-    ASSERT_EQ(string(""), gw_cfg.http_stat.http_stat_user.buf);
-    ASSERT_EQ(string(""), gw_cfg.http_stat.http_stat_pass.buf);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
+    ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_STATUS_URL), gw_cfg.ruuvi_cfg.http_stat.http_stat_url.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http_stat.http_stat_user.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http_stat.http_stat_pass.buf);
 
-    ASSERT_EQ(string(HTTP_SERVER_AUTH_TYPE_STR_RUUVI), gw_cfg.lan_auth.lan_auth_type);
-    ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), gw_cfg.lan_auth.lan_auth_user);
-    ASSERT_EQ(string("f7cdba00dfe46bdbc72d26de5286c971"), gw_cfg.lan_auth.lan_auth_pass);
-    ASSERT_EQ(string(""), gw_cfg.lan_auth.lan_auth_api_key);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
+    ASSERT_EQ(string("1d45bdb0aab662c03ac3fac45da43f8b"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
 
-    ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_REGULAR, gw_cfg.auto_update.auto_update_cycle);
-    ASSERT_EQ(0x7F, gw_cfg.auto_update.auto_update_weekdays_bitmask);
-    ASSERT_EQ(0, gw_cfg.auto_update.auto_update_interval_from);
-    ASSERT_EQ(24, gw_cfg.auto_update.auto_update_interval_to);
-    ASSERT_EQ(3, gw_cfg.auto_update.auto_update_tz_offset_hours);
+    ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_REGULAR, gw_cfg.ruuvi_cfg.auto_update.auto_update_cycle);
+    ASSERT_EQ(0x7F, gw_cfg.ruuvi_cfg.auto_update.auto_update_weekdays_bitmask);
+    ASSERT_EQ(0, gw_cfg.ruuvi_cfg.auto_update.auto_update_interval_from);
+    ASSERT_EQ(24, gw_cfg.ruuvi_cfg.auto_update.auto_update_interval_to);
+    ASSERT_EQ(3, gw_cfg.ruuvi_cfg.auto_update.auto_update_tz_offset_hours);
 
-    ASSERT_EQ(RUUVI_COMPANY_ID, gw_cfg.filter.company_id);
-    ASSERT_EQ(true, gw_cfg.filter.company_use_filtering);
+    ASSERT_EQ(RUUVI_COMPANY_ID, gw_cfg.ruuvi_cfg.filter.company_id);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.filter.company_use_filtering);
 
-    ASSERT_EQ(false, gw_cfg.scan.scan_coded_phy);
-    ASSERT_EQ(true, gw_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg.scan.scan_extended_payload);
-    ASSERT_EQ(true, gw_cfg.scan.scan_channel_37);
-    ASSERT_EQ(true, gw_cfg.scan.scan_channel_38);
-    ASSERT_EQ(true, gw_cfg.scan.scan_channel_39);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
 
-    ASSERT_EQ(string(""), gw_cfg.coordinates.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.coordinates.buf);
 }

@@ -6,7 +6,9 @@
  */
 
 #include "esp_heap_caps.h"
+#include "esp32/rom/crc.h"
 #include "esp_timer.h"
+#include "mbedtls/sha256.h"
 #include "gw_mac.h"
 #include "str_buf.h"
 #include "os_malloc.h"
@@ -62,6 +64,27 @@ typedef struct metrics_largest_free_info_t
     ulong_t size_default;
 } metrics_largest_free_info_t;
 
+typedef struct metrics_crc32_t
+{
+    uint32_t val;
+} metrics_crc32_t;
+
+typedef struct metrics_crc32_str_t
+{
+    char buf[2 + 2 * sizeof(metrics_crc32_t) + 1];
+} metrics_crc32_str_t;
+
+typedef struct metrics_sha256_t
+{
+#define METRICS_SHA256_SIZE (32)
+    uint8_t buf[METRICS_SHA256_SIZE];
+} metrics_sha256_t;
+
+typedef struct metrics_sha256_str_t
+{
+    char buf[METRICS_SHA256_SIZE * 2 + 1];
+} metrics_sha256_str_t;
+
 typedef struct metrics_info_t
 {
     uint64_t                    received_advertisements;
@@ -69,8 +92,10 @@ typedef struct metrics_info_t
     metrics_total_free_info_t   total_free_bytes;
     metrics_largest_free_info_t largest_free_block;
     mac_address_str_t           mac_addr_str;
-    nrf52fw_version_str_t       nrf_fw;
-    fw_ver_str_t                esp_fw;
+    ruuvi_nrf52_fw_ver_str_t    nrf_fw;
+    ruuvi_esp32_fw_ver_str_t    esp_fw;
+    metrics_crc32_str_t         gw_cfg_crc32;
+    metrics_sha256_str_t        gw_cfg_sha256;
 } metrics_info_t;
 
 static const char TAG[] = "metrics";
@@ -133,9 +158,41 @@ get_total_free_bytes(const uint32_t caps)
     return x.total_free_bytes;
 }
 
+static void
+metrics_calc_gw_cfg_hash(metrics_crc32_str_t *const p_crc32, metrics_sha256_str_t *const p_sha256)
+{
+    metrics_sha256_t gw_cfg_sha256 = { 0 };
+
+    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
+
+    const metrics_crc32_t crc32 = {
+        .val = crc32_le(0, (const void *)p_gw_cfg, sizeof(*p_gw_cfg)),
+    };
+
+    mbedtls_sha256_context sha256_ctx = { 0 };
+    mbedtls_sha256_init(&sha256_ctx);
+    mbedtls_sha256_starts_ret(&sha256_ctx, false);
+    mbedtls_sha256_update_ret(&sha256_ctx, (const void *)p_gw_cfg, sizeof(*p_gw_cfg));
+    mbedtls_sha256_finish_ret(&sha256_ctx, gw_cfg_sha256.buf);
+    mbedtls_sha256_free(&sha256_ctx);
+
+    gw_cfg_unlock_ro(&p_gw_cfg);
+
+    (void)snprintf(p_crc32->buf, sizeof(p_crc32->buf), "0x%08x", crc32.val);
+    str_buf_t str_buf = STR_BUF_INIT(p_sha256->buf, sizeof(p_sha256->buf));
+    for (uint32_t i = 0; i < sizeof(gw_cfg_sha256.buf); ++i)
+    {
+        str_buf_printf(&str_buf, "%02x", gw_cfg_sha256.buf[i]);
+    }
+}
+
 static metrics_info_t
 gen_metrics(void)
 {
+    metrics_crc32_str_t  gw_cfg_crc32_str  = { 0 };
+    metrics_sha256_str_t gw_cfg_sha256_str = { 0 };
+    metrics_calc_gw_cfg_hash(&gw_cfg_crc32_str, &gw_cfg_sha256_str);
+
     const metrics_info_t metrics = {
         .received_advertisements        = metrics_received_advs_get(),
         .uptime_us                      = esp_timer_get_time(),
@@ -166,9 +223,11 @@ gen_metrics(void)
         .largest_free_block.size_spiram   = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM),
         .largest_free_block.size_internal = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
         .largest_free_block.size_default  = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT),
-        .mac_addr_str                     = g_gw_mac_sta_str,
-        .esp_fw                           = fw_update_get_cur_version2(),
-        .nrf_fw                           = g_nrf52_firmware_version,
+        .mac_addr_str                     = *gw_cfg_get_nrf52_mac_addr(),
+        .esp_fw                           = *gw_cfg_get_esp32_fw_ver(),
+        .nrf_fw                           = *gw_cfg_get_nrf52_fw_ver(),
+        .gw_cfg_crc32                     = gw_cfg_crc32_str,
+        .gw_cfg_sha256                    = gw_cfg_sha256_str,
     };
     return metrics;
 }
@@ -300,6 +359,13 @@ metrics_print_gwinfo(str_buf_t *p_str_buf, const metrics_info_t *p_metrics)
 }
 
 static void
+metrics_print_gw_cfg_info(str_buf_t *const p_str_buf, const metrics_info_t *const p_metrics)
+{
+    str_buf_printf(p_str_buf, METRICS_PREFIX "gw_cfg_crc32 %s\n", p_metrics->gw_cfg_crc32.buf);
+    str_buf_printf(p_str_buf, METRICS_PREFIX "gw_cfg_sha256 %s\n", p_metrics->gw_cfg_sha256.buf);
+}
+
+static void
 metrics_print(str_buf_t *p_str_buf, const metrics_info_t *p_metrics)
 {
     str_buf_printf(
@@ -310,6 +376,7 @@ metrics_print(str_buf_t *p_str_buf, const metrics_info_t *p_metrics)
     metrics_print_total_free_bytes(p_str_buf, p_metrics);
     metrics_print_largest_free_blk(p_str_buf, p_metrics);
     metrics_print_gwinfo(p_str_buf, p_metrics);
+    metrics_print_gw_cfg_info(p_str_buf, p_metrics);
 }
 
 char *

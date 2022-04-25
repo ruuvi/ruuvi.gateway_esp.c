@@ -7,8 +7,6 @@ add_executable(${ProjectId}
         test_hmac_sha256.cpp
         ${RUUVI_GW_SRC}/hmac_sha256.c
         ${RUUVI_GW_SRC}/hmac_sha256.h
-        ${RUUVI_GW_SRC}/ruuvi_device_id.c
-        ${RUUVI_GW_SRC}/ruuvi_device_id.h
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/md_wrap.c
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/md.c
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/md5.c

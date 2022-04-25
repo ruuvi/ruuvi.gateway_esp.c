@@ -188,30 +188,30 @@ eth_netif_set_dns_info(const char *p_dns_ip, const esp_netif_dns_type_t type)
 }
 
 static bool
-ethernet_update_ip_static(const ruuvi_gateway_config_t *const p_gw_cfg)
+ethernet_update_ip_static(const gw_cfg_eth_t *const p_gw_cfg_eth)
 {
     esp_netif_ip_info_t ip_info = { 0 };
 
     LOG_INFO("Using static IP");
 
-    ip_info.ip.addr = esp_ip4addr_aton(p_gw_cfg->eth.eth_static_ip.buf);
+    ip_info.ip.addr = esp_ip4addr_aton(p_gw_cfg_eth->eth_static_ip.buf);
     if (0 == ip_info.ip.addr)
     {
-        LOG_ERR("Invalid eth static ip: %s", p_gw_cfg->eth.eth_static_ip.buf);
+        LOG_ERR("Invalid eth static ip: %s", p_gw_cfg_eth->eth_static_ip.buf);
         return false;
     }
 
-    ip_info.netmask.addr = esp_ip4addr_aton(p_gw_cfg->eth.eth_netmask.buf);
+    ip_info.netmask.addr = esp_ip4addr_aton(p_gw_cfg_eth->eth_netmask.buf);
     if (0 == ip_info.netmask.addr)
     {
-        LOG_ERR("invalid eth netmask: %s", p_gw_cfg->eth.eth_netmask.buf);
+        LOG_ERR("invalid eth netmask: %s", p_gw_cfg_eth->eth_netmask.buf);
         return false;
     }
 
-    ip_info.gw.addr = esp_ip4addr_aton(p_gw_cfg->eth.eth_gw.buf);
+    ip_info.gw.addr = esp_ip4addr_aton(p_gw_cfg_eth->eth_gw.buf);
     if (0 == ip_info.gw.addr)
     {
-        LOG_ERR("invalid eth gw: %s", p_gw_cfg->eth.eth_gw.buf);
+        LOG_ERR("invalid eth gw: %s", p_gw_cfg_eth->eth_gw.buf);
         return false;
     }
 
@@ -228,16 +228,16 @@ ethernet_update_ip_static(const ruuvi_gateway_config_t *const p_gw_cfg)
         return false;
     }
 
-    eth_netif_set_dns_info(p_gw_cfg->eth.eth_dns1.buf, ESP_NETIF_DNS_MAIN);
-    eth_netif_set_dns_info(p_gw_cfg->eth.eth_dns2.buf, ESP_NETIF_DNS_BACKUP);
+    eth_netif_set_dns_info(p_gw_cfg_eth->eth_dns1.buf, ESP_NETIF_DNS_MAIN);
+    eth_netif_set_dns_info(p_gw_cfg_eth->eth_dns2.buf, ESP_NETIF_DNS_BACKUP);
     return true;
 }
 
 void
 ethernet_update_ip(void)
 {
-    const ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_ro();
-    if (p_gw_cfg->eth.eth_dhcp)
+    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
+    if (p_gw_cfg->eth_cfg.eth_dhcp)
     {
         gw_cfg_unlock_ro(&p_gw_cfg);
         if (!ethernet_update_ip_dhcp())
@@ -247,7 +247,7 @@ ethernet_update_ip(void)
     }
     else
     {
-        if (!ethernet_update_ip_static(p_gw_cfg))
+        if (!ethernet_update_ip_static(&p_gw_cfg->eth_cfg))
         {
             gw_cfg_unlock_ro(&p_gw_cfg);
             return;

@@ -22,6 +22,9 @@ bool
 reset_task_init(void);
 
 void
+reset_task_reboot_after_timeout(void);
+
+void
 reset_task_notify_configure_button_pressed(void);
 
 void

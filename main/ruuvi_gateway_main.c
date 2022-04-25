@@ -44,6 +44,7 @@
 #include "gw_cfg_default.h"
 #include "gw_cfg_default_json.h"
 #include "gw_cfg_json.h"
+#include "gw_cfg_log.h"
 #include "ruuvi_auth.h"
 #include "lwip/dhcp.h"
 #include "lwip/sockets.h"
@@ -59,10 +60,6 @@ static const char TAG[] = "ruuvi_gateway";
 
 #define MAC_ADDRESS_IDX_OF_LAST_BYTE        (MAC_ADDRESS_NUM_BYTES - 1U)
 #define MAC_ADDRESS_IDX_OF_PENULTIMATE_BYTE (MAC_ADDRESS_NUM_BYTES - 2U)
-
-#define RUUVI_GET_NRF52_ID_NUM_RETRIES (3U)
-#define RUUVI_GET_NRF52_ID_DELAY_MS    (1000U)
-#define RUUVI_GET_NRF52_ID_STEP_MS     (100U)
 
 #define WIFI_COUNTRY_DEFAULT_FIRST_CHANNEL (1U)
 #define WIFI_COUNTRY_DEFAULT_NUM_CHANNELS  (13U)
@@ -83,9 +80,9 @@ conv_bool_to_u8(const bool x)
 void
 ruuvi_send_nrf_settings(void)
 {
-    const ruuvi_gateway_config_t *     p_gw_cfg = gw_cfg_lock_ro();
-    const ruuvi_gw_cfg_filter_t *const p_filter = &p_gw_cfg->filter;
-    const ruuvi_gw_cfg_scan_t *const   p_scan   = &p_gw_cfg->scan;
+    const gw_cfg_t *                   p_gw_cfg = gw_cfg_lock_ro();
+    const ruuvi_gw_cfg_filter_t *const p_filter = &p_gw_cfg->ruuvi_cfg.filter;
+    const ruuvi_gw_cfg_scan_t *const   p_scan   = &p_gw_cfg->ruuvi_cfg.scan;
     LOG_INFO(
         "sending settings to NRF: use filter: %d, "
         "company id: 0x%04x,"
@@ -117,38 +114,26 @@ ruuvi_send_nrf_settings(void)
     gw_cfg_unlock_ro(&p_gw_cfg);
 }
 
-void
-ruuvi_send_nrf_get_id(void)
+static mac_address_bin_t
+gateway_read_mac_addr(const esp_mac_type_t mac_type)
 {
-    api_send_get_device_id(RE_CA_UART_GET_DEVICE_ID);
-}
-
-static void
-gateway_read_mac_addr(
-    const esp_mac_type_t     mac_type,
-    mac_address_bin_t *const p_mac_addr_bin,
-    mac_address_str_t *const p_mac_addr_str)
-{
-    const esp_err_t err = esp_read_mac(p_mac_addr_bin->mac, mac_type);
+    mac_address_bin_t mac_addr = { 0 };
+    const esp_err_t   err      = esp_read_mac(mac_addr.mac, mac_type);
     if (err != ESP_OK)
     {
         LOG_ERR_ESP(err, "Can't get mac address for mac_type %d", (printf_int_t)mac_type);
-        p_mac_addr_str->str_buf[0] = '\0';
     }
-    else
-    {
-        *p_mac_addr_str = mac_address_to_str(p_mac_addr_bin);
-    }
+    return mac_addr;
 }
 
-static void
-set_gw_mac_sta(const mac_address_bin_t *const p_src, mac_address_str_t *const p_dst, wifi_ssid_t *const p_gw_wifi_ssid)
+static wifiman_wifi_ssid_t
+generate_wifi_ap_ssid(const mac_address_bin_t mac_addr)
 {
-    *p_dst              = mac_address_to_str(p_src);
-    bool flag_mac_valid = false;
-    for (uint32_t i = 0; i < sizeof(p_src->mac); ++i)
+    wifiman_wifi_ssid_t wifi_ap_ssid   = { 0 };
+    bool                flag_mac_valid = false;
+    for (uint32_t i = 0; i < sizeof(mac_addr.mac); ++i)
     {
-        if (0 != p_src->mac[i])
+        if (0 != mac_addr.mac[i])
         {
             flag_mac_valid = true;
             break;
@@ -156,18 +141,19 @@ set_gw_mac_sta(const mac_address_bin_t *const p_src, mac_address_str_t *const p_
     }
     if (!flag_mac_valid)
     {
-        sniprintf(p_gw_wifi_ssid->ssid_buf, sizeof(p_gw_wifi_ssid->ssid_buf), "%sXXXX", DEFAULT_AP_SSID);
+        sniprintf(wifi_ap_ssid.ssid_buf, sizeof(wifi_ap_ssid.ssid_buf), "%sXXXX", DEFAULT_AP_SSID);
     }
     else
     {
         sniprintf(
-            p_gw_wifi_ssid->ssid_buf,
-            sizeof(p_gw_wifi_ssid->ssid_buf),
+            wifi_ap_ssid.ssid_buf,
+            sizeof(wifi_ap_ssid.ssid_buf),
             "%s%02X%02X",
             DEFAULT_AP_SSID,
-            p_src->mac[MAC_ADDRESS_IDX_OF_PENULTIMATE_BYTE],
-            p_src->mac[MAC_ADDRESS_IDX_OF_LAST_BYTE]);
+            mac_addr.mac[MAC_ADDRESS_IDX_OF_PENULTIMATE_BYTE],
+            mac_addr.mac[MAC_ADDRESS_IDX_OF_LAST_BYTE]);
     }
+    return wifi_ap_ssid;
 }
 
 static void
@@ -196,23 +182,14 @@ ethernet_connection_ok_cb(const esp_netif_ip_info_t *p_ip_info)
     {
         LOG_INFO("The Ethernet cable was connected, but the Ethernet was not configured");
         LOG_INFO("Set the default configuration with Ethernet and DHCP enabled");
-        ruuvi_gateway_config_t *p_gw_cfg = gw_cfg_lock_rw();
+        gw_cfg_t *p_gw_cfg = gw_cfg_lock_rw();
         gw_cfg_default_get(p_gw_cfg);
-        p_gw_cfg->eth.use_eth  = true;
-        p_gw_cfg->eth.eth_dhcp = true;
-        gw_cfg_print_to_log(p_gw_cfg, "Gateway SETTINGS");
-
-        cjson_wrap_str_t cjson_str = { 0 };
-        if (!gw_cfg_json_generate(p_gw_cfg, &cjson_str))
-        {
-            LOG_ERR("%s failed", "gw_cfg_json_generate");
-        }
-        else
-        {
-            settings_save_to_flash(cjson_str.p_str);
-        }
-        cjson_wrap_free_json_str(&cjson_str);
+        p_gw_cfg->eth_cfg.use_eth  = true;
+        p_gw_cfg->eth_cfg.eth_dhcp = true;
+        gw_cfg_log(p_gw_cfg, "Gateway SETTINGS", false);
         gw_cfg_unlock_rw(&p_gw_cfg);
+
+        settings_save_to_flash();
 
         if (!ruuvi_auth_set_from_config())
         {
@@ -255,7 +232,7 @@ static void
 cb_on_connect_eth_cmd(void)
 {
     LOG_INFO("callback: on_connect_eth_cmd");
-    ethernet_start(g_gw_wifi_ssid.ssid_buf);
+    ethernet_start(gw_cfg_get_wifi_ap_ssid()->ssid_buf);
 }
 
 static void
@@ -289,11 +266,18 @@ cb_on_ap_sta_disconnected(void)
     {
         if (gw_cfg_get_eth_use_eth() || (!wifi_manager_is_sta_configured()))
         {
-            ethernet_start(g_gw_wifi_ssid.ssid_buf);
+            ethernet_start(gw_cfg_get_wifi_ap_ssid()->ssid_buf);
         }
         main_task_start_timer_after_hotspot_activation();
     }
     adv_post_enable_retransmission();
+}
+
+static void
+cb_save_wifi_config(const wifiman_config_t *const p_wifi_cfg)
+{
+    gw_cfg_update_wifi_config(p_wifi_cfg);
+    settings_save_to_flash();
 }
 
 void
@@ -321,6 +305,7 @@ void
 restart_services(void)
 {
     main_task_send_sig_restart_services();
+    main_task_configure_periodic_remote_cfg_check();
 
     if (AUTO_UPDATE_CYCLE_TYPE_MANUAL != gw_cfg_get_auto_update_cycle())
     {
@@ -340,11 +325,10 @@ restart_services(void)
 
 static bool
 wifi_init(
-    const bool                     flag_use_eth,
-    const bool                     flag_start_ap_only,
-    const wifi_ssid_t *const       p_gw_wifi_ssid,
-    const wifi_sta_config_t *const p_wifi_sta_default_cfg,
-    const char *const              p_fatfs_gwui_partition_name)
+    const bool                    flag_use_eth,
+    const bool                    flag_start_ap_only,
+    const wifiman_config_t *const p_wifi_cfg,
+    const char *const             p_fatfs_gwui_partition_name)
 {
     static const wifi_manager_antenna_config_t wifi_antenna_config = {
         .wifi_ant_gpio_config = {
@@ -390,12 +374,12 @@ wifi_init(
         .cb_on_disconnect_sta_cmd  = &cb_on_disconnect_sta_cmd,
         .cb_on_ap_sta_connected    = &cb_on_ap_sta_connected,
         .cb_on_ap_sta_disconnected = &cb_on_ap_sta_disconnected,
+        .cb_save_wifi_config       = &cb_save_wifi_config,
     };
     wifi_manager_start(
         !flag_use_eth,
         flag_start_ap_only,
-        p_gw_wifi_ssid,
-        p_wifi_sta_default_cfg,
+        p_wifi_cfg,
         &wifi_antenna_config,
         &wifi_callbacks,
         &mbedtls_ctr_drbg_random,
@@ -406,57 +390,22 @@ wifi_init(
 }
 
 static void
-request_and_wait_nrf52_id(void)
-{
-    const uint32_t delay_ms = RUUVI_GET_NRF52_ID_DELAY_MS;
-    const uint32_t step_ms  = RUUVI_GET_NRF52_ID_STEP_MS;
-    for (uint32_t i = 0; i < RUUVI_GET_NRF52_ID_NUM_RETRIES; ++i)
-    {
-        if (ruuvi_device_id_is_set())
-        {
-            break;
-        }
-        LOG_INFO("Request nRF52 ID");
-        ruuvi_send_nrf_get_id();
-
-        for (uint32_t j = 0; j < (delay_ms / step_ms); ++j)
-        {
-            vTaskDelay(step_ms / portTICK_PERIOD_MS);
-            if (ruuvi_device_id_is_set())
-            {
-                break;
-            }
-        }
-    }
-    if (!ruuvi_device_id_is_set())
-    {
-        LOG_ERR("Failed to read nRF52 DEVICE ID");
-    }
-    else
-    {
-        const nrf52_device_id_str_t nrf52_device_id_str = ruuvi_device_id_get_str();
-        LOG_INFO("nRF52 DEVICE ID : %s", nrf52_device_id_str.str_buf);
-
-        const mac_address_str_t nrf52_mac_addr_str = ruuvi_device_id_get_nrf52_mac_address_str();
-        LOG_INFO("nRF52 ADDR      : %s", nrf52_mac_addr_str.str_buf);
-
-        hmac_sha256_set_key_str(nrf52_device_id_str.str_buf); // set default encryption key
-    }
-}
-
-static void
 cb_before_nrf52_fw_updating(void)
 {
     fw_update_set_stage_nrf52_updating();
 
     // Here we do not yet know the value of nRF52 DeviceID, so we cannot use it as the default password.
     http_server_cb_prohibit_cfg_updating();
-    if (!http_server_set_auth(HTTP_SERVER_AUTH_TYPE_STR_ALLOW, "", "", ""))
+    if (!http_server_set_auth(HTTP_SERVER_AUTH_TYPE_ALLOW, NULL, NULL, NULL))
     {
         LOG_ERR("%s failed", "http_server_set_auth");
     }
 
-    if (!wifi_init(false, true, &g_gw_wifi_ssid, NULL, fw_update_get_current_fatfs_gwui_partition_name()))
+    const wifiman_wifi_ssid_t wifi_ap_ssid = generate_wifi_ap_ssid(settings_read_mac_addr());
+    LOG_INFO("Read saved WiFi SSID / Hostname: %s", wifi_ap_ssid.ssid_buf);
+
+    const wifiman_config_t *const p_wifi_cfg = wifi_manager_default_config_init(&wifi_ap_ssid);
+    if (!wifi_init(false, true, p_wifi_cfg, fw_update_get_current_fatfs_gwui_partition_name()))
     {
         LOG_ERR("%s failed", "wifi_init");
         return;
@@ -507,21 +456,13 @@ ruuvi_nvs_flash_erase(void)
 
 ATTR_NORETURN
 static void
-handle_reset_button_is_pressed_during_boot(
-    const wifi_ssid_t *const       p_gw_wifi_ssid,
-    const wifi_sta_config_t *const p_wifi_sta_default_cfg)
+handle_reset_button_is_pressed_during_boot(void)
 {
     LOG_INFO("Reset button is pressed during boot - clear settings in flash");
     nrf52fw_hw_reset_nrf52(true);
 
     ruuvi_nvs_flash_erase();
     ruuvi_nvs_flash_init();
-
-    LOG_INFO("Writing the default wifi-manager configuration to NVS");
-    if (!wifi_manager_clear_sta_config(p_gw_wifi_ssid, p_wifi_sta_default_cfg))
-    {
-        LOG_ERR("Failed to clear the wifi-manager settings in NVS");
-    }
 
     LOG_INFO("Writing the default gateway configuration to NVS");
     if (!settings_clear_in_flash())
@@ -626,10 +567,10 @@ configure_mbedtls_rng(void)
 
     LOG_INFO("Seeding the random number generator...");
 
-    const nrf52_device_id_str_t nrf52_device_id_str = ruuvi_device_id_get_str();
-    str_buf_t                   custom_seed         = str_buf_printf_with_alloc(
+    const nrf52_device_id_str_t *const p_nrf52_device_id_str = gw_cfg_get_nrf52_device_id();
+    str_buf_t                          custom_seed           = str_buf_printf_with_alloc(
         "%s:%lu:%lu",
-        nrf52_device_id_str.str_buf,
+        p_nrf52_device_id_str->str_buf,
         (printf_ulong_t)time(NULL),
         (printf_ulong_t)xTaskGetTickCount());
 
@@ -646,15 +587,16 @@ configure_mbedtls_rng(void)
 }
 
 static bool
-network_subsystem_init(const wifi_sta_config_t *const p_wifi_sta_default_cfg)
+network_subsystem_init(void)
 {
     configure_mbedtls_rng();
+
+    const wifiman_config_t wifi_cfg = gw_cfg_get_wifi_cfg();
 
     if (!wifi_init(
             gw_cfg_get_eth_use_eth(),
             settings_read_flag_force_start_wifi_hotspot(),
-            &g_gw_wifi_ssid,
-            p_wifi_sta_default_cfg,
+            &wifi_cfg,
             fw_update_get_current_fatfs_gwui_partition_name()))
     {
         LOG_ERR("%s failed", "wifi_init");
@@ -681,7 +623,7 @@ network_subsystem_init(const wifi_sta_config_t *const p_wifi_sta_default_cfg)
     {
         if (gw_cfg_get_eth_use_eth() || (!wifi_manager_is_sta_configured()))
         {
-            ethernet_start(g_gw_wifi_ssid.ssid_buf);
+            ethernet_start(gw_cfg_get_wifi_ap_ssid()->ssid_buf);
         }
         else
         {
@@ -698,6 +640,24 @@ network_subsystem_init(const wifi_sta_config_t *const p_wifi_sta_default_cfg)
         leds_indication_network_no_connection();
     }
     return true;
+}
+
+static void
+ruuvi_init_gw_cfg(
+    const ruuvi_nrf52_fw_ver_t *const p_nrf52_fw_ver,
+    const nrf52_device_info_t *const  p_nrf52_device_info)
+{
+    const gw_cfg_default_init_param_t gw_cfg_default_init_param = {
+        .wifi_ap_ssid        = generate_wifi_ap_ssid(p_nrf52_device_info->nrf52_mac_addr),
+        .device_id           = p_nrf52_device_info->nrf52_device_id,
+        .esp32_fw_ver        = fw_update_get_cur_version(),
+        .nrf52_fw_ver        = nrf52_fw_ver_get_str(p_nrf52_fw_ver),
+        .nrf52_mac_addr      = p_nrf52_device_info->nrf52_mac_addr,
+        .esp32_mac_addr_wifi = gateway_read_mac_addr(ESP_MAC_WIFI_STA),
+        .esp32_mac_addr_eth  = gateway_read_mac_addr(ESP_MAC_ETH),
+    };
+    gw_cfg_default_init(&gw_cfg_default_init_param, &gw_cfg_default_json_read);
+    gw_cfg_init();
 }
 
 static bool
@@ -736,59 +696,55 @@ main_task_init(void)
 
     ruuvi_nvs_flash_init();
 
-    if ((!wifi_manager_check_sta_config()) || (!settings_check_in_flash()))
+    if (!settings_check_in_flash())
     {
         ruuvi_nvs_flash_deinit();
         ruuvi_nvs_flash_erase();
         ruuvi_nvs_flash_init();
     }
 
-    gateway_read_mac_addr(ESP_MAC_WIFI_STA, &g_gw_mac_wifi, &g_gw_mac_wifi_str);
-    gateway_read_mac_addr(ESP_MAC_ETH, &g_gw_mac_eth, &g_gw_mac_eth_str);
-
-    mac_address_bin_t nrf52_mac_addr = settings_read_mac_addr();
-    set_gw_mac_sta(&nrf52_mac_addr, &g_gw_mac_sta_str, &g_gw_wifi_ssid);
-    LOG_INFO("Read saved Mac address: %s", g_gw_mac_sta_str.str_buf);
-    LOG_INFO("Read saved WiFi SSID / Hostname: %s", g_gw_wifi_ssid.ssid_buf);
+    ruuvi_nrf52_fw_ver_t nrf52_fw_ver = { 0 };
 
     leds_indication_on_nrf52_fw_updating();
-    nrf52fw_update_fw_if_necessary(
-        fw_update_get_current_fatfs_nrf52_partition_name(),
-        &fw_update_nrf52fw_cb_progress,
-        NULL,
-        &cb_before_nrf52_fw_updating,
-        &cb_after_nrf52_fw_updating);
+    if (!nrf52fw_update_fw_if_necessary(
+            fw_update_get_current_fatfs_nrf52_partition_name(),
+            &fw_update_nrf52fw_cb_progress,
+            NULL,
+            &cb_before_nrf52_fw_updating,
+            &cb_after_nrf52_fw_updating,
+            &nrf52_fw_ver))
+    {
+        LOG_ERR("%s failed", "nrf52fw_update_fw_if_necessary");
+        return false;
+    }
     leds_indication_network_no_connection();
 
     adv_post_init();
     terminal_open(NULL, true);
     api_process(true);
-    request_and_wait_nrf52_id();
+    const nrf52_device_info_t nrf52_device_info = ruuvi_device_id_request_and_wait();
 
-    nrf52_mac_addr = ruuvi_device_id_get_nrf52_mac_address();
-    set_gw_mac_sta(&nrf52_mac_addr, &g_gw_mac_sta_str, &g_gw_wifi_ssid);
-    LOG_INFO("Mac address: %s", g_gw_mac_sta_str.str_buf);
-    LOG_INFO("WiFi SSID / Hostname: %s", g_gw_wifi_ssid.ssid_buf);
+    settings_update_mac_addr(nrf52_device_info.nrf52_mac_addr);
 
-    settings_update_mac_addr(&nrf52_mac_addr);
+    ruuvi_init_gw_cfg(&nrf52_fw_ver, &nrf52_device_info);
 
-    gw_cfg_default_init(&g_gw_wifi_ssid, ruuvi_device_id_get_str());
-    gw_cfg_default_json_read();
-
-    gw_cfg_init();
     settings_get_from_flash();
+
+    hmac_sha256_set_key_str(gw_cfg_get_nrf52_device_id()->str_buf); // set default encryption key
 
     if (0 == gpio_get_level(RB_BUTTON_RESET_PIN))
     {
         ruuvi_nvs_flash_deinit();
-        handle_reset_button_is_pressed_during_boot(&g_gw_wifi_ssid, gw_cfg_default_get_wifi_sta_config_ptr());
+        handle_reset_button_is_pressed_during_boot();
     }
+
+    main_task_init_timers();
 
     time_task_init();
     ruuvi_send_nrf_settings();
     ruuvi_auth_set_from_config();
 
-    if (!network_subsystem_init(gw_cfg_default_get_wifi_sta_config_ptr()))
+    if (!network_subsystem_init())
     {
         LOG_ERR("%s failed", "network_subsystem_init");
         return false;
