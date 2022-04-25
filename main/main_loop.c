@@ -36,7 +36,8 @@ typedef enum main_task_sig_e
     MAIN_TASK_SIG_SCHEDULE_RETRY_CHECK_FOR_FW_UPDATES = OS_SIGNAL_NUM_3,
     MAIN_TASK_SIG_DEACTIVATE_WIFI_AP                  = OS_SIGNAL_NUM_4,
     MAIN_TASK_SIG_TASK_RESTART_SERVICES               = OS_SIGNAL_NUM_5,
-    MAIN_TASK_SIG_TASK_WATCHDOG_FEED                  = OS_SIGNAL_NUM_6,
+    MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT                = OS_SIGNAL_NUM_6,
+    MAIN_TASK_SIG_TASK_WATCHDOG_FEED                  = OS_SIGNAL_NUM_7,
 } main_task_sig_e;
 
 #define MAIN_TASK_SIG_FIRST (MAIN_TASK_SIG_LOG_HEAP_USAGE)
@@ -269,6 +270,9 @@ main_task_handle_sig(const main_task_sig_e main_task_sig)
         case MAIN_TASK_SIG_TASK_RESTART_SERVICES:
             restart_services_internal();
             break;
+        case MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT:
+            mqtt_publish_connect();
+            break;
         case MAIN_TASK_SIG_TASK_WATCHDOG_FEED:
             main_task_handle_sig_task_watchdog_feed();
             break;
@@ -338,6 +342,7 @@ main_task_init_signals(void)
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_SCHEDULE_RETRY_CHECK_FOR_FW_UPDATES));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_DEACTIVATE_WIFI_AP));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_RESTART_SERVICES));
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_WATCHDOG_FEED));
 }
 
@@ -399,6 +404,12 @@ void
 main_task_send_sig_restart_services(void)
 {
     os_signal_send(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_RESTART_SERVICES));
+}
+
+void
+main_task_send_sig_mqtt_publish_connect(void)
+{
+    os_signal_send(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT));
 }
 
 void
