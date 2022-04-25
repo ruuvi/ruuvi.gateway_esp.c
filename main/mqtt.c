@@ -133,7 +133,7 @@ mqtt_publish_adv(const adv_report_t *const p_adv)
     return is_publish_successful;
 }
 
-static void
+void
 mqtt_publish_connect(void)
 {
     char *p_message = "{\"state\": \"online\"}";
@@ -204,7 +204,7 @@ mqtt_event_handler(esp_mqtt_event_handle_t h_event)
         case MQTT_EVENT_CONNECTED:
             LOG_INFO("MQTT_EVENT_CONNECTED");
             xEventGroupSetBits(status_bits, MQTT_CONNECTED_BIT);
-            mqtt_publish_connect();
+            main_task_send_sig_mqtt_publish_connect();
             leds_indication_on_network_ok();
             if (!fw_update_mark_app_valid_cancel_rollback())
             {

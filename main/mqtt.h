@@ -26,6 +26,9 @@ mqtt_app_is_working(void);
 bool
 mqtt_publish_adv(const adv_report_t *const p_adv);
 
+void
+mqtt_publish_connect(void);
+
 #ifdef __cplusplus
 }
 #endif
