@@ -40,6 +40,7 @@ extern "C" {
 #define GW_CFG_MAX_MQTT_USER_LEN         129
 #define GW_CFG_MAX_MQTT_PASS_LEN         257
 #define GW_CFG_MAX_MQTT_CLIENT_ID_LEN    51
+#define GW_CFG_MAX_NTP_SERVER_LEN        32
 #define GW_CFG_MAX_COORDINATES_STR_LEN   64
 #define GW_CFG_MAX_IP_ADDR_STR_LEN       17
 
@@ -225,6 +226,21 @@ typedef struct ruuvi_gw_cfg_auto_update_t
     auto_update_tz_offset_hours_t  auto_update_tz_offset_hours;
 } ruuvi_gw_cfg_auto_update_t;
 
+typedef struct ruuvi_gw_cfg_ntp_server_addr_str_t
+{
+    char buf[GW_CFG_MAX_NTP_SERVER_LEN];
+} ruuvi_gw_cfg_ntp_server_addr_str_t;
+
+typedef struct ruuvi_gw_cfg_ntp_t
+{
+    bool                               ntp_use;
+    bool                               ntp_use_dhcp;
+    ruuvi_gw_cfg_ntp_server_addr_str_t ntp_server1;
+    ruuvi_gw_cfg_ntp_server_addr_str_t ntp_server2;
+    ruuvi_gw_cfg_ntp_server_addr_str_t ntp_server3;
+    ruuvi_gw_cfg_ntp_server_addr_str_t ntp_server4;
+} ruuvi_gw_cfg_ntp_t;
+
 typedef struct ruuvi_gw_cfg_filter_t
 {
     uint16_t company_id;
@@ -254,6 +270,7 @@ typedef struct ruuvi_gw_cfg_t
     ruuvi_gw_cfg_mqtt_t        mqtt;
     ruuvi_gw_cfg_lan_auth_t    lan_auth;
     ruuvi_gw_cfg_auto_update_t auto_update;
+    ruuvi_gw_cfg_ntp_t         ntp;
     ruuvi_gw_cfg_filter_t      filter;
     ruuvi_gw_cfg_scan_t        scan;
     ruuvi_gw_cfg_coordinates_t coordinates;

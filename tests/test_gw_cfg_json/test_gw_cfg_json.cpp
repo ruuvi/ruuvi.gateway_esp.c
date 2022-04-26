@@ -378,6 +378,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_default) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -444,6 +450,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_default_company_id_0x0500) // NOLINT
         "\t\"auto_update_interval_from\":\t0,\n"
         "\t\"auto_update_interval_to\":\t24,\n"
         "\t\"auto_update_tz_offset_hours\":\t3,\n"
+        "\t\"ntp_use\":\ttrue,\n"
+        "\t\"ntp_use_dhcp\":\tfalse,\n"
+        "\t\"ntp_server1\":\t\"time.google.com\",\n"
+        "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+        "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+        "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
         "\t\"company_id\":\t\"0x0500\",\n"
         "\t\"company_use_filtering\":\ttrue,\n"
         "\t\"scan_coded_phy\":\tfalse,\n"
@@ -523,6 +535,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_disabled) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -603,6 +621,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_enabled) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -688,6 +712,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_disabled) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -770,6 +800,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_no) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -859,6 +895,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_basic) // NOL
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -946,6 +988,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_bearer) // NO
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -1025,6 +1073,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_disabled) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -1114,6 +1168,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_TCP) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -1203,6 +1263,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_SSL) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -1292,6 +1358,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WS) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -1381,6 +1453,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WSS) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -1459,6 +1537,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_disabled) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -1545,6 +1629,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -1623,6 +1713,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_disabled) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -1713,6 +1809,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_enabled) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -1795,6 +1897,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -1880,6 +1988,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi_with_api_key) // NOLIN
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -1962,6 +2076,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_digest) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -2044,6 +2164,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_basic) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -2125,6 +2251,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_allow) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -2206,6 +2338,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_deny) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -2288,6 +2426,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_beta_tester) // NOLINT
                "\t\"auto_update_interval_from\":\t1,\n"
                "\t\"auto_update_interval_to\":\t23,\n"
                "\t\"auto_update_tz_offset_hours\":\t4,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -2370,6 +2514,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_manual) // NOLINT
                "\t\"auto_update_interval_from\":\t2,\n"
                "\t\"auto_update_interval_to\":\t22,\n"
                "\t\"auto_update_tz_offset_hours\":\t-4,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -2448,6 +2598,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_unknown) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -2461,6 +2617,279 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_unknown) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     cjson_wrap_free_json_str(&json_str);
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_disabled) // NOLINT
+{
+    gw_cfg_t         gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    memset(&gw_cfg.ruuvi_cfg.ntp, 0, sizeof(gw_cfg.ruuvi_cfg.ntp));
+    gw_cfg.ruuvi_cfg.ntp.ntp_use      = false;
+    gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp = false;
+    memset(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf));
+    memset(gw_cfg.ruuvi_cfg.ntp.ntp_server2.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server2.buf));
+    memset(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf));
+    memset(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf));
+
+    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_NE(nullptr, json_str.p_str);
+    ASSERT_EQ(
+        string("{\n"
+               "\t\"fw_ver\":\t\"v1.10.0\",\n"
+               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"wifi_sta_config\":\t{\n"
+               "\t\t\"ssid\":\t\"\",\n"
+               "\t\t\"password\":\t\"\"\n"
+               "\t},\n"
+               "\t\"wifi_ap_config\":\t{\n"
+               "\t\t\"password\":\t\"\"\n"
+               "\t},\n"
+               "\t\"use_eth\":\tfalse,\n"
+               "\t\"eth_dhcp\":\ttrue,\n"
+               "\t\"eth_static_ip\":\t\"\",\n"
+               "\t\"eth_netmask\":\t\"\",\n"
+               "\t\"eth_gw\":\t\"\",\n"
+               "\t\"eth_dns1\":\t\"\",\n"
+               "\t\"eth_dns2\":\t\"\",\n"
+               "\t\"remote_cfg_use\":\tfalse,\n"
+               "\t\"remote_cfg_url\":\t\"\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http\":\ttrue,\n"
+               "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_pass\":\t\"\",\n"
+               "\t\"use_http_stat\":\ttrue,\n"
+               "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
+               "\t\"http_stat_user\":\t\"\",\n"
+               "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"use_mqtt\":\tfalse,\n"
+               "\t\"mqtt_transport\":\t\"TCP\",\n"
+               "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+               "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
+               "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"mqtt_user\":\t\"\",\n"
+               "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
+               "\t\"lan_auth_user\":\t\"Admin\",\n"
+               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
+               "\t\"auto_update_cycle\":\t\"regular\",\n"
+               "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+               "\t\"auto_update_interval_from\":\t0,\n"
+               "\t\"auto_update_interval_to\":\t24,\n"
+               "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\tfalse,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"\",\n"
+               "\t\"ntp_server2\":\t\"\",\n"
+               "\t\"ntp_server3\":\t\"\",\n"
+               "\t\"ntp_server4\":\t\"\",\n"
+               "\t\"company_id\":\t1177,\n"
+               "\t\"company_use_filtering\":\ttrue,\n"
+               "\t\"scan_coded_phy\":\tfalse,\n"
+               "\t\"scan_1mbit_phy\":\ttrue,\n"
+               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_channel_37\":\ttrue,\n"
+               "\t\"scan_channel_38\":\ttrue,\n"
+               "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"coordinates\":\t\"\"\n"
+               "}"),
+        string(json_str.p_str));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+
+    gw_cfg_t gw_cfg2       = get_gateway_config_default();
+    bool     flag_modified = false;
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
+    ASSERT_FALSE(flag_modified);
+    cjson_wrap_free_json_str(&json_str);
+
+    ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_enabled_via_dhcp) // NOLINT
+{
+    gw_cfg_t         gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    memset(&gw_cfg.ruuvi_cfg.ntp, 0, sizeof(gw_cfg.ruuvi_cfg.ntp));
+    gw_cfg.ruuvi_cfg.ntp.ntp_use      = true;
+    gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp = true;
+    memset(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf));
+    memset(gw_cfg.ruuvi_cfg.ntp.ntp_server2.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server2.buf));
+    memset(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf));
+    memset(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf));
+
+    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_NE(nullptr, json_str.p_str);
+    ASSERT_EQ(
+        string("{\n"
+               "\t\"fw_ver\":\t\"v1.10.0\",\n"
+               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"wifi_sta_config\":\t{\n"
+               "\t\t\"ssid\":\t\"\",\n"
+               "\t\t\"password\":\t\"\"\n"
+               "\t},\n"
+               "\t\"wifi_ap_config\":\t{\n"
+               "\t\t\"password\":\t\"\"\n"
+               "\t},\n"
+               "\t\"use_eth\":\tfalse,\n"
+               "\t\"eth_dhcp\":\ttrue,\n"
+               "\t\"eth_static_ip\":\t\"\",\n"
+               "\t\"eth_netmask\":\t\"\",\n"
+               "\t\"eth_gw\":\t\"\",\n"
+               "\t\"eth_dns1\":\t\"\",\n"
+               "\t\"eth_dns2\":\t\"\",\n"
+               "\t\"remote_cfg_use\":\tfalse,\n"
+               "\t\"remote_cfg_url\":\t\"\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http\":\ttrue,\n"
+               "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_pass\":\t\"\",\n"
+               "\t\"use_http_stat\":\ttrue,\n"
+               "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
+               "\t\"http_stat_user\":\t\"\",\n"
+               "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"use_mqtt\":\tfalse,\n"
+               "\t\"mqtt_transport\":\t\"TCP\",\n"
+               "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+               "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
+               "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"mqtt_user\":\t\"\",\n"
+               "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
+               "\t\"lan_auth_user\":\t\"Admin\",\n"
+               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
+               "\t\"auto_update_cycle\":\t\"regular\",\n"
+               "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+               "\t\"auto_update_interval_from\":\t0,\n"
+               "\t\"auto_update_interval_to\":\t24,\n"
+               "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\ttrue,\n"
+               "\t\"ntp_server1\":\t\"\",\n"
+               "\t\"ntp_server2\":\t\"\",\n"
+               "\t\"ntp_server3\":\t\"\",\n"
+               "\t\"ntp_server4\":\t\"\",\n"
+               "\t\"company_id\":\t1177,\n"
+               "\t\"company_use_filtering\":\ttrue,\n"
+               "\t\"scan_coded_phy\":\tfalse,\n"
+               "\t\"scan_1mbit_phy\":\ttrue,\n"
+               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_channel_37\":\ttrue,\n"
+               "\t\"scan_channel_38\":\ttrue,\n"
+               "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"coordinates\":\t\"\"\n"
+               "}"),
+        string(json_str.p_str));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+
+    gw_cfg_t gw_cfg2       = get_gateway_config_default();
+    bool     flag_modified = false;
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
+    ASSERT_FALSE(flag_modified);
+    cjson_wrap_free_json_str(&json_str);
+
+    ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_custom) // NOLINT
+{
+    gw_cfg_t         gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    memset(&gw_cfg.ruuvi_cfg.ntp, 0, sizeof(gw_cfg.ruuvi_cfg.ntp));
+    gw_cfg.ruuvi_cfg.ntp.ntp_use      = true;
+    gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp = false;
+    snprintf(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf), "time1.server.com");
+    snprintf(gw_cfg.ruuvi_cfg.ntp.ntp_server2.buf, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server2.buf), "time2.server.com");
+    snprintf(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf), "time3.server.com");
+    snprintf(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf), "time4.server.com");
+
+    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_NE(nullptr, json_str.p_str);
+    ASSERT_EQ(
+        string("{\n"
+               "\t\"fw_ver\":\t\"v1.10.0\",\n"
+               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"wifi_sta_config\":\t{\n"
+               "\t\t\"ssid\":\t\"\",\n"
+               "\t\t\"password\":\t\"\"\n"
+               "\t},\n"
+               "\t\"wifi_ap_config\":\t{\n"
+               "\t\t\"password\":\t\"\"\n"
+               "\t},\n"
+               "\t\"use_eth\":\tfalse,\n"
+               "\t\"eth_dhcp\":\ttrue,\n"
+               "\t\"eth_static_ip\":\t\"\",\n"
+               "\t\"eth_netmask\":\t\"\",\n"
+               "\t\"eth_gw\":\t\"\",\n"
+               "\t\"eth_dns1\":\t\"\",\n"
+               "\t\"eth_dns2\":\t\"\",\n"
+               "\t\"remote_cfg_use\":\tfalse,\n"
+               "\t\"remote_cfg_url\":\t\"\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http\":\ttrue,\n"
+               "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_pass\":\t\"\",\n"
+               "\t\"use_http_stat\":\ttrue,\n"
+               "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
+               "\t\"http_stat_user\":\t\"\",\n"
+               "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"use_mqtt\":\tfalse,\n"
+               "\t\"mqtt_transport\":\t\"TCP\",\n"
+               "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+               "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
+               "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"mqtt_user\":\t\"\",\n"
+               "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
+               "\t\"lan_auth_user\":\t\"Admin\",\n"
+               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
+               "\t\"auto_update_cycle\":\t\"regular\",\n"
+               "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+               "\t\"auto_update_interval_from\":\t0,\n"
+               "\t\"auto_update_interval_to\":\t24,\n"
+               "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time1.server.com\",\n"
+               "\t\"ntp_server2\":\t\"time2.server.com\",\n"
+               "\t\"ntp_server3\":\t\"time3.server.com\",\n"
+               "\t\"ntp_server4\":\t\"time4.server.com\",\n"
+               "\t\"company_id\":\t1177,\n"
+               "\t\"company_use_filtering\":\ttrue,\n"
+               "\t\"scan_coded_phy\":\tfalse,\n"
+               "\t\"scan_1mbit_phy\":\ttrue,\n"
+               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_channel_37\":\ttrue,\n"
+               "\t\"scan_channel_38\":\ttrue,\n"
+               "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"coordinates\":\t\"\"\n"
+               "}"),
+        string(json_str.p_str));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+
+    gw_cfg_t gw_cfg2       = get_gateway_config_default();
+    bool     flag_modified = false;
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
+    ASSERT_FALSE(flag_modified);
+    cjson_wrap_free_json_str(&json_str);
+
+    ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
 }
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_enabled) // NOLINT
@@ -2521,6 +2950,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_enabled) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1234,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -2601,6 +3036,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_disabled) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1235,\n"
                "\t\"company_use_filtering\":\tfalse,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -2685,6 +3126,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_default) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -2769,6 +3216,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_coded_phy_true) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\ttrue,\n"
@@ -2853,6 +3306,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_1mbit_phy_false) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -2937,6 +3396,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_extended_payload_false) // NOLIN
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -3021,6 +3486,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_37_false) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -3105,6 +3576,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_38_false) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -3189,6 +3666,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_39_false) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -3268,6 +3751,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_coordinates) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -3341,6 +3830,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_default) // NOLINT
     ASSERT_EQ(24, gw_cfg2.ruuvi_cfg.auto_update.auto_update_interval_to);
     ASSERT_EQ(3, gw_cfg2.ruuvi_cfg.auto_update.auto_update_tz_offset_hours);
 
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.ntp.ntp_use);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.ntp.ntp_use_dhcp);
+    ASSERT_EQ(string("time.google.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server1.buf));
+    ASSERT_EQ(string("time.cloudflare.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server2.buf));
+    ASSERT_EQ(string("time.nist.gov"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
+
     ASSERT_EQ(RUUVI_COMPANY_ID, gw_cfg2.ruuvi_cfg.filter.company_id);
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.filter.company_use_filtering);
 
@@ -3404,6 +3900,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_default) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -3463,6 +3965,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
                 .auto_update_interval_from = 2,
                 .auto_update_interval_to = 22,
                 .auto_update_tz_offset_hours = 5,
+            },
+            .ntp = {
+                .ntp_use = true,
+                .ntp_use_dhcp = false,
+                .ntp_server1 = { "time.google.com", },
+                .ntp_server2 = { "time.cloudflare.com", },
+                .ntp_server3 = { "time.nist.gov", },
+                .ntp_server4 = { "pool.ntp.org", },
             },
             .filter = {
                 .company_id = RUUVI_COMPANY_ID + 1,
@@ -3537,6 +4047,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
     ASSERT_EQ(22, gw_cfg2.ruuvi_cfg.auto_update.auto_update_interval_to);
     ASSERT_EQ(5, gw_cfg2.ruuvi_cfg.auto_update.auto_update_tz_offset_hours);
 
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.ntp.ntp_use);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.ntp.ntp_use_dhcp);
+    ASSERT_EQ(string("time.google.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server1.buf));
+    ASSERT_EQ(string("time.cloudflare.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server2.buf));
+    ASSERT_EQ(string("time.nist.gov"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
+
     ASSERT_EQ(RUUVI_COMPANY_ID + 1, gw_cfg2.ruuvi_cfg.filter.company_id);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.filter.company_use_filtering);
 
@@ -3598,6 +4115,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
                "\t\"auto_update_interval_from\":\t2,\n"
                "\t\"auto_update_interval_to\":\t22,\n"
                "\t\"auto_update_tz_offset_hours\":\t5,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1178,\n"
                "\t\"company_use_filtering\":\tfalse,\n"
                "\t\"scan_coded_phy\":\ttrue,\n"
@@ -3657,6 +4180,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
                 .auto_update_interval_from = 2,
                 .auto_update_interval_to = 22,
                 .auto_update_tz_offset_hours = 5,
+            },
+            .ntp = {
+                .ntp_use = true,
+                .ntp_use_dhcp = false,
+                .ntp_server1 = { "time.google.com", },
+                .ntp_server2 = { "time.cloudflare.com", },
+                .ntp_server3 = { "time.nist.gov", },
+                .ntp_server4 = { "pool.ntp.org", },
             },
             .filter = {
                 .company_id = RUUVI_COMPANY_ID + 1,
@@ -3731,6 +4262,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
     ASSERT_EQ(22, gw_cfg2.ruuvi_cfg.auto_update.auto_update_interval_to);
     ASSERT_EQ(5, gw_cfg2.ruuvi_cfg.auto_update.auto_update_tz_offset_hours);
 
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.ntp.ntp_use);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.ntp.ntp_use_dhcp);
+    ASSERT_EQ(string("time.google.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server1.buf));
+    ASSERT_EQ(string("time.cloudflare.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server2.buf));
+    ASSERT_EQ(string("time.nist.gov"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
+
     ASSERT_EQ(RUUVI_COMPANY_ID + 1, gw_cfg2.ruuvi_cfg.filter.company_id);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.filter.company_use_filtering);
 
@@ -3792,6 +4330,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
                "\t\"auto_update_interval_from\":\t2,\n"
                "\t\"auto_update_interval_to\":\t22,\n"
                "\t\"auto_update_tz_offset_hours\":\t5,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1178,\n"
                "\t\"company_use_filtering\":\tfalse,\n"
                "\t\"scan_coded_phy\":\ttrue,\n"
@@ -3851,6 +4395,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
                 .auto_update_interval_from = 2,
                 .auto_update_interval_to = 22,
                 .auto_update_tz_offset_hours = 5,
+            },
+            .ntp = {
+                .ntp_use = true,
+                .ntp_use_dhcp = false,
+                .ntp_server1 = { "time.google.com", },
+                .ntp_server2 = { "time.cloudflare.com", },
+                .ntp_server3 = { "time.nist.gov", },
+                .ntp_server4 = { "pool.ntp.org", },
             },
             .filter = {
                 .company_id = RUUVI_COMPANY_ID + 1,
@@ -3925,6 +4477,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
     ASSERT_EQ(22, gw_cfg2.ruuvi_cfg.auto_update.auto_update_interval_to);
     ASSERT_EQ(5, gw_cfg2.ruuvi_cfg.auto_update.auto_update_tz_offset_hours);
 
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.ntp.ntp_use);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.ntp.ntp_use_dhcp);
+    ASSERT_EQ(string("time.google.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server1.buf));
+    ASSERT_EQ(string("time.cloudflare.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server2.buf));
+    ASSERT_EQ(string("time.nist.gov"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
+
     ASSERT_EQ(RUUVI_COMPANY_ID + 1, gw_cfg2.ruuvi_cfg.filter.company_id);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.filter.company_use_filtering);
 
@@ -3986,6 +4545,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
                "\t\"auto_update_interval_from\":\t2,\n"
                "\t\"auto_update_interval_to\":\t22,\n"
                "\t\"auto_update_tz_offset_hours\":\t5,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1178,\n"
                "\t\"company_use_filtering\":\tfalse,\n"
                "\t\"scan_coded_phy\":\ttrue,\n"
@@ -4051,6 +4616,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
           "\t\"auto_update_interval_from\":\t2,\n"
           "\t\"auto_update_interval_to\":\t22,\n"
           "\t\"auto_update_tz_offset_hours\":\t5,\n"
+          "\t\"ntp_use\":\ttrue,\n"
+          "\t\"ntp_use_dhcp\":\tfalse,\n"
+          "\t\"ntp_server1\":\t\"time.google.com\",\n"
+          "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+          "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+          "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
           "\t\"company_id\":\t1178,\n"
           "\t\"company_use_filtering\":\tfalse,\n"
           "\t\"scan_coded_phy\":\ttrue,\n"
@@ -4106,6 +4677,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
     ASSERT_EQ(2, gw_cfg2.ruuvi_cfg.auto_update.auto_update_interval_from);
     ASSERT_EQ(22, gw_cfg2.ruuvi_cfg.auto_update.auto_update_interval_to);
     ASSERT_EQ(5, gw_cfg2.ruuvi_cfg.auto_update.auto_update_tz_offset_hours);
+
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.ntp.ntp_use);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.ntp.ntp_use_dhcp);
+    ASSERT_EQ(string("time.google.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server1.buf));
+    ASSERT_EQ(string("time.cloudflare.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server2.buf));
+    ASSERT_EQ(string("time.nist.gov"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
 
     ASSERT_EQ(RUUVI_COMPANY_ID + 1, gw_cfg2.ruuvi_cfg.filter.company_id);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.filter.company_use_filtering);
@@ -4169,7 +4747,658 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
                "\t\"auto_update_interval_from\":\t2,\n"
                "\t\"auto_update_interval_to\":\t22,\n"
                "\t\"auto_update_tz_offset_hours\":\t5,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1178,\n"
+               "\t\"company_use_filtering\":\tfalse,\n"
+               "\t\"scan_coded_phy\":\ttrue,\n"
+               "\t\"scan_1mbit_phy\":\tfalse,\n"
+               "\t\"scan_extended_payload\":\tfalse,\n"
+               "\t\"scan_channel_37\":\tfalse,\n"
+               "\t\"scan_channel_38\":\tfalse,\n"
+               "\t\"scan_channel_39\":\tfalse,\n"
+               "\t\"coordinates\":\t\"coordinates1\"\n"
+               "}"),
+        string(json_str.p_str));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    cjson_wrap_free_json_str(&json_str);
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLINT
+{
+    const gw_cfg_t gw_cfg   = {
+        .device_info = {
+            .esp32_fw_ver = { "v1.10.0" },
+            .nrf52_fw_ver = { "v0.7.2" },
+            .nrf52_mac_addr = { "AA:BB:CC:DD:EE:FF" },
+            .nrf52_device_id = { "11:22:33:44:55:66:77:88" },
+        },
+        .ruuvi_cfg = {
+            .http = {
+                false,
+                "https://myserver1.com",
+                "h_user1",
+                "h_pass1",
+            },
+            .http_stat = {
+                false,
+                "https://myserver1.com/status",
+                "h_user2",
+                "h_pass2",
+            },
+            .mqtt = {
+                true,
+                "SSL",
+                "test.mosquitto.org",
+                1338,
+                "my_prefix",
+                "my_client",
+                "m_user1",
+                "m_pass1",
+            },
+            .lan_auth = {
+                HTTP_SERVER_AUTH_TYPE_DIGEST,
+                "l_user1",
+                "l_pass1",
+                "",
+            },
+            .auto_update = {
+                .auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR,
+                .auto_update_weekdays_bitmask = 0x3F,
+                .auto_update_interval_from = 2,
+                .auto_update_interval_to = 22,
+                .auto_update_tz_offset_hours = 5,
+            },
+            .ntp = {
+                .ntp_use = false,
+                .ntp_use_dhcp = false,
+                .ntp_server1 = { "", },
+                .ntp_server2 = { "", },
+                .ntp_server3 = { "", },
+                .ntp_server4 = { "", },
+            },
+            .filter = {
+                .company_id = RUUVI_COMPANY_ID,
+                .company_use_filtering = false,
+            },
+            .scan = {
+                .scan_coded_phy = true,
+                .scan_1mbit_phy = false,
+                .scan_extended_payload = false,
+                .scan_channel_37 = false,
+                .scan_channel_38 = false,
+                .scan_channel_39 = false,
+            },
+            .coordinates = { "coordinates1" },
+        },
+        .eth_cfg = {
+            true,
+            false,
+            "192.168.1.10",
+            "255.255.255.0",
+            "192.168.1.1",
+            "8.8.8.8",
+            "4.4.4.4",
+        },
+    };
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_NE(nullptr, json_str.p_str);
+
+    gw_cfg_t gw_cfg2       = get_gateway_config_default();
+    bool     flag_modified = false;
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
+    ASSERT_FALSE(flag_modified);
+    cjson_wrap_free_json_str(&json_str);
+
+    ASSERT_EQ(true, gw_cfg2.eth_cfg.use_eth);
+    ASSERT_EQ(false, gw_cfg2.eth_cfg.eth_dhcp);
+    ASSERT_EQ(string("192.168.1.10"), gw_cfg2.eth_cfg.eth_static_ip.buf);
+    ASSERT_EQ(string("255.255.255.0"), gw_cfg2.eth_cfg.eth_netmask.buf);
+    ASSERT_EQ(string("192.168.1.1"), gw_cfg2.eth_cfg.eth_gw.buf);
+    ASSERT_EQ(string("8.8.8.8"), gw_cfg2.eth_cfg.eth_dns1.buf);
+    ASSERT_EQ(string("4.4.4.4"), gw_cfg2.eth_cfg.eth_dns2.buf);
+
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_EQ(string("SSL"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(string("test.mosquitto.org"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_server.buf);
+    ASSERT_EQ(1338, gw_cfg2.ruuvi_cfg.mqtt.mqtt_port);
+    ASSERT_EQ(string("my_prefix"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_prefix.buf);
+    ASSERT_EQ(string("my_client"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_client_id.buf);
+    ASSERT_EQ(string("m_user1"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_user.buf);
+    ASSERT_EQ(string("m_pass1"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_pass.buf);
+
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http);
+    ASSERT_EQ(string("https://myserver1.com"), gw_cfg2.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("h_user1"), gw_cfg2.ruuvi_cfg.http.http_user.buf);
+    ASSERT_EQ(string("h_pass1"), gw_cfg2.ruuvi_cfg.http.http_pass.buf);
+
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http_stat.use_http_stat);
+    ASSERT_EQ(string("https://myserver1.com/status"), gw_cfg2.ruuvi_cfg.http_stat.http_stat_url.buf);
+    ASSERT_EQ(string("h_user2"), gw_cfg2.ruuvi_cfg.http_stat.http_stat_user.buf);
+    ASSERT_EQ(string("h_pass2"), gw_cfg2.ruuvi_cfg.http_stat.http_stat_pass.buf);
+
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_DIGEST, gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("l_user1"), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_user.buf);
+    ASSERT_EQ(string("l_pass1"), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
+    ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+
+    ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_REGULAR, gw_cfg2.ruuvi_cfg.auto_update.auto_update_cycle);
+    ASSERT_EQ(0x3F, gw_cfg2.ruuvi_cfg.auto_update.auto_update_weekdays_bitmask);
+    ASSERT_EQ(2, gw_cfg2.ruuvi_cfg.auto_update.auto_update_interval_from);
+    ASSERT_EQ(22, gw_cfg2.ruuvi_cfg.auto_update.auto_update_interval_to);
+    ASSERT_EQ(5, gw_cfg2.ruuvi_cfg.auto_update.auto_update_tz_offset_hours);
+
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.ntp.ntp_use);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.ntp.ntp_use_dhcp);
+    ASSERT_EQ(string(""), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server1.buf));
+    ASSERT_EQ(string(""), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server2.buf));
+    ASSERT_EQ(string(""), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string(""), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
+
+    ASSERT_EQ(RUUVI_COMPANY_ID, gw_cfg2.ruuvi_cfg.filter.company_id);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.filter.company_use_filtering);
+
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_coded_phy);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_1mbit_phy);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_37);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_38);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_39);
+
+    ASSERT_EQ(string("coordinates1"), gw_cfg2.ruuvi_cfg.coordinates.buf);
+
+    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg2, &json_str));
+    ASSERT_EQ(
+        string("{\n"
+               "\t\"fw_ver\":\t\"v1.10.0\",\n"
+               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"wifi_sta_config\":\t{\n"
+               "\t\t\"ssid\":\t\"\",\n"
+               "\t\t\"password\":\t\"\"\n"
+               "\t},\n"
+               "\t\"wifi_ap_config\":\t{\n"
+               "\t\t\"password\":\t\"\"\n"
+               "\t},\n"
+               "\t\"use_eth\":\ttrue,\n"
+               "\t\"eth_dhcp\":\tfalse,\n"
+               "\t\"eth_static_ip\":\t\"192.168.1.10\",\n"
+               "\t\"eth_netmask\":\t\"255.255.255.0\",\n"
+               "\t\"eth_gw\":\t\"192.168.1.1\",\n"
+               "\t\"eth_dns1\":\t\"8.8.8.8\",\n"
+               "\t\"eth_dns2\":\t\"4.4.4.4\",\n"
+               "\t\"remote_cfg_use\":\tfalse,\n"
+               "\t\"remote_cfg_url\":\t\"\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http\":\tfalse,\n"
+               "\t\"http_url\":\t\"https://myserver1.com\",\n"
+               "\t\"http_user\":\t\"h_user1\",\n"
+               "\t\"http_pass\":\t\"h_pass1\",\n"
+               "\t\"use_http_stat\":\tfalse,\n"
+               "\t\"http_stat_url\":\t\"https://myserver1.com/status\",\n"
+               "\t\"http_stat_user\":\t\"h_user2\",\n"
+               "\t\"http_stat_pass\":\t\"h_pass2\",\n"
+               "\t\"use_mqtt\":\ttrue,\n"
+               "\t\"mqtt_transport\":\t\"SSL\",\n"
+               "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+               "\t\"mqtt_port\":\t1338,\n"
+               "\t\"mqtt_prefix\":\t\"my_prefix\",\n"
+               "\t\"mqtt_client_id\":\t\"my_client\",\n"
+               "\t\"mqtt_user\":\t\"m_user1\",\n"
+               "\t\"mqtt_pass\":\t\"m_pass1\",\n"
+               "\t\"lan_auth_type\":\t\"lan_auth_digest\",\n"
+               "\t\"lan_auth_user\":\t\"l_user1\",\n"
+               "\t\"lan_auth_pass\":\t\"l_pass1\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
+               "\t\"auto_update_cycle\":\t\"regular\",\n"
+               "\t\"auto_update_weekdays_bitmask\":\t63,\n"
+               "\t\"auto_update_interval_from\":\t2,\n"
+               "\t\"auto_update_interval_to\":\t22,\n"
+               "\t\"auto_update_tz_offset_hours\":\t5,\n"
+               "\t\"ntp_use\":\tfalse,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"\",\n"
+               "\t\"ntp_server2\":\t\"\",\n"
+               "\t\"ntp_server3\":\t\"\",\n"
+               "\t\"ntp_server4\":\t\"\",\n"
+               "\t\"company_id\":\t1177,\n"
+               "\t\"company_use_filtering\":\tfalse,\n"
+               "\t\"scan_coded_phy\":\ttrue,\n"
+               "\t\"scan_1mbit_phy\":\tfalse,\n"
+               "\t\"scan_extended_payload\":\tfalse,\n"
+               "\t\"scan_channel_37\":\tfalse,\n"
+               "\t\"scan_channel_38\":\tfalse,\n"
+               "\t\"scan_channel_39\":\tfalse,\n"
+               "\t\"coordinates\":\t\"coordinates1\"\n"
+               "}"),
+        string(json_str.p_str));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    cjson_wrap_free_json_str(&json_str);
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) // NOLINT
+{
+    const gw_cfg_t gw_cfg   = {
+        .device_info = {
+            .esp32_fw_ver = { "v1.10.0" },
+            .nrf52_fw_ver = { "v0.7.2" },
+            .nrf52_mac_addr = { "AA:BB:CC:DD:EE:FF" },
+            .nrf52_device_id = { "11:22:33:44:55:66:77:88" },
+        },
+        .ruuvi_cfg = {
+            .http = {
+                false,
+                "https://myserver1.com",
+                "h_user1",
+                "h_pass1",
+            },
+            .http_stat = {
+                false,
+                "https://myserver1.com/status",
+                "h_user2",
+                "h_pass2",
+            },
+            .mqtt = {
+                true,
+                "SSL",
+                "test.mosquitto.org",
+                1338,
+                "my_prefix",
+                "my_client",
+                "m_user1",
+                "m_pass1",
+            },
+            .lan_auth = {
+                HTTP_SERVER_AUTH_TYPE_DIGEST,
+                "l_user1",
+                "l_pass1",
+                "",
+            },
+            .auto_update = {
+                .auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR,
+                .auto_update_weekdays_bitmask = 0x3F,
+                .auto_update_interval_from = 2,
+                .auto_update_interval_to = 22,
+                .auto_update_tz_offset_hours = 5,
+            },
+            .ntp = {
+                .ntp_use = true,
+                .ntp_use_dhcp = true,
+                .ntp_server1 = { "", },
+                .ntp_server2 = { "", },
+                .ntp_server3 = { "", },
+                .ntp_server4 = { "", },
+            },
+            .filter = {
+                .company_id = RUUVI_COMPANY_ID,
+                .company_use_filtering = false,
+            },
+            .scan = {
+                .scan_coded_phy = true,
+                .scan_1mbit_phy = false,
+                .scan_extended_payload = false,
+                .scan_channel_37 = false,
+                .scan_channel_38 = false,
+                .scan_channel_39 = false,
+            },
+            .coordinates = { "coordinates1" },
+        },
+        .eth_cfg = {
+            true,
+            false,
+            "192.168.1.10",
+            "255.255.255.0",
+            "192.168.1.1",
+            "8.8.8.8",
+            "4.4.4.4",
+        },
+    };
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_NE(nullptr, json_str.p_str);
+
+    gw_cfg_t gw_cfg2       = get_gateway_config_default();
+    bool     flag_modified = false;
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
+    ASSERT_FALSE(flag_modified);
+    cjson_wrap_free_json_str(&json_str);
+
+    ASSERT_EQ(true, gw_cfg2.eth_cfg.use_eth);
+    ASSERT_EQ(false, gw_cfg2.eth_cfg.eth_dhcp);
+    ASSERT_EQ(string("192.168.1.10"), gw_cfg2.eth_cfg.eth_static_ip.buf);
+    ASSERT_EQ(string("255.255.255.0"), gw_cfg2.eth_cfg.eth_netmask.buf);
+    ASSERT_EQ(string("192.168.1.1"), gw_cfg2.eth_cfg.eth_gw.buf);
+    ASSERT_EQ(string("8.8.8.8"), gw_cfg2.eth_cfg.eth_dns1.buf);
+    ASSERT_EQ(string("4.4.4.4"), gw_cfg2.eth_cfg.eth_dns2.buf);
+
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_EQ(string("SSL"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(string("test.mosquitto.org"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_server.buf);
+    ASSERT_EQ(1338, gw_cfg2.ruuvi_cfg.mqtt.mqtt_port);
+    ASSERT_EQ(string("my_prefix"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_prefix.buf);
+    ASSERT_EQ(string("my_client"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_client_id.buf);
+    ASSERT_EQ(string("m_user1"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_user.buf);
+    ASSERT_EQ(string("m_pass1"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_pass.buf);
+
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http);
+    ASSERT_EQ(string("https://myserver1.com"), gw_cfg2.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("h_user1"), gw_cfg2.ruuvi_cfg.http.http_user.buf);
+    ASSERT_EQ(string("h_pass1"), gw_cfg2.ruuvi_cfg.http.http_pass.buf);
+
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http_stat.use_http_stat);
+    ASSERT_EQ(string("https://myserver1.com/status"), gw_cfg2.ruuvi_cfg.http_stat.http_stat_url.buf);
+    ASSERT_EQ(string("h_user2"), gw_cfg2.ruuvi_cfg.http_stat.http_stat_user.buf);
+    ASSERT_EQ(string("h_pass2"), gw_cfg2.ruuvi_cfg.http_stat.http_stat_pass.buf);
+
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_DIGEST, gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("l_user1"), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_user.buf);
+    ASSERT_EQ(string("l_pass1"), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
+    ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+
+    ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_REGULAR, gw_cfg2.ruuvi_cfg.auto_update.auto_update_cycle);
+    ASSERT_EQ(0x3F, gw_cfg2.ruuvi_cfg.auto_update.auto_update_weekdays_bitmask);
+    ASSERT_EQ(2, gw_cfg2.ruuvi_cfg.auto_update.auto_update_interval_from);
+    ASSERT_EQ(22, gw_cfg2.ruuvi_cfg.auto_update.auto_update_interval_to);
+    ASSERT_EQ(5, gw_cfg2.ruuvi_cfg.auto_update.auto_update_tz_offset_hours);
+
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.ntp.ntp_use);
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.ntp.ntp_use_dhcp);
+    ASSERT_EQ(string(""), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server1.buf));
+    ASSERT_EQ(string(""), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server2.buf));
+    ASSERT_EQ(string(""), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string(""), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
+
+    ASSERT_EQ(RUUVI_COMPANY_ID, gw_cfg2.ruuvi_cfg.filter.company_id);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.filter.company_use_filtering);
+
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_coded_phy);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_1mbit_phy);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_37);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_38);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_39);
+
+    ASSERT_EQ(string("coordinates1"), gw_cfg2.ruuvi_cfg.coordinates.buf);
+
+    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg2, &json_str));
+    ASSERT_EQ(
+        string("{\n"
+               "\t\"fw_ver\":\t\"v1.10.0\",\n"
+               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"wifi_sta_config\":\t{\n"
+               "\t\t\"ssid\":\t\"\",\n"
+               "\t\t\"password\":\t\"\"\n"
+               "\t},\n"
+               "\t\"wifi_ap_config\":\t{\n"
+               "\t\t\"password\":\t\"\"\n"
+               "\t},\n"
+               "\t\"use_eth\":\ttrue,\n"
+               "\t\"eth_dhcp\":\tfalse,\n"
+               "\t\"eth_static_ip\":\t\"192.168.1.10\",\n"
+               "\t\"eth_netmask\":\t\"255.255.255.0\",\n"
+               "\t\"eth_gw\":\t\"192.168.1.1\",\n"
+               "\t\"eth_dns1\":\t\"8.8.8.8\",\n"
+               "\t\"eth_dns2\":\t\"4.4.4.4\",\n"
+               "\t\"remote_cfg_use\":\tfalse,\n"
+               "\t\"remote_cfg_url\":\t\"\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http\":\tfalse,\n"
+               "\t\"http_url\":\t\"https://myserver1.com\",\n"
+               "\t\"http_user\":\t\"h_user1\",\n"
+               "\t\"http_pass\":\t\"h_pass1\",\n"
+               "\t\"use_http_stat\":\tfalse,\n"
+               "\t\"http_stat_url\":\t\"https://myserver1.com/status\",\n"
+               "\t\"http_stat_user\":\t\"h_user2\",\n"
+               "\t\"http_stat_pass\":\t\"h_pass2\",\n"
+               "\t\"use_mqtt\":\ttrue,\n"
+               "\t\"mqtt_transport\":\t\"SSL\",\n"
+               "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+               "\t\"mqtt_port\":\t1338,\n"
+               "\t\"mqtt_prefix\":\t\"my_prefix\",\n"
+               "\t\"mqtt_client_id\":\t\"my_client\",\n"
+               "\t\"mqtt_user\":\t\"m_user1\",\n"
+               "\t\"mqtt_pass\":\t\"m_pass1\",\n"
+               "\t\"lan_auth_type\":\t\"lan_auth_digest\",\n"
+               "\t\"lan_auth_user\":\t\"l_user1\",\n"
+               "\t\"lan_auth_pass\":\t\"l_pass1\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
+               "\t\"auto_update_cycle\":\t\"regular\",\n"
+               "\t\"auto_update_weekdays_bitmask\":\t63,\n"
+               "\t\"auto_update_interval_from\":\t2,\n"
+               "\t\"auto_update_interval_to\":\t22,\n"
+               "\t\"auto_update_tz_offset_hours\":\t5,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\ttrue,\n"
+               "\t\"ntp_server1\":\t\"\",\n"
+               "\t\"ntp_server2\":\t\"\",\n"
+               "\t\"ntp_server3\":\t\"\",\n"
+               "\t\"ntp_server4\":\t\"\",\n"
+               "\t\"company_id\":\t1177,\n"
+               "\t\"company_use_filtering\":\tfalse,\n"
+               "\t\"scan_coded_phy\":\ttrue,\n"
+               "\t\"scan_1mbit_phy\":\tfalse,\n"
+               "\t\"scan_extended_payload\":\tfalse,\n"
+               "\t\"scan_channel_37\":\tfalse,\n"
+               "\t\"scan_channel_38\":\tfalse,\n"
+               "\t\"scan_channel_39\":\tfalse,\n"
+               "\t\"coordinates\":\t\"coordinates1\"\n"
+               "}"),
+        string(json_str.p_str));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    cjson_wrap_free_json_str(&json_str);
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_custom) // NOLINT
+{
+    const gw_cfg_t gw_cfg   = {
+        .device_info = {
+            .esp32_fw_ver = { "v1.10.0" },
+            .nrf52_fw_ver = { "v0.7.2" },
+            .nrf52_mac_addr = { "AA:BB:CC:DD:EE:FF" },
+            .nrf52_device_id = { "11:22:33:44:55:66:77:88" },
+        },
+        .ruuvi_cfg = {
+            .http = {
+                false,
+                "https://myserver1.com",
+                "h_user1",
+                "h_pass1",
+            },
+            .http_stat = {
+                false,
+                "https://myserver1.com/status",
+                "h_user2",
+                "h_pass2",
+            },
+            .mqtt = {
+                true,
+                "SSL",
+                "test.mosquitto.org",
+                1338,
+                "my_prefix",
+                "my_client",
+                "m_user1",
+                "m_pass1",
+            },
+            .lan_auth = {
+                HTTP_SERVER_AUTH_TYPE_DIGEST,
+                "l_user1",
+                "l_pass1",
+                "",
+            },
+            .auto_update = {
+                .auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR,
+                .auto_update_weekdays_bitmask = 0x3F,
+                .auto_update_interval_from = 2,
+                .auto_update_interval_to = 22,
+                .auto_update_tz_offset_hours = 5,
+            },
+            .ntp = {
+                .ntp_use = true,
+                .ntp_use_dhcp = false,
+                .ntp_server1 = { "time1.server.com", },
+                .ntp_server2 = { "time2.server.com", },
+                .ntp_server3 = { "time3.server.com", },
+                .ntp_server4 = { "time4.server.com", },
+            },
+            .filter = {
+                .company_id = RUUVI_COMPANY_ID,
+                .company_use_filtering = false,
+            },
+            .scan = {
+                .scan_coded_phy = true,
+                .scan_1mbit_phy = false,
+                .scan_extended_payload = false,
+                .scan_channel_37 = false,
+                .scan_channel_38 = false,
+                .scan_channel_39 = false,
+            },
+            .coordinates = { "coordinates1" },
+        },
+        .eth_cfg = {
+            true,
+            false,
+            "192.168.1.10",
+            "255.255.255.0",
+            "192.168.1.1",
+            "8.8.8.8",
+            "4.4.4.4",
+        },
+    };
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_NE(nullptr, json_str.p_str);
+
+    gw_cfg_t gw_cfg2       = get_gateway_config_default();
+    bool     flag_modified = false;
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
+    ASSERT_FALSE(flag_modified);
+    cjson_wrap_free_json_str(&json_str);
+
+    ASSERT_EQ(true, gw_cfg2.eth_cfg.use_eth);
+    ASSERT_EQ(false, gw_cfg2.eth_cfg.eth_dhcp);
+    ASSERT_EQ(string("192.168.1.10"), gw_cfg2.eth_cfg.eth_static_ip.buf);
+    ASSERT_EQ(string("255.255.255.0"), gw_cfg2.eth_cfg.eth_netmask.buf);
+    ASSERT_EQ(string("192.168.1.1"), gw_cfg2.eth_cfg.eth_gw.buf);
+    ASSERT_EQ(string("8.8.8.8"), gw_cfg2.eth_cfg.eth_dns1.buf);
+    ASSERT_EQ(string("4.4.4.4"), gw_cfg2.eth_cfg.eth_dns2.buf);
+
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_EQ(string("SSL"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(string("test.mosquitto.org"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_server.buf);
+    ASSERT_EQ(1338, gw_cfg2.ruuvi_cfg.mqtt.mqtt_port);
+    ASSERT_EQ(string("my_prefix"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_prefix.buf);
+    ASSERT_EQ(string("my_client"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_client_id.buf);
+    ASSERT_EQ(string("m_user1"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_user.buf);
+    ASSERT_EQ(string("m_pass1"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_pass.buf);
+
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http);
+    ASSERT_EQ(string("https://myserver1.com"), gw_cfg2.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("h_user1"), gw_cfg2.ruuvi_cfg.http.http_user.buf);
+    ASSERT_EQ(string("h_pass1"), gw_cfg2.ruuvi_cfg.http.http_pass.buf);
+
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http_stat.use_http_stat);
+    ASSERT_EQ(string("https://myserver1.com/status"), gw_cfg2.ruuvi_cfg.http_stat.http_stat_url.buf);
+    ASSERT_EQ(string("h_user2"), gw_cfg2.ruuvi_cfg.http_stat.http_stat_user.buf);
+    ASSERT_EQ(string("h_pass2"), gw_cfg2.ruuvi_cfg.http_stat.http_stat_pass.buf);
+
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_DIGEST, gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("l_user1"), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_user.buf);
+    ASSERT_EQ(string("l_pass1"), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
+    ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+
+    ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_REGULAR, gw_cfg2.ruuvi_cfg.auto_update.auto_update_cycle);
+    ASSERT_EQ(0x3F, gw_cfg2.ruuvi_cfg.auto_update.auto_update_weekdays_bitmask);
+    ASSERT_EQ(2, gw_cfg2.ruuvi_cfg.auto_update.auto_update_interval_from);
+    ASSERT_EQ(22, gw_cfg2.ruuvi_cfg.auto_update.auto_update_interval_to);
+    ASSERT_EQ(5, gw_cfg2.ruuvi_cfg.auto_update.auto_update_tz_offset_hours);
+
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.ntp.ntp_use);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.ntp.ntp_use_dhcp);
+    ASSERT_EQ(string("time1.server.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server1.buf));
+    ASSERT_EQ(string("time2.server.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server2.buf));
+    ASSERT_EQ(string("time3.server.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string("time4.server.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
+
+    ASSERT_EQ(RUUVI_COMPANY_ID, gw_cfg2.ruuvi_cfg.filter.company_id);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.filter.company_use_filtering);
+
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_coded_phy);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_1mbit_phy);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_37);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_38);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_39);
+
+    ASSERT_EQ(string("coordinates1"), gw_cfg2.ruuvi_cfg.coordinates.buf);
+
+    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg2, &json_str));
+    ASSERT_EQ(
+        string("{\n"
+               "\t\"fw_ver\":\t\"v1.10.0\",\n"
+               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"wifi_sta_config\":\t{\n"
+               "\t\t\"ssid\":\t\"\",\n"
+               "\t\t\"password\":\t\"\"\n"
+               "\t},\n"
+               "\t\"wifi_ap_config\":\t{\n"
+               "\t\t\"password\":\t\"\"\n"
+               "\t},\n"
+               "\t\"use_eth\":\ttrue,\n"
+               "\t\"eth_dhcp\":\tfalse,\n"
+               "\t\"eth_static_ip\":\t\"192.168.1.10\",\n"
+               "\t\"eth_netmask\":\t\"255.255.255.0\",\n"
+               "\t\"eth_gw\":\t\"192.168.1.1\",\n"
+               "\t\"eth_dns1\":\t\"8.8.8.8\",\n"
+               "\t\"eth_dns2\":\t\"4.4.4.4\",\n"
+               "\t\"remote_cfg_use\":\tfalse,\n"
+               "\t\"remote_cfg_url\":\t\"\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http\":\tfalse,\n"
+               "\t\"http_url\":\t\"https://myserver1.com\",\n"
+               "\t\"http_user\":\t\"h_user1\",\n"
+               "\t\"http_pass\":\t\"h_pass1\",\n"
+               "\t\"use_http_stat\":\tfalse,\n"
+               "\t\"http_stat_url\":\t\"https://myserver1.com/status\",\n"
+               "\t\"http_stat_user\":\t\"h_user2\",\n"
+               "\t\"http_stat_pass\":\t\"h_pass2\",\n"
+               "\t\"use_mqtt\":\ttrue,\n"
+               "\t\"mqtt_transport\":\t\"SSL\",\n"
+               "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+               "\t\"mqtt_port\":\t1338,\n"
+               "\t\"mqtt_prefix\":\t\"my_prefix\",\n"
+               "\t\"mqtt_client_id\":\t\"my_client\",\n"
+               "\t\"mqtt_user\":\t\"m_user1\",\n"
+               "\t\"mqtt_pass\":\t\"m_pass1\",\n"
+               "\t\"lan_auth_type\":\t\"lan_auth_digest\",\n"
+               "\t\"lan_auth_user\":\t\"l_user1\",\n"
+               "\t\"lan_auth_pass\":\t\"l_pass1\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
+               "\t\"auto_update_cycle\":\t\"regular\",\n"
+               "\t\"auto_update_weekdays_bitmask\":\t63,\n"
+               "\t\"auto_update_interval_from\":\t2,\n"
+               "\t\"auto_update_interval_to\":\t22,\n"
+               "\t\"auto_update_tz_offset_hours\":\t5,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time1.server.com\",\n"
+               "\t\"ntp_server2\":\t\"time2.server.com\",\n"
+               "\t\"ntp_server3\":\t\"time3.server.com\",\n"
+               "\t\"ntp_server4\":\t\"time4.server.com\",\n"
+               "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\tfalse,\n"
                "\t\"scan_coded_phy\":\ttrue,\n"
                "\t\"scan_1mbit_phy\":\tfalse,\n"
@@ -4230,6 +5459,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
     ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.auto_update.auto_update_interval_from);
     ASSERT_EQ(24, gw_cfg2.ruuvi_cfg.auto_update.auto_update_interval_to);
     ASSERT_EQ(3, gw_cfg2.ruuvi_cfg.auto_update.auto_update_tz_offset_hours);
+
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.ntp.ntp_use);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.ntp.ntp_use_dhcp);
+    ASSERT_EQ(string("time.google.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server1.buf));
+    ASSERT_EQ(string("time.cloudflare.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server2.buf));
+    ASSERT_EQ(string("time.nist.gov"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
 
     ASSERT_EQ(RUUVI_COMPANY_ID, gw_cfg2.ruuvi_cfg.filter.company_id);
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.filter.company_use_filtering);
@@ -4296,6 +5532,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -4348,6 +5590,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'auto_update_interval_from' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'auto_update_interval_to' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'auto_update_tz_offset_hours' in config-json"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'ntp_use' in config-json, use default value: 'true'"));
+    TEST_CHECK_LOG_RECORD(
+        ESP_LOG_WARN,
+        string("Can't find key 'ntp_use_dhcp' in config-json, use default value: 'false'"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'ntp_server1' in config-json"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'ntp_server2' in config-json"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'ntp_server3' in config-json"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'ntp_server4' in config-json"));
     TEST_CHECK_LOG_RECORD(
         ESP_LOG_WARN,
         string("Can't find key 'company_id' in config-json, use default value: 0x0499"));
@@ -4416,6 +5666,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_string) // NOLINT
     ASSERT_EQ(24, gw_cfg2.ruuvi_cfg.auto_update.auto_update_interval_to);
     ASSERT_EQ(3, gw_cfg2.ruuvi_cfg.auto_update.auto_update_tz_offset_hours);
 
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.ntp.ntp_use);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.ntp.ntp_use_dhcp);
+    ASSERT_EQ(string("time.google.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server1.buf));
+    ASSERT_EQ(string("time.cloudflare.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server2.buf));
+    ASSERT_EQ(string("time.nist.gov"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
+
     ASSERT_EQ(RUUVI_COMPANY_ID, gw_cfg2.ruuvi_cfg.filter.company_id);
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.filter.company_use_filtering);
 
@@ -4481,6 +5738,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_string) // NOLINT
                "\t\"auto_update_interval_from\":\t0,\n"
                "\t\"auto_update_interval_to\":\t24,\n"
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -4551,6 +5814,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_malloc_failed) // NOLINT
           "\t\"auto_update_interval_from\":\t0,\n"
           "\t\"auto_update_interval_to\":\t24,\n"
           "\t\"auto_update_tz_offset_hours\":\t3,\n"
+          "\t\"ntp_use\":\ttrue,\n"
+          "\t\"ntp_use_dhcp\":\tfalse,\n"
+          "\t\"ntp_server1\":\t\"time.google.com\",\n"
+          "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+          "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+          "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
           "\t\"company_id\":\t1177,\n"
           "\t\"company_use_filtering\":\ttrue,\n"
           "\t\"scan_coded_phy\":\tfalse,\n"
@@ -4561,7 +5830,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_malloc_failed) // NOLINT
           "\t\"scan_channel_39\":\ttrue,\n"
           "\t\"coordinates\":\t\"\"\n"
           "}";
-    for (uint32_t i = 0; i < 138; ++i)
+    for (uint32_t i = 0; i < 154; ++i)
     {
         this->m_malloc_cnt         = 0;
         this->m_malloc_fail_on_cnt = i + 1;
@@ -4577,7 +5846,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_malloc_failed) // NOLINT
 
     {
         this->m_malloc_cnt         = 0;
-        this->m_malloc_fail_on_cnt = 139;
+        this->m_malloc_fail_on_cnt = 155;
         gw_cfg_t gw_cfg2           = get_gateway_config_default();
         bool     flag_modified     = false;
         ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, p_json_str, &gw_cfg2, &flag_modified));
@@ -6847,7 +8116,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_tz_2) //
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_company_id) // NOLINT
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use) // NOLINT
 {
     const gw_cfg_t   gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -6858,6 +8127,310 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_company_id) // NOLIN
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 120;
+
+    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_use"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use_2) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 121;
+
+    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_use"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use_dhcp) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 122;
+
+    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_use_dhcp"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use_dhcp_2) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 123;
+
+    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_use_dhcp"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server1) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 124;
+
+    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server1"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server1_2) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 125;
+
+    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server1"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server1_3) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 126;
+
+    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server1"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server2) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 127;
+
+    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server2"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server2_2) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 128;
+
+    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server2"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server2_3) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 129;
+
+    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server2"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server3) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 130;
+
+    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server3"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server3_2) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 131;
+
+    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server3"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server3_3) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 132;
+
+    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server3"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server4) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 133;
+
+    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server4"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server4_1) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 134;
+
+    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server4"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server4_2) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 135;
+
+    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server4"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_company_id) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 136;
 
     ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -6876,7 +8449,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_company_id_2) // NOL
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 121;
+    this->m_malloc_fail_on_cnt = 137;
 
     ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -6895,7 +8468,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_filtering) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 122;
+    this->m_malloc_fail_on_cnt = 138;
 
     ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -6914,7 +8487,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_filtering_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 123;
+    this->m_malloc_fail_on_cnt = 139;
 
     ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -6933,7 +8506,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_coded_phy) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 124;
+    this->m_malloc_fail_on_cnt = 140;
 
     ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -6952,7 +8525,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_coded_phy_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 125;
+    this->m_malloc_fail_on_cnt = 141;
 
     ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -6971,7 +8544,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_1mbit_phy) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 126;
+    this->m_malloc_fail_on_cnt = 142;
 
     ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -6990,7 +8563,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_1mbit_phy_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 127;
+    this->m_malloc_fail_on_cnt = 143;
 
     ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7009,7 +8582,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_extended_payload
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 128;
+    this->m_malloc_fail_on_cnt = 144;
 
     ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7028,7 +8601,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_extended_payload
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 129;
+    this->m_malloc_fail_on_cnt = 145;
 
     ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7047,7 +8620,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_37) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 130;
+    this->m_malloc_fail_on_cnt = 146;
 
     ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7066,7 +8639,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_37_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 131;
+    this->m_malloc_fail_on_cnt = 147;
 
     ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7085,7 +8658,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_38) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 132;
+    this->m_malloc_fail_on_cnt = 148;
 
     ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7104,7 +8677,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_38_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 133;
+    this->m_malloc_fail_on_cnt = 149;
 
     ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7123,7 +8696,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_39) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 134;
+    this->m_malloc_fail_on_cnt = 150;
 
     ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7142,7 +8715,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_39_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 135;
+    this->m_malloc_fail_on_cnt = 151;
 
     ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7161,7 +8734,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 136;
+    this->m_malloc_fail_on_cnt = 152;
 
     ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7180,7 +8753,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 137;
+    this->m_malloc_fail_on_cnt = 153;
 
     ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7199,7 +8772,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 138;
+    this->m_malloc_fail_on_cnt = 154;
 
     ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7218,7 +8791,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_converting_to_json_s
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 139;
+    this->m_malloc_fail_on_cnt = 155;
 
     ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);

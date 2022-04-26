@@ -199,6 +199,13 @@ TEST_F(TestGwCfgDefault, test_1) // NOLINT
     ASSERT_EQ(24, gw_cfg.ruuvi_cfg.auto_update.auto_update_interval_to);
     ASSERT_EQ(3, gw_cfg.ruuvi_cfg.auto_update.auto_update_tz_offset_hours);
 
+    ASSERT_TRUE(gw_cfg.ruuvi_cfg.ntp.ntp_use);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp);
+    ASSERT_EQ(string("time.google.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf));
+    ASSERT_EQ(string("time.cloudflare.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server2.buf));
+    ASSERT_EQ(string("time.nist.gov"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf));
+
     ASSERT_EQ(RUUVI_COMPANY_ID, gw_cfg.ruuvi_cfg.filter.company_id);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.filter.company_use_filtering);
 
@@ -254,6 +261,12 @@ TEST_F(TestGwCfgDefault, test_1) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Auto update weekdays_bitmask: 0x7f"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Auto update interval: 00:00..24:00"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Auto update TZ: UTC+3"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: NTP: Use: yes"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: NTP: Use DHCP: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: NTP: Server1: time.google.com"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: NTP: Server2: time.cloudflare.com"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: NTP: Server3: time.nist.gov"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: NTP: Server4: pool.ntp.org"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use company id filter: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: company id: 0x0499"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan coded phy: 0"));

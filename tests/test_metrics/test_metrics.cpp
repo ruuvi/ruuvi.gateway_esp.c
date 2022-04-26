@@ -367,7 +367,7 @@ TEST_F(TestMetrics, test_metrics_generate) // NOLINT
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_DEFAULT\"} 65548\n"
                "ruuvigw_info{mac=\"AA:BB:CC:DD:EE:FF\",esp_fw=\"v1.9.2-12-ga6893d9\",nrf_fw=\"v0.7.2\"} 1\n"
                "ruuvigw_gw_cfg_crc32 0xaabbccdd\n"
-               "ruuvigw_gw_cfg_sha256 2c8b84f6b624896a8d24f48ab771057c92e566e8c9840632a0b6ecbe487a87bf\n"),
+               "ruuvigw_gw_cfg_sha256 dd5663e191f7a259e2af1f6576cbd91f73ece3769d48b72a0dcfdf767931d0ff\n"),
         string(p_metrics_str));
     os_free(p_metrics_str);
 
@@ -406,7 +406,7 @@ TEST_F(TestMetrics, test_metrics_generate) // NOLINT
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_DEFAULT\"} 65548\n"
                "ruuvigw_info{mac=\"AA:BB:CC:DD:EE:FF\",esp_fw=\"v1.9.2-12-ga6893d9\",nrf_fw=\"v0.7.2\"} 1\n"
                "ruuvigw_gw_cfg_crc32 0xaabbccdd\n"
-               "ruuvigw_gw_cfg_sha256 2c8b84f6b624896a8d24f48ab771057c92e566e8c9840632a0b6ecbe487a87bf\n"),
+               "ruuvigw_gw_cfg_sha256 dd5663e191f7a259e2af1f6576cbd91f73ece3769d48b72a0dcfdf767931d0ff\n"),
         string(p_metrics_str));
     os_free(p_metrics_str);
     ASSERT_TRUE(esp_log_wrapper_is_empty());

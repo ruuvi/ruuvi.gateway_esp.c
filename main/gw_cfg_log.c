@@ -343,6 +343,17 @@ gw_cfg_log_ruuvi_cfg_auto_update(const ruuvi_gw_cfg_auto_update_t *const p_auto_
 }
 
 static void
+gw_cfg_log_ruuvi_cfg_ntp(const ruuvi_gw_cfg_ntp_t *const p_ntp)
+{
+    LOG_INFO("config: NTP: Use: %s", p_ntp->ntp_use ? "yes" : "no");
+    LOG_INFO("config: NTP: Use DHCP: %s", p_ntp->ntp_use_dhcp ? "yes" : "no");
+    LOG_INFO("config: NTP: Server1: %s", p_ntp->ntp_server1.buf);
+    LOG_INFO("config: NTP: Server2: %s", p_ntp->ntp_server2.buf);
+    LOG_INFO("config: NTP: Server3: %s", p_ntp->ntp_server3.buf);
+    LOG_INFO("config: NTP: Server4: %s", p_ntp->ntp_server4.buf);
+}
+
+static void
 gw_cfg_log_ruuvi_cfg_filter(const ruuvi_gw_cfg_filter_t *const p_filter)
 {
     LOG_INFO("config: use company id filter: %d", p_filter->company_use_filtering);
@@ -374,6 +385,7 @@ gw_cfg_log_ruuvi_cfg(const gw_cfg_ruuvi_t *const p_gw_cfg_ruuvi, const char *con
     gw_cfg_log_ruuvi_cfg_mqtt(&p_gw_cfg_ruuvi->mqtt);
     gw_cfg_log_ruuvi_cfg_lan_auth(&p_gw_cfg_ruuvi->lan_auth);
     gw_cfg_log_ruuvi_cfg_auto_update(&p_gw_cfg_ruuvi->auto_update);
+    gw_cfg_log_ruuvi_cfg_ntp(&p_gw_cfg_ruuvi->ntp);
     gw_cfg_log_ruuvi_cfg_filter(&p_gw_cfg_ruuvi->filter);
     gw_cfg_log_ruuvi_cfg_scan(&p_gw_cfg_ruuvi->scan);
 

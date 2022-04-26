@@ -248,6 +248,11 @@ sntp_set_time_sync_notification_cb(sntp_sync_time_cb_t p_callback)
     gp_obj->sntp_sync_time_cb = p_callback;
 }
 
+void
+sntp_servermode_dhcp(int set_servers_from_dhcp)
+{
+}
+
 /*** os_time stub functions
  * *****************************************************************************************/
 
