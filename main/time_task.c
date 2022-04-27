@@ -19,6 +19,7 @@
 #include "esp_type_wrapper.h"
 #include "event_mgr.h"
 #include "os_mkgmtime.h"
+#include "gw_cfg.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -211,6 +212,56 @@ time_task_configure_signals(void)
     return true;
 }
 
+static void
+time_task_sntp_add_ntp_server(const uint32_t server_idx, const ruuvi_gw_cfg_ntp_server_addr_str_t *const p_ntp_srv_addr)
+{
+    if ('\0' != p_ntp_srv_addr->buf[0])
+    {
+        LOG_INFO("Add time server: %s", p_ntp_srv_addr->buf);
+        sntp_setservername((u8_t)server_idx, p_ntp_srv_addr->buf);
+    }
+}
+
+static void
+time_task_add_ntp_server(
+    ruuvi_gw_cfg_ntp_server_addr_str_t *const       p_arr_of_time_servers,
+    const ruuvi_gw_cfg_ntp_server_addr_str_t *const p_ntp_srv_addr,
+    uint32_t *const                                 p_srv_idx)
+{
+    if ('\0' != p_ntp_srv_addr->buf[0])
+    {
+        p_arr_of_time_servers[*p_srv_idx] = *p_ntp_srv_addr;
+        *p_srv_idx += 1;
+    }
+}
+
+static void
+time_task_configure_ntp_sources(void)
+{
+    static ruuvi_gw_cfg_ntp_server_addr_str_t g_arr_of_time_servers[TIME_TASK_NUM_OF_TIME_SERVERS];
+
+    for (uint32_t i = 0; i < TIME_TASK_NUM_OF_TIME_SERVERS; ++i)
+    {
+        g_arr_of_time_servers[i].buf[0] = '\0';
+    }
+
+    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
+    if (p_gw_cfg->ruuvi_cfg.ntp.ntp_use && !p_gw_cfg->ruuvi_cfg.ntp.ntp_use_dhcp)
+    {
+        uint32_t server_idx = 0;
+        time_task_add_ntp_server(g_arr_of_time_servers, &p_gw_cfg->ruuvi_cfg.ntp.ntp_server1, &server_idx);
+        time_task_add_ntp_server(g_arr_of_time_servers, &p_gw_cfg->ruuvi_cfg.ntp.ntp_server2, &server_idx);
+        time_task_add_ntp_server(g_arr_of_time_servers, &p_gw_cfg->ruuvi_cfg.ntp.ntp_server3, &server_idx);
+        time_task_add_ntp_server(g_arr_of_time_servers, &p_gw_cfg->ruuvi_cfg.ntp.ntp_server4, &server_idx);
+    }
+    gw_cfg_unlock_ro(&p_gw_cfg);
+
+    for (uint32_t i = 0; i < TIME_TASK_NUM_OF_TIME_SERVERS; ++i)
+    {
+        time_task_sntp_add_ntp_server(i, &g_arr_of_time_servers[i]);
+    }
+}
+
 bool
 time_task_init(void)
 {
@@ -248,18 +299,9 @@ time_task_init(void)
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     LOG_INFO("Set time sync mode to IMMED");
     sntp_set_sync_mode(SNTP_SYNC_MODE_IMMED);
-    static const char *const arr_of_time_servers[TIME_TASK_NUM_OF_TIME_SERVERS] = {
-        "time.google.com",
-        "time.cloudflare.com",
-        "time.nist.gov",
-        "pool.ntp.org",
-    };
-    for (uint32_t server_idx = 0; server_idx < (sizeof(arr_of_time_servers) / sizeof(*arr_of_time_servers));
-         ++server_idx)
-    {
-        LOG_INFO("Add time server: %s", arr_of_time_servers[server_idx]);
-        sntp_setservername((u8_t)server_idx, arr_of_time_servers[server_idx]);
-    }
+
+    time_task_configure_ntp_sources();
+
     sntp_set_time_sync_notification_cb(time_task_cb_notification_on_sync);
 
     g_time_min_valid = time_task_get_min_valid_time();

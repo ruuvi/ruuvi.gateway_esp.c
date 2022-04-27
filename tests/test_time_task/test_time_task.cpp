@@ -11,6 +11,13 @@
 #include "esp_log_wrapper.hpp"
 #include "event_mgr.h"
 #include "os_mkgmtime.h"
+#include "esp_netif.h"
+#include "lwip/ip4_addr.h"
+#include "wifi_manager_defs.h"
+#include "os_mutex.h"
+#include "os_mutex_recursive.h"
+#include "gw_cfg.h"
+#include "gw_cfg_default.h"
 
 #define CMD_HANDLER_TASK_NAME "cmd_handler"
 
@@ -162,6 +169,51 @@ extern "C" {
 /*** System functions
  * *****************************************************************************************/
 
+os_mutex_recursive_t
+os_mutex_recursive_create_static(os_mutex_recursive_static_t *const p_mutex_static)
+{
+    return (os_mutex_recursive_t)p_mutex_static;
+}
+
+void
+os_mutex_recursive_delete(os_mutex_recursive_t *const ph_mutex)
+{
+}
+
+void
+os_mutex_recursive_lock(os_mutex_recursive_t const h_mutex)
+{
+}
+
+void
+os_mutex_recursive_unlock(os_mutex_recursive_t const h_mutex)
+{
+}
+
+os_mutex_t
+os_mutex_create_static(os_mutex_static_t *const p_mutex_static)
+{
+    return reinterpret_cast<os_mutex_t>(p_mutex_static);
+}
+
+void
+os_mutex_delete(os_mutex_t *const ph_mutex)
+{
+    (void)ph_mutex;
+}
+
+void
+os_mutex_lock(os_mutex_t const h_mutex)
+{
+    (void)h_mutex;
+}
+
+void
+os_mutex_unlock(os_mutex_t const h_mutex)
+{
+    (void)h_mutex;
+}
+
 void
 tdd_assert_trap(void)
 {
@@ -253,6 +305,23 @@ sntp_servermode_dhcp(int set_servers_from_dhcp)
 {
 }
 
+char *
+esp_ip4addr_ntoa(const esp_ip4_addr_t *addr, char *buf, int buflen)
+{
+    return ip4addr_ntoa_r((ip4_addr_t *)addr, buf, buflen);
+}
+
+uint32_t
+esp_ip4addr_aton(const char *addr)
+{
+    return ipaddr_addr(addr);
+}
+
+void
+wifi_manager_cb_save_wifi_config(const wifiman_config_t *const p_cfg)
+{
+}
+
 /*** os_time stub functions
  * *****************************************************************************************/
 
@@ -277,6 +346,20 @@ cmd_handler_task(void *p_param)
 {
     auto *p_obj     = static_cast<TestTimeTask *>(p_param);
     bool  flag_exit = false;
+
+    const gw_cfg_default_init_param_t init_params = {
+        .wifi_ap_ssid        = { "" },
+        .device_id           = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77 },
+        .esp32_fw_ver        = { "v1.10.0" },
+        .nrf52_fw_ver        = { "v0.7.1" },
+        .nrf52_mac_addr      = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF },
+        .esp32_mac_addr_wifi = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x11 },
+        .esp32_mac_addr_eth  = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x22 },
+    };
+    gw_cfg_default_init(&init_params, nullptr);
+    gw_cfg_init();
+    esp_log_wrapper_clear();
+
     sem_post(&p_obj->semaFreeRTOS);
     while (!flag_exit)
     {
