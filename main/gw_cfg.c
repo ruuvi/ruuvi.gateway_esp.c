@@ -18,13 +18,15 @@ static gw_cfg_t                    g_gateway_config = { 0 };
 static os_mutex_recursive_t        g_gw_cfg_mutex;
 static os_mutex_recursive_static_t g_gw_cfg_mutex_mem;
 static gw_cfg_device_info_t *const g_gw_cfg_p_device_info = &g_gateway_config.device_info;
+static gw_cfg_cb_save_cfg_to_nvs   g_p_gw_cfg_cb_save_cfg_to_nvs;
 
 void
-gw_cfg_init(void)
+gw_cfg_init(gw_cfg_cb_save_cfg_to_nvs p_cb_save_cfg_to_nvs)
 {
     g_gw_cfg_mutex = os_mutex_recursive_create_static(&g_gw_cfg_mutex_mem);
     os_mutex_recursive_lock(g_gw_cfg_mutex);
     gw_cfg_default_get(&g_gateway_config);
+    g_p_gw_cfg_cb_save_cfg_to_nvs = p_cb_save_cfg_to_nvs;
     os_mutex_recursive_unlock(g_gw_cfg_mutex);
 }
 
@@ -55,6 +57,10 @@ gw_cfg_lock_rw(void)
 void
 gw_cfg_unlock_rw(gw_cfg_t **const p_p_gw_cfg)
 {
+    if (NULL != g_p_gw_cfg_cb_save_cfg_to_nvs)
+    {
+        g_p_gw_cfg_cb_save_cfg_to_nvs(*p_p_gw_cfg);
+    }
     *p_p_gw_cfg = NULL;
     os_mutex_recursive_unlock(g_gw_cfg_mutex);
 }
@@ -114,11 +120,11 @@ gw_cfg_cmp(
     bool *const           p_flag_eq_eth_cfg,
     bool *const           p_flag_eq_wifi_cfg)
 {
-    bool flag_is_equal     = true;
-    *p_flag_eq_ruuvi_cfg   = true;
-    *p_flag_eq_eth_cfg     = true;
-    *p_flag_eq_wifi_cfg    = true;
-    gw_cfg_t *p_gw_cfg_dst = gw_cfg_lock_rw();
+    bool flag_is_equal           = true;
+    *p_flag_eq_ruuvi_cfg         = true;
+    *p_flag_eq_eth_cfg           = true;
+    *p_flag_eq_wifi_cfg          = true;
+    const gw_cfg_t *p_gw_cfg_dst = gw_cfg_lock_ro();
     if (0 != memcmp(&p_gw_cfg_dst->ruuvi_cfg, &p_gw_cfg_src->ruuvi_cfg, sizeof(p_gw_cfg_dst->ruuvi_cfg)))
     {
         flag_is_equal        = false;
@@ -134,7 +140,7 @@ gw_cfg_cmp(
         flag_is_equal       = false;
         *p_flag_eq_wifi_cfg = false;
     }
-    gw_cfg_unlock_rw(&p_gw_cfg_dst);
+    gw_cfg_unlock_ro(&p_gw_cfg_dst);
     return flag_is_equal;
 }
 
@@ -243,9 +249,9 @@ gw_cfg_get_coordinates(void)
 wifiman_config_t
 gw_cfg_get_wifi_cfg(void)
 {
-    gw_cfg_t *             p_gw_cfg = gw_cfg_lock_rw();
+    const gw_cfg_t *       p_gw_cfg = gw_cfg_lock_ro();
     const wifiman_config_t wifi_cfg = p_gw_cfg->wifi_cfg;
-    gw_cfg_unlock_rw(&p_gw_cfg);
+    gw_cfg_unlock_ro(&p_gw_cfg);
     return wifi_cfg;
 }
 

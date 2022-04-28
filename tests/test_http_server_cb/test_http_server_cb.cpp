@@ -165,6 +165,9 @@ restart_services(void)
 {
 }
 
+void
+settings_save_to_flash(const gw_cfg_t *const p_gw_cfg);
+
 } // extern "C"
 
 class MemAllocTrace
@@ -260,7 +263,7 @@ protected:
             .esp32_mac_addr_eth  = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x22 },
         };
         gw_cfg_default_init(&init_params, nullptr);
-        gw_cfg_init();
+        gw_cfg_init(&settings_save_to_flash);
         esp_log_wrapper_clear();
     }
 
@@ -469,11 +472,10 @@ adv_table_history_read(adv_report_table_t *const p_reports, const time_t cur_tim
     }
 }
 
-bool
-settings_save_to_flash(void)
+void
+settings_save_to_flash(const gw_cfg_t *const p_gw_cfg)
 {
     g_pTestClass->m_flag_settings_saved_to_flash = true;
-    return true;
 }
 
 void

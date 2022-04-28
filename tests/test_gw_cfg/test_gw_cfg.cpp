@@ -106,7 +106,7 @@ protected:
             .esp32_mac_addr_eth  = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x22 },
         };
         gw_cfg_default_init(&init_params, nullptr);
-        gw_cfg_init();
+        gw_cfg_init(nullptr);
     }
 
     void

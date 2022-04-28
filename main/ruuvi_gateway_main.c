@@ -189,8 +189,6 @@ ethernet_connection_ok_cb(const esp_netif_ip_info_t *p_ip_info)
         gw_cfg_log(p_gw_cfg, "Gateway SETTINGS", false);
         gw_cfg_unlock_rw(&p_gw_cfg);
 
-        settings_save_to_flash();
-
         if (!ruuvi_auth_set_from_config())
         {
             LOG_ERR("%s failed", "gw_cfg_set_auth_from_config");
@@ -277,7 +275,6 @@ static void
 cb_save_wifi_config(const wifiman_config_t *const p_wifi_cfg)
 {
     gw_cfg_update_wifi_config(p_wifi_cfg);
-    settings_save_to_flash();
 }
 
 void
@@ -458,17 +455,12 @@ ATTR_NORETURN
 static void
 handle_reset_button_is_pressed_during_boot(void)
 {
-    LOG_INFO("Reset button is pressed during boot - clear settings in flash");
+    LOG_INFO("Reset button is pressed during boot - erase settings in flash");
     nrf52fw_hw_reset_nrf52(true);
 
     ruuvi_nvs_flash_erase();
     ruuvi_nvs_flash_init();
 
-    LOG_INFO("Writing the default gateway configuration to NVS");
-    if (!settings_clear_in_flash())
-    {
-        LOG_ERR("Failed to clear the gateway settings in NVS");
-    }
     settings_write_flag_rebooting_after_auto_update(false);
     settings_write_flag_force_start_wifi_hotspot(true);
 
@@ -657,7 +649,8 @@ ruuvi_init_gw_cfg(
         .esp32_mac_addr_eth  = gateway_read_mac_addr(ESP_MAC_ETH),
     };
     gw_cfg_default_init(&gw_cfg_default_init_param, &gw_cfg_default_json_read);
-    gw_cfg_init();
+    gw_cfg_init(&settings_save_to_flash);
+    settings_get_from_flash();
 }
 
 static bool
@@ -727,8 +720,6 @@ main_task_init(void)
     settings_update_mac_addr(nrf52_device_info.nrf52_mac_addr);
 
     ruuvi_init_gw_cfg(&nrf52_fw_ver, &nrf52_device_info);
-
-    settings_get_from_flash();
 
     hmac_sha256_set_key_str(gw_cfg_get_nrf52_device_id()->str_buf); // set default encryption key
 

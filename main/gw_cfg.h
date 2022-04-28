@@ -284,8 +284,10 @@ typedef struct gw_cfg_t
     wifiman_config_t     wifi_cfg;
 } gw_cfg_t;
 
+typedef void (*gw_cfg_cb_save_cfg_to_nvs)(const gw_cfg_t *const p_gw_cfg);
+
 void
-gw_cfg_init(void);
+gw_cfg_init(gw_cfg_cb_save_cfg_to_nvs p_cb_save_cfg_to_nvs);
 
 void
 gw_cfg_deinit(void);

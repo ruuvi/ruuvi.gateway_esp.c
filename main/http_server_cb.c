@@ -801,8 +801,6 @@ http_server_cb_on_post_ruuvi(const char *p_body)
         restart_services();
     }
 
-    settings_save_to_flash();
-
     if (!ruuvi_auth_set_from_config())
     {
         LOG_ERR("%s failed", "ruuvi_auth_set_from_config");
@@ -899,7 +897,6 @@ http_server_cb_on_post_gw_cfg_download(void)
         {
             LOG_INFO("Update settings in flash");
             gw_cfg_update(p_gw_cfg_tmp);
-            settings_save_to_flash();
             if (!flag_eq_eth_cfg || !flag_eq_wifi_cfg)
             {
                 LOG_INFO(
