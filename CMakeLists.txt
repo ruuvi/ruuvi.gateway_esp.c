@@ -85,3 +85,5 @@ target_compile_definitions(__idf_main PUBLIC
         GW_CFG_PARTITION="${GW_CFG_PARTITION}"
         BOARD_RUUVIGW_ESP
 )
+
+target_compile_definitions(__idf_esp_netif PUBLIC "-DLWIP_DHCP_GET_NTP_SRV=1")
