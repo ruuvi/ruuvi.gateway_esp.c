@@ -30,6 +30,7 @@ typedef enum main_task_cmd_e
     MAIN_TASK_CMD_EVENT_MGR_EV_WIFI_DISCONNECTED,
     MAIN_TASK_EVENT_MGR_EV_ETH_CONNECTED,
     MAIN_TASK_CMD_EVENT_MGR_EV_ETH_DISCONNECTED,
+    MAIN_TASK_CMD_CHANGE_NTP_CONFIG,
     MAIN_TASK_CMD_EXIT,
     MAIN_TASK_CMD_TIME_TASK_INIT,
     MAIN_TASK_CMD_TIME_TASK_STOP,
@@ -381,6 +382,23 @@ cmd_handler_task(void *p_param)
             case MAIN_TASK_CMD_EVENT_MGR_EV_ETH_DISCONNECTED:
                 event_mgr_notify(EVENT_MGR_EV_ETH_DISCONNECTED);
                 break;
+            case MAIN_TASK_CMD_CHANGE_NTP_CONFIG:
+            {
+                gw_cfg_t *p_gw_cfg = gw_cfg_lock_rw();
+                snprintf(
+                    p_gw_cfg->ruuvi_cfg.ntp.ntp_server1.buf,
+                    sizeof(p_gw_cfg->ruuvi_cfg.ntp.ntp_server1.buf),
+                    "time2.google.com");
+                snprintf(
+                    p_gw_cfg->ruuvi_cfg.ntp.ntp_server2.buf,
+                    sizeof(p_gw_cfg->ruuvi_cfg.ntp.ntp_server2.buf),
+                    "time2.cloudflare.com");
+                memset(p_gw_cfg->ruuvi_cfg.ntp.ntp_server3.buf, 0, sizeof(p_gw_cfg->ruuvi_cfg.ntp.ntp_server3.buf));
+                memset(p_gw_cfg->ruuvi_cfg.ntp.ntp_server4.buf, 0, sizeof(p_gw_cfg->ruuvi_cfg.ntp.ntp_server4.buf));
+                gw_cfg_unlock_rw(&p_gw_cfg);
+                event_mgr_notify(EVENT_MGR_EV_CFG_CHANGED);
+                break;
+            }
             case MAIN_TASK_CMD_EXIT:
                 flag_exit = true;
                 break;
@@ -601,6 +619,26 @@ TEST_F(TestTimeTask, test_all) // NOLINT
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     {
         const int exp_num_events = 1;
+        ASSERT_EQ(exp_num_events, testEvents.size());
+        int idx = 0;
+        {
+            auto *p_base_ev = testEvents[idx++];
+            ASSERT_EQ(TestEventType_SNTP_Stop, p_base_ev->eventType);
+        }
+    }
+    testEvents.clear();
+
+    cmdQueue.push_and_wait(MAIN_TASK_CMD_CHANGE_NTP_CONFIG);
+    ASSERT_TRUE(this->wait_for_events(1000, 4));
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Got notification about configuration change");
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Deactivate SNTP time synchronization");
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Reconfigure SNTP");
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Add time server: time2.google.com");
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Add time server: time2.cloudflare.com");
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Activate SNTP time synchronization");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    {
+        const int exp_num_events = 4;
         ASSERT_EQ(exp_num_events, testEvents.size());
         int idx = 0;
         {

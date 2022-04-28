@@ -41,7 +41,8 @@ typedef enum time_task_sig_e
     TIME_TASK_SIG_WIFI_DISCONNECTED = OS_SIGNAL_NUM_1,
     TIME_TASK_SIG_ETH_CONNECTED     = OS_SIGNAL_NUM_2,
     TIME_TASK_SIG_ETH_DISCONNECTED  = OS_SIGNAL_NUM_3,
-    TIME_TASK_SIG_STOP              = OS_SIGNAL_NUM_4,
+    TIME_TASK_SIG_CFG_CHANGED       = OS_SIGNAL_NUM_4,
+    TIME_TASK_SIG_STOP              = OS_SIGNAL_NUM_5,
 } time_task_sig_e;
 
 #define TIME_TASK_SIG_FIRST (TIME_TASK_SIG_WIFI_CONNECTED)
@@ -53,11 +54,20 @@ static os_signal_t *      gp_time_task_signal;
 static os_task_stack_type_t g_time_task_stack_mem[RUUVI_STACK_SIZE_TIME_TASK];
 static os_task_static_t     g_time_task_mem;
 
+static event_mgr_ev_info_static_t g_time_task_ev_info_mem_wifi_connected;
+static event_mgr_ev_info_static_t g_time_task_ev_info_mem_wifi_disconnected;
+static event_mgr_ev_info_static_t g_time_task_ev_info_mem_eth_connected;
+static event_mgr_ev_info_static_t g_time_task_ev_info_mem_eth_disconnected;
+static event_mgr_ev_info_static_t g_time_task_ev_info_mem_cfg_changed;
+
 static time_t g_time_min_valid;
 
 static bool g_time_is_synchronized;
 
 static const char TAG[] = "TIME";
+
+static void
+time_task_configure_ntp_sources(void);
 
 static time_t
 time_task_get_min_valid_time(void)
@@ -152,6 +162,16 @@ time_task_handle_sig(const time_task_sig_e time_task_sig)
             LOG_INFO("Deactivate SNTP time synchronization");
             g_time_is_synchronized = false;
             sntp_stop();
+            break;
+        case TIME_TASK_SIG_CFG_CHANGED:
+            LOG_INFO("Got notification about configuration change");
+            LOG_INFO("Deactivate SNTP time synchronization");
+            sntp_stop();
+            g_time_is_synchronized = false;
+            LOG_INFO("Reconfigure SNTP");
+            time_task_configure_ntp_sources();
+            LOG_INFO("Activate SNTP time synchronization");
+            sntp_init();
             break;
         case TIME_TASK_SIG_STOP:
             LOG_INFO("Stop time_task");
@@ -279,22 +299,31 @@ time_task_init(void)
         return false;
     }
 
-    event_mgr_subscribe_sig(
+    event_mgr_subscribe_sig_static(
+        &g_time_task_ev_info_mem_wifi_connected,
         EVENT_MGR_EV_WIFI_CONNECTED,
         gp_time_task_signal,
         time_task_conv_to_sig_num(TIME_TASK_SIG_WIFI_CONNECTED));
-    event_mgr_subscribe_sig(
+    event_mgr_subscribe_sig_static(
+        &g_time_task_ev_info_mem_wifi_disconnected,
         EVENT_MGR_EV_WIFI_DISCONNECTED,
         gp_time_task_signal,
         time_task_conv_to_sig_num(TIME_TASK_SIG_WIFI_DISCONNECTED));
-    event_mgr_subscribe_sig(
+    event_mgr_subscribe_sig_static(
+        &g_time_task_ev_info_mem_eth_connected,
         EVENT_MGR_EV_ETH_CONNECTED,
         gp_time_task_signal,
         time_task_conv_to_sig_num(TIME_TASK_SIG_ETH_CONNECTED));
-    event_mgr_subscribe_sig(
+    event_mgr_subscribe_sig_static(
+        &g_time_task_ev_info_mem_eth_disconnected,
         EVENT_MGR_EV_ETH_DISCONNECTED,
         gp_time_task_signal,
         time_task_conv_to_sig_num(TIME_TASK_SIG_ETH_DISCONNECTED));
+    event_mgr_subscribe_sig_static(
+        &g_time_task_ev_info_mem_cfg_changed,
+        EVENT_MGR_EV_CFG_CHANGED,
+        gp_time_task_signal,
+        time_task_conv_to_sig_num(TIME_TASK_SIG_CFG_CHANGED));
 
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     LOG_INFO("Set time sync mode to IMMED");
