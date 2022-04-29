@@ -41,10 +41,11 @@ typedef enum main_task_sig_e
     MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG                = OS_SIGNAL_NUM_7,
     MAIN_TASK_SIG_NETWORK_CONNECTED                   = OS_SIGNAL_NUM_8,
     MAIN_TASK_SIG_TASK_WATCHDOG_FEED                  = OS_SIGNAL_NUM_9,
+    MAIN_TASK_SIG_TASK_RECONNECT_NETWORK              = OS_SIGNAL_NUM_10,
 } main_task_sig_e;
 
 #define MAIN_TASK_SIG_FIRST (MAIN_TASK_SIG_LOG_HEAP_USAGE)
-#define MAIN_TASK_SIG_LAST  (MAIN_TASK_SIG_TASK_WATCHDOG_FEED)
+#define MAIN_TASK_SIG_LAST  (MAIN_TASK_SIG_TASK_RECONNECT_NETWORK)
 
 static os_signal_t *                  g_p_signal_main_task;
 static os_signal_static_t             g_signal_main_task_mem;
@@ -260,6 +261,25 @@ main_task_handle_sig_task_watchdog_feed(void)
 }
 
 static void
+main_task_handle_sig_task_network_reconnect(void)
+{
+    LOG_INFO("Perform network reconnect");
+    if (gw_cfg_get_eth_use_eth())
+    {
+        ethernet_stop();
+        ethernet_start(gw_cfg_get_wifi_ap_ssid()->ssid_buf);
+    }
+    else
+    {
+        if (wifi_manager_is_connected_to_wifi())
+        {
+            wifi_manager_disconnect_wifi();
+            wifi_manager_connect_async();
+        }
+    }
+}
+
+static void
 restart_services_internal(void)
 {
     LOG_INFO("Restart services");
@@ -310,6 +330,9 @@ main_task_handle_sig(const main_task_sig_e main_task_sig)
             break;
         case MAIN_TASK_SIG_TASK_WATCHDOG_FEED:
             main_task_handle_sig_task_watchdog_feed();
+            break;
+        case MAIN_TASK_SIG_TASK_RECONNECT_NETWORK:
+            main_task_handle_sig_task_network_reconnect();
             break;
     }
 }
@@ -415,6 +438,7 @@ main_task_init_signals(void)
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_NETWORK_CONNECTED));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_WATCHDOG_FEED));
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_RECONNECT_NETWORK));
 }
 
 void
@@ -494,6 +518,12 @@ void
 main_task_send_sig_restart_services(void)
 {
     os_signal_send(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_RESTART_SERVICES));
+}
+
+void
+main_task_send_sig_reconnect_network(void)
+{
+    os_signal_send(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_RECONNECT_NETWORK));
 }
 
 void
