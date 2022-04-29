@@ -70,6 +70,7 @@ target_include_directories(${ProjectId} PUBLIC
 
 target_compile_definitions(${ProjectId} PUBLIC
         RUUVI_TESTS_TIME_TASK=1
+        LWIP_DHCP_MAX_NTP_SERVERS=4
 )
 
 target_compile_options(${ProjectId} PUBLIC

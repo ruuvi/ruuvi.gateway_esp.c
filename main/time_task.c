@@ -20,6 +20,7 @@
 #include "event_mgr.h"
 #include "os_mkgmtime.h"
 #include "gw_cfg.h"
+#include "ruuvi_gateway.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -63,6 +64,10 @@ static event_mgr_ev_info_static_t g_time_task_ev_info_mem_cfg_changed;
 static time_t g_time_min_valid;
 
 static bool g_time_is_synchronized;
+
+static bool                               g_time_task_ntp_use;
+static bool                               g_time_task_ntp_use_dhcp;
+static ruuvi_gw_cfg_ntp_server_addr_str_t g_arr_of_time_servers[TIME_TASK_NUM_OF_TIME_SERVERS];
 
 static const char TAG[] = "TIME";
 
@@ -145,6 +150,36 @@ time_task_cb_notification_on_sync(struct timeval *p_tv)
     }
 }
 
+static void
+time_task_sntp_start(void)
+{
+    LOG_INFO("Activate SNTP time synchronization");
+    g_time_is_synchronized = false;
+    sntp_init();
+}
+
+static void
+time_task_sntp_stop(void)
+{
+    LOG_INFO("Deactivate SNTP time synchronization");
+    g_time_is_synchronized = false;
+    sntp_stop();
+}
+
+static void
+time_task_on_cfg_changed(void)
+{
+    time_task_sntp_stop();
+    LOG_INFO("Reconfigure SNTP");
+    const bool flag_prev_ntp_use_dhcp = g_time_task_ntp_use_dhcp;
+    time_task_configure_ntp_sources();
+    if (flag_prev_ntp_use_dhcp != g_time_task_ntp_use_dhcp)
+    {
+        main_task_send_sig_reconnect_network();
+    }
+    time_task_sntp_start();
+}
+
 static bool
 time_task_handle_sig(const time_task_sig_e time_task_sig)
 {
@@ -153,25 +188,15 @@ time_task_handle_sig(const time_task_sig_e time_task_sig)
     {
         case TIME_TASK_SIG_WIFI_CONNECTED:
         case TIME_TASK_SIG_ETH_CONNECTED:
-            LOG_INFO("Activate SNTP time synchronization");
-            g_time_is_synchronized = false;
-            sntp_init();
+            time_task_sntp_start();
             break;
         case TIME_TASK_SIG_WIFI_DISCONNECTED:
         case TIME_TASK_SIG_ETH_DISCONNECTED:
-            LOG_INFO("Deactivate SNTP time synchronization");
-            g_time_is_synchronized = false;
-            sntp_stop();
+            time_task_sntp_stop();
             break;
         case TIME_TASK_SIG_CFG_CHANGED:
             LOG_INFO("Got notification about configuration change");
-            LOG_INFO("Deactivate SNTP time synchronization");
-            sntp_stop();
-            g_time_is_synchronized = false;
-            LOG_INFO("Reconfigure SNTP");
-            time_task_configure_ntp_sources();
-            LOG_INFO("Activate SNTP time synchronization");
-            sntp_init();
+            time_task_on_cfg_changed();
             break;
         case TIME_TASK_SIG_STOP:
             LOG_INFO("Stop time_task");
@@ -235,10 +260,15 @@ time_task_configure_signals(void)
 static void
 time_task_sntp_add_ntp_server(const uint32_t server_idx, const ruuvi_gw_cfg_ntp_server_addr_str_t *const p_ntp_srv_addr)
 {
-    if ('\0' != p_ntp_srv_addr->buf[0])
+    if ((NULL != p_ntp_srv_addr) && ('\0' != p_ntp_srv_addr->buf[0]))
     {
-        LOG_INFO("Add time server: %s", p_ntp_srv_addr->buf);
+        LOG_INFO("Add time server %u: %s", (printf_uint_t)server_idx, p_ntp_srv_addr->buf);
         sntp_setservername((u8_t)server_idx, p_ntp_srv_addr->buf);
+    }
+    else
+    {
+        LOG_INFO("Add time server %u: NULL", (printf_uint_t)server_idx);
+        sntp_setserver((u8_t)server_idx, NULL);
     }
 }
 
@@ -256,35 +286,64 @@ time_task_add_ntp_server(
 }
 
 static void
-time_task_configure_ntp_sources(void)
+time_task_save_settings(void)
 {
-    static ruuvi_gw_cfg_ntp_server_addr_str_t g_arr_of_time_servers[TIME_TASK_NUM_OF_TIME_SERVERS];
+    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
+
+    g_time_task_ntp_use      = p_gw_cfg->ruuvi_cfg.ntp.ntp_use;
+    g_time_task_ntp_use_dhcp = p_gw_cfg->ruuvi_cfg.ntp.ntp_use_dhcp;
 
     for (uint32_t i = 0; i < TIME_TASK_NUM_OF_TIME_SERVERS; ++i)
     {
         g_arr_of_time_servers[i].buf[0] = '\0';
     }
+    uint32_t server_idx = 0;
+    time_task_add_ntp_server(g_arr_of_time_servers, &p_gw_cfg->ruuvi_cfg.ntp.ntp_server1, &server_idx);
+    time_task_add_ntp_server(g_arr_of_time_servers, &p_gw_cfg->ruuvi_cfg.ntp.ntp_server2, &server_idx);
+    time_task_add_ntp_server(g_arr_of_time_servers, &p_gw_cfg->ruuvi_cfg.ntp.ntp_server3, &server_idx);
+    time_task_add_ntp_server(g_arr_of_time_servers, &p_gw_cfg->ruuvi_cfg.ntp.ntp_server4, &server_idx);
 
-    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
-    if (p_gw_cfg->ruuvi_cfg.ntp.ntp_use && !p_gw_cfg->ruuvi_cfg.ntp.ntp_use_dhcp)
-    {
-        uint32_t server_idx = 0;
-        time_task_add_ntp_server(g_arr_of_time_servers, &p_gw_cfg->ruuvi_cfg.ntp.ntp_server1, &server_idx);
-        time_task_add_ntp_server(g_arr_of_time_servers, &p_gw_cfg->ruuvi_cfg.ntp.ntp_server2, &server_idx);
-        time_task_add_ntp_server(g_arr_of_time_servers, &p_gw_cfg->ruuvi_cfg.ntp.ntp_server3, &server_idx);
-        time_task_add_ntp_server(g_arr_of_time_servers, &p_gw_cfg->ruuvi_cfg.ntp.ntp_server4, &server_idx);
-    }
     gw_cfg_unlock_ro(&p_gw_cfg);
+}
 
-    for (uint32_t i = 0; i < TIME_TASK_NUM_OF_TIME_SERVERS; ++i)
+static void
+time_task_configure_ntp_sources(void)
+{
+    time_task_save_settings();
+
+    for (int32_t i = 0; i < SNTP_MAX_SERVERS; ++i)
     {
-        time_task_sntp_add_ntp_server(i, &g_arr_of_time_servers[i]);
+        sntp_setserver(i, NULL);
+    }
+
+    if (g_time_task_ntp_use)
+    {
+        if (g_time_task_ntp_use_dhcp)
+        {
+            LOG_INFO("Configure SNTP to use DHCP");
+            sntp_servermode_dhcp(1);
+        }
+        else
+        {
+            LOG_INFO("Configure SNTP to not use DHCP");
+            sntp_servermode_dhcp(0);
+        }
+    }
+
+    if (g_time_task_ntp_use && !g_time_task_ntp_use_dhcp)
+    {
+        for (uint32_t i = 0; i < TIME_TASK_NUM_OF_TIME_SERVERS; ++i)
+        {
+            time_task_sntp_add_ntp_server(i, &g_arr_of_time_servers[i]);
+        }
     }
 }
 
 bool
 time_task_init(void)
 {
+    time_task_save_settings();
+
     if (NULL != gp_time_task_signal)
     {
         LOG_ERR("time_task was already initialized");
