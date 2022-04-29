@@ -412,6 +412,7 @@ ethernet_stop(void)
         return;
     }
     LOG_INFO("Ethernet stop");
+    xEventGroupClearBits(status_bits, ETH_CONNECTED_BIT);
     esp_err_t err_code = esp_eth_stop(g_eth_handle);
     if (ESP_OK != err_code)
     {

@@ -238,7 +238,6 @@ cb_on_disconnect_eth_cmd(void)
 {
     LOG_INFO("callback: on_disconnect_eth_cmd");
     wifi_manager_update_network_connection_info(UPDATE_USER_DISCONNECT, NULL, NULL, NULL);
-    xEventGroupClearBits(status_bits, ETH_CONNECTED_BIT);
     ethernet_stop();
 }
 
