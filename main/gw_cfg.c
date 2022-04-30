@@ -237,6 +237,15 @@ gw_cfg_get_lan_auth(void)
     return lan_auth;
 }
 
+bool
+gw_cfg_get_ntp_use(void)
+{
+    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
+    const bool      ntp_use  = p_gw_cfg->ruuvi_cfg.ntp.ntp_use;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    return ntp_use;
+}
+
 ruuvi_gw_cfg_coordinates_t
 gw_cfg_get_coordinates(void)
 {

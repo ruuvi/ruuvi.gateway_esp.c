@@ -131,21 +131,21 @@ TEST_F(TestAdvTable, test_1) // NOLINT
     const uint32_t time_interval_seconds = 10;
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + 1, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + 1, true, time_interval_seconds);
         ASSERT_EQ(1, reports.num_of_advs);
         CHECK_ADV_REPORT(adv, data, &reports.table[0]);
     }
 
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds, true, time_interval_seconds);
         ASSERT_EQ(1, reports.num_of_advs);
         CHECK_ADV_REPORT(adv, data, &reports.table[0]);
     }
 
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 1, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 1, true, time_interval_seconds);
         ASSERT_EQ(0, reports.num_of_advs);
     }
 }
@@ -177,7 +177,7 @@ TEST_F(TestAdvTable, test_1_read_clear_add) // NOLINT
     const uint32_t time_interval_seconds = 10;
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + 1, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + 1, true, time_interval_seconds);
         ASSERT_EQ(1, reports.num_of_advs);
         CHECK_ADV_REPORT(adv, data, &reports.table[0]);
     }
@@ -206,7 +206,7 @@ TEST_F(TestAdvTable, test_2) // NOLINT
     const uint32_t time_interval_seconds = 10;
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds, true, time_interval_seconds);
         ASSERT_EQ(2, reports.num_of_advs);
         CHECK_ADV_REPORT(adv2, data2, &reports.table[0]);
         CHECK_ADV_REPORT(adv1, data1, &reports.table[1]);
@@ -214,15 +214,74 @@ TEST_F(TestAdvTable, test_2) // NOLINT
 
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 1, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 1, true, time_interval_seconds);
         ASSERT_EQ(1, reports.num_of_advs);
         CHECK_ADV_REPORT(adv2, data2, &reports.table[0]);
     }
 
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 2, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 2, true, time_interval_seconds);
         ASSERT_EQ(0, reports.num_of_advs);
+    }
+}
+
+TEST_F(TestAdvTable, test_2_filter_by_timestamp) // NOLINT
+{
+    const uint64_t    mac_addr       = 0x112233445566LLU;
+    const time_t      base_timestamp = 1611154440;
+    const wifi_rssi_t rssi           = 50;
+    DECL_ADV_REPORT(adv1, mac_addr + 0, base_timestamp + 0, rssi + 0, data1, 0xA1U, 0xB1U);
+    DECL_ADV_REPORT(adv2, mac_addr + 1, base_timestamp + 5, rssi + 1, data2, 0xA2U, 0xB2U, 0xC2);
+
+    ASSERT_TRUE(adv_table_put(&adv1));
+    ASSERT_TRUE(adv_table_put(&adv2));
+
+    {
+        adv_report_table_t reports = {};
+        adv_table_read_retransmission_list_and_clear(&reports);
+        ASSERT_EQ(2, reports.num_of_advs);
+        CHECK_ADV_REPORT(adv1, data1, &reports.table[0]);
+        CHECK_ADV_REPORT(adv2, data2, &reports.table[1]);
+    }
+
+    // Test reading of the history
+    const uint32_t time_interval_seconds = 5;
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds, true, 3);
+        ASSERT_EQ(1, reports.num_of_advs);
+        CHECK_ADV_REPORT(adv2, data2, &reports.table[0]);
+    }
+}
+
+TEST_F(TestAdvTable, test_2_without_timestamps) // NOLINT
+{
+    const uint64_t    mac_addr       = 0x112233445566LLU;
+    const time_t      base_timestamp = 1611154440;
+    const wifi_rssi_t rssi           = 50;
+    DECL_ADV_REPORT(adv1, mac_addr + 0, base_timestamp + 0, rssi + 0, data1, 0xA1U, 0xB1U);
+    DECL_ADV_REPORT(adv2, mac_addr + 1, base_timestamp + 5, rssi + 1, data2, 0xA2U, 0xB2U, 0xC2);
+
+    ASSERT_TRUE(adv_table_put(&adv1));
+    ASSERT_TRUE(adv_table_put(&adv2));
+
+    {
+        adv_report_table_t reports = {};
+        adv_table_read_retransmission_list_and_clear(&reports);
+        ASSERT_EQ(2, reports.num_of_advs);
+        CHECK_ADV_REPORT(adv1, data1, &reports.table[0]);
+        CHECK_ADV_REPORT(adv2, data2, &reports.table[1]);
+    }
+
+    // Test reading of the history
+    const uint32_t time_interval_seconds = 5;
+    {
+        adv_report_table_t reports = {};
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds, false, 3);
+        ASSERT_EQ(2, reports.num_of_advs);
+        CHECK_ADV_REPORT(adv2, data2, &reports.table[0]);
+        CHECK_ADV_REPORT(adv1, data1, &reports.table[1]);
     }
 }
 
@@ -251,7 +310,7 @@ TEST_F(TestAdvTable, test_2_with_the_same_hash) // NOLINT
     const uint32_t time_interval_seconds = 10;
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds, true, time_interval_seconds);
         ASSERT_EQ(2, reports.num_of_advs);
         CHECK_ADV_REPORT(adv2, data2, &reports.table[0]);
         CHECK_ADV_REPORT(adv1, data1, &reports.table[1]);
@@ -259,14 +318,14 @@ TEST_F(TestAdvTable, test_2_with_the_same_hash) // NOLINT
 
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 1, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 1, true, time_interval_seconds);
         ASSERT_EQ(1, reports.num_of_advs);
         CHECK_ADV_REPORT(adv2, data2, &reports.table[0]);
     }
 
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 2, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 2, true, time_interval_seconds);
         ASSERT_EQ(0, reports.num_of_advs);
     }
 }
@@ -304,7 +363,7 @@ TEST_F(TestAdvTable, test_2_with_the_same_hash_with_clear) // NOLINT
     const uint32_t time_interval_seconds = 10;
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds, true, time_interval_seconds);
         ASSERT_EQ(2, reports.num_of_advs);
         CHECK_ADV_REPORT(adv2, data2, &reports.table[0]);
         CHECK_ADV_REPORT(adv1, data1, &reports.table[1]);
@@ -312,14 +371,14 @@ TEST_F(TestAdvTable, test_2_with_the_same_hash_with_clear) // NOLINT
 
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 1, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 1, true, time_interval_seconds);
         ASSERT_EQ(1, reports.num_of_advs);
         CHECK_ADV_REPORT(adv2, data2, &reports.table[0]);
     }
 
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 2, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 2, true, time_interval_seconds);
         ASSERT_EQ(0, reports.num_of_advs);
     }
 }
@@ -349,7 +408,7 @@ TEST_F(TestAdvTable, test_3_overwrite_1) // NOLINT
     const uint32_t time_interval_seconds = 10;
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds, true, time_interval_seconds);
         ASSERT_EQ(2, reports.num_of_advs);
         CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
         CHECK_ADV_REPORT(adv2, data2, &reports.table[1]);
@@ -357,7 +416,7 @@ TEST_F(TestAdvTable, test_3_overwrite_1) // NOLINT
 
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 1, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 1, true, time_interval_seconds);
         ASSERT_EQ(2, reports.num_of_advs);
         CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
         CHECK_ADV_REPORT(adv2, data2, &reports.table[1]);
@@ -365,14 +424,14 @@ TEST_F(TestAdvTable, test_3_overwrite_1) // NOLINT
 
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 2, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 2, true, time_interval_seconds);
         ASSERT_EQ(1, reports.num_of_advs);
         CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
     }
 
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 3, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 3, true, time_interval_seconds);
         ASSERT_EQ(0, reports.num_of_advs);
     }
 }
@@ -402,7 +461,7 @@ TEST_F(TestAdvTable, test_3_overwrite_2) // NOLINT
     const uint32_t time_interval_seconds = 10;
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds, true, time_interval_seconds);
         ASSERT_EQ(2, reports.num_of_advs);
         CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
         CHECK_ADV_REPORT(adv1, data1, &reports.table[1]);
@@ -410,21 +469,21 @@ TEST_F(TestAdvTable, test_3_overwrite_2) // NOLINT
 
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 1, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 1, true, time_interval_seconds);
         ASSERT_EQ(1, reports.num_of_advs);
         CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
     }
 
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 2, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 2, true, time_interval_seconds);
         ASSERT_EQ(1, reports.num_of_advs);
         CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
     }
 
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 3, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 3, true, time_interval_seconds);
         ASSERT_EQ(0, reports.num_of_advs);
     }
 }
@@ -454,7 +513,7 @@ TEST_F(TestAdvTable, test_3_with_the_same_hash_overwrite_1) // NOLINT
     const uint32_t time_interval_seconds = 10;
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds, true, time_interval_seconds);
         ASSERT_EQ(2, reports.num_of_advs);
         CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
         CHECK_ADV_REPORT(adv2, data2, &reports.table[1]);
@@ -462,7 +521,7 @@ TEST_F(TestAdvTable, test_3_with_the_same_hash_overwrite_1) // NOLINT
 
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 1, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 1, true, time_interval_seconds);
         ASSERT_EQ(2, reports.num_of_advs);
         CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
         CHECK_ADV_REPORT(adv2, data2, &reports.table[1]);
@@ -470,14 +529,14 @@ TEST_F(TestAdvTable, test_3_with_the_same_hash_overwrite_1) // NOLINT
 
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 2, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 2, true, time_interval_seconds);
         ASSERT_EQ(1, reports.num_of_advs);
         CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
     }
 
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 3, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 3, true, time_interval_seconds);
         ASSERT_EQ(0, reports.num_of_advs);
     }
 }
@@ -509,7 +568,7 @@ TEST_F(TestAdvTable, test_3_with_the_same_hash_overwrite_2) // NOLINT
     const uint32_t time_interval_seconds = 10;
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds, true, time_interval_seconds);
         ASSERT_EQ(2, reports.num_of_advs);
         CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
         CHECK_ADV_REPORT(adv1, data1, &reports.table[1]);
@@ -517,21 +576,21 @@ TEST_F(TestAdvTable, test_3_with_the_same_hash_overwrite_2) // NOLINT
 
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 1, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 1, true, time_interval_seconds);
         ASSERT_EQ(1, reports.num_of_advs);
         CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
     }
 
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 2, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 2, true, time_interval_seconds);
         ASSERT_EQ(1, reports.num_of_advs);
         CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
     }
 
     {
         adv_report_table_t reports = {};
-        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 3, time_interval_seconds);
+        adv_table_history_read(&reports, base_timestamp + time_interval_seconds + 3, true, time_interval_seconds);
         ASSERT_EQ(0, reports.num_of_advs);
     }
 }

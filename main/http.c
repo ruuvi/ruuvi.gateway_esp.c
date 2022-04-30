@@ -227,6 +227,7 @@ http_send_advs(const adv_report_table_t *const p_reports, const uint32_t nonce)
     p_http_async_info->cjson_str         = cjson_wrap_str_null();
     if (!http_json_create_records_str(
             p_reports,
+            gw_cfg_get_ntp_use(),
             time(NULL),
             gw_cfg_get_nrf52_mac_addr(),
             coordinates.buf,

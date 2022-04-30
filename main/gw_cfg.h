@@ -356,6 +356,9 @@ gw_cfg_get_auto_update_cycle(void);
 ruuvi_gw_cfg_lan_auth_t
 gw_cfg_get_lan_auth(void);
 
+bool
+gw_cfg_get_ntp_use(void);
+
 ruuvi_gw_cfg_coordinates_t
 gw_cfg_get_coordinates(void);
 

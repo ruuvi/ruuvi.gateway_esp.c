@@ -175,7 +175,14 @@ parse_adv_report_from_uart(const re_ca_uart_payload_t *const p_msg, adv_report_t
         return false;
     }
     mac_address_bin_init(&p_adv->tag_mac, p_report->mac);
-    p_adv->timestamp       = time(NULL);
+    if (gw_cfg_get_ntp_use())
+    {
+        p_adv->timestamp = time(NULL);
+    }
+    else
+    {
+        p_adv->timestamp = (time_t)metrics_received_advs_get();
+    }
     p_adv->samples_counter = 0;
     p_adv->rssi            = p_report->rssi_db;
     p_adv->data_len        = p_report->adv_len;
@@ -263,14 +270,28 @@ adv_post_log(const adv_report_table_t *p_reports)
         const adv_report_t *p_adv = &p_reports->table[i];
 
         const mac_address_str_t mac_str = mac_address_to_str(&p_adv->tag_mac);
-        LOG_DUMP_INFO(
-            p_adv->data_buf,
-            p_adv->data_len,
-            "i: %d, tag: %s, rssi: %d, timestamp: %ld",
-            i,
-            mac_str.str_buf,
-            p_adv->rssi,
-            p_adv->timestamp);
+        if (gw_cfg_get_ntp_use())
+        {
+            LOG_DUMP_INFO(
+                p_adv->data_buf,
+                p_adv->data_len,
+                "i: %d, tag: %s, rssi: %d, timestamp: %ld",
+                i,
+                mac_str.str_buf,
+                p_adv->rssi,
+                p_adv->timestamp);
+        }
+        else
+        {
+            LOG_DUMP_INFO(
+                p_adv->data_buf,
+                p_adv->data_len,
+                "i: %d, tag: %s, rssi: %d, counter: %ld",
+                i,
+                mac_str.str_buf,
+                p_adv->rssi,
+                p_adv->timestamp);
+        }
     }
 }
 
@@ -286,7 +307,7 @@ adv_post_retransmit_advs(const adv_report_table_t *p_reports, const bool flag_ne
         LOG_WARN("Can't send advs, no network connection");
         return false;
     }
-    if (!time_is_valid(p_reports->table[0].timestamp))
+    if (gw_cfg_get_ntp_use() && !time_is_valid(p_reports->table[0].timestamp))
     {
         LOG_WARN("Can't send advs, the accumulated data has an invalid timestamp");
         return false;
@@ -372,7 +393,7 @@ adv_post_do_async_comm(adv_post_state_t *const p_adv_post_state)
         {
             LOG_WARN("Can't send advs, no network connection");
         }
-        else if (!time_is_synchronized())
+        else if (gw_cfg_get_ntp_use() && !time_is_synchronized())
         {
             LOG_WARN("Can't send advs, the time is not yet synchronized");
         }
@@ -392,7 +413,7 @@ adv_post_do_async_comm(adv_post_state_t *const p_adv_post_state)
         {
             LOG_WARN("Can't send statistics, no network connection");
         }
-        else if (!time_is_synchronized())
+        else if (gw_cfg_get_ntp_use() && !time_is_synchronized())
         {
             LOG_WARN("Can't send statistics, the time is not yet synchronized");
         }
@@ -483,7 +504,7 @@ adv_post_handle_sig_send_statistics(adv_post_state_t *const p_adv_post_state)
             LOG_WARN("Can't send statistics, no network connection");
             return;
         }
-        if (!time_is_synchronized())
+        if (gw_cfg_get_ntp_use() && !time_is_synchronized())
         {
             LOG_WARN("Can't send statistics, the time is not yet synchronized");
             return;

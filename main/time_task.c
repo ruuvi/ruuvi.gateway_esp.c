@@ -171,13 +171,17 @@ time_task_on_cfg_changed(void)
 {
     time_task_sntp_stop();
     LOG_INFO("Reconfigure SNTP");
+    const bool flag_prev_ntp_use      = g_time_task_ntp_use;
     const bool flag_prev_ntp_use_dhcp = g_time_task_ntp_use_dhcp;
     time_task_configure_ntp_sources();
-    if (flag_prev_ntp_use_dhcp != g_time_task_ntp_use_dhcp)
+    if ((flag_prev_ntp_use != g_time_task_ntp_use) || (flag_prev_ntp_use_dhcp != g_time_task_ntp_use_dhcp))
     {
         main_task_send_sig_reconnect_network();
     }
-    time_task_sntp_start();
+    if (g_time_task_ntp_use)
+    {
+        time_task_sntp_start();
+    }
 }
 
 static bool
@@ -188,7 +192,10 @@ time_task_handle_sig(const time_task_sig_e time_task_sig)
     {
         case TIME_TASK_SIG_WIFI_CONNECTED:
         case TIME_TASK_SIG_ETH_CONNECTED:
-            time_task_sntp_start();
+            if (g_time_task_ntp_use)
+            {
+                time_task_sntp_start();
+            }
             break;
         case TIME_TASK_SIG_WIFI_DISCONNECTED:
         case TIME_TASK_SIG_ETH_DISCONNECTED:

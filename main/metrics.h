@@ -8,6 +8,8 @@
 #ifndef RUUVI_GATEWAY_ESP_METRICS_H
 #define RUUVI_GATEWAY_ESP_METRICS_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -20,6 +22,9 @@ metrics_deinit(void);
 
 void
 metrics_received_advs_increment(void);
+
+uint64_t
+metrics_received_advs_get(void);
 
 char *
 metrics_generate(void);
