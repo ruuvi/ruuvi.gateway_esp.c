@@ -650,6 +650,7 @@ ruuvi_init_gw_cfg(
     gw_cfg_default_init(&gw_cfg_default_init_param, &gw_cfg_default_json_read);
     gw_cfg_init(&settings_save_to_flash);
     settings_get_from_flash();
+    event_mgr_notify(EVENT_MGR_EV_CFG_READY);
 }
 
 static bool

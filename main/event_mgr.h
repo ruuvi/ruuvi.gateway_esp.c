@@ -25,6 +25,7 @@ typedef enum event_mgr_ev_e
     EVENT_MGR_EV_ETH_DISCONNECTED,
     EVENT_MGR_EV_TIME_SYNCHRONIZED,
     EVENT_MGR_EV_CFG_CHANGED,
+    EVENT_MGR_EV_CFG_READY,
     EVENT_MGR_EV_LAST,
 } event_mgr_ev_e;
 
