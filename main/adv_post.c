@@ -251,7 +251,7 @@ adv_post_send_report(void *arg)
         }
         else
         {
-            if (mqtt_publish_adv(&adv_report))
+            if (mqtt_publish_adv(&adv_report, flag_ntp_use, time(NULL)))
             {
                 adv_post_last_successful_network_comm_timestamp_update();
             }
@@ -305,7 +305,10 @@ adv_post_log(const adv_report_table_t *p_reports, const bool flag_use_timestamps
 }
 
 static bool
-adv_post_retransmit_advs(const adv_report_table_t *p_reports, const bool flag_network_connected)
+adv_post_retransmit_advs(
+    const adv_report_table_t *p_reports,
+    const bool                flag_network_connected,
+    const bool                flag_use_timestamps)
 {
     if (0 == p_reports->num_of_advs)
     {
@@ -317,7 +320,7 @@ adv_post_retransmit_advs(const adv_report_table_t *p_reports, const bool flag_ne
         return false;
     }
 
-    if (!http_send_advs(p_reports, g_adv_post_nonce))
+    if (!http_send_advs(p_reports, g_adv_post_nonce, flag_use_timestamps))
     {
         return false;
     }
@@ -335,7 +338,7 @@ adv_post_do_retransmission(const bool flag_network_connected, const bool flag_us
 
     adv_post_log(&g_adv_reports_buf, flag_use_timestamps);
 
-    return adv_post_retransmit_advs(&g_adv_reports_buf, flag_network_connected);
+    return adv_post_retransmit_advs(&g_adv_reports_buf, flag_network_connected, flag_use_timestamps);
 }
 
 static bool
