@@ -9,6 +9,7 @@
 #include "gw_cfg_default.h"
 #include <string.h>
 #include "os_mutex_recursive.h"
+#include "event_mgr.h"
 
 _Static_assert(sizeof(GW_CFG_REMOTE_AUTH_TYPE_STR_NO) <= GW_CFG_REMOTE_AUTH_TYPE_STR_SIZE, "");
 _Static_assert(sizeof(GW_CFG_REMOTE_AUTH_TYPE_STR_BASIC) <= GW_CFG_REMOTE_AUTH_TYPE_STR_SIZE, "");
@@ -18,15 +19,15 @@ static gw_cfg_t                    g_gateway_config = { 0 };
 static os_mutex_recursive_t        g_gw_cfg_mutex;
 static os_mutex_recursive_static_t g_gw_cfg_mutex_mem;
 static gw_cfg_device_info_t *const g_gw_cfg_p_device_info = &g_gateway_config.device_info;
-static gw_cfg_cb_save_cfg_to_nvs   g_p_gw_cfg_cb_save_cfg_to_nvs;
+static gw_cfg_cb_on_change_cfg     g_p_gw_cfg_cb_on_change_cfg;
 
 void
-gw_cfg_init(gw_cfg_cb_save_cfg_to_nvs p_cb_save_cfg_to_nvs)
+gw_cfg_init(gw_cfg_cb_on_change_cfg p_cb_on_change_cfg)
 {
     g_gw_cfg_mutex = os_mutex_recursive_create_static(&g_gw_cfg_mutex_mem);
     os_mutex_recursive_lock(g_gw_cfg_mutex);
     gw_cfg_default_get(&g_gateway_config);
-    g_p_gw_cfg_cb_save_cfg_to_nvs = p_cb_save_cfg_to_nvs;
+    g_p_gw_cfg_cb_on_change_cfg = p_cb_on_change_cfg;
     os_mutex_recursive_unlock(g_gw_cfg_mutex);
 }
 
@@ -47,24 +48,6 @@ gw_cfg_is_initialized(void)
     return false;
 }
 
-static gw_cfg_t *
-gw_cfg_lock_rw(void)
-{
-    os_mutex_recursive_lock(g_gw_cfg_mutex);
-    return &g_gateway_config;
-}
-
-static void
-gw_cfg_unlock_rw(gw_cfg_t **const p_p_gw_cfg)
-{
-    if (NULL != g_p_gw_cfg_cb_save_cfg_to_nvs)
-    {
-        g_p_gw_cfg_cb_save_cfg_to_nvs(*p_p_gw_cfg);
-    }
-    *p_p_gw_cfg = NULL;
-    os_mutex_recursive_unlock(g_gw_cfg_mutex);
-}
-
 const gw_cfg_t *
 gw_cfg_lock_ro(void)
 {
@@ -80,37 +63,70 @@ gw_cfg_unlock_ro(const gw_cfg_t **const p_p_gw_cfg)
 }
 
 void
+gw_cfg_set(
+    const gw_cfg_ruuvi_t *const   p_gw_cfg_ruuvi,
+    const gw_cfg_eth_t *const     p_gw_cfg_eth,
+    const wifiman_config_t *const p_gw_cfg_wifi)
+{
+    os_mutex_recursive_lock(g_gw_cfg_mutex);
+    gw_cfg_t *const p_gw_cfg_dst = &g_gateway_config;
+
+    event_mgr_notify(EVENT_MGR_EV_CFG_CHANGED);
+
+    if (NULL != p_gw_cfg_ruuvi)
+    {
+        event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI);
+        if (p_gw_cfg_dst->ruuvi_cfg.ntp.ntp_use != p_gw_cfg_ruuvi->ntp.ntp_use)
+        {
+            event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI_NTP_USE);
+        }
+        else if (
+            p_gw_cfg_ruuvi->ntp.ntp_use
+            && (p_gw_cfg_dst->ruuvi_cfg.ntp.ntp_use_dhcp != p_gw_cfg_ruuvi->ntp.ntp_use_dhcp))
+        {
+            event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI_NTP_USE_DHCP);
+        }
+        p_gw_cfg_dst->ruuvi_cfg = *p_gw_cfg_ruuvi;
+    }
+    if (NULL != p_gw_cfg_eth)
+    {
+        event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_ETH);
+        p_gw_cfg_dst->eth_cfg = *p_gw_cfg_eth;
+    }
+    if (NULL != p_gw_cfg_wifi)
+    {
+        event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_WIFI);
+        p_gw_cfg_dst->wifi_cfg = *p_gw_cfg_wifi;
+    }
+    if (NULL != g_p_gw_cfg_cb_on_change_cfg)
+    {
+        g_p_gw_cfg_cb_on_change_cfg(p_gw_cfg_dst);
+    }
+    os_mutex_recursive_unlock(g_gw_cfg_mutex);
+}
+
+void
 gw_cfg_update_eth_cfg(const gw_cfg_eth_t *const p_gw_cfg_eth_new)
 {
-    gw_cfg_t *p_gw_cfg = gw_cfg_lock_rw();
-    p_gw_cfg->eth_cfg  = *p_gw_cfg_eth_new;
-    gw_cfg_unlock_rw(&p_gw_cfg);
+    gw_cfg_set(NULL, p_gw_cfg_eth_new, NULL);
 }
 
 void
 gw_cfg_update_ruuvi_cfg(const gw_cfg_ruuvi_t *const p_gw_cfg_ruuvi_new)
 {
-    gw_cfg_t *p_gw_cfg  = gw_cfg_lock_rw();
-    p_gw_cfg->ruuvi_cfg = *p_gw_cfg_ruuvi_new;
-    gw_cfg_unlock_rw(&p_gw_cfg);
+    gw_cfg_set(p_gw_cfg_ruuvi_new, NULL, NULL);
 }
 
 void
 gw_cfg_update_wifi_config(const wifiman_config_t *const p_wifi_cfg)
 {
-    gw_cfg_t *p_gw_cfg = gw_cfg_lock_rw();
-    p_gw_cfg->wifi_cfg = *p_wifi_cfg;
-    gw_cfg_unlock_rw(&p_gw_cfg);
+    gw_cfg_set(NULL, NULL, p_wifi_cfg);
 }
 
 void
-gw_cfg_update(const gw_cfg_t *const p_gw_cfg_src)
+gw_cfg_update(const gw_cfg_t *const p_gw_cfg)
 {
-    gw_cfg_t *p_gw_cfg_dst  = gw_cfg_lock_rw();
-    p_gw_cfg_dst->ruuvi_cfg = p_gw_cfg_src->ruuvi_cfg;
-    p_gw_cfg_dst->eth_cfg   = p_gw_cfg_src->eth_cfg;
-    p_gw_cfg_dst->wifi_cfg  = p_gw_cfg_src->wifi_cfg;
-    gw_cfg_unlock_rw(&p_gw_cfg_dst);
+    gw_cfg_set(&p_gw_cfg->ruuvi_cfg, &p_gw_cfg->eth_cfg, &p_gw_cfg->wifi_cfg);
 }
 
 bool

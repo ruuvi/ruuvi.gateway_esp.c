@@ -22,6 +22,7 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/gw_mac.h
         ${RUUVI_GW_SRC}/cjson_wrap.c
         ${RUUVI_GW_SRC}/cjson_wrap.h
+        ${RUUVI_GW_SRC}/event_mgr.h
         ${WIFI_MANAGER_SRC}/wifiman_config.c
         ${WIFI_MANAGER_SRC}/wifiman_config.h
         ${WIFI_MANAGER_SRC}/wifiman_md5.c

@@ -26,6 +26,7 @@
 #include "gw_cfg_default.h"
 #include "fw_ver.h"
 #include "lwip/ip4_addr.h"
+#include "event_mgr.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -402,6 +403,11 @@ void
 os_mutex_unlock(os_mutex_t const h_mutex)
 {
     (void)h_mutex;
+}
+
+void
+event_mgr_notify(const event_mgr_ev_e event)
+{
 }
 
 char *

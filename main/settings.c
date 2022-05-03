@@ -163,8 +163,6 @@ settings_save_to_flash_cjson(const char *const p_json_str)
         }
     }
 
-    event_mgr_notify(EVENT_MGR_EV_CFG_CHANGED);
-
     esp_err_t err = nvs_set_str(handle, RUUVI_GATEWAY_NVS_CFG_JSON_KEY, (NULL != p_json_str) ? p_json_str : "");
     if (ESP_OK != err)
     {

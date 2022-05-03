@@ -284,10 +284,10 @@ typedef struct gw_cfg_t
     wifiman_config_t     wifi_cfg;
 } gw_cfg_t;
 
-typedef void (*gw_cfg_cb_save_cfg_to_nvs)(const gw_cfg_t *const p_gw_cfg);
+typedef void (*gw_cfg_cb_on_change_cfg)(const gw_cfg_t *const p_gw_cfg);
 
 void
-gw_cfg_init(gw_cfg_cb_save_cfg_to_nvs p_cb_save_cfg_to_nvs);
+gw_cfg_init(gw_cfg_cb_on_change_cfg p_cb_on_change_cfg);
 
 void
 gw_cfg_deinit(void);
@@ -311,7 +311,7 @@ void
 gw_cfg_update_wifi_config(const wifiman_config_t *const p_wifi_cfg);
 
 void
-gw_cfg_update(const gw_cfg_t *const p_gw_cfg_src);
+gw_cfg_update(const gw_cfg_t *const p_gw_cfg);
 
 bool
 gw_cfg_cmp(

@@ -18,6 +18,7 @@
 #include "wifiman_md5.h"
 #include "os_mutex.h"
 #include "lwip/ip4_addr.h"
+#include "event_mgr.h"
 
 using namespace std;
 
@@ -231,6 +232,11 @@ esp_ip4addr_aton(const char *addr)
 
 void
 wifi_manager_cb_save_wifi_config(const wifiman_config_t *const p_cfg)
+{
+}
+
+void
+event_mgr_notify(const event_mgr_ev_e event)
 {
 }
 
