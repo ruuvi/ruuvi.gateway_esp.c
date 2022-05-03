@@ -387,7 +387,7 @@ time_task_init(void)
         time_task_conv_to_sig_num(TIME_TASK_SIG_ETH_DISCONNECTED));
     event_mgr_subscribe_sig_static(
         &g_time_task_ev_info_mem_cfg_changed,
-        EVENT_MGR_EV_CFG_CHANGED,
+        EVENT_MGR_EV_GW_CFG_CHANGED,
         gp_time_task_signal,
         time_task_conv_to_sig_num(TIME_TASK_SIG_CFG_CHANGED));
 

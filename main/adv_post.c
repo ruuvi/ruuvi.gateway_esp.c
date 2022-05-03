@@ -55,6 +55,7 @@ typedef enum adv_post_sig_e
     ADV_POST_SIG_TASK_WATCHDOG_FEED   = OS_SIGNAL_NUM_10,
     ADV_POST_SIG_CFG_READY            = OS_SIGNAL_NUM_11,
     ADV_POST_SIG_CFG_CHANGED          = OS_SIGNAL_NUM_12,
+    ADV_POST_SIG_GW_CFG_CHANGED_RUUVI = OS_SIGNAL_NUM_13,
 } adv_post_sig_e;
 
 typedef struct adv_post_state_t
@@ -68,7 +69,7 @@ typedef struct adv_post_state_t
 } adv_post_state_t;
 
 #define ADV_POST_SIG_FIRST (ADV_POST_SIG_STOP)
-#define ADV_POST_SIG_LAST  (ADV_POST_SIG_CFG_CHANGED)
+#define ADV_POST_SIG_LAST  (ADV_POST_SIG_GW_CFG_CHANGED_RUUVI)
 
 static void
 adv_post_send_report(void *arg);
@@ -114,6 +115,7 @@ static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_eth_connected;
 static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_time_synchronized;
 static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_cfg_ready;
 static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_cfg_changed;
+static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_gw_cfg_ruuvi_changed;
 
 static uint32_t g_adv_post_interval_ms = ADV_POST_DEFAULT_INTERVAL_SECONDS * TIME_UNITS_MS_PER_SECOND;
 
@@ -267,6 +269,7 @@ static void
 adv_post_send_get_all(void *arg)
 {
     (void)arg;
+    LOG_INFO("Got configuration request from NRF52");
     ruuvi_send_nrf_settings();
 }
 
@@ -598,11 +601,16 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t *const p
             break;
         case ADV_POST_SIG_CFG_READY:
             LOG_INFO("Got ADV_POST_SIG_CFG_READY");
+            ruuvi_send_nrf_settings();
             p_adv_post_state->flag_use_timestamps = gw_cfg_get_ntp_use();
             break;
         case ADV_POST_SIG_CFG_CHANGED:
             LOG_INFO("Got ADV_POST_SIG_CFG_CHANGED");
             p_adv_post_state->flag_use_timestamps = gw_cfg_get_ntp_use();
+            break;
+        case ADV_POST_SIG_GW_CFG_CHANGED_RUUVI:
+            LOG_INFO("Got ADV_POST_SIG_GW_CFG_CHANGED_RUUVI");
+            ruuvi_send_nrf_settings();
             break;
     }
     return flag_stop;
@@ -694,6 +702,7 @@ adv_post_init(void)
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_TASK_WATCHDOG_FEED));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_CFG_READY));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_CFG_CHANGED));
+    os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_GW_CFG_CHANGED_RUUVI));
 
     event_mgr_subscribe_sig_static(
         &g_adv_post_ev_info_mem_wifi_disconnected,
@@ -727,15 +736,21 @@ adv_post_init(void)
 
     event_mgr_subscribe_sig_static(
         &g_adv_post_ev_info_mem_cfg_ready,
-        EVENT_MGR_EV_CFG_READY,
+        EVENT_MGR_EV_GW_CFG_READY,
         g_p_adv_post_sig,
         adv_post_conv_to_sig_num(ADV_POST_SIG_CFG_READY));
 
     event_mgr_subscribe_sig_static(
         &g_adv_post_ev_info_mem_cfg_changed,
-        EVENT_MGR_EV_CFG_CHANGED,
+        EVENT_MGR_EV_GW_CFG_CHANGED,
         g_p_adv_post_sig,
         adv_post_conv_to_sig_num(ADV_POST_SIG_CFG_CHANGED));
+
+    event_mgr_subscribe_sig_static(
+        &g_adv_post_ev_info_mem_gw_cfg_ruuvi_changed,
+        EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI,
+        g_p_adv_post_sig,
+        adv_post_conv_to_sig_num(ADV_POST_SIG_GW_CFG_CHANGED_RUUVI));
 
     g_p_adv_post_timer_sig_retransmit = os_timer_sig_periodic_create_static(
         &g_adv_post_timer_sig_retransmit_mem,

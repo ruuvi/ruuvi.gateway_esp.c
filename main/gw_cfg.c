@@ -16,6 +16,7 @@ _Static_assert(sizeof(GW_CFG_REMOTE_AUTH_TYPE_STR_BASIC) <= GW_CFG_REMOTE_AUTH_T
 _Static_assert(sizeof(GW_CFG_REMOTE_AUTH_TYPE_STR_BEARER) <= GW_CFG_REMOTE_AUTH_TYPE_STR_SIZE, "");
 
 static gw_cfg_t                    g_gateway_config = { 0 };
+static bool                        g_gw_cfg_ready   = false;
 static os_mutex_recursive_t        g_gw_cfg_mutex;
 static os_mutex_recursive_static_t g_gw_cfg_mutex_mem;
 static gw_cfg_device_info_t *const g_gw_cfg_p_device_info = &g_gateway_config.device_info;
@@ -26,6 +27,7 @@ gw_cfg_init(gw_cfg_cb_on_change_cfg p_cb_on_change_cfg)
 {
     g_gw_cfg_mutex = os_mutex_recursive_create_static(&g_gw_cfg_mutex_mem);
     os_mutex_recursive_lock(g_gw_cfg_mutex);
+    g_gw_cfg_ready = false;
     gw_cfg_default_get(&g_gateway_config);
     g_p_gw_cfg_cb_on_change_cfg = p_cb_on_change_cfg;
     os_mutex_recursive_unlock(g_gw_cfg_mutex);
@@ -71,37 +73,54 @@ gw_cfg_set(
     os_mutex_recursive_lock(g_gw_cfg_mutex);
     gw_cfg_t *const p_gw_cfg_dst = &g_gateway_config;
 
-    event_mgr_notify(EVENT_MGR_EV_CFG_CHANGED);
-
     if (NULL != p_gw_cfg_ruuvi)
     {
-        event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI);
-        if (p_gw_cfg_dst->ruuvi_cfg.ntp.ntp_use != p_gw_cfg_ruuvi->ntp.ntp_use)
+        if (g_gw_cfg_ready)
         {
-            event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI_NTP_USE);
-        }
-        else if (
-            p_gw_cfg_ruuvi->ntp.ntp_use
-            && (p_gw_cfg_dst->ruuvi_cfg.ntp.ntp_use_dhcp != p_gw_cfg_ruuvi->ntp.ntp_use_dhcp))
-        {
-            event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI_NTP_USE_DHCP);
+            event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI);
+            if (p_gw_cfg_dst->ruuvi_cfg.ntp.ntp_use != p_gw_cfg_ruuvi->ntp.ntp_use)
+            {
+                event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI_NTP_USE);
+            }
+            else if (
+                p_gw_cfg_ruuvi->ntp.ntp_use
+                && (p_gw_cfg_dst->ruuvi_cfg.ntp.ntp_use_dhcp != p_gw_cfg_ruuvi->ntp.ntp_use_dhcp))
+            {
+                event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI_NTP_USE_DHCP);
+            }
         }
         p_gw_cfg_dst->ruuvi_cfg = *p_gw_cfg_ruuvi;
     }
     if (NULL != p_gw_cfg_eth)
     {
-        event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_ETH);
+        if (g_gw_cfg_ready)
+        {
+            event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_ETH);
+        }
         p_gw_cfg_dst->eth_cfg = *p_gw_cfg_eth;
     }
     if (NULL != p_gw_cfg_wifi)
     {
-        event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_WIFI);
+        if (g_gw_cfg_ready)
+        {
+            event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_WIFI);
+        }
         p_gw_cfg_dst->wifi_cfg = *p_gw_cfg_wifi;
     }
     if (NULL != g_p_gw_cfg_cb_on_change_cfg)
     {
         g_p_gw_cfg_cb_on_change_cfg(p_gw_cfg_dst);
     }
+    if (!g_gw_cfg_ready)
+    {
+        g_gw_cfg_ready = true;
+        event_mgr_notify(EVENT_MGR_EV_GW_CFG_READY);
+    }
+    else
+    {
+        event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED);
+    }
+
     os_mutex_recursive_unlock(g_gw_cfg_mutex);
 }
 

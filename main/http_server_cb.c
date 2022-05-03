@@ -804,7 +804,6 @@ http_server_cb_on_post_ruuvi(const char *p_body)
     {
         gw_cfg_update_ruuvi_cfg(&p_gw_cfg_tmp->ruuvi_cfg);
         restart_services();
-        ruuvi_send_nrf_settings();
         adv_post_enable_retransmission();
     }
 

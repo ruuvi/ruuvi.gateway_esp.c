@@ -415,7 +415,7 @@ cmd_handler_task(void *p_param)
                 memset(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf));
                 memset(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf));
                 gw_cfg_update(&gw_cfg);
-                event_mgr_notify(EVENT_MGR_EV_CFG_CHANGED);
+                event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED);
                 break;
             }
             case MAIN_TASK_CMD_CHANGE_NTP_CONFIG2:
@@ -428,7 +428,7 @@ cmd_handler_task(void *p_param)
                 memset(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf));
                 memset(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf));
                 gw_cfg_update(&gw_cfg);
-                event_mgr_notify(EVENT_MGR_EV_CFG_CHANGED);
+                event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED);
                 break;
             }
             case MAIN_TASK_CMD_EXIT:

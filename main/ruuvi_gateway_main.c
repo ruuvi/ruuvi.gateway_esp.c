@@ -677,8 +677,6 @@ ruuvi_init_gw_cfg(
     gw_cfg_log(p_gw_cfg_tmp, "Gateway SETTINGS (from flash)", false);
     gw_cfg_update(p_gw_cfg_tmp);
     os_free(p_gw_cfg_tmp);
-
-    event_mgr_notify(EVENT_MGR_EV_CFG_READY);
 }
 
 static bool
@@ -760,7 +758,6 @@ main_task_init(void)
     main_task_init_timers();
 
     time_task_init();
-    ruuvi_send_nrf_settings();
 
     if (!network_subsystem_init())
     {

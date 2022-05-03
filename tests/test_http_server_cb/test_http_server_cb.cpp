@@ -251,7 +251,6 @@ protected:
         this->m_malloc_cnt                        = 0;
         this->m_malloc_fail_on_cnt                = 0;
         this->m_flag_settings_saved_to_flash      = false;
-        this->m_flag_settings_sent_to_nrf         = false;
         this->m_flag_settings_ethernet_ip_updated = false;
 
         const gw_cfg_default_init_param_t init_params = {
@@ -287,7 +286,6 @@ public:
     uint32_t              m_malloc_cnt;
     uint32_t              m_malloc_fail_on_cnt;
     bool                  m_flag_settings_saved_to_flash;
-    bool                  m_flag_settings_sent_to_nrf;
     bool                  m_flag_settings_ethernet_ip_updated;
     flash_fat_fs_t        m_fatfs;
     bool                  m_is_fatfs_mounted;
@@ -301,7 +299,6 @@ TestHttpServerCb::TestHttpServerCb()
     : m_malloc_cnt(0)
     , m_malloc_fail_on_cnt(0)
     , m_flag_settings_saved_to_flash(false)
-    , m_flag_settings_sent_to_nrf(false)
     , m_flag_settings_ethernet_ip_updated(false)
     , m_is_fatfs_mounted(false)
     , m_is_fatfs_mount_fail(false)
@@ -493,12 +490,6 @@ void
 ethernet_update_ip(void)
 {
     g_pTestClass->m_flag_settings_ethernet_ip_updated = true;
-}
-
-void
-ruuvi_send_nrf_settings(const gw_cfg_t *p_config)
-{
-    g_pTestClass->m_flag_settings_sent_to_nrf = true;
 }
 
 const flash_fat_fs_t *
@@ -1510,7 +1501,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
         "}");
 
     ASSERT_TRUE(this->m_flag_settings_saved_to_flash);
-    ASSERT_TRUE(this->m_flag_settings_sent_to_nrf);
     ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
@@ -1666,7 +1656,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed1) // NOLINT
         "}");
 
     ASSERT_FALSE(this->m_flag_settings_saved_to_flash);
-    ASSERT_FALSE(this->m_flag_settings_sent_to_nrf);
     ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
 
     ASSERT_EQ(HTTP_RESP_CODE_503, resp.http_resp_code);
@@ -1709,7 +1698,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed2) // NOLINT
         "}");
 
     ASSERT_FALSE(this->m_flag_settings_saved_to_flash);
-    ASSERT_FALSE(this->m_flag_settings_sent_to_nrf);
     ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
 
     ASSERT_EQ(HTTP_RESP_CODE_503, resp.http_resp_code);
@@ -1752,7 +1740,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed3) // NOLINT
         "}");
 
     ASSERT_FALSE(this->m_flag_settings_saved_to_flash);
-    ASSERT_FALSE(this->m_flag_settings_sent_to_nrf);
     ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
 
     ASSERT_EQ(HTTP_RESP_CODE_503, resp.http_resp_code);
@@ -1816,7 +1803,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
         false);
 
     ASSERT_TRUE(this->m_flag_settings_saved_to_flash);
-    ASSERT_TRUE(this->m_flag_settings_sent_to_nrf);
     ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
@@ -1997,7 +1983,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
         false);
 
     ASSERT_TRUE(this->m_flag_settings_saved_to_flash);
-    ASSERT_TRUE(this->m_flag_settings_sent_to_nrf);
     ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
@@ -2157,7 +2142,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
         false);
 
     ASSERT_TRUE(this->m_flag_settings_saved_to_flash);
-    ASSERT_TRUE(this->m_flag_settings_sent_to_nrf);
     ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
@@ -2314,7 +2298,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_unknown_json) // NOLINT
         false);
 
     ASSERT_FALSE(this->m_flag_settings_saved_to_flash);
-    ASSERT_FALSE(this->m_flag_settings_sent_to_nrf);
     ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
 
     ASSERT_EQ(HTTP_RESP_CODE_404, resp.http_resp_code);
