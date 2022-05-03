@@ -309,10 +309,15 @@ settings_read_from_blob(nvs_handle handle, gw_cfg_t *const p_gw_cfg)
     return flag_use_default_config;
 }
 
-void
+const gw_cfg_t *
 settings_get_from_flash(void)
 {
-    gw_cfg_t * p_gw_cfg                = gw_cfg_lock_rw();
+    gw_cfg_t *p_gw_cfg_tmp = os_calloc(1, sizeof(*p_gw_cfg_tmp));
+    if (NULL == p_gw_cfg_tmp)
+    {
+        LOG_ERR("Can't allocate memory for gw_cfg");
+        return NULL;
+    }
     bool       flag_use_default_config = false;
     bool       flag_modified           = false;
     nvs_handle handle                  = 0;
@@ -322,10 +327,10 @@ settings_get_from_flash(void)
     }
     else
     {
-        if (!settings_get_gw_cfg_from_nvs(handle, p_gw_cfg, &flag_modified))
+        if (!settings_get_gw_cfg_from_nvs(handle, p_gw_cfg_tmp, &flag_modified))
         {
             flag_modified           = true;
-            flag_use_default_config = settings_read_from_blob(handle, p_gw_cfg);
+            flag_use_default_config = settings_read_from_blob(handle, p_gw_cfg_tmp);
         }
         nvs_close(handle);
     }
@@ -333,19 +338,19 @@ settings_get_from_flash(void)
     {
         LOG_WARN("Using default config");
         flag_modified = true;
-        gw_cfg_default_get(p_gw_cfg);
+        gw_cfg_default_get(p_gw_cfg_tmp);
     }
 
-    const bool flag_wifi_cfg_blob_used = wifi_manager_cfg_blob_read(&p_gw_cfg->wifi_cfg);
+    const bool flag_wifi_cfg_blob_used = wifi_manager_cfg_blob_read(&p_gw_cfg_tmp->wifi_cfg);
     if (flag_wifi_cfg_blob_used)
     {
-        gw_cfg_log_wifi_cfg(&p_gw_cfg->wifi_cfg, "Got wifi_cfg from NVS BLOB:");
+        gw_cfg_log_wifi_cfg(&p_gw_cfg_tmp->wifi_cfg, "Got wifi_cfg from NVS BLOB:");
     }
 
     if (flag_modified || flag_wifi_cfg_blob_used)
     {
         LOG_INFO("Update config in flash");
-        settings_save_to_flash(p_gw_cfg); // Update configuration in NVS before erasing BLOBs
+        settings_save_to_flash(p_gw_cfg_tmp); // Update configuration in NVS before erasing BLOBs
     }
     settings_erase_gw_cfg_blob_if_exist(handle);
     if (flag_wifi_cfg_blob_used)
@@ -356,8 +361,7 @@ settings_get_from_flash(void)
         }
     }
 
-    gw_cfg_log(p_gw_cfg, "Gateway SETTINGS (from flash)", false);
-    gw_cfg_unlock_rw(&p_gw_cfg);
+    return p_gw_cfg_tmp;
 }
 
 mac_address_bin_t

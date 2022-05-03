@@ -22,7 +22,7 @@ settings_check_in_flash(void);
 void
 settings_save_to_flash(const gw_cfg_t *const p_gw_cfg);
 
-void
+const gw_cfg_t *
 settings_get_from_flash(void);
 
 mac_address_bin_t

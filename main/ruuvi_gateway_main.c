@@ -649,7 +649,18 @@ ruuvi_init_gw_cfg(
     };
     gw_cfg_default_init(&gw_cfg_default_init_param, &gw_cfg_default_json_read);
     gw_cfg_init(&settings_save_to_flash);
-    settings_get_from_flash();
+
+    const gw_cfg_t *p_gw_cfg_tmp = settings_get_from_flash();
+    if (NULL == p_gw_cfg_tmp)
+    {
+        LOG_ERR("Can't get settings from flash");
+        return;
+    }
+    gw_cfg_log(p_gw_cfg_tmp, "Gateway SETTINGS (from flash)", false);
+    gw_cfg_update(p_gw_cfg_tmp);
+    os_free(p_gw_cfg_tmp);
+
+    ruuvi_auth_set_from_config();
     event_mgr_notify(EVENT_MGR_EV_CFG_READY);
 }
 
@@ -733,7 +744,6 @@ main_task_init(void)
 
     time_task_init();
     ruuvi_send_nrf_settings();
-    ruuvi_auth_set_from_config();
 
     if (!network_subsystem_init())
     {
