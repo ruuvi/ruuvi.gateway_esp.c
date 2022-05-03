@@ -47,14 +47,14 @@ gw_cfg_is_initialized(void)
     return false;
 }
 
-gw_cfg_t *
+static gw_cfg_t *
 gw_cfg_lock_rw(void)
 {
     os_mutex_recursive_lock(g_gw_cfg_mutex);
     return &g_gateway_config;
 }
 
-void
+static void
 gw_cfg_unlock_rw(gw_cfg_t **const p_p_gw_cfg)
 {
     if (NULL != g_p_gw_cfg_cb_save_cfg_to_nvs)

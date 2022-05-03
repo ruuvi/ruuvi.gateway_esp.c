@@ -295,12 +295,6 @@ gw_cfg_deinit(void);
 bool
 gw_cfg_is_initialized(void);
 
-gw_cfg_t *
-gw_cfg_lock_rw(void);
-
-void
-gw_cfg_unlock_rw(gw_cfg_t **const p_p_gw_cfg);
-
 const gw_cfg_t *
 gw_cfg_lock_ro(void);
 

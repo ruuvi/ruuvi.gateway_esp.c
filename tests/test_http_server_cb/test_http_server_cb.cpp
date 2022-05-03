@@ -1766,17 +1766,18 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
 {
     const char *expected_resp = "{}";
     {
-        gw_cfg_t *p_gw_cfg                         = gw_cfg_lock_rw();
-        p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI;
+        gw_cfg_t gw_cfg = { 0 };
+        gw_cfg_default_get(&gw_cfg);
+        gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI;
         (void)snprintf(
-            p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_user.buf,
-            sizeof(p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_user.buf),
+            gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf,
+            sizeof(gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf),
             "user1");
         (void)snprintf(
-            p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_pass.buf,
-            sizeof(p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_pass.buf),
+            gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf,
+            sizeof(gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf),
             "password1");
-        gw_cfg_unlock_rw(&p_gw_cfg);
+        gw_cfg_update(&gw_cfg);
     }
     const http_server_resp_t resp = http_server_cb_on_post(
         "ruuvi.json",
@@ -1942,17 +1943,18 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     const char *expected_resp = "{}";
 
     {
-        gw_cfg_t *p_gw_cfg                         = gw_cfg_lock_rw();
-        p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI;
+        gw_cfg_t gw_cfg = { 0 };
+        gw_cfg_default_get(&gw_cfg);
+        gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI;
         (void)snprintf(
-            p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_user.buf,
-            sizeof(p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_user.buf),
+            gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf,
+            sizeof(gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf),
             "user1");
         (void)snprintf(
-            p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_pass.buf,
-            sizeof(p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_pass.buf),
+            gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf,
+            sizeof(gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf),
             "password1");
-        gw_cfg_unlock_rw(&p_gw_cfg);
+        gw_cfg_update(&gw_cfg);
     }
 
     const http_server_resp_t resp = http_server_cb_on_post(

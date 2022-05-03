@@ -402,30 +402,32 @@ cmd_handler_task(void *p_param)
                 break;
             case MAIN_TASK_CMD_CHANGE_NTP_CONFIG1:
             {
-                gw_cfg_t *p_gw_cfg = gw_cfg_lock_rw();
+                gw_cfg_t gw_cfg = { 0 };
+                gw_cfg_default_get(&gw_cfg);
                 (void)snprintf(
-                    p_gw_cfg->ruuvi_cfg.ntp.ntp_server1.buf,
-                    sizeof(p_gw_cfg->ruuvi_cfg.ntp.ntp_server1.buf),
+                    gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf,
+                    sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf),
                     "time2.google.com");
                 (void)snprintf(
-                    p_gw_cfg->ruuvi_cfg.ntp.ntp_server2.buf,
-                    sizeof(p_gw_cfg->ruuvi_cfg.ntp.ntp_server2.buf),
+                    gw_cfg.ruuvi_cfg.ntp.ntp_server2.buf,
+                    sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server2.buf),
                     "time2.cloudflare.com");
-                memset(p_gw_cfg->ruuvi_cfg.ntp.ntp_server3.buf, 0, sizeof(p_gw_cfg->ruuvi_cfg.ntp.ntp_server3.buf));
-                memset(p_gw_cfg->ruuvi_cfg.ntp.ntp_server4.buf, 0, sizeof(p_gw_cfg->ruuvi_cfg.ntp.ntp_server4.buf));
-                gw_cfg_unlock_rw(&p_gw_cfg);
+                memset(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf));
+                memset(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf));
+                gw_cfg_update(&gw_cfg);
                 event_mgr_notify(EVENT_MGR_EV_CFG_CHANGED);
                 break;
             }
             case MAIN_TASK_CMD_CHANGE_NTP_CONFIG2:
             {
-                gw_cfg_t *p_gw_cfg                   = gw_cfg_lock_rw();
-                p_gw_cfg->ruuvi_cfg.ntp.ntp_use_dhcp = true;
-                memset(p_gw_cfg->ruuvi_cfg.ntp.ntp_server1.buf, 0, sizeof(p_gw_cfg->ruuvi_cfg.ntp.ntp_server1.buf));
-                memset(p_gw_cfg->ruuvi_cfg.ntp.ntp_server2.buf, 0, sizeof(p_gw_cfg->ruuvi_cfg.ntp.ntp_server2.buf));
-                memset(p_gw_cfg->ruuvi_cfg.ntp.ntp_server3.buf, 0, sizeof(p_gw_cfg->ruuvi_cfg.ntp.ntp_server3.buf));
-                memset(p_gw_cfg->ruuvi_cfg.ntp.ntp_server4.buf, 0, sizeof(p_gw_cfg->ruuvi_cfg.ntp.ntp_server4.buf));
-                gw_cfg_unlock_rw(&p_gw_cfg);
+                gw_cfg_t gw_cfg = { 0 };
+                gw_cfg_default_get(&gw_cfg);
+                gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp = true;
+                memset(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf));
+                memset(gw_cfg.ruuvi_cfg.ntp.ntp_server2.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server2.buf));
+                memset(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf));
+                memset(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf));
+                gw_cfg_update(&gw_cfg);
                 event_mgr_notify(EVENT_MGR_EV_CFG_CHANGED);
                 break;
             }
