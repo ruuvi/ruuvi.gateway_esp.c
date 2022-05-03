@@ -182,12 +182,18 @@ ethernet_connection_ok_cb(const esp_netif_ip_info_t *p_ip_info)
     {
         LOG_INFO("The Ethernet cable was connected, but the Ethernet was not configured");
         LOG_INFO("Set the default configuration with Ethernet and DHCP enabled");
-        gw_cfg_t *p_gw_cfg = gw_cfg_lock_rw();
+        gw_cfg_t *p_gw_cfg = os_calloc(1, sizeof(*p_gw_cfg));
+        if (NULL == p_gw_cfg)
+        {
+            LOG_ERR("Can't allocate memory for gw_cfg");
+            return;
+        }
         gw_cfg_default_get(p_gw_cfg);
         p_gw_cfg->eth_cfg.use_eth  = true;
         p_gw_cfg->eth_cfg.eth_dhcp = true;
         gw_cfg_log(p_gw_cfg, "Gateway SETTINGS", false);
-        gw_cfg_unlock_rw(&p_gw_cfg);
+        gw_cfg_update(p_gw_cfg);
+        os_free(p_gw_cfg);
 
         if (!ruuvi_auth_set_from_config())
         {
