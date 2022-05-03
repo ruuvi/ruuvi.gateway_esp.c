@@ -796,26 +796,23 @@ http_server_cb_on_post_ruuvi(const char *p_body)
     {
         gw_cfg_update_eth_cfg(&p_gw_cfg_tmp->eth_cfg);
         adv_post_disable_retransmission();
+        if (p_gw_cfg_tmp->eth_cfg.use_eth)
+        {
+            ethernet_update_ip();
+        }
     }
     else
     {
         gw_cfg_update_ruuvi_cfg(&p_gw_cfg_tmp->ruuvi_cfg);
         restart_services();
-    }
-
-    if (!ruuvi_auth_set_from_config())
-    {
-        LOG_ERR("%s failed", "ruuvi_auth_set_from_config");
-    }
-    ruuvi_send_nrf_settings();
-    if (flag_network_cfg)
-    {
-        ethernet_update_ip();
-    }
-    else
-    {
+        if (!ruuvi_auth_set_from_config())
+        {
+            LOG_ERR("%s failed", "ruuvi_auth_set_from_config");
+        }
+        ruuvi_send_nrf_settings();
         adv_post_enable_retransmission();
     }
+
     return http_server_resp_data_in_flash(
         HTTP_CONENT_TYPE_APPLICATION_JSON,
         NULL,
