@@ -415,7 +415,7 @@ cmd_handler_task(void *p_param)
                 memset(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf));
                 memset(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf));
                 gw_cfg_update(&gw_cfg);
-                event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED);
+                event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI);
                 break;
             }
             case MAIN_TASK_CMD_CHANGE_NTP_CONFIG2:
@@ -428,7 +428,7 @@ cmd_handler_task(void *p_param)
                 memset(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf));
                 memset(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf));
                 gw_cfg_update(&gw_cfg);
-                event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED);
+                event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI);
                 break;
             }
             case MAIN_TASK_CMD_EXIT:
@@ -703,7 +703,7 @@ TEST_F(TestTimeTask, test_all) // NOLINT
     {
         const int exp_num_events = 11;
         ASSERT_TRUE(this->wait_for_events(1000, exp_num_events));
-        TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Got notification about configuration change");
+        TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Got TIME_TASK_SIG_GW_CFG_CHANGED_RUUVI");
         TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Deactivate SNTP time synchronization");
         TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Reconfigure SNTP");
         TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Configure SNTP to not use DHCP");
@@ -795,7 +795,7 @@ TEST_F(TestTimeTask, test_all) // NOLINT
     {
         const int exp_num_events = 8;
         ASSERT_TRUE(this->wait_for_events(1000, exp_num_events));
-        TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Got notification about configuration change");
+        TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Got TIME_TASK_SIG_GW_CFG_CHANGED_RUUVI");
         TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Deactivate SNTP time synchronization");
         TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Reconfigure SNTP");
         TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Configure SNTP to use DHCP");

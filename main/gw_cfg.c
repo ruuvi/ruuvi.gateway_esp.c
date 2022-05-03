@@ -116,10 +116,6 @@ gw_cfg_set(
         g_gw_cfg_ready = true;
         event_mgr_notify(EVENT_MGR_EV_GW_CFG_READY);
     }
-    else
-    {
-        event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED);
-    }
 
     os_mutex_recursive_unlock(g_gw_cfg_mutex);
 }

@@ -38,12 +38,12 @@
 
 typedef enum time_task_sig_e
 {
-    TIME_TASK_SIG_WIFI_CONNECTED    = OS_SIGNAL_NUM_0,
-    TIME_TASK_SIG_WIFI_DISCONNECTED = OS_SIGNAL_NUM_1,
-    TIME_TASK_SIG_ETH_CONNECTED     = OS_SIGNAL_NUM_2,
-    TIME_TASK_SIG_ETH_DISCONNECTED  = OS_SIGNAL_NUM_3,
-    TIME_TASK_SIG_CFG_CHANGED       = OS_SIGNAL_NUM_4,
-    TIME_TASK_SIG_STOP              = OS_SIGNAL_NUM_5,
+    TIME_TASK_SIG_WIFI_CONNECTED       = OS_SIGNAL_NUM_0,
+    TIME_TASK_SIG_WIFI_DISCONNECTED    = OS_SIGNAL_NUM_1,
+    TIME_TASK_SIG_ETH_CONNECTED        = OS_SIGNAL_NUM_2,
+    TIME_TASK_SIG_ETH_DISCONNECTED     = OS_SIGNAL_NUM_3,
+    TIME_TASK_SIG_GW_CFG_CHANGED_RUUVI = OS_SIGNAL_NUM_4,
+    TIME_TASK_SIG_STOP                 = OS_SIGNAL_NUM_5,
 } time_task_sig_e;
 
 #define TIME_TASK_SIG_FIRST (TIME_TASK_SIG_WIFI_CONNECTED)
@@ -59,7 +59,7 @@ static event_mgr_ev_info_static_t g_time_task_ev_info_mem_wifi_connected;
 static event_mgr_ev_info_static_t g_time_task_ev_info_mem_wifi_disconnected;
 static event_mgr_ev_info_static_t g_time_task_ev_info_mem_eth_connected;
 static event_mgr_ev_info_static_t g_time_task_ev_info_mem_eth_disconnected;
-static event_mgr_ev_info_static_t g_time_task_ev_info_mem_cfg_changed;
+static event_mgr_ev_info_static_t g_time_task_ev_info_mem_gw_cfg_changed_ruuvi;
 
 static time_t g_time_min_valid;
 
@@ -201,8 +201,8 @@ time_task_handle_sig(const time_task_sig_e time_task_sig)
         case TIME_TASK_SIG_ETH_DISCONNECTED:
             time_task_sntp_stop();
             break;
-        case TIME_TASK_SIG_CFG_CHANGED:
-            LOG_INFO("Got notification about configuration change");
+        case TIME_TASK_SIG_GW_CFG_CHANGED_RUUVI:
+            LOG_INFO("Got TIME_TASK_SIG_GW_CFG_CHANGED_RUUVI");
             time_task_on_cfg_changed();
             break;
         case TIME_TASK_SIG_STOP:
@@ -386,10 +386,10 @@ time_task_init(void)
         gp_time_task_signal,
         time_task_conv_to_sig_num(TIME_TASK_SIG_ETH_DISCONNECTED));
     event_mgr_subscribe_sig_static(
-        &g_time_task_ev_info_mem_cfg_changed,
-        EVENT_MGR_EV_GW_CFG_CHANGED,
+        &g_time_task_ev_info_mem_gw_cfg_changed_ruuvi,
+        EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI,
         gp_time_task_signal,
-        time_task_conv_to_sig_num(TIME_TASK_SIG_CFG_CHANGED));
+        time_task_conv_to_sig_num(TIME_TASK_SIG_GW_CFG_CHANGED_RUUVI));
 
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     LOG_INFO("Set time sync mode to IMMED");
