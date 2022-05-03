@@ -25,7 +25,6 @@
 #include "os_time.h"
 #include "time_str.h"
 #include "reset_task.h"
-#include "ruuvi_auth.h"
 #include "gw_cfg.h"
 #include "gw_cfg_ruuvi_json.h"
 #include "gw_cfg_json.h"
@@ -805,10 +804,6 @@ http_server_cb_on_post_ruuvi(const char *p_body)
     {
         gw_cfg_update_ruuvi_cfg(&p_gw_cfg_tmp->ruuvi_cfg);
         restart_services();
-        if (!ruuvi_auth_set_from_config())
-        {
-            LOG_ERR("%s failed", "ruuvi_auth_set_from_config");
-        }
         ruuvi_send_nrf_settings();
         adv_post_enable_retransmission();
     }

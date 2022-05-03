@@ -31,8 +31,6 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/json_ruuvi.c
         ${RUUVI_GW_SRC}/json_ruuvi.h
         ${RUUVI_GW_SRC}/metrics.h
-        ${RUUVI_GW_SRC}/ruuvi_auth.c
-        ${RUUVI_GW_SRC}/ruuvi_auth.h
         ${RUUVI_GW_SRC}/time_str.c
         ${RUUVI_GW_SRC}/time_str.h
         ${RUUVI_GW_SRC}/event_mgr.h

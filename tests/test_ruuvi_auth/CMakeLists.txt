@@ -13,8 +13,6 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/gw_cfg_default.h
         ${RUUVI_GW_SRC}/gw_cfg_log.c
         ${RUUVI_GW_SRC}/gw_cfg_log.h
-        ${RUUVI_GW_SRC}/ruuvi_auth.c
-        ${RUUVI_GW_SRC}/ruuvi_auth.h
         ${RUUVI_GW_SRC}/event_mgr.h
         ${RUUVI_ESP_WRAPPERS}/src/mac_addr.c
         ${RUUVI_ESP_WRAPPERS}/include/mac_addr.h

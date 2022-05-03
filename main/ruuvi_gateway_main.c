@@ -45,7 +45,6 @@
 #include "gw_cfg_default_json.h"
 #include "gw_cfg_json.h"
 #include "gw_cfg_log.h"
-#include "ruuvi_auth.h"
 #include "lwip/dhcp.h"
 #include "lwip/sockets.h"
 #include "str_buf.h"
@@ -194,11 +193,6 @@ ethernet_connection_ok_cb(const esp_netif_ip_info_t *p_ip_info)
         gw_cfg_log(p_gw_cfg, "Gateway SETTINGS", false);
         gw_cfg_update(p_gw_cfg);
         os_free(p_gw_cfg);
-
-        if (!ruuvi_auth_set_from_config())
-        {
-            LOG_ERR("%s failed", "gw_cfg_set_auth_from_config");
-        }
     }
     const struct dhcp *p_dhcp  = NULL;
     esp_ip4_addr_t     dhcp_ip = { 0 };
@@ -640,6 +634,24 @@ network_subsystem_init(void)
 }
 
 static void
+ruuvi_cb_on_change_cfg(const gw_cfg_t *const p_gw_cfg)
+{
+    LOG_INFO("%s: settings_save_to_flash", __func__);
+    settings_save_to_flash(p_gw_cfg);
+
+    const ruuvi_gw_cfg_lan_auth_t lan_auth = gw_cfg_get_lan_auth();
+    LOG_INFO("%s: http_server_set_auth: %s", __func__, http_server_auth_type_to_str(lan_auth.lan_auth_type, false));
+    if (!http_server_set_auth(
+            lan_auth.lan_auth_type,
+            &lan_auth.lan_auth_user,
+            &lan_auth.lan_auth_pass,
+            &lan_auth.lan_auth_api_key))
+    {
+        LOG_ERR("%s failed", "http_server_set_auth");
+    }
+}
+
+static void
 ruuvi_init_gw_cfg(
     const ruuvi_nrf52_fw_ver_t *const p_nrf52_fw_ver,
     const nrf52_device_info_t *const  p_nrf52_device_info)
@@ -654,7 +666,7 @@ ruuvi_init_gw_cfg(
         .esp32_mac_addr_eth  = gateway_read_mac_addr(ESP_MAC_ETH),
     };
     gw_cfg_default_init(&gw_cfg_default_init_param, &gw_cfg_default_json_read);
-    gw_cfg_init(&settings_save_to_flash);
+    gw_cfg_init(&ruuvi_cb_on_change_cfg);
 
     const gw_cfg_t *p_gw_cfg_tmp = settings_get_from_flash();
     if (NULL == p_gw_cfg_tmp)
@@ -666,7 +678,6 @@ ruuvi_init_gw_cfg(
     gw_cfg_update(p_gw_cfg_tmp);
     os_free(p_gw_cfg_tmp);
 
-    ruuvi_auth_set_from_config();
     event_mgr_notify(EVENT_MGR_EV_CFG_READY);
 }
 
