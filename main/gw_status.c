@@ -56,6 +56,16 @@ gw_status_clear_eth_connected(void)
     xEventGroupClearBits(g_p_ev_grp_status_bits, ETH_CONNECTED_BIT);
 }
 
+bool
+gw_status_is_network_connected(void)
+{
+    if (0 != (xEventGroupGetBits(g_p_ev_grp_status_bits) & (WIFI_CONNECTED_BIT | ETH_CONNECTED_BIT)))
+    {
+        return true;
+    }
+    return false;
+}
+
 void
 gw_status_set_mqtt_connected(void)
 {

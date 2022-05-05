@@ -221,6 +221,12 @@ adv_post_send_report(void *arg)
         return;
     }
 
+    if (!gw_status_is_network_connected())
+    {
+        LOG_WARN("Drop adv - no network connection");
+        return;
+    }
+
     const bool flag_ntp_use = gw_cfg_get_ntp_use();
     if (flag_ntp_use && !time_is_synchronized())
     {

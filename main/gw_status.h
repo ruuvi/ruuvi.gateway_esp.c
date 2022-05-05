@@ -29,6 +29,9 @@ gw_status_set_eth_connected(void);
 void
 gw_status_clear_eth_connected(void);
 
+bool
+gw_status_is_network_connected(void);
+
 void
 gw_status_set_mqtt_connected(void);
 
