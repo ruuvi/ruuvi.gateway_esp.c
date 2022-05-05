@@ -284,6 +284,13 @@ typedef struct gw_cfg_t
     wifiman_config_t     wifi_cfg;
 } gw_cfg_t;
 
+typedef struct gw_cfg_update_status_t
+{
+    bool flag_ruuvi_cfg_modified;
+    bool flag_eth_cfg_modified;
+    bool flag_wifi_cfg_modified;
+} gw_cfg_update_status_t;
+
 typedef void (*gw_cfg_cb_on_change_cfg)(const gw_cfg_t *const p_gw_cfg);
 
 void
@@ -310,15 +317,8 @@ gw_cfg_update_ruuvi_cfg(const gw_cfg_ruuvi_t *const p_gw_cfg_ruuvi_new);
 void
 gw_cfg_update_wifi_config(const wifiman_config_t *const p_wifi_cfg);
 
-void
+gw_cfg_update_status_t
 gw_cfg_update(const gw_cfg_t *const p_gw_cfg);
-
-bool
-gw_cfg_cmp(
-    const gw_cfg_t *const p_gw_cfg_src,
-    bool *const           p_flag_eq_ruuvi_cfg,
-    bool *const           p_flag_eq_eth_cfg,
-    bool *const           p_flag_eq_wifi_cfg);
 
 void
 gw_cfg_get_copy(gw_cfg_t *const p_gw_cfg);

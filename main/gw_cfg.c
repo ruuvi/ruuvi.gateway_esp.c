@@ -64,52 +64,74 @@ gw_cfg_unlock_ro(const gw_cfg_t **const p_p_gw_cfg)
     os_mutex_recursive_unlock(g_gw_cfg_mutex);
 }
 
-void
+static gw_cfg_update_status_t
 gw_cfg_set(
     const gw_cfg_ruuvi_t *const   p_gw_cfg_ruuvi,
     const gw_cfg_eth_t *const     p_gw_cfg_eth,
     const wifiman_config_t *const p_gw_cfg_wifi)
 {
+    gw_cfg_update_status_t update_status = {
+        .flag_ruuvi_cfg_modified = false,
+        .flag_eth_cfg_modified   = false,
+        .flag_wifi_cfg_modified  = false,
+    };
+
     os_mutex_recursive_lock(g_gw_cfg_mutex);
     gw_cfg_t *const p_gw_cfg_dst = &g_gateway_config;
 
     if (NULL != p_gw_cfg_ruuvi)
     {
-        if (g_gw_cfg_ready)
+        if (0 != memcmp(&p_gw_cfg_dst->ruuvi_cfg, p_gw_cfg_ruuvi, sizeof(*p_gw_cfg_ruuvi)))
         {
-            event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI);
-            if (p_gw_cfg_dst->ruuvi_cfg.ntp.ntp_use != p_gw_cfg_ruuvi->ntp.ntp_use)
+            if (g_gw_cfg_ready)
             {
-                event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI_NTP_USE);
+                event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI);
+                if (p_gw_cfg_dst->ruuvi_cfg.ntp.ntp_use != p_gw_cfg_ruuvi->ntp.ntp_use)
+                {
+                    event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI_NTP_USE);
+                }
+                else if (
+                    p_gw_cfg_ruuvi->ntp.ntp_use
+                    && (p_gw_cfg_dst->ruuvi_cfg.ntp.ntp_use_dhcp != p_gw_cfg_ruuvi->ntp.ntp_use_dhcp))
+                {
+                    event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI_NTP_USE_DHCP);
+                }
             }
-            else if (
-                p_gw_cfg_ruuvi->ntp.ntp_use
-                && (p_gw_cfg_dst->ruuvi_cfg.ntp.ntp_use_dhcp != p_gw_cfg_ruuvi->ntp.ntp_use_dhcp))
-            {
-                event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI_NTP_USE_DHCP);
-            }
+            update_status.flag_ruuvi_cfg_modified = true;
+            p_gw_cfg_dst->ruuvi_cfg               = *p_gw_cfg_ruuvi;
         }
-        p_gw_cfg_dst->ruuvi_cfg = *p_gw_cfg_ruuvi;
     }
     if (NULL != p_gw_cfg_eth)
     {
-        if (g_gw_cfg_ready)
+        if (0 != memcmp(&p_gw_cfg_dst->eth_cfg, p_gw_cfg_eth, sizeof(*p_gw_cfg_eth)))
         {
-            event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_ETH);
+            if (g_gw_cfg_ready)
+            {
+                event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_ETH);
+            }
+            update_status.flag_eth_cfg_modified = true;
+            p_gw_cfg_dst->eth_cfg               = *p_gw_cfg_eth;
         }
-        p_gw_cfg_dst->eth_cfg = *p_gw_cfg_eth;
     }
     if (NULL != p_gw_cfg_wifi)
     {
-        if (g_gw_cfg_ready)
+        if (0 != memcmp(&p_gw_cfg_dst->wifi_cfg, p_gw_cfg_wifi, sizeof(*p_gw_cfg_wifi)))
         {
-            event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_WIFI);
+            if (g_gw_cfg_ready)
+            {
+                event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_WIFI);
+            }
+            update_status.flag_wifi_cfg_modified = true;
+            p_gw_cfg_dst->wifi_cfg               = *p_gw_cfg_wifi;
         }
-        p_gw_cfg_dst->wifi_cfg = *p_gw_cfg_wifi;
     }
-    if (NULL != g_p_gw_cfg_cb_on_change_cfg)
+    if (update_status.flag_ruuvi_cfg_modified || update_status.flag_eth_cfg_modified
+        || update_status.flag_wifi_cfg_modified)
     {
-        g_p_gw_cfg_cb_on_change_cfg(p_gw_cfg_dst);
+        if (NULL != g_p_gw_cfg_cb_on_change_cfg)
+        {
+            g_p_gw_cfg_cb_on_change_cfg(p_gw_cfg_dst);
+        }
     }
     if (!g_gw_cfg_ready)
     {
@@ -118,6 +140,7 @@ gw_cfg_set(
     }
 
     os_mutex_recursive_unlock(g_gw_cfg_mutex);
+    return update_status;
 }
 
 void
@@ -138,41 +161,10 @@ gw_cfg_update_wifi_config(const wifiman_config_t *const p_wifi_cfg)
     gw_cfg_set(NULL, NULL, p_wifi_cfg);
 }
 
-void
+gw_cfg_update_status_t
 gw_cfg_update(const gw_cfg_t *const p_gw_cfg)
 {
-    gw_cfg_set(&p_gw_cfg->ruuvi_cfg, &p_gw_cfg->eth_cfg, &p_gw_cfg->wifi_cfg);
-}
-
-bool
-gw_cfg_cmp(
-    const gw_cfg_t *const p_gw_cfg_src,
-    bool *const           p_flag_eq_ruuvi_cfg,
-    bool *const           p_flag_eq_eth_cfg,
-    bool *const           p_flag_eq_wifi_cfg)
-{
-    bool flag_is_equal           = true;
-    *p_flag_eq_ruuvi_cfg         = true;
-    *p_flag_eq_eth_cfg           = true;
-    *p_flag_eq_wifi_cfg          = true;
-    const gw_cfg_t *p_gw_cfg_dst = gw_cfg_lock_ro();
-    if (0 != memcmp(&p_gw_cfg_dst->ruuvi_cfg, &p_gw_cfg_src->ruuvi_cfg, sizeof(p_gw_cfg_dst->ruuvi_cfg)))
-    {
-        flag_is_equal        = false;
-        *p_flag_eq_ruuvi_cfg = false;
-    }
-    if (0 != memcmp(&p_gw_cfg_dst->eth_cfg, &p_gw_cfg_src->eth_cfg, sizeof(p_gw_cfg_dst->eth_cfg)))
-    {
-        flag_is_equal      = false;
-        *p_flag_eq_eth_cfg = false;
-    }
-    if (0 != memcmp(&p_gw_cfg_dst->wifi_cfg, &p_gw_cfg_src->wifi_cfg, sizeof(p_gw_cfg_dst->wifi_cfg)))
-    {
-        flag_is_equal       = false;
-        *p_flag_eq_wifi_cfg = false;
-    }
-    gw_cfg_unlock_ro(&p_gw_cfg_dst);
-    return flag_is_equal;
+    return gw_cfg_set(&p_gw_cfg->ruuvi_cfg, &p_gw_cfg->eth_cfg, &p_gw_cfg->wifi_cfg);
 }
 
 void

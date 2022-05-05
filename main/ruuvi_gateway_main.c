@@ -191,7 +191,7 @@ ethernet_connection_ok_cb(const esp_netif_ip_info_t *p_ip_info)
         p_gw_cfg->eth_cfg.use_eth  = true;
         p_gw_cfg->eth_cfg.eth_dhcp = true;
         gw_cfg_log(p_gw_cfg, "Gateway SETTINGS", false);
-        gw_cfg_update(p_gw_cfg);
+        (void)gw_cfg_update(p_gw_cfg);
         os_free(p_gw_cfg);
     }
     const struct dhcp *p_dhcp  = NULL;
@@ -675,7 +675,7 @@ ruuvi_init_gw_cfg(
         return;
     }
     gw_cfg_log(p_gw_cfg_tmp, "Gateway SETTINGS (from flash)", false);
-    gw_cfg_update(p_gw_cfg_tmp);
+    (void)gw_cfg_update(p_gw_cfg_tmp);
     os_free(p_gw_cfg_tmp);
 }
 

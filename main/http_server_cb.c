@@ -883,27 +883,20 @@ http_server_cb_on_post_gw_cfg_download(void)
             return http_server_resp_503();
         }
 
-        bool flag_eq_ruuvi_cfg = false;
-        bool flag_eq_eth_cfg   = false;
-        bool flag_eq_wifi_cfg  = false;
-        if (!gw_cfg_cmp(p_gw_cfg_tmp, &flag_eq_ruuvi_cfg, &flag_eq_eth_cfg, &flag_eq_wifi_cfg))
+        const gw_cfg_update_status_t update_status = gw_cfg_update(p_gw_cfg_tmp);
+        if (update_status.flag_eth_cfg_modified || update_status.flag_wifi_cfg_modified)
         {
-            LOG_INFO("Update settings in flash");
-            gw_cfg_update(p_gw_cfg_tmp);
-            if (!flag_eq_eth_cfg || !flag_eq_wifi_cfg)
-            {
-                LOG_INFO(
-                    "Network configuration in gw_cfg.json differs from the current settings, need to restart gateway");
-                p_resp_content
-                    = "{\"message\":"
-                      "\"Network configuration in gw_cfg.json on the server is different from the current one, "
-                      "the gateway will be rebooted.\"}";
-                reset_task_reboot_after_timeout();
-            }
-            else if (!flag_eq_ruuvi_cfg)
-            {
-                restart_services();
-            }
+            LOG_INFO("Network configuration in gw_cfg.json differs from the current settings, need to restart gateway");
+            p_resp_content
+                = "{\"message\":"
+                  "\"Network configuration in gw_cfg.json on the server is different from the current one, "
+                  "the gateway will be rebooted.\"}";
+            reset_task_reboot_after_timeout();
+        }
+        else if (update_status.flag_ruuvi_cfg_modified)
+        {
+            LOG_INFO("Ruuvi configuration in gw_cfg.json differs from the current settings, need to restart services");
+            restart_services();
         }
         else
         {
