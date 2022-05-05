@@ -1,6 +1,8 @@
 #include "TQueue.hpp"
 #include <cstdio>
 #include "driver/ledc.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/event_groups.h"
 #include "esp_err.h"
 #include "esp_timer.h"
 #include "leds.h"
