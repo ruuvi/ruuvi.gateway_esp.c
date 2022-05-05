@@ -28,6 +28,7 @@
 #include "gw_cfg.h"
 #include "gw_cfg_ruuvi_json.h"
 #include "gw_cfg_json.h"
+#include "time_units.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -707,20 +708,31 @@ static http_server_download_info_t
 http_server_download_gw_cfg(void)
 {
     const mac_address_str_t *const p_nrf52_mac_addr = gw_cfg_get_nrf52_mac_addr();
-    const gw_cfg_t *               p_gw_cfg         = gw_cfg_lock_ro();
 
     const http_header_item_t extra_header_item = {
         .p_key   = "ruuvi_gw_mac",
         .p_value = p_nrf52_mac_addr->str_buf,
     };
 
+    const ruuvi_gw_cfg_remote_t *p_remote = gw_cfg_get_remote_cfg_copy();
+    if (NULL == p_remote)
+    {
+        const http_server_download_info_t info = {
+            .is_error       = true,
+            .http_resp_code = HTTP_RESP_CODE_503,
+            .p_json_buf     = NULL,
+            .json_buf_size  = 0,
+        };
+        return info;
+    }
+
     const http_server_download_info_t info = http_download_json(
-        p_gw_cfg->ruuvi_cfg.remote.url.buf,
-        p_gw_cfg->ruuvi_cfg.remote.auth_type,
-        &p_gw_cfg->ruuvi_cfg.remote.auth,
+        p_remote->url.buf,
+        p_remote->auth_type,
+        &p_remote->auth,
         &extra_header_item);
 
-    gw_cfg_unlock_ro(&p_gw_cfg);
+    os_free(p_remote);
     return info;
 }
 
