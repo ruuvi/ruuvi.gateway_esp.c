@@ -23,6 +23,7 @@
 #include "fw_update.h"
 #include "gw_mac.h"
 #include "str_buf.h"
+#include "gw_status.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -204,6 +205,7 @@ http_send_async(http_async_info_t *const p_http_async_info)
         esp_http_client_set_header(p_http_async_info->p_http_client_handle, "Ruuvi-HMAC-SHA256", hmac_sha256_str.buf);
     }
 
+    LOG_DBG("esp_http_client_perform");
     const esp_err_t err = esp_http_client_perform(p_http_async_info->p_http_client_handle);
     if (ESP_ERR_HTTP_EAGAIN != err)
     {
@@ -297,9 +299,11 @@ http_async_poll(void)
 {
     http_async_info_t *p_http_async_info = &g_http_async_info;
 
+    LOG_DBG("esp_http_client_perform");
     const esp_err_t err = esp_http_client_perform(p_http_async_info->p_http_client_handle);
     if (ESP_ERR_HTTP_EAGAIN == err)
     {
+        LOG_DBG("esp_http_client_perform: ESP_ERR_HTTP_EAGAIN");
         return false;
     }
 
@@ -572,6 +576,12 @@ http_download_with_auth(
         .keep_alive_count            = 0,
     };
     LOG_INFO("http_download: %s", p_url);
+    if (!gw_status_is_network_connected())
+    {
+        LOG_ERR("HTTP download failed - no network connection");
+        return false;
+    }
+
     cb_info.http_handle = esp_http_client_init(&http_config);
     if (NULL == cb_info.http_handle)
     {

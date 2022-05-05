@@ -57,6 +57,9 @@ void
 main_task_stop_timer_after_hotspot_activation(void);
 
 void
+main_task_stop_timer_check_for_remote_cfg(void);
+
+void
 main_task_schedule_next_check_for_fw_updates(void);
 
 void
