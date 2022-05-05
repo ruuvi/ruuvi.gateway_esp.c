@@ -29,8 +29,6 @@
 
 #define BASE_10 (10U)
 
-#define HTTP_DOWNLOAD_TIMEOUT_SECONDS (25)
-
 typedef int esp_http_client_len_t;
 typedef int esp_http_client_http_status_code_t;
 
@@ -442,7 +440,7 @@ http_download_event_handler(esp_http_client_event_t *p_evt)
 }
 
 static bool
-http_download_by_handle(esp_http_client_handle_t http_handle)
+http_download_by_handle(esp_http_client_handle_t http_handle, const TimeUnitsSeconds_t timeout_seconds)
 {
     esp_err_t err = esp_http_client_set_header(http_handle, "Accept", "text/html,application/octet-stream,*/*");
     if (ESP_OK != err)
@@ -457,9 +455,19 @@ http_download_by_handle(esp_http_client_handle_t http_handle)
         return false;
     }
 
+    const TickType_t download_started_at_tick = xTaskGetTickCount();
+
     LOG_DBG("esp_http_client_perform");
     err = esp_http_client_perform(http_handle);
-    if (ESP_OK != err)
+    if (ESP_OK == err)
+    {
+        LOG_DBG(
+            "HTTP GET Status = %d, content_length = %d",
+            esp_http_client_get_status_code(http_handle),
+            esp_http_client_get_content_length(http_handle));
+        return true;
+    }
+    if (ESP_ERR_HTTP_EAGAIN != err)
     {
         LOG_ERR_ESP(
             err,
@@ -468,16 +476,44 @@ http_download_by_handle(esp_http_client_handle_t http_handle)
             (printf_long_t)http_handle);
         return false;
     }
-    LOG_DBG(
-        "HTTP GET Status = %d, content_length = %d",
-        esp_http_client_get_status_code(http_handle),
-        esp_http_client_get_content_length(http_handle));
-    return true;
+
+    while ((pdTICKS_TO_MS(xTaskGetTickCount() - download_started_at_tick))
+           <= (timeout_seconds * TIME_UNITS_MS_PER_SECOND))
+    {
+        LOG_DBG("esp_http_client_perform");
+        err = esp_http_client_perform(http_handle);
+        if (ESP_OK == err)
+        {
+            LOG_DBG(
+                "HTTP GET Status = %d, content_length = %d",
+                esp_http_client_get_status_code(http_handle),
+                esp_http_client_get_content_length(http_handle));
+            return true;
+        }
+        if (ESP_ERR_HTTP_EAGAIN == err)
+        {
+            LOG_DBG("esp_http_client_perform: ESP_ERR_HTTP_EAGAIN");
+            vTaskDelay(pdMS_TO_TICKS(100));
+            err = esp_task_wdt_reset();
+            if (ESP_OK != err)
+            {
+                LOG_ERR_ESP(err, "%s failed", "esp_task_wdt_reset");
+            }
+        }
+        else
+        {
+            LOG_ERR_ESP(err, "%s failed", "esp_http_client_perform");
+            return false;
+        }
+    }
+    LOG_ERR("esp_http_client_perform timeout");
+    return false;
 }
 
 bool
 http_download_with_auth(
     const char *const                     p_url,
+    const TimeUnitsSeconds_t              timeout_seconds,
     const gw_cfg_remote_auth_type_e       gw_cfg_http_auth_type,
     const ruuvi_gw_cfg_http_auth_t *const p_http_auth,
     const http_header_item_t *const       p_extra_header_item,
@@ -518,7 +554,7 @@ http_download_with_auth(
         .client_key_pem              = NULL,
         .user_agent                  = NULL,
         .method                      = HTTP_METHOD_GET,
-        .timeout_ms                  = HTTP_DOWNLOAD_TIMEOUT_SECONDS * 1000,
+        .timeout_ms                  = timeout_seconds * 1000,
         .disable_auto_redirect       = false,
         .max_redirection_count       = 0,
         .max_authorization_retries   = 0,
@@ -527,7 +563,7 @@ http_download_with_auth(
         .buffer_size                 = 2048,
         .buffer_size_tx              = 1024,
         .user_data                   = &cb_info,
-        .is_async                    = false,
+        .is_async                    = true,
         .use_global_ca_store         = false,
         .skip_cert_common_name_check = false,
         .keep_alive_enable           = false,
@@ -562,7 +598,7 @@ http_download_with_auth(
     }
 
     LOG_DBG("http_download_by_handle");
-    const bool result = http_download_by_handle(cb_info.http_handle);
+    const bool result = http_download_by_handle(cb_info.http_handle, timeout_seconds);
 
     LOG_DBG("esp_http_client_cleanup");
     const esp_err_t err = esp_http_client_cleanup(cb_info.http_handle);
@@ -576,12 +612,14 @@ http_download_with_auth(
 bool
 http_download(
     const char *const          p_url,
+    const TimeUnitsSeconds_t   timeout_seconds,
     http_download_cb_on_data_t p_cb_on_data,
     void *const                p_user_data,
     const bool                 flag_feed_task_watchdog)
 {
     return http_download_with_auth(
         p_url,
+        timeout_seconds,
         GW_CFG_REMOTE_AUTH_TYPE_NO,
         NULL,
         NULL,

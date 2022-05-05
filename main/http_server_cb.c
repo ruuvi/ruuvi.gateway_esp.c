@@ -327,6 +327,7 @@ cb_on_http_download_json_data(
 static http_server_download_info_t
 http_download_json(
     const char *const                     p_url,
+    const TimeUnitsSeconds_t              timeout_seconds,
     const gw_cfg_remote_auth_type_e       auth_type,
     const ruuvi_gw_cfg_http_auth_t *const p_http_auth,
     const http_header_item_t *const       p_extra_header_item)
@@ -341,6 +342,7 @@ http_download_json(
     const bool       flag_feed_task_watchdog  = true;
     if (!http_download_with_auth(
             p_url,
+            timeout_seconds,
             auth_type,
             p_http_auth,
             p_extra_header_item,
@@ -386,7 +388,7 @@ http_server_download_info_t
 http_download_latest_release_info(void)
 {
     const char *const p_url = "https://api.github.com/repos/ruuvi/ruuvi.gateway_esp.c/releases/latest";
-    return http_download_json(p_url, GW_CFG_REMOTE_AUTH_TYPE_NO, NULL, NULL);
+    return http_download_json(p_url, HTTP_DOWNLOAD_TIMEOUT_SECONDS, GW_CFG_REMOTE_AUTH_TYPE_NO, NULL, NULL);
 }
 
 HTTP_SERVER_CB_STATIC
@@ -726,8 +728,10 @@ http_server_download_gw_cfg(void)
         return info;
     }
 
-    const http_server_download_info_t info = http_download_json(
+    const TimeUnitsSeconds_t          timeout_seconds = 10;
+    const http_server_download_info_t info            = http_download_json(
         p_remote->url.buf,
+        timeout_seconds,
         p_remote->auth_type,
         &p_remote->auth,
         &extra_header_item);
