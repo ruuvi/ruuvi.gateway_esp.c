@@ -45,7 +45,6 @@
 #include "gw_cfg_default_json.h"
 #include "gw_cfg_json.h"
 #include "gw_cfg_log.h"
-#include "ruuvi_auth.h"
 #include "lwip/dhcp.h"
 #include "lwip/sockets.h"
 #include "str_buf.h"
@@ -182,19 +181,18 @@ ethernet_connection_ok_cb(const esp_netif_ip_info_t *p_ip_info)
     {
         LOG_INFO("The Ethernet cable was connected, but the Ethernet was not configured");
         LOG_INFO("Set the default configuration with Ethernet and DHCP enabled");
-        gw_cfg_t *p_gw_cfg = gw_cfg_lock_rw();
+        gw_cfg_t *p_gw_cfg = os_calloc(1, sizeof(*p_gw_cfg));
+        if (NULL == p_gw_cfg)
+        {
+            LOG_ERR("Can't allocate memory for gw_cfg");
+            return;
+        }
         gw_cfg_default_get(p_gw_cfg);
         p_gw_cfg->eth_cfg.use_eth  = true;
         p_gw_cfg->eth_cfg.eth_dhcp = true;
         gw_cfg_log(p_gw_cfg, "Gateway SETTINGS", false);
-        gw_cfg_unlock_rw(&p_gw_cfg);
-
-        settings_save_to_flash();
-
-        if (!ruuvi_auth_set_from_config())
-        {
-            LOG_ERR("%s failed", "gw_cfg_set_auth_from_config");
-        }
+        (void)gw_cfg_update(p_gw_cfg);
+        os_free(p_gw_cfg);
     }
     const struct dhcp *p_dhcp  = NULL;
     esp_ip4_addr_t     dhcp_ip = { 0 };
@@ -240,7 +238,6 @@ cb_on_disconnect_eth_cmd(void)
 {
     LOG_INFO("callback: on_disconnect_eth_cmd");
     wifi_manager_update_network_connection_info(UPDATE_USER_DISCONNECT, NULL, NULL, NULL);
-    xEventGroupClearBits(status_bits, ETH_CONNECTED_BIT);
     ethernet_stop();
 }
 
@@ -277,7 +274,6 @@ static void
 cb_save_wifi_config(const wifiman_config_t *const p_wifi_cfg)
 {
     gw_cfg_update_wifi_config(p_wifi_cfg);
-    settings_save_to_flash();
 }
 
 void
@@ -458,17 +454,12 @@ ATTR_NORETURN
 static void
 handle_reset_button_is_pressed_during_boot(void)
 {
-    LOG_INFO("Reset button is pressed during boot - clear settings in flash");
+    LOG_INFO("Reset button is pressed during boot - erase settings in flash");
     nrf52fw_hw_reset_nrf52(true);
 
     ruuvi_nvs_flash_erase();
     ruuvi_nvs_flash_init();
 
-    LOG_INFO("Writing the default gateway configuration to NVS");
-    if (!settings_clear_in_flash())
-    {
-        LOG_ERR("Failed to clear the gateway settings in NVS");
-    }
     settings_write_flag_rebooting_after_auto_update(false);
     settings_write_flag_force_start_wifi_hotspot(true);
 
@@ -643,6 +634,24 @@ network_subsystem_init(void)
 }
 
 static void
+ruuvi_cb_on_change_cfg(const gw_cfg_t *const p_gw_cfg)
+{
+    LOG_INFO("%s: settings_save_to_flash", __func__);
+    settings_save_to_flash(p_gw_cfg);
+
+    const ruuvi_gw_cfg_lan_auth_t lan_auth = gw_cfg_get_lan_auth();
+    LOG_INFO("%s: http_server_set_auth: %s", __func__, http_server_auth_type_to_str(lan_auth.lan_auth_type, false));
+    if (!http_server_set_auth(
+            lan_auth.lan_auth_type,
+            &lan_auth.lan_auth_user,
+            &lan_auth.lan_auth_pass,
+            &lan_auth.lan_auth_api_key))
+    {
+        LOG_ERR("%s failed", "http_server_set_auth");
+    }
+}
+
+static void
 ruuvi_init_gw_cfg(
     const ruuvi_nrf52_fw_ver_t *const p_nrf52_fw_ver,
     const nrf52_device_info_t *const  p_nrf52_device_info)
@@ -657,7 +666,17 @@ ruuvi_init_gw_cfg(
         .esp32_mac_addr_eth  = gateway_read_mac_addr(ESP_MAC_ETH),
     };
     gw_cfg_default_init(&gw_cfg_default_init_param, &gw_cfg_default_json_read);
-    gw_cfg_init();
+    gw_cfg_init(&ruuvi_cb_on_change_cfg);
+
+    const gw_cfg_t *p_gw_cfg_tmp = settings_get_from_flash();
+    if (NULL == p_gw_cfg_tmp)
+    {
+        LOG_ERR("Can't get settings from flash");
+        return;
+    }
+    gw_cfg_log(p_gw_cfg_tmp, "Gateway SETTINGS (from flash)", false);
+    (void)gw_cfg_update(p_gw_cfg_tmp);
+    os_free(p_gw_cfg_tmp);
 }
 
 static bool
@@ -728,8 +747,6 @@ main_task_init(void)
 
     ruuvi_init_gw_cfg(&nrf52_fw_ver, &nrf52_device_info);
 
-    settings_get_from_flash();
-
     hmac_sha256_set_key_str(gw_cfg_get_nrf52_device_id()->str_buf); // set default encryption key
 
     if (0 == gpio_get_level(RB_BUTTON_RESET_PIN))
@@ -741,8 +758,6 @@ main_task_init(void)
     main_task_init_timers();
 
     time_task_init();
-    ruuvi_send_nrf_settings();
-    ruuvi_auth_set_from_config();
 
     if (!network_subsystem_init())
     {

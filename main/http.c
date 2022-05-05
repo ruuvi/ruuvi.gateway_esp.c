@@ -218,7 +218,7 @@ http_send_async(http_async_info_t *const p_http_async_info)
 }
 
 bool
-http_send_advs(const adv_report_table_t *const p_reports, const uint32_t nonce)
+http_send_advs(const adv_report_table_t *const p_reports, const uint32_t nonce, const bool flag_use_timestamps)
 {
     const ruuvi_gw_cfg_coordinates_t coordinates       = gw_cfg_get_coordinates();
     http_async_info_t *              p_http_async_info = &g_http_async_info;
@@ -227,6 +227,7 @@ http_send_advs(const adv_report_table_t *const p_reports, const uint32_t nonce)
     p_http_async_info->cjson_str         = cjson_wrap_str_null();
     if (!http_json_create_records_str(
             p_reports,
+            flag_use_timestamps,
             time(NULL),
             gw_cfg_get_nrf52_mac_addr(),
             coordinates.buf,

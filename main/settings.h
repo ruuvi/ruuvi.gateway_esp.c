@@ -19,13 +19,10 @@ extern "C" {
 bool
 settings_check_in_flash(void);
 
-bool
-settings_save_to_flash(void);
+void
+settings_save_to_flash(const gw_cfg_t *const p_gw_cfg);
 
-bool
-settings_clear_in_flash(void);
-
-bool
+const gw_cfg_t *
 settings_get_from_flash(void);
 
 mac_address_bin_t

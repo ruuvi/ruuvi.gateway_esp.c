@@ -8,7 +8,6 @@
 #include "adv_table.h"
 #include <string.h>
 #include <limits.h>
-#include <assert.h>
 #include "os_mutex.h"
 #include "sys/queue.h"
 
@@ -216,6 +215,7 @@ static void
 adv_table_read_history_unsafe(
     adv_report_table_t *const p_reports,
     const time_t              cur_time,
+    const bool                flag_use_timestamps,
     const uint32_t            time_interval_seconds)
 {
     p_reports->num_of_advs = 0;
@@ -231,9 +231,12 @@ adv_table_read_history_unsafe(
         {
             break;
         }
-        if ((cur_time - p_elem->adv_report.timestamp) > time_interval_seconds)
+        if (flag_use_timestamps)
         {
-            break;
+            if ((cur_time - p_elem->adv_report.timestamp) > time_interval_seconds)
+            {
+                break;
+            }
         }
         p_reports->table[p_reports->num_of_advs] = p_elem->adv_report;
         p_reports->num_of_advs += 1;
@@ -241,10 +244,14 @@ adv_table_read_history_unsafe(
 }
 
 void
-adv_table_history_read(adv_report_table_t *const p_reports, const time_t cur_time, const uint32_t time_interval_seconds)
+adv_table_history_read(
+    adv_report_table_t *const p_reports,
+    const time_t              cur_time,
+    const bool                flag_use_timestamps,
+    const uint32_t            time_interval_seconds)
 {
     os_mutex_lock(gp_adv_reports_mutex);
-    adv_table_read_history_unsafe(p_reports, cur_time, time_interval_seconds);
+    adv_table_read_history_unsafe(p_reports, cur_time, flag_use_timestamps, time_interval_seconds);
     os_mutex_unlock(gp_adv_reports_mutex);
 }
 

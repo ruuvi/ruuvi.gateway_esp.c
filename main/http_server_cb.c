@@ -25,7 +25,6 @@
 #include "os_time.h"
 #include "time_str.h"
 #include "reset_task.h"
-#include "ruuvi_auth.h"
 #include "gw_cfg.h"
 #include "gw_cfg_ruuvi_json.h"
 #include "gw_cfg_json.h"
@@ -139,7 +138,7 @@ json_info_add_uint32(cJSON *p_json_root, const char *p_item_name, const uint32_t
 }
 
 static bool
-json_info_add_items(cJSON *p_json_root)
+json_info_add_items(cJSON *p_json_root, const bool flag_use_timestamps)
 {
     if (!json_info_add_string(p_json_root, "ESP_FW", gw_cfg_get_esp32_fw_ver()->buf))
     {
@@ -171,7 +170,7 @@ json_info_add_items(cJSON *p_json_root)
     {
         return false;
     }
-    adv_table_history_read(p_reports, cur_time, HTTP_SERVER_DEFAULT_HISTORY_INTERVAL_SECONDS);
+    adv_table_history_read(p_reports, cur_time, flag_use_timestamps, HTTP_SERVER_DEFAULT_HISTORY_INTERVAL_SECONDS);
     const num_of_advs_t num_of_advs = p_reports->num_of_advs;
     os_free(p_reports);
 
@@ -187,7 +186,7 @@ json_info_add_items(cJSON *p_json_root)
 }
 
 static bool
-generate_json_info_str(cjson_wrap_str_t *p_json_str)
+generate_json_info_str(cjson_wrap_str_t *p_json_str, const bool flag_use_timestamps)
 {
     p_json_str->p_str = NULL;
 
@@ -197,7 +196,7 @@ generate_json_info_str(cjson_wrap_str_t *p_json_str)
         LOG_ERR("Can't create json object");
         return false;
     }
-    if (!json_info_add_items(p_json_root))
+    if (!json_info_add_items(p_json_root, flag_use_timestamps))
     {
         cjson_wrap_delete(&p_json_root);
         return false;
@@ -218,7 +217,7 @@ http_server_resp_json_info(void)
 {
     const gw_cfg_t * p_gw_cfg = gw_cfg_lock_ro();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
-    if (!generate_json_info_str(&json_str))
+    if (!generate_json_info_str(&json_str, gw_cfg_get_ntp_use()))
     {
         gw_cfg_unlock_ro(&p_gw_cfg);
         return http_server_resp_503();
@@ -460,6 +459,7 @@ bool
 http_server_read_history(
     cjson_wrap_str_t *   p_json_str,
     const time_t         cur_time,
+    const bool           flag_use_timestamps,
     const uint32_t       time_interval_seconds,
     num_of_advs_t *const p_num_of_advs)
 {
@@ -468,13 +468,14 @@ http_server_read_history(
     {
         return false;
     }
-    adv_table_history_read(p_reports, cur_time, time_interval_seconds);
+    adv_table_history_read(p_reports, cur_time, true, time_interval_seconds);
     *p_num_of_advs = p_reports->num_of_advs;
 
     const ruuvi_gw_cfg_coordinates_t coordinates = gw_cfg_get_coordinates();
 
     const bool res = http_json_create_records_str(
         p_reports,
+        flag_use_timestamps,
         cur_time,
         gw_cfg_get_nrf52_mac_addr(),
         coordinates.buf,
@@ -503,7 +504,7 @@ http_server_resp_history(const char *const p_params)
     cjson_wrap_str_t json_str    = cjson_wrap_str_null();
     const time_t     cur_time    = http_server_get_cur_time();
     num_of_advs_t    num_of_advs = 0;
-    if (!http_server_read_history(&json_str, cur_time, time_interval_seconds, &num_of_advs))
+    if (!http_server_read_history(&json_str, cur_time, time_interval_seconds, gw_cfg_get_ntp_use(), &num_of_advs))
     {
         LOG_ERR("Not enough memory");
         return http_server_resp_503();
@@ -794,28 +795,18 @@ http_server_cb_on_post_ruuvi(const char *p_body)
     {
         gw_cfg_update_eth_cfg(&p_gw_cfg_tmp->eth_cfg);
         adv_post_disable_retransmission();
+        if (p_gw_cfg_tmp->eth_cfg.use_eth)
+        {
+            ethernet_update_ip();
+        }
     }
     else
     {
         gw_cfg_update_ruuvi_cfg(&p_gw_cfg_tmp->ruuvi_cfg);
         restart_services();
-    }
-
-    settings_save_to_flash();
-
-    if (!ruuvi_auth_set_from_config())
-    {
-        LOG_ERR("%s failed", "ruuvi_auth_set_from_config");
-    }
-    ruuvi_send_nrf_settings();
-    if (flag_network_cfg)
-    {
-        ethernet_update_ip();
-    }
-    else
-    {
         adv_post_enable_retransmission();
     }
+
     return http_server_resp_data_in_flash(
         HTTP_CONENT_TYPE_APPLICATION_JSON,
         NULL,
@@ -892,28 +883,20 @@ http_server_cb_on_post_gw_cfg_download(void)
             return http_server_resp_503();
         }
 
-        bool flag_eq_ruuvi_cfg = false;
-        bool flag_eq_eth_cfg   = false;
-        bool flag_eq_wifi_cfg  = false;
-        if (!gw_cfg_cmp(p_gw_cfg_tmp, &flag_eq_ruuvi_cfg, &flag_eq_eth_cfg, &flag_eq_wifi_cfg))
+        const gw_cfg_update_status_t update_status = gw_cfg_update(p_gw_cfg_tmp);
+        if (update_status.flag_eth_cfg_modified || update_status.flag_wifi_cfg_modified)
         {
-            LOG_INFO("Update settings in flash");
-            gw_cfg_update(p_gw_cfg_tmp);
-            settings_save_to_flash();
-            if (!flag_eq_eth_cfg || !flag_eq_wifi_cfg)
-            {
-                LOG_INFO(
-                    "Network configuration in gw_cfg.json differs from the current settings, need to restart gateway");
-                p_resp_content
-                    = "{\"message\":"
-                      "\"Network configuration in gw_cfg.json on the server is different from the current one, "
-                      "the gateway will be rebooted.\"}";
-                reset_task_reboot_after_timeout();
-            }
-            else if (!flag_eq_ruuvi_cfg)
-            {
-                restart_services();
-            }
+            LOG_INFO("Network configuration in gw_cfg.json differs from the current settings, need to restart gateway");
+            p_resp_content
+                = "{\"message\":"
+                  "\"Network configuration in gw_cfg.json on the server is different from the current one, "
+                  "the gateway will be rebooted.\"}";
+            reset_task_reboot_after_timeout();
+        }
+        else if (update_status.flag_ruuvi_cfg_modified)
+        {
+            LOG_INFO("Ruuvi configuration in gw_cfg.json differs from the current settings, need to restart services");
+            restart_services();
         }
         else
         {

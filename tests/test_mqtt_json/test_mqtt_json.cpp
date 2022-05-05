@@ -153,7 +153,7 @@ TEST_F(TestMqttJson, test_1) // NOLINT
         .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
-    ASSERT_TRUE(mqtt_create_json_str(&adv_report, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_TRUE(mqtt_create_json_str(&adv_report, true, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
     ASSERT_EQ(
         string("{\n"
                "\t\"gw_mac\":\t\"AA:CC:EE:00:11:22\",\n"
@@ -167,6 +167,35 @@ TEST_F(TestMqttJson, test_1) // NOLINT
         string(this->m_json_str.p_str));
     cjson_wrap_free_json_str(&this->m_json_str);
     ASSERT_EQ(23, this->m_malloc_cnt);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestMqttJson, test_1_without_timestamps) // NOLINT
+{
+    const time_t                 timestamp     = 1612358920;
+    const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
+    const char *                 p_coordinates = "170.112233,59.445566";
+    const std::array<uint8_t, 1> data          = { 0xAAU };
+    adv_report_t                 adv_report    = {
+        .timestamp = 1011,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+        .rssi      = -70,
+        .data_len  = data.size(),
+    };
+    memcpy(adv_report.data_buf, data.data(), data.size());
+    ASSERT_TRUE(mqtt_create_json_str(&adv_report, false, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_EQ(
+        string("{\n"
+               "\t\"gw_mac\":\t\"AA:CC:EE:00:11:22\",\n"
+               "\t\"rssi\":\t-70,\n"
+               "\t\"aoa\":\t[],\n"
+               "\t\"cnt\":\t\"1011\",\n"
+               "\t\"data\":\t\"AA\",\n"
+               "\t\"coords\":\t\"170.112233,59.445566\"\n"
+               "}"),
+        string(this->m_json_str.p_str));
+    cjson_wrap_free_json_str(&this->m_json_str);
+    ASSERT_EQ(20, this->m_malloc_cnt);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
@@ -185,7 +214,7 @@ TEST_F(TestMqttJson, test_malloc_failed) // NOLINT
     memcpy(adv_report.data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 1;
-    ASSERT_FALSE(mqtt_create_json_str(&adv_report, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(mqtt_create_json_str(&adv_report, true, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -205,7 +234,7 @@ TEST_F(TestMqttJson, test_malloc_failed_1_of_23) // NOLINT
     memcpy(adv_report.data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 1;
-    ASSERT_FALSE(mqtt_create_json_str(&adv_report, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(mqtt_create_json_str(&adv_report, true, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -225,7 +254,7 @@ TEST_F(TestMqttJson, test_malloc_failed_2_of_23) // NOLINT
     memcpy(adv_report.data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 2;
-    ASSERT_FALSE(mqtt_create_json_str(&adv_report, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(mqtt_create_json_str(&adv_report, true, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -245,7 +274,7 @@ TEST_F(TestMqttJson, test_malloc_failed_3_of_23) // NOLINT
     memcpy(adv_report.data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 3;
-    ASSERT_FALSE(mqtt_create_json_str(&adv_report, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(mqtt_create_json_str(&adv_report, true, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -265,7 +294,7 @@ TEST_F(TestMqttJson, test_malloc_failed_4_of_23) // NOLINT
     memcpy(adv_report.data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 4;
-    ASSERT_FALSE(mqtt_create_json_str(&adv_report, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(mqtt_create_json_str(&adv_report, true, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -285,7 +314,7 @@ TEST_F(TestMqttJson, test_malloc_failed_5_of_23) // NOLINT
     memcpy(adv_report.data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 5;
-    ASSERT_FALSE(mqtt_create_json_str(&adv_report, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(mqtt_create_json_str(&adv_report, true, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -305,7 +334,7 @@ TEST_F(TestMqttJson, test_malloc_failed_6_of_23) // NOLINT
     memcpy(adv_report.data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 6;
-    ASSERT_FALSE(mqtt_create_json_str(&adv_report, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(mqtt_create_json_str(&adv_report, true, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -325,7 +354,7 @@ TEST_F(TestMqttJson, test_malloc_failed_7_of_23) // NOLINT
     memcpy(adv_report.data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 7;
-    ASSERT_FALSE(mqtt_create_json_str(&adv_report, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(mqtt_create_json_str(&adv_report, true, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -345,7 +374,7 @@ TEST_F(TestMqttJson, test_malloc_failed_8_of_23) // NOLINT
     memcpy(adv_report.data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 8;
-    ASSERT_FALSE(mqtt_create_json_str(&adv_report, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(mqtt_create_json_str(&adv_report, true, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -365,7 +394,7 @@ TEST_F(TestMqttJson, test_malloc_failed_9_of_23) // NOLINT
     memcpy(adv_report.data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 9;
-    ASSERT_FALSE(mqtt_create_json_str(&adv_report, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(mqtt_create_json_str(&adv_report, true, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -385,7 +414,7 @@ TEST_F(TestMqttJson, test_malloc_failed_10_of_23) // NOLINT
     memcpy(adv_report.data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 10;
-    ASSERT_FALSE(mqtt_create_json_str(&adv_report, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(mqtt_create_json_str(&adv_report, true, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -405,7 +434,7 @@ TEST_F(TestMqttJson, test_malloc_failed_11_of_23) // NOLINT
     memcpy(adv_report.data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 11;
-    ASSERT_FALSE(mqtt_create_json_str(&adv_report, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(mqtt_create_json_str(&adv_report, true, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -425,7 +454,7 @@ TEST_F(TestMqttJson, test_malloc_failed_12_of_23) // NOLINT
     memcpy(adv_report.data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 12;
-    ASSERT_FALSE(mqtt_create_json_str(&adv_report, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(mqtt_create_json_str(&adv_report, true, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -445,7 +474,7 @@ TEST_F(TestMqttJson, test_malloc_failed_13_of_23) // NOLINT
     memcpy(adv_report.data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 13;
-    ASSERT_FALSE(mqtt_create_json_str(&adv_report, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(mqtt_create_json_str(&adv_report, true, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -465,7 +494,7 @@ TEST_F(TestMqttJson, test_malloc_failed_14_of_23) // NOLINT
     memcpy(adv_report.data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 14;
-    ASSERT_FALSE(mqtt_create_json_str(&adv_report, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(mqtt_create_json_str(&adv_report, true, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -485,7 +514,7 @@ TEST_F(TestMqttJson, test_malloc_failed_15_of_23) // NOLINT
     memcpy(adv_report.data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 15;
-    ASSERT_FALSE(mqtt_create_json_str(&adv_report, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(mqtt_create_json_str(&adv_report, true, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -505,7 +534,7 @@ TEST_F(TestMqttJson, test_malloc_failed_16_of_23) // NOLINT
     memcpy(adv_report.data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 16;
-    ASSERT_FALSE(mqtt_create_json_str(&adv_report, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(mqtt_create_json_str(&adv_report, true, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -525,7 +554,7 @@ TEST_F(TestMqttJson, test_malloc_failed_17_of_23) // NOLINT
     memcpy(adv_report.data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 17;
-    ASSERT_FALSE(mqtt_create_json_str(&adv_report, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(mqtt_create_json_str(&adv_report, true, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -545,7 +574,7 @@ TEST_F(TestMqttJson, test_malloc_failed_18_of_23) // NOLINT
     memcpy(adv_report.data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 18;
-    ASSERT_FALSE(mqtt_create_json_str(&adv_report, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(mqtt_create_json_str(&adv_report, true, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -565,7 +594,7 @@ TEST_F(TestMqttJson, test_malloc_failed_19_of_23) // NOLINT
     memcpy(adv_report.data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 19;
-    ASSERT_FALSE(mqtt_create_json_str(&adv_report, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(mqtt_create_json_str(&adv_report, true, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -585,7 +614,7 @@ TEST_F(TestMqttJson, test_malloc_failed_20_of_23) // NOLINT
     memcpy(adv_report.data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 20;
-    ASSERT_FALSE(mqtt_create_json_str(&adv_report, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(mqtt_create_json_str(&adv_report, true, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -605,7 +634,7 @@ TEST_F(TestMqttJson, test_malloc_failed_21_of_23) // NOLINT
     memcpy(adv_report.data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 21;
-    ASSERT_FALSE(mqtt_create_json_str(&adv_report, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(mqtt_create_json_str(&adv_report, true, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -625,7 +654,7 @@ TEST_F(TestMqttJson, test_malloc_failed_22_of_23) // NOLINT
     memcpy(adv_report.data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 22;
-    ASSERT_FALSE(mqtt_create_json_str(&adv_report, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(mqtt_create_json_str(&adv_report, true, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -645,7 +674,7 @@ TEST_F(TestMqttJson, test_malloc_failed_23_of_23) // NOLINT
     memcpy(adv_report.data_buf, data.data(), data.size());
 
     this->m_malloc_fail_on_cnt = 23;
-    ASSERT_FALSE(mqtt_create_json_str(&adv_report, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
+    ASSERT_FALSE(mqtt_create_json_str(&adv_report, true, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
     ASSERT_EQ(nullptr, this->m_json_str.p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }

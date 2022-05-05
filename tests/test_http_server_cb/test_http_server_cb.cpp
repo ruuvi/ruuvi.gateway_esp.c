@@ -26,6 +26,7 @@
 #include "gw_cfg_default.h"
 #include "fw_ver.h"
 #include "lwip/ip4_addr.h"
+#include "event_mgr.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -165,6 +166,9 @@ restart_services(void)
 {
 }
 
+void
+settings_save_to_flash(const gw_cfg_t *const p_gw_cfg);
+
 } // extern "C"
 
 class MemAllocTrace
@@ -247,7 +251,6 @@ protected:
         this->m_malloc_cnt                        = 0;
         this->m_malloc_fail_on_cnt                = 0;
         this->m_flag_settings_saved_to_flash      = false;
-        this->m_flag_settings_sent_to_nrf         = false;
         this->m_flag_settings_ethernet_ip_updated = false;
 
         const gw_cfg_default_init_param_t init_params = {
@@ -260,7 +263,7 @@ protected:
             .esp32_mac_addr_eth  = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x22 },
         };
         gw_cfg_default_init(&init_params, nullptr);
-        gw_cfg_init();
+        gw_cfg_init(&settings_save_to_flash);
         esp_log_wrapper_clear();
     }
 
@@ -283,7 +286,6 @@ public:
     uint32_t              m_malloc_cnt;
     uint32_t              m_malloc_fail_on_cnt;
     bool                  m_flag_settings_saved_to_flash;
-    bool                  m_flag_settings_sent_to_nrf;
     bool                  m_flag_settings_ethernet_ip_updated;
     flash_fat_fs_t        m_fatfs;
     bool                  m_is_fatfs_mounted;
@@ -297,7 +299,6 @@ TestHttpServerCb::TestHttpServerCb()
     : m_malloc_cnt(0)
     , m_malloc_fail_on_cnt(0)
     , m_flag_settings_saved_to_flash(false)
-    , m_flag_settings_sent_to_nrf(false)
     , m_flag_settings_ethernet_ip_updated(false)
     , m_is_fatfs_mounted(false)
     , m_is_fatfs_mount_fail(false)
@@ -401,6 +402,11 @@ os_mutex_unlock(os_mutex_t const h_mutex)
     (void)h_mutex;
 }
 
+void
+event_mgr_notify(const event_mgr_ev_e event)
+{
+}
+
 char *
 esp_ip4addr_ntoa(const esp_ip4_addr_t *addr, char *buf, int buflen)
 {
@@ -443,8 +449,13 @@ xTaskGetTickCount(void)
 }
 
 void
-adv_table_history_read(adv_report_table_t *const p_reports, const time_t cur_time, const uint32_t time_interval_seconds)
+adv_table_history_read(
+    adv_report_table_t *const p_reports,
+    const time_t              cur_time,
+    const bool                flag_use_timestamps,
+    const uint32_t            time_interval_seconds)
 {
+    (void)flag_use_timestamps;
     (void)time_interval_seconds;
     p_reports->num_of_advs = 2;
     {
@@ -469,23 +480,16 @@ adv_table_history_read(adv_report_table_t *const p_reports, const time_t cur_tim
     }
 }
 
-bool
-settings_save_to_flash(void)
+void
+settings_save_to_flash(const gw_cfg_t *const p_gw_cfg)
 {
     g_pTestClass->m_flag_settings_saved_to_flash = true;
-    return true;
 }
 
 void
 ethernet_update_ip(void)
 {
     g_pTestClass->m_flag_settings_ethernet_ip_updated = true;
-}
-
-void
-ruuvi_send_nrf_settings(const gw_cfg_t *p_config)
-{
-    g_pTestClass->m_flag_settings_sent_to_nrf = true;
 }
 
 const flash_fat_fs_t *
@@ -556,7 +560,7 @@ fw_update_set_url(const char *const p_url_fmt, ...)
 {
     va_list ap;
     va_start(ap, p_url_fmt);
-    vsnprintf(g_pTestClass->fw_update_url.data(), g_pTestClass->fw_update_url.size(), p_url_fmt, ap);
+    (void)vsnprintf(g_pTestClass->fw_update_url.data(), g_pTestClass->fw_update_url.size(), p_url_fmt, ap);
     va_end(ap);
 }
 
@@ -656,6 +660,12 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
           "\t\"auto_update_interval_from\":\t0,\n"
           "\t\"auto_update_interval_to\":\t24,\n"
           "\t\"auto_update_tz_offset_hours\":\t3,\n"
+          "\t\"ntp_use\":\ttrue,\n"
+          "\t\"ntp_use_dhcp\":\tfalse,\n"
+          "\t\"ntp_server1\":\t\"time1.server.com\",\n"
+          "\t\"ntp_server2\":\t\"time2.server.com\",\n"
+          "\t\"ntp_server3\":\t\"time3.server.com\",\n"
+          "\t\"ntp_server4\":\t\"time4.server.com\",\n"
           "\t\"company_id\":\t1177,\n"
           "\t\"company_use_filtering\":\ttrue,\n"
           "\t\"scan_coded_phy\":\tfalse,\n"
@@ -696,6 +706,12 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
             "\"auto_update_interval_from\":0,"
             "\"auto_update_interval_to\":24,"
             "\"auto_update_tz_offset_hours\":3,"
+            "\"ntp_use\":true,"
+            "\"ntp_use_dhcp\":false,"
+            "\"ntp_server1\":\"time1.server.com\","
+            "\"ntp_server2\":\"time2.server.com\","
+            "\"ntp_server3\":\"time3.server.com\","
+            "\"ntp_server4\":\"time4.server.com\","
             "\"company_use_filtering\":true"
             "}",
             &gw_cfg,
@@ -838,6 +854,12 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
           "\t\"auto_update_interval_from\":\t1,\n"
           "\t\"auto_update_interval_to\":\t23,\n"
           "\t\"auto_update_tz_offset_hours\":\t-3,\n"
+          "\t\"ntp_use\":\ttrue,\n"
+          "\t\"ntp_use_dhcp\":\tfalse,\n"
+          "\t\"ntp_server1\":\t\"time1.server.com\",\n"
+          "\t\"ntp_server2\":\t\"time2.server.com\",\n"
+          "\t\"ntp_server3\":\t\"time3.server.com\",\n"
+          "\t\"ntp_server4\":\t\"time4.server.com\",\n"
           "\t\"company_id\":\t1177,\n"
           "\t\"company_use_filtering\":\ttrue,\n"
           "\t\"scan_coded_phy\":\tfalse,\n"
@@ -878,6 +900,12 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
             "\"auto_update_interval_to\":23,"
             "\"auto_update_tz_offset_hours\":-3,"
             "\"lan_auth_api_key\":\"\","
+            "\"ntp_use\":true,"
+            "\"ntp_use_dhcp\":false,"
+            "\"ntp_server1\":\"time1.server.com\","
+            "\"ntp_server2\":\"time2.server.com\","
+            "\"ntp_server3\":\"time3.server.com\","
+            "\"ntp_server4\":\"time4.server.com\","
             "\"company_use_filtering\":true"
             "}",
             &gw_cfg,
@@ -1277,6 +1305,12 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
           "\t\"auto_update_interval_from\":\t0,\n"
           "\t\"auto_update_interval_to\":\t24,\n"
           "\t\"auto_update_tz_offset_hours\":\t3,\n"
+          "\t\"ntp_use\":\ttrue,\n"
+          "\t\"ntp_use_dhcp\":\tfalse,\n"
+          "\t\"ntp_server1\":\t\"time1.server.com\",\n"
+          "\t\"ntp_server2\":\t\"time2.server.com\",\n"
+          "\t\"ntp_server3\":\t\"time3.server.com\",\n"
+          "\t\"ntp_server4\":\t\"time4.server.com\",\n"
           "\t\"company_id\":\t1177,\n"
           "\t\"company_use_filtering\":\ttrue,\n"
           "\t\"scan_coded_phy\":\tfalse,\n"
@@ -1312,6 +1346,12 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
             "\"http_stat_user\":\"\","
             "\"http_stat_pass\":\"\","
             "\"lan_auth_api_key\":\"6kl/fd/c+3qvWm3Mhmwgh3BWNp+HDRQiLp/X0PuwG8Q=\","
+            "\"ntp_use\":true,"
+            "\"ntp_use_dhcp\":false,"
+            "\"ntp_server1\":\"time1.server.com\","
+            "\"ntp_server2\":\"time2.server.com\","
+            "\"ntp_server3\":\"time3.server.com\","
+            "\"ntp_server4\":\"time4.server.com\","
             "\"company_use_filtering\":true"
             "}",
             &gw_cfg,
@@ -1461,7 +1501,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
         "}");
 
     ASSERT_TRUE(this->m_flag_settings_saved_to_flash);
-    ASSERT_TRUE(this->m_flag_settings_sent_to_nrf);
     ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
@@ -1513,6 +1552,20 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'auto_update_interval_to' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_tz_offset_hours: not found or invalid");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'auto_update_tz_offset_hours' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_use: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_use' in config-json, use default value: 'true'");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_use_dhcp: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_WARN,
+        "Can't find key 'ntp_use_dhcp' in config-json, use default value: 'false'");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server1: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_server1' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server2: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_server2' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server3: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_server3' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server4: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_server4' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_id: not found or invalid");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'company_id' in config-json, use default value: 0x0499");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_use_filtering: 1");
@@ -1558,6 +1611,12 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update weekdays_bitmask: 0x7f"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update interval: 00:00..24:00"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update TZ: UTC+3"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Use: yes"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Use DHCP: no"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Server1: time.google.com"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Server2: time.cloudflare.com"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Server3: time.nist.gov"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Server4: pool.ntp.org"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use company id filter: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: company id: 0x0499"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan coded phy: 0"));
@@ -1597,7 +1656,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed1) // NOLINT
         "}");
 
     ASSERT_FALSE(this->m_flag_settings_saved_to_flash);
-    ASSERT_FALSE(this->m_flag_settings_sent_to_nrf);
     ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
 
     ASSERT_EQ(HTTP_RESP_CODE_503, resp.http_resp_code);
@@ -1640,7 +1698,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed2) // NOLINT
         "}");
 
     ASSERT_FALSE(this->m_flag_settings_saved_to_flash);
-    ASSERT_FALSE(this->m_flag_settings_sent_to_nrf);
     ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
 
     ASSERT_EQ(HTTP_RESP_CODE_503, resp.http_resp_code);
@@ -1683,7 +1740,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed3) // NOLINT
         "}");
 
     ASSERT_FALSE(this->m_flag_settings_saved_to_flash);
-    ASSERT_FALSE(this->m_flag_settings_sent_to_nrf);
     ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
 
     ASSERT_EQ(HTTP_RESP_CODE_503, resp.http_resp_code);
@@ -1703,17 +1759,18 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
 {
     const char *expected_resp = "{}";
     {
-        gw_cfg_t *p_gw_cfg                         = gw_cfg_lock_rw();
-        p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI;
-        snprintf(
-            p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_user.buf,
-            sizeof(p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_user.buf),
+        gw_cfg_t gw_cfg = { 0 };
+        gw_cfg_default_get(&gw_cfg);
+        gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI;
+        (void)snprintf(
+            gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf,
+            sizeof(gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf),
             "user1");
-        snprintf(
-            p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_pass.buf,
-            sizeof(p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_pass.buf),
+        (void)snprintf(
+            gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf,
+            sizeof(gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf),
             "password1");
-        gw_cfg_unlock_rw(&p_gw_cfg);
+        gw_cfg_update(&gw_cfg);
     }
     const http_server_resp_t resp = http_server_cb_on_post(
         "ruuvi.json",
@@ -1746,7 +1803,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
         false);
 
     ASSERT_TRUE(this->m_flag_settings_saved_to_flash);
-    ASSERT_TRUE(this->m_flag_settings_sent_to_nrf);
     ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
@@ -1795,6 +1851,20 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'auto_update_interval_to' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_tz_offset_hours: not found or invalid");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'auto_update_tz_offset_hours' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_use: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_use' in config-json, use default value: 'true'");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_use_dhcp: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_WARN,
+        "Can't find key 'ntp_use_dhcp' in config-json, use default value: 'false'");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server1: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_server1' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server2: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_server2' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server3: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_server3' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server4: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_server4' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_id: not found or invalid");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'company_id' in config-json, use default value: 0x0499");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_use_filtering: 1");
@@ -1842,6 +1912,12 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update weekdays_bitmask: 0x7f"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update interval: 00:00..24:00"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update TZ: UTC+3"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Use: yes"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Use DHCP: no"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Server1: time.google.com"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Server2: time.cloudflare.com"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Server3: time.nist.gov"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Server4: pool.ntp.org"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use company id filter: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: company id: 0x0499"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan coded phy: 0"));
@@ -1859,17 +1935,18 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     const char *expected_resp = "{}";
 
     {
-        gw_cfg_t *p_gw_cfg                         = gw_cfg_lock_rw();
-        p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI;
-        snprintf(
-            p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_user.buf,
-            sizeof(p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_user.buf),
+        gw_cfg_t gw_cfg = { 0 };
+        gw_cfg_default_get(&gw_cfg);
+        gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI;
+        (void)snprintf(
+            gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf,
+            sizeof(gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf),
             "user1");
-        snprintf(
-            p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_pass.buf,
-            sizeof(p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_pass.buf),
+        (void)snprintf(
+            gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf,
+            sizeof(gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf),
             "password1");
-        gw_cfg_unlock_rw(&p_gw_cfg);
+        gw_cfg_update(&gw_cfg);
     }
 
     const http_server_resp_t resp = http_server_cb_on_post(
@@ -1906,7 +1983,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
         false);
 
     ASSERT_TRUE(this->m_flag_settings_saved_to_flash);
-    ASSERT_TRUE(this->m_flag_settings_sent_to_nrf);
     ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
@@ -1954,6 +2030,20 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'auto_update_interval_to' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_tz_offset_hours: not found or invalid");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'auto_update_tz_offset_hours' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_use: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_use' in config-json, use default value: 'true'");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_use_dhcp: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_WARN,
+        "Can't find key 'ntp_use_dhcp' in config-json, use default value: 'false'");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server1: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_server1' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server2: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_server2' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server3: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_server3' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server4: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_server4' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_id: not found or invalid");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'company_id' in config-json, use default value: 0x0499");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_use_filtering: 1");
@@ -2001,6 +2091,12 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update weekdays_bitmask: 0x7f"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update interval: 00:00..24:00"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update TZ: UTC+3"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Use: yes"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Use DHCP: no"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Server1: time.google.com"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Server2: time.cloudflare.com"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Server3: time.nist.gov"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Server4: pool.ntp.org"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use company id filter: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: company id: 0x0499"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan coded phy: 0"));
@@ -2046,7 +2142,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
         false);
 
     ASSERT_TRUE(this->m_flag_settings_saved_to_flash);
-    ASSERT_TRUE(this->m_flag_settings_sent_to_nrf);
     ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
@@ -2099,6 +2194,20 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'auto_update_interval_to' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_tz_offset_hours: not found or invalid");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'auto_update_tz_offset_hours' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_use: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_use' in config-json, use default value: 'true'");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_use_dhcp: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_WARN,
+        "Can't find key 'ntp_use_dhcp' in config-json, use default value: 'false'");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server1: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_server1' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server2: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_server2' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server3: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_server3' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server4: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_server4' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_id: not found or invalid");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'company_id' in config-json, use default value: 0x0499");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_use_filtering: 1");
@@ -2144,6 +2253,12 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update weekdays_bitmask: 0x7f"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update interval: 00:00..24:00"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update TZ: UTC+3"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Use: yes"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Use DHCP: no"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Server1: time.google.com"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Server2: time.cloudflare.com"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Server3: time.nist.gov"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Server4: pool.ntp.org"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use company id filter: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: company id: 0x0499"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan coded phy: 0"));
@@ -2183,7 +2298,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_unknown_json) // NOLINT
         false);
 
     ASSERT_FALSE(this->m_flag_settings_saved_to_flash);
-    ASSERT_FALSE(this->m_flag_settings_sent_to_nrf);
     ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
 
     ASSERT_EQ(HTTP_RESP_CODE_404, resp.http_resp_code);

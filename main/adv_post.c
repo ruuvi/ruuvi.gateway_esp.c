@@ -17,7 +17,6 @@
 #include "os_mutex.h"
 #include "os_signal.h"
 #include "os_timer_sig.h"
-#include "bin2hex.h"
 #include "cJSON.h"
 #include "http.h"
 #include "mqtt.h"
@@ -32,7 +31,6 @@
 #include "mac_addr.h"
 #include "ruuvi_device_id.h"
 #include "event_mgr.h"
-#include "fw_update.h"
 #include "nrf52fw.h"
 #include "reset_task.h"
 #include "time_units.h"
@@ -53,6 +51,8 @@ typedef enum adv_post_sig_e
     ADV_POST_SIG_ENABLE               = OS_SIGNAL_NUM_8,
     ADV_POST_SIG_NETWORK_WATCHDOG     = OS_SIGNAL_NUM_9,
     ADV_POST_SIG_TASK_WATCHDOG_FEED   = OS_SIGNAL_NUM_10,
+    ADV_POST_SIG_GW_CFG_READY         = OS_SIGNAL_NUM_11,
+    ADV_POST_SIG_GW_CFG_CHANGED_RUUVI = OS_SIGNAL_NUM_12,
 } adv_post_sig_e;
 
 typedef struct adv_post_state_t
@@ -62,10 +62,11 @@ typedef struct adv_post_state_t
     bool flag_need_to_send_advs;
     bool flag_need_to_send_statistics;
     bool flag_retransmission_disabled;
+    bool flag_use_timestamps;
 } adv_post_state_t;
 
 #define ADV_POST_SIG_FIRST (ADV_POST_SIG_STOP)
-#define ADV_POST_SIG_LAST  (ADV_POST_SIG_TASK_WATCHDOG_FEED)
+#define ADV_POST_SIG_LAST  (ADV_POST_SIG_GW_CFG_CHANGED_RUUVI)
 
 static void
 adv_post_send_report(void *arg);
@@ -109,6 +110,8 @@ static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_eth_disconnected;
 static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_wifi_connected;
 static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_eth_connected;
 static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_time_synchronized;
+static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_cfg_ready;
+static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_gw_cfg_ruuvi_changed;
 
 static uint32_t g_adv_post_interval_ms = ADV_POST_DEFAULT_INTERVAL_SECONDS * TIME_UNITS_MS_PER_SECOND;
 
@@ -151,7 +154,7 @@ adv_put_to_table(const adv_report_t *const p_adv)
 }
 
 static bool
-parse_adv_report_from_uart(const re_ca_uart_payload_t *const p_msg, adv_report_t *const p_adv)
+parse_adv_report_from_uart(const re_ca_uart_payload_t *const p_msg, const time_t timestamp, adv_report_t *const p_adv)
 {
     if (NULL == p_msg)
     {
@@ -175,7 +178,7 @@ parse_adv_report_from_uart(const re_ca_uart_payload_t *const p_msg, adv_report_t
         return false;
     }
     mac_address_bin_init(&p_adv->tag_mac, p_report->mac);
-    p_adv->timestamp       = time(NULL);
+    p_adv->timestamp       = timestamp;
     p_adv->samples_counter = 0;
     p_adv->rssi            = p_report->rssi_db;
     p_adv->data_len        = p_report->adv_len;
@@ -211,31 +214,42 @@ adv_post_cb_on_recv_device_id(void *p_arg)
 static void
 adv_post_send_report(void *arg)
 {
-    adv_report_t adv_report = { 0 };
-
-    if (!parse_adv_report_from_uart((re_ca_uart_payload_t *)arg, &adv_report))
+    if (!gw_cfg_is_initialized())
     {
+        LOG_WARN("Drop adv - gw_cfg is not ready yet");
         return;
     }
+
+    const bool flag_ntp_use = gw_cfg_get_ntp_use();
+    if (flag_ntp_use && !time_is_synchronized())
+    {
+        LOG_WARN("Drop adv - time is not synchronized yet");
+        return;
+    }
+
+    const time_t timestamp = flag_ntp_use ? time(NULL) : (time_t)metrics_received_advs_get();
+
+    adv_report_t adv_report = { 0 };
+    if (!parse_adv_report_from_uart((re_ca_uart_payload_t *)arg, timestamp, &adv_report))
+    {
+        LOG_WARN("Drop adv - %s failed", "parse_adv_report_from_uart");
+        return;
+    }
+
     const esp_err_t ret = adv_put_to_table(&adv_report);
     if (ESP_ERR_NO_MEM == ret)
     {
-        LOG_WARN("Adv report table full, adv dropped");
-    }
-    if (!gw_cfg_is_initialized())
-    {
-        LOG_WARN("gw_cfg is not ready yet");
-        return;
+        LOG_WARN("Drop adv - table full");
     }
     if (gw_cfg_get_mqtt_use_mqtt())
     {
         if (0 == (xEventGroupGetBits(status_bits) & MQTT_CONNECTED_BIT))
         {
-            LOG_WARN("Can't send, MQTT is not connected yet");
+            LOG_WARN("Can't send adv, MQTT is not connected yet");
         }
         else
         {
-            if (mqtt_publish_adv(&adv_report))
+            if (mqtt_publish_adv(&adv_report, flag_ntp_use, time(NULL)))
             {
                 adv_post_last_successful_network_comm_timestamp_update();
             }
@@ -251,11 +265,12 @@ static void
 adv_post_send_get_all(void *arg)
 {
     (void)arg;
+    LOG_INFO("Got configuration request from NRF52");
     ruuvi_send_nrf_settings();
 }
 
 static void
-adv_post_log(const adv_report_table_t *p_reports)
+adv_post_log(const adv_report_table_t *p_reports, const bool flag_use_timestamps)
 {
     LOG_INFO("Advertisements in table: %u", (printf_uint_t)p_reports->num_of_advs);
     for (num_of_advs_t i = 0; i < p_reports->num_of_advs; ++i)
@@ -263,19 +278,36 @@ adv_post_log(const adv_report_table_t *p_reports)
         const adv_report_t *p_adv = &p_reports->table[i];
 
         const mac_address_str_t mac_str = mac_address_to_str(&p_adv->tag_mac);
-        LOG_DUMP_INFO(
-            p_adv->data_buf,
-            p_adv->data_len,
-            "i: %d, tag: %s, rssi: %d, timestamp: %ld",
-            i,
-            mac_str.str_buf,
-            p_adv->rssi,
-            p_adv->timestamp);
+        if (flag_use_timestamps)
+        {
+            LOG_DUMP_INFO(
+                p_adv->data_buf,
+                p_adv->data_len,
+                "i: %d, tag: %s, rssi: %d, timestamp: %ld",
+                i,
+                mac_str.str_buf,
+                p_adv->rssi,
+                p_adv->timestamp);
+        }
+        else
+        {
+            LOG_DUMP_INFO(
+                p_adv->data_buf,
+                p_adv->data_len,
+                "i: %d, tag: %s, rssi: %d, counter: %ld",
+                i,
+                mac_str.str_buf,
+                p_adv->rssi,
+                p_adv->timestamp);
+        }
     }
 }
 
 static bool
-adv_post_retransmit_advs(const adv_report_table_t *p_reports, const bool flag_network_connected)
+adv_post_retransmit_advs(
+    const adv_report_table_t *p_reports,
+    const bool                flag_network_connected,
+    const bool                flag_use_timestamps)
 {
     if (0 == p_reports->num_of_advs)
     {
@@ -286,13 +318,8 @@ adv_post_retransmit_advs(const adv_report_table_t *p_reports, const bool flag_ne
         LOG_WARN("Can't send advs, no network connection");
         return false;
     }
-    if (!time_is_valid(p_reports->table[0].timestamp))
-    {
-        LOG_WARN("Can't send advs, the accumulated data has an invalid timestamp");
-        return false;
-    }
 
-    if (!http_send_advs(p_reports, g_adv_post_nonce))
+    if (!http_send_advs(p_reports, g_adv_post_nonce, flag_use_timestamps))
     {
         return false;
     }
@@ -301,16 +328,16 @@ adv_post_retransmit_advs(const adv_report_table_t *p_reports, const bool flag_ne
 }
 
 static bool
-adv_post_do_retransmission(const bool flag_network_connected)
+adv_post_do_retransmission(const bool flag_network_connected, const bool flag_use_timestamps)
 {
     static adv_report_table_t g_adv_reports_buf;
 
     // for thread safety copy the advertisements to a separate buffer for posting
     adv_table_read_retransmission_list_and_clear(&g_adv_reports_buf);
 
-    adv_post_log(&g_adv_reports_buf);
+    adv_post_log(&g_adv_reports_buf, flag_use_timestamps);
 
-    return adv_post_retransmit_advs(&g_adv_reports_buf, flag_network_connected);
+    return adv_post_retransmit_advs(&g_adv_reports_buf, flag_network_connected, flag_use_timestamps);
 }
 
 static bool
@@ -372,14 +399,16 @@ adv_post_do_async_comm(adv_post_state_t *const p_adv_post_state)
         {
             LOG_WARN("Can't send advs, no network connection");
         }
-        else if (!time_is_synchronized())
+        else if (p_adv_post_state->flag_use_timestamps && !time_is_synchronized())
         {
             LOG_WARN("Can't send advs, the time is not yet synchronized");
         }
         else
         {
             p_adv_post_state->flag_need_to_send_advs = false;
-            if (adv_post_do_retransmission(p_adv_post_state->flag_network_connected))
+            if (adv_post_do_retransmission(
+                    p_adv_post_state->flag_network_connected,
+                    p_adv_post_state->flag_use_timestamps))
             {
                 p_adv_post_state->flag_async_comm_in_progress = true;
             }
@@ -392,7 +421,7 @@ adv_post_do_async_comm(adv_post_state_t *const p_adv_post_state)
         {
             LOG_WARN("Can't send statistics, no network connection");
         }
-        else if (!time_is_synchronized())
+        else if (p_adv_post_state->flag_use_timestamps && !time_is_synchronized())
         {
             LOG_WARN("Can't send statistics, the time is not yet synchronized");
         }
@@ -483,7 +512,7 @@ adv_post_handle_sig_send_statistics(adv_post_state_t *const p_adv_post_state)
             LOG_WARN("Can't send statistics, no network connection");
             return;
         }
-        if (!time_is_synchronized())
+        if (p_adv_post_state->flag_use_timestamps && !time_is_synchronized())
         {
             LOG_WARN("Can't send statistics, the time is not yet synchronized");
             return;
@@ -540,6 +569,7 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t *const p
             adv_post_handle_sig_time_synchronized(p_adv_post_state);
             break;
         case ADV_POST_SIG_RETRANSMIT:
+            LOG_INFO("Got ADV_POST_SIG_RETRANSMIT");
             if ((!p_adv_post_state->flag_retransmission_disabled) && gw_cfg_get_http_use_http())
             {
                 p_adv_post_state->flag_need_to_send_advs = true;
@@ -547,6 +577,7 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t *const p
             }
             break;
         case ADV_POST_SIG_SEND_STATISTICS:
+            LOG_INFO("Got ADV_POST_SIG_SEND_STATISTICS");
             adv_post_handle_sig_send_statistics(p_adv_post_state);
             break;
         case ADV_POST_SIG_DO_ASYNC_COMM:
@@ -563,6 +594,16 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t *const p
             break;
         case ADV_POST_SIG_TASK_WATCHDOG_FEED:
             adv_post_handle_sig_task_watchdog_feed();
+            break;
+        case ADV_POST_SIG_GW_CFG_READY:
+            LOG_INFO("Got ADV_POST_SIG_GW_CFG_READY");
+            ruuvi_send_nrf_settings();
+            p_adv_post_state->flag_use_timestamps = gw_cfg_get_ntp_use();
+            break;
+        case ADV_POST_SIG_GW_CFG_CHANGED_RUUVI:
+            LOG_INFO("Got ADV_POST_SIG_GW_CFG_CHANGED_RUUVI");
+            ruuvi_send_nrf_settings();
+            p_adv_post_state->flag_use_timestamps = gw_cfg_get_ntp_use();
             break;
     }
     return flag_stop;
@@ -592,6 +633,7 @@ adv_post_task(void)
         .flag_need_to_send_advs       = false,
         .flag_need_to_send_statistics = true,
         .flag_retransmission_disabled = false,
+        .flag_use_timestamps          = false,
     };
 
     for (;;)
@@ -651,6 +693,8 @@ adv_post_init(void)
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_ENABLE));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_NETWORK_WATCHDOG));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_TASK_WATCHDOG_FEED));
+    os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_GW_CFG_READY));
+    os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_GW_CFG_CHANGED_RUUVI));
 
     event_mgr_subscribe_sig_static(
         &g_adv_post_ev_info_mem_wifi_disconnected,
@@ -681,6 +725,18 @@ adv_post_init(void)
         EVENT_MGR_EV_TIME_SYNCHRONIZED,
         g_p_adv_post_sig,
         adv_post_conv_to_sig_num(ADV_POST_SIG_TIME_SYNCHRONIZED));
+
+    event_mgr_subscribe_sig_static(
+        &g_adv_post_ev_info_mem_cfg_ready,
+        EVENT_MGR_EV_GW_CFG_READY,
+        g_p_adv_post_sig,
+        adv_post_conv_to_sig_num(ADV_POST_SIG_GW_CFG_READY));
+
+    event_mgr_subscribe_sig_static(
+        &g_adv_post_ev_info_mem_gw_cfg_ruuvi_changed,
+        EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI,
+        g_p_adv_post_sig,
+        adv_post_conv_to_sig_num(ADV_POST_SIG_GW_CFG_CHANGED_RUUVI));
 
     g_p_adv_post_timer_sig_retransmit = os_timer_sig_periodic_create_static(
         &g_adv_post_timer_sig_retransmit_mem,

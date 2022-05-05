@@ -17,6 +17,7 @@
 #include "gw_cfg_log.h"
 #include "os_malloc.h"
 #include "wifi_manager.h"
+#include "event_mgr.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -63,7 +64,14 @@ settings_nvs_open(nvs_open_mode_t open_mode, nvs_handle_t *p_handle)
             err = nvs_set_str(handle, RUUVI_GATEWAY_NVS_CFG_JSON_KEY, "");
             if (ESP_OK != err)
             {
-                LOG_ERR_ESP(err, "Can't save config to NVS");
+                LOG_ERR_ESP(err, "%s failed", "nvs_set_str");
+                nvs_close(handle);
+                return false;
+            }
+            err = nvs_commit(handle);
+            if (ESP_OK != err)
+            {
+                LOG_ERR_ESP(err, "%s failed", "nvs_commit");
                 nvs_close(handle);
                 return false;
             }
@@ -98,10 +106,38 @@ settings_check_in_flash(void)
     return true;
 }
 
+static char *
+settings_read_gw_cfg_json_from_nvs(nvs_handle handle)
+{
+    size_t    cfg_json_size = 0;
+    esp_err_t esp_err       = nvs_get_str(handle, RUUVI_GATEWAY_NVS_CFG_JSON_KEY, NULL, &cfg_json_size);
+    if (ESP_OK != esp_err)
+    {
+        LOG_ERR_ESP(esp_err, "Can't find config key '%s' in flash", RUUVI_GATEWAY_NVS_CFG_JSON_KEY);
+        return NULL;
+    }
+
+    char *p_cfg_json = os_malloc(cfg_json_size);
+    if (NULL == p_cfg_json)
+    {
+        LOG_ERR("Can't allocate %lu bytes for configuration", (printf_ulong_t)cfg_json_size);
+        return NULL;
+    }
+
+    esp_err = nvs_get_str(handle, RUUVI_GATEWAY_NVS_CFG_JSON_KEY, p_cfg_json, &cfg_json_size);
+    if (ESP_OK != esp_err)
+    {
+        LOG_ERR_ESP(esp_err, "Can't read config-json from flash by key '%s'", RUUVI_GATEWAY_NVS_CFG_JSON_KEY);
+        os_free(p_cfg_json);
+        return NULL;
+    }
+    return p_cfg_json;
+}
+
 static bool
 settings_save_to_flash_cjson(const char *const p_json_str)
 {
-    LOG_DBG("Save to flash: %s", (NULL != p_json_str) ? p_json_str : "");
+    LOG_DBG("Save config to NVS: %s", (NULL != p_json_str) ? p_json_str : "");
 
     nvs_handle handle = 0;
     if (!settings_nvs_open(NVS_READWRITE, &handle))
@@ -110,47 +146,57 @@ settings_save_to_flash_cjson(const char *const p_json_str)
         return false;
     }
 
-    const esp_err_t err = nvs_set_str(handle, RUUVI_GATEWAY_NVS_CFG_JSON_KEY, (NULL != p_json_str) ? p_json_str : "");
-    nvs_close(handle);
+    char *p_gw_cfg_prev = settings_read_gw_cfg_json_from_nvs(handle);
+    if (NULL == p_gw_cfg_prev)
+    {
+        LOG_WARN("%s failed", "settings_read_gw_cfg_json_from_nvs");
+    }
+    else
+    {
+        const bool flag_is_cfg_equal = (0 == strcmp(p_gw_cfg_prev, p_json_str)) ? true : false;
+        os_free(p_gw_cfg_prev);
+        if (flag_is_cfg_equal)
+        {
+            nvs_close(handle);
+            LOG_INFO("Save config to NVS: not needed (gw_cfg was not modified)");
+            return true;
+        }
+    }
+
+    esp_err_t err = nvs_set_str(handle, RUUVI_GATEWAY_NVS_CFG_JSON_KEY, (NULL != p_json_str) ? p_json_str : "");
     if (ESP_OK != err)
     {
-        LOG_ERR_ESP(err, "Failed to save config to flash");
+        LOG_ERR_ESP(err, "%s failed", "nvs_set_str");
+        nvs_close(handle);
         return false;
     }
+    err = nvs_commit(handle);
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "%s failed", "nvs_commit");
+        nvs_close(handle);
+        return false;
+    }
+    nvs_close(handle);
+
+    LOG_INFO("Save config to NVS: successfully updated");
+
     return true;
 }
 
-bool
-settings_save_to_flash(void)
+void
+settings_save_to_flash(const gw_cfg_t *const p_gw_cfg)
 {
-    gw_cfg_t *p_gw_cfg_tmp = os_calloc(1, sizeof(*p_gw_cfg_tmp));
-    if (NULL == p_gw_cfg_tmp)
-    {
-        LOG_ERR("Failed to allocate memory for gw_cfg");
-        return false;
-    }
-    gw_cfg_get_copy(p_gw_cfg_tmp);
-
-    bool             res       = false;
     cjson_wrap_str_t cjson_str = { 0 };
-    if (!gw_cfg_json_generate_full(p_gw_cfg_tmp, &cjson_str))
+    if (!gw_cfg_json_generate_full(p_gw_cfg, &cjson_str))
     {
         LOG_ERR("%s failed", "gw_cfg_json_generate");
     }
     else
     {
-        res = settings_save_to_flash_cjson(cjson_str.p_str);
+        settings_save_to_flash_cjson(cjson_str.p_str);
     }
     cjson_wrap_free_json_str(&cjson_str);
-    os_free(p_gw_cfg_tmp);
-    return res;
-}
-
-bool
-settings_clear_in_flash(void)
-{
-    LOG_DBG(".");
-    return settings_save_to_flash_cjson("");
 }
 
 static bool
@@ -158,26 +204,10 @@ settings_get_gw_cfg_from_nvs(nvs_handle handle, gw_cfg_t *const p_gw_cfg, bool *
 {
     gw_cfg_default_get(p_gw_cfg);
 
-    size_t    cfg_json_size = 0;
-    esp_err_t esp_err       = nvs_get_str(handle, RUUVI_GATEWAY_NVS_CFG_JSON_KEY, NULL, &cfg_json_size);
-    if (ESP_OK != esp_err)
-    {
-        LOG_ERR_ESP(esp_err, "Can't find config key '%s' in flash", RUUVI_GATEWAY_NVS_CFG_JSON_KEY);
-        return false;
-    }
-
-    char *p_cfg_json = os_malloc(cfg_json_size);
+    char *p_cfg_json = settings_read_gw_cfg_json_from_nvs(handle);
     if (NULL == p_cfg_json)
     {
-        LOG_ERR("Can't allocate %lu bytes for configuration", (printf_ulong_t)cfg_json_size);
-        return false;
-    }
-
-    esp_err = nvs_get_str(handle, RUUVI_GATEWAY_NVS_CFG_JSON_KEY, p_cfg_json, &cfg_json_size);
-    if (ESP_OK != esp_err)
-    {
-        LOG_ERR_ESP(esp_err, "Can't read config-json from flash by key '%s'", RUUVI_GATEWAY_NVS_CFG_JSON_KEY);
-        os_free(p_cfg_json);
+        LOG_ERR("%s failed", "settings_read_gw_cfg_json_from_nvs");
         return false;
     }
 
@@ -277,10 +307,15 @@ settings_read_from_blob(nvs_handle handle, gw_cfg_t *const p_gw_cfg)
     return flag_use_default_config;
 }
 
-bool
+const gw_cfg_t *
 settings_get_from_flash(void)
 {
-    gw_cfg_t * p_gw_cfg                = gw_cfg_lock_rw();
+    gw_cfg_t *p_gw_cfg_tmp = os_calloc(1, sizeof(*p_gw_cfg_tmp));
+    if (NULL == p_gw_cfg_tmp)
+    {
+        LOG_ERR("Can't allocate memory for gw_cfg");
+        return NULL;
+    }
     bool       flag_use_default_config = false;
     bool       flag_modified           = false;
     nvs_handle handle                  = 0;
@@ -290,10 +325,10 @@ settings_get_from_flash(void)
     }
     else
     {
-        if (!settings_get_gw_cfg_from_nvs(handle, p_gw_cfg, &flag_modified))
+        if (!settings_get_gw_cfg_from_nvs(handle, p_gw_cfg_tmp, &flag_modified))
         {
             flag_modified           = true;
-            flag_use_default_config = settings_read_from_blob(handle, p_gw_cfg);
+            flag_use_default_config = settings_read_from_blob(handle, p_gw_cfg_tmp);
         }
         nvs_close(handle);
     }
@@ -301,19 +336,19 @@ settings_get_from_flash(void)
     {
         LOG_WARN("Using default config");
         flag_modified = true;
-        gw_cfg_default_get(p_gw_cfg);
+        gw_cfg_default_get(p_gw_cfg_tmp);
     }
 
-    const bool flag_wifi_cfg_blob_used = wifi_manager_cfg_blob_read(&p_gw_cfg->wifi_cfg);
+    const bool flag_wifi_cfg_blob_used = wifi_manager_cfg_blob_read(&p_gw_cfg_tmp->wifi_cfg);
     if (flag_wifi_cfg_blob_used)
     {
-        gw_cfg_log_wifi_cfg(&p_gw_cfg->wifi_cfg, "Got wifi_cfg from NVS BLOB:");
+        gw_cfg_log_wifi_cfg(&p_gw_cfg_tmp->wifi_cfg, "Got wifi_cfg from NVS BLOB:");
     }
 
     if (flag_modified || flag_wifi_cfg_blob_used)
     {
         LOG_INFO("Update config in flash");
-        settings_save_to_flash();
+        settings_save_to_flash(p_gw_cfg_tmp); // Update configuration in NVS before erasing BLOBs
     }
     settings_erase_gw_cfg_blob_if_exist(handle);
     if (flag_wifi_cfg_blob_used)
@@ -324,9 +359,7 @@ settings_get_from_flash(void)
         }
     }
 
-    gw_cfg_log(p_gw_cfg, "Gateway SETTINGS (from flash)", false);
-    gw_cfg_unlock_rw(&p_gw_cfg);
-    return flag_use_default_config;
+    return p_gw_cfg_tmp;
 }
 
 mac_address_bin_t

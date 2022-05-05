@@ -47,6 +47,9 @@ gw_cfg_default_device_info(void);
 const ruuvi_gw_cfg_mqtt_t *
 gw_cfg_default_get_mqtt(void);
 
+const ruuvi_gw_cfg_ntp_t *
+gw_cfg_default_get_ntp(void);
+
 const ruuvi_gw_cfg_filter_t *
 gw_cfg_default_get_filter(void);
 

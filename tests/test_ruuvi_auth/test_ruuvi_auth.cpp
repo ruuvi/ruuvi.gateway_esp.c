@@ -5,7 +5,6 @@
  * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
  */
 
-#include "ruuvi_auth.h"
 #include "gtest/gtest.h"
 #include <string>
 #include "os_mutex_recursive.h"
@@ -18,6 +17,7 @@
 #include "wifiman_md5.h"
 #include "os_mutex.h"
 #include "lwip/ip4_addr.h"
+#include "event_mgr.h"
 
 using namespace std;
 
@@ -119,7 +119,7 @@ public:
             .esp32_mac_addr_eth  = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x22 },
         };
         gw_cfg_default_init(&init_params, nullptr);
-        gw_cfg_init();
+        gw_cfg_init(nullptr);
     }
 };
 
@@ -234,6 +234,11 @@ wifi_manager_cb_save_wifi_config(const wifiman_config_t *const p_cfg)
 {
 }
 
+void
+event_mgr_notify(const event_mgr_ev_e event)
+{
+}
+
 } // extern "C"
 
 static gw_cfg_t
@@ -250,7 +255,12 @@ get_gateway_config_default()
 TEST_F(TestRuuviAuth, test_default_auth_zero_id) // NOLINT
 {
     this->initGwCfg((nrf52_device_id_t) { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 });
-    ASSERT_TRUE(ruuvi_auth_set_from_config());
+    const ruuvi_gw_cfg_lan_auth_t lan_auth = gw_cfg_get_lan_auth();
+    ASSERT_TRUE(http_server_set_auth(
+        lan_auth.lan_auth_type,
+        &lan_auth.lan_auth_user,
+        &lan_auth.lan_auth_pass,
+        &lan_auth.lan_auth_api_key));
     const http_server_auth_info_t *const p_auth_info = http_server_get_auth();
     ASSERT_NE(nullptr, p_auth_info);
     ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, p_auth_info->auth_type);
@@ -261,7 +271,12 @@ TEST_F(TestRuuviAuth, test_default_auth_zero_id) // NOLINT
 TEST_F(TestRuuviAuth, test_default_auth_non_zero_id) // NOLINT
 {
     this->initGwCfg((nrf52_device_id_t) { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x0A, 0x0B });
-    ASSERT_TRUE(ruuvi_auth_set_from_config());
+    const ruuvi_gw_cfg_lan_auth_t lan_auth = gw_cfg_get_lan_auth();
+    ASSERT_TRUE(http_server_set_auth(
+        lan_auth.lan_auth_type,
+        &lan_auth.lan_auth_user,
+        &lan_auth.lan_auth_pass,
+        &lan_auth.lan_auth_api_key));
     const http_server_auth_info_t *const p_auth_info = http_server_get_auth();
     ASSERT_NE(nullptr, p_auth_info);
     ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, p_auth_info->auth_type);
@@ -278,7 +293,12 @@ TEST_F(TestRuuviAuth, test_non_default_auth_password) // NOLINT
         sizeof(gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_pass.buf),
         "qwe");
     gw_cfg_update_ruuvi_cfg(&gw_cfg_tmp.ruuvi_cfg);
-    ASSERT_TRUE(ruuvi_auth_set_from_config());
+    const ruuvi_gw_cfg_lan_auth_t lan_auth = gw_cfg_get_lan_auth();
+    ASSERT_TRUE(http_server_set_auth(
+        lan_auth.lan_auth_type,
+        &lan_auth.lan_auth_user,
+        &lan_auth.lan_auth_pass,
+        &lan_auth.lan_auth_api_key));
     const http_server_auth_info_t *const p_auth_info = http_server_get_auth();
     ASSERT_NE(nullptr, p_auth_info);
     ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, p_auth_info->auth_type);
@@ -299,7 +319,12 @@ TEST_F(TestRuuviAuth, test_non_default_auth_user_password) // NOLINT
         sizeof(gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_pass.buf),
         "qwe");
     gw_cfg_update_ruuvi_cfg(&gw_cfg_tmp.ruuvi_cfg);
-    ASSERT_TRUE(ruuvi_auth_set_from_config());
+    const ruuvi_gw_cfg_lan_auth_t lan_auth = gw_cfg_get_lan_auth();
+    ASSERT_TRUE(http_server_set_auth(
+        lan_auth.lan_auth_type,
+        &lan_auth.lan_auth_user,
+        &lan_auth.lan_auth_pass,
+        &lan_auth.lan_auth_api_key));
     const http_server_auth_info_t *const p_auth_info = http_server_get_auth();
     ASSERT_NE(nullptr, p_auth_info);
     ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, p_auth_info->auth_type);
@@ -321,7 +346,12 @@ TEST_F(TestRuuviAuth, test_non_default_auth_type_user_password) // NOLINT
         sizeof(gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_pass.buf),
         "qwe");
     gw_cfg_update_ruuvi_cfg(&gw_cfg_tmp.ruuvi_cfg);
-    ASSERT_TRUE(ruuvi_auth_set_from_config());
+    const ruuvi_gw_cfg_lan_auth_t lan_auth = gw_cfg_get_lan_auth();
+    ASSERT_TRUE(http_server_set_auth(
+        lan_auth.lan_auth_type,
+        &lan_auth.lan_auth_user,
+        &lan_auth.lan_auth_pass,
+        &lan_auth.lan_auth_api_key));
     const http_server_auth_info_t *const p_auth_info = http_server_get_auth();
     ASSERT_NE(nullptr, p_auth_info);
     ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_DIGEST, p_auth_info->auth_type);

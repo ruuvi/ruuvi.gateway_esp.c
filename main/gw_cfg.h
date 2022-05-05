@@ -40,6 +40,7 @@ extern "C" {
 #define GW_CFG_MAX_MQTT_USER_LEN         129
 #define GW_CFG_MAX_MQTT_PASS_LEN         257
 #define GW_CFG_MAX_MQTT_CLIENT_ID_LEN    51
+#define GW_CFG_MAX_NTP_SERVER_LEN        32
 #define GW_CFG_MAX_COORDINATES_STR_LEN   64
 #define GW_CFG_MAX_IP_ADDR_STR_LEN       17
 
@@ -225,6 +226,21 @@ typedef struct ruuvi_gw_cfg_auto_update_t
     auto_update_tz_offset_hours_t  auto_update_tz_offset_hours;
 } ruuvi_gw_cfg_auto_update_t;
 
+typedef struct ruuvi_gw_cfg_ntp_server_addr_str_t
+{
+    char buf[GW_CFG_MAX_NTP_SERVER_LEN];
+} ruuvi_gw_cfg_ntp_server_addr_str_t;
+
+typedef struct ruuvi_gw_cfg_ntp_t
+{
+    bool                               ntp_use;
+    bool                               ntp_use_dhcp;
+    ruuvi_gw_cfg_ntp_server_addr_str_t ntp_server1;
+    ruuvi_gw_cfg_ntp_server_addr_str_t ntp_server2;
+    ruuvi_gw_cfg_ntp_server_addr_str_t ntp_server3;
+    ruuvi_gw_cfg_ntp_server_addr_str_t ntp_server4;
+} ruuvi_gw_cfg_ntp_t;
+
 typedef struct ruuvi_gw_cfg_filter_t
 {
     uint16_t company_id;
@@ -254,6 +270,7 @@ typedef struct ruuvi_gw_cfg_t
     ruuvi_gw_cfg_mqtt_t        mqtt;
     ruuvi_gw_cfg_lan_auth_t    lan_auth;
     ruuvi_gw_cfg_auto_update_t auto_update;
+    ruuvi_gw_cfg_ntp_t         ntp;
     ruuvi_gw_cfg_filter_t      filter;
     ruuvi_gw_cfg_scan_t        scan;
     ruuvi_gw_cfg_coordinates_t coordinates;
@@ -267,20 +284,23 @@ typedef struct gw_cfg_t
     wifiman_config_t     wifi_cfg;
 } gw_cfg_t;
 
+typedef struct gw_cfg_update_status_t
+{
+    bool flag_ruuvi_cfg_modified;
+    bool flag_eth_cfg_modified;
+    bool flag_wifi_cfg_modified;
+} gw_cfg_update_status_t;
+
+typedef void (*gw_cfg_cb_on_change_cfg)(const gw_cfg_t *const p_gw_cfg);
+
 void
-gw_cfg_init(void);
+gw_cfg_init(gw_cfg_cb_on_change_cfg p_cb_on_change_cfg);
 
 void
 gw_cfg_deinit(void);
 
 bool
 gw_cfg_is_initialized(void);
-
-gw_cfg_t *
-gw_cfg_lock_rw(void);
-
-void
-gw_cfg_unlock_rw(gw_cfg_t **const p_p_gw_cfg);
 
 const gw_cfg_t *
 gw_cfg_lock_ro(void);
@@ -297,15 +317,8 @@ gw_cfg_update_ruuvi_cfg(const gw_cfg_ruuvi_t *const p_gw_cfg_ruuvi_new);
 void
 gw_cfg_update_wifi_config(const wifiman_config_t *const p_wifi_cfg);
 
-void
-gw_cfg_update(const gw_cfg_t *const p_gw_cfg_src);
-
-bool
-gw_cfg_cmp(
-    const gw_cfg_t *const p_gw_cfg_src,
-    bool *const           p_flag_eq_ruuvi_cfg,
-    bool *const           p_flag_eq_eth_cfg,
-    bool *const           p_flag_eq_wifi_cfg);
+gw_cfg_update_status_t
+gw_cfg_update(const gw_cfg_t *const p_gw_cfg);
 
 void
 gw_cfg_get_copy(gw_cfg_t *const p_gw_cfg);
@@ -336,6 +349,9 @@ gw_cfg_get_auto_update_cycle(void);
 
 ruuvi_gw_cfg_lan_auth_t
 gw_cfg_get_lan_auth(void);
+
+bool
+gw_cfg_get_ntp_use(void);
 
 ruuvi_gw_cfg_coordinates_t
 gw_cfg_get_coordinates(void);

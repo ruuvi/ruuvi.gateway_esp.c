@@ -162,6 +162,7 @@ TEST_F(TestHttpJson, test_1) // NOLINT
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
     ASSERT_TRUE(http_json_create_records_str(
         &adv_table,
+        true,
         timestamp,
         &gw_mac_addr,
         p_coordinates,
@@ -187,6 +188,51 @@ TEST_F(TestHttpJson, test_1) // NOLINT
         string(this->m_json_str.p_str));
     cjson_wrap_free_json_str(&this->m_json_str);
     ASSERT_EQ(31, this->m_malloc_cnt);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestHttpJson, test_1_without_timestamp) // NOLINT
+{
+    const time_t                 timestamp     = 1612358920;
+    const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
+    const char *                 p_coordinates = "170.112233,59.445566";
+    const std::array<uint8_t, 1> data          = { 0xAAU };
+
+    adv_report_table_t adv_table = { .num_of_advs = 1,
+                                     .table       = { {
+                                         .timestamp = 1011,
+                                         .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                                         .rssi      = -70,
+                                         .data_len  = data.size(),
+                                     } } };
+    memcpy(adv_table.table[0].data_buf, data.data(), data.size());
+    ASSERT_TRUE(http_json_create_records_str(
+        &adv_table,
+        false,
+        timestamp,
+        &gw_mac_addr,
+        p_coordinates,
+        true,
+        12345678,
+        &this->m_json_str));
+    ASSERT_EQ(
+        string("{\n"
+               "\t\"data\":\t{\n"
+               "\t\t\"coordinates\":\t\"170.112233,59.445566\",\n"
+               "\t\t\"nonce\":\t\"12345678\",\n"
+               "\t\t\"gw_mac\":\t\"AA:CC:EE:00:11:22\",\n"
+               "\t\t\"tags\":\t{\n"
+               "\t\t\t\"AA:BB:CC:01:02:03\":\t{\n"
+               "\t\t\t\t\"rssi\":\t-70,\n"
+               "\t\t\t\t\"counter\":\t\"1011\",\n"
+               "\t\t\t\t\"data\":\t\"AA\"\n"
+               "\t\t\t}\n"
+               "\t\t}\n"
+               "\t}\n"
+               "}"),
+        string(this->m_json_str.p_str));
+    cjson_wrap_free_json_str(&this->m_json_str);
+    ASSERT_EQ(27, this->m_malloc_cnt);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
@@ -217,6 +263,7 @@ TEST_F(TestHttpJson, test_2) // NOLINT
     memcpy(adv_table.table[1].data_buf, data2.data(), data2.size());
     ASSERT_TRUE(http_json_create_records_str(
         &adv_table,
+        true,
         timestamp,
         &gw_mac_addr,
         p_coordinates,
@@ -272,6 +319,7 @@ TEST_F(TestHttpJson, test_http_json_create_records_str_malloc_failed) // NOLINT
         this->m_malloc_cnt         = 0;
         if (http_json_create_records_str(
                 &adv_table,
+                true,
                 timestamp,
                 &gw_mac_addr,
                 p_coordinates,
@@ -290,6 +338,7 @@ TEST_F(TestHttpJson, test_http_json_create_records_str_malloc_failed) // NOLINT
         this->m_malloc_cnt         = 0;
         ASSERT_TRUE(http_json_create_records_str(
             &adv_table,
+            true,
             timestamp,
             &gw_mac_addr,
             p_coordinates,

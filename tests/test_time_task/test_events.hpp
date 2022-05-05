@@ -2,6 +2,7 @@
 #define TEST_EVENTS_H
 
 #include "lwip/arch.h"
+#include "lwip/ip_addr.h"
 #include "sntp.h"
 #include "os_task.h"
 
@@ -10,8 +11,11 @@ typedef enum TestEventType_Tag
     TestEventType_SNTP_SetOperatingMode,
     TestEventType_SNTP_SetSyncMode,
     TestEventType_SNTP_SetServerName,
+    TestEventType_SNTP_SetServer,
+    TestEventType_SNTP_SetServerMode,
     TestEventType_SNTP_Init,
     TestEventType_SNTP_Stop,
+    TestEventType_NetworkReconnect,
     TestEventType_Delay,
 } TestEventType_e;
 
@@ -67,6 +71,36 @@ public:
     }
 };
 
+class TestEventSntpSetServer : public TestEvent
+{
+    static const ip_addr_t ip_addr_zero;
+
+public:
+    u8_t            idx;
+    const ip_addr_t addr;
+
+    TestEventSntpSetServer(const u8_t idx, const ip_addr_t *p_addr)
+        : TestEvent(TestEventType_SNTP_SetServer)
+        , idx(idx)
+        , addr((nullptr != p_addr) ? *p_addr : ip_addr_zero)
+    {
+    }
+};
+
+const ip_addr_t TestEventSntpSetServer::ip_addr_zero = { 0 };
+
+class TestEventSntpSetServerMode : public TestEvent
+{
+public:
+    int set_servers_from_dhcp;
+
+    TestEventSntpSetServerMode(int set_servers_from_dhcp)
+        : TestEvent(TestEventType_SNTP_SetServerMode)
+        , set_servers_from_dhcp(set_servers_from_dhcp)
+    {
+    }
+};
+
 class TestEventSntpInit : public TestEvent
 {
 public:
@@ -81,6 +115,15 @@ class TestEventSntpStop : public TestEvent
 public:
     TestEventSntpStop()
         : TestEvent(TestEventType_SNTP_Stop)
+    {
+    }
+};
+
+class TestEventNetworkReconnect : public TestEvent
+{
+public:
+    TestEventNetworkReconnect()
+        : TestEvent(TestEventType_NetworkReconnect)
     {
     }
 };

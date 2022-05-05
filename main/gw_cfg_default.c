@@ -72,6 +72,14 @@ static const gw_cfg_ruuvi_t g_gateway_config_default_ruuvi = {
             .auto_update_interval_to = 24,
             .auto_update_tz_offset_hours = 3,
         },
+        .ntp = {
+            .ntp_use = true,
+            .ntp_use_dhcp = false,
+            .ntp_server1 = { "time.google.com" },
+            .ntp_server2 = { "time.cloudflare.com" },
+            .ntp_server3 = { "time.nist.gov" },
+            .ntp_server4 = { "pool.ntp.org" },
+        },
         .filter = {
             .company_id = RUUVI_COMPANY_ID,
             .company_use_filtering = true,
@@ -209,6 +217,12 @@ const ruuvi_gw_cfg_mqtt_t *
 gw_cfg_default_get_mqtt(void)
 {
     return &g_gw_cfg_default.ruuvi_cfg.mqtt;
+}
+
+const ruuvi_gw_cfg_ntp_t *
+gw_cfg_default_get_ntp(void)
+{
+    return &g_gw_cfg_default.ruuvi_cfg.ntp;
 }
 
 const ruuvi_gw_cfg_filter_t *

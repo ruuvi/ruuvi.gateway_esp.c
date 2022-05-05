@@ -13,6 +13,7 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/gw_cfg_default.h
         ${RUUVI_GW_SRC}/gw_cfg_log.c
         ${RUUVI_GW_SRC}/gw_cfg_log.h
+        ${RUUVI_GW_SRC}/event_mgr.h
         ${WIFI_MANAGER_SRC}/wifiman_config.c
         ${WIFI_MANAGER_SRC}/wifiman_config.h
         ${WIFI_MANAGER_SRC}/wifiman_md5.c

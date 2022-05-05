@@ -8,15 +8,11 @@
 #ifndef RUUVI_GATEWAY_H
 #define RUUVI_GATEWAY_H
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/event_groups.h"
 #include <stdbool.h>
 #include <stdint.h>
-#include "attribs.h"
-#include "mac_addr.h"
-#include "cjson_wrap.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/event_groups.h"
 #include "settings.h"
-#include "http_server.h"
 #include "os_wrapper_types.h"
 
 #ifdef __cplusplus
@@ -49,12 +45,6 @@ extern "C" {
 #define MQTT_CONNECTED_BIT (1U << 1U)
 #define ETH_CONNECTED_BIT  (1U << 4U)
 
-typedef enum nrf_command_e
-{
-    NRF_COMMAND_SET_FILTER   = 0,
-    NRF_COMMAND_CLEAR_FILTER = 1,
-} nrf_command_e;
-
 extern EventGroupHandle_t status_bits;
 extern volatile uint32_t  g_network_disconnect_cnt;
 
@@ -81,6 +71,9 @@ main_task_schedule_retry_check_for_fw_updates(void);
 
 void
 main_task_send_sig_restart_services(void);
+
+void
+main_task_send_sig_reconnect_network(void);
 
 void
 main_task_send_sig_mqtt_publish_connect(void);

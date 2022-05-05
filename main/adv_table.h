@@ -68,6 +68,7 @@ void
 adv_table_history_read(
     adv_report_table_t *const p_reports,
     const time_t              cur_time,
+    const bool                flag_use_timestamps,
     const uint32_t            time_interval_seconds);
 
 void

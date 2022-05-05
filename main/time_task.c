@@ -19,6 +19,8 @@
 #include "esp_type_wrapper.h"
 #include "event_mgr.h"
 #include "os_mkgmtime.h"
+#include "gw_cfg.h"
+#include "ruuvi_gateway.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -36,11 +38,12 @@
 
 typedef enum time_task_sig_e
 {
-    TIME_TASK_SIG_WIFI_CONNECTED    = OS_SIGNAL_NUM_0,
-    TIME_TASK_SIG_WIFI_DISCONNECTED = OS_SIGNAL_NUM_1,
-    TIME_TASK_SIG_ETH_CONNECTED     = OS_SIGNAL_NUM_2,
-    TIME_TASK_SIG_ETH_DISCONNECTED  = OS_SIGNAL_NUM_3,
-    TIME_TASK_SIG_STOP              = OS_SIGNAL_NUM_4,
+    TIME_TASK_SIG_WIFI_CONNECTED       = OS_SIGNAL_NUM_0,
+    TIME_TASK_SIG_WIFI_DISCONNECTED    = OS_SIGNAL_NUM_1,
+    TIME_TASK_SIG_ETH_CONNECTED        = OS_SIGNAL_NUM_2,
+    TIME_TASK_SIG_ETH_DISCONNECTED     = OS_SIGNAL_NUM_3,
+    TIME_TASK_SIG_GW_CFG_CHANGED_RUUVI = OS_SIGNAL_NUM_4,
+    TIME_TASK_SIG_STOP                 = OS_SIGNAL_NUM_5,
 } time_task_sig_e;
 
 #define TIME_TASK_SIG_FIRST (TIME_TASK_SIG_WIFI_CONNECTED)
@@ -52,11 +55,24 @@ static os_signal_t *      gp_time_task_signal;
 static os_task_stack_type_t g_time_task_stack_mem[RUUVI_STACK_SIZE_TIME_TASK];
 static os_task_static_t     g_time_task_mem;
 
+static event_mgr_ev_info_static_t g_time_task_ev_info_mem_wifi_connected;
+static event_mgr_ev_info_static_t g_time_task_ev_info_mem_wifi_disconnected;
+static event_mgr_ev_info_static_t g_time_task_ev_info_mem_eth_connected;
+static event_mgr_ev_info_static_t g_time_task_ev_info_mem_eth_disconnected;
+static event_mgr_ev_info_static_t g_time_task_ev_info_mem_gw_cfg_changed_ruuvi;
+
 static time_t g_time_min_valid;
 
 static bool g_time_is_synchronized;
 
+static bool                               g_time_task_ntp_use;
+static bool                               g_time_task_ntp_use_dhcp;
+static ruuvi_gw_cfg_ntp_server_addr_str_t g_arr_of_time_servers[TIME_TASK_NUM_OF_TIME_SERVERS];
+
 static const char TAG[] = "TIME";
+
+static void
+time_task_configure_ntp_sources(void);
 
 static time_t
 time_task_get_min_valid_time(void)
@@ -134,6 +150,40 @@ time_task_cb_notification_on_sync(struct timeval *p_tv)
     }
 }
 
+static void
+time_task_sntp_start(void)
+{
+    LOG_INFO("Activate SNTP time synchronization");
+    g_time_is_synchronized = false;
+    sntp_init();
+}
+
+static void
+time_task_sntp_stop(void)
+{
+    LOG_INFO("Deactivate SNTP time synchronization");
+    g_time_is_synchronized = false;
+    sntp_stop();
+}
+
+static void
+time_task_on_cfg_changed(void)
+{
+    time_task_sntp_stop();
+    LOG_INFO("Reconfigure SNTP");
+    const bool flag_prev_ntp_use      = g_time_task_ntp_use;
+    const bool flag_prev_ntp_use_dhcp = g_time_task_ntp_use_dhcp;
+    time_task_configure_ntp_sources();
+    if ((flag_prev_ntp_use != g_time_task_ntp_use) || (flag_prev_ntp_use_dhcp != g_time_task_ntp_use_dhcp))
+    {
+        main_task_send_sig_reconnect_network();
+    }
+    if (g_time_task_ntp_use)
+    {
+        time_task_sntp_start();
+    }
+}
+
 static bool
 time_task_handle_sig(const time_task_sig_e time_task_sig)
 {
@@ -142,15 +192,18 @@ time_task_handle_sig(const time_task_sig_e time_task_sig)
     {
         case TIME_TASK_SIG_WIFI_CONNECTED:
         case TIME_TASK_SIG_ETH_CONNECTED:
-            LOG_INFO("Activate SNTP time synchronization");
-            g_time_is_synchronized = false;
-            sntp_init();
+            if (g_time_task_ntp_use)
+            {
+                time_task_sntp_start();
+            }
             break;
         case TIME_TASK_SIG_WIFI_DISCONNECTED:
         case TIME_TASK_SIG_ETH_DISCONNECTED:
-            LOG_INFO("Deactivate SNTP time synchronization");
-            g_time_is_synchronized = false;
-            sntp_stop();
+            time_task_sntp_stop();
+            break;
+        case TIME_TASK_SIG_GW_CFG_CHANGED_RUUVI:
+            LOG_INFO("Got TIME_TASK_SIG_GW_CFG_CHANGED_RUUVI");
+            time_task_on_cfg_changed();
             break;
         case TIME_TASK_SIG_STOP:
             LOG_INFO("Stop time_task");
@@ -211,9 +264,93 @@ time_task_configure_signals(void)
     return true;
 }
 
+static void
+time_task_sntp_add_ntp_server(const uint32_t server_idx, const ruuvi_gw_cfg_ntp_server_addr_str_t *const p_ntp_srv_addr)
+{
+    if ((NULL != p_ntp_srv_addr) && ('\0' != p_ntp_srv_addr->buf[0]))
+    {
+        LOG_INFO("Add time server %u: %s", (printf_uint_t)server_idx, p_ntp_srv_addr->buf);
+        sntp_setservername((u8_t)server_idx, p_ntp_srv_addr->buf);
+    }
+    else
+    {
+        LOG_INFO("Add time server %u: NULL", (printf_uint_t)server_idx);
+        sntp_setserver((u8_t)server_idx, NULL);
+    }
+}
+
+static void
+time_task_add_ntp_server(
+    ruuvi_gw_cfg_ntp_server_addr_str_t *const       p_arr_of_time_servers,
+    const ruuvi_gw_cfg_ntp_server_addr_str_t *const p_ntp_srv_addr,
+    uint32_t *const                                 p_srv_idx)
+{
+    if ('\0' != p_ntp_srv_addr->buf[0])
+    {
+        p_arr_of_time_servers[*p_srv_idx] = *p_ntp_srv_addr;
+        *p_srv_idx += 1;
+    }
+}
+
+static void
+time_task_save_settings(void)
+{
+    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
+
+    g_time_task_ntp_use      = p_gw_cfg->ruuvi_cfg.ntp.ntp_use;
+    g_time_task_ntp_use_dhcp = p_gw_cfg->ruuvi_cfg.ntp.ntp_use_dhcp;
+
+    for (uint32_t i = 0; i < TIME_TASK_NUM_OF_TIME_SERVERS; ++i)
+    {
+        g_arr_of_time_servers[i].buf[0] = '\0';
+    }
+    uint32_t server_idx = 0;
+    time_task_add_ntp_server(g_arr_of_time_servers, &p_gw_cfg->ruuvi_cfg.ntp.ntp_server1, &server_idx);
+    time_task_add_ntp_server(g_arr_of_time_servers, &p_gw_cfg->ruuvi_cfg.ntp.ntp_server2, &server_idx);
+    time_task_add_ntp_server(g_arr_of_time_servers, &p_gw_cfg->ruuvi_cfg.ntp.ntp_server3, &server_idx);
+    time_task_add_ntp_server(g_arr_of_time_servers, &p_gw_cfg->ruuvi_cfg.ntp.ntp_server4, &server_idx);
+
+    gw_cfg_unlock_ro(&p_gw_cfg);
+}
+
+static void
+time_task_configure_ntp_sources(void)
+{
+    time_task_save_settings();
+
+    for (int32_t i = 0; i < SNTP_MAX_SERVERS; ++i)
+    {
+        sntp_setserver(i, NULL);
+    }
+
+    if (g_time_task_ntp_use)
+    {
+        if (g_time_task_ntp_use_dhcp)
+        {
+            LOG_INFO("Configure SNTP to use DHCP");
+            sntp_servermode_dhcp(1);
+        }
+        else
+        {
+            LOG_INFO("Configure SNTP to not use DHCP");
+            sntp_servermode_dhcp(0);
+        }
+    }
+
+    if (g_time_task_ntp_use && !g_time_task_ntp_use_dhcp)
+    {
+        for (uint32_t i = 0; i < TIME_TASK_NUM_OF_TIME_SERVERS; ++i)
+        {
+            time_task_sntp_add_ntp_server(i, &g_arr_of_time_servers[i]);
+        }
+    }
+}
+
 bool
 time_task_init(void)
 {
+    time_task_save_settings();
+
     if (NULL != gp_time_task_signal)
     {
         LOG_ERR("time_task was already initialized");
@@ -228,38 +365,38 @@ time_task_init(void)
         return false;
     }
 
-    event_mgr_subscribe_sig(
+    event_mgr_subscribe_sig_static(
+        &g_time_task_ev_info_mem_wifi_connected,
         EVENT_MGR_EV_WIFI_CONNECTED,
         gp_time_task_signal,
         time_task_conv_to_sig_num(TIME_TASK_SIG_WIFI_CONNECTED));
-    event_mgr_subscribe_sig(
+    event_mgr_subscribe_sig_static(
+        &g_time_task_ev_info_mem_wifi_disconnected,
         EVENT_MGR_EV_WIFI_DISCONNECTED,
         gp_time_task_signal,
         time_task_conv_to_sig_num(TIME_TASK_SIG_WIFI_DISCONNECTED));
-    event_mgr_subscribe_sig(
+    event_mgr_subscribe_sig_static(
+        &g_time_task_ev_info_mem_eth_connected,
         EVENT_MGR_EV_ETH_CONNECTED,
         gp_time_task_signal,
         time_task_conv_to_sig_num(TIME_TASK_SIG_ETH_CONNECTED));
-    event_mgr_subscribe_sig(
+    event_mgr_subscribe_sig_static(
+        &g_time_task_ev_info_mem_eth_disconnected,
         EVENT_MGR_EV_ETH_DISCONNECTED,
         gp_time_task_signal,
         time_task_conv_to_sig_num(TIME_TASK_SIG_ETH_DISCONNECTED));
+    event_mgr_subscribe_sig_static(
+        &g_time_task_ev_info_mem_gw_cfg_changed_ruuvi,
+        EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI,
+        gp_time_task_signal,
+        time_task_conv_to_sig_num(TIME_TASK_SIG_GW_CFG_CHANGED_RUUVI));
 
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     LOG_INFO("Set time sync mode to IMMED");
     sntp_set_sync_mode(SNTP_SYNC_MODE_IMMED);
-    static const char *const arr_of_time_servers[TIME_TASK_NUM_OF_TIME_SERVERS] = {
-        "time.google.com",
-        "time.cloudflare.com",
-        "time.nist.gov",
-        "pool.ntp.org",
-    };
-    for (uint32_t server_idx = 0; server_idx < (sizeof(arr_of_time_servers) / sizeof(*arr_of_time_servers));
-         ++server_idx)
-    {
-        LOG_INFO("Add time server: %s", arr_of_time_servers[server_idx]);
-        sntp_setservername((u8_t)server_idx, arr_of_time_servers[server_idx]);
-    }
+
+    time_task_configure_ntp_sources();
+
     sntp_set_time_sync_notification_cb(time_task_cb_notification_on_sync);
 
     g_time_min_valid = time_task_get_min_valid_time();

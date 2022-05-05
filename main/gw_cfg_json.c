@@ -405,6 +405,36 @@ gw_cfg_json_add_items_auto_update(cJSON *const p_json_root, const ruuvi_gw_cfg_a
 }
 
 static bool
+gw_cfg_json_add_items_ntp(cJSON *const p_json_root, const ruuvi_gw_cfg_ntp_t *const p_cfg_ntp)
+{
+    if (!gw_cfg_json_add_bool(p_json_root, "ntp_use", p_cfg_ntp->ntp_use))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(p_json_root, "ntp_use_dhcp", p_cfg_ntp->ntp_use_dhcp))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_string(p_json_root, "ntp_server1", p_cfg_ntp->ntp_server1.buf))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_string(p_json_root, "ntp_server2", p_cfg_ntp->ntp_server2.buf))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_string(p_json_root, "ntp_server3", p_cfg_ntp->ntp_server3.buf))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_string(p_json_root, "ntp_server4", p_cfg_ntp->ntp_server4.buf))
+    {
+        return false;
+    }
+    return true;
+}
+
+static bool
 gw_cfg_json_add_items_filter(cJSON *const p_json_root, const ruuvi_gw_cfg_filter_t *const p_cfg_filter)
 {
     if (!gw_cfg_json_add_number(p_json_root, "company_id", p_cfg_filter->company_id))
@@ -491,6 +521,10 @@ gw_cfg_json_add_items(cJSON *const p_json_root, const gw_cfg_t *p_cfg, const boo
         return false;
     }
     if (!gw_cfg_json_add_items_auto_update(p_json_root, &p_cfg->ruuvi_cfg.auto_update))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_items_ntp(p_json_root, &p_cfg->ruuvi_cfg.ntp))
     {
         return false;
     }
@@ -734,9 +768,6 @@ gw_cfg_json_parse_remote(const cJSON *const p_json_root, ruuvi_gw_cfg_remote_t *
         LOG_WARN("Can't find key '%s' in config-json", "remote_cfg_url");
     }
 
-    memset(&p_gw_cfg_remote->auth, 0, sizeof(p_gw_cfg_remote->auth));
-
-    p_gw_cfg_remote->auth_type = GW_CFG_REMOTE_AUTH_TYPE_NO;
     char auth_type_str[GW_CFG_REMOTE_AUTH_TYPE_STR_SIZE];
     if (!gw_cfg_json_copy_string_val(p_json_root, "remote_cfg_auth_type", &auth_type_str[0], sizeof(auth_type_str)))
     {
@@ -744,49 +775,68 @@ gw_cfg_json_parse_remote(const cJSON *const p_json_root, ruuvi_gw_cfg_remote_t *
     }
     else
     {
+        gw_cfg_remote_auth_type_e auth_type = GW_CFG_REMOTE_AUTH_TYPE_NO;
         if (0 == strcmp(GW_CFG_REMOTE_AUTH_TYPE_STR_NO, auth_type_str))
         {
-            p_gw_cfg_remote->auth_type = GW_CFG_REMOTE_AUTH_TYPE_NO;
+            auth_type = GW_CFG_REMOTE_AUTH_TYPE_NO;
         }
         else if (0 == strcmp(GW_CFG_REMOTE_AUTH_TYPE_STR_BASIC, auth_type_str))
         {
-            p_gw_cfg_remote->auth_type = GW_CFG_REMOTE_AUTH_TYPE_BASIC;
-            if (!gw_cfg_json_copy_string_val(
-                    p_json_root,
-                    "remote_cfg_auth_basic_user",
-                    &p_gw_cfg_remote->auth.auth_basic.user.buf[0],
-                    sizeof(p_gw_cfg_remote->auth.auth_basic.user.buf)))
-            {
-                LOG_WARN("Can't find key '%s' in config-json", "remote_cfg_auth_basic_user");
-            }
-            if (!gw_cfg_json_copy_string_val(
-                    p_json_root,
-                    "remote_cfg_auth_basic_pass",
-                    &p_gw_cfg_remote->auth.auth_basic.password.buf[0],
-                    sizeof(p_gw_cfg_remote->auth.auth_basic.password.buf)))
-            {
-                LOG_INFO(
-                    "Can't find key '%s' in config-json, leave the previous value unchanged",
-                    "remote_cfg_auth_basic_pass");
-            }
+            auth_type = GW_CFG_REMOTE_AUTH_TYPE_BASIC;
         }
         else if (0 == strcmp(GW_CFG_REMOTE_AUTH_TYPE_STR_BEARER, auth_type_str))
         {
-            p_gw_cfg_remote->auth_type = GW_CFG_REMOTE_AUTH_TYPE_BEARER;
-            if (!gw_cfg_json_copy_string_val(
-                    p_json_root,
-                    "remote_cfg_auth_bearer_token",
-                    &p_gw_cfg_remote->auth.auth_bearer.token.buf[0],
-                    sizeof(p_gw_cfg_remote->auth.auth_bearer.token.buf)))
-            {
-                LOG_INFO(
-                    "Can't find key '%s' in config-json, leave the previous value unchanged",
-                    "remote_cfg_auth_bearer_token");
-            }
+            auth_type = GW_CFG_REMOTE_AUTH_TYPE_BEARER;
         }
         else
         {
             LOG_WARN("Unknown remote_cfg_auth_type='%s', use NO", auth_type_str);
+            auth_type = GW_CFG_REMOTE_AUTH_TYPE_NO;
+        }
+        if (p_gw_cfg_remote->auth_type != auth_type)
+        {
+            memset(&p_gw_cfg_remote->auth, 0, sizeof(p_gw_cfg_remote->auth));
+            p_gw_cfg_remote->auth_type = auth_type;
+            LOG_INFO("Key 'remote_cfg_auth_type' was changed, clear saved auth info");
+        }
+        switch (auth_type)
+        {
+            case GW_CFG_REMOTE_AUTH_TYPE_NO:
+                break;
+
+            case GW_CFG_REMOTE_AUTH_TYPE_BASIC:
+                if (!gw_cfg_json_copy_string_val(
+                        p_json_root,
+                        "remote_cfg_auth_basic_user",
+                        &p_gw_cfg_remote->auth.auth_basic.user.buf[0],
+                        sizeof(p_gw_cfg_remote->auth.auth_basic.user.buf)))
+                {
+                    LOG_WARN("Can't find key '%s' in config-json", "remote_cfg_auth_basic_user");
+                }
+                if (!gw_cfg_json_copy_string_val(
+                        p_json_root,
+                        "remote_cfg_auth_basic_pass",
+                        &p_gw_cfg_remote->auth.auth_basic.password.buf[0],
+                        sizeof(p_gw_cfg_remote->auth.auth_basic.password.buf)))
+                {
+                    LOG_INFO(
+                        "Can't find key '%s' in config-json, leave the previous value unchanged",
+                        "remote_cfg_auth_basic_pass");
+                }
+                break;
+
+            case GW_CFG_REMOTE_AUTH_TYPE_BEARER:
+                if (!gw_cfg_json_copy_string_val(
+                        p_json_root,
+                        "remote_cfg_auth_bearer_token",
+                        &p_gw_cfg_remote->auth.auth_bearer.token.buf[0],
+                        sizeof(p_gw_cfg_remote->auth.auth_bearer.token.buf)))
+                {
+                    LOG_INFO(
+                        "Can't find key '%s' in config-json, leave the previous value unchanged",
+                        "remote_cfg_auth_bearer_token");
+                }
+                break;
         }
     }
     if (!gw_cfg_json_get_uint16_val(
@@ -1068,6 +1118,87 @@ gw_cfg_json_parse_auto_update(const cJSON *const p_json_root, ruuvi_gw_cfg_auto_
 }
 
 static void
+gw_cfg_json_parse_ntp(const cJSON *const p_json_root, ruuvi_gw_cfg_ntp_t *const p_gw_cfg_ntp)
+{
+    const ruuvi_gw_cfg_ntp_t *const p_default_ntp = gw_cfg_default_get_ntp();
+
+    memset(p_gw_cfg_ntp->ntp_server1.buf, 0, sizeof(p_gw_cfg_ntp->ntp_server1.buf));
+    memset(p_gw_cfg_ntp->ntp_server2.buf, 0, sizeof(p_gw_cfg_ntp->ntp_server2.buf));
+    memset(p_gw_cfg_ntp->ntp_server3.buf, 0, sizeof(p_gw_cfg_ntp->ntp_server3.buf));
+    memset(p_gw_cfg_ntp->ntp_server4.buf, 0, sizeof(p_gw_cfg_ntp->ntp_server4.buf));
+
+    if (!gw_cfg_json_get_bool_val(p_json_root, "ntp_use", &p_gw_cfg_ntp->ntp_use))
+    {
+        p_gw_cfg_ntp->ntp_use = p_default_ntp->ntp_use;
+        LOG_WARN(
+            "Can't find key '%s' in config-json, use default value: '%s'",
+            "ntp_use",
+            p_default_ntp->ntp_use ? "true" : "false");
+        if (p_gw_cfg_ntp->ntp_use)
+        {
+            p_gw_cfg_ntp->ntp_use_dhcp = p_default_ntp->ntp_use_dhcp;
+            if (!p_gw_cfg_ntp->ntp_use_dhcp)
+            {
+                p_gw_cfg_ntp->ntp_server1 = p_default_ntp->ntp_server1;
+                p_gw_cfg_ntp->ntp_server2 = p_default_ntp->ntp_server2;
+                p_gw_cfg_ntp->ntp_server3 = p_default_ntp->ntp_server3;
+                p_gw_cfg_ntp->ntp_server4 = p_default_ntp->ntp_server4;
+            }
+        }
+    }
+    if (p_gw_cfg_ntp->ntp_use)
+    {
+        if (!gw_cfg_json_get_bool_val(p_json_root, "ntp_use_dhcp", &p_gw_cfg_ntp->ntp_use_dhcp))
+        {
+            p_gw_cfg_ntp->ntp_use_dhcp = p_default_ntp->ntp_use_dhcp;
+            LOG_WARN(
+                "Can't find key '%s' in config-json, use default value: '%s'",
+                "ntp_use_dhcp",
+                p_default_ntp->ntp_use_dhcp ? "true" : "false");
+        }
+        if (!p_gw_cfg_ntp->ntp_use_dhcp)
+        {
+            if (!gw_cfg_json_copy_string_val(
+                    p_json_root,
+                    "ntp_server1",
+                    &p_gw_cfg_ntp->ntp_server1.buf[0],
+                    sizeof(p_gw_cfg_ntp->ntp_server1.buf)))
+            {
+                LOG_WARN("Can't find key '%s' in config-json", "ntp_server1");
+            }
+            if (!gw_cfg_json_copy_string_val(
+                    p_json_root,
+                    "ntp_server2",
+                    &p_gw_cfg_ntp->ntp_server2.buf[0],
+                    sizeof(p_gw_cfg_ntp->ntp_server2.buf)))
+            {
+                LOG_WARN("Can't find key '%s' in config-json", "ntp_server2");
+            }
+            if (!gw_cfg_json_copy_string_val(
+                    p_json_root,
+                    "ntp_server3",
+                    &p_gw_cfg_ntp->ntp_server3.buf[0],
+                    sizeof(p_gw_cfg_ntp->ntp_server3.buf)))
+            {
+                LOG_WARN("Can't find key '%s' in config-json", "ntp_server3");
+            }
+            if (!gw_cfg_json_copy_string_val(
+                    p_json_root,
+                    "ntp_server4",
+                    &p_gw_cfg_ntp->ntp_server4.buf[0],
+                    sizeof(p_gw_cfg_ntp->ntp_server4.buf)))
+            {
+                LOG_WARN("Can't find key '%s' in config-json", "ntp_server4");
+            }
+        }
+    }
+    else
+    {
+        p_gw_cfg_ntp->ntp_use_dhcp = false;
+    }
+}
+
+static void
 gw_cfg_json_parse_filter(const cJSON *const p_json_root, ruuvi_gw_cfg_filter_t *const p_gw_cfg_filter)
 {
     if (!gw_cfg_json_get_uint16_val(p_json_root, "company_id", &p_gw_cfg_filter->company_id))
@@ -1190,6 +1321,7 @@ gw_cfg_json_parse_cjson_ruuvi_cfg(const cJSON *const p_json_root, gw_cfg_ruuvi_t
     gw_cfg_json_parse_mqtt(p_json_root, &p_ruuvi_cfg->mqtt);
     gw_cfg_json_parse_lan_auth(p_json_root, &p_ruuvi_cfg->lan_auth);
     gw_cfg_json_parse_auto_update(p_json_root, &p_ruuvi_cfg->auto_update);
+    gw_cfg_json_parse_ntp(p_json_root, &p_ruuvi_cfg->ntp);
     gw_cfg_json_parse_filter(p_json_root, &p_ruuvi_cfg->filter);
     gw_cfg_json_parse_scan(p_json_root, &p_ruuvi_cfg->scan);
     if (!gw_cfg_json_copy_string_val(

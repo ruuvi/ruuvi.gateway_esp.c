@@ -33,7 +33,7 @@ typedef bool (*http_download_cb_on_data_t)(
     void *                 p_user_data);
 
 bool
-http_send_advs(const adv_report_table_t *const p_reports, const uint32_t nonce);
+http_send_advs(const adv_report_table_t *const p_reports, const uint32_t nonce, const bool flag_use_timestamps);
 
 bool
 http_send_statistics(const http_json_statistics_info_t *const p_stat_info, const adv_report_table_t *const p_reports);

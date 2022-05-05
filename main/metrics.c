@@ -141,7 +141,7 @@ metrics_received_advs_increment(void)
     metrics_unlock();
 }
 
-static uint64_t
+uint64_t
 metrics_received_advs_get(void)
 {
     metrics_lock();
