@@ -21,6 +21,7 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
 
+
 static const char TAG[] = "ruuvi_gateway";
 
 #define MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS (10U)
