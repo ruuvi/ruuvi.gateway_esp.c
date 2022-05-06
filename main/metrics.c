@@ -171,13 +171,16 @@ metrics_calc_gw_cfg_hash(metrics_crc32_str_t *const p_crc32, metrics_sha256_str_
     const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
 
     const metrics_crc32_t crc32 = {
-        .val = crc32_le(0, (const void *)p_gw_cfg, sizeof(*p_gw_cfg)),
+        .val = crc32_le(0, (const void *)&p_gw_cfg->ruuvi_cfg, sizeof(*p_gw_cfg) - offsetof(gw_cfg_t, ruuvi_cfg)),
     };
 
     mbedtls_sha256_context sha256_ctx = { 0 };
     mbedtls_sha256_init(&sha256_ctx);
     mbedtls_sha256_starts_ret(&sha256_ctx, false);
-    mbedtls_sha256_update_ret(&sha256_ctx, (const void *)p_gw_cfg, sizeof(*p_gw_cfg));
+    mbedtls_sha256_update_ret(
+        &sha256_ctx,
+        (const void *)&p_gw_cfg->ruuvi_cfg,
+        sizeof(*p_gw_cfg) - offsetof(gw_cfg_t, ruuvi_cfg));
     mbedtls_sha256_finish_ret(&sha256_ctx, gw_cfg_sha256.buf);
     mbedtls_sha256_free(&sha256_ctx);
 
