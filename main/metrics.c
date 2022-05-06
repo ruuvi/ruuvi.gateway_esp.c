@@ -6,6 +6,7 @@
  */
 
 #include "esp_heap_caps.h"
+#include <string.h>
 #include "esp32/rom/crc.h"
 #include "esp_timer.h"
 #include "mbedtls/sha256.h"
@@ -18,6 +19,8 @@
 #include "nrf52fw.h"
 #include "fw_ver.h"
 #include "fw_update.h"
+#include "cjson_wrap.h"
+#include "gw_cfg_ruuvi_json.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -96,6 +99,8 @@ typedef struct metrics_info_t
     ruuvi_esp32_fw_ver_str_t    esp_fw;
     metrics_crc32_str_t         gw_cfg_crc32;
     metrics_sha256_str_t        gw_cfg_sha256;
+    metrics_crc32_str_t         ruuvi_json_crc32;
+    metrics_sha256_str_t        ruuvi_json_sha256;
 } metrics_info_t;
 
 static const char TAG[] = "metrics";
@@ -186,12 +191,53 @@ metrics_calc_gw_cfg_hash(metrics_crc32_str_t *const p_crc32, metrics_sha256_str_
     }
 }
 
+static void
+metrics_calc_ruuvi_json_hash(metrics_crc32_str_t *const p_crc32, metrics_sha256_str_t *const p_sha256)
+{
+    memset(p_crc32, 0, sizeof(*p_crc32));
+    memset(p_sha256, 0, sizeof(*p_sha256));
+
+    const gw_cfg_t * p_gw_cfg = gw_cfg_lock_ro();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+    if (!gw_cfg_ruuvi_json_generate(p_gw_cfg, &json_str))
+    {
+        gw_cfg_unlock_ro(&p_gw_cfg);
+        return;
+    }
+    gw_cfg_unlock_ro(&p_gw_cfg);
+
+    const metrics_crc32_t crc32 = {
+        .val = crc32_le(0, (const void *)json_str.p_str, strlen(json_str.p_str)),
+    };
+
+    metrics_sha256_t       sha256     = { 0 };
+    mbedtls_sha256_context sha256_ctx = { 0 };
+    mbedtls_sha256_init(&sha256_ctx);
+    mbedtls_sha256_starts_ret(&sha256_ctx, false);
+    mbedtls_sha256_update_ret(&sha256_ctx, (const void *)json_str.p_str, strlen(json_str.p_str));
+    mbedtls_sha256_finish_ret(&sha256_ctx, sha256.buf);
+    mbedtls_sha256_free(&sha256_ctx);
+
+    os_free(json_str.p_str);
+
+    (void)snprintf(p_crc32->buf, sizeof(p_crc32->buf), "0x%08x", crc32.val);
+    str_buf_t str_buf = STR_BUF_INIT(p_sha256->buf, sizeof(p_sha256->buf));
+    for (uint32_t i = 0; i < sizeof(sha256.buf); ++i)
+    {
+        str_buf_printf(&str_buf, "%02x", sha256.buf[i]);
+    }
+}
+
 static metrics_info_t
 gen_metrics(void)
 {
     metrics_crc32_str_t  gw_cfg_crc32_str  = { 0 };
     metrics_sha256_str_t gw_cfg_sha256_str = { 0 };
     metrics_calc_gw_cfg_hash(&gw_cfg_crc32_str, &gw_cfg_sha256_str);
+
+    metrics_crc32_str_t  ruuvi_json_crc32_str  = { 0 };
+    metrics_sha256_str_t ruuvi_json_sha256_str = { 0 };
+    metrics_calc_ruuvi_json_hash(&ruuvi_json_crc32_str, &ruuvi_json_sha256_str);
 
     const metrics_info_t metrics = {
         .received_advertisements        = metrics_received_advs_get(),
@@ -228,6 +274,8 @@ gen_metrics(void)
         .nrf_fw                           = *gw_cfg_get_nrf52_fw_ver(),
         .gw_cfg_crc32                     = gw_cfg_crc32_str,
         .gw_cfg_sha256                    = gw_cfg_sha256_str,
+        .ruuvi_json_crc32                 = ruuvi_json_crc32_str,
+        .ruuvi_json_sha256                = ruuvi_json_sha256_str,
     };
     return metrics;
 }
@@ -363,6 +411,8 @@ metrics_print_gw_cfg_info(str_buf_t *const p_str_buf, const metrics_info_t *cons
 {
     str_buf_printf(p_str_buf, METRICS_PREFIX "gw_cfg_crc32 %s\n", p_metrics->gw_cfg_crc32.buf);
     str_buf_printf(p_str_buf, METRICS_PREFIX "gw_cfg_sha256 %s\n", p_metrics->gw_cfg_sha256.buf);
+    str_buf_printf(p_str_buf, METRICS_PREFIX "ruuvi_json_crc32 %s\n", p_metrics->ruuvi_json_crc32.buf);
+    str_buf_printf(p_str_buf, METRICS_PREFIX "ruuvi_json_sha256 %s\n", p_metrics->ruuvi_json_sha256.buf);
 }
 
 static void
