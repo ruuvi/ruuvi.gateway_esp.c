@@ -192,7 +192,7 @@ settings_get_gw_cfg_blob_from_nvs(nvs_handle handle, ruuvi_gateway_config_blob_t
     esp_err_t esp_err = nvs_get_blob(handle, RUUVI_GATEWAY_NVS_CFG_BLOB_KEY, NULL, &sz);
     if (ESP_OK != esp_err)
     {
-        LOG_ERR_ESP(esp_err, "Can't read config from flash");
+        LOG_ERR_ESP(esp_err, "Can't find config key '%s' in flash", RUUVI_GATEWAY_NVS_CFG_BLOB_KEY);
         return false;
     }
 
@@ -205,7 +205,7 @@ settings_get_gw_cfg_blob_from_nvs(nvs_handle handle, ruuvi_gateway_config_blob_t
     esp_err = nvs_get_blob(handle, RUUVI_GATEWAY_NVS_CFG_BLOB_KEY, p_gw_cfg_blob, &sz);
     if (ESP_OK != esp_err)
     {
-        LOG_ERR_ESP(esp_err, "Can't read config from flash");
+        LOG_ERR_ESP(esp_err, "Can't find config key '%s' in flash", RUUVI_GATEWAY_NVS_CFG_BLOB_KEY);
         return false;
     }
 
