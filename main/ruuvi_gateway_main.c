@@ -23,8 +23,7 @@
 #include "gpio.h"
 #include "leds.h"
 #include "mqtt.h"
-#include "nvs.h"
-#include "nvs_flash.h"
+#include "ruuvi_nvs.h"
 #include "ruuvi_boards.h"
 #include "terminal.h"
 #include "time_task.h"
@@ -417,39 +416,6 @@ cb_after_nrf52_fw_updating(void)
     esp_restart();
 }
 
-static void
-ruuvi_nvs_flash_init(void)
-{
-    LOG_INFO("Init NVS");
-    const esp_err_t err = nvs_flash_init();
-    if (ESP_OK != err)
-    {
-        LOG_ERR_ESP(err, "nvs_flash_init failed");
-    }
-}
-
-static void
-ruuvi_nvs_flash_deinit(void)
-{
-    LOG_INFO("Deinit NVS");
-    const esp_err_t err = nvs_flash_deinit();
-    if (ESP_OK != err)
-    {
-        LOG_ERR_ESP(err, "nvs_flash_deinit failed");
-    }
-}
-
-static void
-ruuvi_nvs_flash_erase(void)
-{
-    LOG_INFO("Erase NVS");
-    const esp_err_t err = nvs_flash_erase();
-    if (ESP_OK != err)
-    {
-        LOG_ERR_ESP(err, "nvs_flash_erase failed");
-    }
-}
-
 ATTR_NORETURN
 static void
 handle_reset_button_is_pressed_during_boot(void)
@@ -457,8 +423,8 @@ handle_reset_button_is_pressed_during_boot(void)
     LOG_INFO("Reset button is pressed during boot - erase settings in flash");
     nrf52fw_hw_reset_nrf52(true);
 
-    ruuvi_nvs_flash_erase();
-    ruuvi_nvs_flash_init();
+    ruuvi_nvs_erase();
+    ruuvi_nvs_init();
 
     settings_write_flag_rebooting_after_auto_update(false);
     settings_write_flag_force_start_wifi_hotspot(true);
@@ -713,13 +679,13 @@ main_task_init(void)
     gpio_init();
     leds_init();
 
-    ruuvi_nvs_flash_init();
+    ruuvi_nvs_init();
 
     if (!settings_check_in_flash())
     {
-        ruuvi_nvs_flash_deinit();
-        ruuvi_nvs_flash_erase();
-        ruuvi_nvs_flash_init();
+        ruuvi_nvs_deinit();
+        ruuvi_nvs_erase();
+        ruuvi_nvs_init();
     }
 
     ruuvi_nrf52_fw_ver_t nrf52_fw_ver = { 0 };
@@ -751,7 +717,7 @@ main_task_init(void)
 
     if (0 == gpio_get_level(RB_BUTTON_RESET_PIN))
     {
-        ruuvi_nvs_flash_deinit();
+        ruuvi_nvs_deinit();
         handle_reset_button_is_pressed_during_boot();
     }
 

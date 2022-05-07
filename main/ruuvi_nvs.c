@@ -24,7 +24,7 @@
 static const char TAG[] = "ruuvi_nvs";
 
 static bool
-ruuvi_nvs_init(const char *const p_partition_name)
+ruuvi_nvs_init_partition(const char *const p_partition_name)
 {
     LOG_INFO("NVS init partition: %s", p_partition_name);
     const esp_err_t err = nvs_flash_init_partition(p_partition_name);
@@ -37,13 +37,19 @@ ruuvi_nvs_init(const char *const p_partition_name)
 }
 
 bool
+ruuvi_nvs_init(void)
+{
+    return ruuvi_nvs_init_partition(NVS_DEFAULT_PART_NAME);
+}
+
+bool
 ruuvi_nvs_init_gw_cfg_default(void)
 {
-    return ruuvi_nvs_init(RUUVI_GATEWAY_NVS_PARTITION_GW_CFG_DEFAULT);
+    return ruuvi_nvs_init_partition(RUUVI_GATEWAY_NVS_PARTITION_GW_CFG_DEFAULT);
 }
 
 static bool
-ruuvi_nvs_deinit(const char *const p_partition_name)
+ruuvi_nvs_deinit_partition(const char *const p_partition_name)
 {
     LOG_INFO("NVS deinit partition: %s", p_partition_name);
     const esp_err_t err = nvs_flash_deinit_partition(p_partition_name);
@@ -56,9 +62,26 @@ ruuvi_nvs_deinit(const char *const p_partition_name)
 }
 
 bool
+ruuvi_nvs_deinit(void)
+{
+    return ruuvi_nvs_deinit_partition(NVS_DEFAULT_PART_NAME);
+}
+
+bool
 ruuvi_nvs_deinit_gw_cfg_default(void)
 {
-    return ruuvi_nvs_deinit(RUUVI_GATEWAY_NVS_PARTITION_GW_CFG_DEFAULT);
+    return ruuvi_nvs_deinit_partition(RUUVI_GATEWAY_NVS_PARTITION_GW_CFG_DEFAULT);
+}
+
+void
+ruuvi_nvs_erase(void)
+{
+    LOG_INFO("Erase NVS");
+    const esp_err_t err = nvs_flash_erase();
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "nvs_flash_erase failed");
+    }
 }
 
 static bool

@@ -16,6 +16,15 @@ extern "C" {
 #endif
 
 bool
+ruuvi_nvs_init(void);
+
+bool
+ruuvi_nvs_deinit(void);
+
+void
+ruuvi_nvs_erase(void);
+
+bool
 ruuvi_nvs_init_gw_cfg_default(void);
 
 bool
