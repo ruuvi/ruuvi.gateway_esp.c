@@ -16,7 +16,16 @@ extern "C" {
 #endif
 
 bool
+ruuvi_nvs_init_gw_cfg_default(void);
+
+bool
+ruuvi_nvs_deinit_gw_cfg_default(void);
+
+bool
 ruuvi_nvs_open(nvs_open_mode_t open_mode, nvs_handle_t *p_handle);
+
+bool
+ruuvi_nvs_open_gw_cfg_default(nvs_open_mode_t open_mode, nvs_handle_t *p_handle);
 
 #ifdef __cplusplus
 }

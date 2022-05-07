@@ -6,6 +6,7 @@
  */
 
 #include "ruuvi_nvs.h"
+#include "nvs_flash.h"
 #include "os_malloc.h"
 #include "esp_type_wrapper.h"
 
@@ -18,7 +19,47 @@
 
 #define RUUVI_GATEWAY_NVS_NAMESPACE "ruuvi_gateway"
 
+#define RUUVI_GATEWAY_NVS_PARTITION_GW_CFG_DEFAULT "gw_cfg_def"
+
 static const char TAG[] = "ruuvi_nvs";
+
+static bool
+ruuvi_nvs_init(const char *const p_partition_name)
+{
+    LOG_INFO("NVS init partition: %s", p_partition_name);
+    const esp_err_t err = nvs_flash_init_partition(p_partition_name);
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "nvs_flash_init_partition failed for partition %s", p_partition_name);
+        return false;
+    }
+    return true;
+}
+
+bool
+ruuvi_nvs_init_gw_cfg_default(void)
+{
+    return ruuvi_nvs_init(RUUVI_GATEWAY_NVS_PARTITION_GW_CFG_DEFAULT);
+}
+
+static bool
+ruuvi_nvs_deinit(const char *const p_partition_name)
+{
+    LOG_INFO("NVS deinit partition: %s", p_partition_name);
+    const esp_err_t err = nvs_flash_deinit_partition(p_partition_name);
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "nvs_flash_deinit_partition failed for partition %s", p_partition_name);
+        return false;
+    }
+    return true;
+}
+
+bool
+ruuvi_nvs_deinit_gw_cfg_default(void)
+{
+    return ruuvi_nvs_deinit(RUUVI_GATEWAY_NVS_PARTITION_GW_CFG_DEFAULT);
+}
 
 static bool
 ruuvi_nvs_open_partition(const char *const p_partition_name, nvs_open_mode_t open_mode, nvs_handle_t *p_handle)
@@ -81,4 +122,10 @@ bool
 ruuvi_nvs_open(nvs_open_mode_t open_mode, nvs_handle_t *p_handle)
 {
     return ruuvi_nvs_open_partition(NVS_DEFAULT_PART_NAME, open_mode, p_handle);
+}
+
+bool
+ruuvi_nvs_open_gw_cfg_default(nvs_open_mode_t open_mode, nvs_handle_t *p_handle)
+{
+    return ruuvi_nvs_open_partition(RUUVI_GATEWAY_NVS_PARTITION_GW_CFG_DEFAULT, open_mode, p_handle);
 }
