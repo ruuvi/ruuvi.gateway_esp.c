@@ -8,8 +8,6 @@
 #ifndef RUUVI_LEDS_H
 #define RUUVI_LEDS_H
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/event_groups.h"
 #include "time_units.h"
 
 #if !defined(RUUVI_TESTS_LEDS)

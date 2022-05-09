@@ -10,6 +10,7 @@
 #include <string.h>
 #include "os_mutex_recursive.h"
 #include "event_mgr.h"
+#include "os_malloc.h"
 
 _Static_assert(sizeof(GW_CFG_REMOTE_AUTH_TYPE_STR_NO) <= GW_CFG_REMOTE_AUTH_TYPE_STR_SIZE, "");
 _Static_assert(sizeof(GW_CFG_REMOTE_AUTH_TYPE_STR_BASIC) <= GW_CFG_REMOTE_AUTH_TYPE_STR_SIZE, "");
@@ -186,6 +187,20 @@ gw_cfg_get_remote_cfg_use(gw_cfg_remote_refresh_interval_minutes_t *const p_inte
     const bool flag_use_remote_cfg = p_gw_cfg->ruuvi_cfg.remote.use_remote_cfg;
     gw_cfg_unlock_ro(&p_gw_cfg);
     return flag_use_remote_cfg;
+}
+
+const ruuvi_gw_cfg_remote_t *
+gw_cfg_get_remote_cfg_copy(void)
+{
+    const gw_cfg_t *       p_gw_cfg = gw_cfg_lock_ro();
+    ruuvi_gw_cfg_remote_t *p_remote = os_calloc(1, sizeof(*p_remote));
+    if (NULL == p_remote)
+    {
+        return NULL;
+    }
+    *p_remote = p_gw_cfg->ruuvi_cfg.remote;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    return p_remote;
 }
 
 bool
