@@ -6,24 +6,19 @@
  */
 
 #include "ethernet.h"
+#include <stdio.h>
+#include <string.h>
 #include "driver/gpio.h"
 #include "esp_err.h"
 #include "esp_eth.h"
 #include "esp_eth_com.h"
 #include "esp_event.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/event_groups.h"
-#include "freertos/task.h"
-#include "leds.h"
 #include "mqtt.h"
 #include "ruuvi_gateway.h"
-#include "sdkconfig.h"
 #include "esp_netif.h"
-#include "time_task.h"
-#include "wifi_manager.h"
-#include <stdio.h>
-#include <string.h>
 #include "event_mgr.h"
+#include "gw_status.h"
+
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
 
@@ -412,7 +407,7 @@ ethernet_stop(void)
         return;
     }
     LOG_INFO("Ethernet stop");
-    xEventGroupClearBits(status_bits, ETH_CONNECTED_BIT);
+    gw_status_clear_eth_connected();
     esp_err_t err_code = esp_eth_stop(g_eth_handle);
     if (ESP_OK != err_code)
     {

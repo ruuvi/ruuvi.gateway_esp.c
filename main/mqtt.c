@@ -17,6 +17,7 @@
 #include "os_mutex.h"
 #include "gw_mac.h"
 #include "esp_crt_bundle.h"
+#include "gw_status.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -209,7 +210,7 @@ mqtt_event_handler(esp_mqtt_event_handle_t h_event)
     {
         case MQTT_EVENT_CONNECTED:
             LOG_INFO("MQTT_EVENT_CONNECTED");
-            xEventGroupSetBits(status_bits, MQTT_CONNECTED_BIT);
+            gw_status_set_mqtt_connected();
             main_task_send_sig_mqtt_publish_connect();
             leds_indication_on_network_ok();
             if (!fw_update_mark_app_valid_cancel_rollback())
@@ -220,7 +221,7 @@ mqtt_event_handler(esp_mqtt_event_handle_t h_event)
 
         case MQTT_EVENT_DISCONNECTED:
             LOG_INFO("MQTT_EVENT_DISCONNECTED");
-            xEventGroupClearBits(status_bits, MQTT_CONNECTED_BIT);
+            gw_status_clear_mqtt_connected();
             leds_indication_network_no_connection();
             break;
 
@@ -415,12 +416,12 @@ mqtt_app_stop(void)
     mqtt_protected_data_t *p_mqtt_data = mqtt_mutex_lock();
     if (NULL != p_mqtt_data->p_mqtt_client)
     {
-        if (0 != (xEventGroupGetBits(status_bits) & MQTT_CONNECTED_BIT))
+        if (gw_status_is_mqtt_connected())
         {
             mqtt_publish_state_offline(p_mqtt_data);
             vTaskDelay(pdMS_TO_TICKS(500));
         }
-        xEventGroupClearBits(status_bits, MQTT_CONNECTED_BIT);
+        gw_status_clear_mqtt_connected();
         LOG_INFO("MQTT destroy");
         esp_mqtt_client_destroy(p_mqtt_data->p_mqtt_client);
         LOG_INFO("MQTT destroyed");

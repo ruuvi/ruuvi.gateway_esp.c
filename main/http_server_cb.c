@@ -28,6 +28,7 @@
 #include "gw_cfg.h"
 #include "gw_cfg_ruuvi_json.h"
 #include "gw_cfg_json.h"
+#include "time_units.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -55,6 +56,10 @@ static bool g_http_server_cb_flag_prohibit_cfg_updating = false;
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_cb_on_post_gw_cfg_download(void);
+
+HTTP_SERVER_CB_STATIC
+http_resp_code_e
+http_server_gw_cfg_download_and_update(bool *const p_flag_reboot_needed);
 
 #if !RUUVI_TESTS_HTTP_SERVER_CB
 static time_t
@@ -326,6 +331,7 @@ cb_on_http_download_json_data(
 static http_server_download_info_t
 http_download_json(
     const char *const                     p_url,
+    const TimeUnitsSeconds_t              timeout_seconds,
     const gw_cfg_remote_auth_type_e       auth_type,
     const ruuvi_gw_cfg_http_auth_t *const p_http_auth,
     const http_header_item_t *const       p_extra_header_item)
@@ -340,6 +346,7 @@ http_download_json(
     const bool       flag_feed_task_watchdog  = true;
     if (!http_download_with_auth(
             p_url,
+            timeout_seconds,
             auth_type,
             p_http_auth,
             p_extra_header_item,
@@ -385,7 +392,7 @@ http_server_download_info_t
 http_download_latest_release_info(void)
 {
     const char *const p_url = "https://api.github.com/repos/ruuvi/ruuvi.gateway_esp.c/releases/latest";
-    return http_download_json(p_url, GW_CFG_REMOTE_AUTH_TYPE_NO, NULL, NULL);
+    return http_download_json(p_url, HTTP_DOWNLOAD_TIMEOUT_SECONDS, GW_CFG_REMOTE_AUTH_TYPE_NO, NULL, NULL);
 }
 
 HTTP_SERVER_CB_STATIC
@@ -707,20 +714,33 @@ static http_server_download_info_t
 http_server_download_gw_cfg(void)
 {
     const mac_address_str_t *const p_nrf52_mac_addr = gw_cfg_get_nrf52_mac_addr();
-    const gw_cfg_t *               p_gw_cfg         = gw_cfg_lock_ro();
 
     const http_header_item_t extra_header_item = {
         .p_key   = "ruuvi_gw_mac",
         .p_value = p_nrf52_mac_addr->str_buf,
     };
 
-    const http_server_download_info_t info = http_download_json(
-        p_gw_cfg->ruuvi_cfg.remote.url.buf,
-        p_gw_cfg->ruuvi_cfg.remote.auth_type,
-        &p_gw_cfg->ruuvi_cfg.remote.auth,
+    const ruuvi_gw_cfg_remote_t *p_remote = gw_cfg_get_remote_cfg_copy();
+    if (NULL == p_remote)
+    {
+        const http_server_download_info_t info = {
+            .is_error       = true,
+            .http_resp_code = HTTP_RESP_CODE_503,
+            .p_json_buf     = NULL,
+            .json_buf_size  = 0,
+        };
+        return info;
+    }
+
+    const TimeUnitsSeconds_t          timeout_seconds = 10;
+    const http_server_download_info_t info            = http_download_json(
+        p_remote->url.buf,
+        timeout_seconds,
+        p_remote->auth_type,
+        &p_remote->auth,
         &extra_header_item);
 
-    gw_cfg_unlock_ro(&p_gw_cfg);
+    os_free(p_remote);
     return info;
 }
 
@@ -733,7 +753,7 @@ http_server_cb_on_user_req(const http_server_user_req_code_e req_code)
             http_server_cb_on_user_req_download_latest_release_info();
             break;
         case HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_GW_CFG:
-            (void)http_server_cb_on_post_gw_cfg_download();
+            (void)http_server_gw_cfg_download_and_update(NULL);
             break;
         default:
             LOG_ERR("Unknown req_code=%d", (printf_int_t)req_code);
@@ -846,66 +866,83 @@ http_server_cb_on_post_fw_update(const char *p_body, const bool flag_access_from
 }
 
 HTTP_SERVER_CB_STATIC
+http_resp_code_e
+http_server_gw_cfg_download_and_update(bool *const p_flag_reboot_needed)
+{
+    http_server_download_info_t download_info = http_server_download_gw_cfg();
+    if (download_info.is_error)
+    {
+        LOG_ERR("Download gw_cfg: failed, http_resp_code=%u", (printf_uint_t)download_info.http_resp_code);
+        return download_info.http_resp_code;
+    }
+    LOG_INFO("Download gw_cfg: successfully completed");
+    LOG_DBG("gw_cfg.json: %s", download_info.p_json_buf);
+
+    gw_cfg_t *p_gw_cfg_tmp = os_calloc(1, sizeof(*p_gw_cfg_tmp));
+    if (NULL == p_gw_cfg_tmp)
+    {
+        LOG_ERR("Failed to allocate memory for gw_cfg");
+        os_free(download_info.p_json_buf);
+        return HTTP_RESP_CODE_503;
+    }
+    gw_cfg_get_copy(p_gw_cfg_tmp);
+
+    if (!gw_cfg_json_parse(
+            "gw_cfg.json",
+            "Read Gateway SETTINGS from remote server:",
+            download_info.p_json_buf,
+            p_gw_cfg_tmp,
+            NULL))
+    {
+        LOG_ERR("Failed to parse gw_cfg.json or no memory");
+        os_free(p_gw_cfg_tmp);
+        os_free(download_info.p_json_buf);
+        return HTTP_RESP_CODE_503;
+    }
+
+    const gw_cfg_update_status_t update_status = gw_cfg_update(p_gw_cfg_tmp);
+    if (update_status.flag_eth_cfg_modified || update_status.flag_wifi_cfg_modified)
+    {
+        LOG_INFO("Network configuration in gw_cfg.json differs from the current settings, need to restart gateway");
+        if (NULL != p_flag_reboot_needed)
+        {
+            *p_flag_reboot_needed = true;
+        }
+        reset_task_reboot_after_timeout();
+    }
+    else if (update_status.flag_ruuvi_cfg_modified)
+    {
+        LOG_INFO("Ruuvi configuration in gw_cfg.json differs from the current settings, need to restart services");
+        restart_services();
+    }
+    else
+    {
+        LOG_INFO("Gateway SETTINGS (from remote server) are the same as the current ones");
+    }
+    os_free(p_gw_cfg_tmp);
+    return download_info.http_resp_code;
+}
+
+HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_cb_on_post_gw_cfg_download(void)
 {
     LOG_DBG("POST /gw_cfg_download");
-    const char *                p_resp_content = g_empty_json;
-    http_server_download_info_t download_info  = http_server_download_gw_cfg();
-    if (download_info.is_error)
+    bool flag_reboot_needed = false;
+
+    const http_resp_code_e http_resp_code = http_server_gw_cfg_download_and_update(&flag_reboot_needed);
+
+    const char *p_resp_content = g_empty_json;
+    if (flag_reboot_needed)
     {
-        LOG_ERR("POST /gw_cfg_download: failed, http_resp_code=%u", (printf_uint_t)download_info.http_resp_code);
+        p_resp_content
+            = "{\"message\":"
+              "\"Network configuration in gw_cfg.json on the server is different from the current one, "
+              "the gateway will be rebooted.\"}";
     }
-    else
-    {
-        LOG_INFO("POST /gw_cfg_download: gw_cfg.json was successfully downloaded");
-        LOG_DBG("gw_cfg.json: %s", download_info.p_json_buf);
 
-        gw_cfg_t *p_gw_cfg_tmp = os_calloc(1, sizeof(*p_gw_cfg_tmp));
-        if (NULL == p_gw_cfg_tmp)
-        {
-            LOG_ERR("Failed to allocate memory for gw_cfg");
-            os_free(download_info.p_json_buf);
-            return http_server_resp_503();
-        }
-        gw_cfg_get_copy(p_gw_cfg_tmp);
-
-        if (!gw_cfg_json_parse(
-                "gw_cfg.json",
-                "Read Gateway SETTINGS from remote server:",
-                download_info.p_json_buf,
-                p_gw_cfg_tmp,
-                NULL))
-        {
-            LOG_ERR("Failed to parse gw_cfg.json or no memory");
-            os_free(p_gw_cfg_tmp);
-            os_free(download_info.p_json_buf);
-            return http_server_resp_503();
-        }
-
-        const gw_cfg_update_status_t update_status = gw_cfg_update(p_gw_cfg_tmp);
-        if (update_status.flag_eth_cfg_modified || update_status.flag_wifi_cfg_modified)
-        {
-            LOG_INFO("Network configuration in gw_cfg.json differs from the current settings, need to restart gateway");
-            p_resp_content
-                = "{\"message\":"
-                  "\"Network configuration in gw_cfg.json on the server is different from the current one, "
-                  "the gateway will be rebooted.\"}";
-            reset_task_reboot_after_timeout();
-        }
-        else if (update_status.flag_ruuvi_cfg_modified)
-        {
-            LOG_INFO("Ruuvi configuration in gw_cfg.json differs from the current settings, need to restart services");
-            restart_services();
-        }
-        else
-        {
-            LOG_INFO("Gateway SETTINGS (from remote server) are the same as the current ones");
-        }
-        os_free(p_gw_cfg_tmp);
-    }
     http_server_resp_t resp = {
-        .http_resp_code               = download_info.http_resp_code,
+        .http_resp_code               = http_resp_code,
         .content_location             = HTTP_CONTENT_LOCATION_FLASH_MEM,
         .flag_no_cache                = true,
         .flag_add_header_date         = true,

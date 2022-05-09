@@ -10,8 +10,6 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/event_groups.h"
 #include "settings.h"
 #include "os_wrapper_types.h"
 
@@ -41,12 +39,7 @@ extern "C" {
 #define RUUVI_NETWORK_WATCHDOG_TIMEOUT_SECONDS (60U * 60U)
 #define RUUVI_NETWORK_WATCHDOG_PERIOD_SECONDS  (1U)
 
-#define WIFI_CONNECTED_BIT (1U << 0U)
-#define MQTT_CONNECTED_BIT (1U << 1U)
-#define ETH_CONNECTED_BIT  (1U << 4U)
-
-extern EventGroupHandle_t status_bits;
-extern volatile uint32_t  g_network_disconnect_cnt;
+extern volatile uint32_t g_network_disconnect_cnt;
 
 void
 ruuvi_send_nrf_settings(void);
@@ -62,6 +55,9 @@ main_task_start_timer_after_hotspot_activation(void);
 
 void
 main_task_stop_timer_after_hotspot_activation(void);
+
+void
+main_task_stop_timer_check_for_remote_cfg(void);
 
 void
 main_task_schedule_next_check_for_fw_updates(void);

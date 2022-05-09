@@ -13,10 +13,13 @@
 #include "adv_table.h"
 #include "wifi_manager_defs.h"
 #include "http_json.h"
+#include "time_units.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define HTTP_DOWNLOAD_TIMEOUT_SECONDS (25)
 
 typedef struct http_header_item_t
 {
@@ -44,6 +47,7 @@ http_async_poll(void);
 bool
 http_download(
     const char *const          p_url,
+    const TimeUnitsSeconds_t   timeout_seconds,
     http_download_cb_on_data_t p_cb_on_data,
     void *const                p_user_data,
     const bool                 flag_feed_task_watchdog);
@@ -51,6 +55,7 @@ http_download(
 bool
 http_download_with_auth(
     const char *const                     p_url,
+    const TimeUnitsSeconds_t              timeout_seconds,
     const gw_cfg_remote_auth_type_e       gw_cfg_http_auth_type,
     const ruuvi_gw_cfg_http_auth_t *const p_http_auth,
     const http_header_item_t *const       p_extra_header_item,
