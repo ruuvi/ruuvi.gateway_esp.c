@@ -326,6 +326,9 @@ gw_cfg_get_copy(gw_cfg_t *const p_gw_cfg);
 bool
 gw_cfg_get_remote_cfg_use(gw_cfg_remote_refresh_interval_minutes_t *const p_interval_minutes);
 
+const ruuvi_gw_cfg_remote_t *
+gw_cfg_get_remote_cfg_copy(void);
+
 bool
 gw_cfg_get_eth_use_eth(void);
 

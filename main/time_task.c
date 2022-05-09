@@ -9,8 +9,6 @@
 #include <time.h>
 #include <assert.h>
 #include "os_task.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/event_groups.h"
 #include "esp_sntp.h"
 #include "attribs.h"
 #include "time_units.h"

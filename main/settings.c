@@ -17,7 +17,7 @@
 #include "gw_cfg_log.h"
 #include "os_malloc.h"
 #include "wifi_manager.h"
-#include "event_mgr.h"
+#include "ruuvi_nvs.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -26,7 +26,6 @@
 #warning Debug log level prints out the passwords as a "plaintext".
 #endif
 
-#define RUUVI_GATEWAY_NVS_NAMESPACE    "ruuvi_gateway"
 #define RUUVI_GATEWAY_NVS_CFG_BLOB_KEY "ruuvi_config" /* deprecated */
 #define RUUVI_GATEWAY_NVS_CFG_JSON_KEY "ruuvi_cfg_json"
 #define RUUVI_GATEWAY_NVS_MAC_ADDR_KEY "ruuvi_mac_addr"
@@ -39,66 +38,11 @@
 
 static const char TAG[] = "settings";
 
-static bool
-settings_nvs_open(nvs_open_mode_t open_mode, nvs_handle_t *p_handle)
-{
-    const char *nvs_name = RUUVI_GATEWAY_NVS_NAMESPACE;
-    esp_err_t   err      = nvs_open(nvs_name, open_mode, p_handle);
-    if (ESP_OK != err)
-    {
-        if (ESP_ERR_NVS_NOT_INITIALIZED == err)
-        {
-            LOG_WARN("NVS namespace '%s': StorageState is INVALID, need to erase NVS", nvs_name);
-            return false;
-        }
-        else if (ESP_ERR_NVS_NOT_FOUND == err)
-        {
-            LOG_WARN("NVS namespace '%s' doesn't exist and mode is NVS_READONLY, try to create it", nvs_name);
-            nvs_handle handle = 0;
-            err               = nvs_open(nvs_name, NVS_READWRITE, &handle);
-            if (ESP_OK != err)
-            {
-                LOG_ERR_ESP(err, "Can't open NVS for writing");
-                return false;
-            }
-            err = nvs_set_str(handle, RUUVI_GATEWAY_NVS_CFG_JSON_KEY, "");
-            if (ESP_OK != err)
-            {
-                LOG_ERR_ESP(err, "%s failed", "nvs_set_str");
-                nvs_close(handle);
-                return false;
-            }
-            err = nvs_commit(handle);
-            if (ESP_OK != err)
-            {
-                LOG_ERR_ESP(err, "%s failed", "nvs_commit");
-                nvs_close(handle);
-                return false;
-            }
-            nvs_close(handle);
-
-            LOG_INFO("NVS namespace '%s' created successfully", nvs_name);
-            err = nvs_open(nvs_name, open_mode, p_handle);
-            if (ESP_OK != err)
-            {
-                LOG_ERR_ESP(err, "Can't open NVS namespace: '%s'", nvs_name);
-                return false;
-            }
-        }
-        else
-        {
-            LOG_ERR_ESP(err, "Can't open NVS namespace: '%s'", nvs_name);
-            return false;
-        }
-    }
-    return true;
-}
-
 bool
 settings_check_in_flash(void)
 {
     nvs_handle handle = 0;
-    if (!settings_nvs_open(NVS_READONLY, &handle))
+    if (!ruuvi_nvs_open(NVS_READONLY, &handle))
     {
         return false;
     }
@@ -140,7 +84,7 @@ settings_save_to_flash_cjson(const char *const p_json_str)
     LOG_DBG("Save config to NVS: %s", (NULL != p_json_str) ? p_json_str : "");
 
     nvs_handle handle = 0;
-    if (!settings_nvs_open(NVS_READWRITE, &handle))
+    if (!ruuvi_nvs_open(NVS_READWRITE, &handle))
     {
         LOG_ERR("Failed to open NVS for writing");
         return false;
@@ -248,7 +192,7 @@ settings_get_gw_cfg_blob_from_nvs(nvs_handle handle, ruuvi_gateway_config_blob_t
     esp_err_t esp_err = nvs_get_blob(handle, RUUVI_GATEWAY_NVS_CFG_BLOB_KEY, NULL, &sz);
     if (ESP_OK != esp_err)
     {
-        LOG_ERR_ESP(esp_err, "Can't read config from flash");
+        LOG_ERR_ESP(esp_err, "Can't find config key '%s' in flash", RUUVI_GATEWAY_NVS_CFG_BLOB_KEY);
         return false;
     }
 
@@ -261,7 +205,7 @@ settings_get_gw_cfg_blob_from_nvs(nvs_handle handle, ruuvi_gateway_config_blob_t
     esp_err = nvs_get_blob(handle, RUUVI_GATEWAY_NVS_CFG_BLOB_KEY, p_gw_cfg_blob, &sz);
     if (ESP_OK != esp_err)
     {
-        LOG_ERR_ESP(esp_err, "Can't read config from flash");
+        LOG_ERR_ESP(esp_err, "Can't find config key '%s' in flash", RUUVI_GATEWAY_NVS_CFG_BLOB_KEY);
         return false;
     }
 
@@ -319,7 +263,7 @@ settings_get_from_flash(void)
     bool       flag_use_default_config = false;
     bool       flag_modified           = false;
     nvs_handle handle                  = 0;
-    if (!settings_nvs_open(NVS_READWRITE, &handle))
+    if (!ruuvi_nvs_open(NVS_READWRITE, &handle))
     {
         flag_use_default_config = true;
     }
@@ -367,7 +311,7 @@ settings_read_mac_addr(void)
 {
     mac_address_bin_t mac_addr = { 0 };
     nvs_handle        handle   = 0;
-    if (!settings_nvs_open(NVS_READONLY, &handle))
+    if (!ruuvi_nvs_open(NVS_READONLY, &handle))
     {
         LOG_WARN("Use empty mac_addr");
     }
@@ -388,9 +332,9 @@ void
 settings_write_mac_addr(const mac_address_bin_t *const p_mac_addr)
 {
     nvs_handle handle = 0;
-    if (!settings_nvs_open(NVS_READWRITE, &handle))
+    if (!ruuvi_nvs_open(NVS_READWRITE, &handle))
     {
-        LOG_ERR("%s failed", "settings_nvs_open");
+        LOG_ERR("%s failed", "ruuvi_nvs_open");
     }
     else
     {
@@ -420,9 +364,9 @@ settings_read_flag_rebooting_after_auto_update(void)
 {
     uint32_t   flag_rebooting_after_auto_update = 0;
     nvs_handle handle                           = 0;
-    if (!settings_nvs_open(NVS_READONLY, &handle))
+    if (!ruuvi_nvs_open(NVS_READONLY, &handle))
     {
-        LOG_WARN("settings_nvs_open failed, flag_rebooting_after_auto_update = false");
+        LOG_WARN("ruuvi_nvs_open failed, flag_rebooting_after_auto_update = false");
         return false;
     }
     size_t    sz      = sizeof(flag_rebooting_after_auto_update);
@@ -453,9 +397,9 @@ settings_write_flag_rebooting_after_auto_update(const bool flag_rebooting_after_
 {
     LOG_INFO("SETTINGS: Write flag_rebooting_after_auto_update: %d", flag_rebooting_after_auto_update);
     nvs_handle handle = 0;
-    if (!settings_nvs_open(NVS_READWRITE, &handle))
+    if (!ruuvi_nvs_open(NVS_READWRITE, &handle))
     {
-        LOG_ERR("%s failed", "settings_nvs_open");
+        LOG_ERR("%s failed", "ruuvi_nvs_open");
         return;
     }
     const uint32_t flag_rebooting_after_auto_update_val = flag_rebooting_after_auto_update
@@ -478,9 +422,9 @@ settings_read_flag_force_start_wifi_hotspot(void)
 {
     uint32_t   flag_force_start_wifi_hotspot = 0;
     nvs_handle handle                        = 0;
-    if (!settings_nvs_open(NVS_READONLY, &handle))
+    if (!ruuvi_nvs_open(NVS_READONLY, &handle))
     {
-        LOG_WARN("settings_nvs_open failed, flag_force_start_wifi_hotspot = false");
+        LOG_WARN("ruuvi_nvs_open failed, flag_force_start_wifi_hotspot = false");
         return false;
     }
     size_t    sz      = sizeof(flag_force_start_wifi_hotspot);
@@ -511,9 +455,9 @@ settings_write_flag_force_start_wifi_hotspot(const bool flag_force_start_wifi_ho
 {
     nvs_handle handle = 0;
     LOG_INFO("SETTINGS: Write flag_force_start_wifi_hotspot: %d", flag_force_start_wifi_hotspot);
-    if (!settings_nvs_open(NVS_READWRITE, &handle))
+    if (!ruuvi_nvs_open(NVS_READWRITE, &handle))
     {
-        LOG_ERR("%s failed", "settings_nvs_open");
+        LOG_ERR("%s failed", "ruuvi_nvs_open");
         return;
     }
     const uint32_t flag_force_start_wifi_hotspot_val = flag_force_start_wifi_hotspot

@@ -34,6 +34,7 @@
 #include "nrf52fw.h"
 #include "reset_task.h"
 #include "time_units.h"
+#include "gw_status.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -220,6 +221,12 @@ adv_post_send_report(void *arg)
         return;
     }
 
+    if (!gw_status_is_network_connected())
+    {
+        LOG_WARN("Drop adv - no network connection");
+        return;
+    }
+
     const bool flag_ntp_use = gw_cfg_get_ntp_use();
     if (flag_ntp_use && !time_is_synchronized())
     {
@@ -243,7 +250,7 @@ adv_post_send_report(void *arg)
     }
     if (gw_cfg_get_mqtt_use_mqtt())
     {
-        if (0 == (xEventGroupGetBits(status_bits) & MQTT_CONNECTED_BIT))
+        if (!gw_status_is_mqtt_connected())
         {
             LOG_WARN("Can't send adv, MQTT is not connected yet");
         }
