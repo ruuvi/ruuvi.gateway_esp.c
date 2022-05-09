@@ -373,7 +373,12 @@ fw_update_data_partition(const esp_partition_t *const p_partition, const char *c
     }
     LOG_INFO("fw_update_data_partition: Download and write partition data");
     const bool flag_feed_task_watchdog = false;
-    if (!http_download(p_url, &fw_update_data_partition_cb_on_recv_data, &fw_update_info, flag_feed_task_watchdog))
+    if (!http_download(
+            p_url,
+            HTTP_DOWNLOAD_TIMEOUT_SECONDS,
+            &fw_update_data_partition_cb_on_recv_data,
+            &fw_update_info,
+            flag_feed_task_watchdog))
     {
         LOG_ERR("Failed to update partition %s - failed to download %s", p_partition->label, p_url);
         return false;
@@ -477,7 +482,12 @@ fw_update_ota_partition(
     };
 
     const bool flag_feed_task_watchdog = false;
-    if (!http_download(p_url, &fw_update_ota_partition_cb_on_recv_data, &fw_update_info, flag_feed_task_watchdog))
+    if (!http_download(
+            p_url,
+            HTTP_DOWNLOAD_TIMEOUT_SECONDS,
+            &fw_update_ota_partition_cb_on_recv_data,
+            &fw_update_info,
+            flag_feed_task_watchdog))
     {
         LOG_ERR("Failed to update OTA-partition %s - failed to download %s", p_partition->label, p_url);
         return false;

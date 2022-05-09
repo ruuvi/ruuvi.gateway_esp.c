@@ -19,7 +19,6 @@
 #include "os_task.h"
 #include "os_malloc.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/event_groups.h"
 #include "gpio.h"
 #include "leds.h"
 #include "mqtt.h"
@@ -50,6 +49,7 @@
 #include "wifiman_md5.h"
 #include "json_ruuvi.h"
 #include "gw_mac.h"
+#include "gw_status.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -63,7 +63,6 @@ static const char TAG[] = "ruuvi_gateway";
 #define WIFI_COUNTRY_DEFAULT_NUM_CHANNELS  (13U)
 #define WIFI_MAX_TX_POWER_DEFAULT          (9)
 
-EventGroupHandle_t status_bits;
 uint32_t volatile g_network_disconnect_cnt;
 
 static mbedtls_entropy_context  g_entropy;
@@ -166,7 +165,7 @@ ethernet_link_down_cb(void)
     LOG_INFO("Ethernet lost connection");
     g_network_disconnect_cnt += 1;
     wifi_manager_update_network_connection_info(UPDATE_LOST_CONNECTION, NULL, NULL, NULL);
-    xEventGroupClearBits(status_bits, ETH_CONNECTED_BIT);
+    gw_status_clear_eth_connected();
     leds_indication_network_no_connection();
     event_mgr_notify(EVENT_MGR_EV_ETH_DISCONNECTED);
 }
@@ -209,7 +208,7 @@ ethernet_connection_ok_cb(const esp_netif_ip_info_t *p_ip_info)
         NULL,
         p_ip_info,
         (NULL != p_dhcp) ? &dhcp_ip : NULL);
-    xEventGroupSetBits(status_bits, ETH_CONNECTED_BIT);
+    gw_status_set_eth_connected();
     start_services();
     event_mgr_notify(EVENT_MGR_EV_ETH_CONNECTED);
 }
@@ -219,7 +218,7 @@ wifi_connection_ok_cb(void *p_param)
 {
     (void)p_param;
     LOG_INFO("Wifi connected");
-    xEventGroupSetBits(status_bits, WIFI_CONNECTED_BIT);
+    gw_status_set_wifi_connected();
     start_services();
     event_mgr_notify(EVENT_MGR_EV_WIFI_CONNECTED);
     leds_indication_on_network_ok();
@@ -244,7 +243,7 @@ static void
 cb_on_disconnect_sta_cmd(void)
 {
     LOG_INFO("callback: on_disconnect_sta_cmd");
-    xEventGroupClearBits(status_bits, WIFI_CONNECTED_BIT);
+    gw_status_clear_wifi_connected();
 }
 
 static void
@@ -281,7 +280,7 @@ wifi_disconnect_cb(void *p_param)
     (void)p_param;
     LOG_WARN("Wifi disconnected");
     g_network_disconnect_cnt += 1;
-    xEventGroupClearBits(status_bits, WIFI_CONNECTED_BIT);
+    gw_status_clear_wifi_connected();
     leds_indication_network_no_connection();
     event_mgr_notify(EVENT_MGR_EV_WIFI_DISCONNECTED);
 }
@@ -669,10 +668,9 @@ main_task_init(void)
         return false;
     }
 
-    status_bits = xEventGroupCreate();
-    if (NULL == status_bits)
+    if (!gw_status_init())
     {
-        LOG_ERR("Can't create event group");
+        LOG_ERR("%s failed", "gw_status_init");
         return false;
     }
 

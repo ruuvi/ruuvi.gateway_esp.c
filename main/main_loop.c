@@ -225,6 +225,7 @@ main_task_handle_sig_deactivate_wifi_ap(void)
         wifi_manager_connect_async();
     }
 
+    main_task_configure_periodic_remote_cfg_check();
     leds_indication_network_no_connection();
 }
 
@@ -556,4 +557,11 @@ main_task_stop_timer_after_hotspot_activation(void)
 {
     LOG_INFO("Stop AP timer");
     os_timer_sig_one_shot_stop(g_p_timer_sig_deactivate_wifi_ap);
+}
+
+void
+main_task_stop_timer_check_for_remote_cfg(void)
+{
+    LOG_INFO("Stop timer: Check for remote cfg");
+    os_timer_sig_periodic_stop(g_p_timer_sig_check_for_remote_cfg);
 }
