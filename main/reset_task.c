@@ -116,6 +116,7 @@ reset_task_handle_sig(const reset_task_sig_e reset_task_sig)
                 LOG_INFO("WiFi AP is not active - stop Ethernet and start WiFi AP");
                 ethernet_stop();
                 wifi_manager_start_ap();
+                main_task_stop_timer_check_for_remote_cfg();
                 leds_indication_on_hotspot_activation();
                 main_task_start_timer_after_hotspot_activation();
             }

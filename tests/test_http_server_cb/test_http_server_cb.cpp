@@ -73,6 +73,7 @@ esp_random(void)
 bool
 http_download(
     const char *const          p_url,
+    const TimeUnitsSeconds_t   timeout_seconds,
     http_download_cb_on_data_t cb_on_data,
     void *const                p_user_data,
     const bool                 flag_feed_task_watchdog)
@@ -83,6 +84,7 @@ http_download(
 bool
 http_download_with_auth(
     const char *const                     p_url,
+    const TimeUnitsSeconds_t              timeout_seconds,
     const gw_cfg_remote_auth_type_e       gw_cfg_http_auth_type,
     const ruuvi_gw_cfg_http_auth_t *const p_http_auth,
     const http_header_item_t *const       p_extra_header_item,
@@ -655,6 +657,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
           "\t\"mqtt_user\":\t\"\",\n"
           "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
           "\t\"lan_auth_user\":\t\"Admin\",\n"
+          "\t\"lan_auth_api_key_use\":\ttrue,\n"
           "\t\"auto_update_cycle\":\t\"regular\",\n"
           "\t\"auto_update_weekdays_bitmask\":\t127,\n"
           "\t\"auto_update_interval_from\":\t0,\n"
@@ -849,6 +852,7 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
           "\t\"mqtt_user\":\t\"\",\n"
           "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
           "\t\"lan_auth_user\":\t\"Admin\",\n"
+          "\t\"lan_auth_api_key_use\":\tfalse,\n"
           "\t\"auto_update_cycle\":\t\"beta\",\n"
           "\t\"auto_update_weekdays_bitmask\":\t126,\n"
           "\t\"auto_update_interval_from\":\t1,\n"
@@ -1300,6 +1304,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
           "\t\"mqtt_user\":\t\"\",\n"
           "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
           "\t\"lan_auth_user\":\t\"Admin\",\n"
+          "\t\"lan_auth_api_key_use\":\ttrue,\n"
           "\t\"auto_update_cycle\":\t\"regular\",\n"
           "\t\"auto_update_weekdays_bitmask\":\t127,\n"
           "\t\"auto_update_interval_from\":\t0,\n"

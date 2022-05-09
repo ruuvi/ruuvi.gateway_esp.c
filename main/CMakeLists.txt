@@ -38,6 +38,8 @@ idf_component_register(
             gw_cfg_default.h
             gw_cfg_default_json.c
             gw_cfg_default_json.h
+            gw_status.c
+            gw_status.h
             gw_mac.c
             gw_mac.h
             hmac_sha256.c
@@ -73,6 +75,8 @@ idf_component_register(
             ruuvi_device_id.h
             ruuvi_gateway_main.c
             ruuvi_gateway.h
+            ruuvi_nvs.c
+            ruuvi_nvs.h
             settings.c
             time_str.c
             time_str.h

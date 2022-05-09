@@ -9,5 +9,5 @@ fatfs_nrf52,   data,  fat,     0x5C0000, 0x40000,
 ota_1,         app,   ota_1,   0x600000, 4M,                 
 fatfs_gwui_2,  data,  fat,     0xA00000, 0xC0000,
 fatfs_nrf52_2, data,  fat,     0xAC0000, 0x40000,
-fatfs_cfg,     data,  fat,     0xB00000, 0x40000,
+gw_cfg_def,    data,  nvs,     0xB00000, 0x40000,
 

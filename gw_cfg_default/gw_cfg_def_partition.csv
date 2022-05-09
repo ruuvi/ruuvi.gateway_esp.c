@@ -1,0 +1,4 @@
+key,type,encoding,value
+ruuvi_gateway,namespace,,
+gw_cfg_default,file,string,gw_cfg_default.json
+
