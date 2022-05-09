@@ -75,6 +75,8 @@ idf_component_register(
             ruuvi_device_id.h
             ruuvi_gateway_main.c
             ruuvi_gateway.h
+            ruuvi_nvs.c
+            ruuvi_nvs.h
             settings.c
             time_str.c
             time_str.h

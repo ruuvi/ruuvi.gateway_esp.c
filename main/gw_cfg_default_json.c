@@ -11,9 +11,9 @@
 #include "gw_cfg.h"
 #include "cJSON.h"
 #include "os_malloc.h"
-#include "flashfatfs.h"
 #include "gw_cfg_json.h"
 #include "gw_cfg_log.h"
+#include "ruuvi_nvs.h"
 
 #if defined(RUUVI_TESTS_GW_CFG_DEFAULT_JSON)
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -28,90 +28,74 @@
 
 static const char TAG[] = "gw_cfg";
 
-static bool
-gw_cfg_default_read_from_fd(
-    FILE *const     p_fd,
-    char *const     p_json_cfg_buf,
-    const size_t    json_cfg_buf_size,
-    const char *    p_path_gw_cfg_default_json,
-    gw_cfg_t *const p_gw_cfg_default)
+static const char *
+gw_cfg_default_json_read_from_nvs(nvs_handle handle, const char *const p_nvs_key)
 {
-    const size_t json_cfg_len   = json_cfg_buf_size - 1;
-    const size_t num_bytes_read = fread(p_json_cfg_buf, sizeof(char), json_cfg_len, p_fd);
-    if (num_bytes_read != json_cfg_len)
+    size_t    json_size = 0;
+    esp_err_t esp_err   = nvs_get_str(handle, p_nvs_key, NULL, &json_size);
+    if (ESP_OK != esp_err)
     {
-        LOG_ERR(
-            "Read %u of %u bytes from default_gw_cfg.json",
-            (printf_uint_t)num_bytes_read,
-            (printf_uint_t)json_cfg_len);
-        return false;
-    }
-    p_json_cfg_buf[json_cfg_len] = '\0';
-    LOG_DBG("Got default config from file: %s", p_json_cfg_buf);
-
-    return gw_cfg_json_parse(p_path_gw_cfg_default_json, NULL, p_json_cfg_buf, p_gw_cfg_default, NULL);
-}
-
-static bool
-gw_cfg_default_json_read_from_file(
-    const flash_fat_fs_t *p_ffs,
-    const char *          p_path_gw_cfg_default_json,
-    gw_cfg_t *const       p_gw_cfg_default)
-{
-    const bool flag_use_binary_mode = false;
-
-    size_t json_size = 0;
-    if (!flashfatfs_get_file_size(p_ffs, p_path_gw_cfg_default_json, &json_size))
-    {
-        LOG_ERR("Can't get file size: %s", p_path_gw_cfg_default_json);
-        return false;
+        LOG_ERR_ESP(esp_err, "Can't find config key '%s' in flash", p_nvs_key);
+        return NULL;
     }
 
-    FILE *p_fd = flashfatfs_fopen(p_ffs, p_path_gw_cfg_default_json, flag_use_binary_mode);
-    if (NULL == p_fd)
+    char *p_cfg_json = os_malloc(json_size);
+    if (NULL == p_cfg_json)
     {
-        LOG_ERR("Can't open: %s", p_path_gw_cfg_default_json);
-        return false;
+        LOG_ERR("Can't allocate %lu bytes for configuration", (printf_ulong_t)json_size);
+        return NULL;
     }
 
-    const size_t json_cfg_buf_size = json_size + 1;
-    char *       p_json_cfg_buf    = os_malloc(json_cfg_buf_size);
-    if (NULL == p_json_cfg_buf)
+    esp_err = nvs_get_str(handle, p_nvs_key, p_cfg_json, &json_size);
+    if (ESP_OK != esp_err)
     {
-        LOG_ERR("Can't allocate %u bytes for default_gw_cfg.json", (printf_uint_t)(json_size + 1));
-        fclose(p_fd);
-        return false;
+        LOG_ERR_ESP(esp_err, "Can't read config-json from flash by key '%s'", p_nvs_key);
+        os_free(p_cfg_json);
+        return NULL;
     }
-
-    const bool res = gw_cfg_default_read_from_fd(
-        p_fd,
-        p_json_cfg_buf,
-        json_cfg_buf_size,
-        p_path_gw_cfg_default_json,
-        p_gw_cfg_default);
-
-    os_free(p_json_cfg_buf);
-    fclose(p_fd);
-
-    return res;
+    return p_cfg_json;
 }
 
 bool
 gw_cfg_default_json_read(gw_cfg_t *const p_gw_cfg_default)
 {
-    const char *                   mount_point   = "/fs_cfg";
-    const flash_fat_fs_num_files_t max_num_files = 4U;
+    static const char *const p_nvs_key_gw_cfg_default = "gw_cfg_default";
 
-    const flash_fat_fs_t *p_ffs = flashfatfs_mount(mount_point, GW_CFG_PARTITION, max_num_files);
-    if (NULL == p_ffs)
+    if (!ruuvi_nvs_init_gw_cfg_default())
     {
-        LOG_ERR("flashfatfs_mount: failed to mount partition '%s'", GW_CFG_PARTITION);
+        LOG_ERR("%s failed", "ruuvi_nvs_init_gw_cfg_default");
         return false;
     }
 
-    const bool res = gw_cfg_default_json_read_from_file(p_ffs, "gw_cfg_default.json", p_gw_cfg_default);
+    LOG_INFO("Read default gw_cfg from NVS by key '%s'", p_nvs_key_gw_cfg_default);
+    nvs_handle handle = 0;
+    if (!ruuvi_nvs_open_gw_cfg_default(NVS_READONLY, &handle))
+    {
+        LOG_ERR("%s failed", "ruuvi_nvs_open_gw_cfg_default");
+        (void)ruuvi_nvs_deinit_gw_cfg_default();
+        return false;
+    }
 
-    flashfatfs_unmount(&p_ffs);
+    const char *p_cfg_json = gw_cfg_default_json_read_from_nvs(handle, p_nvs_key_gw_cfg_default);
 
-    return res;
+    nvs_close(handle);
+    (void)ruuvi_nvs_deinit_gw_cfg_default();
+
+    if (NULL == p_cfg_json)
+    {
+        LOG_ERR("Failed to read default gw_cfg from NVS");
+        return false;
+    }
+    LOG_INFO("Default gw_cfg was successfully read from NVS");
+
+    const bool res = gw_cfg_json_parse(p_nvs_key_gw_cfg_default, NULL, p_cfg_json, p_gw_cfg_default, NULL);
+    os_free(p_cfg_json);
+
+    if (!res)
+    {
+        LOG_ERR("Failed to parse default gw_cfg from NVS");
+        return false;
+    }
+
+    return true;
 }
