@@ -307,8 +307,8 @@ mqtt_generate_client_config(
         .use_secure_element          = false,
         .ds_data                     = NULL,
         .network_timeout_ms          = MQTT_NETWORK_TIMEOUT_MS,
-        .disable_keepalive = false,
-        .path              = NULL,
+        .disable_keepalive           = false,
+        .path                        = NULL,
     };
     return mqtt_cfg;
 }
