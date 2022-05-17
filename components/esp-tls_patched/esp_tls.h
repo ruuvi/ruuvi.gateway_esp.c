@@ -107,10 +107,12 @@ typedef struct esp_tls_last_error {
  */
 typedef enum esp_tls_conn_state {
     ESP_TLS_INIT = 0,
+    ESP_TLS_CONNECT,
     ESP_TLS_CONNECTING,
     ESP_TLS_HANDSHAKE,
     ESP_TLS_FAIL,
     ESP_TLS_DONE,
+    ESP_TLS_HOSTNAME_RESOLVING,
 } esp_tls_conn_state_t;
 
 typedef enum esp_tls_role {
@@ -355,6 +357,12 @@ typedef struct esp_tls {
     mbedtls_timing_delay_context timer;
 #endif
     TickType_t timer_start;
+    ip_addr_t remote_ip;
+    StaticSemaphore_t dns_mutex_mem;
+    SemaphoreHandle_t dns_mutex;
+    ip_addr_t dns_cb_remote_ip;
+    bool dns_cb_status;
+    bool dns_cb_ready;
 } esp_tls_t;
 
 
