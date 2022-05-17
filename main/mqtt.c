@@ -24,6 +24,8 @@
 
 #define TOPIC_LEN 512
 
+#define MQTT_NETWORK_TIMEOUT_MS (10U * 1000U)
+
 typedef int mqtt_message_id_t;
 
 typedef int esp_mqtt_client_data_len_t;
@@ -304,8 +306,7 @@ mqtt_generate_client_config(
         .skip_cert_common_name_check = false,
         .use_secure_element          = false,
         .ds_data                     = NULL,
-        .network_timeout_ms          = (CONFIG_ESP_TASK_WDT_TIMEOUT_S * TIME_UNITS_MS_PER_SECOND)
-                              - (TIME_UNITS_MS_PER_SECOND / 2),
+        .network_timeout_ms          = MQTT_NETWORK_TIMEOUT_MS,
         .disable_keepalive = false,
         .path              = NULL,
     };
