@@ -12,11 +12,16 @@
 #include "esp_heap_caps.h"
 #include "os_malloc.h"
 #include "os_mutex.h"
+#include "os_mutex_recursive.h"
 #include "mac_addr.h"
 #include "gw_mac.h"
 #include "nrf52fw.h"
 #include "fw_ver.h"
 #include "esp_log_wrapper.hpp"
+#include "lwip/ip4_addr.h"
+#include "event_mgr.h"
+#include "gw_cfg_default.h"
+#include "cJSON.h"
 
 using namespace std;
 
@@ -87,6 +92,26 @@ protected:
         this->m_mem_alloc_trace.clear();
         this->m_malloc_cnt         = 0;
         this->m_malloc_fail_on_cnt = 0;
+
+        cJSON_Hooks hooks = {
+            .malloc_fn = &os_malloc,
+            .free_fn   = &os_free_internal,
+        };
+        cJSON_InitHooks(&hooks);
+
+        const gw_cfg_default_init_param_t init_params = {
+            .wifi_ap_ssid        = { "my_ssid1" },
+            .device_id           = { 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88 },
+            .esp32_fw_ver        = { "v1.10.0" },
+            .nrf52_fw_ver        = { "v0.7.2" },
+            .nrf52_mac_addr      = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF },
+            .esp32_mac_addr_wifi = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x11 },
+            .esp32_mac_addr_eth  = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x22 },
+        };
+        gw_cfg_default_init(&init_params, nullptr);
+        gw_cfg_init(nullptr);
+
+        esp_log_wrapper_clear();
     }
 
     void
@@ -158,6 +183,27 @@ os_task_get_name(void)
     return const_cast<char *>(g_task_name);
 }
 
+os_mutex_recursive_t
+os_mutex_recursive_create_static(os_mutex_recursive_static_t *const p_mutex_static)
+{
+    return reinterpret_cast<os_mutex_recursive_t>(p_mutex_static);
+}
+
+void
+os_mutex_recursive_delete(os_mutex_recursive_t *const ph_mutex)
+{
+}
+
+void
+os_mutex_recursive_lock(os_mutex_recursive_t const h_mutex)
+{
+}
+
+void
+os_mutex_recursive_unlock(os_mutex_recursive_t const h_mutex)
+{
+}
+
 os_mutex_t
 os_mutex_create_static(os_mutex_static_t *const p_mutex_static)
 {
@@ -167,16 +213,40 @@ os_mutex_create_static(os_mutex_static_t *const p_mutex_static)
 void
 os_mutex_delete(os_mutex_t *const ph_mutex)
 {
-    *ph_mutex = nullptr;
+    (void)ph_mutex;
 }
 
 void
 os_mutex_lock(os_mutex_t const h_mutex)
 {
+    (void)h_mutex;
 }
 
 void
 os_mutex_unlock(os_mutex_t const h_mutex)
+{
+    (void)h_mutex;
+}
+
+char *
+esp_ip4addr_ntoa(const esp_ip4_addr_t *addr, char *buf, int buflen)
+{
+    return ip4addr_ntoa_r((ip4_addr_t *)addr, buf, buflen);
+}
+
+uint32_t
+esp_ip4addr_aton(const char *addr)
+{
+    return ipaddr_addr(addr);
+}
+
+void
+wifi_manager_cb_save_wifi_config(const wifiman_config_t *const p_cfg)
+{
+}
+
+void
+event_mgr_notify(const event_mgr_ev_e event)
 {
 }
 
@@ -270,40 +340,6 @@ heap_caps_get_largest_free_block(uint32_t caps)
     return 0;
 }
 
-const ruuvi_esp32_fw_ver_str_t *
-gw_cfg_get_esp32_fw_ver(void)
-{
-    static const ruuvi_esp32_fw_ver_str_t g_esp32_fw_ver = { "v1.9.2-12-ga6893d9" };
-    return &g_esp32_fw_ver;
-}
-
-const ruuvi_nrf52_fw_ver_str_t *
-gw_cfg_get_nrf52_fw_ver(void)
-{
-    static const ruuvi_nrf52_fw_ver_str_t g_nrf52_fw_ver = { "v0.7.2" };
-    return &g_nrf52_fw_ver;
-}
-
-const mac_address_str_t *
-gw_cfg_get_nrf52_mac_addr(void)
-{
-    static const mac_address_str_t g_nrf52_mac_addr = { "AA:BB:CC:DD:EE:FF" };
-    return &g_nrf52_mac_addr;
-}
-
-const gw_cfg_t *
-gw_cfg_lock_ro(void)
-{
-    static const gw_cfg_t g_gw_cfg = { 0 };
-    return &g_gw_cfg;
-}
-
-void
-gw_cfg_unlock_ro(const gw_cfg_t **const p_p_gw_cfg)
-{
-    *p_p_gw_cfg = nullptr;
-}
-
 uint32_t
 crc32_le(uint32_t crc, uint8_t const *buf, uint32_t len)
 {
@@ -365,9 +401,9 @@ TEST_F(TestMetrics, test_metrics_generate) // NOLINT
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_SPIRAM\"} 65546\n"
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_INTERNAL\"} 65547\n"
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_DEFAULT\"} 65548\n"
-               "ruuvigw_info{mac=\"AA:BB:CC:DD:EE:FF\",esp_fw=\"v1.9.2-12-ga6893d9\",nrf_fw=\"v0.7.2\"} 1\n"
-               "ruuvigw_gw_cfg_crc32 0xaabbccdd\n"
-               "ruuvigw_gw_cfg_sha256 dd5663e191f7a259e2af1f6576cbd91f73ece3769d48b72a0dcfdf767931d0ff\n"),
+               "ruuvigw_info{mac=\"AA:BB:CC:DD:EE:FF\",esp_fw=\"v1.10.0\",nrf_fw=\"v0.7.2\"} 1\n"
+               "ruuvigw_gw_cfg_crc32 2864434397\n"
+               "ruuvigw_ruuvi_json_crc32 2864434397\n"),
         string(p_metrics_str));
     os_free(p_metrics_str);
 
@@ -404,23 +440,11 @@ TEST_F(TestMetrics, test_metrics_generate) // NOLINT
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_SPIRAM\"} 65546\n"
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_INTERNAL\"} 65547\n"
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_DEFAULT\"} 65548\n"
-               "ruuvigw_info{mac=\"AA:BB:CC:DD:EE:FF\",esp_fw=\"v1.9.2-12-ga6893d9\",nrf_fw=\"v0.7.2\"} 1\n"
-               "ruuvigw_gw_cfg_crc32 0xaabbccdd\n"
-               "ruuvigw_gw_cfg_sha256 dd5663e191f7a259e2af1f6576cbd91f73ece3769d48b72a0dcfdf767931d0ff\n"),
+               "ruuvigw_info{mac=\"AA:BB:CC:DD:EE:FF\",esp_fw=\"v1.10.0\",nrf_fw=\"v0.7.2\"} 1\n"
+               "ruuvigw_gw_cfg_crc32 2864434397\n"
+               "ruuvigw_ruuvi_json_crc32 2864434397\n"),
         string(p_metrics_str));
     os_free(p_metrics_str);
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestMetrics, test_metrics_generate_malloc_failed) // NOLINT
-{
-    this->m_malloc_fail_on_cnt = 1;
-
-    this->m_uptime = 15317668796;
-    ASSERT_EQ(nullptr, metrics_generate());
-
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't allocate memory"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
