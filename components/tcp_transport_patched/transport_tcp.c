@@ -31,9 +31,11 @@ static const char *TAG = "TRANS_TCP";
 
 typedef enum {
     TRANS_TCP_INIT = 0,
+    TRANS_TCP_CONNECT,
     TRANS_TCP_CONNECTING,
     TRANS_TCP_CONNECTED,
     TRANS_TCP_FAIL,
+    TRANS_TCP_HOSTNAME_RESOLVING,
 } transport_tcp_conn_state_t;
 
 typedef struct {
@@ -47,6 +49,12 @@ typedef struct {
     TickType_t timer_start;
     int timer_read_initialized;
     int timer_write_initialized;
+    ip_addr_t remote_ip;
+    StaticSemaphore_t dns_mutex_mem;
+    SemaphoreHandle_t dns_mutex;
+    ip_addr_t dns_cb_remote_ip;
+    bool dns_cb_status;
+    bool dns_cb_ready;
 } transport_tcp_t;
 
 static int resolve_dns(const char *host, struct sockaddr_in *ip)
@@ -96,19 +104,19 @@ static int tcp_enable_keep_alive(int fd, esp_transport_keep_alive_t *keep_alive_
     return 0;
 }
 
-static int tcp_connect(esp_transport_handle_t t, const char *host, int port, int timeout_ms)
+static int tcp_connect(esp_transport_handle_t t, const char *host_or_ip, int port, int timeout_ms)
 {
     struct sockaddr_in remote_ip;
     struct timeval tv = { 0 };
     transport_tcp_t *tcp = esp_transport_get_context_data(t);
 
-    ESP_LOGD(TAG, "tcp_connect: %s:%d, timeout=%d ms, non_block=%d", host, port, timeout_ms, tcp->non_block);
+    ESP_LOGD(TAG, "tcp_connect: %s:%d, timeout=%d ms, non_block=%d", host_or_ip, port, timeout_ms, tcp->non_block);
 
     bzero(&remote_ip, sizeof(struct sockaddr_in));
 
     //if stream_host is not ip address, resolve it AF_INET,servername,&serveraddr.sin_addr
-    if (inet_pton(AF_INET, host, &remote_ip.sin_addr) != 1) {
-        if (resolve_dns(host, &remote_ip) < 0) {
+    if (inet_pton(AF_INET, host_or_ip, &remote_ip.sin_addr) != 1) {
+        if (resolve_dns(host_or_ip, &remote_ip) < 0) {
             return -1;
         }
     }
@@ -145,8 +153,9 @@ static int tcp_connect(esp_transport_handle_t t, const char *host, int port, int
         goto error;
     }
 
-    ESP_LOGD(TAG, "[sock=%d] Connecting to server. IP: %s, Port: %d",
-            tcp->sock, ipaddr_ntoa((const ip_addr_t*)&remote_ip.sin_addr.s_addr), port);
+    char remote_ip4_str[IP4ADDR_STRLEN_MAX];
+    ip4addr_ntoa_r((const ip4_addr_t*)&remote_ip.sin_addr.s_addr, remote_ip4_str, sizeof(remote_ip4_str));
+    ESP_LOGD(TAG, "[sock=%d] Connecting to server. IP: %s, Port: %d", tcp->sock, remote_ip4_str, port);
 
     if (connect(tcp->sock, (struct sockaddr *)(&remote_ip), sizeof(struct sockaddr)) < 0) {
         if (!tcp->non_block && (errno == EINPROGRESS)) {
@@ -203,6 +212,27 @@ error:
     return -1;
 }
 
+static void
+esp_transport_tcp_connect_async_callback_dns_found(const char *hostname, const ip_addr_t *ipaddr, void *arg)
+{
+    transport_tcp_t *tcp = arg;
+    LWIP_UNUSED_ARG(hostname);
+
+    if (ipaddr != NULL) {
+        xSemaphoreTake(tcp->dns_mutex, portMAX_DELAY);
+        tcp->dns_cb_remote_ip = *ipaddr;
+        tcp->dns_cb_status = true;
+        tcp->dns_cb_ready = true;
+        xSemaphoreGive(tcp->dns_mutex);
+    } else {
+        xSemaphoreTake(tcp->dns_mutex, portMAX_DELAY);
+        tcp->dns_cb_remote_ip = (ip_addr_t){0};
+        tcp->dns_cb_status = false;
+        tcp->dns_cb_ready = true;
+        xSemaphoreGive(tcp->dns_mutex);
+    }
+}
+
 static int esp_transport_tcp_connect_async(esp_transport_handle_t t, const char *host, int port, int timeout_ms)
 {
     transport_tcp_t *tcp = esp_transport_get_context_data(t);
@@ -210,14 +240,52 @@ static int esp_transport_tcp_connect_async(esp_transport_handle_t t, const char 
     and in case of blocking connect these cases will get executed one after the other */
     switch (tcp->conn_state) {
         case TRANS_TCP_INIT:
+        {
             tcp->non_block = true;
-            tcp->sock = tcp_connect(t, host, port, timeout_ms);
+
+            err_t err = dns_gethostbyname(
+                host,
+                &tcp->remote_ip,
+                &esp_transport_tcp_connect_async_callback_dns_found,
+                tcp);
+            if (err == ERR_INPROGRESS) {
+                /* DNS request sent, wait for esp_transport_tcp_connect_async_callback_dns_found being called */
+                ESP_LOGD(TAG, "dns_gethostbyname got ERR_INPROGRESS");
+                tcp->conn_state = TRANS_TCP_HOSTNAME_RESOLVING;
+                return 0; // Connection has not yet established
+            }
+            if (err != ERR_OK) {
+                ESP_LOGE(TAG, "Failed to resolve hostname '%s', error %d", host, err);
+                return -1;
+            }
+
+            char remote_ip4_str[IP4ADDR_STRLEN_MAX];
+            ip4addr_ntoa_r(&tcp->remote_ip.u_addr.ip4, remote_ip4_str, sizeof(remote_ip4_str));
+            ESP_LOGI(
+                TAG,
+                "[%s] hostname '%s' resolved to %s",
+                pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???",
+                host,
+                remote_ip4_str);
+            tcp->conn_state = TRANS_TCP_CONNECT;
+#if defined(__GNUC__) && (__GNUC__ >= 7)
+            __attribute__((fallthrough));
+#endif
+        }
+
+        case TRANS_TCP_CONNECT:
+        {
+            char remote_ip4_str[IP4ADDR_STRLEN_MAX];
+            ip4addr_ntoa_r(&tcp->remote_ip.u_addr.ip4, remote_ip4_str, sizeof(remote_ip4_str));
+            ESP_LOGD(TAG, "Connect to IP: %s", remote_ip4_str);
+            tcp->sock = tcp_connect(t, remote_ip4_str, port, timeout_ms);
             if (tcp->sock < 0) {
                 return -1;
             }
             tcp->timer_start = xTaskGetTickCount();
             tcp->conn_state = TRANS_TCP_CONNECTING;
             return 0; // Connection has not yet established
+        }
 
         case TRANS_TCP_CONNECTING:
         {
@@ -269,6 +337,26 @@ static int esp_transport_tcp_connect_async(esp_transport_handle_t t, const char 
         case TRANS_TCP_FAIL:
             ESP_LOGE(TAG, "%s: failed to open a new connection", __func__);
             break;
+        case TRANS_TCP_HOSTNAME_RESOLVING:
+        {
+            ESP_LOGD(TAG, "TRANS_TCP_HOSTNAME_RESOLVING");
+            xSemaphoreTake(tcp->dns_mutex, portMAX_DELAY);
+            if (tcp->dns_cb_ready) {
+                tcp->dns_cb_ready = false;
+                tcp->remote_ip = tcp->dns_cb_remote_ip;
+                tcp->conn_state = tcp->dns_cb_status ? TRANS_TCP_CONNECT : TRANS_TCP_FAIL;
+                if (tcp->dns_cb_status)
+                {
+                    char remote_ip4_str[IP4ADDR_STRLEN_MAX];
+                    ip4addr_ntoa_r(&tcp->remote_ip.u_addr.ip4, remote_ip4_str, sizeof(remote_ip4_str));
+                    ESP_LOGI(TAG, "[%s] hostname '%s' resolved to %s", pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", host, remote_ip4_str);
+                } else {
+                    ESP_LOGE(TAG, "[%s] hostname '%s' resolving failed", pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", host);
+                }
+            }
+            xSemaphoreGive(tcp->dns_mutex);
+            return 0;
+        }
         default:
             ESP_LOGE(TAG, "%s: invalid TCP conn-state", __func__);
             break;
@@ -428,6 +516,8 @@ static esp_err_t tcp_destroy(esp_transport_handle_t t)
 {
     transport_tcp_t *tcp = esp_transport_get_context_data(t);
     esp_transport_close(t);
+    vSemaphoreDelete(tcp->dns_mutex);
+    tcp->dns_mutex = NULL;
     free(tcp);
     return 0;
 }
@@ -452,6 +542,7 @@ void esp_transport_tcp_set_keep_alive(esp_transport_handle_t t, esp_transport_ke
 
 esp_transport_handle_t esp_transport_tcp_init(void)
 {
+    ESP_LOGD(TAG, "%s", __func__);
     esp_transport_handle_t t = esp_transport_init();
     transport_tcp_t *tcp = calloc(1, sizeof(transport_tcp_t));
     ESP_TRANSPORT_MEM_CHECK(TAG, tcp, {
@@ -461,6 +552,9 @@ esp_transport_handle_t esp_transport_tcp_init(void)
 
     tcp->sock = -1;
     tcp->non_block = false;
+    tcp->dns_mutex = xSemaphoreCreateMutexStatic(&tcp->dns_mutex_mem);
+    tcp->dns_cb_status = false;
+    tcp->dns_cb_ready = false;
     esp_transport_set_func(t, tcp_connect, tcp_read, tcp_write, tcp_close, tcp_poll_read, tcp_poll_write, tcp_destroy);
     esp_transport_set_context_data(t, tcp);
     esp_transport_set_async_connect_func(t, &esp_transport_tcp_connect_async);
