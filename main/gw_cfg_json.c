@@ -10,6 +10,14 @@
 #include "gw_cfg_default.h"
 #include "gw_cfg_log.h"
 
+#if !defined(RUUVI_TESTS_HTTP_SERVER_CB)
+#define RUUVI_TESTS_HTTP_SERVER_CB 0
+#endif
+
+#if !defined(RUUVI_TESTS_JSON_RUUVI)
+#define RUUVI_TESTS_JSON_RUUVI 0
+#endif
+
 #if RUUVI_TESTS_HTTP_SERVER_CB || RUUVI_TESTS_JSON_RUUVI
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #else
@@ -1473,7 +1481,10 @@ gw_cfg_json_parse(
     if ('\0' == p_json_str[0])
     {
         LOG_WARN("%s is empty", p_json_name);
-        *p_flag_dev_info_modified = true;
+        if (NULL != p_flag_dev_info_modified)
+        {
+            *p_flag_dev_info_modified = true;
+        }
         return true;
     }
 

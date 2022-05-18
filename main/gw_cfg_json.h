@@ -12,6 +12,10 @@
 #include "cjson_wrap.h"
 #include "gw_cfg.h"
 
+#if !defined(RUUVI_TESTS_GW_CFG_JSON)
+#define RUUVI_TESTS_GW_CFG_JSON 0
+#endif
+
 #if RUUVI_TESTS_GW_CFG_JSON
 #define GW_CFG_JSON_STATIC
 #else
