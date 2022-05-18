@@ -11,6 +11,7 @@
 #include "gw_cfg.h"
 #include "gw_cfg_default.h"
 #include "gw_cfg_json.h"
+#include "gw_cfg_json_generate.h"
 #include "esp_log_wrapper.hpp"
 #include "os_mutex_recursive.h"
 #include "os_mutex.h"

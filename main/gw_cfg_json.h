@@ -37,12 +37,6 @@ gw_cfg_json_parse(
 void
 gw_cfg_json_parse_eth(const cJSON *const p_json_root, gw_cfg_eth_t *const p_gw_cfg_eth);
 
-bool
-gw_cfg_json_generate_full(const gw_cfg_t *const p_gw_cfg, cjson_wrap_str_t *const p_json_str);
-
-bool
-gw_cfg_json_generate_without_passwords(const gw_cfg_t *const p_gw_cfg, cjson_wrap_str_t *const p_json_str);
-
 void
 gw_cfg_json_parse_cjson(
     const cJSON *const          p_json_root,

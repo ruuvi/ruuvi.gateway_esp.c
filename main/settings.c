@@ -14,6 +14,7 @@
 #include "gw_cfg_default.h"
 #include "gw_cfg_blob.h"
 #include "gw_cfg_json.h"
+#include "gw_cfg_json_generate.h"
 #include "gw_cfg_log.h"
 #include "os_malloc.h"
 #include "wifi_manager.h"
