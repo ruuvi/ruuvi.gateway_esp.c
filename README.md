@@ -79,6 +79,7 @@ or using the Windows GUI tool `Flash Download Tools` ([download](https://www.esp
 ![alt text](docs/guiflasher.png "Bootloader 0x1000, partition table 0x8000, ota_data_initial 0xD000, ruuvi_gateway_esp 0x100000, fatfs_gwui 0x500000, fatfs_nrf52 0x5C0000, gw_cfg_def 0xB00000")
 
 
+
 ### Creating a custom default gateway configuration
 
 1. Create copy of "gw_cfg_default" folder, modify gw_cfg_default.json as you require.
