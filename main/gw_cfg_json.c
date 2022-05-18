@@ -155,6 +155,54 @@ gw_cfg_json_add_items_eth(cJSON *const p_json_root, const gw_cfg_eth_t *const p_
 }
 
 static bool
+gw_cfg_json_add_items_remote_auth_basic(
+    cJSON *const                       p_json_root,
+    const ruuvi_gw_cfg_remote_t *const p_cfg_remote,
+    const bool                         flag_hide_passwords)
+{
+    if (!gw_cfg_json_add_string(p_json_root, "remote_cfg_auth_type", GW_CFG_REMOTE_AUTH_TYPE_STR_BASIC))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_string(p_json_root, "remote_cfg_auth_basic_user", p_cfg_remote->auth.auth_basic.user.buf))
+    {
+        return false;
+    }
+    if (!flag_hide_passwords)
+    {
+        if (!gw_cfg_json_add_string(
+                p_json_root,
+                "remote_cfg_auth_basic_pass",
+                p_cfg_remote->auth.auth_basic.password.buf))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool
+gw_cfg_json_add_items_remote_auth_bearer(
+    cJSON *const                       p_json_root,
+    const ruuvi_gw_cfg_remote_t *const p_cfg_remote,
+    const bool                         flag_hide_passwords)
+{
+    if (!gw_cfg_json_add_string(p_json_root, "remote_cfg_auth_type", GW_CFG_REMOTE_AUTH_TYPE_STR_BEARER))
+    {
+        return false;
+    }
+    if ((!flag_hide_passwords)
+        && (!gw_cfg_json_add_string(
+            p_json_root,
+            "remote_cfg_auth_bearer_token",
+            p_cfg_remote->auth.auth_bearer.token.buf)))
+    {
+        return false;
+    }
+    return true;
+}
+
+static bool
 gw_cfg_json_add_items_remote(
     cJSON *const                       p_json_root,
     const ruuvi_gw_cfg_remote_t *const p_cfg_remote,
@@ -177,42 +225,15 @@ gw_cfg_json_add_items_remote(
             }
             break;
         case GW_CFG_REMOTE_AUTH_TYPE_BASIC:
-            if (!gw_cfg_json_add_string(p_json_root, "remote_cfg_auth_type", GW_CFG_REMOTE_AUTH_TYPE_STR_BASIC))
+            if (!gw_cfg_json_add_items_remote_auth_basic(p_json_root, p_cfg_remote, flag_hide_passwords))
             {
                 return false;
-            }
-            if (!gw_cfg_json_add_string(
-                    p_json_root,
-                    "remote_cfg_auth_basic_user",
-                    p_cfg_remote->auth.auth_basic.user.buf))
-            {
-                return false;
-            }
-            if (!flag_hide_passwords)
-            {
-                if (!gw_cfg_json_add_string(
-                        p_json_root,
-                        "remote_cfg_auth_basic_pass",
-                        p_cfg_remote->auth.auth_basic.password.buf))
-                {
-                    return false;
-                }
             }
             break;
         case GW_CFG_REMOTE_AUTH_TYPE_BEARER:
-            if (!gw_cfg_json_add_string(p_json_root, "remote_cfg_auth_type", GW_CFG_REMOTE_AUTH_TYPE_STR_BEARER))
+            if (!gw_cfg_json_add_items_remote_auth_bearer(p_json_root, p_cfg_remote, flag_hide_passwords))
             {
                 return false;
-            }
-            if (!flag_hide_passwords)
-            {
-                if (!gw_cfg_json_add_string(
-                        p_json_root,
-                        "remote_cfg_auth_bearer_token",
-                        p_cfg_remote->auth.auth_bearer.token.buf))
-                {
-                    return false;
-                }
             }
             break;
     }
@@ -244,12 +265,9 @@ gw_cfg_json_add_items_http(
     {
         return false;
     }
-    if (!flag_hide_passwords)
+    if ((!flag_hide_passwords) && (!gw_cfg_json_add_string(p_json_root, "http_pass", p_cfg_http->http_pass.buf)))
     {
-        if (!gw_cfg_json_add_string(p_json_root, "http_pass", p_cfg_http->http_pass.buf))
-        {
-            return false;
-        }
+        return false;
     }
     return true;
 }
@@ -272,12 +290,10 @@ gw_cfg_json_add_items_http_stat(
     {
         return false;
     }
-    if (!flag_hide_passwords)
+    if ((!flag_hide_passwords)
+        && (!gw_cfg_json_add_string(p_json_root, "http_stat_pass", p_cfg_http_stat->http_stat_pass.buf)))
     {
-        if (!gw_cfg_json_add_string(p_json_root, "http_stat_pass", p_cfg_http_stat->http_stat_pass.buf))
-        {
-            return false;
-        }
+        return false;
     }
     return true;
 }
@@ -316,12 +332,9 @@ gw_cfg_json_add_items_mqtt(
     {
         return false;
     }
-    if (!flag_hide_passwords)
+    if ((!flag_hide_passwords) && (!gw_cfg_json_add_string(p_json_root, "mqtt_pass", p_cfg_mqtt->mqtt_pass.buf)))
     {
-        if (!gw_cfg_json_add_string(p_json_root, "mqtt_pass", p_cfg_mqtt->mqtt_pass.buf))
-        {
-            return false;
-        }
+        return false;
     }
     return true;
 }
@@ -771,6 +784,44 @@ gw_cfg_json_parse_eth(const cJSON *const p_json_root, gw_cfg_eth_t *const p_gw_c
 }
 
 static void
+gw_cfg_json_parse_remote_auth_type_basic(const cJSON *const p_json_root, ruuvi_gw_cfg_remote_t *const p_gw_cfg_remote)
+{
+    if (!gw_cfg_json_copy_string_val(
+            p_json_root,
+            "remote_cfg_auth_basic_user",
+            &p_gw_cfg_remote->auth.auth_basic.user.buf[0],
+            sizeof(p_gw_cfg_remote->auth.auth_basic.user.buf)))
+    {
+        LOG_WARN("Can't find key '%s' in config-json", "remote_cfg_auth_basic_user");
+    }
+    if (!gw_cfg_json_copy_string_val(
+            p_json_root,
+            "remote_cfg_auth_basic_pass",
+            &p_gw_cfg_remote->auth.auth_basic.password.buf[0],
+            sizeof(p_gw_cfg_remote->auth.auth_basic.password.buf)))
+    {
+        LOG_INFO(
+            "Can't find key '%s' in config-json, leave the previous value unchanged",
+            "remote_cfg_auth_basic_pass");
+    }
+}
+
+static void
+gw_cfg_json_parse_remote_auth_type_bearer(const cJSON *const p_json_root, ruuvi_gw_cfg_remote_t *const p_gw_cfg_remote)
+{
+    if (!gw_cfg_json_copy_string_val(
+            p_json_root,
+            "remote_cfg_auth_bearer_token",
+            &p_gw_cfg_remote->auth.auth_bearer.token.buf[0],
+            sizeof(p_gw_cfg_remote->auth.auth_bearer.token.buf)))
+    {
+        LOG_INFO(
+            "Can't find key '%s' in config-json, leave the previous value unchanged",
+            "remote_cfg_auth_bearer_token");
+    }
+}
+
+static void
 gw_cfg_json_parse_remote(const cJSON *const p_json_root, ruuvi_gw_cfg_remote_t *const p_gw_cfg_remote)
 {
     if (!gw_cfg_json_get_bool_val(p_json_root, "remote_cfg_use", &p_gw_cfg_remote->use_remote_cfg))
@@ -823,37 +874,11 @@ gw_cfg_json_parse_remote(const cJSON *const p_json_root, ruuvi_gw_cfg_remote_t *
                 break;
 
             case GW_CFG_REMOTE_AUTH_TYPE_BASIC:
-                if (!gw_cfg_json_copy_string_val(
-                        p_json_root,
-                        "remote_cfg_auth_basic_user",
-                        &p_gw_cfg_remote->auth.auth_basic.user.buf[0],
-                        sizeof(p_gw_cfg_remote->auth.auth_basic.user.buf)))
-                {
-                    LOG_WARN("Can't find key '%s' in config-json", "remote_cfg_auth_basic_user");
-                }
-                if (!gw_cfg_json_copy_string_val(
-                        p_json_root,
-                        "remote_cfg_auth_basic_pass",
-                        &p_gw_cfg_remote->auth.auth_basic.password.buf[0],
-                        sizeof(p_gw_cfg_remote->auth.auth_basic.password.buf)))
-                {
-                    LOG_INFO(
-                        "Can't find key '%s' in config-json, leave the previous value unchanged",
-                        "remote_cfg_auth_basic_pass");
-                }
+                gw_cfg_json_parse_remote_auth_type_basic(p_json_root, p_gw_cfg_remote);
                 break;
 
             case GW_CFG_REMOTE_AUTH_TYPE_BEARER:
-                if (!gw_cfg_json_copy_string_val(
-                        p_json_root,
-                        "remote_cfg_auth_bearer_token",
-                        &p_gw_cfg_remote->auth.auth_bearer.token.buf[0],
-                        sizeof(p_gw_cfg_remote->auth.auth_bearer.token.buf)))
-                {
-                    LOG_INFO(
-                        "Can't find key '%s' in config-json, leave the previous value unchanged",
-                        "remote_cfg_auth_bearer_token");
-                }
+                gw_cfg_json_parse_remote_auth_type_bearer(p_json_root, p_gw_cfg_remote);
                 break;
         }
     }
@@ -1300,6 +1325,8 @@ gw_cfg_json_parse_cjson_wifi_sta_settings(
     const cJSON *const         p_json_wifi_sta_cfg,
     wifi_settings_sta_t *const p_wifi_sta_settings)
 {
+    (void)p_json_wifi_sta_cfg;
+    (void)p_wifi_sta_settings;
     // Storing wifi_sta_settings settings in json is not currently supported.
 }
 
@@ -1328,6 +1355,8 @@ gw_cfg_json_parse_cjson_wifi_ap_settings(
     const cJSON *const        p_json_wifi_ap_cfg,
     wifi_settings_ap_t *const p_wifi_ap_settings)
 {
+    (void)p_json_wifi_ap_cfg;
+    (void)p_wifi_ap_settings;
     // Storing wifi_settings_ap in json is not currently supported.
 }
 
@@ -1512,12 +1541,9 @@ gw_cfg_json_parse(
         &p_gw_cfg->eth_cfg,
         &p_gw_cfg->wifi_cfg);
 
-    if (NULL != p_flag_dev_info_modified)
+    if ((NULL != p_flag_dev_info_modified) && (!gw_cfg_json_compare_device_info(&dev_info, &p_gw_cfg->device_info)))
     {
-        if (!gw_cfg_json_compare_device_info(&dev_info, &p_gw_cfg->device_info))
-        {
-            *p_flag_dev_info_modified = true;
-        }
+        *p_flag_dev_info_modified = true;
     }
 
     cJSON_Delete(p_json_root);

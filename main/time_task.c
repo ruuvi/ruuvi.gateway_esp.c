@@ -316,7 +316,7 @@ time_task_configure_ntp_sources(void)
 {
     time_task_save_settings();
 
-    for (int32_t i = 0; i < SNTP_MAX_SERVERS; ++i)
+    for (u8_t i = 0; i < SNTP_MAX_SERVERS; ++i)
     {
         sntp_setserver(i, NULL);
     }
@@ -335,7 +335,7 @@ time_task_configure_ntp_sources(void)
         }
     }
 
-    if (g_time_task_ntp_use && !g_time_task_ntp_use_dhcp)
+    if (g_time_task_ntp_use && (!g_time_task_ntp_use_dhcp))
     {
         for (uint32_t i = 0; i < TIME_TASK_NUM_OF_TIME_SERVERS; ++i)
         {

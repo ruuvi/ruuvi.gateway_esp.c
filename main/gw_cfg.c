@@ -66,6 +66,22 @@ gw_cfg_unlock_ro(const gw_cfg_t **const p_p_gw_cfg)
 }
 
 static bool
+ruuvi_gw_cfg_remote_cmp_auth_basic(
+    const ruuvi_gw_cfg_remote_t *const p_remote1,
+    const ruuvi_gw_cfg_remote_t *const p_remote2)
+{
+    if (0 != strcmp(p_remote1->auth.auth_basic.user.buf, p_remote2->auth.auth_basic.user.buf))
+    {
+        return false;
+    }
+    if (0 != strcmp(p_remote1->auth.auth_basic.password.buf, p_remote2->auth.auth_basic.password.buf))
+    {
+        return false;
+    }
+    return true;
+}
+
+static bool
 ruuvi_gw_cfg_remote_cmp(const ruuvi_gw_cfg_remote_t *const p_remote1, const ruuvi_gw_cfg_remote_t *const p_remote2)
 {
     if (p_remote1->use_remote_cfg != p_remote2->use_remote_cfg)
@@ -85,11 +101,7 @@ ruuvi_gw_cfg_remote_cmp(const ruuvi_gw_cfg_remote_t *const p_remote1, const ruuv
         case GW_CFG_REMOTE_AUTH_TYPE_NO:
             break;
         case GW_CFG_REMOTE_AUTH_TYPE_BASIC:
-            if (0 != strcmp(p_remote1->auth.auth_basic.user.buf, p_remote2->auth.auth_basic.user.buf))
-            {
-                return false;
-            }
-            if (0 != strcmp(p_remote1->auth.auth_basic.password.buf, p_remote2->auth.auth_basic.password.buf))
+            if (!ruuvi_gw_cfg_remote_cmp_auth_basic(p_remote1, p_remote2))
             {
                 return false;
             }
@@ -664,13 +676,11 @@ gw_cfg_set(
     {
         gw_cfg_set_wifi(p_gw_cfg_wifi, &p_gw_cfg_dst->wifi_cfg, &update_status.flag_wifi_cfg_modified);
     }
-    if (update_status.flag_ruuvi_cfg_modified || update_status.flag_eth_cfg_modified
-        || update_status.flag_wifi_cfg_modified)
+    if ((update_status.flag_ruuvi_cfg_modified || update_status.flag_eth_cfg_modified
+         || update_status.flag_wifi_cfg_modified)
+        && (NULL != g_p_gw_cfg_cb_on_change_cfg))
     {
-        if (NULL != g_p_gw_cfg_cb_on_change_cfg)
-        {
-            g_p_gw_cfg_cb_on_change_cfg(p_gw_cfg_dst);
-        }
+        g_p_gw_cfg_cb_on_change_cfg(p_gw_cfg_dst);
     }
     if (!g_gw_cfg_ready)
     {

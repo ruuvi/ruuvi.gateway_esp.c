@@ -228,7 +228,7 @@ adv_post_send_report(void *arg)
     }
 
     const bool flag_ntp_use = gw_cfg_get_ntp_use();
-    if (flag_ntp_use && !time_is_synchronized())
+    if (flag_ntp_use && (!time_is_synchronized()))
     {
         LOG_WARN("Drop adv - time is not synchronized yet");
         return;
@@ -393,7 +393,7 @@ adv_post_do_async_comm_send_advs(adv_post_state_t *const p_adv_post_state)
     {
         LOG_WARN("Can't send advs, no network connection");
     }
-    else if (p_adv_post_state->flag_use_timestamps && !time_is_synchronized())
+    else if (p_adv_post_state->flag_use_timestamps && (!time_is_synchronized()))
     {
         LOG_WARN("Can't send advs, the time is not yet synchronized");
     }
@@ -420,7 +420,7 @@ adv_post_do_async_comm_send_statistics(adv_post_state_t *const p_adv_post_state)
     {
         LOG_WARN("Can't send statistics, no network connection");
     }
-    else if (p_adv_post_state->flag_use_timestamps && !time_is_synchronized())
+    else if (p_adv_post_state->flag_use_timestamps && (!time_is_synchronized()))
     {
         LOG_WARN("Can't send statistics, the time is not yet synchronized");
     }
@@ -538,7 +538,7 @@ adv_post_handle_sig_send_statistics(adv_post_state_t *const p_adv_post_state)
             LOG_WARN("Can't send statistics, no network connection");
             return;
         }
-        if (p_adv_post_state->flag_use_timestamps && !time_is_synchronized())
+        if (p_adv_post_state->flag_use_timestamps && (!time_is_synchronized()))
         {
             LOG_WARN("Can't send statistics, the time is not yet synchronized");
             return;

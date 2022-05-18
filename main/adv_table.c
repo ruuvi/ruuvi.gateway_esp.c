@@ -231,12 +231,9 @@ adv_table_read_history_unsafe(
         {
             break;
         }
-        if (flag_use_timestamps)
+        if (flag_use_timestamps && ((cur_time - p_elem->adv_report.timestamp) > time_interval_seconds))
         {
-            if ((cur_time - p_elem->adv_report.timestamp) > time_interval_seconds)
-            {
-                break;
-            }
+            break;
         }
         p_reports->table[p_reports->num_of_advs] = p_elem->adv_report;
         p_reports->num_of_advs += 1;

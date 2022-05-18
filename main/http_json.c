@@ -23,12 +23,9 @@ http_json_generate_records_data_attributes(
     {
         return NULL;
     }
-    if (flag_use_timestamps)
+    if (flag_use_timestamps && (!cjson_wrap_add_timestamp(p_json_data, "timestamp", timestamp)))
     {
-        if (!cjson_wrap_add_timestamp(p_json_data, "timestamp", timestamp))
-        {
-            return NULL;
-        }
+        return NULL;
     }
     if (flag_use_nonce && (!cjson_wrap_add_uint32(p_json_data, "nonce", nonce)))
     {

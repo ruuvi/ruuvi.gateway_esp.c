@@ -243,7 +243,7 @@ main_task_handle_sig_network_connected(void)
     gw_cfg_remote_refresh_interval_minutes_t remote_cfg_refresh_interval_minutes = 0;
     const bool  flag_use_remote_cfg = gw_cfg_get_remote_cfg_use(&remote_cfg_refresh_interval_minutes);
     static bool g_flag_initial_request_for_remote_cfg_performed = false;
-    if (flag_use_remote_cfg && !g_flag_initial_request_for_remote_cfg_performed)
+    if (flag_use_remote_cfg && (!g_flag_initial_request_for_remote_cfg_performed))
     {
         g_flag_initial_request_for_remote_cfg_performed = true;
         LOG_INFO("Activate checking for remote cfg");
