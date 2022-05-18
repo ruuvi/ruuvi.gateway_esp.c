@@ -572,6 +572,71 @@ wifiman_config_cmp(const wifiman_config_t *const p_wifi1, const wifiman_config_t
     return true;
 }
 
+static void
+gw_cfg_set_ruuvi(
+    const gw_cfg_ruuvi_t *const p_gw_cfg_ruuvi,
+    gw_cfg_ruuvi_t *const       p_gw_cfg_ruuvi_dst,
+    bool *const                 p_ruuvi_cfg_modified)
+{
+    if (!gw_cfg_ruuvi_cmp(p_gw_cfg_ruuvi_dst, p_gw_cfg_ruuvi))
+    {
+        if (g_gw_cfg_ready)
+        {
+            event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI);
+            if (p_gw_cfg_ruuvi_dst->ntp.ntp_use != p_gw_cfg_ruuvi->ntp.ntp_use)
+            {
+                event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI_NTP_USE);
+            }
+            else if (
+                p_gw_cfg_ruuvi->ntp.ntp_use
+                && (p_gw_cfg_ruuvi_dst->ntp.ntp_use_dhcp != p_gw_cfg_ruuvi->ntp.ntp_use_dhcp))
+            {
+                event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI_NTP_USE_DHCP);
+            }
+            else
+            {
+                // MISRA C:2012, 15.7 - All if...else if constructs shall be terminated with an else statement
+            }
+        }
+        *p_ruuvi_cfg_modified = true;
+        *p_gw_cfg_ruuvi_dst   = *p_gw_cfg_ruuvi;
+    }
+}
+
+static void
+gw_cfg_set_eth(
+    const gw_cfg_eth_t *const p_gw_cfg_eth,
+    gw_cfg_eth_t *const       p_gw_cfg_eth_dst,
+    bool *const               p_eth_cfg_modified)
+{
+    if (!gw_cfg_eth_cmp(p_gw_cfg_eth_dst, p_gw_cfg_eth))
+    {
+        if (g_gw_cfg_ready)
+        {
+            event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_ETH);
+        }
+        *p_eth_cfg_modified = true;
+        *p_gw_cfg_eth_dst   = *p_gw_cfg_eth;
+    }
+}
+
+static void
+gw_cfg_set_wifi(
+    const wifiman_config_t *const p_gw_cfg_wifi,
+    wifiman_config_t *const       p_gw_cfg_wifi_dst,
+    bool *const                   p_wifi_cfg_modified)
+{
+    if (!wifiman_config_cmp(p_gw_cfg_wifi_dst, p_gw_cfg_wifi))
+    {
+        if (g_gw_cfg_ready)
+        {
+            event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_WIFI);
+        }
+        *p_wifi_cfg_modified = true;
+        *p_gw_cfg_wifi_dst   = *p_gw_cfg_wifi;
+    }
+}
+
 static gw_cfg_update_status_t
 gw_cfg_set(
     const gw_cfg_ruuvi_t *const   p_gw_cfg_ruuvi,
@@ -589,49 +654,15 @@ gw_cfg_set(
 
     if (NULL != p_gw_cfg_ruuvi)
     {
-        if (!gw_cfg_ruuvi_cmp(&p_gw_cfg_dst->ruuvi_cfg, p_gw_cfg_ruuvi))
-        {
-            if (g_gw_cfg_ready)
-            {
-                event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI);
-                if (p_gw_cfg_dst->ruuvi_cfg.ntp.ntp_use != p_gw_cfg_ruuvi->ntp.ntp_use)
-                {
-                    event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI_NTP_USE);
-                }
-                else if (
-                    p_gw_cfg_ruuvi->ntp.ntp_use
-                    && (p_gw_cfg_dst->ruuvi_cfg.ntp.ntp_use_dhcp != p_gw_cfg_ruuvi->ntp.ntp_use_dhcp))
-                {
-                    event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI_NTP_USE_DHCP);
-                }
-            }
-            update_status.flag_ruuvi_cfg_modified = true;
-            p_gw_cfg_dst->ruuvi_cfg               = *p_gw_cfg_ruuvi;
-        }
+        gw_cfg_set_ruuvi(p_gw_cfg_ruuvi, &p_gw_cfg_dst->ruuvi_cfg, &update_status.flag_ruuvi_cfg_modified);
     }
     if (NULL != p_gw_cfg_eth)
     {
-        if (!gw_cfg_eth_cmp(&p_gw_cfg_dst->eth_cfg, p_gw_cfg_eth))
-        {
-            if (g_gw_cfg_ready)
-            {
-                event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_ETH);
-            }
-            update_status.flag_eth_cfg_modified = true;
-            p_gw_cfg_dst->eth_cfg               = *p_gw_cfg_eth;
-        }
+        gw_cfg_set_eth(p_gw_cfg_eth, &p_gw_cfg_dst->eth_cfg, &update_status.flag_eth_cfg_modified);
     }
     if (NULL != p_gw_cfg_wifi)
     {
-        if (!wifiman_config_cmp(&p_gw_cfg_dst->wifi_cfg, p_gw_cfg_wifi))
-        {
-            if (g_gw_cfg_ready)
-            {
-                event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_WIFI);
-            }
-            update_status.flag_wifi_cfg_modified = true;
-            p_gw_cfg_dst->wifi_cfg               = *p_gw_cfg_wifi;
-        }
+        gw_cfg_set_wifi(p_gw_cfg_wifi, &p_gw_cfg_dst->wifi_cfg, &update_status.flag_wifi_cfg_modified);
     }
     if (update_status.flag_ruuvi_cfg_modified || update_status.flag_eth_cfg_modified
         || update_status.flag_wifi_cfg_modified)

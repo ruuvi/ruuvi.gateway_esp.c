@@ -387,6 +387,60 @@ adv_post_wdt_add_and_start(void)
 }
 
 static void
+adv_post_do_async_comm_send_advs(adv_post_state_t *const p_adv_post_state)
+{
+    if (!p_adv_post_state->flag_network_connected)
+    {
+        LOG_WARN("Can't send advs, no network connection");
+    }
+    else if (p_adv_post_state->flag_use_timestamps && !time_is_synchronized())
+    {
+        LOG_WARN("Can't send advs, the time is not yet synchronized");
+    }
+    else
+    {
+        p_adv_post_state->flag_need_to_send_advs = false;
+        if (adv_post_do_retransmission(p_adv_post_state->flag_network_connected, p_adv_post_state->flag_use_timestamps))
+        {
+            p_adv_post_state->flag_async_comm_in_progress = true;
+        }
+        g_adv_post_nonce += 1;
+    }
+}
+
+static void
+adv_post_do_async_comm_send_statistics(adv_post_state_t *const p_adv_post_state)
+{
+    if (!gw_cfg_get_http_stat_use_http_stat())
+    {
+        LOG_INFO("Can't send statistics, it was disabled in gw_cfg");
+        p_adv_post_state->flag_need_to_send_statistics = false;
+    }
+    else if (!p_adv_post_state->flag_network_connected)
+    {
+        LOG_WARN("Can't send statistics, no network connection");
+    }
+    else if (p_adv_post_state->flag_use_timestamps && !time_is_synchronized())
+    {
+        LOG_WARN("Can't send statistics, the time is not yet synchronized");
+    }
+    else
+    {
+        p_adv_post_state->flag_need_to_send_statistics = false;
+        if (adv_post_do_send_statistics())
+        {
+            p_adv_post_state->flag_async_comm_in_progress = true;
+            os_timer_sig_one_shot_start(g_p_adv_post_timer_sig_do_async_comm);
+        }
+        else
+        {
+            LOG_ERR("Failed to send statistics");
+        }
+        g_adv_post_nonce += 1;
+    }
+}
+
+static void
 adv_post_do_async_comm(adv_post_state_t *const p_adv_post_state)
 {
     if (p_adv_post_state->flag_async_comm_in_progress)
@@ -402,55 +456,11 @@ adv_post_do_async_comm(adv_post_state_t *const p_adv_post_state)
     }
     if ((!p_adv_post_state->flag_async_comm_in_progress) && p_adv_post_state->flag_need_to_send_advs)
     {
-        if (!p_adv_post_state->flag_network_connected)
-        {
-            LOG_WARN("Can't send advs, no network connection");
-        }
-        else if (p_adv_post_state->flag_use_timestamps && !time_is_synchronized())
-        {
-            LOG_WARN("Can't send advs, the time is not yet synchronized");
-        }
-        else
-        {
-            p_adv_post_state->flag_need_to_send_advs = false;
-            if (adv_post_do_retransmission(
-                    p_adv_post_state->flag_network_connected,
-                    p_adv_post_state->flag_use_timestamps))
-            {
-                p_adv_post_state->flag_async_comm_in_progress = true;
-            }
-            g_adv_post_nonce += 1;
-        }
+        adv_post_do_async_comm_send_advs(p_adv_post_state);
     }
     if ((!p_adv_post_state->flag_async_comm_in_progress) && p_adv_post_state->flag_need_to_send_statistics)
     {
-        if (!gw_cfg_get_http_stat_use_http_stat())
-        {
-            LOG_INFO("Can't send statistics, it was disabled in gw_cfg");
-            p_adv_post_state->flag_need_to_send_statistics = false;
-        }
-        else if (!p_adv_post_state->flag_network_connected)
-        {
-            LOG_WARN("Can't send statistics, no network connection");
-        }
-        else if (p_adv_post_state->flag_use_timestamps && !time_is_synchronized())
-        {
-            LOG_WARN("Can't send statistics, the time is not yet synchronized");
-        }
-        else
-        {
-            p_adv_post_state->flag_need_to_send_statistics = false;
-            if (adv_post_do_send_statistics())
-            {
-                p_adv_post_state->flag_async_comm_in_progress = true;
-                os_timer_sig_one_shot_start(g_p_adv_post_timer_sig_do_async_comm);
-            }
-            else
-            {
-                LOG_ERR("Failed to send statistics");
-            }
-            g_adv_post_nonce += 1;
-        }
+        adv_post_do_async_comm_send_statistics(p_adv_post_state);
     }
 }
 

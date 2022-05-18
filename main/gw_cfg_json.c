@@ -1004,6 +1004,29 @@ gw_cfg_json_parse_mqtt(const cJSON *const p_json_root, ruuvi_gw_cfg_mqtt_t *cons
 }
 
 static void
+gw_cfg_json_parse_lan_auth_user_password(
+    const cJSON *const             p_json_root,
+    ruuvi_gw_cfg_lan_auth_t *const p_gw_cfg_lan_auth)
+{
+    if (!gw_cfg_json_copy_string_val(
+            p_json_root,
+            "lan_auth_user",
+            &p_gw_cfg_lan_auth->lan_auth_user.buf[0],
+            sizeof(p_gw_cfg_lan_auth->lan_auth_user.buf)))
+    {
+        LOG_WARN("Can't find key '%s' in config-json", "lan_auth_user");
+    }
+    if (!gw_cfg_json_copy_string_val(
+            p_json_root,
+            "lan_auth_pass",
+            &p_gw_cfg_lan_auth->lan_auth_pass.buf[0],
+            sizeof(p_gw_cfg_lan_auth->lan_auth_pass.buf)))
+    {
+        LOG_INFO("Can't find key '%s' in config-json, leave the previous value unchanged", "lan_auth_pass");
+    }
+}
+
+static void
 gw_cfg_json_parse_lan_auth(const cJSON *const p_json_root, ruuvi_gw_cfg_lan_auth_t *const p_gw_cfg_lan_auth)
 {
     http_server_auth_type_str_t lan_auth_type_str     = { 0 };
@@ -1033,24 +1056,7 @@ gw_cfg_json_parse_lan_auth(const cJSON *const p_json_root, ruuvi_gw_cfg_lan_auth
                 case HTTP_SERVER_AUTH_TYPE_BASIC:
                 case HTTP_SERVER_AUTH_TYPE_DIGEST:
                 case HTTP_SERVER_AUTH_TYPE_RUUVI:
-                    if (!gw_cfg_json_copy_string_val(
-                            p_json_root,
-                            "lan_auth_user",
-                            &p_gw_cfg_lan_auth->lan_auth_user.buf[0],
-                            sizeof(p_gw_cfg_lan_auth->lan_auth_user.buf)))
-                    {
-                        LOG_WARN("Can't find key '%s' in config-json", "lan_auth_user");
-                    }
-                    if (!gw_cfg_json_copy_string_val(
-                            p_json_root,
-                            "lan_auth_pass",
-                            &p_gw_cfg_lan_auth->lan_auth_pass.buf[0],
-                            sizeof(p_gw_cfg_lan_auth->lan_auth_pass.buf)))
-                    {
-                        LOG_INFO(
-                            "Can't find key '%s' in config-json, leave the previous value unchanged",
-                            "lan_auth_pass");
-                    }
+                    gw_cfg_json_parse_lan_auth_user_password(p_json_root, p_gw_cfg_lan_auth);
                     break;
 
                 case HTTP_SERVER_AUTH_TYPE_ALLOW:
@@ -1294,6 +1300,7 @@ gw_cfg_json_parse_cjson_wifi_sta_settings(
     const cJSON *const         p_json_wifi_sta_cfg,
     wifi_settings_sta_t *const p_wifi_sta_settings)
 {
+    // Storing wifi_sta_settings settings in json is not currently supported.
 }
 
 static void
@@ -1321,6 +1328,7 @@ gw_cfg_json_parse_cjson_wifi_ap_settings(
     const cJSON *const        p_json_wifi_ap_cfg,
     wifi_settings_ap_t *const p_wifi_ap_settings)
 {
+    // Storing wifi_settings_ap in json is not currently supported.
 }
 
 static void
