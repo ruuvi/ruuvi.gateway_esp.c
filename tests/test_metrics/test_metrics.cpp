@@ -402,10 +402,8 @@ TEST_F(TestMetrics, test_metrics_generate) // NOLINT
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_INTERNAL\"} 65547\n"
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_DEFAULT\"} 65548\n"
                "ruuvigw_info{mac=\"AA:BB:CC:DD:EE:FF\",esp_fw=\"v1.10.0\",nrf_fw=\"v0.7.2\"} 1\n"
-               "ruuvigw_gw_cfg_crc32 0xaabbccdd\n"
-               "ruuvigw_gw_cfg_sha256 e2b7e0c8eae85fb2c76df8b8b14fbdfaf667c624acde7693ffb13f78b37dbeec\n"
-               "ruuvigw_ruuvi_json_crc32 0xaabbccdd\n"
-               "ruuvigw_ruuvi_json_sha256 ba4c91d3deebecef267e2c0f1a01695a3620ede76ca590002e0eec5ee35ce138\n"),
+               "ruuvigw_gw_cfg_crc32 2864434397\n"
+               "ruuvigw_ruuvi_json_crc32 2864434397\n"),
         string(p_metrics_str));
     os_free(p_metrics_str);
 
@@ -443,10 +441,8 @@ TEST_F(TestMetrics, test_metrics_generate) // NOLINT
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_INTERNAL\"} 65547\n"
                "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_DEFAULT\"} 65548\n"
                "ruuvigw_info{mac=\"AA:BB:CC:DD:EE:FF\",esp_fw=\"v1.10.0\",nrf_fw=\"v0.7.2\"} 1\n"
-               "ruuvigw_gw_cfg_crc32 0xaabbccdd\n"
-               "ruuvigw_gw_cfg_sha256 e2b7e0c8eae85fb2c76df8b8b14fbdfaf667c624acde7693ffb13f78b37dbeec\n"
-               "ruuvigw_ruuvi_json_crc32 0xaabbccdd\n"
-               "ruuvigw_ruuvi_json_sha256 ba4c91d3deebecef267e2c0f1a01695a3620ede76ca590002e0eec5ee35ce138\n"),
+               "ruuvigw_gw_cfg_crc32 2864434397\n"
+               "ruuvigw_ruuvi_json_crc32 2864434397\n"),
         string(p_metrics_str));
     os_free(p_metrics_str);
     ASSERT_TRUE(esp_log_wrapper_is_empty());

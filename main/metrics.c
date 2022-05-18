@@ -186,7 +186,7 @@ metrics_calc_gw_cfg_hash(metrics_crc32_str_t *const p_crc32, metrics_sha256_str_
 
     gw_cfg_unlock_ro(&p_gw_cfg);
 
-    (void)snprintf(p_crc32->buf, sizeof(p_crc32->buf), "0x%08x", crc32.val);
+    (void)snprintf(p_crc32->buf, sizeof(p_crc32->buf), "%lu", (printf_ulong_t)crc32.val);
     str_buf_t str_buf = STR_BUF_INIT(p_sha256->buf, sizeof(p_sha256->buf));
     for (uint32_t i = 0; i < sizeof(gw_cfg_sha256.buf); ++i)
     {
@@ -223,7 +223,7 @@ metrics_calc_ruuvi_json_hash(metrics_crc32_str_t *const p_crc32, metrics_sha256_
 
     os_free(json_str.p_str);
 
-    (void)snprintf(p_crc32->buf, sizeof(p_crc32->buf), "0x%08x", crc32.val);
+    (void)snprintf(p_crc32->buf, sizeof(p_crc32->buf), "%lu", (printf_ulong_t)crc32.val);
     str_buf_t str_buf = STR_BUF_INIT(p_sha256->buf, sizeof(p_sha256->buf));
     for (uint32_t i = 0; i < sizeof(sha256.buf); ++i)
     {
@@ -413,9 +413,11 @@ static void
 metrics_print_gw_cfg_info(str_buf_t *const p_str_buf, const metrics_info_t *const p_metrics)
 {
     str_buf_printf(p_str_buf, METRICS_PREFIX "gw_cfg_crc32 %s\n", p_metrics->gw_cfg_crc32.buf);
-    str_buf_printf(p_str_buf, METRICS_PREFIX "gw_cfg_sha256 %s\n", p_metrics->gw_cfg_sha256.buf);
     str_buf_printf(p_str_buf, METRICS_PREFIX "ruuvi_json_crc32 %s\n", p_metrics->ruuvi_json_crc32.buf);
+#if 0
+    str_buf_printf(p_str_buf, METRICS_PREFIX "gw_cfg_sha256 %s\n", p_metrics->gw_cfg_sha256.buf);
     str_buf_printf(p_str_buf, METRICS_PREFIX "ruuvi_json_sha256 %s\n", p_metrics->ruuvi_json_sha256.buf);
+#endif
 }
 
 static void
