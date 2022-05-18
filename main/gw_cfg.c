@@ -535,11 +535,15 @@ wifiman_config_cmp_settings_sta(const wifi_settings_sta_t *const p_wifi1, const 
     {
         return false;
     }
-    if (0
-        != memcmp(
-            &p_wifi1->sta_static_ip_config,
-            &p_wifi2->sta_static_ip_config,
-            sizeof(p_wifi1->sta_static_ip_config)))
+    if (p_wifi1->sta_static_ip_config.ip.addr != p_wifi2->sta_static_ip_config.ip.addr)
+    {
+        return false;
+    }
+    if (p_wifi1->sta_static_ip_config.netmask.addr != p_wifi2->sta_static_ip_config.netmask.addr)
+    {
+        return false;
+    }
+    if (p_wifi1->sta_static_ip_config.gw.addr != p_wifi2->sta_static_ip_config.gw.addr)
     {
         return false;
     }
