@@ -41,7 +41,7 @@
 #include "gw_cfg.h"
 #include "gw_cfg_default.h"
 #include "gw_cfg_default_json.h"
-#include "gw_cfg_json.h"
+#include "gw_cfg_json_parse.h"
 #include "gw_cfg_log.h"
 #include "lwip/dhcp.h"
 #include "lwip/sockets.h"

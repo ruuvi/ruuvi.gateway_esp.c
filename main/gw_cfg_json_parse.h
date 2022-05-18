@@ -5,8 +5,8 @@
  * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
  */
 
-#ifndef RUUVI_GATEWAY_ESP_GW_CFG_JSON_H
-#define RUUVI_GATEWAY_ESP_GW_CFG_JSON_H
+#ifndef RUUVI_GATEWAY_ESP_GW_CFG_JSON_PARSE_H
+#define RUUVI_GATEWAY_ESP_GW_CFG_JSON_PARSE_H
 
 #include <stdbool.h>
 #include "cjson_wrap.h"
@@ -90,4 +90,4 @@ gw_cfg_json_get_int8_val(const cJSON *p_json_root, const char *p_attr_name, int8
 }
 #endif
 
-#endif // RUUVI_GATEWAY_ESP_GW_CFG_JSON_H
+#endif // RUUVI_GATEWAY_ESP_GW_CFG_JSON_PARSE_H

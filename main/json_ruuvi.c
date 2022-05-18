@@ -13,7 +13,7 @@
 #include "http_server_auth_type.h"
 #include "gw_cfg_default.h"
 #include "os_malloc.h"
-#include "gw_cfg_json.h"
+#include "gw_cfg_json_parse.h"
 #include "gw_cfg_log.h"
 
 #if !defined(RUUVI_TESTS_HTTP_SERVER_CB)

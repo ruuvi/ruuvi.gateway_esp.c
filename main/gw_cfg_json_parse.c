@@ -5,7 +5,7 @@
  * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
  */
 
-#include "gw_cfg_json.h"
+#include "gw_cfg_json_parse.h"
 #include <string.h>
 #include "gw_cfg_default.h"
 #include "gw_cfg_log.h"

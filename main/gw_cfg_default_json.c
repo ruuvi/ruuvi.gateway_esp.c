@@ -11,7 +11,7 @@
 #include "gw_cfg.h"
 #include "cJSON.h"
 #include "os_malloc.h"
-#include "gw_cfg_json.h"
+#include "gw_cfg_json_parse.h"
 #include "gw_cfg_log.h"
 #include "ruuvi_nvs.h"
 
