@@ -424,7 +424,12 @@ adv_post_do_async_comm(adv_post_state_t *const p_adv_post_state)
     }
     if ((!p_adv_post_state->flag_async_comm_in_progress) && p_adv_post_state->flag_need_to_send_statistics)
     {
-        if (!p_adv_post_state->flag_network_connected)
+        if (!gw_cfg_get_http_stat_use_http_stat())
+        {
+            LOG_INFO("Can't send statistics, it was disabled in gw_cfg");
+            p_adv_post_state->flag_need_to_send_statistics = false;
+        }
+        else if (!p_adv_post_state->flag_network_connected)
         {
             LOG_WARN("Can't send statistics, no network connection");
         }
@@ -511,8 +516,12 @@ adv_post_handle_sig_task_watchdog_feed(void)
 static void
 adv_post_handle_sig_send_statistics(adv_post_state_t *const p_adv_post_state)
 {
+    if (!gw_cfg_get_http_stat_use_http_stat())
+    {
+        return;
+    }
     p_adv_post_state->flag_need_to_send_statistics = true;
-    if ((!p_adv_post_state->flag_retransmission_disabled) && gw_cfg_get_http_stat_use_http_stat())
+    if (!p_adv_post_state->flag_retransmission_disabled)
     {
         if (!p_adv_post_state->flag_network_connected)
         {
@@ -540,17 +549,45 @@ adv_post_handle_sig_time_synchronized(const adv_post_state_t *const p_adv_post_s
 {
     if (p_adv_post_state->flag_need_to_send_advs)
     {
-        LOG_INFO("Time has been synchronized - activate advs retransmission");
+        LOG_INFO("Time has been synchronized - force advs retransmission");
         os_timer_sig_periodic_simulate(g_p_adv_post_timer_sig_retransmit);
         adv_post_timer_restart();
     }
     if (p_adv_post_state->flag_need_to_send_statistics)
     {
-        LOG_INFO("Time has been synchronized - activate statistics retransmission");
+        LOG_INFO("Time has been synchronized - force statistics retransmission");
         os_timer_sig_periodic_simulate(g_p_adv_post_timer_sig_send_statistics);
         os_timer_sig_periodic_restart(
             g_p_adv_post_timer_sig_send_statistics,
             pdMS_TO_TICKS(ADV_POST_STATISTICS_INTERVAL_SECONDS) * TIME_UNITS_MS_PER_SECOND);
+    }
+}
+
+static void
+adv_post_on_gw_cfg_change(adv_post_state_t *const p_adv_post_state)
+{
+    p_adv_post_state->flag_use_timestamps = gw_cfg_get_ntp_use();
+    if (gw_cfg_get_http_use_http())
+    {
+        LOG_INFO("Start timer for advs retransmission");
+        os_timer_sig_periodic_start(g_p_adv_post_timer_sig_retransmit);
+    }
+    else
+    {
+        LOG_INFO("Stop timer for advs retransmission");
+        os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_retransmit);
+        p_adv_post_state->flag_need_to_send_advs = false;
+    }
+    if (gw_cfg_get_http_stat_use_http_stat())
+    {
+        LOG_INFO("Start timer to send statistics");
+        os_timer_sig_periodic_start(g_p_adv_post_timer_sig_send_statistics);
+    }
+    else
+    {
+        LOG_INFO("Stop timer to send statistics");
+        os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_send_statistics);
+        p_adv_post_state->flag_need_to_send_statistics = false;
     }
 }
 
@@ -605,12 +642,13 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t *const p
         case ADV_POST_SIG_GW_CFG_READY:
             LOG_INFO("Got ADV_POST_SIG_GW_CFG_READY");
             ruuvi_send_nrf_settings();
-            p_adv_post_state->flag_use_timestamps = gw_cfg_get_ntp_use();
+            p_adv_post_state->flag_need_to_send_statistics = gw_cfg_get_http_stat_use_http_stat();
+            adv_post_on_gw_cfg_change(p_adv_post_state);
             break;
         case ADV_POST_SIG_GW_CFG_CHANGED_RUUVI:
             LOG_INFO("Got ADV_POST_SIG_GW_CFG_CHANGED_RUUVI");
             ruuvi_send_nrf_settings();
-            p_adv_post_state->flag_use_timestamps = gw_cfg_get_ntp_use();
+            adv_post_on_gw_cfg_change(p_adv_post_state);
             break;
     }
     return flag_stop;
@@ -628,8 +666,6 @@ adv_post_task(void)
     }
 
     LOG_INFO("%s started", __func__);
-    os_timer_sig_periodic_start(g_p_adv_post_timer_sig_retransmit);
-    os_timer_sig_periodic_start(g_p_adv_post_timer_sig_send_statistics);
     os_timer_sig_periodic_start(g_p_adv_post_timer_sig_network_watchdog);
 
     adv_post_wdt_add_and_start();
@@ -638,7 +674,7 @@ adv_post_task(void)
         .flag_network_connected       = false,
         .flag_async_comm_in_progress  = false,
         .flag_need_to_send_advs       = false,
-        .flag_need_to_send_statistics = true,
+        .flag_need_to_send_statistics = false,
         .flag_retransmission_disabled = false,
         .flag_use_timestamps          = false,
     };
