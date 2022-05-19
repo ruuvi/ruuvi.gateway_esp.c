@@ -28,8 +28,10 @@ idf_component_register(
             gw_cfg.h
             gw_cfg_blob.c
             gw_cfg_blob.h
-            gw_cfg_json.c
-            gw_cfg_json.h
+            gw_cfg_json_parse.c
+            gw_cfg_json_parse.h
+            gw_cfg_json_generate.c
+            gw_cfg_json_generate.h
             gw_cfg_log.c
             gw_cfg_log.h
             gw_cfg_ruuvi_json.c

@@ -5,12 +5,16 @@
  * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
  */
 
-#ifndef RUUVI_GATEWAY_ESP_GW_CFG_JSON_H
-#define RUUVI_GATEWAY_ESP_GW_CFG_JSON_H
+#ifndef RUUVI_GATEWAY_ESP_GW_CFG_JSON_PARSE_H
+#define RUUVI_GATEWAY_ESP_GW_CFG_JSON_PARSE_H
 
 #include <stdbool.h>
 #include "cjson_wrap.h"
 #include "gw_cfg.h"
+
+#if !defined(RUUVI_TESTS_GW_CFG_JSON)
+#define RUUVI_TESTS_GW_CFG_JSON 0
+#endif
 
 #if RUUVI_TESTS_GW_CFG_JSON
 #define GW_CFG_JSON_STATIC
@@ -32,12 +36,6 @@ gw_cfg_json_parse(
 
 void
 gw_cfg_json_parse_eth(const cJSON *const p_json_root, gw_cfg_eth_t *const p_gw_cfg_eth);
-
-bool
-gw_cfg_json_generate_full(const gw_cfg_t *const p_gw_cfg, cjson_wrap_str_t *const p_json_str);
-
-bool
-gw_cfg_json_generate_without_passwords(const gw_cfg_t *const p_gw_cfg, cjson_wrap_str_t *const p_json_str);
 
 void
 gw_cfg_json_parse_cjson(
@@ -92,4 +90,4 @@ gw_cfg_json_get_int8_val(const cJSON *p_json_root, const char *p_attr_name, int8
 }
 #endif
 
-#endif // RUUVI_GATEWAY_ESP_GW_CFG_JSON_H
+#endif // RUUVI_GATEWAY_ESP_GW_CFG_JSON_PARSE_H

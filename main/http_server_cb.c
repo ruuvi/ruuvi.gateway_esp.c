@@ -27,7 +27,7 @@
 #include "reset_task.h"
 #include "gw_cfg.h"
 #include "gw_cfg_ruuvi_json.h"
-#include "gw_cfg_json.h"
+#include "gw_cfg_json_parse.h"
 #include "time_units.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB

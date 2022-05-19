@@ -7,7 +7,7 @@
 
 #include "gw_cfg_ruuvi_json.h"
 #include "gw_cfg.h"
-#include "gw_cfg_json.h"
+#include "gw_cfg_json_generate.h"
 
 bool
 gw_cfg_ruuvi_json_generate(const gw_cfg_t *const p_cfg, cjson_wrap_str_t *const p_json_str)
