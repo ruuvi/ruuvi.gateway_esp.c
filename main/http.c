@@ -444,7 +444,7 @@ http_download_event_handler(esp_http_client_event_t *p_evt)
 }
 
 static bool
-http_download_by_handle(esp_http_client_handle_t http_handle, const TimeUnitsSeconds_t timeout_seconds)
+http_download_by_handle(esp_http_client_handle_t http_handle)
 {
     esp_err_t err = esp_http_client_set_header(http_handle, "Accept", "text/html,application/octet-stream,*/*");
     if (ESP_OK != err)
@@ -458,8 +458,6 @@ http_download_by_handle(esp_http_client_handle_t http_handle, const TimeUnitsSec
         LOG_ERR("%s failed", "esp_http_client_set_header");
         return false;
     }
-
-    const TickType_t download_started_at_tick = xTaskGetTickCount();
 
     LOG_DBG("esp_http_client_perform");
     err = esp_http_client_perform(http_handle);
@@ -481,8 +479,7 @@ http_download_by_handle(esp_http_client_handle_t http_handle, const TimeUnitsSec
         return false;
     }
 
-    while ((pdTICKS_TO_MS(xTaskGetTickCount() - download_started_at_tick))
-           <= (timeout_seconds * TIME_UNITS_MS_PER_SECOND))
+    while (true)
     {
         LOG_DBG("esp_http_client_perform");
         err = esp_http_client_perform(http_handle);
@@ -510,8 +507,6 @@ http_download_by_handle(esp_http_client_handle_t http_handle, const TimeUnitsSec
             return false;
         }
     }
-    LOG_ERR("esp_http_client_perform timeout");
-    return false;
 }
 
 bool
@@ -608,7 +603,7 @@ http_download_with_auth(
     }
 
     LOG_DBG("http_download_by_handle");
-    const bool result = http_download_by_handle(cb_info.http_handle, timeout_seconds);
+    const bool result = http_download_by_handle(cb_info.http_handle);
 
     LOG_DBG("esp_http_client_cleanup");
     const esp_err_t err = esp_http_client_cleanup(cb_info.http_handle);
