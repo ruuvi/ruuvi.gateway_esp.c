@@ -365,9 +365,9 @@ http_async_poll(void)
 }
 
 static void
-http_download_feed_task_watchdog_if_needed(const http_download_cb_info_t *const p_cb_info)
+http_download_feed_task_watchdog_if_needed(const bool flag_feed_task_watchdog)
 {
-    if (p_cb_info->flag_feed_task_watchdog)
+    if (flag_feed_task_watchdog)
     {
         LOG_DBG("Feed watchdog");
         const esp_err_t err = esp_task_wdt_reset();
@@ -386,23 +386,23 @@ http_download_event_handler(esp_http_client_event_t *p_evt)
     {
         case HTTP_EVENT_ERROR:
             LOG_ERR("HTTP_EVENT_ERROR");
-            http_download_feed_task_watchdog_if_needed(p_cb_info);
+            http_download_feed_task_watchdog_if_needed(p_cb_info->flag_feed_task_watchdog);
             break;
 
         case HTTP_EVENT_ON_CONNECTED:
             LOG_INFO("HTTP_EVENT_ON_CONNECTED");
-            http_download_feed_task_watchdog_if_needed(p_cb_info);
+            http_download_feed_task_watchdog_if_needed(p_cb_info->flag_feed_task_watchdog);
             p_cb_info->offset = 0;
             break;
 
         case HTTP_EVENT_HEADER_SENT:
             LOG_INFO("HTTP_EVENT_HEADER_SENT");
-            http_download_feed_task_watchdog_if_needed(p_cb_info);
+            http_download_feed_task_watchdog_if_needed(p_cb_info->flag_feed_task_watchdog);
             break;
 
         case HTTP_EVENT_ON_HEADER:
             LOG_INFO("HTTP_EVENT_ON_HEADER, key=%s, value=%s", p_evt->header_key, p_evt->header_value);
-            http_download_feed_task_watchdog_if_needed(p_cb_info);
+            http_download_feed_task_watchdog_if_needed(p_cb_info->flag_feed_task_watchdog);
             if (0 == strcasecmp(p_evt->header_key, "Content-Length"))
             {
                 p_cb_info->offset         = 0;
@@ -413,7 +413,7 @@ http_download_event_handler(esp_http_client_event_t *p_evt)
         case HTTP_EVENT_ON_DATA:
             LOG_DBG("HTTP_EVENT_ON_DATA, len=%d", p_evt->data_len);
             LOG_DUMP_VERBOSE(p_evt->data, p_evt->data_len, "<--:");
-            http_download_feed_task_watchdog_if_needed(p_cb_info);
+            http_download_feed_task_watchdog_if_needed(p_cb_info->flag_feed_task_watchdog);
             if (!p_cb_info->cb_on_data(
                     p_evt->data,
                     p_evt->data_len,
@@ -429,12 +429,12 @@ http_download_event_handler(esp_http_client_event_t *p_evt)
 
         case HTTP_EVENT_ON_FINISH:
             LOG_INFO("HTTP_EVENT_ON_FINISH");
-            http_download_feed_task_watchdog_if_needed(p_cb_info);
+            http_download_feed_task_watchdog_if_needed(p_cb_info->flag_feed_task_watchdog);
             break;
 
         case HTTP_EVENT_DISCONNECTED:
             LOG_INFO("HTTP_EVENT_DISCONNECTED");
-            http_download_feed_task_watchdog_if_needed(p_cb_info);
+            http_download_feed_task_watchdog_if_needed(p_cb_info->flag_feed_task_watchdog);
             break;
 
         default:
@@ -444,7 +444,7 @@ http_download_event_handler(esp_http_client_event_t *p_evt)
 }
 
 static bool
-http_download_by_handle(esp_http_client_handle_t http_handle)
+http_download_by_handle(esp_http_client_handle_t http_handle, const bool flag_feed_task_watchdog)
 {
     esp_err_t err = esp_http_client_set_header(http_handle, "Accept", "text/html,application/octet-stream,*/*");
     if (ESP_OK != err)
@@ -494,12 +494,8 @@ http_download_by_handle(esp_http_client_handle_t http_handle)
         if (ESP_ERR_HTTP_EAGAIN == err)
         {
             LOG_DBG("esp_http_client_perform: ESP_ERR_HTTP_EAGAIN");
-            vTaskDelay(pdMS_TO_TICKS(100));
-            err = esp_task_wdt_reset();
-            if (ESP_OK != err)
-            {
-                LOG_ERR_ESP(err, "%s failed", "esp_task_wdt_reset");
-            }
+            vTaskDelay(pdMS_TO_TICKS(50));
+            http_download_feed_task_watchdog_if_needed(flag_feed_task_watchdog);
         }
         else
         {
@@ -553,7 +549,7 @@ http_download_with_auth(
         .client_key_pem              = NULL,
         .user_agent                  = NULL,
         .method                      = HTTP_METHOD_GET,
-        .timeout_ms                  = timeout_seconds * 1000,
+        .timeout_ms                  = (int)(timeout_seconds * 1000),
         .disable_auto_redirect       = false,
         .max_redirection_count       = 0,
         .max_authorization_retries   = 0,
@@ -603,7 +599,7 @@ http_download_with_auth(
     }
 
     LOG_DBG("http_download_by_handle");
-    const bool result = http_download_by_handle(cb_info.http_handle);
+    const bool result = http_download_by_handle(cb_info.http_handle, flag_feed_task_watchdog);
 
     LOG_DBG("esp_http_client_cleanup");
     const esp_err_t err = esp_http_client_cleanup(cb_info.http_handle);
