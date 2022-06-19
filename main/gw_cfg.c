@@ -901,13 +901,13 @@ gw_cfg_get_wifi_ap_ssid(void)
 const char *
 gw_cfg_auth_type_to_str(const ruuvi_gw_cfg_lan_auth_t *const p_lan_auth)
 {
-    const ruuvi_gw_cfg_lan_auth_t *const p_default_lan_auth    = gw_cfg_default_get_lan_auth();
-    bool                                 flag_use_default_auth = false;
-    if ((HTTP_SERVER_AUTH_TYPE_RUUVI == p_lan_auth->lan_auth_type)
+    const ruuvi_gw_cfg_lan_auth_t *const p_default_lan_auth = gw_cfg_default_get_lan_auth();
+    http_server_auth_type_e              lan_auth_type      = p_lan_auth->lan_auth_type;
+    if ((HTTP_SERVER_AUTH_TYPE_RUUVI == lan_auth_type)
         && (0 == strcmp(p_lan_auth->lan_auth_user.buf, p_default_lan_auth->lan_auth_user.buf))
         && (0 == strcmp(p_lan_auth->lan_auth_pass.buf, p_default_lan_auth->lan_auth_pass.buf)))
     {
-        flag_use_default_auth = true;
+        lan_auth_type = HTTP_SERVER_AUTH_TYPE_DEFAULT;
     }
-    return http_server_auth_type_to_str(p_lan_auth->lan_auth_type, flag_use_default_auth);
+    return http_server_auth_type_to_str(p_lan_auth->lan_auth_type);
 }

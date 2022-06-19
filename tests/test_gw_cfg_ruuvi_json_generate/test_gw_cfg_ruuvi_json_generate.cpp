@@ -457,6 +457,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
     gw_cfg_t         gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
+    gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI;
     snprintf(gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf, sizeof(gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf), "qwe");
 
     ASSERT_TRUE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));

@@ -473,8 +473,7 @@ gw_cfg_json_parse_lan_auth_user_password(
 static void
 gw_cfg_json_parse_lan_auth(const cJSON *const p_json_root, ruuvi_gw_cfg_lan_auth_t *const p_gw_cfg_lan_auth)
 {
-    http_server_auth_type_str_t lan_auth_type_str     = { 0 };
-    bool                        flag_use_default_auth = false;
+    http_server_auth_type_str_t lan_auth_type_str = { 0 };
     if (!gw_cfg_json_copy_string_val(
             p_json_root,
             "lan_auth_type",
@@ -485,30 +484,32 @@ gw_cfg_json_parse_lan_auth(const cJSON *const p_json_root, ruuvi_gw_cfg_lan_auth
     }
     else
     {
-        p_gw_cfg_lan_auth->lan_auth_type = http_server_auth_type_from_str(
-            lan_auth_type_str.buf,
-            &flag_use_default_auth);
-        if (flag_use_default_auth)
+        const ruuvi_gw_cfg_lan_auth_t *const p_default_lan_auth = gw_cfg_default_get_lan_auth();
+        p_gw_cfg_lan_auth->lan_auth_type                        = http_server_auth_type_from_str(lan_auth_type_str.buf);
+        switch (p_gw_cfg_lan_auth->lan_auth_type)
         {
-            p_gw_cfg_lan_auth->lan_auth_user = gw_cfg_default_get_lan_auth()->lan_auth_user;
-            p_gw_cfg_lan_auth->lan_auth_pass = gw_cfg_default_get_lan_auth()->lan_auth_pass;
-        }
-        else
-        {
-            switch (p_gw_cfg_lan_auth->lan_auth_type)
-            {
-                case HTTP_SERVER_AUTH_TYPE_BASIC:
-                case HTTP_SERVER_AUTH_TYPE_DIGEST:
-                case HTTP_SERVER_AUTH_TYPE_RUUVI:
-                    gw_cfg_json_parse_lan_auth_user_password(p_json_root, p_gw_cfg_lan_auth);
-                    break;
+            case HTTP_SERVER_AUTH_TYPE_BASIC:
+            case HTTP_SERVER_AUTH_TYPE_DIGEST:
+            case HTTP_SERVER_AUTH_TYPE_RUUVI:
+                gw_cfg_json_parse_lan_auth_user_password(p_json_root, p_gw_cfg_lan_auth);
+                break;
 
-                case HTTP_SERVER_AUTH_TYPE_ALLOW:
-                case HTTP_SERVER_AUTH_TYPE_DENY:
-                    p_gw_cfg_lan_auth->lan_auth_user.buf[0] = '\0';
-                    p_gw_cfg_lan_auth->lan_auth_pass.buf[0] = '\0';
-                    break;
-            }
+            case HTTP_SERVER_AUTH_TYPE_DEFAULT:
+                p_gw_cfg_lan_auth->lan_auth_user = p_default_lan_auth->lan_auth_user;
+                p_gw_cfg_lan_auth->lan_auth_pass = p_default_lan_auth->lan_auth_pass;
+                break;
+
+            case HTTP_SERVER_AUTH_TYPE_ALLOW:
+            case HTTP_SERVER_AUTH_TYPE_DENY:
+                p_gw_cfg_lan_auth->lan_auth_user.buf[0] = '\0';
+                p_gw_cfg_lan_auth->lan_auth_pass.buf[0] = '\0';
+                break;
+        }
+        if ((HTTP_SERVER_AUTH_TYPE_RUUVI == p_gw_cfg_lan_auth->lan_auth_type)
+            && (0 == strcmp(p_default_lan_auth->lan_auth_user.buf, p_gw_cfg_lan_auth->lan_auth_user.buf))
+            && (0 == strcmp(p_default_lan_auth->lan_auth_pass.buf, p_gw_cfg_lan_auth->lan_auth_pass.buf)))
+        {
+            p_gw_cfg_lan_auth->lan_auth_type = HTTP_SERVER_AUTH_TYPE_DEFAULT;
         }
     }
 

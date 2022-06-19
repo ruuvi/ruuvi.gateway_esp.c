@@ -111,7 +111,16 @@ gw_cfg_blob_convert(gw_cfg_t *const p_cfg_dst, const ruuvi_gateway_config_blob_t
     }
     else if (0 == strcmp(RUUVI_GW_CFG_BLOB_AUTH_TYPE_STR_RUUVI, p_cfg_src->lan_auth.lan_auth_type))
     {
-        p_ruufi_cfg_dst->lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI;
+        const ruuvi_gw_cfg_lan_auth_t *const p_default_lan_auth = gw_cfg_default_get_lan_auth();
+        if ((0 == strcmp(p_cfg_src->lan_auth.lan_auth_user, p_default_lan_auth->lan_auth_user.buf))
+            && (0 == strcmp(p_cfg_src->lan_auth.lan_auth_pass, p_default_lan_auth->lan_auth_pass.buf)))
+        {
+            p_ruufi_cfg_dst->lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_DEFAULT;
+        }
+        else
+        {
+            p_ruufi_cfg_dst->lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI;
+        }
     }
     else if (0 == strcmp(RUUVI_GW_CFG_BLOB_AUTH_TYPE_STR_DENY, p_cfg_src->lan_auth.lan_auth_type))
     {

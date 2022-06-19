@@ -263,7 +263,7 @@ TEST_F(TestRuuviAuth, test_default_auth_zero_id) // NOLINT
         &lan_auth.lan_auth_api_key));
     const http_server_auth_info_t *const p_auth_info = http_server_get_auth();
     ASSERT_NE(nullptr, p_auth_info);
-    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, p_auth_info->auth_type);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_DEFAULT, p_auth_info->auth_type);
     ASSERT_EQ("Admin", string(p_auth_info->auth_user.buf));
     ASSERT_EQ("6bd2d4090d98c5a5c9992fbb35d6b821", string(p_auth_info->auth_pass.buf));
 }
@@ -279,7 +279,7 @@ TEST_F(TestRuuviAuth, test_default_auth_non_zero_id) // NOLINT
         &lan_auth.lan_auth_api_key));
     const http_server_auth_info_t *const p_auth_info = http_server_get_auth();
     ASSERT_NE(nullptr, p_auth_info);
-    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, p_auth_info->auth_type);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_DEFAULT, p_auth_info->auth_type);
     ASSERT_EQ("Admin", string(p_auth_info->auth_user.buf));
     ASSERT_EQ("cc6b2a4405af90c7a738f72b64f3c34e", string(p_auth_info->auth_pass.buf));
 }
@@ -287,7 +287,8 @@ TEST_F(TestRuuviAuth, test_default_auth_non_zero_id) // NOLINT
 TEST_F(TestRuuviAuth, test_non_default_auth_password) // NOLINT
 {
     this->initGwCfg((nrf52_device_id_t) { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x0A, 0x0B });
-    gw_cfg_t gw_cfg_tmp = get_gateway_config_default();
+    gw_cfg_t gw_cfg_tmp                         = get_gateway_config_default();
+    gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI;
     snprintf(
         &gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_pass.buf[0],
         sizeof(gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_pass.buf),
@@ -309,7 +310,8 @@ TEST_F(TestRuuviAuth, test_non_default_auth_password) // NOLINT
 TEST_F(TestRuuviAuth, test_non_default_auth_user_password) // NOLINT
 {
     this->initGwCfg((nrf52_device_id_t) { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x0A, 0x0B });
-    gw_cfg_t gw_cfg_tmp = get_gateway_config_default();
+    gw_cfg_t gw_cfg_tmp                         = get_gateway_config_default();
+    gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI;
     snprintf(
         &gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_user.buf[0],
         sizeof(gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_user.buf),
