@@ -178,6 +178,11 @@ parse_adv_report_from_uart(const re_ca_uart_payload_t *const p_msg, const time_t
             (unsigned)sizeof(p_adv->data_buf));
         return false;
     }
+    if (0 == p_report->adv_len)
+    {
+        LOG_WARN("Got advertisement with zero len");
+        return false;
+    }
     mac_address_bin_init(&p_adv->tag_mac, p_report->mac);
     p_adv->timestamp       = timestamp;
     p_adv->samples_counter = 0;

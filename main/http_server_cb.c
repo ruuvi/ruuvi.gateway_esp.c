@@ -175,7 +175,13 @@ json_info_add_items(cJSON *p_json_root, const bool flag_use_timestamps)
     {
         return false;
     }
-    adv_table_history_read(p_reports, cur_time, flag_use_timestamps, HTTP_SERVER_DEFAULT_HISTORY_INTERVAL_SECONDS);
+    const bool flag_use_filter = flag_use_timestamps;
+    adv_table_history_read(
+        p_reports,
+        cur_time,
+        flag_use_timestamps,
+        flag_use_timestamps ? HTTP_SERVER_DEFAULT_HISTORY_INTERVAL_SECONDS : 0,
+        flag_use_filter);
     const num_of_advs_t num_of_advs = p_reports->num_of_advs;
     os_free(p_reports);
 
@@ -467,7 +473,8 @@ http_server_read_history(
     cjson_wrap_str_t *   p_json_str,
     const time_t         cur_time,
     const bool           flag_use_timestamps,
-    const uint32_t       time_interval_seconds,
+    const uint32_t       filter,
+    const bool           flag_use_filter,
     num_of_advs_t *const p_num_of_advs)
 {
     adv_report_table_t *p_reports = os_malloc(sizeof(*p_reports));
@@ -475,7 +482,7 @@ http_server_read_history(
     {
         return false;
     }
-    adv_table_history_read(p_reports, cur_time, true, time_interval_seconds);
+    adv_table_history_read(p_reports, cur_time, flag_use_timestamps, filter, flag_use_filter);
     *p_num_of_advs = p_reports->num_of_advs;
 
     const ruuvi_gw_cfg_coordinates_t coordinates = gw_cfg_get_coordinates();
@@ -498,20 +505,36 @@ HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_history(const char *const p_params)
 {
-    uint32_t time_interval_seconds = HTTP_SERVER_DEFAULT_HISTORY_INTERVAL_SECONDS;
+    const bool flag_use_timestamps = gw_cfg_get_ntp_use();
+    uint32_t   filter              = flag_use_timestamps ? HTTP_SERVER_DEFAULT_HISTORY_INTERVAL_SECONDS : 0;
+    bool       flag_use_filter     = flag_use_timestamps ? true : false;
     if (NULL != p_params)
     {
-        const char *const p_time_prefix   = "time=";
-        const size_t      time_prefix_len = strlen(p_time_prefix);
-        if (0 == strncmp(p_params, p_time_prefix, time_prefix_len))
+        if (flag_use_timestamps)
         {
-            time_interval_seconds = (uint32_t)strtoul(&p_params[time_prefix_len], NULL, 0);
+            const char *const p_time_prefix   = "time=";
+            const size_t      time_prefix_len = strlen(p_time_prefix);
+            if (0 == strncmp(p_params, p_time_prefix, time_prefix_len))
+            {
+                filter          = (uint32_t)strtoul(&p_params[time_prefix_len], NULL, 0);
+                flag_use_filter = true;
+            }
+        }
+        else
+        {
+            const char *const p_counter_prefix   = "counter=";
+            const size_t      counter_prefix_len = strlen(p_counter_prefix);
+            if (0 == strncmp(p_params, p_counter_prefix, counter_prefix_len))
+            {
+                filter          = (uint32_t)strtoul(&p_params[counter_prefix_len], NULL, 0);
+                flag_use_filter = true;
+            }
         }
     }
     cjson_wrap_str_t json_str    = cjson_wrap_str_null();
     const time_t     cur_time    = http_server_get_cur_time();
     num_of_advs_t    num_of_advs = 0;
-    if (!http_server_read_history(&json_str, cur_time, time_interval_seconds, gw_cfg_get_ntp_use(), &num_of_advs))
+    if (!http_server_read_history(&json_str, cur_time, flag_use_timestamps, filter, flag_use_filter, &num_of_advs))
     {
         LOG_ERR("Not enough memory");
         return http_server_resp_503();
@@ -519,7 +542,21 @@ http_server_resp_history(const char *const p_params)
 
     const bool flag_no_cache        = true;
     const bool flag_add_header_date = true;
-    LOG_INFO("History on %u seconds interval: %s", (unsigned)time_interval_seconds, json_str.p_str);
+    if (flag_use_filter)
+    {
+        if (flag_use_timestamps)
+        {
+            LOG_INFO("History on %u seconds interval: %s", (unsigned)filter, json_str.p_str);
+        }
+        else
+        {
+            LOG_INFO("History starting from counter %u: %s", (unsigned)filter, json_str.p_str);
+        }
+    }
+    else
+    {
+        LOG_INFO("History (without filtering): %s", json_str.p_str);
+    }
     if (0 != num_of_advs)
     {
         adv_post_last_successful_network_comm_timestamp_update();
@@ -622,24 +659,6 @@ http_server_resp_file(const char *file_path, const http_resp_code_e http_resp_co
     }
     LOG_DBG("File %s was opened successfully, fd=%d", tmp_file_path, fd);
     return http_server_resp_data_from_file(http_resp_code, content_type, NULL, file_size, content_encoding, fd);
-}
-
-static bool
-http_server_is_url_prefix_eq(
-    const char *const p_path,
-    const size_t      path_page_name_len,
-    const char *const p_exp_page_name)
-{
-    const size_t exp_page_name_len = strlen(p_exp_page_name);
-    if (exp_page_name_len != path_page_name_len)
-    {
-        return false;
-    }
-    if (0 != strncmp(p_path, p_exp_page_name, path_page_name_len))
-    {
-        return false;
-    }
-    return true;
 }
 
 static void
@@ -764,30 +783,28 @@ http_server_cb_on_user_req(const http_server_user_req_code_e req_code)
 http_server_resp_t
 http_server_cb_on_get(
     const char *const               p_path,
+    const char *const               p_uri_params,
     const bool                      flag_access_from_lan,
     const http_server_resp_t *const p_resp_auth)
 {
     const char *p_file_ext = strrchr(p_path, '.');
-    LOG_DBG("http_server_cb_on_get /%s", p_path);
+    LOG_DBG(
+        "http_server_cb_on_get /%s%s%s",
+        p_path,
+        (NULL != p_uri_params) ? "?" : "",
+        (NULL != p_uri_params) ? p_uri_params : "");
 
     if ((NULL != p_file_ext) && (0 == strcmp(p_file_ext, ".json")))
     {
         return http_server_resp_json(p_path, flag_access_from_lan);
     }
-    size_t      len      = strlen(p_path);
-    const char *p_params = strchr(p_path, '?');
-    if (NULL != p_params)
-    {
-        len = (size_t)(ptrdiff_t)(p_params - p_path);
-        p_params += 1;
-    }
-    if (http_server_is_url_prefix_eq(p_path, len, "metrics"))
+    if (0 == strcmp(p_path, "metrics"))
     {
         return http_server_resp_metrics();
     }
-    if (http_server_is_url_prefix_eq(p_path, len, "history"))
+    if (0 == strcmp(p_path, "history"))
     {
-        return http_server_resp_history(p_params);
+        return http_server_resp_history(p_uri_params);
     }
     const char *p_file_path = ('\0' == p_path[0]) ? "ruuvi.html" : p_path;
     return http_server_resp_file(p_file_path, (NULL != p_resp_auth) ? p_resp_auth->http_resp_code : HTTP_RESP_CODE_200);
@@ -956,8 +973,13 @@ http_server_cb_on_post_gw_cfg_download(void)
 }
 
 http_server_resp_t
-http_server_cb_on_post(const char *const p_file_name, const char *const p_body, const bool flag_access_from_lan)
+http_server_cb_on_post(
+    const char *const p_file_name,
+    const char *const p_uri_params,
+    const char *const p_body,
+    const bool        flag_access_from_lan)
 {
+    (void)p_uri_params;
     if (g_http_server_cb_flag_prohibit_cfg_updating)
     {
         return http_server_resp_404();
@@ -981,10 +1003,12 @@ http_server_cb_on_post(const char *const p_file_name, const char *const p_body, 
 http_server_resp_t
 http_server_cb_on_delete(
     const char *const               p_path,
+    const char *const               p_uri_params,
     const bool                      flag_access_from_lan,
     const http_server_resp_t *const p_resp_auth)
 {
     (void)p_path;
+    (void)p_uri_params;
     (void)flag_access_from_lan;
     (void)p_resp_auth;
     LOG_WARN("DELETE /%s", p_path);
