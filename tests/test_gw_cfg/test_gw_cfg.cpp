@@ -262,7 +262,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: netmask: "));
@@ -359,7 +359,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_no) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: netmask: "));
@@ -464,7 +464,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_basic) // NOLI
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: netmask: "));
@@ -567,7 +567,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_bearer) // NOL
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: netmask: "));
@@ -663,7 +663,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_beta_tester_and_
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: netmask: "));
@@ -757,7 +757,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_manual) // NOLIN
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: netmask: "));
@@ -851,7 +851,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_invalid) // NOLI
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: netmask: "));
@@ -951,7 +951,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_ntp_changed) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: netmask: "));

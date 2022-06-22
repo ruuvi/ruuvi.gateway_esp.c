@@ -162,7 +162,7 @@ TEST_F(TestGwCfgDefault, test_1) // NOLINT
     gw_cfg_t gw_cfg {};
     gw_cfg_default_get(&gw_cfg);
 
-    ASSERT_FALSE(gw_cfg.eth_cfg.use_eth);
+    ASSERT_TRUE(gw_cfg.eth_cfg.use_eth);
     ASSERT_TRUE(gw_cfg.eth_cfg.eth_dhcp);
     ASSERT_EQ(string(""), string(gw_cfg.eth_cfg.eth_static_ip.buf));
     ASSERT_EQ(string(""), string(gw_cfg.eth_cfg.eth_netmask.buf));
@@ -232,7 +232,7 @@ TEST_F(TestGwCfgDefault, test_1) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: netmask: "));
@@ -321,7 +321,7 @@ TEST_F(TestGwCfgDefault, test_gw_cfg_default_get_eth) // NOLINT
 {
     const gw_cfg_eth_t gw_cfg_eth = *gw_cfg_default_get_eth();
 
-    ASSERT_FALSE(gw_cfg_eth.use_eth);
+    ASSERT_TRUE(gw_cfg_eth.use_eth);
     ASSERT_TRUE(gw_cfg_eth.eth_dhcp);
     ASSERT_EQ(string(""), string(gw_cfg_eth.eth_static_ip.buf));
     ASSERT_EQ(string(""), string(gw_cfg_eth.eth_netmask.buf));

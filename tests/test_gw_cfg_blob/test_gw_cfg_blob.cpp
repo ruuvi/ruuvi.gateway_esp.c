@@ -655,7 +655,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_with_incorrect_header) // NOLINT
     gw_cfg_t gw_cfg {};
     gw_cfg_blob_convert(&gw_cfg, &gw_cfg_blob);
 
-    ASSERT_EQ(false, gw_cfg.eth_cfg.use_eth);
+    ASSERT_EQ(true, gw_cfg.eth_cfg.use_eth);
     ASSERT_EQ(true, gw_cfg.eth_cfg.eth_dhcp);
     ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_static_ip.buf);
     ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_netmask.buf);
@@ -766,7 +766,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_with_incorrect_fmt_version) // NO
     gw_cfg_t gw_cfg {};
     gw_cfg_blob_convert(&gw_cfg, &gw_cfg_blob);
 
-    ASSERT_EQ(false, gw_cfg.eth_cfg.use_eth);
+    ASSERT_EQ(true, gw_cfg.eth_cfg.use_eth);
     ASSERT_EQ(true, gw_cfg.eth_cfg.eth_dhcp);
     ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_static_ip.buf);
     ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_netmask.buf);
