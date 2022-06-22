@@ -216,7 +216,8 @@ adv_table_read_history_unsafe(
     adv_report_table_t *const p_reports,
     const time_t              cur_time,
     const bool                flag_use_timestamps,
-    const uint32_t            time_interval_seconds)
+    const uint32_t            filter,
+    const bool                flag_use_filter)
 {
     p_reports->num_of_advs = 0;
 
@@ -227,13 +228,23 @@ adv_table_read_history_unsafe(
         {
             break;
         }
-        if (0 == p_elem->adv_report.timestamp)
+        if (0 == p_elem->adv_report.data_len)
         {
             break;
         }
-        if (flag_use_timestamps && ((cur_time - p_elem->adv_report.timestamp) > time_interval_seconds))
+        if (flag_use_timestamps)
         {
-            break;
+            if (flag_use_filter && ((cur_time - p_elem->adv_report.timestamp) > filter))
+            {
+                break;
+            }
+        }
+        else
+        {
+            if (flag_use_filter && ((int32_t)(p_elem->adv_report.timestamp - filter) <= 0))
+            {
+                break;
+            }
         }
         p_reports->table[p_reports->num_of_advs] = p_elem->adv_report;
         p_reports->num_of_advs += 1;
@@ -245,10 +256,11 @@ adv_table_history_read(
     adv_report_table_t *const p_reports,
     const time_t              cur_time,
     const bool                flag_use_timestamps,
-    const uint32_t            time_interval_seconds)
+    const uint32_t            filter,
+    const bool                flag_use_filter)
 {
     os_mutex_lock(gp_adv_reports_mutex);
-    adv_table_read_history_unsafe(p_reports, cur_time, flag_use_timestamps, time_interval_seconds);
+    adv_table_read_history_unsafe(p_reports, cur_time, flag_use_timestamps, filter, flag_use_filter);
     os_mutex_unlock(gp_adv_reports_mutex);
 }
 

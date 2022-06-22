@@ -350,7 +350,7 @@ os_realloc_safe_and_clean(void **const p_ptr, const size_t size)
 {
     void *ptr       = *p_ptr;
     void *p_new_ptr = realloc(ptr, size);
-    if (NULL == p_new_ptr)
+    if (nullptr == p_new_ptr)
     {
         os_free(*p_ptr);
         return false;
@@ -455,10 +455,12 @@ adv_table_history_read(
     adv_report_table_t *const p_reports,
     const time_t              cur_time,
     const bool                flag_use_timestamps,
-    const uint32_t            time_interval_seconds)
+    const uint32_t            filter,
+    const bool                flag_use_filter)
 {
     (void)flag_use_timestamps;
-    (void)time_interval_seconds;
+    (void)filter;
+    (void)flag_use_filter;
     p_reports->num_of_advs = 2;
     {
         adv_report_t *const p_adv   = &p_reports->table[0];
@@ -628,7 +630,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
           "\t\"fw_ver\":\t\"v1.3.3\",\n"
           "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
           "\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
-          "\t\"use_eth\":\tfalse,\n"
+          "\t\"use_eth\":\ttrue,\n"
           "\t\"eth_dhcp\":\ttrue,\n"
           "\t\"eth_static_ip\":\t\"\",\n"
           "\t\"eth_netmask\":\t\"\",\n"
@@ -824,7 +826,7 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
           "\t\"fw_ver\":\t\"v1.3.3\",\n"
           "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
           "\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
-          "\t\"use_eth\":\tfalse,\n"
+          "\t\"use_eth\":\ttrue,\n"
           "\t\"eth_dhcp\":\ttrue,\n"
           "\t\"eth_static_ip\":\t\"\",\n"
           "\t\"eth_netmask\":\t\"\",\n"
@@ -1206,7 +1208,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_default) // NOLINT
     ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
     this->m_fd = -1;
 
-    const http_server_resp_t resp = http_server_cb_on_get("", false, nullptr);
+    const http_server_resp_t resp = http_server_cb_on_get("", nullptr, false, nullptr);
     ASSERT_EQ(HTTP_RESP_CODE_404, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
@@ -1230,7 +1232,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_index_html) // NOLINT
     this->m_files.emplace_back(fileInfo);
     this->m_fd = fd;
 
-    const http_server_resp_t resp = http_server_cb_on_get("index.html", false, nullptr);
+    const http_server_resp_t resp = http_server_cb_on_get("index.html", nullptr, false, nullptr);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
     ASSERT_FALSE(resp.flag_no_cache);
@@ -1254,7 +1256,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_app_js) // NOLINT
     this->m_files.emplace_back(fileInfo);
     this->m_fd = fd;
 
-    const http_server_resp_t resp = http_server_cb_on_get("app.js", false, nullptr);
+    const http_server_resp_t resp = http_server_cb_on_get("app.js", nullptr, false, nullptr);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
     ASSERT_FALSE(resp.flag_no_cache);
@@ -1276,7 +1278,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
           "\t\"fw_ver\":\t\"v1.3.3\",\n"
           "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
           "\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
-          "\t\"use_eth\":\tfalse,\n"
+          "\t\"use_eth\":\ttrue,\n"
           "\t\"eth_dhcp\":\ttrue,\n"
           "\t\"eth_static_ip\":\t\"\",\n"
           "\t\"eth_netmask\":\t\"\",\n"
@@ -1365,7 +1367,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
     gw_cfg_update_ruuvi_cfg(&gw_cfg.ruuvi_cfg);
 
     esp_log_wrapper_clear();
-    const http_server_resp_t resp = http_server_cb_on_get("ruuvi.json", false, nullptr);
+    const http_server_resp_t resp = http_server_cb_on_get("ruuvi.json", nullptr, false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -1384,7 +1386,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
 TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics) // NOLINT
 {
     const char *             expected_resp = "metrics_info";
-    const http_server_resp_t resp          = http_server_cb_on_get("metrics", false, nullptr);
+    const http_server_resp_t resp          = http_server_cb_on_get("metrics", nullptr, false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -1422,7 +1424,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history) // NOLINT
           "\t\t}\n"
           "\t}\n"
           "}";
-    const http_server_resp_t resp = http_server_cb_on_get("history", false, nullptr);
+    const http_server_resp_t resp = http_server_cb_on_get("history", nullptr, false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -1459,7 +1461,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_with_time_interval_20) //
           "\t\t}\n"
           "\t}\n"
           "}";
-    const http_server_resp_t resp = http_server_cb_on_get("history?time=20", false, nullptr);
+    const http_server_resp_t resp = http_server_cb_on_get("history", "time=20", false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -1472,6 +1474,90 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_with_time_interval_20) //
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /history?time=20"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("History on 20 seconds interval: ") + string(expected_resp));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps) // NOLINT
+{
+    gw_cfg_t gw_cfg_tmp = { 0 };
+    gw_cfg_get_copy(&gw_cfg_tmp);
+    gw_cfg_tmp.ruuvi_cfg.ntp.ntp_use = false;
+    gw_cfg_update_ruuvi_cfg(&gw_cfg_tmp.ruuvi_cfg);
+
+    const char *expected_resp
+        = "{\n"
+          "\t\"data\":\t{\n"
+          "\t\t\"coordinates\":\t\"\",\n"
+          "\t\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
+          "\t\t\"tags\":\t{\n\t\t\t\"AA:BB:CC:11:22:01\":\t{\n"
+          "\t\t\t\t\"rssi\":\t50,\n"
+          "\t\t\t\t\"counter\":\t\"1615660219\",\n"
+          "\t\t\t\t\"data\":\t\"2233\"\n"
+          "\t\t\t},\n"
+          "\t\t\t\"AA:BB:CC:11:22:02\":\t{\n"
+          "\t\t\t\t\"rssi\":\t51,\n"
+          "\t\t\t\t\"counter\":\t\"1615660209\",\n"
+          "\t\t\t\t\"data\":\t\"223344\"\n"
+          "\t\t\t}\n"
+          "\t\t}\n"
+          "\t}\n"
+          "}";
+    const http_server_resp_t resp = http_server_cb_on_get("history", nullptr, false, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(strlen(expected_resp), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /history"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("History (without filtering): ") + string(expected_resp));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps_with_filter_counter_10) // NOLINT
+{
+    gw_cfg_t gw_cfg_tmp = { 0 };
+    gw_cfg_get_copy(&gw_cfg_tmp);
+    gw_cfg_tmp.ruuvi_cfg.ntp.ntp_use = false;
+    gw_cfg_update_ruuvi_cfg(&gw_cfg_tmp.ruuvi_cfg);
+
+    const char *expected_resp
+        = "{\n"
+          "\t\"data\":\t{\n"
+          "\t\t\"coordinates\":\t\"\",\n"
+          "\t\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
+          "\t\t\"tags\":\t{\n\t\t\t\"AA:BB:CC:11:22:01\":\t{\n"
+          "\t\t\t\t\"rssi\":\t50,\n"
+          "\t\t\t\t\"counter\":\t\"1615660219\",\n"
+          "\t\t\t\t\"data\":\t\"2233\"\n"
+          "\t\t\t},\n"
+          "\t\t\t\"AA:BB:CC:11:22:02\":\t{\n"
+          "\t\t\t\t\"rssi\":\t51,\n"
+          "\t\t\t\t\"counter\":\t\"1615660209\",\n"
+          "\t\t\t\t\"data\":\t\"223344\"\n"
+          "\t\t\t}\n"
+          "\t\t}\n"
+          "\t}\n"
+          "}";
+    const http_server_resp_t resp = http_server_cb_on_get("history", "counter=10", false, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(strlen(expected_resp), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /history?counter=10"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_INFO,
+        string("History starting from counter 10: ") + string(expected_resp));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1779,6 +1865,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     }
     const http_server_resp_t resp = http_server_cb_on_post(
         "ruuvi.json",
+        nullptr,
         "{"
         "\"remote_cfg_use\":false,\n"
         "\"remote_cfg_url\":\"\",\n"
@@ -1956,6 +2043,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
 
     const http_server_resp_t resp = http_server_cb_on_post(
         "ruuvi.json",
+        nullptr,
         "{"
         "\"remote_cfg_use\":false,\n"
         "\"remote_cfg_url\":\"\",\n"
@@ -2119,6 +2207,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     const char *             expected_resp = "{}";
     const http_server_resp_t resp          = http_server_cb_on_post(
         "ruuvi.json",
+        nullptr,
         "{"
         "\"remote_cfg_use\":false,\n"
         "\"remote_cfg_url\":\"\",\n"
@@ -2280,6 +2369,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_unknown_json) // NOLINT
 {
     const http_server_resp_t resp = http_server_cb_on_post(
         "unknown.json",
+        nullptr,
         "{"
         "\"use_mqtt\":true,"
         "\"mqtt_server\":\"test.mosquitto.org\","
@@ -2319,7 +2409,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_unknown_json) // NOLINT
 
 TEST_F(TestHttpServerCb, http_server_cb_on_delete) // NOLINT
 {
-    const http_server_resp_t resp = http_server_cb_on_delete("unknown.json", false, nullptr);
+    const http_server_resp_t resp = http_server_cb_on_delete("unknown.json", nullptr, false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_404, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);

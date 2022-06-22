@@ -444,7 +444,6 @@ static int tcp_read(esp_transport_handle_t t, char *buffer, int len, int timeout
                     tcp->timer_read_initialized = false;
                     return -1;
                 }
-                read_len = 0;
             } else {
                 tcp->timer_read_initialized = false;
             }

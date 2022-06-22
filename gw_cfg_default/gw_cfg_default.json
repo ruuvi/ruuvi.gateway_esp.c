@@ -6,7 +6,7 @@
   "wifi_ap_config": {
     "password": ""
   },
-  "use_eth": false,
+  "use_eth": true,
   "eth_dhcp": true,
   "eth_static_ip": "",
   "eth_netmask": "",

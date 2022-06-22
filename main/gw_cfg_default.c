@@ -15,7 +15,7 @@
 #include "gw_cfg_log.h"
 
 static const gw_cfg_eth_t g_gateway_config_default_eth = {
-    .use_eth       = false,
+    .use_eth       = true,
     .eth_dhcp      = true,
     .eth_static_ip = { { "" } },
     .eth_netmask   = { { "" } },
