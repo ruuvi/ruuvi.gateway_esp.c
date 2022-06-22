@@ -60,7 +60,7 @@ static const gw_cfg_ruuvi_t g_gateway_config_default_ruuvi = {
             .mqtt_pass = {{ "" }},
         },
         .lan_auth = {
-            .lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI,
+            .lan_auth_type = HTTP_SERVER_AUTH_TYPE_DEFAULT,
             .lan_auth_user = { RUUVI_GATEWAY_AUTH_DEFAULT_USER },
             .lan_auth_pass = { "" },  // default password is set in gw_cfg_default_init
             .lan_auth_api_key = { "" },

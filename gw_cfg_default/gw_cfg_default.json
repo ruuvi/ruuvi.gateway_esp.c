@@ -37,7 +37,6 @@
   "mqtt_user": "",
   "mqtt_pass": "",
   "lan_auth_type": "lan_auth_default",
-  "lan_auth_user": "Admin",
   "lan_auth_api_key": "",
   "auto_update_cycle": "regular",
   "auto_update_weekdays_bitmask": 127,

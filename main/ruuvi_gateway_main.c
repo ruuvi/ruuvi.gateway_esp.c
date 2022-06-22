@@ -605,7 +605,7 @@ ruuvi_cb_on_change_cfg(const gw_cfg_t *const p_gw_cfg)
     settings_save_to_flash(p_gw_cfg);
 
     const ruuvi_gw_cfg_lan_auth_t lan_auth = gw_cfg_get_lan_auth();
-    LOG_INFO("%s: http_server_set_auth: %s", __func__, http_server_auth_type_to_str(lan_auth.lan_auth_type, false));
+    LOG_INFO("%s: http_server_set_auth: %s", __func__, http_server_auth_type_to_str(lan_auth.lan_auth_type));
     if (!http_server_set_auth(
             lan_auth.lan_auth_type,
             &lan_auth.lan_auth_user,

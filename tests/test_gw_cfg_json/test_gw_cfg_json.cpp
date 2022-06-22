@@ -251,6 +251,19 @@ get_gateway_config_default()
     return gw_cfg;
 }
 
+static gw_cfg_t
+get_gateway_config_default_lan_auth_ruuvi()
+{
+    gw_cfg_t gw_cfg {};
+    gw_cfg_default_get(&gw_cfg);
+    gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI;
+    (void)snprintf(
+        gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf,
+        sizeof(gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf),
+        "non_default_pass");
+    return gw_cfg;
+}
+
 /*** Unit-Tests
  * *******************************************************************************************************/
 
@@ -378,7 +391,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_default) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -450,7 +462,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_default_company_id_0x0500) // NOLINT
         "\t\"mqtt_pass\":\t\"\",\n"
         "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
         "\t\"lan_auth_user\":\t\"Admin\",\n"
-        "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
         "\t\"lan_auth_api_key\":\t\"\",\n"
         "\t\"auto_update_cycle\":\t\"regular\",\n"
         "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -535,7 +546,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_disabled) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -621,7 +631,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_enabled) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -712,7 +721,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_disabled) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -800,7 +808,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_no) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -895,7 +902,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_basic) // NOL
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -988,7 +994,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_bearer) // NO
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -1073,7 +1078,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_disabled) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -1168,7 +1172,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_TCP) // NOLINT
                "\t\"mqtt_pass\":\t\"pass1\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -1263,7 +1266,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_SSL) // NOLINT
                "\t\"mqtt_pass\":\t\"pass2\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -1358,7 +1360,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WS) // NOLINT
                "\t\"mqtt_pass\":\t\"pass2\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -1453,7 +1454,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WSS) // NOLINT
                "\t\"mqtt_pass\":\t\"pass2\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -1537,7 +1537,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_disabled) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -1629,7 +1628,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -1713,7 +1711,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_disabled) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -1809,7 +1806,88 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_enabled) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
+               "\t\"auto_update_cycle\":\t\"regular\",\n"
+               "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+               "\t\"auto_update_interval_from\":\t0,\n"
+               "\t\"auto_update_interval_to\":\t24,\n"
+               "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"company_id\":\t1177,\n"
+               "\t\"company_use_filtering\":\ttrue,\n"
+               "\t\"scan_coded_phy\":\tfalse,\n"
+               "\t\"scan_1mbit_phy\":\ttrue,\n"
+               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_channel_37\":\ttrue,\n"
+               "\t\"scan_channel_38\":\ttrue,\n"
+               "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"coordinates\":\t\"\"\n"
+               "}"),
+        string(json_str.p_str));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+
+    gw_cfg_t gw_cfg2       = get_gateway_config_default();
+    bool     flag_modified = false;
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
+    ASSERT_FALSE(flag_modified);
+    cjson_wrap_free_json_str(&json_str);
+
+    ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_default) // NOLINT
+{
+    gw_cfg_t         gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_NE(nullptr, json_str.p_str);
+    ASSERT_EQ(
+        string("{\n"
+               "\t\"fw_ver\":\t\"v1.10.0\",\n"
+               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"wifi_sta_config\":\t{\n"
+               "\t\t\"ssid\":\t\"\",\n"
+               "\t\t\"password\":\t\"\"\n"
+               "\t},\n"
+               "\t\"wifi_ap_config\":\t{\n"
+               "\t\t\"password\":\t\"\"\n"
+               "\t},\n"
+               "\t\"use_eth\":\ttrue,\n"
+               "\t\"eth_dhcp\":\ttrue,\n"
+               "\t\"eth_static_ip\":\t\"\",\n"
+               "\t\"eth_netmask\":\t\"\",\n"
+               "\t\"eth_gw\":\t\"\",\n"
+               "\t\"eth_dns1\":\t\"\",\n"
+               "\t\"eth_dns2\":\t\"\",\n"
+               "\t\"remote_cfg_use\":\tfalse,\n"
+               "\t\"remote_cfg_url\":\t\"\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http\":\ttrue,\n"
+               "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_pass\":\t\"\",\n"
+               "\t\"use_http_stat\":\ttrue,\n"
+               "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
+               "\t\"http_stat_user\":\t\"\",\n"
+               "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"use_mqtt\":\tfalse,\n"
+               "\t\"mqtt_transport\":\t\"TCP\",\n"
+               "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+               "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
+               "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"mqtt_user\":\t\"\",\n"
+               "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
+               "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -2426,7 +2504,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_beta_tester) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"beta\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t126,\n"
@@ -2514,7 +2591,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_manual) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"manual\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t125,\n"
@@ -2598,7 +2674,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_unknown) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -2682,7 +2757,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_disabled) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -2773,7 +2847,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_enabled_via_dhcp) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -2864,7 +2937,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_custom) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -2950,7 +3022,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_enabled) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -3036,7 +3107,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_disabled) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -3126,7 +3196,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_default) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -3216,7 +3285,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_coded_phy_true) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -3306,7 +3374,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_1mbit_phy_false) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -3396,7 +3463,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_extended_payload_false) // NOLIN
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -3486,7 +3552,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_37_false) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -3576,7 +3641,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_38_false) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -3666,7 +3730,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_39_false) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -3751,7 +3814,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_coordinates) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -3826,7 +3888,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_default) // NOLINT
     ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.http_stat.http_stat_user.buf);
     ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.http_stat.http_stat_pass.buf);
 
-    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_DEFAULT, gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_type);
     ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_user.buf);
     ASSERT_EQ(string("0d6c6f1c27ca628806eb9247740d8ba1"), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
     ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
@@ -3900,7 +3962,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_default) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -5420,6 +5481,321 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_custom) // NOLINT
     cjson_wrap_free_json_str(&json_str);
 }
 
+TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLINT
+{
+    gw_cfg_t gw_cfg                         = get_gateway_config_default();
+    gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI;
+
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_NE(nullptr, json_str.p_str);
+    ASSERT_EQ(
+        string("{\n"
+               "\t\"fw_ver\":\t\"v1.10.0\",\n"
+               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"wifi_sta_config\":\t{\n"
+               "\t\t\"ssid\":\t\"\",\n"
+               "\t\t\"password\":\t\"\"\n"
+               "\t},\n"
+               "\t\"wifi_ap_config\":\t{\n"
+               "\t\t\"password\":\t\"\"\n"
+               "\t},\n"
+               "\t\"use_eth\":\ttrue,\n"
+               "\t\"eth_dhcp\":\ttrue,\n"
+               "\t\"eth_static_ip\":\t\"\",\n"
+               "\t\"eth_netmask\":\t\"\",\n"
+               "\t\"eth_gw\":\t\"\",\n"
+               "\t\"eth_dns1\":\t\"\",\n"
+               "\t\"eth_dns2\":\t\"\",\n"
+               "\t\"remote_cfg_use\":\tfalse,\n"
+               "\t\"remote_cfg_url\":\t\"\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http\":\ttrue,\n"
+               "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_pass\":\t\"\",\n"
+               "\t\"use_http_stat\":\ttrue,\n"
+               "\t\"http_stat_url\":\t\"https://network.ruuvi.com/status\",\n"
+               "\t\"http_stat_user\":\t\"\",\n"
+               "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"use_mqtt\":\tfalse,\n"
+               "\t\"mqtt_transport\":\t\"TCP\",\n"
+               "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+               "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
+               "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"mqtt_user\":\t\"\",\n"
+               "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
+               "\t\"lan_auth_user\":\t\"Admin\",\n"
+               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
+               "\t\"auto_update_cycle\":\t\"regular\",\n"
+               "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+               "\t\"auto_update_interval_from\":\t0,\n"
+               "\t\"auto_update_interval_to\":\t24,\n"
+               "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"company_id\":\t1177,\n"
+               "\t\"company_use_filtering\":\ttrue,\n"
+               "\t\"scan_coded_phy\":\tfalse,\n"
+               "\t\"scan_1mbit_phy\":\ttrue,\n"
+               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_channel_37\":\ttrue,\n"
+               "\t\"scan_channel_38\":\ttrue,\n"
+               "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"coordinates\":\t\"\"\n"
+               "}"),
+        json_str.p_str);
+
+    gw_cfg_t gw_cfg2       = get_gateway_config_default();
+    bool     flag_modified = false;
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
+    ASSERT_FALSE(flag_modified);
+    cjson_wrap_free_json_str(&json_str);
+
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_DEFAULT, gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("Admin"), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_user.buf);
+    ASSERT_EQ(string("0d6c6f1c27ca628806eb9247740d8ba1"), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
+    ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+
+    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg2, &json_str));
+    ASSERT_EQ(
+        string("{\n"
+               "\t\"fw_ver\":\t\"v1.10.0\",\n"
+               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"wifi_sta_config\":\t{\n"
+               "\t\t\"ssid\":\t\"\",\n"
+               "\t\t\"password\":\t\"\"\n"
+               "\t},\n"
+               "\t\"wifi_ap_config\":\t{\n"
+               "\t\t\"password\":\t\"\"\n"
+               "\t},\n"
+               "\t\"use_eth\":\ttrue,\n"
+               "\t\"eth_dhcp\":\ttrue,\n"
+               "\t\"eth_static_ip\":\t\"\",\n"
+               "\t\"eth_netmask\":\t\"\",\n"
+               "\t\"eth_gw\":\t\"\",\n"
+               "\t\"eth_dns1\":\t\"\",\n"
+               "\t\"eth_dns2\":\t\"\",\n"
+               "\t\"remote_cfg_use\":\tfalse,\n"
+               "\t\"remote_cfg_url\":\t\"\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http\":\ttrue,\n"
+               "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_pass\":\t\"\",\n"
+               "\t\"use_http_stat\":\ttrue,\n"
+               "\t\"http_stat_url\":\t\"https://network.ruuvi.com/status\",\n"
+               "\t\"http_stat_user\":\t\"\",\n"
+               "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"use_mqtt\":\tfalse,\n"
+               "\t\"mqtt_transport\":\t\"TCP\",\n"
+               "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+               "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
+               "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"mqtt_user\":\t\"\",\n"
+               "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
+               "\t\"lan_auth_user\":\t\"Admin\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
+               "\t\"auto_update_cycle\":\t\"regular\",\n"
+               "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+               "\t\"auto_update_interval_from\":\t0,\n"
+               "\t\"auto_update_interval_to\":\t24,\n"
+               "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"company_id\":\t1177,\n"
+               "\t\"company_use_filtering\":\ttrue,\n"
+               "\t\"scan_coded_phy\":\tfalse,\n"
+               "\t\"scan_1mbit_phy\":\ttrue,\n"
+               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_channel_37\":\ttrue,\n"
+               "\t\"scan_channel_38\":\ttrue,\n"
+               "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"coordinates\":\t\"\"\n"
+               "}"),
+        string(json_str.p_str));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    cjson_wrap_free_json_str(&json_str);
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi) // NOLINT
+{
+    gw_cfg_t gw_cfg                         = get_gateway_config_default();
+    gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI;
+    snprintf(
+        gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf,
+        sizeof(gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf),
+        "non_default_pass");
+
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_NE(nullptr, json_str.p_str);
+    ASSERT_EQ(
+        string("{\n"
+               "\t\"fw_ver\":\t\"v1.10.0\",\n"
+               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"wifi_sta_config\":\t{\n"
+               "\t\t\"ssid\":\t\"\",\n"
+               "\t\t\"password\":\t\"\"\n"
+               "\t},\n"
+               "\t\"wifi_ap_config\":\t{\n"
+               "\t\t\"password\":\t\"\"\n"
+               "\t},\n"
+               "\t\"use_eth\":\ttrue,\n"
+               "\t\"eth_dhcp\":\ttrue,\n"
+               "\t\"eth_static_ip\":\t\"\",\n"
+               "\t\"eth_netmask\":\t\"\",\n"
+               "\t\"eth_gw\":\t\"\",\n"
+               "\t\"eth_dns1\":\t\"\",\n"
+               "\t\"eth_dns2\":\t\"\",\n"
+               "\t\"remote_cfg_use\":\tfalse,\n"
+               "\t\"remote_cfg_url\":\t\"\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http\":\ttrue,\n"
+               "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_pass\":\t\"\",\n"
+               "\t\"use_http_stat\":\ttrue,\n"
+               "\t\"http_stat_url\":\t\"https://network.ruuvi.com/status\",\n"
+               "\t\"http_stat_user\":\t\"\",\n"
+               "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"use_mqtt\":\tfalse,\n"
+               "\t\"mqtt_transport\":\t\"TCP\",\n"
+               "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+               "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
+               "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"mqtt_user\":\t\"\",\n"
+               "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
+               "\t\"lan_auth_user\":\t\"Admin\",\n"
+               "\t\"lan_auth_pass\":\t\"non_default_pass\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
+               "\t\"auto_update_cycle\":\t\"regular\",\n"
+               "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+               "\t\"auto_update_interval_from\":\t0,\n"
+               "\t\"auto_update_interval_to\":\t24,\n"
+               "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"company_id\":\t1177,\n"
+               "\t\"company_use_filtering\":\ttrue,\n"
+               "\t\"scan_coded_phy\":\tfalse,\n"
+               "\t\"scan_1mbit_phy\":\ttrue,\n"
+               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_channel_37\":\ttrue,\n"
+               "\t\"scan_channel_38\":\ttrue,\n"
+               "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"coordinates\":\t\"\"\n"
+               "}"),
+        json_str.p_str);
+
+    gw_cfg_t gw_cfg2       = get_gateway_config_default();
+    bool     flag_modified = false;
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
+    ASSERT_FALSE(flag_modified);
+    cjson_wrap_free_json_str(&json_str);
+
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("Admin"), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_user.buf);
+    ASSERT_EQ(string("non_default_pass"), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
+    ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+
+    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg2, &json_str));
+    ASSERT_EQ(
+        string("{\n"
+               "\t\"fw_ver\":\t\"v1.10.0\",\n"
+               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
+               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"wifi_sta_config\":\t{\n"
+               "\t\t\"ssid\":\t\"\",\n"
+               "\t\t\"password\":\t\"\"\n"
+               "\t},\n"
+               "\t\"wifi_ap_config\":\t{\n"
+               "\t\t\"password\":\t\"\"\n"
+               "\t},\n"
+               "\t\"use_eth\":\ttrue,\n"
+               "\t\"eth_dhcp\":\ttrue,\n"
+               "\t\"eth_static_ip\":\t\"\",\n"
+               "\t\"eth_netmask\":\t\"\",\n"
+               "\t\"eth_gw\":\t\"\",\n"
+               "\t\"eth_dns1\":\t\"\",\n"
+               "\t\"eth_dns2\":\t\"\",\n"
+               "\t\"remote_cfg_use\":\tfalse,\n"
+               "\t\"remote_cfg_url\":\t\"\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http\":\ttrue,\n"
+               "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_pass\":\t\"\",\n"
+               "\t\"use_http_stat\":\ttrue,\n"
+               "\t\"http_stat_url\":\t\"https://network.ruuvi.com/status\",\n"
+               "\t\"http_stat_user\":\t\"\",\n"
+               "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"use_mqtt\":\tfalse,\n"
+               "\t\"mqtt_transport\":\t\"TCP\",\n"
+               "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+               "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
+               "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"mqtt_user\":\t\"\",\n"
+               "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
+               "\t\"lan_auth_user\":\t\"Admin\",\n"
+               "\t\"lan_auth_pass\":\t\"non_default_pass\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
+               "\t\"auto_update_cycle\":\t\"regular\",\n"
+               "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+               "\t\"auto_update_interval_from\":\t0,\n"
+               "\t\"auto_update_interval_to\":\t24,\n"
+               "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"company_id\":\t1177,\n"
+               "\t\"company_use_filtering\":\ttrue,\n"
+               "\t\"scan_coded_phy\":\tfalse,\n"
+               "\t\"scan_1mbit_phy\":\ttrue,\n"
+               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_channel_37\":\ttrue,\n"
+               "\t\"scan_channel_38\":\ttrue,\n"
+               "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"coordinates\":\t\"\"\n"
+               "}"),
+        string(json_str.p_str));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    cjson_wrap_free_json_str(&json_str);
+}
+
 TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
 {
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -5456,7 +5832,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
     ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.http_stat.http_stat_user.buf);
     ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.http_stat.http_stat_pass.buf);
 
-    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_DEFAULT, gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_type);
     ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_user.buf);
     ASSERT_EQ(string("0d6c6f1c27ca628806eb9247740d8ba1"), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
     ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
@@ -5532,7 +5908,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -5663,7 +6038,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_string) // NOLINT
     ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.http_stat.http_stat_user.buf);
     ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.http_stat.http_stat_pass.buf);
 
-    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_DEFAULT, gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_type);
     ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_user.buf);
     ASSERT_EQ(string("0d6c6f1c27ca628806eb9247740d8ba1"), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
     ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
@@ -5739,7 +6114,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_string) // NOLINT
                "\t\"mqtt_pass\":\t\"\",\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
-               "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
                "\t\"auto_update_cycle\":\t\"regular\",\n"
                "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -5865,7 +6239,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_malloc_failed) // NOLINT
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_json_creation) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -5884,7 +6258,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_json_creation) // NO
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_fw_ver) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -5903,7 +6277,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_fw_ver) // NOLINT
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_fw_ver_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -5922,7 +6296,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_fw_ver_2) // NOLINT
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_fw_ver_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -5941,7 +6315,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_fw_ver_3) // NOLINT
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_nrf52_fw_ver) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -5960,7 +6334,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_nrf52_fw_ver) // NOL
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_nrf52_fw_ver_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -5979,7 +6353,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_nrf52_fw_ver_2) // N
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_nrf52_fw_ver_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -5998,7 +6372,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_nrf52_fw_ver_3) // N
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_nrf52_gw_mac) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6017,7 +6391,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_nrf52_gw_mac) // NOL
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_nrf52_gw_mac_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6036,7 +6410,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_nrf52_gw_mac_2) // N
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_nrf52_gw_mac_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6055,7 +6429,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_nrf52_gw_mac_3) // N
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6074,7 +6448,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config) // 
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6093,7 +6467,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config2) //
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config_ssid) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6112,7 +6486,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config_ssid
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config_ssid_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6131,7 +6505,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config_ssid
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config_ssid_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6150,7 +6524,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config_ssid
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config_password) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6169,7 +6543,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config_pass
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config_password_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6188,7 +6562,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config_pass
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config_password_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6207,7 +6581,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config_pass
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_ap_config) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6226,7 +6600,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_ap_config) // N
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_ap_config_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6245,7 +6619,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_ap_config_2) //
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_ap_config_password) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6264,7 +6638,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_ap_config_passw
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_ap_config_password_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6283,7 +6657,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_ap_config_passw
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_ap_config_password_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6302,7 +6676,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_ap_config_passw
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_eth) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6321,7 +6695,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_eth) // NOLINT
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_eth_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6340,7 +6714,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_eth_2) // NOLINT
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dhcp) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6359,7 +6733,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dhcp) // NOLINT
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dhcp_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6378,7 +6752,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dhcp_2) // NOLIN
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_static_ip) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6397,7 +6771,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_static_ip) // NO
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_static_ip_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6416,7 +6790,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_static_ip_2) // 
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_static_ip_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6435,7 +6809,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_static_ip_3) // 
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_netmask) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6454,7 +6828,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_netmask) // NOLI
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_netmask_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6473,7 +6847,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_netmask_2) // NO
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_netmask_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6492,7 +6866,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_netmask_3) // NO
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_gw) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6511,7 +6885,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_gw) // NOLINT
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_gw_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6530,7 +6904,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_gw_2) // NOLINT
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_gw_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6549,7 +6923,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_gw_3) // NOLINT
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dns1) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6568,7 +6942,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dns1) // NOLINT
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dns1_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6587,7 +6961,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dns1_2) // NOLIN
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dns1_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6606,7 +6980,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dns1_3) // NOLIN
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dns2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6625,7 +6999,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dns2) // NOLINT
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dns2_1) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6644,7 +7018,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dns2_1) // NOLIN
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dns2_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6663,7 +7037,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dns2_2) // NOLIN
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_use) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6682,7 +7056,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_use) // N
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_use_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6701,7 +7075,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_use_2) //
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_url) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6720,7 +7094,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_url) // N
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_url_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6739,7 +7113,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_url_2) //
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_url_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6758,7 +7132,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_url_3) //
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_auth_type) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6777,7 +7151,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_auth_type
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_auth_type_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6796,7 +7170,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_auth_type
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_auth_type_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6815,7 +7189,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_auth_type
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_refresh_interval_minutes) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6834,7 +7208,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_refresh_i
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_refresh_interval_minutes_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6853,7 +7227,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_refresh_i
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6872,7 +7246,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http) // NOLINT
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6891,7 +7265,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http_2) // NOLIN
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_url) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6910,7 +7284,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_url) // NOLINT
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_url_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6929,7 +7303,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_url_2) // NOLIN
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_url_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6948,7 +7322,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_url_3) // NOLIN
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_user) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6967,7 +7341,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_user) // NOLINT
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_user_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -6986,7 +7360,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_user_2) // NOLI
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_user_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7005,7 +7379,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_user_3) // NOLI
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_pass) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7024,7 +7398,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_pass) // NOLINT
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_pass_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7043,7 +7417,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_pass_2) // NOLI
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_pass_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7062,7 +7436,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_pass_3) // NOLI
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http_stat) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7081,7 +7455,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http_stat) // NO
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http_stat_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7100,7 +7474,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http_stat_2) // 
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_url) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7119,7 +7493,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_url) // NO
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_url_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7138,7 +7512,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_url_2) // 
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_url_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7157,7 +7531,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_url_3) // 
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_user) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7176,7 +7550,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_user) // N
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_user_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7195,7 +7569,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_user_2) //
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_user_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7214,7 +7588,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_user_3) //
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_pass) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7233,7 +7607,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_pass) // N
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_pass_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7252,7 +7626,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_pass_2) //
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_pass_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7271,7 +7645,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_pass_3) //
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_mqtt) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7290,7 +7664,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_mqtt) // NOLINT
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_mqtt_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7309,7 +7683,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_mqtt_2) // NOLIN
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_trnasport) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7328,7 +7702,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_trnasport) // N
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_trnasport_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7347,7 +7721,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_trnasport_2) //
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_trnasport_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7366,7 +7740,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_trnasport_3) //
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_server) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7385,7 +7759,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_server) // NOLI
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_server_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7404,7 +7778,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_server_2) // NO
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_server_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7423,7 +7797,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_server_3) // NO
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_port) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7442,7 +7816,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_port) // NOLINT
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_port_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7461,7 +7835,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_port_2) // NOLI
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7480,7 +7854,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix) // NOLI
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7499,7 +7873,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix_2) // NO
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7518,7 +7892,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix_3) // NO
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7537,7 +7911,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id) // N
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7556,7 +7930,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id_2) //
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7575,7 +7949,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id_3) //
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7594,7 +7968,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user) // NOLINT
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7613,7 +7987,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user_2) // NOLI
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7632,7 +8006,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user_3) // NOLI
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7651,7 +8025,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass) // NOLINT
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7670,7 +8044,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass_2) // NOLI
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7689,7 +8063,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass_3) // NOLI
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_type) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7708,7 +8082,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_type) // NO
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_type_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7727,7 +8101,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_type_2) // 
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_type_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7746,7 +8120,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_type_3) // 
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_user) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7765,7 +8139,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_user) // NO
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_user_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7784,7 +8158,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_user_2) // 
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_user_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7803,7 +8177,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_user_3) // 
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_pass) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7822,7 +8196,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_pass) // NO
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_pass_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7841,7 +8215,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_pass_2) // 
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_pass_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7860,7 +8234,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_pass_3) // 
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7879,7 +8253,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key) //
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7898,7 +8272,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_2) 
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7917,7 +8291,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_3) 
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_cycle) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7936,7 +8310,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_cycle) /
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_cycle_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7955,7 +8329,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_cycle_2)
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_cycle_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7974,7 +8348,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_cycle_3)
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_weekdays_bitmask) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -7993,7 +8367,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_weekdays
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_weekdays_bitmask_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8012,7 +8386,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_weekdays
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval_from) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8031,7 +8405,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval_from_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8050,7 +8424,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval_to) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8069,7 +8443,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval_to_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8088,7 +8462,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_tz) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8107,7 +8481,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_tz) // N
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_tz_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8126,7 +8500,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_tz_2) //
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8145,7 +8519,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use) // NOLINT
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8164,7 +8538,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use_2) // NOLINT
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use_dhcp) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8183,7 +8557,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use_dhcp) // NOL
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use_dhcp_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8202,7 +8576,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use_dhcp_2) // N
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server1) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8221,7 +8595,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server1) // NOLI
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server1_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8240,7 +8614,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server1_2) // NO
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server1_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8259,7 +8633,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server1_3) // NO
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8278,7 +8652,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server2) // NOLI
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server2_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8297,7 +8671,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server2_2) // NO
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server2_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8316,7 +8690,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server2_3) // NO
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8335,7 +8709,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server3) // NOLI
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server3_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8354,7 +8728,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server3_2) // NO
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server3_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8373,7 +8747,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server3_3) // NO
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server4) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8392,7 +8766,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server4) // NOLI
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server4_1) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8411,7 +8785,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server4_1) // NO
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server4_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8430,7 +8804,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server4_2) // NO
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_company_id) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8449,7 +8823,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_company_id) // NOLIN
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_company_id_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8468,7 +8842,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_company_id_2) // NOL
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_filtering) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8487,7 +8861,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_filtering) // NO
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_filtering_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8506,7 +8880,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_filtering_2) // 
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_coded_phy) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8525,7 +8899,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_coded_phy) // NO
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_coded_phy_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8544,7 +8918,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_coded_phy_2) // 
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_1mbit_phy) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8563,7 +8937,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_1mbit_phy) // NO
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_1mbit_phy_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8582,7 +8956,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_1mbit_phy_2) // 
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_extended_payload) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8601,7 +8975,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_extended_payload
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_extended_payload_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8620,7 +8994,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_extended_payload
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_37) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8639,7 +9013,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_37) // N
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_37_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8658,7 +9032,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_37_2) //
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_38) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8677,7 +9051,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_38) // N
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_38_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8696,7 +9070,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_38_2) //
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_39) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8715,7 +9089,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_39) // N
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_39_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8734,7 +9108,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_39_2) //
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8753,7 +9127,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates) // NOLI
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates_2) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8772,7 +9146,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates_2) // NO
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates_3) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
@@ -8791,7 +9165,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates_3) // NO
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_converting_to_json_string) // NOLINT
 {
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     cJSON_Hooks hooks = {
