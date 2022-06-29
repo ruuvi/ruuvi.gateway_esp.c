@@ -895,6 +895,16 @@ http_server_gw_cfg_download_and_update(bool *const p_flag_reboot_needed)
     LOG_INFO("Download gw_cfg: successfully completed");
     LOG_DBG("gw_cfg.json: %s", download_info.p_json_buf);
 
+    if ('{' != download_info.p_json_buf[0])
+    {
+        LOG_ERR(
+            "Invalid first byte of json, expected '{', actual '%c' (%d)",
+            download_info.p_json_buf[0],
+            (printf_int_t)download_info.p_json_buf[0]);
+        os_free(download_info.p_json_buf);
+        return HTTP_RESP_CODE_503; // 502
+    }
+
     gw_cfg_t *p_gw_cfg_tmp = os_calloc(1, sizeof(*p_gw_cfg_tmp));
     if (NULL == p_gw_cfg_tmp)
     {
@@ -903,6 +913,7 @@ http_server_gw_cfg_download_and_update(bool *const p_flag_reboot_needed)
         return HTTP_RESP_CODE_503;
     }
     gw_cfg_get_copy(p_gw_cfg_tmp);
+    p_gw_cfg_tmp->ruuvi_cfg.remote.use_remote_cfg = false;
 
     if (!gw_cfg_json_parse(
             "gw_cfg.json",
@@ -914,9 +925,16 @@ http_server_gw_cfg_download_and_update(bool *const p_flag_reboot_needed)
         LOG_ERR("Failed to parse gw_cfg.json or no memory");
         os_free(p_gw_cfg_tmp);
         os_free(download_info.p_json_buf);
-        return HTTP_RESP_CODE_503;
+        return HTTP_RESP_CODE_503; // 502
     }
     os_free(download_info.p_json_buf);
+
+    if (!p_gw_cfg_tmp->ruuvi_cfg.remote.use_remote_cfg)
+    {
+        LOG_ERR("Invalid gw_cfg.json: 'use_remote_cfg' is missing or 'false'");
+        os_free(p_gw_cfg_tmp);
+        return HTTP_RESP_CODE_503; // 502
+    }
 
     const gw_cfg_update_status_t update_status = gw_cfg_update(p_gw_cfg_tmp);
     if (update_status.flag_eth_cfg_modified || update_status.flag_wifi_cfg_modified)
