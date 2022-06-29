@@ -916,6 +916,7 @@ http_server_gw_cfg_download_and_update(bool *const p_flag_reboot_needed)
         os_free(download_info.p_json_buf);
         return HTTP_RESP_CODE_503;
     }
+    os_free(download_info.p_json_buf);
 
     const gw_cfg_update_status_t update_status = gw_cfg_update(p_gw_cfg_tmp);
     if (update_status.flag_eth_cfg_modified || update_status.flag_wifi_cfg_modified)
