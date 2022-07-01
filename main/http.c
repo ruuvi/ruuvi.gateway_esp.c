@@ -566,7 +566,11 @@ http_download_with_auth(
         .keep_alive_interval         = 0,
         .keep_alive_count            = 0,
     };
-    LOG_INFO("http_download: %s", p_url);
+    LOG_INFO("http_download: URL: %s", p_url);
+    if (HTTP_AUTH_TYPE_BASIC == http_client_auth_type)
+    {
+        LOG_INFO("http_download: Auth: Basic, Username: %s", p_http_auth->auth_basic.user.buf);
+    }
     if (!gw_status_is_network_connected())
     {
         LOG_ERR("HTTP download failed - no network connection");
@@ -588,13 +592,16 @@ http_download_with_auth(
             LOG_ERR("Can't allocate memory for bearer token");
             return false;
         }
-        LOG_DBG("Add HTTP header: %s: %s", "Authorization", str_buf.buf);
+        LOG_INFO(
+            "http_download: Add HTTP header: %s: %s",
+            "Authorization",
+            (LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG) ? str_buf.buf : "********");
         esp_http_client_set_header(cb_info.http_handle, "Authorization", str_buf.buf);
         str_buf_free_buf(&str_buf);
     }
     if (NULL != p_extra_header_item)
     {
-        LOG_DBG("Add HTTP header: %s: %s", p_extra_header_item->p_key, p_extra_header_item->p_value);
+        LOG_INFO("http_download: Add HTTP header: %s: %s", p_extra_header_item->p_key, p_extra_header_item->p_value);
         esp_http_client_set_header(cb_info.http_handle, p_extra_header_item->p_key, p_extra_header_item->p_value);
     }
 

@@ -742,25 +742,89 @@ http_server_download_gw_cfg(void)
     const ruuvi_gw_cfg_remote_t *p_remote = gw_cfg_get_remote_cfg_copy();
     if (NULL == p_remote)
     {
-        const http_server_download_info_t info = {
+        const http_server_download_info_t download_info = {
             .is_error       = true,
             .http_resp_code = HTTP_RESP_CODE_503,
             .p_json_buf     = NULL,
             .json_buf_size  = 0,
         };
-        return info;
+        return download_info;
     }
 
-    const TimeUnitsSeconds_t          timeout_seconds = 10;
-    const http_server_download_info_t info            = http_download_json(
-        p_remote->url.buf,
-        timeout_seconds,
-        p_remote->auth_type,
-        &p_remote->auth,
-        &extra_header_item);
+    size_t base_url_len = strlen(p_remote->url.buf);
+    if (base_url_len < 3)
+    {
+        LOG_ERR("Remote cfg URL is too short: '%s'", p_remote->url.buf);
+        os_free(p_remote);
+        const http_server_download_info_t download_info = {
+            .is_error       = true,
+            .http_resp_code = HTTP_RESP_CODE_503,
+            .p_json_buf     = NULL,
+            .json_buf_size  = 0,
+        };
+        return download_info;
+    }
 
+    const TimeUnitsSeconds_t    timeout_seconds = 10;
+    http_server_download_info_t download_info   = { 0 };
+
+    const char *const p_ext = strrchr(p_remote->url.buf, '.');
+    if ((NULL != p_ext) && (0 == strcmp(".json", p_ext)))
+    {
+        LOG_INFO("Try to download gateway configuration from the remote server: %s", p_remote->url.buf);
+        download_info = http_download_json(
+            p_remote->url.buf,
+            timeout_seconds,
+            p_remote->auth_type,
+            &p_remote->auth,
+            &extra_header_item);
+    }
+    else
+    {
+        ruuvi_gw_cfg_http_url_t url = { 0 };
+        if ('/' == p_remote->url.buf[base_url_len - 1])
+        {
+            base_url_len -= 1;
+        }
+        (void)snprintf(
+            &url.buf[0],
+            sizeof(url.buf),
+            "%.*s/%.2s%.2s%.2s%.2s%.2s%.2s.json",
+            (printf_int_t)base_url_len,
+            &p_remote->url.buf[0],
+            &p_nrf52_mac_addr->str_buf[MAC_ADDR_STR_BYTE_OFFSET(0)],
+            &p_nrf52_mac_addr->str_buf[MAC_ADDR_STR_BYTE_OFFSET(1)],
+            &p_nrf52_mac_addr->str_buf[MAC_ADDR_STR_BYTE_OFFSET(2)],
+            &p_nrf52_mac_addr->str_buf[MAC_ADDR_STR_BYTE_OFFSET(3)],
+            &p_nrf52_mac_addr->str_buf[MAC_ADDR_STR_BYTE_OFFSET(4)],
+            &p_nrf52_mac_addr->str_buf[MAC_ADDR_STR_BYTE_OFFSET(5)]);
+        LOG_INFO("Try to download gateway configuration from the remote server: %s", url.buf);
+        download_info = http_download_json(
+            url.buf,
+            timeout_seconds,
+            p_remote->auth_type,
+            &p_remote->auth,
+            &extra_header_item);
+        if (download_info.is_error)
+        {
+            LOG_WARN("Download gw_cfg: failed, http_resp_code=%u", (printf_uint_t)download_info.http_resp_code);
+            (void)snprintf(
+                &url.buf[0],
+                sizeof(url.buf),
+                "%.*s/gw_cfg.json",
+                (printf_int_t)base_url_len,
+                p_remote->url.buf);
+            LOG_INFO("Try to download gateway configuration from the remote server: %s", url.buf);
+            download_info = http_download_json(
+                url.buf,
+                timeout_seconds,
+                p_remote->auth_type,
+                &p_remote->auth,
+                &extra_header_item);
+        }
+    }
     os_free(p_remote);
-    return info;
+    return download_info;
 }
 
 void
