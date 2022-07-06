@@ -7,7 +7,6 @@
 
 #include "http_server_cb.h"
 #include <string.h>
-#include "settings.h"
 #include "ruuvi_gateway.h"
 #include "cjson_wrap.h"
 #include "wifi_manager.h"
@@ -264,7 +263,7 @@ cb_on_http_download_json_data(
         LOG_ERR("Error occurred while downloading");
         return false;
     }
-    if (HTTP_RESP_CODE_302 == http_resp_code)
+    if ((HTTP_RESP_CODE_301 == http_resp_code) || (HTTP_RESP_CODE_302 == http_resp_code))
     {
         LOG_INFO("Got HTTP error %d: Redirect to another location", (printf_int_t)http_resp_code);
         return true;
