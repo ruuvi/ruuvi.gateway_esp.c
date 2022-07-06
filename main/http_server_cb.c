@@ -7,7 +7,6 @@
 
 #include "http_server_cb.h"
 #include <string.h>
-#include "settings.h"
 #include "ruuvi_gateway.h"
 #include "cjson_wrap.h"
 #include "wifi_manager.h"
@@ -264,7 +263,7 @@ cb_on_http_download_json_data(
         LOG_ERR("Error occurred while downloading");
         return false;
     }
-    if (HTTP_RESP_CODE_302 == http_resp_code)
+    if ((HTTP_RESP_CODE_301 == http_resp_code) || (HTTP_RESP_CODE_302 == http_resp_code))
     {
         LOG_INFO("Got HTTP error %d: Redirect to another location", (printf_int_t)http_resp_code);
         return true;
@@ -742,25 +741,89 @@ http_server_download_gw_cfg(void)
     const ruuvi_gw_cfg_remote_t *p_remote = gw_cfg_get_remote_cfg_copy();
     if (NULL == p_remote)
     {
-        const http_server_download_info_t info = {
+        const http_server_download_info_t download_info = {
             .is_error       = true,
             .http_resp_code = HTTP_RESP_CODE_503,
             .p_json_buf     = NULL,
             .json_buf_size  = 0,
         };
-        return info;
+        return download_info;
     }
 
-    const TimeUnitsSeconds_t          timeout_seconds = 10;
-    const http_server_download_info_t info            = http_download_json(
-        p_remote->url.buf,
-        timeout_seconds,
-        p_remote->auth_type,
-        &p_remote->auth,
-        &extra_header_item);
+    size_t base_url_len = strlen(p_remote->url.buf);
+    if (base_url_len < 3)
+    {
+        LOG_ERR("Remote cfg URL is too short: '%s'", p_remote->url.buf);
+        os_free(p_remote);
+        const http_server_download_info_t download_info = {
+            .is_error       = true,
+            .http_resp_code = HTTP_RESP_CODE_503,
+            .p_json_buf     = NULL,
+            .json_buf_size  = 0,
+        };
+        return download_info;
+    }
 
+    const TimeUnitsSeconds_t    timeout_seconds = 10;
+    http_server_download_info_t download_info   = { 0 };
+
+    const char *const p_ext = strrchr(p_remote->url.buf, '.');
+    if ((NULL != p_ext) && (0 == strcmp(".json", p_ext)))
+    {
+        LOG_INFO("Try to download gateway configuration from the remote server: %s", p_remote->url.buf);
+        download_info = http_download_json(
+            p_remote->url.buf,
+            timeout_seconds,
+            p_remote->auth_type,
+            &p_remote->auth,
+            &extra_header_item);
+    }
+    else
+    {
+        ruuvi_gw_cfg_http_url_t url = { 0 };
+        if ('/' == p_remote->url.buf[base_url_len - 1])
+        {
+            base_url_len -= 1;
+        }
+        (void)snprintf(
+            &url.buf[0],
+            sizeof(url.buf),
+            "%.*s/%.2s%.2s%.2s%.2s%.2s%.2s.json",
+            (printf_int_t)base_url_len,
+            &p_remote->url.buf[0],
+            &p_nrf52_mac_addr->str_buf[MAC_ADDR_STR_BYTE_OFFSET(0)],
+            &p_nrf52_mac_addr->str_buf[MAC_ADDR_STR_BYTE_OFFSET(1)],
+            &p_nrf52_mac_addr->str_buf[MAC_ADDR_STR_BYTE_OFFSET(2)],
+            &p_nrf52_mac_addr->str_buf[MAC_ADDR_STR_BYTE_OFFSET(3)],
+            &p_nrf52_mac_addr->str_buf[MAC_ADDR_STR_BYTE_OFFSET(4)],
+            &p_nrf52_mac_addr->str_buf[MAC_ADDR_STR_BYTE_OFFSET(5)]);
+        LOG_INFO("Try to download gateway configuration from the remote server: %s", url.buf);
+        download_info = http_download_json(
+            url.buf,
+            timeout_seconds,
+            p_remote->auth_type,
+            &p_remote->auth,
+            &extra_header_item);
+        if (download_info.is_error)
+        {
+            LOG_WARN("Download gw_cfg: failed, http_resp_code=%u", (printf_uint_t)download_info.http_resp_code);
+            (void)snprintf(
+                &url.buf[0],
+                sizeof(url.buf),
+                "%.*s/gw_cfg.json",
+                (printf_int_t)base_url_len,
+                p_remote->url.buf);
+            LOG_INFO("Try to download gateway configuration from the remote server: %s", url.buf);
+            download_info = http_download_json(
+                url.buf,
+                timeout_seconds,
+                p_remote->auth_type,
+                &p_remote->auth,
+                &extra_header_item);
+        }
+    }
     os_free(p_remote);
-    return info;
+    return download_info;
 }
 
 void
@@ -895,6 +958,16 @@ http_server_gw_cfg_download_and_update(bool *const p_flag_reboot_needed)
     LOG_INFO("Download gw_cfg: successfully completed");
     LOG_DBG("gw_cfg.json: %s", download_info.p_json_buf);
 
+    if ('{' != download_info.p_json_buf[0])
+    {
+        LOG_ERR(
+            "Invalid first byte of json, expected '{', actual '%c' (%d)",
+            download_info.p_json_buf[0],
+            (printf_int_t)download_info.p_json_buf[0]);
+        os_free(download_info.p_json_buf);
+        return HTTP_RESP_CODE_503; // 502
+    }
+
     gw_cfg_t *p_gw_cfg_tmp = os_calloc(1, sizeof(*p_gw_cfg_tmp));
     if (NULL == p_gw_cfg_tmp)
     {
@@ -903,6 +976,7 @@ http_server_gw_cfg_download_and_update(bool *const p_flag_reboot_needed)
         return HTTP_RESP_CODE_503;
     }
     gw_cfg_get_copy(p_gw_cfg_tmp);
+    p_gw_cfg_tmp->ruuvi_cfg.remote.use_remote_cfg = false;
 
     if (!gw_cfg_json_parse(
             "gw_cfg.json",
@@ -914,7 +988,15 @@ http_server_gw_cfg_download_and_update(bool *const p_flag_reboot_needed)
         LOG_ERR("Failed to parse gw_cfg.json or no memory");
         os_free(p_gw_cfg_tmp);
         os_free(download_info.p_json_buf);
-        return HTTP_RESP_CODE_503;
+        return HTTP_RESP_CODE_503; // 502
+    }
+    os_free(download_info.p_json_buf);
+
+    if (!p_gw_cfg_tmp->ruuvi_cfg.remote.use_remote_cfg)
+    {
+        LOG_ERR("Invalid gw_cfg.json: 'use_remote_cfg' is missing or 'false'");
+        os_free(p_gw_cfg_tmp);
+        return HTTP_RESP_CODE_503; // 502
     }
 
     const gw_cfg_update_status_t update_status = gw_cfg_update(p_gw_cfg_tmp);
