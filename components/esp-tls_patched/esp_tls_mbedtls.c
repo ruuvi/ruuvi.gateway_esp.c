@@ -163,11 +163,13 @@ ssize_t esp_mbedtls_read(esp_tls_t *tls, char *data, size_t datalen)
     ssize_t ret = mbedtls_ssl_read(&tls->ssl, (unsigned char *)data, datalen);
     if (ret < 0) {
         if (ret == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
+            errno = -ret;
             return 0;
         }
         if (ret != ESP_TLS_ERR_SSL_WANT_READ  && ret != ESP_TLS_ERR_SSL_WANT_WRITE) {
             ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_MBEDTLS, -ret);
             ESP_LOGE(TAG, "read error :%d:", ret);
+            errno = -ret;
         }
     }
     return ret;
