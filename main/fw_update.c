@@ -281,7 +281,7 @@ fw_update_handle_http_resp_code(
 {
     if (HTTP_RESP_CODE_200 != http_resp_code)
     {
-        if (HTTP_RESP_CODE_302 == http_resp_code)
+        if ((HTTP_RESP_CODE_301 == http_resp_code) || (HTTP_RESP_CODE_302 == http_resp_code))
         {
             LOG_INFO("Got HTTP error %d: Redirect to another location", (printf_int_t)http_resp_code);
             *p_result = true;

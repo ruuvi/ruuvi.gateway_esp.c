@@ -101,12 +101,12 @@ reset_task_handle_sig(const reset_task_sig_e reset_task_sig)
         case RESET_TASK_SIG_CONFIGURE_BUTTON_RELEASED:
             LOG_INFO("The CONFIGURE button has been released");
             os_timer_sig_one_shot_stop(g_p_timer_sig_reset_by_configure_button);
-            if (wifi_manager_is_connected_to_ethernet())
+            if (gw_cfg_get_eth_use_eth())
             {
                 LOG_INFO("Disconnect from Ethernet");
                 wifi_manager_disconnect_eth();
             }
-            if (wifi_manager_is_connected_to_wifi())
+            else
             {
                 LOG_INFO("Disconnect from WiFi");
                 wifi_manager_disconnect_wifi();
