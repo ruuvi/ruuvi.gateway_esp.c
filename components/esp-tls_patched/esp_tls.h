@@ -28,6 +28,8 @@
 #include "mbedtls/error.h"
 #include "mbedtls/certs.h"
 #include "mbedtls/timing.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #elif CONFIG_ESP_TLS_USING_WOLFSSL
 #include "wolfssl/wolfcrypt/settings.h"
 #include "wolfssl/ssl.h"
@@ -294,6 +296,15 @@ typedef struct esp_tls_cfg_server {
 } esp_tls_cfg_server_t;
 #endif /* ! CONFIG_ESP_TLS_SERVER */
 
+typedef struct esp_tls esp_tls_t;
+
+typedef struct esp_tls_async_dns_req_info_t
+{
+    bool flag_busy;
+    SemaphoreHandle_t p_dns_mutex;
+    esp_tls_t *tls;
+} esp_tls_async_dns_req_info_t;
+
 /**
  * @brief      ESP-TLS Connection Handle
  */
@@ -358,11 +369,11 @@ typedef struct esp_tls {
 #endif
     TickType_t timer_start;
     ip_addr_t remote_ip;
-    StaticSemaphore_t dns_mutex_mem;
     SemaphoreHandle_t dns_mutex;
     ip_addr_t dns_cb_remote_ip;
     bool dns_cb_status;
     bool dns_cb_ready;
+    esp_tls_async_dns_req_info_t* p_async_dns_req_info;
 } esp_tls_t;
 
 
