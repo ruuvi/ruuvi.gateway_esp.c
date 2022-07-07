@@ -13,6 +13,7 @@
 #include "esp_eth.h"
 #include "esp_eth_com.h"
 #include "esp_event.h"
+#include "esp_task_wdt.h"
 #include "mqtt.h"
 #include "ruuvi_gateway.h"
 #include "esp_netif.h"
@@ -383,7 +384,16 @@ ethernet_start(const char *const hostname)
         return;
     }
     LOG_INFO("Ethernet start");
+
+    // esp_eth_start can take a long time, about 5 seconds, so the task watchdog should be disabled
+    LOG_INFO("TaskWatchdog: Unregister current thread");
+    esp_task_wdt_delete(xTaskGetCurrentTaskHandle());
+
     esp_err_t err = esp_eth_start(g_eth_handle);
+
+    LOG_INFO("TaskWatchdog: Register current thread");
+    esp_task_wdt_add(xTaskGetCurrentTaskHandle());
+
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(err, "Ethernet start failed");
