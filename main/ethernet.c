@@ -385,14 +385,16 @@ ethernet_start(const char *const hostname)
     }
     LOG_INFO("Ethernet start");
 
-    // esp_eth_start can take a long time, about 5 seconds, so the task watchdog should be disabled
-    LOG_INFO("TaskWatchdog: Unregister current thread");
-    esp_task_wdt_delete(xTaskGetCurrentTaskHandle());
+    // esp_eth_start can take up to 4 seconds
+    // (see initialization of autonego_timeout_ms in macro ETH_PHY_DEFAULT_CONFIG, which is used in ethernet_init),
+    // task watchdog is configured to 5 seconds, and the feeding period of the task watchdog is 1 second,
+    // so to prevent the task watchdog from triggering, we must feed it before and after calling esp_eth_start.
+
+    esp_task_wdt_reset();
 
     esp_err_t err = esp_eth_start(g_eth_handle);
 
-    LOG_INFO("TaskWatchdog: Register current thread");
-    esp_task_wdt_add(xTaskGetCurrentTaskHandle());
+    esp_task_wdt_reset();
 
     if (ESP_OK != err)
     {
