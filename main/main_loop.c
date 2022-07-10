@@ -286,12 +286,6 @@ restart_services_internal(void)
     LOG_INFO("Restart services");
     if (mqtt_app_is_working())
     {
-        // mqtt_app_stop can take up to 4500 ms, so we need to feed the task watchdog here
-        const esp_err_t err = esp_task_wdt_reset();
-        if (ESP_OK != err)
-        {
-            LOG_ERR_ESP(err, "%s failed", "esp_task_wdt_reset");
-        }
         mqtt_app_stop();
     }
     start_services();

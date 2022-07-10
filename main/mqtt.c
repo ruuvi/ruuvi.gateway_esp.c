@@ -429,6 +429,15 @@ mqtt_app_stop(void)
 
         LOG_INFO("MQTT destroy");
 
+        // Calling esp_mqtt_client_destroy can take quite a long time (more than 5 seconds),
+        // depending on how quickly the server responds (it seems that esp_mqtt_client_stop takes most of the time).
+        // So, the only way to prevent the task watchdog from triggering is to disable it.
+        // If esp_mqtt_client_destroy is refactored in the future in an asynchronous manner,
+        // then this will allow us to opt out of disabling the task watchdog.
+
+        // TODO: Need to refactor esp_mqtt_client_destroy in an asynchronous manner, see issue:
+        // https://github.com/ruuvi/ruuvi.gateway_esp.c/issues/577
+
         esp_mqtt_client_destroy(p_mqtt_data->p_mqtt_client);
 
         LOG_INFO("MQTT destroyed");
