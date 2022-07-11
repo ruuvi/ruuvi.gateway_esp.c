@@ -906,6 +906,7 @@ http_server_cb_on_post_ruuvi(const char *p_body)
         restart_services();
         adv_post_enable_retransmission();
     }
+    os_free(p_gw_cfg_tmp);
 
     return http_server_resp_data_in_flash(
         HTTP_CONENT_TYPE_APPLICATION_JSON,
