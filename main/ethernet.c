@@ -13,6 +13,7 @@
 #include "esp_eth.h"
 #include "esp_eth_com.h"
 #include "esp_event.h"
+#include "esp_task_wdt.h"
 #include "mqtt.h"
 #include "ruuvi_gateway.h"
 #include "esp_netif.h"
@@ -383,7 +384,18 @@ ethernet_start(const char *const hostname)
         return;
     }
     LOG_INFO("Ethernet start");
+
+    // esp_eth_start can take up to 4 seconds
+    // (see initialization of autonego_timeout_ms in macro ETH_PHY_DEFAULT_CONFIG, which is used in ethernet_init),
+    // task watchdog is configured to 5 seconds, and the feeding period of the task watchdog is 1 second,
+    // so to prevent the task watchdog from triggering, we must feed it before and after calling esp_eth_start.
+
+    esp_task_wdt_reset();
+
     esp_err_t err = esp_eth_start(g_eth_handle);
+
+    esp_task_wdt_reset();
+
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(err, "Ethernet start failed");
