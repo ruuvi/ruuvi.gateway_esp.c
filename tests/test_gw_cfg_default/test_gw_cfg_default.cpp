@@ -10,6 +10,7 @@
 #include "esp_log_wrapper.hpp"
 #include "os_mutex_recursive.h"
 #include "os_mutex.h"
+#include "os_task.h"
 #include "lwip/ip4_addr.h"
 #include "event_mgr.h"
 
@@ -28,6 +29,12 @@ os_task_get_name(void)
 {
     static const char g_task_name[] = "main";
     return const_cast<char *>(g_task_name);
+}
+
+os_task_priority_t
+os_task_get_priority(void)
+{
+    return 0;
 }
 
 } // extern "C"

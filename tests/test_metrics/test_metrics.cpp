@@ -13,6 +13,7 @@
 #include "os_malloc.h"
 #include "os_mutex.h"
 #include "os_mutex_recursive.h"
+#include "os_task.h"
 #include "mac_addr.h"
 #include "gw_mac.h"
 #include "nrf52fw.h"
@@ -181,6 +182,12 @@ os_task_get_name(void)
 {
     static const char g_task_name[] = "main";
     return const_cast<char *>(g_task_name);
+}
+
+os_task_priority_t
+os_task_get_priority(void)
+{
+    return 0;
 }
 
 os_mutex_recursive_t

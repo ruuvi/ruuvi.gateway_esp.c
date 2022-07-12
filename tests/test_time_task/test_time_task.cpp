@@ -497,10 +497,10 @@ freertos_startup(void *p_arg)
 }
 
 #define TEST_CHECK_LOG_RECORD_TIME(level_, thread_, msg_) \
-    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD_WITH_THREAD("TIME", level_, thread_, msg_);
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD_WITH_THREAD("TIME", level_, thread_, 1, msg_);
 
 #define TEST_CHECK_LOG_RECORD_OS_TASK(level_, thread_, msg_) \
-    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD_WITH_THREAD("os_task", level_, thread_, msg_);
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD_WITH_THREAD("os_task", level_, thread_, 1, msg_);
 
 /*** Unit-Tests
  * *******************************************************************************************************/
