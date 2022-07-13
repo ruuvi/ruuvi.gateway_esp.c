@@ -224,8 +224,8 @@ main_task_handle_sig_deactivate_wifi_ap(void)
     {
         wifi_manager_connect_async();
     }
+    restart_services();
 
-    main_task_configure_periodic_remote_cfg_check();
     leds_indication_network_no_connection();
 }
 
