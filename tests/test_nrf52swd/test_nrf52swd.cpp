@@ -12,7 +12,7 @@
 #include "gtest/gtest.h"
 #include "esp_log_wrapper.hpp"
 #include "esp_err.h"
-#include "freertos/FreeRTOS.h"
+#include "os_task.h"
 #include "libswd.h"
 #include "nrf52swd.h"
 
@@ -36,6 +36,12 @@ os_task_get_name(void)
 {
     static const char g_task_name[] = "main";
     return const_cast<char *>(g_task_name);
+}
+
+os_task_priority_t
+os_task_get_priority(void)
+{
+    return 0;
 }
 
 /*** gpio_switch_ctrl.c stub functions
