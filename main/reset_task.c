@@ -13,6 +13,7 @@
 #include "wifi_manager.h"
 #include "leds.h"
 #include "ruuvi_gateway.h"
+#include "mqtt.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -101,10 +102,20 @@ reset_task_handle_sig(const reset_task_sig_e reset_task_sig)
         case RESET_TASK_SIG_CONFIGURE_BUTTON_RELEASED:
             LOG_INFO("The CONFIGURE button has been released");
             os_timer_sig_one_shot_stop(g_p_timer_sig_reset_by_configure_button);
+            if (mqtt_app_is_working())
+            {
+                LOG_INFO("MQTT is active - stop it");
+                mqtt_app_stop();
+            }
+            else
+            {
+                LOG_INFO("MQTT is not active");
+            }
             if (gw_cfg_get_eth_use_eth())
             {
                 LOG_INFO("Disconnect from Ethernet");
                 wifi_manager_disconnect_eth();
+                ethernet_stop();
             }
             else
             {
@@ -113,8 +124,7 @@ reset_task_handle_sig(const reset_task_sig_e reset_task_sig)
             }
             if (!wifi_manager_is_ap_active())
             {
-                LOG_INFO("WiFi AP is not active - stop Ethernet and start WiFi AP");
-                ethernet_stop();
+                LOG_INFO("WiFi AP is not active - start WiFi AP");
                 wifi_manager_start_ap();
                 main_task_stop_timer_check_for_remote_cfg();
                 leds_indication_on_hotspot_activation();
