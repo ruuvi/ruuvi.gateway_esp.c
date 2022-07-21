@@ -70,7 +70,7 @@ typedef struct adv_post_state_t
 #define ADV_POST_SIG_LAST  (ADV_POST_SIG_GW_CFG_CHANGED_RUUVI)
 
 static void
-adv_post_send_report(void *arg);
+adv_post_send_report(void *p_arg);
 
 static void
 adv_post_send_ack(void *arg);
@@ -218,7 +218,7 @@ adv_post_cb_on_recv_device_id(void *p_arg)
 }
 
 static void
-adv_post_send_report(void *arg)
+adv_post_send_report(void *p_arg)
 {
     if (!gw_cfg_is_initialized())
     {
@@ -228,7 +228,13 @@ adv_post_send_report(void *arg)
 
     if (!gw_status_is_network_connected())
     {
-        LOG_WARN("Drop adv - no network connection");
+        static TickType_t g_last_tick_log_printed = 0;
+        const TickType_t  cur_tick                = xTaskGetTickCount();
+        if ((cur_tick - g_last_tick_log_printed) >= pdMS_TO_TICKS(60 * 1000))
+        {
+            LOG_WARN("Drop adv - no network connection");
+            g_last_tick_log_printed = cur_tick;
+        }
         return;
     }
 
@@ -242,9 +248,9 @@ adv_post_send_report(void *arg)
     const time_t timestamp = flag_ntp_use ? time(NULL) : (time_t)metrics_received_advs_get();
 
     adv_report_t adv_report = { 0 };
-    if (!parse_adv_report_from_uart((re_ca_uart_payload_t *)arg, timestamp, &adv_report))
+    if (!parse_adv_report_from_uart((re_ca_uart_payload_t *)p_arg, timestamp, &adv_report))
     {
-        LOG_WARN("Drop adv - %s failed", "parse_adv_report_from_uart");
+        LOG_WARN("Drop adv - parsing failed");
         return;
     }
 
