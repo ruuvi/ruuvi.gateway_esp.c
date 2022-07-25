@@ -416,6 +416,15 @@ gw_cfg_json_parse_mqtt(const cJSON *const p_json_root, ruuvi_gw_cfg_mqtt_t *cons
             "mqtt_prefix",
             p_gw_cfg_mqtt->mqtt_prefix.buf);
     }
+    if ('\0' == p_gw_cfg_mqtt->mqtt_prefix.buf[0])
+    {
+        const ruuvi_gw_cfg_mqtt_t *const p_default_mqtt = gw_cfg_default_get_mqtt();
+        p_gw_cfg_mqtt->mqtt_prefix                      = p_default_mqtt->mqtt_prefix;
+        LOG_WARN(
+            "Key '%s' is empty in config-json, use default value: %s",
+            "mqtt_prefix",
+            p_gw_cfg_mqtt->mqtt_prefix.buf);
+    }
     if (!gw_cfg_json_copy_string_val(
             p_json_root,
             "mqtt_client_id",
@@ -426,6 +435,15 @@ gw_cfg_json_parse_mqtt(const cJSON *const p_json_root, ruuvi_gw_cfg_mqtt_t *cons
         p_gw_cfg_mqtt->mqtt_client_id                   = p_default_mqtt->mqtt_client_id;
         LOG_WARN(
             "Can't find key '%s' in config-json, use default value: %s",
+            "mqtt_client_id",
+            p_gw_cfg_mqtt->mqtt_client_id.buf);
+    }
+    if ('\0' == p_gw_cfg_mqtt->mqtt_client_id.buf[0])
+    {
+        const ruuvi_gw_cfg_mqtt_t *const p_default_mqtt = gw_cfg_default_get_mqtt();
+        p_gw_cfg_mqtt->mqtt_client_id                   = p_default_mqtt->mqtt_client_id;
+        LOG_WARN(
+            "Key '%s' is empty in config-json, use default value: %s",
             "mqtt_client_id",
             p_gw_cfg_mqtt->mqtt_client_id.buf);
     }
