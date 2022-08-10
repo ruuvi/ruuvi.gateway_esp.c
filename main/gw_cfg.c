@@ -565,19 +565,19 @@ wifiman_config_cmp_settings_sta(const wifi_settings_sta_t *const p_wifi1, const 
 static bool
 wifiman_config_cmp(const wifiman_config_t *const p_wifi1, const wifiman_config_t *const p_wifi2)
 {
-    if (!wifiman_config_cmp_config_ap(&p_wifi1->wifi_config_ap, &p_wifi2->wifi_config_ap))
+    if (!wifiman_config_cmp_config_ap(&p_wifi1->ap.wifi_config_ap, &p_wifi2->ap.wifi_config_ap))
     {
         return false;
     }
-    if (!wifiman_config_cmp_settings_ap(&p_wifi1->wifi_settings_ap, &p_wifi2->wifi_settings_ap))
+    if (!wifiman_config_cmp_settings_ap(&p_wifi1->ap.wifi_settings_ap, &p_wifi2->ap.wifi_settings_ap))
     {
         return false;
     }
-    if (!wifiman_config_cmp_sta_config(&p_wifi1->wifi_config_sta, &p_wifi2->wifi_config_sta))
+    if (!wifiman_config_cmp_sta_config(&p_wifi1->sta.wifi_config_sta, &p_wifi2->sta.wifi_config_sta))
     {
         return false;
     }
-    if (!wifiman_config_cmp_settings_sta(&p_wifi1->wifi_settings_sta, &p_wifi2->wifi_settings_sta))
+    if (!wifiman_config_cmp_settings_sta(&p_wifi1->sta.wifi_settings_sta, &p_wifi2->sta.wifi_settings_sta))
     {
         return false;
     }

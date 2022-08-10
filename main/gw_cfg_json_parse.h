@@ -44,7 +44,8 @@ gw_cfg_json_parse_cjson(
     gw_cfg_device_info_t *const p_dev_info,
     gw_cfg_ruuvi_t *const       p_ruuvi_cfg,
     gw_cfg_eth_t *const         p_eth_cfg,
-    wifiman_config_t *const     p_wifi_cfg);
+    wifiman_config_ap_t *const  p_wifi_cfg_ap,
+    wifiman_config_sta_t *const p_wifi_cfg_sta);
 
 void
 gw_cfg_json_parse_cjson_ruuvi(
@@ -57,6 +58,18 @@ gw_cfg_json_parse_cjson_eth(
     const cJSON *const  p_json_root,
     const char *const   p_log_title,
     gw_cfg_eth_t *const p_eth_cfg);
+
+void
+gw_cfg_json_parse_cjson_wifi_ap(
+    const cJSON *const         p_json_root,
+    const char *const          p_log_title,
+    wifiman_config_ap_t *const p_wifi_cfg_ap);
+
+void
+gw_cfg_json_parse_cjson_wifi_sta(
+    const cJSON *const          p_json_root,
+    const char *const           p_log_title,
+    wifiman_config_sta_t *const p_wifi_cfg_sta);
 
 #if RUUVI_TESTS_GW_CFG_JSON
 

@@ -287,7 +287,8 @@ settings_get_from_flash(void)
     const bool flag_wifi_cfg_blob_used = wifi_manager_cfg_blob_read(&p_gw_cfg_tmp->wifi_cfg);
     if (flag_wifi_cfg_blob_used)
     {
-        gw_cfg_log_wifi_cfg(&p_gw_cfg_tmp->wifi_cfg, "Got wifi_cfg from NVS BLOB:");
+        gw_cfg_log_wifi_cfg_ap(&p_gw_cfg_tmp->wifi_cfg.ap, "Got wifi_cfg from NVS BLOB:");
+        gw_cfg_log_wifi_cfg_sta(&p_gw_cfg_tmp->wifi_cfg.sta, "Got wifi_cfg from NVS BLOB:");
     }
 
     if (flag_modified || flag_wifi_cfg_blob_used)

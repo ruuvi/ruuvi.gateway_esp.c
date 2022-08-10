@@ -6002,8 +6002,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'coordinates' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'use_eth' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'eth_dhcp' in config-json"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'wifi_sta_config' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'wifi_ap_config' in config-json"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'wifi_sta_config' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("gw_cfg: device_info differs: esp32_fw_ver: cur=v1.10.0, prev="));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     cjson_wrap_free_json_str(&json_str);

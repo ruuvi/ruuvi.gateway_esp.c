@@ -88,7 +88,7 @@ gw_cfg_json_add_items_wifi_sta_config(cJSON *const p_json_root, const wifiman_co
         LOG_ERR("Can't add json item: %s", "wifi_sta_config");
         return false;
     }
-    const wifi_sta_config_t *const p_wifi_cfg_sta = &p_wifi_cfg->wifi_config_sta;
+    const wifi_sta_config_t *const p_wifi_cfg_sta = &p_wifi_cfg->sta.wifi_config_sta;
     if (!gw_cfg_json_add_string(p_cjson, "ssid", (char *)p_wifi_cfg_sta->ssid))
     {
         return false;
@@ -109,7 +109,7 @@ gw_cfg_json_add_items_wifi_ap_config(cJSON *const p_json_root, const wifiman_con
         LOG_ERR("Can't add json item: %s", "wifi_ap_config");
         return false;
     }
-    const wifi_ap_config_t *const p_wifi_cfg_ap = &p_wifi_cfg->wifi_config_ap;
+    const wifi_ap_config_t *const p_wifi_cfg_ap = &p_wifi_cfg->ap.wifi_config_ap;
     if (!gw_cfg_json_add_string(p_cjson, "password", (char *)p_wifi_cfg_ap->password))
     {
         return false;
