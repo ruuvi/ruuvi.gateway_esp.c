@@ -269,9 +269,9 @@ cb_on_ap_sta_disconnected(void)
 }
 
 static void
-cb_save_wifi_config(const wifiman_config_t *const p_wifi_cfg)
+cb_save_wifi_config(const wifiman_config_sta_t *const p_wifi_cfg_sta)
 {
-    gw_cfg_update_wifi_config(p_wifi_cfg);
+    gw_cfg_update_wifi_sta_config(p_wifi_cfg_sta);
 }
 
 void
@@ -368,7 +368,7 @@ wifi_init(
         .cb_on_disconnect_sta_cmd  = &cb_on_disconnect_sta_cmd,
         .cb_on_ap_sta_connected    = &cb_on_ap_sta_connected,
         .cb_on_ap_sta_disconnected = &cb_on_ap_sta_disconnected,
-        .cb_save_wifi_config       = &cb_save_wifi_config,
+        .cb_save_wifi_config_sta   = &cb_save_wifi_config,
     };
     wifi_manager_start(
         !flag_use_eth,

@@ -234,7 +234,7 @@ esp_ip4addr_aton(const char *addr)
 }
 
 void
-wifi_manager_cb_save_wifi_config(const wifiman_config_t *const p_cfg)
+wifi_manager_cb_save_wifi_config_sta(const wifiman_config_sta_t *const p_cfg_sta)
 {
 }
 
