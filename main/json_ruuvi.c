@@ -51,8 +51,20 @@ json_ruuvi_parse_http_body(const char *const p_body, gw_cfg_t *const p_gw_cfg, b
     }
     if (flag_network_cfg)
     {
-        p_gw_cfg->eth_cfg = *gw_cfg_default_get_eth();
-        gw_cfg_json_parse_cjson_eth(p_json_root, "Gateway SETTINGS (via HTTP):", &p_gw_cfg->eth_cfg);
+        p_gw_cfg->eth_cfg         = *gw_cfg_default_get_eth();
+        p_gw_cfg->eth_cfg.use_eth = use_eth;
+        if (use_eth)
+        {
+            gw_cfg_json_parse_cjson_eth(p_json_root, "Gateway SETTINGS (via HTTP):", &p_gw_cfg->eth_cfg);
+        }
+        else
+        {
+            gw_cfg_json_parse_cjson_wifi_ap(
+                p_json_root,
+                "Gateway SETTINGS (via HTTP):",
+                &p_gw_cfg->eth_cfg,
+                &p_gw_cfg->wifi_cfg.ap);
+        }
     }
     else
     {

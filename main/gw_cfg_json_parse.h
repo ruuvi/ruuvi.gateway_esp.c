@@ -63,6 +63,7 @@ void
 gw_cfg_json_parse_cjson_wifi_ap(
     const cJSON *const         p_json_root,
     const char *const          p_log_title,
+    gw_cfg_eth_t *const        p_eth_cfg,
     wifiman_config_ap_t *const p_wifi_cfg_ap);
 
 void

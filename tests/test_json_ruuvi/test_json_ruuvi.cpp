@@ -329,7 +329,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_network_cfg_wifi) // NOLINT
 {
     const string http_body = string(
         "{\n"
-        "\t\"use_eth\":\tfalse\n"
+        "\t\"use_eth\":\tfalse,\n"
+        "\t\"wifi_ap_config\":\t{\n"
+        "\t\t\"channel\":\t3\n"
+        "\t}\n"
         "}");
 
     gw_cfg_t gw_cfg = { 0 };
@@ -348,6 +351,20 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_network_cfg_wifi) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: GW: ");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: DNS1: ");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: DNS2: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'wifi_ap_config/password' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "channel: 3");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: wifi_ap_config: SSID: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: wifi_ap_config: password: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: wifi_ap_config: ssid_len: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: wifi_ap_config: channel: 3");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: wifi_ap_config: auth_mode: OPEN");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: wifi_ap_config: ssid_hidden: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: wifi_ap_config: max_connections: 4");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: wifi_ap_config: beacon_interval: 100");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: wifi_ap_settings: bandwidth: 20MHz");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: wifi_ap_settings: IP: 10.10.0.1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: wifi_ap_settings: GW: 10.10.0.1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: wifi_ap_settings: Netmask: 255.255.255.0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 

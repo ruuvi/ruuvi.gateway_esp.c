@@ -779,6 +779,18 @@ gw_cfg_json_parse_cjson_wifi_ap_config(const cJSON *const p_json_wifi_ap_cfg, wi
     {
         LOG_WARN("Can't find key '%s' in config-json", "wifi_ap_config/password");
     }
+    if (!gw_cfg_json_get_uint8_val(p_json_wifi_ap_cfg, "channel", &p_wifi_ap_cfg->channel))
+    {
+        LOG_WARN("Can't find key '%s' in config-json", "wifi_ap_config/channel");
+    }
+    if (0 == p_wifi_ap_cfg->channel)
+    {
+        p_wifi_ap_cfg->channel = 1;
+        LOG_WARN(
+            "Key '%s' in config-json is zero, use default value: %d",
+            "wifi_ap_config/channel",
+            (printf_int_t)p_wifi_ap_cfg->channel);
+    }
 }
 
 static void
@@ -913,9 +925,10 @@ void
 gw_cfg_json_parse_cjson_wifi_ap(
     const cJSON *const         p_json_root,
     const char *const          p_log_title,
+    gw_cfg_eth_t *const        p_eth_cfg,
     wifiman_config_ap_t *const p_wifi_cfg_ap)
 {
-    gw_cfg_json_parse_cjson(p_json_root, p_log_title, NULL, NULL, NULL, p_wifi_cfg_ap, NULL);
+    gw_cfg_json_parse_cjson(p_json_root, p_log_title, NULL, NULL, p_eth_cfg, p_wifi_cfg_ap, NULL);
 }
 
 void
