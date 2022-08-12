@@ -175,16 +175,25 @@ gw_cfg_log_wifi_settings_sta(const wifi_settings_sta_t *const p_settings_sta)
 }
 
 void
-gw_cfg_log_wifi_cfg(const wifiman_config_t *const p_wifi_cfg, const char *const p_title)
+gw_cfg_log_wifi_cfg_ap(const wifiman_config_ap_t *const p_wifi_cfg_ap, const char *const p_title)
 {
     if (NULL != p_title)
     {
         LOG_INFO("%s", p_title);
     }
-    gw_cfg_log_wifi_config_ap(&p_wifi_cfg->wifi_config_ap);
-    gw_cfg_log_wifi_settings_ap(&p_wifi_cfg->wifi_settings_ap);
-    gw_cfg_log_wifi_config_sta(&p_wifi_cfg->wifi_config_sta);
-    gw_cfg_log_wifi_settings_sta(&p_wifi_cfg->wifi_settings_sta);
+    gw_cfg_log_wifi_config_ap(&p_wifi_cfg_ap->wifi_config_ap);
+    gw_cfg_log_wifi_settings_ap(&p_wifi_cfg_ap->wifi_settings_ap);
+}
+
+void
+gw_cfg_log_wifi_cfg_sta(const wifiman_config_sta_t *const p_wifi_cfg_sta, const char *const p_title)
+{
+    if (NULL != p_title)
+    {
+        LOG_INFO("%s", p_title);
+    }
+    gw_cfg_log_wifi_config_sta(&p_wifi_cfg_sta->wifi_config_sta);
+    gw_cfg_log_wifi_settings_sta(&p_wifi_cfg_sta->wifi_settings_sta);
 }
 
 void
@@ -402,5 +411,6 @@ gw_cfg_log(const gw_cfg_t *const p_gw_cfg, const char *const p_title, const bool
     }
     gw_cfg_log_eth_cfg(&p_gw_cfg->eth_cfg, NULL);
     gw_cfg_log_ruuvi_cfg(&p_gw_cfg->ruuvi_cfg, NULL);
-    gw_cfg_log_wifi_cfg(&p_gw_cfg->wifi_cfg, NULL);
+    gw_cfg_log_wifi_cfg_ap(&p_gw_cfg->wifi_cfg.ap, NULL);
+    gw_cfg_log_wifi_cfg_sta(&p_gw_cfg->wifi_cfg.sta, NULL);
 }

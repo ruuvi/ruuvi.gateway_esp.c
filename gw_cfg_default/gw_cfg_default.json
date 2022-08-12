@@ -4,7 +4,8 @@
     "password": ""
   },
   "wifi_ap_config": {
-    "password": ""
+    "password": "",
+    "channel": 1
   },
   "use_eth": true,
   "eth_dhcp": true,

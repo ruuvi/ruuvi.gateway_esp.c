@@ -894,6 +894,9 @@ http_server_cb_on_post_ruuvi(const char *p_body)
     if (flag_network_cfg)
     {
         gw_cfg_update_eth_cfg(&p_gw_cfg_tmp->eth_cfg);
+        gw_cfg_update_wifi_ap_config(&p_gw_cfg_tmp->wifi_cfg.ap);
+        wifi_manager_set_config_ap(&p_gw_cfg_tmp->wifi_cfg.ap);
+
         adv_post_disable_retransmission();
         if (p_gw_cfg_tmp->eth_cfg.use_eth)
         {
@@ -1001,7 +1004,8 @@ http_server_gw_cfg_download_and_update(bool *const p_flag_reboot_needed)
     }
 
     const gw_cfg_update_status_t update_status = gw_cfg_update(p_gw_cfg_tmp);
-    if (update_status.flag_eth_cfg_modified || update_status.flag_wifi_cfg_modified)
+    if (update_status.flag_eth_cfg_modified || update_status.flag_wifi_ap_cfg_modified
+        || update_status.flag_wifi_sta_cfg_modified)
     {
         LOG_INFO("Network configuration in gw_cfg.json differs from the current settings, need to restart gateway");
         if (NULL != p_flag_reboot_needed)

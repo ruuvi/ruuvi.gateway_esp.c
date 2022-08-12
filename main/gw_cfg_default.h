@@ -59,8 +59,11 @@ gw_cfg_default_get_lan_auth(void);
 const gw_cfg_eth_t *
 gw_cfg_default_get_eth(void);
 
-const wifi_sta_config_t *
-gw_cfg_default_get_wifi_sta_config_ptr(void);
+const wifiman_config_ap_t *
+gw_cfg_default_get_wifi_config_ap_ptr(void);
+
+const wifiman_config_sta_t *
+gw_cfg_default_get_wifi_config_sta_ptr(void);
 
 const wifiman_wifi_ssid_t *
 gw_cfg_default_get_wifi_ap_ssid(void);

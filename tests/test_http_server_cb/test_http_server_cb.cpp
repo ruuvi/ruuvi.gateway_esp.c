@@ -429,7 +429,12 @@ esp_ip4addr_aton(const char *addr)
 }
 
 void
-wifi_manager_cb_save_wifi_config(const wifiman_config_t *const p_cfg)
+wifi_manager_set_config_ap(const wifiman_config_ap_t *const p_wifi_cfg_ap)
+{
+}
+
+void
+wifi_manager_cb_save_wifi_config_sta(const wifiman_config_sta_t *const p_cfg_sta)
 {
 }
 
@@ -637,6 +642,12 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
           "\t\"fw_ver\":\t\"v1.3.3\",\n"
           "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
           "\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
+          "\t\"wifi_sta_config\":\t{\n"
+          "\t\t\"ssid\":\t\"\"\n"
+          "\t},\n"
+          "\t\"wifi_ap_config\":\t{\n"
+          "\t\t\"channel\":\t1\n"
+          "\t},\n"
           "\t\"use_eth\":\ttrue,\n"
           "\t\"eth_dhcp\":\ttrue,\n"
           "\t\"eth_static_ip\":\t\"\",\n"
@@ -833,6 +844,12 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
           "\t\"fw_ver\":\t\"v1.3.3\",\n"
           "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
           "\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
+          "\t\"wifi_sta_config\":\t{\n"
+          "\t\t\"ssid\":\t\"\"\n"
+          "\t},\n"
+          "\t\"wifi_ap_config\":\t{\n"
+          "\t\t\"channel\":\t1\n"
+          "\t},\n"
           "\t\"use_eth\":\ttrue,\n"
           "\t\"eth_dhcp\":\ttrue,\n"
           "\t\"eth_static_ip\":\t\"\",\n"
@@ -1285,6 +1302,12 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
           "\t\"fw_ver\":\t\"v1.3.3\",\n"
           "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
           "\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
+          "\t\"wifi_sta_config\":\t{\n"
+          "\t\t\"ssid\":\t\"\"\n"
+          "\t},\n"
+          "\t\"wifi_ap_config\":\t{\n"
+          "\t\t\"channel\":\t1\n"
+          "\t},\n"
           "\t\"use_eth\":\ttrue,\n"
           "\t\"eth_dhcp\":\ttrue,\n"
           "\t\"eth_static_ip\":\t\"\",\n"

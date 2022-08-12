@@ -80,7 +80,10 @@ gw_cfg_json_add_items_device_info(cJSON *const p_json_root, const gw_cfg_device_
 }
 
 static bool
-gw_cfg_json_add_items_wifi_sta_config(cJSON *const p_json_root, const wifiman_config_t *const p_wifi_cfg)
+gw_cfg_json_add_items_wifi_sta_config(
+    cJSON *const                  p_json_root,
+    const wifiman_config_t *const p_wifi_cfg,
+    const bool                    flag_hide_passwords)
 {
     cJSON *const p_cjson = cJSON_AddObjectToObject(p_json_root, "wifi_sta_config");
     if (NULL == p_cjson)
@@ -88,20 +91,26 @@ gw_cfg_json_add_items_wifi_sta_config(cJSON *const p_json_root, const wifiman_co
         LOG_ERR("Can't add json item: %s", "wifi_sta_config");
         return false;
     }
-    const wifi_sta_config_t *const p_wifi_cfg_sta = &p_wifi_cfg->wifi_config_sta;
+    const wifi_sta_config_t *const p_wifi_cfg_sta = &p_wifi_cfg->sta.wifi_config_sta;
     if (!gw_cfg_json_add_string(p_cjson, "ssid", (char *)p_wifi_cfg_sta->ssid))
     {
         return false;
     }
-    if (!gw_cfg_json_add_string(p_cjson, "password", (char *)p_wifi_cfg_sta->password))
+    if (!flag_hide_passwords)
     {
-        return false;
+        if (!gw_cfg_json_add_string(p_cjson, "password", (char *)p_wifi_cfg_sta->password))
+        {
+            return false;
+        }
     }
     return true;
 }
 
 static bool
-gw_cfg_json_add_items_wifi_ap_config(cJSON *const p_json_root, const wifiman_config_t *const p_wifi_cfg)
+gw_cfg_json_add_items_wifi_ap_config(
+    cJSON *const                  p_json_root,
+    const wifiman_config_t *const p_wifi_cfg,
+    const bool                    flag_hide_passwords)
 {
     cJSON *const p_cjson = cJSON_AddObjectToObject(p_json_root, "wifi_ap_config");
     if (NULL == p_cjson)
@@ -109,8 +118,15 @@ gw_cfg_json_add_items_wifi_ap_config(cJSON *const p_json_root, const wifiman_con
         LOG_ERR("Can't add json item: %s", "wifi_ap_config");
         return false;
     }
-    const wifi_ap_config_t *const p_wifi_cfg_ap = &p_wifi_cfg->wifi_config_ap;
-    if (!gw_cfg_json_add_string(p_cjson, "password", (char *)p_wifi_cfg_ap->password))
+    const wifi_ap_config_t *const p_wifi_cfg_ap = &p_wifi_cfg->ap.wifi_config_ap;
+    if (!flag_hide_passwords)
+    {
+        if (!gw_cfg_json_add_string(p_cjson, "password", (char *)p_wifi_cfg_ap->password))
+        {
+            return false;
+        }
+    }
+    if (!gw_cfg_json_add_number(p_cjson, "channel", (0 != p_wifi_cfg_ap->channel) ? p_wifi_cfg_ap->channel : 1))
     {
         return false;
     }
@@ -513,16 +529,13 @@ gw_cfg_json_add_items(cJSON *const p_json_root, const gw_cfg_t *p_cfg, const boo
     {
         return false;
     }
-    if (!flag_hide_passwords)
+    if (!gw_cfg_json_add_items_wifi_sta_config(p_json_root, &p_cfg->wifi_cfg, flag_hide_passwords))
     {
-        if (!gw_cfg_json_add_items_wifi_sta_config(p_json_root, &p_cfg->wifi_cfg))
-        {
-            return false;
-        }
-        if (!gw_cfg_json_add_items_wifi_ap_config(p_json_root, &p_cfg->wifi_cfg))
-        {
-            return false;
-        }
+        return false;
+    }
+    if (!gw_cfg_json_add_items_wifi_ap_config(p_json_root, &p_cfg->wifi_cfg, flag_hide_passwords))
+    {
+        return false;
     }
     if (!gw_cfg_json_add_items_eth(p_json_root, &p_cfg->eth_cfg))
     {

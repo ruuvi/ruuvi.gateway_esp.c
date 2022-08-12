@@ -563,7 +563,7 @@ wifiman_config_cmp_settings_sta(const wifi_settings_sta_t *const p_wifi1, const 
 }
 
 static bool
-wifiman_config_cmp(const wifiman_config_t *const p_wifi1, const wifiman_config_t *const p_wifi2)
+wifiman_config_ap_cmp(const wifiman_config_ap_t *const p_wifi1, const wifiman_config_ap_t *const p_wifi2)
 {
     if (!wifiman_config_cmp_config_ap(&p_wifi1->wifi_config_ap, &p_wifi2->wifi_config_ap))
     {
@@ -573,6 +573,12 @@ wifiman_config_cmp(const wifiman_config_t *const p_wifi1, const wifiman_config_t
     {
         return false;
     }
+    return true;
+}
+
+static bool
+wifiman_config_sta_cmp(const wifiman_config_sta_t *const p_wifi1, const wifiman_config_sta_t *const p_wifi2)
+{
     if (!wifiman_config_cmp_sta_config(&p_wifi1->wifi_config_sta, &p_wifi2->wifi_config_sta))
     {
         return false;
@@ -633,32 +639,51 @@ gw_cfg_set_eth(
 }
 
 static void
-gw_cfg_set_wifi(
-    const wifiman_config_t *const p_gw_cfg_wifi,
-    wifiman_config_t *const       p_gw_cfg_wifi_dst,
-    bool *const                   p_wifi_cfg_modified)
+gw_cfg_set_wifi_ap(
+    const wifiman_config_ap_t *const p_gw_cfg_wifi_ap,
+    wifiman_config_ap_t *const       p_gw_cfg_wifi_ap_dst,
+    bool *const                      p_wifi_cfg_modified)
 {
-    if (!wifiman_config_cmp(p_gw_cfg_wifi_dst, p_gw_cfg_wifi))
+    if (!wifiman_config_ap_cmp(p_gw_cfg_wifi_ap_dst, p_gw_cfg_wifi_ap))
     {
         if (g_gw_cfg_ready)
         {
             event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_WIFI);
         }
-        *p_wifi_cfg_modified = true;
-        *p_gw_cfg_wifi_dst   = *p_gw_cfg_wifi;
+        *p_wifi_cfg_modified  = true;
+        *p_gw_cfg_wifi_ap_dst = *p_gw_cfg_wifi_ap;
+    }
+}
+
+static void
+gw_cfg_set_wifi_sta(
+    const wifiman_config_sta_t *const p_gw_cfg_wifi_sta,
+    wifiman_config_sta_t *const       p_gw_cfg_wifi_sta_dst,
+    bool *const                       p_wifi_cfg_modified)
+{
+    if (!wifiman_config_sta_cmp(p_gw_cfg_wifi_sta_dst, p_gw_cfg_wifi_sta))
+    {
+        if (g_gw_cfg_ready)
+        {
+            event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_WIFI);
+        }
+        *p_wifi_cfg_modified   = true;
+        *p_gw_cfg_wifi_sta_dst = *p_gw_cfg_wifi_sta;
     }
 }
 
 static gw_cfg_update_status_t
 gw_cfg_set(
-    const gw_cfg_ruuvi_t *const   p_gw_cfg_ruuvi,
-    const gw_cfg_eth_t *const     p_gw_cfg_eth,
-    const wifiman_config_t *const p_gw_cfg_wifi)
+    const gw_cfg_ruuvi_t *const       p_gw_cfg_ruuvi,
+    const gw_cfg_eth_t *const         p_gw_cfg_eth,
+    const wifiman_config_ap_t *const  p_gw_cfg_wifi_ap,
+    const wifiman_config_sta_t *const p_gw_cfg_wifi_sta)
 {
     gw_cfg_update_status_t update_status = {
-        .flag_ruuvi_cfg_modified = false,
-        .flag_eth_cfg_modified   = false,
-        .flag_wifi_cfg_modified  = false,
+        .flag_ruuvi_cfg_modified    = false,
+        .flag_eth_cfg_modified      = false,
+        .flag_wifi_ap_cfg_modified  = false,
+        .flag_wifi_sta_cfg_modified = false,
     };
 
     os_mutex_recursive_lock(g_gw_cfg_mutex);
@@ -672,12 +697,16 @@ gw_cfg_set(
     {
         gw_cfg_set_eth(p_gw_cfg_eth, &p_gw_cfg_dst->eth_cfg, &update_status.flag_eth_cfg_modified);
     }
-    if (NULL != p_gw_cfg_wifi)
+    if (NULL != p_gw_cfg_wifi_ap)
     {
-        gw_cfg_set_wifi(p_gw_cfg_wifi, &p_gw_cfg_dst->wifi_cfg, &update_status.flag_wifi_cfg_modified);
+        gw_cfg_set_wifi_ap(p_gw_cfg_wifi_ap, &p_gw_cfg_dst->wifi_cfg.ap, &update_status.flag_wifi_ap_cfg_modified);
+    }
+    if (NULL != p_gw_cfg_wifi_sta)
+    {
+        gw_cfg_set_wifi_sta(p_gw_cfg_wifi_sta, &p_gw_cfg_dst->wifi_cfg.sta, &update_status.flag_wifi_sta_cfg_modified);
     }
     if ((update_status.flag_ruuvi_cfg_modified || update_status.flag_eth_cfg_modified
-         || update_status.flag_wifi_cfg_modified)
+         || update_status.flag_wifi_ap_cfg_modified || update_status.flag_wifi_sta_cfg_modified)
         && (NULL != g_p_gw_cfg_cb_on_change_cfg))
     {
         g_p_gw_cfg_cb_on_change_cfg(p_gw_cfg_dst);
@@ -695,25 +724,31 @@ gw_cfg_set(
 void
 gw_cfg_update_eth_cfg(const gw_cfg_eth_t *const p_gw_cfg_eth_new)
 {
-    gw_cfg_set(NULL, p_gw_cfg_eth_new, NULL);
+    gw_cfg_set(NULL, p_gw_cfg_eth_new, NULL, NULL);
 }
 
 void
 gw_cfg_update_ruuvi_cfg(const gw_cfg_ruuvi_t *const p_gw_cfg_ruuvi_new)
 {
-    gw_cfg_set(p_gw_cfg_ruuvi_new, NULL, NULL);
+    gw_cfg_set(p_gw_cfg_ruuvi_new, NULL, NULL, NULL);
 }
 
 void
-gw_cfg_update_wifi_config(const wifiman_config_t *const p_wifi_cfg)
+gw_cfg_update_wifi_ap_config(const wifiman_config_ap_t *const p_wifi_ap_cfg)
 {
-    gw_cfg_set(NULL, NULL, p_wifi_cfg);
+    gw_cfg_set(NULL, NULL, p_wifi_ap_cfg, NULL);
+}
+
+void
+gw_cfg_update_wifi_sta_config(const wifiman_config_sta_t *const p_wifi_sta_cfg)
+{
+    gw_cfg_set(NULL, NULL, NULL, p_wifi_sta_cfg);
 }
 
 gw_cfg_update_status_t
 gw_cfg_update(const gw_cfg_t *const p_gw_cfg)
 {
-    return gw_cfg_set(&p_gw_cfg->ruuvi_cfg, &p_gw_cfg->eth_cfg, &p_gw_cfg->wifi_cfg);
+    return gw_cfg_set(&p_gw_cfg->ruuvi_cfg, &p_gw_cfg->eth_cfg, &p_gw_cfg->wifi_cfg.ap, &p_gw_cfg->wifi_cfg.sta);
 }
 
 void

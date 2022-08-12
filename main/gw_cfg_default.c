@@ -243,10 +243,16 @@ gw_cfg_default_get_eth(void)
     return &g_gw_cfg_default.eth_cfg;
 }
 
-const wifi_sta_config_t *
-gw_cfg_default_get_wifi_sta_config_ptr(void)
+const wifiman_config_ap_t *
+gw_cfg_default_get_wifi_config_ap_ptr(void)
 {
-    return &g_gw_cfg_default.wifi_cfg.wifi_config_sta;
+    return &g_gw_cfg_default.wifi_cfg.ap;
+}
+
+const wifiman_config_sta_t *
+gw_cfg_default_get_wifi_config_sta_ptr(void)
+{
+    return &g_gw_cfg_default.wifi_cfg.sta;
 }
 
 const wifiman_wifi_ssid_t *

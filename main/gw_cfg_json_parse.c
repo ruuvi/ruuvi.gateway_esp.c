@@ -769,13 +769,6 @@ gw_cfg_json_parse_cjson_wifi_sta_settings(
 }
 
 static void
-gw_cfg_json_parse_cjson_wifi_sta(const cJSON *const p_json_wifi_sta_cfg, wifiman_config_t *const p_wifi_cfg)
-{
-    gw_cfg_json_parse_cjson_wifi_sta_config(p_json_wifi_sta_cfg, &p_wifi_cfg->wifi_config_sta);
-    gw_cfg_json_parse_cjson_wifi_sta_settings(p_json_wifi_sta_cfg, &p_wifi_cfg->wifi_settings_sta);
-}
-
-static void
 gw_cfg_json_parse_cjson_wifi_ap_config(const cJSON *const p_json_wifi_ap_cfg, wifi_ap_config_t *const p_wifi_ap_cfg)
 {
     if (!json_wrap_copy_string_val(
@@ -785,6 +778,18 @@ gw_cfg_json_parse_cjson_wifi_ap_config(const cJSON *const p_json_wifi_ap_cfg, wi
             sizeof(p_wifi_ap_cfg->password)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "wifi_ap_config/password");
+    }
+    if (!gw_cfg_json_get_uint8_val(p_json_wifi_ap_cfg, "channel", &p_wifi_ap_cfg->channel))
+    {
+        LOG_WARN("Can't find key '%s' in config-json", "wifi_ap_config/channel");
+    }
+    if (0 == p_wifi_ap_cfg->channel)
+    {
+        p_wifi_ap_cfg->channel = 1;
+        LOG_WARN(
+            "Key '%s' in config-json is zero, use default value: %d",
+            "wifi_ap_config/channel",
+            (printf_int_t)p_wifi_ap_cfg->channel);
     }
 }
 
@@ -796,13 +801,6 @@ gw_cfg_json_parse_cjson_wifi_ap_settings(
     (void)p_json_wifi_ap_cfg;
     (void)p_wifi_ap_settings;
     // Storing wifi_settings_ap in json is not currently supported.
-}
-
-static void
-gw_cfg_json_parse_cjson_wifi_ap(const cJSON *const p_json_wifi_ap_cfg, wifiman_config_t *const p_wifi_cfg)
-{
-    gw_cfg_json_parse_cjson_wifi_ap_config(p_json_wifi_ap_cfg, &p_wifi_cfg->wifi_config_ap);
-    gw_cfg_json_parse_cjson_wifi_ap_settings(p_json_wifi_ap_cfg, &p_wifi_cfg->wifi_settings_ap);
 }
 
 static void
@@ -834,7 +832,8 @@ gw_cfg_json_parse_cjson(
     gw_cfg_device_info_t *const p_dev_info,
     gw_cfg_ruuvi_t *const       p_ruuvi_cfg,
     gw_cfg_eth_t *const         p_eth_cfg,
-    wifiman_config_t *const     p_wifi_cfg)
+    wifiman_config_ap_t *const  p_wifi_cfg_ap,
+    wifiman_config_sta_t *const p_wifi_cfg_sta)
 {
     if (NULL != p_log_title)
     {
@@ -865,7 +864,26 @@ gw_cfg_json_parse_cjson(
         }
     }
 
-    if (NULL != p_wifi_cfg)
+    if (NULL != p_wifi_cfg_ap)
+    {
+        const cJSON *const p_json_wifi_ap_cfg = cJSON_GetObjectItem(p_json_root, "wifi_ap_config");
+        if (NULL == p_json_wifi_ap_cfg)
+        {
+            LOG_WARN("Can't find key '%s' in config-json", "wifi_ap_config");
+        }
+        else
+        {
+            gw_cfg_json_parse_cjson_wifi_ap_config(p_json_wifi_ap_cfg, &p_wifi_cfg_ap->wifi_config_ap);
+            gw_cfg_json_parse_cjson_wifi_ap_settings(p_json_wifi_ap_cfg, &p_wifi_cfg_ap->wifi_settings_ap);
+        }
+
+        if (NULL != p_log_title)
+        {
+            gw_cfg_log_wifi_cfg_ap(p_wifi_cfg_ap, NULL);
+        }
+    }
+
+    if (NULL != p_wifi_cfg_sta)
     {
         const cJSON *const p_json_wifi_sta_cfg = cJSON_GetObjectItem(p_json_root, "wifi_sta_config");
         if (NULL == p_json_wifi_sta_cfg)
@@ -874,20 +892,13 @@ gw_cfg_json_parse_cjson(
         }
         else
         {
-            gw_cfg_json_parse_cjson_wifi_sta(p_json_wifi_sta_cfg, p_wifi_cfg);
+            gw_cfg_json_parse_cjson_wifi_sta_config(p_json_wifi_sta_cfg, &p_wifi_cfg_sta->wifi_config_sta);
+            gw_cfg_json_parse_cjson_wifi_sta_settings(p_json_wifi_sta_cfg, &p_wifi_cfg_sta->wifi_settings_sta);
         }
-        const cJSON *const p_json_wifi_ap_cfg = cJSON_GetObjectItem(p_json_root, "wifi_ap_config");
-        if (NULL == p_json_wifi_ap_cfg)
-        {
-            LOG_WARN("Can't find key '%s' in config-json", "wifi_ap_config");
-        }
-        else
-        {
-            gw_cfg_json_parse_cjson_wifi_ap(p_json_wifi_ap_cfg, p_wifi_cfg);
-        }
+
         if (NULL != p_log_title)
         {
-            gw_cfg_log_wifi_cfg(p_wifi_cfg, NULL);
+            gw_cfg_log_wifi_cfg_sta(p_wifi_cfg_sta, NULL);
         }
     }
 }
@@ -898,7 +909,7 @@ gw_cfg_json_parse_cjson_ruuvi(
     const char *const     p_log_title,
     gw_cfg_ruuvi_t *const p_ruuvi_cfg)
 {
-    gw_cfg_json_parse_cjson(p_json_root, p_log_title, NULL, p_ruuvi_cfg, NULL, NULL);
+    gw_cfg_json_parse_cjson(p_json_root, p_log_title, NULL, p_ruuvi_cfg, NULL, NULL, NULL);
 }
 
 void
@@ -907,7 +918,26 @@ gw_cfg_json_parse_cjson_eth(
     const char *const   p_log_title,
     gw_cfg_eth_t *const p_eth_cfg)
 {
-    gw_cfg_json_parse_cjson(p_json_root, p_log_title, NULL, NULL, p_eth_cfg, NULL);
+    gw_cfg_json_parse_cjson(p_json_root, p_log_title, NULL, NULL, p_eth_cfg, NULL, NULL);
+}
+
+void
+gw_cfg_json_parse_cjson_wifi_ap(
+    const cJSON *const         p_json_root,
+    const char *const          p_log_title,
+    gw_cfg_eth_t *const        p_eth_cfg,
+    wifiman_config_ap_t *const p_wifi_cfg_ap)
+{
+    gw_cfg_json_parse_cjson(p_json_root, p_log_title, NULL, NULL, p_eth_cfg, p_wifi_cfg_ap, NULL);
+}
+
+void
+gw_cfg_json_parse_cjson_wifi_sta(
+    const cJSON *const          p_json_root,
+    const char *const           p_log_title,
+    wifiman_config_sta_t *const p_wifi_cfg_sta)
+{
+    gw_cfg_json_parse_cjson(p_json_root, p_log_title, NULL, NULL, NULL, NULL, p_wifi_cfg_sta);
 }
 
 static bool
@@ -977,7 +1007,8 @@ gw_cfg_json_parse(
         &dev_info,
         &p_gw_cfg->ruuvi_cfg,
         &p_gw_cfg->eth_cfg,
-        &p_gw_cfg->wifi_cfg);
+        &p_gw_cfg->wifi_cfg.ap,
+        &p_gw_cfg->wifi_cfg.sta);
 
     if ((NULL != p_flag_dev_info_modified) && (!gw_cfg_json_compare_device_info(&dev_info, &p_gw_cfg->device_info)))
     {
