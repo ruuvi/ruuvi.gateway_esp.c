@@ -426,7 +426,7 @@ handle_reset_button_is_pressed_during_boot(void)
     ruuvi_nvs_init();
 
     settings_write_flag_rebooting_after_auto_update(false);
-    settings_write_flag_force_start_wifi_hotspot(true);
+    settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_PERMANENT);
 
     LOG_INFO("Wait until the CONFIGURE button is released");
     leds_indication_on_configure_button_press();
@@ -549,9 +549,10 @@ network_subsystem_init(void)
 
     const wifiman_config_t wifi_cfg = gw_cfg_get_wifi_cfg();
 
+    const force_start_wifi_hotspot_t force_start_wifi_hotspot = settings_read_flag_force_start_wifi_hotspot();
     if (!wifi_init(
             gw_cfg_get_eth_use_eth(),
-            settings_read_flag_force_start_wifi_hotspot(),
+            ((FORCE_START_WIFI_HOTSPOT_DISABLED != force_start_wifi_hotspot) ? true : false),
             &wifi_cfg,
             fw_update_get_current_fatfs_gwui_partition_name()))
     {
@@ -561,10 +562,13 @@ network_subsystem_init(void)
     configure_wifi_country_and_max_tx_power();
     ethernet_init(&ethernet_link_up_cb, &ethernet_link_down_cb, &ethernet_connection_ok_cb);
 
-    if (settings_read_flag_force_start_wifi_hotspot())
+    if (FORCE_START_WIFI_HOTSPOT_DISABLED != force_start_wifi_hotspot)
     {
         LOG_INFO("Force start WiFi hotspot");
-        settings_write_flag_force_start_wifi_hotspot(false);
+        if (force_start_wifi_hotspot == FORCE_START_WIFI_HOTSPOT_ONCE)
+        {
+            settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_DISABLED);
+        }
         if (!wifi_manager_is_ap_active())
         {
             wifi_manager_start_ap();
@@ -616,7 +620,7 @@ ruuvi_cb_on_change_cfg(const gw_cfg_t *const p_gw_cfg)
     }
 }
 
-static void
+static bool
 ruuvi_init_gw_cfg(
     const ruuvi_nrf52_fw_ver_t *const p_nrf52_fw_ver,
     const nrf52_device_info_t *const  p_nrf52_device_info)
@@ -633,15 +637,17 @@ ruuvi_init_gw_cfg(
     gw_cfg_default_init(&gw_cfg_default_init_param, &gw_cfg_default_json_read);
     gw_cfg_init(&ruuvi_cb_on_change_cfg);
 
-    const gw_cfg_t *p_gw_cfg_tmp = settings_get_from_flash();
+    bool flag_default_cfg_used = false;
+    const gw_cfg_t *p_gw_cfg_tmp = settings_get_from_flash(&flag_default_cfg_used);
     if (NULL == p_gw_cfg_tmp)
     {
         LOG_ERR("Can't get settings from flash");
-        return;
+        return false;
     }
     gw_cfg_log(p_gw_cfg_tmp, "Gateway SETTINGS (from flash)", false);
     (void)gw_cfg_update(p_gw_cfg_tmp);
     os_free(p_gw_cfg_tmp);
+    return !flag_default_cfg_used;
 }
 
 static bool
@@ -709,7 +715,10 @@ main_task_init(void)
 
     settings_update_mac_addr(nrf52_device_info.nrf52_mac_addr);
 
-    ruuvi_init_gw_cfg(&nrf52_fw_ver, &nrf52_device_info);
+    if (!ruuvi_init_gw_cfg(&nrf52_fw_ver, &nrf52_device_info))
+    {
+        settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_PERMANENT);
+    }
 
     hmac_sha256_set_key_str(gw_cfg_get_nrf52_device_id()->str_buf); // set default encryption key
 

@@ -758,7 +758,7 @@ fw_update_task(void)
                 break;
             case FW_UPDATE_REASON_MANUAL_VIA_HOTSPOT:
                 LOG_INFO("Firmware updating completed successfully (manual updating via WiFi hotspot)");
-                settings_write_flag_force_start_wifi_hotspot(true);
+                settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_ONCE);
                 break;
             case FW_UPDATE_REASON_MANUAL_VIA_LAN:
                 LOG_INFO("Firmware updating completed successfully (manual updating via LAN)");
