@@ -255,7 +255,7 @@ settings_read_from_blob(nvs_handle handle, gw_cfg_t *const p_gw_cfg)
 }
 
 const gw_cfg_t *
-settings_get_from_flash(bool* const p_flag_default_cfg_used)
+settings_get_from_flash(bool *const p_flag_default_cfg_used)
 {
     gw_cfg_t *p_gw_cfg_tmp = os_calloc(1, sizeof(*p_gw_cfg_tmp));
     if (NULL == p_gw_cfg_tmp)

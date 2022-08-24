@@ -637,8 +637,8 @@ ruuvi_init_gw_cfg(
     gw_cfg_default_init(&gw_cfg_default_init_param, &gw_cfg_default_json_read);
     gw_cfg_init(&ruuvi_cb_on_change_cfg);
 
-    bool flag_default_cfg_used = false;
-    const gw_cfg_t *p_gw_cfg_tmp = settings_get_from_flash(&flag_default_cfg_used);
+    bool            flag_default_cfg_used = false;
+    const gw_cfg_t *p_gw_cfg_tmp          = settings_get_from_flash(&flag_default_cfg_used);
     if (NULL == p_gw_cfg_tmp)
     {
         LOG_ERR("Can't get settings from flash");
