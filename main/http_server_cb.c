@@ -902,13 +902,6 @@ http_server_cb_on_post_ruuvi(const char *p_body)
         {
             ethernet_update_ip();
         }
-        const force_start_wifi_hotspot_t force_start_wifi_hotspot = settings_read_flag_force_start_wifi_hotspot();
-        if (FORCE_START_WIFI_HOTSPOT_PERMANENT == force_start_wifi_hotspot)
-        {
-            /* A permanent start-up of the Wi-Fi hotspot should be performed after each reboot
-             * only until a new non-default configuration is saved */
-            settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_DISABLED);
-        }
     }
     else
     {
