@@ -34,8 +34,10 @@
 #define RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_KEY   "ruuvi_auto_udp"
 #define RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_VALUE (0xAACC5533U)
 
-#define RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_KEY   "ruuvi_wifi_ap"
-#define RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_VALUE (0xAACC5533U)
+#define RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_KEY       "ruuvi_wifi_ap"
+#define RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_DISABLED  (0)
+#define RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_ONCE      (0xAACC5533U)
+#define RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_PERMANENT (0xBBDD6677U)
 
 static const char TAG[] = "settings";
 
@@ -253,7 +255,7 @@ settings_read_from_blob(nvs_handle handle, gw_cfg_t *const p_gw_cfg)
 }
 
 const gw_cfg_t *
-settings_get_from_flash(void)
+settings_get_from_flash(bool *const p_flag_default_cfg_used)
 {
     gw_cfg_t *p_gw_cfg_tmp = os_calloc(1, sizeof(*p_gw_cfg_tmp));
     if (NULL == p_gw_cfg_tmp)
@@ -277,6 +279,7 @@ settings_get_from_flash(void)
         }
         nvs_close(handle);
     }
+    *p_flag_default_cfg_used = flag_use_default_config;
     if (flag_use_default_config)
     {
         LOG_WARN("Using default config");
@@ -419,52 +422,75 @@ settings_write_flag_rebooting_after_auto_update(const bool flag_rebooting_after_
     nvs_close(handle);
 }
 
-bool
+force_start_wifi_hotspot_t
 settings_read_flag_force_start_wifi_hotspot(void)
 {
-    uint32_t   flag_force_start_wifi_hotspot = 0;
-    nvs_handle handle                        = 0;
+    uint32_t   flag_force_start_wifi_hotspot_val = 0;
+    nvs_handle handle                            = 0;
     if (!ruuvi_nvs_open(NVS_READONLY, &handle))
     {
-        LOG_WARN("ruuvi_nvs_open failed, flag_force_start_wifi_hotspot = false");
-        return false;
+        LOG_WARN("ruuvi_nvs_open failed, flag_force_start_wifi_hotspot_val = false");
+        return FORCE_START_WIFI_HOTSPOT_DISABLED;
     }
-    size_t    sz      = sizeof(flag_force_start_wifi_hotspot);
+    size_t    sz      = sizeof(flag_force_start_wifi_hotspot_val);
     esp_err_t esp_err = nvs_get_blob(
         handle,
         RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_KEY,
-        &flag_force_start_wifi_hotspot,
+        &flag_force_start_wifi_hotspot_val,
         &sz);
     if (ESP_OK != esp_err)
     {
         LOG_WARN_ESP(esp_err, "Can't read '%s' from flash", RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_KEY);
         nvs_close(handle);
-        settings_write_flag_force_start_wifi_hotspot(false);
+        settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_DISABLED);
     }
     else
     {
         nvs_close(handle);
     }
-    if (RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_VALUE == flag_force_start_wifi_hotspot)
+
+    force_start_wifi_hotspot_t force_start_wifi_hotspot = FORCE_START_WIFI_HOTSPOT_DISABLED;
+    switch (flag_force_start_wifi_hotspot_val)
     {
-        return true;
+        case RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_DISABLED:
+            force_start_wifi_hotspot = FORCE_START_WIFI_HOTSPOT_DISABLED;
+            break;
+        case RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_ONCE:
+            force_start_wifi_hotspot = FORCE_START_WIFI_HOTSPOT_ONCE;
+            break;
+        case RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_PERMANENT:
+            force_start_wifi_hotspot = FORCE_START_WIFI_HOTSPOT_PERMANENT;
+            break;
+        default:
+            force_start_wifi_hotspot = FORCE_START_WIFI_HOTSPOT_DISABLED;
+            break;
     }
-    return false;
+    return force_start_wifi_hotspot;
 }
 
 void
-settings_write_flag_force_start_wifi_hotspot(const bool flag_force_start_wifi_hotspot)
+settings_write_flag_force_start_wifi_hotspot(const force_start_wifi_hotspot_t force_start_wifi_hotspot)
 {
     nvs_handle handle = 0;
-    LOG_INFO("SETTINGS: Write flag_force_start_wifi_hotspot: %d", flag_force_start_wifi_hotspot);
+    LOG_INFO("SETTINGS: Write flag_force_start_wifi_hotspot: %d", (printf_int_t)force_start_wifi_hotspot);
     if (!ruuvi_nvs_open(NVS_READWRITE, &handle))
     {
         LOG_ERR("%s failed", "ruuvi_nvs_open");
         return;
     }
-    const uint32_t flag_force_start_wifi_hotspot_val = flag_force_start_wifi_hotspot
-                                                           ? RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_VALUE
-                                                           : 0;
+    uint32_t flag_force_start_wifi_hotspot_val = RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_DISABLED;
+    switch (force_start_wifi_hotspot)
+    {
+        case FORCE_START_WIFI_HOTSPOT_DISABLED:
+            flag_force_start_wifi_hotspot_val = RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_DISABLED;
+            break;
+        case FORCE_START_WIFI_HOTSPOT_ONCE:
+            flag_force_start_wifi_hotspot_val = RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_ONCE;
+            break;
+        case FORCE_START_WIFI_HOTSPOT_PERMANENT:
+            flag_force_start_wifi_hotspot_val = RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_PERMANENT;
+            break;
+    }
     const esp_err_t esp_err = nvs_set_blob(
         handle,
         RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_KEY,
