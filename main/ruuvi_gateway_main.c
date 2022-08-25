@@ -174,7 +174,6 @@ static void
 ethernet_connection_ok_cb(const esp_netif_ip_info_t *p_ip_info)
 {
     LOG_INFO("Ethernet connected");
-    leds_indication_on_network_ok();
     if (!gw_cfg_get_eth_use_eth())
     {
         LOG_INFO("The Ethernet cable was connected, but the Ethernet was not configured");
@@ -221,7 +220,6 @@ wifi_connection_ok_cb(void *p_param)
     gw_status_set_wifi_connected();
     start_services();
     event_mgr_notify(EVENT_MGR_EV_WIFI_CONNECTED);
-    leds_indication_on_network_ok();
 }
 
 static void
