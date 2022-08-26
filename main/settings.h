@@ -30,7 +30,7 @@ void
 settings_save_to_flash(const gw_cfg_t *const p_gw_cfg);
 
 const gw_cfg_t *
-settings_get_from_flash(bool *const p_flag_default_cfg_used);
+settings_get_from_flash(bool *const p_flag_default_cfg_is_used);
 
 mac_address_bin_t
 settings_read_mac_addr(void);

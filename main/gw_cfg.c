@@ -705,10 +705,12 @@ gw_cfg_set(
     {
         gw_cfg_set_wifi_sta(p_gw_cfg_wifi_sta, &p_gw_cfg_dst->wifi_cfg.sta, &update_status.flag_wifi_sta_cfg_modified);
     }
-    if ((update_status.flag_ruuvi_cfg_modified || update_status.flag_eth_cfg_modified
-         || update_status.flag_wifi_ap_cfg_modified || update_status.flag_wifi_sta_cfg_modified)
-        && (NULL != g_p_gw_cfg_cb_on_change_cfg))
+    if (NULL != g_p_gw_cfg_cb_on_change_cfg)
     {
+        // We don't need to check update_status before calling g_p_gw_cfg_cb_on_change_cfg
+        // because this callback will compare and update the configuration in NVS if they don't match.
+        // Moreover, in case if the configuration in NVS is absent and the default configuration is used,
+        // then update_status can show that updating is not needed, but it is required.
         g_p_gw_cfg_cb_on_change_cfg(p_gw_cfg_dst);
     }
     if (!g_gw_cfg_ready)

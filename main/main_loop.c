@@ -17,6 +17,10 @@
 #include "mqtt.h"
 #include "time_task.h"
 #include "event_mgr.h"
+#include "os_malloc.h"
+#include "gw_cfg.h"
+#include "gw_cfg_default.h"
+#include "gw_cfg_log.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -42,10 +46,11 @@ typedef enum main_task_sig_e
     MAIN_TASK_SIG_NETWORK_CONNECTED                   = OS_SIGNAL_NUM_8,
     MAIN_TASK_SIG_TASK_WATCHDOG_FEED                  = OS_SIGNAL_NUM_9,
     MAIN_TASK_SIG_TASK_RECONNECT_NETWORK              = OS_SIGNAL_NUM_10,
+    MAIN_TASK_SIG_SET_DEFAULT_CONFIG                  = OS_SIGNAL_NUM_11,
 } main_task_sig_e;
 
 #define MAIN_TASK_SIG_FIRST (MAIN_TASK_SIG_LOG_HEAP_USAGE)
-#define MAIN_TASK_SIG_LAST  (MAIN_TASK_SIG_TASK_RECONNECT_NETWORK)
+#define MAIN_TASK_SIG_LAST  (MAIN_TASK_SIG_SET_DEFAULT_CONFIG)
 
 static os_signal_t *                  g_p_signal_main_task;
 static os_signal_static_t             g_signal_main_task_mem;
@@ -289,6 +294,22 @@ main_task_handle_sig_task_network_reconnect(void)
     }
 }
 
+void
+main_task_handle_sig_set_default_config(void)
+{
+    LOG_INFO("Set default config");
+    gw_cfg_t *p_gw_cfg = os_calloc(1, sizeof(*p_gw_cfg));
+    if (NULL == p_gw_cfg)
+    {
+        LOG_ERR("Can't allocate memory for gw_cfg");
+        return;
+    }
+    gw_cfg_default_get(p_gw_cfg);
+    gw_cfg_log(p_gw_cfg, "Gateway SETTINGS", false);
+    (void)gw_cfg_update(p_gw_cfg);
+    os_free(p_gw_cfg);
+}
+
 static void
 restart_services_internal(void)
 {
@@ -337,6 +358,9 @@ main_task_handle_sig(const main_task_sig_e main_task_sig)
             break;
         case MAIN_TASK_SIG_TASK_RECONNECT_NETWORK:
             main_task_handle_sig_task_network_reconnect();
+            break;
+        case MAIN_TASK_SIG_SET_DEFAULT_CONFIG:
+            main_task_handle_sig_set_default_config();
             break;
     }
 }
@@ -443,6 +467,7 @@ main_task_init_signals(void)
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_NETWORK_CONNECTED));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_WATCHDOG_FEED));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_RECONNECT_NETWORK));
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_SET_DEFAULT_CONFIG));
 }
 
 void
@@ -528,6 +553,12 @@ void
 main_task_send_sig_reconnect_network(void)
 {
     os_signal_send(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_RECONNECT_NETWORK));
+}
+
+void
+main_task_send_sig_set_default_config(void)
+{
+    os_signal_send(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_SET_DEFAULT_CONFIG));
 }
 
 void

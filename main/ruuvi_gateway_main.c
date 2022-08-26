@@ -68,6 +68,8 @@ uint32_t volatile g_network_disconnect_cnt;
 static mbedtls_entropy_context  g_entropy;
 static mbedtls_ctr_drbg_context g_ctr_drbg;
 
+static bool g_flag_default_cfg_is_used;
+
 static inline uint8_t
 conv_bool_to_u8(const bool x)
 {
@@ -156,7 +158,8 @@ generate_wifi_ap_ssid(const mac_address_bin_t mac_addr)
 static void
 ethernet_link_up_cb(void)
 {
-    LOG_INFO("Ethernet connection established");
+    LOG_INFO("Ethernet link up");
+    gw_status_set_eth_link_up();
 }
 
 static void
@@ -174,22 +177,10 @@ static void
 ethernet_connection_ok_cb(const esp_netif_ip_info_t *p_ip_info)
 {
     LOG_INFO("Ethernet connected");
-    if (!gw_cfg_get_eth_use_eth())
+    if (g_flag_default_cfg_is_used)
     {
-        LOG_INFO("The Ethernet cable was connected, but the Ethernet was not configured");
-        LOG_INFO("Set the default configuration with Ethernet and DHCP enabled");
-        gw_cfg_t *p_gw_cfg = os_calloc(1, sizeof(*p_gw_cfg));
-        if (NULL == p_gw_cfg)
-        {
-            LOG_ERR("Can't allocate memory for gw_cfg");
-            return;
-        }
-        gw_cfg_default_get(p_gw_cfg);
-        p_gw_cfg->eth_cfg.use_eth  = true;
-        p_gw_cfg->eth_cfg.eth_dhcp = true;
-        gw_cfg_log(p_gw_cfg, "Gateway SETTINGS", false);
-        (void)gw_cfg_update(p_gw_cfg);
-        os_free(p_gw_cfg);
+        LOG_INFO("The Ethernet cable was connected, but Gateway has not configured yet - set default configuration");
+        main_task_send_sig_set_default_config();
     }
     const struct dhcp *p_dhcp  = NULL;
     esp_ip4_addr_t     dhcp_ip = { 0 };
@@ -541,7 +532,7 @@ configure_mbedtls_rng(void)
 }
 
 static bool
-network_subsystem_init(void)
+network_subsystem_init(const bool flag_default_cfg_is_used)
 {
     configure_mbedtls_rng();
 
@@ -582,6 +573,19 @@ network_subsystem_init(void)
         if (gw_cfg_get_eth_use_eth() || (!wifi_manager_is_sta_configured()))
         {
             ethernet_start(gw_cfg_get_wifi_ap_ssid()->ssid_buf);
+            if (!gw_status_is_eth_link_up() && flag_default_cfg_is_used)
+            {
+                LOG_INFO("Force start WiFi hotspot (default cfg is used and there is no Ethernet connection)");
+                if (!wifi_manager_is_ap_active())
+                {
+                    wifi_manager_start_ap();
+                }
+                else
+                {
+                    LOG_INFO("WiFi hotspot is already active");
+                }
+                main_task_start_timer_after_hotspot_activation();
+            }
         }
         else
         {
@@ -635,17 +639,20 @@ ruuvi_init_gw_cfg(
     gw_cfg_default_init(&gw_cfg_default_init_param, &gw_cfg_default_json_read);
     gw_cfg_init(&ruuvi_cb_on_change_cfg);
 
-    bool            flag_default_cfg_used = false;
-    const gw_cfg_t *p_gw_cfg_tmp          = settings_get_from_flash(&flag_default_cfg_used);
+    bool            flag_default_cfg_is_used = false;
+    const gw_cfg_t *p_gw_cfg_tmp             = settings_get_from_flash(&flag_default_cfg_is_used);
     if (NULL == p_gw_cfg_tmp)
     {
         LOG_ERR("Can't get settings from flash");
         return false;
     }
     gw_cfg_log(p_gw_cfg_tmp, "Gateway SETTINGS (from flash)", false);
-    (void)gw_cfg_update(p_gw_cfg_tmp);
+    if (!flag_default_cfg_is_used)
+    {
+        (void)gw_cfg_update(p_gw_cfg_tmp);
+    }
     os_free(p_gw_cfg_tmp);
-    return !flag_default_cfg_used;
+    return flag_default_cfg_is_used;
 }
 
 static bool
@@ -713,10 +720,8 @@ main_task_init(void)
 
     settings_update_mac_addr(nrf52_device_info.nrf52_mac_addr);
 
-    if (!ruuvi_init_gw_cfg(&nrf52_fw_ver, &nrf52_device_info))
-    {
-        settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_PERMANENT);
-    }
+    g_flag_default_cfg_is_used = ruuvi_init_gw_cfg(&nrf52_fw_ver, &nrf52_device_info);
+    LOG_INFO("Default config is used: %s", g_flag_default_cfg_is_used ? "true" : "false");
 
     hmac_sha256_set_key_str(gw_cfg_get_nrf52_device_id()->str_buf); // set default encryption key
 
@@ -730,7 +735,7 @@ main_task_init(void)
 
     time_task_init();
 
-    if (!network_subsystem_init())
+    if (!network_subsystem_init(g_flag_default_cfg_is_used))
     {
         LOG_ERR("%s failed", "network_subsystem_init");
         return false;

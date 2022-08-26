@@ -255,7 +255,7 @@ settings_read_from_blob(nvs_handle handle, gw_cfg_t *const p_gw_cfg)
 }
 
 const gw_cfg_t *
-settings_get_from_flash(bool *const p_flag_default_cfg_used)
+settings_get_from_flash(bool *const p_flag_default_cfg_is_used)
 {
     gw_cfg_t *p_gw_cfg_tmp = os_calloc(1, sizeof(*p_gw_cfg_tmp));
     if (NULL == p_gw_cfg_tmp)
@@ -274,16 +274,18 @@ settings_get_from_flash(bool *const p_flag_default_cfg_used)
     {
         if (!settings_get_gw_cfg_from_nvs(handle, p_gw_cfg_tmp, &flag_modified))
         {
-            flag_modified           = true;
             flag_use_default_config = settings_read_from_blob(handle, p_gw_cfg_tmp);
+            if (!flag_use_default_config)
+            {
+                flag_modified = true;
+            }
         }
         nvs_close(handle);
     }
-    *p_flag_default_cfg_used = flag_use_default_config;
+    *p_flag_default_cfg_is_used = flag_use_default_config;
     if (flag_use_default_config)
     {
         LOG_WARN("Using default config");
-        flag_modified = true;
         gw_cfg_default_get(p_gw_cfg_tmp);
     }
 

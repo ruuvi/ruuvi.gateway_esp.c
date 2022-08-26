@@ -29,6 +29,12 @@ gw_status_set_eth_connected(void);
 void
 gw_status_clear_eth_connected(void);
 
+void
+gw_status_set_eth_link_up(void);
+
+bool
+gw_status_is_eth_link_up(void);
+
 bool
 gw_status_is_network_connected(void);
 
