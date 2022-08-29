@@ -15,7 +15,7 @@
 #include "ruuvi_board_gwesp.h"
 #include "gpio_switch_ctrl.h"
 
-#if defined(RUUVI_TESTS_NRF52SWD)
+#if RUUVI_TESTS_NRF52SWD
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #else
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
