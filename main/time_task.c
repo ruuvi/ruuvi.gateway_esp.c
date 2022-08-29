@@ -137,7 +137,7 @@ time_task_cb_notification_on_sync(struct timeval *p_tv)
     }
     else
     {
-        LOG_INFO("Time has been synchronized: %s.%03u", buf_time_str, (printf_uint_t)(p_tv->tv_usec / 1000));
+        LOG_INFO("### Time has been synchronized: %s.%03u", buf_time_str, (printf_uint_t)(p_tv->tv_usec / 1000));
         g_time_is_synchronized = true;
         if (SNTP_SYNC_MODE_IMMED == sntp_get_sync_mode())
         {

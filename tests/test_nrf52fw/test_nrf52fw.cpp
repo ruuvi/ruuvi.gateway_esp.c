@@ -2560,8 +2560,8 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_not_needed) // 
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on nRF52: v1.2.3");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware updating is not needed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware on nRF52: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware updating is not needed");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
@@ -2662,8 +2662,8 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required) // NO
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on nRF52: v1.2.0");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Need to update firmware on nRF52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware on nRF52: v1.2.0");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Need to update firmware on nRF52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Erasing flash memory...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash 3 segments");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 0: 0x00000000 size=2816 from segment_1.bin");
@@ -2819,8 +2819,8 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required__with_
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on nRF52: v1.2.0");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Need to update firmware on nRF52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware on nRF52: v1.2.0");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Need to update firmware on nRF52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Erasing flash memory...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash 3 segments");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 0: 0x00000000 size=2816 from segment_1.bin");
@@ -3425,8 +3425,8 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__debug_run_failed) // N
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on nRF52: v1.2.3");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware updating is not needed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware on nRF52: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware updating is not needed");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_debug_run failed");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
@@ -4000,8 +4000,8 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_check_firmware) 
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on nRF52: v1.2.0");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Need to update firmware on nRF52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware on nRF52: v1.2.0");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Need to update firmware on nRF52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "Segment: 0x00001000: expected CRC: 0x5b3ddbc1, actual CRC: 0x5b3ddbc0");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_check_firmware failed");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
@@ -4105,8 +4105,8 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_write_firmware) 
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on nRF52: v1.2.0");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Need to update firmware on nRF52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware on nRF52: v1.2.0");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Need to update firmware on nRF52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Erasing flash memory...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash 3 segments");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 0: 0x00000000 size=2816 from segment_1.bin");
