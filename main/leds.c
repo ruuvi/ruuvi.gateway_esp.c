@@ -357,7 +357,7 @@ leds_init(void)
     ledc_channel_config(&ledc_channel[0]);
     ledc_fade_func_install(0);
 
-    const uint32_t stack_size = 2U * 1024U;
+    const uint32_t stack_size = 3U * 1024U;
 
     os_task_handle_t h_task = NULL;
     if (!os_task_create_without_param(&leds_task, "leds_task", stack_size, LEDS_TASK_PRIORITY, &h_task))
