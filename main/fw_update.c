@@ -102,8 +102,8 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t *const p_flash_info)
     p_flash_info->running_partition_state = ESP_OTA_IMG_UNDEFINED;
 
     p_flash_info->p_app_desc = esp_ota_get_app_description();
-    LOG_INFO("Project name     : %s", p_flash_info->p_app_desc->project_name);
-    LOG_INFO("Firmware version : %s", p_flash_info->p_app_desc->version);
+    LOG_INFO("### Project name     : %s", p_flash_info->p_app_desc->project_name);
+    LOG_INFO("### Firmware version : %s", p_flash_info->p_app_desc->version);
 
     p_flash_info->p_boot_partition = esp_ota_get_boot_partition();
     if (NULL == p_flash_info->p_boot_partition)
@@ -111,7 +111,7 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t *const p_flash_info)
         LOG_ERR("There is no boot partition info");
         return false;
     }
-    LOG_INFO("Boot partition: %s", p_flash_info->p_boot_partition->label);
+    LOG_INFO("### Boot partition: %s", p_flash_info->p_boot_partition->label);
 
     p_flash_info->p_running_partition = esp_ota_get_running_partition();
     if (NULL == p_flash_info->p_running_partition)

@@ -15,7 +15,7 @@
 #include "ruuvi_board_gwesp.h"
 #include "gpio_switch_ctrl.h"
 
-#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
+#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
 static const char *TAG = "SWD";

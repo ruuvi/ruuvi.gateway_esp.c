@@ -191,7 +191,8 @@ http_send_async(http_async_info_t *const p_http_async_info)
     const esp_http_client_config_t *const p_http_config = &p_http_async_info->http_client_config.esp_http_client_config;
 
     const char *const p_msg = p_http_async_info->cjson_str.p_str;
-    LOG_INFO("HTTP POST to URL=%s, DATA:\n%s", p_http_config->url, p_msg);
+    LOG_INFO("### HTTP POST to URL=%s", p_http_config->url);
+    LOG_INFO("HTTP POST DATA:\n%s", p_msg);
 
     esp_http_client_set_post_field(
         p_http_async_info->p_http_client_handle,
@@ -209,7 +210,7 @@ http_send_async(http_async_info_t *const p_http_async_info)
     const esp_err_t err = esp_http_client_perform(p_http_async_info->p_http_client_handle);
     if (ESP_ERR_HTTP_EAGAIN != err)
     {
-        LOG_ERR_ESP(err, "HTTP POST to URL=%s: request failed", p_http_config->url);
+        LOG_ERR_ESP(err, "### HTTP POST to URL=%s: request failed", p_http_config->url);
         esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
         p_http_async_info->p_http_client_handle = NULL;
         return false;
@@ -315,7 +316,7 @@ http_async_poll(void)
         if (HTTP_RESP_CODE_200 == http_status)
         {
             LOG_INFO(
-                "HTTP POST to URL=%s: STATUS=%d",
+                "### HTTP POST to URL=%s: STATUS=%d",
                 p_http_async_info->http_client_config.esp_http_client_config.url,
                 http_status);
             if (p_http_async_info->flag_sending_advs)
@@ -327,7 +328,7 @@ http_async_poll(void)
         else
         {
             LOG_ERR(
-                "HTTP POST to URL=%s: STATUS=%d",
+                "### HTTP POST to URL=%s: STATUS=%d",
                 p_http_async_info->http_client_config.esp_http_client_config.url,
                 http_status);
         }
@@ -336,7 +337,7 @@ http_async_poll(void)
     {
         LOG_ERR_ESP(
             err,
-            "HTTP POST to URL=%s: failed",
+            "### HTTP POST to URL=%s: failed",
             p_http_async_info->http_client_config.esp_http_client_config.url);
     }
 

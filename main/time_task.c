@@ -130,7 +130,7 @@ time_task_cb_notification_on_sync(struct timeval *p_tv)
     if (p_tv->tv_sec < g_time_min_valid)
     {
         LOG_WARN(
-            "Time has been synchronized but timestamp is bad: %s.%03u",
+            "### Time has been synchronized but timestamp is bad: %s.%03u",
             buf_time_str,
             (printf_uint_t)(p_tv->tv_usec / 1000));
         g_time_is_synchronized = false;
@@ -151,7 +151,7 @@ time_task_cb_notification_on_sync(struct timeval *p_tv)
 static void
 time_task_sntp_start(void)
 {
-    LOG_INFO("Activate SNTP time synchronization");
+    LOG_INFO("### Activate SNTP time synchronization");
     g_time_is_synchronized = false;
     sntp_init();
 }
@@ -159,7 +159,7 @@ time_task_sntp_start(void)
 static void
 time_task_sntp_stop(void)
 {
-    LOG_INFO("Deactivate SNTP time synchronization");
+    LOG_INFO("### Deactivate SNTP time synchronization");
     g_time_is_synchronized = false;
     sntp_stop();
 }
@@ -325,12 +325,12 @@ time_task_configure_ntp_sources(void)
     {
         if (g_time_task_ntp_use_dhcp)
         {
-            LOG_INFO("Configure SNTP to use DHCP");
+            LOG_INFO("### Configure SNTP to use DHCP");
             sntp_servermode_dhcp(1);
         }
         else
         {
-            LOG_INFO("Configure SNTP to not use DHCP");
+            LOG_INFO("### Configure SNTP to not use DHCP");
             sntp_servermode_dhcp(0);
         }
     }

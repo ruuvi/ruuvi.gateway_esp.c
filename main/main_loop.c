@@ -22,7 +22,7 @@
 #include "gw_cfg_default.h"
 #include "gw_cfg_log.h"
 
-#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
+#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
 static const char TAG[] = "ruuvi_gateway";
@@ -244,7 +244,7 @@ main_task_handle_sig_check_for_remote_cfg(void)
 static void
 main_task_handle_sig_network_connected(void)
 {
-    LOG_INFO("Handle event: NETWORK_CONNECTED");
+    LOG_INFO("### Handle event: NETWORK_CONNECTED");
 
     const force_start_wifi_hotspot_t force_start_wifi_hotspot = settings_read_flag_force_start_wifi_hotspot();
     if (FORCE_START_WIFI_HOTSPOT_PERMANENT == force_start_wifi_hotspot)
@@ -268,6 +268,7 @@ main_task_handle_sig_network_connected(void)
 static void
 main_task_handle_sig_task_watchdog_feed(void)
 {
+    LOG_DBG("Feed watchdog");
     const esp_err_t err = esp_task_wdt_reset();
     if (ESP_OK != err)
     {
@@ -297,7 +298,7 @@ main_task_handle_sig_task_network_reconnect(void)
 void
 main_task_handle_sig_set_default_config(void)
 {
-    LOG_INFO("Set default config");
+    LOG_INFO("### Set default config");
     gw_cfg_t *p_gw_cfg = os_calloc(1, sizeof(*p_gw_cfg));
     if (NULL == p_gw_cfg)
     {
@@ -404,7 +405,7 @@ main_task_configure_periodic_remote_cfg_check(void)
     }
     else
     {
-        LOG_INFO("Reading of the configuration from the remote server is not active");
+        LOG_INFO("### Reading of the configuration from the remote server is not active");
         os_timer_sig_periodic_stop(g_p_timer_sig_check_for_remote_cfg);
     }
 }
@@ -423,7 +424,7 @@ main_loop(void)
     if (AUTO_UPDATE_CYCLE_TYPE_MANUAL != gw_cfg_get_auto_update_cycle())
     {
         LOG_INFO(
-            "Firmware auto-updating is active, run next check after %lu seconds",
+            "### Firmware auto-updating is active, run next check after %lu seconds",
             (printf_ulong_t)RUUVI_CHECK_FOR_FW_UPDATES_DELAY_AFTER_REBOOT_SECONDS);
         os_timer_sig_one_shot_start(g_p_timer_sig_check_for_fw_updates);
     }
