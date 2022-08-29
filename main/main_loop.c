@@ -242,7 +242,6 @@ main_task_handle_sig_timer_after_wifi_ap_activation(void)
 
         leds_indication_network_no_connection();
     }
-
 }
 
 static void

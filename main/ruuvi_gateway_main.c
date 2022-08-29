@@ -178,7 +178,8 @@ ethernet_connection_ok_cb(const esp_netif_ip_info_t *p_ip_info)
     LOG_INFO("### Ethernet connected");
     if (gw_cfg_is_default())
     {
-        LOG_INFO("### The Ethernet cable was connected, but Gateway has not configured yet - set default configuration");
+        LOG_INFO(
+            "### The Ethernet cable was connected, but Gateway has not configured yet - set default configuration");
         main_task_send_sig_set_default_config();
         if (wifi_manager_is_ap_active())
         {
@@ -397,8 +398,8 @@ cb_before_nrf52_fw_updating(void)
     const wifiman_wifi_ssid_t wifi_ap_ssid = generate_wifi_ap_ssid(settings_read_mac_addr());
     LOG_INFO("Read saved WiFi SSID / Hostname: %s", wifi_ap_ssid.ssid_buf);
 
-    const wifiman_config_t *const p_wifi_cfg = wifi_manager_default_config_init(&wifi_ap_ssid);
-    const bool flag_connect_sta = false;
+    const wifiman_config_t *const p_wifi_cfg       = wifi_manager_default_config_init(&wifi_ap_ssid);
+    const bool                    flag_connect_sta = false;
     if (!wifi_init(flag_connect_sta, p_wifi_cfg, fw_update_get_current_fatfs_gwui_partition_name()))
     {
         LOG_ERR("%s failed", "wifi_init");
@@ -552,6 +553,7 @@ network_subsystem_init(void)
     const force_start_wifi_hotspot_t force_start_wifi_hotspot = settings_read_flag_force_start_wifi_hotspot();
 
     const bool is_wifi_sta_configured = ('\0' != wifi_cfg.sta.wifi_config_sta.ssid[0]) ? true : false;
+
     const bool flag_connect_sta = (!gw_cfg_get_eth_use_eth())
                                   && (FORCE_START_WIFI_HOTSPOT_DISABLED == force_start_wifi_hotspot)
                                   && is_wifi_sta_configured;

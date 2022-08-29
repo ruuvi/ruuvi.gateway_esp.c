@@ -29,7 +29,7 @@ gw_cfg_init(gw_cfg_cb_on_change_cfg p_cb_on_change_cfg)
 {
     g_gw_cfg_mutex = os_mutex_recursive_create_static(&g_gw_cfg_mutex_mem);
     os_mutex_recursive_lock(g_gw_cfg_mutex);
-    g_gw_cfg_ready = false;
+    g_gw_cfg_ready      = false;
     g_gw_cfg_is_default = true;
     gw_cfg_default_get(&g_gateway_config);
     g_p_gw_cfg_cb_on_change_cfg = p_cb_on_change_cfg;
@@ -70,8 +70,8 @@ gw_cfg_unlock_ro(const gw_cfg_t **const p_p_gw_cfg)
 bool
 gw_cfg_is_default(void)
 {
-    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
-    const bool is_default = g_gw_cfg_is_default;
+    const gw_cfg_t *p_gw_cfg   = gw_cfg_lock_ro();
+    const bool      is_default = g_gw_cfg_is_default;
     gw_cfg_unlock_ro(&p_gw_cfg);
     return is_default;
 }
