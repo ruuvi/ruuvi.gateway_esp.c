@@ -1094,7 +1094,7 @@ TEST_F(TestHttpServerCb, resp_file_index_html) // NOLINT
     const http_server_resp_t resp = http_server_resp_file("index.html", HTTP_RESP_CODE_200);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
-    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
@@ -1117,7 +1117,7 @@ TEST_F(TestHttpServerCb, resp_file_index_html_gzipped) // NOLINT
     const http_server_resp_t resp = http_server_resp_file("index.html", HTTP_RESP_CODE_200);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
-    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
@@ -1140,7 +1140,7 @@ TEST_F(TestHttpServerCb, resp_file_app_js_gzipped) // NOLINT
     const http_server_resp_t resp = http_server_resp_file("app.js", HTTP_RESP_CODE_200);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
-    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_JAVASCRIPT, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
@@ -1163,7 +1163,7 @@ TEST_F(TestHttpServerCb, resp_file_app_css_gzipped) // NOLINT
     const http_server_resp_t resp = http_server_resp_file("style.css", HTTP_RESP_CODE_200);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
-    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_CSS, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
@@ -1186,7 +1186,7 @@ TEST_F(TestHttpServerCb, resp_file_binary_without_extension) // NOLINT
     const http_server_resp_t resp = http_server_resp_file("binary", HTTP_RESP_CODE_200);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
-    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_OCTET_STREAM, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
@@ -1270,7 +1270,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_index_html) // NOLINT
     const http_server_resp_t resp = http_server_cb_on_get("index.html", nullptr, false, nullptr);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
-    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
@@ -1294,7 +1294,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_app_js) // NOLINT
     const http_server_resp_t resp = http_server_cb_on_get("app.js", nullptr, false, nullptr);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
-    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_JAVASCRIPT, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
@@ -1637,7 +1637,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FLASH_MEM, resp.content_location);
-    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
@@ -1940,7 +1940,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FLASH_MEM, resp.content_location);
-    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
@@ -2121,7 +2121,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FLASH_MEM, resp.content_location);
-    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
@@ -2281,7 +2281,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FLASH_MEM, resp.content_location);
-    ASSERT_FALSE(resp.flag_no_cache);
+    ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);

@@ -657,7 +657,15 @@ http_server_resp_file(const char *file_path, const http_resp_code_e http_resp_co
         return http_server_resp_503();
     }
     LOG_DBG("File %s was opened successfully, fd=%d", tmp_file_path, fd);
-    return http_server_resp_data_from_file(http_resp_code, content_type, NULL, file_size, content_encoding, fd);
+    const bool flag_no_cache = true;
+    return http_server_resp_data_from_file(
+        http_resp_code,
+        content_type,
+        NULL,
+        file_size,
+        content_encoding,
+        fd,
+        flag_no_cache);
 }
 
 static void
@@ -911,12 +919,14 @@ http_server_cb_on_post_ruuvi(const char *p_body)
     }
     os_free(p_gw_cfg_tmp);
 
+    const bool flag_no_cache = true;
     return http_server_resp_data_in_flash(
         HTTP_CONENT_TYPE_APPLICATION_JSON,
         NULL,
         strlen(g_empty_json),
         HTTP_CONENT_ENCODING_NONE,
-        (const uint8_t *)g_empty_json);
+        (const uint8_t *)g_empty_json,
+        flag_no_cache);
 }
 
 HTTP_SERVER_CB_STATIC
@@ -941,12 +951,14 @@ http_server_cb_on_post_fw_update(const char *p_body, const bool flag_access_from
         fw_update_set_extra_info_for_status_json_update_failed("Internal error");
         return http_server_resp_503();
     }
+    const bool flag_no_cache = true;
     return http_server_resp_data_in_flash(
         HTTP_CONENT_TYPE_APPLICATION_JSON,
         NULL,
         strlen(g_empty_json),
         HTTP_CONENT_ENCODING_NONE,
-        (const uint8_t *)g_empty_json);
+        (const uint8_t *)g_empty_json,
+        flag_no_cache);
 }
 
 HTTP_SERVER_CB_STATIC
