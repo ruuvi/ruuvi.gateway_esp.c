@@ -29,7 +29,7 @@ static const char TAG[] = "ruuvi_gateway";
 
 #define MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS (10U)
 
-#define MAIN_TASK_TIMEOUT_AFTER_MANUAL_HOTSPOT_ACTIVATION_SEC (60)
+#define MAIN_TASK_TIMEOUT_AFTER_HOTSPOT_ACTIVATION_SEC (60)
 
 #define RUUVI_NUM_BYTES_IN_1KB (1024U)
 
@@ -39,7 +39,7 @@ typedef enum main_task_sig_e
     MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES                = OS_SIGNAL_NUM_1,
     MAIN_TASK_SIG_SCHEDULE_NEXT_CHECK_FOR_FW_UPDATES  = OS_SIGNAL_NUM_2,
     MAIN_TASK_SIG_SCHEDULE_RETRY_CHECK_FOR_FW_UPDATES = OS_SIGNAL_NUM_3,
-    MAIN_TASK_SIG_DEACTIVATE_WIFI_AP                  = OS_SIGNAL_NUM_4,
+    MAIN_TASK_SIG_TIMER_AFTER_WIFI_AP_ACTIVATION      = OS_SIGNAL_NUM_4,
     MAIN_TASK_SIG_TASK_RESTART_SERVICES               = OS_SIGNAL_NUM_5,
     MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT                = OS_SIGNAL_NUM_6,
     MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG                = OS_SIGNAL_NUM_7,
@@ -58,8 +58,8 @@ static os_timer_sig_periodic_t *      g_p_timer_sig_log_heap_usage;
 static os_timer_sig_periodic_static_t g_timer_sig_log_heap_usage;
 static os_timer_sig_one_shot_t *      g_p_timer_sig_check_for_fw_updates;
 static os_timer_sig_one_shot_static_t g_timer_sig_check_for_fw_updates_mem;
-static os_timer_sig_one_shot_t *      g_p_timer_sig_deactivate_wifi_ap;
-static os_timer_sig_one_shot_static_t g_p_timer_sig_deactivate_wifi_ap_mem;
+static os_timer_sig_one_shot_t *      g_p_timer_sig_after_wifi_ap_activation;
+static os_timer_sig_one_shot_static_t g_p_timer_sig_after_wifi_ap_activation_mem;
 static os_timer_sig_periodic_t *      g_p_timer_sig_check_for_remote_cfg;
 static os_timer_sig_periodic_static_t g_timer_sig_check_for_remote_cfg_mem;
 static os_timer_sig_periodic_t *      g_p_timer_sig_task_watchdog_feed;
@@ -217,21 +217,32 @@ main_task_handle_sig_schedule_retry_check_for_fw_updates(void)
 }
 
 static void
-main_task_handle_sig_deactivate_wifi_ap(void)
+main_task_handle_sig_timer_after_wifi_ap_activation(void)
 {
-    LOG_INFO("MAIN_TASK_SIG_DEACTIVATE_WIFI_AP");
-    wifi_manager_stop_ap();
-    if (gw_cfg_get_eth_use_eth() || (!wifi_manager_is_sta_configured()))
+    LOG_INFO("MAIN_TASK_SIG_TIMER_AFTER_WIFI_AP_ACTIVATION");
+
+    if (gw_cfg_is_default() && gw_cfg_get_eth_use_eth())
     {
+        LOG_INFO("Default config is used, so activate Ethernet without Wi-Fi AP deactivation");
         ethernet_start(gw_cfg_get_wifi_ap_ssid()->ssid_buf);
     }
     else
     {
-        wifi_manager_connect_async();
-    }
-    restart_services();
+        LOG_INFO("Non-default config is used, activate timer to stop Wi-Fi AP");
+        wifi_manager_stop_ap();
+        if (gw_cfg_get_eth_use_eth() || (!wifi_manager_is_sta_configured()))
+        {
+            ethernet_start(gw_cfg_get_wifi_ap_ssid()->ssid_buf);
+        }
+        else
+        {
+            wifi_manager_connect_async();
+        }
+        restart_services();
 
-    leds_indication_network_no_connection();
+        leds_indication_network_no_connection();
+    }
+
 }
 
 static void
@@ -339,8 +350,8 @@ main_task_handle_sig(const main_task_sig_e main_task_sig)
         case MAIN_TASK_SIG_SCHEDULE_RETRY_CHECK_FOR_FW_UPDATES:
             main_task_handle_sig_schedule_retry_check_for_fw_updates();
             break;
-        case MAIN_TASK_SIG_DEACTIVATE_WIFI_AP:
-            main_task_handle_sig_deactivate_wifi_ap();
+        case MAIN_TASK_SIG_TIMER_AFTER_WIFI_AP_ACTIVATION:
+            main_task_handle_sig_timer_after_wifi_ap_activation();
             break;
         case MAIN_TASK_SIG_TASK_RESTART_SERVICES:
             restart_services_internal();
@@ -461,7 +472,7 @@ main_task_init_signals(void)
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_SCHEDULE_NEXT_CHECK_FOR_FW_UPDATES));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_SCHEDULE_RETRY_CHECK_FOR_FW_UPDATES));
-    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_DEACTIVATE_WIFI_AP));
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TIMER_AFTER_WIFI_AP_ACTIVATION));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_RESTART_SERVICES));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG));
@@ -486,12 +497,13 @@ main_task_init_timers(void)
         g_p_signal_main_task,
         main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES),
         pdMS_TO_TICKS(RUUVI_CHECK_FOR_FW_UPDATES_DELAY_AFTER_REBOOT_SECONDS) * TIME_UNITS_MS_PER_SECOND);
-    g_p_timer_sig_deactivate_wifi_ap = os_timer_sig_one_shot_create_static(
-        &g_p_timer_sig_deactivate_wifi_ap_mem,
-        "deactivate_ap",
+
+    g_p_timer_sig_after_wifi_ap_activation = os_timer_sig_one_shot_create_static(
+        &g_p_timer_sig_after_wifi_ap_activation_mem,
+        "timer_ap_activation",
         g_p_signal_main_task,
-        main_task_conv_to_sig_num(MAIN_TASK_SIG_DEACTIVATE_WIFI_AP),
-        pdMS_TO_TICKS(MAIN_TASK_TIMEOUT_AFTER_MANUAL_HOTSPOT_ACTIVATION_SEC * TIME_UNITS_MS_PER_SECOND));
+        main_task_conv_to_sig_num(MAIN_TASK_SIG_TIMER_AFTER_WIFI_AP_ACTIVATION),
+        pdMS_TO_TICKS(MAIN_TASK_TIMEOUT_AFTER_HOTSPOT_ACTIVATION_SEC * TIME_UNITS_MS_PER_SECOND));
 
     g_p_timer_sig_check_for_remote_cfg = os_timer_sig_periodic_create_static(
         &g_timer_sig_check_for_remote_cfg_mem,
@@ -583,15 +595,15 @@ main_task_timer_sig_check_for_fw_updates_stop(void)
 void
 main_task_start_timer_after_hotspot_activation(void)
 {
-    LOG_INFO("Start AP timer for %u seconds", MAIN_TASK_TIMEOUT_AFTER_MANUAL_HOTSPOT_ACTIVATION_SEC);
-    os_timer_sig_one_shot_start(g_p_timer_sig_deactivate_wifi_ap);
+    LOG_INFO("### Start timer after Wi-Fi AP activation (%u seconds)", MAIN_TASK_TIMEOUT_AFTER_HOTSPOT_ACTIVATION_SEC);
+    os_timer_sig_one_shot_start(g_p_timer_sig_after_wifi_ap_activation);
 }
 
 void
 main_task_stop_timer_after_hotspot_activation(void)
 {
-    LOG_INFO("Stop AP timer");
-    os_timer_sig_one_shot_stop(g_p_timer_sig_deactivate_wifi_ap);
+    LOG_INFO("### Stop timer after Wi-Fi AP activation");
+    os_timer_sig_one_shot_stop(g_p_timer_sig_after_wifi_ap_activation);
 }
 
 void
