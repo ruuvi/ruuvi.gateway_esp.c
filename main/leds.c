@@ -343,7 +343,7 @@ leds_init(void)
         "leds:wdog",
         g_p_leds_signal,
         leds_task_conv_to_sig_num(LEDS_TASK_SIG_TASK_WATCHDOG_FEED),
-        pdMS_TO_TICKS(CONFIG_ESP_TASK_WDT_TIMEOUT_S * 1000U / 3U));
+        pdMS_TO_TICKS(1000U));
 
     ledc_timer_config_t ledc_timer = {
         .duty_resolution = LEDC_TIMER_10_BIT, // resolution of PWM duty
