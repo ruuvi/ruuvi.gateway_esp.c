@@ -681,6 +681,15 @@ main_task_init(void)
     gpio_init();
     leds_init();
 
+    const bool is_configure_button_pressed = (0 == gpio_get_level(RB_BUTTON_RESET_PIN)) ? true : false;
+    LOG_INFO(
+        "Checking the state of CONFIGURE button during startup: is_pressed: %s",
+        is_configure_button_pressed ? "yes" : "no");
+    if (is_configure_button_pressed)
+    {
+        handle_reset_button_is_pressed_during_boot();
+    }
+
     ruuvi_nvs_init();
 
     if (!settings_check_in_flash())
@@ -719,12 +728,6 @@ main_task_init(void)
     }
 
     hmac_sha256_set_key_str(gw_cfg_get_nrf52_device_id()->str_buf); // set default encryption key
-
-    if (0 == gpio_get_level(RB_BUTTON_RESET_PIN))
-    {
-        ruuvi_nvs_deinit();
-        handle_reset_button_is_pressed_during_boot();
-    }
 
     main_task_init_timers();
 
