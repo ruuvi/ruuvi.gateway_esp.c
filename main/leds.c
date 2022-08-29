@@ -344,7 +344,7 @@ leds_init(void)
         "leds:wdog",
         g_p_leds_signal,
         leds_task_conv_to_sig_num(LEDS_TASK_SIG_TASK_WATCHDOG_FEED),
-        pdMS_TO_TICKS(CONFIG_ESP_TASK_WDT_TIMEOUT_S * 1000U / 3U));
+        pdMS_TO_TICKS(1000U));
 
     ledc_timer_config_t ledc_timer = {
         .duty_resolution = LEDC_TIMER_10_BIT, // resolution of PWM duty
@@ -358,7 +358,7 @@ leds_init(void)
     ledc_channel_config(&ledc_channel[0]);
     ledc_fade_func_install(0);
 
-    const uint32_t stack_size = 2U * 1024U;
+    const uint32_t stack_size = 3U * 1024U;
 
     os_task_handle_t h_task = NULL;
     if (!os_task_create_without_param(&leds_task, "leds_task", stack_size, LEDS_TASK_PRIORITY, &h_task))

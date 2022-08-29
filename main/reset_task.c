@@ -245,7 +245,7 @@ reset_task_init(void)
         "reset:wdog",
         g_p_signal_reset_task,
         reset_task_conv_to_sig_num(RESET_TASK_SIG_TASK_WATCHDOG_FEED),
-        pdMS_TO_TICKS(CONFIG_ESP_TASK_WDT_TIMEOUT_S * 1000U / 3U));
+        pdMS_TO_TICKS(1000U));
 
     const uint32_t   stack_size_for_reset_task = 4 * 1024;
     os_task_handle_t ph_task_reset             = NULL;
