@@ -15,7 +15,7 @@
 #include "ruuvi_gateway.h"
 #include "mqtt.h"
 
-#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
+#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
 typedef enum reset_task_sig_e
@@ -79,6 +79,7 @@ reset_task_notify_configure_button_released(void)
 static void
 reset_task_watchdog_feed(void)
 {
+    LOG_DBG("Feed watchdog");
     const esp_err_t err = esp_task_wdt_reset();
     if (ESP_OK != err)
     {

@@ -198,6 +198,7 @@ leds_start_blink(const TimeUnitsMilliSeconds_t interval_ms, const uint32_t duty_
 static void
 leds_task_watchdog_feed(void)
 {
+    LOG_DBG("Feed watchdog");
     const esp_err_t err = esp_task_wdt_reset();
     if (ESP_OK != err)
     {
@@ -369,7 +370,7 @@ leds_init(void)
 void
 leds_indication_on_configure_button_press(void)
 {
-    LOG_INFO("%s", __func__);
+    LOG_INFO("### %s", __func__);
     leds_start_blink(
         LEDS_BLINKING_ON_CONFIGURE_BUTTON_PRESS_PERIOD,
         LEDS_BLINKING_ON_CONFIGURE_BUTTON_PRESS_DUTY_CYCLE);
@@ -378,27 +379,27 @@ leds_indication_on_configure_button_press(void)
 void
 leds_indication_on_hotspot_activation(void)
 {
-    LOG_INFO("%s", __func__);
+    LOG_INFO("### %s", __func__);
     leds_start_blink(LEDS_BLINKING_ON_HOTSPOT_ACTIVATION_PERIOD, LEDS_BLINKING_ON_HOTSPOT_ACTIVATION_DUTY_CYCLE);
 }
 
 void
 leds_indication_network_no_connection(void)
 {
-    LOG_INFO("%s", __func__);
+    LOG_INFO("### %s", __func__);
     leds_start_blink(LEDS_BLINKING_ON_NETWORK_PROBLEM_PERIOD, LEDS_BLINKING_ON_NETWORK_PROBLEM_DUTY_CYCLE);
 }
 
 void
 leds_indication_on_network_ok(void)
 {
-    LOG_INFO("%s", __func__);
+    LOG_INFO("### %s", __func__);
     leds_off();
 }
 
 void
 leds_indication_on_nrf52_fw_updating(void)
 {
-    LOG_INFO("%s", __func__);
+    LOG_INFO("### %s", __func__);
     leds_start_blink(LEDS_BLINKING_ON_NRF52_FW_UPDATING_PERIOD, LEDS_BLINKING_ON_NRF52_FW_UPDATING_DUTY_CYCLE);
 }

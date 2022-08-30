@@ -512,7 +512,7 @@ TEST_F(TestTimeTask, test_all) // NOLINT
     cmdQueue.push_and_wait(MAIN_TASK_CMD_TIME_TASK_INIT);
     ASSERT_TRUE(this->result_time_task_init);
     TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "Set time sync mode to IMMED");
-    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "Configure SNTP to not use DHCP");
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "### Configure SNTP to not use DHCP");
     TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "Add time server 0: time.google.com");
     TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "Add time server 1: time.cloudflare.com");
     TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "Add time server 2: time.nist.gov");
@@ -614,7 +614,7 @@ TEST_F(TestTimeTask, test_all) // NOLINT
 
     cmdQueue.push_and_wait(MAIN_TASK_CMD_EVENT_MGR_EV_WIFI_CONNECTED);
     ASSERT_TRUE(this->wait_for_events());
-    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Activate SNTP time synchronization");
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "### Activate SNTP time synchronization");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     {
         const int exp_num_events = 1;
@@ -634,7 +634,7 @@ TEST_F(TestTimeTask, test_all) // NOLINT
     TEST_CHECK_LOG_RECORD_TIME(
         ESP_LOG_WARN,
         "cmd_handler",
-        "Time has been synchronized but timestamp is bad: 2020-12-31 23:59:59.000");
+        "### Time has been synchronized but timestamp is bad: 2020-12-31 23:59:59.000");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
     ASSERT_NE(nullptr, gp_obj->sntp_sync_time_cb);
@@ -647,13 +647,13 @@ TEST_F(TestTimeTask, test_all) // NOLINT
         ASSERT_EQ(SNTP_SYNC_MODE_SMOOTH, p_ev->sync_mode);
     }
     testEvents.clear();
-    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "Time has been synchronized: 2021-08-28 12:07:36.000");
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "### Time has been synchronized: 2021-08-28 12:07:36.000");
     TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "Switch time sync mode to SMOOTH");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
     cmdQueue.push_and_wait(MAIN_TASK_CMD_EVENT_MGR_EV_WIFI_DISCONNECTED);
     ASSERT_TRUE(this->wait_for_events());
-    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Deactivate SNTP time synchronization");
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "### Deactivate SNTP time synchronization");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     {
         const int exp_num_events = 1;
@@ -669,7 +669,7 @@ TEST_F(TestTimeTask, test_all) // NOLINT
 
     cmdQueue.push_and_wait(MAIN_TASK_EVENT_MGR_EV_ETH_CONNECTED);
     ASSERT_TRUE(this->wait_for_events());
-    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Activate SNTP time synchronization");
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "### Activate SNTP time synchronization");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     {
         const int exp_num_events = 1;
@@ -685,7 +685,7 @@ TEST_F(TestTimeTask, test_all) // NOLINT
 
     cmdQueue.push_and_wait(MAIN_TASK_CMD_EVENT_MGR_EV_ETH_DISCONNECTED);
     ASSERT_TRUE(this->wait_for_events());
-    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Deactivate SNTP time synchronization");
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "### Deactivate SNTP time synchronization");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     {
         const int exp_num_events = 1;
@@ -704,14 +704,14 @@ TEST_F(TestTimeTask, test_all) // NOLINT
         const int exp_num_events = 11;
         ASSERT_TRUE(this->wait_for_events(1000, exp_num_events));
         TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Got TIME_TASK_SIG_GW_CFG_CHANGED_RUUVI");
-        TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Deactivate SNTP time synchronization");
+        TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "### Deactivate SNTP time synchronization");
         TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Reconfigure SNTP");
-        TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Configure SNTP to not use DHCP");
+        TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "### Configure SNTP to not use DHCP");
         TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Add time server 0: time2.google.com");
         TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Add time server 1: time2.cloudflare.com");
         TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Add time server 2: NULL");
         TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Add time server 3: NULL");
-        TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Activate SNTP time synchronization");
+        TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "### Activate SNTP time synchronization");
         ASSERT_TRUE(esp_log_wrapper_is_empty());
 
         ASSERT_EQ(exp_num_events, testEvents.size());
@@ -796,10 +796,10 @@ TEST_F(TestTimeTask, test_all) // NOLINT
         const int exp_num_events = 8;
         ASSERT_TRUE(this->wait_for_events(1000, exp_num_events));
         TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Got TIME_TASK_SIG_GW_CFG_CHANGED_RUUVI");
-        TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Deactivate SNTP time synchronization");
+        TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "### Deactivate SNTP time synchronization");
         TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Reconfigure SNTP");
-        TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Configure SNTP to use DHCP");
-        TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Activate SNTP time synchronization");
+        TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "### Configure SNTP to use DHCP");
+        TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "### Activate SNTP time synchronization");
         ASSERT_TRUE(esp_log_wrapper_is_empty());
 
         ASSERT_EQ(exp_num_events, testEvents.size());

@@ -673,15 +673,15 @@ nrf52fw_update_fw_step3(
         *p_nrf52_fw_ver = cur_fw_ver;
     }
     ruuvi_nrf52_fw_ver_str_t cur_nrf52_ver = nrf52_fw_ver_get_str(&cur_fw_ver);
-    LOG_INFO("Firmware on nRF52: %s", cur_nrf52_ver.buf);
+    LOG_INFO("### Firmware on nRF52: %s", cur_nrf52_ver.buf);
 
     if (cur_fw_ver.version == fw_info.fw_ver.version)
     {
-        LOG_INFO("Firmware updating is not needed");
+        LOG_INFO("### Firmware updating is not needed");
         return true;
     }
 
-    LOG_INFO("Need to update firmware on nRF52");
+    LOG_INFO("### Need to update firmware on nRF52");
     if (NULL != cb_before_updating)
     {
         cb_before_updating();

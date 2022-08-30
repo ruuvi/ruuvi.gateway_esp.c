@@ -15,6 +15,7 @@
 #define WIFI_CONNECTED_BIT (1U << 0U)
 #define MQTT_CONNECTED_BIT (1U << 1U)
 #define ETH_CONNECTED_BIT  (1U << 4U)
+#define ETH_LINK_UP_BIT    (1U << 5U)
 
 static const char TAG[] = "gw_status";
 
@@ -53,7 +54,23 @@ gw_status_set_eth_connected(void)
 void
 gw_status_clear_eth_connected(void)
 {
-    xEventGroupClearBits(g_p_ev_grp_status_bits, ETH_CONNECTED_BIT);
+    xEventGroupClearBits(g_p_ev_grp_status_bits, ETH_CONNECTED_BIT | ETH_LINK_UP_BIT);
+}
+
+void
+gw_status_set_eth_link_up(void)
+{
+    xEventGroupSetBits(g_p_ev_grp_status_bits, ETH_LINK_UP_BIT);
+}
+
+bool
+gw_status_is_eth_link_up(void)
+{
+    if (0 != (xEventGroupGetBits(g_p_ev_grp_status_bits) & ETH_LINK_UP_BIT))
+    {
+        return true;
+    }
+    return false;
 }
 
 bool

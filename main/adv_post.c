@@ -527,6 +527,7 @@ adv_post_handle_sig_network_watchdog(void)
 static void
 adv_post_handle_sig_task_watchdog_feed(void)
 {
+    LOG_DBG("Feed watchdog");
     const esp_err_t err = esp_task_wdt_reset();
     if (ESP_OK != err)
     {

@@ -124,7 +124,7 @@ ruuvi_nvs_open_partition(const char *const p_partition_name, nvs_open_mode_t ope
             }
             nvs_close(handle);
 
-            LOG_INFO("NVS partition %s, namespace '%s' created successfully", p_partition_name, p_nvs_name);
+            LOG_INFO("### NVS partition %s, namespace '%s' created successfully", p_partition_name, p_nvs_name);
             err = nvs_open_from_partition(p_partition_name, p_nvs_name, open_mode, p_handle);
             if (ESP_OK != err)
             {

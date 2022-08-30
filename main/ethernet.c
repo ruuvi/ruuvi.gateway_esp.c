@@ -46,7 +46,7 @@ eth_on_event_connected(esp_eth_handle_t eth_handle)
 {
     mac_address_bin_t mac_bin = { 0 };
     esp_eth_ioctl(eth_handle, ETH_CMD_G_MAC_ADDR, &mac_bin.mac[0]);
-    LOG_INFO("Ethernet Link Up");
+    LOG_INFO("### Ethernet Link Up");
     const mac_address_str_t mac_str = mac_address_to_str(&mac_bin);
     LOG_INFO("Ethernet HW Addr %s", mac_str.str_buf);
     g_ethernet_link_up_cb();
@@ -68,16 +68,16 @@ eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void
             break;
 
         case ETHERNET_EVENT_DISCONNECTED:
-            LOG_INFO("Ethernet Link Down");
+            LOG_INFO("### Ethernet Link Down");
             g_ethernet_link_down_cb();
             break;
 
         case ETHERNET_EVENT_START:
-            LOG_INFO("Ethernet Started");
+            LOG_INFO("### Ethernet Started");
             break;
 
         case ETHERNET_EVENT_STOP:
-            LOG_INFO("Ethernet Stopped");
+            LOG_INFO("### Ethernet Stopped");
             event_mgr_notify(EVENT_MGR_EV_ETH_DISCONNECTED);
             break;
 
@@ -263,7 +263,7 @@ ethernet_init(
     ethernet_cb_link_down_t     ethernet_link_down_cb,
     ethernet_cb_connection_ok_t ethernet_connection_ok_cb)
 {
-    LOG_INFO("Ethernet init");
+    LOG_INFO("### Ethernet init");
 
     g_ethernet_link_up_cb       = ethernet_link_up_cb;
     g_ethernet_link_down_cb     = ethernet_link_down_cb;
@@ -383,7 +383,7 @@ ethernet_start(const char *const hostname)
     {
         return;
     }
-    LOG_INFO("Ethernet start");
+    LOG_INFO("### Ethernet start");
 
     // esp_eth_start can take up to 4 seconds
     // (see initialization of autonego_timeout_ms in macro ETH_PHY_DEFAULT_CONFIG, which is used in ethernet_init),
@@ -403,7 +403,7 @@ ethernet_start(const char *const hostname)
 
     esp_netif_t *const p_netif_eth = esp_netif_get_handle_from_ifkey("ETH_DEF");
 
-    LOG_INFO("Set hostname for Ethernet interface: %s", hostname);
+    LOG_INFO("### Set hostname for Ethernet interface: %s", hostname);
     err = esp_netif_set_hostname(p_netif_eth, hostname);
     if (ESP_OK != err)
     {

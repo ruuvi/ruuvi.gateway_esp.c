@@ -16,8 +16,9 @@ _Static_assert(sizeof(GW_CFG_REMOTE_AUTH_TYPE_STR_NO) <= GW_CFG_REMOTE_AUTH_TYPE
 _Static_assert(sizeof(GW_CFG_REMOTE_AUTH_TYPE_STR_BASIC) <= GW_CFG_REMOTE_AUTH_TYPE_STR_SIZE, "");
 _Static_assert(sizeof(GW_CFG_REMOTE_AUTH_TYPE_STR_BEARER) <= GW_CFG_REMOTE_AUTH_TYPE_STR_SIZE, "");
 
-static gw_cfg_t                    g_gateway_config = { 0 };
-static bool                        g_gw_cfg_ready   = false;
+static gw_cfg_t                    g_gateway_config    = { 0 };
+static bool                        g_gw_cfg_ready      = false;
+static bool                        g_gw_cfg_is_default = false;
 static os_mutex_recursive_t        g_gw_cfg_mutex;
 static os_mutex_recursive_static_t g_gw_cfg_mutex_mem;
 static gw_cfg_device_info_t *const g_gw_cfg_p_device_info = &g_gateway_config.device_info;
@@ -28,7 +29,8 @@ gw_cfg_init(gw_cfg_cb_on_change_cfg p_cb_on_change_cfg)
 {
     g_gw_cfg_mutex = os_mutex_recursive_create_static(&g_gw_cfg_mutex_mem);
     os_mutex_recursive_lock(g_gw_cfg_mutex);
-    g_gw_cfg_ready = false;
+    g_gw_cfg_ready      = false;
+    g_gw_cfg_is_default = true;
     gw_cfg_default_get(&g_gateway_config);
     g_p_gw_cfg_cb_on_change_cfg = p_cb_on_change_cfg;
     os_mutex_recursive_unlock(g_gw_cfg_mutex);
@@ -63,6 +65,15 @@ gw_cfg_unlock_ro(const gw_cfg_t **const p_p_gw_cfg)
 {
     *p_p_gw_cfg = NULL;
     os_mutex_recursive_unlock(g_gw_cfg_mutex);
+}
+
+bool
+gw_cfg_is_default(void)
+{
+    const gw_cfg_t *p_gw_cfg   = gw_cfg_lock_ro();
+    const bool      is_default = g_gw_cfg_is_default;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    return is_default;
 }
 
 static bool
@@ -705,12 +716,15 @@ gw_cfg_set(
     {
         gw_cfg_set_wifi_sta(p_gw_cfg_wifi_sta, &p_gw_cfg_dst->wifi_cfg.sta, &update_status.flag_wifi_sta_cfg_modified);
     }
-    if ((update_status.flag_ruuvi_cfg_modified || update_status.flag_eth_cfg_modified
-         || update_status.flag_wifi_ap_cfg_modified || update_status.flag_wifi_sta_cfg_modified)
-        && (NULL != g_p_gw_cfg_cb_on_change_cfg))
+    if (NULL != g_p_gw_cfg_cb_on_change_cfg)
     {
+        // We don't need to check update_status before calling g_p_gw_cfg_cb_on_change_cfg
+        // because this callback will compare and update the configuration in NVS if they don't match.
+        // Moreover, in case if the configuration in NVS is absent and the default configuration is used,
+        // then update_status can show that updating is not needed, but it is required.
         g_p_gw_cfg_cb_on_change_cfg(p_gw_cfg_dst);
     }
+    g_gw_cfg_is_default = false;
     if (!g_gw_cfg_ready)
     {
         g_gw_cfg_ready = true;

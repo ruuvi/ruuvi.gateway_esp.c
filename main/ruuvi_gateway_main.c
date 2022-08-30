@@ -81,6 +81,7 @@ ruuvi_send_nrf_settings(void)
     const ruuvi_gw_cfg_filter_t *const p_filter = &p_gw_cfg->ruuvi_cfg.filter;
     const ruuvi_gw_cfg_scan_t *const   p_scan   = &p_gw_cfg->ruuvi_cfg.scan;
     LOG_INFO(
+        "### "
         "sending settings to NRF: use filter: %d, "
         "company id: 0x%04x,"
         "use scan coded phy: %d,"
@@ -156,7 +157,8 @@ generate_wifi_ap_ssid(const mac_address_bin_t mac_addr)
 static void
 ethernet_link_up_cb(void)
 {
-    LOG_INFO("Ethernet connection established");
+    LOG_INFO("Ethernet link up");
+    gw_status_set_eth_link_up();
 }
 
 static void
@@ -173,23 +175,17 @@ ethernet_link_down_cb(void)
 static void
 ethernet_connection_ok_cb(const esp_netif_ip_info_t *p_ip_info)
 {
-    LOG_INFO("Ethernet connected");
-    if (!gw_cfg_get_eth_use_eth())
+    LOG_INFO("### Ethernet connected");
+    if (gw_cfg_is_default())
     {
-        LOG_INFO("The Ethernet cable was connected, but the Ethernet was not configured");
-        LOG_INFO("Set the default configuration with Ethernet and DHCP enabled");
-        gw_cfg_t *p_gw_cfg = os_calloc(1, sizeof(*p_gw_cfg));
-        if (NULL == p_gw_cfg)
+        LOG_INFO(
+            "### The Ethernet cable was connected, but Gateway has not configured yet - set default configuration");
+        main_task_send_sig_set_default_config();
+        if (wifi_manager_is_ap_active())
         {
-            LOG_ERR("Can't allocate memory for gw_cfg");
-            return;
+            LOG_INFO("### Force stop Wi-Fi AP after connecting Ethernet cable");
+            wifi_manager_stop_ap();
         }
-        gw_cfg_default_get(p_gw_cfg);
-        p_gw_cfg->eth_cfg.use_eth  = true;
-        p_gw_cfg->eth_cfg.eth_dhcp = true;
-        gw_cfg_log(p_gw_cfg, "Gateway SETTINGS", false);
-        (void)gw_cfg_update(p_gw_cfg);
-        os_free(p_gw_cfg);
     }
     const struct dhcp *p_dhcp  = NULL;
     esp_ip4_addr_t     dhcp_ip = { 0 };
@@ -207,6 +203,7 @@ ethernet_connection_ok_cb(const esp_netif_ip_info_t *p_ip_info)
         NULL,
         p_ip_info,
         (NULL != p_dhcp) ? &dhcp_ip : NULL);
+    leds_indication_network_no_connection();
     gw_status_set_eth_connected();
     start_services();
     event_mgr_notify(EVENT_MGR_EV_ETH_CONNECTED);
@@ -247,21 +244,28 @@ cb_on_disconnect_sta_cmd(void)
 static void
 cb_on_ap_sta_connected(void)
 {
-    LOG_INFO("callback: on_ap_sta_connected");
+    LOG_INFO("### callback: on_ap_sta_connected");
     main_task_stop_timer_after_hotspot_activation();
+    if (gw_cfg_get_eth_use_eth())
+    {
+        ethernet_stop();
+    }
 }
 
 static void
 cb_on_ap_sta_disconnected(void)
 {
-    LOG_INFO("callback: on_ap_sta_disconnected");
+    LOG_INFO("### callback: on_ap_sta_disconnected");
     if (!wifi_manager_is_connected_to_wifi_or_ethernet())
     {
-        if (gw_cfg_get_eth_use_eth() || (!wifi_manager_is_sta_configured()))
+        if (gw_cfg_is_default())
         {
             ethernet_start(gw_cfg_get_wifi_ap_ssid()->ssid_buf);
         }
-        main_task_start_timer_after_hotspot_activation();
+        else
+        {
+            main_task_start_timer_after_hotspot_activation();
+        }
     }
     adv_post_enable_retransmission();
 }
@@ -317,8 +321,7 @@ restart_services(void)
 
 static bool
 wifi_init(
-    const bool                    flag_use_eth,
-    const bool                    flag_start_ap_only,
+    const bool                    flag_connect_sta,
     const wifiman_config_t *const p_wifi_cfg,
     const char *const             p_fatfs_gwui_partition_name)
 {
@@ -369,8 +372,7 @@ wifi_init(
         .cb_save_wifi_config_sta   = &cb_save_wifi_config,
     };
     wifi_manager_start(
-        !flag_use_eth,
-        flag_start_ap_only,
+        flag_connect_sta,
         p_wifi_cfg,
         &wifi_antenna_config,
         &wifi_callbacks,
@@ -396,8 +398,9 @@ cb_before_nrf52_fw_updating(void)
     const wifiman_wifi_ssid_t wifi_ap_ssid = generate_wifi_ap_ssid(settings_read_mac_addr());
     LOG_INFO("Read saved WiFi SSID / Hostname: %s", wifi_ap_ssid.ssid_buf);
 
-    const wifiman_config_t *const p_wifi_cfg = wifi_manager_default_config_init(&wifi_ap_ssid);
-    if (!wifi_init(false, true, p_wifi_cfg, fw_update_get_current_fatfs_gwui_partition_name()))
+    const wifiman_config_t *const p_wifi_cfg       = wifi_manager_default_config_init(&wifi_ap_ssid);
+    const bool                    flag_connect_sta = false;
+    if (!wifi_init(flag_connect_sta, p_wifi_cfg, fw_update_get_current_fatfs_gwui_partition_name()))
     {
         LOG_ERR("%s failed", "wifi_init");
         return;
@@ -548,11 +551,13 @@ network_subsystem_init(void)
     const wifiman_config_t wifi_cfg = gw_cfg_get_wifi_cfg();
 
     const force_start_wifi_hotspot_t force_start_wifi_hotspot = settings_read_flag_force_start_wifi_hotspot();
-    if (!wifi_init(
-            gw_cfg_get_eth_use_eth(),
-            ((FORCE_START_WIFI_HOTSPOT_DISABLED != force_start_wifi_hotspot) ? true : false),
-            &wifi_cfg,
-            fw_update_get_current_fatfs_gwui_partition_name()))
+
+    const bool is_wifi_sta_configured = ('\0' != wifi_cfg.sta.wifi_config_sta.ssid[0]) ? true : false;
+
+    const bool flag_connect_sta = (!gw_cfg_get_eth_use_eth())
+                                  && (FORCE_START_WIFI_HOTSPOT_DISABLED == force_start_wifi_hotspot)
+                                  && is_wifi_sta_configured;
+    if (!wifi_init(flag_connect_sta, &wifi_cfg, fw_update_get_current_fatfs_gwui_partition_name()))
     {
         LOG_ERR("%s failed", "wifi_init");
         return false;
@@ -560,36 +565,40 @@ network_subsystem_init(void)
     configure_wifi_country_and_max_tx_power();
     ethernet_init(&ethernet_link_up_cb, &ethernet_link_down_cb, &ethernet_connection_ok_cb);
 
-    if (FORCE_START_WIFI_HOTSPOT_DISABLED != force_start_wifi_hotspot)
+    bool flag_wifi_ap_started = false;
+    if (FORCE_START_WIFI_HOTSPOT_DISABLED == force_start_wifi_hotspot)
     {
-        LOG_INFO("Force start WiFi hotspot");
-        if (force_start_wifi_hotspot == FORCE_START_WIFI_HOTSPOT_ONCE)
-        {
-            settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_DISABLED);
-        }
-        if (!wifi_manager_is_ap_active())
-        {
-            wifi_manager_start_ap();
-        }
-        else
-        {
-            LOG_INFO("WiFi hotspot is already active");
-        }
-        main_task_start_timer_after_hotspot_activation();
-    }
-    else
-    {
-        if (gw_cfg_get_eth_use_eth() || (!wifi_manager_is_sta_configured()))
+        if (gw_cfg_get_eth_use_eth() || (!is_wifi_sta_configured))
         {
             ethernet_start(gw_cfg_get_wifi_ap_ssid()->ssid_buf);
+            if (!gw_status_is_eth_link_up() && gw_cfg_is_default())
+            {
+                LOG_INFO("### Force start WiFi hotspot (there is no Ethernet connection and default config is used)");
+                flag_wifi_ap_started = true;
+                wifi_manager_start_ap();
+            }
         }
         else
         {
             LOG_INFO("Gateway already configured to use WiFi connection, so Ethernet is not needed");
         }
     }
+    else
+    {
+        if (force_start_wifi_hotspot == FORCE_START_WIFI_HOTSPOT_ONCE)
+        {
+            settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_DISABLED);
+        }
+        if (!flag_wifi_ap_started)
+        {
+            LOG_INFO("Force start WiFi hotspot");
+            flag_wifi_ap_started = true;
+            wifi_manager_start_ap();
+        }
+        main_task_start_timer_after_hotspot_activation();
+    }
 
-    if (wifi_manager_is_ap_active())
+    if (flag_wifi_ap_started)
     {
         leds_indication_on_hotspot_activation();
     }
@@ -618,7 +627,7 @@ ruuvi_cb_on_change_cfg(const gw_cfg_t *const p_gw_cfg)
     }
 }
 
-static bool
+static void
 ruuvi_init_gw_cfg(
     const ruuvi_nrf52_fw_ver_t *const p_nrf52_fw_ver,
     const nrf52_device_info_t *const  p_nrf52_device_info)
@@ -635,17 +644,20 @@ ruuvi_init_gw_cfg(
     gw_cfg_default_init(&gw_cfg_default_init_param, &gw_cfg_default_json_read);
     gw_cfg_init(&ruuvi_cb_on_change_cfg);
 
-    bool            flag_default_cfg_used = false;
-    const gw_cfg_t *p_gw_cfg_tmp          = settings_get_from_flash(&flag_default_cfg_used);
+    bool flag_default_cfg_is_used = false;
+
+    const gw_cfg_t *p_gw_cfg_tmp = settings_get_from_flash(&flag_default_cfg_is_used);
     if (NULL == p_gw_cfg_tmp)
     {
         LOG_ERR("Can't get settings from flash");
-        return false;
+        return;
     }
     gw_cfg_log(p_gw_cfg_tmp, "Gateway SETTINGS (from flash)", false);
-    (void)gw_cfg_update(p_gw_cfg_tmp);
+    if (!flag_default_cfg_is_used)
+    {
+        (void)gw_cfg_update(p_gw_cfg_tmp);
+    }
     os_free(p_gw_cfg_tmp);
-    return !flag_default_cfg_used;
 }
 
 static bool
@@ -722,10 +734,8 @@ main_task_init(void)
 
     settings_update_mac_addr(nrf52_device_info.nrf52_mac_addr);
 
-    if (!ruuvi_init_gw_cfg(&nrf52_fw_ver, &nrf52_device_info))
-    {
-        settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_PERMANENT);
-    }
+    ruuvi_init_gw_cfg(&nrf52_fw_ver, &nrf52_device_info);
+    LOG_INFO("### Default config is used: %s", gw_cfg_is_default() ? "true" : "false");
 
     hmac_sha256_set_key_str(gw_cfg_get_nrf52_device_id()->str_buf); // set default encryption key
 

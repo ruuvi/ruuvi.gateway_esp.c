@@ -105,7 +105,7 @@ settings_save_to_flash_cjson(const char *const p_json_str)
         if (flag_is_cfg_equal)
         {
             nvs_close(handle);
-            LOG_INFO("Save config to NVS: not needed (gw_cfg was not modified)");
+            LOG_INFO("### Save config to NVS: not needed (gw_cfg was not modified)");
             return true;
         }
     }
@@ -126,7 +126,7 @@ settings_save_to_flash_cjson(const char *const p_json_str)
     }
     nvs_close(handle);
 
-    LOG_INFO("Save config to NVS: successfully updated");
+    LOG_INFO("### Save config to NVS: successfully updated");
 
     return true;
 }
@@ -255,7 +255,7 @@ settings_read_from_blob(nvs_handle handle, gw_cfg_t *const p_gw_cfg)
 }
 
 const gw_cfg_t *
-settings_get_from_flash(bool *const p_flag_default_cfg_used)
+settings_get_from_flash(bool *const p_flag_default_cfg_is_used)
 {
     gw_cfg_t *p_gw_cfg_tmp = os_calloc(1, sizeof(*p_gw_cfg_tmp));
     if (NULL == p_gw_cfg_tmp)
@@ -274,16 +274,18 @@ settings_get_from_flash(bool *const p_flag_default_cfg_used)
     {
         if (!settings_get_gw_cfg_from_nvs(handle, p_gw_cfg_tmp, &flag_modified))
         {
-            flag_modified           = true;
             flag_use_default_config = settings_read_from_blob(handle, p_gw_cfg_tmp);
+            if (!flag_use_default_config)
+            {
+                flag_modified = true;
+            }
         }
         nvs_close(handle);
     }
-    *p_flag_default_cfg_used = flag_use_default_config;
+    *p_flag_default_cfg_is_used = flag_use_default_config;
     if (flag_use_default_config)
     {
         LOG_WARN("Using default config");
-        flag_modified = true;
         gw_cfg_default_get(p_gw_cfg_tmp);
     }
 
@@ -359,7 +361,7 @@ settings_update_mac_addr(const mac_address_bin_t new_mac_addr)
     if (0 != memcmp(&saved_mac_addr, &new_mac_addr, sizeof(new_mac_addr)))
     {
         const mac_address_str_t new_mac_addr_str = mac_address_to_str(&new_mac_addr);
-        LOG_INFO("Save new MAC-address: %s", new_mac_addr_str.str_buf);
+        LOG_INFO("### Save new MAC-address: %s", new_mac_addr_str.str_buf);
         settings_write_mac_addr(&new_mac_addr);
     }
 }
@@ -400,7 +402,7 @@ settings_read_flag_rebooting_after_auto_update(void)
 void
 settings_write_flag_rebooting_after_auto_update(const bool flag_rebooting_after_auto_update)
 {
-    LOG_INFO("SETTINGS: Write flag_rebooting_after_auto_update: %d", flag_rebooting_after_auto_update);
+    LOG_INFO("### SETTINGS: Write flag_rebooting_after_auto_update: %d", flag_rebooting_after_auto_update);
     nvs_handle handle = 0;
     if (!ruuvi_nvs_open(NVS_READWRITE, &handle))
     {
@@ -472,7 +474,7 @@ void
 settings_write_flag_force_start_wifi_hotspot(const force_start_wifi_hotspot_t force_start_wifi_hotspot)
 {
     nvs_handle handle = 0;
-    LOG_INFO("SETTINGS: Write flag_force_start_wifi_hotspot: %d", (printf_int_t)force_start_wifi_hotspot);
+    LOG_INFO("### SETTINGS: Write flag_force_start_wifi_hotspot: %d", (printf_int_t)force_start_wifi_hotspot);
     if (!ruuvi_nvs_open(NVS_READWRITE, &handle))
     {
         LOG_ERR("%s failed", "ruuvi_nvs_open");
