@@ -571,9 +571,9 @@ network_subsystem_init(void)
         if (gw_cfg_get_eth_use_eth() || (!is_wifi_sta_configured))
         {
             ethernet_start(gw_cfg_get_wifi_ap_ssid()->ssid_buf);
-            if (!gw_status_is_eth_link_up() && gw_cfg_is_default())
+            if (!gw_status_is_eth_link_up())
             {
-                LOG_INFO("### Force start WiFi hotspot (there is no Ethernet connection and default config is used)");
+                LOG_INFO("### Force start WiFi hotspot (there is no Ethernet connection)");
                 flag_wifi_ap_started = true;
                 wifi_manager_start_ap();
             }
