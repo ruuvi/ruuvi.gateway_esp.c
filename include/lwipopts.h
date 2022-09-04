@@ -535,7 +535,7 @@ u32_t lwip_hook_tcp_isn(const struct ip_addr *local_ip, u16_t local_port,
  * The queue size value itself is platform-dependent, but is passed to
  * sys_mbox_new() when the acceptmbox is created.
  */
-#define DEFAULT_ACCEPTMBOX_SIZE         6
+#define DEFAULT_ACCEPTMBOX_SIZE         32
 
 /**
  * DEFAULT_THREAD_STACKSIZE: The stack size used by any other lwIP thread.
