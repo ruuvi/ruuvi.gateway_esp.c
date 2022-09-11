@@ -332,7 +332,7 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(TestEventType_LedcFadeStart, pEv->eventType);
         ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
         ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_FADE_NO_WAIT, pEv->fade_mode);
+        ASSERT_EQ(LEDC_FADE_WAIT_DONE, pEv->fade_mode);
     }
     ASSERT_EQ(idx, testEvents.size());
 
@@ -377,7 +377,7 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(TestEventType_LedcFadeStart, pEv->eventType);
         ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
         ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_FADE_NO_WAIT, pEv->fade_mode);
+        ASSERT_EQ(LEDC_FADE_WAIT_DONE, pEv->fade_mode);
     }
     ASSERT_EQ(idx, testEvents.size());
 
@@ -419,7 +419,7 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(TestEventType_LedcFadeStart, pEv->eventType);
         ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
         ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_FADE_NO_WAIT, pEv->fade_mode);
+        ASSERT_EQ(LEDC_FADE_WAIT_DONE, pEv->fade_mode);
     }
     ASSERT_EQ(idx, testEvents.size());
 
@@ -502,7 +502,7 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(TestEventType_LedcFadeStart, pEv->eventType);
         ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
         ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_FADE_NO_WAIT, pEv->fade_mode);
+        ASSERT_EQ(LEDC_FADE_WAIT_DONE, pEv->fade_mode);
     }
     ASSERT_EQ(idx, testEvents.size());
 
@@ -543,7 +543,7 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(TestEventType_LedcFadeStart, pEv->eventType);
         ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
         ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_FADE_NO_WAIT, pEv->fade_mode);
+        ASSERT_EQ(LEDC_FADE_WAIT_DONE, pEv->fade_mode);
     }
     ASSERT_EQ(idx, testEvents.size());
 
@@ -567,7 +567,7 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(TestEventType_LedcFadeStart, pEv->eventType);
         ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
         ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_FADE_NO_WAIT, pEv->fade_mode);
+        ASSERT_EQ(LEDC_FADE_WAIT_DONE, pEv->fade_mode);
     }
     ASSERT_EQ(idx, testEvents.size());
 
@@ -590,7 +590,7 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(TestEventType_LedcFadeStart, pEv->eventType);
         ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
         ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_FADE_NO_WAIT, pEv->fade_mode);
+        ASSERT_EQ(LEDC_FADE_WAIT_DONE, pEv->fade_mode);
     }
     ASSERT_EQ(idx, testEvents.size());
 
@@ -632,7 +632,7 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(TestEventType_LedcFadeStart, pEv->eventType);
         ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
         ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_FADE_NO_WAIT, pEv->fade_mode);
+        ASSERT_EQ(LEDC_FADE_WAIT_DONE, pEv->fade_mode);
     }
     ASSERT_EQ(idx, testEvents.size());
 
@@ -654,7 +654,7 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(TestEventType_LedcFadeStart, pEv->eventType);
         ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
         ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_FADE_NO_WAIT, pEv->fade_mode);
+        ASSERT_EQ(LEDC_FADE_WAIT_DONE, pEv->fade_mode);
     }
     ASSERT_EQ(idx, testEvents.size());
 
