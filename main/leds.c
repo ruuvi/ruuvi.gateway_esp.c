@@ -234,7 +234,7 @@ leds_task_handle_sig(
                 ledc_channel[0].channel,
                 LEDC_TEST_DUTY_ON,
                 LEDC_TEST_FADE_TIME);
-            ledc_fade_start(ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_NO_WAIT);
+            ledc_fade_start(ledc_channel[0].speed_mode, ledc_channel[0].channel, LEDC_FADE_WAIT_DONE);
 
             if (LEDS_DUTY_CYCLE_PERCENT_100 != duty_cycle_percent)
             {
