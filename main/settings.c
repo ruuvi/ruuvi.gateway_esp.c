@@ -304,7 +304,7 @@ settings_get_from_flash(bool *const p_flag_default_cfg_is_used)
     settings_erase_gw_cfg_blob_if_exist(handle);
     if (flag_wifi_cfg_blob_used)
     {
-        if (!wifi_manager_cfg_blob_erase_if_exist())
+        if (!wifi_manager_cfg_blob_mark_deprecated())
         {
             LOG_ERR("Failed to erase wifi_cfg_blob");
         }
