@@ -189,6 +189,12 @@ settings_write_flag_force_start_wifi_hotspot(const force_start_wifi_hotspot_t fo
 {
 }
 
+bool
+time_is_synchronized(void)
+{
+    return true;
+}
+
 } // extern "C"
 
 class MemAllocTrace
