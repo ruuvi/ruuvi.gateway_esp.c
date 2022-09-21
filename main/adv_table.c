@@ -60,7 +60,8 @@ adv_table_init(void)
         memset(p_elem, 0, sizeof(*p_elem));
         p_elem->is_in_hash_table          = false;
         p_elem->is_in_retransmission_list = false;
-        p_elem->adv_report.timestamp      = 0; // mark adv_report as free in hist_list
+        p_elem->adv_report.timestamp      = 0;
+        p_elem->adv_report.data_len       = 0; // mark adv_report as free in hist_list
         TAILQ_INSERT_TAIL(&g_adv_reports_hist_list, p_elem, hist_list);
     }
 }
@@ -291,5 +292,34 @@ adv_table_statistics_read(adv_report_table_t *const p_reports)
 {
     os_mutex_lock(gp_adv_reports_mutex);
     adv_table_read_statistics_unsafe(p_reports);
+    os_mutex_unlock(gp_adv_reports_mutex);
+}
+
+static void
+adv_table_clear_unsafe(void)
+{
+    while (1)
+    {
+        adv_reports_list_elem_t *p_elem = STAILQ_FIRST(&g_adv_reports_retransmission_list);
+        if (NULL == p_elem)
+        {
+            break;
+        }
+        STAILQ_REMOVE_HEAD(&g_adv_reports_retransmission_list, retransmission_list);
+        p_elem->is_in_retransmission_list = false;
+    }
+
+    adv_reports_list_elem_t *p_elem = NULL;
+    TAILQ_FOREACH(p_elem, &g_adv_reports_hist_list, hist_list)
+    {
+        p_elem->adv_report.data_len = 0; // mark adv_report as free in hist_list
+    }
+}
+
+void
+adv_table_clear(void)
+{
+    os_mutex_lock(gp_adv_reports_mutex);
+    adv_table_clear_unsafe();
     os_mutex_unlock(gp_adv_reports_mutex);
 }
