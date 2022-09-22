@@ -75,6 +75,9 @@ adv_table_history_read(
 void
 adv_table_statistics_read(adv_report_table_t *const p_reports);
 
+void
+adv_table_clear(void);
+
 #if RUUVI_TESTS_ADV_TABLE
 
 ADV_TABLE_STATIC

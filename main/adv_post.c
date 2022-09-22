@@ -226,26 +226,10 @@ adv_post_send_report(void *p_arg)
         return;
     }
 
-    if (!gw_status_is_network_connected())
-    {
-        static TickType_t g_last_tick_log_printed = 0;
-        const TickType_t  cur_tick                = xTaskGetTickCount();
-        if ((cur_tick - g_last_tick_log_printed) >= pdMS_TO_TICKS(60 * 1000))
-        {
-            LOG_WARN("Drop adv - no network connection");
-            g_last_tick_log_printed = cur_tick;
-        }
-        return;
-    }
-
     const bool flag_ntp_use = gw_cfg_get_ntp_use();
-    if (flag_ntp_use && (!time_is_synchronized()))
-    {
-        LOG_WARN("Drop adv - time is not synchronized yet");
-        return;
-    }
 
-    const time_t timestamp = flag_ntp_use ? time(NULL) : (time_t)metrics_received_advs_get();
+    const time_t timestamp = flag_ntp_use ? (time_is_synchronized() ? time(NULL) : 0)
+                                          : (time_t)metrics_received_advs_get();
 
     adv_report_t adv_report = { 0 };
     if (!parse_adv_report_from_uart((re_ca_uart_payload_t *)p_arg, timestamp, &adv_report))
@@ -259,22 +243,15 @@ adv_post_send_report(void *p_arg)
     {
         LOG_WARN("Drop adv - table full");
     }
-    if (gw_cfg_get_mqtt_use_mqtt())
+    if (gw_cfg_get_mqtt_use_mqtt() && gw_status_is_mqtt_connected())
     {
-        if (!gw_status_is_mqtt_connected())
+        if (mqtt_publish_adv(&adv_report, flag_ntp_use, (flag_ntp_use ? time(NULL) : 0)))
         {
-            LOG_WARN("Can't send adv, MQTT is not connected yet");
+            adv_post_last_successful_network_comm_timestamp_update();
         }
         else
         {
-            if (mqtt_publish_adv(&adv_report, flag_ntp_use, time(NULL)))
-            {
-                adv_post_last_successful_network_comm_timestamp_update();
-            }
-            else
-            {
-                LOG_ERR("%s failed", "mqtt_publish_adv");
-            }
+            LOG_ERR("%s failed", "mqtt_publish_adv");
         }
     }
 }
@@ -569,12 +546,9 @@ adv_post_timer_restart(void)
 static void
 adv_post_handle_sig_time_synchronized(const adv_post_state_t *const p_adv_post_state)
 {
-    if (p_adv_post_state->flag_need_to_send_advs)
-    {
-        LOG_INFO("Time has been synchronized - force advs retransmission");
-        os_timer_sig_periodic_simulate(g_p_adv_post_timer_sig_retransmit);
-        adv_post_timer_restart();
-    }
+    LOG_INFO("Remove all accumulated data with zero timestamps");
+    adv_table_clear();
+
     if (p_adv_post_state->flag_need_to_send_statistics)
     {
         LOG_INFO("Time has been synchronized - force statistics retransmission");

@@ -28,6 +28,7 @@
 #include "gw_cfg_ruuvi_json.h"
 #include "gw_cfg_json_parse.h"
 #include "time_units.h"
+#include "time_task.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -504,9 +505,10 @@ HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_history(const char *const p_params)
 {
-    const bool flag_use_timestamps = gw_cfg_get_ntp_use();
-    uint32_t   filter              = flag_use_timestamps ? HTTP_SERVER_DEFAULT_HISTORY_INTERVAL_SECONDS : 0;
-    bool       flag_use_filter     = flag_use_timestamps ? true : false;
+    const bool flag_use_timestamps       = gw_cfg_get_ntp_use();
+    const bool flag_time_is_synchronized = time_is_synchronized();
+    uint32_t   filter                    = flag_use_timestamps ? HTTP_SERVER_DEFAULT_HISTORY_INTERVAL_SECONDS : 0;
+    bool       flag_use_filter           = (flag_use_timestamps && flag_time_is_synchronized) ? true : false;
     if (NULL != p_params)
     {
         if (flag_use_timestamps)
@@ -515,8 +517,11 @@ http_server_resp_history(const char *const p_params)
             const size_t      time_prefix_len = strlen(p_time_prefix);
             if (0 == strncmp(p_params, p_time_prefix, time_prefix_len))
             {
-                filter          = (uint32_t)strtoul(&p_params[time_prefix_len], NULL, 0);
-                flag_use_filter = true;
+                filter = (uint32_t)strtoul(&p_params[time_prefix_len], NULL, 0);
+                if (flag_time_is_synchronized)
+                {
+                    flag_use_filter = true;
+                }
             }
         }
         else
