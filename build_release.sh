@@ -4,7 +4,7 @@ IDF_VERSION_ACTUAL=`(cd $IDF_PATH && git describe --always --tags --dirty --matc
 test ${?} -eq 0 || exit 1
 
 if [ "$IDF_VERSION_EXPECTED" != "$IDF_VERSION_ACTUAL" ]; then
-  echo -e "\033[31mIDF version \"$IDF_VERSION_ACTUAL\" does not match with the expected version \"$IDF_VERSION_EXPECTED\"" 1>&2
+  echo -e "\033[31mIDF version \"$IDF_VERSION_ACTUAL\" does not match with the expected version \"$IDF_VERSION_EXPECTED\"\033[30m" 1>&2
   exit 1
 fi
 
@@ -13,7 +13,7 @@ test ${?} -eq 0 || exit 1
 FW_SUFFIX=`echo $FW_TAG | sed -r 's/v([1-9]+\.[1-9]+\.[1-9]+)(.*)/\2/g'`
 test ${?} -eq 0 || exit 1
 if [ "$FW_SUFFIX" != "" ]; then
-  echo -e "\033[31mCurrent version is not a release version: $FW_TAG" 1>&2
+  echo -e "\033[31mCurrent version is not a release version: $FW_TAG\033[30m" 1>&2
   exit 1
 fi
 
