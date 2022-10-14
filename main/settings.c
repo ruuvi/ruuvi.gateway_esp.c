@@ -53,7 +53,7 @@ settings_check_in_flash(void)
     return true;
 }
 
-static char *
+static char*
 settings_read_gw_cfg_json_from_nvs(nvs_handle handle)
 {
     size_t    cfg_json_size = 0;
@@ -64,7 +64,7 @@ settings_read_gw_cfg_json_from_nvs(nvs_handle handle)
         return NULL;
     }
 
-    char *p_cfg_json = os_malloc(cfg_json_size);
+    char* p_cfg_json = os_malloc(cfg_json_size);
     if (NULL == p_cfg_json)
     {
         LOG_ERR("Can't allocate %lu bytes for configuration", (printf_ulong_t)cfg_json_size);
@@ -82,7 +82,7 @@ settings_read_gw_cfg_json_from_nvs(nvs_handle handle)
 }
 
 static bool
-settings_save_to_flash_cjson(const char *const p_json_str)
+settings_save_to_flash_cjson(const char* const p_json_str)
 {
     LOG_DBG("Save config to NVS: %s", (NULL != p_json_str) ? p_json_str : "");
 
@@ -93,7 +93,7 @@ settings_save_to_flash_cjson(const char *const p_json_str)
         return false;
     }
 
-    char *p_gw_cfg_prev = settings_read_gw_cfg_json_from_nvs(handle);
+    char* p_gw_cfg_prev = settings_read_gw_cfg_json_from_nvs(handle);
     if (NULL == p_gw_cfg_prev)
     {
         LOG_WARN("%s failed", "settings_read_gw_cfg_json_from_nvs");
@@ -132,7 +132,7 @@ settings_save_to_flash_cjson(const char *const p_json_str)
 }
 
 void
-settings_save_to_flash(const gw_cfg_t *const p_gw_cfg)
+settings_save_to_flash(const gw_cfg_t* const p_gw_cfg)
 {
     cjson_wrap_str_t cjson_str = { 0 };
     if (!gw_cfg_json_generate_full(p_gw_cfg, &cjson_str))
@@ -147,11 +147,11 @@ settings_save_to_flash(const gw_cfg_t *const p_gw_cfg)
 }
 
 static bool
-settings_get_gw_cfg_from_nvs(nvs_handle handle, gw_cfg_t *const p_gw_cfg, bool *const p_flag_modified)
+settings_get_gw_cfg_from_nvs(nvs_handle handle, gw_cfg_t* const p_gw_cfg, bool* const p_flag_modified)
 {
     gw_cfg_default_get(p_gw_cfg);
 
-    char *p_cfg_json = settings_read_gw_cfg_json_from_nvs(handle);
+    char* p_cfg_json = settings_read_gw_cfg_json_from_nvs(handle);
     if (NULL == p_cfg_json)
     {
         LOG_ERR("%s failed", "settings_read_gw_cfg_json_from_nvs");
@@ -189,7 +189,7 @@ settings_erase_gw_cfg_blob_if_exist(nvs_handle handle)
 }
 
 static bool
-settings_get_gw_cfg_blob_from_nvs(nvs_handle handle, ruuvi_gateway_config_blob_t *const p_gw_cfg_blob)
+settings_get_gw_cfg_blob_from_nvs(nvs_handle handle, ruuvi_gateway_config_blob_t* const p_gw_cfg_blob)
 {
     size_t    sz      = 0;
     esp_err_t esp_err = nvs_get_blob(handle, RUUVI_GATEWAY_NVS_CFG_BLOB_KEY, NULL, &sz);
@@ -229,11 +229,11 @@ settings_get_gw_cfg_blob_from_nvs(nvs_handle handle, ruuvi_gateway_config_blob_t
 }
 
 static bool
-settings_read_from_blob(nvs_handle handle, gw_cfg_t *const p_gw_cfg)
+settings_read_from_blob(nvs_handle handle, gw_cfg_t* const p_gw_cfg)
 {
     LOG_WARN("Try to read config from BLOB");
     bool                         flag_use_default_config = false;
-    ruuvi_gateway_config_blob_t *p_gw_cfg_blob           = os_calloc(1, sizeof(*p_gw_cfg_blob));
+    ruuvi_gateway_config_blob_t* p_gw_cfg_blob           = os_calloc(1, sizeof(*p_gw_cfg_blob));
     if (NULL == p_gw_cfg_blob)
     {
         flag_use_default_config = true;
@@ -254,10 +254,10 @@ settings_read_from_blob(nvs_handle handle, gw_cfg_t *const p_gw_cfg)
     return flag_use_default_config;
 }
 
-const gw_cfg_t *
-settings_get_from_flash(bool *const p_flag_default_cfg_is_used)
+const gw_cfg_t*
+settings_get_from_flash(bool* const p_flag_default_cfg_is_used)
 {
-    gw_cfg_t *p_gw_cfg_tmp = os_calloc(1, sizeof(*p_gw_cfg_tmp));
+    gw_cfg_t* p_gw_cfg_tmp = os_calloc(1, sizeof(*p_gw_cfg_tmp));
     if (NULL == p_gw_cfg_tmp)
     {
         LOG_ERR("Can't allocate memory for gw_cfg");
@@ -336,7 +336,7 @@ settings_read_mac_addr(void)
 }
 
 void
-settings_write_mac_addr(const mac_address_bin_t *const p_mac_addr)
+settings_write_mac_addr(const mac_address_bin_t* const p_mac_addr)
 {
     nvs_handle handle = 0;
     if (!ruuvi_nvs_open(NVS_READWRITE, &handle))
@@ -409,10 +409,10 @@ settings_write_flag_rebooting_after_auto_update(const bool flag_rebooting_after_
         LOG_ERR("%s failed", "ruuvi_nvs_open");
         return;
     }
-    const uint32_t flag_rebooting_after_auto_update_val = flag_rebooting_after_auto_update
-                                                              ? RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_VALUE
-                                                              : 0;
-    const esp_err_t esp_err = nvs_set_blob(
+    const uint32_t  flag_rebooting_after_auto_update_val = flag_rebooting_after_auto_update
+                                                               ? RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_VALUE
+                                                               : 0;
+    const esp_err_t esp_err                              = nvs_set_blob(
         handle,
         RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_KEY,
         &flag_rebooting_after_auto_update_val,

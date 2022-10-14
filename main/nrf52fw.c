@@ -25,13 +25,13 @@
 
 #define NRF52FW_SLEEP_WHILE_FLASHING_MS (20U)
 
-static const char *TAG = "nRF52Fw";
+static const char* TAG = "nRF52Fw";
 
 NRF52FW_STATIC
 bool
-nrf52fw_parse_version_digit(const char *p_digit_str, const char *p_digit_str_end, uint8_t *p_digit)
+nrf52fw_parse_version_digit(const char* p_digit_str, const char* p_digit_str_end, uint8_t* p_digit)
 {
-    const char *   end = p_digit_str_end;
+    const char*    end = p_digit_str_end;
     const uint32_t val = os_str_to_uint32_cptr(p_digit_str, &end, 10);
     if (NULL == p_digit_str_end)
     {
@@ -58,9 +58,9 @@ nrf52fw_parse_version_digit(const char *p_digit_str, const char *p_digit_str_end
 NRF52FW_STATIC
 bool
 nrf52fw_parse_digit_update_ver(
-    const char *  p_token_begin,
-    const char *  p_token_end,
-    uint32_t *    p_version,
+    const char*   p_token_begin,
+    const char*   p_token_end,
+    uint32_t*     p_version,
     const uint8_t byte_num)
 {
     uint8_t digit_val = 0;
@@ -75,7 +75,7 @@ nrf52fw_parse_digit_update_ver(
 
 NRF52FW_STATIC
 bool
-nrf52fw_parse_version(const char *p_version_str, ruuvi_nrf52_fw_ver_t *const p_version)
+nrf52fw_parse_version(const char* p_version_str, ruuvi_nrf52_fw_ver_t* const p_version)
 {
     uint32_t version = 0;
 
@@ -84,12 +84,12 @@ nrf52fw_parse_version(const char *p_version_str, ruuvi_nrf52_fw_ver_t *const p_v
         return false;
     }
 
-    const char *p_token_begin = p_version_str;
+    const char* p_token_begin = p_version_str;
     if ('\0' == *p_token_begin)
     {
         return false;
     }
-    const char *p_token_end = strchr(p_token_begin, '.');
+    const char* p_token_end = strchr(p_token_begin, '.');
     if (NULL == p_token_end)
     {
         return false;
@@ -135,9 +135,9 @@ nrf52fw_parse_version(const char *p_version_str, ruuvi_nrf52_fw_ver_t *const p_v
 
 NRF52FW_STATIC
 bool
-nrf52fw_parse_version_line(const char *p_version_line, ruuvi_nrf52_fw_ver_t *const p_version)
+nrf52fw_parse_version_line(const char* p_version_line, ruuvi_nrf52_fw_ver_t* const p_version)
 {
-    const char * version_prefix     = "# v";
+    const char*  version_prefix     = "# v";
     const size_t version_prefix_len = strlen(version_prefix);
     if (0 != strncmp(p_version_line, version_prefix, version_prefix_len))
     {
@@ -148,7 +148,7 @@ nrf52fw_parse_version_line(const char *p_version_line, ruuvi_nrf52_fw_ver_t *con
 
 NRF52FW_STATIC
 void
-nrf52fw_line_rstrip(char *p_line_buf, const size_t line_buf_size)
+nrf52fw_line_rstrip(char* p_line_buf, const size_t line_buf_size)
 {
     p_line_buf[line_buf_size - 1] = '\0';
     size_t len                    = strlen(p_line_buf);
@@ -173,10 +173,10 @@ nrf52fw_line_rstrip(char *p_line_buf, const size_t line_buf_size)
 
 NRF52FW_STATIC
 bool
-nrf52fw_parse_segment_info_line(const char *p_version_line, nrf52fw_segment_t *p_segment)
+nrf52fw_parse_segment_info_line(const char* p_version_line, nrf52fw_segment_t* p_segment)
 {
-    const char *   p_token_start = p_version_line;
-    const char *   end           = NULL;
+    const char*    p_token_start = p_version_line;
+    const char*    end           = NULL;
     const uint32_t segment_addr  = os_str_to_uint32_cptr(p_token_start, &end, 16);
     if ((' ' != *end) && ('\t' != *end))
     {
@@ -198,12 +198,12 @@ nrf52fw_parse_segment_info_line(const char *p_version_line, nrf52fw_segment_t *p
         end += 1;
     }
     p_token_start                         = end;
-    const char *p_segment_file_name_begin = p_token_start;
+    const char* p_segment_file_name_begin = p_token_start;
     while ((' ' != *end) && ('\t' != *end))
     {
         end += 1;
     }
-    const char * p_segment_file_name_end = end;
+    const char*  p_segment_file_name_end = end;
     const size_t segment_file_name_len   = (size_t)(ptrdiff_t)(p_segment_file_name_end - p_segment_file_name_begin);
     if (segment_file_name_len >= sizeof(p_segment->file_name))
     {
@@ -230,7 +230,7 @@ nrf52fw_parse_segment_info_line(const char *p_version_line, nrf52fw_segment_t *p
 
 NRF52FW_STATIC
 int32_t
-nrf52fw_parse_info_file(FILE *p_fd, nrf52fw_info_t *p_info)
+nrf52fw_parse_info_file(FILE* p_fd, nrf52fw_info_t* p_info)
 {
     p_info->fw_ver.version = 0;
     p_info->num_segments   = 0;
@@ -270,12 +270,12 @@ nrf52fw_parse_info_file(FILE *p_fd, nrf52fw_info_t *p_info)
 
 NRF52FW_STATIC
 bool
-nrf52fw_read_info_txt(const flash_fat_fs_t *p_ffs, const char *p_path_info_txt, nrf52fw_info_t *p_info)
+nrf52fw_read_info_txt(const flash_fat_fs_t* p_ffs, const char* p_path_info_txt, nrf52fw_info_t* p_info)
 {
     memset(p_info, 0, sizeof(*p_info));
     const bool flag_use_binary_mode = false;
 
-    FILE *p_fd = flashfatfs_fopen(p_ffs, p_path_info_txt, flag_use_binary_mode);
+    FILE* p_fd = flashfatfs_fopen(p_ffs, p_path_info_txt, flag_use_binary_mode);
     if (NULL == p_fd)
     {
         LOG_ERR("Can't open: %s", p_path_info_txt);
@@ -334,7 +334,7 @@ nrf52fw_deinit_swd(void)
 
 NRF52FW_STATIC
 bool
-nrf52fw_read_current_fw_ver(ruuvi_nrf52_fw_ver_t *const p_fw_ver)
+nrf52fw_read_current_fw_ver(ruuvi_nrf52_fw_ver_t* const p_fw_ver)
 {
     return nrf52swd_read_mem(NRF52FW_IUCR_FW_VER, 1, &p_fw_ver->version);
 }
@@ -360,7 +360,7 @@ nrf52fw_simulate_file_read_error(const bool flag_error)
 
 NRF52FW_STATIC
 int32_t
-nrf52fw_file_read(const file_descriptor_t fd, void *p_buf, const size_t buf_size)
+nrf52fw_file_read(const file_descriptor_t fd, void* p_buf, const size_t buf_size)
 {
 #if RUUVI_TESTS_NRF52FW
     if (g_nrf52fw_flag_simulate_file_read_error)
@@ -374,11 +374,11 @@ nrf52fw_file_read(const file_descriptor_t fd, void *p_buf, const size_t buf_size
 NRF52FW_STATIC
 bool
 nrf52fw_flash_write_block(
-    nrf52fw_tmp_buf_t *p_tmp_buf,
+    nrf52fw_tmp_buf_t* p_tmp_buf,
     const int32_t      len,
     const uint32_t     segment_addr,
     const size_t       segment_len,
-    uint32_t *         p_offset)
+    uint32_t*          p_offset)
 {
     const uint32_t addr = segment_addr + *p_offset;
     if (0 != (len % sizeof(uint32_t)))
@@ -417,10 +417,10 @@ NRF52FW_STATIC
 bool
 nrf52fw_flash_write_segment(
     const file_descriptor_t        fd,
-    nrf52fw_tmp_buf_t *            p_tmp_buf,
+    nrf52fw_tmp_buf_t*             p_tmp_buf,
     const uint32_t                 segment_addr,
     const size_t                   segment_len,
-    nrf52fw_progress_info_t *const p_progress_info)
+    nrf52fw_progress_info_t* const p_progress_info)
 {
     uint32_t offset = 0;
     for (;;)
@@ -458,12 +458,12 @@ nrf52fw_flash_write_segment(
 NRF52FW_STATIC
 bool
 nrf52fw_write_segment_from_file(
-    const flash_fat_fs_t *         p_ffs,
-    const char *                   p_path,
-    nrf52fw_tmp_buf_t *            p_tmp_buf,
+    const flash_fat_fs_t*          p_ffs,
+    const char*                    p_path,
+    nrf52fw_tmp_buf_t*             p_tmp_buf,
     const uint32_t                 segment_addr,
     const size_t                   segment_len,
-    nrf52fw_progress_info_t *const p_progress_info)
+    nrf52fw_progress_info_t* const p_progress_info)
 {
     const file_descriptor_t fd = flashfatfs_open(p_ffs, p_path);
     if (fd < 0)
@@ -497,11 +497,11 @@ nrf52fw_erase_flash(void)
 NRF52FW_STATIC
 bool
 nrf52fw_flash_write_firmware(
-    const flash_fat_fs_t *p_ffs,
-    nrf52fw_tmp_buf_t *   p_tmp_buf,
-    const nrf52fw_info_t *p_fw_info,
+    const flash_fat_fs_t* p_ffs,
+    nrf52fw_tmp_buf_t*    p_tmp_buf,
+    const nrf52fw_info_t* p_fw_info,
     nrf52fw_cb_progress   cb_progress,
-    void *const           p_param_cb_progress)
+    void* const           p_param_cb_progress)
 {
     if (!nrf52fw_erase_flash())
     {
@@ -512,7 +512,7 @@ nrf52fw_flash_write_firmware(
     size_t total_size = 0;
     for (uint32_t i = 0; i < p_fw_info->num_segments; ++i)
     {
-        const nrf52fw_segment_t *p_segment_info = &p_fw_info->segments[i];
+        const nrf52fw_segment_t* p_segment_info = &p_fw_info->segments[i];
         total_size += p_segment_info->size;
     }
     nrf52fw_progress_info_t progress_info = {
@@ -523,7 +523,7 @@ nrf52fw_flash_write_firmware(
     };
     for (uint32_t i = 0; i < p_fw_info->num_segments; ++i)
     {
-        const nrf52fw_segment_t *p_segment_info = &p_fw_info->segments[i];
+        const nrf52fw_segment_t* p_segment_info = &p_fw_info->segments[i];
         LOG_INFO(
             "Flash segment %u: 0x%08x size=%u from %s",
             i,
@@ -558,9 +558,9 @@ NRF52FW_STATIC
 bool
 nrf52fw_calc_segment_crc(
     const file_descriptor_t fd,
-    nrf52fw_tmp_buf_t *     p_tmp_buf,
+    nrf52fw_tmp_buf_t*      p_tmp_buf,
     const size_t            segment_len,
-    uint32_t *              p_crc)
+    uint32_t*               p_crc)
 {
     uint32_t offset     = 0U;
     uint32_t actual_crc = 0U;
@@ -587,7 +587,7 @@ nrf52fw_calc_segment_crc(
             LOG_ERR("offset %u greater than segment len %u", offset, segment_len);
             return false;
         }
-        actual_crc = crc32_le(actual_crc, (void *)p_tmp_buf->buf_wr, len);
+        actual_crc = crc32_le(actual_crc, (void*)p_tmp_buf->buf_wr, len);
     }
     *p_crc = actual_crc;
     return true;
@@ -596,9 +596,9 @@ nrf52fw_calc_segment_crc(
 NRF52FW_STATIC
 bool
 nrf52fw_check_fw_segment_crc(
-    const flash_fat_fs_t *   p_ffs,
-    nrf52fw_tmp_buf_t *      p_tmp_buf,
-    const nrf52fw_segment_t *p_segment_info)
+    const flash_fat_fs_t*    p_ffs,
+    nrf52fw_tmp_buf_t*       p_tmp_buf,
+    const nrf52fw_segment_t* p_segment_info)
 {
     const file_descriptor_t fd = flashfatfs_open(p_ffs, p_segment_info->file_name);
     if (fd < 0)
@@ -630,7 +630,7 @@ nrf52fw_check_fw_segment_crc(
 
 NRF52FW_STATIC
 bool
-nrf52fw_check_firmware(const flash_fat_fs_t *p_ffs, nrf52fw_tmp_buf_t *p_tmp_buf, const nrf52fw_info_t *p_fw_info)
+nrf52fw_check_firmware(const flash_fat_fs_t* p_ffs, nrf52fw_tmp_buf_t* p_tmp_buf, const nrf52fw_info_t* p_fw_info)
 {
     for (uint32_t i = 0; i < p_fw_info->num_segments; ++i)
     {
@@ -645,13 +645,13 @@ nrf52fw_check_firmware(const flash_fat_fs_t *p_ffs, nrf52fw_tmp_buf_t *p_tmp_buf
 NRF52FW_STATIC
 bool
 nrf52fw_update_fw_step3(
-    const flash_fat_fs_t *      p_ffs,
-    nrf52fw_tmp_buf_t *         p_tmp_buf,
+    const flash_fat_fs_t*       p_ffs,
+    nrf52fw_tmp_buf_t*          p_tmp_buf,
     nrf52fw_cb_progress         cb_progress,
-    void *const                 p_param_cb_progress,
+    void* const                 p_param_cb_progress,
     nrf52fw_cb_before_updating  cb_before_updating,
     nrf52fw_cb_after_updating   cb_after_updating,
-    ruuvi_nrf52_fw_ver_t *const p_nrf52_fw_ver)
+    ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver)
 {
     nrf52fw_info_t fw_info = { 0 };
     if (!nrf52fw_read_info_txt(p_ffs, "info.txt", &fw_info))
@@ -717,14 +717,14 @@ nrf52fw_update_fw_step3(
 NRF52FW_STATIC
 bool
 nrf52fw_update_fw_step2(
-    const flash_fat_fs_t *      p_ffs,
+    const flash_fat_fs_t*       p_ffs,
     nrf52fw_cb_progress         cb_progress,
-    void *const                 p_param_cb_progress,
+    void* const                 p_param_cb_progress,
     nrf52fw_cb_before_updating  cb_before_updating,
     nrf52fw_cb_after_updating   cb_after_updating,
-    ruuvi_nrf52_fw_ver_t *const p_nrf52_fw_ver)
+    ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver)
 {
-    nrf52fw_tmp_buf_t *p_tmp_buf = os_malloc(sizeof(*p_tmp_buf));
+    nrf52fw_tmp_buf_t* p_tmp_buf = os_malloc(sizeof(*p_tmp_buf));
     if (NULL == p_tmp_buf)
     {
         LOG_ERR("%s failed", "os_malloc");
@@ -745,16 +745,16 @@ nrf52fw_update_fw_step2(
 NRF52FW_STATIC
 bool
 nrf52fw_update_fw_step1(
-    const char *const           p_fatfs_nrf52_partition_name,
+    const char* const           p_fatfs_nrf52_partition_name,
     nrf52fw_cb_progress         cb_progress,
-    void *const                 p_param_cb_progress,
+    void* const                 p_param_cb_progress,
     nrf52fw_cb_before_updating  cb_before_updating,
     nrf52fw_cb_after_updating   cb_after_updating,
-    ruuvi_nrf52_fw_ver_t *const p_nrf52_fw_ver)
+    ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver)
 {
     const flash_fat_fs_num_files_t max_num_files = 1;
 
-    const flash_fat_fs_t *p_ffs = flashfatfs_mount("/fs_nrf52", p_fatfs_nrf52_partition_name, max_num_files);
+    const flash_fat_fs_t* p_ffs = flashfatfs_mount("/fs_nrf52", p_fatfs_nrf52_partition_name, max_num_files);
     if (NULL == p_ffs)
     {
         LOG_ERR("%s failed", "flashfatfs_mount");
@@ -774,12 +774,12 @@ nrf52fw_update_fw_step1(
 NRF52FW_STATIC
 bool
 nrf52fw_update_fw_step0(
-    const char *const           p_fatfs_nrf52_partition_name,
+    const char* const           p_fatfs_nrf52_partition_name,
     nrf52fw_cb_progress         cb_progress,
-    void *const                 p_param_cb_progress,
+    void* const                 p_param_cb_progress,
     nrf52fw_cb_before_updating  cb_before_updating,
     nrf52fw_cb_after_updating   cb_after_updating,
-    ruuvi_nrf52_fw_ver_t *const p_nrf52_fw_ver)
+    ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver)
 {
     if (!nrf52fw_init_swd())
     {
@@ -825,12 +825,12 @@ nrf52fw_hw_reset_nrf52(const bool flag_reset)
 
 bool
 nrf52fw_update_fw_if_necessary(
-    const char *const           p_fatfs_nrf52_partition_name,
+    const char* const           p_fatfs_nrf52_partition_name,
     nrf52fw_cb_progress         cb_progress,
-    void *const                 p_param_cb_progress,
+    void* const                 p_param_cb_progress,
     nrf52fw_cb_before_updating  cb_before_updating,
     nrf52fw_cb_after_updating   cb_after_updating,
-    ruuvi_nrf52_fw_ver_t *const p_nrf52_fw_ver)
+    ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver)
 {
     const TickType_t ticks_in_reset_state = 100;
     nrf52fw_hw_reset_nrf52(true);

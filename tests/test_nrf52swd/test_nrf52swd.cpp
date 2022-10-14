@@ -22,7 +22,7 @@ using namespace std;
  * *********************************************************************************/
 
 class TestNRF52Swd;
-static TestNRF52Swd *g_pTestClass;
+static TestNRF52Swd* g_pTestClass;
 
 extern "C" {
 
@@ -31,11 +31,11 @@ typedef struct spi_device_t
     int stub;
 } spi_device_t;
 
-const char *
+const char*
 os_task_get_name(void)
 {
     static const char g_task_name[] = "main";
-    return const_cast<char *>(g_task_name);
+    return const_cast<char*>(g_task_name);
 }
 
 os_task_priority_t
@@ -65,7 +65,7 @@ public:
     uint32_t         segmentAddr;
     vector<uint32_t> data;
 
-    MemSegment(const uint32_t addr, const uint32_t num_words, const uint32_t *p_buf)
+    MemSegment(const uint32_t addr, const uint32_t num_words, const uint32_t* p_buf)
         : segmentAddr(addr)
     {
         for (uint32_t i = 0; i < num_words; ++i)
@@ -75,7 +75,7 @@ public:
     }
 
     void
-    append(const uint32_t addr, const uint32_t num_words, const uint32_t *p_buf)
+    append(const uint32_t addr, const uint32_t num_words, const uint32_t* p_buf)
     {
         const uint32_t segmentEndAddr = this->segmentAddr + this->data.size() * sizeof(uint32_t);
         assert(addr == segmentEndAddr);
@@ -243,7 +243,7 @@ public:
     uint32_t m_nvmc_reg_erase_all_cnt_before_fail;
 
     bool
-    write_mem(const uint32_t addr, const uint32_t num_words, const uint32_t *p_buf)
+    write_mem(const uint32_t addr, const uint32_t num_words, const uint32_t* p_buf)
     {
         this->m_memSegmentsWrite.emplace_back(addr, num_words, p_buf);
         if ((0x4001E000UL + 0x504U) == addr)
@@ -270,10 +270,10 @@ public:
     }
 
     bool
-    read_mem(const uint32_t addr, const uint32_t num_words, uint32_t *p_buf)
+    read_mem(const uint32_t addr, const uint32_t num_words, uint32_t* p_buf)
     {
         assert(0 == (addr % sizeof(uint32_t)));
-        for (const auto &x : this->m_memSegmentsRead)
+        for (const auto& x : this->m_memSegmentsRead)
         {
             const uint32_t segmentEndAddr = x.segmentAddr + x.data.size() * sizeof(uint32_t);
             if ((addr >= x.segmentAddr) && (addr < segmentEndAddr))
@@ -306,7 +306,7 @@ vTaskDelay(const TickType_t xTicksToDelay)
 }
 
 esp_err_t
-gpio_config(const gpio_config_t *pGPIOConfig)
+gpio_config(const gpio_config_t* pGPIOConfig)
 {
     for (uint32_t bit_idx = 0; bit_idx < 64; ++bit_idx)
     {
@@ -331,7 +331,7 @@ gpio_set_level(gpio_num_t gpio_num, uint32_t level)
 }
 
 esp_err_t
-spi_bus_initialize(spi_host_device_t host, const spi_bus_config_t *bus_config, int dma_chan)
+spi_bus_initialize(spi_host_device_t host, const spi_bus_config_t* bus_config, int dma_chan)
 {
     g_pTestClass->m_spi_host       = host;
     g_pTestClass->m_spi_bus_config = *bus_config;
@@ -346,7 +346,7 @@ spi_bus_free(spi_host_device_t host)
 }
 
 esp_err_t
-spi_bus_add_device(spi_host_device_t host, const spi_device_interface_config_t *dev_config, spi_device_handle_t *handle)
+spi_bus_add_device(spi_host_device_t host, const spi_device_interface_config_t* dev_config, spi_device_handle_t* handle)
 {
     g_pTestClass->m_spi_add_device_host   = host;
     g_pTestClass->m_spi_add_device_config = *dev_config;
@@ -362,7 +362,7 @@ spi_bus_remove_device(spi_device_handle_t handle)
     return g_pTestClass->m_spi_remove_device_result;
 }
 
-libswd_ctx_t *
+libswd_ctx_t*
 libswd_init(void)
 {
     if (g_pTestClass->m_libswd_init_failed)
@@ -376,14 +376,14 @@ libswd_init(void)
 }
 
 int
-libswd_deinit(libswd_ctx_t *libswdctx)
+libswd_deinit(libswd_ctx_t* libswdctx)
 {
     assert(&g_pTestClass->m_libswd_ctx == libswdctx);
     return 0;
 }
 
 int
-libswd_log_level_set(libswd_ctx_t *libswdctx, libswd_loglevel_t loglevel)
+libswd_log_level_set(libswd_ctx_t* libswdctx, libswd_loglevel_t loglevel)
 {
     assert(nullptr != libswdctx);
     libswdctx->config.loglevel = loglevel;
@@ -391,7 +391,7 @@ libswd_log_level_set(libswd_ctx_t *libswdctx, libswd_loglevel_t loglevel)
 }
 
 int
-libswd_debug_init(libswd_ctx_t *libswdctx, libswd_operation_t operation)
+libswd_debug_init(libswd_ctx_t* libswdctx, libswd_operation_t operation)
 {
     assert(&g_pTestClass->m_libswd_ctx == libswdctx);
     g_pTestClass->m_libswd_debug_init_operation = operation;
@@ -399,7 +399,7 @@ libswd_debug_init(libswd_ctx_t *libswdctx, libswd_operation_t operation)
 }
 
 int
-libswd_dap_detect(libswd_ctx_t *libswdctx, libswd_operation_t operation, int **idcode)
+libswd_dap_detect(libswd_ctx_t* libswdctx, libswd_operation_t operation, int** idcode)
 {
     assert(&g_pTestClass->m_libswd_ctx == libswdctx);
     g_pTestClass->m_libswd_dap_detect_operation = operation;
@@ -409,7 +409,7 @@ libswd_dap_detect(libswd_ctx_t *libswdctx, libswd_operation_t operation, int **i
 }
 
 int
-libswd_debug_halt(libswd_ctx_t *libswdctx, libswd_operation_t operation)
+libswd_debug_halt(libswd_ctx_t* libswdctx, libswd_operation_t operation)
 {
     assert(&g_pTestClass->m_libswd_ctx == libswdctx);
     g_pTestClass->m_libswd_debug_halt_operation = operation;
@@ -417,7 +417,7 @@ libswd_debug_halt(libswd_ctx_t *libswdctx, libswd_operation_t operation)
 }
 
 int
-libswd_debug_enable_reset_vector_catch(libswd_ctx_t *libswdctx, libswd_operation_t operation)
+libswd_debug_enable_reset_vector_catch(libswd_ctx_t* libswdctx, libswd_operation_t operation)
 {
     assert(&g_pTestClass->m_libswd_ctx == libswdctx);
     g_pTestClass->m_libswd_debug_enable_reset_vector_catch_operation = operation;
@@ -425,7 +425,7 @@ libswd_debug_enable_reset_vector_catch(libswd_ctx_t *libswdctx, libswd_operation
 }
 
 int
-libswd_debug_reset(libswd_ctx_t *libswdctx, libswd_operation_t operation)
+libswd_debug_reset(libswd_ctx_t* libswdctx, libswd_operation_t operation)
 {
     assert(&g_pTestClass->m_libswd_ctx == libswdctx);
     g_pTestClass->m_libswd_debug_reset_operation = operation;
@@ -433,7 +433,7 @@ libswd_debug_reset(libswd_ctx_t *libswdctx, libswd_operation_t operation)
 }
 
 int
-libswd_debug_run(libswd_ctx_t *libswdctx, libswd_operation_t operation)
+libswd_debug_run(libswd_ctx_t* libswdctx, libswd_operation_t operation)
 {
     assert(&g_pTestClass->m_libswd_ctx == libswdctx);
     g_pTestClass->m_libswd_debug_run_operation = operation;
@@ -441,7 +441,7 @@ libswd_debug_run(libswd_ctx_t *libswdctx, libswd_operation_t operation)
 }
 
 int
-libswd_memap_read_int_32(libswd_ctx_t *libswdctx, libswd_operation_t operation, int addr, int count, int *data)
+libswd_memap_read_int_32(libswd_ctx_t* libswdctx, libswd_operation_t operation, int addr, int count, int* data)
 {
     assert(&g_pTestClass->m_libswd_ctx == libswdctx);
     g_pTestClass->m_libswd_read_int_32_operation = operation;
@@ -468,7 +468,7 @@ libswd_memap_read_int_32(libswd_ctx_t *libswdctx, libswd_operation_t operation, 
     }
     else
     {
-        if (!g_pTestClass->read_mem((uint32_t)addr, (uint32_t)count, (uint32_t *)data))
+        if (!g_pTestClass->read_mem((uint32_t)addr, (uint32_t)count, (uint32_t*)data))
         {
             return -1;
         }
@@ -477,11 +477,11 @@ libswd_memap_read_int_32(libswd_ctx_t *libswdctx, libswd_operation_t operation, 
 }
 
 int
-libswd_memap_write_int_32(libswd_ctx_t *libswdctx, libswd_operation_t operation, int addr, int count, int *data)
+libswd_memap_write_int_32(libswd_ctx_t* libswdctx, libswd_operation_t operation, int addr, int count, int* data)
 {
     assert(&g_pTestClass->m_libswd_ctx == libswdctx);
     g_pTestClass->m_libswd_write_int_32_operation = operation;
-    if (!g_pTestClass->write_mem((uint32_t)addr, (uint32_t)count, (uint32_t *)data))
+    if (!g_pTestClass->write_mem((uint32_t)addr, (uint32_t)count, (uint32_t*)data))
     {
         return -1;
     }

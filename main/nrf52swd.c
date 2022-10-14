@@ -22,7 +22,7 @@
 #endif
 #include "log.h"
 
-static const char *TAG = "SWD";
+static const char* TAG = "SWD";
 
 typedef int LibSWD_ReturnCode_t;
 typedef int LibSWD_IdCode_t;
@@ -63,7 +63,7 @@ static const spi_device_interface_config_t confSPI = {
 };
 
 static spi_device_handle_t g_nrf52swd_device_spi;
-static libswd_ctx_t *      gp_nrf52swd_libswd_ctx;
+static libswd_ctx_t*       gp_nrf52swd_libswd_ctx;
 static bool                g_nrf52swd_is_gpio_cfg_nreset_initialized;
 static bool                g_nrf52swd_is_spi_initialized;
 static bool                g_nrf52swd_is_spi_device_added;
@@ -288,7 +288,7 @@ nrf52swd_reset(const bool flag_reset)
 bool
 nrf52swd_check_id_code(void)
 {
-    LibSWD_IdCode_t *p_idcode_ptr = NULL;
+    LibSWD_IdCode_t* p_idcode_ptr = NULL;
     LOG_DBG("libswd_dap_detect");
     const LibSWD_ReturnCode_t dap_res = libswd_dap_detect(
         gp_nrf52swd_libswd_ctx,
@@ -363,14 +363,14 @@ nrf52swd_debug_run(void)
 
 NRF52SWD_STATIC
 bool
-nrf52swd_read_reg(const uint32_t reg_addr, uint32_t *p_val)
+nrf52swd_read_reg(const uint32_t reg_addr, uint32_t* p_val)
 {
     const LibSWD_ReturnCode_t ret_val = libswd_memap_read_int_32(
         gp_nrf52swd_libswd_ctx,
         LIBSWD_OPERATION_EXECUTE,
         reg_addr,
         1,
-        (LibSWD_Data_t *)p_val);
+        (LibSWD_Data_t*)p_val);
     if (LIBSWD_OK != ret_val)
     {
         LOG_ERR("%s: libswd_memap_read_int_32(0x%08x) failed, err=%d", __func__, reg_addr, ret_val);
@@ -400,7 +400,7 @@ nrf52swd_write_reg(const uint32_t reg_addr, const uint32_t val)
 
 NRF52SWD_STATIC
 bool
-nrf51swd_nvmc_is_ready_or_err(bool *p_result)
+nrf51swd_nvmc_is_ready_or_err(bool* p_result)
 {
     *p_result        = false;
     uint32_t reg_val = 0;
@@ -462,7 +462,7 @@ nrf52swd_erase_all(void)
 }
 
 bool
-nrf52swd_read_mem(const uint32_t addr, const uint32_t num_words, uint32_t *p_buf)
+nrf52swd_read_mem(const uint32_t addr, const uint32_t num_words, uint32_t* p_buf)
 {
     bool                      result = false;
     const LibSWD_ReturnCode_t res    = libswd_memap_read_int_32(
@@ -470,7 +470,7 @@ nrf52swd_read_mem(const uint32_t addr, const uint32_t num_words, uint32_t *p_buf
         LIBSWD_OPERATION_EXECUTE,
         addr,
         num_words,
-        (LibSWD_Data_t *)p_buf);
+        (LibSWD_Data_t*)p_buf);
     if (LIBSWD_OK != res)
     {
         NRF52SWD_LOG_ERR("libswd_memap_read_int_32", res);
@@ -483,7 +483,7 @@ nrf52swd_read_mem(const uint32_t addr, const uint32_t num_words, uint32_t *p_buf
 }
 
 bool
-nrf52swd_write_mem(const uint32_t addr, const uint32_t num_words, const uint32_t *p_buf)
+nrf52swd_write_mem(const uint32_t addr, const uint32_t num_words, const uint32_t* p_buf)
 {
     if (!nrf51swd_nvmc_wait_while_busy())
     {
@@ -500,7 +500,7 @@ nrf52swd_write_mem(const uint32_t addr, const uint32_t num_words, const uint32_t
         LIBSWD_OPERATION_EXECUTE,
         addr,
         num_words,
-        (LibSWD_Data_t *)p_buf);
+        (LibSWD_Data_t*)p_buf);
     if (LIBSWD_OK != res)
     {
         NRF52SWD_LOG_ERR("libswd_memap_write_int_32", res);

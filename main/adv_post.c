@@ -70,18 +70,18 @@ typedef struct adv_post_state_t
 #define ADV_POST_SIG_LAST  (ADV_POST_SIG_GW_CFG_CHANGED_RUUVI)
 
 static void
-adv_post_send_report(void *p_arg);
+adv_post_send_report(void* p_arg);
 
 static void
-adv_post_send_ack(void *arg);
+adv_post_send_ack(void* arg);
 
 static void
-adv_post_cb_on_recv_device_id(void *arg);
+adv_post_cb_on_recv_device_id(void* arg);
 
 static void
-adv_post_send_get_all(void *arg);
+adv_post_send_get_all(void* arg);
 
-static const char *TAG = "ADV_POST_TASK";
+static const char* TAG = "ADV_POST_TASK";
 
 static adv_callbacks_fn_t adv_callback_func_tbl = {
     .AdvAckCallback    = adv_post_send_ack,
@@ -91,20 +91,20 @@ static adv_callbacks_fn_t adv_callback_func_tbl = {
 };
 
 static uint32_t                       g_adv_post_nonce;
-static os_signal_t *                  g_p_adv_post_sig;
+static os_signal_t*                   g_p_adv_post_sig;
 static os_signal_static_t             g_adv_post_sig_mem;
-static os_timer_sig_periodic_t *      g_p_adv_post_timer_sig_retransmit;
+static os_timer_sig_periodic_t*       g_p_adv_post_timer_sig_retransmit;
 static os_timer_sig_periodic_static_t g_adv_post_timer_sig_retransmit_mem;
-static os_timer_sig_periodic_t *      g_p_adv_post_timer_sig_send_statistics;
+static os_timer_sig_periodic_t*       g_p_adv_post_timer_sig_send_statistics;
 static os_timer_sig_periodic_static_t g_adv_post_timer_sig_send_statistics_mem;
-static os_timer_sig_one_shot_t *      g_p_adv_post_timer_sig_do_async_comm;
+static os_timer_sig_one_shot_t*       g_p_adv_post_timer_sig_do_async_comm;
 static os_timer_sig_one_shot_static_t g_adv_post_timer_sig_do_async_comm_mem;
-static os_timer_sig_periodic_t *      g_p_adv_post_timer_sig_watchdog_feed;
+static os_timer_sig_periodic_t*       g_p_adv_post_timer_sig_watchdog_feed;
 static os_timer_sig_periodic_static_t g_adv_post_timer_sig_watchdog_feed_mem;
 static TickType_t                     g_adv_post_last_successful_network_comm_timestamp;
 static os_mutex_t                     g_p_adv_port_last_successful_network_comm_mutex;
 static os_mutex_static_t              g_adv_port_last_successful_network_comm_mutex_mem;
-static os_timer_sig_periodic_t *      g_p_adv_post_timer_sig_network_watchdog;
+static os_timer_sig_periodic_t*       g_p_adv_post_timer_sig_network_watchdog;
 static os_timer_sig_periodic_static_t g_adv_post_timer_sig_network_watchdog_mem;
 static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_wifi_disconnected;
 static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_eth_disconnected;
@@ -132,7 +132,7 @@ adv_post_conv_from_sig_num(const os_signal_num_e sig_num)
 
 /** @brief serialise up to U64 into given buffer, MSB first. */
 static inline void
-u64_to_array(const uint64_t u64, uint8_t *const p_array, const uint8_t num_bytes)
+u64_to_array(const uint64_t u64, uint8_t* const p_array, const uint8_t num_bytes)
 {
     const uint8_t offset = num_bytes - 1;
     uint8_t       cnt    = num_bytes;
@@ -144,7 +144,7 @@ u64_to_array(const uint64_t u64, uint8_t *const p_array, const uint8_t num_bytes
 }
 
 static esp_err_t
-adv_put_to_table(const adv_report_t *const p_adv)
+adv_put_to_table(const adv_report_t* const p_adv)
 {
     metrics_received_advs_increment();
     if (!adv_table_put(p_adv))
@@ -155,7 +155,7 @@ adv_put_to_table(const adv_report_t *const p_adv)
 }
 
 static bool
-parse_adv_report_from_uart(const re_ca_uart_payload_t *const p_msg, const time_t timestamp, adv_report_t *const p_adv)
+parse_adv_report_from_uart(const re_ca_uart_payload_t* const p_msg, const time_t timestamp, adv_report_t* const p_adv)
 {
     if (NULL == p_msg)
     {
@@ -169,7 +169,7 @@ parse_adv_report_from_uart(const re_ca_uart_payload_t *const p_msg, const time_t
     {
         return false;
     }
-    const re_ca_uart_ble_adv_t *const p_report = &(p_msg->params.adv);
+    const re_ca_uart_ble_adv_t* const p_report = &(p_msg->params.adv);
     if (p_report->adv_len > sizeof(p_adv->data_buf))
     {
         LOG_ERR(
@@ -194,16 +194,16 @@ parse_adv_report_from_uart(const re_ca_uart_payload_t *const p_msg, const time_t
 }
 
 static void
-adv_post_send_ack(void *arg)
+adv_post_send_ack(void* arg)
 {
     (void)arg;
     // Do something
 }
 
 static void
-adv_post_cb_on_recv_device_id(void *p_arg)
+adv_post_cb_on_recv_device_id(void* p_arg)
 {
-    const re_ca_uart_payload_t *const p_uart_payload = (re_ca_uart_payload_t *)p_arg;
+    const re_ca_uart_payload_t* const p_uart_payload = (re_ca_uart_payload_t*)p_arg;
 
     nrf52_device_id_t nrf52_device_id = { 0 };
     u64_to_array(p_uart_payload->params.device_id.id, &nrf52_device_id.id[0], sizeof(nrf52_device_id.id));
@@ -218,7 +218,7 @@ adv_post_cb_on_recv_device_id(void *p_arg)
 }
 
 static void
-adv_post_send_report(void *p_arg)
+adv_post_send_report(void* p_arg)
 {
     if (!gw_cfg_is_initialized())
     {
@@ -232,7 +232,7 @@ adv_post_send_report(void *p_arg)
                                           : (time_t)metrics_received_advs_get();
 
     adv_report_t adv_report = { 0 };
-    if (!parse_adv_report_from_uart((re_ca_uart_payload_t *)p_arg, timestamp, &adv_report))
+    if (!parse_adv_report_from_uart((re_ca_uart_payload_t*)p_arg, timestamp, &adv_report))
     {
         LOG_WARN("Drop adv - parsing failed");
         return;
@@ -257,7 +257,7 @@ adv_post_send_report(void *p_arg)
 }
 
 static void
-adv_post_send_get_all(void *arg)
+adv_post_send_get_all(void* arg)
 {
     (void)arg;
     LOG_INFO("Got configuration request from NRF52");
@@ -265,12 +265,12 @@ adv_post_send_get_all(void *arg)
 }
 
 static void
-adv_post_log(const adv_report_table_t *p_reports, const bool flag_use_timestamps)
+adv_post_log(const adv_report_table_t* p_reports, const bool flag_use_timestamps)
 {
     LOG_INFO("Advertisements in table: %u", (printf_uint_t)p_reports->num_of_advs);
     for (num_of_advs_t i = 0; i < p_reports->num_of_advs; ++i)
     {
-        const adv_report_t *p_adv = &p_reports->table[i];
+        const adv_report_t* p_adv = &p_reports->table[i];
 
         const mac_address_str_t mac_str = mac_address_to_str(&p_adv->tag_mac);
         if (flag_use_timestamps)
@@ -300,7 +300,7 @@ adv_post_log(const adv_report_table_t *p_reports, const bool flag_use_timestamps
 
 static bool
 adv_post_retransmit_advs(
-    const adv_report_table_t *p_reports,
+    const adv_report_table_t* p_reports,
     const bool                flag_network_connected,
     const bool                flag_use_timestamps)
 {
@@ -338,7 +338,7 @@ adv_post_do_retransmission(const bool flag_network_connected, const bool flag_us
 static bool
 adv_post_do_send_statistics(void)
 {
-    adv_report_table_t *p_reports = os_malloc(sizeof(*p_reports));
+    adv_report_table_t* p_reports = os_malloc(sizeof(*p_reports));
     if (NULL == p_reports)
     {
         LOG_ERR("Can't allocate memory for statistics");
@@ -375,7 +375,7 @@ adv_post_wdt_add_and_start(void)
 }
 
 static void
-adv_post_do_async_comm_send_advs(adv_post_state_t *const p_adv_post_state)
+adv_post_do_async_comm_send_advs(adv_post_state_t* const p_adv_post_state)
 {
     if (!p_adv_post_state->flag_network_connected)
     {
@@ -397,7 +397,7 @@ adv_post_do_async_comm_send_advs(adv_post_state_t *const p_adv_post_state)
 }
 
 static void
-adv_post_do_async_comm_send_statistics(adv_post_state_t *const p_adv_post_state)
+adv_post_do_async_comm_send_statistics(adv_post_state_t* const p_adv_post_state)
 {
     if (!gw_cfg_get_http_stat_use_http_stat())
     {
@@ -429,7 +429,7 @@ adv_post_do_async_comm_send_statistics(adv_post_state_t *const p_adv_post_state)
 }
 
 static void
-adv_post_do_async_comm(adv_post_state_t *const p_adv_post_state)
+adv_post_do_async_comm(adv_post_state_t* const p_adv_post_state)
 {
     if (p_adv_post_state->flag_async_comm_in_progress)
     {
@@ -513,7 +513,7 @@ adv_post_handle_sig_task_watchdog_feed(void)
 }
 
 static void
-adv_post_handle_sig_send_statistics(adv_post_state_t *const p_adv_post_state)
+adv_post_handle_sig_send_statistics(adv_post_state_t* const p_adv_post_state)
 {
     if (!gw_cfg_get_http_stat_use_http_stat())
     {
@@ -544,7 +544,7 @@ adv_post_timer_restart(void)
 }
 
 static void
-adv_post_handle_sig_time_synchronized(const adv_post_state_t *const p_adv_post_state)
+adv_post_handle_sig_time_synchronized(const adv_post_state_t* const p_adv_post_state)
 {
     LOG_INFO("Remove all accumulated data with zero timestamps");
     adv_table_clear();
@@ -560,7 +560,7 @@ adv_post_handle_sig_time_synchronized(const adv_post_state_t *const p_adv_post_s
 }
 
 static void
-adv_post_on_gw_cfg_change(adv_post_state_t *const p_adv_post_state)
+adv_post_on_gw_cfg_change(adv_post_state_t* const p_adv_post_state)
 {
     p_adv_post_state->flag_use_timestamps = gw_cfg_get_ntp_use();
     if (gw_cfg_get_http_use_http())
@@ -588,7 +588,7 @@ adv_post_on_gw_cfg_change(adv_post_state_t *const p_adv_post_state)
 }
 
 static bool
-adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t *const p_adv_post_state)
+adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p_adv_post_state)
 {
     bool flag_stop = false;
     switch (adv_post_sig)
@@ -815,7 +815,7 @@ adv_post_init(void)
 
     g_adv_post_nonce = esp_random();
     adv_table_init();
-    api_callbacks_reg((void *)&adv_callback_func_tbl);
+    api_callbacks_reg((void*)&adv_callback_func_tbl);
     const uint32_t stack_size = 1024U * 4U;
     if (!os_task_create_finite_without_param(&adv_post_task, "adv_post_task", stack_size, 1))
     {

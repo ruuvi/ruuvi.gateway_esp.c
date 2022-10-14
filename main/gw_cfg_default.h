@@ -35,37 +35,37 @@ typedef struct gw_cfg_default_init_param_t
 
 void
 gw_cfg_default_init(
-    const gw_cfg_default_init_param_t *const p_init_param,
-    bool (*p_cb_gw_cfg_default_json_read)(gw_cfg_t *const p_gw_cfg_default));
+    const gw_cfg_default_init_param_t* const p_init_param,
+    bool (*p_cb_gw_cfg_default_json_read)(gw_cfg_t* const p_gw_cfg_default));
 
 void
-gw_cfg_default_get(gw_cfg_t *const p_gw_cfg);
+gw_cfg_default_get(gw_cfg_t* const p_gw_cfg);
 
 gw_cfg_device_info_t
 gw_cfg_default_device_info(void);
 
-const ruuvi_gw_cfg_mqtt_t *
+const ruuvi_gw_cfg_mqtt_t*
 gw_cfg_default_get_mqtt(void);
 
-const ruuvi_gw_cfg_ntp_t *
+const ruuvi_gw_cfg_ntp_t*
 gw_cfg_default_get_ntp(void);
 
-const ruuvi_gw_cfg_filter_t *
+const ruuvi_gw_cfg_filter_t*
 gw_cfg_default_get_filter(void);
 
-const ruuvi_gw_cfg_lan_auth_t *
+const ruuvi_gw_cfg_lan_auth_t*
 gw_cfg_default_get_lan_auth(void);
 
-const gw_cfg_eth_t *
+const gw_cfg_eth_t*
 gw_cfg_default_get_eth(void);
 
-const wifiman_config_ap_t *
+const wifiman_config_ap_t*
 gw_cfg_default_get_wifi_config_ap_ptr(void);
 
-const wifiman_config_sta_t *
+const wifiman_config_sta_t*
 gw_cfg_default_get_wifi_config_sta_ptr(void);
 
-const wifiman_wifi_ssid_t *
+const wifiman_wifi_ssid_t*
 gw_cfg_default_get_wifi_ap_ssid(void);
 
 #ifdef __cplusplus

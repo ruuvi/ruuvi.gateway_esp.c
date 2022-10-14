@@ -43,7 +43,7 @@
 #include "esp_efuse.h"
 
 extern esp_err_t
-erase_partition_with_sleep(const esp_partition_t *const p_partition);
+erase_partition_with_sleep(const esp_partition_t* const p_partition);
 
 #define ESP_OTA_FLASH_ENCRYPTION_MIN_CHUNK_SIZE (16U)
 #define ESP_OTA_FLASH_ENCRYPTION_FILL           (0xFFU)
@@ -51,7 +51,7 @@ erase_partition_with_sleep(const esp_partition_t *const p_partition);
 typedef struct ota_ops_entry_t
 {
     uint32_t               handle;
-    const esp_partition_t *part;
+    const esp_partition_t* part;
     uint32_t               erased_size;
     uint32_t               wrote_size;
     uint8_t                partial_bytes;
@@ -65,11 +65,11 @@ static ota_ops_entries_head_t s_ota_ops_entries_head = LIST_HEAD_INITIALIZER(s_o
 
 static uint32_t s_ota_ops_last_handle = 0;
 
-const static char *TAG = "esp_ota_ops";
+const static char* TAG = "esp_ota_ops";
 
 /* Return true if this is an OTA app partition */
 static bool
-is_ota_partition(const esp_partition_t *p)
+is_ota_partition(const esp_partition_t* p)
 {
     return (
         (NULL != p) && (ESP_PARTITION_TYPE_APP == p->type) && (p->subtype >= ESP_PARTITION_SUBTYPE_APP_OTA_0)
@@ -77,14 +77,14 @@ is_ota_partition(const esp_partition_t *p)
 }
 
 esp_err_t
-esp_ota_begin_patched(const esp_partition_t *const p_partition, esp_ota_handle_t *const p_out_handle)
+esp_ota_begin_patched(const esp_partition_t* const p_partition, esp_ota_handle_t* const p_out_handle)
 {
     if ((NULL == p_partition) || (NULL == p_out_handle))
     {
         return ESP_ERR_INVALID_ARG;
     }
 
-    const esp_partition_t *const p_partition_verified = esp_partition_verify(p_partition);
+    const esp_partition_t* const p_partition_verified = esp_partition_verify(p_partition);
     if (NULL == p_partition_verified)
     {
         return ESP_ERR_NOT_FOUND;
@@ -95,7 +95,7 @@ esp_ota_begin_patched(const esp_partition_t *const p_partition, esp_ota_handle_t
         return ESP_ERR_INVALID_ARG;
     }
 
-    const esp_partition_t *p_running_partition = esp_ota_get_running_partition();
+    const esp_partition_t* p_running_partition = esp_ota_get_running_partition();
     if (p_partition_verified == p_running_partition)
     {
         return ESP_ERR_OTA_PARTITION_CONFLICT;
@@ -117,7 +117,7 @@ esp_ota_begin_patched(const esp_partition_t *const p_partition, esp_ota_handle_t
         return ret;
     }
 
-    ota_ops_entry_t *const p_new_entry = (ota_ops_entry_t *)os_calloc(sizeof(ota_ops_entry_t), 1);
+    ota_ops_entry_t* const p_new_entry = (ota_ops_entry_t*)os_calloc(sizeof(ota_ops_entry_t), 1);
     if (NULL == p_new_entry)
     {
         return ESP_ERR_NO_MEM;
@@ -134,9 +134,9 @@ esp_ota_begin_patched(const esp_partition_t *const p_partition, esp_ota_handle_t
 }
 
 static esp_err_t
-esp_ota_write_entry(ota_ops_entry_t *const p_it, const void *const p_data, const size_t size)
+esp_ota_write_entry(ota_ops_entry_t* const p_it, const void* const p_data, const size_t size)
 {
-    const uint8_t *p_data_bytes        = (const uint8_t *)p_data;
+    const uint8_t* p_data_bytes        = (const uint8_t*)p_data;
     size_t         cnt_remaining_bytes = size;
 
     // must erase the partition before writing to p_it
@@ -199,7 +199,7 @@ esp_ota_write_entry(ota_ops_entry_t *const p_it, const void *const p_data, const
 }
 
 esp_err_t
-esp_ota_write_patched(const esp_ota_handle_t handle, const void *const p_data, const size_t size)
+esp_ota_write_patched(const esp_ota_handle_t handle, const void* const p_data, const size_t size)
 {
     if (NULL == p_data)
     {
@@ -208,7 +208,7 @@ esp_ota_write_patched(const esp_ota_handle_t handle, const void *const p_data, c
     }
 
     // find ota handle in linked list
-    for (ota_ops_entry_t *p_it = LIST_FIRST(&s_ota_ops_entries_head); p_it != NULL; p_it = LIST_NEXT(p_it, entries))
+    for (ota_ops_entry_t* p_it = LIST_FIRST(&s_ota_ops_entries_head); p_it != NULL; p_it = LIST_NEXT(p_it, entries))
     {
         if (p_it->handle == handle)
         {
@@ -224,7 +224,7 @@ esp_ota_write_patched(const esp_ota_handle_t handle, const void *const p_data, c
 esp_err_t
 esp_ota_end_patched(const esp_ota_handle_t handle)
 {
-    ota_ops_entry_t *p_it = NULL;
+    ota_ops_entry_t* p_it = NULL;
     esp_err_t        ret  = ESP_OK;
 
     for (p_it = LIST_FIRST(&s_ota_ops_entries_head); p_it != NULL; p_it = LIST_NEXT(p_it, entries))

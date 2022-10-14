@@ -58,7 +58,7 @@
 #define DRAM_STR(str) \
     (__extension__({ \
         static const DRAM_ATTR char __c[] = (str); \
-        (const char *)&__c; \
+        (const char*)&__c; \
     }))
 
 // Forces code into RTC fast memory. See "docs/deep-sleep-stub.rst"
@@ -135,27 +135,27 @@
     { \
         return (TYPE)((INT_TYPE)a << b); \
     } \
-    FORCE_INLINE_ATTR TYPE &operator|=(TYPE &a, TYPE b) \
+    FORCE_INLINE_ATTR TYPE& operator|=(TYPE& a, TYPE b) \
     { \
         a = a | b; \
         return a; \
     } \
-    FORCE_INLINE_ATTR TYPE &operator&=(TYPE &a, TYPE b) \
+    FORCE_INLINE_ATTR TYPE& operator&=(TYPE& a, TYPE b) \
     { \
         a = a & b; \
         return a; \
     } \
-    FORCE_INLINE_ATTR TYPE &operator^=(TYPE &a, TYPE b) \
+    FORCE_INLINE_ATTR TYPE& operator^=(TYPE& a, TYPE b) \
     { \
         a = a ^ b; \
         return a; \
     } \
-    FORCE_INLINE_ATTR TYPE &operator>>=(TYPE &a, int b) \
+    FORCE_INLINE_ATTR TYPE& operator>>=(TYPE& a, int b) \
     { \
         a >>= b; \
         return a; \
     } \
-    FORCE_INLINE_ATTR TYPE &operator<<=(TYPE &a, int b) \
+    FORCE_INLINE_ATTR TYPE& operator<<=(TYPE& a, int b) \
     { \
         a <<= b; \
         return a; \

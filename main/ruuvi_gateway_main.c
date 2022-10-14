@@ -77,9 +77,9 @@ conv_bool_to_u8(const bool x)
 void
 ruuvi_send_nrf_settings(void)
 {
-    const gw_cfg_t *                   p_gw_cfg = gw_cfg_lock_ro();
-    const ruuvi_gw_cfg_filter_t *const p_filter = &p_gw_cfg->ruuvi_cfg.filter;
-    const ruuvi_gw_cfg_scan_t *const   p_scan   = &p_gw_cfg->ruuvi_cfg.scan;
+    const gw_cfg_t*                    p_gw_cfg = gw_cfg_lock_ro();
+    const ruuvi_gw_cfg_filter_t* const p_filter = &p_gw_cfg->ruuvi_cfg.filter;
+    const ruuvi_gw_cfg_scan_t* const   p_scan   = &p_gw_cfg->ruuvi_cfg.scan;
     LOG_INFO(
         "### "
         "sending settings to NRF: use filter: %d, "
@@ -173,7 +173,7 @@ ethernet_link_down_cb(void)
 }
 
 static void
-ethernet_connection_ok_cb(const esp_netif_ip_info_t *p_ip_info)
+ethernet_connection_ok_cb(const esp_netif_ip_info_t* p_ip_info)
 {
     LOG_INFO("### Ethernet connected");
     if (gw_cfg_is_default())
@@ -187,12 +187,12 @@ ethernet_connection_ok_cb(const esp_netif_ip_info_t *p_ip_info)
             wifi_manager_stop_ap();
         }
     }
-    const struct dhcp *p_dhcp  = NULL;
+    const struct dhcp* p_dhcp  = NULL;
     esp_ip4_addr_t     dhcp_ip = { 0 };
     if (gw_cfg_get_eth_use_dhcp())
     {
-        esp_netif_t *const p_netif_eth = esp_netif_get_handle_from_ifkey("ETH_DEF");
-        p_dhcp                         = netif_dhcp_data((struct netif *)esp_netif_get_netif_impl(p_netif_eth));
+        esp_netif_t* const p_netif_eth = esp_netif_get_handle_from_ifkey("ETH_DEF");
+        p_dhcp                         = netif_dhcp_data((struct netif*)esp_netif_get_netif_impl(p_netif_eth));
     }
     if (NULL != p_dhcp)
     {
@@ -210,7 +210,7 @@ ethernet_connection_ok_cb(const esp_netif_ip_info_t *p_ip_info)
 }
 
 void
-wifi_connection_ok_cb(void *p_param)
+wifi_connection_ok_cb(void* p_param)
 {
     (void)p_param;
     LOG_INFO("Wifi connected");
@@ -271,13 +271,13 @@ cb_on_ap_sta_disconnected(void)
 }
 
 static void
-cb_save_wifi_config(const wifiman_config_sta_t *const p_wifi_cfg_sta)
+cb_save_wifi_config(const wifiman_config_sta_t* const p_wifi_cfg_sta)
 {
     gw_cfg_update_wifi_sta_config(p_wifi_cfg_sta);
 }
 
 void
-wifi_disconnect_cb(void *p_param)
+wifi_disconnect_cb(void* p_param)
 {
     (void)p_param;
     LOG_WARN("Wifi disconnected");
@@ -322,8 +322,8 @@ restart_services(void)
 static bool
 wifi_init(
     const bool                    flag_connect_sta,
-    const wifiman_config_t *const p_wifi_cfg,
-    const char *const             p_fatfs_gwui_partition_name)
+    const wifiman_config_t* const p_wifi_cfg,
+    const char* const             p_fatfs_gwui_partition_name)
 {
     static const wifi_manager_antenna_config_t wifi_antenna_config = {
         .wifi_ant_gpio_config = {
@@ -398,7 +398,7 @@ cb_before_nrf52_fw_updating(void)
     const wifiman_wifi_ssid_t wifi_ap_ssid = generate_wifi_ap_ssid(settings_read_mac_addr());
     LOG_INFO("Read saved WiFi SSID / Hostname: %s", wifi_ap_ssid.ssid_buf);
 
-    const wifiman_config_t *const p_wifi_cfg       = wifi_manager_default_config_init(&wifi_ap_ssid);
+    const wifiman_config_t* const p_wifi_cfg       = wifi_manager_default_config_init(&wifi_ap_ssid);
     const bool                    flag_connect_sta = false;
     if (!wifi_init(flag_connect_sta, p_wifi_cfg, fw_update_get_current_fatfs_gwui_partition_name()))
     {
@@ -440,7 +440,7 @@ handle_reset_button_is_pressed_during_boot(void)
 }
 
 static void
-read_wifi_country_and_print_to_log(const char *const p_msg_prefix)
+read_wifi_country_and_print_to_log(const char* const p_msg_prefix)
 {
     wifi_country_t  country = { 0 };
     const esp_err_t err     = esp_wifi_get_country(&country);
@@ -480,7 +480,7 @@ set_wifi_country(void)
 }
 
 static void
-read_wifi_max_tx_power_and_print_to_log(const char *const p_msg_prefix)
+read_wifi_max_tx_power_and_print_to_log(const char* const p_msg_prefix)
 {
     int8_t          power = 0;
     const esp_err_t err   = esp_wifi_get_max_tx_power(&power);
@@ -524,7 +524,7 @@ configure_mbedtls_rng(void)
 
     LOG_INFO("Seeding the random number generator...");
 
-    const nrf52_device_id_str_t *const p_nrf52_device_id_str = gw_cfg_get_nrf52_device_id();
+    const nrf52_device_id_str_t* const p_nrf52_device_id_str = gw_cfg_get_nrf52_device_id();
     str_buf_t                          custom_seed           = str_buf_printf_with_alloc(
         "%s:%lu:%lu",
         p_nrf52_device_id_str->str_buf,
@@ -536,7 +536,7 @@ configure_mbedtls_rng(void)
             &g_ctr_drbg,
             mbedtls_entropy_func,
             &g_entropy,
-            (const unsigned char *)custom_seed.buf,
+            (const unsigned char*)custom_seed.buf,
             strlen(custom_seed.buf)))
     {
         LOG_ERR("%s: failed", "mbedtls_ctr_drbg_seed");
@@ -610,7 +610,7 @@ network_subsystem_init(void)
 }
 
 static void
-ruuvi_cb_on_change_cfg(const gw_cfg_t *const p_gw_cfg)
+ruuvi_cb_on_change_cfg(const gw_cfg_t* const p_gw_cfg)
 {
     LOG_INFO("%s: settings_save_to_flash", __func__);
     settings_save_to_flash(p_gw_cfg);
@@ -629,8 +629,8 @@ ruuvi_cb_on_change_cfg(const gw_cfg_t *const p_gw_cfg)
 
 static void
 ruuvi_init_gw_cfg(
-    const ruuvi_nrf52_fw_ver_t *const p_nrf52_fw_ver,
-    const nrf52_device_info_t *const  p_nrf52_device_info)
+    const ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver,
+    const nrf52_device_info_t* const  p_nrf52_device_info)
 {
     const gw_cfg_default_init_param_t gw_cfg_default_init_param = {
         .wifi_ap_ssid        = generate_wifi_ap_ssid(p_nrf52_device_info->nrf52_mac_addr),
@@ -646,7 +646,7 @@ ruuvi_init_gw_cfg(
 
     bool flag_default_cfg_is_used = false;
 
-    const gw_cfg_t *p_gw_cfg_tmp = settings_get_from_flash(&flag_default_cfg_is_used);
+    const gw_cfg_t* p_gw_cfg_tmp = settings_get_from_flash(&flag_default_cfg_is_used);
     if (NULL == p_gw_cfg_tmp)
     {
         LOG_ERR("Can't get settings from flash");

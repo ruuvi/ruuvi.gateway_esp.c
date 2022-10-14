@@ -27,16 +27,16 @@ bool
 settings_check_in_flash(void);
 
 void
-settings_save_to_flash(const gw_cfg_t *const p_gw_cfg);
+settings_save_to_flash(const gw_cfg_t* const p_gw_cfg);
 
-const gw_cfg_t *
-settings_get_from_flash(bool *const p_flag_default_cfg_is_used);
+const gw_cfg_t*
+settings_get_from_flash(bool* const p_flag_default_cfg_is_used);
 
 mac_address_bin_t
 settings_read_mac_addr(void);
 
 void
-settings_write_mac_addr(const mac_address_bin_t *const p_mac_addr);
+settings_write_mac_addr(const mac_address_bin_t* const p_mac_addr);
 
 void
 settings_update_mac_addr(const mac_address_bin_t mac_addr);

@@ -164,14 +164,14 @@ get_total_free_bytes(const uint32_t caps)
 }
 
 static void
-metrics_calc_gw_cfg_hash(metrics_crc32_str_t *const p_crc32, metrics_sha256_str_t *const p_sha256)
+metrics_calc_gw_cfg_hash(metrics_crc32_str_t* const p_crc32, metrics_sha256_str_t* const p_sha256)
 {
     metrics_sha256_t gw_cfg_sha256 = { 0 };
 
-    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
 
     const metrics_crc32_t crc32 = {
-        .val = crc32_le(0, (const void *)&p_gw_cfg->ruuvi_cfg, sizeof(*p_gw_cfg) - offsetof(gw_cfg_t, ruuvi_cfg)),
+        .val = crc32_le(0, (const void*)&p_gw_cfg->ruuvi_cfg, sizeof(*p_gw_cfg) - offsetof(gw_cfg_t, ruuvi_cfg)),
     };
 
     mbedtls_sha256_context sha256_ctx = { 0 };
@@ -179,7 +179,7 @@ metrics_calc_gw_cfg_hash(metrics_crc32_str_t *const p_crc32, metrics_sha256_str_
     mbedtls_sha256_starts_ret(&sha256_ctx, false);
     mbedtls_sha256_update_ret(
         &sha256_ctx,
-        (const void *)&p_gw_cfg->ruuvi_cfg,
+        (const void*)&p_gw_cfg->ruuvi_cfg,
         sizeof(*p_gw_cfg) - offsetof(gw_cfg_t, ruuvi_cfg));
     mbedtls_sha256_finish_ret(&sha256_ctx, gw_cfg_sha256.buf);
     mbedtls_sha256_free(&sha256_ctx);
@@ -195,12 +195,12 @@ metrics_calc_gw_cfg_hash(metrics_crc32_str_t *const p_crc32, metrics_sha256_str_
 }
 
 static void
-metrics_calc_ruuvi_json_hash(metrics_crc32_str_t *const p_crc32, metrics_sha256_str_t *const p_sha256)
+metrics_calc_ruuvi_json_hash(metrics_crc32_str_t* const p_crc32, metrics_sha256_str_t* const p_sha256)
 {
     memset(p_crc32, 0, sizeof(*p_crc32));
     memset(p_sha256, 0, sizeof(*p_sha256));
 
-    const gw_cfg_t * p_gw_cfg = gw_cfg_lock_ro();
+    const gw_cfg_t*  p_gw_cfg = gw_cfg_lock_ro();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
     if (!gw_cfg_ruuvi_json_generate(p_gw_cfg, &json_str))
     {
@@ -210,14 +210,14 @@ metrics_calc_ruuvi_json_hash(metrics_crc32_str_t *const p_crc32, metrics_sha256_
     gw_cfg_unlock_ro(&p_gw_cfg);
 
     const metrics_crc32_t crc32 = {
-        .val = crc32_le(0, (const void *)json_str.p_str, strlen(json_str.p_str)),
+        .val = crc32_le(0, (const void*)json_str.p_str, strlen(json_str.p_str)),
     };
 
     metrics_sha256_t       sha256     = { 0 };
     mbedtls_sha256_context sha256_ctx = { 0 };
     mbedtls_sha256_init(&sha256_ctx);
     mbedtls_sha256_starts_ret(&sha256_ctx, false);
-    mbedtls_sha256_update_ret(&sha256_ctx, (const void *)json_str.p_str, strlen(json_str.p_str));
+    mbedtls_sha256_update_ret(&sha256_ctx, (const void*)json_str.p_str, strlen(json_str.p_str));
     mbedtls_sha256_finish_ret(&sha256_ctx, sha256.buf);
     mbedtls_sha256_free(&sha256_ctx);
 
@@ -284,7 +284,7 @@ gen_metrics(void)
 }
 
 static void
-metrics_print_total_free_bytes(str_buf_t *p_str_buf, const metrics_info_t *p_metrics)
+metrics_print_total_free_bytes(str_buf_t* p_str_buf, const metrics_info_t* p_metrics)
 {
     str_buf_printf(
         p_str_buf,
@@ -341,7 +341,7 @@ metrics_print_total_free_bytes(str_buf_t *p_str_buf, const metrics_info_t *p_met
 }
 
 static void
-metrics_print_largest_free_blk(str_buf_t *p_str_buf, const metrics_info_t *p_metrics)
+metrics_print_largest_free_blk(str_buf_t* p_str_buf, const metrics_info_t* p_metrics)
 {
     str_buf_printf(
         p_str_buf,
@@ -398,7 +398,7 @@ metrics_print_largest_free_blk(str_buf_t *p_str_buf, const metrics_info_t *p_met
 }
 
 static void
-metrics_print_gwinfo(str_buf_t *p_str_buf, const metrics_info_t *p_metrics)
+metrics_print_gwinfo(str_buf_t* p_str_buf, const metrics_info_t* p_metrics)
 {
     str_buf_printf(
         p_str_buf,
@@ -410,7 +410,7 @@ metrics_print_gwinfo(str_buf_t *p_str_buf, const metrics_info_t *p_metrics)
 }
 
 static void
-metrics_print_gw_cfg_info(str_buf_t *const p_str_buf, const metrics_info_t *const p_metrics)
+metrics_print_gw_cfg_info(str_buf_t* const p_str_buf, const metrics_info_t* const p_metrics)
 {
     str_buf_printf(p_str_buf, METRICS_PREFIX "gw_cfg_crc32 %s\n", p_metrics->gw_cfg_crc32.buf);
     str_buf_printf(p_str_buf, METRICS_PREFIX "ruuvi_json_crc32 %s\n", p_metrics->ruuvi_json_crc32.buf);
@@ -421,7 +421,7 @@ metrics_print_gw_cfg_info(str_buf_t *const p_str_buf, const metrics_info_t *cons
 }
 
 static void
-metrics_print(str_buf_t *p_str_buf, const metrics_info_t *p_metrics)
+metrics_print(str_buf_t* p_str_buf, const metrics_info_t* p_metrics)
 {
     str_buf_printf(
         p_str_buf,
@@ -434,7 +434,7 @@ metrics_print(str_buf_t *p_str_buf, const metrics_info_t *p_metrics)
     metrics_print_gw_cfg_info(p_str_buf, p_metrics);
 }
 
-char *
+char*
 metrics_generate(void)
 {
     const metrics_info_t metrics_info = gen_metrics();

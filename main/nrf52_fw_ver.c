@@ -16,7 +16,7 @@
 #define BYTE_MASK         (0xFFU)
 
 ruuvi_nrf52_fw_ver_str_t
-nrf52_fw_ver_get_str(const ruuvi_nrf52_fw_ver_t *const p_nrf52_fw_ver)
+nrf52_fw_ver_get_str(const ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver)
 {
     ruuvi_nrf52_fw_ver_str_t nrf52_fw_ver_str = { 0 };
     snprintf(

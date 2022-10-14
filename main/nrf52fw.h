@@ -57,7 +57,7 @@ typedef struct nrf52fw_tmp_buf_t
     uint32_t buf_rd[NRF52FW_TMP_BUF_SIZE / sizeof(uint32_t)];
 } nrf52fw_tmp_buf_t;
 
-typedef void (*nrf52fw_cb_progress)(const size_t num_bytes_flashed, const size_t total_size, void *const p_param);
+typedef void (*nrf52fw_cb_progress)(const size_t num_bytes_flashed, const size_t total_size, void* const p_param);
 
 typedef void (*nrf52fw_cb_before_updating)(void);
 typedef void (*nrf52fw_cb_after_updating)(void);
@@ -67,7 +67,7 @@ typedef struct nrf52fw_progress_info_t
     size_t              accum_num_bytes_flashed;
     const size_t        total_size;
     nrf52fw_cb_progress cb_progress;
-    void *const         p_param_cb_progress;
+    void* const         p_param_cb_progress;
 } nrf52fw_progress_info_t;
 
 void
@@ -75,12 +75,12 @@ nrf52fw_hw_reset_nrf52(const bool flag_reset);
 
 bool
 nrf52fw_update_fw_if_necessary(
-    const char *const           p_fatfs_nrf52_partition_name,
+    const char* const           p_fatfs_nrf52_partition_name,
     nrf52fw_cb_progress         cb_progress,
-    void *const                 p_param_cb_progress,
+    void* const                 p_param_cb_progress,
     nrf52fw_cb_before_updating  cb_before_updating,
     nrf52fw_cb_after_updating   cb_after_updating,
-    ruuvi_nrf52_fw_ver_t *const p_nrf52_fw_ver);
+    ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver);
 
 bool
 nrf52fw_software_reset(void);
@@ -96,7 +96,7 @@ nrf52fw_software_reset(void);
  */
 NRF52FW_STATIC
 bool
-nrf52fw_parse_version_digit(const char *p_digit_str, const char *p_digit_str_end, uint8_t *p_digit);
+nrf52fw_parse_version_digit(const char* p_digit_str, const char* p_digit_str_end, uint8_t* p_digit);
 
 /**
  * @brief Parse one-byte digit (in range 0..255) and update corresponding byte in version.
@@ -109,9 +109,9 @@ nrf52fw_parse_version_digit(const char *p_digit_str, const char *p_digit_str_end
 NRF52FW_STATIC
 bool
 nrf52fw_parse_digit_update_ver(
-    const char *  p_token_begin,
-    const char *  p_token_end,
-    uint32_t *    p_version,
+    const char*   p_token_begin,
+    const char*   p_token_end,
+    uint32_t*     p_version,
     const uint8_t byte_num);
 
 /**
@@ -122,7 +122,7 @@ nrf52fw_parse_digit_update_ver(
  */
 NRF52FW_STATIC
 bool
-nrf52fw_parse_version(const char *p_version_str, ruuvi_nrf52_fw_ver_t *p_version);
+nrf52fw_parse_version(const char* p_version_str, ruuvi_nrf52_fw_ver_t* p_version);
 
 /**
  * @brief Parse a version line string (like "# v1.2.3")
@@ -132,7 +132,7 @@ nrf52fw_parse_version(const char *p_version_str, ruuvi_nrf52_fw_ver_t *p_version
  */
 NRF52FW_STATIC
 bool
-nrf52fw_parse_version_line(const char *p_version_line, ruuvi_nrf52_fw_ver_t *p_version);
+nrf52fw_parse_version_line(const char* p_version_line, ruuvi_nrf52_fw_ver_t* p_version);
 
 /**
  * @brief Remove CR, LF, Tab, Space from the right end of the string, force put EOL and end of the buffer with the
@@ -142,7 +142,7 @@ nrf52fw_parse_version_line(const char *p_version_line, ruuvi_nrf52_fw_ver_t *p_v
  */
 NRF52FW_STATIC
 void
-nrf52fw_line_rstrip(char *p_line_buf, const size_t line_buf_size);
+nrf52fw_line_rstrip(char* p_line_buf, const size_t line_buf_size);
 
 /**
  * @brief Parse string with segment info and fill @ref nrf52fw_segment_t
@@ -153,7 +153,7 @@ nrf52fw_line_rstrip(char *p_line_buf, const size_t line_buf_size);
  */
 NRF52FW_STATIC
 bool
-nrf52fw_parse_segment_info_line(const char *p_version_line, nrf52fw_segment_t *p_segment);
+nrf52fw_parse_segment_info_line(const char* p_version_line, nrf52fw_segment_t* p_segment);
 
 /**
  * @brief Read opened file and fill @ref nrf52fw_info_t
@@ -163,7 +163,7 @@ nrf52fw_parse_segment_info_line(const char *p_version_line, nrf52fw_segment_t *p
  */
 NRF52FW_STATIC
 int
-nrf52fw_parse_info_file(FILE *p_fd, nrf52fw_info_t *p_info);
+nrf52fw_parse_info_file(FILE* p_fd, nrf52fw_info_t* p_info);
 
 /**
  * @brief Open file "info.txt" on FlashFatFs, parse it and fill @ref nrf52fw_info_t
@@ -174,7 +174,7 @@ nrf52fw_parse_info_file(FILE *p_fd, nrf52fw_info_t *p_info);
  */
 NRF52FW_STATIC
 bool
-nrf52fw_read_info_txt(const flash_fat_fs_t *p_ffs, const char *p_path_info_txt, nrf52fw_info_t *p_info);
+nrf52fw_read_info_txt(const flash_fat_fs_t* p_ffs, const char* p_path_info_txt, nrf52fw_info_t* p_info);
 
 /**
  * @brief Read current firmware version from nRF52
@@ -183,7 +183,7 @@ nrf52fw_read_info_txt(const flash_fat_fs_t *p_ffs, const char *p_path_info_txt, 
  */
 NRF52FW_STATIC
 bool
-nrf52fw_read_current_fw_ver(ruuvi_nrf52_fw_ver_t *const p_fw_ver);
+nrf52fw_read_current_fw_ver(ruuvi_nrf52_fw_ver_t* const p_fw_ver);
 
 /**
  * @brief Write current firmware version to nRF52
@@ -215,10 +215,10 @@ NRF52FW_STATIC
 bool
 nrf52fw_flash_write_segment(
     const file_descriptor_t        fd,
-    nrf52fw_tmp_buf_t *            p_tmp_buf,
+    nrf52fw_tmp_buf_t*             p_tmp_buf,
     const uint32_t                 segment_addr,
     const size_t                   segment_len,
-    nrf52fw_progress_info_t *const p_progress_info);
+    nrf52fw_progress_info_t* const p_progress_info);
 
 /**
  * @brief Write a segment of flash memory to nRF52 from file
@@ -233,12 +233,12 @@ nrf52fw_flash_write_segment(
 NRF52FW_STATIC
 bool
 nrf52fw_write_segment_from_file(
-    const flash_fat_fs_t *         p_ffs,
-    const char *                   p_path,
-    nrf52fw_tmp_buf_t *            p_tmp_buf,
+    const flash_fat_fs_t*          p_ffs,
+    const char*                    p_path,
+    nrf52fw_tmp_buf_t*             p_tmp_buf,
     const uint32_t                 segment_addr,
     const size_t                   segment_len,
-    nrf52fw_progress_info_t *const p_progress_info);
+    nrf52fw_progress_info_t* const p_progress_info);
 
 /**
  * @brief Write firmware segments of flash memory to nRF52 from files
@@ -252,11 +252,11 @@ nrf52fw_write_segment_from_file(
 NRF52FW_STATIC
 bool
 nrf52fw_flash_write_firmware(
-    const flash_fat_fs_t *p_ffs,
-    nrf52fw_tmp_buf_t *   p_tmp_buf,
-    const nrf52fw_info_t *p_fw_info,
+    const flash_fat_fs_t* p_ffs,
+    nrf52fw_tmp_buf_t*    p_tmp_buf,
+    const nrf52fw_info_t* p_fw_info,
     nrf52fw_cb_progress   cb_progress,
-    void *const           p_param_cb_progress);
+    void* const           p_param_cb_progress);
 
 /**
  * @brief Read file and calculate CRC for firmware segment
@@ -270,9 +270,9 @@ NRF52FW_STATIC
 bool
 nrf52fw_calc_segment_crc(
     const file_descriptor_t fd,
-    nrf52fw_tmp_buf_t *     p_tmp_buf,
+    nrf52fw_tmp_buf_t*      p_tmp_buf,
     const size_t            segment_len,
-    uint32_t *              p_crc);
+    uint32_t*               p_crc);
 
 /**
  * @brief Check CRC for all firmware segments
@@ -283,7 +283,7 @@ nrf52fw_calc_segment_crc(
  */
 NRF52FW_STATIC
 bool
-nrf52fw_check_firmware(const flash_fat_fs_t *p_ffs, nrf52fw_tmp_buf_t *p_tmp_buf, const nrf52fw_info_t *p_fw_info);
+nrf52fw_check_firmware(const flash_fat_fs_t* p_ffs, nrf52fw_tmp_buf_t* p_tmp_buf, const nrf52fw_info_t* p_fw_info);
 
 #endif // RUUVI_TESTS_NRF52FW
 

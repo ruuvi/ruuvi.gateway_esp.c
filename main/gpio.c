@@ -21,7 +21,7 @@
 static const char TAG[] = "gpio";
 
 static void IRAM_ATTR
-gpio_configure_button_handler_isr(void *p_arg)
+gpio_configure_button_handler_isr(void* p_arg)
 {
     (void)p_arg;
     static bool g_gpio_is_configure_button_pressed = false;

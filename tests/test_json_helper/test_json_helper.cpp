@@ -43,7 +43,7 @@ TestJsonHelper::~TestJsonHelper()
 }
 
 static string
-json_helper_get_by_key_wrapper(const char *const p_json, const char *const p_key)
+json_helper_get_by_key_wrapper(const char* const p_json, const char* const p_key)
 {
     str_buf_t str_buf = json_helper_get_by_key(p_json, p_key);
     if (nullptr == str_buf.buf)
@@ -59,7 +59,7 @@ json_helper_get_by_key_wrapper(const char *const p_json, const char *const p_key
 
 TEST_F(TestJsonHelper, test_json_get_by_key_with_eol) // NOLINT
 {
-    const char *const p_json
+    const char* const p_json
         = "{\n"
           "\"node_id\": \"MDc6UmVsZWFzZTQ2NDE0Nzcy\",\n"
           "\"tag_name\"  : \"v1.6.0\",\n"
@@ -74,7 +74,7 @@ TEST_F(TestJsonHelper, test_json_get_by_key_with_eol) // NOLINT
 
 TEST_F(TestJsonHelper, test_json_get_by_key_without_eol) // NOLINT
 {
-    const char *const p_json
+    const char* const p_json
         = "{"
           "\"node_id\": \"MDc6UmVsZWFzZTQ2NDE0Nzcy\","
           "\"tag_name\": \"v1.6.0\","
@@ -89,7 +89,7 @@ TEST_F(TestJsonHelper, test_json_get_by_key_without_eol) // NOLINT
 
 TEST_F(TestJsonHelper, test_json_get_by_key_with_eol_unquoted_numbers) // NOLINT
 {
-    const char *const p_json
+    const char* const p_json
         = "{\n"
           "\"node_id\": 1,\n"
           "\"tag_name\": 1.5,\n"
@@ -104,7 +104,7 @@ TEST_F(TestJsonHelper, test_json_get_by_key_with_eol_unquoted_numbers) // NOLINT
 
 TEST_F(TestJsonHelper, test_json_get_by_key_without_eol_unquoted_numbers) // NOLINT
 {
-    const char *const p_json
+    const char* const p_json
         = "{"
           "\"node_id\": 1,"
           "\"tag_name\": 1.5,"
@@ -119,7 +119,7 @@ TEST_F(TestJsonHelper, test_json_get_by_key_without_eol_unquoted_numbers) // NOL
 
 TEST_F(TestJsonHelper, test_json_get_by_key_cropped_json_1) // NOLINT
 {
-    const char *const p_json
+    const char* const p_json
         = "{\n"
           "\"node_id\": \"MDc6UmVsZWFzZTQ2NDE0Nzcy\",\n"
           "\"tag_name\": \"v1.6.0\",\n"
@@ -130,7 +130,7 @@ TEST_F(TestJsonHelper, test_json_get_by_key_cropped_json_1) // NOLINT
 
 TEST_F(TestJsonHelper, test_json_get_by_key_cropped_json_2) // NOLINT
 {
-    const char *const p_json
+    const char* const p_json
         = "{\n"
           "\"node_id\": \"MDc6UmVsZWFzZTQ2NDE0Nzcy\",\n"
           "\"tag_name\": \"v1.6.0\",\n"
@@ -141,7 +141,7 @@ TEST_F(TestJsonHelper, test_json_get_by_key_cropped_json_2) // NOLINT
 
 TEST_F(TestJsonHelper, test_json_get_by_key_cropped_json_3) // NOLINT
 {
-    const char *const p_json
+    const char* const p_json
         = "{\n"
           "\"node_id\": \"MDc6UmVsZWFzZTQ2NDE0Nzcy\",\n"
           "\"tag_name\": \"v1.6.0\",\n"
@@ -152,7 +152,7 @@ TEST_F(TestJsonHelper, test_json_get_by_key_cropped_json_3) // NOLINT
 
 TEST_F(TestJsonHelper, test_json_get_by_key_cropped_json_4) // NOLINT
 {
-    const char *const p_json
+    const char* const p_json
         = "{\n"
           "\"node_id\": \"MDc6UmVsZWFzZTQ2NDE0Nzcy\",\n"
           "\"tag_name\": \"v1.6.0\",\n"

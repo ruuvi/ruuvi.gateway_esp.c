@@ -40,7 +40,7 @@ typedef enum main_task_cmd_e
 } main_task_cmd_e;
 
 class TestTimeTask;
-static TestTimeTask *gp_obj;
+static TestTimeTask* gp_obj;
 
 extern "C" {
 
@@ -53,7 +53,7 @@ timespec_get_clock_monotonic(void)
 }
 
 static struct timespec
-timespec_diff(const struct timespec *p_t2, const struct timespec *p_t1)
+timespec_diff(const struct timespec* p_t2, const struct timespec* p_t1)
 {
     struct timespec result = {
         .tv_sec  = p_t2->tv_sec - p_t1->tv_sec,
@@ -68,7 +68,7 @@ timespec_diff(const struct timespec *p_t2, const struct timespec *p_t1)
 }
 
 static uint32_t
-timespec_diff_ms(const struct timespec *p_t2, const struct timespec *p_t1)
+timespec_diff_ms(const struct timespec* p_t2, const struct timespec* p_t1)
 {
     struct timespec diff = timespec_diff(p_t2, p_t1);
     return diff.tv_sec * 1000 + diff.tv_nsec / 1000000;
@@ -79,8 +79,8 @@ timespec_diff_ms(const struct timespec *p_t2, const struct timespec *p_t1)
 /*** Google-test class implementation
  * *********************************************************************************/
 
-static void *
-freertos_startup(void *p_arg);
+static void*
+freertos_startup(void* p_arg);
 
 class TestTimeTask : public ::testing::Test
 {
@@ -108,23 +108,23 @@ protected:
         cmdQueue.push_and_wait(MAIN_TASK_CMD_EXIT);
         sleep(1);
         vTaskEndScheduler();
-        void *p_ret_code = nullptr;
+        void* p_ret_code = nullptr;
         pthread_join(pid_freertos, &p_ret_code);
         sem_destroy(&semaFreeRTOS);
         esp_log_wrapper_deinit();
     }
 
 public:
-    pthread_t                pid_test;
-    pthread_t                pid_freertos;
-    sem_t                    semaFreeRTOS;
-    TQueue<main_task_cmd_e>  cmdQueue;
-    std::vector<TestEvent *> testEvents;
-    bool                     result_time_task_init;
-    bool                     result_time_task_stop;
-    time_t                   cur_time;
-    sntp_sync_time_cb_t      sntp_sync_time_cb;
-    sntp_sync_mode_t         sync_mode {};
+    pthread_t               pid_test;
+    pthread_t               pid_freertos;
+    sem_t                   semaFreeRTOS;
+    TQueue<main_task_cmd_e> cmdQueue;
+    std::vector<TestEvent*> testEvents;
+    bool                    result_time_task_init;
+    bool                    result_time_task_stop;
+    time_t                  cur_time;
+    sntp_sync_time_cb_t     sntp_sync_time_cb;
+    sntp_sync_mode_t        sync_mode {};
 
     TestTimeTask();
 
@@ -176,13 +176,13 @@ extern "C" {
  * *****************************************************************************************/
 
 os_mutex_recursive_t
-os_mutex_recursive_create_static(os_mutex_recursive_static_t *const p_mutex_static)
+os_mutex_recursive_create_static(os_mutex_recursive_static_t* const p_mutex_static)
 {
     return (os_mutex_recursive_t)p_mutex_static;
 }
 
 void
-os_mutex_recursive_delete(os_mutex_recursive_t *const ph_mutex)
+os_mutex_recursive_delete(os_mutex_recursive_t* const ph_mutex)
 {
 }
 
@@ -197,13 +197,13 @@ os_mutex_recursive_unlock(os_mutex_recursive_t const h_mutex)
 }
 
 os_mutex_t
-os_mutex_create_static(os_mutex_static_t *const p_mutex_static)
+os_mutex_create_static(os_mutex_static_t* const p_mutex_static)
 {
     return reinterpret_cast<os_mutex_t>(p_mutex_static);
 }
 
 void
-os_mutex_delete(os_mutex_t *const ph_mutex)
+os_mutex_delete(os_mutex_t* const ph_mutex)
 {
     (void)ph_mutex;
 }
@@ -283,13 +283,13 @@ sntp_get_sync_mode(void)
 }
 
 void
-sntp_setservername(u8_t idx, const char *p_server)
+sntp_setservername(u8_t idx, const char* p_server)
 {
     gp_obj->testEvents.push_back(new TestEventSntpSetServerName(idx, p_server));
 }
 
 void
-sntp_setserver(u8_t idx, const ip_addr_t *p_addr)
+sntp_setserver(u8_t idx, const ip_addr_t* p_addr)
 {
     gp_obj->testEvents.push_back(new TestEventSntpSetServer(idx, p_addr));
 }
@@ -318,20 +318,20 @@ sntp_set_time_sync_notification_cb(sntp_sync_time_cb_t p_callback)
     gp_obj->sntp_sync_time_cb = p_callback;
 }
 
-char *
-esp_ip4addr_ntoa(const esp_ip4_addr_t *addr, char *buf, int buflen)
+char*
+esp_ip4addr_ntoa(const esp_ip4_addr_t* addr, char* buf, int buflen)
 {
-    return ip4addr_ntoa_r((ip4_addr_t *)addr, buf, buflen);
+    return ip4addr_ntoa_r((ip4_addr_t*)addr, buf, buflen);
 }
 
 uint32_t
-esp_ip4addr_aton(const char *addr)
+esp_ip4addr_aton(const char* addr)
 {
     return ipaddr_addr(addr);
 }
 
 void
-wifi_manager_cb_save_wifi_config_sta(const wifiman_config_sta_t *const p_cfg_sta)
+wifi_manager_cb_save_wifi_config_sta(const wifiman_config_sta_t* const p_cfg_sta)
 {
 }
 
@@ -361,9 +361,9 @@ os_task_delay(const os_delta_ticks_t delay_ticks)
  * *************************************************************************************************/
 
 static void
-cmd_handler_task(void *p_param)
+cmd_handler_task(void* p_param)
 {
-    auto *p_obj     = static_cast<TestTimeTask *>(p_param);
+    auto* p_obj     = static_cast<TestTimeTask*>(p_param);
     bool  flag_exit = false;
 
     const gw_cfg_default_init_param_t init_params = {
@@ -479,10 +479,10 @@ cmd_handler_task(void *p_param)
     vTaskDelete(nullptr);
 }
 
-static void *
-freertos_startup(void *p_arg)
+static void*
+freertos_startup(void* p_arg)
 {
-    auto *p_obj = static_cast<TestTimeTask *>(p_arg);
+    auto* p_obj = static_cast<TestTimeTask*>(p_arg);
     disableCheckingIfCurThreadIsFreeRTOS();
     BaseType_t res = xTaskCreate(
         &cmd_handler_task,
@@ -490,7 +490,7 @@ freertos_startup(void *p_arg)
         configMINIMAL_STACK_SIZE,
         p_obj,
         (tskIDLE_PRIORITY + 1),
-        (xTaskHandle *)nullptr);
+        (xTaskHandle*)nullptr);
     assert(pdPASS == res);
     vTaskStartScheduler();
     return nullptr;
@@ -535,76 +535,76 @@ TEST_F(TestTimeTask, test_all) // NOLINT
         ASSERT_EQ(exp_num_events, testEvents.size());
         int idx = 0;
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetOperatingMode, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpSetOperatingMode *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpSetOperatingMode*>(p_base_ev);
             ASSERT_EQ(SNTP_OPMODE_POLL, p_ev->operating_mode);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetSyncMode, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpSetSyncMode *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpSetSyncMode*>(p_base_ev);
             ASSERT_EQ(SNTP_SYNC_MODE_IMMED, p_ev->sync_mode);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetServer, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpSetServer *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpSetServer*>(p_base_ev);
             ASSERT_EQ(0, p_ev->idx);
             ASSERT_EQ(0, p_ev->addr.u_addr.ip4.addr);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetServer, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpSetServer *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpSetServer*>(p_base_ev);
             ASSERT_EQ(1, p_ev->idx);
             ASSERT_EQ(0, p_ev->addr.u_addr.ip4.addr);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetServer, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpSetServer *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpSetServer*>(p_base_ev);
             ASSERT_EQ(2, p_ev->idx);
             ASSERT_EQ(0, p_ev->addr.u_addr.ip4.addr);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetServer, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpSetServer *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpSetServer*>(p_base_ev);
             ASSERT_EQ(3, p_ev->idx);
             ASSERT_EQ(0, p_ev->addr.u_addr.ip4.addr);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetServerMode, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpSetServerMode *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpSetServerMode*>(p_base_ev);
             ASSERT_EQ(0, p_ev->set_servers_from_dhcp);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetServerName, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpSetServerName *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpSetServerName*>(p_base_ev);
             ASSERT_EQ(0, p_ev->idx);
             ASSERT_EQ(string("time.google.com"), p_ev->server);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetServerName, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpSetServerName *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpSetServerName*>(p_base_ev);
             ASSERT_EQ(1, p_ev->idx);
             ASSERT_EQ(string("time.cloudflare.com"), p_ev->server);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetServerName, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpSetServerName *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpSetServerName*>(p_base_ev);
             ASSERT_EQ(2, p_ev->idx);
             ASSERT_EQ(string("time.nist.gov"), p_ev->server);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetServerName, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpSetServerName *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpSetServerName*>(p_base_ev);
             ASSERT_EQ(3, p_ev->idx);
             ASSERT_EQ(string("pool.ntp.org"), p_ev->server);
         }
@@ -621,7 +621,7 @@ TEST_F(TestTimeTask, test_all) // NOLINT
         ASSERT_EQ(exp_num_events, testEvents.size());
         int idx = 0;
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_Init, p_base_ev->eventType);
         }
     }
@@ -641,9 +641,9 @@ TEST_F(TestTimeTask, test_all) // NOLINT
     cmdQueue.push_and_wait(MAIN_TASK_CMD_SNTP_SYNC_TIME_CB_GOOD_TIMESTAMP);
     ASSERT_EQ(1, testEvents.size());
     {
-        auto *p_base_ev = testEvents[0];
+        auto* p_base_ev = testEvents[0];
         ASSERT_EQ(TestEventType_SNTP_SetSyncMode, p_base_ev->eventType);
-        auto *p_ev = reinterpret_cast<TestEventSntpSetSyncMode *>(p_base_ev);
+        auto* p_ev = reinterpret_cast<TestEventSntpSetSyncMode*>(p_base_ev);
         ASSERT_EQ(SNTP_SYNC_MODE_SMOOTH, p_ev->sync_mode);
     }
     testEvents.clear();
@@ -660,7 +660,7 @@ TEST_F(TestTimeTask, test_all) // NOLINT
         ASSERT_EQ(exp_num_events, testEvents.size());
         int idx = 0;
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_Stop, p_base_ev->eventType);
         }
         ASSERT_EQ(exp_num_events, idx);
@@ -676,7 +676,7 @@ TEST_F(TestTimeTask, test_all) // NOLINT
         ASSERT_EQ(exp_num_events, testEvents.size());
         int idx = 0;
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_Init, p_base_ev->eventType);
         }
         ASSERT_EQ(exp_num_events, idx);
@@ -692,7 +692,7 @@ TEST_F(TestTimeTask, test_all) // NOLINT
         ASSERT_EQ(exp_num_events, testEvents.size());
         int idx = 0;
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_Stop, p_base_ev->eventType);
         }
         ASSERT_EQ(exp_num_events, idx);
@@ -717,75 +717,75 @@ TEST_F(TestTimeTask, test_all) // NOLINT
         ASSERT_EQ(exp_num_events, testEvents.size());
         int idx = 0;
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_Stop, p_base_ev->eventType);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetServer, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpSetServer *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpSetServer*>(p_base_ev);
             ASSERT_EQ(0, p_ev->idx);
             ASSERT_EQ(0, p_ev->addr.u_addr.ip4.addr);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetServer, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpSetServer *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpSetServer*>(p_base_ev);
             ASSERT_EQ(1, p_ev->idx);
             ASSERT_EQ(0, p_ev->addr.u_addr.ip4.addr);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetServer, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpSetServer *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpSetServer*>(p_base_ev);
             ASSERT_EQ(2, p_ev->idx);
             ASSERT_EQ(0, p_ev->addr.u_addr.ip4.addr);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetServer, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpSetServer *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpSetServer*>(p_base_ev);
             ASSERT_EQ(3, p_ev->idx);
             ASSERT_EQ(0, p_ev->addr.u_addr.ip4.addr);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetServerMode, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpSetServerMode *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpSetServerMode*>(p_base_ev);
             ASSERT_EQ(0, p_ev->set_servers_from_dhcp);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetServerName, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpSetServerName *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpSetServerName*>(p_base_ev);
             ASSERT_EQ(0, p_ev->idx);
             ASSERT_EQ(string("time2.google.com"), p_ev->server);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetServerName, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpSetServerName *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpSetServerName*>(p_base_ev);
             ASSERT_EQ(1, p_ev->idx);
             ASSERT_EQ(string("time2.cloudflare.com"), p_ev->server);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetServer, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpSetServer *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpSetServer*>(p_base_ev);
             ASSERT_EQ(2, p_ev->idx);
             ASSERT_EQ(0, p_ev->addr.u_addr.ip4.addr);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetServer, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpSetServer *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpSetServer*>(p_base_ev);
             ASSERT_EQ(3, p_ev->idx);
             ASSERT_EQ(0, p_ev->addr.u_addr.ip4.addr);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_Init, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpInit *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpInit*>(p_base_ev);
         }
         ASSERT_EQ(exp_num_events, idx);
     }
@@ -805,52 +805,52 @@ TEST_F(TestTimeTask, test_all) // NOLINT
         ASSERT_EQ(exp_num_events, testEvents.size());
         int idx = 0;
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_Stop, p_base_ev->eventType);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetServer, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpSetServer *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpSetServer*>(p_base_ev);
             ASSERT_EQ(0, p_ev->idx);
             ASSERT_EQ(0, p_ev->addr.u_addr.ip4.addr);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetServer, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpSetServer *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpSetServer*>(p_base_ev);
             ASSERT_EQ(1, p_ev->idx);
             ASSERT_EQ(0, p_ev->addr.u_addr.ip4.addr);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetServer, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpSetServer *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpSetServer*>(p_base_ev);
             ASSERT_EQ(2, p_ev->idx);
             ASSERT_EQ(0, p_ev->addr.u_addr.ip4.addr);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetServer, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpSetServer *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpSetServer*>(p_base_ev);
             ASSERT_EQ(3, p_ev->idx);
             ASSERT_EQ(0, p_ev->addr.u_addr.ip4.addr);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetServerMode, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpSetServerMode *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpSetServerMode*>(p_base_ev);
             ASSERT_EQ(1, p_ev->set_servers_from_dhcp);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_NetworkReconnect, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventNetworkReconnect *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventNetworkReconnect*>(p_base_ev);
         }
         {
-            auto *p_base_ev = testEvents[idx++];
+            auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_Init, p_base_ev->eventType);
-            auto *p_ev = reinterpret_cast<TestEventSntpInit *>(p_base_ev);
+            auto* p_ev = reinterpret_cast<TestEventSntpInit*>(p_base_ev);
         }
         ASSERT_EQ(exp_num_events, idx);
     }

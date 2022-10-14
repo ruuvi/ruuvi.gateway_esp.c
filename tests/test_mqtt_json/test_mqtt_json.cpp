@@ -16,14 +16,14 @@ using namespace std;
  * *********************************************************************************/
 
 class TestMqttJson;
-static TestMqttJson *g_pTestClass;
+static TestMqttJson* g_pTestClass;
 
 class MemAllocTrace
 {
-    vector<void *> allocated_mem;
+    vector<void*> allocated_mem;
 
-    std::vector<void *>::iterator
-    find(void *p_mem)
+    std::vector<void*>::iterator
+    find(void* p_mem)
     {
         for (auto iter = this->allocated_mem.begin(); iter != this->allocated_mem.end(); ++iter)
         {
@@ -37,14 +37,14 @@ class MemAllocTrace
 
 public:
     void
-    add(void *p_mem)
+    add(void* p_mem)
     {
         auto iter = find(p_mem);
         assert(iter == this->allocated_mem.end()); // p_mem was found in the list of allocated memory blocks
         this->allocated_mem.push_back(p_mem);
     }
     void
-    remove(void *p_mem)
+    remove(void* p_mem)
     {
         auto iter = find(p_mem);
         assert(iter != this->allocated_mem.end()); // p_mem was not found in the list of allocated memory blocks
@@ -100,34 +100,34 @@ TestMqttJson::TestMqttJson()
 
 extern "C" {
 
-void *
+void*
 os_malloc(const size_t size)
 {
     if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
     {
         return nullptr;
     }
-    void *p_mem = malloc(size);
+    void* p_mem = malloc(size);
     assert(nullptr != p_mem);
     g_pTestClass->m_mem_alloc_trace.add(p_mem);
     return p_mem;
 }
 
 void
-os_free_internal(void *p_mem)
+os_free_internal(void* p_mem)
 {
     g_pTestClass->m_mem_alloc_trace.remove(p_mem);
     free(p_mem);
 }
 
-void *
+void*
 os_calloc(const size_t nmemb, const size_t size)
 {
     if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
     {
         return nullptr;
     }
-    void *p_mem = calloc(nmemb, size);
+    void* p_mem = calloc(nmemb, size);
     assert(nullptr != p_mem);
     g_pTestClass->m_mem_alloc_trace.add(p_mem);
     return p_mem;
@@ -144,13 +144,13 @@ TEST_F(TestMqttJson, test_1) // NOLINT
 {
     const time_t                 timestamp     = 1612358920;
     const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char *                 p_coordinates = "170.112233,59.445566";
+    const char*                  p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .timestamp = 1612358929,
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-        .rssi      = -70,
-        .data_len  = data.size(),
+                           .timestamp = 1612358929,
+                           .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                           .rssi      = -70,
+                           .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
     ASSERT_TRUE(mqtt_create_json_str(&adv_report, true, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
@@ -174,13 +174,13 @@ TEST_F(TestMqttJson, test_1_without_timestamps) // NOLINT
 {
     const time_t                 timestamp     = 1612358920;
     const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char *                 p_coordinates = "170.112233,59.445566";
+    const char*                  p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .timestamp = 1011,
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-        .rssi      = -70,
-        .data_len  = data.size(),
+                           .timestamp = 1011,
+                           .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                           .rssi      = -70,
+                           .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
     ASSERT_TRUE(mqtt_create_json_str(&adv_report, false, timestamp, &gw_mac_addr, p_coordinates, &this->m_json_str));
@@ -203,13 +203,13 @@ TEST_F(TestMqttJson, test_malloc_failed) // NOLINT
 {
     const time_t                 timestamp     = 1612358920;
     const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char *                 p_coordinates = "170.112233,59.445566";
+    const char*                  p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .timestamp = 1612358929,
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-        .rssi      = -70,
-        .data_len  = data.size(),
+                           .timestamp = 1612358929,
+                           .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                           .rssi      = -70,
+                           .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
 
@@ -223,13 +223,13 @@ TEST_F(TestMqttJson, test_malloc_failed_1_of_23) // NOLINT
 {
     const time_t                 timestamp     = 1612358920;
     const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char *                 p_coordinates = "170.112233,59.445566";
+    const char*                  p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .timestamp = 1612358929,
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-        .rssi      = -70,
-        .data_len  = data.size(),
+                           .timestamp = 1612358929,
+                           .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                           .rssi      = -70,
+                           .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
 
@@ -243,13 +243,13 @@ TEST_F(TestMqttJson, test_malloc_failed_2_of_23) // NOLINT
 {
     const time_t                 timestamp     = 1612358920;
     const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char *                 p_coordinates = "170.112233,59.445566";
+    const char*                  p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .timestamp = 1612358929,
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-        .rssi      = -70,
-        .data_len  = data.size(),
+                           .timestamp = 1612358929,
+                           .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                           .rssi      = -70,
+                           .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
 
@@ -263,13 +263,13 @@ TEST_F(TestMqttJson, test_malloc_failed_3_of_23) // NOLINT
 {
     const time_t                 timestamp     = 1612358920;
     const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char *                 p_coordinates = "170.112233,59.445566";
+    const char*                  p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .timestamp = 1612358929,
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-        .rssi      = -70,
-        .data_len  = data.size(),
+                           .timestamp = 1612358929,
+                           .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                           .rssi      = -70,
+                           .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
 
@@ -283,13 +283,13 @@ TEST_F(TestMqttJson, test_malloc_failed_4_of_23) // NOLINT
 {
     const time_t                 timestamp     = 1612358920;
     const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char *                 p_coordinates = "170.112233,59.445566";
+    const char*                  p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .timestamp = 1612358929,
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-        .rssi      = -70,
-        .data_len  = data.size(),
+                           .timestamp = 1612358929,
+                           .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                           .rssi      = -70,
+                           .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
 
@@ -303,13 +303,13 @@ TEST_F(TestMqttJson, test_malloc_failed_5_of_23) // NOLINT
 {
     const time_t                 timestamp     = 1612358920;
     const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char *                 p_coordinates = "170.112233,59.445566";
+    const char*                  p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .timestamp = 1612358929,
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-        .rssi      = -70,
-        .data_len  = data.size(),
+                           .timestamp = 1612358929,
+                           .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                           .rssi      = -70,
+                           .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
 
@@ -323,13 +323,13 @@ TEST_F(TestMqttJson, test_malloc_failed_6_of_23) // NOLINT
 {
     const time_t                 timestamp     = 1612358920;
     const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char *                 p_coordinates = "170.112233,59.445566";
+    const char*                  p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .timestamp = 1612358929,
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-        .rssi      = -70,
-        .data_len  = data.size(),
+                           .timestamp = 1612358929,
+                           .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                           .rssi      = -70,
+                           .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
 
@@ -343,13 +343,13 @@ TEST_F(TestMqttJson, test_malloc_failed_7_of_23) // NOLINT
 {
     const time_t                 timestamp     = 1612358920;
     const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char *                 p_coordinates = "170.112233,59.445566";
+    const char*                  p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .timestamp = 1612358929,
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-        .rssi      = -70,
-        .data_len  = data.size(),
+                           .timestamp = 1612358929,
+                           .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                           .rssi      = -70,
+                           .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
 
@@ -363,13 +363,13 @@ TEST_F(TestMqttJson, test_malloc_failed_8_of_23) // NOLINT
 {
     const time_t                 timestamp     = 1612358920;
     const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char *                 p_coordinates = "170.112233,59.445566";
+    const char*                  p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .timestamp = 1612358929,
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-        .rssi      = -70,
-        .data_len  = data.size(),
+                           .timestamp = 1612358929,
+                           .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                           .rssi      = -70,
+                           .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
 
@@ -383,13 +383,13 @@ TEST_F(TestMqttJson, test_malloc_failed_9_of_23) // NOLINT
 {
     const time_t                 timestamp     = 1612358920;
     const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char *                 p_coordinates = "170.112233,59.445566";
+    const char*                  p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .timestamp = 1612358929,
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-        .rssi      = -70,
-        .data_len  = data.size(),
+                           .timestamp = 1612358929,
+                           .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                           .rssi      = -70,
+                           .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
 
@@ -403,13 +403,13 @@ TEST_F(TestMqttJson, test_malloc_failed_10_of_23) // NOLINT
 {
     const time_t                 timestamp     = 1612358920;
     const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char *                 p_coordinates = "170.112233,59.445566";
+    const char*                  p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .timestamp = 1612358929,
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-        .rssi      = -70,
-        .data_len  = data.size(),
+                           .timestamp = 1612358929,
+                           .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                           .rssi      = -70,
+                           .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
 
@@ -423,13 +423,13 @@ TEST_F(TestMqttJson, test_malloc_failed_11_of_23) // NOLINT
 {
     const time_t                 timestamp     = 1612358920;
     const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char *                 p_coordinates = "170.112233,59.445566";
+    const char*                  p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .timestamp = 1612358929,
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-        .rssi      = -70,
-        .data_len  = data.size(),
+                           .timestamp = 1612358929,
+                           .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                           .rssi      = -70,
+                           .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
 
@@ -443,13 +443,13 @@ TEST_F(TestMqttJson, test_malloc_failed_12_of_23) // NOLINT
 {
     const time_t                 timestamp     = 1612358920;
     const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char *                 p_coordinates = "170.112233,59.445566";
+    const char*                  p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .timestamp = 1612358929,
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-        .rssi      = -70,
-        .data_len  = data.size(),
+                           .timestamp = 1612358929,
+                           .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                           .rssi      = -70,
+                           .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
 
@@ -463,13 +463,13 @@ TEST_F(TestMqttJson, test_malloc_failed_13_of_23) // NOLINT
 {
     const time_t                 timestamp     = 1612358920;
     const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char *                 p_coordinates = "170.112233,59.445566";
+    const char*                  p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .timestamp = 1612358929,
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-        .rssi      = -70,
-        .data_len  = data.size(),
+                           .timestamp = 1612358929,
+                           .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                           .rssi      = -70,
+                           .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
 
@@ -483,13 +483,13 @@ TEST_F(TestMqttJson, test_malloc_failed_14_of_23) // NOLINT
 {
     const time_t                 timestamp     = 1612358920;
     const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char *                 p_coordinates = "170.112233,59.445566";
+    const char*                  p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .timestamp = 1612358929,
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-        .rssi      = -70,
-        .data_len  = data.size(),
+                           .timestamp = 1612358929,
+                           .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                           .rssi      = -70,
+                           .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
 
@@ -503,13 +503,13 @@ TEST_F(TestMqttJson, test_malloc_failed_15_of_23) // NOLINT
 {
     const time_t                 timestamp     = 1612358920;
     const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char *                 p_coordinates = "170.112233,59.445566";
+    const char*                  p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .timestamp = 1612358929,
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-        .rssi      = -70,
-        .data_len  = data.size(),
+                           .timestamp = 1612358929,
+                           .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                           .rssi      = -70,
+                           .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
 
@@ -523,13 +523,13 @@ TEST_F(TestMqttJson, test_malloc_failed_16_of_23) // NOLINT
 {
     const time_t                 timestamp     = 1612358920;
     const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char *                 p_coordinates = "170.112233,59.445566";
+    const char*                  p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .timestamp = 1612358929,
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-        .rssi      = -70,
-        .data_len  = data.size(),
+                           .timestamp = 1612358929,
+                           .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                           .rssi      = -70,
+                           .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
 
@@ -543,13 +543,13 @@ TEST_F(TestMqttJson, test_malloc_failed_17_of_23) // NOLINT
 {
     const time_t                 timestamp     = 1612358920;
     const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char *                 p_coordinates = "170.112233,59.445566";
+    const char*                  p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .timestamp = 1612358929,
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-        .rssi      = -70,
-        .data_len  = data.size(),
+                           .timestamp = 1612358929,
+                           .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                           .rssi      = -70,
+                           .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
 
@@ -563,13 +563,13 @@ TEST_F(TestMqttJson, test_malloc_failed_18_of_23) // NOLINT
 {
     const time_t                 timestamp     = 1612358920;
     const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char *                 p_coordinates = "170.112233,59.445566";
+    const char*                  p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .timestamp = 1612358929,
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-        .rssi      = -70,
-        .data_len  = data.size(),
+                           .timestamp = 1612358929,
+                           .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                           .rssi      = -70,
+                           .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
 
@@ -583,13 +583,13 @@ TEST_F(TestMqttJson, test_malloc_failed_19_of_23) // NOLINT
 {
     const time_t                 timestamp     = 1612358920;
     const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char *                 p_coordinates = "170.112233,59.445566";
+    const char*                  p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .timestamp = 1612358929,
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-        .rssi      = -70,
-        .data_len  = data.size(),
+                           .timestamp = 1612358929,
+                           .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                           .rssi      = -70,
+                           .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
 
@@ -603,13 +603,13 @@ TEST_F(TestMqttJson, test_malloc_failed_20_of_23) // NOLINT
 {
     const time_t                 timestamp     = 1612358920;
     const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char *                 p_coordinates = "170.112233,59.445566";
+    const char*                  p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .timestamp = 1612358929,
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-        .rssi      = -70,
-        .data_len  = data.size(),
+                           .timestamp = 1612358929,
+                           .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                           .rssi      = -70,
+                           .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
 
@@ -623,13 +623,13 @@ TEST_F(TestMqttJson, test_malloc_failed_21_of_23) // NOLINT
 {
     const time_t                 timestamp     = 1612358920;
     const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char *                 p_coordinates = "170.112233,59.445566";
+    const char*                  p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .timestamp = 1612358929,
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-        .rssi      = -70,
-        .data_len  = data.size(),
+                           .timestamp = 1612358929,
+                           .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                           .rssi      = -70,
+                           .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
 
@@ -643,13 +643,13 @@ TEST_F(TestMqttJson, test_malloc_failed_22_of_23) // NOLINT
 {
     const time_t                 timestamp     = 1612358920;
     const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char *                 p_coordinates = "170.112233,59.445566";
+    const char*                  p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .timestamp = 1612358929,
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-        .rssi      = -70,
-        .data_len  = data.size(),
+                           .timestamp = 1612358929,
+                           .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                           .rssi      = -70,
+                           .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
 
@@ -663,13 +663,13 @@ TEST_F(TestMqttJson, test_malloc_failed_23_of_23) // NOLINT
 {
     const time_t                 timestamp     = 1612358920;
     const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char *                 p_coordinates = "170.112233,59.445566";
+    const char*                  p_coordinates = "170.112233,59.445566";
     const std::array<uint8_t, 1> data          = { 0xAAU };
     adv_report_t                 adv_report    = {
-        .timestamp = 1612358929,
-        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-        .rssi      = -70,
-        .data_len  = data.size(),
+                           .timestamp = 1612358929,
+                           .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                           .rssi      = -70,
+                           .data_len  = data.size(),
     };
     memcpy(adv_report.data_buf, data.data(), data.size());
 

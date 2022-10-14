@@ -35,14 +35,14 @@ extern "C" {
  * @param[in]  bin_buf_len Size of the binary buffer in bytes.
  * @return pointer to the allocated string.
  */
-char *
-bin2hex_with_malloc(const uint8_t *const p_bin_buf, const size_t bin_buf_len);
+char*
+bin2hex_with_malloc(const uint8_t* const p_bin_buf, const size_t bin_buf_len);
 
 #if RUUVI_TESTS_BIN2HEX
 
 BIN2HEX_STATIC
 void
-bin2hex(str_buf_t *p_str_buf, const uint8_t *const p_bin_buf, const size_t bin_buf_len);
+bin2hex(str_buf_t* p_str_buf, const uint8_t* const p_bin_buf, const size_t bin_buf_len);
 
 #endif // RUUVI_TESTS_BIN2HEX
 

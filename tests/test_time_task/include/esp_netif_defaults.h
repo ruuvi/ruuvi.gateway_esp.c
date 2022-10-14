@@ -154,11 +154,11 @@ extern "C" {
 //      implementation that is invisible to user API
 //  - Here referenced only as opaque pointers
 //
-extern const esp_netif_netstack_config_t *_g_esp_netif_netstack_default_eth;
-extern const esp_netif_netstack_config_t *_g_esp_netif_netstack_default_wifi_sta;
-extern const esp_netif_netstack_config_t *_g_esp_netif_netstack_default_wifi_ap;
-extern const esp_netif_netstack_config_t *_g_esp_netif_netstack_default_ppp;
-extern const esp_netif_netstack_config_t *_g_esp_netif_netstack_default_slip;
+extern const esp_netif_netstack_config_t* _g_esp_netif_netstack_default_eth;
+extern const esp_netif_netstack_config_t* _g_esp_netif_netstack_default_wifi_sta;
+extern const esp_netif_netstack_config_t* _g_esp_netif_netstack_default_wifi_ap;
+extern const esp_netif_netstack_config_t* _g_esp_netif_netstack_default_ppp;
+extern const esp_netif_netstack_config_t* _g_esp_netif_netstack_default_slip;
 
 //
 // Include default common configs inherent to esp-netif

@@ -52,17 +52,17 @@ typedef enum main_task_sig_e
 #define MAIN_TASK_SIG_FIRST (MAIN_TASK_SIG_LOG_HEAP_USAGE)
 #define MAIN_TASK_SIG_LAST  (MAIN_TASK_SIG_SET_DEFAULT_CONFIG)
 
-static os_signal_t *                  g_p_signal_main_task;
+static os_signal_t*                   g_p_signal_main_task;
 static os_signal_static_t             g_signal_main_task_mem;
-static os_timer_sig_periodic_t *      g_p_timer_sig_log_heap_usage;
+static os_timer_sig_periodic_t*       g_p_timer_sig_log_heap_usage;
 static os_timer_sig_periodic_static_t g_timer_sig_log_heap_usage;
-static os_timer_sig_one_shot_t *      g_p_timer_sig_check_for_fw_updates;
+static os_timer_sig_one_shot_t*       g_p_timer_sig_check_for_fw_updates;
 static os_timer_sig_one_shot_static_t g_timer_sig_check_for_fw_updates_mem;
-static os_timer_sig_one_shot_t *      g_p_timer_sig_after_wifi_ap_activation;
+static os_timer_sig_one_shot_t*       g_p_timer_sig_after_wifi_ap_activation;
 static os_timer_sig_one_shot_static_t g_p_timer_sig_after_wifi_ap_activation_mem;
-static os_timer_sig_periodic_t *      g_p_timer_sig_check_for_remote_cfg;
+static os_timer_sig_periodic_t*       g_p_timer_sig_check_for_remote_cfg;
 static os_timer_sig_periodic_static_t g_timer_sig_check_for_remote_cfg_mem;
-static os_timer_sig_periodic_t *      g_p_timer_sig_task_watchdog_feed;
+static os_timer_sig_periodic_t*       g_p_timer_sig_task_watchdog_feed;
 static os_timer_sig_periodic_static_t g_timer_sig_task_watchdog_feed_mem;
 static event_mgr_ev_info_static_t     g_main_loop_ev_info_mem_wifi_connected;
 static event_mgr_ev_info_static_t     g_main_loop_ev_info_mem_eth_connected;
@@ -81,7 +81,7 @@ main_task_conv_from_sig_num(const os_signal_num_e sig_num)
     return (main_task_sig_e)sig_num;
 }
 
-static const char *
+static const char*
 get_wday_if_set_in_bitmask(const auto_update_weekdays_bitmask_t auto_update_weekdays_bitmask, const os_time_wday_e wday)
 {
     if (0 != (auto_update_weekdays_bitmask & (1U << (uint32_t)wday)))
@@ -92,13 +92,11 @@ get_wday_if_set_in_bitmask(const auto_update_weekdays_bitmask_t auto_update_week
 }
 
 static bool
-check_if_checking_for_fw_updates_allowed2(const ruuvi_gw_cfg_auto_update_t *const p_cfg_auto_update)
+check_if_checking_for_fw_updates_allowed2(const ruuvi_gw_cfg_auto_update_t* const p_cfg_auto_update)
 {
     const time_t unix_time = os_time_get();
-    time_t       cur_time  = (time_t)(
-        unix_time
-        + ((int32_t)p_cfg_auto_update->auto_update_tz_offset_hours
-           * (TIME_UNITS_MINUTES_PER_HOUR * TIME_UNITS_SECONDS_PER_MINUTE)));
+    time_t       cur_time
+        = (time_t)(unix_time + ((int32_t)p_cfg_auto_update->auto_update_tz_offset_hours * (TIME_UNITS_MINUTES_PER_HOUR * TIME_UNITS_SECONDS_PER_MINUTE)));
     struct tm tm_time = { 0 };
     gmtime_r(&cur_time, &tm_time);
 
@@ -153,7 +151,7 @@ check_if_checking_for_fw_updates_allowed(void)
         LOG_INFO("Check for fw updates - skip (time is not synchronized)");
         return false;
     }
-    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
 
     const bool res = check_if_checking_for_fw_updates_allowed2(&p_gw_cfg->ruuvi_cfg.auto_update);
 
@@ -309,7 +307,7 @@ void
 main_task_handle_sig_set_default_config(void)
 {
     LOG_INFO("### Set default config");
-    gw_cfg_t *p_gw_cfg = os_calloc(1, sizeof(*p_gw_cfg));
+    gw_cfg_t* p_gw_cfg = os_calloc(1, sizeof(*p_gw_cfg));
     if (NULL == p_gw_cfg)
     {
         LOG_ERR("Can't allocate memory for gw_cfg");

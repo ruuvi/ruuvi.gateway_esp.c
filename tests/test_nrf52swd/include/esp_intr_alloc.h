@@ -87,13 +87,13 @@ extern "C" {
 #define ESP_INTR_DISABLE(inum) esp_intr_disable_source(inum)
 
 /** Function prototype for interrupt handler function */
-typedef void (*intr_handler_t)(void *arg);
+typedef void (*intr_handler_t)(void* arg);
 
 /** Interrupt handler associated data structure */
 typedef struct intr_handle_data_t intr_handle_data_t;
 
 /** Handle to an interrupt handler */
-typedef intr_handle_data_t *intr_handle_t;
+typedef intr_handle_data_t* intr_handle_t;
 
 /**
  * @brief Mark an interrupt as a shared interrupt
@@ -162,7 +162,7 @@ esp_intr_reserve(int intno, int cpu);
  *         ESP_OK otherwise
  */
 esp_err_t
-esp_intr_alloc(int source, int flags, intr_handler_t handler, void *arg, intr_handle_t *ret_handle);
+esp_intr_alloc(int source, int flags, intr_handler_t handler, void* arg, intr_handle_t* ret_handle);
 
 /**
  * @brief Allocate an interrupt with the given parameters.
@@ -206,8 +206,8 @@ esp_intr_alloc_intrstatus(
     uint32_t       intrstatusreg,
     uint32_t       intrstatusmask,
     intr_handler_t handler,
-    void *         arg,
-    intr_handle_t *ret_handle);
+    void*          arg,
+    intr_handle_t* ret_handle);
 
 /**
  * @brief Disable and free an interrupt.

@@ -26,7 +26,7 @@ metrics_received_advs_increment(void);
 uint64_t
 metrics_received_advs_get(void);
 
-char *
+char*
 metrics_generate(void);
 
 #ifdef __cplusplus

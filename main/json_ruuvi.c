@@ -34,9 +34,9 @@
 static const char TAG[] = "http_server";
 
 bool
-json_ruuvi_parse_http_body(const char *const p_body, gw_cfg_t *const p_gw_cfg, bool *const p_flag_network_cfg)
+json_ruuvi_parse_http_body(const char* const p_body, gw_cfg_t* const p_gw_cfg, bool* const p_flag_network_cfg)
 {
-    cJSON *p_json_root = cJSON_Parse(p_body);
+    cJSON* p_json_root = cJSON_Parse(p_body);
     if (NULL == p_json_root)
     {
         LOG_ERR("Failed to parse json or no memory");

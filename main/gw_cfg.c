@@ -21,7 +21,7 @@ static bool                        g_gw_cfg_ready      = false;
 static bool                        g_gw_cfg_is_default = false;
 static os_mutex_recursive_t        g_gw_cfg_mutex;
 static os_mutex_recursive_static_t g_gw_cfg_mutex_mem;
-static gw_cfg_device_info_t *const g_gw_cfg_p_device_info = &g_gateway_config.device_info;
+static gw_cfg_device_info_t* const g_gw_cfg_p_device_info = &g_gateway_config.device_info;
 static gw_cfg_cb_on_change_cfg     g_p_gw_cfg_cb_on_change_cfg;
 
 void
@@ -53,7 +53,7 @@ gw_cfg_is_initialized(void)
     return false;
 }
 
-const gw_cfg_t *
+const gw_cfg_t*
 gw_cfg_lock_ro(void)
 {
     os_mutex_recursive_lock(g_gw_cfg_mutex);
@@ -61,7 +61,7 @@ gw_cfg_lock_ro(void)
 }
 
 void
-gw_cfg_unlock_ro(const gw_cfg_t **const p_p_gw_cfg)
+gw_cfg_unlock_ro(const gw_cfg_t** const p_p_gw_cfg)
 {
     *p_p_gw_cfg = NULL;
     os_mutex_recursive_unlock(g_gw_cfg_mutex);
@@ -70,7 +70,7 @@ gw_cfg_unlock_ro(const gw_cfg_t **const p_p_gw_cfg)
 bool
 gw_cfg_is_default(void)
 {
-    const gw_cfg_t *p_gw_cfg   = gw_cfg_lock_ro();
+    const gw_cfg_t* p_gw_cfg   = gw_cfg_lock_ro();
     const bool      is_default = g_gw_cfg_is_default;
     gw_cfg_unlock_ro(&p_gw_cfg);
     return is_default;
@@ -78,8 +78,8 @@ gw_cfg_is_default(void)
 
 static bool
 ruuvi_gw_cfg_remote_cmp_auth_basic(
-    const ruuvi_gw_cfg_remote_t *const p_remote1,
-    const ruuvi_gw_cfg_remote_t *const p_remote2)
+    const ruuvi_gw_cfg_remote_t* const p_remote1,
+    const ruuvi_gw_cfg_remote_t* const p_remote2)
 {
     if (0 != strcmp(p_remote1->auth.auth_basic.user.buf, p_remote2->auth.auth_basic.user.buf))
     {
@@ -93,7 +93,7 @@ ruuvi_gw_cfg_remote_cmp_auth_basic(
 }
 
 static bool
-ruuvi_gw_cfg_remote_cmp(const ruuvi_gw_cfg_remote_t *const p_remote1, const ruuvi_gw_cfg_remote_t *const p_remote2)
+ruuvi_gw_cfg_remote_cmp(const ruuvi_gw_cfg_remote_t* const p_remote1, const ruuvi_gw_cfg_remote_t* const p_remote2)
 {
     if (p_remote1->use_remote_cfg != p_remote2->use_remote_cfg)
     {
@@ -132,7 +132,7 @@ ruuvi_gw_cfg_remote_cmp(const ruuvi_gw_cfg_remote_t *const p_remote1, const ruuv
 }
 
 static bool
-ruuvi_gw_cfg_http_cmp(const ruuvi_gw_cfg_http_t *const p_http1, const ruuvi_gw_cfg_http_t *const p_http2)
+ruuvi_gw_cfg_http_cmp(const ruuvi_gw_cfg_http_t* const p_http1, const ruuvi_gw_cfg_http_t* const p_http2)
 {
     if (p_http1->use_http != p_http2->use_http)
     {
@@ -155,8 +155,8 @@ ruuvi_gw_cfg_http_cmp(const ruuvi_gw_cfg_http_t *const p_http1, const ruuvi_gw_c
 
 static bool
 ruuvi_gw_cfg_http_stat_cmp(
-    const ruuvi_gw_cfg_http_stat_t *const p_http_stat1,
-    const ruuvi_gw_cfg_http_stat_t *const p_http_stat2)
+    const ruuvi_gw_cfg_http_stat_t* const p_http_stat1,
+    const ruuvi_gw_cfg_http_stat_t* const p_http_stat2)
 {
     if (p_http_stat1->use_http_stat != p_http_stat2->use_http_stat)
     {
@@ -178,7 +178,7 @@ ruuvi_gw_cfg_http_stat_cmp(
 }
 
 static bool
-ruuvi_gw_cfg_mqtt_cmp(const ruuvi_gw_cfg_mqtt_t *const p_mqtt1, const ruuvi_gw_cfg_mqtt_t *const p_mqtt2)
+ruuvi_gw_cfg_mqtt_cmp(const ruuvi_gw_cfg_mqtt_t* const p_mqtt1, const ruuvi_gw_cfg_mqtt_t* const p_mqtt2)
 {
     if (p_mqtt1->use_mqtt != p_mqtt2->use_mqtt)
     {
@@ -217,8 +217,8 @@ ruuvi_gw_cfg_mqtt_cmp(const ruuvi_gw_cfg_mqtt_t *const p_mqtt1, const ruuvi_gw_c
 
 static bool
 ruuvi_gw_cfg_lan_auth_cmp(
-    const ruuvi_gw_cfg_lan_auth_t *const p_lan_auth1,
-    const ruuvi_gw_cfg_lan_auth_t *const p_lan_auth2)
+    const ruuvi_gw_cfg_lan_auth_t* const p_lan_auth1,
+    const ruuvi_gw_cfg_lan_auth_t* const p_lan_auth2)
 {
     if (p_lan_auth1->lan_auth_type != p_lan_auth2->lan_auth_type)
     {
@@ -241,8 +241,8 @@ ruuvi_gw_cfg_lan_auth_cmp(
 
 static bool
 ruuvi_gw_cfg_auto_update_cmp(
-    const ruuvi_gw_cfg_auto_update_t *const p_auto_update1,
-    const ruuvi_gw_cfg_auto_update_t *const p_auto_update2)
+    const ruuvi_gw_cfg_auto_update_t* const p_auto_update1,
+    const ruuvi_gw_cfg_auto_update_t* const p_auto_update2)
 {
     if (p_auto_update1->auto_update_cycle != p_auto_update2->auto_update_cycle)
     {
@@ -268,7 +268,7 @@ ruuvi_gw_cfg_auto_update_cmp(
 }
 
 static bool
-ruuvi_gw_cfg_ntp_cmp(const ruuvi_gw_cfg_ntp_t *const p_ntp1, const ruuvi_gw_cfg_ntp_t *const p_ntp2)
+ruuvi_gw_cfg_ntp_cmp(const ruuvi_gw_cfg_ntp_t* const p_ntp1, const ruuvi_gw_cfg_ntp_t* const p_ntp2)
 {
     if (p_ntp1->ntp_use != p_ntp2->ntp_use)
     {
@@ -298,7 +298,7 @@ ruuvi_gw_cfg_ntp_cmp(const ruuvi_gw_cfg_ntp_t *const p_ntp1, const ruuvi_gw_cfg_
 }
 
 static bool
-ruuvi_gw_cfg_filter_cmp(const ruuvi_gw_cfg_filter_t *const p_filter1, const ruuvi_gw_cfg_filter_t *const p_filter2)
+ruuvi_gw_cfg_filter_cmp(const ruuvi_gw_cfg_filter_t* const p_filter1, const ruuvi_gw_cfg_filter_t* const p_filter2)
 {
     if (p_filter1->company_use_filtering != p_filter2->company_use_filtering)
     {
@@ -312,7 +312,7 @@ ruuvi_gw_cfg_filter_cmp(const ruuvi_gw_cfg_filter_t *const p_filter1, const ruuv
 }
 
 static bool
-ruuvi_gw_cfg_scan_cmp(const ruuvi_gw_cfg_scan_t *const p_scan1, const ruuvi_gw_cfg_scan_t *const p_scan2)
+ruuvi_gw_cfg_scan_cmp(const ruuvi_gw_cfg_scan_t* const p_scan1, const ruuvi_gw_cfg_scan_t* const p_scan2)
 {
     if (p_scan1->scan_coded_phy != p_scan2->scan_coded_phy)
     {
@@ -343,8 +343,8 @@ ruuvi_gw_cfg_scan_cmp(const ruuvi_gw_cfg_scan_t *const p_scan1, const ruuvi_gw_c
 
 static bool
 ruuvi_gw_cfg_coordinates_cmp(
-    const ruuvi_gw_cfg_coordinates_t *const p_coordinates1,
-    const ruuvi_gw_cfg_coordinates_t *const p_coordinates2)
+    const ruuvi_gw_cfg_coordinates_t* const p_coordinates1,
+    const ruuvi_gw_cfg_coordinates_t* const p_coordinates2)
 {
     if (0 != strcmp(p_coordinates1->buf, p_coordinates2->buf))
     {
@@ -354,7 +354,7 @@ ruuvi_gw_cfg_coordinates_cmp(
 }
 
 static bool
-gw_cfg_ruuvi_cmp(const gw_cfg_ruuvi_t *const p_cfg_ruuvi1, const gw_cfg_ruuvi_t *const p_cfg_ruuvi2)
+gw_cfg_ruuvi_cmp(const gw_cfg_ruuvi_t* const p_cfg_ruuvi1, const gw_cfg_ruuvi_t* const p_cfg_ruuvi2)
 {
     if (!ruuvi_gw_cfg_remote_cmp(&p_cfg_ruuvi1->remote, &p_cfg_ruuvi2->remote))
     {
@@ -400,7 +400,7 @@ gw_cfg_ruuvi_cmp(const gw_cfg_ruuvi_t *const p_cfg_ruuvi1, const gw_cfg_ruuvi_t 
 }
 
 static bool
-gw_cfg_eth_cmp(const gw_cfg_eth_t *const p_eth1, const gw_cfg_eth_t *const p_eth2)
+gw_cfg_eth_cmp(const gw_cfg_eth_t* const p_eth1, const gw_cfg_eth_t* const p_eth2)
 {
     if (p_eth1->use_eth != p_eth2->use_eth)
     {
@@ -434,13 +434,13 @@ gw_cfg_eth_cmp(const gw_cfg_eth_t *const p_eth1, const gw_cfg_eth_t *const p_eth
 }
 
 static bool
-wifiman_config_cmp_config_ap(const wifi_ap_config_t *const p_wifi1, const wifi_ap_config_t *const p_wifi2)
+wifiman_config_cmp_config_ap(const wifi_ap_config_t* const p_wifi1, const wifi_ap_config_t* const p_wifi2)
 {
-    if (0 != strcmp((const char *)p_wifi1->ssid, (const char *)p_wifi2->ssid))
+    if (0 != strcmp((const char*)p_wifi1->ssid, (const char*)p_wifi2->ssid))
     {
         return false;
     }
-    if (0 != strcmp((const char *)p_wifi1->password, (const char *)p_wifi2->password))
+    if (0 != strcmp((const char*)p_wifi1->password, (const char*)p_wifi2->password))
     {
         return false;
     }
@@ -472,7 +472,7 @@ wifiman_config_cmp_config_ap(const wifi_ap_config_t *const p_wifi1, const wifi_a
 }
 
 static bool
-wifiman_config_cmp_settings_ap(const wifi_settings_ap_t *const p_wifi1, const wifi_settings_ap_t *const p_wifi2)
+wifiman_config_cmp_settings_ap(const wifi_settings_ap_t* const p_wifi1, const wifi_settings_ap_t* const p_wifi2)
 {
     if (p_wifi1->ap_bandwidth != p_wifi2->ap_bandwidth)
     {
@@ -494,13 +494,13 @@ wifiman_config_cmp_settings_ap(const wifi_settings_ap_t *const p_wifi1, const wi
 }
 
 static bool
-wifiman_config_cmp_sta_config(const wifi_sta_config_t *const p_wifi1, const wifi_sta_config_t *const p_wifi2)
+wifiman_config_cmp_sta_config(const wifi_sta_config_t* const p_wifi1, const wifi_sta_config_t* const p_wifi2)
 {
-    if (0 != strcmp((const char *)p_wifi1->ssid, (const char *)p_wifi2->ssid))
+    if (0 != strcmp((const char*)p_wifi1->ssid, (const char*)p_wifi2->ssid))
     {
         return false;
     }
-    if (0 != strcmp((const char *)p_wifi1->password, (const char *)p_wifi2->password))
+    if (0 != strcmp((const char*)p_wifi1->password, (const char*)p_wifi2->password))
     {
         return false;
     }
@@ -548,7 +548,7 @@ wifiman_config_cmp_sta_config(const wifi_sta_config_t *const p_wifi1, const wifi
 }
 
 static bool
-wifiman_config_cmp_settings_sta(const wifi_settings_sta_t *const p_wifi1, const wifi_settings_sta_t *const p_wifi2)
+wifiman_config_cmp_settings_sta(const wifi_settings_sta_t* const p_wifi1, const wifi_settings_sta_t* const p_wifi2)
 {
     if (p_wifi1->sta_power_save != p_wifi2->sta_power_save)
     {
@@ -574,7 +574,7 @@ wifiman_config_cmp_settings_sta(const wifi_settings_sta_t *const p_wifi1, const 
 }
 
 static bool
-wifiman_config_ap_cmp(const wifiman_config_ap_t *const p_wifi1, const wifiman_config_ap_t *const p_wifi2)
+wifiman_config_ap_cmp(const wifiman_config_ap_t* const p_wifi1, const wifiman_config_ap_t* const p_wifi2)
 {
     if (!wifiman_config_cmp_config_ap(&p_wifi1->wifi_config_ap, &p_wifi2->wifi_config_ap))
     {
@@ -588,7 +588,7 @@ wifiman_config_ap_cmp(const wifiman_config_ap_t *const p_wifi1, const wifiman_co
 }
 
 static bool
-wifiman_config_sta_cmp(const wifiman_config_sta_t *const p_wifi1, const wifiman_config_sta_t *const p_wifi2)
+wifiman_config_sta_cmp(const wifiman_config_sta_t* const p_wifi1, const wifiman_config_sta_t* const p_wifi2)
 {
     if (!wifiman_config_cmp_sta_config(&p_wifi1->wifi_config_sta, &p_wifi2->wifi_config_sta))
     {
@@ -603,9 +603,9 @@ wifiman_config_sta_cmp(const wifiman_config_sta_t *const p_wifi1, const wifiman_
 
 static void
 gw_cfg_set_ruuvi(
-    const gw_cfg_ruuvi_t *const p_gw_cfg_ruuvi,
-    gw_cfg_ruuvi_t *const       p_gw_cfg_ruuvi_dst,
-    bool *const                 p_ruuvi_cfg_modified)
+    const gw_cfg_ruuvi_t* const p_gw_cfg_ruuvi,
+    gw_cfg_ruuvi_t* const       p_gw_cfg_ruuvi_dst,
+    bool* const                 p_ruuvi_cfg_modified)
 {
     if (!gw_cfg_ruuvi_cmp(p_gw_cfg_ruuvi_dst, p_gw_cfg_ruuvi))
     {
@@ -634,9 +634,9 @@ gw_cfg_set_ruuvi(
 
 static void
 gw_cfg_set_eth(
-    const gw_cfg_eth_t *const p_gw_cfg_eth,
-    gw_cfg_eth_t *const       p_gw_cfg_eth_dst,
-    bool *const               p_eth_cfg_modified)
+    const gw_cfg_eth_t* const p_gw_cfg_eth,
+    gw_cfg_eth_t* const       p_gw_cfg_eth_dst,
+    bool* const               p_eth_cfg_modified)
 {
     if (!gw_cfg_eth_cmp(p_gw_cfg_eth_dst, p_gw_cfg_eth))
     {
@@ -651,9 +651,9 @@ gw_cfg_set_eth(
 
 static void
 gw_cfg_set_wifi_ap(
-    const wifiman_config_ap_t *const p_gw_cfg_wifi_ap,
-    wifiman_config_ap_t *const       p_gw_cfg_wifi_ap_dst,
-    bool *const                      p_wifi_cfg_modified)
+    const wifiman_config_ap_t* const p_gw_cfg_wifi_ap,
+    wifiman_config_ap_t* const       p_gw_cfg_wifi_ap_dst,
+    bool* const                      p_wifi_cfg_modified)
 {
     if (!wifiman_config_ap_cmp(p_gw_cfg_wifi_ap_dst, p_gw_cfg_wifi_ap))
     {
@@ -668,9 +668,9 @@ gw_cfg_set_wifi_ap(
 
 static void
 gw_cfg_set_wifi_sta(
-    const wifiman_config_sta_t *const p_gw_cfg_wifi_sta,
-    wifiman_config_sta_t *const       p_gw_cfg_wifi_sta_dst,
-    bool *const                       p_wifi_cfg_modified)
+    const wifiman_config_sta_t* const p_gw_cfg_wifi_sta,
+    wifiman_config_sta_t* const       p_gw_cfg_wifi_sta_dst,
+    bool* const                       p_wifi_cfg_modified)
 {
     if (!wifiman_config_sta_cmp(p_gw_cfg_wifi_sta_dst, p_gw_cfg_wifi_sta))
     {
@@ -685,10 +685,10 @@ gw_cfg_set_wifi_sta(
 
 static gw_cfg_update_status_t
 gw_cfg_set(
-    const gw_cfg_ruuvi_t *const       p_gw_cfg_ruuvi,
-    const gw_cfg_eth_t *const         p_gw_cfg_eth,
-    const wifiman_config_ap_t *const  p_gw_cfg_wifi_ap,
-    const wifiman_config_sta_t *const p_gw_cfg_wifi_sta)
+    const gw_cfg_ruuvi_t* const       p_gw_cfg_ruuvi,
+    const gw_cfg_eth_t* const         p_gw_cfg_eth,
+    const wifiman_config_ap_t* const  p_gw_cfg_wifi_ap,
+    const wifiman_config_sta_t* const p_gw_cfg_wifi_sta)
 {
     gw_cfg_update_status_t update_status = {
         .flag_ruuvi_cfg_modified    = false,
@@ -698,7 +698,7 @@ gw_cfg_set(
     };
 
     os_mutex_recursive_lock(g_gw_cfg_mutex);
-    gw_cfg_t *const p_gw_cfg_dst = &g_gateway_config;
+    gw_cfg_t* const p_gw_cfg_dst = &g_gateway_config;
 
     if (NULL != p_gw_cfg_ruuvi)
     {
@@ -736,47 +736,47 @@ gw_cfg_set(
 }
 
 void
-gw_cfg_update_eth_cfg(const gw_cfg_eth_t *const p_gw_cfg_eth_new)
+gw_cfg_update_eth_cfg(const gw_cfg_eth_t* const p_gw_cfg_eth_new)
 {
     gw_cfg_set(NULL, p_gw_cfg_eth_new, NULL, NULL);
 }
 
 void
-gw_cfg_update_ruuvi_cfg(const gw_cfg_ruuvi_t *const p_gw_cfg_ruuvi_new)
+gw_cfg_update_ruuvi_cfg(const gw_cfg_ruuvi_t* const p_gw_cfg_ruuvi_new)
 {
     gw_cfg_set(p_gw_cfg_ruuvi_new, NULL, NULL, NULL);
 }
 
 void
-gw_cfg_update_wifi_ap_config(const wifiman_config_ap_t *const p_wifi_ap_cfg)
+gw_cfg_update_wifi_ap_config(const wifiman_config_ap_t* const p_wifi_ap_cfg)
 {
     gw_cfg_set(NULL, NULL, p_wifi_ap_cfg, NULL);
 }
 
 void
-gw_cfg_update_wifi_sta_config(const wifiman_config_sta_t *const p_wifi_sta_cfg)
+gw_cfg_update_wifi_sta_config(const wifiman_config_sta_t* const p_wifi_sta_cfg)
 {
     gw_cfg_set(NULL, NULL, NULL, p_wifi_sta_cfg);
 }
 
 gw_cfg_update_status_t
-gw_cfg_update(const gw_cfg_t *const p_gw_cfg)
+gw_cfg_update(const gw_cfg_t* const p_gw_cfg)
 {
     return gw_cfg_set(&p_gw_cfg->ruuvi_cfg, &p_gw_cfg->eth_cfg, &p_gw_cfg->wifi_cfg.ap, &p_gw_cfg->wifi_cfg.sta);
 }
 
 void
-gw_cfg_get_copy(gw_cfg_t *const p_gw_cfg_dst)
+gw_cfg_get_copy(gw_cfg_t* const p_gw_cfg_dst)
 {
-    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
     *p_gw_cfg_dst            = *p_gw_cfg;
     gw_cfg_unlock_ro(&p_gw_cfg);
 }
 
 bool
-gw_cfg_get_remote_cfg_use(gw_cfg_remote_refresh_interval_minutes_t *const p_interval_minutes)
+gw_cfg_get_remote_cfg_use(gw_cfg_remote_refresh_interval_minutes_t* const p_interval_minutes)
 {
-    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
     if (NULL != p_interval_minutes)
     {
         *p_interval_minutes = p_gw_cfg->ruuvi_cfg.remote.refresh_interval_minutes;
@@ -786,11 +786,11 @@ gw_cfg_get_remote_cfg_use(gw_cfg_remote_refresh_interval_minutes_t *const p_inte
     return flag_use_remote_cfg;
 }
 
-const ruuvi_gw_cfg_remote_t *
+const ruuvi_gw_cfg_remote_t*
 gw_cfg_get_remote_cfg_copy(void)
 {
-    const gw_cfg_t *       p_gw_cfg = gw_cfg_lock_ro();
-    ruuvi_gw_cfg_remote_t *p_remote = os_calloc(1, sizeof(*p_remote));
+    const gw_cfg_t*        p_gw_cfg = gw_cfg_lock_ro();
+    ruuvi_gw_cfg_remote_t* p_remote = os_calloc(1, sizeof(*p_remote));
     if (NULL == p_remote)
     {
         return NULL;
@@ -803,7 +803,7 @@ gw_cfg_get_remote_cfg_copy(void)
 bool
 gw_cfg_get_eth_use_eth(void)
 {
-    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
     const bool      use_eth  = p_gw_cfg->eth_cfg.use_eth;
     gw_cfg_unlock_ro(&p_gw_cfg);
     return use_eth;
@@ -812,7 +812,7 @@ gw_cfg_get_eth_use_eth(void)
 bool
 gw_cfg_get_eth_use_dhcp(void)
 {
-    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
     const bool      use_dhcp = p_gw_cfg->eth_cfg.eth_dhcp;
     gw_cfg_unlock_ro(&p_gw_cfg);
     return use_dhcp;
@@ -821,7 +821,7 @@ gw_cfg_get_eth_use_dhcp(void)
 bool
 gw_cfg_get_mqtt_use_mqtt(void)
 {
-    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
     const bool      use_mqtt = p_gw_cfg->ruuvi_cfg.mqtt.use_mqtt;
     gw_cfg_unlock_ro(&p_gw_cfg);
     return use_mqtt;
@@ -830,7 +830,7 @@ gw_cfg_get_mqtt_use_mqtt(void)
 bool
 gw_cfg_get_http_use_http(void)
 {
-    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
     const bool      use_http = p_gw_cfg->ruuvi_cfg.http.use_http;
     gw_cfg_unlock_ro(&p_gw_cfg);
     return use_http;
@@ -839,7 +839,7 @@ gw_cfg_get_http_use_http(void)
 bool
 gw_cfg_get_http_stat_use_http_stat(void)
 {
-    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
     const bool      use_http = p_gw_cfg->ruuvi_cfg.http_stat.use_http_stat;
     gw_cfg_unlock_ro(&p_gw_cfg);
     return use_http;
@@ -848,7 +848,7 @@ gw_cfg_get_http_stat_use_http_stat(void)
 ruuvi_gw_cfg_mqtt_prefix_t
 gw_cfg_get_mqtt_prefix(void)
 {
-    const gw_cfg_t *                 p_gw_cfg    = gw_cfg_lock_ro();
+    const gw_cfg_t*                  p_gw_cfg    = gw_cfg_lock_ro();
     const ruuvi_gw_cfg_mqtt_prefix_t mqtt_prefix = p_gw_cfg->ruuvi_cfg.mqtt.mqtt_prefix;
     gw_cfg_unlock_ro(&p_gw_cfg);
     return mqtt_prefix;
@@ -857,7 +857,7 @@ gw_cfg_get_mqtt_prefix(void)
 auto_update_cycle_type_e
 gw_cfg_get_auto_update_cycle(void)
 {
-    const gw_cfg_t *               p_gw_cfg          = gw_cfg_lock_ro();
+    const gw_cfg_t*                p_gw_cfg          = gw_cfg_lock_ro();
     const auto_update_cycle_type_e auto_update_cycle = p_gw_cfg->ruuvi_cfg.auto_update.auto_update_cycle;
     gw_cfg_unlock_ro(&p_gw_cfg);
     return auto_update_cycle;
@@ -866,7 +866,7 @@ gw_cfg_get_auto_update_cycle(void)
 ruuvi_gw_cfg_lan_auth_t
 gw_cfg_get_lan_auth(void)
 {
-    const gw_cfg_t *              p_gw_cfg = gw_cfg_lock_ro();
+    const gw_cfg_t*               p_gw_cfg = gw_cfg_lock_ro();
     const ruuvi_gw_cfg_lan_auth_t lan_auth = p_gw_cfg->ruuvi_cfg.lan_auth;
     gw_cfg_unlock_ro(&p_gw_cfg);
     return lan_auth;
@@ -875,7 +875,7 @@ gw_cfg_get_lan_auth(void)
 bool
 gw_cfg_get_ntp_use(void)
 {
-    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
     const bool      ntp_use  = p_gw_cfg->ruuvi_cfg.ntp.ntp_use;
     gw_cfg_unlock_ro(&p_gw_cfg);
     return ntp_use;
@@ -884,7 +884,7 @@ gw_cfg_get_ntp_use(void)
 ruuvi_gw_cfg_coordinates_t
 gw_cfg_get_coordinates(void)
 {
-    const gw_cfg_t *                 p_gw_cfg    = gw_cfg_lock_ro();
+    const gw_cfg_t*                  p_gw_cfg    = gw_cfg_lock_ro();
     const ruuvi_gw_cfg_coordinates_t coordinates = p_gw_cfg->ruuvi_cfg.coordinates;
     gw_cfg_unlock_ro(&p_gw_cfg);
     return coordinates;
@@ -893,64 +893,64 @@ gw_cfg_get_coordinates(void)
 wifiman_config_t
 gw_cfg_get_wifi_cfg(void)
 {
-    const gw_cfg_t *       p_gw_cfg = gw_cfg_lock_ro();
+    const gw_cfg_t*        p_gw_cfg = gw_cfg_lock_ro();
     const wifiman_config_t wifi_cfg = p_gw_cfg->wifi_cfg;
     gw_cfg_unlock_ro(&p_gw_cfg);
     return wifi_cfg;
 }
 
-const ruuvi_esp32_fw_ver_str_t *
+const ruuvi_esp32_fw_ver_str_t*
 gw_cfg_get_esp32_fw_ver(void)
 {
     assert(NULL != g_gw_cfg_mutex);
     return &g_gw_cfg_p_device_info->esp32_fw_ver;
 }
 
-const ruuvi_nrf52_fw_ver_str_t *
+const ruuvi_nrf52_fw_ver_str_t*
 gw_cfg_get_nrf52_fw_ver(void)
 {
     assert(NULL != g_gw_cfg_mutex);
     return &g_gw_cfg_p_device_info->nrf52_fw_ver;
 }
 
-const nrf52_device_id_str_t *
+const nrf52_device_id_str_t*
 gw_cfg_get_nrf52_device_id(void)
 {
     assert(NULL != g_gw_cfg_mutex);
     return &g_gw_cfg_p_device_info->nrf52_device_id;
 }
 
-const mac_address_str_t *
+const mac_address_str_t*
 gw_cfg_get_nrf52_mac_addr(void)
 {
     assert(NULL != g_gw_cfg_mutex);
     return &g_gw_cfg_p_device_info->nrf52_mac_addr;
 }
 
-const mac_address_str_t *
+const mac_address_str_t*
 gw_cfg_get_esp32_mac_addr_wifi(void)
 {
     assert(NULL != g_gw_cfg_mutex);
     return &g_gw_cfg_p_device_info->esp32_mac_addr_wifi;
 }
 
-const mac_address_str_t *
+const mac_address_str_t*
 gw_cfg_get_esp32_mac_addr_eth(void)
 {
     assert(NULL != g_gw_cfg_mutex);
     return &g_gw_cfg_p_device_info->esp32_mac_addr_eth;
 }
 
-const wifiman_wifi_ssid_t *
+const wifiman_wifi_ssid_t*
 gw_cfg_get_wifi_ap_ssid(void)
 {
     return gw_cfg_default_get_wifi_ap_ssid();
 }
 
-const char *
-gw_cfg_auth_type_to_str(const ruuvi_gw_cfg_lan_auth_t *const p_lan_auth)
+const char*
+gw_cfg_auth_type_to_str(const ruuvi_gw_cfg_lan_auth_t* const p_lan_auth)
 {
-    const ruuvi_gw_cfg_lan_auth_t *const p_default_lan_auth = gw_cfg_default_get_lan_auth();
+    const ruuvi_gw_cfg_lan_auth_t* const p_default_lan_auth = gw_cfg_default_get_lan_auth();
     http_server_auth_type_e              lan_auth_type      = p_lan_auth->lan_auth_type;
     if ((HTTP_SERVER_AUTH_TYPE_RUUVI == lan_auth_type)
         && (0 == strcmp(p_lan_auth->lan_auth_user.buf, p_default_lan_auth->lan_auth_user.buf))

@@ -34,17 +34,17 @@ typedef enum reset_task_sig_e
 #define RESET_TASK_TIMEOUT_AFTER_PRESSING_CONFIGURE_BUTTON (5)
 #define RESET_TASK_TIMEOUT_AFTER_COMMAND                   (3)
 
-static const char *TAG = "reset_task";
+static const char* TAG = "reset_task";
 
-static os_timer_sig_one_shot_t *      g_p_timer_sig_reset_by_configure_button;
+static os_timer_sig_one_shot_t*       g_p_timer_sig_reset_by_configure_button;
 static os_timer_sig_one_shot_static_t g_timer_sig_reset_by_configure_button_mem;
-static os_timer_sig_one_shot_t *      g_p_timer_sig_reset_by_command;
+static os_timer_sig_one_shot_t*       g_p_timer_sig_reset_by_command;
 static os_timer_sig_one_shot_static_t g_timer_sig_reset_by_command_mem;
-static os_timer_sig_periodic_t *      g_p_timer_sig_uptime_counter;
+static os_timer_sig_periodic_t*       g_p_timer_sig_uptime_counter;
 static os_timer_sig_periodic_static_t g_timer_sig_uptime_counter_mem;
-static os_timer_sig_periodic_t *      g_p_timer_sig_watchdog_feed;
+static os_timer_sig_periodic_t*       g_p_timer_sig_watchdog_feed;
 static os_timer_sig_periodic_static_t g_timer_sig_watchdog_feed_mem;
-static os_signal_t *                  g_p_signal_reset_task;
+static os_signal_t*                   g_p_signal_reset_task;
 static os_signal_static_t             signal_reset_task_mem;
 
 volatile uint32_t g_cnt_cfg_button_pressed;

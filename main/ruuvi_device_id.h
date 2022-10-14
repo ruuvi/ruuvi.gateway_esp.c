@@ -41,7 +41,7 @@ void
 ruuvi_device_id_deinit(void);
 
 void
-ruuvi_device_id_set(const nrf52_device_id_t *const p_nrf52_device_id, const mac_address_bin_t *const p_nrf52_mac_addr);
+ruuvi_device_id_set(const nrf52_device_id_t* const p_nrf52_device_id, const mac_address_bin_t* const p_nrf52_mac_addr);
 
 nrf52_device_info_t
 ruuvi_device_id_request_and_wait(void);

@@ -36,29 +36,29 @@ typedef struct flashfatfs_path_t
     char buf[80];
 } flashfatfs_path_t;
 
-const flash_fat_fs_t *
-flashfatfs_mount(const char *mount_point, const char *partition_label, const flash_fat_fs_num_files_t max_files);
+const flash_fat_fs_t*
+flashfatfs_mount(const char* mount_point, const char* partition_label, const flash_fat_fs_num_files_t max_files);
 
 bool
-flashfatfs_unmount(const flash_fat_fs_t **pp_ffs);
+flashfatfs_unmount(const flash_fat_fs_t** pp_ffs);
 
 file_descriptor_t
-flashfatfs_open(const flash_fat_fs_t *p_ffs, const char *file_path);
+flashfatfs_open(const flash_fat_fs_t* p_ffs, const char* file_path);
 
-FILE *
-flashfatfs_fopen(const flash_fat_fs_t *p_ffs, const char *file_path, const bool flag_use_binary_mode);
-
-bool
-flashfatfs_stat(const flash_fat_fs_t *p_ffs, const char *file_path, struct stat *p_st);
+FILE*
+flashfatfs_fopen(const flash_fat_fs_t* p_ffs, const char* file_path, const bool flag_use_binary_mode);
 
 bool
-flashfatfs_get_file_size(const flash_fat_fs_t *p_ffs, const char *file_path, size_t *p_size);
+flashfatfs_stat(const flash_fat_fs_t* p_ffs, const char* file_path, struct stat* p_st);
+
+bool
+flashfatfs_get_file_size(const flash_fat_fs_t* p_ffs, const char* file_path, size_t* p_size);
 
 #if RUUVI_TESTS_FLASHFATFS
 
 FLASHFATFS_CB_STATIC
 flashfatfs_path_t
-flashfatfs_get_full_path(const flash_fat_fs_t *p_ffs, const char *file_path);
+flashfatfs_get_full_path(const flash_fat_fs_t* p_ffs, const char* file_path);
 
 #endif // RUUVI_TESTS_FLASHFATFS
 

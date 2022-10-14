@@ -40,14 +40,14 @@ typedef struct fw_update_config_t
 
 typedef struct fw_update_data_partition_info_t
 {
-    const esp_partition_t *const p_partition;
+    const esp_partition_t* const p_partition;
     size_t                       offset;
     bool                         is_error;
 } fw_update_data_partition_info_t;
 
 typedef struct fw_update_ota_partition_info_t
 {
-    const esp_partition_t *const p_partition;
+    const esp_partition_t* const p_partition;
     esp_ota_handle_t             out_handle;
     bool                         is_error;
 } fw_update_ota_partition_info_t;
@@ -77,8 +77,8 @@ static fw_update_config_t   g_fw_update_cfg;
 static fw_update_stage_e    g_update_progress_stage;
 static fw_updating_reason_e g_fw_updating_reason;
 
-static const esp_partition_t *
-find_data_fat_partition_by_name(const char *const p_partition_name)
+static const esp_partition_t*
+find_data_fat_partition_by_name(const char* const p_partition_name)
 {
     esp_partition_iterator_t iter = esp_partition_find(
         ESP_PARTITION_TYPE_DATA,
@@ -89,13 +89,13 @@ find_data_fat_partition_by_name(const char *const p_partition_name)
         LOG_ERR("Can't find partition: %s", p_partition_name);
         return NULL;
     }
-    const esp_partition_t *p_partition = esp_partition_get(iter);
+    const esp_partition_t* p_partition = esp_partition_get(iter);
     esp_partition_iterator_release(iter);
     return p_partition;
 }
 
 static bool
-fw_update_read_flash_info_internal(ruuvi_flash_info_t *const p_flash_info)
+fw_update_read_flash_info_internal(ruuvi_flash_info_t* const p_flash_info)
 {
     p_flash_info->is_valid = false;
 
@@ -168,7 +168,7 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t *const p_flash_info)
         p_flash_info->p_next_update_partition->address,
         p_flash_info->p_next_update_partition->size);
     p_flash_info->is_ota0_active = (0 == strcmp("ota_0", p_flash_info->p_running_partition->label)) ? true : false;
-    const char *const p_gwui_parition_name    = p_flash_info->is_ota0_active ? GW_GWUI_PARTITION_2 : GW_GWUI_PARTITION;
+    const char* const p_gwui_parition_name    = p_flash_info->is_ota0_active ? GW_GWUI_PARTITION_2 : GW_GWUI_PARTITION;
     p_flash_info->p_next_fatfs_gwui_partition = find_data_fat_partition_by_name(p_gwui_parition_name);
     if (NULL == p_flash_info->p_next_fatfs_gwui_partition)
     {
@@ -180,9 +180,9 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t *const p_flash_info)
         p_flash_info->p_next_fatfs_gwui_partition->address,
         p_flash_info->p_next_fatfs_gwui_partition->size);
 
-    const char *const p_fatfs_nrf52_partition_name = p_flash_info->is_ota0_active ? GW_NRF_PARTITION_2
+    const char* const p_fatfs_nrf52_partition_name = p_flash_info->is_ota0_active ? GW_NRF_PARTITION_2
                                                                                   : GW_NRF_PARTITION;
-    p_flash_info->p_next_fatfs_nrf52_partition = find_data_fat_partition_by_name(p_fatfs_nrf52_partition_name);
+    p_flash_info->p_next_fatfs_nrf52_partition     = find_data_fat_partition_by_name(p_fatfs_nrf52_partition_name);
     if (NULL == p_flash_info->p_next_fatfs_nrf52_partition)
     {
         return false;
@@ -200,7 +200,7 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t *const p_flash_info)
 bool
 fw_update_read_flash_info(void)
 {
-    ruuvi_flash_info_t *p_flash_info = &g_ruuvi_flash_info;
+    ruuvi_flash_info_t* p_flash_info = &g_ruuvi_flash_info;
     fw_update_read_flash_info_internal(p_flash_info);
     return p_flash_info->is_valid;
 }
@@ -208,7 +208,7 @@ fw_update_read_flash_info(void)
 bool
 fw_update_mark_app_valid_cancel_rollback(void)
 {
-    ruuvi_flash_info_t *p_flash_info = &g_ruuvi_flash_info;
+    ruuvi_flash_info_t* p_flash_info = &g_ruuvi_flash_info;
     if (ESP_OTA_IMG_PENDING_VERIFY == p_flash_info->running_partition_state)
     {
         LOG_INFO("Mark current OTA partition valid and cancel rollback");
@@ -223,31 +223,31 @@ fw_update_mark_app_valid_cancel_rollback(void)
     return true;
 }
 
-const char *
+const char*
 fw_update_get_current_fatfs_nrf52_partition_name(void)
 {
-    const ruuvi_flash_info_t *const p_flash_info = &g_ruuvi_flash_info;
+    const ruuvi_flash_info_t* const p_flash_info = &g_ruuvi_flash_info;
     return p_flash_info->is_ota0_active ? GW_NRF_PARTITION : GW_NRF_PARTITION_2;
 }
 
-const char *
+const char*
 fw_update_get_current_fatfs_gwui_partition_name(void)
 {
-    const ruuvi_flash_info_t *const p_flash_info = &g_ruuvi_flash_info;
+    const ruuvi_flash_info_t* const p_flash_info = &g_ruuvi_flash_info;
     return p_flash_info->is_ota0_active ? GW_GWUI_PARTITION : GW_GWUI_PARTITION_2;
 }
 
 ruuvi_esp32_fw_ver_str_t
 fw_update_get_cur_version(void)
 {
-    const ruuvi_flash_info_t *const p_flash_info = &g_ruuvi_flash_info;
+    const ruuvi_flash_info_t* const p_flash_info = &g_ruuvi_flash_info;
     ruuvi_esp32_fw_ver_str_t        version_str  = { 0 };
     snprintf(&version_str.buf[0], sizeof(version_str.buf), "%s", p_flash_info->p_app_desc->version);
     return version_str;
 }
 
 esp_err_t
-erase_partition_with_sleep(const esp_partition_t *const p_partition)
+erase_partition_with_sleep(const esp_partition_t* const p_partition)
 {
     assert(p_partition != NULL);
     if ((p_partition->size % SPI_FLASH_SEC_SIZE) != 0)
@@ -275,9 +275,9 @@ erase_partition_with_sleep(const esp_partition_t *const p_partition)
 static bool
 fw_update_handle_http_resp_code(
     const http_resp_code_e http_resp_code,
-    const uint8_t *const   p_buf,
+    const uint8_t* const   p_buf,
     const size_t           buf_size,
-    bool *const            p_result)
+    bool* const            p_result)
 {
     if (HTTP_RESP_CODE_200 != http_resp_code)
     {
@@ -287,7 +287,7 @@ fw_update_handle_http_resp_code(
             *p_result = true;
             return true;
         }
-        LOG_ERR("Got HTTP error %d: %.*s", (printf_int_t)http_resp_code, (printf_int_t)buf_size, (const char *)p_buf);
+        LOG_ERR("Got HTTP error %d: %.*s", (printf_int_t)http_resp_code, (printf_int_t)buf_size, (const char*)p_buf);
         *p_result = false;
         return true;
     }
@@ -296,14 +296,14 @@ fw_update_handle_http_resp_code(
 
 static bool
 fw_update_data_partition_cb_on_recv_data(
-    const uint8_t *const   p_buf,
+    const uint8_t* const   p_buf,
     const size_t           buf_size,
     const size_t           offset,
     const size_t           content_length,
     const http_resp_code_e http_resp_code,
-    void *const            p_user_data)
+    void* const            p_user_data)
 {
-    fw_update_data_partition_info_t *const p_info = p_user_data;
+    fw_update_data_partition_info_t* const p_info = p_user_data;
     if (p_info->is_error)
     {
         return false;
@@ -346,7 +346,7 @@ fw_update_data_partition_cb_on_recv_data(
 }
 
 static bool
-fw_update_data_partition(const esp_partition_t *const p_partition, const char *const p_url)
+fw_update_data_partition(const esp_partition_t* const p_partition, const char* const p_url)
 {
     LOG_INFO(
         "Update partition %s (address 0x%08x, size 0x%x) from %s",
@@ -393,9 +393,9 @@ fw_update_data_partition(const esp_partition_t *const p_partition, const char *c
 }
 
 bool
-fw_update_fatfs_gwui(const char *const p_url)
+fw_update_fatfs_gwui(const char* const p_url)
 {
-    const esp_partition_t *const p_partition = g_ruuvi_flash_info.p_next_fatfs_gwui_partition;
+    const esp_partition_t* const p_partition = g_ruuvi_flash_info.p_next_fatfs_gwui_partition;
     if (NULL == p_partition)
     {
         LOG_ERR("Can't find partition to update fatfs_gwui");
@@ -405,9 +405,9 @@ fw_update_fatfs_gwui(const char *const p_url)
 }
 
 bool
-fw_update_fatfs_nrf52(const char *const p_url)
+fw_update_fatfs_nrf52(const char* const p_url)
 {
-    const esp_partition_t *const p_partition = g_ruuvi_flash_info.p_next_fatfs_nrf52_partition;
+    const esp_partition_t* const p_partition = g_ruuvi_flash_info.p_next_fatfs_nrf52_partition;
     if (NULL == p_partition)
     {
         LOG_ERR("Can't find partition to update fatfs_nrf52");
@@ -418,14 +418,14 @@ fw_update_fatfs_nrf52(const char *const p_url)
 
 static bool
 fw_update_ota_partition_cb_on_recv_data(
-    const uint8_t *const   p_buf,
+    const uint8_t* const   p_buf,
     const size_t           buf_size,
     const size_t           offset,
     const size_t           content_length,
     const http_resp_code_e http_resp_code,
-    void *const            p_user_data)
+    void* const            p_user_data)
 {
-    fw_update_ota_partition_info_t *const p_info = p_user_data;
+    fw_update_ota_partition_info_t* const p_info = p_user_data;
     if (p_info->is_error)
     {
         LOG_INFO("Drop data after an error, offset %lu, size %lu", (printf_ulong_t)offset, (printf_ulong_t)buf_size);
@@ -464,9 +464,9 @@ fw_update_ota_partition_cb_on_recv_data(
 
 static bool
 fw_update_ota_partition(
-    const esp_partition_t *const p_partition,
+    const esp_partition_t* const p_partition,
     const esp_ota_handle_t       out_handle,
-    const char *const            p_url)
+    const char* const            p_url)
 {
     LOG_INFO(
         "Update OTA-partition %s (address 0x%08x, size 0x%x) from %s",
@@ -503,9 +503,9 @@ fw_update_ota_partition(
 }
 
 static bool
-fw_update_ota(const char *const p_url)
+fw_update_ota(const char* const p_url)
 {
-    const esp_partition_t *const p_partition = g_ruuvi_flash_info.p_next_update_partition;
+    const esp_partition_t* const p_partition = g_ruuvi_flash_info.p_next_update_partition;
     if (NULL == p_partition)
     {
         LOG_ERR("Can't find partition to update firmware");
@@ -537,9 +537,9 @@ fw_update_ota(const char *const p_url)
 
 static bool
 json_fw_update_copy_string_val(
-    const cJSON *const p_json_root,
-    const char *const  p_attr_name,
-    char *const        p_buf,
+    const cJSON* const p_json_root,
+    const char* const  p_attr_name,
+    char* const        p_buf,
     const size_t       buf_len,
     const bool         flag_log_err_if_not_found)
 {
@@ -556,7 +556,7 @@ json_fw_update_copy_string_val(
 }
 
 static bool
-json_fw_update_parse(const cJSON *const p_json_root, fw_update_config_t *const p_cfg)
+json_fw_update_parse(const cJSON* const p_json_root, fw_update_config_t* const p_cfg)
 {
     if (!json_fw_update_copy_string_val(p_json_root, "url", p_cfg->url, sizeof(p_cfg->url), true))
     {
@@ -566,9 +566,9 @@ json_fw_update_parse(const cJSON *const p_json_root, fw_update_config_t *const p
 }
 
 bool
-json_fw_update_parse_http_body(const char *const p_body)
+json_fw_update_parse_http_body(const char* const p_body)
 {
-    cJSON *p_json_root = cJSON_Parse(p_body);
+    cJSON* p_json_root = cJSON_Parse(p_body);
     if (NULL == p_json_root)
     {
         LOG_ERR("Failed to parse json or no memory");
@@ -617,7 +617,7 @@ fw_update_set_extra_info_for_status_json_update_successful(void)
 }
 
 void
-fw_update_set_extra_info_for_status_json_update_failed(const char *const p_message)
+fw_update_set_extra_info_for_status_json_update_failed(const char* const p_message)
 {
     char extra_info_buf[JSON_NETWORK_EXTRA_INFO_SIZE];
     snprintf(
@@ -630,7 +630,7 @@ fw_update_set_extra_info_for_status_json_update_failed(const char *const p_messa
 }
 
 void
-fw_update_nrf52fw_cb_progress(const size_t num_bytes_flashed, const size_t total_size, void *const p_param)
+fw_update_nrf52fw_cb_progress(const size_t num_bytes_flashed, const size_t total_size, void* const p_param)
 {
     (void)p_param;
     const fw_update_percentage_t percentage = (num_bytes_flashed * FW_UPDATE_PERCENTAGE_100) / total_size;
@@ -777,7 +777,7 @@ fw_update_is_url_valid(void)
 
 ATTR_PRINTF(1, 2)
 void
-fw_update_set_url(const char *const p_url_fmt, ...)
+fw_update_set_url(const char* const p_url_fmt, ...)
 {
     va_list ap;
     va_start(ap, p_url_fmt);
@@ -785,7 +785,7 @@ fw_update_set_url(const char *const p_url_fmt, ...)
     va_end(ap);
 }
 
-const char *
+const char*
 fw_update_get_url(void)
 {
     return g_fw_update_cfg.url;

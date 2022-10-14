@@ -13,7 +13,7 @@
 
 BIN2HEX_STATIC
 void
-bin2hex(str_buf_t *p_str_buf, const uint8_t *const p_bin_buf, const size_t bin_buf_len)
+bin2hex(str_buf_t* p_str_buf, const uint8_t* const p_bin_buf, const size_t bin_buf_len)
 {
     const size_t len_of_hex_digit_with_separator = 3;
     str_buf_printf(p_str_buf, "%s", "");
@@ -28,13 +28,13 @@ bin2hex(str_buf_t *p_str_buf, const uint8_t *const p_bin_buf, const size_t bin_b
     }
 }
 
-char *
-bin2hex_with_malloc(const uint8_t *const p_bin_buf, const size_t bin_buf_len)
+char*
+bin2hex_with_malloc(const uint8_t* const p_bin_buf, const size_t bin_buf_len)
 {
     str_buf_t str_buf = STR_BUF_INIT_NULL();
     bin2hex(&str_buf, p_bin_buf, bin_buf_len);
     const size_t str_buf_size = str_buf_get_len(&str_buf) + 1;
-    char *       p_str_buf    = os_malloc(str_buf_size);
+    char*        p_str_buf    = os_malloc(str_buf_size);
     if (NULL == p_str_buf)
     {
         return NULL;

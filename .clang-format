@@ -1,11 +1,11 @@
-# use with clang-format v10
+# use with clang-format v14
 # this code style is based on BARR-C:2018 (https://barrgroup.com/embedded-systems/books/embedded-c-coding-standard)
 Language:        Cpp
 AccessModifierOffset: -4
 AlignAfterOpenBracket: AlwaysBreak
-AlignConsecutiveMacros: true
-AlignConsecutiveAssignments: true
-AlignConsecutiveDeclarations: true
+AlignConsecutiveMacros: Consecutive
+AlignConsecutiveAssignments: Consecutive
+AlignConsecutiveDeclarations: Consecutive
 AlignEscapedNewlines: DontAlign
 AlignOperands:   true
 AlignTrailingComments: true
@@ -104,9 +104,9 @@ PenaltyBreakTemplateDeclaration: 10
 PenaltyExcessCharacter: 1000000
 #PenaltyReturnTypeOnItsOwnLine: 200
 PenaltyReturnTypeOnItsOwnLine: 0
-PointerAlignment: Right
+PointerAlignment: Left
 ReflowComments:  true
-SortIncludes:    false
+SortIncludes:    Never
 SortUsingDeclarations: false
 SpaceAfterCStyleCast: false
 SpaceAfterLogicalNot: false

@@ -59,10 +59,10 @@ bool
 nrf52swd_erase_all(void);
 
 bool
-nrf52swd_read_mem(const uint32_t addr, const uint32_t num_words, uint32_t *p_buf);
+nrf52swd_read_mem(const uint32_t addr, const uint32_t num_words, uint32_t* p_buf);
 
 bool
-nrf52swd_write_mem(const uint32_t addr, const uint32_t num_words, const uint32_t *p_buf);
+nrf52swd_write_mem(const uint32_t addr, const uint32_t num_words, const uint32_t* p_buf);
 
 #if RUUVI_TESTS_NRF52SWD
 
@@ -80,7 +80,7 @@ nrf52swd_init_spi_add_device(void);
 
 NRF52SWD_STATIC
 bool
-nrf52swd_read_reg(const uint32_t reg_addr, uint32_t *p_val);
+nrf52swd_read_reg(const uint32_t reg_addr, uint32_t* p_val);
 
 NRF52SWD_STATIC
 bool
@@ -88,7 +88,7 @@ nrf52swd_write_reg(const uint32_t reg_addr, const uint32_t val);
 
 NRF52SWD_STATIC
 bool
-nrf51swd_nvmc_is_ready_or_err(bool *p_result);
+nrf51swd_nvmc_is_ready_or_err(bool* p_result);
 
 NRF52SWD_STATIC
 bool

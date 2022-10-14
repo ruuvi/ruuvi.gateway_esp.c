@@ -12,7 +12,7 @@
 #include <string.h>
 
 void
-gw_cfg_blob_convert(gw_cfg_t *const p_cfg_dst, const ruuvi_gateway_config_blob_t *const p_cfg_src)
+gw_cfg_blob_convert(gw_cfg_t* const p_cfg_dst, const ruuvi_gateway_config_blob_t* const p_cfg_src)
 {
     gw_cfg_default_get(p_cfg_dst);
 
@@ -25,7 +25,7 @@ gw_cfg_blob_convert(gw_cfg_t *const p_cfg_dst, const ruuvi_gateway_config_blob_t
         return;
     }
 
-    gw_cfg_eth_t *const p_eth_cfg_dst = &p_cfg_dst->eth_cfg;
+    gw_cfg_eth_t* const p_eth_cfg_dst = &p_cfg_dst->eth_cfg;
     p_eth_cfg_dst->use_eth            = p_cfg_src->eth.use_eth;
     p_eth_cfg_dst->eth_dhcp           = p_cfg_src->eth.eth_dhcp;
     snprintf(
@@ -38,7 +38,7 @@ gw_cfg_blob_convert(gw_cfg_t *const p_cfg_dst, const ruuvi_gateway_config_blob_t
     snprintf(p_eth_cfg_dst->eth_dns1.buf, sizeof(p_eth_cfg_dst->eth_dns1.buf), "%s", p_cfg_src->eth.eth_dns1);
     snprintf(p_eth_cfg_dst->eth_dns2.buf, sizeof(p_eth_cfg_dst->eth_dns2.buf), "%s", p_cfg_src->eth.eth_dns2);
 
-    gw_cfg_ruuvi_t *const p_ruufi_cfg_dst = &p_cfg_dst->ruuvi_cfg;
+    gw_cfg_ruuvi_t* const p_ruufi_cfg_dst = &p_cfg_dst->ruuvi_cfg;
     p_ruufi_cfg_dst->mqtt.use_mqtt        = p_cfg_src->mqtt.use_mqtt;
     snprintf(
         p_ruufi_cfg_dst->mqtt.mqtt_server.buf,
@@ -111,7 +111,7 @@ gw_cfg_blob_convert(gw_cfg_t *const p_cfg_dst, const ruuvi_gateway_config_blob_t
     }
     else if (0 == strcmp(RUUVI_GW_CFG_BLOB_AUTH_TYPE_STR_RUUVI, p_cfg_src->lan_auth.lan_auth_type))
     {
-        const ruuvi_gw_cfg_lan_auth_t *const p_default_lan_auth = gw_cfg_default_get_lan_auth();
+        const ruuvi_gw_cfg_lan_auth_t* const p_default_lan_auth = gw_cfg_default_get_lan_auth();
         if ((0 == strcmp(p_cfg_src->lan_auth.lan_auth_user, p_default_lan_auth->lan_auth_user.buf))
             && (0 == strcmp(p_cfg_src->lan_auth.lan_auth_pass, p_default_lan_auth->lan_auth_pass.buf)))
         {

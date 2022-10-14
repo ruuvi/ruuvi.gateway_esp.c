@@ -49,7 +49,7 @@ static const char TAG[] = "http_server";
 
 static const char g_empty_json[] = "{}";
 
-static const flash_fat_fs_t *gp_ffs_gwui;
+static const flash_fat_fs_t* gp_ffs_gwui;
 
 static bool g_http_server_cb_flag_prohibit_cfg_updating = false;
 
@@ -59,7 +59,7 @@ http_server_cb_on_post_gw_cfg_download(void);
 
 HTTP_SERVER_CB_STATIC
 http_resp_code_e
-http_server_gw_cfg_download_and_update(bool *const p_flag_reboot_needed);
+http_server_gw_cfg_download_and_update(bool* const p_flag_reboot_needed);
 
 #if !RUUVI_TESTS_HTTP_SERVER_CB
 static time_t
@@ -70,9 +70,9 @@ http_server_get_cur_time(void)
 #endif
 
 bool
-http_server_cb_init(const char *const p_fatfs_gwui_partition_name)
+http_server_cb_init(const char* const p_fatfs_gwui_partition_name)
 {
-    const char *                   mount_point   = "/fs_gwui";
+    const char*                    mount_point   = "/fs_gwui";
     const flash_fat_fs_num_files_t max_num_files = 4U;
 
     gp_ffs_gwui = flashfatfs_mount(mount_point, p_fatfs_gwui_partition_name, max_num_files);
@@ -98,7 +98,7 @@ HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_json_ruuvi(void)
 {
-    const gw_cfg_t * p_gw_cfg = gw_cfg_lock_ro();
+    const gw_cfg_t*  p_gw_cfg = gw_cfg_lock_ro();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
     if (!gw_cfg_ruuvi_json_generate(p_gw_cfg, &json_str))
     {
@@ -115,13 +115,13 @@ http_server_resp_json_ruuvi(void)
         NULL,
         strlen(json_str.p_str),
         HTTP_CONENT_ENCODING_NONE,
-        (const uint8_t *)json_str.p_str,
+        (const uint8_t*)json_str.p_str,
         flag_no_cache,
         flag_add_header_date);
 }
 
 static bool
-json_info_add_string(cJSON *p_json_root, const char *p_item_name, const char *p_val)
+json_info_add_string(cJSON* p_json_root, const char* p_item_name, const char* p_val)
 {
     if (NULL == cJSON_AddStringToObject(p_json_root, p_item_name, p_val))
     {
@@ -132,7 +132,7 @@ json_info_add_string(cJSON *p_json_root, const char *p_item_name, const char *p_
 }
 
 static bool
-json_info_add_uint32(cJSON *p_json_root, const char *p_item_name, const uint32_t val)
+json_info_add_uint32(cJSON* p_json_root, const char* p_item_name, const uint32_t val)
 {
     if (NULL == cJSON_AddNumberToObject(p_json_root, p_item_name, (cjson_double_t)val))
     {
@@ -143,7 +143,7 @@ json_info_add_uint32(cJSON *p_json_root, const char *p_item_name, const uint32_t
 }
 
 static bool
-json_info_add_items(cJSON *p_json_root, const bool flag_use_timestamps)
+json_info_add_items(cJSON* p_json_root, const bool flag_use_timestamps)
 {
     if (!json_info_add_string(p_json_root, "ESP_FW", gw_cfg_get_esp32_fw_ver()->buf))
     {
@@ -170,7 +170,7 @@ json_info_add_items(cJSON *p_json_root, const bool flag_use_timestamps)
         return false;
     }
     const time_t        cur_time  = http_server_get_cur_time();
-    adv_report_table_t *p_reports = os_malloc(sizeof(*p_reports));
+    adv_report_table_t* p_reports = os_malloc(sizeof(*p_reports));
     if (NULL == p_reports)
     {
         return false;
@@ -197,11 +197,11 @@ json_info_add_items(cJSON *p_json_root, const bool flag_use_timestamps)
 }
 
 static bool
-generate_json_info_str(cjson_wrap_str_t *p_json_str, const bool flag_use_timestamps)
+generate_json_info_str(cjson_wrap_str_t* p_json_str, const bool flag_use_timestamps)
 {
     p_json_str->p_str = NULL;
 
-    cJSON *p_json_root = cJSON_CreateObject();
+    cJSON* p_json_root = cJSON_CreateObject();
     if (NULL == p_json_root)
     {
         LOG_ERR("Can't create json object");
@@ -226,7 +226,7 @@ HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_json_info(void)
 {
-    const gw_cfg_t * p_gw_cfg = gw_cfg_lock_ro();
+    const gw_cfg_t*  p_gw_cfg = gw_cfg_lock_ro();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
     if (!generate_json_info_str(&json_str, gw_cfg_get_ntp_use()))
     {
@@ -242,23 +242,23 @@ http_server_resp_json_info(void)
         NULL,
         strlen(json_str.p_str),
         HTTP_CONENT_ENCODING_NONE,
-        (const uint8_t *)json_str.p_str,
+        (const uint8_t*)json_str.p_str,
         flag_no_cache,
         flag_add_header_date);
 }
 
 static bool
 cb_on_http_download_json_data(
-    const uint8_t *const   p_buf,
+    const uint8_t* const   p_buf,
     const size_t           buf_size,
     const size_t           offset,
     const size_t           content_length,
     const http_resp_code_e http_resp_code,
-    void *                 p_user_data)
+    void*                  p_user_data)
 {
     LOG_INFO("%s: buf_size=%lu", __func__, (printf_ulong_t)buf_size);
 
-    http_server_download_info_t *const p_info = p_user_data;
+    http_server_download_info_t* const p_info = p_user_data;
     if (p_info->is_error)
     {
         LOG_ERR("Error occurred while downloading");
@@ -271,7 +271,7 @@ cb_on_http_download_json_data(
     }
     if (HTTP_RESP_CODE_200 != http_resp_code)
     {
-        LOG_ERR("Got HTTP error %d: %.*s", (printf_int_t)http_resp_code, (printf_int_t)buf_size, (const char *)p_buf);
+        LOG_ERR("Got HTTP error %d: %.*s", (printf_int_t)http_resp_code, (printf_int_t)buf_size, (const char*)p_buf);
         p_info->is_error = true;
         if (NULL != p_info->p_json_buf)
         {
@@ -306,7 +306,7 @@ cb_on_http_download_json_data(
         {
             p_info->json_buf_size += buf_size;
             LOG_INFO("Reallocate %lu bytes", (printf_ulong_t)p_info->json_buf_size);
-            if (!os_realloc_safe_and_clean((void **)&p_info->p_json_buf, p_info->json_buf_size))
+            if (!os_realloc_safe_and_clean((void**)&p_info->p_json_buf, p_info->json_buf_size))
             {
                 p_info->is_error = true;
                 LOG_ERR("Can't allocate %lu bytes for json file", (printf_ulong_t)p_info->json_buf_size);
@@ -336,11 +336,11 @@ cb_on_http_download_json_data(
 
 static http_server_download_info_t
 http_download_json(
-    const char *const                     p_url,
+    const char* const                     p_url,
     const TimeUnitsSeconds_t              timeout_seconds,
     const gw_cfg_remote_auth_type_e       auth_type,
-    const ruuvi_gw_cfg_http_auth_t *const p_http_auth,
-    const http_header_item_t *const       p_extra_header_item)
+    const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
+    const http_header_item_t* const       p_extra_header_item)
 {
     http_server_download_info_t info = {
         .is_error       = false,
@@ -397,7 +397,7 @@ http_download_json(
 http_server_download_info_t
 http_download_latest_release_info(void)
 {
-    const char *const p_url = "https://api.github.com/repos/ruuvi/ruuvi.gateway_esp.c/releases/latest";
+    const char* const p_url = "https://api.github.com/repos/ruuvi/ruuvi.gateway_esp.c/releases/latest";
     return http_download_json(p_url, HTTP_DOWNLOAD_TIMEOUT_SECONDS, GW_CFG_REMOTE_AUTH_TYPE_NO, NULL, NULL);
 }
 
@@ -419,14 +419,14 @@ http_server_resp_json_github_latest_release(void)
         NULL,
         strlen(info.p_json_buf),
         HTTP_CONENT_ENCODING_NONE,
-        (const uint8_t *)info.p_json_buf,
+        (const uint8_t*)info.p_json_buf,
         flag_no_cache,
         flag_add_header_date);
 }
 
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
-http_server_resp_json(const char *p_file_name, const bool flag_access_from_lan)
+http_server_resp_json(const char* p_file_name, const bool flag_access_from_lan)
 {
     if (0 == strcmp(p_file_name, "ruuvi.json"))
     {
@@ -448,7 +448,7 @@ HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_metrics(void)
 {
-    const char *p_metrics = metrics_generate();
+    const char* p_metrics = metrics_generate();
     if (NULL == p_metrics)
     {
         LOG_ERR("Not enough memory");
@@ -462,7 +462,7 @@ http_server_resp_metrics(void)
         "version=0.0.4",
         strlen(p_metrics),
         HTTP_CONENT_ENCODING_NONE,
-        (const uint8_t *)p_metrics,
+        (const uint8_t*)p_metrics,
         flag_no_cache,
         flag_add_header_date);
 }
@@ -470,14 +470,14 @@ http_server_resp_metrics(void)
 HTTP_SERVER_CB_STATIC
 bool
 http_server_read_history(
-    cjson_wrap_str_t *   p_json_str,
+    cjson_wrap_str_t*    p_json_str,
     const time_t         cur_time,
     const bool           flag_use_timestamps,
     const uint32_t       filter,
     const bool           flag_use_filter,
-    num_of_advs_t *const p_num_of_advs)
+    num_of_advs_t* const p_num_of_advs)
 {
-    adv_report_table_t *p_reports = os_malloc(sizeof(*p_reports));
+    adv_report_table_t* p_reports = os_malloc(sizeof(*p_reports));
     if (NULL == p_reports)
     {
         return false;
@@ -503,7 +503,7 @@ http_server_read_history(
 
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
-http_server_resp_history(const char *const p_params)
+http_server_resp_history(const char* const p_params)
 {
     const bool flag_use_timestamps       = gw_cfg_get_ntp_use();
     const bool flag_time_is_synchronized = time_is_synchronized();
@@ -513,7 +513,7 @@ http_server_resp_history(const char *const p_params)
     {
         if (flag_use_timestamps)
         {
-            const char *const p_time_prefix   = "time=";
+            const char* const p_time_prefix   = "time=";
             const size_t      time_prefix_len = strlen(p_time_prefix);
             if (0 == strncmp(p_params, p_time_prefix, time_prefix_len))
             {
@@ -526,7 +526,7 @@ http_server_resp_history(const char *const p_params)
         }
         else
         {
-            const char *const p_counter_prefix   = "counter=";
+            const char* const p_counter_prefix   = "counter=";
             const size_t      counter_prefix_len = strlen(p_counter_prefix);
             if (0 == strncmp(p_params, p_counter_prefix, counter_prefix_len))
             {
@@ -571,14 +571,14 @@ http_server_resp_history(const char *const p_params)
         NULL,
         strlen(json_str.p_str),
         HTTP_CONENT_ENCODING_NONE,
-        (const uint8_t *)json_str.p_str,
+        (const uint8_t*)json_str.p_str,
         flag_no_cache,
         flag_add_header_date);
 }
 
 HTTP_SERVER_CB_STATIC
 http_content_type_e
-http_get_content_type_by_ext(const char *p_file_ext)
+http_get_content_type_by_ext(const char* p_file_ext)
 {
     if (0 == strcmp(p_file_ext, ".html"))
     {
@@ -609,7 +609,7 @@ http_get_content_type_by_ext(const char *p_file_ext)
 
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
-http_server_resp_file(const char *file_path, const http_resp_code_e http_resp_code)
+http_server_resp_file(const char* file_path, const http_resp_code_e http_resp_code)
 {
     LOG_DBG("Try to find file: %s", file_path);
     if (NULL == gp_ffs_gwui)
@@ -617,9 +617,9 @@ http_server_resp_file(const char *file_path, const http_resp_code_e http_resp_co
         LOG_ERR("GWUI partition is not ready");
         return http_server_resp_503();
     }
-    const flash_fat_fs_t *p_ffs = gp_ffs_gwui;
+    const flash_fat_fs_t* p_ffs = gp_ffs_gwui;
 
-    const char *p_file_ext = strrchr(file_path, '.');
+    const char* p_file_ext = strrchr(file_path, '.');
     if (NULL == p_file_ext)
     {
         p_file_ext = "";
@@ -628,7 +628,7 @@ http_server_resp_file(const char *file_path, const http_resp_code_e http_resp_co
     size_t       file_size         = 0;
     bool         is_gzipped        = false;
     char         tmp_file_path[64] = { '\0' };
-    const char * suffix_gz         = ".gz";
+    const char*  suffix_gz         = ".gz";
     const size_t suffix_gz_len     = strlen(suffix_gz);
     if ((strlen(file_path) + suffix_gz_len) >= sizeof(tmp_file_path))
     {
@@ -694,7 +694,7 @@ http_server_cb_on_user_req_download_latest_release_info(void)
     if (NULL != tag_name.buf)
     {
         LOG_INFO("github_latest_release.json: tag_name: %s", tag_name.buf);
-        const ruuvi_esp32_fw_ver_str_t *const p_esp32_fw_ver = gw_cfg_get_esp32_fw_ver();
+        const ruuvi_esp32_fw_ver_str_t* const p_esp32_fw_ver = gw_cfg_get_esp32_fw_ver();
         if (0 == strcmp(p_esp32_fw_ver->buf, tag_name.buf))
         {
             LOG_INFO("github_latest_release.json: No update is required, the latest version is already installed");
@@ -744,14 +744,14 @@ http_server_cb_on_user_req_download_latest_release_info(void)
 static http_server_download_info_t
 http_server_download_gw_cfg(void)
 {
-    const mac_address_str_t *const p_nrf52_mac_addr = gw_cfg_get_nrf52_mac_addr();
+    const mac_address_str_t* const p_nrf52_mac_addr = gw_cfg_get_nrf52_mac_addr();
 
     const http_header_item_t extra_header_item = {
         .p_key   = "ruuvi_gw_mac",
         .p_value = p_nrf52_mac_addr->str_buf,
     };
 
-    const ruuvi_gw_cfg_remote_t *p_remote = gw_cfg_get_remote_cfg_copy();
+    const ruuvi_gw_cfg_remote_t* p_remote = gw_cfg_get_remote_cfg_copy();
     if (NULL == p_remote)
     {
         const http_server_download_info_t download_info = {
@@ -780,7 +780,7 @@ http_server_download_gw_cfg(void)
     const TimeUnitsSeconds_t    timeout_seconds = 10;
     http_server_download_info_t download_info   = { 0 };
 
-    const char *const p_ext = strrchr(p_remote->url.buf, '.');
+    const char* const p_ext = strrchr(p_remote->url.buf, '.');
     if ((NULL != p_ext) && (0 == strcmp(".json", p_ext)))
     {
         LOG_INFO("Try to download gateway configuration from the remote server: %s", p_remote->url.buf);
@@ -858,12 +858,12 @@ http_server_cb_on_user_req(const http_server_user_req_code_e req_code)
 
 http_server_resp_t
 http_server_cb_on_get(
-    const char *const               p_path,
-    const char *const               p_uri_params,
+    const char* const               p_path,
+    const char* const               p_uri_params,
     const bool                      flag_access_from_lan,
-    const http_server_resp_t *const p_resp_auth)
+    const http_server_resp_t* const p_resp_auth)
 {
-    const char *p_file_ext = strrchr(p_path, '.');
+    const char* p_file_ext = strrchr(p_path, '.');
     LOG_DBG(
         "http_server_cb_on_get /%s%s%s",
         p_path,
@@ -882,17 +882,17 @@ http_server_cb_on_get(
     {
         return http_server_resp_history(p_uri_params);
     }
-    const char *p_file_path = ('\0' == p_path[0]) ? "ruuvi.html" : p_path;
+    const char* p_file_path = ('\0' == p_path[0]) ? "ruuvi.html" : p_path;
     return http_server_resp_file(p_file_path, (NULL != p_resp_auth) ? p_resp_auth->http_resp_code : HTTP_RESP_CODE_200);
 }
 
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
-http_server_cb_on_post_ruuvi(const char *p_body)
+http_server_cb_on_post_ruuvi(const char* p_body)
 {
     LOG_DBG("POST /ruuvi.json");
     bool      flag_network_cfg = false;
-    gw_cfg_t *p_gw_cfg_tmp     = os_calloc(1, sizeof(*p_gw_cfg_tmp));
+    gw_cfg_t* p_gw_cfg_tmp     = os_calloc(1, sizeof(*p_gw_cfg_tmp));
     if (NULL == p_gw_cfg_tmp)
     {
         LOG_ERR("Failed to allocate memory for gw_cfg");
@@ -930,13 +930,13 @@ http_server_cb_on_post_ruuvi(const char *p_body)
         NULL,
         strlen(g_empty_json),
         HTTP_CONENT_ENCODING_NONE,
-        (const uint8_t *)g_empty_json,
+        (const uint8_t*)g_empty_json,
         flag_no_cache);
 }
 
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
-http_server_cb_on_post_fw_update(const char *p_body, const bool flag_access_from_lan)
+http_server_cb_on_post_fw_update(const char* p_body, const bool flag_access_from_lan)
 {
     LOG_DBG("POST /fw_update.json");
     fw_update_set_extra_info_for_status_json_update_start();
@@ -962,13 +962,13 @@ http_server_cb_on_post_fw_update(const char *p_body, const bool flag_access_from
         NULL,
         strlen(g_empty_json),
         HTTP_CONENT_ENCODING_NONE,
-        (const uint8_t *)g_empty_json,
+        (const uint8_t*)g_empty_json,
         flag_no_cache);
 }
 
 HTTP_SERVER_CB_STATIC
 http_resp_code_e
-http_server_gw_cfg_download_and_update(bool *const p_flag_reboot_needed)
+http_server_gw_cfg_download_and_update(bool* const p_flag_reboot_needed)
 {
     http_server_download_info_t download_info = http_server_download_gw_cfg();
     if (download_info.is_error)
@@ -989,7 +989,7 @@ http_server_gw_cfg_download_and_update(bool *const p_flag_reboot_needed)
         return HTTP_RESP_CODE_503; // 502
     }
 
-    gw_cfg_t *p_gw_cfg_tmp = os_calloc(1, sizeof(*p_gw_cfg_tmp));
+    gw_cfg_t* p_gw_cfg_tmp = os_calloc(1, sizeof(*p_gw_cfg_tmp));
     if (NULL == p_gw_cfg_tmp)
     {
         LOG_ERR("Failed to allocate memory for gw_cfg");
@@ -1053,7 +1053,7 @@ http_server_cb_on_post_gw_cfg_download(void)
 
     const http_resp_code_e http_resp_code = http_server_gw_cfg_download_and_update(&flag_reboot_needed);
 
-    const char *p_resp_content = g_empty_json;
+    const char* p_resp_content = g_empty_json;
     if (flag_reboot_needed)
     {
         p_resp_content
@@ -1071,16 +1071,16 @@ http_server_cb_on_post_gw_cfg_download(void)
         .p_content_type_param         = NULL,
         .content_len                  = strlen(p_resp_content),
         .content_encoding             = HTTP_CONENT_ENCODING_NONE,
-        .select_location.memory.p_buf = (const uint8_t *)p_resp_content,
+        .select_location.memory.p_buf = (const uint8_t*)p_resp_content,
     };
     return resp;
 }
 
 http_server_resp_t
 http_server_cb_on_post(
-    const char *const p_file_name,
-    const char *const p_uri_params,
-    const char *const p_body,
+    const char* const p_file_name,
+    const char* const p_uri_params,
+    const char* const p_body,
     const bool        flag_access_from_lan)
 {
     (void)p_uri_params;
@@ -1106,10 +1106,10 @@ http_server_cb_on_post(
 
 http_server_resp_t
 http_server_cb_on_delete(
-    const char *const               p_path,
-    const char *const               p_uri_params,
+    const char* const               p_path,
+    const char* const               p_uri_params,
     const bool                      flag_access_from_lan,
-    const http_server_resp_t *const p_resp_auth)
+    const http_server_resp_t* const p_resp_auth)
 {
     (void)p_path;
     (void)p_uri_params;

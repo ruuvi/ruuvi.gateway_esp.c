@@ -36,7 +36,7 @@ typedef int esp_http_client_http_status_code_t;
 typedef struct http_download_cb_info_t
 {
     http_download_cb_on_data_t cb_on_data;
-    void *const                p_user_data;
+    void* const                p_user_data;
     esp_http_client_handle_t   http_handle;
     uint32_t                   content_length;
     uint32_t                   offset;
@@ -64,7 +64,7 @@ static const char TAG[] = "http";
 static http_async_info_t g_http_async_info;
 
 static esp_err_t
-http_post_event_handler(esp_http_client_event_t *p_evt)
+http_post_event_handler(esp_http_client_event_t* p_evt)
 {
     switch (p_evt->event_id)
     {
@@ -107,7 +107,7 @@ http_post_event_handler(esp_http_client_event_t *p_evt)
             break;
 
         case HTTP_EVENT_ON_DATA:
-            LOG_ERR("HTTP_EVENT_ON_DATA, len=%d: %.*s", p_evt->data_len, p_evt->data_len, (char *)p_evt->data);
+            LOG_ERR("HTTP_EVENT_ON_DATA, len=%d: %.*s", p_evt->data_len, p_evt->data_len, (char*)p_evt->data);
             break;
 
         case HTTP_EVENT_ON_FINISH:
@@ -126,10 +126,10 @@ http_post_event_handler(esp_http_client_event_t *p_evt)
 
 static void
 http_init_client_config(
-    http_client_config_t *const               p_http_client_config,
-    const ruuvi_gw_cfg_http_url_t *const      p_url,
-    const ruuvi_gw_cfg_http_user_t *const     p_user,
-    const ruuvi_gw_cfg_http_password_t *const p_password)
+    http_client_config_t* const               p_http_client_config,
+    const ruuvi_gw_cfg_http_url_t* const      p_url,
+    const ruuvi_gw_cfg_http_user_t* const     p_user,
+    const ruuvi_gw_cfg_http_password_t* const p_password)
 {
     p_http_client_config->esp_http_client_config = (esp_http_client_config_t) {
         .url                         = &p_http_client_config->http_url.buf[0],
@@ -162,9 +162,9 @@ http_init_client_config(
 }
 
 static void
-http_init_client_config_for_http_record(http_client_config_t *const p_http_client_config)
+http_init_client_config_for_http_record(http_client_config_t* const p_http_client_config)
 {
-    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
     http_init_client_config(
         p_http_client_config,
         &p_gw_cfg->ruuvi_cfg.http.http_url,
@@ -174,9 +174,9 @@ http_init_client_config_for_http_record(http_client_config_t *const p_http_clien
 }
 
 static void
-http_init_client_config_for_http_status(http_client_config_t *const p_http_client_config)
+http_init_client_config_for_http_status(http_client_config_t* const p_http_client_config)
 {
-    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
     http_init_client_config(
         p_http_client_config,
         &p_gw_cfg->ruuvi_cfg.http_stat.http_stat_url,
@@ -186,11 +186,11 @@ http_init_client_config_for_http_status(http_client_config_t *const p_http_clien
 }
 
 static bool
-http_send_async(http_async_info_t *const p_http_async_info)
+http_send_async(http_async_info_t* const p_http_async_info)
 {
-    const esp_http_client_config_t *const p_http_config = &p_http_async_info->http_client_config.esp_http_client_config;
+    const esp_http_client_config_t* const p_http_config = &p_http_async_info->http_client_config.esp_http_client_config;
 
-    const char *const p_msg = p_http_async_info->cjson_str.p_str;
+    const char* const p_msg = p_http_async_info->cjson_str.p_str;
     LOG_INFO("### HTTP POST to URL=%s", p_http_config->url);
     LOG_INFO("HTTP POST DATA:\n%s", p_msg);
 
@@ -219,10 +219,10 @@ http_send_async(http_async_info_t *const p_http_async_info)
 }
 
 bool
-http_send_advs(const adv_report_table_t *const p_reports, const uint32_t nonce, const bool flag_use_timestamps)
+http_send_advs(const adv_report_table_t* const p_reports, const uint32_t nonce, const bool flag_use_timestamps)
 {
     const ruuvi_gw_cfg_coordinates_t coordinates       = gw_cfg_get_coordinates();
-    http_async_info_t *              p_http_async_info = &g_http_async_info;
+    http_async_info_t*               p_http_async_info = &g_http_async_info;
 
     p_http_async_info->flag_sending_advs = true;
     p_http_async_info->cjson_str         = cjson_wrap_str_null();
@@ -262,9 +262,9 @@ http_send_advs(const adv_report_table_t *const p_reports, const uint32_t nonce, 
 }
 
 bool
-http_send_statistics(const http_json_statistics_info_t *const p_stat_info, const adv_report_table_t *const p_reports)
+http_send_statistics(const http_json_statistics_info_t* const p_stat_info, const adv_report_table_t* const p_reports)
 {
-    http_async_info_t *p_http_async_info = &g_http_async_info;
+    http_async_info_t* p_http_async_info = &g_http_async_info;
 
     p_http_async_info->flag_sending_advs = false;
     p_http_async_info->cjson_str         = cjson_wrap_str_null();
@@ -298,7 +298,7 @@ http_send_statistics(const http_json_statistics_info_t *const p_stat_info, const
 bool
 http_async_poll(void)
 {
-    http_async_info_t *p_http_async_info = &g_http_async_info;
+    http_async_info_t* p_http_async_info = &g_http_async_info;
 
     LOG_DBG("esp_http_client_perform");
     const esp_err_t err = esp_http_client_perform(p_http_async_info->p_http_client_handle);
@@ -380,9 +380,9 @@ http_download_feed_task_watchdog_if_needed(const bool flag_feed_task_watchdog)
 }
 
 static esp_err_t
-http_download_event_handler(esp_http_client_event_t *p_evt)
+http_download_event_handler(esp_http_client_event_t* p_evt)
 {
-    http_download_cb_info_t *const p_cb_info = p_evt->user_data;
+    http_download_cb_info_t* const p_cb_info = p_evt->user_data;
     switch (p_evt->event_id)
     {
         case HTTP_EVENT_ERROR:
@@ -508,13 +508,13 @@ http_download_by_handle(esp_http_client_handle_t http_handle, const bool flag_fe
 
 bool
 http_download_with_auth(
-    const char *const                     p_url,
+    const char* const                     p_url,
     const TimeUnitsSeconds_t              timeout_seconds,
     const gw_cfg_remote_auth_type_e       gw_cfg_http_auth_type,
-    const ruuvi_gw_cfg_http_auth_t *const p_http_auth,
-    const http_header_item_t *const       p_extra_header_item,
+    const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
+    const http_header_item_t* const       p_extra_header_item,
     http_download_cb_on_data_t            p_cb_on_data,
-    void *const                           p_user_data,
+    void* const                           p_user_data,
     const bool                            flag_feed_task_watchdog)
 {
     http_download_cb_info_t cb_info = {
@@ -534,38 +534,38 @@ http_download_with_auth(
     const esp_http_client_auth_type_t http_client_auth_type = (GW_CFG_REMOTE_AUTH_TYPE_BASIC == gw_cfg_http_auth_type)
                                                                   ? HTTP_AUTH_TYPE_BASIC
                                                                   : HTTP_AUTH_TYPE_NONE;
-    const esp_http_client_config_t http_config = {
-        .url  = p_url,
-        .host = NULL,
-        .port = 0,
+    const esp_http_client_config_t    http_config           = {
+                     .url  = p_url,
+                     .host = NULL,
+                     .port = 0,
 
-        .username  = (HTTP_AUTH_TYPE_BASIC == http_client_auth_type) ? p_http_auth->auth_basic.user.buf : NULL,
-        .password  = (HTTP_AUTH_TYPE_BASIC == http_client_auth_type) ? p_http_auth->auth_basic.password.buf : NULL,
-        .auth_type = http_client_auth_type,
+                     .username  = (HTTP_AUTH_TYPE_BASIC == http_client_auth_type) ? p_http_auth->auth_basic.user.buf : NULL,
+                     .password  = (HTTP_AUTH_TYPE_BASIC == http_client_auth_type) ? p_http_auth->auth_basic.password.buf : NULL,
+                     .auth_type = http_client_auth_type,
 
-        .path                        = NULL,
-        .query                       = NULL,
-        .cert_pem                    = NULL,
-        .client_cert_pem             = NULL,
-        .client_key_pem              = NULL,
-        .user_agent                  = NULL,
-        .method                      = HTTP_METHOD_GET,
-        .timeout_ms                  = (int)(timeout_seconds * 1000),
-        .disable_auto_redirect       = false,
-        .max_redirection_count       = 0,
-        .max_authorization_retries   = 0,
-        .event_handler               = &http_download_event_handler,
-        .transport_type              = HTTP_TRANSPORT_UNKNOWN,
-        .buffer_size                 = 2048,
-        .buffer_size_tx              = 1024,
-        .user_data                   = &cb_info,
-        .is_async                    = true,
-        .use_global_ca_store         = false,
-        .skip_cert_common_name_check = false,
-        .keep_alive_enable           = false,
-        .keep_alive_idle             = 0,
-        .keep_alive_interval         = 0,
-        .keep_alive_count            = 0,
+                     .path                        = NULL,
+                     .query                       = NULL,
+                     .cert_pem                    = NULL,
+                     .client_cert_pem             = NULL,
+                     .client_key_pem              = NULL,
+                     .user_agent                  = NULL,
+                     .method                      = HTTP_METHOD_GET,
+                     .timeout_ms                  = (int)(timeout_seconds * 1000),
+                     .disable_auto_redirect       = false,
+                     .max_redirection_count       = 0,
+                     .max_authorization_retries   = 0,
+                     .event_handler               = &http_download_event_handler,
+                     .transport_type              = HTTP_TRANSPORT_UNKNOWN,
+                     .buffer_size                 = 2048,
+                     .buffer_size_tx              = 1024,
+                     .user_data                   = &cb_info,
+                     .is_async                    = true,
+                     .use_global_ca_store         = false,
+                     .skip_cert_common_name_check = false,
+                     .keep_alive_enable           = false,
+                     .keep_alive_idle             = 0,
+                     .keep_alive_interval         = 0,
+                     .keep_alive_count            = 0,
     };
     LOG_INFO("http_download: URL: %s", p_url);
     if (HTTP_AUTH_TYPE_BASIC == http_client_auth_type)
@@ -620,10 +620,10 @@ http_download_with_auth(
 
 bool
 http_download(
-    const char *const          p_url,
+    const char* const          p_url,
     const TimeUnitsSeconds_t   timeout_seconds,
     http_download_cb_on_data_t p_cb_on_data,
-    void *const                p_user_data,
+    void* const                p_user_data,
     const bool                 flag_feed_task_watchdog)
 {
     return http_download_with_auth(
