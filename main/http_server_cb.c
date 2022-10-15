@@ -502,6 +502,40 @@ http_server_read_history(
 }
 
 HTTP_SERVER_CB_STATIC
+void
+http_server_get_filter_from_params(
+    const char* const p_params,
+    const bool        flag_use_timestamps,
+    const bool        flag_time_is_synchronized,
+    bool*             p_flag_use_filter,
+    uint32_t*         p_filter)
+{
+    if (flag_use_timestamps)
+    {
+        const char* const p_time_prefix   = "time=";
+        const size_t      time_prefix_len = strlen(p_time_prefix);
+        if (0 == strncmp(p_params, p_time_prefix, time_prefix_len))
+        {
+            *p_filter = (uint32_t)strtoul(&p_params[time_prefix_len], NULL, 0);
+            if (flag_time_is_synchronized)
+            {
+                *p_flag_use_filter = true;
+            }
+        }
+    }
+    else
+    {
+        const char* const p_counter_prefix   = "counter=";
+        const size_t      counter_prefix_len = strlen(p_counter_prefix);
+        if (0 == strncmp(p_params, p_counter_prefix, counter_prefix_len))
+        {
+            *p_filter          = (uint32_t)strtoul(&p_params[counter_prefix_len], NULL, 0);
+            *p_flag_use_filter = true;
+        }
+    }
+}
+
+HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_history(const char* const p_params)
 {
@@ -511,29 +545,12 @@ http_server_resp_history(const char* const p_params)
     bool       flag_use_filter           = (flag_use_timestamps && flag_time_is_synchronized) ? true : false;
     if (NULL != p_params)
     {
-        if (flag_use_timestamps)
-        {
-            const char* const p_time_prefix   = "time=";
-            const size_t      time_prefix_len = strlen(p_time_prefix);
-            if (0 == strncmp(p_params, p_time_prefix, time_prefix_len))
-            {
-                filter = (uint32_t)strtoul(&p_params[time_prefix_len], NULL, 0);
-                if (flag_time_is_synchronized)
-                {
-                    flag_use_filter = true;
-                }
-            }
-        }
-        else
-        {
-            const char* const p_counter_prefix   = "counter=";
-            const size_t      counter_prefix_len = strlen(p_counter_prefix);
-            if (0 == strncmp(p_params, p_counter_prefix, counter_prefix_len))
-            {
-                filter          = (uint32_t)strtoul(&p_params[counter_prefix_len], NULL, 0);
-                flag_use_filter = true;
-            }
-        }
+        http_server_get_filter_from_params(
+            p_params,
+            flag_use_timestamps,
+            flag_time_is_synchronized,
+            &flag_use_filter,
+            &filter);
     }
     cjson_wrap_str_t json_str    = cjson_wrap_str_null();
     const time_t     cur_time    = http_server_get_cur_time();

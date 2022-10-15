@@ -92,13 +92,13 @@ gw_cfg_json_add_items_wifi_sta_config(
         return false;
     }
     const wifi_sta_config_t* const p_wifi_cfg_sta = &p_wifi_cfg->sta.wifi_config_sta;
-    if (!gw_cfg_json_add_string(p_cjson, "ssid", (char*)p_wifi_cfg_sta->ssid))
+    if (!gw_cfg_json_add_string(p_cjson, "ssid", (const char*)p_wifi_cfg_sta->ssid))
     {
         return false;
     }
     if (!flag_hide_passwords)
     {
-        if (!gw_cfg_json_add_string(p_cjson, "password", (char*)p_wifi_cfg_sta->password))
+        if (!gw_cfg_json_add_string(p_cjson, "password", (const char*)p_wifi_cfg_sta->password))
         {
             return false;
         }
@@ -121,7 +121,7 @@ gw_cfg_json_add_items_wifi_ap_config(
     const wifi_ap_config_t* const p_wifi_cfg_ap = &p_wifi_cfg->ap.wifi_config_ap;
     if (!flag_hide_passwords)
     {
-        if (!gw_cfg_json_add_string(p_cjson, "password", (char*)p_wifi_cfg_ap->password))
+        if (!gw_cfg_json_add_string(p_cjson, "password", (const char*)p_wifi_cfg_ap->password))
         {
             return false;
         }

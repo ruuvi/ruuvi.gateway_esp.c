@@ -22,6 +22,8 @@ extern "C" {
 
 #define RUUVI_GATEWAY_AUTH_DEFAULT_USER "Admin"
 
+typedef bool (*gw_cfg_default_json_read_callback_t)(gw_cfg_t* const p_gw_cfg_default);
+
 typedef struct gw_cfg_default_init_param_t
 {
     const wifiman_wifi_ssid_t      wifi_ap_ssid;
@@ -36,7 +38,7 @@ typedef struct gw_cfg_default_init_param_t
 void
 gw_cfg_default_init(
     const gw_cfg_default_init_param_t* const p_init_param,
-    bool (*p_cb_gw_cfg_default_json_read)(gw_cfg_t* const p_gw_cfg_default));
+    gw_cfg_default_json_read_callback_t      p_cb_gw_cfg_default_json_read);
 
 void
 gw_cfg_default_get(gw_cfg_t* const p_gw_cfg);

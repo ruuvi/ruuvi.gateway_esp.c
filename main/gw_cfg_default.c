@@ -138,7 +138,7 @@ gw_cfg_default_nrf52_device_id_to_str(const nrf52_device_id_t* const p_dev_id)
 void
 gw_cfg_default_init(
     const gw_cfg_default_init_param_t* const p_init_param,
-    bool (*p_cb_gw_cfg_default_json_read)(gw_cfg_t* const p_gw_cfg_default))
+    gw_cfg_default_json_read_callback_t      p_cb_gw_cfg_default_json_read)
 {
     memset(&g_gw_cfg_default, 0, sizeof(g_gw_cfg_default));
 
