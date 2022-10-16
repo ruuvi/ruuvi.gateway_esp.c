@@ -98,7 +98,7 @@ check_if_checking_for_fw_updates_allowed2(const ruuvi_gw_cfg_auto_update_t* cons
                                       * (int32_t)(TIME_UNITS_MINUTES_PER_HOUR * TIME_UNITS_SECONDS_PER_MINUTE);
 
     const time_t unix_time = os_time_get();
-    time_t       cur_time  = (time_t)(unix_time + tz_offset_seconds);
+    time_t       cur_time  = unix_time + tz_offset_seconds;
     struct tm    tm_time   = { 0 };
     gmtime_r(&cur_time, &tm_time);
 
@@ -256,7 +256,7 @@ main_task_handle_sig_network_connected(void)
 {
     LOG_INFO("### Handle event: NETWORK_CONNECTED");
 
-    const force_start_wifi_hotspot_t force_start_wifi_hotspot = settings_read_flag_force_start_wifi_hotspot();
+    const force_start_wifi_hotspot_e force_start_wifi_hotspot = settings_read_flag_force_start_wifi_hotspot();
     if (FORCE_START_WIFI_HOTSPOT_PERMANENT == force_start_wifi_hotspot)
     {
         /* A permanent start-up of the Wi-Fi hotspot should be performed after each reboot

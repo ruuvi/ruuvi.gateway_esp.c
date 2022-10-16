@@ -422,7 +422,7 @@ settings_write_flag_rebooting_after_auto_update(const bool flag_rebooting_after_
     nvs_close(handle);
 }
 
-force_start_wifi_hotspot_t
+force_start_wifi_hotspot_e
 settings_read_flag_force_start_wifi_hotspot(void)
 {
     uint32_t   flag_force_start_wifi_hotspot_val = 0;
@@ -449,7 +449,7 @@ settings_read_flag_force_start_wifi_hotspot(void)
         nvs_close(handle);
     }
 
-    force_start_wifi_hotspot_t force_start_wifi_hotspot = FORCE_START_WIFI_HOTSPOT_DISABLED;
+    force_start_wifi_hotspot_e force_start_wifi_hotspot = FORCE_START_WIFI_HOTSPOT_DISABLED;
     switch (flag_force_start_wifi_hotspot_val)
     {
         case RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_DISABLED:
@@ -469,7 +469,7 @@ settings_read_flag_force_start_wifi_hotspot(void)
 }
 
 void
-settings_write_flag_force_start_wifi_hotspot(const force_start_wifi_hotspot_t force_start_wifi_hotspot)
+settings_write_flag_force_start_wifi_hotspot(const force_start_wifi_hotspot_e force_start_wifi_hotspot)
 {
     nvs_handle handle = 0;
     LOG_INFO("### SETTINGS: Write flag_force_start_wifi_hotspot: %d", (printf_int_t)force_start_wifi_hotspot);

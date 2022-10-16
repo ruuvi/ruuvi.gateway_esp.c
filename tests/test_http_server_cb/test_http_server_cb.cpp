@@ -169,14 +169,14 @@ restart_services(void)
 void
 settings_save_to_flash(const gw_cfg_t* const p_gw_cfg);
 
-force_start_wifi_hotspot_t
+force_start_wifi_hotspot_e
 settings_read_flag_force_start_wifi_hotspot(void)
 {
     return FORCE_START_WIFI_HOTSPOT_DISABLED;
 }
 
 void
-settings_write_flag_force_start_wifi_hotspot(const force_start_wifi_hotspot_t force_start_wifi_hotspot)
+settings_write_flag_force_start_wifi_hotspot(const force_start_wifi_hotspot_e force_start_wifi_hotspot)
 {
 }
 
