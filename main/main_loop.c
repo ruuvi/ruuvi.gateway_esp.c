@@ -94,10 +94,12 @@ get_wday_if_set_in_bitmask(const auto_update_weekdays_bitmask_t auto_update_week
 static bool
 check_if_checking_for_fw_updates_allowed2(const ruuvi_gw_cfg_auto_update_t* const p_cfg_auto_update)
 {
+    const int32_t tz_offset_seconds = (int32_t)p_cfg_auto_update->auto_update_tz_offset_hours
+                                      * (int32_t)(TIME_UNITS_MINUTES_PER_HOUR * TIME_UNITS_SECONDS_PER_MINUTE);
+
     const time_t unix_time = os_time_get();
-    time_t       cur_time
-        = (time_t)(unix_time + ((int32_t)p_cfg_auto_update->auto_update_tz_offset_hours * (TIME_UNITS_MINUTES_PER_HOUR * TIME_UNITS_SECONDS_PER_MINUTE)));
-    struct tm tm_time = { 0 };
+    time_t       cur_time  = (time_t)(unix_time + tz_offset_seconds);
+    struct tm    tm_time   = { 0 };
     gmtime_r(&cur_time, &tm_time);
 
     if (AUTO_UPDATE_CYCLE_TYPE_MANUAL == p_cfg_auto_update->auto_update_cycle)
@@ -265,7 +267,7 @@ main_task_handle_sig_network_connected(void)
     gw_cfg_remote_refresh_interval_minutes_t remote_cfg_refresh_interval_minutes = 0;
     const bool  flag_use_remote_cfg = gw_cfg_get_remote_cfg_use(&remote_cfg_refresh_interval_minutes);
     static bool g_flag_initial_request_for_remote_cfg_performed = false;
-    if (flag_use_remote_cfg && (!g_flag_initial_request_for_remote_cfg_performed) && !wifi_manager_is_ap_active())
+    if (flag_use_remote_cfg && (!g_flag_initial_request_for_remote_cfg_performed) && (!wifi_manager_is_ap_active()))
     {
         g_flag_initial_request_for_remote_cfg_performed = true;
         LOG_INFO("Activate checking for remote cfg");

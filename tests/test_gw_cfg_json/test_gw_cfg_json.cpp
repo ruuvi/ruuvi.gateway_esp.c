@@ -5585,7 +5585,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
-               "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
+               "\t\"lan_auth_type\":\t\"lan_auth_default\",\n" // <--
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -5611,12 +5611,78 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
                "\t\"coordinates\":\t\"\"\n"
                "}"),
         json_str.p_str);
+    cjson_wrap_free_json_str(&json_str);
+
+    const char* const p_json_str
+        = "{\n"
+          "\t\"fw_ver\":\t\"v1.10.0\",\n"
+          "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
+          "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+          "\t\"wifi_sta_config\":\t{\n"
+          "\t\t\"ssid\":\t\"\",\n"
+          "\t\t\"password\":\t\"\"\n"
+          "\t},\n"
+          "\t\"wifi_ap_config\":\t{\n"
+          "\t\t\"password\":\t\"\",\n"
+          "\t\t\"channel\":\t1\n"
+          "\t},\n"
+          "\t\"use_eth\":\ttrue,\n"
+          "\t\"eth_dhcp\":\ttrue,\n"
+          "\t\"eth_static_ip\":\t\"\",\n"
+          "\t\"eth_netmask\":\t\"\",\n"
+          "\t\"eth_gw\":\t\"\",\n"
+          "\t\"eth_dns1\":\t\"\",\n"
+          "\t\"eth_dns2\":\t\"\",\n"
+          "\t\"remote_cfg_use\":\tfalse,\n"
+          "\t\"remote_cfg_url\":\t\"\",\n"
+          "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+          "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+          "\t\"use_http\":\ttrue,\n"
+          "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
+          "\t\"http_user\":\t\"\",\n"
+          "\t\"http_pass\":\t\"\",\n"
+          "\t\"use_http_stat\":\ttrue,\n"
+          "\t\"http_stat_url\":\t\"https://network.ruuvi.com/status\",\n"
+          "\t\"http_stat_user\":\t\"\",\n"
+          "\t\"http_stat_pass\":\t\"\",\n"
+          "\t\"use_mqtt\":\tfalse,\n"
+          "\t\"mqtt_transport\":\t\"TCP\",\n"
+          "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+          "\t\"mqtt_port\":\t1883,\n"
+          "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
+          "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+          "\t\"mqtt_user\":\t\"\",\n"
+          "\t\"mqtt_pass\":\t\"\",\n"
+          "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n" // <--
+          "\t\"lan_auth_user\":\t\"Admin\",\n"
+          "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
+          "\t\"lan_auth_api_key\":\t\"\",\n"
+          "\t\"auto_update_cycle\":\t\"regular\",\n"
+          "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+          "\t\"auto_update_interval_from\":\t0,\n"
+          "\t\"auto_update_interval_to\":\t24,\n"
+          "\t\"auto_update_tz_offset_hours\":\t3,\n"
+          "\t\"ntp_use\":\ttrue,\n"
+          "\t\"ntp_use_dhcp\":\tfalse,\n"
+          "\t\"ntp_server1\":\t\"time.google.com\",\n"
+          "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+          "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+          "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+          "\t\"company_id\":\t1177,\n"
+          "\t\"company_use_filtering\":\ttrue,\n"
+          "\t\"scan_coded_phy\":\tfalse,\n"
+          "\t\"scan_1mbit_phy\":\ttrue,\n"
+          "\t\"scan_extended_payload\":\ttrue,\n"
+          "\t\"scan_channel_37\":\ttrue,\n"
+          "\t\"scan_channel_38\":\ttrue,\n"
+          "\t\"scan_channel_39\":\ttrue,\n"
+          "\t\"coordinates\":\t\"\"\n"
+          "}";
 
     gw_cfg_t gw_cfg2       = get_gateway_config_default();
     bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, p_json_str, &gw_cfg2, &flag_modified));
     ASSERT_FALSE(flag_modified);
-    cjson_wrap_free_json_str(&json_str);
 
     ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_DEFAULT, gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_type);
     ASSERT_EQ(string("Admin"), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_user.buf);

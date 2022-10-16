@@ -162,12 +162,14 @@ TEST_F(TestHttpJson, test_1) // NOLINT
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
     ASSERT_TRUE(http_json_create_records_str(
         &adv_table,
-        true,
-        timestamp,
-        &gw_mac_addr,
-        p_coordinates,
-        true,
-        12345678,
+        (http_json_header_info_t) {
+            .flag_use_timestamps = true,
+            .timestamp           = timestamp,
+            .p_mac_addr          = &gw_mac_addr,
+            .p_coordinates_str   = p_coordinates,
+            .flag_use_nonce      = true,
+            .nonce               = 12345678,
+        },
         &this->m_json_str));
     ASSERT_EQ(
         string("{\n"
@@ -208,12 +210,14 @@ TEST_F(TestHttpJson, test_1_without_timestamp) // NOLINT
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
     ASSERT_TRUE(http_json_create_records_str(
         &adv_table,
-        false,
-        timestamp,
-        &gw_mac_addr,
-        p_coordinates,
-        true,
-        12345678,
+        (http_json_header_info_t) {
+            .flag_use_timestamps = false,
+            .timestamp           = timestamp,
+            .p_mac_addr          = &gw_mac_addr,
+            .p_coordinates_str   = p_coordinates,
+            .flag_use_nonce      = true,
+            .nonce               = 12345678,
+        },
         &this->m_json_str));
     ASSERT_EQ(
         string("{\n"
@@ -263,12 +267,14 @@ TEST_F(TestHttpJson, test_2) // NOLINT
     memcpy(adv_table.table[1].data_buf, data2.data(), data2.size());
     ASSERT_TRUE(http_json_create_records_str(
         &adv_table,
-        true,
-        timestamp,
-        &gw_mac_addr,
-        p_coordinates,
-        true,
-        12345678,
+        (http_json_header_info_t) {
+            .flag_use_timestamps = true,
+            .timestamp           = timestamp,
+            .p_mac_addr          = &gw_mac_addr,
+            .p_coordinates_str   = p_coordinates,
+            .flag_use_nonce      = true,
+            .nonce               = 12345678,
+        },
         &this->m_json_str));
     ASSERT_EQ(
         string("{\n"
@@ -319,12 +325,14 @@ TEST_F(TestHttpJson, test_http_json_create_records_str_malloc_failed) // NOLINT
         this->m_malloc_cnt         = 0;
         if (http_json_create_records_str(
                 &adv_table,
-                true,
-                timestamp,
-                &gw_mac_addr,
-                p_coordinates,
-                true,
-                12345678,
+                (http_json_header_info_t) {
+                    .flag_use_timestamps = true,
+                    .timestamp           = timestamp,
+                    .p_mac_addr          = &gw_mac_addr,
+                    .p_coordinates_str   = p_coordinates,
+                    .flag_use_nonce      = true,
+                    .nonce               = 12345678,
+                },
                 &this->m_json_str))
         {
             ASSERT_FALSE(true);
@@ -338,12 +346,14 @@ TEST_F(TestHttpJson, test_http_json_create_records_str_malloc_failed) // NOLINT
         this->m_malloc_cnt         = 0;
         ASSERT_TRUE(http_json_create_records_str(
             &adv_table,
-            true,
-            timestamp,
-            &gw_mac_addr,
-            p_coordinates,
-            true,
-            12345678,
+            (http_json_header_info_t) {
+                .flag_use_timestamps = true,
+                .timestamp           = timestamp,
+                .p_mac_addr          = &gw_mac_addr,
+                .p_coordinates_str   = p_coordinates,
+                .flag_use_nonce      = true,
+                .nonce               = 12345678,
+            },
             &this->m_json_str));
         ASSERT_NE(nullptr, this->m_json_str.p_str);
         cjson_wrap_free_json_str(&this->m_json_str);

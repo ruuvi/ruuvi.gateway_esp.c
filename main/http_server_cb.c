@@ -43,6 +43,8 @@
 
 #define HTTP_SERVER_DEFAULT_HISTORY_INTERVAL_SECONDS (60U)
 
+#define GW_CFG_REMOTE_URL_MIN_LEN (3)
+
 typedef double cjson_double_t;
 
 static const char TAG[] = "http_server";
@@ -351,14 +353,16 @@ http_download_json(
     const TickType_t download_started_at_tick = xTaskGetTickCount();
     const bool       flag_feed_task_watchdog  = true;
     if (!http_download_with_auth(
-            p_url,
-            timeout_seconds,
+            (http_download_param_t) {
+                .p_url                   = p_url,
+                .timeout_seconds         = timeout_seconds,
+                .p_cb_on_data            = &cb_on_http_download_json_data,
+                .p_user_data             = &info,
+                .flag_feed_task_watchdog = flag_feed_task_watchdog,
+            },
             auth_type,
             p_http_auth,
-            p_extra_header_item,
-            &cb_on_http_download_json_data,
-            &info,
-            flag_feed_task_watchdog))
+            p_extra_header_item))
     {
         LOG_ERR("http_download failed for URL: %s", p_url);
         info.is_error = true;
@@ -489,12 +493,14 @@ http_server_read_history(
 
     const bool res = http_json_create_records_str(
         p_reports,
-        flag_use_timestamps,
-        cur_time,
-        gw_cfg_get_nrf52_mac_addr(),
-        coordinates.buf,
-        false,
-        0,
+        (http_json_header_info_t) {
+            .flag_use_timestamps = flag_use_timestamps,
+            .timestamp           = cur_time,
+            .p_mac_addr          = gw_cfg_get_nrf52_mac_addr(),
+            .p_coordinates_str   = coordinates.buf,
+            .flag_use_nonce      = false,
+            .nonce               = 0,
+        },
         p_json_str);
 
     os_free(p_reports);
@@ -781,7 +787,7 @@ http_server_download_gw_cfg(void)
     }
 
     size_t base_url_len = strlen(p_remote->url.buf);
-    if (base_url_len < 3)
+    if (base_url_len < GW_CFG_REMOTE_URL_MIN_LEN)
     {
         LOG_ERR("Remote cfg URL is too short: '%s'", p_remote->url.buf);
         os_free(p_remote);

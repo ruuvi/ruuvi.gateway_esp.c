@@ -156,12 +156,9 @@ gw_cfg_default_init(
     p_def_dev_info->esp32_mac_addr_wifi        = mac_address_to_str(&p_init_param->esp32_mac_addr_wifi);
     p_def_dev_info->esp32_mac_addr_eth         = mac_address_to_str(&p_init_param->esp32_mac_addr_eth);
 
-    if (NULL != p_cb_gw_cfg_default_json_read)
+    if ((NULL != p_cb_gw_cfg_default_json_read) && p_cb_gw_cfg_default_json_read(&g_gw_cfg_default))
     {
-        if (p_cb_gw_cfg_default_json_read(&g_gw_cfg_default))
-        {
-            wifi_manager_set_default_config(&g_gw_cfg_default.wifi_cfg);
-        }
+        wifi_manager_set_default_config(&g_gw_cfg_default.wifi_cfg);
     }
 
     ruuvi_gw_cfg_mqtt_t* const p_mqtt = &g_gw_cfg_default.ruuvi_cfg.mqtt;

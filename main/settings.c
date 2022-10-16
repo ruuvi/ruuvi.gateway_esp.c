@@ -302,12 +302,9 @@ settings_get_from_flash(bool* const p_flag_default_cfg_is_used)
         settings_save_to_flash(p_gw_cfg_tmp); // Update configuration in NVS before erasing BLOBs
     }
     settings_erase_gw_cfg_blob_if_exist(handle);
-    if (flag_wifi_cfg_blob_used)
+    if (flag_wifi_cfg_blob_used && (!wifi_manager_cfg_blob_mark_deprecated()))
     {
-        if (!wifi_manager_cfg_blob_mark_deprecated())
-        {
-            LOG_ERR("Failed to erase wifi_cfg_blob");
-        }
+        LOG_ERR("Failed to erase wifi_cfg_blob");
     }
 
     return p_gw_cfg_tmp;
@@ -409,10 +406,11 @@ settings_write_flag_rebooting_after_auto_update(const bool flag_rebooting_after_
         LOG_ERR("%s failed", "ruuvi_nvs_open");
         return;
     }
-    const uint32_t  flag_rebooting_after_auto_update_val = flag_rebooting_after_auto_update
-                                                               ? RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_VALUE
-                                                               : 0;
-    const esp_err_t esp_err                              = nvs_set_blob(
+    const uint32_t flag_rebooting_after_auto_update_val = flag_rebooting_after_auto_update
+                                                              ? RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_VALUE
+                                                              : 0;
+
+    const esp_err_t esp_err = nvs_set_blob(
         handle,
         RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_KEY,
         &flag_rebooting_after_auto_update_val,

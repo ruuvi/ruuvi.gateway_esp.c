@@ -334,10 +334,7 @@ gw_cfg_log_ruuvi_cfg_auto_update(const ruuvi_gw_cfg_auto_update_t* const p_auto_
             LOG_INFO("config: Auto update cycle: %s", AUTO_UPDATE_CYCLE_TYPE_STR_MANUAL);
             break;
         default:
-            LOG_INFO(
-                "config: Auto update cycle: %s (%d)",
-                AUTO_UPDATE_CYCLE_TYPE_STR_MANUAL,
-                p_auto_update->auto_update_cycle);
+            LOG_INFO("config: Auto update cycle: Unknown (%d)", p_auto_update->auto_update_cycle);
             break;
     }
     LOG_INFO("config: Auto update weekdays_bitmask: 0x%02x", p_auto_update->auto_update_weekdays_bitmask);

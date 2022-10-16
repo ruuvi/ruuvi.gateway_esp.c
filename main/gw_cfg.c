@@ -958,5 +958,5 @@ gw_cfg_auth_type_to_str(const ruuvi_gw_cfg_lan_auth_t* const p_lan_auth)
     {
         lan_auth_type = HTTP_SERVER_AUTH_TYPE_DEFAULT;
     }
-    return http_server_auth_type_to_str(p_lan_auth->lan_auth_type);
+    return http_server_auth_type_to_str(lan_auth_type);
 }
