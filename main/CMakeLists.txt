@@ -54,8 +54,12 @@ idf_component_register(
             json_helper.h
             json_ruuvi.c
             json_ruuvi.h
+            http_download.c
+            http_download.h
             http_server_cb.c
             http_server_cb.h
+            http_server_cb_on_get.c
+            http_server_cb_on_post.c
             leds.c
             leds.h
             main_loop.c

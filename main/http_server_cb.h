@@ -9,6 +9,7 @@
 #define RUUVI_GATEWAY_ESP_HTTP_SERVER_CB_H
 
 #include "wifi_manager_defs.h"
+#include "http_download.h"
 
 #if !defined(RUUVI_TESTS_HTTP_SERVER_CB)
 #define RUUVI_TESTS_HTTP_SERVER_CB (0)
@@ -28,19 +29,17 @@
 extern "C" {
 #endif
 
-typedef struct http_server_download_info_t
-{
-    bool             is_error;
-    http_resp_code_e http_resp_code;
-    char*            p_json_buf;
-    size_t           json_buf_size;
-} http_server_download_info_t;
-
 bool
 http_server_cb_init(const char* const p_fatfs_gwui_partition_name);
 
 void
 http_server_cb_deinit(void);
+
+time_t
+http_server_get_cur_time(void);
+
+http_resp_code_e
+http_server_gw_cfg_download_and_update(bool* const p_flag_reboot_needed);
 
 void
 http_server_cb_on_user_req(const http_server_user_req_code_e req_code);
