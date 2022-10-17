@@ -7,13 +7,13 @@
 extern "C" {
 #endif
 
-typedef struct esp_timer *esp_timer_handle_t;
+typedef struct esp_timer* esp_timer_handle_t;
 
 /**
  * @brief Timer callback function type
  * @param arg pointer to opaque user-specific data
  */
-typedef void (*esp_timer_cb_t)(void *arg);
+typedef void (*esp_timer_cb_t)(void* arg);
 
 /**
  * @brief Method for dispatching timer callback
@@ -36,9 +36,9 @@ typedef enum
 typedef struct
 {
     esp_timer_cb_t       callback;        //!< Function to call when timer expires
-    void *               arg;             //!< Argument to pass to the callback
+    void*                arg;             //!< Argument to pass to the callback
     esp_timer_dispatch_t dispatch_method; //!< Call the callback from task or from ISR
-    const char *         name;            //!< Timer name, used in esp_timer_dump function
+    const char*          name;            //!< Timer name, used in esp_timer_dump function
 } esp_timer_create_args_t;
 
 /**
@@ -85,7 +85,7 @@ esp_timer_deinit();
  *      - ESP_ERR_NO_MEM if memory allocation fails
  */
 esp_err_t
-esp_timer_create(const esp_timer_create_args_t *create_args, esp_timer_handle_t *out_handle);
+esp_timer_create(const esp_timer_create_args_t* create_args, esp_timer_handle_t* out_handle);
 
 /**
  * @brief Start a periodic timer

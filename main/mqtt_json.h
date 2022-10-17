@@ -18,12 +18,12 @@ extern "C" {
 
 bool
 mqtt_create_json_str(
-    const adv_report_t *const      p_adv,
+    const adv_report_t* const      p_adv,
     const bool                     flag_use_timestamps,
     const time_t                   timestamp,
-    const mac_address_str_t *const p_mac_addr,
-    const char *const              p_coordinates_str,
-    cjson_wrap_str_t *const        p_json_str);
+    const mac_address_str_t* const p_mac_addr,
+    const char* const              p_coordinates_str,
+    cjson_wrap_str_t* const        p_json_str);
 
 #ifdef __cplusplus
 }

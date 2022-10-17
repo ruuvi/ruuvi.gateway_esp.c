@@ -45,7 +45,7 @@ using namespace std;
  * *********************************************************************************/
 
 class TestHttpServerCb;
-static TestHttpServerCb *g_pTestClass;
+static TestHttpServerCb* g_pTestClass;
 
 struct flash_fat_fs_t
 {
@@ -58,11 +58,11 @@ extern "C" {
 
 volatile uint32_t g_cnt_cfg_button_pressed;
 
-const char *
+const char*
 os_task_get_name(void)
 {
     static const char g_task_name[] = "main";
-    return const_cast<char *>(g_task_name);
+    return const_cast<char*>(g_task_name);
 }
 
 os_task_priority_t
@@ -79,10 +79,10 @@ esp_random(void)
 
 bool
 http_download(
-    const char *const          p_url,
+    const char* const          p_url,
     const TimeUnitsSeconds_t   timeout_seconds,
     http_download_cb_on_data_t cb_on_data,
-    void *const                p_user_data,
+    void* const                p_user_data,
     const bool                 flag_feed_task_watchdog)
 {
     return false;
@@ -90,13 +90,13 @@ http_download(
 
 bool
 http_download_with_auth(
-    const char *const                     p_url,
+    const char* const                     p_url,
     const TimeUnitsSeconds_t              timeout_seconds,
     const gw_cfg_remote_auth_type_e       gw_cfg_http_auth_type,
-    const ruuvi_gw_cfg_http_auth_t *const p_http_auth,
-    const http_header_item_t *const       p_extra_header_item,
+    const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
+    const http_header_item_t* const       p_extra_header_item,
     http_download_cb_on_data_t            p_cb_on_data,
-    void *const                           p_user_data,
+    void* const                           p_user_data,
     const bool                            flag_feed_task_watchdog)
 {
     return false;
@@ -118,7 +118,7 @@ fw_update_set_extra_info_for_status_json_update_start(void)
 }
 
 void
-fw_update_set_extra_info_for_status_json_update_failed(const char *const p_message)
+fw_update_set_extra_info_for_status_json_update_failed(const char* const p_message)
 {
 }
 
@@ -129,7 +129,7 @@ fw_update_is_url_valid(void)
 }
 
 bool
-json_fw_update_parse_http_body(const char *const p_body)
+json_fw_update_parse_http_body(const char* const p_body)
 {
     return false;
 }
@@ -176,7 +176,7 @@ restart_services(void)
 }
 
 void
-settings_save_to_flash(const gw_cfg_t *const p_gw_cfg);
+settings_save_to_flash(const gw_cfg_t* const p_gw_cfg);
 
 force_start_wifi_hotspot_t
 settings_read_flag_force_start_wifi_hotspot(void)
@@ -199,10 +199,10 @@ time_is_synchronized(void)
 
 class MemAllocTrace
 {
-    vector<void *> allocated_mem;
+    vector<void*> allocated_mem;
 
-    std::vector<void *>::iterator
-    find(void *ptr)
+    std::vector<void*>::iterator
+    find(void* ptr)
     {
         for (auto iter = this->allocated_mem.begin(); iter != this->allocated_mem.end(); ++iter)
         {
@@ -216,14 +216,14 @@ class MemAllocTrace
 
 public:
     void
-    add(void *ptr)
+    add(void* ptr)
     {
         auto iter = find(ptr);
         assert(iter == this->allocated_mem.end()); // ptr was found in the list of allocated memory blocks
         this->allocated_mem.push_back(ptr);
     }
     void
-    remove(void *ptr)
+    remove(void* ptr)
     {
         auto iter = find(ptr);
         assert(iter != this->allocated_mem.end()); // ptr was not found in the list of allocated memory blocks
@@ -335,34 +335,34 @@ TestHttpServerCb::TestHttpServerCb()
 
 extern "C" {
 
-void *
+void*
 os_malloc(const size_t size)
 {
     if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
     {
         return nullptr;
     }
-    void *ptr = malloc(size);
+    void* ptr = malloc(size);
     assert(nullptr != ptr);
     g_pTestClass->m_mem_alloc_trace.add(ptr);
     return ptr;
 }
 
 void
-os_free_internal(void *ptr)
+os_free_internal(void* ptr)
 {
     g_pTestClass->m_mem_alloc_trace.remove(ptr);
     free(ptr);
 }
 
-void *
+void*
 os_calloc(const size_t nmemb, const size_t size)
 {
     if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
     {
         return nullptr;
     }
-    void *ptr = calloc(nmemb, size);
+    void* ptr = calloc(nmemb, size);
     assert(nullptr != ptr);
     g_pTestClass->m_mem_alloc_trace.add(ptr);
     return ptr;
@@ -370,10 +370,10 @@ os_calloc(const size_t nmemb, const size_t size)
 
 ATTR_NONNULL(1)
 bool
-os_realloc_safe_and_clean(void **const p_ptr, const size_t size)
+os_realloc_safe_and_clean(void** const p_ptr, const size_t size)
 {
-    void *ptr       = *p_ptr;
-    void *p_new_ptr = realloc(ptr, size);
+    void* ptr       = *p_ptr;
+    void* p_new_ptr = realloc(ptr, size);
     if (nullptr == p_new_ptr)
     {
         os_free(*p_ptr);
@@ -384,13 +384,13 @@ os_realloc_safe_and_clean(void **const p_ptr, const size_t size)
 }
 
 os_mutex_recursive_t
-os_mutex_recursive_create_static(os_mutex_recursive_static_t *const p_mutex_static)
+os_mutex_recursive_create_static(os_mutex_recursive_static_t* const p_mutex_static)
 {
     return (os_mutex_recursive_t)p_mutex_static;
 }
 
 void
-os_mutex_recursive_delete(os_mutex_recursive_t *const ph_mutex)
+os_mutex_recursive_delete(os_mutex_recursive_t* const ph_mutex)
 {
 }
 
@@ -405,13 +405,13 @@ os_mutex_recursive_unlock(os_mutex_recursive_t const h_mutex)
 }
 
 os_mutex_t
-os_mutex_create_static(os_mutex_static_t *const p_mutex_static)
+os_mutex_create_static(os_mutex_static_t* const p_mutex_static)
 {
     return reinterpret_cast<os_mutex_t>(p_mutex_static);
 }
 
 void
-os_mutex_delete(os_mutex_t *const ph_mutex)
+os_mutex_delete(os_mutex_t* const ph_mutex)
 {
     (void)ph_mutex;
 }
@@ -433,33 +433,33 @@ event_mgr_notify(const event_mgr_ev_e event)
 {
 }
 
-char *
-esp_ip4addr_ntoa(const esp_ip4_addr_t *addr, char *buf, int buflen)
+char*
+esp_ip4addr_ntoa(const esp_ip4_addr_t* addr, char* buf, int buflen)
 {
-    return ip4addr_ntoa_r((ip4_addr_t *)addr, buf, buflen);
+    return ip4addr_ntoa_r((ip4_addr_t*)addr, buf, buflen);
 }
 
 uint32_t
-esp_ip4addr_aton(const char *addr)
+esp_ip4addr_aton(const char* addr)
 {
     return ipaddr_addr(addr);
 }
 
 void
-wifi_manager_set_config_ap(const wifiman_config_ap_t *const p_wifi_cfg_ap)
+wifi_manager_set_config_ap(const wifiman_config_ap_t* const p_wifi_cfg_ap)
 {
 }
 
 void
-wifi_manager_cb_save_wifi_config_sta(const wifiman_config_sta_t *const p_cfg_sta)
+wifi_manager_cb_save_wifi_config_sta(const wifiman_config_sta_t* const p_cfg_sta)
 {
 }
 
-char *
+char*
 metrics_generate(void)
 {
-    const char *p_metrics_str = "metrics_info";
-    char *      p_buf         = static_cast<char *>(os_malloc(strlen(p_metrics_str) + 1));
+    const char* p_metrics_str = "metrics_info";
+    char*       p_buf         = static_cast<char*>(os_malloc(strlen(p_metrics_str) + 1));
     if (nullptr != p_buf)
     {
         strcpy(p_buf, p_metrics_str);
@@ -481,7 +481,7 @@ xTaskGetTickCount(void)
 
 void
 adv_table_history_read(
-    adv_report_table_t *const p_reports,
+    adv_report_table_t* const p_reports,
     const time_t              cur_time,
     const bool                flag_use_timestamps,
     const uint32_t            filter,
@@ -492,7 +492,7 @@ adv_table_history_read(
     (void)flag_use_filter;
     p_reports->num_of_advs = 2;
     {
-        adv_report_t *const p_adv   = &p_reports->table[0];
+        adv_report_t* const p_adv   = &p_reports->table[0];
         p_adv->timestamp            = cur_time - 1;
         const mac_address_bin_t mac = { 0xAAU, 0xBBU, 0xCCU, 0x11U, 0x22U, 0x01U };
         p_adv->tag_mac              = mac;
@@ -502,7 +502,7 @@ adv_table_history_read(
         memcpy(p_adv->data_buf, data_buf, sizeof(data_buf));
     }
     {
-        adv_report_t *const p_adv   = &p_reports->table[1];
+        adv_report_t* const p_adv   = &p_reports->table[1];
         p_adv->timestamp            = cur_time - 11;
         const mac_address_bin_t mac = { 0xAAU, 0xBBU, 0xCCU, 0x11U, 0x22U, 0x02U };
         p_adv->tag_mac              = mac;
@@ -514,7 +514,7 @@ adv_table_history_read(
 }
 
 void
-settings_save_to_flash(const gw_cfg_t *const p_gw_cfg)
+settings_save_to_flash(const gw_cfg_t* const p_gw_cfg)
 {
     g_pTestClass->m_flag_settings_saved_to_flash = true;
 }
@@ -525,8 +525,8 @@ ethernet_update_ip(void)
     g_pTestClass->m_flag_settings_ethernet_ip_updated = true;
 }
 
-const flash_fat_fs_t *
-flashfatfs_mount(const char *mount_point, const char *partition_label, const flash_fat_fs_num_files_t max_files)
+const flash_fat_fs_t*
+flashfatfs_mount(const char* mount_point, const char* partition_label, const flash_fat_fs_num_files_t max_files)
 {
     assert(!g_pTestClass->m_is_fatfs_mounted);
     if (g_pTestClass->m_is_fatfs_mount_fail)
@@ -541,7 +541,7 @@ flashfatfs_mount(const char *mount_point, const char *partition_label, const fla
 }
 
 bool
-flashfatfs_unmount(const flash_fat_fs_t **pp_ffs)
+flashfatfs_unmount(const flash_fat_fs_t** pp_ffs)
 {
     assert(nullptr != pp_ffs);
     assert(*pp_ffs == &g_pTestClass->m_fatfs);
@@ -555,10 +555,10 @@ flashfatfs_unmount(const flash_fat_fs_t **pp_ffs)
 }
 
 bool
-flashfatfs_get_file_size(const flash_fat_fs_t *p_ffs, const char *file_path, size_t *p_size)
+flashfatfs_get_file_size(const flash_fat_fs_t* p_ffs, const char* file_path, size_t* p_size)
 {
     assert(p_ffs == &g_pTestClass->m_fatfs);
-    for (auto &file : g_pTestClass->m_files)
+    for (auto& file : g_pTestClass->m_files)
     {
         if (0 == strcmp(file_path, file.fileName.c_str()))
         {
@@ -571,10 +571,10 @@ flashfatfs_get_file_size(const flash_fat_fs_t *p_ffs, const char *file_path, siz
 }
 
 file_descriptor_t
-flashfatfs_open(const flash_fat_fs_t *p_ffs, const char *file_path)
+flashfatfs_open(const flash_fat_fs_t* p_ffs, const char* file_path)
 {
     assert(p_ffs == &g_pTestClass->m_fatfs);
-    for (auto &file : g_pTestClass->m_files)
+    for (auto& file : g_pTestClass->m_files)
     {
         if (0 == strcmp(file_path, file.fileName.c_str()))
         {
@@ -589,7 +589,7 @@ flashfatfs_open(const flash_fat_fs_t *p_ffs, const char *file_path)
 }
 
 void
-fw_update_set_url(const char *const p_url_fmt, ...)
+fw_update_set_url(const char* const p_url_fmt, ...)
 {
     va_list ap;
     va_start(ap, p_url_fmt);
@@ -597,7 +597,7 @@ fw_update_set_url(const char *const p_url_fmt, ...)
     va_end(ap);
 }
 
-const char *
+const char*
 fw_update_get_url(void)
 {
     return g_pTestClass->fw_update_url.data();
@@ -654,7 +654,7 @@ TEST_F(TestHttpServerCb, http_server_cb_init_failed) // NOLINT
 
 TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
 {
-    const char *expected_json
+    const char* expected_json
         = "{\n"
           "\t\"fw_ver\":\t\"v1.3.3\",\n"
           "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
@@ -767,7 +767,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
@@ -856,7 +856,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed_2) // NOLINT
 
 TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
 {
-    const char *expected_json
+    const char* expected_json
         = "{\n"
           "\t\"fw_ver\":\t\"v1.3.3\",\n"
           "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
@@ -968,7 +968,7 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
@@ -994,7 +994,7 @@ TEST_F(TestHttpServerCb, resp_json_unknown) // NOLINT
 
 TEST_F(TestHttpServerCb, resp_metrics_ok) // NOLINT
 {
-    const char *             expected_resp = "metrics_info";
+    const char*              expected_resp = "metrics_info";
     const http_server_resp_t resp          = http_server_resp_metrics();
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
@@ -1006,7 +1006,7 @@ TEST_F(TestHttpServerCb, resp_metrics_ok) // NOLINT
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("metrics: ") + string(expected_resp));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
@@ -1042,7 +1042,7 @@ TEST_F(TestHttpServerCb, http_get_content_type_by_ext) // NOLINT
 
 TEST_F(TestHttpServerCb, resp_file_index_html_fail_partition_not_ready) // NOLINT
 {
-    const char *            expected_resp = "index_html_content";
+    const char*             expected_resp = "index_html_content";
     const file_descriptor_t fd            = 1;
     FileInfo                fileInfo      = FileInfo("index.html", expected_resp);
     this->m_files.emplace_back(fileInfo);
@@ -1064,8 +1064,8 @@ TEST_F(TestHttpServerCb, resp_file_index_html_fail_partition_not_ready) // NOLIN
 
 TEST_F(TestHttpServerCb, resp_file_index_html_fail_file_name_too_long) // NOLINT
 {
-    const char *            file_name     = "a1234567890123456789012345678901234567890123456789012345678901234567890";
-    const char *            expected_resp = "index_html_content";
+    const char*             file_name     = "a1234567890123456789012345678901234567890123456789012345678901234567890";
+    const char*             expected_resp = "index_html_content";
     const file_descriptor_t fd            = 1;
     ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
     FileInfo fileInfo = FileInfo(file_name, expected_resp);
@@ -1090,7 +1090,7 @@ TEST_F(TestHttpServerCb, resp_file_index_html_fail_file_name_too_long) // NOLINT
 
 TEST_F(TestHttpServerCb, resp_file_index_html) // NOLINT
 {
-    const char *            expected_resp = "index_html_content";
+    const char*             expected_resp = "index_html_content";
     const file_descriptor_t fd            = 1;
     ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
     FileInfo fileInfo = FileInfo("index.html", expected_resp);
@@ -1113,7 +1113,7 @@ TEST_F(TestHttpServerCb, resp_file_index_html) // NOLINT
 
 TEST_F(TestHttpServerCb, resp_file_index_html_gzipped) // NOLINT
 {
-    const char *            expected_resp = "index_html_content";
+    const char*             expected_resp = "index_html_content";
     const file_descriptor_t fd            = 2;
     ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
     FileInfo fileInfo = FileInfo("index.html.gz", expected_resp);
@@ -1136,7 +1136,7 @@ TEST_F(TestHttpServerCb, resp_file_index_html_gzipped) // NOLINT
 
 TEST_F(TestHttpServerCb, resp_file_app_js_gzipped) // NOLINT
 {
-    const char *            expected_resp = "app_js_gzipped";
+    const char*             expected_resp = "app_js_gzipped";
     const file_descriptor_t fd            = 1;
     ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
     FileInfo fileInfo = FileInfo("app.js.gz", expected_resp);
@@ -1159,7 +1159,7 @@ TEST_F(TestHttpServerCb, resp_file_app_js_gzipped) // NOLINT
 
 TEST_F(TestHttpServerCb, resp_file_app_css_gzipped) // NOLINT
 {
-    const char *            expected_resp = "slyle_css_gzipped";
+    const char*             expected_resp = "slyle_css_gzipped";
     const file_descriptor_t fd            = 1;
     ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
     FileInfo fileInfo = FileInfo("style.css.gz", expected_resp);
@@ -1182,7 +1182,7 @@ TEST_F(TestHttpServerCb, resp_file_app_css_gzipped) // NOLINT
 
 TEST_F(TestHttpServerCb, resp_file_binary_without_extension) // NOLINT
 {
-    const char *            expected_resp = "binary_data";
+    const char*             expected_resp = "binary_data";
     const file_descriptor_t fd            = 1;
     ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
     FileInfo fileInfo = FileInfo("binary", expected_resp);
@@ -1223,7 +1223,7 @@ TEST_F(TestHttpServerCb, resp_file_unknown_html) // NOLINT
 
 TEST_F(TestHttpServerCb, resp_file_index_html_failed_on_open) // NOLINT
 {
-    const char *            expected_resp = "index_html_content";
+    const char*             expected_resp = "index_html_content";
     const file_descriptor_t fd            = 1;
     ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
     FileInfo fileInfo = FileInfo("index.html", expected_resp, true);
@@ -1266,7 +1266,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_default) // NOLINT
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_index_html) // NOLINT
 {
-    const char *            expected_resp = "index_html_content";
+    const char*             expected_resp = "index_html_content";
     const file_descriptor_t fd            = 1;
     ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
     FileInfo fileInfo = FileInfo("index.html.gz", expected_resp);
@@ -1290,7 +1290,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_index_html) // NOLINT
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_app_js) // NOLINT
 {
-    const char *            expected_resp = "app_js_gzipped";
+    const char*             expected_resp = "app_js_gzipped";
     const file_descriptor_t fd            = 1;
     ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
     FileInfo fileInfo = FileInfo("app.js.gz", expected_resp);
@@ -1314,7 +1314,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_app_js) // NOLINT
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
 {
-    const char *expected_json
+    const char* expected_json
         = "{\n"
           "\t\"fw_ver\":\t\"v1.3.3\",\n"
           "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
@@ -1421,7 +1421,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
@@ -1432,7 +1432,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics) // NOLINT
 {
-    const char *             expected_resp = "metrics_info";
+    const char*              expected_resp = "metrics_info";
     const http_server_resp_t resp          = http_server_cb_on_get("metrics", nullptr, false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
@@ -1444,7 +1444,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics) // NOLINT
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /metrics"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("metrics: ") + string(expected_resp));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1452,7 +1452,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics) // NOLINT
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_history) // NOLINT
 {
-    const char *expected_resp
+    const char* expected_resp
         = "{\n"
           "\t\"data\":\t{\n"
           "\t\t\"coordinates\":\t\"\",\n"
@@ -1480,7 +1480,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /history"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("History on 60 seconds interval: ") + string(expected_resp));
@@ -1489,7 +1489,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history) // NOLINT
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_history_with_time_interval_20) // NOLINT
 {
-    const char *expected_resp
+    const char* expected_resp
         = "{\n"
           "\t\"data\":\t{\n"
           "\t\t\"coordinates\":\t\"\",\n"
@@ -1518,7 +1518,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_with_time_interval_20) //
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /history?time=20"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("History on 20 seconds interval: ") + string(expected_resp));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1531,7 +1531,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps) // NO
     gw_cfg_tmp.ruuvi_cfg.ntp.ntp_use = false;
     gw_cfg_update_ruuvi_cfg(&gw_cfg_tmp.ruuvi_cfg);
 
-    const char *expected_resp
+    const char* expected_resp
         = "{\n"
           "\t\"data\":\t{\n"
           "\t\t\"coordinates\":\t\"\",\n"
@@ -1559,7 +1559,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps) // NO
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /history"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("History (without filtering): ") + string(expected_resp));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1572,7 +1572,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps_with_f
     gw_cfg_tmp.ruuvi_cfg.ntp.ntp_use = false;
     gw_cfg_update_ruuvi_cfg(&gw_cfg_tmp.ruuvi_cfg);
 
-    const char *expected_resp
+    const char* expected_resp
         = "{\n"
           "\t\"data\":\t{\n"
           "\t\t\"coordinates\":\t\"\",\n"
@@ -1600,7 +1600,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps_with_f
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /history?counter=10"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_INFO,
@@ -1610,33 +1610,33 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps_with_f
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
 {
-    const char *             expected_resp = "{}";
+    const char*              expected_resp = "{}";
     const http_server_resp_t resp          = http_server_cb_on_post_ruuvi(
         "{"
-        "\"remote_cfg_use\":false,\n"
-        "\"remote_cfg_url\":\"\",\n"
-        "\"remote_cfg_auth_type\":\"no\",\n"
-        "\"remote_cfg_refresh_interval_minutes\":0,\n"
-        "\"use_http\":false,"
-        "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+                 "\"remote_cfg_use\":false,\n"
+                 "\"remote_cfg_url\":\"\",\n"
+                 "\"remote_cfg_auth_type\":\"no\",\n"
+                 "\"remote_cfg_refresh_interval_minutes\":0,\n"
+                 "\"use_http\":false,"
+                 "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
         "\","
-        "\"http_user\":\"\","
-        "\"http_pass\":\"\","
-        "\"use_http_stat\":true,"
-        "\"http_stat_url\":\"" RUUVI_GATEWAY_HTTP_STATUS_URL
+                 "\"http_user\":\"\","
+                 "\"http_pass\":\"\","
+                 "\"use_http_stat\":true,"
+                 "\"http_stat_url\":\"" RUUVI_GATEWAY_HTTP_STATUS_URL
         "\","
-        "\"http_stat_user\":\"\","
-        "\"http_stat_pass\":\"\","
-        "\"use_mqtt\":true,"
-        "\"mqtt_transport\":\"TCP\","
-        "\"mqtt_server\":\"test.mosquitto.org\","
-        "\"mqtt_port\":1883,"
-        "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
-        "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
-        "\"mqtt_user\":\"\","
-        "\"mqtt_pass\":\"\","
-        "\"company_use_filtering\":true\n"
-        "}");
+                 "\"http_stat_user\":\"\","
+                 "\"http_stat_pass\":\"\","
+                 "\"use_mqtt\":true,"
+                 "\"mqtt_transport\":\"TCP\","
+                 "\"mqtt_server\":\"test.mosquitto.org\","
+                 "\"mqtt_port\":1883,"
+                 "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
+                 "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
+                 "\"mqtt_user\":\"\","
+                 "\"mqtt_pass\":\"\","
+                 "\"company_use_filtering\":true\n"
+                 "}");
 
     ASSERT_TRUE(this->m_flag_settings_saved_to_flash);
     ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
@@ -1649,7 +1649,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
@@ -1895,7 +1895,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed3) // NOLINT
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth) // NOLINT
 {
-    const char *expected_resp = "{}";
+    const char* expected_resp = "{}";
     {
         gw_cfg_t gw_cfg = { 0 };
         gw_cfg_default_get(&gw_cfg);
@@ -1952,7 +1952,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
@@ -2071,7 +2071,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth) // NOLINT
 {
-    const char *expected_resp = "{}";
+    const char* expected_resp = "{}";
 
     {
         gw_cfg_t gw_cfg = { 0 };
@@ -2133,7 +2133,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
@@ -2251,35 +2251,35 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
 {
-    const char *             expected_resp = "{}";
+    const char*              expected_resp = "{}";
     const http_server_resp_t resp          = http_server_cb_on_post(
         "ruuvi.json",
         nullptr,
         "{"
-        "\"remote_cfg_use\":false,\n"
-        "\"remote_cfg_url\":\"\",\n"
-        "\"remote_cfg_auth_type\":\"no\",\n"
-        "\"remote_cfg_refresh_interval_minutes\":0,\n"
-        "\"use_http\":false,"
-        "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+                 "\"remote_cfg_use\":false,\n"
+                 "\"remote_cfg_url\":\"\",\n"
+                 "\"remote_cfg_auth_type\":\"no\",\n"
+                 "\"remote_cfg_refresh_interval_minutes\":0,\n"
+                 "\"use_http\":false,"
+                 "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
         "\","
-        "\"http_user\":\"\","
-        "\"http_pass\":\"\","
-        "\"use_http_stat\":true,"
-        "\"http_stat_url\":\"" RUUVI_GATEWAY_HTTP_STATUS_URL
+                 "\"http_user\":\"\","
+                 "\"http_pass\":\"\","
+                 "\"use_http_stat\":true,"
+                 "\"http_stat_url\":\"" RUUVI_GATEWAY_HTTP_STATUS_URL
         "\","
-        "\"http_stat_user\":\"\","
-        "\"http_stat_pass\":\"\","
-        "\"use_mqtt\":true,"
-        "\"mqtt_transport\":\"TCP\","
-        "\"mqtt_server\":\"test.mosquitto.org\","
-        "\"mqtt_port\":1883,"
-        "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
-        "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
-        "\"mqtt_user\":\"\","
-        "\"mqtt_pass\":\"\","
-        "\"company_use_filtering\":true"
-        "}",
+                 "\"http_stat_user\":\"\","
+                 "\"http_stat_pass\":\"\","
+                 "\"use_mqtt\":true,"
+                 "\"mqtt_transport\":\"TCP\","
+                 "\"mqtt_server\":\"test.mosquitto.org\","
+                 "\"mqtt_port\":1883,"
+                 "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
+                 "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
+                 "\"mqtt_user\":\"\","
+                 "\"mqtt_pass\":\"\","
+                 "\"company_use_filtering\":true"
+                 "}",
         false);
 
     ASSERT_TRUE(this->m_flag_settings_saved_to_flash);
@@ -2293,7 +2293,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char *>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");

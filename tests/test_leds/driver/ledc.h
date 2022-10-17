@@ -193,7 +193,7 @@ ledc_fade_start(ledc_mode_t speed_mode, ledc_channel_t channel, ledc_fade_mode_t
  * frequency and the current duty_resolution.
  */
 esp_err_t
-ledc_timer_config(const ledc_timer_config_t *timer_conf);
+ledc_timer_config(const ledc_timer_config_t* timer_conf);
 
 /**
  * @brief LEDC channel configuration
@@ -208,7 +208,7 @@ ledc_timer_config(const ledc_timer_config_t *timer_conf);
  *     - ESP_ERR_INVALID_ARG Parameter error
  */
 esp_err_t
-ledc_channel_config(const ledc_channel_config_t *ledc_conf);
+ledc_channel_config(const ledc_channel_config_t* ledc_conf);
 
 /**
  * @brief Install LEDC fade function. This function will occupy interrupt of

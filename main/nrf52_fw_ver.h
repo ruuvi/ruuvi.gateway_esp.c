@@ -27,7 +27,7 @@ typedef struct ruuvi_nrf52_fw_ver_t
 } ruuvi_nrf52_fw_ver_t;
 
 ruuvi_nrf52_fw_ver_str_t
-nrf52_fw_ver_get_str(const ruuvi_nrf52_fw_ver_t *const p_nrf52_fw_ver);
+nrf52_fw_ver_get_str(const ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver);
 
 #ifdef __cplusplus
 }

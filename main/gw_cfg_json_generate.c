@@ -29,7 +29,7 @@
 static const char TAG[] = "gw_cfg";
 
 static bool
-gw_cfg_json_add_bool(cJSON *const p_json_root, const char *const p_item_name, const bool val)
+gw_cfg_json_add_bool(cJSON* const p_json_root, const char* const p_item_name, const bool val)
 {
     if (NULL == cJSON_AddBoolToObject(p_json_root, p_item_name, val))
     {
@@ -40,7 +40,7 @@ gw_cfg_json_add_bool(cJSON *const p_json_root, const char *const p_item_name, co
 }
 
 static bool
-gw_cfg_json_add_string(cJSON *const p_json_root, const char *const p_item_name, const char *p_val)
+gw_cfg_json_add_string(cJSON* const p_json_root, const char* const p_item_name, const char* p_val)
 {
     if (NULL == cJSON_AddStringToObject(p_json_root, p_item_name, p_val))
     {
@@ -51,7 +51,7 @@ gw_cfg_json_add_string(cJSON *const p_json_root, const char *const p_item_name, 
 }
 
 static bool
-gw_cfg_json_add_number(cJSON *const p_json_root, const char *const p_item_name, const cjson_number_t val)
+gw_cfg_json_add_number(cJSON* const p_json_root, const char* const p_item_name, const cjson_number_t val)
 {
     if (NULL == cJSON_AddNumberToObject(p_json_root, p_item_name, val))
     {
@@ -62,7 +62,7 @@ gw_cfg_json_add_number(cJSON *const p_json_root, const char *const p_item_name, 
 }
 
 static bool
-gw_cfg_json_add_items_device_info(cJSON *const p_json_root, const gw_cfg_device_info_t *const p_dev_info)
+gw_cfg_json_add_items_device_info(cJSON* const p_json_root, const gw_cfg_device_info_t* const p_dev_info)
 {
     if (!gw_cfg_json_add_string(p_json_root, "fw_ver", p_dev_info->esp32_fw_ver.buf))
     {
@@ -81,24 +81,24 @@ gw_cfg_json_add_items_device_info(cJSON *const p_json_root, const gw_cfg_device_
 
 static bool
 gw_cfg_json_add_items_wifi_sta_config(
-    cJSON *const                  p_json_root,
-    const wifiman_config_t *const p_wifi_cfg,
+    cJSON* const                  p_json_root,
+    const wifiman_config_t* const p_wifi_cfg,
     const bool                    flag_hide_passwords)
 {
-    cJSON *const p_cjson = cJSON_AddObjectToObject(p_json_root, "wifi_sta_config");
+    cJSON* const p_cjson = cJSON_AddObjectToObject(p_json_root, "wifi_sta_config");
     if (NULL == p_cjson)
     {
         LOG_ERR("Can't add json item: %s", "wifi_sta_config");
         return false;
     }
-    const wifi_sta_config_t *const p_wifi_cfg_sta = &p_wifi_cfg->sta.wifi_config_sta;
-    if (!gw_cfg_json_add_string(p_cjson, "ssid", (char *)p_wifi_cfg_sta->ssid))
+    const wifi_sta_config_t* const p_wifi_cfg_sta = &p_wifi_cfg->sta.wifi_config_sta;
+    if (!gw_cfg_json_add_string(p_cjson, "ssid", (char*)p_wifi_cfg_sta->ssid))
     {
         return false;
     }
     if (!flag_hide_passwords)
     {
-        if (!gw_cfg_json_add_string(p_cjson, "password", (char *)p_wifi_cfg_sta->password))
+        if (!gw_cfg_json_add_string(p_cjson, "password", (char*)p_wifi_cfg_sta->password))
         {
             return false;
         }
@@ -108,20 +108,20 @@ gw_cfg_json_add_items_wifi_sta_config(
 
 static bool
 gw_cfg_json_add_items_wifi_ap_config(
-    cJSON *const                  p_json_root,
-    const wifiman_config_t *const p_wifi_cfg,
+    cJSON* const                  p_json_root,
+    const wifiman_config_t* const p_wifi_cfg,
     const bool                    flag_hide_passwords)
 {
-    cJSON *const p_cjson = cJSON_AddObjectToObject(p_json_root, "wifi_ap_config");
+    cJSON* const p_cjson = cJSON_AddObjectToObject(p_json_root, "wifi_ap_config");
     if (NULL == p_cjson)
     {
         LOG_ERR("Can't add json item: %s", "wifi_ap_config");
         return false;
     }
-    const wifi_ap_config_t *const p_wifi_cfg_ap = &p_wifi_cfg->ap.wifi_config_ap;
+    const wifi_ap_config_t* const p_wifi_cfg_ap = &p_wifi_cfg->ap.wifi_config_ap;
     if (!flag_hide_passwords)
     {
-        if (!gw_cfg_json_add_string(p_cjson, "password", (char *)p_wifi_cfg_ap->password))
+        if (!gw_cfg_json_add_string(p_cjson, "password", (char*)p_wifi_cfg_ap->password))
         {
             return false;
         }
@@ -134,7 +134,7 @@ gw_cfg_json_add_items_wifi_ap_config(
 }
 
 static bool
-gw_cfg_json_add_items_eth(cJSON *const p_json_root, const gw_cfg_eth_t *const p_cfg_eth)
+gw_cfg_json_add_items_eth(cJSON* const p_json_root, const gw_cfg_eth_t* const p_cfg_eth)
 {
     if (!gw_cfg_json_add_bool(p_json_root, "use_eth", p_cfg_eth->use_eth))
     {
@@ -169,8 +169,8 @@ gw_cfg_json_add_items_eth(cJSON *const p_json_root, const gw_cfg_eth_t *const p_
 
 static bool
 gw_cfg_json_add_items_remote_auth_basic(
-    cJSON *const                       p_json_root,
-    const ruuvi_gw_cfg_remote_t *const p_cfg_remote,
+    cJSON* const                       p_json_root,
+    const ruuvi_gw_cfg_remote_t* const p_cfg_remote,
     const bool                         flag_hide_passwords)
 {
     if (!gw_cfg_json_add_string(p_json_root, "remote_cfg_auth_type", GW_CFG_REMOTE_AUTH_TYPE_STR_BASIC))
@@ -196,8 +196,8 @@ gw_cfg_json_add_items_remote_auth_basic(
 
 static bool
 gw_cfg_json_add_items_remote_auth_bearer(
-    cJSON *const                       p_json_root,
-    const ruuvi_gw_cfg_remote_t *const p_cfg_remote,
+    cJSON* const                       p_json_root,
+    const ruuvi_gw_cfg_remote_t* const p_cfg_remote,
     const bool                         flag_hide_passwords)
 {
     if (!gw_cfg_json_add_string(p_json_root, "remote_cfg_auth_type", GW_CFG_REMOTE_AUTH_TYPE_STR_BEARER))
@@ -217,8 +217,8 @@ gw_cfg_json_add_items_remote_auth_bearer(
 
 static bool
 gw_cfg_json_add_items_remote(
-    cJSON *const                       p_json_root,
-    const ruuvi_gw_cfg_remote_t *const p_cfg_remote,
+    cJSON* const                       p_json_root,
+    const ruuvi_gw_cfg_remote_t* const p_cfg_remote,
     const bool                         flag_hide_passwords)
 {
     if (!gw_cfg_json_add_bool(p_json_root, "remote_cfg_use", p_cfg_remote->use_remote_cfg))
@@ -262,8 +262,8 @@ gw_cfg_json_add_items_remote(
 
 static bool
 gw_cfg_json_add_items_http(
-    cJSON *const                     p_json_root,
-    const ruuvi_gw_cfg_http_t *const p_cfg_http,
+    cJSON* const                     p_json_root,
+    const ruuvi_gw_cfg_http_t* const p_cfg_http,
     const bool                       flag_hide_passwords)
 {
     if (!gw_cfg_json_add_bool(p_json_root, "use_http", p_cfg_http->use_http))
@@ -287,8 +287,8 @@ gw_cfg_json_add_items_http(
 
 static bool
 gw_cfg_json_add_items_http_stat(
-    cJSON *const                          p_json_root,
-    const ruuvi_gw_cfg_http_stat_t *const p_cfg_http_stat,
+    cJSON* const                          p_json_root,
+    const ruuvi_gw_cfg_http_stat_t* const p_cfg_http_stat,
     const bool                            flag_hide_passwords)
 {
     if (!gw_cfg_json_add_bool(p_json_root, "use_http_stat", p_cfg_http_stat->use_http_stat))
@@ -313,8 +313,8 @@ gw_cfg_json_add_items_http_stat(
 
 static bool
 gw_cfg_json_add_items_mqtt(
-    cJSON *const                     p_json_root,
-    const ruuvi_gw_cfg_mqtt_t *const p_cfg_mqtt,
+    cJSON* const                     p_json_root,
+    const ruuvi_gw_cfg_mqtt_t* const p_cfg_mqtt,
     const bool                       flag_hide_passwords)
 {
     if (!gw_cfg_json_add_bool(p_json_root, "use_mqtt", p_cfg_mqtt->use_mqtt))
@@ -354,11 +354,11 @@ gw_cfg_json_add_items_mqtt(
 
 static bool
 gw_cfg_json_add_items_lan_auth(
-    cJSON *const                         p_json_root,
-    const ruuvi_gw_cfg_lan_auth_t *const p_cfg_lan_auth,
+    cJSON* const                         p_json_root,
+    const ruuvi_gw_cfg_lan_auth_t* const p_cfg_lan_auth,
     const bool                           flag_hide_passwords)
 {
-    const char *const p_lan_auth_type_str = gw_cfg_auth_type_to_str(p_cfg_lan_auth);
+    const char* const p_lan_auth_type_str = gw_cfg_auth_type_to_str(p_cfg_lan_auth);
     if (!gw_cfg_json_add_string(p_json_root, "lan_auth_type", p_lan_auth_type_str))
     {
         return false;
@@ -404,9 +404,9 @@ gw_cfg_json_add_items_lan_auth(
 }
 
 static bool
-gw_cfg_json_add_items_auto_update(cJSON *const p_json_root, const ruuvi_gw_cfg_auto_update_t *const p_cfg_auto_update)
+gw_cfg_json_add_items_auto_update(cJSON* const p_json_root, const ruuvi_gw_cfg_auto_update_t* const p_cfg_auto_update)
 {
-    const char *p_auto_update_cycle_str = AUTO_UPDATE_CYCLE_TYPE_STR_REGULAR;
+    const char* p_auto_update_cycle_str = AUTO_UPDATE_CYCLE_TYPE_STR_REGULAR;
     switch (p_cfg_auto_update->auto_update_cycle)
     {
         case AUTO_UPDATE_CYCLE_TYPE_REGULAR:
@@ -449,7 +449,7 @@ gw_cfg_json_add_items_auto_update(cJSON *const p_json_root, const ruuvi_gw_cfg_a
 }
 
 static bool
-gw_cfg_json_add_items_ntp(cJSON *const p_json_root, const ruuvi_gw_cfg_ntp_t *const p_cfg_ntp)
+gw_cfg_json_add_items_ntp(cJSON* const p_json_root, const ruuvi_gw_cfg_ntp_t* const p_cfg_ntp)
 {
     if (!gw_cfg_json_add_bool(p_json_root, "ntp_use", p_cfg_ntp->ntp_use))
     {
@@ -479,7 +479,7 @@ gw_cfg_json_add_items_ntp(cJSON *const p_json_root, const ruuvi_gw_cfg_ntp_t *co
 }
 
 static bool
-gw_cfg_json_add_items_filter(cJSON *const p_json_root, const ruuvi_gw_cfg_filter_t *const p_cfg_filter)
+gw_cfg_json_add_items_filter(cJSON* const p_json_root, const ruuvi_gw_cfg_filter_t* const p_cfg_filter)
 {
     if (!gw_cfg_json_add_number(p_json_root, "company_id", p_cfg_filter->company_id))
     {
@@ -493,7 +493,7 @@ gw_cfg_json_add_items_filter(cJSON *const p_json_root, const ruuvi_gw_cfg_filter
 }
 
 static bool
-gw_cfg_json_add_items_scan(cJSON *const p_json_root, const ruuvi_gw_cfg_scan_t *const p_cfg_scan)
+gw_cfg_json_add_items_scan(cJSON* const p_json_root, const ruuvi_gw_cfg_scan_t* const p_cfg_scan)
 {
     if (!gw_cfg_json_add_bool(p_json_root, "scan_coded_phy", p_cfg_scan->scan_coded_phy))
     {
@@ -523,7 +523,7 @@ gw_cfg_json_add_items_scan(cJSON *const p_json_root, const ruuvi_gw_cfg_scan_t *
 }
 
 static bool
-gw_cfg_json_add_items(cJSON *const p_json_root, const gw_cfg_t *p_cfg, const bool flag_hide_passwords)
+gw_cfg_json_add_items(cJSON* const p_json_root, const gw_cfg_t* p_cfg, const bool flag_hide_passwords)
 {
     if (!gw_cfg_json_add_items_device_info(p_json_root, &p_cfg->device_info))
     {
@@ -585,11 +585,11 @@ gw_cfg_json_add_items(cJSON *const p_json_root, const gw_cfg_t *p_cfg, const boo
 }
 
 static bool
-gw_cfg_json_generate(const gw_cfg_t *const p_gw_cfg, cjson_wrap_str_t *const p_json_str, const bool flag_hide_passwords)
+gw_cfg_json_generate(const gw_cfg_t* const p_gw_cfg, cjson_wrap_str_t* const p_json_str, const bool flag_hide_passwords)
 {
     p_json_str->p_str = NULL;
 
-    cJSON *p_json_root = cJSON_CreateObject();
+    cJSON* p_json_root = cJSON_CreateObject();
     if (NULL == p_json_root)
     {
         LOG_ERR("Can't create json object");
@@ -611,13 +611,13 @@ gw_cfg_json_generate(const gw_cfg_t *const p_gw_cfg, cjson_wrap_str_t *const p_j
 }
 
 bool
-gw_cfg_json_generate_full(const gw_cfg_t *const p_gw_cfg, cjson_wrap_str_t *const p_json_str)
+gw_cfg_json_generate_full(const gw_cfg_t* const p_gw_cfg, cjson_wrap_str_t* const p_json_str)
 {
     return gw_cfg_json_generate(p_gw_cfg, p_json_str, false);
 }
 
 bool
-gw_cfg_json_generate_without_passwords(const gw_cfg_t *const p_gw_cfg, cjson_wrap_str_t *const p_json_str)
+gw_cfg_json_generate_without_passwords(const gw_cfg_t* const p_gw_cfg, cjson_wrap_str_t* const p_json_str)
 {
     return gw_cfg_json_generate(p_gw_cfg, p_json_str, true);
 }

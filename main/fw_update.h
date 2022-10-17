@@ -21,13 +21,13 @@ typedef struct ruuvi_flash_info_t
 {
     bool                   is_valid;
     bool                   is_ota0_active;
-    const esp_app_desc_t * p_app_desc;
-    const esp_partition_t *p_boot_partition;
-    const esp_partition_t *p_running_partition;
+    const esp_app_desc_t*  p_app_desc;
+    const esp_partition_t* p_boot_partition;
+    const esp_partition_t* p_running_partition;
     esp_ota_img_states_t   running_partition_state;
-    const esp_partition_t *p_next_update_partition;
-    const esp_partition_t *p_next_fatfs_gwui_partition;
-    const esp_partition_t *p_next_fatfs_nrf52_partition;
+    const esp_partition_t* p_next_update_partition;
+    const esp_partition_t* p_next_fatfs_gwui_partition;
+    const esp_partition_t* p_next_fatfs_nrf52_partition;
 } ruuvi_flash_info_t;
 
 typedef enum fw_update_reason_e
@@ -44,26 +44,26 @@ fw_update_read_flash_info(void);
 bool
 fw_update_mark_app_valid_cancel_rollback(void);
 
-const char *
+const char*
 fw_update_get_current_fatfs_nrf52_partition_name(void);
 
-const char *
+const char*
 fw_update_get_current_fatfs_gwui_partition_name(void);
 
 ruuvi_esp32_fw_ver_str_t
 fw_update_get_cur_version(void);
 
 bool
-json_fw_update_parse_http_body(const char *const p_body);
+json_fw_update_parse_http_body(const char* const p_body);
 
 bool
 fw_update_is_url_valid(void);
 
 ATTR_PRINTF(1, 2)
 void
-fw_update_set_url(const char *const p_url_fmt, ...);
+fw_update_set_url(const char* const p_url_fmt, ...);
 
-const char *
+const char*
 fw_update_get_url(void);
 
 bool
@@ -76,13 +76,13 @@ void
 fw_update_set_extra_info_for_status_json_update_successful(void);
 
 void
-fw_update_set_extra_info_for_status_json_update_failed(const char *const p_message);
+fw_update_set_extra_info_for_status_json_update_failed(const char* const p_message);
 
 void
 fw_update_set_stage_nrf52_updating(void);
 
 void
-fw_update_nrf52fw_cb_progress(const size_t num_bytes_flashed, const size_t total_size, void *const p_param);
+fw_update_nrf52fw_cb_progress(const size_t num_bytes_flashed, const size_t total_size, void* const p_param);
 
 #ifdef __cplusplus
 }

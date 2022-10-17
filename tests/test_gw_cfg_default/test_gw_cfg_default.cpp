@@ -20,15 +20,15 @@ using namespace std;
  * *********************************************************************************/
 
 class TestGwCfgDefault;
-static TestGwCfgDefault *g_pTestClass;
+static TestGwCfgDefault* g_pTestClass;
 
 extern "C" {
 
-const char *
+const char*
 os_task_get_name(void)
 {
     static const char g_task_name[] = "main";
-    return const_cast<char *>(g_task_name);
+    return const_cast<char*>(g_task_name);
 }
 
 os_task_priority_t
@@ -83,13 +83,13 @@ TestGwCfgDefault::~TestGwCfgDefault() = default;
 extern "C" {
 
 os_mutex_recursive_t
-os_mutex_recursive_create_static(os_mutex_recursive_static_t *const p_mutex_static)
+os_mutex_recursive_create_static(os_mutex_recursive_static_t* const p_mutex_static)
 {
     return (os_mutex_recursive_t)p_mutex_static;
 }
 
 void
-os_mutex_recursive_delete(os_mutex_recursive_t *const ph_mutex)
+os_mutex_recursive_delete(os_mutex_recursive_t* const ph_mutex)
 {
 }
 
@@ -104,13 +104,13 @@ os_mutex_recursive_unlock(os_mutex_recursive_t const h_mutex)
 }
 
 os_mutex_t
-os_mutex_create_static(os_mutex_static_t *const p_mutex_static)
+os_mutex_create_static(os_mutex_static_t* const p_mutex_static)
 {
     return reinterpret_cast<os_mutex_t>(p_mutex_static);
 }
 
 void
-os_mutex_delete(os_mutex_t *const ph_mutex)
+os_mutex_delete(os_mutex_t* const ph_mutex)
 {
     (void)ph_mutex;
 }
@@ -127,20 +127,20 @@ os_mutex_unlock(os_mutex_t const h_mutex)
     (void)h_mutex;
 }
 
-char *
-esp_ip4addr_ntoa(const esp_ip4_addr_t *addr, char *buf, int buflen)
+char*
+esp_ip4addr_ntoa(const esp_ip4_addr_t* addr, char* buf, int buflen)
 {
-    return ip4addr_ntoa_r((ip4_addr_t *)addr, buf, buflen);
+    return ip4addr_ntoa_r((ip4_addr_t*)addr, buf, buflen);
 }
 
 uint32_t
-esp_ip4addr_aton(const char *addr)
+esp_ip4addr_aton(const char* addr)
 {
     return ipaddr_addr(addr);
 }
 
 void
-wifi_manager_cb_save_wifi_config_sta(const wifiman_config_sta_t *const p_cfg_sta)
+wifi_manager_cb_save_wifi_config_sta(const wifiman_config_sta_t* const p_cfg_sta)
 {
 }
 
@@ -318,7 +318,7 @@ TEST_F(TestGwCfgDefault, test_1) // NOLINT
 
 TEST_F(TestGwCfgDefault, test_gw_cfg_default_get_lan_auth) // NOLINT
 {
-    const ruuvi_gw_cfg_lan_auth_t *const p_lan_auth = gw_cfg_default_get_lan_auth();
+    const ruuvi_gw_cfg_lan_auth_t* const p_lan_auth = gw_cfg_default_get_lan_auth();
     ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_DEFAULT, p_lan_auth->lan_auth_type);
     ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), string(p_lan_auth->lan_auth_user.buf));
     ASSERT_EQ(string("0d6c6f1c27ca628806eb9247740d8ba1"), string(p_lan_auth->lan_auth_pass.buf));

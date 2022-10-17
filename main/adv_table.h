@@ -59,21 +59,21 @@ void
 adv_table_deinit(void);
 
 bool
-adv_table_put(const adv_report_t *const p_adv);
+adv_table_put(const adv_report_t* const p_adv);
 
 void
-adv_table_read_retransmission_list_and_clear(adv_report_table_t *const p_reports);
+adv_table_read_retransmission_list_and_clear(adv_report_table_t* const p_reports);
 
 void
 adv_table_history_read(
-    adv_report_table_t *const p_reports,
+    adv_report_table_t* const p_reports,
     const time_t              cur_time,
     const bool                flag_use_timestamps,
     const uint32_t            filter,
     const bool                flag_use_filter);
 
 void
-adv_table_statistics_read(adv_report_table_t *const p_reports);
+adv_table_statistics_read(adv_report_table_t* const p_reports);
 
 void
 adv_table_clear(void);
@@ -82,7 +82,7 @@ adv_table_clear(void);
 
 ADV_TABLE_STATIC
 uint32_t
-adv_report_calc_hash(const mac_address_bin_t *const p_mac);
+adv_report_calc_hash(const mac_address_bin_t* const p_mac);
 
 #endif /* RUUVI_TESTS_ADV_TABLE */
 

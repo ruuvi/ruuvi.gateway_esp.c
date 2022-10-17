@@ -45,7 +45,7 @@ ruuvi_device_id_deinit(void)
 }
 
 void
-ruuvi_device_id_set(const nrf52_device_id_t *const p_nrf52_device_id, const mac_address_bin_t *const p_nrf52_mac_addr)
+ruuvi_device_id_set(const nrf52_device_id_t* const p_nrf52_device_id, const mac_address_bin_t* const p_nrf52_mac_addr)
 {
     os_mutex_lock(g_ruuvi_device_id_mutex);
     g_nrf52_device_info.nrf52_device_id      = *p_nrf52_device_id;
@@ -55,7 +55,7 @@ ruuvi_device_id_set(const nrf52_device_id_t *const p_nrf52_device_id, const mac_
 }
 
 static bool
-ruuvi_device_id_is_set(nrf52_device_info_t *const p_nrf52_device_info)
+ruuvi_device_id_is_set(nrf52_device_info_t* const p_nrf52_device_info)
 {
     os_mutex_lock(g_ruuvi_device_id_mutex);
     const bool flag_is_set = g_ruuvi_device_id_flag_nrf52_id_received;

@@ -25,7 +25,7 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
-static const char *TAG = "LEDS";
+static const char* TAG = "LEDS";
 
 #define LED_PIN (RB_ESP32_GPIO_MUX_LED)
 
@@ -80,13 +80,13 @@ static ledc_channel_config_t ledc_channel[1] = {
 
 static os_mutex_t                     g_p_leds_mutex;
 static os_mutex_static_t              g_leds_mutex_mem;
-static os_signal_t *                  g_p_leds_signal;
+static os_signal_t*                   g_p_leds_signal;
 static os_signal_static_t             g_leds_signal_mem;
-static os_timer_sig_periodic_t *      g_p_leds_timer_sig_turn_on;
+static os_timer_sig_periodic_t*       g_p_leds_timer_sig_turn_on;
 static os_timer_sig_periodic_static_t g_leds_timer_sig_turn_on_mem;
-static os_timer_sig_one_shot_t *      g_p_leds_timer_sig_turn_off;
+static os_timer_sig_one_shot_t*       g_p_leds_timer_sig_turn_off;
 static os_timer_sig_one_shot_static_t g_leds_timer_sig_turn_off_mem;
-static os_timer_sig_periodic_t *      g_p_leds_timer_sig_watchdog_feed;
+static os_timer_sig_periodic_t*       g_p_leds_timer_sig_watchdog_feed;
 static os_timer_sig_periodic_static_t g_leds_timer_sig_watchdog_feed_mem;
 static TimeUnitsMilliSeconds_t        g_leds_period_ms;
 static uint32_t                       g_leds_duty_cycle_percent;

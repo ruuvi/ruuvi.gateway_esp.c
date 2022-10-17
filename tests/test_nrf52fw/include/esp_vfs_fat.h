@@ -177,10 +177,10 @@ esp_err_t esp_vfs_fat_sdmmc_unmount();
  */
 esp_err_t
 esp_vfs_fat_spiflash_mount(
-    const char *                      base_path,
-    const char *                      partition_label,
-    const esp_vfs_fat_mount_config_t *mount_config,
-    wl_handle_t *                     wl_handle);
+    const char*                       base_path,
+    const char*                       partition_label,
+    const esp_vfs_fat_mount_config_t* mount_config,
+    wl_handle_t*                      wl_handle);
 
 /**
  * @brief Unmount FAT filesystem and release resources acquired using esp_vfs_fat_spiflash_mount
@@ -193,7 +193,7 @@ esp_vfs_fat_spiflash_mount(
  *      - ESP_ERR_INVALID_STATE if esp_vfs_fat_spiflash_mount hasn't been called
  */
 esp_err_t
-esp_vfs_fat_spiflash_unmount(const char *base_path, wl_handle_t wl_handle);
+esp_vfs_fat_spiflash_unmount(const char* base_path, wl_handle_t wl_handle);
 
 #if 0
 /**

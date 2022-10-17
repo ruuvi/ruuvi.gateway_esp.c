@@ -47,13 +47,13 @@ TestAdvTable::~TestAdvTable() = default;
 extern "C" {
 
 os_mutex_t
-os_mutex_create_static(os_mutex_static_t *const p_mutex_static)
+os_mutex_create_static(os_mutex_static_t* const p_mutex_static)
 {
     return reinterpret_cast<os_mutex_t>(p_mutex_static);
 }
 
 void
-os_mutex_delete(os_mutex_t *const ph_mutex)
+os_mutex_delete(os_mutex_t* const ph_mutex)
 {
     (void)ph_mutex;
 }
@@ -77,16 +77,16 @@ os_mutex_unlock(os_mutex_t const h_mutex)
 #define DECL_ADV_REPORT(adv_var_name_, mac_addr_, timestamp_, rssi_, data_var_name_, ...) \
     auto               data_var_name_ = make_array<uint8_t>(__VA_ARGS__); \
     const adv_report_t adv_var_name_  = { \
-        .timestamp = timestamp_, \
-        .tag_mac   = { ((mac_addr_) >> 5U * 8U) & 0xFFU, \
-                     ((mac_addr_) >> 4U * 8U) & 0xFFU, \
-                     ((mac_addr_) >> 3U * 8U) & 0xFFU, \
-                     ((mac_addr_) >> 2U * 8U) & 0xFFU, \
-                     ((mac_addr_) >> 1U * 8U) & 0xFFU, \
-                     ((mac_addr_) >> 0U * 8U) & 0xFFU }, \
-        .rssi      = rssi_, \
-        .data_len  = data_var_name_.size(), \
-        .data_buf  = { __VA_ARGS__ }, \
+         .timestamp = timestamp_, \
+         .tag_mac   = { ((mac_addr_) >> 5U * 8U) & 0xFFU, \
+                        ((mac_addr_) >> 4U * 8U) & 0xFFU, \
+                        ((mac_addr_) >> 3U * 8U) & 0xFFU, \
+                        ((mac_addr_) >> 2U * 8U) & 0xFFU, \
+                        ((mac_addr_) >> 1U * 8U) & 0xFFU, \
+                        ((mac_addr_) >> 0U * 8U) & 0xFFU }, \
+         .rssi      = rssi_, \
+         .data_len  = data_var_name_.size(), \
+         .data_buf  = { __VA_ARGS__ }, \
     }
 
 #define CHECK_ADV_REPORT(exp_adv_, exp_data_, p_adv_) \
@@ -104,7 +104,7 @@ os_mutex_unlock(os_mutex_t const h_mutex)
 
 template<typename V, typename... T>
 constexpr auto
-make_array(T &&... values) -> std::array<V, sizeof...(T)>
+make_array(T&&... values) -> std::array<V, sizeof...(T)>
 {
     return std::array<V, sizeof...(T)> { std::forward<V>(values)... };
 }

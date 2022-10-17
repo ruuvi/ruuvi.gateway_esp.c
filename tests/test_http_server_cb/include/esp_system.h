@@ -155,7 +155,7 @@ esp_random(void);
  * @param len Length of buffer in bytes
  */
 void
-esp_fill_random(void *buf, size_t len);
+esp_fill_random(void* buf, size_t len);
 
 /**
  * @brief  Set base MAC address with the MAC address which is stored in BLK3 of EFUSE or
@@ -171,7 +171,7 @@ esp_fill_random(void *buf, size_t len);
  * @return ESP_OK on success
  */
 esp_err_t
-esp_base_mac_addr_set(uint8_t *mac);
+esp_base_mac_addr_set(uint8_t* mac);
 
 /**
  * @brief  Return base MAC address which is set using esp_base_mac_addr_set.
@@ -182,7 +182,7 @@ esp_base_mac_addr_set(uint8_t *mac);
  *         ESP_ERR_INVALID_MAC base MAC address has not been set
  */
 esp_err_t
-esp_base_mac_addr_get(uint8_t *mac);
+esp_base_mac_addr_get(uint8_t* mac);
 
 /**
  * @brief  Return base MAC address which was previously written to BLK3 of EFUSE.
@@ -199,7 +199,7 @@ esp_base_mac_addr_get(uint8_t *mac);
  *         ESP_ERR_INVALID_CRC An invalid MAC CRC was read from BLK3 of EFUSE
  */
 esp_err_t
-esp_efuse_mac_get_custom(uint8_t *mac);
+esp_efuse_mac_get_custom(uint8_t* mac);
 
 /**
  * @brief  Return base MAC address which is factory-programmed by Espressif in BLK0 of EFUSE.
@@ -209,7 +209,7 @@ esp_efuse_mac_get_custom(uint8_t *mac);
  * @return ESP_OK on success
  */
 esp_err_t
-esp_efuse_mac_get_default(uint8_t *mac);
+esp_efuse_mac_get_default(uint8_t* mac);
 
 /**
  * @brief  Read base MAC address and set MAC address of the interface.
@@ -224,7 +224,7 @@ esp_efuse_mac_get_default(uint8_t *mac);
  * @return ESP_OK on success
  */
 esp_err_t
-esp_read_mac(uint8_t *mac, esp_mac_type_t type);
+esp_read_mac(uint8_t* mac, esp_mac_type_t type);
 
 /**
  * @brief  Derive local MAC address from universal MAC address.
@@ -241,7 +241,7 @@ esp_read_mac(uint8_t *mac, esp_mac_type_t type);
  * @return ESP_OK on success
  */
 esp_err_t
-esp_derive_local_mac(uint8_t *local_mac, const uint8_t *universal_mac);
+esp_derive_local_mac(uint8_t* local_mac, const uint8_t* universal_mac);
 
 /**
  * @brief Chip models
@@ -273,7 +273,7 @@ typedef struct
  * @param[out] out_info structure to be filled
  */
 void
-esp_chip_info(esp_chip_info_t *out_info);
+esp_chip_info(esp_chip_info_t* out_info);
 
 #ifdef __cplusplus
 }

@@ -37,9 +37,9 @@ typedef struct event_mgr_t event_mgr_t;
 
 typedef struct event_mgr_ev_info_static_t
 {
-    void *          stub1;
-    void *          stub2;
-    void *          stub3;
+    void*           stub1;
+    void*           stub2;
+    void*           stub3;
     os_signal_num_e stub4;
     bool            stub5;
 } event_mgr_ev_info_static_t;
@@ -52,13 +52,13 @@ void
 event_mgr_deinit(void);
 
 bool
-event_mgr_subscribe_sig(const event_mgr_ev_e event, os_signal_t *const p_signal, const os_signal_num_e sig_num);
+event_mgr_subscribe_sig(const event_mgr_ev_e event, os_signal_t* const p_signal, const os_signal_num_e sig_num);
 
 void
 event_mgr_subscribe_sig_static(
-    event_mgr_ev_info_static_t *const p_ev_info_mem,
+    event_mgr_ev_info_static_t* const p_ev_info_mem,
     const event_mgr_ev_e              event,
-    os_signal_t *const                p_signal,
+    os_signal_t* const                p_signal,
     const os_signal_num_e             sig_num);
 
 void

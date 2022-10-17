@@ -27,7 +27,7 @@ extern "C" {
 #endif
 
 bool
-json_ruuvi_parse_http_body(const char *const p_body, gw_cfg_t *const p_gw_cfg, bool *const p_flag_network_cfg);
+json_ruuvi_parse_http_body(const char* const p_body, gw_cfg_t* const p_gw_cfg, bool* const p_flag_network_cfg);
 
 #ifdef __cplusplus
 }

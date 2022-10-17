@@ -43,7 +43,7 @@ extern "C" {
 #define ESP_IP6_ADDR_BLOCK8(ip6addr) ((uint16_t)((esp_netif_htonl((ip6addr)->addr[3])) & 0xffff))
 
 #define IPSTR                              "%d.%d.%d.%d"
-#define esp_ip4_addr_get_byte(ipaddr, idx) (((const uint8_t *)(&(ipaddr)->addr))[idx])
+#define esp_ip4_addr_get_byte(ipaddr, idx) (((const uint8_t*)(&(ipaddr)->addr))[idx])
 #define esp_ip4_addr1(ipaddr)              esp_ip4_addr_get_byte(ipaddr, 0)
 #define esp_ip4_addr2(ipaddr)              esp_ip4_addr_get_byte(ipaddr, 1)
 #define esp_ip4_addr3(ipaddr)              esp_ip4_addr_get_byte(ipaddr, 2)
@@ -117,7 +117,7 @@ typedef enum
  * @return IPv6 type in form of enum esp_ip6_addr_type_t
  */
 esp_ip6_addr_type_t
-esp_netif_ip6_get_addr_type(esp_ip6_addr_t *ip6_addr);
+esp_netif_ip6_get_addr_type(esp_ip6_addr_t* ip6_addr);
 
 #ifdef __cplusplus
 }

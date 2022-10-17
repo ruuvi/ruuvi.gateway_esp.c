@@ -47,9 +47,9 @@ static os_mutex_t            g_mqtt_mutex;
 static os_mutex_static_t     g_mqtt_mutex_mem;
 static mqtt_protected_data_t g_mqtt_data;
 
-static const char *TAG = "MQTT";
+static const char* TAG = "MQTT";
 
-static mqtt_protected_data_t *
+static mqtt_protected_data_t*
 mqtt_mutex_lock(void)
 {
     if (!g_mqtt_mutex_initialized)
@@ -62,7 +62,7 @@ mqtt_mutex_lock(void)
 }
 
 static void
-mqtt_mutex_unlock(mqtt_protected_data_t **const p_p_data)
+mqtt_mutex_unlock(mqtt_protected_data_t** const p_p_data)
 {
     *p_p_data = NULL;
     os_mutex_unlock(g_mqtt_mutex);
@@ -70,9 +70,9 @@ mqtt_mutex_unlock(mqtt_protected_data_t **const p_p_data)
 
 static void
 mqtt_create_full_topic(
-    mqtt_topic_buf_t *const p_full_topic,
-    const char *const       p_prefix_str,
-    const char *const       p_topic_str)
+    mqtt_topic_buf_t* const p_full_topic,
+    const char* const       p_prefix_str,
+    const char* const       p_topic_str)
 {
     if ((NULL == p_full_topic) || (NULL == p_topic_str))
     {
@@ -91,7 +91,7 @@ mqtt_create_full_topic(
 }
 
 bool
-mqtt_publish_adv(const adv_report_t *const p_adv, const bool flag_use_timestamps, const time_t timestamp)
+mqtt_publish_adv(const adv_report_t* const p_adv, const bool flag_use_timestamps, const time_t timestamp)
 {
     cjson_wrap_str_t                 json_str    = cjson_wrap_str_null();
     const ruuvi_gw_cfg_coordinates_t coordinates = gw_cfg_get_coordinates();
@@ -110,7 +110,7 @@ mqtt_publish_adv(const adv_report_t *const p_adv, const bool flag_use_timestamps
     const mac_address_str_t          tag_mac_str = mac_address_to_str(&p_adv->tag_mac);
     const ruuvi_gw_cfg_mqtt_prefix_t mqtt_prefix = gw_cfg_get_mqtt_prefix();
 
-    mqtt_protected_data_t *p_mqtt_data = mqtt_mutex_lock();
+    mqtt_protected_data_t* p_mqtt_data = mqtt_mutex_lock();
     if (NULL == p_mqtt_data->p_mqtt_client)
     {
         LOG_ERR("Can't send advs - MQTT was stopped");
@@ -146,11 +146,11 @@ mqtt_publish_adv(const adv_report_t *const p_adv, const bool flag_use_timestamps
 void
 mqtt_publish_connect(void)
 {
-    char *p_message = "{\"state\": \"online\"}";
+    char* p_message = "{\"state\": \"online\"}";
 
     const ruuvi_gw_cfg_mqtt_prefix_t mqtt_prefix = gw_cfg_get_mqtt_prefix();
 
-    mqtt_protected_data_t *p_mqtt_data = mqtt_mutex_lock();
+    mqtt_protected_data_t* p_mqtt_data = mqtt_mutex_lock();
     mqtt_create_full_topic(&p_mqtt_data->mqtt_topic, mqtt_prefix.buf, "gw_status");
     LOG_INFO("esp_mqtt_client_publish: topic:'%s', message:'%s'", p_mqtt_data->mqtt_topic.buf, p_message);
     const int32_t mqtt_qos         = 1;
@@ -177,9 +177,9 @@ mqtt_publish_connect(void)
 }
 
 static void
-mqtt_publish_state_offline(mqtt_protected_data_t *const p_mqtt_data)
+mqtt_publish_state_offline(mqtt_protected_data_t* const p_mqtt_data)
 {
-    char *p_message = "{\"state\": \"offline\"}";
+    char* p_message = "{\"state\": \"offline\"}";
 
     const ruuvi_gw_cfg_mqtt_prefix_t mqtt_prefix = gw_cfg_get_mqtt_prefix();
 
@@ -261,9 +261,9 @@ mqtt_event_handler(esp_mqtt_event_handle_t h_event)
 
 static esp_mqtt_client_config_t
 mqtt_generate_client_config(
-    const ruuvi_gw_cfg_mqtt_t *const p_cfg_mqtt,
-    const mqtt_topic_buf_t *const    p_mqtt_topic,
-    const char *const                p_lwt_message,
+    const ruuvi_gw_cfg_mqtt_t* const p_cfg_mqtt,
+    const mqtt_topic_buf_t* const    p_mqtt_topic,
+    const char* const                p_lwt_message,
     const esp_mqtt_transport_t       mqtt_transport)
 {
     const esp_mqtt_client_config_t mqtt_cfg = {
@@ -315,10 +315,10 @@ mqtt_generate_client_config(
 }
 
 static esp_mqtt_client_config_t
-mqtt_prep_client_config(const ruuvi_gw_cfg_mqtt_t *const p_cfg_mqtt, mqtt_protected_data_t *const p_mqtt_data)
+mqtt_prep_client_config(const ruuvi_gw_cfg_mqtt_t* const p_cfg_mqtt, mqtt_protected_data_t* const p_mqtt_data)
 {
     mqtt_create_full_topic(&p_mqtt_data->mqtt_topic, p_cfg_mqtt->mqtt_prefix.buf, "gw_status");
-    const char *p_lwt_message = "{\"state\": \"offline\"}";
+    const char* p_lwt_message = "{\"state\": \"offline\"}";
 
     LOG_INFO(
         "Using server: %s, client id: '%s', topic prefix: '%s', port: %u, user: '%s', password: '%s'",
@@ -355,7 +355,7 @@ mqtt_prep_client_config(const ruuvi_gw_cfg_mqtt_t *const p_cfg_mqtt, mqtt_protec
 }
 
 static void
-mqtt_app_start_internal(const esp_mqtt_client_config_t *const p_mqtt_cfg, mqtt_protected_data_t *const p_mqtt_data)
+mqtt_app_start_internal(const esp_mqtt_client_config_t* const p_mqtt_cfg, mqtt_protected_data_t* const p_mqtt_data)
 {
     p_mqtt_data->p_mqtt_client = esp_mqtt_client_init(p_mqtt_cfg);
     if (NULL == p_mqtt_data->p_mqtt_client)
@@ -377,14 +377,14 @@ mqtt_app_start(void)
 {
     LOG_INFO("%s", __func__);
 
-    mqtt_protected_data_t *p_mqtt_data = mqtt_mutex_lock();
+    mqtt_protected_data_t* p_mqtt_data = mqtt_mutex_lock();
     if (NULL != p_mqtt_data->p_mqtt_client)
     {
         LOG_INFO("MQTT client is already running");
     }
     else
     {
-        const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
+        const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
 
         if (('\0' == p_gw_cfg->ruuvi_cfg.mqtt.mqtt_server.buf[0]) || (0 == p_gw_cfg->ruuvi_cfg.mqtt.mqtt_port))
         {
@@ -415,7 +415,7 @@ void
 mqtt_app_stop(void)
 {
     LOG_INFO("%s", __func__);
-    mqtt_protected_data_t *p_mqtt_data = mqtt_mutex_lock();
+    mqtt_protected_data_t* p_mqtt_data = mqtt_mutex_lock();
     if (NULL != p_mqtt_data->p_mqtt_client)
     {
         if (gw_status_is_mqtt_connected())
@@ -453,7 +453,7 @@ mqtt_app_stop(void)
 bool
 mqtt_app_is_working(void)
 {
-    mqtt_protected_data_t *p_mqtt_data = mqtt_mutex_lock();
+    mqtt_protected_data_t* p_mqtt_data = mqtt_mutex_lock();
     const bool             is_working  = (NULL != p_mqtt_data->p_mqtt_client) ? true : false;
     mqtt_mutex_unlock(&p_mqtt_data);
     return is_working;

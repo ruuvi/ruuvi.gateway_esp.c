@@ -119,7 +119,7 @@ typedef struct
 typedef struct
 {
     int                 if_index;  /*!< Interface index for which the event is received (left for legacy compilation) */
-    esp_netif_t *       esp_netif; /*!< Pointer to corresponding esp-netif object */
+    esp_netif_t*        esp_netif; /*!< Pointer to corresponding esp-netif object */
     esp_netif_ip_info_t ip_info;   /*!< IP address, netmask, gatway IP address */
     bool                ip_changed; /*!< Whether the assigned IP has changed or not */
 } ip_event_got_ip_t;
@@ -128,7 +128,7 @@ typedef struct
 typedef struct
 {
     int                  if_index; /*!< Interface index for which the event is received (left for legacy compilation) */
-    esp_netif_t *        esp_netif; /*!< Pointer to corresponding esp-netif object */
+    esp_netif_t*         esp_netif; /*!< Pointer to corresponding esp-netif object */
     esp_netif_ip6_info_t ip6_info;  /*!< IPv6 address of the interface */
     int                  ip_index;  /*!< IPv6 address index */
 } ip_event_got_ip6_t;
@@ -167,11 +167,11 @@ typedef struct esp_netif_inherent_config
 {
     esp_netif_flags_t          flags;         /*!< flags that define esp-netif behavior */
     uint8_t                    mac[6];        /*!< initial mac address for this interface */
-    const esp_netif_ip_info_t *ip_info;       /*!< initial ip address for this interface */
+    const esp_netif_ip_info_t* ip_info;       /*!< initial ip address for this interface */
     uint32_t                   get_ip_event;  /*!< event id to be raised when interface gets an IP */
     uint32_t                   lost_ip_event; /*!< event id to be raised when interface losts its IP */
-    const char *               if_key;        /*!< string identifier of the interface */
-    const char *               if_desc;       /*!< textual description of the interface */
+    const char*                if_key;        /*!< string identifier of the interface */
+    const char*                if_desc;       /*!< textual description of the interface */
     int                        route_prio;    /*!< numeric priority of this interface to become a default
                                                    routing if (if other netifs are up).
                                                    A higher value of route_prio indicates
@@ -183,12 +183,12 @@ typedef struct esp_netif_config esp_netif_config_t;
 /**
  * @brief  IO driver handle type
  */
-typedef void *esp_netif_iodriver_handle;
+typedef void* esp_netif_iodriver_handle;
 
 typedef struct esp_netif_driver_base_s
 {
-    esp_err_t (*post_attach)(esp_netif_t *netif, esp_netif_iodriver_handle h);
-    esp_netif_t *netif;
+    esp_err_t (*post_attach)(esp_netif_t* netif, esp_netif_iodriver_handle h);
+    esp_netif_t* netif;
 } esp_netif_driver_base_t;
 
 /**
@@ -197,9 +197,9 @@ typedef struct esp_netif_driver_base_s
 struct esp_netif_driver_ifconfig
 {
     esp_netif_iodriver_handle handle;
-    esp_err_t (*transmit)(void *h, void *buffer, size_t len);
-    esp_err_t (*transmit_wrap)(void *h, void *buffer, size_t len, void *netstack_buffer);
-    void (*driver_free_rx_buffer)(void *h, void *buffer);
+    esp_err_t (*transmit)(void* h, void* buffer, size_t len);
+    esp_err_t (*transmit_wrap)(void* h, void* buffer, size_t len, void* netstack_buffer);
+    void (*driver_free_rx_buffer)(void* h, void* buffer);
 };
 
 typedef struct esp_netif_driver_ifconfig esp_netif_driver_ifconfig_t;
@@ -215,15 +215,15 @@ typedef struct esp_netif_netstack_config esp_netif_netstack_config_t;
  */
 struct esp_netif_config
 {
-    const esp_netif_inherent_config_t *base;
-    const esp_netif_driver_ifconfig_t *driver;
-    const esp_netif_netstack_config_t *stack;
+    const esp_netif_inherent_config_t* base;
+    const esp_netif_driver_ifconfig_t* driver;
+    const esp_netif_netstack_config_t* stack;
 };
 
 /**
  * @brief  ESP-NETIF Receive function type
  */
-typedef esp_err_t (*esp_netif_receive_t)(esp_netif_t *esp_netif, void *buffer, size_t len, void *eb);
+typedef esp_err_t (*esp_netif_receive_t)(esp_netif_t* esp_netif, void* buffer, size_t len, void* eb);
 
 #ifdef __cplusplus
 }

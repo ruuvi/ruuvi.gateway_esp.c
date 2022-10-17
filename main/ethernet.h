@@ -17,7 +17,7 @@ extern "C" {
 
 typedef void (*ethernet_cb_link_up_t)(void);
 typedef void (*ethernet_cb_link_down_t)(void);
-typedef void (*ethernet_cb_connection_ok_t)(const esp_netif_ip_info_t *p_ip_info);
+typedef void (*ethernet_cb_connection_ok_t)(const esp_netif_ip_info_t* p_ip_info);
 
 bool
 ethernet_init(
@@ -29,7 +29,7 @@ void
 ethernet_deinit(void);
 
 void
-ethernet_start(const char *const hostname);
+ethernet_start(const char* const hostname);
 
 void
 ethernet_stop(void);

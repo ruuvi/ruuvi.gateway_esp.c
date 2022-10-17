@@ -9,13 +9,13 @@
 #include "bin2hex.h"
 #include "os_malloc.h"
 
-static cJSON *
+static cJSON*
 http_json_generate_records_data_attributes(
-    cJSON *const             p_json_data,
+    cJSON* const             p_json_data,
     const bool               flag_use_timestamps,
     const time_t             timestamp,
-    const mac_address_str_t *p_mac_addr,
-    const char *             p_coordinates_str,
+    const mac_address_str_t* p_mac_addr,
+    const char*              p_coordinates_str,
     const bool               flag_use_nonce,
     const uint32_t           nonce)
 {
@@ -40,12 +40,12 @@ http_json_generate_records_data_attributes(
 
 static bool
 http_json_generate_records_tag_mac_section(
-    cJSON *const              p_json_tags,
-    const adv_report_t *const p_adv,
+    cJSON* const              p_json_tags,
+    const adv_report_t* const p_adv,
     const bool                flag_use_timestamps)
 {
     const mac_address_str_t mac_str    = mac_address_to_str(&p_adv->tag_mac);
-    cJSON *const            p_json_tag = cJSON_AddObjectToObject(p_json_tags, mac_str.str_buf);
+    cJSON* const            p_json_tag = cJSON_AddObjectToObject(p_json_tags, mac_str.str_buf);
     if (NULL == p_json_tag)
     {
         return false;
@@ -68,7 +68,7 @@ http_json_generate_records_tag_mac_section(
             return false;
         }
     }
-    char *p_hex_str = bin2hex_with_malloc(p_adv->data_buf, p_adv->data_len);
+    char* p_hex_str = bin2hex_with_malloc(p_adv->data_buf, p_adv->data_len);
     if (NULL == p_hex_str)
     {
         return false;
@@ -84,22 +84,22 @@ http_json_generate_records_tag_mac_section(
 
 static bool
 http_json_generate_records_data_section(
-    cJSON *const                    p_json_root,
-    const adv_report_table_t *const p_reports,
+    cJSON* const                    p_json_root,
+    const adv_report_table_t* const p_reports,
     const bool                      flag_use_timestamps,
     const time_t                    timestamp,
-    const mac_address_str_t *       p_mac_addr,
-    const char *                    p_coordinates_str,
+    const mac_address_str_t*        p_mac_addr,
+    const char*                     p_coordinates_str,
     const bool                      flag_use_nonce,
     const uint32_t                  nonce)
 {
-    cJSON *const p_json_data = cJSON_AddObjectToObject(p_json_root, "data");
+    cJSON* const p_json_data = cJSON_AddObjectToObject(p_json_root, "data");
     if (NULL == p_json_data)
     {
         return false;
     }
 
-    cJSON *const p_json_tags = http_json_generate_records_data_attributes(
+    cJSON* const p_json_tags = http_json_generate_records_data_attributes(
         p_json_data,
         flag_use_timestamps,
         timestamp,
@@ -122,17 +122,17 @@ http_json_generate_records_data_section(
     return true;
 }
 
-static cJSON *
+static cJSON*
 http_json_generate_records(
-    const adv_report_table_t *const p_reports,
+    const adv_report_table_t* const p_reports,
     const bool                      flag_use_timestamps,
     const time_t                    timestamp,
-    const mac_address_str_t *       p_mac_addr,
-    const char *                    p_coordinates_str,
+    const mac_address_str_t*        p_mac_addr,
+    const char*                     p_coordinates_str,
     const bool                      flag_use_nonce,
     const uint32_t                  nonce)
 {
-    cJSON *p_json_root = cJSON_CreateObject();
+    cJSON* p_json_root = cJSON_CreateObject();
     if (NULL == p_json_root)
     {
         return NULL;
@@ -155,16 +155,16 @@ http_json_generate_records(
 
 bool
 http_json_create_records_str(
-    const adv_report_table_t *const p_reports,
+    const adv_report_table_t* const p_reports,
     const bool                      flag_use_timestamps,
     const time_t                    timestamp,
-    const mac_address_str_t *const  p_mac_addr,
-    const char *const               p_coordinates_str,
+    const mac_address_str_t* const  p_mac_addr,
+    const char* const               p_coordinates_str,
     const bool                      flag_use_nonce,
     const uint32_t                  nonce,
-    cjson_wrap_str_t *const         p_json_str)
+    cjson_wrap_str_t* const         p_json_str)
 {
-    cJSON *p_json_root = http_json_generate_records(
+    cJSON* p_json_root = http_json_generate_records(
         p_reports,
         flag_use_timestamps,
         timestamp,
@@ -186,17 +186,17 @@ http_json_create_records_str(
 
 static bool
 http_json_generate_attributes_for_sensors(
-    const adv_report_table_t *const p_reports,
-    cJSON *const                    p_json_active_sensors,
-    cJSON *const                    p_json_inactive_sensors)
+    const adv_report_table_t* const p_reports,
+    cJSON* const                    p_json_active_sensors,
+    cJSON* const                    p_json_inactive_sensors)
 {
     for (num_of_advs_t i = 0; i < p_reports->num_of_advs; ++i)
     {
-        const adv_report_t *const p_adv   = &p_reports->table[i];
+        const adv_report_t* const p_adv   = &p_reports->table[i];
         const mac_address_str_t   mac_str = mac_address_to_str(&p_adv->tag_mac);
         if (0 != p_adv->samples_counter)
         {
-            cJSON *p_json_obj = cJSON_CreateObject();
+            cJSON* p_json_obj = cJSON_CreateObject();
             if (NULL == p_json_obj)
             {
                 return false;
@@ -213,7 +213,7 @@ http_json_generate_attributes_for_sensors(
         }
         else
         {
-            cJSON *p_json_str = cJSON_CreateString(mac_str.str_buf);
+            cJSON* p_json_str = cJSON_CreateString(mac_str.str_buf);
             if (NULL == p_json_str)
             {
                 return false;
@@ -226,9 +226,9 @@ http_json_generate_attributes_for_sensors(
 
 static bool
 http_json_generate_status_attributes(
-    cJSON *const                             p_json_root,
-    const http_json_statistics_info_t *const p_stat_info,
-    const adv_report_table_t *const          p_reports)
+    cJSON* const                             p_json_root,
+    const http_json_statistics_info_t* const p_stat_info,
+    const adv_report_table_t* const          p_reports)
 {
     if (NULL == cJSON_AddStringToObject(p_json_root, "DEVICE_ADDR", p_stat_info->nrf52_mac_addr.str_buf))
     {
@@ -250,7 +250,7 @@ http_json_generate_status_attributes(
     {
         return false;
     }
-    const char *const p_connection_type = p_stat_info->is_connected_to_wifi ? "WIFI" : "ETHERNET";
+    const char* const p_connection_type = p_stat_info->is_connected_to_wifi ? "WIFI" : "ETHERNET";
     if (NULL == cJSON_AddStringToObject(p_json_root, "CONNECTION", p_connection_type))
     {
         return false;
@@ -262,7 +262,7 @@ http_json_generate_status_attributes(
     uint32_t num_sensors_seen = 0;
     for (num_of_advs_t i = 0; i < p_reports->num_of_advs; ++i)
     {
-        const adv_report_t *const p_adv = &p_reports->table[i];
+        const adv_report_t* const p_adv = &p_reports->table[i];
         if (0 != p_adv->samples_counter)
         {
             num_sensors_seen += 1;
@@ -272,12 +272,12 @@ http_json_generate_status_attributes(
     {
         return false;
     }
-    cJSON *p_json_active_sensors = cJSON_AddArrayToObject(p_json_root, "ACTIVE_SENSORS");
+    cJSON* p_json_active_sensors = cJSON_AddArrayToObject(p_json_root, "ACTIVE_SENSORS");
     if (NULL == p_json_active_sensors)
     {
         return false;
     }
-    cJSON *p_json_inactive_sensors = cJSON_AddArrayToObject(p_json_root, "INACTIVE_SENSORS");
+    cJSON* p_json_inactive_sensors = cJSON_AddArrayToObject(p_json_root, "INACTIVE_SENSORS");
     if (NULL == p_json_inactive_sensors)
     {
         return false;
@@ -285,12 +285,12 @@ http_json_generate_status_attributes(
     return http_json_generate_attributes_for_sensors(p_reports, p_json_active_sensors, p_json_inactive_sensors);
 }
 
-static cJSON *
+static cJSON*
 http_json_generate_status(
-    const http_json_statistics_info_t *const p_stat_info,
-    const adv_report_table_t *const          p_reports)
+    const http_json_statistics_info_t* const p_stat_info,
+    const adv_report_table_t* const          p_reports)
 {
-    cJSON *p_json_root = cJSON_CreateObject();
+    cJSON* p_json_root = cJSON_CreateObject();
     if (NULL == p_json_root)
     {
         return NULL;
@@ -305,11 +305,11 @@ http_json_generate_status(
 
 bool
 http_json_create_status_str(
-    const http_json_statistics_info_t *const p_stat_info,
-    const adv_report_table_t *const          p_reports,
-    cjson_wrap_str_t *const                  p_json_str)
+    const http_json_statistics_info_t* const p_stat_info,
+    const adv_report_table_t* const          p_reports,
+    cjson_wrap_str_t* const                  p_json_str)
 {
-    cJSON *p_json_root = http_json_generate_status(p_stat_info, p_reports);
+    cJSON* p_json_root = http_json_generate_status(p_stat_info, p_reports);
     if (NULL == p_json_root)
     {
         return false;

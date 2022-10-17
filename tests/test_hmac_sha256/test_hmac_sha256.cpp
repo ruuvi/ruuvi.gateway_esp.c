@@ -13,7 +13,7 @@
 using namespace std;
 
 class TestHMAC_SHA256;
-static TestHMAC_SHA256 *g_pObj;
+static TestHMAC_SHA256* g_pObj;
 
 /*** Google-test class implementation
  * *********************************************************************************/
@@ -56,7 +56,7 @@ TestHMAC_SHA256::~TestHMAC_SHA256() = default;
 extern "C" {
 #endif
 
-void *
+void*
 mbedtls_calloc(size_t n, size_t size)
 {
     if (0 != g_pObj->malloc_fail_on_cnt)
@@ -70,7 +70,7 @@ mbedtls_calloc(size_t n, size_t size)
 }
 
 void
-mbedtls_free(void *ptr)
+mbedtls_free(void* ptr)
 {
     free(ptr);
 }
@@ -91,7 +91,7 @@ TEST_F(TestHMAC_SHA256, test_hmac_sha256_in_bin_buf) // NOLINT
     ASSERT_TRUE(hmac_sha256_set_key_str("key"));
     hmac_sha256_t hmac_sha256 = { 0 };
     const string  msg         = "The quick brown fox jumps over the lazy dog";
-    ASSERT_TRUE(hmac_sha256_calc(reinterpret_cast<const uint8_t *>(msg.c_str()), msg.length(), &hmac_sha256));
+    ASSERT_TRUE(hmac_sha256_calc(reinterpret_cast<const uint8_t*>(msg.c_str()), msg.length(), &hmac_sha256));
     const std::vector<uint8_t> exp_hmac_sha256 = {
         0xf7, 0xbc, 0x83, 0xf4, 0x30, 0x53, 0x84, 0x24, 0xb1, 0x32, 0x98, 0xe6, 0xaa, 0x6f, 0xb1, 0x43,
         0xef, 0x4d, 0x59, 0xa1, 0x49, 0x46, 0x17, 0x59, 0x97, 0x47, 0x9d, 0xbc, 0x2d, 0x1a, 0x3c, 0xd8,

@@ -35,7 +35,7 @@ extern "C" {
  * @return true if the parsing was successful.
  */
 bool
-time_str_conv_to_tm(const char *const p_time_str, struct tm *const p_tm_time, uint16_t *const p_ms);
+time_str_conv_to_tm(const char* const p_time_str, struct tm* const p_tm_time, uint16_t* const p_ms);
 
 /**
  * @brief Parse a string with timestamp in ISO 8601 standard and return unix-time (time_t).
@@ -43,7 +43,7 @@ time_str_conv_to_tm(const char *const p_time_str, struct tm *const p_tm_time, ui
  * @return unix-time or 0 if the parsing was unsuccessful.
  */
 time_t
-time_str_conv_to_unix_time(const char *const p_time_str);
+time_str_conv_to_unix_time(const char* const p_time_str);
 
 #ifdef __cplusplus
 }

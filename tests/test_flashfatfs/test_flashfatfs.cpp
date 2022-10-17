@@ -22,12 +22,12 @@ using namespace std;
 
 struct flash_fat_fs_t
 {
-    char *      mount_point;
+    char*       mount_point;
     wl_handle_t wl_handle;
 };
 
 class TestFlashFatFs;
-static TestFlashFatFs *g_pTestClass;
+static TestFlashFatFs* g_pTestClass;
 
 class FlashFatFs_VFS_FAT_MountInfo
 {
@@ -43,10 +43,10 @@ public:
 
 class MemAllocTrace
 {
-    vector<void *> allocated_mem;
+    vector<void*> allocated_mem;
 
-    std::vector<void *>::iterator
-    find(void *ptr)
+    std::vector<void*>::iterator
+    find(void* ptr)
     {
         for (auto iter = this->allocated_mem.begin(); iter != this->allocated_mem.end(); ++iter)
         {
@@ -60,14 +60,14 @@ class MemAllocTrace
 
 public:
     void
-    add(void *ptr)
+    add(void* ptr)
     {
         auto iter = find(ptr);
         assert(iter == this->allocated_mem.end()); // ptr was found in the list of allocated memory blocks
         this->allocated_mem.push_back(ptr);
     }
     void
-    remove(void *ptr)
+    remove(void* ptr)
     {
         auto iter = find(ptr);
         assert(iter != this->allocated_mem.end()); // ptr was not found in the list of allocated memory blocks
@@ -81,13 +81,13 @@ public:
 };
 
 static int
-remove_file(const char *filename, const struct stat *status, int flag, struct FTW *p_info)
+remove_file(const char* filename, const struct stat* status, int flag, struct FTW* p_info)
 {
     return remove(filename);
 }
 
 static void
-remove_dir_with_files(const char *path)
+remove_dir_with_files(const char* path)
 {
     struct stat st = { 0 };
     if (stat(path, &st) == 0)
@@ -109,10 +109,10 @@ class TestFlashFatFs : public ::testing::Test
 {
 private:
 protected:
-    FILE *                m_fd;
-    const flash_fat_fs_t *m_p_ffs;
-    const char *          m_mount_point_dir;
-    const char *          m_mount_point;
+    FILE*                 m_fd;
+    const flash_fat_fs_t* m_p_ffs;
+    const char*           m_mount_point_dir;
+    const char*           m_mount_point;
 
     void
     SetUp() override
@@ -156,8 +156,8 @@ protected:
         g_pTestClass = nullptr;
     }
 
-    FILE *
-    open_file(const char *file_name, const char *mode)
+    FILE*
+    open_file(const char* file_name, const char* mode)
     {
         char full_path_info_txt[40];
         snprintf(full_path_info_txt, sizeof(full_path_info_txt), "%s/%s", this->m_mount_point_dir, file_name);
@@ -184,11 +184,11 @@ TestFlashFatFs::~TestFlashFatFs() = default;
 
 extern "C" {
 
-const char *
+const char*
 os_task_get_name(void)
 {
     static const char g_task_name[] = "main";
-    return const_cast<char *>(g_task_name);
+    return const_cast<char*>(g_task_name);
 }
 
 os_task_priority_t
@@ -197,34 +197,34 @@ os_task_get_priority(void)
     return 0;
 }
 
-void *
+void*
 os_malloc(const size_t size)
 {
     if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
     {
         return nullptr;
     }
-    void *ptr = malloc(size);
+    void* ptr = malloc(size);
     assert(nullptr != ptr);
     g_pTestClass->m_mem_alloc_trace.add(ptr);
     return ptr;
 }
 
 void
-os_free_internal(void *ptr)
+os_free_internal(void* ptr)
 {
     g_pTestClass->m_mem_alloc_trace.remove(ptr);
     free(ptr);
 }
 
-void *
+void*
 os_calloc(const size_t nmemb, const size_t size)
 {
     if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
     {
         return nullptr;
     }
-    void *ptr = calloc(nmemb, size);
+    void* ptr = calloc(nmemb, size);
     assert(nullptr != ptr);
     g_pTestClass->m_mem_alloc_trace.add(ptr);
     return ptr;
@@ -232,10 +232,10 @@ os_calloc(const size_t nmemb, const size_t size)
 
 esp_err_t
 esp_vfs_fat_spiflash_mount(
-    const char *                      base_path,
-    const char *                      partition_label,
-    const esp_vfs_fat_mount_config_t *mount_config,
-    wl_handle_t *                     wl_handle)
+    const char*                       base_path,
+    const char*                       partition_label,
+    const esp_vfs_fat_mount_config_t* mount_config,
+    wl_handle_t*                      wl_handle)
 {
     g_pTestClass->m_mount_info.base_path       = string(base_path);
     g_pTestClass->m_mount_info.partition_label = string(partition_label);
@@ -246,7 +246,7 @@ esp_vfs_fat_spiflash_mount(
 }
 
 esp_err_t
-esp_vfs_fat_spiflash_unmount(const char *base_path, wl_handle_t wl_handle)
+esp_vfs_fat_spiflash_unmount(const char* base_path, wl_handle_t wl_handle)
 {
     assert(nullptr != g_pTestClass);
     assert(g_pTestClass->m_mount_info.flag_mounted);
@@ -369,12 +369,12 @@ TEST_F(TestFlashFatFs, flashfatfs_mount_failed_on_spiflash_mount) // NOLINT
 TEST_F(TestFlashFatFs, flashfatfs_get_full_path_no_mount_point) // NOLINT
 {
     {
-        const char *      file_name = "abc";
+        const char*       file_name = "abc";
         flashfatfs_path_t path      = flashfatfs_get_full_path(nullptr, file_name);
         ASSERT_EQ(string(path.buf), "/abc");
     }
     {
-        const char *      file_name = "123456789012345678901234567890123456789012345678901234567890123456789012345678";
+        const char*       file_name = "123456789012345678901234567890123456789012345678901234567890123456789012345678";
         flashfatfs_path_t path      = flashfatfs_get_full_path(nullptr, file_name);
         ASSERT_EQ(string(path.buf), string("/") + string(file_name));
     }
@@ -388,10 +388,10 @@ TEST_F(TestFlashFatFs, flashfatfs_get_full_path_no_mount_point) // NOLINT
 
 TEST_F(TestFlashFatFs, flashfatfs_get_full_path_with_mount_point) // NOLINT
 {
-    const char *mount_point = "/fs_nrf52";
+    const char* mount_point = "/fs_nrf52";
     this->m_p_ffs           = flashfatfs_mount(mount_point, GW_NRF_PARTITION, 1);
     {
-        const char *      file_name = "abc";
+        const char*       file_name = "abc";
         flashfatfs_path_t path      = flashfatfs_get_full_path(this->m_p_ffs, file_name);
         ASSERT_EQ(string(path.buf), string("./fs_nrf52/abc"));
     }
@@ -405,12 +405,12 @@ TEST_F(TestFlashFatFs, flashfatfs_get_full_path_with_mount_point) // NOLINT
 
 TEST_F(TestFlashFatFs, flashfatfs_open_without_ffs) // NOLINT
 {
-    const char *test_file_name = "test1.txt";
-    const char *test_text      = "test123\n";
+    const char* test_file_name = "test1.txt";
+    const char* test_text      = "test123\n";
     {
         char tmp_file_path[80];
         snprintf(tmp_file_path, sizeof(tmp_file_path), "%s/%s", this->m_mount_point_dir, test_file_name);
-        FILE *fd = fopen(tmp_file_path, "w");
+        FILE* fd = fopen(tmp_file_path, "w");
         ASSERT_NE(nullptr, fd);
         fprintf(fd, "%s", test_text);
         fclose(fd);
@@ -430,12 +430,12 @@ TEST_F(TestFlashFatFs, flashfatfs_open_ok) // NOLINT
     const int         max_files  = 1;
     this->m_mount_info.wl_handle = wl_handle;
 
-    const char *test_file_name = "test1.txt";
-    const char *test_text      = "test123\n";
+    const char* test_file_name = "test1.txt";
+    const char* test_text      = "test123\n";
     {
         char tmp_file_path[80];
         snprintf(tmp_file_path, sizeof(tmp_file_path), "%s/%s", this->m_mount_point_dir, test_file_name);
-        FILE *fd = fopen(tmp_file_path, "w");
+        FILE* fd = fopen(tmp_file_path, "w");
         ASSERT_NE(nullptr, fd);
         fprintf(fd, "%s", test_text);
         fclose(fd);
@@ -473,7 +473,7 @@ TEST_F(TestFlashFatFs, flashfatfs_open_failed) // NOLINT
     const int         max_files  = 1;
     this->m_mount_info.wl_handle = wl_handle;
 
-    const char *test_file_name = "test1.txt";
+    const char* test_file_name = "test1.txt";
 
     this->m_p_ffs = flashfatfs_mount("fs_nrf52", GW_NRF_PARTITION, max_files);
     ASSERT_NE(nullptr, this->m_p_ffs);
@@ -498,12 +498,12 @@ TEST_F(TestFlashFatFs, flashfatfs_fopen_ascii_ok) // NOLINT
     const int         max_files  = 1;
     this->m_mount_info.wl_handle = wl_handle;
 
-    const char *test_file_name = "test1.txt";
-    const char *test_text      = "test123\n";
+    const char* test_file_name = "test1.txt";
+    const char* test_text      = "test123\n";
     {
         char tmp_file_path[80];
         snprintf(tmp_file_path, sizeof(tmp_file_path), "%s/%s", this->m_mount_point_dir, test_file_name);
-        FILE *fd = fopen(tmp_file_path, "w");
+        FILE* fd = fopen(tmp_file_path, "w");
         ASSERT_NE(nullptr, fd);
         fprintf(fd, "%s", test_text);
         fclose(fd);
@@ -513,7 +513,7 @@ TEST_F(TestFlashFatFs, flashfatfs_fopen_ascii_ok) // NOLINT
     ASSERT_NE(nullptr, this->m_p_ffs);
 
     const bool flag_use_binary_mode = false;
-    FILE *     p_fd                 = flashfatfs_fopen(this->m_p_ffs, test_file_name, flag_use_binary_mode);
+    FILE*      p_fd                 = flashfatfs_fopen(this->m_p_ffs, test_file_name, flag_use_binary_mode);
     ASSERT_NE(nullptr, p_fd);
 
     {
@@ -542,12 +542,12 @@ TEST_F(TestFlashFatFs, flashfatfs_fopen_binary_ok) // NOLINT
     const int         max_files  = 1;
     this->m_mount_info.wl_handle = wl_handle;
 
-    const char *test_file_name = "test1.txt";
-    const char *test_text      = "test123\n";
+    const char* test_file_name = "test1.txt";
+    const char* test_text      = "test123\n";
     {
         char tmp_file_path[80];
         snprintf(tmp_file_path, sizeof(tmp_file_path), "%s/%s", this->m_mount_point_dir, test_file_name);
-        FILE *fd = fopen(tmp_file_path, "w");
+        FILE* fd = fopen(tmp_file_path, "w");
         ASSERT_NE(nullptr, fd);
         fprintf(fd, "%s", test_text);
         fclose(fd);
@@ -557,7 +557,7 @@ TEST_F(TestFlashFatFs, flashfatfs_fopen_binary_ok) // NOLINT
     ASSERT_NE(nullptr, this->m_p_ffs);
 
     const bool flag_use_binary_mode = true;
-    FILE *     p_fd                 = flashfatfs_fopen(this->m_p_ffs, test_file_name, flag_use_binary_mode);
+    FILE*      p_fd                 = flashfatfs_fopen(this->m_p_ffs, test_file_name, flag_use_binary_mode);
     ASSERT_NE(nullptr, p_fd);
 
     {
@@ -586,13 +586,13 @@ TEST_F(TestFlashFatFs, flashfatfs_fopen_failed) // NOLINT
     const int         max_files  = 1;
     this->m_mount_info.wl_handle = wl_handle;
 
-    const char *test_file_name = "test1.txt";
+    const char* test_file_name = "test1.txt";
 
     this->m_p_ffs = flashfatfs_mount("fs_nrf52", GW_NRF_PARTITION, max_files);
     ASSERT_NE(nullptr, this->m_p_ffs);
 
     const bool flag_use_binary_mode = false;
-    FILE *     p_fd                 = flashfatfs_fopen(this->m_p_ffs, test_file_name, flag_use_binary_mode);
+    FILE*      p_fd                 = flashfatfs_fopen(this->m_p_ffs, test_file_name, flag_use_binary_mode);
     ASSERT_EQ(nullptr, p_fd);
 
     ASSERT_TRUE(flashfatfs_unmount(&this->m_p_ffs));
@@ -612,12 +612,12 @@ TEST_F(TestFlashFatFs, flashfatfs_stat_ok) // NOLINT
     const int         max_files  = 1;
     this->m_mount_info.wl_handle = wl_handle;
 
-    const char *test_file_name = "test1.txt";
-    const char *test_text      = "test123\n";
+    const char* test_file_name = "test1.txt";
+    const char* test_text      = "test123\n";
     {
         char tmp_file_path[80];
         snprintf(tmp_file_path, sizeof(tmp_file_path), "%s/%s", this->m_mount_point_dir, test_file_name);
-        FILE *fd = fopen(tmp_file_path, "w");
+        FILE* fd = fopen(tmp_file_path, "w");
         ASSERT_NE(nullptr, fd);
         fprintf(fd, "%s", test_text);
         fclose(fd);
@@ -646,7 +646,7 @@ TEST_F(TestFlashFatFs, flashfatfs_stat_failed) // NOLINT
     const int         max_files  = 1;
     this->m_mount_info.wl_handle = wl_handle;
 
-    const char *test_file_name = "test1.txt";
+    const char* test_file_name = "test1.txt";
 
     this->m_p_ffs = flashfatfs_mount("fs_nrf52", GW_NRF_PARTITION, max_files);
     ASSERT_NE(nullptr, this->m_p_ffs);
@@ -670,12 +670,12 @@ TEST_F(TestFlashFatFs, flashfatfs_get_file_size_ok) // NOLINT
     const int         max_files  = 1;
     this->m_mount_info.wl_handle = wl_handle;
 
-    const char *test_file_name = "test1.txt";
-    const char *test_text      = "test123\n";
+    const char* test_file_name = "test1.txt";
+    const char* test_text      = "test123\n";
     {
         char tmp_file_path[80];
         snprintf(tmp_file_path, sizeof(tmp_file_path), "%s/%s", this->m_mount_point_dir, test_file_name);
-        FILE *fd = fopen(tmp_file_path, "w");
+        FILE* fd = fopen(tmp_file_path, "w");
         ASSERT_NE(nullptr, fd);
         fprintf(fd, "%s", test_text);
         fclose(fd);
@@ -704,7 +704,7 @@ TEST_F(TestFlashFatFs, flashfatfs_get_file_size_failed) // NOLINT
     const int         max_files  = 1;
     this->m_mount_info.wl_handle = wl_handle;
 
-    const char *test_file_name = "test1.txt";
+    const char* test_file_name = "test1.txt";
 
     this->m_p_ffs = flashfatfs_mount("fs_nrf52", GW_NRF_PARTITION, max_files);
     ASSERT_NE(nullptr, this->m_p_ffs);

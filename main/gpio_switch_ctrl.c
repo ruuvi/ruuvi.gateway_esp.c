@@ -14,7 +14,7 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
-static const char *TAG = "SwitchCtrl";
+static const char* TAG = "SwitchCtrl";
 
 static os_mutex_t        g_switch_ctrl_mutex;
 static os_mutex_static_t g_switch_ctrl_mutex_mem;

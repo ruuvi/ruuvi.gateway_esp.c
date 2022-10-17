@@ -57,7 +57,7 @@
 #define TIME_STR_TZ_MINUTES_MUST_BE_MULTIPLE_OF_VAL (15U)
 
 static uint32_t
-time_str_conv_to_uint32_cptr(const char *const p_str, const char **const pp_end, const os_str2num_base_t base)
+time_str_conv_to_uint32_cptr(const char* const p_str, const char** const pp_end, const os_str2num_base_t base)
 {
     if ((NULL != pp_end) && (NULL != *pp_end))
     {
@@ -69,7 +69,7 @@ time_str_conv_to_uint32_cptr(const char *const p_str, const char **const pp_end,
         }
         memcpy(tmp_buf, p_str, max_len);
         tmp_buf[max_len]             = '\0';
-        const char *   p_tmp_buf_end = NULL;
+        const char*    p_tmp_buf_end = NULL;
         const uint32_t result        = os_str_to_uint32_cptr(tmp_buf, &p_tmp_buf_end, base);
         const size_t   end_offset    = (size_t)(p_tmp_buf_end - &tmp_buf[0]);
         *pp_end                      = &p_str[end_offset];
@@ -80,18 +80,18 @@ time_str_conv_to_uint32_cptr(const char *const p_str, const char **const pp_end,
 
 static bool
 parse_val_of_tm(
-    const char **const p_p_cur,
+    const char** const p_p_cur,
     const size_t       val_len,
-    const char *const  p_end2,
+    const char* const  p_end2,
     const uint32_t     min_val,
     const uint32_t     max_val,
     const char         delimiter,
-    int32_t *const     p_val)
+    int32_t* const     p_val)
 {
     assert(min_val <= INT32_MAX);
     assert(max_val <= INT32_MAX);
-    const char *const p_end1 = &(*p_p_cur)[val_len];
-    const char *      p_end  = (p_end1 < p_end2) ? p_end1 : p_end2;
+    const char* const p_end1 = &(*p_p_cur)[val_len];
+    const char*       p_end  = (p_end1 < p_end2) ? p_end1 : p_end2;
     const uint32_t    val    = time_str_conv_to_uint32_cptr(*p_p_cur, &p_end, BASE_10);
     if ((val < min_val) || (val > max_val))
     {
@@ -124,9 +124,9 @@ parse_val_of_tm(
 }
 
 static bool
-parse_ms(const char **const p_p_cur, const char *p_end, uint16_t *const p_ms)
+parse_ms(const char** const p_p_cur, const char* p_end, uint16_t* const p_ms)
 {
-    const char *const p_cur     = *p_p_cur + 1;
+    const char* const p_cur     = *p_p_cur + 1;
     const uint32_t    fract_sec = time_str_conv_to_uint32_cptr(p_cur, &p_end, BASE_10);
     const size_t      len       = (size_t)(p_end - p_cur);
     uint16_t          ms        = 0;
@@ -165,9 +165,9 @@ parse_ms(const char **const p_p_cur, const char *p_end, uint16_t *const p_ms)
 }
 
 static bool
-parse_tz(const char **const p_p_cur, const char *const p_end, int32_t *const p_tz_offset_seconds)
+parse_tz(const char** const p_p_cur, const char* const p_end, int32_t* const p_tz_offset_seconds)
 {
-    const char *p_cur    = *p_p_cur;
+    const char* p_cur    = *p_p_cur;
     *p_tz_offset_seconds = 0;
 
     bool flag_tz_offset_positive = false;
@@ -225,10 +225,10 @@ parse_tz(const char **const p_p_cur, const char *const p_end, int32_t *const p_t
 
 static bool
 time_str_parse_tm_year(
-    const char **const p_p_cur,
-    const char *const  p_end,
-    struct tm *const   p_tm_time,
-    bool *const        p_res)
+    const char** const p_p_cur,
+    const char* const  p_end,
+    struct tm* const   p_tm_time,
+    bool* const        p_res)
 {
     int32_t tm_year = 0;
     if (parse_val_of_tm(p_p_cur, TIME_STR_YEAR_LEN, p_end, TIME_STR_YEAR_MIN, TIME_STR_YEAR_MAX, '-', &tm_year))
@@ -250,10 +250,10 @@ time_str_parse_tm_year(
 
 static bool
 time_str_parse_tm_mon(
-    const char **const p_p_cur,
-    const char *const  p_end,
-    struct tm *const   p_tm_time,
-    bool *const        p_res)
+    const char** const p_p_cur,
+    const char* const  p_end,
+    struct tm* const   p_tm_time,
+    bool* const        p_res)
 {
     int32_t tm_month = 0;
     if (parse_val_of_tm(p_p_cur, TIME_STR_MONTH_LEN, p_end, TIME_STR_MONTH_MIN, TIME_STR_MONTH_MAX, '-', &tm_month))
@@ -275,10 +275,10 @@ time_str_parse_tm_mon(
 
 static bool
 time_str_parse_tm_mday(
-    const char **const p_p_cur,
-    const char *const  p_end,
-    struct tm *const   p_tm_time,
-    bool *const        p_res)
+    const char** const p_p_cur,
+    const char* const  p_end,
+    struct tm* const   p_tm_time,
+    bool* const        p_res)
 {
     int32_t tm_mday = 0;
     if (parse_val_of_tm(
@@ -307,10 +307,10 @@ time_str_parse_tm_mday(
 
 static bool
 time_str_parse_tm_hour(
-    const char **const p_p_cur,
-    const char *const  p_end,
-    struct tm *const   p_tm_time,
-    bool *const        p_res)
+    const char** const p_p_cur,
+    const char* const  p_end,
+    struct tm* const   p_tm_time,
+    bool* const        p_res)
 {
     int32_t tm_hour = 0;
     if (parse_val_of_tm(p_p_cur, TIME_STR_HOUR_LEN, p_end, TIME_STR_HOUR_MIN, TIME_STR_HOUR_MAX, ':', &tm_hour))
@@ -332,10 +332,10 @@ time_str_parse_tm_hour(
 
 static bool
 time_str_parse_tm_min(
-    const char **const p_p_cur,
-    const char *const  p_end,
-    struct tm *const   p_tm_time,
-    bool *const        p_res)
+    const char** const p_p_cur,
+    const char* const  p_end,
+    struct tm* const   p_tm_time,
+    bool* const        p_res)
 {
     int32_t tm_min = 0;
     if (parse_val_of_tm(p_p_cur, TIME_STR_MINUTE_LEN, p_end, TIME_STR_MINUTE_MIN, TIME_STR_MINUTE_MAX, ':', &tm_min))
@@ -357,10 +357,10 @@ time_str_parse_tm_min(
 
 static bool
 time_str_parse_tm_sec(
-    const char **const p_p_cur,
-    const char *const  p_end,
-    struct tm *const   p_tm_time,
-    bool *const        p_res)
+    const char** const p_p_cur,
+    const char* const  p_end,
+    struct tm* const   p_tm_time,
+    bool* const        p_res)
 {
     int32_t tm_sec = 0;
     if (parse_val_of_tm(p_p_cur, TIME_STR_SECOND_LEN, p_end, TIME_STR_SECOND_MIN, TIME_STR_SECOND_MAX, '\0', &tm_sec))
@@ -381,7 +381,7 @@ time_str_parse_tm_sec(
 }
 
 bool
-time_str_conv_to_tm(const char *const p_time_str, struct tm *const p_tm_time, uint16_t *const p_ms)
+time_str_conv_to_tm(const char* const p_time_str, struct tm* const p_tm_time, uint16_t* const p_ms)
 {
     p_tm_time->tm_year  = 0;
     p_tm_time->tm_mon   = 0;
@@ -396,8 +396,8 @@ time_str_conv_to_tm(const char *const p_time_str, struct tm *const p_tm_time, ui
         *p_ms = 0;
     }
 
-    const char *const p_end = &p_time_str[strlen(p_time_str)];
-    const char *      p_cur = p_time_str;
+    const char* const p_end = &p_time_str[strlen(p_time_str)];
+    const char*       p_cur = p_time_str;
 
     bool res = false;
 
@@ -452,7 +452,7 @@ time_str_conv_to_tm(const char *const p_time_str, struct tm *const p_tm_time, ui
 }
 
 time_t
-time_str_conv_to_unix_time(const char *const p_time_str)
+time_str_conv_to_unix_time(const char* const p_time_str)
 {
     struct tm tm_time = { 0 };
     if (!time_str_conv_to_tm(p_time_str, &tm_time, NULL))

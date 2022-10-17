@@ -44,10 +44,10 @@ typedef enum MainTaskCmd_Tag
  * *********************************************************************************/
 
 class TestEventMgr;
-static TestEventMgr *g_pTestClass;
+static TestEventMgr* g_pTestClass;
 
-static void *
-freertosStartup(void *arg);
+static void*
+freertosStartup(void* arg);
 
 class TestEventMgr : public ::testing::Test
 {
@@ -73,7 +73,7 @@ protected:
         cmdQueue.push_and_wait(MainTaskCmd_Exit);
         sleep(1);
         vTaskEndScheduler();
-        void *ret_code = nullptr;
+        void* ret_code = nullptr;
         pthread_join(pid_freertos, &ret_code);
         sem_destroy(&semaFreeRTOS);
         esp_log_wrapper_deinit();
@@ -81,15 +81,15 @@ protected:
     }
 
 public:
-    pthread_t                pid_test;
-    pthread_t                pid_freertos;
-    sem_t                    semaFreeRTOS;
-    TQueue<MainTaskCmd_e>    cmdQueue;
-    std::vector<TestEvent *> testEvents;
-    os_signal_t *            p_signal;
-    os_signal_t *            p_signal2;
-    bool                     result_run_signal_handler_task;
-    bool                     result_event_mgr_init;
+    pthread_t               pid_test;
+    pthread_t               pid_freertos;
+    sem_t                   semaFreeRTOS;
+    TQueue<MainTaskCmd_e>   cmdQueue;
+    std::vector<TestEvent*> testEvents;
+    os_signal_t*            p_signal;
+    os_signal_t*            p_signal2;
+    bool                    result_run_signal_handler_task;
+    bool                    result_event_mgr_init;
 
     TestEventMgr();
 
@@ -169,7 +169,7 @@ timespec_get_clock_monotonic(void)
 }
 
 static struct timespec
-timespec_diff(const struct timespec *p_t2, const struct timespec *p_t1)
+timespec_diff(const struct timespec* p_t2, const struct timespec* p_t1)
 {
     struct timespec result = {
         .tv_sec  = p_t2->tv_sec - p_t1->tv_sec,
@@ -184,7 +184,7 @@ timespec_diff(const struct timespec *p_t2, const struct timespec *p_t1)
 }
 
 static uint32_t
-timespec_diff_ms(const struct timespec *p_t2, const struct timespec *p_t1)
+timespec_diff_ms(const struct timespec* p_t2, const struct timespec* p_t1)
 {
     struct timespec diff = timespec_diff(p_t2, p_t1);
     return diff.tv_sec * 1000 + diff.tv_nsec / 1000000;
@@ -251,10 +251,10 @@ TestEventMgr::wait_until_new_events_pushed(const uint32_t exp_num_events, const 
 
 ATTR_NORETURN
 static void
-signalHandlerTask1(void *p_param)
+signalHandlerTask1(void* p_param)
 {
-    auto *       pObj     = static_cast<TestEventMgr *>(p_param);
-    os_signal_t *p_signal = os_signal_create();
+    auto*        pObj     = static_cast<TestEventMgr*>(p_param);
+    os_signal_t* p_signal = os_signal_create();
     assert(nullptr != p_signal);
     pObj->p_signal = p_signal;
     if (!os_signal_add(p_signal, OS_SIGNAL_NUM_0))
@@ -309,12 +309,12 @@ signalHandlerTask1(void *p_param)
 
 ATTR_NORETURN
 static void
-signalHandlerTask2(void *p_param)
+signalHandlerTask2(void* p_param)
 {
-    auto *                    pObj       = static_cast<TestEventMgr *>(p_param);
+    auto*                     pObj       = static_cast<TestEventMgr*>(p_param);
     static os_signal_static_t signal_mem = {};
-    os_signal_t *             p_signal   = os_signal_create_static(&signal_mem);
-    assert(reinterpret_cast<void *>(&signal_mem) == reinterpret_cast<void *>(p_signal));
+    os_signal_t*              p_signal   = os_signal_create_static(&signal_mem);
+    assert(reinterpret_cast<void*>(&signal_mem) == reinterpret_cast<void*>(p_signal));
     pObj->p_signal2 = p_signal;
     if (!os_signal_add(p_signal, OS_SIGNAL_NUM_0))
     {
@@ -366,9 +366,9 @@ signalHandlerTask2(void *p_param)
 }
 
 static void
-cmdHandlerTask(void *p_param)
+cmdHandlerTask(void* p_param)
 {
-    auto *pObj     = static_cast<TestEventMgr *>(p_param);
+    auto* pObj     = static_cast<TestEventMgr*>(p_param);
     bool  flagExit = false;
     sem_post(&pObj->semaFreeRTOS);
     while (!flagExit)
@@ -456,10 +456,10 @@ cmdHandlerTask(void *p_param)
     vTaskDelete(nullptr);
 }
 
-static void *
-freertosStartup(void *arg)
+static void*
+freertosStartup(void* arg)
 {
-    auto *pObj = static_cast<TestEventMgr *>(arg);
+    auto* pObj = static_cast<TestEventMgr*>(arg);
     disableCheckingIfCurThreadIsFreeRTOS();
     const bool res
         = xTaskCreate(&cmdHandlerTask, "cmdHandlerTask", configMINIMAL_STACK_SIZE, pObj, tskIDLE_PRIORITY + 1, nullptr);
@@ -494,9 +494,9 @@ TEST_F(TestEventMgr, test1) // NOLINT
     cmdQueue.push_and_wait(MainTaskCmd_EventMgrNotifyWiFiConnected);
     ASSERT_TRUE(wait_until_new_events_pushed(1, 1000));
     {
-        auto *pBaseEv = testEvents[0];
+        auto* pBaseEv = testEvents[0];
         ASSERT_EQ(TestEventType_Signal, pBaseEv->eventType);
-        auto *pEv = reinterpret_cast<TestEventSignal *>(pBaseEv);
+        auto* pEv = reinterpret_cast<TestEventSignal*>(pBaseEv);
         ASSERT_EQ(TEST_EVENT_THREAD_NUM_1, pEv->thread_num);
         ASSERT_EQ(OS_SIGNAL_NUM_0, pEv->sig_num);
     }
@@ -505,9 +505,9 @@ TEST_F(TestEventMgr, test1) // NOLINT
     cmdQueue.push_and_wait(MainTaskCmd_EventMgrNotifyWiFiDisconnected);
     ASSERT_TRUE(wait_until_new_events_pushed(1, 1000));
     {
-        auto *pBaseEv = testEvents[0];
+        auto* pBaseEv = testEvents[0];
         ASSERT_EQ(TestEventType_Signal, pBaseEv->eventType);
-        auto *pEv = reinterpret_cast<TestEventSignal *>(pBaseEv);
+        auto* pEv = reinterpret_cast<TestEventSignal*>(pBaseEv);
         ASSERT_EQ(TEST_EVENT_THREAD_NUM_1, pEv->thread_num);
         ASSERT_EQ(OS_SIGNAL_NUM_1, pEv->sig_num);
     }
@@ -516,9 +516,9 @@ TEST_F(TestEventMgr, test1) // NOLINT
     cmdQueue.push_and_wait(MainTaskCmd_EventMgrNotifyEthConnected);
     ASSERT_TRUE(wait_until_new_events_pushed(1, 1000));
     {
-        auto *pBaseEv = testEvents[0];
+        auto* pBaseEv = testEvents[0];
         ASSERT_EQ(TestEventType_Signal, pBaseEv->eventType);
-        auto *pEv = reinterpret_cast<TestEventSignal *>(pBaseEv);
+        auto* pEv = reinterpret_cast<TestEventSignal*>(pBaseEv);
         ASSERT_EQ(TEST_EVENT_THREAD_NUM_2, pEv->thread_num);
         ASSERT_EQ(OS_SIGNAL_NUM_0, pEv->sig_num);
     }
@@ -527,9 +527,9 @@ TEST_F(TestEventMgr, test1) // NOLINT
     cmdQueue.push_and_wait(MainTaskCmd_EventMgrNotifyEthDisconnected);
     ASSERT_TRUE(wait_until_new_events_pushed(1, 1000));
     {
-        auto *pBaseEv = testEvents[0];
+        auto* pBaseEv = testEvents[0];
         ASSERT_EQ(TestEventType_Signal, pBaseEv->eventType);
-        auto *pEv = reinterpret_cast<TestEventSignal *>(pBaseEv);
+        auto* pEv = reinterpret_cast<TestEventSignal*>(pBaseEv);
         ASSERT_EQ(TEST_EVENT_THREAD_NUM_2, pEv->thread_num);
         ASSERT_EQ(OS_SIGNAL_NUM_1, pEv->sig_num);
     }
@@ -538,15 +538,15 @@ TEST_F(TestEventMgr, test1) // NOLINT
     cmdQueue.push_and_wait(MainTaskCmd_SendToTask1Signal2);
     ASSERT_TRUE(wait_until_new_events_pushed(2, 1000));
     {
-        auto *pBaseEv = testEvents[0];
+        auto* pBaseEv = testEvents[0];
         ASSERT_EQ(TestEventType_Signal, pBaseEv->eventType);
-        auto *pEv = reinterpret_cast<TestEventSignal *>(pBaseEv);
+        auto* pEv = reinterpret_cast<TestEventSignal*>(pBaseEv);
         ASSERT_EQ(OS_SIGNAL_NUM_2, pEv->sig_num);
     }
     {
-        auto *pBaseEv = testEvents[1];
+        auto* pBaseEv = testEvents[1];
         ASSERT_EQ(TestEventType_ThreadExit, pBaseEv->eventType);
-        auto *pEv = reinterpret_cast<TestEventThreadExit *>(pBaseEv);
+        auto* pEv = reinterpret_cast<TestEventThreadExit*>(pBaseEv);
         ASSERT_EQ(TEST_EVENT_THREAD_NUM_1, pEv->thread_num);
     }
     testEvents.clear();
@@ -554,15 +554,15 @@ TEST_F(TestEventMgr, test1) // NOLINT
     cmdQueue.push_and_wait(MainTaskCmd_SendToTask2Signal2);
     ASSERT_TRUE(wait_until_new_events_pushed(2, 1000));
     {
-        auto *pBaseEv = testEvents[0];
+        auto* pBaseEv = testEvents[0];
         ASSERT_EQ(TestEventType_Signal, pBaseEv->eventType);
-        auto *pEv = reinterpret_cast<TestEventSignal *>(pBaseEv);
+        auto* pEv = reinterpret_cast<TestEventSignal*>(pBaseEv);
         ASSERT_EQ(OS_SIGNAL_NUM_2, pEv->sig_num);
     }
     {
-        auto *pBaseEv = testEvents[1];
+        auto* pBaseEv = testEvents[1];
         ASSERT_EQ(TestEventType_ThreadExit, pBaseEv->eventType);
-        auto *pEv = reinterpret_cast<TestEventThreadExit *>(pBaseEv);
+        auto* pEv = reinterpret_cast<TestEventThreadExit*>(pBaseEv);
         ASSERT_EQ(TEST_EVENT_THREAD_NUM_2, pEv->thread_num);
     }
     testEvents.clear();

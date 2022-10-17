@@ -79,7 +79,7 @@ typedef enum
  * - ESP_ERR_INVALID_ARG if the partition or data pointers are invalid.
  */
 esp_err_t
-esp_image_verify(esp_image_load_mode_t mode, const esp_partition_pos_t *part, esp_image_metadata_t *data);
+esp_image_verify(esp_image_load_mode_t mode, const esp_partition_pos_t* part, esp_image_metadata_t* data);
 
 /**
  * @brief Verify and load an app image (available only in space of bootloader).
@@ -106,7 +106,7 @@ esp_image_verify(esp_image_load_mode_t mode, const esp_partition_pos_t *part, es
  * - ESP_ERR_INVALID_ARG if the partition or data pointers are invalid.
  */
 esp_err_t
-bootloader_load_image(const esp_partition_pos_t *part, esp_image_metadata_t *data);
+bootloader_load_image(const esp_partition_pos_t* part, esp_image_metadata_t* data);
 
 /**
  * @brief Verify the bootloader image.
@@ -117,7 +117,7 @@ bootloader_load_image(const esp_partition_pos_t *part, esp_image_metadata_t *dat
  * @return As per esp_image_load_metadata().
  */
 esp_err_t
-esp_image_verify_bootloader(uint32_t *length);
+esp_image_verify_bootloader(uint32_t* length);
 
 /**
  * @brief Verify the bootloader image.
@@ -127,7 +127,7 @@ esp_image_verify_bootloader(uint32_t *length);
  * @return As per esp_image_load_metadata().
  */
 esp_err_t
-esp_image_verify_bootloader_data(esp_image_metadata_t *data);
+esp_image_verify_bootloader_data(esp_image_metadata_t* data);
 
 /**
  * @brief Get the flash size of the image
