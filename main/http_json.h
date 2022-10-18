@@ -30,15 +30,20 @@ typedef struct http_json_statistics_info_t
     uint32_t                 network_disconnect_cnt;
 } http_json_statistics_info_t;
 
+typedef struct http_json_header_info_t
+{
+    const bool                     flag_use_timestamps;
+    const time_t                   timestamp;
+    const mac_address_str_t* const p_mac_addr;
+    const char* const              p_coordinates_str;
+    const bool                     flag_use_nonce;
+    const uint32_t                 nonce;
+} http_json_header_info_t;
+
 bool
 http_json_create_records_str(
     const adv_report_table_t* const p_reports,
-    const bool                      flag_use_timestamps,
-    const time_t                    timestamp,
-    const mac_address_str_t* const  p_mac_addr,
-    const char* const               p_coordinates_str,
-    const bool                      flag_use_nonce,
-    const uint32_t                  nonce,
+    const http_json_header_info_t   header_info,
     cjson_wrap_str_t* const         p_json_str);
 
 bool

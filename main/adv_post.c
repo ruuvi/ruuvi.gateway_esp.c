@@ -226,10 +226,9 @@ adv_post_send_report(void* p_arg)
         return;
     }
 
-    const bool flag_ntp_use = gw_cfg_get_ntp_use();
-
-    const time_t timestamp = flag_ntp_use ? (time_is_synchronized() ? time(NULL) : 0)
-                                          : (time_t)metrics_received_advs_get();
+    const bool   flag_ntp_use              = gw_cfg_get_ntp_use();
+    const time_t timestamp_if_synchronized = time_is_synchronized() ? time(NULL) : 0;
+    const time_t timestamp = flag_ntp_use ? timestamp_if_synchronized : (time_t)metrics_received_advs_get();
 
     adv_report_t adv_report = { 0 };
     if (!parse_adv_report_from_uart((re_ca_uart_payload_t*)p_arg, timestamp, &adv_report))

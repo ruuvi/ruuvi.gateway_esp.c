@@ -27,6 +27,8 @@
 
 #define METRICS_PREFIX "ruuvigw_"
 
+#define METRICS_SHA256_SIZE (32)
+
 // See:
 // https://prometheus.io/docs/instrumenting/writing_exporters/
 // https://prometheus.io/docs/instrumenting/exposition_formats/
@@ -74,18 +76,17 @@ typedef struct metrics_crc32_t
 
 typedef struct metrics_crc32_str_t
 {
-    char buf[2 + 2 * sizeof(metrics_crc32_t) + 1];
+    char buf[2 + (2 * sizeof(metrics_crc32_t)) + 1];
 } metrics_crc32_str_t;
 
 typedef struct metrics_sha256_t
 {
-#define METRICS_SHA256_SIZE (32)
     uint8_t buf[METRICS_SHA256_SIZE];
 } metrics_sha256_t;
 
 typedef struct metrics_sha256_str_t
 {
-    char buf[METRICS_SHA256_SIZE * 2 + 1];
+    char buf[(METRICS_SHA256_SIZE * 2) + 1];
 } metrics_sha256_str_t;
 
 typedef struct metrics_info_t

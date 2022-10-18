@@ -143,10 +143,12 @@ http_init_client_config(
         .cert_pem                    = NULL,
         .client_cert_pem             = NULL,
         .client_key_pem              = NULL,
+        .user_agent                  = NULL,
         .method                      = HTTP_METHOD_POST,
         .timeout_ms                  = 0,
         .disable_auto_redirect       = false,
         .max_redirection_count       = 0,
+        .max_authorization_retries   = 0,
         .event_handler               = &http_post_event_handler,
         .transport_type              = HTTP_TRANSPORT_UNKNOWN,
         .buffer_size                 = 0,
@@ -155,6 +157,10 @@ http_init_client_config(
         .is_async                    = true,
         .use_global_ca_store         = false,
         .skip_cert_common_name_check = false,
+        .keep_alive_enable           = false,
+        .keep_alive_idle             = 0,
+        .keep_alive_interval         = 0,
+        .keep_alive_count            = 0,
     };
     p_http_client_config->http_url  = *p_url;
     p_http_client_config->http_user = *p_user;
@@ -228,12 +234,14 @@ http_send_advs(const adv_report_table_t* const p_reports, const uint32_t nonce, 
     p_http_async_info->cjson_str         = cjson_wrap_str_null();
     if (!http_json_create_records_str(
             p_reports,
-            flag_use_timestamps,
-            time(NULL),
-            gw_cfg_get_nrf52_mac_addr(),
-            coordinates.buf,
-            true,
-            nonce,
+            (http_json_header_info_t) {
+                .flag_use_timestamps = flag_use_timestamps,
+                .timestamp           = time(NULL),
+                .p_mac_addr          = gw_cfg_get_nrf52_mac_addr(),
+                .p_coordinates_str   = coordinates.buf,
+                .flag_use_nonce      = true,
+                .nonce               = nonce,
+            },
             &p_http_async_info->cjson_str))
     {
         LOG_ERR("Not enough memory to generate json");
@@ -508,22 +516,18 @@ http_download_by_handle(esp_http_client_handle_t http_handle, const bool flag_fe
 
 bool
 http_download_with_auth(
-    const char* const                     p_url,
-    const TimeUnitsSeconds_t              timeout_seconds,
+    const http_download_param_t           param,
     const gw_cfg_remote_auth_type_e       gw_cfg_http_auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
-    const http_header_item_t* const       p_extra_header_item,
-    http_download_cb_on_data_t            p_cb_on_data,
-    void* const                           p_user_data,
-    const bool                            flag_feed_task_watchdog)
+    const http_header_item_t* const       p_extra_header_item)
 {
     http_download_cb_info_t cb_info = {
-        .cb_on_data              = p_cb_on_data,
-        .p_user_data             = p_user_data,
+        .cb_on_data              = param.p_cb_on_data,
+        .p_user_data             = param.p_user_data,
         .http_handle             = NULL,
         .content_length          = 0,
         .offset                  = 0,
-        .flag_feed_task_watchdog = flag_feed_task_watchdog,
+        .flag_feed_task_watchdog = param.flag_feed_task_watchdog,
     };
 
     if ((GW_CFG_REMOTE_AUTH_TYPE_NO != gw_cfg_http_auth_type) && (NULL == p_http_auth))
@@ -534,40 +538,41 @@ http_download_with_auth(
     const esp_http_client_auth_type_t http_client_auth_type = (GW_CFG_REMOTE_AUTH_TYPE_BASIC == gw_cfg_http_auth_type)
                                                                   ? HTTP_AUTH_TYPE_BASIC
                                                                   : HTTP_AUTH_TYPE_NONE;
-    const esp_http_client_config_t    http_config           = {
-                     .url  = p_url,
-                     .host = NULL,
-                     .port = 0,
 
-                     .username  = (HTTP_AUTH_TYPE_BASIC == http_client_auth_type) ? p_http_auth->auth_basic.user.buf : NULL,
-                     .password  = (HTTP_AUTH_TYPE_BASIC == http_client_auth_type) ? p_http_auth->auth_basic.password.buf : NULL,
-                     .auth_type = http_client_auth_type,
+    const esp_http_client_config_t http_config = {
+        .url  = param.p_url,
+        .host = NULL,
+        .port = 0,
 
-                     .path                        = NULL,
-                     .query                       = NULL,
-                     .cert_pem                    = NULL,
-                     .client_cert_pem             = NULL,
-                     .client_key_pem              = NULL,
-                     .user_agent                  = NULL,
-                     .method                      = HTTP_METHOD_GET,
-                     .timeout_ms                  = (int)(timeout_seconds * 1000),
-                     .disable_auto_redirect       = false,
-                     .max_redirection_count       = 0,
-                     .max_authorization_retries   = 0,
-                     .event_handler               = &http_download_event_handler,
-                     .transport_type              = HTTP_TRANSPORT_UNKNOWN,
-                     .buffer_size                 = 2048,
-                     .buffer_size_tx              = 1024,
-                     .user_data                   = &cb_info,
-                     .is_async                    = true,
-                     .use_global_ca_store         = false,
-                     .skip_cert_common_name_check = false,
-                     .keep_alive_enable           = false,
-                     .keep_alive_idle             = 0,
-                     .keep_alive_interval         = 0,
-                     .keep_alive_count            = 0,
+        .username  = (HTTP_AUTH_TYPE_BASIC == http_client_auth_type) ? p_http_auth->auth_basic.user.buf : NULL,
+        .password  = (HTTP_AUTH_TYPE_BASIC == http_client_auth_type) ? p_http_auth->auth_basic.password.buf : NULL,
+        .auth_type = http_client_auth_type,
+
+        .path                        = NULL,
+        .query                       = NULL,
+        .cert_pem                    = NULL,
+        .client_cert_pem             = NULL,
+        .client_key_pem              = NULL,
+        .user_agent                  = NULL,
+        .method                      = HTTP_METHOD_GET,
+        .timeout_ms                  = (int)(param.timeout_seconds * 1000),
+        .disable_auto_redirect       = false,
+        .max_redirection_count       = 0,
+        .max_authorization_retries   = 0,
+        .event_handler               = &http_download_event_handler,
+        .transport_type              = HTTP_TRANSPORT_UNKNOWN,
+        .buffer_size                 = 2048,
+        .buffer_size_tx              = 1024,
+        .user_data                   = &cb_info,
+        .is_async                    = true,
+        .use_global_ca_store         = false,
+        .skip_cert_common_name_check = false,
+        .keep_alive_enable           = false,
+        .keep_alive_idle             = 0,
+        .keep_alive_interval         = 0,
+        .keep_alive_count            = 0,
     };
-    LOG_INFO("http_download: URL: %s", p_url);
+    LOG_INFO("http_download: URL: %s", param.p_url);
     if (HTTP_AUTH_TYPE_BASIC == http_client_auth_type)
     {
         LOG_INFO("http_download: Auth: Basic, Username: %s", p_http_auth->auth_basic.user.buf);
@@ -607,7 +612,7 @@ http_download_with_auth(
     }
 
     LOG_DBG("http_download_by_handle");
-    const bool result = http_download_by_handle(cb_info.http_handle, flag_feed_task_watchdog);
+    const bool result = http_download_by_handle(cb_info.http_handle, param.flag_feed_task_watchdog);
 
     LOG_DBG("esp_http_client_cleanup");
     const esp_err_t err = esp_http_client_cleanup(cb_info.http_handle);
@@ -619,20 +624,7 @@ http_download_with_auth(
 }
 
 bool
-http_download(
-    const char* const          p_url,
-    const TimeUnitsSeconds_t   timeout_seconds,
-    http_download_cb_on_data_t p_cb_on_data,
-    void* const                p_user_data,
-    const bool                 flag_feed_task_watchdog)
+http_download(const http_download_param_t param)
 {
-    return http_download_with_auth(
-        p_url,
-        timeout_seconds,
-        GW_CFG_REMOTE_AUTH_TYPE_NO,
-        NULL,
-        NULL,
-        p_cb_on_data,
-        p_user_data,
-        flag_feed_task_watchdog);
+    return http_download_with_auth(param, GW_CFG_REMOTE_AUTH_TYPE_NO, NULL, NULL);
 }

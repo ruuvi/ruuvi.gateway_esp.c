@@ -78,26 +78,17 @@ esp_random(void)
 }
 
 bool
-http_download(
-    const char* const          p_url,
-    const TimeUnitsSeconds_t   timeout_seconds,
-    http_download_cb_on_data_t cb_on_data,
-    void* const                p_user_data,
-    const bool                 flag_feed_task_watchdog)
+http_download(const http_download_param_t param)
 {
     return false;
 }
 
 bool
 http_download_with_auth(
-    const char* const                     p_url,
-    const TimeUnitsSeconds_t              timeout_seconds,
+    const http_download_param_t           param,
     const gw_cfg_remote_auth_type_e       gw_cfg_http_auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
-    const http_header_item_t* const       p_extra_header_item,
-    http_download_cb_on_data_t            p_cb_on_data,
-    void* const                           p_user_data,
-    const bool                            flag_feed_task_watchdog)
+    const http_header_item_t* const       p_extra_header_item)
 {
     return false;
 }
@@ -178,14 +169,14 @@ restart_services(void)
 void
 settings_save_to_flash(const gw_cfg_t* const p_gw_cfg);
 
-force_start_wifi_hotspot_t
+force_start_wifi_hotspot_e
 settings_read_flag_force_start_wifi_hotspot(void)
 {
     return FORCE_START_WIFI_HOTSPOT_DISABLED;
 }
 
 void
-settings_write_flag_force_start_wifi_hotspot(const force_start_wifi_hotspot_t force_start_wifi_hotspot)
+settings_write_flag_force_start_wifi_hotspot(const force_start_wifi_hotspot_e force_start_wifi_hotspot)
 {
 }
 

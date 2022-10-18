@@ -35,6 +35,15 @@ typedef bool (*http_download_cb_on_data_t)(
     const http_resp_code_e resp_code,
     void*                  p_user_data);
 
+typedef struct http_download_param_t
+{
+    const char* const          p_url;
+    const TimeUnitsSeconds_t   timeout_seconds;
+    http_download_cb_on_data_t p_cb_on_data;
+    void* const                p_user_data;
+    const bool                 flag_feed_task_watchdog;
+} http_download_param_t;
+
 bool
 http_send_advs(const adv_report_table_t* const p_reports, const uint32_t nonce, const bool flag_use_timestamps);
 
@@ -45,23 +54,14 @@ bool
 http_async_poll(void);
 
 bool
-http_download(
-    const char* const          p_url,
-    const TimeUnitsSeconds_t   timeout_seconds,
-    http_download_cb_on_data_t p_cb_on_data,
-    void* const                p_user_data,
-    const bool                 flag_feed_task_watchdog);
+http_download(const http_download_param_t param);
 
 bool
 http_download_with_auth(
-    const char* const                     p_url,
-    const TimeUnitsSeconds_t              timeout_seconds,
+    const http_download_param_t           param,
     const gw_cfg_remote_auth_type_e       gw_cfg_http_auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
-    const http_header_item_t* const       p_extra_header_item,
-    http_download_cb_on_data_t            p_cb_on_data,
-    void* const                           p_user_data,
-    const bool                            flag_feed_task_watchdog);
+    const http_header_item_t* const       p_extra_header_item);
 
 #ifdef __cplusplus
 }

@@ -24,8 +24,12 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/gw_cfg_ruuvi_json.h
         ${RUUVI_GW_SRC}/gw_mac.c
         ${RUUVI_GW_SRC}/gw_mac.h
+        ${RUUVI_GW_SRC}/http_download.c
+        ${RUUVI_GW_SRC}/http_download.h
         ${RUUVI_GW_SRC}/http_server_cb.c
         ${RUUVI_GW_SRC}/http_server_cb.h
+        ${RUUVI_GW_SRC}/http_server_cb_on_get.c
+        ${RUUVI_GW_SRC}/http_server_cb_on_post.c
         ${RUUVI_GW_SRC}/http_json.c
         ${RUUVI_GW_SRC}/http_json.h
         ${RUUVI_GW_SRC}/json_helper.c

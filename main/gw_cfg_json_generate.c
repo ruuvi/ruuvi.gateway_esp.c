@@ -92,16 +92,13 @@ gw_cfg_json_add_items_wifi_sta_config(
         return false;
     }
     const wifi_sta_config_t* const p_wifi_cfg_sta = &p_wifi_cfg->sta.wifi_config_sta;
-    if (!gw_cfg_json_add_string(p_cjson, "ssid", (char*)p_wifi_cfg_sta->ssid))
+    if (!gw_cfg_json_add_string(p_cjson, "ssid", (const char*)p_wifi_cfg_sta->ssid))
     {
         return false;
     }
-    if (!flag_hide_passwords)
+    if ((!flag_hide_passwords) && (!gw_cfg_json_add_string(p_cjson, "password", (const char*)p_wifi_cfg_sta->password)))
     {
-        if (!gw_cfg_json_add_string(p_cjson, "password", (char*)p_wifi_cfg_sta->password))
-        {
-            return false;
-        }
+        return false;
     }
     return true;
 }
@@ -119,12 +116,9 @@ gw_cfg_json_add_items_wifi_ap_config(
         return false;
     }
     const wifi_ap_config_t* const p_wifi_cfg_ap = &p_wifi_cfg->ap.wifi_config_ap;
-    if (!flag_hide_passwords)
+    if ((!flag_hide_passwords) && (!gw_cfg_json_add_string(p_cjson, "password", (const char*)p_wifi_cfg_ap->password)))
     {
-        if (!gw_cfg_json_add_string(p_cjson, "password", (char*)p_wifi_cfg_ap->password))
-        {
-            return false;
-        }
+        return false;
     }
     if (!gw_cfg_json_add_number(p_cjson, "channel", (0 != p_wifi_cfg_ap->channel) ? p_wifi_cfg_ap->channel : 1))
     {
@@ -181,15 +175,13 @@ gw_cfg_json_add_items_remote_auth_basic(
     {
         return false;
     }
-    if (!flag_hide_passwords)
+    if ((!flag_hide_passwords)
+        && (!gw_cfg_json_add_string(
+            p_json_root,
+            "remote_cfg_auth_basic_pass",
+            p_cfg_remote->auth.auth_basic.password.buf)))
     {
-        if (!gw_cfg_json_add_string(
-                p_json_root,
-                "remote_cfg_auth_basic_pass",
-                p_cfg_remote->auth.auth_basic.password.buf))
-        {
-            return false;
-        }
+        return false;
     }
     return true;
 }
@@ -403,22 +395,26 @@ gw_cfg_json_add_items_lan_auth(
     return true;
 }
 
+static const char*
+gw_cfg_json_conv_auto_update_cycle_to_str(const auto_update_cycle_type_e auto_update_cycle)
+{
+    switch (auto_update_cycle)
+    {
+        case AUTO_UPDATE_CYCLE_TYPE_REGULAR:
+            return AUTO_UPDATE_CYCLE_TYPE_STR_REGULAR;
+        case AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER:
+            return AUTO_UPDATE_CYCLE_TYPE_STR_BETA_TESTER;
+        case AUTO_UPDATE_CYCLE_TYPE_MANUAL:
+            return AUTO_UPDATE_CYCLE_TYPE_STR_MANUAL;
+    }
+    return AUTO_UPDATE_CYCLE_TYPE_STR_REGULAR;
+}
+
 static bool
 gw_cfg_json_add_items_auto_update(cJSON* const p_json_root, const ruuvi_gw_cfg_auto_update_t* const p_cfg_auto_update)
 {
-    const char* p_auto_update_cycle_str = AUTO_UPDATE_CYCLE_TYPE_STR_REGULAR;
-    switch (p_cfg_auto_update->auto_update_cycle)
-    {
-        case AUTO_UPDATE_CYCLE_TYPE_REGULAR:
-            p_auto_update_cycle_str = AUTO_UPDATE_CYCLE_TYPE_STR_REGULAR;
-            break;
-        case AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER:
-            p_auto_update_cycle_str = AUTO_UPDATE_CYCLE_TYPE_STR_BETA_TESTER;
-            break;
-        case AUTO_UPDATE_CYCLE_TYPE_MANUAL:
-            p_auto_update_cycle_str = AUTO_UPDATE_CYCLE_TYPE_STR_MANUAL;
-            break;
-    }
+    const char* const p_auto_update_cycle_str = gw_cfg_json_conv_auto_update_cycle_to_str(
+        p_cfg_auto_update->auto_update_cycle);
     if (!gw_cfg_json_add_string(p_json_root, "auto_update_cycle", p_auto_update_cycle_str))
     {
         return false;

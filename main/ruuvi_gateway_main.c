@@ -550,7 +550,7 @@ network_subsystem_init(void)
 
     const wifiman_config_t wifi_cfg = gw_cfg_get_wifi_cfg();
 
-    const force_start_wifi_hotspot_t force_start_wifi_hotspot = settings_read_flag_force_start_wifi_hotspot();
+    const force_start_wifi_hotspot_e force_start_wifi_hotspot = settings_read_flag_force_start_wifi_hotspot();
 
     const bool is_wifi_sta_configured = ('\0' != wifi_cfg.sta.wifi_config_sta.ssid[0]) ? true : false;
 

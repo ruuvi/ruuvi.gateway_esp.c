@@ -766,6 +766,10 @@ gw_cfg_json_parse_cjson_wifi_sta_settings(
     (void)p_json_wifi_sta_cfg;
     (void)p_wifi_sta_settings;
     // Storing wifi_sta_settings settings in json is not currently supported.
+
+    (void)p_wifi_sta_settings->sta_power_save;
+    (void)p_wifi_sta_settings->sta_static_ip;
+    (void)p_wifi_sta_settings->sta_static_ip_config;
 }
 
 static void
@@ -801,6 +805,11 @@ gw_cfg_json_parse_cjson_wifi_ap_settings(
     (void)p_json_wifi_ap_cfg;
     (void)p_wifi_ap_settings;
     // Storing wifi_settings_ap in json is not currently supported.
+
+    (void)p_wifi_ap_settings->ap_bandwidth;
+    (void)p_wifi_ap_settings->ap_ip;
+    (void)p_wifi_ap_settings->ap_gw;
+    (void)p_wifi_ap_settings->ap_netmask;
 }
 
 static void

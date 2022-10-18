@@ -302,12 +302,9 @@ settings_get_from_flash(bool* const p_flag_default_cfg_is_used)
         settings_save_to_flash(p_gw_cfg_tmp); // Update configuration in NVS before erasing BLOBs
     }
     settings_erase_gw_cfg_blob_if_exist(handle);
-    if (flag_wifi_cfg_blob_used)
+    if (flag_wifi_cfg_blob_used && (!wifi_manager_cfg_blob_mark_deprecated()))
     {
-        if (!wifi_manager_cfg_blob_mark_deprecated())
-        {
-            LOG_ERR("Failed to erase wifi_cfg_blob");
-        }
+        LOG_ERR("Failed to erase wifi_cfg_blob");
     }
 
     return p_gw_cfg_tmp;
@@ -409,10 +406,11 @@ settings_write_flag_rebooting_after_auto_update(const bool flag_rebooting_after_
         LOG_ERR("%s failed", "ruuvi_nvs_open");
         return;
     }
-    const uint32_t  flag_rebooting_after_auto_update_val = flag_rebooting_after_auto_update
-                                                               ? RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_VALUE
-                                                               : 0;
-    const esp_err_t esp_err                              = nvs_set_blob(
+    const uint32_t flag_rebooting_after_auto_update_val = flag_rebooting_after_auto_update
+                                                              ? RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_VALUE
+                                                              : 0;
+
+    const esp_err_t esp_err = nvs_set_blob(
         handle,
         RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_KEY,
         &flag_rebooting_after_auto_update_val,
@@ -424,7 +422,7 @@ settings_write_flag_rebooting_after_auto_update(const bool flag_rebooting_after_
     nvs_close(handle);
 }
 
-force_start_wifi_hotspot_t
+force_start_wifi_hotspot_e
 settings_read_flag_force_start_wifi_hotspot(void)
 {
     uint32_t   flag_force_start_wifi_hotspot_val = 0;
@@ -451,7 +449,7 @@ settings_read_flag_force_start_wifi_hotspot(void)
         nvs_close(handle);
     }
 
-    force_start_wifi_hotspot_t force_start_wifi_hotspot = FORCE_START_WIFI_HOTSPOT_DISABLED;
+    force_start_wifi_hotspot_e force_start_wifi_hotspot = FORCE_START_WIFI_HOTSPOT_DISABLED;
     switch (flag_force_start_wifi_hotspot_val)
     {
         case RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_DISABLED:
@@ -471,7 +469,7 @@ settings_read_flag_force_start_wifi_hotspot(void)
 }
 
 void
-settings_write_flag_force_start_wifi_hotspot(const force_start_wifi_hotspot_t force_start_wifi_hotspot)
+settings_write_flag_force_start_wifi_hotspot(const force_start_wifi_hotspot_e force_start_wifi_hotspot)
 {
     nvs_handle handle = 0;
     LOG_INFO("### SETTINGS: Write flag_force_start_wifi_hotspot: %d", (printf_int_t)force_start_wifi_hotspot);

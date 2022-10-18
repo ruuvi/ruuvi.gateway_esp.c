@@ -140,7 +140,7 @@ json_wrap_get_uint16_val(const cJSON* p_json_root, const char* p_attr_name, uint
         {
             return false;
         }
-        const unsigned long val = strtoul(p_json_attr->valuestring, NULL, 16);
+        const uint32_t val = strtoul(p_json_attr->valuestring, NULL, 16);
         if (!(val <= UINT16_MAX))
         {
             return false;
@@ -174,7 +174,7 @@ json_wrap_get_uint8_val(const cJSON* p_json_root, const char* p_attr_name, uint8
         {
             return false;
         }
-        const unsigned long val = strtoul(p_json_attr->valuestring, NULL, 16);
+        const uint32_t val = strtoul(p_json_attr->valuestring, NULL, 16);
         if (!(val <= UINT8_MAX))
         {
             return false;
@@ -212,7 +212,7 @@ json_wrap_get_int8_val(const cJSON* p_json_root, const char* p_attr_name, int8_t
         {
             return false;
         }
-        const long val = strtol(p_json_attr->valuestring, NULL, 16);
+        const int32_t val = strtol(p_json_attr->valuestring, NULL, 16);
         if (!((val >= 0) && (val <= INT8_MAX)))
         {
             return false;
