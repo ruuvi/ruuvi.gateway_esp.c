@@ -2739,13 +2739,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_disabled) // NOLINT
     gw_cfg_t         gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    memset(&gw_cfg.ruuvi_cfg.ntp, 0, sizeof(gw_cfg.ruuvi_cfg.ntp));
     gw_cfg.ruuvi_cfg.ntp.ntp_use      = false;
     gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp = false;
-    memset(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf));
-    memset(gw_cfg.ruuvi_cfg.ntp.ntp_server2.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server2.buf));
-    memset(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf));
-    memset(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf));
 
     ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
@@ -2799,10 +2794,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_disabled) // NOLINT
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
                "\t\"ntp_use\":\tfalse,\n"
                "\t\"ntp_use_dhcp\":\tfalse,\n"
-               "\t\"ntp_server1\":\t\"\",\n"
-               "\t\"ntp_server2\":\t\"\",\n"
-               "\t\"ntp_server3\":\t\"\",\n"
-               "\t\"ntp_server4\":\t\"\",\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -2830,13 +2825,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_enabled_via_dhcp) // NOLINT
     gw_cfg_t         gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    memset(&gw_cfg.ruuvi_cfg.ntp, 0, sizeof(gw_cfg.ruuvi_cfg.ntp));
     gw_cfg.ruuvi_cfg.ntp.ntp_use      = true;
     gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp = true;
-    memset(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf));
-    memset(gw_cfg.ruuvi_cfg.ntp.ntp_server2.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server2.buf));
-    memset(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf));
-    memset(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf));
 
     ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
@@ -2890,10 +2880,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_enabled_via_dhcp) // NOLINT
                "\t\"auto_update_tz_offset_hours\":\t3,\n"
                "\t\"ntp_use\":\ttrue,\n"
                "\t\"ntp_use_dhcp\":\ttrue,\n"
-               "\t\"ntp_server1\":\t\"\",\n"
-               "\t\"ntp_server2\":\t\"\",\n"
-               "\t\"ntp_server3\":\t\"\",\n"
-               "\t\"ntp_server4\":\t\"\",\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -2924,6 +2914,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_custom) // NOLINT
     memset(&gw_cfg.ruuvi_cfg.ntp, 0, sizeof(gw_cfg.ruuvi_cfg.ntp));
     gw_cfg.ruuvi_cfg.ntp.ntp_use      = true;
     gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp = false;
+    memset(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf));
+    memset(gw_cfg.ruuvi_cfg.ntp.ntp_server2.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server2.buf));
+    memset(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf));
+    memset(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf, 0, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf));
     snprintf(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf), "time1.server.com");
     snprintf(gw_cfg.ruuvi_cfg.ntp.ntp_server2.buf, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server2.buf), "time2.server.com");
     snprintf(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf), "time3.server.com");
@@ -3004,7 +2998,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_custom) // NOLINT
     ASSERT_FALSE(flag_modified);
     cjson_wrap_free_json_str(&json_str);
 
-    ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
+    ASSERT_TRUE(gw_cfg_ruuvi_cmp(&gw_cfg.ruuvi_cfg, &gw_cfg2.ruuvi_cfg));
 }
 
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_enabled) // NOLINT
@@ -5016,10 +5010,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
 
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.ntp.ntp_use);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.ntp.ntp_use_dhcp);
-    ASSERT_EQ(string(""), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server1.buf));
-    ASSERT_EQ(string(""), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server2.buf));
-    ASSERT_EQ(string(""), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
-    ASSERT_EQ(string(""), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
+    ASSERT_EQ(string("time.google.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server1.buf));
+    ASSERT_EQ(string("time.cloudflare.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server2.buf));
+    ASSERT_EQ(string("time.nist.gov"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
 
     ASSERT_EQ(RUUVI_COMPANY_ID, gw_cfg2.ruuvi_cfg.filter.company_id);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.filter.company_use_filtering);
@@ -5085,10 +5079,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
                "\t\"auto_update_tz_offset_hours\":\t5,\n"
                "\t\"ntp_use\":\tfalse,\n"
                "\t\"ntp_use_dhcp\":\tfalse,\n"
-               "\t\"ntp_server1\":\t\"\",\n"
-               "\t\"ntp_server2\":\t\"\",\n"
-               "\t\"ntp_server3\":\t\"\",\n"
-               "\t\"ntp_server4\":\t\"\",\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\tfalse,\n"
                "\t\"scan_coded_phy\":\ttrue,\n"
@@ -5232,10 +5226,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
 
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.ntp.ntp_use);
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.ntp.ntp_use_dhcp);
-    ASSERT_EQ(string(""), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server1.buf));
-    ASSERT_EQ(string(""), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server2.buf));
-    ASSERT_EQ(string(""), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
-    ASSERT_EQ(string(""), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
+    ASSERT_EQ(string("time.google.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server1.buf));
+    ASSERT_EQ(string("time.cloudflare.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server2.buf));
+    ASSERT_EQ(string("time.nist.gov"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
 
     ASSERT_EQ(RUUVI_COMPANY_ID, gw_cfg2.ruuvi_cfg.filter.company_id);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.filter.company_use_filtering);
@@ -5301,10 +5295,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
                "\t\"auto_update_tz_offset_hours\":\t5,\n"
                "\t\"ntp_use\":\ttrue,\n"
                "\t\"ntp_use_dhcp\":\ttrue,\n"
-               "\t\"ntp_server1\":\t\"\",\n"
-               "\t\"ntp_server2\":\t\"\",\n"
-               "\t\"ntp_server3\":\t\"\",\n"
-               "\t\"ntp_server4\":\t\"\",\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\tfalse,\n"
                "\t\"scan_coded_phy\":\ttrue,\n"
@@ -6098,20 +6092,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'auto_update_interval_from' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'auto_update_interval_to' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'auto_update_tz_offset_hours' in config-json"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'ntp_use' in config-json, use default value: 'true'"));
-    TEST_CHECK_LOG_RECORD(
-        ESP_LOG_WARN,
-        string("Can't find key 'ntp_use_dhcp' in config-json, use default value: 'false'"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'ntp_use' in config-json"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'ntp_use_dhcp' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'ntp_server1' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'ntp_server2' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'ntp_server3' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'ntp_server4' in config-json"));
-    TEST_CHECK_LOG_RECORD(
-        ESP_LOG_WARN,
-        string("Can't find key 'company_id' in config-json, use default value: 0x0499"));
-    TEST_CHECK_LOG_RECORD(
-        ESP_LOG_WARN,
-        string("Can't find key 'company_use_filtering' in config-json, use default value: 'true'"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'company_id' in config-json"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'company_use_filtering' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'scan_coded_phy' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'scan_1mbit_phy' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'scan_extended_payload' in config-json"));

@@ -393,6 +393,9 @@ gw_cfg_auth_type_to_str(const ruuvi_gw_cfg_lan_auth_t* const p_lan_auth);
 wifiman_config_t
 gw_cfg_get_wifi_cfg(void);
 
+bool
+gw_cfg_ruuvi_cmp(const gw_cfg_ruuvi_t* const p_cfg_ruuvi1, const gw_cfg_ruuvi_t* const p_cfg_ruuvi2);
+
 #ifdef __cplusplus
 }
 #endif

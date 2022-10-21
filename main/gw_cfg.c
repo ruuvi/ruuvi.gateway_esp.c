@@ -353,7 +353,7 @@ ruuvi_gw_cfg_coordinates_cmp(
     return true;
 }
 
-static bool
+bool
 gw_cfg_ruuvi_cmp(const gw_cfg_ruuvi_t* const p_cfg_ruuvi1, const gw_cfg_ruuvi_t* const p_cfg_ruuvi2)
 {
     if (!ruuvi_gw_cfg_remote_cmp(&p_cfg_ruuvi1->remote, &p_cfg_ruuvi2->remote))
