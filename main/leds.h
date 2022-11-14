@@ -9,6 +9,7 @@
 #define RUUVI_LEDS_H
 
 #include "time_units.h"
+#include <stdbool.h>
 
 #if !defined(RUUVI_TESTS_LEDS)
 #define RUUVI_TESTS_LEDS (0)
@@ -24,39 +25,42 @@
 extern "C" {
 #endif
 
-void
-leds_init(void);
+bool
+leds_init(const bool flag_configure_button_pressed);
 
 void
-leds_on(void);
+leds_notify_nrf52_ready(void);
 
 void
-leds_off(void);
+leds_notify_nrf52_fw_check(void);
 
 void
-leds_indication_on_configure_button_press(void);
+leds_notify_nrf52_fw_updating(void);
 
 void
-leds_indication_on_hotspot_activation(void);
+leds_notify_cfg_erased(void);
 
 void
-leds_indication_network_no_connection(void);
+leds_notify_mqtt1_connected(void);
 
 void
-leds_indication_on_network_ok(void);
+leds_notify_mqtt1_disconnected(void);
 
 void
-leds_indication_on_nrf52_fw_updating(void);
+leds_notify_http1_data_sent_successfully(void);
+
+void
+leds_notify_http1_data_sent_fail(void);
+
+void
+leds_notify_http_poll_ok(void);
+
+void
+leds_notify_http_poll_timeout(void);
 
 #if RUUVI_TESTS_LEDS
 
 LEDS_STATIC
-void
-leds_on(void);
-
-LEDS_STATIC
-void
-leds_start_blink(const TimeUnitsMilliSeconds_t interval_ms, const uint32_t duty_cycle_percent);
 
 #endif // RUUVI_TESTS_LEDS
 

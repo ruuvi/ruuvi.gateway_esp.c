@@ -8,6 +8,7 @@ typedef enum TestEventType_Tag
     TestEventType_LedcSetFadeWithTime,
     TestEventType_LedcFadeStart,
     TestEventType_LedcFadeFuncInstall,
+    TestEventType_LedcStop,
 } TestEventType_e;
 
 /*** Test-Events classes implementation
@@ -114,6 +115,22 @@ public:
     explicit TestEventLedcFadeFuncInstall(int intr_alloc_flags)
         : TestEvent(TestEventType_LedcFadeFuncInstall)
         , intr_alloc_flags(intr_alloc_flags)
+    {
+    }
+};
+
+class TestEventLedcStop : public TestEvent
+{
+public:
+    ledc_mode_t    speed_mode;
+    ledc_channel_t channel;
+    uint32_t       idle_level;
+
+    explicit TestEventLedcStop(ledc_mode_t speed_mode, ledc_channel_t channel, uint32_t idle_level)
+        : TestEvent(TestEventType_LedcStop)
+        , speed_mode(speed_mode)
+        , channel(channel)
+        , idle_level(idle_level)
     {
     }
 };

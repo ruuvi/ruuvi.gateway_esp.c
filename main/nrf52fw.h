@@ -11,7 +11,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
-#include "gw_cfg.h"
 #include "nrf52_fw_ver.h"
 
 #if !defined(RUUVI_TESTS_NRF52FW)

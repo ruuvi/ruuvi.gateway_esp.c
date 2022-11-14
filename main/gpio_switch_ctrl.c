@@ -63,6 +63,7 @@ gpio_switch_ctrl_deactivate(void)
     assert(NULL != g_switch_ctrl_mutex);
     os_mutex_lock(g_switch_ctrl_mutex);
     LOG_DBG("GPIO SwitchCtrl deactivate (cnt=%u)", (printf_uint_t)g_switch_ctrl_cnt);
+    assert(g_switch_ctrl_cnt > 0);
     g_switch_ctrl_cnt -= 1;
     if (0 == g_switch_ctrl_cnt)
     {
