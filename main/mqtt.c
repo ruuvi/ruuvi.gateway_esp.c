@@ -215,7 +215,7 @@ mqtt_event_handler(esp_mqtt_event_handle_t h_event)
             LOG_INFO("MQTT_EVENT_CONNECTED");
             gw_status_set_mqtt_connected();
             main_task_send_sig_mqtt_publish_connect();
-            leds_indication_on_network_ok();
+            leds_notify_mqtt1_connected();
             if (!fw_update_mark_app_valid_cancel_rollback())
             {
                 LOG_ERR("%s failed", "fw_update_mark_app_valid_cancel_rollback");
@@ -225,7 +225,7 @@ mqtt_event_handler(esp_mqtt_event_handle_t h_event)
         case MQTT_EVENT_DISCONNECTED:
             LOG_INFO("MQTT_EVENT_DISCONNECTED");
             gw_status_clear_mqtt_connected();
-            leds_indication_network_no_connection();
+            leds_notify_mqtt1_disconnected();
             break;
 
         case MQTT_EVENT_SUBSCRIBED:

@@ -83,6 +83,9 @@ main_task_timer_sig_check_for_fw_updates_restart(const os_delta_ticks_t delay_ti
 void
 main_task_timer_sig_check_for_fw_updates_stop(void);
 
+void
+main_task_on_get_history(void);
+
 bool
 main_loop_init(void);
 

@@ -16,6 +16,7 @@
 #include "time_task.h"
 #include "adv_post.h"
 #include "flashfatfs.h"
+#include "ruuvi_gateway.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -372,6 +373,8 @@ http_server_resp_history(const char* const p_params)
     {
         adv_post_last_successful_network_comm_timestamp_update();
     }
+
+    main_task_on_get_history();
 
     return http_server_resp_data_in_heap(
         HTTP_CONENT_TYPE_APPLICATION_JSON,

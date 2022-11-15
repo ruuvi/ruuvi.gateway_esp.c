@@ -60,6 +60,13 @@ idf_component_register(
             http_server_cb.h
             http_server_cb_on_get.c
             http_server_cb_on_post.c
+            leds_blinking.c
+            leds_blinking.h
+            leds_ctrl_defs.h
+            leds_ctrl.c
+            leds_ctrl.h
+            leds_ctrl2.c
+            leds_ctrl2.h
             leds.c
             leds.h
             main_loop.c
