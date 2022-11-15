@@ -56,7 +56,7 @@
 
 static const char TAG[] = "ruuvi_gateway";
 
-#define RUUVI_GATEWAY_WIFI_AP_PREFIX    "Configure Ruuvi Gateway "
+#define RUUVI_GATEWAY_WIFI_AP_PREFIX "Configure Ruuvi Gateway "
 
 #define MAC_ADDRESS_IDX_OF_LAST_BYTE        (MAC_ADDRESS_NUM_BYTES - 1U)
 #define MAC_ADDRESS_IDX_OF_PENULTIMATE_BYTE (MAC_ADDRESS_NUM_BYTES - 2U)
