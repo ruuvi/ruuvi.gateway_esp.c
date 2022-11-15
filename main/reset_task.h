@@ -10,6 +10,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "attribs.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,6 +30,9 @@ reset_task_notify_configure_button_pressed(void);
 
 void
 reset_task_notify_configure_button_released(void);
+
+void
+gateway_restart(const char* const p_msg);
 
 #ifdef __cplusplus
 }

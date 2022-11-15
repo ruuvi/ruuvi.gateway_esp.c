@@ -14,6 +14,7 @@
 #include "wifi_manager_defs.h"
 #include "http_json.h"
 #include "time_units.h"
+#include "gw_cfg.h"
 
 #ifdef __cplusplus
 extern "C" {

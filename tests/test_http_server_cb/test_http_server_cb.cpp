@@ -186,6 +186,11 @@ time_is_synchronized(void)
     return true;
 }
 
+void
+main_task_on_get_history(void)
+{
+}
+
 } // extern "C"
 
 class MemAllocTrace
