@@ -359,15 +359,15 @@ http_async_poll(void)
     {
         if (flag_success)
         {
-            leds_indication_on_network_ok();
             if (!fw_update_mark_app_valid_cancel_rollback())
             {
                 LOG_ERR("%s failed", "fw_update_mark_app_valid_cancel_rollback");
             }
+            leds_notify_http1_data_sent_successfully();
         }
         else
         {
-            leds_indication_network_no_connection();
+            leds_notify_http1_data_sent_fail();
         }
     }
     return true;

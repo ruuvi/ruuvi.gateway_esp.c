@@ -224,6 +224,9 @@ ledc_channel_config(const ledc_channel_config_t* ledc_conf);
 esp_err_t
 ledc_fade_func_install(int intr_alloc_flags);
 
+esp_err_t
+ledc_stop(ledc_mode_t speed_mode, ledc_channel_t channel, uint32_t idle_level);
+
 #ifdef __cplusplus
 }
 #endif
