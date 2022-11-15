@@ -64,6 +64,9 @@ add_subdirectory(test_hmac_sha256)
 add_subdirectory(test_http_json)
 add_subdirectory(test_http_server_cb)
 add_subdirectory(test_leds)
+add_subdirectory(test_leds_blinking)
+add_subdirectory(test_leds_ctrl)
+add_subdirectory(test_leds_ctrl2)
 add_subdirectory(test_metrics)
 add_subdirectory(test_mqtt_json)
 add_subdirectory(test_nrf52fw)
@@ -150,6 +153,21 @@ add_test(NAME test_http_server_cb
 add_test(NAME test_leds
         COMMAND ruuvi_gateway_esp-test-leds
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-leds>/gtestresults.xml
+)
+
+add_test(NAME test_leds_blinking
+        COMMAND ruuvi_gateway_esp-test-leds_blinking
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-leds_blinking>/gtestresults.xml
+)
+
+add_test(NAME test_leds_ctrl
+        COMMAND ruuvi_gateway_esp-test-leds_ctrl
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-leds_ctrl>/gtestresults.xml
+)
+
+add_test(NAME test_leds_ctrl2
+        COMMAND ruuvi_gateway_esp-test-leds_ctrl2
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-leds_ctrl2>/gtestresults.xml
 )
 
 add_test(NAME test_metrics

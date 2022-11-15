@@ -10,6 +10,12 @@ add_executable(${ProjectId}
         driver/ledc.h
         ${RUUVI_GW_SRC}/leds.c
         ${RUUVI_GW_SRC}/leds.h
+        ${RUUVI_GW_SRC}/leds_ctrl.c
+        ${RUUVI_GW_SRC}/leds_ctrl.h
+        ${RUUVI_GW_SRC}/leds_ctrl2.c
+        ${RUUVI_GW_SRC}/leds_ctrl2.h
+        ${RUUVI_GW_SRC}/leds_blinking.c
+        ${RUUVI_GW_SRC}/leds_blinking.h
         $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
 )
 
@@ -26,7 +32,13 @@ target_include_directories(${ProjectId} PUBLIC
         ${Posix_GCC_Simulator_SOURCE_DIR}/FreeRTOS_Posix/FreeRTOS_Kernel/portable/GCC/Posix
         ${RUUVI_GW_SRC}
         include
+        $ENV{IDF_PATH}/components/esp_wifi/include
+        $ENV{IDF_PATH}/components/tcpip_adapter/include
+        $ENV{IDF_PATH}/components/esp_common/include
+        $ENV{IDF_PATH}/components/esp_event/include
+        $ENV{IDF_PATH}/components/lwip/include/apps
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ../../components/esp32-wifi-manager/src/include
 )
 
 target_compile_definitions(${ProjectId} PUBLIC

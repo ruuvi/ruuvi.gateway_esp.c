@@ -15,8 +15,9 @@
 #include "http_server.h"
 #include "esp_ota_ops_patched.h"
 #include "nrf52fw.h"
-#include "leds.h"
 #include "adv_post.h"
+#include "reset_task.h"
+#include "settings.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -700,8 +701,6 @@ fw_update_do_actions(void)
 
     fw_update_set_stage_nrf52_updating();
 
-    leds_indication_on_nrf52_fw_updating();
-
     LOG_INFO("nrf52fw_update_fw_if_necessary");
     nrf52fw_update_fw_if_necessary(
         fw_update_get_current_fatfs_nrf52_partition_name(),
@@ -710,7 +709,6 @@ fw_update_do_actions(void)
         NULL,
         NULL,
         NULL);
-    leds_indication_network_no_connection();
 
     fw_update_set_extra_info_for_status_json_update_successful();
 
@@ -728,7 +726,6 @@ fw_update_task(void)
     {
         LOG_INFO("WiFi AP is not active - start WiFi AP");
         wifi_manager_start_ap();
-        leds_indication_on_hotspot_activation();
     }
     else
     {
@@ -762,8 +759,7 @@ fw_update_task(void)
         LOG_INFO("Wait 5 seconds before reboot");
         vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_BEFORE_REBOOT_MS));
     }
-    LOG_INFO("Restart system");
-    esp_restart();
+    gateway_restart("Restart the system after firmware update");
 }
 
 bool
