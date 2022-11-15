@@ -30,6 +30,7 @@
   "http_stat_user": "",
   "http_stat_pass": "",
   "use_mqtt": false,
+  "mqtt_disable_retained_messages": false,
   "mqtt_transport": "TCP",
   "mqtt_server": "test.mosquitto.org",
   "mqtt_port": 1883,

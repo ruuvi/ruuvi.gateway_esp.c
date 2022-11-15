@@ -154,7 +154,7 @@ mqtt_publish_connect(void)
     mqtt_create_full_topic(&p_mqtt_data->mqtt_topic, mqtt_prefix.buf, "gw_status");
     LOG_INFO("esp_mqtt_client_publish: topic:'%s', message:'%s'", p_mqtt_data->mqtt_topic.buf, p_message);
     const int32_t mqtt_qos         = 1;
-    const int32_t mqtt_flag_retain = 1;
+    const int32_t mqtt_flag_retain = !gw_cfg_get_mqtt_flag_disable_retained_messages();
 
     const mqtt_message_id_t message_id = esp_mqtt_client_publish(
         p_mqtt_data->p_mqtt_client,
@@ -186,7 +186,7 @@ mqtt_publish_state_offline(mqtt_protected_data_t* const p_mqtt_data)
     mqtt_create_full_topic(&p_mqtt_data->mqtt_topic, mqtt_prefix.buf, "gw_status");
     LOG_INFO("esp_mqtt_client_publish: topic:'%s', message:'%s'", p_mqtt_data->mqtt_topic.buf, p_message);
     const int32_t mqtt_qos         = 1;
-    const int32_t mqtt_flag_retain = 1;
+    const int32_t mqtt_flag_retain = !gw_cfg_get_mqtt_flag_disable_retained_messages();
 
     const mqtt_message_id_t message_id = esp_mqtt_client_publish(
         p_mqtt_data->p_mqtt_client,

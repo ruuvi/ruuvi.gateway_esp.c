@@ -362,6 +362,13 @@ gw_cfg_json_parse_mqtt(const cJSON* const p_json_root, ruuvi_gw_cfg_mqtt_t* cons
     {
         LOG_WARN("Can't find key '%s' in config-json", "use_mqtt");
     }
+    if (!gw_cfg_json_get_bool_val(
+            p_json_root,
+            "mqtt_disable_retained_messages",
+            &p_gw_cfg_mqtt->mqtt_disable_retained_messages))
+    {
+        LOG_WARN("Can't find key '%s' in config-json", "mqtt_disable_retained_messages");
+    }
     if (!gw_cfg_json_copy_string_val(
             p_json_root,
             "mqtt_transport",

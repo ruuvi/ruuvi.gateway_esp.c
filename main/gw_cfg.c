@@ -184,6 +184,10 @@ ruuvi_gw_cfg_mqtt_cmp(const ruuvi_gw_cfg_mqtt_t* const p_mqtt1, const ruuvi_gw_c
     {
         return false;
     }
+    if (p_mqtt1->mqtt_disable_retained_messages != p_mqtt2->mqtt_disable_retained_messages)
+    {
+        return false;
+    }
     if (0 != strcmp(p_mqtt1->mqtt_transport.buf, p_mqtt2->mqtt_transport.buf))
     {
         return false;
@@ -852,6 +856,15 @@ gw_cfg_get_mqtt_prefix(void)
     const ruuvi_gw_cfg_mqtt_prefix_t mqtt_prefix = p_gw_cfg->ruuvi_cfg.mqtt.mqtt_prefix;
     gw_cfg_unlock_ro(&p_gw_cfg);
     return mqtt_prefix;
+}
+
+bool
+gw_cfg_get_mqtt_flag_disable_retained_messages(void)
+{
+    const gw_cfg_t* p_gw_cfg                            = gw_cfg_lock_ro();
+    const bool      flag_mqtt_disable_retained_messages = p_gw_cfg->ruuvi_cfg.mqtt.mqtt_disable_retained_messages;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    return flag_mqtt_disable_retained_messages;
 }
 
 auto_update_cycle_type_e

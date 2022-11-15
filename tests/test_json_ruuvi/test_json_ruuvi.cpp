@@ -388,6 +388,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
         "\t\"http_stat_pass\":\t\"pass678\",\n"
 
         "\t\"use_mqtt\":\ttrue,\n"
+        "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"TCP\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
@@ -437,6 +438,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     ASSERT_EQ(GW_CFG_REMOTE_AUTH_TYPE_NO, gw_cfg.ruuvi_cfg.remote.auth_type);
     ASSERT_EQ(0, gw_cfg.ruuvi_cfg.remote.refresh_interval_minutes);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
@@ -486,6 +488,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_pass: pass678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1234");
@@ -541,6 +544,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords) // NOLINT
         "\t\"http_stat_user\":\t\"user678\",\n"
 
         "\t\"use_mqtt\":\ttrue,\n"
+        "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"TCP\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
@@ -610,6 +614,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords) // NOLINT
     ASSERT_EQ(string("prev_remote_cfg_pass"), gw_cfg.ruuvi_cfg.remote.auth.auth_basic.password.buf);
     ASSERT_EQ(0, gw_cfg.ruuvi_cfg.remote.refresh_interval_minutes);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
@@ -670,6 +675,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords) // NOLINT
         ESP_LOG_INFO,
         "Can't find key 'http_stat_pass' in config-json, leave the previous value unchanged");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1234");
@@ -733,6 +739,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords_and_remote_cfg_auth_cha
         "\t\"http_stat_user\":\t\"user678\",\n"
 
         "\t\"use_mqtt\":\ttrue,\n"
+        "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"TCP\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
@@ -802,6 +809,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords_and_remote_cfg_auth_cha
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.remote.auth.auth_basic.password.buf);
     ASSERT_EQ(0, gw_cfg.ruuvi_cfg.remote.refresh_interval_minutes);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
@@ -863,6 +871,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords_and_remote_cfg_auth_cha
         ESP_LOG_INFO,
         "Can't find key 'http_stat_pass' in config-json, leave the previous value unchanged");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1234");
@@ -927,6 +936,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_empty_prefix_and_client_id) // NOLIN
         "\t\"http_stat_pass\":\t\"pass678\",\n"
 
         "\t\"use_mqtt\":\ttrue,\n"
+        "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"TCP\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_prefix\":\t\"\",\n"
@@ -975,6 +985,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_empty_prefix_and_client_id) // NOLIN
     ASSERT_EQ(GW_CFG_REMOTE_AUTH_TYPE_NO, gw_cfg.ruuvi_cfg.remote.auth_type);
     ASSERT_EQ(0, gw_cfg.ruuvi_cfg.remote.refresh_interval_minutes);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("ruuvi/AA:BB:CC:DD:EE:FF/"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
@@ -1024,6 +1035,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_empty_prefix_and_client_id) // NOLIN
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_pass: pass678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 8883");
@@ -1088,6 +1100,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_no_prefix_and_client_id) // NOLINT
         "\t\"http_stat_pass\":\t\"pass678\",\n"
 
         "\t\"use_mqtt\":\ttrue,\n"
+        "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"TCP\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_port\":\t8883,\n"
@@ -1134,6 +1147,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_no_prefix_and_client_id) // NOLINT
     ASSERT_EQ(GW_CFG_REMOTE_AUTH_TYPE_NO, gw_cfg.ruuvi_cfg.remote.auth_type);
     ASSERT_EQ(0, gw_cfg.ruuvi_cfg.remote.refresh_interval_minutes);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("ruuvi/AA:BB:CC:DD:EE:FF/"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
@@ -1183,6 +1197,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_no_prefix_and_client_id) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_pass: pass678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 8883");
@@ -1247,6 +1262,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
         "\t\"http_stat_pass\":\t\"pass678\",\n"
 
         "\t\"use_mqtt\":\ttrue,\n"
+        "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"SSL\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
@@ -1295,6 +1311,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
     ASSERT_EQ(GW_CFG_REMOTE_AUTH_TYPE_NO, gw_cfg.ruuvi_cfg.remote.auth_type);
     ASSERT_EQ(0, gw_cfg.ruuvi_cfg.remote.refresh_interval_minutes);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("SSL"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
@@ -1344,6 +1361,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_pass: pass678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: SSL");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 8883");
@@ -1402,6 +1420,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket) // NOLINT
         "\t\"http_stat_pass\":\t\"pass678\",\n"
 
         "\t\"use_mqtt\":\ttrue,\n"
+        "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"WS\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
@@ -1450,6 +1469,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket) // NOLINT
     ASSERT_EQ(GW_CFG_REMOTE_AUTH_TYPE_NO, gw_cfg.ruuvi_cfg.remote.auth_type);
     ASSERT_EQ(0, gw_cfg.ruuvi_cfg.remote.refresh_interval_minutes);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("WS"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
@@ -1499,6 +1519,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_pass: pass678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: WS");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 8080");
@@ -1557,6 +1578,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
         "\t\"http_stat_pass\":\t\"pass678\",\n"
 
         "\t\"use_mqtt\":\ttrue,\n"
+        "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"WSS\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
@@ -1605,6 +1627,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
     ASSERT_EQ(GW_CFG_REMOTE_AUTH_TYPE_NO, gw_cfg.ruuvi_cfg.remote.auth_type);
     ASSERT_EQ(0, gw_cfg.ruuvi_cfg.remote.refresh_interval_minutes);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("WSS"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
@@ -1654,6 +1677,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_pass: pass678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: WSS");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 8081");
@@ -1712,6 +1736,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_full_config) // NOLINT
         "\t\"http_stat_pass\":\t\"pass678\",\n"
 
         "\t\"use_mqtt\":\ttrue,\n"
+        "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"TCP\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
@@ -1762,6 +1787,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_full_config) // NOLINT
     ASSERT_EQ(GW_CFG_REMOTE_AUTH_TYPE_NO, gw_cfg.ruuvi_cfg.remote.auth_type);
     ASSERT_EQ(0, gw_cfg.ruuvi_cfg.remote.refresh_interval_minutes);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
@@ -1811,6 +1837,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_full_config) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_pass: pass678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1883");
@@ -1864,6 +1891,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_min_config) // NOLINT
         "\t\"http_stat_pass\":\t\"pass678\",\n"
 
         "\t\"use_mqtt\":\ttrue,\n"
+        "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"TCP\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
@@ -1909,6 +1937,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_min_config) // NOLINT
     ASSERT_EQ(GW_CFG_REMOTE_AUTH_TYPE_NO, gw_cfg.ruuvi_cfg.remote.auth_type);
     ASSERT_EQ(0, gw_cfg.ruuvi_cfg.remote.refresh_interval_minutes);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
@@ -1958,6 +1987,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_min_config) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_pass: pass678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1883");
@@ -2011,6 +2041,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_via_dhcp) // NOLINT
         "\t\"http_stat_pass\":\t\"pass678\",\n"
 
         "\t\"use_mqtt\":\ttrue,\n"
+        "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"TCP\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
@@ -2057,6 +2088,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_via_dhcp) // NOLINT
     ASSERT_EQ(GW_CFG_REMOTE_AUTH_TYPE_NO, gw_cfg.ruuvi_cfg.remote.auth_type);
     ASSERT_EQ(0, gw_cfg.ruuvi_cfg.remote.refresh_interval_minutes);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
@@ -2106,6 +2138,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_via_dhcp) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_pass: pass678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1883");
@@ -2160,6 +2193,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_custom) // NOLINT
         "\t\"http_stat_pass\":\t\"pass678\",\n"
 
         "\t\"use_mqtt\":\ttrue,\n"
+        "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"TCP\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
@@ -2208,6 +2242,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_custom) // NOLINT
     ASSERT_EQ(GW_CFG_REMOTE_AUTH_TYPE_NO, gw_cfg.ruuvi_cfg.remote.auth_type);
     ASSERT_EQ(0, gw_cfg.ruuvi_cfg.remote.refresh_interval_minutes);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
@@ -2257,6 +2292,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_custom) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_pass: pass678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1883");
@@ -2317,6 +2353,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_default) // NOLINT
         "\t\"http_stat_pass\":\t\"pass678\",\n"
 
         "\t\"use_mqtt\":\ttrue,\n"
+        "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"TCP\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
@@ -2367,6 +2404,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_default) // NOLINT
     ASSERT_EQ(GW_CFG_REMOTE_AUTH_TYPE_NO, gw_cfg.ruuvi_cfg.remote.auth_type);
     ASSERT_EQ(0, gw_cfg.ruuvi_cfg.remote.refresh_interval_minutes);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
@@ -2416,6 +2454,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_default) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_pass: pass678");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1883");
@@ -2484,6 +2523,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
             "\"http_stat_pass\":\"\","
 
             "\"use_mqtt\":true,"
+            "\"mqtt_disable_retained_messages\":false,"
             "\"mqtt_transport\":\"TCP\","
             "\"mqtt_server\":\"test.mosquitto.org\","
             "\"mqtt_port\":1883,"
@@ -2520,6 +2560,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
 
     ASSERT_FALSE(flag_network_cfg);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
+    ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.remote.use_remote_cfg);
     ASSERT_EQ(string(""), string(gw_cfg.ruuvi_cfg.remote.url.buf));
     ASSERT_EQ(GW_CFG_REMOTE_AUTH_TYPE_NO, gw_cfg.ruuvi_cfg.remote.auth_type);
@@ -2567,6 +2608,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: ");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_pass: ");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1883");
@@ -2619,6 +2661,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body_malloc_failed) // NOLINT
     ASSERT_FALSE(json_ruuvi_parse_http_body(
         "{"
         "\"use_mqtt\":true,"
+        "\"mqtt_disable_retained_messages\":false,"
         "\"mqtt_transport\":\"TCP\","
         "\"mqtt_server\":\"test.mosquitto.org\","
         "\"mqtt_port\":1883,"
