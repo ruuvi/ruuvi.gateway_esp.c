@@ -56,6 +56,8 @@
 
 static const char TAG[] = "ruuvi_gateway";
 
+#define RUUVI_GATEWAY_WIFI_AP_PREFIX    "Configure Ruuvi Gateway "
+
 #define MAC_ADDRESS_IDX_OF_LAST_BYTE        (MAC_ADDRESS_NUM_BYTES - 1U)
 #define MAC_ADDRESS_IDX_OF_PENULTIMATE_BYTE (MAC_ADDRESS_NUM_BYTES - 2U)
 
@@ -137,9 +139,10 @@ generate_wifi_ap_ssid(const mac_address_bin_t mac_addr)
             break;
         }
     }
+
     if (!flag_mac_valid)
     {
-        sniprintf(wifi_ap_ssid.ssid_buf, sizeof(wifi_ap_ssid.ssid_buf), "%sXXXX", DEFAULT_AP_SSID);
+        sniprintf(wifi_ap_ssid.ssid_buf, sizeof(wifi_ap_ssid.ssid_buf), "%sXXXX", RUUVI_GATEWAY_WIFI_AP_PREFIX);
     }
     else
     {
@@ -147,7 +150,7 @@ generate_wifi_ap_ssid(const mac_address_bin_t mac_addr)
             wifi_ap_ssid.ssid_buf,
             sizeof(wifi_ap_ssid.ssid_buf),
             "%s%02X%02X",
-            DEFAULT_AP_SSID,
+            RUUVI_GATEWAY_WIFI_AP_PREFIX,
             mac_addr.mac[MAC_ADDRESS_IDX_OF_PENULTIMATE_BYTE],
             mac_addr.mac[MAC_ADDRESS_IDX_OF_LAST_BYTE]);
     }
