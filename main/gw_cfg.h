@@ -111,6 +111,7 @@ typedef struct ruuvi_gw_cfg_mqtt_password_t
 typedef struct ruuvi_gw_cfg_mqtt_t
 {
     bool                          use_mqtt;
+    bool                          mqtt_disable_retained_messages;
     ruuvi_gw_cfg_mqtt_transport_t mqtt_transport;
     ruuvi_gw_cfg_mqtt_server_t    mqtt_server;
     uint16_t                      mqtt_port;
@@ -353,6 +354,9 @@ gw_cfg_get_http_stat_use_http_stat(void);
 
 ruuvi_gw_cfg_mqtt_prefix_t
 gw_cfg_get_mqtt_prefix(void);
+
+bool
+gw_cfg_get_mqtt_flag_disable_retained_messages(void);
 
 auto_update_cycle_type_e
 gw_cfg_get_auto_update_cycle(void);
