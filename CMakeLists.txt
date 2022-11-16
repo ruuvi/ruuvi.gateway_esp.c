@@ -9,7 +9,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffile-prefix-map=${CMAKE_CURRENT_LIST_D
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffile-prefix-map=$ENV{IDF_PATH}/=esp-idf/")
 
 set(EXPECTED_IDF_VERSION v4.2.2)
-set(RUUVI_NRF52_FW_URL https://github.com/ruuvi/ruuvi.gateway_nrf.c/releases/download/v0.7.2/ruuvigw_nrf_armgcc_ruuvigw_release_v0.7.2_full.hex)
+set(RUUVI_NRF52_FW_URL https://github.com/ruuvi/ruuvi.gateway_nrf.c/releases/download/v1.0.0/ruuvigw_nrf_armgcc_ruuvigw_release_v1.0.0_full.hex)
 
 set(EXTRA_COMPONENT_DIRS
         ${CMAKE_SOURCE_DIR}/components/ruuvi.comm_tester.c/components

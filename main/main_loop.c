@@ -21,15 +21,18 @@
 #include "gw_cfg.h"
 #include "gw_cfg_default.h"
 #include "gw_cfg_log.h"
+#include "reset_task.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
 static const char TAG[] = "ruuvi_gateway";
 
-#define MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS (10U)
-
+#define MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS        (10U)
 #define MAIN_TASK_TIMEOUT_AFTER_HOTSPOT_ACTIVATION_SEC (60)
+#define MAIN_TASK_CHECK_FOR_REMOTE_CFG_PERIOD_MS       (60U * TIME_UNITS_SECONDS_PER_MINUTE * TIME_UNITS_MS_PER_SECOND)
+#define MAIN_TASK_GET_HISTORY_TIMEOUT_MS               (70U * TIME_UNITS_MS_PER_SECOND)
+#define MAIN_TASK_WATCHDOG_FEED_PERIOD_MS              (1 * TIME_UNITS_MS_PER_SECOND)
 
 #define RUUVI_NUM_BYTES_IN_1KB (1024U)
 
@@ -44,13 +47,15 @@ typedef enum main_task_sig_e
     MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT                = OS_SIGNAL_NUM_6,
     MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG                = OS_SIGNAL_NUM_7,
     MAIN_TASK_SIG_NETWORK_CONNECTED                   = OS_SIGNAL_NUM_8,
-    MAIN_TASK_SIG_TASK_WATCHDOG_FEED                  = OS_SIGNAL_NUM_9,
-    MAIN_TASK_SIG_TASK_RECONNECT_NETWORK              = OS_SIGNAL_NUM_10,
-    MAIN_TASK_SIG_SET_DEFAULT_CONFIG                  = OS_SIGNAL_NUM_11,
+    MAIN_TASK_SIG_TASK_RECONNECT_NETWORK              = OS_SIGNAL_NUM_9,
+    MAIN_TASK_SIG_SET_DEFAULT_CONFIG                  = OS_SIGNAL_NUM_10,
+    MAIN_TASK_SIG_ON_GET_HISTORY                      = OS_SIGNAL_NUM_11,
+    MAIN_TASK_SIG_ON_GET_HISTORY_TIMEOUT              = OS_SIGNAL_NUM_12,
+    MAIN_TASK_SIG_TASK_WATCHDOG_FEED                  = OS_SIGNAL_NUM_13,
 } main_task_sig_e;
 
 #define MAIN_TASK_SIG_FIRST (MAIN_TASK_SIG_LOG_HEAP_USAGE)
-#define MAIN_TASK_SIG_LAST  (MAIN_TASK_SIG_SET_DEFAULT_CONFIG)
+#define MAIN_TASK_SIG_LAST  (MAIN_TASK_SIG_TASK_WATCHDOG_FEED)
 
 static os_signal_t*                   g_p_signal_main_task;
 static os_signal_static_t             g_signal_main_task_mem;
@@ -62,6 +67,8 @@ static os_timer_sig_one_shot_t*       g_p_timer_sig_after_wifi_ap_activation;
 static os_timer_sig_one_shot_static_t g_p_timer_sig_after_wifi_ap_activation_mem;
 static os_timer_sig_periodic_t*       g_p_timer_sig_check_for_remote_cfg;
 static os_timer_sig_periodic_static_t g_timer_sig_check_for_remote_cfg_mem;
+static os_timer_sig_one_shot_t*       g_p_timer_sig_get_history_timeout;
+static os_timer_sig_one_shot_static_t g_timer_sig_get_history_timeout_mem;
 static os_timer_sig_periodic_t*       g_p_timer_sig_task_watchdog_feed;
 static os_timer_sig_periodic_static_t g_timer_sig_task_watchdog_feed_mem;
 static event_mgr_ev_info_static_t     g_main_loop_ev_info_mem_wifi_connected;
@@ -173,7 +180,7 @@ main_task_handle_sig_log_heap_usage(void)
         LOG_ERR(
             "Only %uKiB of free memory left - probably due to a memory leak. Reboot the Gateway.",
             (printf_uint_t)(free_heap / RUUVI_NUM_BYTES_IN_1KB));
-        esp_restart();
+        gateway_restart("Low memory");
     }
 }
 
@@ -228,7 +235,7 @@ main_task_handle_sig_timer_after_wifi_ap_activation(void)
     }
     else
     {
-        LOG_INFO("Non-default config is used, activate timer to stop Wi-Fi AP");
+        LOG_INFO("Non-default config is used, stop Wi-Fi AP");
         wifi_manager_stop_ap();
         if (gw_cfg_get_eth_use_eth() || (!wifi_manager_is_sta_configured()))
         {
@@ -239,8 +246,6 @@ main_task_handle_sig_timer_after_wifi_ap_activation(void)
             wifi_manager_connect_async();
         }
         restart_services();
-
-        leds_indication_network_no_connection();
     }
 }
 
@@ -364,14 +369,24 @@ main_task_handle_sig(const main_task_sig_e main_task_sig)
         case MAIN_TASK_SIG_NETWORK_CONNECTED:
             main_task_handle_sig_network_connected();
             break;
-        case MAIN_TASK_SIG_TASK_WATCHDOG_FEED:
-            main_task_handle_sig_task_watchdog_feed();
-            break;
         case MAIN_TASK_SIG_TASK_RECONNECT_NETWORK:
             main_task_handle_sig_task_network_reconnect();
             break;
         case MAIN_TASK_SIG_SET_DEFAULT_CONFIG:
             main_task_handle_sig_set_default_config();
+            break;
+        case MAIN_TASK_SIG_ON_GET_HISTORY:
+            LOG_INFO("MAIN_TASK_SIG_ON_GET_HISTORY");
+            os_timer_sig_one_shot_stop(g_p_timer_sig_get_history_timeout);
+            os_timer_sig_one_shot_start(g_p_timer_sig_get_history_timeout);
+            leds_notify_http_poll_ok();
+            break;
+        case MAIN_TASK_SIG_ON_GET_HISTORY_TIMEOUT:
+            LOG_INFO("MAIN_TASK_SIG_ON_GET_HISTORY_TIMEOUT");
+            leds_notify_http_poll_timeout();
+            break;
+        case MAIN_TASK_SIG_TASK_WATCHDOG_FEED:
+            main_task_handle_sig_task_watchdog_feed();
             break;
     }
 }
@@ -428,6 +443,7 @@ main_loop(void)
     main_wdt_add_and_start();
 
     os_timer_sig_periodic_start(g_p_timer_sig_log_heap_usage);
+    os_timer_sig_one_shot_start(g_p_timer_sig_get_history_timeout);
 
     main_task_configure_periodic_remote_cfg_check();
 
@@ -476,9 +492,11 @@ main_task_init_signals(void)
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_NETWORK_CONNECTED));
-    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_WATCHDOG_FEED));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_RECONNECT_NETWORK));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_SET_DEFAULT_CONFIG));
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_ON_GET_HISTORY));
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_ON_GET_HISTORY_TIMEOUT));
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_WATCHDOG_FEED));
 }
 
 void
@@ -509,14 +527,21 @@ main_task_init_timers(void)
         "remote_cfg",
         g_p_signal_main_task,
         main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG),
-        pdMS_TO_TICKS(60U * TIME_UNITS_MINUTES_PER_HOUR * TIME_UNITS_MS_PER_SECOND));
+        pdMS_TO_TICKS(MAIN_TASK_CHECK_FOR_REMOTE_CFG_PERIOD_MS));
+
+    g_p_timer_sig_get_history_timeout = os_timer_sig_one_shot_create_static(
+        &g_timer_sig_get_history_timeout_mem,
+        "main_hist",
+        g_p_signal_main_task,
+        main_task_conv_to_sig_num(MAIN_TASK_SIG_ON_GET_HISTORY_TIMEOUT),
+        pdMS_TO_TICKS(MAIN_TASK_GET_HISTORY_TIMEOUT_MS));
 
     g_p_timer_sig_task_watchdog_feed = os_timer_sig_periodic_create_static(
         &g_timer_sig_task_watchdog_feed_mem,
         "main_wgod",
         g_p_signal_main_task,
         main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_WATCHDOG_FEED),
-        pdMS_TO_TICKS(CONFIG_ESP_TASK_WDT_TIMEOUT_S * TIME_UNITS_MS_PER_SECOND / 3U));
+        pdMS_TO_TICKS(MAIN_TASK_WATCHDOG_FEED_PERIOD_MS));
 
     event_mgr_subscribe_sig_static(
         &g_main_loop_ev_info_mem_wifi_connected,
@@ -610,4 +635,10 @@ main_task_stop_timer_check_for_remote_cfg(void)
 {
     LOG_INFO("Stop timer: Check for remote cfg");
     os_timer_sig_periodic_stop(g_p_timer_sig_check_for_remote_cfg);
+}
+
+void
+main_task_on_get_history(void)
+{
+    os_signal_send(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_ON_GET_HISTORY));
 }

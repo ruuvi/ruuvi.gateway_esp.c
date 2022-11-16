@@ -8,9 +8,8 @@
 #ifndef RUUVI_ADV_POST_H
 #define RUUVI_ADV_POST_H
 
-#include "ruuvi_gateway.h"
 #include <stdbool.h>
-#include "gw_cfg.h"
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,6 +17,9 @@ extern "C" {
 
 void
 adv_post_init(void);
+
+bool
+adv_post_is_initialized(void);
 
 void
 adv_post_set_period(const uint32_t period_ms);
@@ -33,6 +35,12 @@ adv_post_enable_retransmission(void);
 
 void
 adv_post_last_successful_network_comm_timestamp_update(void);
+
+void
+adv_post_green_led_turn_on(void);
+
+void
+adv_post_green_led_turn_off(void);
 
 #ifdef __cplusplus
 }
