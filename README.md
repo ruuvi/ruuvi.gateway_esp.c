@@ -89,3 +89,15 @@ or using the Windows GUI tool `Flash Download Tools` ([download](https://www.esp
 ```
 python $IDF_PATH/components/nvs_flash/nvs_partition_generator/nvs_partition_gen.py generate gw_cfg_def_partition.csv gw_cfg_def.bin 0x40000
 ```
+
+### Reproducible build
+All binaries, except the bootloader, are reproducible. 
+This means that they are independent of the project path, 
+ESP_IDF toolkit path or compilation date/time.
+
+But to remove absolute paths you need to use small workaround:
+```text
+idf.py build
+touch CMakeLists.txt
+idf.py build
+```

@@ -12,6 +12,7 @@ import sys
 import shutil
 import gzip
 import re
+from datetime import datetime
 
 
 def main():
@@ -33,6 +34,7 @@ def main():
         shutil.rmtree(output_dir)
     print('Create dir: %s' % output_dir)
     os.mkdir(output_dir)
+    timestamp = datetime(2000, 1, 1, 0, 0, 0).timestamp()
     for root, dirs, files in os.walk(input_dir):
         rel_root = os.path.relpath(root, start=input_dir)
         target_dir = os.path.join(output_dir, rel_root)
@@ -51,7 +53,7 @@ def main():
                     jquery_js_gz = 'jquery-%s.js.gz' % m.group(1)
                     dst_file = os.path.join(target_dir, jquery_js_gz)
                     print('%s -> %s' % (src_file, dst_file))
-                    with gzip.open(dst_file, 'wb') as f_out:
+                    with gzip.GzipFile(filename=dst_file, mode='wb', mtime=timestamp) as f_out:
                         shutil.copyfileobj(f_in, f_out)
                 continue
             if file_ext == '.js' or file_ext == '.html' or file_ext == '.css':
@@ -59,7 +61,7 @@ def main():
                 with open(src_file, 'rb') as f_in:
                     dst_file = os.path.join(target_dir, file + '.gz')
                     print('%s -> %s' % (src_file, dst_file))
-                    with gzip.open(dst_file, 'wb') as f_out:
+                    with gzip.GzipFile(filename=dst_file, mode='wb', mtime=timestamp) as f_out:
                         shutil.copyfileobj(f_in, f_out)
             else:
                 src_file = os.path.join(root, file)
