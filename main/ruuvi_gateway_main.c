@@ -806,5 +806,4 @@ app_main(void)
 void
 esp_task_wdt_isr_user_handler(void)
 {
-    esp_restart();
 }
