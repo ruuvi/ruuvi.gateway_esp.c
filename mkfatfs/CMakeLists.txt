@@ -56,3 +56,5 @@ add_executable(mkfatfs
         ${IDF_ORIG_DIR}/wear_levelling/WL_Ext_Perf.cpp
         ${IDF_ORIG_DIR}/wear_levelling/WL_Ext_Safe.cpp
 )
+
+target_compile_definitions(mkfatfs PUBLIC _FS_NORTC=1 _NORTC_YEAR=2000 _NORTC_MDAY=1 _NORTC_MON=1)
