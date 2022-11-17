@@ -399,6 +399,7 @@ adv_post_do_send_statistics(void)
         .nonce                  = g_adv_post_nonce,
         .is_connected_to_wifi   = wifi_manager_is_connected_to_wifi(),
         .network_disconnect_cnt = g_network_disconnect_cnt,
+        .reset_reason           = esp_reset_reason(),
     };
 
     const bool res = http_send_statistics(&stat_info, p_reports);

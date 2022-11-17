@@ -10,6 +10,7 @@
 
 #include <stdbool.h>
 #include <time.h>
+#include <esp_system.h>
 #include "adv_table.h"
 #include "cjson_wrap.h"
 #include "fw_update.h"
@@ -28,6 +29,7 @@ typedef struct http_json_statistics_info_t
     uint32_t                 nonce;
     bool                     is_connected_to_wifi;
     uint32_t                 network_disconnect_cnt;
+    esp_reset_reason_t       reset_reason;
 } http_json_statistics_info_t;
 
 typedef struct http_json_header_info_t

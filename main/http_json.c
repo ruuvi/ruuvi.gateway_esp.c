@@ -181,6 +181,38 @@ http_json_generate_attributes_for_sensors(
     return true;
 }
 
+static const char*
+http_json_reset_reason_to_str(const esp_reset_reason_t reset_reason)
+{
+    switch (reset_reason)
+    {
+        case ESP_RST_UNKNOWN: // Reset reason can not be determined
+            return "UNKNOWN";
+        case ESP_RST_POWERON: // Reset due to power-on event
+            return "POWER_ON";
+        case ESP_RST_EXT: // Reset by external pin (not applicable for ESP32)
+            return "EXT";
+        case ESP_RST_SW: // Software reset via esp_restart
+            return "SW";
+        case ESP_RST_PANIC: // Software reset due to exception/panic
+            return "PANIC";
+        case ESP_RST_INT_WDT: // Reset (software or hardware) due to interrupt watchdog
+            return "INT_WDT";
+        case ESP_RST_TASK_WDT: // Reset due to task watchdog
+            return "TASK_WDT";
+        case ESP_RST_WDT: // Reset due to other watchdogs
+            return "WDT";
+        case ESP_RST_DEEPSLEEP: // Reset after exiting deep sleep mode
+            return "DEEP_SLEEP";
+        case ESP_RST_BROWNOUT: // Brownout reset (software or hardware)
+            return "BROWNOUT";
+        case ESP_RST_SDIO: // Reset over SDIO
+            return "SDIO";
+        default:
+            return "UNSPECIFIED";
+    }
+}
+
 static bool
 http_json_generate_status_attributes(
     cJSON* const                             p_json_root,
@@ -213,6 +245,14 @@ http_json_generate_status_attributes(
         return false;
     }
     if (!cjson_wrap_add_uint32(p_json_root, "NUM_CONN_LOST", p_stat_info->network_disconnect_cnt))
+    {
+        return false;
+    }
+    if (NULL
+        == cJSON_AddStringToObject(
+            p_json_root,
+            "RESET_REASON",
+            http_json_reset_reason_to_str(p_stat_info->reset_reason)))
     {
         return false;
     }
