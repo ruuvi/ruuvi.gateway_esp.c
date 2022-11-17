@@ -51,6 +51,7 @@ static const gw_cfg_ruuvi_t g_gateway_config_default_ruuvi = {
         },
         .mqtt = {
             .use_mqtt = false,
+            .mqtt_disable_retained_messages = false,
             .mqtt_transport = {{ MQTT_TRANSPORT_TCP }},
             .mqtt_server = {{ "test.mosquitto.org" }},
             .mqtt_port = 1883,

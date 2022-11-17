@@ -313,6 +313,13 @@ gw_cfg_json_add_items_mqtt(
     {
         return false;
     }
+    if (!gw_cfg_json_add_bool(
+            p_json_root,
+            "mqtt_disable_retained_messages",
+            p_cfg_mqtt->mqtt_disable_retained_messages))
+    {
+        return false;
+    }
     if (!gw_cfg_json_add_string(p_json_root, "mqtt_transport", p_cfg_mqtt->mqtt_transport.buf))
     {
         return false;

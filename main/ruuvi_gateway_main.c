@@ -56,12 +56,16 @@
 
 static const char TAG[] = "ruuvi_gateway";
 
+#define RUUVI_GATEWAY_WIFI_AP_PREFIX "Configure Ruuvi Gateway "
+
 #define MAC_ADDRESS_IDX_OF_LAST_BYTE        (MAC_ADDRESS_NUM_BYTES - 1U)
 #define MAC_ADDRESS_IDX_OF_PENULTIMATE_BYTE (MAC_ADDRESS_NUM_BYTES - 2U)
 
 #define WIFI_COUNTRY_DEFAULT_FIRST_CHANNEL (1U)
 #define WIFI_COUNTRY_DEFAULT_NUM_CHANNELS  (13U)
 #define WIFI_MAX_TX_POWER_DEFAULT          (9)
+
+#define NRF52_COMM_TASK_PRIORITY (7)
 
 uint32_t volatile g_network_disconnect_cnt;
 
@@ -77,9 +81,10 @@ conv_bool_to_u8(const bool x)
 void
 ruuvi_send_nrf_settings(void)
 {
-    const gw_cfg_t*                    p_gw_cfg = gw_cfg_lock_ro();
-    const ruuvi_gw_cfg_filter_t* const p_filter = &p_gw_cfg->ruuvi_cfg.filter;
-    const ruuvi_gw_cfg_scan_t* const   p_scan   = &p_gw_cfg->ruuvi_cfg.scan;
+    const gw_cfg_t*                    p_gw_cfg   = gw_cfg_lock_ro();
+    const ruuvi_gw_cfg_filter_t* const p_filter   = &p_gw_cfg->ruuvi_cfg.filter;
+    const ruuvi_gw_cfg_scan_t* const   p_scan     = &p_gw_cfg->ruuvi_cfg.scan;
+    const uint16_t                     company_id = p_filter->company_id;
     LOG_INFO(
         "### "
         "sending settings to NRF: use filter: %d, "
@@ -91,7 +96,7 @@ ruuvi_send_nrf_settings(void)
         "use scan channel 38: %d,"
         "use scan channel 39: %d",
         p_filter->company_use_filtering,
-        p_filter->company_id,
+        company_id,
         p_scan->scan_coded_phy,
         p_scan->scan_1mbit_phy,
         p_scan->scan_extended_payload,
@@ -101,7 +106,7 @@ ruuvi_send_nrf_settings(void)
 
     api_send_all(
         RE_CA_UART_SET_ALL,
-        p_filter->company_id,
+        company_id,
         conv_bool_to_u8(p_filter->company_use_filtering),
         conv_bool_to_u8(p_scan->scan_coded_phy),
         conv_bool_to_u8(p_scan->scan_extended_payload),
@@ -137,9 +142,10 @@ generate_wifi_ap_ssid(const mac_address_bin_t mac_addr)
             break;
         }
     }
+
     if (!flag_mac_valid)
     {
-        sniprintf(wifi_ap_ssid.ssid_buf, sizeof(wifi_ap_ssid.ssid_buf), "%sXXXX", DEFAULT_AP_SSID);
+        sniprintf(wifi_ap_ssid.ssid_buf, sizeof(wifi_ap_ssid.ssid_buf), "%sXXXX", RUUVI_GATEWAY_WIFI_AP_PREFIX);
     }
     else
     {
@@ -147,7 +153,7 @@ generate_wifi_ap_ssid(const mac_address_bin_t mac_addr)
             wifi_ap_ssid.ssid_buf,
             sizeof(wifi_ap_ssid.ssid_buf),
             "%s%02X%02X",
-            DEFAULT_AP_SSID,
+            RUUVI_GATEWAY_WIFI_AP_PREFIX,
             mac_addr.mac[MAC_ADDRESS_IDX_OF_PENULTIMATE_BYTE],
             mac_addr.mac[MAC_ADDRESS_IDX_OF_LAST_BYTE]);
     }
@@ -168,7 +174,6 @@ ethernet_link_down_cb(void)
     g_network_disconnect_cnt += 1;
     wifi_manager_update_network_connection_info(UPDATE_LOST_CONNECTION, NULL, NULL, NULL);
     gw_status_clear_eth_connected();
-    leds_indication_network_no_connection();
     event_mgr_notify(EVENT_MGR_EV_ETH_DISCONNECTED);
 }
 
@@ -203,7 +208,6 @@ ethernet_connection_ok_cb(const esp_netif_ip_info_t* p_ip_info)
         NULL,
         p_ip_info,
         (NULL != p_dhcp) ? &dhcp_ip : NULL);
-    leds_indication_network_no_connection();
     gw_status_set_eth_connected();
     start_services();
     event_mgr_notify(EVENT_MGR_EV_ETH_CONNECTED);
@@ -242,9 +246,24 @@ cb_on_disconnect_sta_cmd(void)
 }
 
 static void
+cb_on_ap_started(void)
+{
+    LOG_INFO("### callback: on_ap_started");
+    event_mgr_notify(EVENT_MGR_EV_WIFI_AP_STARTED);
+}
+
+static void
+cb_on_ap_stopped(void)
+{
+    LOG_INFO("### callback: on_ap_stopped");
+    event_mgr_notify(EVENT_MGR_EV_WIFI_AP_STOPPED);
+}
+
+static void
 cb_on_ap_sta_connected(void)
 {
     LOG_INFO("### callback: on_ap_sta_connected");
+    event_mgr_notify(EVENT_MGR_EV_WIFI_AP_STA_CONNECTED);
     main_task_stop_timer_after_hotspot_activation();
     if (gw_cfg_get_eth_use_eth())
     {
@@ -256,6 +275,7 @@ static void
 cb_on_ap_sta_disconnected(void)
 {
     LOG_INFO("### callback: on_ap_sta_disconnected");
+    event_mgr_notify(EVENT_MGR_EV_WIFI_AP_STA_DISCONNECTED);
     if (!wifi_manager_is_connected_to_wifi_or_ethernet())
     {
         if (gw_cfg_is_default())
@@ -283,7 +303,6 @@ wifi_disconnect_cb(void* p_param)
     LOG_WARN("Wifi disconnected");
     g_network_disconnect_cnt += 1;
     gw_status_clear_wifi_connected();
-    leds_indication_network_no_connection();
     event_mgr_notify(EVENT_MGR_EV_WIFI_DISCONNECTED);
 }
 
@@ -367,6 +386,8 @@ wifi_init(
         .cb_on_connect_eth_cmd     = &cb_on_connect_eth_cmd,
         .cb_on_disconnect_eth_cmd  = &cb_on_disconnect_eth_cmd,
         .cb_on_disconnect_sta_cmd  = &cb_on_disconnect_sta_cmd,
+        .cb_on_ap_started          = &cb_on_ap_started,
+        .cb_on_ap_stopped          = &cb_on_ap_stopped,
         .cb_on_ap_sta_connected    = &cb_on_ap_sta_connected,
         .cb_on_ap_sta_disconnected = &cb_on_ap_sta_disconnected,
         .cb_save_wifi_config_sta   = &cb_save_wifi_config,
@@ -386,6 +407,7 @@ wifi_init(
 static void
 cb_before_nrf52_fw_updating(void)
 {
+    leds_notify_nrf52_fw_updating();
     fw_update_set_stage_nrf52_updating();
 
     // Here we do not yet know the value of nRF52 DeviceID, so we cannot use it as the default password.
@@ -412,16 +434,13 @@ cb_after_nrf52_fw_updating(void)
 {
     fw_update_set_extra_info_for_status_json_update_successful();
     vTaskDelay(pdMS_TO_TICKS(5 * 1000));
-    LOG_INFO("nRF52 firmware has been successfully updated - restart system");
-    esp_restart();
+    gateway_restart("nRF52 firmware has been successfully updated - restart system");
 }
 
-ATTR_NORETURN
 static void
 handle_reset_button_is_pressed_during_boot(void)
 {
     LOG_INFO("Reset button is pressed during boot - erase settings in flash");
-    nrf52fw_hw_reset_nrf52(true);
 
     ruuvi_nvs_erase();
     ruuvi_nvs_init();
@@ -430,13 +449,12 @@ handle_reset_button_is_pressed_during_boot(void)
     settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_PERMANENT);
 
     LOG_INFO("Wait until the CONFIGURE button is released");
-    leds_indication_on_configure_button_press();
+    leds_notify_cfg_erased();
     while (0 == gpio_get_level(RB_BUTTON_RESET_PIN))
     {
         vTaskDelay(1);
     }
-    LOG_INFO("The CONFIGURE button has been released - restart system");
-    esp_restart();
+    gateway_restart("The CONFIGURE button has been released - restart system");
 }
 
 static void
@@ -565,7 +583,6 @@ network_subsystem_init(void)
     configure_wifi_country_and_max_tx_power();
     ethernet_init(&ethernet_link_up_cb, &ethernet_link_down_cb, &ethernet_connection_ok_cb);
 
-    bool flag_wifi_ap_started = false;
     if (FORCE_START_WIFI_HOTSPOT_DISABLED == force_start_wifi_hotspot)
     {
         if (gw_cfg_get_eth_use_eth() || (!is_wifi_sta_configured))
@@ -574,7 +591,6 @@ network_subsystem_init(void)
             if (!gw_status_is_eth_link_up())
             {
                 LOG_INFO("### Force start WiFi hotspot (there is no Ethernet connection)");
-                flag_wifi_ap_started = true;
                 wifi_manager_start_ap();
             }
         }
@@ -589,22 +605,9 @@ network_subsystem_init(void)
         {
             settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_DISABLED);
         }
-        if (!flag_wifi_ap_started)
-        {
-            LOG_INFO("Force start WiFi hotspot");
-            flag_wifi_ap_started = true;
-            wifi_manager_start_ap();
-        }
+        LOG_INFO("Force start WiFi hotspot");
+        wifi_manager_start_ap();
         main_task_start_timer_after_hotspot_activation();
-    }
-
-    if (flag_wifi_ap_started)
-    {
-        leds_indication_on_hotspot_activation();
-    }
-    else
-    {
-        leds_indication_network_no_connection();
     }
     return true;
 }
@@ -653,10 +656,8 @@ ruuvi_init_gw_cfg(
         return;
     }
     gw_cfg_log(p_gw_cfg_tmp, "Gateway SETTINGS (from flash)", false);
-    if (!flag_default_cfg_is_used)
-    {
-        (void)gw_cfg_update(p_gw_cfg_tmp);
-    }
+    LOG_INFO("##### Default cfg is used: %d", flag_default_cfg_is_used);
+    (void)gw_cfg_update(flag_default_cfg_is_used ? NULL : p_gw_cfg_tmp);
     os_free(p_gw_cfg_tmp);
 }
 
@@ -691,15 +692,23 @@ main_task_init(void)
     }
 
     gpio_init();
-    leds_init();
-
     const bool is_configure_button_pressed = (0 == gpio_get_level(RB_BUTTON_RESET_PIN)) ? true : false;
+    nrf52fw_hw_reset_nrf52(true);
+    leds_init(is_configure_button_pressed);
+
+    if (!reset_task_init())
+    {
+        LOG_ERR("Can't create thread");
+        return false;
+    }
+
     LOG_INFO(
         "Checking the state of CONFIGURE button during startup: is_pressed: %s",
         is_configure_button_pressed ? "yes" : "no");
     if (is_configure_button_pressed)
     {
         handle_reset_button_is_pressed_during_boot();
+        return false;
     }
 
     ruuvi_nvs_init();
@@ -713,7 +722,8 @@ main_task_init(void)
 
     ruuvi_nrf52_fw_ver_t nrf52_fw_ver = { 0 };
 
-    leds_indication_on_nrf52_fw_updating();
+    leds_notify_nrf52_fw_check();
+    vTaskDelay(pdMS_TO_TICKS(750)); // give time for leds_task to turn off the red LED
     if (!nrf52fw_update_fw_if_necessary(
             fw_update_get_current_fatfs_nrf52_partition_name(),
             &fw_update_nrf52fw_cb_progress,
@@ -725,10 +735,10 @@ main_task_init(void)
         LOG_ERR("%s failed", "nrf52fw_update_fw_if_necessary");
         return false;
     }
-    leds_indication_network_no_connection();
+    leds_notify_nrf52_ready();
 
     adv_post_init();
-    terminal_open(NULL, true);
+    terminal_open(NULL, true, NRF52_COMM_TASK_PRIORITY);
     api_process(true);
     const nrf52_device_info_t nrf52_device_info = ruuvi_device_id_request_and_wait();
 
@@ -746,12 +756,6 @@ main_task_init(void)
     if (!network_subsystem_init())
     {
         LOG_ERR("%s failed", "network_subsystem_init");
-        return false;
-    }
-
-    if (!reset_task_init())
-    {
-        LOG_ERR("Can't create thread");
         return false;
     }
 

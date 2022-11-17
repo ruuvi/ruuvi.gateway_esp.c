@@ -184,6 +184,10 @@ ruuvi_gw_cfg_mqtt_cmp(const ruuvi_gw_cfg_mqtt_t* const p_mqtt1, const ruuvi_gw_c
     {
         return false;
     }
+    if (p_mqtt1->mqtt_disable_retained_messages != p_mqtt2->mqtt_disable_retained_messages)
+    {
+        return false;
+    }
     if (0 != strcmp(p_mqtt1->mqtt_transport.buf, p_mqtt2->mqtt_transport.buf))
     {
         return false;
@@ -703,18 +707,22 @@ gw_cfg_set(
     if (NULL != p_gw_cfg_ruuvi)
     {
         gw_cfg_set_ruuvi(p_gw_cfg_ruuvi, &p_gw_cfg_dst->ruuvi_cfg, &update_status.flag_ruuvi_cfg_modified);
+        g_gw_cfg_is_default = false;
     }
     if (NULL != p_gw_cfg_eth)
     {
         gw_cfg_set_eth(p_gw_cfg_eth, &p_gw_cfg_dst->eth_cfg, &update_status.flag_eth_cfg_modified);
+        g_gw_cfg_is_default = false;
     }
     if (NULL != p_gw_cfg_wifi_ap)
     {
         gw_cfg_set_wifi_ap(p_gw_cfg_wifi_ap, &p_gw_cfg_dst->wifi_cfg.ap, &update_status.flag_wifi_ap_cfg_modified);
+        g_gw_cfg_is_default = false;
     }
     if (NULL != p_gw_cfg_wifi_sta)
     {
         gw_cfg_set_wifi_sta(p_gw_cfg_wifi_sta, &p_gw_cfg_dst->wifi_cfg.sta, &update_status.flag_wifi_sta_cfg_modified);
+        g_gw_cfg_is_default = false;
     }
     if (NULL != g_p_gw_cfg_cb_on_change_cfg)
     {
@@ -724,7 +732,6 @@ gw_cfg_set(
         // then update_status can show that updating is not needed, but it is required.
         g_p_gw_cfg_cb_on_change_cfg(p_gw_cfg_dst);
     }
-    g_gw_cfg_is_default = false;
     if (!g_gw_cfg_ready)
     {
         g_gw_cfg_ready = true;
@@ -762,6 +769,10 @@ gw_cfg_update_wifi_sta_config(const wifiman_config_sta_t* const p_wifi_sta_cfg)
 gw_cfg_update_status_t
 gw_cfg_update(const gw_cfg_t* const p_gw_cfg)
 {
+    if (NULL == p_gw_cfg)
+    {
+        return gw_cfg_set(NULL, NULL, NULL, NULL);
+    }
     return gw_cfg_set(&p_gw_cfg->ruuvi_cfg, &p_gw_cfg->eth_cfg, &p_gw_cfg->wifi_cfg.ap, &p_gw_cfg->wifi_cfg.sta);
 }
 
@@ -852,6 +863,15 @@ gw_cfg_get_mqtt_prefix(void)
     const ruuvi_gw_cfg_mqtt_prefix_t mqtt_prefix = p_gw_cfg->ruuvi_cfg.mqtt.mqtt_prefix;
     gw_cfg_unlock_ro(&p_gw_cfg);
     return mqtt_prefix;
+}
+
+bool
+gw_cfg_get_mqtt_flag_disable_retained_messages(void)
+{
+    const gw_cfg_t* p_gw_cfg                            = gw_cfg_lock_ro();
+    const bool      flag_mqtt_disable_retained_messages = p_gw_cfg->ruuvi_cfg.mqtt.mqtt_disable_retained_messages;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    return flag_mqtt_disable_retained_messages;
 }
 
 auto_update_cycle_type_e

@@ -154,7 +154,7 @@ mqtt_publish_connect(void)
     mqtt_create_full_topic(&p_mqtt_data->mqtt_topic, mqtt_prefix.buf, "gw_status");
     LOG_INFO("esp_mqtt_client_publish: topic:'%s', message:'%s'", p_mqtt_data->mqtt_topic.buf, p_message);
     const int32_t mqtt_qos         = 1;
-    const int32_t mqtt_flag_retain = 1;
+    const int32_t mqtt_flag_retain = !gw_cfg_get_mqtt_flag_disable_retained_messages();
 
     const mqtt_message_id_t message_id = esp_mqtt_client_publish(
         p_mqtt_data->p_mqtt_client,
@@ -186,7 +186,7 @@ mqtt_publish_state_offline(mqtt_protected_data_t* const p_mqtt_data)
     mqtt_create_full_topic(&p_mqtt_data->mqtt_topic, mqtt_prefix.buf, "gw_status");
     LOG_INFO("esp_mqtt_client_publish: topic:'%s', message:'%s'", p_mqtt_data->mqtt_topic.buf, p_message);
     const int32_t mqtt_qos         = 1;
-    const int32_t mqtt_flag_retain = 1;
+    const int32_t mqtt_flag_retain = !gw_cfg_get_mqtt_flag_disable_retained_messages();
 
     const mqtt_message_id_t message_id = esp_mqtt_client_publish(
         p_mqtt_data->p_mqtt_client,
@@ -215,7 +215,7 @@ mqtt_event_handler(esp_mqtt_event_handle_t h_event)
             LOG_INFO("MQTT_EVENT_CONNECTED");
             gw_status_set_mqtt_connected();
             main_task_send_sig_mqtt_publish_connect();
-            leds_indication_on_network_ok();
+            leds_notify_mqtt1_connected();
             if (!fw_update_mark_app_valid_cancel_rollback())
             {
                 LOG_ERR("%s failed", "fw_update_mark_app_valid_cancel_rollback");
@@ -225,7 +225,7 @@ mqtt_event_handler(esp_mqtt_event_handle_t h_event)
         case MQTT_EVENT_DISCONNECTED:
             LOG_INFO("MQTT_EVENT_DISCONNECTED");
             gw_status_clear_mqtt_connected();
-            leds_indication_network_no_connection();
+            leds_notify_mqtt1_disconnected();
             break;
 
         case MQTT_EVENT_SUBSCRIBED:

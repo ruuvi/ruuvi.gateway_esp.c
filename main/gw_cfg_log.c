@@ -289,6 +289,7 @@ static void
 gw_cfg_log_ruuvi_cfg_mqtt(const ruuvi_gw_cfg_mqtt_t* const p_mqtt)
 {
     LOG_INFO("config: use mqtt: %d", p_mqtt->use_mqtt);
+    LOG_INFO("config: mqtt disable retained messages: %d", p_mqtt->mqtt_disable_retained_messages);
     LOG_INFO("config: mqtt transport: %s", p_mqtt->mqtt_transport.buf);
     LOG_INFO("config: mqtt server: %s", p_mqtt->mqtt_server.buf);
     LOG_INFO("config: mqtt port: %u", p_mqtt->mqtt_port);

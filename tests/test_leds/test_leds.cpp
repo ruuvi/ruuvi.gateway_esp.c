@@ -11,6 +11,7 @@
 #include <mqueue.h>
 #include <semaphore.h>
 #include "esp_log_wrapper.hpp"
+#include "event_mgr.h"
 
 #define LEDC_TEST_DUTY_OFF  (1023 - 0 /* 0% */)
 #define LEDC_TEST_DUTY_ON   (1023 - 256 /* 256 / 1024 = 25% */)
@@ -22,11 +23,6 @@ typedef enum MainTaskCmd_Tag
 {
     MainTaskCmd_Exit,
     MainTaskCmd_LedsInit,
-    MainTaskCmd_LedsOn,
-    MainTaskCmd_LedsOff,
-    MainTaskCmd_LedsStartBlink,
-    MainTaskCmd_LedsStartBlinkWithZeroDutyCycle,
-    MainTaskCmd_LedsStartBlinkWithZeroPeriod,
 } MainTaskCmd_e;
 
 /*** Google-test class implementation
@@ -174,6 +170,13 @@ ledc_fade_func_install(int intr_alloc_flags)
     return ESP_OK;
 }
 
+esp_err_t
+ledc_stop(ledc_mode_t speed_mode, ledc_channel_t channel, uint32_t idle_level)
+{
+    g_pTestLeds->testEvents.push_back(new TestEventLedcStop(speed_mode, channel, idle_level));
+    return ESP_OK;
+}
+
 /*** gpio_switch_ctrl.c stub functions
  * *************************************************************************************/
 
@@ -199,6 +202,42 @@ esp_task_wdt_add(TaskHandle_t handle)
     return ESP_OK;
 }
 
+void
+adv_post_green_led_turn_on(void)
+{
+}
+
+void
+adv_post_green_led_turn_off(void)
+{
+}
+
+bool
+gw_cfg_get_http_use_http(void)
+{
+    return true;
+}
+
+bool
+gw_cfg_get_mqtt_use_mqtt(void)
+{
+    return false;
+}
+
+void
+nrf52fw_hw_reset_nrf52(const bool flag_reset)
+{
+}
+
+void
+event_mgr_subscribe_sig_static(
+    event_mgr_ev_info_static_t* const p_ev_info_mem,
+    const event_mgr_ev_e              event,
+    os_signal_t* const                p_signal,
+    const os_signal_num_e             sig_num)
+{
+}
+
 #ifdef __cplusplus
 }
 #endif
@@ -221,22 +260,7 @@ cmdHandlerTask(void* parameters)
                 flagExit = true;
                 break;
             case MainTaskCmd_LedsInit:
-                leds_init();
-                break;
-            case MainTaskCmd_LedsOn:
-                leds_on();
-                break;
-            case MainTaskCmd_LedsOff:
-                leds_off();
-                break;
-            case MainTaskCmd_LedsStartBlink:
-                leds_start_blink(1000, 50);
-                break;
-            case MainTaskCmd_LedsStartBlinkWithZeroDutyCycle:
-                leds_start_blink(1000, 0);
-                break;
-            case MainTaskCmd_LedsStartBlinkWithZeroPeriod:
-                leds_start_blink(0, 50);
+                leds_init(false);
                 break;
             default:
                 printf("Error: Unknown cmd %d\n", (int)cmd);
@@ -287,7 +311,7 @@ TEST_F(TestLeds, test_all) // NOLINT
     cmdQueue.push_and_wait(MainTaskCmd_LedsInit);
 
     int idx = 0;
-    ASSERT_EQ(idx + 3, testEvents.size());
+    ASSERT_EQ(idx + 4, testEvents.size());
     {
         auto* pEv = reinterpret_cast<TestEventLedcTimerConfig*>(testEvents[idx++]);
         ASSERT_EQ(TestEventType_LedcTimerConfig, pEv->eventType);
@@ -312,352 +336,10 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(TestEventType_LedcFadeFuncInstall, pEv->eventType);
         ASSERT_EQ(0, pEv->intr_alloc_flags);
     }
-    ASSERT_EQ(idx, testEvents.size());
-
-    // *** LedsOn
-
-    cmdQueue.push_and_wait(MainTaskCmd_LedsOn);
-    msleep(100);
-    ASSERT_EQ(idx + 2, testEvents.size());
     {
-        auto* pEv = reinterpret_cast<TestEventLedcSetFadeWithTime*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_TEST_DUTY_ON, pEv->target_duty);
-        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
+        auto* pEv = reinterpret_cast<TestEventLedcStop*>(testEvents[idx++]);
+        ASSERT_EQ(TestEventType_LedcStop, pEv->eventType);
+        ASSERT_EQ(0, pEv->channel);
     }
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcFadeStart*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcFadeStart, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_FADE_WAIT_DONE, pEv->fade_mode);
-    }
-    ASSERT_EQ(idx, testEvents.size());
-
-    // *** LedsOff
-
-    cmdQueue.push_and_wait(MainTaskCmd_LedsOff);
-    msleep(100);
-    ASSERT_EQ(idx + 2, testEvents.size());
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcSetFadeWithTime*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_TEST_DUTY_OFF, pEv->target_duty);
-        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
-    }
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcFadeStart*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcFadeStart, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_FADE_WAIT_DONE, pEv->fade_mode);
-    }
-    ASSERT_EQ(idx, testEvents.size());
-
-    // *** LedsStartBlink
-
-    cmdQueue.push_and_wait(MainTaskCmd_LedsStartBlink);
-    msleep(100);
-
-    ASSERT_EQ(idx + 2, testEvents.size());
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcSetFadeWithTime*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_TEST_DUTY_ON, pEv->target_duty);
-        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
-    }
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcFadeStart*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcFadeStart, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_FADE_WAIT_DONE, pEv->fade_mode);
-    }
-    ASSERT_EQ(idx, testEvents.size());
-
-    // *** Wait timer OFF
-    msleep(500);
-
-    ASSERT_EQ(idx + 2, testEvents.size());
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcSetFadeWithTime*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_TEST_DUTY_OFF, pEv->target_duty);
-        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
-    }
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcFadeStart*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcFadeStart, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_FADE_WAIT_DONE, pEv->fade_mode);
-    }
-    ASSERT_EQ(idx, testEvents.size());
-
-    // *** Wait timer ON
-    msleep(500);
-
-    ASSERT_EQ(idx + 2, testEvents.size());
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcSetFadeWithTime*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_TEST_DUTY_ON, pEv->target_duty);
-        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
-    }
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcFadeStart*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcFadeStart, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_FADE_WAIT_DONE, pEv->fade_mode);
-    }
-    ASSERT_EQ(idx, testEvents.size());
-
-    // *** Wait timer OFF
-    msleep(500);
-
-    ASSERT_EQ(idx + 2, testEvents.size());
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcSetFadeWithTime*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_TEST_DUTY_OFF, pEv->target_duty);
-        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
-    }
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcFadeStart*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcFadeStart, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_FADE_WAIT_DONE, pEv->fade_mode);
-    }
-    ASSERT_EQ(idx, testEvents.size());
-
-    // *** LedsStopBlink
-
-    cmdQueue.push_and_wait(MainTaskCmd_LedsOff);
-    msleep(100);
-    ASSERT_EQ(idx + 2, testEvents.size());
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcSetFadeWithTime*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_TEST_DUTY_OFF, pEv->target_duty);
-        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
-    }
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcFadeStart*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcFadeStart, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_FADE_WAIT_DONE, pEv->fade_mode);
-    }
-    ASSERT_EQ(idx, testEvents.size());
-
-    cmdQueue.push_and_wait(MainTaskCmd_LedsStartBlinkWithZeroDutyCycle);
-    msleep(100);
-    ASSERT_EQ(idx + 2, testEvents.size());
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcSetFadeWithTime*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_TEST_DUTY_OFF, pEv->target_duty);
-        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
-    }
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcFadeStart*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcFadeStart, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_FADE_WAIT_DONE, pEv->fade_mode);
-    }
-    ASSERT_EQ(idx, testEvents.size());
-
-    cmdQueue.push_and_wait(MainTaskCmd_LedsOn);
-    msleep(100);
-    ASSERT_EQ(idx + 2, testEvents.size());
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcSetFadeWithTime*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_TEST_DUTY_ON, pEv->target_duty);
-        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
-    }
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcFadeStart*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcFadeStart, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_FADE_WAIT_DONE, pEv->fade_mode);
-    }
-    ASSERT_EQ(idx, testEvents.size());
-
-    cmdQueue.push_and_wait(MainTaskCmd_LedsStartBlinkWithZeroDutyCycle);
-    msleep(100);
-
-    ASSERT_EQ(idx + 2, testEvents.size());
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcSetFadeWithTime*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_TEST_DUTY_OFF, pEv->target_duty);
-        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
-    }
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcFadeStart*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcFadeStart, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_FADE_WAIT_DONE, pEv->fade_mode);
-    }
-    ASSERT_EQ(idx, testEvents.size());
-
-    cmdQueue.push_and_wait(MainTaskCmd_LedsStartBlinkWithZeroPeriod);
-    msleep(100);
-    ASSERT_EQ(idx + 2, testEvents.size());
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcSetFadeWithTime*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_TEST_DUTY_ON, pEv->target_duty);
-        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
-    }
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcFadeStart*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcFadeStart, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_FADE_WAIT_DONE, pEv->fade_mode);
-    }
-    ASSERT_EQ(idx, testEvents.size());
-
-    /* Test LED turn on, then start blinking, then turn on again */
-
-    // *** LedsOn
-
-    cmdQueue.push_and_wait(MainTaskCmd_LedsOn);
-    msleep(100);
-    ASSERT_EQ(idx + 2, testEvents.size());
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcSetFadeWithTime*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_TEST_DUTY_ON, pEv->target_duty);
-        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
-    }
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcFadeStart*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcFadeStart, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_FADE_WAIT_DONE, pEv->fade_mode);
-    }
-    ASSERT_EQ(idx, testEvents.size());
-
-    // *** LedsStartBlink
-
-    cmdQueue.push_and_wait(MainTaskCmd_LedsStartBlink);
-    msleep(100);
-
-    ASSERT_EQ(idx + 2, testEvents.size());
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcSetFadeWithTime*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_TEST_DUTY_ON, pEv->target_duty);
-        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
-    }
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcFadeStart*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcFadeStart, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_FADE_WAIT_DONE, pEv->fade_mode);
-    }
-    ASSERT_EQ(idx, testEvents.size());
-
-    // *** Wait timer OFF
-    msleep(500);
-
-    ASSERT_EQ(idx + 2, testEvents.size());
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcSetFadeWithTime*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_TEST_DUTY_OFF, pEv->target_duty);
-        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
-    }
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcFadeStart*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcFadeStart, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_FADE_WAIT_DONE, pEv->fade_mode);
-    }
-    ASSERT_EQ(idx, testEvents.size());
-
-    // *** Wait timer ON
-    msleep(500);
-
-    ASSERT_EQ(idx + 2, testEvents.size());
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcSetFadeWithTime*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_TEST_DUTY_ON, pEv->target_duty);
-        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
-    }
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcFadeStart*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcFadeStart, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_FADE_WAIT_DONE, pEv->fade_mode);
-    }
-    ASSERT_EQ(idx, testEvents.size());
-
-    // *** LedsOn
-
-    cmdQueue.push_and_wait(MainTaskCmd_LedsOn);
-    msleep(100);
-    ASSERT_EQ(idx + 2, testEvents.size());
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcSetFadeWithTime*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_TEST_DUTY_ON, pEv->target_duty);
-        ASSERT_EQ(LEDC_TEST_FADE_TIME, pEv->max_fade_time_ms);
-    }
-    {
-        auto* pEv = reinterpret_cast<TestEventLedcFadeStart*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_LedcFadeStart, pEv->eventType);
-        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode);
-        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel);
-        ASSERT_EQ(LEDC_FADE_WAIT_DONE, pEv->fade_mode);
-    }
-    ASSERT_EQ(idx, testEvents.size());
-
-    msleep(500);
     ASSERT_EQ(idx, testEvents.size());
 }
