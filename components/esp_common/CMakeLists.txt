@@ -4,7 +4,7 @@ set(ESP_COMMON $ENV{IDF_PATH}/components/esp_common)
 
 if(BOOTLOADER_BUILD)
     # For bootloader, all we need from esp_common is headers
-    idf_component_register(INCLUDE_DIRS ${ESP_COMMON}/include)
+    idf_component_register(INCLUDE_DIRS include ${ESP_COMMON}/include)
     set_property(TARGET ${COMPONENT_LIB} APPEND PROPERTY INTERFACE_LINK_LIBRARIES "-Wl,--gc-sections")
 else()
     # Regular app build
@@ -16,12 +16,12 @@ else()
              "${ESP_COMMON}/src/mac_addr.c"
              "${ESP_COMMON}/src/pm_locks.c"
              "${ESP_COMMON}/src/stack_check.c"
-             "${ESP_COMMON}/src/task_wdt.c"
+             "src/task_wdt.c"
              "${ESP_COMMON}/src/int_wdt.c")
 
     # Note: esp_ipc added as a public requirement to keep compatibility as to be located here.
     idf_component_register(SRCS "${srcs}"
-                           INCLUDE_DIRS ${ESP_COMMON}/include
+                           INCLUDE_DIRS include ${ESP_COMMON}/include
                            REQUIRES ${target} espcoredump esp_timer esp_ipc
                            PRIV_REQUIRES soc
                            LDFRAGMENTS "${ESP_COMMON}/linker.lf")
