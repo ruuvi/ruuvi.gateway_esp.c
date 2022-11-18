@@ -97,9 +97,9 @@ idf_component_register(
             time_task.h
         REQUIRES
             app_update
-            mqtt_patched
+            mqtt
             lwip
-            esp_http_client_patched
+            esp_http_client
             json
             fatfs
             esp32-wifi-manager
