@@ -36,6 +36,8 @@
 #include "time_units.h"
 #include "gw_status.h"
 #include "leds.h"
+#include "reset_info.h"
+#include "reset_reason.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -391,18 +393,27 @@ adv_post_do_send_statistics(void)
     }
     adv_table_statistics_read(p_reports);
 
-    const http_json_statistics_info_t stat_info = {
-        .nrf52_mac_addr         = *gw_cfg_get_nrf52_mac_addr(),
-        .esp_fw                 = *gw_cfg_get_esp32_fw_ver(),
-        .nrf_fw                 = *gw_cfg_get_nrf52_fw_ver(),
-        .uptime                 = g_uptime_counter,
-        .nonce                  = g_adv_post_nonce,
-        .is_connected_to_wifi   = wifi_manager_is_connected_to_wifi(),
-        .network_disconnect_cnt = g_network_disconnect_cnt,
-        .reset_reason           = esp_reset_reason(),
+    const esp_reset_reason_t                reset_reason       = esp_reset_reason();
+    const char* const                       p_reset_reason_str = reset_reason_to_str(reset_reason);
+    http_json_statistics_reset_reason_buf_t reset_reason_buf   = { 0 };
+    (void)sniprintf(reset_reason_buf.buf, sizeof(reset_reason_buf.buf), "%s", p_reset_reason_str);
+
+    str_buf_t                         reset_info = reset_info_get();
+    const http_json_statistics_info_t stat_info  = {
+         .nrf52_mac_addr         = *gw_cfg_get_nrf52_mac_addr(),
+         .esp_fw                 = *gw_cfg_get_esp32_fw_ver(),
+         .nrf_fw                 = *gw_cfg_get_nrf52_fw_ver(),
+         .uptime                 = g_uptime_counter,
+         .nonce                  = g_adv_post_nonce,
+         .is_connected_to_wifi   = wifi_manager_is_connected_to_wifi(),
+         .network_disconnect_cnt = g_network_disconnect_cnt,
+         .reset_reason           = reset_reason_buf,
+         .reset_cnt              = reset_info_get_cnt(),
+         .p_reset_info           = &reset_info.buf[0],
     };
 
     const bool res = http_send_statistics(&stat_info, p_reports);
+    str_buf_free_buf(&reset_info);
     os_free(p_reports);
     return res;
 }

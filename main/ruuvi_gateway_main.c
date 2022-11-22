@@ -6,19 +6,22 @@
  */
 
 #include "ruuvi_gateway.h"
+#include <esp_task_wdt.h>
+#include <driver/gpio.h>
+#include <esp_system.h>
+#include <esp_wifi.h>
+#include <esp_netif_net_stack.h>
+#include "mbedtls/ctr_drbg.h"
+#include "mbedtls/entropy.h"
+#include "freertos/FreeRTOS.h"
+#include "lwip/dhcp.h"
+#include "lwip/sockets.h"
 #include "adv_post.h"
 #include "api.h"
 #include "cJSON.h"
-#include "driver/gpio.h"
-#include "esp_system.h"
-#include "esp_wifi.h"
-#include "esp_netif_net_stack.h"
 #include "ethernet.h"
-#include "mbedtls/ctr_drbg.h"
-#include "mbedtls/entropy.h"
 #include "os_task.h"
 #include "os_malloc.h"
-#include "freertos/FreeRTOS.h"
 #include "gpio.h"
 #include "leds.h"
 #include "mqtt.h"
@@ -41,17 +44,14 @@
 #include "gw_cfg.h"
 #include "gw_cfg_default.h"
 #include "gw_cfg_default_json.h"
-#include "gw_cfg_json_parse.h"
 #include "gw_cfg_log.h"
-#include "lwip/dhcp.h"
-#include "lwip/sockets.h"
 #include "str_buf.h"
-#include "wifiman_md5.h"
 #include "json_ruuvi.h"
 #include "gw_mac.h"
 #include "gw_status.h"
+#include "reset_info.h"
 
-#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
+#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
 static const char TAG[] = "ruuvi_gateway";
@@ -664,7 +664,8 @@ ruuvi_init_gw_cfg(
 static bool
 main_task_init(void)
 {
-    esp_log_level_set(TAG, ESP_LOG_DEBUG);
+    esp_log_level_set(TAG, ESP_LOG_INFO);
+    reset_info_init();
     cjson_wrap_init();
 
     if (!main_loop_init())
@@ -796,14 +797,4 @@ app_main(void)
         }
         main_loop();
     }
-}
-
-/*
- * This function is called by task_wdt_isr function (ISR for when TWDT times out).
- * Note: It has the same limitations as the interrupt function.
- *       Do not use ESP_LOGI functions inside.
- */
-void
-esp_task_wdt_isr_user_handler(void)
-{
 }

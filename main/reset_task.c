@@ -15,6 +15,7 @@
 #include "ruuvi_gateway.h"
 #include "mqtt.h"
 #include "event_mgr.h"
+#include "reset_info.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -293,6 +294,7 @@ reset_task_reboot_after_timeout(void)
 void
 gateway_restart(const char* const p_msg)
 {
+    reset_info_set_sw(p_msg);
     LOG_INFO("%s", p_msg);
     assert(NULL != g_p_reset_task_handle);
     event_mgr_notify(EVENT_MGR_EV_REBOOT);

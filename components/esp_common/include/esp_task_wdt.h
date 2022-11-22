@@ -22,6 +22,8 @@
 extern "C" {
 #endif
 
+extern void __attribute__((weak)) esp_task_wdt_isr_user_handler(const char* const p_task_name);
+
 /**
   * @brief  Initialize the Task Watchdog Timer (TWDT)
   *

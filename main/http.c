@@ -24,6 +24,7 @@
 #include "gw_mac.h"
 #include "str_buf.h"
 #include "gw_status.h"
+#include "reset_info.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -330,6 +331,10 @@ http_async_poll(void)
             if (p_http_async_info->flag_sending_advs)
             {
                 adv_post_last_successful_network_comm_timestamp_update();
+            }
+            else
+            {
+                reset_info_clear_extra_info();
             }
             flag_success = true;
         }

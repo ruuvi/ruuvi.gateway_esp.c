@@ -132,7 +132,7 @@ static void reset_hw_timer(void)
  * Note: It has the same limitations as the interrupt function.
  *       Do not use ESP_LOGI functions inside.
  */
-void __attribute__((weak)) esp_task_wdt_isr_user_handler(void)
+void __attribute__((weak)) esp_task_wdt_isr_user_handler(const char* const p_task_name)
 {
 
 }
@@ -161,11 +161,15 @@ static void task_wdt_isr(void *arg)
 
     //Watchdog got triggered because at least one task did not reset in time.
     ESP_EARLY_LOGE(TAG, "Task watchdog got triggered. The following tasks did not reset the watchdog in time:");
+    const char* p_first_task_name = NULL;
     for (twdttask=twdt_config->list; twdttask!=NULL; twdttask=twdttask->next) {
         if (!twdttask->has_reset) {
             cpu=xTaskGetAffinity(twdttask->task_handle)==0?DRAM_STR("CPU 0"):DRAM_STR("CPU 1");
             if (xTaskGetAffinity(twdttask->task_handle)==tskNO_AFFINITY) cpu=DRAM_STR("CPU 0/1");
             ESP_EARLY_LOGE(TAG, " - %s (%s)", pcTaskGetTaskName(twdttask->task_handle), cpu);
+            if (NULL == p_first_task_name) {
+                p_first_task_name = pcTaskGetTaskName(twdttask->task_handle);
+            }
         }
     }
     ESP_EARLY_LOGE(TAG, "%s", DRAM_STR("Tasks currently running:"));
@@ -173,7 +177,7 @@ static void task_wdt_isr(void *arg)
         ESP_EARLY_LOGE(TAG, "CPU %d: %s", x, pcTaskGetTaskName(xTaskGetCurrentTaskHandleForCPU(x)));
     }
 
-    esp_task_wdt_isr_user_handler();
+    esp_task_wdt_isr_user_handler(p_first_task_name);
 
     if (twdt_config->panic){     //Trigger Panic if configured to do so
         ESP_EARLY_LOGE(TAG, "Aborting.");

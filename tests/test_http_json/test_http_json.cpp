@@ -410,7 +410,9 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_wifi) // NOLINT
         .nonce                  = nonce,
         .is_connected_to_wifi   = is_wifi,
         .network_disconnect_cnt = network_disconnect_cnt,
-        .reset_reason           = ESP_RST_POWERON,
+        .reset_reason           = { "POWER_ON" },
+        .reset_cnt              = 3,
+        .p_reset_info           = "",
     };
     ASSERT_TRUE(http_json_create_status_str(&stat_info, &adv_table, &this->m_json_str));
     ASSERT_EQ(
@@ -423,6 +425,8 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_wifi) // NOLINT
                "\t\"CONNECTION\":\t\"WIFI\",\n"
                "\t\"NUM_CONN_LOST\":\t\"3\",\n"
                "\t\"RESET_REASON\":\t\"POWER_ON\",\n"
+               "\t\"RESET_CNT\":\t\"3\",\n"
+               "\t\"RESET_INFO\":\t\"\",\n"
                "\t\"SENSORS_SEEN\":\t\"2\",\n"
                "\t\"ACTIVE_SENSORS\":\t[{\n"
                "\t\t\t\"MAC\":\t\"AA:BB:CC:01:02:03\",\n"
@@ -435,7 +439,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_wifi) // NOLINT
                "}"),
         string(this->m_json_str.p_str));
     cjson_wrap_free_json_str(&this->m_json_str);
-    ASSERT_EQ(53, this->m_malloc_cnt);
+    ASSERT_EQ(59, this->m_malloc_cnt);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
@@ -481,7 +485,9 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_ethernet) // NOLINT
         .nonce                  = nonce,
         .is_connected_to_wifi   = is_wifi,
         .network_disconnect_cnt = network_disconnect_cnt,
-        .reset_reason           = ESP_RST_TASK_WDT,
+        .reset_reason           = { "TASK_WDT" },
+        .reset_cnt              = 4,
+        .p_reset_info           = "main (active task: idle)",
     };
     ASSERT_TRUE(http_json_create_status_str(&stat_info, &adv_table, &this->m_json_str));
     ASSERT_EQ(
@@ -494,6 +500,8 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_ethernet) // NOLINT
                "\t\"CONNECTION\":\t\"ETHERNET\",\n"
                "\t\"NUM_CONN_LOST\":\t\"4\",\n"
                "\t\"RESET_REASON\":\t\"TASK_WDT\",\n"
+               "\t\"RESET_CNT\":\t\"4\",\n"
+               "\t\"RESET_INFO\":\t\"main (active task: idle)\",\n"
                "\t\"SENSORS_SEEN\":\t\"2\",\n"
                "\t\"ACTIVE_SENSORS\":\t[{\n"
                "\t\t\t\"MAC\":\t\"AB:BB:CC:01:02:F3\",\n"
@@ -506,7 +514,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_ethernet) // NOLINT
                "}"),
         string(this->m_json_str.p_str));
     cjson_wrap_free_json_str(&this->m_json_str);
-    ASSERT_EQ(51, this->m_malloc_cnt);
+    ASSERT_EQ(57, this->m_malloc_cnt);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
@@ -560,10 +568,12 @@ TEST_F(TestHttpJson, test_create_status_json_str_malloc_failed) // NOLINT
         .nonce                  = nonce,
         .is_connected_to_wifi   = is_wifi,
         .network_disconnect_cnt = network_disconnect_cnt,
-        .reset_reason           = ESP_RST_SW,
+        .reset_reason           = { "SW" },
+        .reset_cnt              = 3,
+        .p_reset_info           = "",
     };
 
-    for (uint32_t i = 1; i < 53; ++i)
+    for (uint32_t i = 1; i < 60; ++i)
     {
         this->m_malloc_fail_on_cnt = i;
         this->m_malloc_cnt         = 0;
@@ -576,12 +586,12 @@ TEST_F(TestHttpJson, test_create_status_json_str_malloc_failed) // NOLINT
     }
 
     {
-        this->m_malloc_fail_on_cnt = 54;
+        this->m_malloc_fail_on_cnt = 60;
         this->m_malloc_cnt         = 0;
         ASSERT_TRUE(http_json_create_status_str(&stat_info, &adv_table, &this->m_json_str));
         ASSERT_NE(nullptr, this->m_json_str.p_str);
         cjson_wrap_free_json_str(&this->m_json_str);
-        ASSERT_EQ(53, this->m_malloc_cnt);
+        ASSERT_EQ(59, this->m_malloc_cnt);
         ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
     }
 }
