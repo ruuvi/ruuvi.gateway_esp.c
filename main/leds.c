@@ -57,22 +57,23 @@ typedef enum leds_task_sig_e
     LEDS_TASK_SIG_ON_EV_NRF52_FW_CHECK               = OS_SIGNAL_NUM_2,
     LEDS_TASK_SIG_ON_EV_NRF52_FW_UPDATING            = OS_SIGNAL_NUM_3,
     LEDS_TASK_SIG_ON_EV_NRF52_READY                  = OS_SIGNAL_NUM_4,
-    LEDS_TASK_SIG_ON_EV_CFG_READY                    = OS_SIGNAL_NUM_5,
-    LEDS_TASK_SIG_ON_EV_CFG_CHANGED_RUUVI            = OS_SIGNAL_NUM_6,
-    LEDS_TASK_SIG_ON_EV_CFG_ERASED                   = OS_SIGNAL_NUM_7,
-    LEDS_TASK_SIG_ON_EV_WIFI_AP_STARTED              = OS_SIGNAL_NUM_8,
-    LEDS_TASK_SIG_ON_EV_WIFI_AP_STOPPED              = OS_SIGNAL_NUM_9,
-    LEDS_TASK_SIG_ON_EV_NETWORK_CONNECTED            = OS_SIGNAL_NUM_10,
-    LEDS_TASK_SIG_ON_EV_NETWORK_DISCONNECTED         = OS_SIGNAL_NUM_11,
-    LEDS_TASK_SIG_ON_EV_MQTT1_CONNECTED              = OS_SIGNAL_NUM_12,
-    LEDS_TASK_SIG_ON_EV_MQTT1_DISCONNECTED           = OS_SIGNAL_NUM_13,
-    LEDS_TASK_SIG_ON_EV_HTTP1_DATA_SENT_SUCCESSFULLY = OS_SIGNAL_NUM_14,
-    LEDS_TASK_SIG_ON_EV_HTTP1_DATA_SENT_FAIL         = OS_SIGNAL_NUM_15,
-    LEDS_TASK_SIG_ON_EV_HTTP_POLL_OK                 = OS_SIGNAL_NUM_16,
-    LEDS_TASK_SIG_ON_EV_HTTP_POLL_TIMEOUT            = OS_SIGNAL_NUM_17,
-    LEDS_TASK_SIG_ON_EV_RECV_ADV                     = OS_SIGNAL_NUM_18,
-    LEDS_TASK_SIG_ON_EV_RECV_ADV_TIMEOUT             = OS_SIGNAL_NUM_19,
-    LEDS_TASK_SIG_TASK_WATCHDOG_FEED                 = OS_SIGNAL_NUM_20,
+    LEDS_TASK_SIG_ON_EV_NRF52_FAILURE                = OS_SIGNAL_NUM_5,
+    LEDS_TASK_SIG_ON_EV_CFG_READY                    = OS_SIGNAL_NUM_6,
+    LEDS_TASK_SIG_ON_EV_CFG_CHANGED_RUUVI            = OS_SIGNAL_NUM_7,
+    LEDS_TASK_SIG_ON_EV_CFG_ERASED                   = OS_SIGNAL_NUM_8,
+    LEDS_TASK_SIG_ON_EV_WIFI_AP_STARTED              = OS_SIGNAL_NUM_9,
+    LEDS_TASK_SIG_ON_EV_WIFI_AP_STOPPED              = OS_SIGNAL_NUM_10,
+    LEDS_TASK_SIG_ON_EV_NETWORK_CONNECTED            = OS_SIGNAL_NUM_11,
+    LEDS_TASK_SIG_ON_EV_NETWORK_DISCONNECTED         = OS_SIGNAL_NUM_12,
+    LEDS_TASK_SIG_ON_EV_MQTT1_CONNECTED              = OS_SIGNAL_NUM_13,
+    LEDS_TASK_SIG_ON_EV_MQTT1_DISCONNECTED           = OS_SIGNAL_NUM_14,
+    LEDS_TASK_SIG_ON_EV_HTTP1_DATA_SENT_SUCCESSFULLY = OS_SIGNAL_NUM_15,
+    LEDS_TASK_SIG_ON_EV_HTTP1_DATA_SENT_FAIL         = OS_SIGNAL_NUM_16,
+    LEDS_TASK_SIG_ON_EV_HTTP_POLL_OK                 = OS_SIGNAL_NUM_17,
+    LEDS_TASK_SIG_ON_EV_HTTP_POLL_TIMEOUT            = OS_SIGNAL_NUM_18,
+    LEDS_TASK_SIG_ON_EV_RECV_ADV                     = OS_SIGNAL_NUM_19,
+    LEDS_TASK_SIG_ON_EV_RECV_ADV_TIMEOUT             = OS_SIGNAL_NUM_20,
+    LEDS_TASK_SIG_TASK_WATCHDOG_FEED                 = OS_SIGNAL_NUM_21,
 } leds_task_sig_e;
 
 #define LEDS_TASK_SIG_FIRST (LEDS_TASK_SIG_UPDATE)
@@ -448,6 +449,11 @@ leds_task_handle_sig(const leds_task_sig_e leds_task_sig)
             leds_ctrl_handle_event(LEDS_CTRL_EVENT_NRF52_READY);
             break;
 
+        case LEDS_TASK_SIG_ON_EV_NRF52_FAILURE:
+            LOG_DBG("LEDS_TASK_SIG_ON_EV_NRF52_FAILURE");
+            leds_ctrl_handle_event(LEDS_CTRL_EVENT_NRF52_FAILURE);
+            break;
+
         case LEDS_TASK_SIG_ON_EV_CFG_READY:
             leds_task_handle_sig_on_ev_cfg_ready();
             break;
@@ -601,6 +607,7 @@ leds_register_signals(void)
     os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_NRF52_FW_CHECK));
     os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_NRF52_FW_UPDATING));
     os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_NRF52_READY));
+    os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_NRF52_FAILURE));
     os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_CFG_READY));
     os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_CFG_CHANGED_RUUVI));
     os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_CFG_ERASED));
@@ -748,6 +755,15 @@ void
 leds_notify_nrf52_ready(void)
 {
     if (!os_signal_send(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_NRF52_READY)))
+    {
+        LOG_ERR("%s failed", "os_signal_send");
+    }
+}
+
+void
+leds_notify_nrf52_failure(void)
+{
+    if (!os_signal_send(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_NRF52_FAILURE)))
     {
         LOG_ERR("%s failed", "os_signal_send");
     }
