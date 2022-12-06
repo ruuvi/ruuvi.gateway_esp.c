@@ -442,8 +442,18 @@ handle_reset_button_is_pressed_during_boot(void)
 {
     LOG_INFO("Reset button is pressed during boot - erase settings in flash");
 
+    const mac_address_bin_t mac_addr = settings_read_mac_addr();
+
+    ruuvi_nvs_deinit();
     ruuvi_nvs_erase();
     ruuvi_nvs_init();
+
+    const mac_address_bin_t mac_addr_zero = { 0 };
+    if (0 != memcmp(&mac_addr_zero, &mac_addr, sizeof(mac_addr)))
+    {
+        LOG_INFO("Restore previous MAC addr: %s", mac_address_to_str(&mac_addr).str_buf);
+        settings_write_mac_addr(&mac_addr);
+    }
 
     settings_write_flag_rebooting_after_auto_update(false);
     settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_PERMANENT);
@@ -703,6 +713,8 @@ main_task_init(void)
         return false;
     }
 
+    ruuvi_nvs_init();
+
     LOG_INFO(
         "Checking the state of CONFIGURE button during startup: is_pressed: %s",
         is_configure_button_pressed ? "yes" : "no");
@@ -712,10 +724,9 @@ main_task_init(void)
         return false;
     }
 
-    ruuvi_nvs_init();
-
     if (!settings_check_in_flash())
     {
+        LOG_ERR("There is no configuration in flash, try to erase flash and use default configuration");
         ruuvi_nvs_deinit();
         ruuvi_nvs_erase();
         ruuvi_nvs_init();
