@@ -293,6 +293,8 @@ protected:
     TearDown() override
     {
         http_server_cb_deinit();
+        gw_cfg_deinit();
+        gw_cfg_default_deinit();
         this->m_files.clear();
         this->m_fd   = -1;
         g_pTestClass = nullptr;

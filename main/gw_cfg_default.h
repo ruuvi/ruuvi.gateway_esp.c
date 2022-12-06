@@ -41,6 +41,12 @@ gw_cfg_default_init(
     gw_cfg_default_json_read_callback_t      p_cb_gw_cfg_default_json_read);
 
 void
+gw_cfg_default_deinit(void);
+
+void
+gw_cfg_default_log(void);
+
+void
 gw_cfg_default_get(gw_cfg_t* const p_gw_cfg);
 
 gw_cfg_device_info_t
