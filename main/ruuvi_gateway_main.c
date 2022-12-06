@@ -67,10 +67,18 @@ static const char TAG[] = "ruuvi_gateway";
 
 #define NRF52_COMM_TASK_PRIORITY (7)
 
+#define RUUVI_GATEWAY_DELAY_AFTER_NRF52_UPDATING_SECONDS (5)
+
 uint32_t volatile g_network_disconnect_cnt;
 
 static mbedtls_entropy_context  g_entropy;
 static mbedtls_ctr_drbg_context g_ctr_drbg;
+
+static void
+ruuvi_cb_on_change_cfg(const gw_cfg_t* const p_gw_cfg);
+
+static void
+configure_wifi_country_and_max_tx_power(void);
 
 static inline uint8_t
 conv_bool_to_u8(const bool x)
@@ -158,6 +166,67 @@ generate_wifi_ap_ssid(const mac_address_bin_t mac_addr)
             mac_addr.mac[MAC_ADDRESS_IDX_OF_LAST_BYTE]);
     }
     return wifi_ap_ssid;
+}
+
+static void
+ruuvi_init_gw_cfg(
+    const ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver,
+    const nrf52_device_info_t* const  p_nrf52_device_info)
+{
+    const nrf52_device_id_t nrf52_device_id = (NULL != p_nrf52_device_info) ? p_nrf52_device_info->nrf52_device_id
+                                                                            : (nrf52_device_id_t) { 0 };
+    const mac_address_bin_t nrf52_mac_addr  = (NULL != p_nrf52_device_info) ? p_nrf52_device_info->nrf52_mac_addr
+                                                                            : settings_read_mac_addr();
+
+    const gw_cfg_default_init_param_t gw_cfg_default_init_param = {
+        .wifi_ap_ssid        = generate_wifi_ap_ssid(nrf52_mac_addr),
+        .device_id           = nrf52_device_id,
+        .esp32_fw_ver        = fw_update_get_cur_version(),
+        .nrf52_fw_ver        = nrf52_fw_ver_get_str(p_nrf52_fw_ver),
+        .nrf52_mac_addr      = nrf52_mac_addr,
+        .esp32_mac_addr_wifi = gateway_read_mac_addr(ESP_MAC_WIFI_STA),
+        .esp32_mac_addr_eth  = gateway_read_mac_addr(ESP_MAC_ETH),
+    };
+    gw_cfg_default_init(&gw_cfg_default_init_param, &gw_cfg_default_json_read);
+    if (NULL != p_nrf52_fw_ver)
+    {
+        gw_cfg_default_log();
+    }
+
+    const gw_cfg_device_info_t dev_info = gw_cfg_default_device_info();
+
+    LOG_INFO(
+        "### Init gw_cfg: device_id=%s, MAC=%s, nRF52_fw_ver=%s, WiFi_AP=%s",
+        dev_info.nrf52_device_id.str_buf,
+        dev_info.nrf52_mac_addr.str_buf,
+        dev_info.nrf52_fw_ver.buf,
+        dev_info.wifi_ap_hostname.ssid_buf);
+
+    gw_cfg_init((NULL != p_nrf52_fw_ver) ? &ruuvi_cb_on_change_cfg : NULL);
+
+    bool flag_default_cfg_is_used = false;
+
+    const gw_cfg_t* p_gw_cfg_tmp = settings_get_from_flash(&flag_default_cfg_is_used);
+    if (NULL == p_gw_cfg_tmp)
+    {
+        LOG_ERR("Can't get settings from flash");
+        return;
+    }
+    if (NULL != p_nrf52_fw_ver)
+    {
+        gw_cfg_log(p_gw_cfg_tmp, "Gateway SETTINGS (from flash)", false);
+        LOG_INFO("##### Default cfg is used: %d", flag_default_cfg_is_used);
+        (void)gw_cfg_update(flag_default_cfg_is_used ? NULL : p_gw_cfg_tmp);
+    }
+    os_free(p_gw_cfg_tmp);
+}
+
+static void
+ruuvi_deinit_gw_cfg(void)
+{
+    LOG_INFO("### Deinit gw_cfg");
+    gw_cfg_deinit();
+    gw_cfg_default_deinit();
 }
 
 static void
@@ -265,7 +334,7 @@ cb_on_ap_sta_connected(void)
     LOG_INFO("### callback: on_ap_sta_connected");
     event_mgr_notify(EVENT_MGR_EV_WIFI_AP_STA_CONNECTED);
     main_task_stop_timer_after_hotspot_activation();
-    if (gw_cfg_get_eth_use_eth())
+    if (gw_cfg_is_initialized() && gw_cfg_get_eth_use_eth())
     {
         ethernet_stop();
     }
@@ -276,6 +345,10 @@ cb_on_ap_sta_disconnected(void)
 {
     LOG_INFO("### callback: on_ap_sta_disconnected");
     event_mgr_notify(EVENT_MGR_EV_WIFI_AP_STA_DISCONNECTED);
+    if (!gw_cfg_is_initialized())
+    {
+        return;
+    }
     if (!wifi_manager_is_connected_to_wifi_or_ethernet())
     {
         if (gw_cfg_is_default())
@@ -284,7 +357,10 @@ cb_on_ap_sta_disconnected(void)
         }
         else
         {
-            main_task_start_timer_after_hotspot_activation();
+            if (gw_cfg_get_eth_use_eth() || wifi_manager_is_sta_configured())
+            {
+                main_task_start_timer_after_hotspot_activation();
+            }
         }
     }
     adv_post_enable_retransmission();
@@ -344,6 +420,15 @@ wifi_init(
     const wifiman_config_t* const p_wifi_cfg,
     const char* const             p_fatfs_gwui_partition_name)
 {
+    static bool g_flag_wifi_initialized = false;
+    if (g_flag_wifi_initialized)
+    {
+        wifi_manager_reconfigure(flag_connect_sta, p_wifi_cfg);
+
+        return true;
+    }
+    g_flag_wifi_initialized = true;
+
     static const wifi_manager_antenna_config_t wifi_antenna_config = {
         .wifi_ant_gpio_config = {
             .gpio_cfg = {
@@ -401,6 +486,7 @@ wifi_init(
         &g_ctr_drbg);
     wifi_manager_set_callback(EVENT_STA_GOT_IP, &wifi_connection_ok_cb);
     wifi_manager_set_callback(EVENT_STA_DISCONNECTED, &wifi_disconnect_cb);
+    configure_wifi_country_and_max_tx_power();
     return true;
 }
 
@@ -410,23 +496,24 @@ cb_before_nrf52_fw_updating(void)
     leds_notify_nrf52_fw_updating();
     fw_update_set_stage_nrf52_updating();
 
-    // Here we do not yet know the value of nRF52 DeviceID, so we cannot use it as the default password.
     http_server_cb_prohibit_cfg_updating();
+    // Here we do not yet know the value of nRF52 DeviceID, so we cannot use it as the default password.
     if (!http_server_set_auth(HTTP_SERVER_AUTH_TYPE_ALLOW, NULL, NULL, NULL))
     {
         LOG_ERR("%s failed", "http_server_set_auth");
     }
 
-    const wifiman_wifi_ssid_t wifi_ap_ssid = generate_wifi_ap_ssid(settings_read_mac_addr());
-    LOG_INFO("Read saved WiFi SSID / Hostname: %s", wifi_ap_ssid.ssid_buf);
+    const wifiman_wifi_ssid_t* p_wifi_ap_ssid = gw_cfg_get_wifi_ap_ssid();
+    LOG_INFO("Read saved WiFi SSID / Hostname: %s", p_wifi_ap_ssid->ssid_buf);
 
-    const wifiman_config_t* const p_wifi_cfg       = wifi_manager_default_config_init(&wifi_ap_ssid);
-    const bool                    flag_connect_sta = false;
-    if (!wifi_init(flag_connect_sta, p_wifi_cfg, fw_update_get_current_fatfs_gwui_partition_name()))
+    const wifiman_config_t* const p_wifi_cfg             = wifi_manager_default_config_init(p_wifi_ap_ssid);
+    const bool                    flag_connect_sta_false = false;
+    if (!wifi_init(flag_connect_sta_false, p_wifi_cfg, fw_update_get_current_fatfs_gwui_partition_name()))
     {
         LOG_ERR("%s failed", "wifi_init");
         return;
     }
+    wifi_manager_start_ap();
 }
 
 void
@@ -442,9 +529,21 @@ sleep_with_task_watchdog_feeding(const int32_t delay_seconds)
 static void
 cb_after_nrf52_fw_updating(const bool flag_success)
 {
-    fw_update_set_extra_info_for_status_json_update_successful();
-    vTaskDelay(pdMS_TO_TICKS(5 * 1000));
-    gateway_restart("nRF52 firmware has been successfully updated - restart system");
+    if (flag_success)
+    {
+        fw_update_set_extra_info_for_status_json_update_successful();
+        LOG_INFO("nRF52 firmware has been successfully updated");
+        sleep_with_task_watchdog_feeding(RUUVI_GATEWAY_DELAY_AFTER_NRF52_UPDATING_SECONDS);
+        fw_update_set_extra_info_for_status_json_update_reset();
+    }
+    else
+    {
+        LOG_INFO("Failed to update nRF52 firmware");
+        fw_update_set_extra_info_for_status_json_update_failed_nrf52("Failed to update nRF52 firmware");
+        sleep_with_task_watchdog_feeding(RUUVI_GATEWAY_DELAY_AFTER_NRF52_UPDATING_SECONDS);
+    }
+    wifi_manager_stop_ap();
+    http_server_cb_allow_cfg_updating();
 }
 
 static void
@@ -582,25 +681,22 @@ configure_mbedtls_rng(void)
 }
 
 static bool
-network_subsystem_init(void)
+network_subsystem_init(
+    const force_start_wifi_hotspot_e force_start_wifi_hotspot,
+    const wifiman_config_t* const    p_wifi_cfg)
 {
     configure_mbedtls_rng();
 
-    const wifiman_config_t wifi_cfg = gw_cfg_get_wifi_cfg();
-
-    const force_start_wifi_hotspot_e force_start_wifi_hotspot = settings_read_flag_force_start_wifi_hotspot();
-
-    const bool is_wifi_sta_configured = ('\0' != wifi_cfg.sta.wifi_config_sta.ssid[0]) ? true : false;
+    const bool is_wifi_sta_configured = ('\0' != p_wifi_cfg->sta.wifi_config_sta.ssid[0]) ? true : false;
 
     const bool flag_connect_sta = (!gw_cfg_get_eth_use_eth())
                                   && (FORCE_START_WIFI_HOTSPOT_DISABLED == force_start_wifi_hotspot)
                                   && is_wifi_sta_configured;
-    if (!wifi_init(flag_connect_sta, &wifi_cfg, fw_update_get_current_fatfs_gwui_partition_name()))
+    if (!wifi_init(flag_connect_sta, p_wifi_cfg, fw_update_get_current_fatfs_gwui_partition_name()))
     {
         LOG_ERR("%s failed", "wifi_init");
         return false;
     }
-    configure_wifi_country_and_max_tx_power();
     ethernet_init(&ethernet_link_up_cb, &ethernet_link_down_cb, &ethernet_connection_ok_cb);
 
     if (FORCE_START_WIFI_HOTSPOT_DISABLED == force_start_wifi_hotspot)
@@ -648,37 +744,6 @@ ruuvi_cb_on_change_cfg(const gw_cfg_t* const p_gw_cfg)
     {
         LOG_ERR("%s failed", "http_server_set_auth");
     }
-}
-
-static void
-ruuvi_init_gw_cfg(
-    const ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver,
-    const nrf52_device_info_t* const  p_nrf52_device_info)
-{
-    const gw_cfg_default_init_param_t gw_cfg_default_init_param = {
-        .wifi_ap_ssid        = generate_wifi_ap_ssid(p_nrf52_device_info->nrf52_mac_addr),
-        .device_id           = p_nrf52_device_info->nrf52_device_id,
-        .esp32_fw_ver        = fw_update_get_cur_version(),
-        .nrf52_fw_ver        = nrf52_fw_ver_get_str(p_nrf52_fw_ver),
-        .nrf52_mac_addr      = p_nrf52_device_info->nrf52_mac_addr,
-        .esp32_mac_addr_wifi = gateway_read_mac_addr(ESP_MAC_WIFI_STA),
-        .esp32_mac_addr_eth  = gateway_read_mac_addr(ESP_MAC_ETH),
-    };
-    gw_cfg_default_init(&gw_cfg_default_init_param, &gw_cfg_default_json_read);
-    gw_cfg_init(&ruuvi_cb_on_change_cfg);
-
-    bool flag_default_cfg_is_used = false;
-
-    const gw_cfg_t* p_gw_cfg_tmp = settings_get_from_flash(&flag_default_cfg_is_used);
-    if (NULL == p_gw_cfg_tmp)
-    {
-        LOG_ERR("Can't get settings from flash");
-        return;
-    }
-    gw_cfg_log(p_gw_cfg_tmp, "Gateway SETTINGS (from flash)", false);
-    LOG_INFO("##### Default cfg is used: %d", flag_default_cfg_is_used);
-    (void)gw_cfg_update(flag_default_cfg_is_used ? NULL : p_gw_cfg_tmp);
-    os_free(p_gw_cfg_tmp);
 }
 
 static bool
@@ -742,11 +807,13 @@ main_task_init(void)
         ruuvi_nvs_init();
     }
 
-    ruuvi_nrf52_fw_ver_t nrf52_fw_ver = { 0 };
+    ruuvi_init_gw_cfg(NULL, NULL);
+
     main_task_init_timers();
 
     leds_notify_nrf52_fw_check();
     vTaskDelay(pdMS_TO_TICKS(750)); // give time for leds_task to turn off the red LED
+    ruuvi_nrf52_fw_ver_t nrf52_fw_ver = { 0 };
     if (!nrf52fw_update_fw_if_necessary(
             fw_update_get_current_fatfs_nrf52_partition_name(),
             &fw_update_nrf52fw_cb_progress,
@@ -756,17 +823,25 @@ main_task_init(void)
             &nrf52_fw_ver))
     {
         LOG_ERR("%s failed", "nrf52fw_update_fw_if_necessary");
-        return false;
+        if (esp_ota_check_rollback_is_possible())
+        {
+            LOG_ERR("Firmware rollback is possible, so try to do it");
+            return false;
+        }
+        LOG_ERR("Firmware rollback is not possible, try to send HTTP statistics");
+        leds_notify_nrf52_failure();
     }
-    leds_notify_nrf52_ready();
+    else
+    {
+        leds_notify_nrf52_ready();
+    }
 
     adv_post_init();
     terminal_open(NULL, true, NRF52_COMM_TASK_PRIORITY);
     api_process(true);
     const nrf52_device_info_t nrf52_device_info = ruuvi_device_id_request_and_wait();
 
-    settings_update_mac_addr(nrf52_device_info.nrf52_mac_addr);
-
+    ruuvi_deinit_gw_cfg();
     ruuvi_init_gw_cfg(&nrf52_fw_ver, &nrf52_device_info);
     LOG_INFO("### Default config is used: %s", gw_cfg_is_default() ? "true" : "false");
 
@@ -776,7 +851,9 @@ main_task_init(void)
 
     time_task_init();
 
-    if (!network_subsystem_init())
+    const force_start_wifi_hotspot_e force_start_wifi_hotspot = settings_read_flag_force_start_wifi_hotspot();
+    const wifiman_config_t           wifi_cfg                 = gw_cfg_get_wifi_cfg();
+    if (!network_subsystem_init(force_start_wifi_hotspot, &wifi_cfg))
     {
         LOG_ERR("%s failed", "network_subsystem_init");
         return false;
@@ -792,6 +869,7 @@ app_main(void)
     if (!main_task_init())
     {
         LOG_ERR("main_task_init failed - try to rollback firmware");
+        reset_info_set_sw("Rollback firmware");
         const esp_err_t err = esp_ota_mark_app_invalid_rollback_and_reboot();
         if (0 != err)
         {
