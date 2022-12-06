@@ -149,6 +149,62 @@ event_mgr_subscribe_sig_static(
 }
 
 void
+event_mgr_unsubscribe_sig(const event_mgr_ev_e event, os_signal_t* const p_signal, const os_signal_num_e sig_num)
+{
+    assert((event > EVENT_MGR_EV_NONE) && (event < EVENT_MGR_EV_LAST));
+
+    event_mgr_t* const p_obj = &g_event_mgr;
+    event_mgr_mutex_lock(p_obj);
+    event_mgr_queue_of_subscribers_t* const p_queue_of_subscribers = &p_obj->events[event];
+    event_mgr_ev_info_t*                    p_elem                 = NULL;
+    TAILQ_FOREACH(p_elem, &p_queue_of_subscribers->head, list)
+    {
+        if ((p_elem->p_signal == p_signal) && (p_elem->sig_num == sig_num))
+        {
+            break;
+        }
+    }
+    if (NULL != p_elem)
+    {
+        TAILQ_REMOVE(&p_queue_of_subscribers->head, p_elem, list);
+    }
+    p_elem->p_signal = NULL;
+    p_elem->sig_num  = OS_SIGNAL_NUM_NONE;
+    if (!p_elem->is_static)
+    {
+        os_free(p_elem);
+    }
+    event_mgr_mutex_unlock(p_obj);
+}
+
+void
+event_mgr_unsubscribe_sig_static(event_mgr_ev_info_static_t* const p_ev_info_mem, const event_mgr_ev_e event)
+{
+    assert((event > EVENT_MGR_EV_NONE) && (event < EVENT_MGR_EV_LAST));
+
+    event_mgr_ev_info_t* const p_ev_info = (event_mgr_ev_info_t*)p_ev_info_mem;
+
+    event_mgr_t* const p_obj = &g_event_mgr;
+    event_mgr_mutex_lock(p_obj);
+    event_mgr_queue_of_subscribers_t* const p_queue_of_subscribers = &p_obj->events[event];
+    event_mgr_ev_info_t*                    p_elem                 = NULL;
+    TAILQ_FOREACH(p_elem, &p_queue_of_subscribers->head, list)
+    {
+        if (p_elem == p_ev_info)
+        {
+            break;
+        }
+    }
+    if (NULL != p_elem)
+    {
+        TAILQ_REMOVE(&p_queue_of_subscribers->head, p_elem, list);
+    }
+    p_elem->p_signal = NULL;
+    p_elem->sig_num  = OS_SIGNAL_NUM_NONE;
+    event_mgr_mutex_unlock(p_obj);
+}
+
+void
 event_mgr_notify(const event_mgr_ev_e event)
 {
     event_mgr_t* const p_obj = &g_event_mgr;
