@@ -212,3 +212,35 @@ TEST_F(TestLedsCtrl, test_regular_boot) // NOLINT
     leds_ctrl_handle_event(LEDS_CTRL_EVENT_REBOOT);
     ASSERT_EQ("-", string(leds_ctrl_get_new_blinking_sequence().p_sequence));
 }
+
+TEST_F(TestLedsCtrl, test_regular_boot_then_firmware_updating) // NOLINT
+{
+    leds_ctrl_init(false, g_cb_null);
+
+    const leds_ctrl_params_t params = {
+        .flag_polling_mode = false,
+        .num_http_targets  = 1,
+        .num_mqtt_targets  = 0,
+    };
+    leds_ctrl_configure_sub_machine(params);
+
+    ASSERT_EQ("R-R-R-R-", string(leds_ctrl_get_new_blinking_sequence().p_sequence));
+
+    leds_ctrl_handle_event(LEDS_CTRL_EVENT_NRF52_FW_CHECK);
+    ASSERT_EQ("-", string(leds_ctrl_get_new_blinking_sequence().p_sequence));
+
+    leds_ctrl_handle_event(LEDS_CTRL_EVENT_NRF52_READY);
+    ASSERT_EQ("-", string(leds_ctrl_get_new_blinking_sequence().p_sequence));
+
+    leds_ctrl_handle_event(LEDS_CTRL_EVENT_CFG_READY);
+    ASSERT_EQ("G", string(leds_ctrl_get_new_blinking_sequence().p_sequence));
+
+    leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_NETWORK_CONNECTED);
+    ASSERT_EQ("G", string(leds_ctrl2_get_new_blinking_sequence().p_sequence));
+
+    leds_ctrl_handle_event(LEDS_CTRL_EVENT_NRF52_FW_UPDATING);
+    ASSERT_EQ("R---------", string(leds_ctrl_get_new_blinking_sequence().p_sequence));
+
+    leds_ctrl_handle_event(LEDS_CTRL_EVENT_REBOOT);
+    ASSERT_EQ("-", string(leds_ctrl_get_new_blinking_sequence().p_sequence));
+}

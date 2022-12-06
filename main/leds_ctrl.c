@@ -373,7 +373,6 @@ leds_ctrl_handle_event_in_state_flashing_nrf52_fw(
             return LEDS_CTRL_STATE_NRF52_FAILURE;
 
         case LEDS_CTRL_EVENT_CFG_READY:
-            assert(0);
             break;
     }
     return p_leds_ctrl_state->leds_sm_state;
@@ -407,6 +406,33 @@ leds_ctrl_handle_event_in_state_waiting_cfg_ready(
 
         case LEDS_CTRL_EVENT_CFG_READY:
             return LEDS_CTRL_STATE_SUBSTATE;
+    }
+    return p_leds_ctrl_state->leds_sm_state;
+}
+
+static leds_ctrl_state_e
+leds_ctrl_handle_event_in_state_substate(
+    const leds_ctrl_state_t* const p_leds_ctrl_state,
+    const leds_ctrl_event_e        leds_ctrl_event)
+{
+    switch (leds_ctrl_event)
+    {
+        case LEDS_CTRL_EVENT_REBOOT:
+            return LEDS_CTRL_STATE_BEFORE_REBOOT;
+        case LEDS_CTRL_EVENT_CFG_ERASED:
+            assert(0);
+            break;
+        case LEDS_CTRL_EVENT_NRF52_FW_CHECK:
+            assert(0);
+            break;
+        case LEDS_CTRL_EVENT_NRF52_FW_UPDATING:
+            return LEDS_CTRL_STATE_FLASHING_NRF52_FW;
+        case LEDS_CTRL_EVENT_NRF52_READY:
+            break;
+        case LEDS_CTRL_EVENT_NRF52_FAILURE:
+            break;
+        case LEDS_CTRL_EVENT_CFG_READY:
+            assert(0);
     }
     return p_leds_ctrl_state->leds_sm_state;
 }
@@ -453,6 +479,7 @@ leds_ctrl_handle_event(const leds_ctrl_event_e leds_ctrl_event)
                 break;
             case LEDS_CTRL_STATE_SUBSTATE:
                 assert(p_leds_ctrl_state->flag_submachine_configured);
+                new_sm_state = leds_ctrl_handle_event_in_state_substate(p_leds_ctrl_state, leds_ctrl_event);
                 break;
             case LEDS_CTRL_STATE_BEFORE_REBOOT:
                 break;
