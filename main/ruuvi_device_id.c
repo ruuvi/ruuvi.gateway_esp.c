@@ -11,6 +11,7 @@
 #include "os_mutex.h"
 #include "api.h"
 #include "ruuvi_endpoint_ca_uart.h"
+#include "settings.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -97,6 +98,15 @@ ruuvi_device_id_request_and_wait(void)
     if (!ruuvi_device_id_is_set(&nrf52_device_info))
     {
         LOG_ERR("Failed to read nRF52 DEVICE ID");
+        for (int32_t i = 0; i < sizeof(nrf52_device_info.nrf52_device_id.id); ++i)
+        {
+            nrf52_device_info.nrf52_device_id.id[i] = 0xFFU;
+        }
+        nrf52_device_info.nrf52_mac_addr = settings_read_mac_addr();
+    }
+    else
+    {
+        settings_update_mac_addr(nrf52_device_info.nrf52_mac_addr);
     }
     return nrf52_device_info;
 }
