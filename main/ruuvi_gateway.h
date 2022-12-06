@@ -93,6 +93,9 @@ void
 main_task_init_timers(void);
 
 void
+main_task_subscribe_events(void);
+
+void
 main_task_configure_periodic_remote_cfg_check(void);
 
 ATTR_NORETURN

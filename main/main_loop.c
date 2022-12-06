@@ -542,7 +542,11 @@ main_task_init_timers(void)
         g_p_signal_main_task,
         main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_WATCHDOG_FEED),
         pdMS_TO_TICKS(MAIN_TASK_WATCHDOG_FEED_PERIOD_MS));
+}
 
+void
+main_task_subscribe_events(void)
+{
     event_mgr_subscribe_sig_static(
         &g_main_loop_ev_info_mem_wifi_connected,
         EVENT_MGR_EV_WIFI_CONNECTED,

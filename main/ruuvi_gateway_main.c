@@ -733,6 +733,7 @@ main_task_init(void)
     }
 
     ruuvi_nrf52_fw_ver_t nrf52_fw_ver = { 0 };
+    main_task_init_timers();
 
     leds_notify_nrf52_fw_check();
     vTaskDelay(pdMS_TO_TICKS(750)); // give time for leds_task to turn off the red LED
@@ -761,7 +762,7 @@ main_task_init(void)
 
     hmac_sha256_set_key_str(gw_cfg_get_nrf52_device_id()->str_buf); // set default encryption key
 
-    main_task_init_timers();
+    main_task_subscribe_events();
 
     time_task_init();
 
