@@ -95,6 +95,12 @@ adv_post_cb_on_recv_device_id(void* arg);
 static void
 adv_post_send_get_all(void* arg);
 
+static void
+adv_post_unsubscribe_events(void);
+
+static void
+adv_post_delete_timers(void);
+
 static const char* TAG = "ADV_POST_TASK";
 
 static adv_callbacks_fn_t adv_callback_func_tbl = {
@@ -789,21 +795,9 @@ adv_post_task(void)
     LOG_INFO("Stop task adv_post");
     LOG_INFO("TaskWatchdog: Unregister current thread");
     esp_task_wdt_delete(xTaskGetCurrentTaskHandle());
-    os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_retransmit);
-    os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_retransmit);
-    os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_send_statistics);
-    os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_send_statistics);
-    os_timer_sig_one_shot_stop(g_p_adv_post_timer_sig_do_async_comm);
-    os_timer_sig_one_shot_delete(&g_p_adv_post_timer_sig_do_async_comm);
-    os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_network_watchdog);
-    os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_network_watchdog);
-    os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_green_led_update);
-    os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_green_led_update);
 
-    LOG_INFO("TaskWatchdog: Stop timer");
-    os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_watchdog_feed);
-    LOG_INFO("TaskWatchdog: Delete timer");
-    os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_watchdog_feed);
+    adv_post_unsubscribe_events();
+    adv_post_delete_timers();
 
     os_signal_unregister_cur_thread(g_p_adv_post_sig);
     os_signal_delete(&g_p_adv_post_sig);
@@ -878,6 +872,18 @@ adv_post_subscribe_events(void)
 }
 
 static void
+adv_post_unsubscribe_events(void)
+{
+    event_mgr_unsubscribe_sig_static(&g_adv_post_ev_info_mem_wifi_disconnected, EVENT_MGR_EV_WIFI_DISCONNECTED);
+    event_mgr_unsubscribe_sig_static(&g_adv_post_ev_info_mem_eth_disconnected, EVENT_MGR_EV_ETH_DISCONNECTED);
+    event_mgr_unsubscribe_sig_static(&g_adv_post_ev_info_mem_wifi_connected, EVENT_MGR_EV_WIFI_CONNECTED);
+    event_mgr_unsubscribe_sig_static(&g_adv_post_ev_info_mem_eth_connected, EVENT_MGR_EV_ETH_CONNECTED);
+    event_mgr_unsubscribe_sig_static(&g_adv_post_ev_info_mem_time_synchronized, EVENT_MGR_EV_TIME_SYNCHRONIZED);
+    event_mgr_unsubscribe_sig_static(&g_adv_post_ev_info_mem_cfg_ready, EVENT_MGR_EV_GW_CFG_READY);
+    event_mgr_unsubscribe_sig_static(&g_adv_post_ev_info_mem_gw_cfg_ruuvi_changed, EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI);
+}
+
+static void
 adv_post_create_timers(void)
 {
     g_p_adv_post_timer_sig_retransmit = os_timer_sig_periodic_create_static(
@@ -928,6 +934,25 @@ adv_post_create_timers(void)
         g_p_adv_post_sig,
         adv_post_conv_to_sig_num(ADV_POST_SIG_RECV_ADV_TIMEOUT),
         ADV_POST_TASK_RECV_ADV_TIMEOUT_TICKS);
+}
+
+static void
+adv_post_delete_timers(void)
+{
+    os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_retransmit);
+    os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_retransmit);
+    os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_send_statistics);
+    os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_send_statistics);
+    os_timer_sig_one_shot_stop(g_p_adv_post_timer_sig_do_async_comm);
+    os_timer_sig_one_shot_delete(&g_p_adv_post_timer_sig_do_async_comm);
+    os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_network_watchdog);
+    os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_network_watchdog);
+    os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_watchdog_feed);
+    os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_watchdog_feed);
+    os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_green_led_update);
+    os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_green_led_update);
+    os_timer_sig_one_shot_stop(g_p_adv_post_timer_sig_recv_adv_timeout);
+    os_timer_sig_one_shot_delete(&g_p_adv_post_timer_sig_recv_adv_timeout);
 }
 
 void
