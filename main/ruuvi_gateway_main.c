@@ -430,7 +430,7 @@ cb_before_nrf52_fw_updating(void)
 }
 
 static void
-cb_after_nrf52_fw_updating(void)
+cb_after_nrf52_fw_updating(const bool flag_success)
 {
     fw_update_set_extra_info_for_status_json_update_successful();
     vTaskDelay(pdMS_TO_TICKS(5 * 1000));

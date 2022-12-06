@@ -59,7 +59,7 @@ typedef struct nrf52fw_tmp_buf_t
 typedef void (*nrf52fw_cb_progress)(const size_t num_bytes_flashed, const size_t total_size, void* const p_param);
 
 typedef void (*nrf52fw_cb_before_updating)(void);
-typedef void (*nrf52fw_cb_after_updating)(void);
+typedef void (*nrf52fw_cb_after_updating)(const bool flag_success);
 
 typedef struct nrf52fw_progress_info_t
 {

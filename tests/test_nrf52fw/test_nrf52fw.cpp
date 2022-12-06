@@ -2702,13 +2702,13 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required) // NO
 }
 
 static void
-cb_before_updating()
+cb_before_updating(void)
 {
     g_pTestClass->cb_before_updating_cnt += 1;
 }
 
 static void
-cb_after_updating()
+cb_after_updating(const bool flag_success)
 {
     g_pTestClass->cb_after_updating_cnt += 1;
 }
