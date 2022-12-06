@@ -102,6 +102,9 @@ ATTR_NORETURN
 void
 main_loop(void);
 
+void
+sleep_with_task_watchdog_feeding(const int32_t delay_seconds);
+
 #ifdef __cplusplus
 }
 #endif

@@ -113,6 +113,11 @@ fw_update_set_extra_info_for_status_json_update_failed(const char* const p_messa
 {
 }
 
+void
+fw_update_set_extra_info_for_status_json_update_reset(void)
+{
+}
+
 bool
 fw_update_is_url_valid(void)
 {

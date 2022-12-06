@@ -429,6 +429,16 @@ cb_before_nrf52_fw_updating(void)
     }
 }
 
+void
+sleep_with_task_watchdog_feeding(const int32_t delay_seconds)
+{
+    for (int32_t i = 0; i < delay_seconds; ++i)
+    {
+        esp_task_wdt_reset();
+        vTaskDelay(pdMS_TO_TICKS(1 * 1000));
+    }
+}
+
 static void
 cb_after_nrf52_fw_updating(const bool flag_success)
 {

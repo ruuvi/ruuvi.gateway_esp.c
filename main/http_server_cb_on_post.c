@@ -117,6 +117,22 @@ http_server_cb_on_post_fw_update(const char* p_body, const bool flag_access_from
 
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
+http_server_cb_on_post_fw_update_reset(void)
+{
+    LOG_DBG("POST /fw_update_reset");
+    fw_update_set_extra_info_for_status_json_update_reset();
+    const bool flag_no_cache = true;
+    return http_server_resp_data_in_flash(
+        HTTP_CONENT_TYPE_APPLICATION_JSON,
+        NULL,
+        strlen(g_empty_json),
+        HTTP_CONENT_ENCODING_NONE,
+        (const uint8_t*)g_empty_json,
+        flag_no_cache);
+}
+
+HTTP_SERVER_CB_STATIC
+http_server_resp_t
 http_server_cb_on_post_gw_cfg_download(void)
 {
     LOG_DBG("POST /gw_cfg_download");
@@ -155,9 +171,14 @@ http_server_cb_on_post(
     const bool        flag_access_from_lan)
 {
     (void)p_uri_params;
+    if (0 == strcmp(p_file_name, "fw_update_reset"))
+    {
+        return http_server_cb_on_post_fw_update_reset();
+    }
     if (g_http_server_cb_flag_prohibit_cfg_updating)
     {
-        return http_server_resp_404();
+        LOG_ERR("Access to some resources are prohibited while in updating mode: %s", p_file_name);
+        return http_server_resp_403_forbidden();
     }
     if (0 == strcmp(p_file_name, "ruuvi.json"))
     {
