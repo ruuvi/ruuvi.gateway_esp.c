@@ -829,10 +829,12 @@ main_task_init(void)
             return false;
         }
         LOG_ERR("Firmware rollback is not possible, try to send HTTP statistics");
+        gw_status_clear_nrf_status();
         leds_notify_nrf52_failure();
     }
     else
     {
+        gw_status_set_nrf_status();
         leds_notify_nrf52_ready();
     }
 

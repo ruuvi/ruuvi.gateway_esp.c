@@ -33,6 +33,7 @@ typedef struct http_json_statistics_info_t
     ruuvi_nrf52_fw_ver_str_t                nrf_fw;
     uint32_t                                uptime;
     uint32_t                                nonce;
+    bool                                    nrf_status;
     bool                                    is_connected_to_wifi;
     uint32_t                                network_disconnect_cnt;
     http_json_statistics_reset_reason_buf_t reset_reason;

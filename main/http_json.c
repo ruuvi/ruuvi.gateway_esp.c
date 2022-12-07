@@ -199,6 +199,10 @@ http_json_generate_status_attributes(
     {
         return false;
     }
+    if (NULL == cJSON_AddBoolToObject(p_json_root, "NRF_STATUS", p_stat_info->nrf_status))
+    {
+        return false;
+    }
     if (!cjson_wrap_add_uint32(p_json_root, "UPTIME", p_stat_info->uptime))
     {
         return false;

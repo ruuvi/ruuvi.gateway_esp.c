@@ -16,6 +16,7 @@
 #define MQTT_CONNECTED_BIT (1U << 1U)
 #define ETH_CONNECTED_BIT  (1U << 4U)
 #define ETH_LINK_UP_BIT    (1U << 5U)
+#define NRF_STATUS_BIT     (1U << 7U)
 
 static const char TAG[] = "gw_status";
 
@@ -99,6 +100,28 @@ bool
 gw_status_is_mqtt_connected(void)
 {
     if (0 != (xEventGroupGetBits(g_p_ev_grp_status_bits) & MQTT_CONNECTED_BIT))
+    {
+        return true;
+    }
+    return false;
+}
+
+void
+gw_status_set_nrf_status(void)
+{
+    xEventGroupSetBits(g_p_ev_grp_status_bits, NRF_STATUS_BIT);
+}
+
+void
+gw_status_clear_nrf_status(void)
+{
+    xEventGroupClearBits(g_p_ev_grp_status_bits, NRF_STATUS_BIT);
+}
+
+bool
+gw_status_get_nrf_status(void)
+{
+    if (0 != (xEventGroupGetBits(g_p_ev_grp_status_bits) & NRF_STATUS_BIT))
     {
         return true;
     }

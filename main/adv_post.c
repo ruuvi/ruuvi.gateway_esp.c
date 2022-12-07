@@ -411,6 +411,7 @@ adv_post_do_send_statistics(void)
          .nrf_fw                 = *gw_cfg_get_nrf52_fw_ver(),
          .uptime                 = g_uptime_counter,
          .nonce                  = g_adv_post_nonce,
+         .nrf_status             = gw_status_get_nrf_status(),
          .is_connected_to_wifi   = wifi_manager_is_connected_to_wifi(),
          .network_disconnect_cnt = g_network_disconnect_cnt,
          .reset_reason           = reset_reason_buf,

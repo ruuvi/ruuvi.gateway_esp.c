@@ -408,6 +408,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_wifi) // NOLINT
         .nrf_fw                 = { "0.7.1" },
         .uptime                 = uptime,
         .nonce                  = nonce,
+        .nrf_status             = true,
         .is_connected_to_wifi   = is_wifi,
         .network_disconnect_cnt = network_disconnect_cnt,
         .reset_reason           = { "POWER_ON" },
@@ -420,6 +421,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_wifi) // NOLINT
                "\t\"DEVICE_ADDR\":\t\"AA:CC:EE:00:11:22\",\n"
                "\t\"ESP_FW\":\t\"1.9.0\",\n"
                "\t\"NRF_FW\":\t\"0.7.1\",\n"
+               "\t\"NRF_STATUS\":\ttrue,\n"
                "\t\"UPTIME\":\t\"123\",\n"
                "\t\"NONCE\":\t\"1234567\",\n"
                "\t\"CONNECTION\":\t\"WIFI\",\n"
@@ -439,7 +441,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_wifi) // NOLINT
                "}"),
         string(this->m_json_str.p_str));
     cjson_wrap_free_json_str(&this->m_json_str);
-    ASSERT_EQ(59, this->m_malloc_cnt);
+    ASSERT_EQ(61, this->m_malloc_cnt);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
@@ -483,6 +485,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_ethernet) // NOLINT
         .nrf_fw                 = { "0.7.1" },
         .uptime                 = uptime,
         .nonce                  = nonce,
+        .nrf_status             = false,
         .is_connected_to_wifi   = is_wifi,
         .network_disconnect_cnt = network_disconnect_cnt,
         .reset_reason           = { "TASK_WDT" },
@@ -495,6 +498,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_ethernet) // NOLINT
                "\t\"DEVICE_ADDR\":\t\"AB:CD:EF:01:12:23\",\n"
                "\t\"ESP_FW\":\t\"1.9.0\",\n"
                "\t\"NRF_FW\":\t\"0.7.1\",\n"
+               "\t\"NRF_STATUS\":\tfalse,\n"
                "\t\"UPTIME\":\t\"124\",\n"
                "\t\"NONCE\":\t\"1234568\",\n"
                "\t\"CONNECTION\":\t\"ETHERNET\",\n"
@@ -514,7 +518,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_ethernet) // NOLINT
                "}"),
         string(this->m_json_str.p_str));
     cjson_wrap_free_json_str(&this->m_json_str);
-    ASSERT_EQ(57, this->m_malloc_cnt);
+    ASSERT_EQ(59, this->m_malloc_cnt);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
@@ -566,6 +570,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_malloc_failed) // NOLINT
         .nrf_fw                 = { "0.7.1" },
         .uptime                 = uptime,
         .nonce                  = nonce,
+        .nrf_status             = true,
         .is_connected_to_wifi   = is_wifi,
         .network_disconnect_cnt = network_disconnect_cnt,
         .reset_reason           = { "SW" },
@@ -573,7 +578,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_malloc_failed) // NOLINT
         .p_reset_info           = "",
     };
 
-    for (uint32_t i = 1; i < 60; ++i)
+    for (uint32_t i = 1; i < 62; ++i)
     {
         this->m_malloc_fail_on_cnt = i;
         this->m_malloc_cnt         = 0;
@@ -586,12 +591,12 @@ TEST_F(TestHttpJson, test_create_status_json_str_malloc_failed) // NOLINT
     }
 
     {
-        this->m_malloc_fail_on_cnt = 60;
+        this->m_malloc_fail_on_cnt = 62;
         this->m_malloc_cnt         = 0;
         ASSERT_TRUE(http_json_create_status_str(&stat_info, &adv_table, &this->m_json_str));
         ASSERT_NE(nullptr, this->m_json_str.p_str);
         cjson_wrap_free_json_str(&this->m_json_str);
-        ASSERT_EQ(59, this->m_malloc_cnt);
+        ASSERT_EQ(61, this->m_malloc_cnt);
         ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
     }
 }
