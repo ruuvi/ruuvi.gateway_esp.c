@@ -195,7 +195,17 @@ gw_cfg_default_init(
         sizeof(p_lan_auth->lan_auth_pass.buf),
         "%s",
         lan_auth_default_password_md5.buf);
+}
 
+void
+gw_cfg_default_deinit(void)
+{
+    memset(&g_gw_cfg_default, 0, sizeof(g_gw_cfg_default));
+}
+
+void
+gw_cfg_default_log(void)
+{
     gw_cfg_log(&g_gw_cfg_default, "Gateway SETTINGS (default)", true);
 }
 

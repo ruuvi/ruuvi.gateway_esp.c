@@ -199,6 +199,10 @@ http_json_generate_status_attributes(
     {
         return false;
     }
+    if (NULL == cJSON_AddBoolToObject(p_json_root, "NRF_STATUS", p_stat_info->nrf_status))
+    {
+        return false;
+    }
     if (!cjson_wrap_add_uint32(p_json_root, "UPTIME", p_stat_info->uptime))
     {
         return false;
@@ -213,6 +217,18 @@ http_json_generate_status_attributes(
         return false;
     }
     if (!cjson_wrap_add_uint32(p_json_root, "NUM_CONN_LOST", p_stat_info->network_disconnect_cnt))
+    {
+        return false;
+    }
+    if (NULL == cJSON_AddStringToObject(p_json_root, "RESET_REASON", p_stat_info->reset_reason.buf))
+    {
+        return false;
+    }
+    if (!cjson_wrap_add_uint32(p_json_root, "RESET_CNT", p_stat_info->reset_cnt))
+    {
+        return false;
+    }
+    if (NULL == cJSON_AddStringToObject(p_json_root, "RESET_INFO", p_stat_info->p_reset_info))
     {
         return false;
     }

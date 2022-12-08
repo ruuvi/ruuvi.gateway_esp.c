@@ -476,6 +476,8 @@ cmd_handler_task(void* p_param)
         }
         p_obj->cmdQueue.notify_handled();
     }
+    gw_cfg_deinit();
+    gw_cfg_default_deinit();
     vTaskDelete(nullptr);
 }
 

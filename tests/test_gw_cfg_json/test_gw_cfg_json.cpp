@@ -115,6 +115,7 @@ protected:
             .esp32_mac_addr_eth  = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x22 },
         };
         gw_cfg_default_init(&init_params, nullptr);
+        gw_cfg_default_log();
         gw_cfg_init(nullptr);
 
         esp_log_wrapper_clear();
@@ -123,6 +124,8 @@ protected:
     void
     TearDown() override
     {
+        gw_cfg_deinit();
+        gw_cfg_default_deinit();
         g_pTestClass = nullptr;
         esp_log_wrapper_deinit();
     }
@@ -180,7 +183,7 @@ os_calloc(const size_t nmemb, const size_t size)
 os_mutex_recursive_t
 os_mutex_recursive_create_static(os_mutex_recursive_static_t* const p_mutex_static)
 {
-    return nullptr;
+    return reinterpret_cast<os_mutex_recursive_t>(p_mutex_static);
 }
 
 void

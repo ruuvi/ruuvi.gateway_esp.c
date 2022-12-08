@@ -47,6 +47,15 @@ gw_status_clear_mqtt_connected(void);
 bool
 gw_status_is_mqtt_connected(void);
 
+void
+gw_status_set_nrf_status(void);
+
+void
+gw_status_clear_nrf_status(void);
+
+bool
+gw_status_get_nrf_status(void);
+
 #ifdef __cplusplus
 }
 #endif

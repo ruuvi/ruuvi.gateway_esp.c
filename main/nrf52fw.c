@@ -689,21 +689,45 @@ nrf52fw_update_fw_step3(
     if (!nrf52fw_check_firmware(p_ffs, p_tmp_buf, &fw_info))
     {
         LOG_ERR("%s failed", "nrf52fw_check_firmware");
+        if (NULL != p_nrf52_fw_ver)
+        {
+            nrf52fw_read_current_fw_ver(p_nrf52_fw_ver);
+        }
+        if (NULL != cb_after_updating)
+        {
+            cb_after_updating(false);
+        }
         return false;
     }
     if (!nrf52fw_flash_write_firmware(p_ffs, p_tmp_buf, &fw_info, cb_progress, p_param_cb_progress))
     {
         LOG_ERR("%s failed", "nrf52fw_flash_write_firmware");
+        if (NULL != p_nrf52_fw_ver)
+        {
+            nrf52fw_read_current_fw_ver(p_nrf52_fw_ver);
+        }
+        if (NULL != cb_after_updating)
+        {
+            cb_after_updating(false);
+        }
         return false;
-    }
-    if (NULL != cb_after_updating)
-    {
-        cb_after_updating();
     }
     if (!nrf52fw_read_current_fw_ver(&cur_fw_ver))
     {
         LOG_ERR("%s failed", "nrf52fw_read_current_fw_ver");
+        if (NULL != p_nrf52_fw_ver)
+        {
+            *p_nrf52_fw_ver = cur_fw_ver;
+        }
+        if (NULL != cb_after_updating)
+        {
+            cb_after_updating(false);
+        }
         return false;
+    }
+    if (NULL != cb_after_updating)
+    {
+        cb_after_updating(true);
     }
     if (NULL != p_nrf52_fw_ver)
     {

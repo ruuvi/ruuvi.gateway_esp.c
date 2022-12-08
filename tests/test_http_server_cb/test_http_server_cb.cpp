@@ -113,6 +113,11 @@ fw_update_set_extra_info_for_status_json_update_failed(const char* const p_messa
 {
 }
 
+void
+fw_update_set_extra_info_for_status_json_update_reset(void)
+{
+}
+
 bool
 fw_update_is_url_valid(void)
 {
@@ -293,6 +298,8 @@ protected:
     TearDown() override
     {
         http_server_cb_deinit();
+        gw_cfg_deinit();
+        gw_cfg_default_deinit();
         this->m_files.clear();
         this->m_fd   = -1;
         g_pTestClass = nullptr;

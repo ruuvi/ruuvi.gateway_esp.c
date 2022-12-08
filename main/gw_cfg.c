@@ -27,6 +27,7 @@ static gw_cfg_cb_on_change_cfg     g_p_gw_cfg_cb_on_change_cfg;
 void
 gw_cfg_init(gw_cfg_cb_on_change_cfg p_cb_on_change_cfg)
 {
+    assert(NULL == g_gw_cfg_mutex);
     g_gw_cfg_mutex = os_mutex_recursive_create_static(&g_gw_cfg_mutex_mem);
     os_mutex_recursive_lock(g_gw_cfg_mutex);
     g_gw_cfg_ready      = false;
@@ -39,6 +40,11 @@ gw_cfg_init(gw_cfg_cb_on_change_cfg p_cb_on_change_cfg)
 void
 gw_cfg_deinit(void)
 {
+    assert(NULL != g_gw_cfg_mutex);
+    os_mutex_recursive_lock(g_gw_cfg_mutex);
+    g_p_gw_cfg_cb_on_change_cfg = NULL;
+    g_gw_cfg_ready              = false;
+    os_mutex_recursive_unlock(g_gw_cfg_mutex);
     os_mutex_recursive_delete(&g_gw_cfg_mutex);
     g_gw_cfg_mutex = NULL;
 }
@@ -56,6 +62,7 @@ gw_cfg_is_initialized(void)
 const gw_cfg_t*
 gw_cfg_lock_ro(void)
 {
+    assert(NULL != g_gw_cfg_mutex);
     os_mutex_recursive_lock(g_gw_cfg_mutex);
     return &g_gateway_config;
 }
@@ -63,6 +70,7 @@ gw_cfg_lock_ro(void)
 void
 gw_cfg_unlock_ro(const gw_cfg_t** const p_p_gw_cfg)
 {
+    assert(NULL != g_gw_cfg_mutex);
     *p_p_gw_cfg = NULL;
     os_mutex_recursive_unlock(g_gw_cfg_mutex);
 }
@@ -70,6 +78,7 @@ gw_cfg_unlock_ro(const gw_cfg_t** const p_p_gw_cfg)
 bool
 gw_cfg_is_default(void)
 {
+    assert(NULL != g_gw_cfg_mutex);
     const gw_cfg_t* p_gw_cfg   = gw_cfg_lock_ro();
     const bool      is_default = g_gw_cfg_is_default;
     gw_cfg_unlock_ro(&p_gw_cfg);
@@ -701,6 +710,7 @@ gw_cfg_set(
         .flag_wifi_sta_cfg_modified = false,
     };
 
+    assert(NULL != g_gw_cfg_mutex);
     os_mutex_recursive_lock(g_gw_cfg_mutex);
     gw_cfg_t* const p_gw_cfg_dst = &g_gateway_config;
 
@@ -732,7 +742,7 @@ gw_cfg_set(
         // then update_status can show that updating is not needed, but it is required.
         g_p_gw_cfg_cb_on_change_cfg(p_gw_cfg_dst);
     }
-    if (!g_gw_cfg_ready)
+    if ((NULL != g_p_gw_cfg_cb_on_change_cfg) && !g_gw_cfg_ready)
     {
         g_gw_cfg_ready = true;
         event_mgr_notify(EVENT_MGR_EV_GW_CFG_READY);
@@ -779,6 +789,7 @@ gw_cfg_update(const gw_cfg_t* const p_gw_cfg)
 void
 gw_cfg_get_copy(gw_cfg_t* const p_gw_cfg_dst)
 {
+    assert(NULL != g_gw_cfg_mutex);
     const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
     *p_gw_cfg_dst            = *p_gw_cfg;
     gw_cfg_unlock_ro(&p_gw_cfg);
@@ -787,6 +798,7 @@ gw_cfg_get_copy(gw_cfg_t* const p_gw_cfg_dst)
 bool
 gw_cfg_get_remote_cfg_use(gw_cfg_remote_refresh_interval_minutes_t* const p_interval_minutes)
 {
+    assert(NULL != g_gw_cfg_mutex);
     const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
     if (NULL != p_interval_minutes)
     {
@@ -800,6 +812,7 @@ gw_cfg_get_remote_cfg_use(gw_cfg_remote_refresh_interval_minutes_t* const p_inte
 const ruuvi_gw_cfg_remote_t*
 gw_cfg_get_remote_cfg_copy(void)
 {
+    assert(NULL != g_gw_cfg_mutex);
     const gw_cfg_t*        p_gw_cfg = gw_cfg_lock_ro();
     ruuvi_gw_cfg_remote_t* p_remote = os_calloc(1, sizeof(*p_remote));
     if (NULL == p_remote)
@@ -814,6 +827,7 @@ gw_cfg_get_remote_cfg_copy(void)
 bool
 gw_cfg_get_eth_use_eth(void)
 {
+    assert(NULL != g_gw_cfg_mutex);
     const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
     const bool      use_eth  = p_gw_cfg->eth_cfg.use_eth;
     gw_cfg_unlock_ro(&p_gw_cfg);
@@ -823,6 +837,7 @@ gw_cfg_get_eth_use_eth(void)
 bool
 gw_cfg_get_eth_use_dhcp(void)
 {
+    assert(NULL != g_gw_cfg_mutex);
     const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
     const bool      use_dhcp = p_gw_cfg->eth_cfg.eth_dhcp;
     gw_cfg_unlock_ro(&p_gw_cfg);
@@ -832,6 +847,7 @@ gw_cfg_get_eth_use_dhcp(void)
 bool
 gw_cfg_get_mqtt_use_mqtt(void)
 {
+    assert(NULL != g_gw_cfg_mutex);
     const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
     const bool      use_mqtt = p_gw_cfg->ruuvi_cfg.mqtt.use_mqtt;
     gw_cfg_unlock_ro(&p_gw_cfg);
@@ -841,6 +857,7 @@ gw_cfg_get_mqtt_use_mqtt(void)
 bool
 gw_cfg_get_http_use_http(void)
 {
+    assert(NULL != g_gw_cfg_mutex);
     const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
     const bool      use_http = p_gw_cfg->ruuvi_cfg.http.use_http;
     gw_cfg_unlock_ro(&p_gw_cfg);
@@ -850,6 +867,7 @@ gw_cfg_get_http_use_http(void)
 bool
 gw_cfg_get_http_stat_use_http_stat(void)
 {
+    assert(NULL != g_gw_cfg_mutex);
     const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
     const bool      use_http = p_gw_cfg->ruuvi_cfg.http_stat.use_http_stat;
     gw_cfg_unlock_ro(&p_gw_cfg);
@@ -859,6 +877,7 @@ gw_cfg_get_http_stat_use_http_stat(void)
 ruuvi_gw_cfg_mqtt_prefix_t
 gw_cfg_get_mqtt_prefix(void)
 {
+    assert(NULL != g_gw_cfg_mutex);
     const gw_cfg_t*                  p_gw_cfg    = gw_cfg_lock_ro();
     const ruuvi_gw_cfg_mqtt_prefix_t mqtt_prefix = p_gw_cfg->ruuvi_cfg.mqtt.mqtt_prefix;
     gw_cfg_unlock_ro(&p_gw_cfg);
@@ -868,6 +887,7 @@ gw_cfg_get_mqtt_prefix(void)
 bool
 gw_cfg_get_mqtt_flag_disable_retained_messages(void)
 {
+    assert(NULL != g_gw_cfg_mutex);
     const gw_cfg_t* p_gw_cfg                            = gw_cfg_lock_ro();
     const bool      flag_mqtt_disable_retained_messages = p_gw_cfg->ruuvi_cfg.mqtt.mqtt_disable_retained_messages;
     gw_cfg_unlock_ro(&p_gw_cfg);
@@ -877,6 +897,7 @@ gw_cfg_get_mqtt_flag_disable_retained_messages(void)
 auto_update_cycle_type_e
 gw_cfg_get_auto_update_cycle(void)
 {
+    assert(NULL != g_gw_cfg_mutex);
     const gw_cfg_t*                p_gw_cfg          = gw_cfg_lock_ro();
     const auto_update_cycle_type_e auto_update_cycle = p_gw_cfg->ruuvi_cfg.auto_update.auto_update_cycle;
     gw_cfg_unlock_ro(&p_gw_cfg);
@@ -886,6 +907,7 @@ gw_cfg_get_auto_update_cycle(void)
 ruuvi_gw_cfg_lan_auth_t
 gw_cfg_get_lan_auth(void)
 {
+    assert(NULL != g_gw_cfg_mutex);
     const gw_cfg_t*               p_gw_cfg = gw_cfg_lock_ro();
     const ruuvi_gw_cfg_lan_auth_t lan_auth = p_gw_cfg->ruuvi_cfg.lan_auth;
     gw_cfg_unlock_ro(&p_gw_cfg);
@@ -895,6 +917,7 @@ gw_cfg_get_lan_auth(void)
 bool
 gw_cfg_get_ntp_use(void)
 {
+    assert(NULL != g_gw_cfg_mutex);
     const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
     const bool      ntp_use  = p_gw_cfg->ruuvi_cfg.ntp.ntp_use;
     gw_cfg_unlock_ro(&p_gw_cfg);
@@ -904,6 +927,7 @@ gw_cfg_get_ntp_use(void)
 ruuvi_gw_cfg_coordinates_t
 gw_cfg_get_coordinates(void)
 {
+    assert(NULL != g_gw_cfg_mutex);
     const gw_cfg_t*                  p_gw_cfg    = gw_cfg_lock_ro();
     const ruuvi_gw_cfg_coordinates_t coordinates = p_gw_cfg->ruuvi_cfg.coordinates;
     gw_cfg_unlock_ro(&p_gw_cfg);
@@ -913,6 +937,7 @@ gw_cfg_get_coordinates(void)
 wifiman_config_t
 gw_cfg_get_wifi_cfg(void)
 {
+    assert(NULL != g_gw_cfg_mutex);
     const gw_cfg_t*        p_gw_cfg = gw_cfg_lock_ro();
     const wifiman_config_t wifi_cfg = p_gw_cfg->wifi_cfg;
     gw_cfg_unlock_ro(&p_gw_cfg);

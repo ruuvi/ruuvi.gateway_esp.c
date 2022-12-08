@@ -18,6 +18,9 @@
 #include "adv_post.h"
 #include "reset_task.h"
 #include "settings.h"
+#include "ruuvi_gateway.h"
+#include "mqtt.h"
+#include "leds.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -32,7 +35,7 @@
 #define FW_UPDATE_PERCENTAGE_50  (50U)
 #define FW_UPDATE_PERCENTAGE_100 (100U)
 
-#define FW_UPDATE_DELAY_BEFORE_REBOOT_MS (5U * 1000U)
+#define FW_UPDATE_DELAY_BEFORE_REBOOT_SECONDS (5U)
 
 typedef struct fw_update_config_t
 {
@@ -55,13 +58,14 @@ typedef struct fw_update_ota_partition_info_t
 
 typedef enum fw_update_stage_e
 {
-    FW_UPDATE_STAGE_NONE       = 0,
-    FW_UPDATE_STAGE_1          = 1,
-    FW_UPDATE_STAGE_2          = 2,
-    FW_UPDATE_STAGE_3          = 3,
-    FW_UPDATE_STAGE_4          = 4,
-    FW_UPDATE_STAGE_SUCCESSFUL = 5,
-    FW_UPDATE_STAGE_FAILED     = 6,
+    FW_UPDATE_STAGE_NONE         = 0,
+    FW_UPDATE_STAGE_1            = 1, // start firmware updating process and download ruuvi_gateway_esp.bin
+    FW_UPDATE_STAGE_2            = 2, // download fatfs_gwui.bin
+    FW_UPDATE_STAGE_3            = 3, // download fatfs_nrf52.bin
+    FW_UPDATE_STAGE_4            = 4, // flashing nRF52
+    FW_UPDATE_STAGE_SUCCESSFUL   = 5,
+    FW_UPDATE_STAGE_FAILED       = 6,
+    FW_UPDATE_STAGE_FAILED_NRF52 = 7,
 } fw_update_stage_e;
 
 typedef uint32_t fw_update_percentage_t;
@@ -606,6 +610,12 @@ fw_update_set_extra_info_for_status_json(
 }
 
 void
+fw_update_set_extra_info_for_status_json_update_reset(void)
+{
+    fw_update_set_extra_info_for_status_json(FW_UPDATE_STAGE_NONE, 0);
+}
+
+void
 fw_update_set_extra_info_for_status_json_update_start(void)
 {
     fw_update_set_extra_info_for_status_json(FW_UPDATE_STAGE_1, 0);
@@ -633,6 +643,19 @@ fw_update_set_extra_info_for_status_json_update_failed(const char* const p_messa
 }
 
 void
+fw_update_set_extra_info_for_status_json_update_failed_nrf52(const char* const p_message)
+{
+    char extra_info_buf[JSON_NETWORK_EXTRA_INFO_SIZE];
+    snprintf(
+        extra_info_buf,
+        sizeof(extra_info_buf),
+        "\"fw_updating\":%u,\"message\":\"%s\"",
+        (printf_uint_t)FW_UPDATE_STAGE_FAILED_NRF52,
+        (NULL != p_message) ? p_message : "");
+    wifi_manager_set_extra_info_for_status_json(extra_info_buf);
+}
+
+void
 fw_update_nrf52fw_cb_progress(const size_t num_bytes_flashed, const size_t total_size, void* const p_param)
 {
     (void)p_param;
@@ -647,6 +670,18 @@ fw_update_set_stage_nrf52_updating(void)
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, 0);
 }
 
+static void
+fw_update_nrf52fw_cb_before_updating(void)
+{
+    LOG_INFO("### Start nRF52 updating");
+}
+
+static void
+fw_update_nrf52fw_cb_after_updating(const bool flag_success)
+{
+    LOG_INFO("### Finish nRF52 updating, flag_success=%d", (printf_int_t)flag_success);
+}
+
 static bool
 fw_update_do_actions(void)
 {
@@ -654,7 +689,7 @@ fw_update_do_actions(void)
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, 0);
 
     char url[sizeof(g_fw_update_cfg.url) + 32];
-    snprintf(url, sizeof(url), "%s/%s", g_fw_update_cfg.url, "ruuvi_gateway_esp.bin");
+    (void)snprintf(url, sizeof(url), "%s/%s", g_fw_update_cfg.url, "ruuvi_gateway_esp.bin");
     LOG_INFO("fw_update_ota");
     if (!fw_update_ota(url))
     {
@@ -666,7 +701,7 @@ fw_update_do_actions(void)
     g_update_progress_stage = FW_UPDATE_STAGE_2;
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, 0);
 
-    snprintf(url, sizeof(url), "%s/%s", g_fw_update_cfg.url, "fatfs_gwui.bin");
+    (void)snprintf(url, sizeof(url), "%s/%s", g_fw_update_cfg.url, "fatfs_gwui.bin");
     LOG_INFO("fw_update_fatfs_gwui");
     if (!fw_update_fatfs_gwui(url))
     {
@@ -678,7 +713,7 @@ fw_update_do_actions(void)
     g_update_progress_stage = FW_UPDATE_STAGE_3;
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, 0);
 
-    snprintf(url, sizeof(url), "%s/%s", g_fw_update_cfg.url, "fatfs_nrf52.bin");
+    (void)snprintf(url, sizeof(url), "%s/%s", g_fw_update_cfg.url, "fatfs_nrf52.bin");
     LOG_INFO("fw_update_fatfs_nrf52");
     if (!fw_update_fatfs_nrf52(url))
     {
@@ -702,16 +737,19 @@ fw_update_do_actions(void)
     fw_update_set_stage_nrf52_updating();
 
     LOG_INFO("nrf52fw_update_fw_if_necessary");
-    nrf52fw_update_fw_if_necessary(
-        fw_update_get_current_fatfs_nrf52_partition_name(),
-        &fw_update_nrf52fw_cb_progress,
-        NULL,
-        NULL,
-        NULL,
-        NULL);
-
+    if (!nrf52fw_update_fw_if_necessary(
+            fw_update_get_current_fatfs_nrf52_partition_name(),
+            &fw_update_nrf52fw_cb_progress,
+            NULL,
+            &fw_update_nrf52fw_cb_before_updating,
+            &fw_update_nrf52fw_cb_after_updating,
+            NULL))
+    {
+        LOG_ERR("%s failed", "nrf52fw_update_fw_if_necessary");
+        fw_update_set_extra_info_for_status_json_update_failed_nrf52("Failed to update nRF52 firmware");
+        return false;
+    }
     fw_update_set_extra_info_for_status_json_update_successful();
-
     return true;
 }
 
@@ -720,9 +758,16 @@ fw_update_task(void)
 {
     LOG_INFO("Firmware updating started, URL: %s", g_fw_update_cfg.url);
 
+    leds_notify_nrf52_fw_updating();
+
+    if (mqtt_app_is_working())
+    {
+        mqtt_app_stop();
+    }
     adv_post_stop();
     http_server_disable_ap_stopping_by_timeout();
-    if (!wifi_manager_is_ap_active())
+
+    if (!wifi_manager_is_connected_to_wifi_or_ethernet() && !wifi_manager_is_ap_active())
     {
         LOG_INFO("WiFi AP is not active - start WiFi AP");
         wifi_manager_start_ap();
@@ -732,9 +777,29 @@ fw_update_task(void)
         LOG_INFO("WiFi AP is already active");
     }
 
+    const char* p_reboot_reason_msg = "";
     if (!fw_update_do_actions())
     {
-        LOG_ERR("Firmware updating failed");
+        switch (g_fw_updating_reason)
+        {
+            case FW_UPDATE_REASON_NONE:
+                LOG_ERR("Firmware updating failed");
+                p_reboot_reason_msg = "Restart the system after firmware update (failed)";
+                break;
+            case FW_UPDATE_REASON_AUTO:
+                LOG_INFO("Firmware updating failed (auto-updating)");
+                p_reboot_reason_msg = "Restart the system after firmware update (auto-updating failed)";
+                break;
+            case FW_UPDATE_REASON_MANUAL_VIA_HOTSPOT:
+                LOG_INFO("Firmware updating failed (manual updating via WiFi hotspot)");
+                p_reboot_reason_msg
+                    = "Restart the system after firmware update (manual updating via WiFi hotspot failed)";
+                break;
+            case FW_UPDATE_REASON_MANUAL_VIA_LAN:
+                LOG_INFO("Firmware updating failed (manual updating via LAN)");
+                p_reboot_reason_msg = "Restart the system after firmware update (manual updating via LAN failed)";
+                break;
+        }
         g_fw_updating_reason = FW_UPDATE_REASON_NONE;
     }
     else
@@ -743,23 +808,33 @@ fw_update_task(void)
         {
             case FW_UPDATE_REASON_NONE:
                 LOG_INFO("Firmware updating completed successfully (unknown reason)");
+                p_reboot_reason_msg = "Restart the system after firmware update (completed successfully)";
                 break;
             case FW_UPDATE_REASON_AUTO:
                 LOG_INFO("Firmware updating completed successfully (auto-updating)");
+                p_reboot_reason_msg = "Restart the system after firmware update (auto-updating completed successfully)";
                 settings_write_flag_rebooting_after_auto_update(true);
                 break;
             case FW_UPDATE_REASON_MANUAL_VIA_HOTSPOT:
                 LOG_INFO("Firmware updating completed successfully (manual updating via WiFi hotspot)");
-                settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_ONCE);
+                p_reboot_reason_msg
+                    = "Restart the system after firmware update (manual updating via WiFi hotspot completed "
+                      "successfully)";
+                if (wifi_manager_is_ap_sta_ip_assigned())
+                {
+                    settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_ONCE);
+                }
                 break;
             case FW_UPDATE_REASON_MANUAL_VIA_LAN:
                 LOG_INFO("Firmware updating completed successfully (manual updating via LAN)");
+                p_reboot_reason_msg
+                    = "Restart the system after firmware update (manual updating via LAN completed successfully)";
                 break;
         }
         LOG_INFO("Wait 5 seconds before reboot");
-        vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_BEFORE_REBOOT_MS));
+        sleep_with_task_watchdog_feeding(FW_UPDATE_DELAY_BEFORE_REBOOT_SECONDS);
     }
-    gateway_restart("Restart the system after firmware update");
+    gateway_restart(p_reboot_reason_msg);
 }
 
 bool

@@ -93,11 +93,17 @@ void
 main_task_init_timers(void);
 
 void
+main_task_subscribe_events(void);
+
+void
 main_task_configure_periodic_remote_cfg_check(void);
 
 ATTR_NORETURN
 void
 main_loop(void);
+
+void
+sleep_with_task_watchdog_feeding(const int32_t delay_seconds);
 
 #ifdef __cplusplus
 }

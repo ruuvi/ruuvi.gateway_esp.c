@@ -82,6 +82,10 @@ idf_component_register(
             nrf52fw.h
             nrf52swd.c
             nrf52swd.h
+            reset_info.c
+            reset_info.h
+            reset_reason.c
+            reset_reason.h
             reset_task.c
             reset_task.h
             ruuvi_device_id.c
@@ -97,9 +101,9 @@ idf_component_register(
             time_task.h
         REQUIRES
             app_update
-            mqtt_patched
+            mqtt
             lwip
-            esp_http_client_patched
+            esp_http_client
             json
             fatfs
             esp32-wifi-manager
@@ -114,3 +118,15 @@ target_compile_options(${COMPONENT_LIB} PRIVATE
         -Wstack-usage=512
         -fstack-usage
 )
+
+# panic_print_char is used in the same module where it is implemented,
+# so, it's impossible to redefine it with just "-Wl,--wrap=" option.
+# Fortunately, there is a workaround described here:
+# https://stackoverflow.com/questions/13961774/gnu-gcc-ld-wrapping-a-call-to-symbol-with-caller-and-callee-defined-in-the-sam
+
+target_link_options(${COMPONENT_LIB} INTERFACE
+        "-Wl,--wrap=esp_restart"
+        "-Wl,--wrap,esp_panic_handler"
+        "-Wl,--defsym,panic_print_char=panic_print_char_override"
+        "-Wl,--wrap,panic_restart"
+        )

@@ -32,6 +32,9 @@ void
 leds_notify_nrf52_ready(void);
 
 void
+leds_notify_nrf52_failure(void);
+
+void
 leds_notify_nrf52_fw_check(void);
 
 void

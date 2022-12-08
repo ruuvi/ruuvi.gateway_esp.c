@@ -95,6 +95,7 @@ protected:
     {
         g_pTestClass = nullptr;
         gw_cfg_deinit();
+        gw_cfg_default_deinit();
         esp_log_wrapper_deinit();
     }
 
@@ -182,7 +183,7 @@ os_calloc(const size_t nmemb, const size_t size)
 os_mutex_recursive_t
 os_mutex_recursive_create_static(os_mutex_recursive_static_t* const p_mutex_static)
 {
-    return nullptr;
+    return reinterpret_cast<os_mutex_recursive_t>(p_mutex_static);
 }
 
 void

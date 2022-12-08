@@ -114,12 +114,15 @@ protected:
             .esp32_mac_addr_eth  = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x22 },
         };
         gw_cfg_default_init(&init_params, nullptr);
+        gw_cfg_default_log();
         gw_cfg_init(nullptr);
     }
 
     void
     TearDown() override
     {
+        gw_cfg_deinit();
+        gw_cfg_default_deinit();
         g_pTestClass = nullptr;
         esp_log_wrapper_deinit();
     }

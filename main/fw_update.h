@@ -70,6 +70,9 @@ bool
 fw_update_run(const fw_updating_reason_e fw_updating_reason);
 
 void
+fw_update_set_extra_info_for_status_json_update_reset(void);
+
+void
 fw_update_set_extra_info_for_status_json_update_start(void);
 
 void
@@ -77,6 +80,9 @@ fw_update_set_extra_info_for_status_json_update_successful(void);
 
 void
 fw_update_set_extra_info_for_status_json_update_failed(const char* const p_message);
+
+void
+fw_update_set_extra_info_for_status_json_update_failed_nrf52(const char* const p_message);
 
 void
 fw_update_set_stage_nrf52_updating(void);

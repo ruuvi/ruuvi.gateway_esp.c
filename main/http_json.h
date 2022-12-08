@@ -19,15 +19,26 @@
 extern "C" {
 #endif
 
+#define HTTP_JSON_STATISTICS_RESET_REASON_MAX_LEN (24)
+
+typedef struct http_json_statistics_reset_reason_buf_t
+{
+    char buf[HTTP_JSON_STATISTICS_RESET_REASON_MAX_LEN];
+} http_json_statistics_reset_reason_buf_t;
+
 typedef struct http_json_statistics_info_t
 {
-    mac_address_str_t        nrf52_mac_addr;
-    ruuvi_esp32_fw_ver_str_t esp_fw;
-    ruuvi_nrf52_fw_ver_str_t nrf_fw;
-    uint32_t                 uptime;
-    uint32_t                 nonce;
-    bool                     is_connected_to_wifi;
-    uint32_t                 network_disconnect_cnt;
+    mac_address_str_t                       nrf52_mac_addr;
+    ruuvi_esp32_fw_ver_str_t                esp_fw;
+    ruuvi_nrf52_fw_ver_str_t                nrf_fw;
+    uint32_t                                uptime;
+    uint32_t                                nonce;
+    bool                                    nrf_status;
+    bool                                    is_connected_to_wifi;
+    uint32_t                                network_disconnect_cnt;
+    http_json_statistics_reset_reason_buf_t reset_reason;
+    uint32_t                                reset_cnt;
+    const char* const                       p_reset_info;
 } http_json_statistics_info_t;
 
 typedef struct http_json_header_info_t

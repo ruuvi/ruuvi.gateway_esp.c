@@ -67,6 +67,7 @@ protected:
     void
     TearDown() override
     {
+        gw_cfg_default_deinit();
         g_pTestClass = nullptr;
         esp_log_wrapper_deinit();
     }
