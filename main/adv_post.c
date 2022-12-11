@@ -357,10 +357,6 @@ adv_post_retransmit_advs(
     const bool                flag_network_connected,
     const bool                flag_use_timestamps)
 {
-    if (0 == p_reports->num_of_advs)
-    {
-        return false;
-    }
     if (!flag_network_connected)
     {
         LOG_WARN("Can't send advs, no network connection");
