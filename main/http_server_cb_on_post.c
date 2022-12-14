@@ -68,6 +68,7 @@ http_server_cb_on_post_ruuvi(const char* p_body)
     else
     {
         gw_cfg_update_ruuvi_cfg(&p_gw_cfg_tmp->ruuvi_cfg);
+        main_task_send_sig_to_stop_wifi_hotspot();
         restart_services();
         adv_post_enable_retransmission();
     }

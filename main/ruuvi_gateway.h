@@ -51,10 +51,13 @@ void
 restart_services(void);
 
 void
-main_task_start_timer_after_hotspot_activation(void);
+main_task_start_timer_hotspot_deactivation(void);
 
 void
-main_task_stop_timer_after_hotspot_activation(void);
+main_task_stop_timer_hotspot_deactivation(void);
+
+void
+main_task_send_sig_to_stop_wifi_hotspot(void);
 
 void
 main_task_stop_timer_check_for_remote_cfg(void);

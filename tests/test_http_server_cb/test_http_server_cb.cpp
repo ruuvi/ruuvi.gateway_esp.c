@@ -196,6 +196,11 @@ main_task_on_get_history(void)
 {
 }
 
+void
+main_task_send_sig_to_stop_wifi_hotspot(void)
+{
+}
+
 } // extern "C"
 
 class MemAllocTrace

@@ -319,6 +319,8 @@ cb_on_ap_started(void)
 {
     LOG_INFO("### callback: on_ap_started");
     event_mgr_notify(EVENT_MGR_EV_WIFI_AP_STARTED);
+    main_task_stop_timer_check_for_remote_cfg();
+    main_task_start_timer_hotspot_deactivation();
 }
 
 static void
@@ -333,11 +335,19 @@ cb_on_ap_sta_connected(void)
 {
     LOG_INFO("### callback: on_ap_sta_connected");
     event_mgr_notify(EVENT_MGR_EV_WIFI_AP_STA_CONNECTED);
-    main_task_stop_timer_after_hotspot_activation();
+    main_task_stop_timer_hotspot_deactivation();
     if (gw_cfg_is_initialized() && gw_cfg_get_eth_use_eth())
     {
         ethernet_stop();
     }
+}
+
+static void
+cb_on_ap_sta_ip_assigned(void)
+{
+    LOG_INFO("callback: on_ap_sta_ip_assigned");
+    main_task_stop_timer_hotspot_deactivation();
+    main_task_start_timer_hotspot_deactivation();
 }
 
 static void
@@ -349,20 +359,6 @@ cb_on_ap_sta_disconnected(void)
     {
         return;
     }
-    if (!wifi_manager_is_connected_to_wifi_or_ethernet())
-    {
-        if (gw_cfg_is_default())
-        {
-            ethernet_start(gw_cfg_get_wifi_ap_ssid()->ssid_buf);
-        }
-        else
-        {
-            if (gw_cfg_get_eth_use_eth() || wifi_manager_is_sta_configured())
-            {
-                main_task_start_timer_after_hotspot_activation();
-            }
-        }
-    }
     adv_post_enable_retransmission();
 }
 
@@ -370,6 +366,17 @@ static void
 cb_save_wifi_config(const wifiman_config_sta_t* const p_wifi_cfg_sta)
 {
     gw_cfg_update_wifi_sta_config(p_wifi_cfg_sta);
+}
+
+static void
+cb_on_request_status_json(void)
+{
+    LOG_INFO("callback: cb_on_request_status_json");
+    if (wifi_manager_is_ap_active())
+    {
+        main_task_stop_timer_hotspot_deactivation();
+        main_task_start_timer_hotspot_deactivation();
+    }
 }
 
 void
@@ -474,8 +481,10 @@ wifi_init(
         .cb_on_ap_started          = &cb_on_ap_started,
         .cb_on_ap_stopped          = &cb_on_ap_stopped,
         .cb_on_ap_sta_connected    = &cb_on_ap_sta_connected,
+        .cb_on_ap_sta_ip_assigned  = &cb_on_ap_sta_ip_assigned,
         .cb_on_ap_sta_disconnected = &cb_on_ap_sta_disconnected,
         .cb_save_wifi_config_sta   = &cb_save_wifi_config,
+        .cb_on_request_status_json = &cb_on_request_status_json,
     };
     wifi_manager_start(
         flag_connect_sta,
@@ -723,7 +732,6 @@ network_subsystem_init(
         }
         LOG_INFO("Force start WiFi hotspot");
         wifi_manager_start_ap();
-        main_task_start_timer_after_hotspot_activation();
     }
     return true;
 }
