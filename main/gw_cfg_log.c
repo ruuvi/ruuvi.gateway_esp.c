@@ -318,6 +318,11 @@ gw_cfg_log_ruuvi_cfg_lan_auth(const ruuvi_gw_cfg_lan_auth_t* const p_lan_auth)
 #else
     LOG_INFO("config: LAN auth API key: %s", "********");
 #endif
+#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
+    LOG_DBG("config: LAN auth API key (RW): %s", p_lan_auth->lan_auth_api_key_rw.buf);
+#else
+    LOG_INFO("config: LAN auth API key (RW): %s", "********");
+#endif
 }
 
 static void

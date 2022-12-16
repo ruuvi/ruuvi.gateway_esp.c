@@ -525,6 +525,15 @@ gw_cfg_json_parse_lan_auth(const cJSON* const p_json_root, ruuvi_gw_cfg_lan_auth
     {
         LOG_INFO("Can't find key '%s' in config-json, leave the previous value unchanged", "lan_auth_api_key");
     }
+
+    if (!gw_cfg_json_copy_string_val(
+            p_json_root,
+            "lan_auth_api_key_rw",
+            &p_gw_cfg_lan_auth->lan_auth_api_key_rw.buf[0],
+            sizeof(p_gw_cfg_lan_auth->lan_auth_api_key_rw)))
+    {
+        LOG_INFO("Can't find key '%s' in config-json, leave the previous value unchanged", "lan_auth_api_key_rw");
+    }
 }
 
 static void

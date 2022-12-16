@@ -200,6 +200,7 @@ typedef struct ruuvi_gw_cfg_lan_auth_t
     http_server_auth_user_t    lan_auth_user;
     http_server_auth_pass_t    lan_auth_pass;
     http_server_auth_api_key_t lan_auth_api_key;
+    http_server_auth_api_key_t lan_auth_api_key_rw;
 } ruuvi_gw_cfg_lan_auth_t;
 
 #define AUTO_UPDATE_CYCLE_TYPE_STR_REGULAR     "regular"
@@ -360,9 +361,6 @@ gw_cfg_get_mqtt_flag_disable_retained_messages(void);
 
 auto_update_cycle_type_e
 gw_cfg_get_auto_update_cycle(void);
-
-ruuvi_gw_cfg_lan_auth_t
-gw_cfg_get_lan_auth(void);
 
 bool
 gw_cfg_get_ntp_use(void);

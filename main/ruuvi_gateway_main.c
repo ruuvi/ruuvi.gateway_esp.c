@@ -498,7 +498,7 @@ cb_before_nrf52_fw_updating(void)
 
     http_server_cb_prohibit_cfg_updating();
     // Here we do not yet know the value of nRF52 DeviceID, so we cannot use it as the default password.
-    if (!http_server_set_auth(HTTP_SERVER_AUTH_TYPE_ALLOW, NULL, NULL, NULL))
+    if (!http_server_set_auth(HTTP_SERVER_AUTH_TYPE_ALLOW, NULL, NULL, NULL, NULL))
     {
         LOG_ERR("%s failed", "http_server_set_auth");
     }
@@ -734,13 +734,17 @@ ruuvi_cb_on_change_cfg(const gw_cfg_t* const p_gw_cfg)
     LOG_INFO("%s: settings_save_to_flash", __func__);
     settings_save_to_flash(p_gw_cfg);
 
-    const ruuvi_gw_cfg_lan_auth_t lan_auth = gw_cfg_get_lan_auth();
-    LOG_INFO("%s: http_server_set_auth: %s", __func__, http_server_auth_type_to_str(lan_auth.lan_auth_type));
+    LOG_INFO(
+        "%s: http_server_set_auth: %s",
+        __func__,
+        http_server_auth_type_to_str(p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_type));
+
     if (!http_server_set_auth(
-            lan_auth.lan_auth_type,
-            &lan_auth.lan_auth_user,
-            &lan_auth.lan_auth_pass,
-            &lan_auth.lan_auth_api_key))
+            p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_type,
+            &p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_user,
+            &p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_pass,
+            &p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_api_key,
+            &p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_api_key_rw))
     {
         LOG_ERR("%s failed", "http_server_set_auth");
     }
