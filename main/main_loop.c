@@ -42,7 +42,7 @@ typedef enum main_task_sig_e
     MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES                = OS_SIGNAL_NUM_1,
     MAIN_TASK_SIG_SCHEDULE_NEXT_CHECK_FOR_FW_UPDATES  = OS_SIGNAL_NUM_2,
     MAIN_TASK_SIG_SCHEDULE_RETRY_CHECK_FOR_FW_UPDATES = OS_SIGNAL_NUM_3,
-    MAIN_TASK_SIG_TIMER_DEACTIVATE_WIFI_AP            = OS_SIGNAL_NUM_4,
+    MAIN_TASK_SIG_DEACTIVATE_WIFI_AP                  = OS_SIGNAL_NUM_4,
     MAIN_TASK_SIG_TASK_RESTART_SERVICES               = OS_SIGNAL_NUM_5,
     MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT                = OS_SIGNAL_NUM_6,
     MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG                = OS_SIGNAL_NUM_7,
@@ -224,9 +224,9 @@ main_task_handle_sig_schedule_retry_check_for_fw_updates(void)
 }
 
 static void
-main_task_handle_sig_timer_deactivate_wifi_ap(void)
+main_task_handle_sig_deactivate_wifi_ap(void)
 {
-    LOG_INFO("MAIN_TASK_SIG_TIMER_DEACTIVATE_WIFI_AP");
+    LOG_INFO("MAIN_TASK_SIG_DEACTIVATE_WIFI_AP");
 
     if (gw_cfg_is_default() && gw_cfg_get_eth_use_eth())
     {
@@ -354,8 +354,8 @@ main_task_handle_sig(const main_task_sig_e main_task_sig)
         case MAIN_TASK_SIG_SCHEDULE_RETRY_CHECK_FOR_FW_UPDATES:
             main_task_handle_sig_schedule_retry_check_for_fw_updates();
             break;
-        case MAIN_TASK_SIG_TIMER_DEACTIVATE_WIFI_AP:
-            main_task_handle_sig_timer_deactivate_wifi_ap();
+        case MAIN_TASK_SIG_DEACTIVATE_WIFI_AP:
+            main_task_handle_sig_deactivate_wifi_ap();
             break;
         case MAIN_TASK_SIG_TASK_RESTART_SERVICES:
             restart_services_internal();
@@ -487,7 +487,7 @@ main_task_init_signals(void)
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_SCHEDULE_NEXT_CHECK_FOR_FW_UPDATES));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_SCHEDULE_RETRY_CHECK_FOR_FW_UPDATES));
-    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TIMER_DEACTIVATE_WIFI_AP));
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_DEACTIVATE_WIFI_AP));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_RESTART_SERVICES));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG));
@@ -519,7 +519,7 @@ main_task_init_timers(void)
         &g_p_timer_sig_deactivate_wifi_ap_mem,
         "deactivate_ap",
         g_p_signal_main_task,
-        main_task_conv_to_sig_num(MAIN_TASK_SIG_TIMER_DEACTIVATE_WIFI_AP),
+        main_task_conv_to_sig_num(MAIN_TASK_SIG_DEACTIVATE_WIFI_AP),
         pdMS_TO_TICKS(MAIN_TASK_TIMEOUT_HOTSPOT_DEACTIVATION_SEC * TIME_UNITS_MS_PER_SECOND));
 
     g_p_timer_sig_check_for_remote_cfg = os_timer_sig_periodic_create_static(
