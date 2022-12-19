@@ -278,7 +278,6 @@ ethernet_connection_ok_cb(const esp_netif_ip_info_t* p_ip_info)
         p_ip_info,
         (NULL != p_dhcp) ? &dhcp_ip : NULL);
     gw_status_set_eth_connected();
-    start_services();
     event_mgr_notify(EVENT_MGR_EV_ETH_CONNECTED);
 }
 
@@ -288,7 +287,6 @@ wifi_connection_ok_cb(void* p_param)
     (void)p_param;
     LOG_INFO("Wifi connected");
     gw_status_set_wifi_connected();
-    start_services();
     event_mgr_notify(EVENT_MGR_EV_WIFI_CONNECTED);
 }
 
@@ -328,6 +326,16 @@ cb_on_ap_stopped(void)
 {
     LOG_INFO("### callback: on_ap_stopped");
     event_mgr_notify(EVENT_MGR_EV_WIFI_AP_STOPPED);
+    main_task_stop_timer_hotspot_deactivation();
+    if (gw_cfg_get_eth_use_eth() || (!wifi_manager_is_sta_configured()))
+    {
+        ethernet_start(gw_cfg_get_wifi_ap_ssid()->ssid_buf);
+    }
+    else
+    {
+        wifi_manager_connect_async();
+    }
+    main_task_send_sig_restart_services();
 }
 
 static void
@@ -372,7 +380,7 @@ static void
 cb_on_request_status_json(void)
 {
     LOG_INFO("callback: cb_on_request_status_json");
-    if (wifi_manager_is_ap_active())
+    if (main_task_is_active_timer_hotspot_deactivation())
     {
         main_task_stop_timer_hotspot_deactivation();
         main_task_start_timer_hotspot_deactivation();
@@ -387,38 +395,6 @@ wifi_disconnect_cb(void* p_param)
     g_network_disconnect_cnt += 1;
     gw_status_clear_wifi_connected();
     event_mgr_notify(EVENT_MGR_EV_WIFI_DISCONNECTED);
-}
-
-void
-start_services(void)
-{
-    LOG_INFO("Start services");
-    if (gw_cfg_get_mqtt_use_mqtt())
-    {
-        mqtt_app_start();
-    }
-}
-
-void
-restart_services(void)
-{
-    main_task_send_sig_restart_services();
-    main_task_configure_periodic_remote_cfg_check();
-
-    if (AUTO_UPDATE_CYCLE_TYPE_MANUAL != gw_cfg_get_auto_update_cycle())
-    {
-        const os_delta_ticks_t delay_ticks = pdMS_TO_TICKS(RUUVI_CHECK_FOR_FW_UPDATES_DELAY_BEFORE_RETRY_SECONDS)
-                                             * 1000;
-        LOG_INFO(
-            "Restarting services: Restart firmware auto-updating, run next check after %lu seconds",
-            (printf_ulong_t)RUUVI_CHECK_FOR_FW_UPDATES_DELAY_AFTER_REBOOT_SECONDS);
-        main_task_timer_sig_check_for_fw_updates_restart(delay_ticks);
-    }
-    else
-    {
-        LOG_INFO("Restarting services: Stop firmware auto-updating");
-        main_task_timer_sig_check_for_fw_updates_stop();
-    }
 }
 
 static bool

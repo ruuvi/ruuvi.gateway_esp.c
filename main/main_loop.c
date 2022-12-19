@@ -28,11 +28,12 @@
 
 static const char TAG[] = "ruuvi_gateway";
 
-#define MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS    (10U)
-#define MAIN_TASK_TIMEOUT_HOTSPOT_DEACTIVATION_SEC (60)
-#define MAIN_TASK_CHECK_FOR_REMOTE_CFG_PERIOD_MS   (60U * TIME_UNITS_SECONDS_PER_MINUTE * TIME_UNITS_MS_PER_SECOND)
-#define MAIN_TASK_GET_HISTORY_TIMEOUT_MS           (70U * TIME_UNITS_MS_PER_SECOND)
-#define MAIN_TASK_WATCHDOG_FEED_PERIOD_MS          (1 * TIME_UNITS_MS_PER_SECOND)
+#define MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS        (10U)
+#define MAIN_TASK_TIMEOUT_HOTSPOT_DEACTIVATION_SEC     (60)
+#define MAIN_TASK_HOTSPOT_DEACTIVATION_SHORT_DELAY_SEC (5)
+#define MAIN_TASK_CHECK_FOR_REMOTE_CFG_PERIOD_MS       (60U * TIME_UNITS_SECONDS_PER_MINUTE * TIME_UNITS_MS_PER_SECOND)
+#define MAIN_TASK_GET_HISTORY_TIMEOUT_MS               (70U * TIME_UNITS_MS_PER_SECOND)
+#define MAIN_TASK_WATCHDOG_FEED_PERIOD_MS              (1 * TIME_UNITS_MS_PER_SECOND)
 
 #define RUUVI_NUM_BYTES_IN_1KB (1024U)
 
@@ -237,15 +238,6 @@ main_task_handle_sig_deactivate_wifi_ap(void)
     {
         LOG_INFO("Non-default config is used, stop Wi-Fi AP");
         wifi_manager_stop_ap();
-        if (gw_cfg_get_eth_use_eth() || (!wifi_manager_is_sta_configured()))
-        {
-            ethernet_start(gw_cfg_get_wifi_ap_ssid()->ssid_buf);
-        }
-        else
-        {
-            wifi_manager_connect_async();
-        }
-        restart_services();
     }
 }
 
@@ -334,7 +326,27 @@ restart_services_internal(void)
     {
         mqtt_app_stop();
     }
-    start_services();
+    if (gw_cfg_get_mqtt_use_mqtt())
+    {
+        mqtt_app_start();
+    }
+
+    main_task_configure_periodic_remote_cfg_check();
+
+    if (AUTO_UPDATE_CYCLE_TYPE_MANUAL != gw_cfg_get_auto_update_cycle())
+    {
+        const os_delta_ticks_t delay_ticks = pdMS_TO_TICKS(RUUVI_CHECK_FOR_FW_UPDATES_DELAY_BEFORE_RETRY_SECONDS)
+                                             * 1000;
+        LOG_INFO(
+            "Restarting services: Restart firmware auto-updating, run next check after %lu seconds",
+            (printf_ulong_t)RUUVI_CHECK_FOR_FW_UPDATES_DELAY_AFTER_REBOOT_SECONDS);
+        main_task_timer_sig_check_for_fw_updates_restart(delay_ticks);
+    }
+    else
+    {
+        LOG_INFO("Restarting services: Stop firmware auto-updating");
+        main_task_timer_sig_check_for_fw_updates_stop();
+    }
 }
 
 static void
@@ -441,6 +453,11 @@ main_loop(void)
 {
     LOG_INFO("Main loop started");
     main_wdt_add_and_start();
+
+    if (gw_cfg_get_mqtt_use_mqtt())
+    {
+        mqtt_app_start();
+    }
 
     os_timer_sig_periodic_start(g_p_timer_sig_log_heap_usage);
     os_timer_sig_one_shot_start(g_p_timer_sig_get_history_timeout);
@@ -624,7 +641,10 @@ void
 main_task_start_timer_hotspot_deactivation(void)
 {
     LOG_INFO("### Start Wi-Fi AP deactivation timer (%u seconds)", MAIN_TASK_TIMEOUT_HOTSPOT_DEACTIVATION_SEC);
-    os_timer_sig_one_shot_start(g_p_timer_sig_deactivate_wifi_ap);
+    os_timer_sig_one_shot_stop(g_p_timer_sig_deactivate_wifi_ap);
+    os_timer_sig_one_shot_restart(
+        g_p_timer_sig_deactivate_wifi_ap,
+        pdMS_TO_TICKS(MAIN_TASK_TIMEOUT_HOTSPOT_DEACTIVATION_SEC * TIME_UNITS_MS_PER_SECOND));
 }
 
 void
@@ -634,11 +654,20 @@ main_task_stop_timer_hotspot_deactivation(void)
     os_timer_sig_one_shot_stop(g_p_timer_sig_deactivate_wifi_ap);
 }
 
-void
-main_task_send_sig_to_stop_wifi_hotspot(void)
+bool
+main_task_is_active_timer_hotspot_deactivation(void)
 {
-    LOG_INFO("Force activate WiFi hotspot deactivation timer");
-    os_timer_sig_one_shot_simulate(g_p_timer_sig_deactivate_wifi_ap);
+    return os_timer_sig_one_shot_is_active(g_p_timer_sig_deactivate_wifi_ap);
+}
+
+void
+main_task_stop_wifi_hotspot_after_short_delay(void)
+{
+    LOG_INFO("### Force stop WiFi hotspot after %u seconds", MAIN_TASK_HOTSPOT_DEACTIVATION_SHORT_DELAY_SEC);
+    os_timer_sig_one_shot_stop(g_p_timer_sig_deactivate_wifi_ap);
+    os_timer_sig_one_shot_restart(
+        g_p_timer_sig_deactivate_wifi_ap,
+        pdMS_TO_TICKS(MAIN_TASK_HOTSPOT_DEACTIVATION_SHORT_DELAY_SEC * TIME_UNITS_MS_PER_SECOND));
 }
 
 void

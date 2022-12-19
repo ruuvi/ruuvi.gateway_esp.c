@@ -321,7 +321,7 @@ http_server_gw_cfg_download_and_update(bool* const p_flag_reboot_needed)
     else if (update_status.flag_ruuvi_cfg_modified)
     {
         LOG_INFO("Ruuvi configuration in gw_cfg.json differs from the current settings, need to restart services");
-        restart_services();
+        main_task_send_sig_restart_services();
     }
     else
     {

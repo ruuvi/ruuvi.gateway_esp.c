@@ -147,11 +147,6 @@ adv_post_enable_retransmission(void)
 }
 
 void
-wifi_manager_stop_ap(void)
-{
-}
-
-void
 main_task_schedule_next_check_for_fw_updates(void)
 {
 }
@@ -167,23 +162,7 @@ adv_post_last_successful_network_comm_timestamp_update(void)
 }
 
 void
-restart_services(void)
-{
-}
-
-void
 settings_save_to_flash(const gw_cfg_t* const p_gw_cfg);
-
-force_start_wifi_hotspot_e
-settings_read_flag_force_start_wifi_hotspot(void)
-{
-    return FORCE_START_WIFI_HOTSPOT_DISABLED;
-}
-
-void
-settings_write_flag_force_start_wifi_hotspot(const force_start_wifi_hotspot_e force_start_wifi_hotspot)
-{
-}
 
 bool
 time_is_synchronized(void)
@@ -197,8 +176,19 @@ main_task_on_get_history(void)
 }
 
 void
-main_task_send_sig_to_stop_wifi_hotspot(void)
+main_task_send_sig_restart_services(void)
 {
+}
+
+void
+main_task_stop_wifi_hotspot_after_short_delay(void)
+{
+}
+
+bool
+wifi_manager_is_ap_active(void)
+{
+    return true;
 }
 
 } // extern "C"
