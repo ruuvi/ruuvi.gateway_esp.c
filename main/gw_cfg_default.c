@@ -65,6 +65,7 @@ static const gw_cfg_ruuvi_t g_gateway_config_default_ruuvi = {
             .lan_auth_user = { RUUVI_GATEWAY_AUTH_DEFAULT_USER },
             .lan_auth_pass = { "" },  // default password is set in gw_cfg_default_init
             .lan_auth_api_key = { "" },
+            .lan_auth_api_key_rw = { "" },
         },
         .auto_update = {
             .auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR,

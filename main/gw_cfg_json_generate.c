@@ -391,10 +391,21 @@ gw_cfg_json_add_items_lan_auth(
         {
             return false;
         }
+        if (!gw_cfg_json_add_bool(
+                p_json_root,
+                "lan_auth_api_key_rw_use",
+                ('\0' != p_cfg_lan_auth->lan_auth_api_key_rw.buf[0]) ? true : false))
+        {
+            return false;
+        }
     }
     else
     {
         if (!gw_cfg_json_add_string(p_json_root, "lan_auth_api_key", p_cfg_lan_auth->lan_auth_api_key.buf))
+        {
+            return false;
+        }
+        if (!gw_cfg_json_add_string(p_json_root, "lan_auth_api_key_rw", p_cfg_lan_auth->lan_auth_api_key_rw.buf))
         {
             return false;
         }

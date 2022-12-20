@@ -403,6 +403,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
         "\t\"lan_auth_user\":\t\"user1\",\n"
         "\t\"lan_auth_pass\":\t\"qwe\",\n"
         "\t\"lan_auth_api_key\":\t\"6kl/fd/c+3qvWm3Mhmwgh3BWNp+HDRQiLp/X0PuwG8Q=\",\n"
+        "\t\"lan_auth_api_key_rw\":\t\"KAv9oAT0c1XzbCF9N/Bnj2mgVR7R4QbBn/L3Wq5/zuI=\",\n"
 
         "\t\"auto_update_cycle\":\t\"regular\",\n"
         "\t\"auto_update_weekdays_bitmask\":\t127,\n"
@@ -502,6 +503,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key: 6kl/fd/c+3qvWm3Mhmwgh3BWNp+HDRQiLp/X0PuwG8Q=");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key_rw: KAv9oAT0c1XzbCF9N/Bnj2mgVR7R4QbBn/L3Wq5/zuI=");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_cycle: regular");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_weekdays_bitmask: 127");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_interval_from: 0");
@@ -605,6 +607,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords) // NOLINT
         gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf,
         sizeof(gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf),
         "prev_lan_auth_api_key");
+    (void)snprintf(
+        gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key_rw.buf,
+        sizeof(gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key_rw.buf),
+        "prev_lan_auth_api_key_rw");
 
     ASSERT_TRUE(json_ruuvi_parse_http_body(http_body.c_str(), &gw_cfg, &flag_network_cfg));
 
@@ -636,6 +642,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords) // NOLINT
     ASSERT_EQ(string("user1"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
     ASSERT_EQ(string("prev_lan_auth_pass"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
     ASSERT_EQ(string("prev_lan_auth_api_key"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+    ASSERT_EQ(string("prev_lan_auth_api_key_rw"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key_rw.buf);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.ntp.ntp_use);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time1.server.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf));
@@ -698,6 +705,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(
         ESP_LOG_INFO,
         "Can't find key 'lan_auth_api_key' in config-json, leave the previous value unchanged");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key_rw: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_INFO,
+        "Can't find key 'lan_auth_api_key_rw' in config-json, leave the previous value unchanged");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_cycle: beta");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_weekdays_bitmask: 126");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_interval_from: 1");
@@ -800,6 +811,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords_and_remote_cfg_auth_cha
         gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf,
         sizeof(gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf),
         "prev_lan_auth_api_key");
+    (void)snprintf(
+        gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key_rw.buf,
+        sizeof(gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key_rw.buf),
+        "prev_lan_auth_api_key_rw");
 
     ASSERT_TRUE(json_ruuvi_parse_http_body(http_body.c_str(), &gw_cfg, &flag_network_cfg));
 
@@ -831,6 +846,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords_and_remote_cfg_auth_cha
     ASSERT_EQ(string("user1"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
     ASSERT_EQ(string("prev_lan_auth_pass"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
     ASSERT_EQ(string("prev_lan_auth_api_key"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+    ASSERT_EQ(string("prev_lan_auth_api_key_rw"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key_rw.buf);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.ntp.ntp_use);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time1.server.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf));
@@ -894,6 +910,10 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords_and_remote_cfg_auth_cha
     TEST_CHECK_LOG_RECORD_GW_CFG(
         ESP_LOG_INFO,
         "Can't find key 'lan_auth_api_key' in config-json, leave the previous value unchanged");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key_rw: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_INFO,
+        "Can't find key 'lan_auth_api_key_rw' in config-json, leave the previous value unchanged");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_cycle: beta");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_weekdays_bitmask: 126");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_interval_from: 1");
@@ -950,6 +970,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_empty_prefix_and_client_id) // NOLIN
         "\t\"lan_auth_user\":\t\"user1\",\n"
         "\t\"lan_auth_pass\":\t\"qwe\",\n"
         "\t\"lan_auth_api_key\":\t\"\",\n"
+        "\t\"lan_auth_api_key_rw\":\t\"\",\n"
 
         "\t\"auto_update_cycle\":\t\"beta\",\n"
         "\t\"auto_update_weekdays_bitmask\":\t126,\n"
@@ -1007,6 +1028,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_empty_prefix_and_client_id) // NOLIN
     ASSERT_EQ(string("user1"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
     ASSERT_EQ(string("qwe"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key_rw.buf);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.ntp.ntp_use);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time1.server.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf));
@@ -1058,6 +1080,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_empty_prefix_and_client_id) // NOLIN
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key_rw: ");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_cycle: beta");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_weekdays_bitmask: 126");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_interval_from: 1");
@@ -1112,6 +1135,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_no_prefix_and_client_id) // NOLINT
         "\t\"lan_auth_user\":\t\"user1\",\n"
         "\t\"lan_auth_pass\":\t\"qwe\",\n"
         "\t\"lan_auth_api_key\":\t\"\",\n"
+        "\t\"lan_auth_api_key_rw\":\t\"\",\n"
 
         "\t\"auto_update_cycle\":\t\"beta\",\n"
         "\t\"auto_update_weekdays_bitmask\":\t126,\n"
@@ -1169,6 +1193,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_no_prefix_and_client_id) // NOLINT
     ASSERT_EQ(string("user1"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
     ASSERT_EQ(string("qwe"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key_rw.buf);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.ntp.ntp_use);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time1.server.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf));
@@ -1220,6 +1245,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_no_prefix_and_client_id) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key_rw: ");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_cycle: beta");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_weekdays_bitmask: 126");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_interval_from: 1");
@@ -1276,6 +1302,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
         "\t\"lan_auth_user\":\t\"user1\",\n"
         "\t\"lan_auth_pass\":\t\"qwe\",\n"
         "\t\"lan_auth_api_key\":\t\"\",\n"
+        "\t\"lan_auth_api_key_rw\":\t\"\",\n"
 
         "\t\"auto_update_cycle\":\t\"beta\",\n"
         "\t\"auto_update_weekdays_bitmask\":\t126,\n"
@@ -1333,6 +1360,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
     ASSERT_EQ(string("user1"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
     ASSERT_EQ(string("qwe"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key_rw.buf);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.ntp.ntp_use);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time1.server.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf));
@@ -1378,6 +1406,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key_rw: ");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_cycle: beta");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_weekdays_bitmask: 126");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_interval_from: 1");
@@ -1434,6 +1463,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket) // NOLINT
         "\t\"lan_auth_user\":\t\"user1\",\n"
         "\t\"lan_auth_pass\":\t\"qwe\",\n"
         "\t\"lan_auth_api_key\":\t\"\",\n"
+        "\t\"lan_auth_api_key_rw\":\t\"\",\n"
 
         "\t\"auto_update_cycle\":\t\"beta\",\n"
         "\t\"auto_update_weekdays_bitmask\":\t126,\n"
@@ -1491,6 +1521,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket) // NOLINT
     ASSERT_EQ(string("user1"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
     ASSERT_EQ(string("qwe"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key_rw.buf);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.ntp.ntp_use);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time1.server.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf));
@@ -1536,6 +1567,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key_rw: ");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_cycle: beta");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_weekdays_bitmask: 126");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_interval_from: 1");
@@ -1592,6 +1624,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
         "\t\"lan_auth_user\":\t\"user1\",\n"
         "\t\"lan_auth_pass\":\t\"qwe\",\n"
         "\t\"lan_auth_api_key\":\t\"\",\n"
+        "\t\"lan_auth_api_key_rw\":\t\"\",\n"
 
         "\t\"auto_update_cycle\":\t\"beta\",\n"
         "\t\"auto_update_weekdays_bitmask\":\t126,\n"
@@ -1649,6 +1682,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
     ASSERT_EQ(string("user1"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
     ASSERT_EQ(string("qwe"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key_rw.buf);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.ntp.ntp_use);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time1.server.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf));
@@ -1694,6 +1728,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key_rw: ");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_cycle: beta");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_weekdays_bitmask: 126");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_interval_from: 1");
@@ -1750,6 +1785,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_full_config) // NOLINT
         "\t\"lan_auth_user\":\t\"user1\",\n"
         "\t\"lan_auth_pass\":\t\"qwe\",\n"
         "\t\"lan_auth_api_key\":\t\"\",\n"
+        "\t\"lan_auth_api_key_rw\":\t\"\",\n"
 
         "\t\"auto_update_cycle\":\t\"beta\",\n"
         "\t\"auto_update_weekdays_bitmask\":\t126,\n"
@@ -1809,6 +1845,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_full_config) // NOLINT
     ASSERT_EQ(string("user1"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
     ASSERT_EQ(string("qwe"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key_rw.buf);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.ntp.ntp_use);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time.google.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf));
@@ -1854,6 +1891,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_full_config) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key_rw: ");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_cycle: beta");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_weekdays_bitmask: 126");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_interval_from: 1");
@@ -1905,6 +1943,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_min_config) // NOLINT
         "\t\"lan_auth_user\":\t\"user1\",\n"
         "\t\"lan_auth_pass\":\t\"qwe\",\n"
         "\t\"lan_auth_api_key\":\t\"\",\n"
+        "\t\"lan_auth_api_key_rw\":\t\"\",\n"
 
         "\t\"auto_update_cycle\":\t\"beta\",\n"
         "\t\"auto_update_weekdays_bitmask\":\t126,\n"
@@ -1959,6 +1998,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_min_config) // NOLINT
     ASSERT_EQ(string("user1"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
     ASSERT_EQ(string("qwe"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key_rw.buf);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.ntp.ntp_use);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time.google.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf));
@@ -2004,6 +2044,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_min_config) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key_rw: ");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_cycle: beta");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_weekdays_bitmask: 126");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_interval_from: 1");
@@ -2055,6 +2096,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_via_dhcp) // NOLINT
         "\t\"lan_auth_user\":\t\"user1\",\n"
         "\t\"lan_auth_pass\":\t\"qwe\",\n"
         "\t\"lan_auth_api_key\":\t\"\",\n"
+        "\t\"lan_auth_api_key_rw\":\t\"\",\n"
 
         "\t\"auto_update_cycle\":\t\"beta\",\n"
         "\t\"auto_update_weekdays_bitmask\":\t126,\n"
@@ -2110,6 +2152,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_via_dhcp) // NOLINT
     ASSERT_EQ(string("user1"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
     ASSERT_EQ(string("qwe"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key_rw.buf);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.ntp.ntp_use);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time.google.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf));
@@ -2155,6 +2198,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_via_dhcp) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key_rw: ");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_cycle: beta");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_weekdays_bitmask: 126");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_interval_from: 1");
@@ -2207,6 +2251,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_custom) // NOLINT
         "\t\"lan_auth_user\":\t\"user1\",\n"
         "\t\"lan_auth_pass\":\t\"qwe\",\n"
         "\t\"lan_auth_api_key\":\t\"\",\n"
+        "\t\"lan_auth_api_key_rw\":\t\"\",\n"
 
         "\t\"auto_update_cycle\":\t\"beta\",\n"
         "\t\"auto_update_weekdays_bitmask\":\t126,\n"
@@ -2264,6 +2309,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_custom) // NOLINT
     ASSERT_EQ(string("user1"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
     ASSERT_EQ(string("qwe"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key_rw.buf);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.ntp.ntp_use);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time1.server.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf));
@@ -2309,6 +2355,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_custom) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key_rw: ");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_cycle: beta");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_weekdays_bitmask: 126");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_interval_from: 1");
@@ -2367,6 +2414,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_default) // NOLINT
         "\t\"lan_auth_user\":\t\"user1\",\n"
         "\t\"lan_auth_pass\":\t\"qwe\",\n"
         "\t\"lan_auth_api_key\":\t\"\",\n"
+        "\t\"lan_auth_api_key_rw\":\t\"\",\n"
 
         "\t\"auto_update_cycle\":\t\"beta\",\n"
         "\t\"auto_update_weekdays_bitmask\":\t126,\n"
@@ -2426,6 +2474,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_default) // NOLINT
     ASSERT_EQ(string("user1"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
     ASSERT_EQ(string("qwe"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key_rw.buf);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.ntp.ntp_use);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time.google.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf));
@@ -2471,6 +2520,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_default) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key_rw: ");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_cycle: beta");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_weekdays_bitmask: 126");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_interval_from: 1");
@@ -2538,6 +2588,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
             "\"lan_auth_user\":\"user1\","
             "\"lan_auth_pass\":\"qwe\","
             "\"lan_auth_api_key\":\"\","
+            "\"lan_auth_api_key_rw\":\"\","
             "\"auto_update_cycle\":\"regular\","
             "\"auto_update_weekdays_bitmask\":127,"
             "\"auto_update_interval_from\":0,"
@@ -2586,6 +2637,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     ASSERT_EQ(string("user1"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
     ASSERT_EQ(string("qwe"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key_rw.buf);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.ntp.ntp_use);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time1.server.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf));
@@ -2622,6 +2674,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_user: user1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_pass: qwe");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key_rw: ");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_cycle: regular");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_weekdays_bitmask: 127");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_interval_from: 0");

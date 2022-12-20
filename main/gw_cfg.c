@@ -249,6 +249,10 @@ ruuvi_gw_cfg_lan_auth_cmp(
     {
         return false;
     }
+    if (0 != strcmp(p_lan_auth1->lan_auth_api_key_rw.buf, p_lan_auth2->lan_auth_api_key_rw.buf))
+    {
+        return false;
+    }
     return true;
 }
 
@@ -902,16 +906,6 @@ gw_cfg_get_auto_update_cycle(void)
     const auto_update_cycle_type_e auto_update_cycle = p_gw_cfg->ruuvi_cfg.auto_update.auto_update_cycle;
     gw_cfg_unlock_ro(&p_gw_cfg);
     return auto_update_cycle;
-}
-
-ruuvi_gw_cfg_lan_auth_t
-gw_cfg_get_lan_auth(void)
-{
-    assert(NULL != g_gw_cfg_mutex);
-    const gw_cfg_t*               p_gw_cfg = gw_cfg_lock_ro();
-    const ruuvi_gw_cfg_lan_auth_t lan_auth = p_gw_cfg->ruuvi_cfg.lan_auth;
-    gw_cfg_unlock_ro(&p_gw_cfg);
-    return lan_auth;
 }
 
 bool
