@@ -759,23 +759,21 @@ fw_update_task(void)
     LOG_INFO("Firmware updating started, URL: %s", g_fw_update_cfg.url);
 
     leds_notify_nrf52_fw_updating();
+    main_task_stop_timer_check_for_remote_cfg();
 
+    adv_post_stop();
     if (mqtt_app_is_working())
     {
         mqtt_app_stop();
     }
-    adv_post_stop();
-    http_server_disable_ap_stopping_by_timeout();
 
     if (!wifi_manager_is_connected_to_wifi_or_ethernet() && !wifi_manager_is_ap_active())
     {
-        LOG_INFO("WiFi AP is not active - start WiFi AP");
+        LOG_INFO("There is no network connection and WiFi AP is not active - start WiFi AP");
         wifi_manager_start_ap();
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
-    else
-    {
-        LOG_INFO("WiFi AP is already active");
-    }
+    main_task_stop_timer_hotspot_deactivation();
 
     const char* p_reboot_reason_msg = "";
     if (!fw_update_do_actions())
