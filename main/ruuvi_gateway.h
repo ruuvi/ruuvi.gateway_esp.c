@@ -45,16 +45,16 @@ void
 ruuvi_send_nrf_settings(void);
 
 void
-start_services(void);
+main_task_start_timer_hotspot_deactivation(void);
 
 void
-restart_services(void);
+main_task_stop_timer_hotspot_deactivation(void);
+
+bool
+main_task_is_active_timer_hotspot_deactivation(void);
 
 void
-main_task_start_timer_after_hotspot_activation(void);
-
-void
-main_task_stop_timer_after_hotspot_activation(void);
+main_task_stop_wifi_hotspot_after_short_delay(void);
 
 void
 main_task_stop_timer_check_for_remote_cfg(void);
