@@ -366,8 +366,7 @@ leds_ctrl_handle_event_in_state_flashing_nrf52_fw(
             break;
 
         case LEDS_CTRL_EVENT_NRF52_READY:
-            assert(0);
-            break;
+            return LEDS_CTRL_STATE_WAITING_CFG_READY;
 
         case LEDS_CTRL_EVENT_NRF52_FAILURE:
             return LEDS_CTRL_STATE_NRF52_FAILURE;
