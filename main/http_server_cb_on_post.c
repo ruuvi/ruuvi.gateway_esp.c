@@ -15,8 +15,8 @@
 #include "metrics.h"
 #include "os_malloc.h"
 #include "fw_update.h"
-#include "adv_post.h"
 #include "gw_cfg.h"
+#include "gw_status.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -59,7 +59,6 @@ http_server_cb_on_post_ruuvi(const char* p_body)
         gw_cfg_update_wifi_ap_config(&p_gw_cfg_tmp->wifi_cfg.ap);
         wifi_manager_set_config_ap(&p_gw_cfg_tmp->wifi_cfg.ap);
 
-        adv_post_disable_retransmission();
         if (p_gw_cfg_tmp->eth_cfg.use_eth)
         {
             ethernet_update_ip();
@@ -75,7 +74,6 @@ http_server_cb_on_post_ruuvi(const char* p_body)
         else
         {
             main_task_send_sig_restart_services();
-            adv_post_enable_retransmission();
         }
     }
     os_free(p_gw_cfg_tmp);
@@ -145,7 +143,7 @@ http_server_cb_on_post_gw_cfg_download(void)
     LOG_DBG("POST /gw_cfg_download");
     bool flag_reboot_needed = false;
 
-    const http_resp_code_e http_resp_code = http_server_gw_cfg_download_and_update(&flag_reboot_needed);
+    const http_resp_code_e http_resp_code = http_server_gw_cfg_download_and_update(&flag_reboot_needed, true);
 
     const char* p_resp_content = g_empty_json;
     if (flag_reboot_needed)

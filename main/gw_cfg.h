@@ -348,6 +348,9 @@ bool
 gw_cfg_get_mqtt_use_mqtt(void);
 
 bool
+gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss(void);
+
+bool
 gw_cfg_get_http_use_http(void);
 
 bool

@@ -319,6 +319,7 @@ cb_on_ap_started(void)
     event_mgr_notify(EVENT_MGR_EV_WIFI_AP_STARTED);
     main_task_stop_timer_check_for_remote_cfg();
     main_task_start_timer_hotspot_deactivation();
+    gw_status_suspend_relaying();
 }
 
 static void
@@ -336,6 +337,7 @@ cb_on_ap_stopped(void)
         wifi_manager_connect_async();
     }
     main_task_send_sig_restart_services();
+    gw_status_resume_relaying();
 }
 
 static void
@@ -367,7 +369,6 @@ cb_on_ap_sta_disconnected(void)
     {
         return;
     }
-    adv_post_enable_retransmission();
 }
 
 static void

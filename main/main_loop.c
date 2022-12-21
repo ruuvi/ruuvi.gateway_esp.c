@@ -17,6 +17,7 @@
 #include "mqtt.h"
 #include "time_task.h"
 #include "event_mgr.h"
+#include "gw_status.h"
 #include "os_malloc.h"
 #include "gw_cfg.h"
 #include "gw_cfg_default.h"
@@ -28,10 +29,11 @@
 
 static const char TAG[] = "ruuvi_gateway";
 
+#define MAIN_TASK_LOG_HEAP_STAT_PERIOD_MS              (100U)
 #define MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS        (10U)
 #define MAIN_TASK_TIMEOUT_HOTSPOT_DEACTIVATION_SEC     (60)
 #define MAIN_TASK_HOTSPOT_DEACTIVATION_SHORT_DELAY_SEC (5)
-#define MAIN_TASK_CHECK_FOR_REMOTE_CFG_PERIOD_MS       (60U * TIME_UNITS_SECONDS_PER_MINUTE * TIME_UNITS_MS_PER_SECOND)
+#define MAIN_TASK_CHECK_FOR_REMOTE_CFG_PERIOD_MS       (2U * TIME_UNITS_SECONDS_PER_MINUTE * TIME_UNITS_MS_PER_SECOND)
 #define MAIN_TASK_GET_HISTORY_TIMEOUT_MS               (70U * TIME_UNITS_MS_PER_SECOND)
 #define MAIN_TASK_WATCHDOG_FEED_PERIOD_MS              (1 * TIME_UNITS_MS_PER_SECOND)
 
@@ -48,11 +50,12 @@ typedef enum main_task_sig_e
     MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT                = OS_SIGNAL_NUM_6,
     MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG                = OS_SIGNAL_NUM_7,
     MAIN_TASK_SIG_NETWORK_CONNECTED                   = OS_SIGNAL_NUM_8,
-    MAIN_TASK_SIG_TASK_RECONNECT_NETWORK              = OS_SIGNAL_NUM_9,
+    MAIN_TASK_SIG_RECONNECT_NETWORK                   = OS_SIGNAL_NUM_9,
     MAIN_TASK_SIG_SET_DEFAULT_CONFIG                  = OS_SIGNAL_NUM_10,
     MAIN_TASK_SIG_ON_GET_HISTORY                      = OS_SIGNAL_NUM_11,
     MAIN_TASK_SIG_ON_GET_HISTORY_TIMEOUT              = OS_SIGNAL_NUM_12,
-    MAIN_TASK_SIG_TASK_WATCHDOG_FEED                  = OS_SIGNAL_NUM_13,
+    MAIN_TASK_SIG_RELAYING_MODE_CHANGED               = OS_SIGNAL_NUM_13,
+    MAIN_TASK_SIG_TASK_WATCHDOG_FEED                  = OS_SIGNAL_NUM_14,
 } main_task_sig_e;
 
 #define MAIN_TASK_SIG_FIRST (MAIN_TASK_SIG_LOG_HEAP_USAGE)
@@ -74,6 +77,7 @@ static os_timer_sig_periodic_t*       g_p_timer_sig_task_watchdog_feed;
 static os_timer_sig_periodic_static_t g_timer_sig_task_watchdog_feed_mem;
 static event_mgr_ev_info_static_t     g_main_loop_ev_info_mem_wifi_connected;
 static event_mgr_ev_info_static_t     g_main_loop_ev_info_mem_eth_connected;
+static event_mgr_ev_info_static_t     g_main_loop_ev_info_mem_relaying_mode_changed;
 
 ATTR_PURE
 static os_signal_num_e
@@ -172,16 +176,43 @@ check_if_checking_for_fw_updates_allowed(void)
 static void
 main_task_handle_sig_log_heap_usage(void)
 {
+    static uint32_t g_heap_usage_stat_cnt      = 0;
+    static uint32_t g_heap_usage_min_free_heap = 0xFFFFFFFFU;
+    static uint32_t g_heap_limit_cnt           = 0;
+
     const uint32_t free_heap = esp_get_free_heap_size();
-    LOG_INFO("free heap: %lu", (printf_ulong_t)free_heap);
-    if (free_heap < (RUUVI_FREE_HEAP_LIM_KIB * RUUVI_NUM_BYTES_IN_1KB))
+
+    g_heap_usage_stat_cnt += 1;
+    if (g_heap_usage_stat_cnt
+        < (MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS * TIME_UNITS_MS_PER_SECOND) / MAIN_TASK_LOG_HEAP_STAT_PERIOD_MS)
     {
-        // TODO: in ESP-IDF v4.x there is API heap_caps_register_failed_alloc_callback,
-        //       which allows to catch 'no memory' event and reboot.
-        LOG_ERR(
-            "Only %uKiB of free memory left - probably due to a memory leak. Reboot the Gateway.",
-            (printf_uint_t)(free_heap / RUUVI_NUM_BYTES_IN_1KB));
-        gateway_restart("Low memory");
+        if (free_heap < g_heap_usage_min_free_heap)
+        {
+            g_heap_usage_min_free_heap = free_heap;
+        }
+    }
+    else
+    {
+        LOG_INFO("free heap: %lu", (printf_ulong_t)g_heap_usage_min_free_heap);
+        if (g_heap_usage_min_free_heap < (RUUVI_FREE_HEAP_LIM_KIB * RUUVI_NUM_BYTES_IN_1KB))
+        {
+            // TODO: in ESP-IDF v4.x there is API heap_caps_register_failed_alloc_callback,
+            //       which allows to catch 'no memory' event and reboot.
+            g_heap_limit_cnt += 1;
+            if (g_heap_limit_cnt >= 3)
+            {
+                LOG_ERR(
+                    "Only %uKiB of free memory left - probably due to a memory leak. Reboot the Gateway.",
+                    (printf_uint_t)(g_heap_usage_min_free_heap / RUUVI_NUM_BYTES_IN_1KB));
+                gateway_restart("Low memory");
+            }
+        }
+        else
+        {
+            g_heap_limit_cnt = 0;
+        }
+        g_heap_usage_stat_cnt      = 0;
+        g_heap_usage_min_free_heap = 0xFFFFFFFFU;
     }
 }
 
@@ -228,17 +259,7 @@ static void
 main_task_handle_sig_deactivate_wifi_ap(void)
 {
     LOG_INFO("MAIN_TASK_SIG_DEACTIVATE_WIFI_AP");
-
-    if (gw_cfg_is_default() && gw_cfg_get_eth_use_eth())
-    {
-        LOG_INFO("Default config is used, so activate Ethernet without Wi-Fi AP deactivation");
-        ethernet_start(gw_cfg_get_wifi_ap_ssid()->ssid_buf);
-    }
-    else
-    {
-        LOG_INFO("Non-default config is used, stop Wi-Fi AP");
-        wifi_manager_stop_ap();
-    }
+    wifi_manager_stop_ap();
 }
 
 static void
@@ -284,7 +305,7 @@ main_task_handle_sig_task_watchdog_feed(void)
 }
 
 static void
-main_task_handle_sig_task_network_reconnect(void)
+main_task_handle_sig_network_reconnect(void)
 {
     LOG_INFO("Perform network reconnect");
     if (gw_cfg_get_eth_use_eth())
@@ -319,14 +340,11 @@ main_task_handle_sig_set_default_config(void)
 }
 
 static void
-restart_services_internal(void)
+main_task_handle_sig_restart_services(void)
 {
     LOG_INFO("Restart services");
-    if (mqtt_app_is_working())
-    {
-        mqtt_app_stop();
-    }
-    if (gw_cfg_get_mqtt_use_mqtt())
+    mqtt_app_stop();
+    if (gw_cfg_get_mqtt_use_mqtt() && gw_status_is_relaying_via_mqtt_enabled())
     {
         mqtt_app_start();
     }
@@ -336,7 +354,7 @@ restart_services_internal(void)
     if (AUTO_UPDATE_CYCLE_TYPE_MANUAL != gw_cfg_get_auto_update_cycle())
     {
         const os_delta_ticks_t delay_ticks = pdMS_TO_TICKS(RUUVI_CHECK_FOR_FW_UPDATES_DELAY_BEFORE_RETRY_SECONDS)
-                                             * 1000;
+                                             * TIME_UNITS_MS_PER_SECOND;
         LOG_INFO(
             "Restarting services: Restart firmware auto-updating, run next check after %lu seconds",
             (printf_ulong_t)RUUVI_CHECK_FOR_FW_UPDATES_DELAY_AFTER_REBOOT_SECONDS);
@@ -346,6 +364,37 @@ restart_services_internal(void)
     {
         LOG_INFO("Restarting services: Stop firmware auto-updating");
         main_task_timer_sig_check_for_fw_updates_stop();
+    }
+}
+
+static void
+main_task_handle_sig_relaying_mode_changed(void)
+{
+    LOG_INFO("Relaying mode changed");
+
+    if (gw_cfg_get_mqtt_use_mqtt())
+    {
+        if (gw_status_is_relaying_via_mqtt_enabled())
+        {
+            if (!gw_status_is_mqtt_started())
+            {
+                mqtt_app_start();
+            }
+        }
+        else
+        {
+            if (gw_status_is_mqtt_started())
+            {
+                mqtt_app_stop();
+            }
+        }
+    }
+    else
+    {
+        if (gw_status_is_mqtt_started())
+        {
+            mqtt_app_stop();
+        }
     }
 }
 
@@ -370,7 +419,7 @@ main_task_handle_sig(const main_task_sig_e main_task_sig)
             main_task_handle_sig_deactivate_wifi_ap();
             break;
         case MAIN_TASK_SIG_TASK_RESTART_SERVICES:
-            restart_services_internal();
+            main_task_handle_sig_restart_services();
             break;
         case MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT:
             mqtt_publish_connect();
@@ -381,8 +430,11 @@ main_task_handle_sig(const main_task_sig_e main_task_sig)
         case MAIN_TASK_SIG_NETWORK_CONNECTED:
             main_task_handle_sig_network_connected();
             break;
-        case MAIN_TASK_SIG_TASK_RECONNECT_NETWORK:
-            main_task_handle_sig_task_network_reconnect();
+        case MAIN_TASK_SIG_RECONNECT_NETWORK:
+            main_task_handle_sig_network_reconnect();
+            break;
+        case MAIN_TASK_SIG_RELAYING_MODE_CHANGED:
+            main_task_handle_sig_relaying_mode_changed();
             break;
         case MAIN_TASK_SIG_SET_DEFAULT_CONFIG:
             main_task_handle_sig_set_default_config();
@@ -509,10 +561,11 @@ main_task_init_signals(void)
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_NETWORK_CONNECTED));
-    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_RECONNECT_NETWORK));
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_RECONNECT_NETWORK));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_SET_DEFAULT_CONFIG));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_ON_GET_HISTORY));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_ON_GET_HISTORY_TIMEOUT));
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_RELAYING_MODE_CHANGED));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_WATCHDOG_FEED));
 }
 
@@ -524,7 +577,7 @@ main_task_init_timers(void)
         "log_heap_usage",
         g_p_signal_main_task,
         main_task_conv_to_sig_num(MAIN_TASK_SIG_LOG_HEAP_USAGE),
-        pdMS_TO_TICKS(MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS * TIME_UNITS_MS_PER_SECOND));
+        pdMS_TO_TICKS(MAIN_TASK_LOG_HEAP_STAT_PERIOD_MS));
     g_p_timer_sig_check_for_fw_updates = os_timer_sig_one_shot_create_static(
         &g_timer_sig_check_for_fw_updates_mem,
         "check_fw_updates",
@@ -575,6 +628,12 @@ main_task_subscribe_events(void)
         EVENT_MGR_EV_ETH_CONNECTED,
         g_p_signal_main_task,
         main_task_conv_to_sig_num(MAIN_TASK_SIG_NETWORK_CONNECTED));
+
+    event_mgr_subscribe_sig_static(
+        &g_main_loop_ev_info_mem_relaying_mode_changed,
+        EVENT_MGR_EV_RELAYING_MODE_CHANGED,
+        g_p_signal_main_task,
+        main_task_conv_to_sig_num(MAIN_TASK_SIG_RELAYING_MODE_CHANGED));
 }
 
 bool
@@ -610,7 +669,7 @@ main_task_send_sig_restart_services(void)
 void
 main_task_send_sig_reconnect_network(void)
 {
-    os_signal_send(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_RECONNECT_NETWORK));
+    os_signal_send(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_RECONNECT_NETWORK));
 }
 
 void

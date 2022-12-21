@@ -34,7 +34,8 @@ http_download_json(
     const TimeUnitsSeconds_t              timeout_seconds,
     const gw_cfg_remote_auth_type_e       auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
-    const http_header_item_t* const       p_extra_header_item);
+    const http_header_item_t* const       p_extra_header_item,
+    const bool                            flag_free_memory);
 
 #ifdef __cplusplus
 }

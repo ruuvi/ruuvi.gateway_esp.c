@@ -43,6 +43,7 @@ typedef struct http_download_param_t
     http_download_cb_on_data_t p_cb_on_data;
     void* const                p_user_data;
     const bool                 flag_feed_task_watchdog;
+    const bool                 flag_free_memory;
 } http_download_param_t;
 
 bool

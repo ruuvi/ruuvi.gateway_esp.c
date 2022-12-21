@@ -25,6 +25,7 @@
 #include "str_buf.h"
 #include "gw_status.h"
 #include "reset_info.h"
+#include "event_mgr.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -616,8 +617,37 @@ http_download_with_auth(
         esp_http_client_set_header(cb_info.http_handle, p_extra_header_item->p_key, p_extra_header_item->p_value);
     }
 
+    if (param.flag_free_memory || gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss())
+    {
+        gw_status_suspend_relaying();
+        const TickType_t tick_start = xTaskGetTickCount();
+        while (gw_status_is_mqtt_started())
+        {
+            if ((xTaskGetTickCount() - tick_start) >= pdMS_TO_TICKS(15 * 1000))
+            {
+                LOG_ERR("Timeout waiting until MQTT is stopped");
+                break;
+            }
+            esp_task_wdt_reset();
+            vTaskDelay(pdMS_TO_TICKS(100));
+        }
+    }
+    else
+    {
+        gw_status_suspend_http_relaying();
+    }
+
     LOG_DBG("http_download_by_handle");
     const bool result = http_download_by_handle(cb_info.http_handle, param.flag_feed_task_watchdog);
+
+    if (param.flag_free_memory || gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss())
+    {
+        gw_status_resume_relaying();
+    }
+    else
+    {
+        gw_status_resume_http_relaying();
+    }
 
     LOG_DBG("esp_http_client_cleanup");
     const esp_err_t err = esp_http_client_cleanup(cb_info.http_handle);

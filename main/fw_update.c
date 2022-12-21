@@ -12,7 +12,6 @@
 #include "cJSON.h"
 #include "cjson_wrap.h"
 #include "wifi_manager.h"
-#include "http_server.h"
 #include "esp_ota_ops_patched.h"
 #include "nrf52fw.h"
 #include "adv_post.h"
@@ -384,6 +383,7 @@ fw_update_data_partition(const esp_partition_t* const p_partition, const char* c
             .p_cb_on_data            = &fw_update_data_partition_cb_on_recv_data,
             .p_user_data             = &fw_update_info,
             .flag_feed_task_watchdog = flag_feed_task_watchdog,
+            .flag_free_memory        = true,
         }))
     {
         LOG_ERR("Failed to update partition %s - failed to download %s", p_partition->label, p_url);
@@ -494,6 +494,7 @@ fw_update_ota_partition(
             .p_cb_on_data            = &fw_update_ota_partition_cb_on_recv_data,
             .p_user_data             = &fw_update_info,
             .flag_feed_task_watchdog = flag_feed_task_watchdog,
+            .flag_free_memory        = true,
         }))
     {
         LOG_ERR("Failed to update OTA-partition %s - failed to download %s", p_partition->label, p_url);
@@ -762,14 +763,11 @@ fw_update_task(void)
     main_task_stop_timer_check_for_remote_cfg();
 
     adv_post_stop();
-    if (mqtt_app_is_working())
-    {
-        mqtt_app_stop();
-    }
+    mqtt_app_stop();
 
-    if (!wifi_manager_is_connected_to_wifi_or_ethernet() && !wifi_manager_is_ap_active())
+    if (!wifi_manager_is_ap_active())
     {
-        LOG_INFO("There is no network connection and WiFi AP is not active - start WiFi AP");
+        LOG_INFO("WiFi AP is not active - start WiFi AP");
         wifi_manager_start_ap();
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
