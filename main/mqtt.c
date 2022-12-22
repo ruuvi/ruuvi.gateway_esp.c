@@ -405,6 +405,7 @@ mqtt_app_start(void)
             gw_cfg_unlock_ro(&p_gw_cfg);
 
             mqtt_app_start_internal(&mqtt_cli_cfg, p_mqtt_data);
+            gw_status_set_mqtt_started();
         }
     }
 
@@ -423,9 +424,8 @@ mqtt_app_stop(void)
             mqtt_publish_state_offline(p_mqtt_data);
             vTaskDelay(pdMS_TO_TICKS(500));
         }
-        gw_status_clear_mqtt_connected();
         LOG_INFO("TaskWatchdog: Unregister current thread");
-        esp_task_wdt_delete(xTaskGetCurrentTaskHandle());
+        const bool flag_task_wdt_used = (esp_task_wdt_delete(xTaskGetCurrentTaskHandle()) == ESP_OK) ? true : false;
 
         LOG_INFO("MQTT destroy");
 
@@ -442,10 +442,16 @@ mqtt_app_stop(void)
 
         LOG_INFO("MQTT destroyed");
 
-        LOG_INFO("TaskWatchdog: Register current thread");
-        esp_task_wdt_add(xTaskGetCurrentTaskHandle());
+        if (flag_task_wdt_used)
+        {
+            LOG_INFO("TaskWatchdog: Register current thread");
+            esp_task_wdt_add(xTaskGetCurrentTaskHandle());
+        }
 
         p_mqtt_data->p_mqtt_client = NULL;
+
+        gw_status_clear_mqtt_connected();
+        gw_status_clear_mqtt_started();
     }
     mqtt_mutex_unlock(&p_mqtt_data);
 }

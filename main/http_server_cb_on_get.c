@@ -67,7 +67,7 @@ HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_json_github_latest_release(void)
 {
-    const http_server_download_info_t info = http_download_latest_release_info();
+    const http_server_download_info_t info = http_download_latest_release_info(true);
     if (info.is_error)
     {
         return http_server_resp_504();

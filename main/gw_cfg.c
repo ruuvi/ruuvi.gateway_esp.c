@@ -859,6 +859,28 @@ gw_cfg_get_mqtt_use_mqtt(void)
 }
 
 bool
+gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss(void)
+{
+    const gw_cfg_t*                     p_gw_cfg       = gw_cfg_lock_ro();
+    const bool                          use_mqtt       = p_gw_cfg->ruuvi_cfg.mqtt.use_mqtt;
+    const ruuvi_gw_cfg_mqtt_transport_t mqtt_transport = p_gw_cfg->ruuvi_cfg.mqtt.mqtt_transport;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    if (!use_mqtt)
+    {
+        return false;
+    }
+    if (0 == strcmp(mqtt_transport.buf, MQTT_TRANSPORT_SSL))
+    {
+        return true;
+    }
+    if (0 == strcmp(mqtt_transport.buf, MQTT_TRANSPORT_WSS))
+    {
+        return true;
+    }
+    return false;
+}
+
+bool
 gw_cfg_get_http_use_http(void)
 {
     assert(NULL != g_gw_cfg_mutex);

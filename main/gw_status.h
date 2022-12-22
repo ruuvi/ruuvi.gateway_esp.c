@@ -56,6 +56,33 @@ gw_status_clear_nrf_status(void);
 bool
 gw_status_get_nrf_status(void);
 
+void
+gw_status_set_mqtt_started(void);
+
+void
+gw_status_clear_mqtt_started(void);
+
+bool
+gw_status_is_mqtt_started(void);
+
+void
+gw_status_resume_relaying(void);
+
+void
+gw_status_suspend_relaying(void);
+
+void
+gw_status_suspend_http_relaying(void);
+
+void
+gw_status_resume_http_relaying(void);
+
+bool
+gw_status_is_relaying_via_http_enabled(void);
+
+bool
+gw_status_is_relaying_via_mqtt_enabled(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -22,6 +22,8 @@
 #include "gw_cfg_json_parse.h"
 #include "time_units.h"
 #include "time_task.h"
+#include "event_mgr.h"
+#include "gw_status.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -92,7 +94,7 @@ static void
 http_server_cb_on_user_req_download_latest_release_info(void)
 {
     LOG_INFO("Download latest release info");
-    http_server_download_info_t latest_release_info = http_download_latest_release_info();
+    http_server_download_info_t latest_release_info = http_download_latest_release_info(false);
     if (latest_release_info.is_error)
     {
         LOG_ERR("Failed to download latest firmware release info");
@@ -157,7 +159,7 @@ http_server_cb_on_user_req_download_latest_release_info(void)
 }
 
 static http_server_download_info_t
-http_server_download_gw_cfg(void)
+http_server_download_gw_cfg(const bool flag_free_memory)
 {
     const mac_address_str_t* const p_nrf52_mac_addr = gw_cfg_get_nrf52_mac_addr();
 
@@ -204,7 +206,8 @@ http_server_download_gw_cfg(void)
             timeout_seconds,
             p_remote->auth_type,
             &p_remote->auth,
-            &extra_header_item);
+            &extra_header_item,
+            flag_free_memory);
     }
     else
     {
@@ -231,7 +234,8 @@ http_server_download_gw_cfg(void)
             timeout_seconds,
             p_remote->auth_type,
             &p_remote->auth,
-            &extra_header_item);
+            &extra_header_item,
+            flag_free_memory);
         if (download_info.is_error)
         {
             LOG_WARN("Download gw_cfg: failed, http_resp_code=%u", (printf_uint_t)download_info.http_resp_code);
@@ -247,7 +251,8 @@ http_server_download_gw_cfg(void)
                 timeout_seconds,
                 p_remote->auth_type,
                 &p_remote->auth,
-                &extra_header_item);
+                &extra_header_item,
+                flag_free_memory);
         }
     }
     os_free(p_remote);
@@ -255,9 +260,9 @@ http_server_download_gw_cfg(void)
 }
 
 http_resp_code_e
-http_server_gw_cfg_download_and_update(bool* const p_flag_reboot_needed)
+http_server_gw_cfg_download_and_update(bool* const p_flag_reboot_needed, const bool flag_free_memory)
 {
-    http_server_download_info_t download_info = http_server_download_gw_cfg();
+    http_server_download_info_t download_info = http_server_download_gw_cfg(flag_free_memory);
     if (download_info.is_error)
     {
         LOG_ERR("Download gw_cfg: failed, http_resp_code=%u", (printf_uint_t)download_info.http_resp_code);
@@ -340,7 +345,7 @@ http_server_cb_on_user_req(const http_server_user_req_code_e req_code)
             http_server_cb_on_user_req_download_latest_release_info();
             break;
         case HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_GW_CFG:
-            (void)http_server_gw_cfg_download_and_update(NULL);
+            (void)http_server_gw_cfg_download_and_update(NULL, false);
             break;
         default:
             LOG_ERR("Unknown req_code=%d", (printf_int_t)req_code);
