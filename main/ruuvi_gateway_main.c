@@ -356,8 +356,10 @@ static void
 cb_on_ap_sta_ip_assigned(void)
 {
     LOG_INFO("callback: on_ap_sta_ip_assigned");
-    main_task_stop_timer_hotspot_deactivation();
-    main_task_start_timer_hotspot_deactivation();
+    if (main_task_is_active_timer_hotspot_deactivation())
+    {
+        main_task_start_timer_hotspot_deactivation();
+    }
 }
 
 static void
