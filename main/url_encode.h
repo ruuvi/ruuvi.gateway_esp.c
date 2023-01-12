@@ -16,16 +16,28 @@ extern "C" {
 #endif
 
 bool
+url_n_encode_to_str_buf(const char* const p_src, const size_t len, str_buf_t* const p_dst);
+
+bool
 url_encode_to_str_buf(const char* const p_src, str_buf_t* const p_dst);
+
+str_buf_t
+url_n_encode_with_alloc(const char* const p_src, const size_t len);
 
 str_buf_t
 url_encode_with_alloc(const char* const p_src);
 
 bool
-url_decode_to_str_buf(const char* p_src, str_buf_t* const p_dst);
+url_n_decode_to_str_buf(const char* const p_src, const size_t len, str_buf_t* const p_dst);
+
+bool
+url_decode_to_str_buf(const char* const p_src, str_buf_t* const p_dst);
 
 str_buf_t
-url_decode_with_alloc(const char* p_src);
+url_n_decode_with_alloc(const char* const p_src, const size_t len);
+
+str_buf_t
+url_decode_with_alloc(const char* const p_src);
 
 #ifdef __cplusplus
 }
