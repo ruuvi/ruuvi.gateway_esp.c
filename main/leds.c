@@ -14,13 +14,10 @@
 #include "os_task.h"
 #include "os_signal.h"
 #include "os_timer_sig.h"
-#include "attribs.h"
-#include "time_units.h"
 #include "ruuvi_board_gwesp.h"
 #include "gpio_switch_ctrl.h"
 #include "esp_type_wrapper.h"
 #include "event_mgr.h"
-#include "adv_post.h"
 #include "leds_ctrl.h"
 #include "leds_ctrl2.h"
 #include "leds_blinking.h"
@@ -166,14 +163,14 @@ static void
 leds_turn_on_green(void)
 {
     LOG_DBG("G_LED: ON");
-    adv_post_green_led_turn_on();
+    event_mgr_notify(EVENT_MGR_EV_GREEN_LED_TURN_ON);
 }
 
 static void
 leds_turn_off_green(void)
 {
     LOG_DBG("G_LED: OFF");
-    adv_post_green_led_turn_off();
+    event_mgr_notify(EVENT_MGR_EV_GREEN_LED_TURN_OFF);
 }
 
 const char*

@@ -138,6 +138,8 @@ static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_cfg_ready;
 static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_gw_cfg_ruuvi_changed;
 static bool                           g_adv_post_green_led_state;
 static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_relaying_mode_changed;
+static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_green_led_turn_on;
+static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_green_led_turn_off;
 
 static uint32_t g_adv_post_interval_ms = ADV_POST_DEFAULT_INTERVAL_SECONDS * TIME_UNITS_MS_PER_SECOND;
 
@@ -849,6 +851,17 @@ adv_post_subscribe_events(void)
         EVENT_MGR_EV_RELAYING_MODE_CHANGED,
         g_p_adv_post_sig,
         adv_post_conv_to_sig_num(ADV_POST_SIG_RELAYING_MODE_CHANGED));
+
+    event_mgr_subscribe_sig_static(
+        &g_adv_post_ev_info_mem_green_led_turn_on,
+        EVENT_MGR_EV_GREEN_LED_TURN_ON,
+        g_p_adv_post_sig,
+        adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_TURN_ON));
+    event_mgr_subscribe_sig_static(
+        &g_adv_post_ev_info_mem_green_led_turn_off,
+        EVENT_MGR_EV_GREEN_LED_TURN_OFF,
+        g_p_adv_post_sig,
+        adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_TURN_OFF));
 }
 
 static void
@@ -862,6 +875,8 @@ adv_post_unsubscribe_events(void)
     event_mgr_unsubscribe_sig_static(&g_adv_post_ev_info_mem_cfg_ready, EVENT_MGR_EV_GW_CFG_READY);
     event_mgr_unsubscribe_sig_static(&g_adv_post_ev_info_mem_gw_cfg_ruuvi_changed, EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI);
     event_mgr_unsubscribe_sig_static(&g_adv_post_ev_info_mem_relaying_mode_changed, EVENT_MGR_EV_RELAYING_MODE_CHANGED);
+    event_mgr_unsubscribe_sig_static(&g_adv_post_ev_info_mem_green_led_turn_on, EVENT_MGR_EV_GREEN_LED_TURN_ON);
+    event_mgr_unsubscribe_sig_static(&g_adv_post_ev_info_mem_green_led_turn_off, EVENT_MGR_EV_GREEN_LED_TURN_OFF);
 }
 
 static void
@@ -986,24 +1001,6 @@ adv_post_stop(void)
 {
     LOG_INFO("adv_post_stop");
     if (!os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_STOP)))
-    {
-        LOG_ERR("%s failed", "os_signal_send");
-    }
-}
-
-void
-adv_post_green_led_turn_on(void)
-{
-    if (!os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_TURN_ON)))
-    {
-        LOG_ERR("%s failed", "os_signal_send");
-    }
-}
-
-void
-adv_post_green_led_turn_off(void)
-{
-    if (!os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_TURN_OFF)))
     {
         LOG_ERR("%s failed", "os_signal_send");
     }

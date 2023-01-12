@@ -30,12 +30,6 @@ adv_post_stop(void);
 void
 adv_post_last_successful_network_comm_timestamp_update(void);
 
-void
-adv_post_green_led_turn_on(void);
-
-void
-adv_post_green_led_turn_off(void);
-
 #ifdef __cplusplus
 }
 #endif
