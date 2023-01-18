@@ -353,8 +353,14 @@ gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss(void);
 bool
 gw_cfg_get_http_use_http(void);
 
+ruuvi_gw_cfg_http_t*
+gw_cfg_get_http_copy(void);
+
 bool
 gw_cfg_get_http_stat_use_http_stat(void);
+
+ruuvi_gw_cfg_http_stat_t*
+gw_cfg_get_http_stat_copy(void);
 
 ruuvi_gw_cfg_mqtt_prefix_t
 gw_cfg_get_mqtt_prefix(void);

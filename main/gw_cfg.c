@@ -890,6 +890,22 @@ gw_cfg_get_http_use_http(void)
     return use_http;
 }
 
+ruuvi_gw_cfg_http_t*
+gw_cfg_get_http_copy(void)
+{
+    assert(NULL != g_gw_cfg_mutex);
+    ruuvi_gw_cfg_http_t* p_cfg_http = os_malloc(sizeof(*p_cfg_http));
+    if (NULL == p_cfg_http)
+    {
+        return p_cfg_http;
+    }
+
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
+    *p_cfg_http              = p_gw_cfg->ruuvi_cfg.http;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    return p_cfg_http;
+}
+
 bool
 gw_cfg_get_http_stat_use_http_stat(void)
 {
@@ -898,6 +914,21 @@ gw_cfg_get_http_stat_use_http_stat(void)
     const bool      use_http = p_gw_cfg->ruuvi_cfg.http_stat.use_http_stat;
     gw_cfg_unlock_ro(&p_gw_cfg);
     return use_http;
+}
+
+ruuvi_gw_cfg_http_stat_t*
+gw_cfg_get_http_stat_copy(void)
+{
+    assert(NULL != g_gw_cfg_mutex);
+    ruuvi_gw_cfg_http_stat_t* p_cfg_http_stat = os_malloc(sizeof(*p_cfg_http_stat));
+    if (NULL == p_cfg_http_stat)
+    {
+        return p_cfg_http_stat;
+    }
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
+    *p_cfg_http_stat         = p_gw_cfg->ruuvi_cfg.http_stat;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    return p_cfg_http_stat;
 }
 
 ruuvi_gw_cfg_mqtt_prefix_t
