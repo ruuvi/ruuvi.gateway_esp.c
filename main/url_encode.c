@@ -88,7 +88,8 @@ url_n_decode_to_str_buf(const char* const p_src, const size_t len, str_buf_t* co
 {
     const os_str2num_base_t url_encoded_base = 16;
     str_buf_printf(p_dst, "%s", "");
-    for (const char* p_cur = p_src; ('\0' != *p_cur) && ((ptrdiff_t)(p_cur - p_src) < len);)
+    const char* p_cur = p_src;
+    while (('\0' != *p_cur) && ((ptrdiff_t)(p_cur - p_src) < len))
     {
         if ('%' == *p_cur)
         {

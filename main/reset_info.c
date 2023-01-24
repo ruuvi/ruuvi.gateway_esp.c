@@ -194,6 +194,10 @@ reset_info_init(void)
         memset(&p_info->data, 0, sizeof(p_info->data));
         p_info->crc = reset_info_calc_crc(p_info);
     }
+    else
+    {
+        // MISRA C:2012, 15.7 - All if...else if constructs shall be terminated with an else statement
+    }
 
     p_info->reset_cnt += 1;
     p_info->crc = reset_info_calc_crc(p_info);
@@ -279,9 +283,10 @@ panic_print_char_override(const char c)
 {
     static uart_hal_context_t s_panic_uart = { .dev = CONFIG_ESP_CONSOLE_UART_NUM == 0 ? &UART0 : &UART1 };
     uint32_t                  sz           = 0;
-    while (!uart_hal_get_txfifo_len(&s_panic_uart))
-        ;
-    uart_hal_write_txfifo(&s_panic_uart, (uint8_t*)&c, 1, &sz);
+    while (0 == uart_hal_get_txfifo_len(&s_panic_uart))
+    {
+    }
+    uart_hal_write_txfifo(&s_panic_uart, (const uint8_t*)&c, 1, &sz);
 
     str_buf_printf(&g_reset_info_data_panic_str_buf, "%c", c);
 }
