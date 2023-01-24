@@ -6340,7 +6340,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
     TEST_CHECK_LOG_RECORD(
         ESP_LOG_INFO,
         string("Can't find key 'lan_auth_api_key_rw' in config-json, leave the previous value unchanged"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'auto_update_cycle' in config-json"));
+    TEST_CHECK_LOG_RECORD(
+        ESP_LOG_WARN,
+        string("Can't find key 'auto_update_cycle' in config-json, leave the previous value unchanged"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'auto_update_weekdays_bitmask' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'auto_update_interval_from' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'auto_update_interval_to' in config-json"));
