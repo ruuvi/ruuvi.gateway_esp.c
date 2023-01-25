@@ -182,7 +182,7 @@ http_download_latest_release_info(const bool flag_free_memory)
     const char* const p_url = "https://api.github.com/repos/ruuvi/ruuvi.gateway_esp.c/releases/latest";
     return http_download_json(
         p_url,
-        HTTP_DOWNLOAD_TIMEOUT_SECONDS,
+        HTTP_DOWNLOAD_FW_RELEASE_INFO_TIMEOUT_SECONDS,
         GW_CFG_REMOTE_AUTH_TYPE_NO,
         NULL,
         NULL,

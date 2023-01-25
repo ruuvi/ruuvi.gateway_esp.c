@@ -379,7 +379,7 @@ fw_update_data_partition(const esp_partition_t* const p_partition, const char* c
     const bool flag_feed_task_watchdog = false;
     if (!http_download((http_download_param_t) {
             .p_url                   = p_url,
-            .timeout_seconds         = HTTP_DOWNLOAD_TIMEOUT_SECONDS,
+            .timeout_seconds         = HTTP_DOWNLOAD_FW_BINARIES_TIMEOUT_SECONDS,
             .p_cb_on_data            = &fw_update_data_partition_cb_on_recv_data,
             .p_user_data             = &fw_update_info,
             .flag_feed_task_watchdog = flag_feed_task_watchdog,
@@ -490,7 +490,7 @@ fw_update_ota_partition(
     const bool flag_feed_task_watchdog = false;
     if (!http_download((http_download_param_t) {
             .p_url                   = p_url,
-            .timeout_seconds         = HTTP_DOWNLOAD_TIMEOUT_SECONDS,
+            .timeout_seconds         = HTTP_DOWNLOAD_FW_BINARIES_TIMEOUT_SECONDS,
             .p_cb_on_data            = &fw_update_ota_partition_cb_on_recv_data,
             .p_user_data             = &fw_update_info,
             .flag_feed_task_watchdog = flag_feed_task_watchdog,

@@ -20,7 +20,9 @@
 extern "C" {
 #endif
 
-#define HTTP_DOWNLOAD_TIMEOUT_SECONDS (25)
+#define HTTP_DOWNLOAD_TIMEOUT_SECONDS                 (25)
+#define HTTP_DOWNLOAD_FW_RELEASE_INFO_TIMEOUT_SECONDS (50)
+#define HTTP_DOWNLOAD_FW_BINARIES_TIMEOUT_SECONDS     (5 * TIME_UNITS_SECONDS_PER_MINUTE)
 
 typedef struct http_header_item_t
 {
