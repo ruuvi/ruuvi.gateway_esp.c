@@ -138,7 +138,8 @@ reset_task_handle_sig(const reset_task_sig_e reset_task_sig)
             if (!wifi_manager_is_ap_active())
             {
                 LOG_INFO("WiFi AP is not active - start WiFi AP");
-                wifi_manager_start_ap();
+                const bool flag_block_req_from_lan = true;
+                wifi_manager_start_ap(flag_block_req_from_lan);
             }
             else
             {

@@ -768,7 +768,8 @@ fw_update_task(void)
     if (!wifi_manager_is_ap_active())
     {
         LOG_INFO("WiFi AP is not active - start WiFi AP");
-        wifi_manager_start_ap();
+        const bool flag_block_req_from_lan = (FW_UPDATE_REASON_MANUAL_VIA_LAN == g_fw_updating_reason) ? false : true;
+        wifi_manager_start_ap(flag_block_req_from_lan);
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
     main_task_stop_timer_hotspot_deactivation();

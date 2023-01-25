@@ -501,7 +501,8 @@ cb_before_nrf52_fw_updating(void)
         LOG_ERR("%s failed", "wifi_init");
         return;
     }
-    wifi_manager_start_ap();
+    const bool flag_block_req_from_lan = true;
+    wifi_manager_start_ap(flag_block_req_from_lan);
 }
 
 void
@@ -695,7 +696,8 @@ network_subsystem_init(
             if (!gw_status_is_eth_link_up())
             {
                 LOG_INFO("### Force start WiFi hotspot (there is no Ethernet connection)");
-                wifi_manager_start_ap();
+                const bool flag_block_req_from_lan = true;
+                wifi_manager_start_ap(flag_block_req_from_lan);
             }
         }
         else
@@ -710,7 +712,7 @@ network_subsystem_init(
             settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_DISABLED);
         }
         LOG_INFO("Force start WiFi hotspot");
-        wifi_manager_start_ap();
+        wifi_manager_start_ap(true);
     }
     return true;
 }
