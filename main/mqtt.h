@@ -9,13 +9,17 @@
 #define RUUVI_MQTT_H
 
 #include "adv_table.h"
+#include "gw_cfg.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 void
-mqtt_app_start(void);
+mqtt_app_start(const ruuvi_gw_cfg_mqtt_t* const p_mqtt);
+
+void
+mqtt_app_start_with_gw_cfg(void);
 
 void
 mqtt_app_stop(void);

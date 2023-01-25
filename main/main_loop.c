@@ -346,7 +346,7 @@ main_task_handle_sig_restart_services(void)
     mqtt_app_stop();
     if (gw_cfg_get_mqtt_use_mqtt() && gw_status_is_relaying_via_mqtt_enabled())
     {
-        mqtt_app_start();
+        mqtt_app_start_with_gw_cfg();
     }
 
     main_task_configure_periodic_remote_cfg_check();
@@ -378,7 +378,7 @@ main_task_handle_sig_relaying_mode_changed(void)
         {
             if (!gw_status_is_mqtt_started())
             {
-                mqtt_app_start();
+                mqtt_app_start_with_gw_cfg();
             }
         }
         else
@@ -508,7 +508,7 @@ main_loop(void)
 
     if (gw_cfg_get_mqtt_use_mqtt())
     {
-        mqtt_app_start();
+        mqtt_app_start_with_gw_cfg();
     }
 
     os_timer_sig_periodic_start(g_p_timer_sig_log_heap_usage);
