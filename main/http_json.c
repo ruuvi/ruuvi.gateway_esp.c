@@ -93,14 +93,17 @@ http_json_generate_records_data_section(
         return false;
     }
 
-    for (num_of_advs_t i = 0; i < p_reports->num_of_advs; ++i)
+    if (NULL != p_reports)
     {
-        if (!http_json_generate_records_tag_mac_section(
-                p_json_tags,
-                &p_reports->table[i],
-                header_info.flag_use_timestamps))
+        for (num_of_advs_t i = 0; i < p_reports->num_of_advs; ++i)
         {
-            return false;
+            if (!http_json_generate_records_tag_mac_section(
+                    p_json_tags,
+                    &p_reports->table[i],
+                    header_info.flag_use_timestamps))
+            {
+                return false;
+            }
         }
     }
     return true;
@@ -147,6 +150,10 @@ http_json_generate_attributes_for_sensors(
     cJSON* const                    p_json_active_sensors,
     cJSON* const                    p_json_inactive_sensors)
 {
+    if (NULL == p_reports)
+    {
+        return true;
+    }
     for (num_of_advs_t i = 0; i < p_reports->num_of_advs; ++i)
     {
         const adv_report_t* const p_adv   = &p_reports->table[i];
@@ -233,12 +240,15 @@ http_json_generate_status_attributes(
         return false;
     }
     uint32_t num_sensors_seen = 0;
-    for (num_of_advs_t i = 0; i < p_reports->num_of_advs; ++i)
+    if (NULL != p_reports)
     {
-        const adv_report_t* const p_adv = &p_reports->table[i];
-        if (0 != p_adv->samples_counter)
+        for (num_of_advs_t i = 0; i < p_reports->num_of_advs; ++i)
         {
-            num_sensors_seen += 1;
+            const adv_report_t* const p_adv = &p_reports->table[i];
+            if (0 != p_adv->samples_counter)
+            {
+                num_sensors_seen += 1;
+            }
         }
     }
     if (!cjson_wrap_add_uint32(p_json_root, "SENSORS_SEEN", num_sensors_seen))

@@ -354,18 +354,17 @@ adv_post_log(const adv_report_table_t* p_reports, const bool flag_use_timestamps
 }
 
 static bool
-adv_post_retransmit_advs(
-    const adv_report_table_t* p_reports,
-    const bool                flag_network_connected,
-    const bool                flag_use_timestamps)
+adv_post_retransmit_advs(const adv_report_table_t* p_reports, const bool flag_use_timestamps)
 {
-    if (!flag_network_connected)
+    const ruuvi_gw_cfg_http_t* p_cfg_http = gw_cfg_get_http_copy();
+    if (NULL == p_cfg_http)
     {
-        LOG_WARN("Can't send advs, no network connection");
+        LOG_ERR("%s failed", "gw_cfg_get_http_copy");
         return false;
     }
-
-    if (!http_send_advs(p_reports, g_adv_post_nonce, flag_use_timestamps))
+    const bool res = http_send_advs(p_reports, g_adv_post_nonce, flag_use_timestamps, p_cfg_http, NULL);
+    os_free(p_cfg_http);
+    if (!res)
     {
         return false;
     }
@@ -383,11 +382,44 @@ adv_post_do_retransmission(const bool flag_network_connected, const bool flag_us
 
     adv_post_log(&g_adv_reports_buf, flag_use_timestamps);
 
-    return adv_post_retransmit_advs(&g_adv_reports_buf, flag_network_connected, flag_use_timestamps);
+    if (!flag_network_connected)
+    {
+        LOG_WARN("Can't send advs, no network connection");
+        return false;
+    }
+
+    return adv_post_retransmit_advs(&g_adv_reports_buf, flag_use_timestamps);
 }
 
-static bool
-adv_post_do_send_statistics(void)
+http_json_statistics_info_t
+adv_post_generate_statistics_info(const str_buf_t* const p_reset_info)
+{
+    const esp_reset_reason_t                reset_reason       = esp_reset_reason();
+    const char* const                       p_reset_reason_str = reset_reason_to_str(reset_reason);
+    http_json_statistics_reset_reason_buf_t reset_reason_buf   = { 0 };
+    (void)sniprintf(reset_reason_buf.buf, sizeof(reset_reason_buf.buf), "%s", p_reset_reason_str);
+
+    const http_json_statistics_info_t stat_info = {
+        .nrf52_mac_addr         = *gw_cfg_get_nrf52_mac_addr(),
+        .esp_fw                 = *gw_cfg_get_esp32_fw_ver(),
+        .nrf_fw                 = *gw_cfg_get_nrf52_fw_ver(),
+        .uptime                 = g_uptime_counter,
+        .nonce                  = g_adv_post_nonce,
+        .nrf_status             = gw_status_get_nrf_status(),
+        .is_connected_to_wifi   = wifi_manager_is_connected_to_wifi(),
+        .network_disconnect_cnt = g_network_disconnect_cnt,
+        .reset_reason           = reset_reason_buf,
+        .reset_cnt              = reset_info_get_cnt(),
+        .p_reset_info           = (NULL != p_reset_info) ? &p_reset_info->buf[0] : "",
+    };
+
+    g_adv_post_nonce += 1;
+
+    return stat_info;
+}
+
+bool
+adv_post_stat(const ruuvi_gw_cfg_http_stat_t* const p_cfg_http_stat, void* const p_user_data)
 {
     adv_report_table_t* p_reports = os_malloc(sizeof(*p_reports));
     if (NULL == p_reports)
@@ -397,29 +429,28 @@ adv_post_do_send_statistics(void)
     }
     adv_table_statistics_read(p_reports);
 
-    const esp_reset_reason_t                reset_reason       = esp_reset_reason();
-    const char* const                       p_reset_reason_str = reset_reason_to_str(reset_reason);
-    http_json_statistics_reset_reason_buf_t reset_reason_buf   = { 0 };
-    (void)sniprintf(reset_reason_buf.buf, sizeof(reset_reason_buf.buf), "%s", p_reset_reason_str);
-
     str_buf_t                         reset_info = reset_info_get();
-    const http_json_statistics_info_t stat_info  = {
-         .nrf52_mac_addr         = *gw_cfg_get_nrf52_mac_addr(),
-         .esp_fw                 = *gw_cfg_get_esp32_fw_ver(),
-         .nrf_fw                 = *gw_cfg_get_nrf52_fw_ver(),
-         .uptime                 = g_uptime_counter,
-         .nonce                  = g_adv_post_nonce,
-         .nrf_status             = gw_status_get_nrf_status(),
-         .is_connected_to_wifi   = wifi_manager_is_connected_to_wifi(),
-         .network_disconnect_cnt = g_network_disconnect_cnt,
-         .reset_reason           = reset_reason_buf,
-         .reset_cnt              = reset_info_get_cnt(),
-         .p_reset_info           = &reset_info.buf[0],
-    };
+    const http_json_statistics_info_t stat_info  = adv_post_generate_statistics_info(&reset_info);
 
-    const bool res = http_send_statistics(&stat_info, p_reports);
+    const bool res = http_send_statistics(&stat_info, p_reports, p_cfg_http_stat, p_user_data);
     str_buf_free_buf(&reset_info);
     os_free(p_reports);
+
+    return res;
+}
+
+static bool
+adv_post_do_send_statistics(void)
+{
+    const ruuvi_gw_cfg_http_stat_t* p_cfg_http_stat = gw_cfg_get_http_stat_copy();
+    if (NULL == p_cfg_http_stat)
+    {
+        LOG_ERR("%s failed", "gw_cfg_get_http_copy");
+        return false;
+    }
+    const bool res = adv_post_stat(p_cfg_http_stat, NULL);
+    os_free(p_cfg_http_stat);
+
     return res;
 }
 
@@ -487,7 +518,6 @@ adv_post_do_async_comm_send_statistics(adv_post_state_t* const p_adv_post_state)
         {
             LOG_ERR("Failed to send statistics");
         }
-        g_adv_post_nonce += 1;
     }
 }
 
@@ -641,6 +671,22 @@ adv_post_on_gw_cfg_change(adv_post_state_t* const p_adv_post_state)
     }
 }
 
+static void
+adv_post_handle_sig_relaying_mode_changed(adv_post_state_t* const p_adv_post_state)
+{
+    p_adv_post_state->flag_relaying_enabled = gw_status_is_relaying_via_http_enabled();
+    LOG_INFO(
+        "ADV_POST_SIG_RELAYING_MODE_CHANGED: flag_relaying_enabled=%d",
+        (printf_int_t)p_adv_post_state->flag_relaying_enabled);
+    if ((!p_adv_post_state->flag_relaying_enabled) && p_adv_post_state->flag_async_comm_in_progress)
+    {
+        os_timer_sig_one_shot_stop(g_p_adv_post_timer_sig_do_async_comm);
+        http_abort_any_req_during_processing();
+        p_adv_post_state->flag_async_comm_in_progress = false;
+    }
+    gw_status_clear_http_relaying_cmd();
+}
+
 static bool
 adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p_adv_post_state)
 {
@@ -684,7 +730,7 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p
             adv_post_do_async_comm(p_adv_post_state);
             break;
         case ADV_POST_SIG_RELAYING_MODE_CHANGED:
-            p_adv_post_state->flag_relaying_enabled = gw_status_is_relaying_via_http_enabled();
+            adv_post_handle_sig_relaying_mode_changed(p_adv_post_state);
             break;
         case ADV_POST_SIG_NETWORK_WATCHDOG:
             adv_post_handle_sig_network_watchdog();
@@ -770,11 +816,14 @@ adv_post_task(void)
         }
     }
     LOG_INFO("Stop task adv_post");
+
     LOG_INFO("TaskWatchdog: Unregister current thread");
     esp_task_wdt_delete(xTaskGetCurrentTaskHandle());
 
     adv_post_unsubscribe_events();
     adv_post_delete_timers();
+
+    http_abort_any_req_during_processing();
 
     os_signal_unregister_cur_thread(g_p_adv_post_sig);
     os_signal_delete(&g_p_adv_post_sig);

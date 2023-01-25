@@ -44,8 +44,23 @@ gw_status_set_mqtt_connected(void);
 void
 gw_status_clear_mqtt_connected(void);
 
+void
+gw_status_set_mqtt_error(const bool flag_auth_failed);
+
+void
+gw_status_clear_mqtt_connected_and_error(void);
+
 bool
 gw_status_is_mqtt_connected(void);
+
+bool
+gw_status_is_mqtt_error(void);
+
+bool
+gw_status_is_mqtt_auth_error(void);
+
+bool
+gw_status_is_mqtt_connected_or_error(void);
 
 void
 gw_status_set_nrf_status(void);
@@ -57,6 +72,9 @@ bool
 gw_status_get_nrf_status(void);
 
 void
+gw_status_clear_mqtt_relaying_cmd(void);
+
+void
 gw_status_set_mqtt_started(void);
 
 void
@@ -65,17 +83,23 @@ gw_status_clear_mqtt_started(void);
 bool
 gw_status_is_mqtt_started(void);
 
-void
-gw_status_resume_relaying(void);
+bool
+gw_status_is_mqtt_relaying_cmd_handled(void);
 
 void
-gw_status_suspend_relaying(void);
+gw_status_clear_http_relaying_cmd(void);
 
 void
-gw_status_suspend_http_relaying(void);
+gw_status_resume_relaying(const bool flag_wait);
 
 void
-gw_status_resume_http_relaying(void);
+gw_status_suspend_relaying(const bool flag_wait_until_relaying_stopped);
+
+void
+gw_status_suspend_http_relaying(const bool flag_wait_until_relaying_stopped);
+
+void
+gw_status_resume_http_relaying(const bool flag_wait);
 
 bool
 gw_status_is_relaying_via_http_enabled(void);

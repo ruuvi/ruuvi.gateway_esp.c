@@ -159,7 +159,7 @@ http_server_cb_on_user_req_download_latest_release_info(void)
 }
 
 static http_server_download_info_t
-http_server_download_gw_cfg(const bool flag_free_memory)
+http_server_download_gw_cfg(const ruuvi_gw_cfg_remote_t* const p_remote, const bool flag_free_memory)
 {
     const mac_address_str_t* const p_nrf52_mac_addr = gw_cfg_get_nrf52_mac_addr();
 
@@ -168,26 +168,13 @@ http_server_download_gw_cfg(const bool flag_free_memory)
         .p_value = p_nrf52_mac_addr->str_buf,
     };
 
-    const ruuvi_gw_cfg_remote_t* p_remote = gw_cfg_get_remote_cfg_copy();
-    if (NULL == p_remote)
-    {
-        const http_server_download_info_t download_info = {
-            .is_error       = true,
-            .http_resp_code = HTTP_RESP_CODE_503,
-            .p_json_buf     = NULL,
-            .json_buf_size  = 0,
-        };
-        return download_info;
-    }
-
     size_t base_url_len = strlen(p_remote->url.buf);
     if (base_url_len < GW_CFG_REMOTE_URL_MIN_LEN)
     {
         LOG_ERR("Remote cfg URL is too short: '%s'", p_remote->url.buf);
-        os_free(p_remote);
         const http_server_download_info_t download_info = {
             .is_error       = true,
-            .http_resp_code = HTTP_RESP_CODE_503,
+            .http_resp_code = HTTP_RESP_CODE_400,
             .p_json_buf     = NULL,
             .json_buf_size  = 0,
         };
@@ -255,14 +242,38 @@ http_server_download_gw_cfg(const bool flag_free_memory)
                 flag_free_memory);
         }
     }
-    os_free(p_remote);
     return download_info;
 }
 
 http_resp_code_e
-http_server_gw_cfg_download_and_update(bool* const p_flag_reboot_needed, const bool flag_free_memory)
+http_server_gw_cfg_download_and_parse(
+    const ruuvi_gw_cfg_remote_t* const p_remote_cfg,
+    const bool                         flag_free_memory,
+    gw_cfg_t**                         p_p_gw_cfg_tmp,
+    str_buf_t* const                   p_err_msg)
 {
-    http_server_download_info_t download_info = http_server_download_gw_cfg(flag_free_memory);
+    const bool flag_wait_until_relaying_stopped = true;
+    if (flag_free_memory || gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss())
+    {
+        gw_status_suspend_relaying(flag_wait_until_relaying_stopped);
+    }
+    else
+    {
+        gw_status_suspend_http_relaying(flag_wait_until_relaying_stopped);
+    }
+
+    http_server_download_info_t download_info = http_server_download_gw_cfg(p_remote_cfg, flag_free_memory);
+
+    const bool flag_wait_until_relaying_resumed = true;
+    if (flag_free_memory || gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss())
+    {
+        gw_status_resume_relaying(flag_wait_until_relaying_resumed);
+    }
+    else
+    {
+        gw_status_resume_http_relaying(flag_wait_until_relaying_resumed);
+    }
+
     if (download_info.is_error)
     {
         LOG_ERR("Download gw_cfg: failed, http_resp_code=%u", (printf_uint_t)download_info.http_resp_code);
@@ -277,16 +288,27 @@ http_server_gw_cfg_download_and_update(bool* const p_flag_reboot_needed, const b
             "Invalid first byte of json, expected '{', actual '%c' (%d)",
             download_info.p_json_buf[0],
             (printf_int_t)download_info.p_json_buf[0]);
+        if (NULL != p_err_msg)
+        {
+            *p_err_msg = str_buf_printf_with_alloc(
+                "Invalid first byte of json, expected '{', actual '%c' (%d)",
+                download_info.p_json_buf[0],
+                (printf_int_t)download_info.p_json_buf[0]);
+        }
         os_free(download_info.p_json_buf);
-        return HTTP_RESP_CODE_503; // 502
+        return HTTP_RESP_CODE_502;
     }
 
     gw_cfg_t* p_gw_cfg_tmp = os_calloc(1, sizeof(*p_gw_cfg_tmp));
     if (NULL == p_gw_cfg_tmp)
     {
         LOG_ERR("Failed to allocate memory for gw_cfg");
+        if (NULL != p_err_msg)
+        {
+            *p_err_msg = str_buf_printf_with_alloc("Failed to allocate memory for gw_cfg");
+        }
         os_free(download_info.p_json_buf);
-        return HTTP_RESP_CODE_503;
+        return HTTP_RESP_CODE_502;
     }
     gw_cfg_get_copy(p_gw_cfg_tmp);
     p_gw_cfg_tmp->ruuvi_cfg.remote.use_remote_cfg = false;
@@ -299,17 +321,55 @@ http_server_gw_cfg_download_and_update(bool* const p_flag_reboot_needed, const b
             NULL))
     {
         LOG_ERR("Failed to parse gw_cfg.json or no memory");
+        if (NULL != p_err_msg)
+        {
+            *p_err_msg = str_buf_printf_with_alloc("Failed to parse gw_cfg.json or no memory");
+        }
         os_free(p_gw_cfg_tmp);
         os_free(download_info.p_json_buf);
-        return HTTP_RESP_CODE_503; // 502
+        return HTTP_RESP_CODE_502;
     }
     os_free(download_info.p_json_buf);
 
     if (!p_gw_cfg_tmp->ruuvi_cfg.remote.use_remote_cfg)
     {
         LOG_ERR("Invalid gw_cfg.json: 'use_remote_cfg' is missing or 'false'");
+        if (NULL != p_err_msg)
+        {
+            *p_err_msg = str_buf_printf_with_alloc("Invalid gw_cfg.json: 'use_remote_cfg' is missing or 'false'");
+        }
         os_free(p_gw_cfg_tmp);
-        return HTTP_RESP_CODE_503; // 502
+        return HTTP_RESP_CODE_502;
+    }
+    *p_p_gw_cfg_tmp = p_gw_cfg_tmp;
+    return HTTP_RESP_CODE_200;
+}
+
+http_resp_code_e
+http_server_gw_cfg_download_and_update(
+    bool* const      p_flag_reboot_needed,
+    const bool       flag_free_memory,
+    str_buf_t* const p_err_msg)
+{
+    gw_cfg_t*                    p_gw_cfg_tmp = NULL;
+    const ruuvi_gw_cfg_remote_t* p_remote_cfg = gw_cfg_get_remote_cfg_copy();
+    if (NULL == p_remote_cfg)
+    {
+        return HTTP_RESP_CODE_502;
+    }
+    const http_resp_code_e resp_code = http_server_gw_cfg_download_and_parse(
+        p_remote_cfg,
+        flag_free_memory,
+        &p_gw_cfg_tmp,
+        p_err_msg);
+    os_free(p_remote_cfg);
+    if (HTTP_RESP_CODE_200 != resp_code)
+    {
+        return resp_code;
+    }
+    if (NULL != p_err_msg)
+    {
+        str_buf_free_buf(p_err_msg);
     }
 
     const gw_cfg_update_status_t update_status = gw_cfg_update(p_gw_cfg_tmp);
@@ -333,7 +393,7 @@ http_server_gw_cfg_download_and_update(bool* const p_flag_reboot_needed, const b
         LOG_INFO("Gateway SETTINGS (from remote server) are the same as the current ones");
     }
     os_free(p_gw_cfg_tmp);
-    return download_info.http_resp_code;
+    return HTTP_RESP_CODE_200;
 }
 
 void
@@ -345,10 +405,38 @@ http_server_cb_on_user_req(const http_server_user_req_code_e req_code)
             http_server_cb_on_user_req_download_latest_release_info();
             break;
         case HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_GW_CFG:
-            (void)http_server_gw_cfg_download_and_update(NULL, false);
+            (void)http_server_gw_cfg_download_and_update(NULL, false, NULL);
             break;
         default:
             LOG_ERR("Unknown req_code=%d", (printf_int_t)req_code);
             break;
     }
+}
+
+ATTR_PRINTF(2, 3)
+ATTR_NONNULL(2)
+http_server_resp_t
+http_server_cb_gen_resp(const http_resp_code_e resp_code, const char* const p_fmt, ...)
+{
+    va_list args;
+    va_start(args, p_fmt);
+    str_buf_t msg = str_buf_vprintf_with_alloc(p_fmt, args);
+    va_end(args);
+    if (NULL == msg.buf)
+    {
+        LOG_ERR("Can't allocate memory for response");
+        return http_server_resp_err(HTTP_RESP_CODE_500);
+    }
+
+    const str_buf_t resp_buf = str_buf_printf_with_alloc(
+        "{\"status\": %u, \"message\": \"%s\"}",
+        (printf_uint_t)resp_code,
+        (NULL != msg.buf) ? msg.buf : "");
+    str_buf_free_buf(&msg);
+    if (NULL == resp_buf.buf)
+    {
+        LOG_ERR("Can't allocate memory for response");
+        return http_server_resp_err(HTTP_RESP_CODE_500);
+    }
+    return http_server_resp_json_in_heap(HTTP_RESP_CODE_200, resp_buf.buf);
 }

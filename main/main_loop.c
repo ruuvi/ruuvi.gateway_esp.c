@@ -184,7 +184,7 @@ main_task_handle_sig_log_heap_usage(void)
 
     g_heap_usage_stat_cnt += 1;
     if (g_heap_usage_stat_cnt
-        < (MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS * TIME_UNITS_MS_PER_SECOND) / MAIN_TASK_LOG_HEAP_STAT_PERIOD_MS)
+        < ((MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS * TIME_UNITS_MS_PER_SECOND) / MAIN_TASK_LOG_HEAP_STAT_PERIOD_MS))
     {
         if (free_heap < g_heap_usage_min_free_heap)
         {
@@ -383,19 +383,14 @@ main_task_handle_sig_relaying_mode_changed(void)
         }
         else
         {
-            if (gw_status_is_mqtt_started())
-            {
-                mqtt_app_stop();
-            }
+            mqtt_app_stop();
         }
     }
     else
     {
-        if (gw_status_is_mqtt_started())
-        {
-            mqtt_app_stop();
-        }
+        mqtt_app_stop();
     }
+    gw_status_clear_mqtt_relaying_cmd();
 }
 
 static void

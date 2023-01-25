@@ -17,6 +17,9 @@
 #include "adv_post.h"
 #include "flashfatfs.h"
 #include "ruuvi_gateway.h"
+#include "str_buf.h"
+#include "url_encode.h"
+#include "gw_status.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -31,7 +34,19 @@
 
 #define HTTP_SERVER_DEFAULT_HISTORY_INTERVAL_SECONDS (60U)
 
+#define MQTT_URL_PREFIX_LEN (20)
+
 typedef double cjson_double_t;
+
+typedef enum http_validate_type_e
+{
+    HTTP_VALIDATE_TYPE_INVALID,
+    HTTP_VALIDATE_TYPE_POST_ADVS,
+    HTTP_VALIDATE_TYPE_POST_STAT,
+    HTTP_VALIDATE_TYPE_CHECK_MQTT,
+    HTTP_VALIDATE_TYPE_CHECK_REMOTE_CFG,
+    HTTP_VALIDATE_TYPE_CHECK_FILE,
+} http_validate_type_e;
 
 extern const flash_fat_fs_t* gp_ffs_gwui;
 
@@ -51,16 +66,7 @@ http_server_resp_json_ruuvi(void)
     gw_cfg_unlock_ro(&p_gw_cfg);
 
     LOG_INFO("ruuvi.json: %s", json_str.p_str);
-    const bool flag_no_cache        = true;
-    const bool flag_add_header_date = true;
-    return http_server_resp_data_in_heap(
-        HTTP_CONENT_TYPE_APPLICATION_JSON,
-        NULL,
-        strlen(json_str.p_str),
-        HTTP_CONENT_ENCODING_NONE,
-        (const uint8_t*)json_str.p_str,
-        flag_no_cache,
-        flag_add_header_date);
+    return http_server_resp_200_json_in_heap(json_str.p_str);
 }
 
 HTTP_SERVER_CB_STATIC
@@ -74,16 +80,7 @@ http_server_resp_json_github_latest_release(void)
     }
 
     LOG_DBG("github_latest_release.json: %s", info.p_json_buf);
-    const bool flag_no_cache        = true;
-    const bool flag_add_header_date = true;
-    return http_server_resp_data_in_heap(
-        HTTP_CONENT_TYPE_APPLICATION_JSON,
-        NULL,
-        strlen(info.p_json_buf),
-        HTTP_CONENT_ENCODING_NONE,
-        (const uint8_t*)info.p_json_buf,
-        flag_no_cache,
-        flag_add_header_date);
+    return http_server_resp_200_json_in_heap(info.p_json_buf);
 }
 
 static bool
@@ -201,16 +198,7 @@ http_server_resp_json_info(void)
     }
     gw_cfg_unlock_ro(&p_gw_cfg);
     LOG_INFO("info.json: %s", json_str.p_str);
-    const bool flag_no_cache        = true;
-    const bool flag_add_header_date = true;
-    return http_server_resp_data_in_heap(
-        HTTP_CONENT_TYPE_APPLICATION_JSON,
-        NULL,
-        strlen(json_str.p_str),
-        HTTP_CONENT_ENCODING_NONE,
-        (const uint8_t*)json_str.p_str,
-        flag_no_cache,
-        flag_add_header_date);
+    return http_server_resp_200_json_in_heap(json_str.p_str);
 }
 
 HTTP_SERVER_CB_STATIC
@@ -246,7 +234,7 @@ http_server_resp_metrics(void)
     const bool flag_no_cache        = true;
     const bool flag_add_header_date = true;
     LOG_INFO("metrics: %s", p_metrics);
-    return http_server_resp_data_in_heap(
+    return http_server_resp_200_data_in_heap(
         HTTP_CONENT_TYPE_TEXT_PLAIN,
         "version=0.0.4",
         strlen(p_metrics),
@@ -352,8 +340,6 @@ http_server_resp_history(const char* const p_params)
         return http_server_resp_503();
     }
 
-    const bool flag_no_cache        = true;
-    const bool flag_add_header_date = true;
     if (flag_use_filter)
     {
         if (flag_use_timestamps)
@@ -376,14 +362,706 @@ http_server_resp_history(const char* const p_params)
 
     main_task_on_get_history();
 
-    return http_server_resp_data_in_heap(
-        HTTP_CONENT_TYPE_APPLICATION_JSON,
-        NULL,
-        strlen(json_str.p_str),
-        HTTP_CONENT_ENCODING_NONE,
-        (const uint8_t*)json_str.p_str,
-        flag_no_cache,
-        flag_add_header_date);
+    return http_server_resp_200_json_in_heap(json_str.p_str);
+}
+
+HTTP_SERVER_CB_STATIC
+bool
+http_server_find_key_in_params(const char* const p_params, const char* const p_key)
+{
+    const char* const p_param = strstr(p_params, p_key);
+    if (NULL == p_param)
+    {
+        LOG_DBG("Can't find key '%s' in URL params", p_key);
+        return false;
+    }
+    return true;
+}
+
+HTTP_SERVER_CB_STATIC
+str_buf_t
+http_server_get_from_params(const char* const p_params, const char* const p_key)
+{
+    const size_t      key_len = strlen(p_key);
+    const char* const p_param = strstr(p_params, p_key);
+    if (NULL == p_param)
+    {
+        LOG_DBG("Can't find key '%s' in URL params", p_key);
+        return str_buf_init_null();
+    }
+    const char* const p_value = &p_param[key_len];
+    const char* const p_end   = strchr(p_value, '&');
+    const size_t      val_len = (NULL == p_end) ? strlen(p_value) : (size_t)(ptrdiff_t)(p_end - p_value);
+    LOG_DBG("HTTP params: %s%.*s", p_key, val_len, p_value);
+
+    const str_buf_t result = str_buf_printf_with_alloc("%.*s", (printf_int_t)val_len, p_value);
+    if (NULL == result.buf)
+    {
+        LOG_ERR("Can't allocate memory param %s%.*s", p_key, val_len, p_value);
+    }
+    return result;
+}
+
+HTTP_SERVER_CB_STATIC
+str_buf_t
+http_server_get_from_params_with_decoding(const char* const p_params, const char* const p_key)
+{
+    str_buf_t val_encoded = http_server_get_from_params(p_params, p_key);
+    if (NULL == val_encoded.buf)
+    {
+        LOG_ERR("HTTP params: Can't find '%s'", p_key);
+        return str_buf_init_null();
+    }
+    LOG_DBG("HTTP params: key '%s': value (encoded): %s", p_key, val_encoded.buf);
+
+    const str_buf_t val_decoded = url_decode_with_alloc(val_encoded.buf);
+    str_buf_free_buf(&val_encoded);
+    if (NULL == val_decoded.buf)
+    {
+        LOG_ERR("HTTP params: key '%s': Can't decode value: %s", p_key, val_encoded.buf);
+        return str_buf_init_null();
+    }
+    LOG_DBG("HTTP params: key '%s': value (decoded): %s", p_key, val_decoded.buf);
+    return val_decoded;
+}
+
+HTTP_SERVER_CB_STATIC
+bool
+http_server_get_bool_from_params(const char* const p_params, const char* const p_key)
+{
+    str_buf_t str_val = http_server_get_from_params_with_decoding(p_params, p_key);
+    if (NULL == str_val.buf)
+    {
+        LOG_ERR("Can't find key: %s", p_key);
+        return false;
+    }
+    bool res = false;
+    if (0 == strcmp(str_val.buf, "true"))
+    {
+        res = true;
+    }
+    else if (0 == strcmp(str_val.buf, "false"))
+    {
+        res = false;
+    }
+    else
+    {
+        LOG_ERR("Incorrect bool value for key '%s': %s", p_key, str_val.buf);
+    }
+    str_buf_free_buf(&str_val);
+    return res;
+}
+
+HTTP_SERVER_CB_STATIC
+str_buf_t
+http_server_get_password_from_params(const char* const p_params)
+{
+    str_buf_t encrypted_password = http_server_get_from_params_with_decoding(p_params, "encrypted_password=");
+    if (NULL == encrypted_password.buf)
+    {
+        return str_buf_init_null();
+    }
+    str_buf_t encrypted_password_iv = http_server_get_from_params_with_decoding(p_params, "encrypted_password_iv=");
+    if (NULL == encrypted_password_iv.buf)
+    {
+        str_buf_free_buf(&encrypted_password);
+        return str_buf_init_null();
+    }
+    str_buf_t encrypted_password_hash = http_server_get_from_params_with_decoding(p_params, "encrypted_password_hash=");
+    if (NULL == encrypted_password_hash.buf)
+    {
+        str_buf_free_buf(&encrypted_password);
+        str_buf_free_buf(&encrypted_password_iv);
+        return str_buf_init_null();
+    }
+
+    str_buf_t decrypted_password = str_buf_init_null();
+    if (!http_server_decrypt_by_params(
+            encrypted_password.buf,
+            encrypted_password_iv.buf,
+            encrypted_password_hash.buf,
+            &decrypted_password))
+    {
+        LOG_WARN("Failed to decrypt password: %s", encrypted_password.buf);
+    }
+    else
+    {
+        LOG_DBG("HTTP params: Decrypted password: %s", decrypted_password.buf);
+    }
+    str_buf_free_buf(&encrypted_password);
+    str_buf_free_buf(&encrypted_password_iv);
+    str_buf_free_buf(&encrypted_password_hash);
+    return decrypted_password;
+}
+
+HTTP_SERVER_CB_STATIC
+http_validate_type_e
+http_server_get_validate_type_from_params(const char* const p_params)
+{
+    const char* const p_prefix   = "validate_type=";
+    const size_t      prefix_len = strlen(p_prefix);
+    const char* const p_param    = strstr(p_params, p_prefix);
+    if (NULL == p_param)
+    {
+        LOG_ERR("Can't find prefix '%s'", p_prefix);
+        return HTTP_VALIDATE_TYPE_INVALID;
+    }
+    const char* const p_value = &p_param[prefix_len];
+    const char* const p_end   = strchr(p_value, '&');
+    const size_t      val_len = (NULL == p_end) ? strlen(p_value) : (size_t)(ptrdiff_t)(p_end - p_value);
+    LOG_INFO("Found validate_type: %.*s", val_len, p_value);
+    if (0 == strncmp(p_value, "check_post_advs", val_len))
+    {
+        return HTTP_VALIDATE_TYPE_POST_ADVS;
+    }
+    if (0 == strncmp(p_value, "check_post_stat", val_len))
+    {
+        return HTTP_VALIDATE_TYPE_POST_STAT;
+    }
+    if (0 == strncmp(p_value, "check_mqtt", val_len))
+    {
+        return HTTP_VALIDATE_TYPE_CHECK_MQTT;
+    }
+    if (0 == strncmp(p_value, "check_remote_cfg", val_len))
+    {
+        return HTTP_VALIDATE_TYPE_CHECK_REMOTE_CFG;
+    }
+    if (0 == strncmp(p_value, "check_file", val_len))
+    {
+        return HTTP_VALIDATE_TYPE_CHECK_FILE;
+    }
+    LOG_ERR("Unknown validate_type: %.*s", val_len, p_value);
+    return HTTP_VALIDATE_TYPE_INVALID;
+}
+
+HTTP_SERVER_CB_STATIC
+bool
+http_server_parse_mqtt_url(const char* const p_url, ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg)
+{
+    LOG_DBG("Parse MQTT URL: %s", p_url);
+    const char* const p_prefix_separator_str = "://";
+    const size_t      prefix_separator_len   = strlen(p_prefix_separator_str);
+    const char* const p_prefix               = p_url;
+    const char* const p_prefix_separator     = strstr(p_prefix, p_prefix_separator_str);
+    if (NULL == p_prefix_separator)
+    {
+        LOG_ERR("Can't find MQTT protocol prefix separator in URL: %s", p_url);
+        return false;
+    }
+    char      prefix_buf[MQTT_URL_PREFIX_LEN];
+    str_buf_t prefix = STR_BUF_INIT(prefix_buf, sizeof(prefix_buf));
+    str_buf_printf(&prefix, "%.*s", (printf_int_t)((p_prefix_separator - p_prefix) + prefix_separator_len), p_url);
+    const char* p_mqtt_transport = NULL;
+    if (0 == strcmp("mqtt://", prefix_buf))
+    {
+        p_mqtt_transport = MQTT_TRANSPORT_TCP;
+    }
+    else if (0 == strcmp("mqtts://", prefix_buf))
+    {
+        p_mqtt_transport = MQTT_TRANSPORT_SSL;
+    }
+    else if (0 == strcmp("mqttws://", prefix_buf))
+    {
+        p_mqtt_transport = MQTT_TRANSPORT_WS;
+    }
+    else if (0 == strcmp("mqttwss://", prefix_buf))
+    {
+        p_mqtt_transport = MQTT_TRANSPORT_WSS;
+    }
+    else
+    {
+        LOG_ERR("Unknown MQTT protocol in URL: %s", p_url);
+        return false;
+    }
+    (void)snprintf(p_mqtt_cfg->mqtt_transport.buf, sizeof(p_mqtt_cfg->mqtt_transport.buf), "%s", p_mqtt_transport);
+    LOG_DBG("MQTT transport: %s", p_mqtt_cfg->mqtt_transport.buf);
+
+    const char* const p_server = p_prefix_separator + prefix_separator_len;
+
+    const char* const p_port_separator = strchr(p_server, ':');
+    if (NULL == p_port_separator)
+    {
+        LOG_ERR("Can't find MQTT port separator in URL: %s", p_url);
+        return false;
+    }
+    const size_t server_len = (size_t)(ptrdiff_t)(p_port_separator - p_server);
+    if (server_len >= sizeof(p_mqtt_cfg->mqtt_server.buf))
+    {
+        LOG_ERR("Server name in too long in MQTT URL: %s", p_url);
+        return false;
+    }
+    (void)snprintf(
+        p_mqtt_cfg->mqtt_server.buf,
+        sizeof(p_mqtt_cfg->mqtt_server.buf),
+        "%.*s",
+        (printf_int_t)server_len,
+        p_server);
+    LOG_DBG("MQTT server: %s", p_mqtt_cfg->mqtt_server.buf);
+
+    const char* const p_port = p_port_separator + 1;
+
+    char*         p_end     = NULL;
+    unsigned long mqtt_port = strtoul(p_port, &p_end, 10);
+    if ('\0' != *p_end)
+    {
+        LOG_ERR("Incorrect MQTT port in URL: %s", p_url);
+        return false;
+    }
+    if ((0 == mqtt_port) || (mqtt_port > UINT16_MAX))
+    {
+        LOG_ERR("MQTT port is out of range in URL: %s", p_url);
+        return false;
+    }
+
+    p_mqtt_cfg->mqtt_port = (uint16_t)mqtt_port;
+    LOG_DBG("MQTT port: %u", (printf_uint_t)p_mqtt_cfg->mqtt_port);
+
+    return true;
+}
+
+HTTP_SERVER_CB_STATIC
+http_server_resp_t
+http_server_on_get_check_mqtt(
+    const char* const        p_url,
+    const char* const        p_user,
+    const char* const        p_pass,
+    const char* const        p_params,
+    const TimeUnitsSeconds_t timeout_seconds)
+{
+    str_buf_t topic_prefix = http_server_get_from_params_with_decoding(p_params, "mqtt_topic_prefix=");
+    if (NULL == topic_prefix.buf)
+    {
+        return http_server_resp_400();
+    }
+    str_buf_t client_id = http_server_get_from_params_with_decoding(p_params, "mqtt_client_id=");
+    if (NULL == client_id.buf)
+    {
+        str_buf_free_buf(&topic_prefix);
+        return http_server_resp_400();
+    }
+
+    ruuvi_gw_cfg_mqtt_t* p_mqtt_cfg = calloc(1, sizeof(*p_mqtt_cfg));
+    if (NULL == p_mqtt_cfg)
+    {
+        str_buf_free_buf(&client_id);
+        str_buf_free_buf(&topic_prefix);
+        return http_server_resp_500();
+    }
+
+    if ((strlen(topic_prefix.buf) >= sizeof(p_mqtt_cfg->mqtt_prefix.buf))
+        || (strlen(client_id.buf) >= sizeof(p_mqtt_cfg->mqtt_client_id.buf))
+        || (strlen(p_user) >= sizeof(p_mqtt_cfg->mqtt_user.buf))
+        || (strlen(p_pass) >= sizeof(p_mqtt_cfg->mqtt_pass.buf)))
+    {
+        str_buf_free_buf(&client_id);
+        str_buf_free_buf(&topic_prefix);
+        os_free(p_mqtt_cfg);
+        return http_server_resp_400();
+    }
+
+    if (!http_server_parse_mqtt_url(p_url, p_mqtt_cfg))
+    {
+        str_buf_free_buf(&client_id);
+        str_buf_free_buf(&topic_prefix);
+        os_free(p_mqtt_cfg);
+        return http_server_resp_400();
+    }
+
+    p_mqtt_cfg->use_mqtt                       = true;
+    p_mqtt_cfg->mqtt_disable_retained_messages = true;
+
+    (void)snprintf(p_mqtt_cfg->mqtt_prefix.buf, sizeof(p_mqtt_cfg->mqtt_prefix.buf), "%s", topic_prefix.buf);
+    (void)snprintf(p_mqtt_cfg->mqtt_client_id.buf, sizeof(p_mqtt_cfg->mqtt_client_id.buf), "%s", client_id.buf);
+    (void)snprintf(p_mqtt_cfg->mqtt_user.buf, sizeof(p_mqtt_cfg->mqtt_user.buf), "%s", p_user);
+    (void)snprintf(p_mqtt_cfg->mqtt_pass.buf, sizeof(p_mqtt_cfg->mqtt_pass.buf), "%s", p_pass);
+
+    const http_server_resp_t http_resp = http_check_mqtt(p_mqtt_cfg, timeout_seconds);
+
+    os_free(p_mqtt_cfg);
+    str_buf_free_buf(&client_id);
+    str_buf_free_buf(&topic_prefix);
+
+    return http_resp;
+}
+
+HTTP_SERVER_CB_STATIC
+http_server_resp_t
+http_server_on_get_check_remote_cfg(
+    const char* const p_url,
+    const char* const p_user,
+    const char* const p_pass,
+    const char* const p_params)
+{
+    str_buf_t auth_type = http_server_get_from_params_with_decoding(p_params, "auth_type=");
+    if (NULL == auth_type.buf)
+    {
+        return http_server_resp_400();
+    }
+    ruuvi_gw_cfg_remote_t* p_remote_cfg = os_calloc(1, sizeof(*p_remote_cfg));
+    if (NULL == p_remote_cfg)
+    {
+        LOG_ERR("Can't allocate memory for remote_cfg");
+        str_buf_free_buf(&auth_type);
+        return http_server_resp_500();
+    }
+    p_remote_cfg->use_remote_cfg           = true;
+    p_remote_cfg->refresh_interval_minutes = 0;
+    (void)snprintf(p_remote_cfg->url.buf, sizeof(p_remote_cfg->url.buf), "%s", p_url);
+    if (0 == strcmp(auth_type.buf, "none"))
+    {
+        p_remote_cfg->auth_type = GW_CFG_REMOTE_AUTH_TYPE_NO;
+    }
+    else if (0 == strcmp(auth_type.buf, "basic"))
+    {
+        if (strlen(p_user) >= sizeof(p_remote_cfg->auth.auth_basic.user.buf))
+        {
+            LOG_ERR("remote_cfg username is too long: %s", p_user);
+            str_buf_free_buf(&auth_type);
+            os_free(p_remote_cfg);
+            return http_server_resp_400();
+        }
+        if (strlen(p_pass) >= sizeof(p_remote_cfg->auth.auth_basic.password.buf))
+        {
+            LOG_ERR("remote_cfg password is too long: %s", p_pass);
+            str_buf_free_buf(&auth_type);
+            os_free(p_remote_cfg);
+            return http_server_resp_400();
+        }
+        p_remote_cfg->auth_type = GW_CFG_REMOTE_AUTH_TYPE_BASIC;
+        (void)snprintf(
+            p_remote_cfg->auth.auth_basic.user.buf,
+            sizeof(p_remote_cfg->auth.auth_basic.user.buf),
+            "%s",
+            p_user);
+        (void)snprintf(
+            p_remote_cfg->auth.auth_basic.password.buf,
+            sizeof(p_remote_cfg->auth.auth_basic.password.buf),
+            "%s",
+            p_pass);
+    }
+    else if (0 == strcmp(auth_type.buf, "bearer"))
+    {
+        if (strlen(p_pass) >= sizeof(p_remote_cfg->auth.auth_bearer.token.buf))
+        {
+            LOG_ERR("remote_cfg token is too long: %s", p_pass);
+            str_buf_free_buf(&auth_type);
+            os_free(p_remote_cfg);
+            return http_server_resp_400();
+        }
+        p_remote_cfg->auth_type = GW_CFG_REMOTE_AUTH_TYPE_BEARER;
+        (void)snprintf(
+            p_remote_cfg->auth.auth_bearer.token.buf,
+            sizeof(p_remote_cfg->auth.auth_bearer.token.buf),
+            "%s",
+            p_pass);
+    }
+    else
+    {
+        LOG_ERR("Unknown remote_cfg auth_type: %s", auth_type.buf);
+        str_buf_free_buf(&auth_type);
+        os_free(p_remote_cfg);
+        return http_server_resp_400();
+    }
+
+    const bool             flag_free_memory = true;
+    gw_cfg_t*              p_gw_cfg_tmp     = NULL;
+    str_buf_t              err_msg          = str_buf_init_null();
+    const http_resp_code_e http_resp_code   = http_server_gw_cfg_download_and_parse(
+        p_remote_cfg,
+        flag_free_memory,
+        &p_gw_cfg_tmp,
+        &err_msg);
+    os_free(p_remote_cfg);
+    str_buf_free_buf(&auth_type);
+    if (NULL != p_gw_cfg_tmp)
+    {
+        os_free(p_gw_cfg_tmp);
+    }
+    const http_server_resp_t resp = http_server_cb_gen_resp(
+        http_resp_code,
+        "%s",
+        (NULL != err_msg.buf) ? err_msg.buf : "");
+    if (NULL != err_msg.buf)
+    {
+        str_buf_free_buf(&err_msg);
+    }
+    return resp;
+}
+
+HTTP_SERVER_CB_STATIC
+http_server_resp_t
+http_server_resp_validate_post_advs(
+    const str_buf_t* const p_url,
+    const str_buf_t* const p_user,
+    const str_buf_t* const p_password,
+    const bool             flag_use_saved_password)
+{
+    str_buf_t saved_password = gw_cfg_get_http_password_copy();
+    if (NULL == saved_password.buf)
+    {
+        LOG_ERR("Can't allocate memory for saved http_password");
+        return http_server_resp_err(HTTP_RESP_CODE_500);
+    }
+    const http_server_resp_t http_resp = http_check_post_advs(
+        p_url->buf,
+        p_user->buf,
+        flag_use_saved_password ? saved_password.buf : p_password->buf,
+        HTTP_DOWNLOAD_TIMEOUT_SECONDS);
+    str_buf_free_buf(&saved_password);
+    return http_resp;
+}
+
+HTTP_SERVER_CB_STATIC
+http_server_resp_t
+http_server_resp_validate_post_stat(
+    const str_buf_t* const p_url,
+    const str_buf_t* const p_user,
+    const str_buf_t* const p_password,
+    const bool             flag_use_saved_password)
+{
+    str_buf_t saved_password = gw_cfg_get_http_stat_password_copy();
+    if (NULL == saved_password.buf)
+    {
+        LOG_ERR("Can't allocate memory for saved http_stat_password");
+        return http_server_resp_err(HTTP_RESP_CODE_500);
+    }
+    const http_server_resp_t http_resp = http_check_post_stat(
+        p_url->buf,
+        p_user->buf,
+        flag_use_saved_password ? saved_password.buf : p_password->buf,
+        HTTP_DOWNLOAD_TIMEOUT_SECONDS);
+    str_buf_free_buf(&saved_password);
+    return http_resp;
+}
+
+HTTP_SERVER_CB_STATIC
+http_server_resp_t
+http_server_resp_validate_check_mqtt(
+    const str_buf_t* const p_url,
+    const str_buf_t* const p_user,
+    const str_buf_t* const p_password,
+    const bool             flag_use_saved_password,
+    const char* const      p_params)
+{
+    str_buf_t saved_password = gw_cfg_get_mqtt_password_copy();
+    if (NULL == saved_password.buf)
+    {
+        LOG_ERR("Can't allocate memory for saved mqtt_password");
+        return http_server_resp_err(HTTP_RESP_CODE_500);
+    }
+    const http_server_resp_t http_resp = http_server_on_get_check_mqtt(
+        p_url->buf,
+        p_user->buf,
+        flag_use_saved_password ? saved_password.buf : p_password->buf,
+        p_params,
+        HTTP_DOWNLOAD_CHECK_MQTT_TIMEOUT_SECONDS);
+    str_buf_free_buf(&saved_password);
+    return http_resp;
+}
+
+HTTP_SERVER_CB_STATIC
+http_server_resp_t
+http_server_resp_validate_check_remote_cfg(
+    const str_buf_t* const p_url,
+    const str_buf_t* const p_user,
+    const str_buf_t* const p_password,
+    const bool             flag_use_saved_password,
+    const char* const      p_params)
+{
+    const ruuvi_gw_cfg_remote_t* p_saved_remote_cfg = gw_cfg_get_remote_cfg_copy();
+    if (NULL == p_saved_remote_cfg)
+    {
+        LOG_ERR("Can't allocate memory for copy of remote_cfg");
+        return http_server_resp_err(HTTP_RESP_CODE_500);
+    }
+    const char* p_saved_password = NULL;
+    switch (p_saved_remote_cfg->auth_type)
+    {
+        case GW_CFG_REMOTE_AUTH_TYPE_NO:
+            break;
+        case GW_CFG_REMOTE_AUTH_TYPE_BASIC:
+            p_saved_password = p_saved_remote_cfg->auth.auth_basic.password.buf;
+            break;
+        case GW_CFG_REMOTE_AUTH_TYPE_BEARER:
+            p_saved_password = p_saved_remote_cfg->auth.auth_bearer.token.buf;
+            break;
+    }
+    const http_server_resp_t http_resp = http_server_on_get_check_remote_cfg(
+        p_url->buf,
+        p_user->buf,
+        flag_use_saved_password ? p_saved_password : p_password->buf,
+        p_params);
+    os_free(p_saved_remote_cfg);
+    return http_resp;
+}
+
+HTTP_SERVER_CB_STATIC
+http_server_resp_t
+http_server_resp_validate_check_file(
+    const str_buf_t* const p_url,
+    const str_buf_t* const p_user,
+    const str_buf_t* const p_password)
+{
+    gw_cfg_remote_auth_type_e auth_type   = GW_CFG_REMOTE_AUTH_TYPE_NO;
+    ruuvi_gw_cfg_http_auth_t* p_http_auth = NULL;
+    if ((NULL != p_user) || (NULL != p_password))
+    {
+        p_http_auth = os_calloc(1, sizeof(*p_http_auth));
+        if (NULL == p_http_auth)
+        {
+            LOG_ERR("Can't allocate memory for http_auth");
+            return http_server_resp_err(HTTP_RESP_CODE_500);
+        }
+        if (NULL != p_user)
+        {
+            auth_type = GW_CFG_REMOTE_AUTH_TYPE_BASIC;
+            (void)
+                snprintf(p_http_auth->auth_basic.user.buf, sizeof(p_http_auth->auth_basic.user.buf), "%s", p_user->buf);
+            (void)snprintf(
+                p_http_auth->auth_basic.password.buf,
+                sizeof(p_http_auth->auth_basic.password.buf),
+                "%s",
+                p_password->buf);
+        }
+        else
+        {
+            auth_type = GW_CFG_REMOTE_AUTH_TYPE_BEARER;
+            (void)snprintf(
+                p_http_auth->auth_bearer.token.buf,
+                sizeof(p_http_auth->auth_bearer.token.buf),
+                "%s",
+                p_password->buf);
+        }
+    }
+    const http_resp_code_e http_resp_code
+        = http_check(p_url->buf, HTTP_DOWNLOAD_TIMEOUT_SECONDS, auth_type, p_http_auth, NULL, true);
+
+    if (NULL != p_http_auth)
+    {
+        os_free(p_http_auth);
+    }
+
+    return http_server_cb_gen_resp(http_resp_code, "%s", "");
+}
+
+HTTP_SERVER_CB_STATIC
+http_server_resp_t
+http_server_resp_validate_url(const char* const p_params)
+{
+    if (NULL == p_params)
+    {
+        LOG_ERR("Expected params for HTTP validate");
+        return http_server_resp_400();
+    }
+    str_buf_t url = http_server_get_from_params_with_decoding(p_params, "url=");
+    if (NULL == url.buf)
+    {
+        LOG_ERR("HTTP validate: can't find 'url' in params: %s", p_params);
+        return http_server_resp_400();
+    }
+    LOG_DBG("Got URL from params: %s", url.buf);
+
+    str_buf_t user = str_buf_init_null();
+    if (http_server_find_key_in_params(p_params, "user="))
+    {
+        user = http_server_get_from_params_with_decoding(p_params, "user=");
+    }
+    else
+    {
+        user = str_buf_printf_with_alloc("%s", "");
+    }
+    if (NULL == user.buf)
+    {
+        LOG_ERR("Can't allocate memory");
+        str_buf_free_buf(&url);
+        return http_server_resp_400();
+    }
+    bool flag_use_saved_password = false;
+    if (http_server_find_key_in_params(p_params, "use_saved_password="))
+    {
+        flag_use_saved_password = http_server_get_bool_from_params(p_params, "use_saved_password=");
+    }
+
+    str_buf_t password = str_buf_init_null();
+    if (flag_use_saved_password)
+    {
+        if ('\0' == user.buf[0])
+        {
+            LOG_ERR("HTTP validate: can't 'user' in params: %s", p_params);
+            str_buf_free_buf(&url);
+            str_buf_free_buf(&user);
+            return http_server_resp_400();
+        }
+        password = str_buf_printf_with_alloc("%s", "");
+    }
+    else
+    {
+        if ('\0' != user.buf[0])
+        {
+            password = http_server_get_password_from_params(p_params);
+        }
+        else
+        {
+            if (http_server_find_key_in_params(p_params, "encrypted_password="))
+            {
+                // if there is no username, then a bearer token is passed as a password
+                password = http_server_get_password_from_params(p_params);
+            }
+            else
+            {
+                password = str_buf_printf_with_alloc("%s", "");
+            }
+        }
+    }
+    if (NULL == password.buf)
+    {
+        LOG_ERR("HTTP validate: can't find or decrypt password in params: %s", p_params);
+        str_buf_free_buf(&url);
+        str_buf_free_buf(&user);
+        return http_server_resp_400();
+    }
+
+    const bool flag_wait_until_relaying_stopped = true;
+    gw_status_suspend_relaying(flag_wait_until_relaying_stopped);
+
+    http_server_resp_t         http_resp     = http_server_resp_err(HTTP_RESP_CODE_400);
+    const http_validate_type_e validate_type = http_server_get_validate_type_from_params(p_params);
+    switch (validate_type)
+    {
+        case HTTP_VALIDATE_TYPE_INVALID:
+            LOG_ERR("HTTP validate: invalid 'validate_type' param: %s", p_params);
+            http_resp = http_server_resp_err(HTTP_RESP_CODE_500);
+            break;
+        case HTTP_VALIDATE_TYPE_POST_ADVS:
+            http_resp = http_server_resp_validate_post_advs(&url, &user, &password, flag_use_saved_password);
+            break;
+        case HTTP_VALIDATE_TYPE_POST_STAT:
+            http_resp = http_server_resp_validate_post_stat(&url, &user, &password, flag_use_saved_password);
+            break;
+        case HTTP_VALIDATE_TYPE_CHECK_MQTT:
+            http_resp = http_server_resp_validate_check_mqtt(&url, &user, &password, flag_use_saved_password, p_params);
+            break;
+        case HTTP_VALIDATE_TYPE_CHECK_REMOTE_CFG:
+            http_resp = http_server_resp_validate_check_remote_cfg(
+                &url,
+                &user,
+                &password,
+                flag_use_saved_password,
+                p_params);
+            break;
+        case HTTP_VALIDATE_TYPE_CHECK_FILE:
+            http_resp = http_server_resp_validate_check_file(&url, &user, &password);
+            break;
+    }
+
+    str_buf_free_buf(&url);
+    str_buf_free_buf(&user);
+    str_buf_free_buf(&password);
+
+    const bool flag_wait_until_relaying_resumed = true;
+    gw_status_resume_relaying(flag_wait_until_relaying_resumed);
+
+    return http_resp;
 }
 
 HTTP_SERVER_CB_STATIC
@@ -508,6 +1186,10 @@ http_server_cb_on_get(
     if (0 == strcmp(p_path, "history"))
     {
         return http_server_resp_history(p_uri_params);
+    }
+    if (0 == strcmp(p_path, "validate_url"))
+    {
+        return http_server_resp_validate_url(p_uri_params);
     }
     const char* p_file_path = ('\0' == p_path[0]) ? "ruuvi.html" : p_path;
     return http_server_resp_file(p_file_path, (NULL != p_resp_auth) ? p_resp_auth->http_resp_code : HTTP_RESP_CODE_200);

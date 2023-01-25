@@ -87,6 +87,27 @@ http_download_with_auth(
     return false;
 }
 
+bool
+http_check_with_auth(
+    const http_check_param_t              param,
+    const gw_cfg_remote_auth_type_e       gw_cfg_http_auth_type,
+    const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
+    const http_header_item_t* const       p_extra_header_item,
+    http_resp_code_e* const               p_http_resp_code)
+{
+    return false;
+}
+
+bool
+http_server_decrypt_by_params(
+    const char* const p_encrypted_val,
+    const char* const p_iv,
+    const char* const p_hash,
+    str_buf_t* const  p_str_buf)
+{
+    return false;
+}
+
 void
 reset_task_reboot_after_timeout(void)
 {
@@ -174,6 +195,97 @@ void
 main_task_stop_wifi_hotspot_after_short_delay(void)
 {
     esp_log_write(ESP_LOG_VERBOSE, "test", "V (0) test: [test/1] stop_wifi_hotspot_after_short_delay");
+}
+
+void
+gw_status_suspend_relaying(const bool flag_wait_until_relaying_stopped)
+{
+}
+
+void
+gw_status_suspend_http_relaying(const bool flag_wait_until_relaying_stopped)
+{
+}
+
+void
+gw_status_resume_relaying(void)
+{
+}
+
+void
+gw_status_resume_http_relaying(void)
+{
+}
+
+http_server_resp_t
+http_check_post_advs(
+    const char* const        p_url,
+    const char* const        p_user,
+    const char* const        p_pass,
+    const TimeUnitsSeconds_t timeout_seconds)
+{
+    const http_server_resp_t resp = {
+        .http_resp_code       = HTTP_RESP_CODE_500,
+        .content_location     = HTTP_CONTENT_LOCATION_NO_CONTENT,
+        .flag_no_cache        = true,
+        .flag_add_header_date = true,
+        .content_type         = HTTP_CONENT_TYPE_TEXT_HTML,
+        .p_content_type_param = NULL,
+        .content_len          = 0,
+        .content_encoding     = HTTP_CONENT_ENCODING_NONE,
+        .select_location = {
+            .memory = {
+                .p_buf = NULL,
+            },
+        },
+    };
+    return resp;
+}
+
+http_server_resp_t
+http_check_post_stat(
+    const char* const        p_url,
+    const char* const        p_user,
+    const char* const        p_pass,
+    const TimeUnitsSeconds_t timeout_seconds)
+{
+    const http_server_resp_t resp = {
+        .http_resp_code       = HTTP_RESP_CODE_500,
+        .content_location     = HTTP_CONTENT_LOCATION_NO_CONTENT,
+        .flag_no_cache        = true,
+        .flag_add_header_date = true,
+        .content_type         = HTTP_CONENT_TYPE_TEXT_HTML,
+        .p_content_type_param = NULL,
+        .content_len          = 0,
+        .content_encoding     = HTTP_CONENT_ENCODING_NONE,
+        .select_location = {
+            .memory = {
+                .p_buf = NULL,
+            },
+        },
+    };
+    return resp;
+}
+
+http_server_resp_t
+http_check_mqtt(const ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg, const TimeUnitsSeconds_t timeout_seconds)
+{
+    const http_server_resp_t resp = {
+        .http_resp_code       = HTTP_RESP_CODE_500,
+        .content_location     = HTTP_CONTENT_LOCATION_NO_CONTENT,
+        .flag_no_cache        = true,
+        .flag_add_header_date = true,
+        .content_type         = HTTP_CONENT_TYPE_TEXT_HTML,
+        .p_content_type_param = NULL,
+        .content_len          = 0,
+        .content_encoding     = HTTP_CONENT_ENCODING_NONE,
+        .select_location = {
+            .memory = {
+                .p_buf = NULL,
+            },
+        },
+    };
+    return resp;
 }
 
 } // extern "C"

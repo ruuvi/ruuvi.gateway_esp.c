@@ -93,31 +93,57 @@ http_server_resp_t
 http_server_cb_on_post_fw_update(const char* p_body, const bool flag_access_from_lan)
 {
     LOG_DBG("POST /fw_update.json");
-    fw_update_set_extra_info_for_status_json_update_start();
 
     if (!json_fw_update_parse_http_body(p_body))
     {
-        fw_update_set_extra_info_for_status_json_update_failed("Bad request");
-        return http_server_resp_400();
+        return http_server_cb_gen_resp(HTTP_RESP_CODE_400, "Failed to parse HTTP body");
     }
     if (!fw_update_is_url_valid())
     {
-        fw_update_set_extra_info_for_status_json_update_failed("Bad URL");
-        return http_server_resp_400();
+        return http_server_cb_gen_resp(HTTP_RESP_CODE_400, "Bad URL");
     }
+
+    const bool flag_wait_until_relaying_stopped = true;
+    gw_status_suspend_relaying(flag_wait_until_relaying_stopped);
+
+    char url[FW_UPDATE_URL_WITH_FW_IMAGE_MAX_LEN];
+
+    (void)snprintf(url, sizeof(url), "%s/%s", fw_update_get_url(), "ruuvi_gateway_esp.bin");
+    http_resp_code_e http_resp_code
+        = http_check(url, HTTP_DOWNLOAD_TIMEOUT_SECONDS, GW_CFG_REMOTE_AUTH_TYPE_NO, NULL, NULL, true);
+    if (HTTP_RESP_CODE_200 != http_resp_code)
+    {
+        LOG_ERR("Failed to download ruuvi_gateway_esp.bin");
+        gw_status_resume_relaying(true);
+        return http_server_cb_gen_resp(http_resp_code, "Failed to download ruuvi_gateway_esp.bin");
+    }
+
+    (void)snprintf(url, sizeof(url), "%s/%s", fw_update_get_url(), "fatfs_gwui.bin");
+    http_resp_code = http_check(url, HTTP_DOWNLOAD_TIMEOUT_SECONDS, GW_CFG_REMOTE_AUTH_TYPE_NO, NULL, NULL, true);
+    if (HTTP_RESP_CODE_200 != http_resp_code)
+    {
+        LOG_ERR("Failed to download fatfs_gwui.bin");
+        gw_status_resume_relaying(true);
+        return http_server_cb_gen_resp(http_resp_code, "Failed to download fatfs_gwui.bin");
+    }
+
+    (void)snprintf(url, sizeof(url), "%s/%s", fw_update_get_url(), "fatfs_nrf52.bin");
+    http_resp_code = http_check(url, HTTP_DOWNLOAD_TIMEOUT_SECONDS, GW_CFG_REMOTE_AUTH_TYPE_NO, NULL, NULL, true);
+    if (HTTP_RESP_CODE_200 != http_resp_code)
+    {
+        gw_status_resume_relaying(true);
+        LOG_ERR("Failed to download fatfs_nrf52.bin");
+        return http_server_cb_gen_resp(http_resp_code, "Failed to download fatfs_nrf52.bin");
+    }
+
+    fw_update_set_extra_info_for_status_json_update_start();
+
     if (!fw_update_run(flag_access_from_lan ? FW_UPDATE_REASON_MANUAL_VIA_LAN : FW_UPDATE_REASON_MANUAL_VIA_HOTSPOT))
     {
-        fw_update_set_extra_info_for_status_json_update_failed("Internal error");
-        return http_server_resp_503();
+        return http_server_cb_gen_resp(HTTP_RESP_CODE_503, "Failed to start firmware updating - internal error");
     }
-    const bool flag_no_cache = true;
-    return http_server_resp_data_in_flash(
-        HTTP_CONENT_TYPE_APPLICATION_JSON,
-        NULL,
-        strlen(g_empty_json),
-        HTTP_CONENT_ENCODING_NONE,
-        (const uint8_t*)g_empty_json,
-        flag_no_cache);
+
+    return http_server_cb_gen_resp(HTTP_RESP_CODE_200, "OK");
 }
 
 HTTP_SERVER_CB_STATIC
@@ -143,28 +169,28 @@ http_server_cb_on_post_gw_cfg_download(void)
     LOG_DBG("POST /gw_cfg_download");
     bool flag_reboot_needed = false;
 
-    const http_resp_code_e http_resp_code = http_server_gw_cfg_download_and_update(&flag_reboot_needed, true);
+    str_buf_t              err_msg        = str_buf_init_null();
+    const http_resp_code_e http_resp_code = http_server_gw_cfg_download_and_update(&flag_reboot_needed, true, &err_msg);
 
-    const char* p_resp_content = g_empty_json;
-    if (flag_reboot_needed)
+    if (HTTP_RESP_CODE_200 == http_resp_code)
     {
-        p_resp_content
-            = "{\"message\":"
-              "\"Network configuration in gw_cfg.json on the server is different from the current one, "
-              "the gateway will be rebooted.\"}";
+        return http_server_cb_gen_resp(
+            HTTP_RESP_CODE_200,
+            "%s",
+            flag_reboot_needed ? "Network configuration in gw_cfg.json on the server is different from the current "
+                                 "one, the gateway will be rebooted."
+                               : "");
     }
 
-    http_server_resp_t resp = {
-        .http_resp_code               = http_resp_code,
-        .content_location             = HTTP_CONTENT_LOCATION_FLASH_MEM,
-        .flag_no_cache                = true,
-        .flag_add_header_date         = true,
-        .content_type                 = HTTP_CONENT_TYPE_APPLICATION_JSON,
-        .p_content_type_param         = NULL,
-        .content_len                  = strlen(p_resp_content),
-        .content_encoding             = HTTP_CONENT_ENCODING_NONE,
-        .select_location.memory.p_buf = (const uint8_t*)p_resp_content,
-    };
+    const http_server_resp_t resp = http_server_cb_gen_resp(
+        http_resp_code,
+        "%s",
+        (NULL != err_msg.buf) ? err_msg.buf : "");
+    if (NULL != err_msg.buf)
+    {
+        str_buf_free_buf(&err_msg);
+    }
+
     return resp;
 }
 

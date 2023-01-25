@@ -47,6 +47,7 @@ cb_on_http_download_json_data(
         LOG_INFO("Got HTTP error %d: Redirect to another location", (printf_int_t)http_resp_code);
         return true;
     }
+    p_info->http_resp_code = http_resp_code;
     if (HTTP_RESP_CODE_200 != http_resp_code)
     {
         LOG_ERR("Got HTTP error %d: %.*s", (printf_int_t)http_resp_code, (printf_int_t)buf_size, (const char*)p_buf);
@@ -59,7 +60,6 @@ cb_on_http_download_json_data(
         return false;
     }
 
-    p_info->http_resp_code = http_resp_code;
     if (NULL == p_info->p_json_buf)
     {
         if (0 == content_length)
@@ -187,4 +187,35 @@ http_download_latest_release_info(const bool flag_free_memory)
         NULL,
         NULL,
         flag_free_memory);
+}
+
+http_resp_code_e
+http_check(
+    const char* const                     p_url,
+    const TimeUnitsSeconds_t              timeout_seconds,
+    const gw_cfg_remote_auth_type_e       auth_type,
+    const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
+    const http_header_item_t* const       p_extra_header_item,
+    const bool                            flag_free_memory)
+{
+    const TickType_t download_started_at_tick = xTaskGetTickCount();
+    const bool       flag_feed_task_watchdog  = true;
+    http_resp_code_e http_resp_code           = HTTP_RESP_CODE_200;
+    if (!http_check_with_auth(
+            (http_check_param_t) {
+                .p_url                   = p_url,
+                .timeout_seconds         = timeout_seconds,
+                .flag_feed_task_watchdog = flag_feed_task_watchdog,
+                .flag_free_memory        = flag_free_memory,
+            },
+            auth_type,
+            p_http_auth,
+            p_extra_header_item,
+            &http_resp_code))
+    {
+        LOG_ERR("http_check failed for URL: %s", p_url);
+    }
+    const TickType_t download_completed_within_ticks = xTaskGetTickCount() - download_started_at_tick;
+    LOG_INFO("%s: completed within %u ticks", __func__, (printf_uint_t)download_completed_within_ticks);
+    return http_resp_code;
 }

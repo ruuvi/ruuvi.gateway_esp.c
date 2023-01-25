@@ -746,7 +746,7 @@ gw_cfg_set(
         // then update_status can show that updating is not needed, but it is required.
         g_p_gw_cfg_cb_on_change_cfg(p_gw_cfg_dst);
     }
-    if ((NULL != g_p_gw_cfg_cb_on_change_cfg) && !g_gw_cfg_ready)
+    if ((NULL != g_p_gw_cfg_cb_on_change_cfg) && (!g_gw_cfg_ready))
     {
         g_gw_cfg_ready = true;
         event_mgr_notify(EVENT_MGR_EV_GW_CFG_READY);
@@ -906,6 +906,16 @@ gw_cfg_get_http_copy(void)
     return p_cfg_http;
 }
 
+str_buf_t
+gw_cfg_get_http_password_copy(void)
+{
+    assert(NULL != g_gw_cfg_mutex);
+    const gw_cfg_t* p_gw_cfg      = gw_cfg_lock_ro();
+    str_buf_t       http_password = str_buf_printf_with_alloc("%s", p_gw_cfg->ruuvi_cfg.http.http_pass.buf);
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    return http_password;
+}
+
 bool
 gw_cfg_get_http_stat_use_http_stat(void)
 {
@@ -931,24 +941,39 @@ gw_cfg_get_http_stat_copy(void)
     return p_cfg_http_stat;
 }
 
-ruuvi_gw_cfg_mqtt_prefix_t
-gw_cfg_get_mqtt_prefix(void)
+str_buf_t
+gw_cfg_get_http_stat_password_copy(void)
 {
     assert(NULL != g_gw_cfg_mutex);
-    const gw_cfg_t*                  p_gw_cfg    = gw_cfg_lock_ro();
-    const ruuvi_gw_cfg_mqtt_prefix_t mqtt_prefix = p_gw_cfg->ruuvi_cfg.mqtt.mqtt_prefix;
+    const gw_cfg_t* p_gw_cfg     = gw_cfg_lock_ro();
+    str_buf_t http_stat_password = str_buf_printf_with_alloc("%s", p_gw_cfg->ruuvi_cfg.http_stat.http_stat_pass.buf);
     gw_cfg_unlock_ro(&p_gw_cfg);
-    return mqtt_prefix;
+    return http_stat_password;
 }
 
-bool
-gw_cfg_get_mqtt_flag_disable_retained_messages(void)
+ruuvi_gw_cfg_mqtt_t*
+gw_cfg_get_mqtt_copy(void)
 {
     assert(NULL != g_gw_cfg_mutex);
-    const gw_cfg_t* p_gw_cfg                            = gw_cfg_lock_ro();
-    const bool      flag_mqtt_disable_retained_messages = p_gw_cfg->ruuvi_cfg.mqtt.mqtt_disable_retained_messages;
+    ruuvi_gw_cfg_mqtt_t* p_cfg_mqtt = os_calloc(1, sizeof(*p_cfg_mqtt));
+    if (NULL == p_cfg_mqtt)
+    {
+        return p_cfg_mqtt;
+    }
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
+    *p_cfg_mqtt              = p_gw_cfg->ruuvi_cfg.mqtt;
     gw_cfg_unlock_ro(&p_gw_cfg);
-    return flag_mqtt_disable_retained_messages;
+    return p_cfg_mqtt;
+}
+
+str_buf_t
+gw_cfg_get_mqtt_password_copy(void)
+{
+    assert(NULL != g_gw_cfg_mutex);
+    const gw_cfg_t* p_gw_cfg      = gw_cfg_lock_ro();
+    str_buf_t       mqtt_password = str_buf_printf_with_alloc("%s", p_gw_cfg->ruuvi_cfg.mqtt.mqtt_pass.buf);
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    return mqtt_password;
 }
 
 auto_update_cycle_type_e

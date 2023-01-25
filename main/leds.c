@@ -561,11 +561,11 @@ ATTR_NORETURN
 static void
 leds_task(const void* const p_param)
 {
-    const bool* const p_flag_configure_button_pressed = p_param;
-    LOG_INFO("%s started (flag_configure_button_pressed=%d)", __func__, *p_flag_configure_button_pressed);
+    const bool flag_configure_button_pressed = (bool)(intptr_t)p_param;
+    LOG_INFO("%s started (flag_configure_button_pressed=%d)", __func__, flag_configure_button_pressed);
 
     leds_ctrl_init(
-        *p_flag_configure_button_pressed,
+        flag_configure_button_pressed,
         (leds_ctrl_callbacks_t) {
             .cb_on_enter_state_after_reboot  = &leds_cb_on_enter_state_after_reboot,
             .cb_on_exit_state_after_reboot   = &leds_cb_on_exit_state_after_reboot,
@@ -734,7 +734,7 @@ leds_init(const bool flag_configure_button_pressed)
             &leds_task,
             "leds_task",
             stack_size,
-            &flag_configure_button_pressed,
+            (const void*)(intptr_t)flag_configure_button_pressed,
             LEDS_TASK_PRIORITY,
             &h_task))
     {
