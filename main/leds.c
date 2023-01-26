@@ -14,13 +14,10 @@
 #include "os_task.h"
 #include "os_signal.h"
 #include "os_timer_sig.h"
-#include "attribs.h"
-#include "time_units.h"
 #include "ruuvi_board_gwesp.h"
 #include "gpio_switch_ctrl.h"
 #include "esp_type_wrapper.h"
 #include "event_mgr.h"
-#include "adv_post.h"
 #include "leds_ctrl.h"
 #include "leds_ctrl2.h"
 #include "leds_blinking.h"
@@ -166,14 +163,14 @@ static void
 leds_turn_on_green(void)
 {
     LOG_DBG("G_LED: ON");
-    adv_post_green_led_turn_on();
+    event_mgr_notify(EVENT_MGR_EV_GREEN_LED_TURN_ON);
 }
 
 static void
 leds_turn_off_green(void)
 {
     LOG_DBG("G_LED: OFF");
-    adv_post_green_led_turn_off();
+    event_mgr_notify(EVENT_MGR_EV_GREEN_LED_TURN_OFF);
 }
 
 const char*
@@ -564,11 +561,11 @@ ATTR_NORETURN
 static void
 leds_task(const void* const p_param)
 {
-    const bool* const p_flag_configure_button_pressed = p_param;
-    LOG_INFO("%s started (flag_configure_button_pressed=%d)", __func__, *p_flag_configure_button_pressed);
+    const bool flag_configure_button_pressed = (bool)(intptr_t)p_param;
+    LOG_INFO("%s started (flag_configure_button_pressed=%d)", __func__, flag_configure_button_pressed);
 
     leds_ctrl_init(
-        *p_flag_configure_button_pressed,
+        flag_configure_button_pressed,
         (leds_ctrl_callbacks_t) {
             .cb_on_enter_state_after_reboot  = &leds_cb_on_enter_state_after_reboot,
             .cb_on_exit_state_after_reboot   = &leds_cb_on_exit_state_after_reboot,
@@ -737,7 +734,7 @@ leds_init(const bool flag_configure_button_pressed)
             &leds_task,
             "leds_task",
             stack_size,
-            &flag_configure_button_pressed,
+            (const void*)(intptr_t)flag_configure_button_pressed,
             LEDS_TASK_PRIORITY,
             &h_task))
     {

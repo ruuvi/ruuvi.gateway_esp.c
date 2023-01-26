@@ -20,7 +20,10 @@
 extern "C" {
 #endif
 
-#define HTTP_DOWNLOAD_TIMEOUT_SECONDS (25)
+#define HTTP_DOWNLOAD_TIMEOUT_SECONDS                 (25)
+#define HTTP_DOWNLOAD_FW_RELEASE_INFO_TIMEOUT_SECONDS (50)
+#define HTTP_DOWNLOAD_FW_BINARIES_TIMEOUT_SECONDS     (5 * TIME_UNITS_SECONDS_PER_MINUTE)
+#define HTTP_DOWNLOAD_CHECK_MQTT_TIMEOUT_SECONDS      (30)
 
 typedef struct http_header_item_t
 {
@@ -46,11 +49,45 @@ typedef struct http_download_param_t
     const bool                 flag_free_memory;
 } http_download_param_t;
 
-bool
-http_send_advs(const adv_report_table_t* const p_reports, const uint32_t nonce, const bool flag_use_timestamps);
+typedef struct http_check_param_t
+{
+    const char* const        p_url;
+    const TimeUnitsSeconds_t timeout_seconds;
+    const bool               flag_feed_task_watchdog;
+    const bool               flag_free_memory;
+} http_check_param_t;
 
 bool
-http_send_statistics(const http_json_statistics_info_t* const p_stat_info, const adv_report_table_t* const p_reports);
+http_send_advs(
+    const adv_report_table_t* const  p_reports,
+    const uint32_t                   nonce,
+    const bool                       flag_use_timestamps,
+    const ruuvi_gw_cfg_http_t* const p_cfg_http,
+    void* const                      p_user_data);
+
+http_server_resp_t
+http_check_post_advs(
+    const char* const        p_url,
+    const char* const        p_user,
+    const char* const        p_pass,
+    const TimeUnitsSeconds_t timeout_seconds);
+
+http_server_resp_t
+http_check_post_stat(
+    const char* const        p_url,
+    const char* const        p_user,
+    const char* const        p_pass,
+    const TimeUnitsSeconds_t timeout_seconds);
+
+http_server_resp_t
+http_check_mqtt(const ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg, const TimeUnitsSeconds_t timeout_seconds);
+
+bool
+http_send_statistics(
+    const http_json_statistics_info_t* const p_stat_info,
+    const adv_report_table_t* const          p_reports,
+    const ruuvi_gw_cfg_http_stat_t* const    p_cfg_http_stat,
+    void* const                              p_user_data);
 
 bool
 http_async_poll(void);
@@ -64,6 +101,17 @@ http_download_with_auth(
     const gw_cfg_remote_auth_type_e       gw_cfg_http_auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
     const http_header_item_t* const       p_extra_header_item);
+
+bool
+http_check_with_auth(
+    const http_check_param_t              param,
+    const gw_cfg_remote_auth_type_e       gw_cfg_http_auth_type,
+    const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
+    const http_header_item_t* const       p_extra_header_item,
+    http_resp_code_e* const               p_http_resp_code);
+
+void
+http_abort_any_req_during_processing(void);
 
 #ifdef __cplusplus
 }

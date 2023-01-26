@@ -319,7 +319,8 @@ cb_on_ap_started(void)
     event_mgr_notify(EVENT_MGR_EV_WIFI_AP_STARTED);
     main_task_stop_timer_check_for_remote_cfg();
     main_task_start_timer_hotspot_deactivation();
-    gw_status_suspend_relaying();
+    const bool flag_wait_until_relaying_stopped = false;
+    gw_status_suspend_relaying(flag_wait_until_relaying_stopped);
 }
 
 static void
@@ -337,7 +338,9 @@ cb_on_ap_stopped(void)
         wifi_manager_connect_async();
     }
     main_task_send_sig_restart_services();
-    gw_status_resume_relaying();
+
+    const bool flag_wait_until_relaying_resumed = false;
+    gw_status_resume_relaying(flag_wait_until_relaying_resumed);
 }
 
 static void
@@ -501,7 +504,8 @@ cb_before_nrf52_fw_updating(void)
         LOG_ERR("%s failed", "wifi_init");
         return;
     }
-    wifi_manager_start_ap();
+    const bool flag_block_req_from_lan = true;
+    wifi_manager_start_ap(flag_block_req_from_lan);
 }
 
 void
@@ -695,7 +699,8 @@ network_subsystem_init(
             if (!gw_status_is_eth_link_up())
             {
                 LOG_INFO("### Force start WiFi hotspot (there is no Ethernet connection)");
-                wifi_manager_start_ap();
+                const bool flag_block_req_from_lan = true;
+                wifi_manager_start_ap(flag_block_req_from_lan);
             }
         }
         else
@@ -710,7 +715,7 @@ network_subsystem_init(
             settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_DISABLED);
         }
         LOG_INFO("Force start WiFi hotspot");
-        wifi_manager_start_ap();
+        wifi_manager_start_ap(true);
     }
     return true;
 }

@@ -40,6 +40,8 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/time_str.c
         ${RUUVI_GW_SRC}/time_str.h
         ${RUUVI_GW_SRC}/event_mgr.h
+        ${RUUVI_GW_SRC}/url_encode.c
+        ${RUUVI_GW_SRC}/url_encode.h
         ${RUUVI_ESP_WRAPPERS_INC}/log.h
         ${RUUVI_ESP_WRAPPERS_INC}/mac_addr.h
         ${RUUVI_ESP_WRAPPERS_INC}/os_mkgmtime.h

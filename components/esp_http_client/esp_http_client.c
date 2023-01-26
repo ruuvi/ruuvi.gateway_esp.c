@@ -888,7 +888,8 @@ static int esp_http_client_get_data(esp_http_client_handle_t client)
         return ESP_FAIL;
     }
 
-    if (client->connection_info.method == HTTP_METHOD_HEAD) {
+    if ((client->connection_info.method == HTTP_METHOD_HEAD) && (esp_http_client_get_status_code(client) == 200)) {
+        ESP_LOGD(TAG, "HTTP_METHOD_HEAD: HTTP_STATUS=200, content_length=%d", client->response->content_length);
         return 0;
     }
 
@@ -1077,6 +1078,10 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                 while (client->response->data_process < client->response->content_length) {
                     if (esp_http_client_get_data(client) <= 0) {
                         if (client->is_async && errno == EAGAIN) {
+                            if ((client->connection_info.method == HTTP_METHOD_HEAD) &&
+                                (esp_http_client_get_status_code(client) == 200)) {
+                                break;
+                            }
                             return ESP_ERR_HTTP_EAGAIN;
                         }
                         ESP_LOGD(TAG, "Read finish or server requests close");

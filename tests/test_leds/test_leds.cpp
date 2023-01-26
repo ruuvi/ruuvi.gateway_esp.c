@@ -203,12 +203,7 @@ esp_task_wdt_add(TaskHandle_t handle)
 }
 
 void
-adv_post_green_led_turn_on(void)
-{
-}
-
-void
-adv_post_green_led_turn_off(void)
+event_mgr_notify(const event_mgr_ev_e event)
 {
 }
 

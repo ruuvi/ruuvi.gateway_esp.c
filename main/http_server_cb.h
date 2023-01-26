@@ -39,7 +39,17 @@ time_t
 http_server_get_cur_time(void);
 
 http_resp_code_e
-http_server_gw_cfg_download_and_update(bool* const p_flag_reboot_needed, const bool flag_free_memory);
+http_server_gw_cfg_download_and_parse(
+    const ruuvi_gw_cfg_remote_t* const p_remote_cfg,
+    const bool                         flag_free_memory,
+    gw_cfg_t**                         p_p_gw_cfg_tmp,
+    str_buf_t* const                   p_err_msg);
+
+http_resp_code_e
+http_server_gw_cfg_download_and_update(
+    bool* const      p_flag_reboot_needed,
+    const bool       flag_free_memory,
+    str_buf_t* const p_err_msg);
 
 void
 http_server_cb_on_user_req(const http_server_user_req_code_e req_code);
@@ -65,14 +75,16 @@ http_server_cb_on_delete(
     const bool                      flag_access_from_lan,
     const http_server_resp_t* const p_resp_auth);
 
-http_server_download_info_t
-http_download_latest_release_info(const bool flag_free_memory);
-
 void
 http_server_cb_prohibit_cfg_updating(void);
 
 void
 http_server_cb_allow_cfg_updating(void);
+
+ATTR_PRINTF(2, 3)
+ATTR_NONNULL(2)
+http_server_resp_t
+http_server_cb_gen_resp(const http_resp_code_e resp_code, const char* const p_fmt, ...);
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 

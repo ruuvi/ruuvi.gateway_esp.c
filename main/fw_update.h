@@ -17,6 +17,9 @@
 extern "C" {
 #endif
 
+#define FW_UPDATE_URL_MAX_LEN               (128U)
+#define FW_UPDATE_URL_WITH_FW_IMAGE_MAX_LEN (FW_UPDATE_URL_MAX_LEN + 1 + 32)
+
 typedef struct ruuvi_flash_info_t
 {
     bool                   is_valid;

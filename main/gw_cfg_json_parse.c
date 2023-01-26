@@ -539,7 +539,6 @@ gw_cfg_json_parse_lan_auth(const cJSON* const p_json_root, ruuvi_gw_cfg_lan_auth
 static void
 gw_cfg_json_parse_auto_update(const cJSON* const p_json_root, ruuvi_gw_cfg_auto_update_t* const p_gw_cfg_auto_update)
 {
-    p_gw_cfg_auto_update->auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR;
     char auto_update_cycle_str[AUTO_UPDATE_CYCLE_TYPE_STR_MAX_LEN];
     if (!gw_cfg_json_copy_string_val(
             p_json_root,
@@ -547,7 +546,7 @@ gw_cfg_json_parse_auto_update(const cJSON* const p_json_root, ruuvi_gw_cfg_auto_
             &auto_update_cycle_str[0],
             sizeof(auto_update_cycle_str)))
     {
-        LOG_WARN("Can't find key '%s' in config-json", "auto_update_cycle");
+        LOG_WARN("Can't find key '%s' in config-json, leave the previous value unchanged", "auto_update_cycle");
     }
     else
     {
@@ -565,6 +564,7 @@ gw_cfg_json_parse_auto_update(const cJSON* const p_json_root, ruuvi_gw_cfg_auto_
         }
         else
         {
+            p_gw_cfg_auto_update->auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR;
             LOG_WARN("Unknown auto_update_cycle='%s', use REGULAR", auto_update_cycle_str);
         }
     }
@@ -964,7 +964,7 @@ gw_cfg_json_parse(
     cJSON* p_json_root = cJSON_Parse(p_json_str);
     if (NULL == p_json_root)
     {
-        LOG_ERR("Failed to parse %s", p_json_name);
+        LOG_ERR("Failed to parse %s: %s", p_json_name, p_json_str);
         return false;
     }
 

@@ -353,14 +353,26 @@ gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss(void);
 bool
 gw_cfg_get_http_use_http(void);
 
+ruuvi_gw_cfg_http_t*
+gw_cfg_get_http_copy(void);
+
+str_buf_t
+gw_cfg_get_http_password_copy(void);
+
 bool
 gw_cfg_get_http_stat_use_http_stat(void);
 
-ruuvi_gw_cfg_mqtt_prefix_t
-gw_cfg_get_mqtt_prefix(void);
+ruuvi_gw_cfg_http_stat_t*
+gw_cfg_get_http_stat_copy(void);
 
-bool
-gw_cfg_get_mqtt_flag_disable_retained_messages(void);
+str_buf_t
+gw_cfg_get_http_stat_password_copy(void);
+
+ruuvi_gw_cfg_mqtt_t*
+gw_cfg_get_mqtt_copy(void);
+
+str_buf_t
+gw_cfg_get_mqtt_password_copy(void);
 
 auto_update_cycle_type_e
 gw_cfg_get_auto_update_cycle(void);

@@ -74,6 +74,7 @@ add_subdirectory(test_nrf52swd)
 add_subdirectory(test_ruuvi_auth)
 add_subdirectory(test_time_str)
 add_subdirectory(test_time_task)
+add_subdirectory(test_url_encode)
 
 add_test(NAME test_adv_table
         COMMAND ruuvi_gateway_esp-test-adv_table
@@ -203,5 +204,10 @@ add_test(NAME test_time_str
 add_test(NAME test_time_task
         COMMAND ruuvi_gateway_esp-test-time_task
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-time_task>/gtestresults.xml
+)
+
+add_test(NAME test_url_encode
+        COMMAND ruuvi_gateway_esp-test-url_encode
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-url_encode>/gtestresults.xml
 )
 

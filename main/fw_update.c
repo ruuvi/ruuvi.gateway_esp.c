@@ -14,22 +14,19 @@
 #include "wifi_manager.h"
 #include "esp_ota_ops_patched.h"
 #include "nrf52fw.h"
-#include "adv_post.h"
 #include "reset_task.h"
 #include "settings.h"
 #include "ruuvi_gateway.h"
-#include "mqtt.h"
 #include "leds.h"
+#include "gw_status.h"
 
-#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
+#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
 #define GW_GWUI_PARTITION_2 GW_GWUI_PARTITION "_2"
 #define GW_NRF_PARTITION_2  GW_NRF_PARTITION "_2"
 
 #define FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS (20)
-
-#define FW_UPDATE_URL_MAX_LEN (128U)
 
 #define FW_UPDATE_PERCENTAGE_50  (50U)
 #define FW_UPDATE_PERCENTAGE_100 (100U)
@@ -379,7 +376,7 @@ fw_update_data_partition(const esp_partition_t* const p_partition, const char* c
     const bool flag_feed_task_watchdog = false;
     if (!http_download((http_download_param_t) {
             .p_url                   = p_url,
-            .timeout_seconds         = HTTP_DOWNLOAD_TIMEOUT_SECONDS,
+            .timeout_seconds         = HTTP_DOWNLOAD_FW_BINARIES_TIMEOUT_SECONDS,
             .p_cb_on_data            = &fw_update_data_partition_cb_on_recv_data,
             .p_user_data             = &fw_update_info,
             .flag_feed_task_watchdog = flag_feed_task_watchdog,
@@ -490,7 +487,7 @@ fw_update_ota_partition(
     const bool flag_feed_task_watchdog = false;
     if (!http_download((http_download_param_t) {
             .p_url                   = p_url,
-            .timeout_seconds         = HTTP_DOWNLOAD_TIMEOUT_SECONDS,
+            .timeout_seconds         = HTTP_DOWNLOAD_FW_BINARIES_TIMEOUT_SECONDS,
             .p_cb_on_data            = &fw_update_ota_partition_cb_on_recv_data,
             .p_user_data             = &fw_update_info,
             .flag_feed_task_watchdog = flag_feed_task_watchdog,
@@ -569,6 +566,11 @@ json_fw_update_parse(const cJSON* const p_json_root, fw_update_config_t* const p
     if (!json_fw_update_copy_string_val(p_json_root, "url", p_cfg->url, sizeof(p_cfg->url), true))
     {
         return false;
+    }
+    const size_t len = strlen(p_cfg->url);
+    if ('/' == p_cfg->url[len - 1])
+    {
+        p_cfg->url[len - 1] = '\0';
     }
     return true;
 }
@@ -689,7 +691,7 @@ fw_update_do_actions(void)
     g_update_progress_stage = FW_UPDATE_STAGE_1;
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, 0);
 
-    char url[sizeof(g_fw_update_cfg.url) + 32];
+    char url[FW_UPDATE_URL_WITH_FW_IMAGE_MAX_LEN];
     (void)snprintf(url, sizeof(url), "%s/%s", g_fw_update_cfg.url, "ruuvi_gateway_esp.bin");
     LOG_INFO("fw_update_ota");
     if (!fw_update_ota(url))
@@ -762,13 +764,14 @@ fw_update_task(void)
     leds_notify_nrf52_fw_updating();
     main_task_stop_timer_check_for_remote_cfg();
 
-    adv_post_stop();
-    mqtt_app_stop();
+    const bool flag_wait_until_relaying_stopped = true;
+    gw_status_suspend_relaying(flag_wait_until_relaying_stopped);
 
     if (!wifi_manager_is_ap_active())
     {
         LOG_INFO("WiFi AP is not active - start WiFi AP");
-        wifi_manager_start_ap();
+        const bool flag_block_req_from_lan = (FW_UPDATE_REASON_MANUAL_VIA_LAN == g_fw_updating_reason) ? false : true;
+        wifi_manager_start_ap(flag_block_req_from_lan);
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
     main_task_stop_timer_hotspot_deactivation();
@@ -836,12 +839,17 @@ fw_update_task(void)
 bool
 fw_update_is_url_valid(void)
 {
-    const char url_prefix[] = "http";
-    if (0 != strncmp(g_fw_update_cfg.url, url_prefix, strlen(url_prefix)))
+    const char url_http_prefix[] = "http://";
+    if (0 == strncmp(g_fw_update_cfg.url, url_http_prefix, strlen(url_http_prefix)))
     {
-        return false;
+        return true;
     }
-    return true;
+    const char url_https_prefix[] = "https://";
+    if (0 == strncmp(g_fw_update_cfg.url, url_https_prefix, strlen(url_https_prefix)))
+    {
+        return true;
+    }
+    return false;
 }
 
 ATTR_PRINTF(1, 2)

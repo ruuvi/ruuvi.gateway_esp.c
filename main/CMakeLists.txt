@@ -99,6 +99,8 @@ idf_component_register(
             time_str.h
             time_task.c
             time_task.h
+            url_encode.c
+            url_encode.h
         REQUIRES
             app_update
             mqtt
