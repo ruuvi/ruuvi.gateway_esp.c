@@ -640,7 +640,7 @@ http_server_on_get_check_mqtt(
         return http_server_resp_400();
     }
 
-    ruuvi_gw_cfg_mqtt_t* p_mqtt_cfg = calloc(1, sizeof(*p_mqtt_cfg));
+    ruuvi_gw_cfg_mqtt_t* p_mqtt_cfg = os_calloc(1, sizeof(*p_mqtt_cfg));
     if (NULL == p_mqtt_cfg)
     {
         str_buf_free_buf(&client_id);
