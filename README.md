@@ -1,5 +1,6 @@
 # Ruuvi Gateway ESP32 firmware
 
+
 Developed with:
 * ESP-IDF version [v4.2.2](https://github.com/espressif/esp-idf/releases/tag/v4.2.2)
 * ESP32-DevKitC V4
