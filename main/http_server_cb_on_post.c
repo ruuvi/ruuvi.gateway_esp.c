@@ -37,9 +37,9 @@ static bool g_http_server_cb_flag_prohibit_cfg_updating = false;
 
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
-http_server_cb_on_post_ruuvi(const char* p_body)
+http_server_cb_on_post_ruuvi(const char* p_body, const bool flag_access_from_lan)
 {
-    LOG_DBG("POST /ruuvi.json");
+    LOG_DBG("POST /ruuvi.json, flag_access_from_lan=%d", (printf_int_t)flag_access_from_lan);
     bool      flag_network_cfg = false;
     gw_cfg_t* p_gw_cfg_tmp     = os_calloc(1, sizeof(*p_gw_cfg_tmp));
     if (NULL == p_gw_cfg_tmp)
@@ -48,7 +48,7 @@ http_server_cb_on_post_ruuvi(const char* p_body)
         return http_server_resp_503();
     }
     gw_cfg_get_copy(p_gw_cfg_tmp);
-    if (!json_ruuvi_parse_http_body(p_body, p_gw_cfg_tmp, &flag_network_cfg))
+    if (!json_ruuvi_parse_http_body(p_body, p_gw_cfg_tmp, flag_access_from_lan ? NULL : &flag_network_cfg))
     {
         os_free(p_gw_cfg_tmp);
         return http_server_resp_503();
@@ -213,7 +213,7 @@ http_server_cb_on_post(
     }
     if (0 == strcmp(p_file_name, "ruuvi.json"))
     {
-        return http_server_cb_on_post_ruuvi(p_body);
+        return http_server_cb_on_post_ruuvi(p_body, flag_access_from_lan);
     }
     if (0 == strcmp(p_file_name, "fw_update.json"))
     {

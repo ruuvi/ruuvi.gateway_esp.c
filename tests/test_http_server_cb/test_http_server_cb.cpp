@@ -1724,8 +1724,230 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps_with_f
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
+TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg) // NOLINT
+{
+    const bool flag_access_from_lan = false;
+
+    const char*              expected_resp = "{}";
+    const http_server_resp_t resp          = http_server_cb_on_post_ruuvi(
+        "{"
+                 "\"use_eth\":true,\n"
+                 "\"eth_dhcp\":true,\n"
+                 "\"company_use_filtering\":false\n"
+                 "}",
+        flag_access_from_lan);
+
+    ASSERT_TRUE(this->m_flag_settings_saved_to_flash);
+    ASSERT_TRUE(this->m_flag_settings_ethernet_ip_updated);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_FLASH_MEM, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(strlen(expected_resp), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_eth: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "eth_dhcp: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: Use eth: yes");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: use DHCP: yes");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: static IP: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: netmask: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: GW: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: DNS1: ");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: DNS2: ");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg_from_lan) // NOLINT
+{
+    const bool flag_access_from_lan = true;
+
+    const char*              expected_resp = "{}";
+    const http_server_resp_t resp          = http_server_cb_on_post_ruuvi(
+        "{"
+                 "\"use_eth\":true,\n"
+                 "\"eth_dhcp\":true,\n"
+                 "\"company_use_filtering\":false\n"
+                 "}",
+        flag_access_from_lan);
+
+    ASSERT_TRUE(this->m_flag_settings_saved_to_flash);
+    ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_FLASH_MEM, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(strlen(expected_resp), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'remote_cfg_use' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_url: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'remote_cfg_url' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_auth_type: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'remote_cfg_auth_type' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'remote_cfg_refresh_interval_minutes' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'use_http' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'http_url' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_user: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'http_user' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_pass: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_INFO,
+        "Can't find key 'http_pass' in config-json, leave the previous value unchanged");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'use_http_stat' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'http_stat_url' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'http_stat_user' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_pass: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_INFO,
+        "Can't find key 'http_stat_pass' in config-json, leave the previous value unchanged");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'use_mqtt' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'mqtt_disable_retained_messages' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'mqtt_transport' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'mqtt_server' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'mqtt_port' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_WARN,
+        "Can't find key 'mqtt_prefix' in config-json, use default value: ruuvi/11:22:33:44:55:66/");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_client_id: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_WARN,
+        "Can't find key 'mqtt_client_id' in config-json, use default value: 11:22:33:44:55:66");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_user: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'mqtt_user' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_pass: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_INFO,
+        "Can't find key 'mqtt_pass' in config-json, leave the previous value unchanged");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_type: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_INFO,
+        "Can't find key 'lan_auth_type' in config-json, leave the previous value unchanged");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_INFO,
+        "Can't find key 'lan_auth_api_key' in config-json, leave the previous value unchanged");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "lan_auth_api_key_rw: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_INFO,
+        "Can't find key 'lan_auth_api_key_rw' in config-json, leave the previous value unchanged");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_cycle: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_WARN,
+        "Can't find key 'auto_update_cycle' in config-json, leave the previous value unchanged");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_weekdays_bitmask: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'auto_update_weekdays_bitmask' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_interval_from: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'auto_update_interval_from' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_interval_to: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'auto_update_interval_to' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "auto_update_tz_offset_hours: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'auto_update_tz_offset_hours' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_use: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_use' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_use_dhcp: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_use_dhcp' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server1: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_server1' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server2: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_server2' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server3: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_server3' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server4: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_server4' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_id: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'company_id' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_use_filtering: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_coded_phy: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'scan_coded_phy' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_1mbit_phy: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'scan_1mbit_phy' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'scan_extended_payload' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_37: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'scan_channel_37' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_38: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'scan_channel_38' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_39: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'scan_channel_39' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "coordinates: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'coordinates' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use remote cfg: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: URL: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: auth_type: no"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http user: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, string("config: http pass: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http_stat: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat user: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, string("config: http_stat pass: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use mqtt: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt disable retained messages: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/11:22:33:44:55:66/"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt client id: 11:22:33:44:55:66"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt user: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, string("config: mqtt password: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_default"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: LAN auth user: Admin"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, string("config: LAN auth pass: f32dd273cd874d98ec4fc21d534e3e61"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, string("config: LAN auth API key: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, string("config: LAN auth API key (RW): "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update cycle: regular"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update weekdays_bitmask: 0x7f"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update interval: 00:00..24:00"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: Auto update TZ: UTC+3"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Use: yes"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Use DHCP: no"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Server1: time.google.com"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Server2: time.cloudflare.com"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Server3: time.nist.gov"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: NTP: Server4: pool.ntp.org"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use company id filter: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: company id: 0x0499"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan coded phy: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan 1mbit/phy: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan extended payload: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 37: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 38: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: coordinates: "));
+    TEST_CHECK_LOG_RECORD_TEST(ESP_LOG_VERBOSE, string("restart_services"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
 {
+    const bool flag_access_from_lan = false;
+
     const char*              expected_resp = "{}";
     const http_server_resp_t resp          = http_server_cb_on_post_ruuvi(
         "{"
@@ -1753,7 +1975,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
                  "\"mqtt_user\":\"\","
                  "\"mqtt_pass\":\"\","
                  "\"company_use_filtering\":true\n"
-                 "}");
+                 "}",
+        flag_access_from_lan);
 
     ASSERT_TRUE(this->m_flag_settings_saved_to_flash);
     ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
@@ -1767,7 +1990,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_url: ");
@@ -1894,6 +2117,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed1) // NOLINT
 {
+    const bool flag_access_from_lan = false;
+
     this->m_malloc_cnt            = 0;
     this->m_malloc_fail_on_cnt    = 1;
     const http_server_resp_t resp = http_server_cb_on_post_ruuvi(
@@ -1917,7 +2142,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed1) // NOLINT
         "\"http_stat_user\":\"\","
         "\"http_stat_pass\":\"\","
         "\"company_use_filtering\":true"
-        "}");
+        "}",
+        flag_access_from_lan);
 
     ASSERT_FALSE(this->m_flag_settings_saved_to_flash);
     ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
@@ -1930,13 +2156,15 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed1) // NOLINT
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Failed to allocate memory for gw_cfg"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed2) // NOLINT
 {
+    const bool flag_access_from_lan = false;
+
     this->m_malloc_cnt            = 0;
     this->m_malloc_fail_on_cnt    = 2;
     const http_server_resp_t resp = http_server_cb_on_post_ruuvi(
@@ -1960,7 +2188,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed2) // NOLINT
         "\"http_stat_user\":\"\","
         "\"http_stat_pass\":\"\","
         "\"company_use_filtering\":true"
-        "}");
+        "}",
+        flag_access_from_lan);
 
     ASSERT_FALSE(this->m_flag_settings_saved_to_flash);
     ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
@@ -1973,13 +2202,15 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed2) // NOLINT
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Failed to parse json or no memory"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed3) // NOLINT
 {
+    const bool flag_access_from_lan = false;
+
     this->m_malloc_cnt            = 0;
     this->m_malloc_fail_on_cnt    = 3;
     const http_server_resp_t resp = http_server_cb_on_post_ruuvi(
@@ -2003,7 +2234,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed3) // NOLINT
         "\"http_stat_user\":\"\","
         "\"http_stat_pass\":\"\","
         "\"company_use_filtering\":true"
-        "}");
+        "}",
+        flag_access_from_lan);
 
     ASSERT_FALSE(this->m_flag_settings_saved_to_flash);
     ASSERT_FALSE(this->m_flag_settings_ethernet_ip_updated);
@@ -2016,7 +2248,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed3) // NOLINT
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Failed to parse json or no memory"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
@@ -2082,7 +2314,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_url: ");
@@ -2273,7 +2505,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_url: ");
@@ -2441,7 +2673,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
@@ -2614,7 +2846,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_wifi_ap_active) //
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
