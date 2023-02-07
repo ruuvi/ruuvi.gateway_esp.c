@@ -1,0 +1,210 @@
+<p><a href="https://ruuvi.com/gateway-config/">ruuvi.com/gateway-config/</a></p>
+<h1 id="gateway-configuration">Gateway Configuration</h1>
+<p>Here you can find a complete Ruuvi Gateway configuration guide for advanced users.</p>
+<h2 id="connect-ruuvi-gateway-to-the-internet">Connect Ruuvi Gateway to the Internet</h2>
+<h3 id="ethernet-advanced-options">Ethernet – Advanced options</h3>
+<p>If you want to configure your Ruuvi Gateway to use a static IP address 
+please uncheck <strong>Use DHCP</strong> after selecting the Ethernet connection option.<br>The following fields are required for this configuration:</p>
+<ul>
+<li><strong>Static IP</strong></li>
+<li><strong>Netmask</strong></li>
+<li><strong>Gateway</strong></li>
+<li><strong>DNS IP 1</strong></li>
+<li><strong>DNS IP 2</strong> (optional)</li>
+</ul>
+<p><img src="images/ethernet_advanced_options.png" alt="ethernet_advanced_options"></p>
+<h3 id="wi-fi-advanced-options">Wi-Fi – Advanced Options</h3>
+<p>A hidden Wi-Fi network can be used for connecting your Ruuvi Gateway to internet. 
+This setting is shown in the Wi-Fi Network configuration page under Advanced.</p>
+<p>Select <strong>Connect Manually</strong> to see the following required fields:</p>
+<ul>
+<li><strong>SSID</strong></li>
+<li><strong>Password</strong></li>
+</ul>
+<p><img src="images/wifi_advanced_options.png" alt="wifi_advanced_options"></p>
+<h2 id="firmware-update">Firmware update</h2>
+<p>It is always recommended to keep your Ruuvi Gateway up-to-date.</p>
+<p>Your firmware version and update availability will be checked on the <strong>Software Update</strong> page 
+during the configuration process. 
+If an update is available, you will be offered to install it from the default location 
+(recommended).</p>
+<p>Alternatively, you can choose your own location for updates by checking <strong>Specify a URL that 
+contains required firmware update binaries</strong> under <strong>Advanced</strong>.</p>
+<p><img src="images/software_update_advanced_options.png" alt="software_update_advanced_options"></p>
+<p>To start the firmware update process press the <em>Update</em> button.<br>The firmware update process takes a few minutes,and you will see the progress on the screen.
+It&#39;s important to make sure that your Ruuvi Gateway remains powered during this time.</p>
+<p><img src="images/software_update_progress.png" alt="software_update_progress"></p>
+<p>You can also skip this step by pressing <em>Continue without updating</em>.</p>
+<p><img src="images/software_update.png" alt="software_update"></p>
+<h2 id="automatic-updates">Automatic updates</h2>
+<p>Your Ruuvi Gateway has the ability to automatically check for and install new firmware updates 
+using a scheduler. We recommend that you select <strong>Auto Update</strong>, which accepts new versions for 
+installation 2 weeks after the release date.</p>
+<p>Advanced users can also select a special <strong>Auto Update for beta-testers</strong> mode that accepts new 
+firmware versions and automatically installs them as they become available.</p>
+<p>Selecting <strong>Manual updates only</strong> disables automatic firmware updates for your gateway.</p>
+<p><img src="images/automatic_updates_select_mode.png" alt="automatic_updates_select_mode"></p>
+<p>The automatic update scheduler allows you to specify when you want automatic updates to be 
+fetched and installed. You can schedule updates to be checked by:</p>
+<ul>
+<li><strong>Weekdays</strong></li>
+<li><strong>Timeslot</strong></li>
+<li><strong>Time zone</strong></li>
+</ul>
+<p><img src="images/automatic_updates_advanced_options.png" alt="automatic_updates_advanced_options"></p>
+<h2 id="automatic-configuration-download">Automatic Configuration Download</h2>
+<p>You can configure the gateway to download its configuration from a remote server (checking for 
+an updated configuration will be performed with a set period).</p>
+<p>You just need to specify the base URL from where the configuration file with the Gateway settings 
+can be downloaded. </p>
+<p>If you specify a folder name as the base URL (any URL that does not end with &#39;.json&#39;), it will first
+attempt to read the configuration file for the Gateway from <GW_MAC>.json (e.g. AABBCCDDEEFF.json).
+If this file fails, it will attempt to read the overall configuration from gw_cfg.json.</p>
+<p>The configuration file can also be generated dynamically by the server, which requires the server to
+analyse the HTTP header &#39;ruuvi_gw_mac&#39;, which contains the MAC address in the format XX:XX:XX:XX:XX:
+XX.</p>
+<p>After entering the base URL, press the Check button to validate the URL and check that the
+configuration file exists. Next, after pressing the Download button, the new configuration will be
+downloaded, which completes the configuration process. After that, Ruuvi Gateway will periodically
+check for configuration updates and download them. The polling period is set in the configuration
+file, which is downloaded from the server.</p>
+<p><img src="images/automatic_configuration_download_advanced_options.png" alt="automatic_configuration_download_advanced_options"></p>
+<p>The gateway configuration file on the remote server must contain at least the following attributes:</p>
+<ul>
+<li><strong>remote_cfg_use</strong>: true</li>
+<li><strong>remote_cfg_url</strong>: URL</li>
+<li><strong>remote_cfg_refresh_interval_minutes</strong>: a period of checking for an updated configuration (in 
+minutes)</li>
+<li><strong>remote_cfg_auth_type</strong>: authentication type (&#39;<strong>no</strong>&#39; if authentication is not required)</li>
+</ul>
+<p>Example of minimal gw_cfg.json:</p>
+<pre><code class="lang-json">{
+  <span class="hljs-attr">"remote_cfg_use"</span>: <span class="hljs-literal">true</span>, 
+  <span class="hljs-attr">"remote_cfg_url"</span>: <span class="hljs-string">"http://192.168.1.101:7000/"</span>, 
+  <span class="hljs-attr">"remote_cfg_refresh_interval_minutes"</span>: <span class="hljs-number">10</span>,
+  <span class="hljs-attr">"remote_cfg_auth_type"</span>: <span class="hljs-string">"no"</span> 
+}
+</code></pre>
+<p>All configuration attributes not specified in the configuration file will retain their previous 
+value after the new configuration is loaded from the remote server.</p>
+<p>Configuration downloads with basic HTTP authentication are also supported:</p>
+<p><img src="images/automatic_configuration_download_auth_basic.png" alt="automatic_configuration_download_auth_basic"></p>
+<p>Example of corresponding minimal gw_cfg.json:</p>
+<pre><code class="lang-json">{
+  <span class="hljs-attr">"remote_cfg_use"</span>: <span class="hljs-literal">true</span>, 
+  <span class="hljs-attr">"remote_cfg_url"</span>: <span class="hljs-string">"http://192.168.1.101:7000/"</span>, 
+  <span class="hljs-attr">"remote_cfg_refresh_interval_minutes"</span>: <span class="hljs-number">10</span>,
+  <span class="hljs-attr">"remote_cfg_auth_type"</span>: <span class="hljs-string">"basic"</span>,
+  <span class="hljs-attr">"remote_cfg_auth_basic_user"</span>: <span class="hljs-string">"user1"</span>,
+  <span class="hljs-attr">"remote_cfg_auth_basic_pass"</span>: <span class="hljs-string">"password1"</span>
+}
+</code></pre>
+<p>Or bearer authentication (using a token):</p>
+<p><img src="images/automatic_configuration_download_auth_bearer.png" alt="automatic_configuration_download_auth_bearer"></p>
+<p>Example of corresponding minimal gw_cfg.json:</p>
+<pre><code class="lang-json">{
+  <span class="hljs-attr">"remote_cfg_use"</span>: <span class="hljs-literal">true</span>, 
+  <span class="hljs-attr">"remote_cfg_url"</span>: <span class="hljs-string">"http://192.168.1.101:7000/"</span>, 
+  <span class="hljs-attr">"remote_cfg_refresh_interval_minutes"</span>: <span class="hljs-number">10</span>,
+  <span class="hljs-attr">"remote_cfg_auth_type"</span>: <span class="hljs-string">"bearer"</span>,
+  <span class="hljs-attr">"remote_cfg_auth_bearer_token"</span>: <span class="hljs-string">"my_secret_token_123"</span>
+}
+</code></pre>
+<h2 id="lan-access-settings">LAN Access Settings</h2>
+<p>You can restrict or allow access to your Ruuvi Gateway from the local network.</p>
+<p>By default, the access is <strong>Password protected</strong> using the default password (unique device ID which 
+is printed on the bottom of the Ruuvi Gateway):</p>
+<p><img src="images/access_settings_default.png" alt="access_settings_default"></p>
+<p>If you want to configure a custom <strong>Username</strong> and <strong>password</strong>, select <strong>Protected with a 
+custom password</strong>:</p>
+<p><img src="images/access_settings_custom_password.png" alt="access_settings_custom_password"></p>
+<p>You can also prohibit access by password by selecting <strong>No remote configurable</strong> or allow access 
+without a password by selecting <strong>Remote configurable without a password</strong>.</p>
+<p>It is also possible to configure access to the Ruuvi Gateway from LAN using bearer 
+authentication (under <strong>Advanced settings</strong>):</p>
+<p><img src="images/access_settings_advanced_options.png" alt="access_settings_advanced_options"></p>
+<p>If you set a token for read-only access, you can read data from the &quot;/history&quot; and 
+&quot;/metrics&quot; endpoints, or read the gateway configuration. To be able to configure the gateway 
+programmatically, a full (read/write) access token must be enabled.</p>
+<p>Examples:</p>
+<ul>
+<li>Request &quot;/history&quot; using read-only bearer token:<pre><code class="lang-shell">  curl -v <span class="hljs-string">http:</span><span class="hljs-comment">//&lt;RUUVI_GW_IP&gt;/history </span>
+    -H <span class="hljs-string">"Authorization: Bearer Uj+4tj24unVekco/lTLTRyxUfv1J8M6U+sbNsKTWRr0="</span>
+</code></pre>
+</li>
+<li>Request &quot;/metrics&quot; using read-only bearer token:<pre><code class="lang-shell">  curl -v <span class="hljs-string">http:</span><span class="hljs-comment">//&lt;RUUVI_GW_IP&gt;/metrics </span>
+    -H <span class="hljs-string">"Authorization: Bearer Uj+4tj24unVekco/lTLTRyxUfv1J8M6U+sbNsKTWRr0="</span>
+</code></pre>
+</li>
+<li>Download the gateway configuration using the read-only access bearer token and save it to file 
+&#39;ruuvi.json&#39;:<pre><code class="lang-shell">  curl -v http://&lt;RUUVI_GW_IP&gt;/ruuvi.json 
+    -<span class="ruby">H <span class="hljs-string">"Authorization: Bearer Uj+4tj24unVekco/lTLTRyxUfv1J8M6U+sbNsKTWRr0="</span> 
+</span>    -<span class="ruby">-output ruuvi.json</span>
+</code></pre>
+</li>
+<li>Upload the gateway configuration using the read-write access bearer token 
+from the file &#39;./ruuvi.json&#39; (note that the network part of the configuration will be ignored):<pre><code class="lang-shell">  curl -v http://&lt;RUUVI_GW_IP&gt;/ruuvi.json 
+    -<span class="ruby">H <span class="hljs-string">"Authorization: Bearer 1SDrQH1FkH+pON0GsSjt2gYeMSP02uYqfuu7LWdaBvY="</span> 
+</span>    -<span class="ruby">d @./ruuvi.json</span>
+</code></pre>
+</li>
+<li>Starting firmware update from URL:<pre><code class="lang-shell">  curl -v http://&lt;RUUVI_GW_IP&gt;/fw_update.json 
+    -<span class="ruby">H <span class="hljs-string">"Authorization: Bearer 1SDrQH1FkH+pON0GsSjt2gYeMSP02uYqfuu7LWdaBvY="</span> 
+</span>    -<span class="ruby">H <span class="hljs-string">'Content-Type: application/json'</span> 
+</span>    -<span class="ruby">d <span class="hljs-string">'{"url":"https://my_server.com:7000/gw_firmware/"}'</span></span>
+</code></pre>
+</li>
+<li>A forced download of gateway configuration from the remote server (you must pre-configure the 
+gateway and set the remote server URL):<pre><code class="lang-shell">  curl -v <span class="hljs-string">http:</span><span class="hljs-comment">//&lt;RUUVI_GW_IP&gt;/gw_cfg_download </span>
+    -H <span class="hljs-string">"Authorization: Bearer 1SDrQH1FkH+pON0GsSjt2gYeMSP02uYqfuu7LWdaBvY="</span> -d <span class="hljs-string">''</span>
+</code></pre>
+</li>
+</ul>
+<h2 id="custom-http-s-mqtt-s-sever">Custom HTTP(S) / MQTT(S) sever</h2>
+<p>Ruuvi Gateway connects to the Ruuvi Cloud by default. However, you can configure it to use an HTTP
+or MQTT server to route data from your nearby sensors to a custom location instead.</p>
+<p><img src="images/cloud_options_advanced_settings.png" alt="cloud_options_advanced_settings"></p>
+<p>You can enable or disable sending data to Ruuvi Cloud:</p>
+<p><img src="images/custom_server_ruuvi_cloud.png" alt="custom_server_ruuvi_cloud"></p>
+<p>Or configure to send data to your own server via HTTP/HTTPS (sending to both Ruuvi Cloud and your
+own server is not supported yet):</p>
+<p><img src="images/custom_server_http.png" alt="custom_server_http"></p>
+<p>Also, you can enable relaying data to MQTT server:</p>
+<p><img src="images/custom_server_mqtt.png" alt="custom_server_mqtt"></p>
+<p>In the Statistics section, you can configure the sending of statistics to Ruuvi Cloud or your own
+server, or disable the sending of statistics:</p>
+<p><img src="images/custom_server_statistics.png" alt="custom_server_statistics"></p>
+<h2 id="time-synchronization-options">Time Synchronization Options</h2>
+<p>If the default set of NTP servers is not accessible, then you can specify the addresses of other NTP
+servers or use DHCP to obtain a list of NTP servers automatically. If the Ruuvi Gateway does not
+have access to the Internet and NTP, you can disable time synchronisation, but in this case, relayed
+messages will not contain timestamps.</p>
+<p>To configure NTP servers you need to enable advanced settings in the <strong>Cloud Options</strong>:</p>
+<p><img src="images/cloud_options_advanced_settings.png" alt="cloud_options_advanced_settings"></p>
+<p>After that, you will be able to choose how to synchronise the time:</p>
+<p><img src="images/time_sync_default.png" alt="time_sync_default"></p>
+<p><img src="images/time_sync_custom.png" alt="time_sync_custom"></p>
+<h2 id="bluetooth-scanning-settings">Bluetooth Scanning Settings</h2>
+<p>To get access to these settings you need to enable advanced settings in the <strong>Cloud Options</strong>:</p>
+<p><img src="images/cloud_options_advanced_settings.png" alt="cloud_options_advanced_settings"></p>
+<p>By default, Ruuvi Gateway scans only for Ruuvi sensors (filtered by BLE SIG member ID 0x0499)</p>
+<p><img src="images/bluetooth_scanning_default.png" alt="bluetooth_scanning_default"></p>
+<p>Also, you can enable Bluetooth long range (also known as Coded PHY).
+It is a new mode introduced in Bluetooth Version 5.0 to extend the range of Bluetooth devices from
+30-100 feet to ranges of 1 kilometer and beyond.</p>
+<p><strong>Note</strong>: Most existing devices only transmit on 1 Mbps PHY. 1 Mbps and Coded PHYs modulations are
+scanned sequentially, so scanning both PHYs will result in at least 50% packet loss on one of the
+PHYs.</p>
+<p><img src="images/bluetooth_scanning_ruuvi_and_long_range.png" alt="bluetooth_scanning_ruuvi_and_long_range"></p>
+<p>If you want to relay data from more than just Ruuvi sensors, you need to select the &quot;<strong>All 
+(including third party beacons)</strong>&quot; option and adjust the scanned PHYs, Bluetooth channels used 
+and the ability to use extended payload (BLE extended advertising):</p>
+<p><img src="images/bluetooth_scanning_all.png" alt="bluetooth_scanning_all"></p>
+<p><strong>Scan extended payloads</strong>. Both Coded PHY and 1 Mbps PHY may have a primary advertisement that
+tells that there is going to be extended data on a secondary channel. If &quot;Use extended payload&quot; is
+enabled, the secondary payload will be scanned.</p>
+<p>Coded PHY supports only Coded extended payload, 1 Mbps PHY supports scanning at 2 Mbps and 1 Mbps
+PHY extended payloads.</p>
+<p><strong>Use channel</strong>. Each enabled BLE channel is scanned sequentially for a minimum of 7000 ms per
+channel, for a total of 21000 ms if all 3 channels are enabled. At least one channel must be active.</p>
+
