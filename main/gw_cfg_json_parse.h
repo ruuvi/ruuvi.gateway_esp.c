@@ -31,8 +31,7 @@ gw_cfg_json_parse(
     const char* const p_json_name,
     const char* const p_log_title,
     const char* const p_json_str,
-    gw_cfg_t* const   p_gw_cfg,
-    bool* const       p_flag_dev_info_modified);
+    gw_cfg_t* const   p_gw_cfg);
 
 void
 gw_cfg_json_parse_eth(const cJSON* const p_json_root, gw_cfg_eth_t* const p_gw_cfg_eth);
