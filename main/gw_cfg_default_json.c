@@ -87,8 +87,9 @@ gw_cfg_default_json_read(gw_cfg_t* const p_gw_cfg_default)
         return false;
     }
     LOG_INFO("Default gw_cfg was successfully read from NVS");
+    LOG_DBG("Default gw_cfg: %s", p_cfg_json);
 
-    const bool res = gw_cfg_json_parse(p_nvs_key_gw_cfg_default, NULL, p_cfg_json, p_gw_cfg_default, NULL);
+    const bool res = gw_cfg_json_parse(p_nvs_key_gw_cfg_default, NULL, p_cfg_json, p_gw_cfg_default);
     os_free(p_cfg_json);
 
     if (!res)

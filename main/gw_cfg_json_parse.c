@@ -908,57 +908,17 @@ gw_cfg_json_parse_cjson_wifi_sta(
     gw_cfg_json_parse_cjson(p_json_root, p_log_title, NULL, NULL, NULL, NULL, p_wifi_cfg_sta);
 }
 
-static bool
-gw_cfg_json_compare_device_info(const gw_cfg_device_info_t* const p_val1, const gw_cfg_device_info_t* const p_val2)
-{
-    if (0 != strcmp(p_val1->esp32_fw_ver.buf, p_val2->esp32_fw_ver.buf))
-    {
-        LOG_INFO(
-            "gw_cfg: device_info differs: esp32_fw_ver: cur=%s, prev=%s",
-            p_val2->esp32_fw_ver.buf,
-            p_val1->esp32_fw_ver.buf);
-        return false;
-    }
-    if (0 != strcmp(p_val1->nrf52_fw_ver.buf, p_val2->nrf52_fw_ver.buf))
-    {
-        LOG_INFO(
-            "gw_cfg: device_info differs: nrf52_fw_ver: cur=%s, prev=%s",
-            p_val2->nrf52_fw_ver.buf,
-            p_val1->nrf52_fw_ver.buf);
-        return false;
-    }
-    if (0 != strcmp(p_val1->nrf52_mac_addr.str_buf, p_val2->nrf52_mac_addr.str_buf))
-    {
-        LOG_INFO(
-            "gw_cfg: device_info differs: nrf52_fw_ver: cur=%s, prev=%s",
-            p_val2->nrf52_mac_addr.str_buf,
-            p_val1->nrf52_mac_addr.str_buf);
-        return false;
-    }
-    return true;
-}
-
 bool
 gw_cfg_json_parse(
     const char* const p_json_name,
     const char* const p_log_title,
     const char* const p_json_str,
-    gw_cfg_t* const   p_gw_cfg,
-    bool* const       p_flag_dev_info_modified)
+    gw_cfg_t* const   p_gw_cfg)
 {
-    if (NULL != p_flag_dev_info_modified)
-    {
-        *p_flag_dev_info_modified = false;
-    }
-
     if ('\0' == p_json_str[0])
     {
         LOG_WARN("%s is empty", p_json_name);
-        if (NULL != p_flag_dev_info_modified)
-        {
-            *p_flag_dev_info_modified = true;
-        }
-        return true;
+        return false;
     }
 
     cJSON* p_json_root = cJSON_Parse(p_json_str);
@@ -977,11 +937,6 @@ gw_cfg_json_parse(
         &p_gw_cfg->eth_cfg,
         &p_gw_cfg->wifi_cfg.ap,
         &p_gw_cfg->wifi_cfg.sta);
-
-    if ((NULL != p_flag_dev_info_modified) && (!gw_cfg_json_compare_device_info(&dev_info, &p_gw_cfg->device_info)))
-    {
-        *p_flag_dev_info_modified = true;
-    }
 
     cJSON_Delete(p_json_root);
     return true;

@@ -18,10 +18,16 @@ extern "C" {
 
 typedef enum force_start_wifi_hotspot_e
 {
-    FORCE_START_WIFI_HOTSPOT_DISABLED  = 0,
-    FORCE_START_WIFI_HOTSPOT_ONCE      = 1,
-    FORCE_START_WIFI_HOTSPOT_PERMANENT = 2,
+    FORCE_START_WIFI_HOTSPOT_DISABLED = 0,
+    FORCE_START_WIFI_HOTSPOT_ONCE     = 1,
 } force_start_wifi_hotspot_e;
+
+typedef enum settings_in_nvs_status_e
+{
+    SETTINGS_IN_NVS_STATUS_OK,
+    SETTINGS_IN_NVS_STATUS_NOT_EXIST,
+    SETTINGS_IN_NVS_STATUS_EMPTY,
+} settings_in_nvs_status_e;
 
 bool
 settings_check_in_flash(void);
@@ -30,7 +36,7 @@ void
 settings_save_to_flash(const gw_cfg_t* const p_gw_cfg);
 
 const gw_cfg_t*
-settings_get_from_flash(bool* const p_flag_default_cfg_is_used);
+settings_get_from_flash(const bool flag_allow_cfg_updating, settings_in_nvs_status_e* const p_status);
 
 mac_address_bin_t
 settings_read_mac_addr(void);

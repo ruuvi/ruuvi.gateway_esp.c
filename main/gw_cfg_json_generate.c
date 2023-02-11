@@ -537,17 +537,23 @@ gw_cfg_json_add_items_scan(cJSON* const p_json_root, const ruuvi_gw_cfg_scan_t* 
 }
 
 static bool
-gw_cfg_json_add_items(cJSON* const p_json_root, const gw_cfg_t* p_cfg, const bool flag_hide_passwords)
+gw_cfg_json_add_items(
+    cJSON* const          p_json_root,
+    const gw_cfg_t* const p_cfg,
+    const bool            flag_hide_passwords_and_add_device_info)
 {
-    if (!gw_cfg_json_add_items_device_info(p_json_root, &p_cfg->device_info))
+    if (flag_hide_passwords_and_add_device_info)
+    {
+        if (!gw_cfg_json_add_items_device_info(p_json_root, &p_cfg->device_info))
+        {
+            return false;
+        }
+    }
+    if (!gw_cfg_json_add_items_wifi_sta_config(p_json_root, &p_cfg->wifi_cfg, flag_hide_passwords_and_add_device_info))
     {
         return false;
     }
-    if (!gw_cfg_json_add_items_wifi_sta_config(p_json_root, &p_cfg->wifi_cfg, flag_hide_passwords))
-    {
-        return false;
-    }
-    if (!gw_cfg_json_add_items_wifi_ap_config(p_json_root, &p_cfg->wifi_cfg, flag_hide_passwords))
+    if (!gw_cfg_json_add_items_wifi_ap_config(p_json_root, &p_cfg->wifi_cfg, flag_hide_passwords_and_add_device_info))
     {
         return false;
     }
@@ -555,23 +561,29 @@ gw_cfg_json_add_items(cJSON* const p_json_root, const gw_cfg_t* p_cfg, const boo
     {
         return false;
     }
-    if (!gw_cfg_json_add_items_remote(p_json_root, &p_cfg->ruuvi_cfg.remote, flag_hide_passwords))
+    if (!gw_cfg_json_add_items_remote(p_json_root, &p_cfg->ruuvi_cfg.remote, flag_hide_passwords_and_add_device_info))
     {
         return false;
     }
-    if (!gw_cfg_json_add_items_http(p_json_root, &p_cfg->ruuvi_cfg.http, flag_hide_passwords))
+    if (!gw_cfg_json_add_items_http(p_json_root, &p_cfg->ruuvi_cfg.http, flag_hide_passwords_and_add_device_info))
     {
         return false;
     }
-    if (!gw_cfg_json_add_items_http_stat(p_json_root, &p_cfg->ruuvi_cfg.http_stat, flag_hide_passwords))
+    if (!gw_cfg_json_add_items_http_stat(
+            p_json_root,
+            &p_cfg->ruuvi_cfg.http_stat,
+            flag_hide_passwords_and_add_device_info))
     {
         return false;
     }
-    if (!gw_cfg_json_add_items_mqtt(p_json_root, &p_cfg->ruuvi_cfg.mqtt, flag_hide_passwords))
+    if (!gw_cfg_json_add_items_mqtt(p_json_root, &p_cfg->ruuvi_cfg.mqtt, flag_hide_passwords_and_add_device_info))
     {
         return false;
     }
-    if (!gw_cfg_json_add_items_lan_auth(p_json_root, &p_cfg->ruuvi_cfg.lan_auth, flag_hide_passwords))
+    if (!gw_cfg_json_add_items_lan_auth(
+            p_json_root,
+            &p_cfg->ruuvi_cfg.lan_auth,
+            flag_hide_passwords_and_add_device_info))
     {
         return false;
     }
@@ -599,7 +611,10 @@ gw_cfg_json_add_items(cJSON* const p_json_root, const gw_cfg_t* p_cfg, const boo
 }
 
 static bool
-gw_cfg_json_generate(const gw_cfg_t* const p_gw_cfg, cjson_wrap_str_t* const p_json_str, const bool flag_hide_passwords)
+gw_cfg_json_generate(
+    const gw_cfg_t* const   p_gw_cfg,
+    cjson_wrap_str_t* const p_json_str,
+    const bool              flag_hide_passwords_and_add_device_info)
 {
     p_json_str->p_str = NULL;
 
@@ -609,7 +624,7 @@ gw_cfg_json_generate(const gw_cfg_t* const p_gw_cfg, cjson_wrap_str_t* const p_j
         LOG_ERR("Can't create json object");
         return false;
     }
-    if (!gw_cfg_json_add_items(p_json_root, p_gw_cfg, flag_hide_passwords))
+    if (!gw_cfg_json_add_items(p_json_root, p_gw_cfg, flag_hide_passwords_and_add_device_info))
     {
         cjson_wrap_delete(&p_json_root);
         return false;
@@ -625,13 +640,15 @@ gw_cfg_json_generate(const gw_cfg_t* const p_gw_cfg, cjson_wrap_str_t* const p_j
 }
 
 bool
-gw_cfg_json_generate_full(const gw_cfg_t* const p_gw_cfg, cjson_wrap_str_t* const p_json_str)
+gw_cfg_json_generate_for_saving(const gw_cfg_t* const p_gw_cfg, cjson_wrap_str_t* const p_json_str)
 {
-    return gw_cfg_json_generate(p_gw_cfg, p_json_str, false);
+    const bool flag_hide_passwords_and_add_device_info = false;
+    return gw_cfg_json_generate(p_gw_cfg, p_json_str, flag_hide_passwords_and_add_device_info);
 }
 
 bool
-gw_cfg_json_generate_without_passwords(const gw_cfg_t* const p_gw_cfg, cjson_wrap_str_t* const p_json_str)
+gw_cfg_json_generate_for_ui_client(const gw_cfg_t* const p_gw_cfg, cjson_wrap_str_t* const p_json_str)
 {
-    return gw_cfg_json_generate(p_gw_cfg, p_json_str, true);
+    const bool flag_hide_passwords_and_add_device_info = true;
+    return gw_cfg_json_generate(p_gw_cfg, p_json_str, flag_hide_passwords_and_add_device_info);
 }

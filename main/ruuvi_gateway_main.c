@@ -204,9 +204,10 @@ ruuvi_init_gw_cfg(
 
     gw_cfg_init((NULL != p_nrf52_fw_ver) ? &ruuvi_cb_on_change_cfg : NULL);
 
-    bool flag_default_cfg_is_used = false;
+    const bool               flag_allow_cfg_updating = (NULL != p_nrf52_fw_ver) ? true : false;
+    settings_in_nvs_status_e settings_status         = SETTINGS_IN_NVS_STATUS_NOT_EXIST;
 
-    const gw_cfg_t* p_gw_cfg_tmp = settings_get_from_flash(&flag_default_cfg_is_used);
+    const gw_cfg_t* p_gw_cfg_tmp = settings_get_from_flash(flag_allow_cfg_updating, &settings_status);
     if (NULL == p_gw_cfg_tmp)
     {
         LOG_ERR("Can't get settings from flash");
@@ -215,8 +216,19 @@ ruuvi_init_gw_cfg(
     if (NULL != p_nrf52_fw_ver)
     {
         gw_cfg_log(p_gw_cfg_tmp, "Gateway SETTINGS (from flash)", false);
-        LOG_INFO("##### Default cfg is used: %d", flag_default_cfg_is_used);
-        (void)gw_cfg_update(flag_default_cfg_is_used ? NULL : p_gw_cfg_tmp);
+        switch (settings_status)
+        {
+            case SETTINGS_IN_NVS_STATUS_OK:
+                LOG_INFO("##### Config exists in NVS");
+                break;
+            case SETTINGS_IN_NVS_STATUS_NOT_EXIST:
+                LOG_INFO("##### Config not exists in NVS");
+                break;
+            case SETTINGS_IN_NVS_STATUS_EMPTY:
+                LOG_INFO("##### Config is empty in NVS");
+                break;
+        }
+        (void)gw_cfg_update((SETTINGS_IN_NVS_STATUS_OK == settings_status) ? p_gw_cfg_tmp : NULL);
     }
     os_free(p_gw_cfg_tmp);
 }
@@ -250,7 +262,7 @@ static void
 ethernet_connection_ok_cb(const esp_netif_ip_info_t* p_ip_info)
 {
     LOG_INFO("### Ethernet connected");
-    if (gw_cfg_is_default())
+    if (gw_cfg_is_empty())
     {
         LOG_INFO(
             "### The Ethernet cable was connected, but Gateway has not configured yet - set default configuration");
@@ -349,10 +361,7 @@ cb_on_ap_sta_connected(void)
     LOG_INFO("### callback: on_ap_sta_connected");
     event_mgr_notify(EVENT_MGR_EV_WIFI_AP_STA_CONNECTED);
     main_task_stop_timer_hotspot_deactivation();
-    if (gw_cfg_is_initialized() && gw_cfg_get_eth_use_eth())
-    {
-        ethernet_stop();
-    }
+    ethernet_stop();
 }
 
 static void
@@ -370,10 +379,7 @@ cb_on_ap_sta_disconnected(void)
 {
     LOG_INFO("### callback: on_ap_sta_disconnected");
     event_mgr_notify(EVENT_MGR_EV_WIFI_AP_STA_DISCONNECTED);
-    if (!gw_cfg_is_initialized())
-    {
-        return;
-    }
+    main_task_start_timer_hotspot_deactivation();
 }
 
 static void
@@ -557,7 +563,7 @@ handle_reset_button_is_pressed_during_boot(void)
     }
 
     settings_write_flag_rebooting_after_auto_update(false);
-    settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_PERMANENT);
+    settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_ONCE);
 
     LOG_INFO("Wait until the CONFIGURE button is released");
     leds_notify_cfg_erased();
@@ -691,7 +697,7 @@ network_subsystem_init(
     }
     ethernet_init(&ethernet_link_up_cb, &ethernet_link_down_cb, &ethernet_connection_ok_cb);
 
-    if (FORCE_START_WIFI_HOTSPOT_DISABLED == force_start_wifi_hotspot)
+    if (((!gw_cfg_is_empty()) || flag_connect_sta) && (FORCE_START_WIFI_HOTSPOT_DISABLED == force_start_wifi_hotspot))
     {
         if (gw_cfg_get_eth_use_eth() || (!is_wifi_sta_configured))
         {
@@ -710,11 +716,31 @@ network_subsystem_init(
     }
     else
     {
-        if (force_start_wifi_hotspot == FORCE_START_WIFI_HOTSPOT_ONCE)
+        if (gw_cfg_is_empty() && (FORCE_START_WIFI_HOTSPOT_ONCE == force_start_wifi_hotspot))
+        {
+            gw_status_set_first_boot_after_cfg_erase();
+        }
+        else
+        {
+            gw_status_clear_first_boot_after_cfg_erase();
+            if (!flag_connect_sta)
+            {
+                LOG_INFO("Start Ethernet (gateway has not configured yet)");
+                ethernet_start(gw_cfg_get_wifi_ap_ssid()->ssid_buf);
+            }
+        }
+        if (FORCE_START_WIFI_HOTSPOT_ONCE == force_start_wifi_hotspot)
         {
             settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_DISABLED);
         }
-        LOG_INFO("Force start WiFi hotspot");
+        if (gw_cfg_is_empty())
+        {
+            LOG_INFO("Force start WiFi hotspot (gateway has not configured yet)");
+        }
+        else
+        {
+            LOG_INFO("Force start WiFi hotspot");
+        }
         wifi_manager_start_ap(true);
     }
     return true;
@@ -726,17 +752,16 @@ ruuvi_cb_on_change_cfg(const gw_cfg_t* const p_gw_cfg)
     LOG_INFO("%s: settings_save_to_flash", __func__);
     settings_save_to_flash(p_gw_cfg);
 
-    LOG_INFO(
-        "%s: http_server_set_auth: %s",
-        __func__,
-        http_server_auth_type_to_str(p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_type));
+    const ruuvi_gw_cfg_lan_auth_t* const p_lan_auth = (NULL != p_gw_cfg) ? &p_gw_cfg->ruuvi_cfg.lan_auth
+                                                                         : gw_cfg_default_get_lan_auth();
+    LOG_INFO("%s: http_server_set_auth: %s", __func__, http_server_auth_type_to_str(p_lan_auth->lan_auth_type));
 
     if (!http_server_set_auth(
-            p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_type,
-            &p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_user,
-            &p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_pass,
-            &p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_api_key,
-            &p_gw_cfg->ruuvi_cfg.lan_auth.lan_auth_api_key_rw))
+            p_lan_auth->lan_auth_type,
+            &p_lan_auth->lan_auth_user,
+            &p_lan_auth->lan_auth_pass,
+            &p_lan_auth->lan_auth_api_key,
+            &p_lan_auth->lan_auth_api_key_rw))
     {
         LOG_ERR("%s failed", "http_server_set_auth");
     }
@@ -841,7 +866,7 @@ main_task_init(void)
 
     ruuvi_deinit_gw_cfg();
     ruuvi_init_gw_cfg(&nrf52_fw_ver, &nrf52_device_info);
-    LOG_INFO("### Default config is used: %s", gw_cfg_is_default() ? "true" : "false");
+    LOG_INFO("### Config is empty: %s", gw_cfg_is_empty() ? "true" : "false");
 
     hmac_sha256_set_key_str(gw_cfg_get_nrf52_device_id()->str_buf); // set default encryption key
 
