@@ -207,7 +207,8 @@ gw_cfg_default_deinit(void)
 void
 gw_cfg_default_log(void)
 {
-    gw_cfg_log(&g_gw_cfg_default, "Gateway SETTINGS (default)", true);
+    const bool flag_log_device_info = true;
+    gw_cfg_log(&g_gw_cfg_default, "Gateway SETTINGS (default)", flag_log_device_info);
 }
 
 void

@@ -312,7 +312,7 @@ void
 gw_cfg_unlock_ro(const gw_cfg_t** const p_p_gw_cfg);
 
 bool
-gw_cfg_is_default(void);
+gw_cfg_is_empty(void);
 
 void
 gw_cfg_update_eth_cfg(const gw_cfg_eth_t* const p_gw_cfg_eth_new);

@@ -259,7 +259,15 @@ static void
 main_task_handle_sig_deactivate_wifi_ap(void)
 {
     LOG_INFO("MAIN_TASK_SIG_DEACTIVATE_WIFI_AP");
-    wifi_manager_stop_ap();
+    if (gw_status_get_first_boot_after_cfg_erase() && gw_cfg_is_empty())
+    {
+        LOG_INFO("Gateway has not configured yet, so don't stop Wi-Fi hotspot, start Ethernet instead");
+        ethernet_start(gw_cfg_get_wifi_ap_ssid()->ssid_buf);
+    }
+    else
+    {
+        wifi_manager_stop_ap();
+    }
 }
 
 static void
@@ -275,10 +283,10 @@ main_task_handle_sig_network_connected(void)
     LOG_INFO("### Handle event: NETWORK_CONNECTED");
 
     const force_start_wifi_hotspot_e force_start_wifi_hotspot = settings_read_flag_force_start_wifi_hotspot();
-    if (FORCE_START_WIFI_HOTSPOT_PERMANENT == force_start_wifi_hotspot)
+    if (FORCE_START_WIFI_HOTSPOT_DISABLED != force_start_wifi_hotspot)
     {
-        /* A permanent start-up of the Wi-Fi hotspot should be performed after each reboot
-         * only until a new non-default configuration is saved (until gateway is connected to Wi-Fi or Ethernet) */
+        /* The Wi-Fi access point must be started each time it is rebooted after the configuration has been erased
+         * until it is connected to the network. */
         settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_DISABLED);
     }
 

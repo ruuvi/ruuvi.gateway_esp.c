@@ -107,6 +107,15 @@ gw_status_is_relaying_via_http_enabled(void);
 bool
 gw_status_is_relaying_via_mqtt_enabled(void);
 
+void
+gw_status_set_first_boot_after_cfg_erase(void);
+
+void
+gw_status_clear_first_boot_after_cfg_erase(void);
+
+bool
+gw_status_get_first_boot_after_cfg_erase(void);
+
 #ifdef __cplusplus
 }
 #endif

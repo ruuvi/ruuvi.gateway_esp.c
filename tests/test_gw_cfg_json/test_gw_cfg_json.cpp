@@ -353,18 +353,93 @@ TEST_F(TestGwCfgJson, get_uint16_val_failed) // NOLINT
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_default) // NOLINT
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_for_ui_client) // NOLINT
 {
     const gw_cfg_t   gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_ui_client(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
                "\t\"fw_ver\":\t\"v1.10.0\",\n"
                "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
                "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"wifi_sta_config\":\t{\n"
+               "\t\t\"ssid\":\t\"\"\n"
+               "\t},\n"
+               "\t\"wifi_ap_config\":\t{\n"
+               "\t\t\"channel\":\t1\n"
+               "\t},\n"
+               "\t\"use_eth\":\ttrue,\n"
+               "\t\"eth_dhcp\":\ttrue,\n"
+               "\t\"eth_static_ip\":\t\"\",\n"
+               "\t\"eth_netmask\":\t\"\",\n"
+               "\t\"eth_gw\":\t\"\",\n"
+               "\t\"eth_dns1\":\t\"\",\n"
+               "\t\"eth_dns2\":\t\"\",\n"
+               "\t\"remote_cfg_use\":\tfalse,\n"
+               "\t\"remote_cfg_url\":\t\"\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http\":\ttrue,\n"
+               "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"use_http_stat\":\ttrue,\n"
+               "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
+               "\t\"http_stat_user\":\t\"\",\n"
+               "\t\"use_mqtt\":\tfalse,\n"
+               "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
+               "\t\"mqtt_transport\":\t\"TCP\",\n"
+               "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+               "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
+               "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"mqtt_user\":\t\"\",\n"
+               "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
+               "\t\"lan_auth_user\":\t\"Admin\",\n"
+               "\t\"lan_auth_api_key_use\":\tfalse,\n"
+               "\t\"lan_auth_api_key_rw_use\":\tfalse,\n"
+               "\t\"auto_update_cycle\":\t\"regular\",\n"
+               "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+               "\t\"auto_update_interval_from\":\t0,\n"
+               "\t\"auto_update_interval_to\":\t24,\n"
+               "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"company_id\":\t1177,\n"
+               "\t\"company_use_filtering\":\ttrue,\n"
+               "\t\"scan_coded_phy\":\tfalse,\n"
+               "\t\"scan_1mbit_phy\":\ttrue,\n"
+               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_channel_37\":\ttrue,\n"
+               "\t\"scan_channel_38\":\ttrue,\n"
+               "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"coordinates\":\t\"\"\n"
+               "}"),
+        string(json_str.p_str));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
+    cjson_wrap_free_json_str(&json_str);
+
+    ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_default) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_NE(nullptr, json_str.p_str);
+    ASSERT_EQ(
+        string("{\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -429,10 +504,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_default) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -445,9 +518,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_default_company_id_0x0500) // NOLINT
 
     string json_content = string(
         "{\n"
-        "\t\"fw_ver\":\t\"v1.10.0\",\n"
-        "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-        "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
         "\t\"use_eth\":\ttrue,\n"
         "\t\"eth_dhcp\":\ttrue,\n"
         "\t\"eth_static_ip\":\t\"\",\n"
@@ -501,10 +571,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_default_company_id_0x0500) // NOLINT
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
     json_str.p_str            = json_content.c_str();
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
 
     ASSERT_EQ(gw_cfg2.ruuvi_cfg.filter.company_id, gw_cfg.ruuvi_cfg.filter.company_id);
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -517,13 +585,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_disabled) // NOLINT
 
     gw_cfg.eth_cfg.use_eth = false;
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -588,10 +653,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_disabled) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -605,13 +668,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_enabled) // NOLINT
     gw_cfg.eth_cfg.use_eth  = true;
     gw_cfg.eth_cfg.eth_dhcp = true;
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -676,10 +736,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_enabled) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -698,13 +756,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_disabled) // NOLINT
     snprintf(gw_cfg.eth_cfg.eth_dns1.buf, sizeof(gw_cfg.eth_cfg.eth_dns1.buf), "8.8.8.8");
     snprintf(gw_cfg.eth_cfg.eth_dns2.buf, sizeof(gw_cfg.eth_cfg.eth_dns2.buf), "4.4.4.4");
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -769,10 +824,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_disabled) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -788,13 +841,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_no) // NOLINT
     gw_cfg.ruuvi_cfg.remote.auth_type                = GW_CFG_REMOTE_AUTH_TYPE_NO;
     gw_cfg.ruuvi_cfg.remote.refresh_interval_minutes = 10;
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -859,10 +909,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_no) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -883,13 +931,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_basic) // NOL
         p_remote->refresh_interval_minutes = 20;
     }
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -956,10 +1001,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_basic) // NOL
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -979,13 +1022,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_bearer) // NO
         p_remote->refresh_interval_minutes = 30;
     }
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -1051,10 +1091,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_bearer) // NO
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -1067,13 +1105,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_disabled) // NOLINT
 
     gw_cfg.ruuvi_cfg.mqtt.use_mqtt = false;
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -1138,10 +1173,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_disabled) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -1165,13 +1198,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_TCP) // NOLINT
     snprintf(gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf, sizeof(gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf), "user1");
     snprintf(gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf, sizeof(gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf), "pass1");
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -1236,10 +1266,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_TCP) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -1263,13 +1291,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_TCP_disable_retained_mes
     snprintf(gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf, sizeof(gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf), "user1");
     snprintf(gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf, sizeof(gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf), "pass1");
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -1334,10 +1359,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_TCP_disable_retained_mes
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -1361,13 +1384,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_SSL) // NOLINT
     snprintf(gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf, sizeof(gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf), "user2");
     snprintf(gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf, sizeof(gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf), "pass2");
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -1432,10 +1452,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_SSL) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -1459,13 +1477,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WS) // NOLINT
     snprintf(gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf, sizeof(gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf), "user2");
     snprintf(gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf, sizeof(gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf), "pass2");
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -1530,10 +1545,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WS) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -1557,13 +1570,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WSS) // NOLINT
     snprintf(gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf, sizeof(gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf), "user2");
     snprintf(gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf, sizeof(gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf), "pass2");
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -1628,10 +1638,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WSS) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -1643,13 +1651,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_disabled) // NOLINT
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     gw_cfg.ruuvi_cfg.http.use_http = false;
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -1714,10 +1719,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_disabled) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -1735,13 +1738,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled) // NOLINT
         "https://my_url1.com/status");
     snprintf(gw_cfg.ruuvi_cfg.http.http_user.buf, sizeof(gw_cfg.ruuvi_cfg.http.http_user.buf), "user2");
     snprintf(gw_cfg.ruuvi_cfg.http.http_pass.buf, sizeof(gw_cfg.ruuvi_cfg.http.http_pass.buf), "pass2");
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -1808,10 +1808,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -1823,13 +1821,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_disabled) // NOLINT
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     gw_cfg.ruuvi_cfg.http_stat.use_http_stat = false;
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -1894,10 +1889,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_disabled) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -1921,13 +1914,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_enabled) // NOLINT
         gw_cfg.ruuvi_cfg.http_stat.http_stat_pass.buf,
         sizeof(gw_cfg.ruuvi_cfg.http_stat.http_stat_pass.buf),
         "pass1");
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -1992,10 +1982,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_enabled) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -2006,13 +1994,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_default) // NOLINT
     gw_cfg_t         gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -2077,10 +2062,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_default) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -2097,13 +2080,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi) // NOLINT
     gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf[0]    = '\0';
     gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key_rw.buf[0] = '\0';
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -2169,10 +2149,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -2195,13 +2173,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi_with_api_key) // NOLIN
         sizeof(gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key_rw.buf),
         "KAv9oAT0c1XzbCF9N/Bnj2mgVR7R4QbBn/L3Wq5/zuI=");
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -2267,10 +2242,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi_with_api_key) // NOLIN
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -2287,13 +2260,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_digest) // NOLINT
     gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf[0]    = '\0';
     gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key_rw.buf[0] = '\0';
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -2359,10 +2329,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_digest) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -2379,13 +2347,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_basic) // NOLINT
     gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf[0]    = '\0';
     gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key_rw.buf[0] = '\0';
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -2451,10 +2416,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_basic) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -2471,13 +2434,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_allow) // NOLINT
     gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf[0]    = '\0';
     gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key_rw.buf[0] = '\0';
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -2542,10 +2502,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_allow) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -2562,13 +2520,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_deny) // NOLINT
     gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf[0]    = '\0';
     gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key_rw.buf[0] = '\0';
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -2633,10 +2588,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_deny) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -2652,13 +2605,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_beta_tester) // NOLINT
     gw_cfg.ruuvi_cfg.auto_update.auto_update_interval_from    = 1;
     gw_cfg.ruuvi_cfg.auto_update.auto_update_interval_to      = 23;
     gw_cfg.ruuvi_cfg.auto_update.auto_update_tz_offset_hours  = 4;
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -2723,10 +2673,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_beta_tester) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -2742,13 +2690,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_manual) // NOLINT
     gw_cfg.ruuvi_cfg.auto_update.auto_update_interval_from    = 2;
     gw_cfg.ruuvi_cfg.auto_update.auto_update_interval_to      = 22;
     gw_cfg.ruuvi_cfg.auto_update.auto_update_tz_offset_hours  = -4;
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -2813,10 +2758,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_manual) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -2828,13 +2771,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_unknown) // NOLINT
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     gw_cfg.ruuvi_cfg.auto_update.auto_update_cycle = (auto_update_cycle_type_e)-1;
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -2909,13 +2849,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_disabled) // NOLINT
     gw_cfg.ruuvi_cfg.ntp.ntp_use      = false;
     gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp = false;
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -2980,10 +2917,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_disabled) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -2997,13 +2932,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_enabled_via_dhcp) // NOLINT
     gw_cfg.ruuvi_cfg.ntp.ntp_use      = true;
     gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp = true;
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -3068,10 +3000,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_enabled_via_dhcp) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -3094,13 +3024,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_custom) // NOLINT
     snprintf(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf), "time3.server.com");
     snprintf(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf, sizeof(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf), "time4.server.com");
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -3165,10 +3092,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_custom) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(gw_cfg_ruuvi_cmp(&gw_cfg.ruuvi_cfg, &gw_cfg2.ruuvi_cfg));
@@ -3182,13 +3107,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_enabled) // NOLINT
     gw_cfg.ruuvi_cfg.filter.company_id            = 1234;
     gw_cfg.ruuvi_cfg.filter.company_use_filtering = true;
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -3253,10 +3175,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_enabled) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -3270,13 +3190,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_disabled) // NOLINT
     gw_cfg.ruuvi_cfg.filter.company_id            = 1235;
     gw_cfg.ruuvi_cfg.filter.company_use_filtering = false;
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -3341,10 +3258,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_disabled) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -3362,13 +3277,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_default) // NOLINT
     gw_cfg.ruuvi_cfg.scan.scan_channel_38       = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_39       = true;
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -3433,10 +3345,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_default) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -3454,13 +3364,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_coded_phy_true) // NOLINT
     gw_cfg.ruuvi_cfg.scan.scan_channel_38       = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_39       = true;
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -3525,10 +3432,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_coded_phy_true) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -3546,13 +3451,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_1mbit_phy_false) // NOLINT
     gw_cfg.ruuvi_cfg.scan.scan_channel_38       = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_39       = true;
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -3617,10 +3519,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_1mbit_phy_false) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -3638,13 +3538,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_extended_payload_false) // NOLIN
     gw_cfg.ruuvi_cfg.scan.scan_channel_38       = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_39       = true;
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -3709,10 +3606,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_extended_payload_false) // NOLIN
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -3730,13 +3625,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_37_false) // NOLINT
     gw_cfg.ruuvi_cfg.scan.scan_channel_38       = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_39       = true;
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -3801,10 +3693,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_37_false) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -3822,13 +3712,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_38_false) // NOLINT
     gw_cfg.ruuvi_cfg.scan.scan_channel_38       = false;
     gw_cfg.ruuvi_cfg.scan.scan_channel_39       = true;
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -3893,10 +3780,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_38_false) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -3914,13 +3799,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_39_false) // NOLINT
     gw_cfg.ruuvi_cfg.scan.scan_channel_38       = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_39       = false;
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -3985,10 +3867,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_39_false) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -4001,13 +3881,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_coordinates) // NOLINT
 
     snprintf(gw_cfg.ruuvi_cfg.coordinates.buf, sizeof(gw_cfg.ruuvi_cfg.coordinates.buf), "123,456");
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -4072,10 +3949,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_coordinates) // NOLINT
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
@@ -4086,12 +3961,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_default) // NOLINT
     const gw_cfg_t   gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_EQ(true, gw_cfg2.eth_cfg.use_eth);
@@ -4155,12 +4028,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_default) // NOLINT
 
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg2, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg2, &json_str));
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -4307,13 +4177,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
     };
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_EQ(true, gw_cfg2.eth_cfg.use_eth);
@@ -4375,12 +4243,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
 
     ASSERT_EQ(string("coordinates1"), gw_cfg2.ruuvi_cfg.coordinates.buf);
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg2, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg2, &json_str));
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -4528,13 +4393,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
     };
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_EQ(true, gw_cfg2.eth_cfg.use_eth);
@@ -4596,12 +4459,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
 
     ASSERT_EQ(string("coordinates1"), gw_cfg2.ruuvi_cfg.coordinates.buf);
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg2, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg2, &json_str));
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -4749,13 +4609,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
     };
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_EQ(true, gw_cfg2.eth_cfg.use_eth);
@@ -4817,12 +4675,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
 
     ASSERT_EQ(string("coordinates1"), gw_cfg2.ruuvi_cfg.coordinates.buf);
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg2, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg2, &json_str));
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -4894,9 +4749,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
 {
     const char* const p_json_str
         = "{\n"
-          "\t\"fw_ver\":\t\"v1.10.0\",\n"
-          "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-          "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
           "\t\"wifi_sta_config\":\t{\n"
           "\t\t\"ssid\":\t\"\",\n"
           "\t\t\"password\":\t\"\"\n"
@@ -4960,10 +4812,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
           "\t\"coordinates\":\t\"coordinates1\"\n"
           "}";
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, p_json_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, p_json_str, &gw_cfg2));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Unknown auto_update_cycle='unknown', use REGULAR"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
@@ -5027,12 +4877,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
     ASSERT_EQ(string("coordinates1"), gw_cfg2.ruuvi_cfg.coordinates.buf);
 
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg2, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg2, &json_str));
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -5180,13 +5027,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
     };
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_EQ(true, gw_cfg2.eth_cfg.use_eth);
@@ -5248,12 +5093,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
 
     ASSERT_EQ(string("coordinates1"), gw_cfg2.ruuvi_cfg.coordinates.buf);
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg2, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg2, &json_str));
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -5401,13 +5243,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
     };
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_EQ(true, gw_cfg2.eth_cfg.use_eth);
@@ -5469,12 +5309,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
 
     ASSERT_EQ(string("coordinates1"), gw_cfg2.ruuvi_cfg.coordinates.buf);
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg2, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg2, &json_str));
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -5622,13 +5459,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_custom) // NOLINT
     };
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_EQ(true, gw_cfg2.eth_cfg.use_eth);
@@ -5690,12 +5525,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_custom) // NOLINT
 
     ASSERT_EQ(string("coordinates1"), gw_cfg2.ruuvi_cfg.coordinates.buf);
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg2, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg2, &json_str));
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -5770,13 +5602,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
 
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -5844,9 +5673,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
 
     const char* const p_json_str
         = "{\n"
-          "\t\"fw_ver\":\t\"v1.10.0\",\n"
-          "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-          "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
           "\t\"wifi_sta_config\":\t{\n"
           "\t\t\"ssid\":\t\"\",\n"
           "\t\t\"password\":\t\"\"\n"
@@ -5910,10 +5736,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
           "\t\"coordinates\":\t\"\"\n"
           "}";
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, p_json_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, p_json_str, &gw_cfg2));
 
     ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_DEFAULT, gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_type);
     ASSERT_EQ(string("Admin"), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_user.buf);
@@ -5921,12 +5745,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
     ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
     ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_api_key_rw.buf);
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg2, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg2, &json_str));
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -6004,13 +5825,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi) // NOLINT
 
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -6075,10 +5893,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi) // NOLINT
                "}"),
         json_str.p_str);
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2, &flag_modified));
-    ASSERT_FALSE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_type);
@@ -6087,12 +5903,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi) // NOLINT
     ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
     ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.lan_auth.lan_auth_api_key_rw.buf);
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg2, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg2, &json_str));
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -6164,10 +5977,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
 {
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, "{}", &gw_cfg2, &flag_modified));
-    ASSERT_TRUE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, "{}", &gw_cfg2));
 
     ASSERT_EQ(true, gw_cfg2.eth_cfg.use_eth);
     ASSERT_EQ(true, gw_cfg2.eth_cfg.eth_dhcp);
@@ -6232,12 +6043,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
     gw_cfg_default_get(&gateway_config_default);
     ASSERT_TRUE(0 == memcmp(&gateway_config_default, &gw_cfg2, sizeof(gateway_config_default)));
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg2, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg2, &json_str));
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -6366,7 +6174,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'eth_dhcp' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'wifi_ap_config' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'wifi_sta_config' in config-json"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("gw_cfg: device_info differs: esp32_fw_ver: cur=v1.10.0, prev="));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     cjson_wrap_free_json_str(&json_str);
 }
@@ -6375,10 +6182,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_string) // NOLINT
 {
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    gw_cfg_t gw_cfg2       = get_gateway_config_default();
-    bool     flag_modified = false;
-    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, "", &gw_cfg2, &flag_modified));
-    ASSERT_TRUE(flag_modified);
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_FALSE(gw_cfg_json_parse("my.json", nullptr, "", &gw_cfg2));
 
     ASSERT_EQ(true, gw_cfg2.eth_cfg.use_eth);
     ASSERT_EQ(true, gw_cfg2.eth_cfg.eth_dhcp);
@@ -6443,12 +6248,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_string) // NOLINT
     gw_cfg_default_get(&gateway_config_default);
     ASSERT_TRUE(0 == memcmp(&gateway_config_default, &gw_cfg2, sizeof(gateway_config_default)));
 
-    ASSERT_TRUE(gw_cfg_json_generate_full(&gw_cfg2, &json_str));
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg2, &json_str));
     ASSERT_EQ(
         string("{\n"
-               "\t\"fw_ver\":\t\"v1.10.0\",\n"
-               "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-               "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\",\n"
                "\t\t\"password\":\t\"\"\n"
@@ -6524,9 +6326,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_malloc_failed) // NOLINT
 
     const char* const p_json_str
         = "{\n"
-          "\t\"fw_ver\":\t\"v1.10.0\",\n"
-          "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
-          "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
           "\t\"wifi_sta_config\":\t{\n"
           "\t\t\"ssid\":\t\"\",\n"
           "\t\t\"password\":\t\"\"\n"
@@ -6589,27 +6388,23 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_malloc_failed) // NOLINT
           "\t\"scan_channel_39\":\ttrue,\n"
           "\t\"coordinates\":\t\"\"\n"
           "}";
-    for (uint32_t i = 0; i < 156; ++i)
+    for (uint32_t i = 0; i < 152; ++i)
     {
         this->m_malloc_cnt         = 0;
         this->m_malloc_fail_on_cnt = i + 1;
         gw_cfg_t gw_cfg2           = get_gateway_config_default();
-        bool     flag_modified     = false;
-        if (gw_cfg_json_parse("my.json", nullptr, p_json_str, &gw_cfg2, &flag_modified))
+        if (gw_cfg_json_parse("my.json", nullptr, p_json_str, &gw_cfg2))
         {
             ASSERT_FALSE(true);
         }
-        ASSERT_FALSE(flag_modified);
         ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
     }
 
     {
         this->m_malloc_cnt         = 0;
-        this->m_malloc_fail_on_cnt = 162;
+        this->m_malloc_fail_on_cnt = 153;
         gw_cfg_t gw_cfg2           = get_gateway_config_default();
-        bool     flag_modified     = false;
-        ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, p_json_str, &gw_cfg2, &flag_modified));
-        ASSERT_FALSE(flag_modified);
+        ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, p_json_str, &gw_cfg2));
         ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
     }
 }
@@ -6626,180 +6421,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_json_creation) // NO
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 1;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't create json object"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_fw_ver) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 2;
-
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: fw_ver"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_fw_ver_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 3;
-
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: fw_ver"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_fw_ver_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 4;
-
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: fw_ver"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_nrf52_fw_ver) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 5;
-
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: nrf52_fw_ver"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_nrf52_fw_ver_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 6;
-
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: nrf52_fw_ver"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_nrf52_fw_ver_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 7;
-
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: nrf52_fw_ver"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_nrf52_gw_mac) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 8;
-
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: gw_mac"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_nrf52_gw_mac_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 9;
-
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: gw_mac"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_nrf52_gw_mac_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 10;
-
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: gw_mac"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -6814,9 +6438,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 11;
+    this->m_malloc_fail_on_cnt = 2;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: wifi_sta_config"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -6833,9 +6457,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 12;
+    this->m_malloc_fail_on_cnt = 3;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: wifi_sta_config"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -6852,9 +6476,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config_ssid
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 13;
+    this->m_malloc_fail_on_cnt = 4;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ssid"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -6871,9 +6495,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config_ssid
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 14;
+    this->m_malloc_fail_on_cnt = 5;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ssid"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -6890,9 +6514,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config_ssid
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 15;
+    this->m_malloc_fail_on_cnt = 6;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ssid"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -6909,9 +6533,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config_pass
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 16;
+    this->m_malloc_fail_on_cnt = 7;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: password"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -6928,9 +6552,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config_pass
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 17;
+    this->m_malloc_fail_on_cnt = 8;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: password"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -6947,9 +6571,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config_pass
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 18;
+    this->m_malloc_fail_on_cnt = 9;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: password"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -6966,9 +6590,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_ap_config) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 19;
+    this->m_malloc_fail_on_cnt = 10;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: wifi_ap_config"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -6985,9 +6609,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_ap_config_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 20;
+    this->m_malloc_fail_on_cnt = 11;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: wifi_ap_config"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7004,9 +6628,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_ap_config_passw
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 21;
+    this->m_malloc_fail_on_cnt = 12;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: password"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7023,9 +6647,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_ap_config_passw
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 22;
+    this->m_malloc_fail_on_cnt = 13;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: password"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7042,9 +6666,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_ap_config_passw
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 23;
+    this->m_malloc_fail_on_cnt = 14;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: password"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7061,9 +6685,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_ap_config_chann
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 24;
+    this->m_malloc_fail_on_cnt = 15;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: channel"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7080,9 +6704,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_ap_config_chann
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 25;
+    this->m_malloc_fail_on_cnt = 16;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: channel"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7099,9 +6723,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_eth) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 26;
+    this->m_malloc_fail_on_cnt = 17;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_eth"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7118,9 +6742,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_eth_2) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 27;
+    this->m_malloc_fail_on_cnt = 18;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_eth"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7137,9 +6761,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dhcp) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 28;
+    this->m_malloc_fail_on_cnt = 19;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dhcp"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7156,9 +6780,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dhcp_2) // NOLIN
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 29;
+    this->m_malloc_fail_on_cnt = 20;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dhcp"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7175,9 +6799,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_static_ip) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 30;
+    this->m_malloc_fail_on_cnt = 21;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_static_ip"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7194,9 +6818,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_static_ip_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 31;
+    this->m_malloc_fail_on_cnt = 22;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_static_ip"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7213,9 +6837,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_static_ip_3) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 32;
+    this->m_malloc_fail_on_cnt = 23;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_static_ip"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7232,9 +6856,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_netmask) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 33;
+    this->m_malloc_fail_on_cnt = 24;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_netmask"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7251,9 +6875,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_netmask_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 34;
+    this->m_malloc_fail_on_cnt = 25;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_netmask"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7270,9 +6894,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_netmask_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 35;
+    this->m_malloc_fail_on_cnt = 26;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_netmask"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7289,9 +6913,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_gw) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 36;
+    this->m_malloc_fail_on_cnt = 27;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_gw"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7308,9 +6932,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_gw_2) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 37;
+    this->m_malloc_fail_on_cnt = 28;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_gw"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7327,9 +6951,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_gw_3) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 38;
+    this->m_malloc_fail_on_cnt = 29;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_gw"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7346,9 +6970,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dns1) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 39;
+    this->m_malloc_fail_on_cnt = 30;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dns1"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7365,9 +6989,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dns1_2) // NOLIN
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 40;
+    this->m_malloc_fail_on_cnt = 31;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dns1"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7384,9 +7008,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dns1_3) // NOLIN
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 41;
+    this->m_malloc_fail_on_cnt = 32;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dns1"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7403,9 +7027,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dns2) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 42;
+    this->m_malloc_fail_on_cnt = 33;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dns2"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7422,9 +7046,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dns2_1) // NOLIN
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 43;
+    this->m_malloc_fail_on_cnt = 34;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dns2"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7441,9 +7065,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dns2_2) // NOLIN
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 44;
+    this->m_malloc_fail_on_cnt = 35;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dns2"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7460,9 +7084,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_use) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 45;
+    this->m_malloc_fail_on_cnt = 36;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_use"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7479,9 +7103,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_use_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 46;
+    this->m_malloc_fail_on_cnt = 37;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_use"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7498,9 +7122,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_url) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 47;
+    this->m_malloc_fail_on_cnt = 38;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_url"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7517,9 +7141,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_url_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 48;
+    this->m_malloc_fail_on_cnt = 39;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_url"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7536,9 +7160,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_url_3) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 49;
+    this->m_malloc_fail_on_cnt = 40;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_url"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7555,9 +7179,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_auth_type
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 50;
+    this->m_malloc_fail_on_cnt = 41;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_auth_type"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7574,9 +7198,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_auth_type
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 51;
+    this->m_malloc_fail_on_cnt = 42;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_auth_type"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7593,9 +7217,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_auth_type
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 52;
+    this->m_malloc_fail_on_cnt = 43;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_auth_type"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7612,9 +7236,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_refresh_i
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 53;
+    this->m_malloc_fail_on_cnt = 44;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_refresh_interval_minutes"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7631,9 +7255,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_refresh_i
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 54;
+    this->m_malloc_fail_on_cnt = 45;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_refresh_interval_minutes"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7650,9 +7274,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 55;
+    this->m_malloc_fail_on_cnt = 46;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_http"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7669,9 +7293,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http_2) // NOLIN
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 56;
+    this->m_malloc_fail_on_cnt = 47;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_http"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7688,9 +7312,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_url) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 57;
+    this->m_malloc_fail_on_cnt = 48;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_url"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7707,9 +7331,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_url_2) // NOLIN
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 58;
+    this->m_malloc_fail_on_cnt = 49;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_url"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7726,9 +7350,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_url_3) // NOLIN
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 59;
+    this->m_malloc_fail_on_cnt = 50;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_url"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7745,9 +7369,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_user) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 60;
+    this->m_malloc_fail_on_cnt = 51;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7764,9 +7388,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_user_2) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 61;
+    this->m_malloc_fail_on_cnt = 52;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7783,9 +7407,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_user_3) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 62;
+    this->m_malloc_fail_on_cnt = 53;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7802,9 +7426,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_pass) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 63;
+    this->m_malloc_fail_on_cnt = 54;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_pass"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7821,9 +7445,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_pass_2) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 64;
+    this->m_malloc_fail_on_cnt = 55;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_pass"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7840,9 +7464,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_pass_3) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 65;
+    this->m_malloc_fail_on_cnt = 56;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_pass"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7859,9 +7483,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http_stat) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 66;
+    this->m_malloc_fail_on_cnt = 57;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_http_stat"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7878,9 +7502,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http_stat_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 67;
+    this->m_malloc_fail_on_cnt = 58;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_http_stat"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7897,9 +7521,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_url) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 68;
+    this->m_malloc_fail_on_cnt = 59;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_url"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7916,9 +7540,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_url_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 69;
+    this->m_malloc_fail_on_cnt = 60;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_url"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7935,9 +7559,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_url_3) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 70;
+    this->m_malloc_fail_on_cnt = 61;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_url"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7954,9 +7578,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_user) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 71;
+    this->m_malloc_fail_on_cnt = 62;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7973,9 +7597,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_user_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 72;
+    this->m_malloc_fail_on_cnt = 63;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7992,9 +7616,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_user_3) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 73;
+    this->m_malloc_fail_on_cnt = 64;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8011,9 +7635,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_pass) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 74;
+    this->m_malloc_fail_on_cnt = 65;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_pass"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8030,9 +7654,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_pass_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 75;
+    this->m_malloc_fail_on_cnt = 66;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_pass"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8049,9 +7673,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_pass_3) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 76;
+    this->m_malloc_fail_on_cnt = 67;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_pass"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8068,9 +7692,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_mqtt) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 77;
+    this->m_malloc_fail_on_cnt = 68;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_mqtt"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8087,9 +7711,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_mqtt_2) // NOLIN
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 78;
+    this->m_malloc_fail_on_cnt = 69;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_mqtt"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8106,9 +7730,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_disable_retaine
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 79;
+    this->m_malloc_fail_on_cnt = 70;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_disable_retained_messages"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8125,9 +7749,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_disable_retaine
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 80;
+    this->m_malloc_fail_on_cnt = 71;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_disable_retained_messages"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8144,9 +7768,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_trnasport) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 81;
+    this->m_malloc_fail_on_cnt = 72;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_transport"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8163,9 +7787,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_trnasport_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 82;
+    this->m_malloc_fail_on_cnt = 73;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_transport"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8182,9 +7806,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_trnasport_3) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 83;
+    this->m_malloc_fail_on_cnt = 74;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_transport"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8201,9 +7825,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_server) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 84;
+    this->m_malloc_fail_on_cnt = 75;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_server"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8220,9 +7844,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_server_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 85;
+    this->m_malloc_fail_on_cnt = 76;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_server"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8239,9 +7863,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_server_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 86;
+    this->m_malloc_fail_on_cnt = 77;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_server"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8258,9 +7882,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_port) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 87;
+    this->m_malloc_fail_on_cnt = 78;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_port"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8277,9 +7901,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_port_2) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 88;
+    this->m_malloc_fail_on_cnt = 79;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_port"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8296,9 +7920,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 89;
+    this->m_malloc_fail_on_cnt = 80;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_prefix"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8315,9 +7939,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 90;
+    this->m_malloc_fail_on_cnt = 81;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_prefix"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8334,9 +7958,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 91;
+    this->m_malloc_fail_on_cnt = 82;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_prefix"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8353,9 +7977,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 92;
+    this->m_malloc_fail_on_cnt = 83;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_client_id"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8372,9 +7996,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 93;
+    this->m_malloc_fail_on_cnt = 84;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_client_id"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8391,9 +8015,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id_3) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 94;
+    this->m_malloc_fail_on_cnt = 85;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_client_id"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8410,9 +8034,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 95;
+    this->m_malloc_fail_on_cnt = 86;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8429,9 +8053,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user_2) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 96;
+    this->m_malloc_fail_on_cnt = 87;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8448,9 +8072,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user_3) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 97;
+    this->m_malloc_fail_on_cnt = 88;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8467,9 +8091,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 98;
+    this->m_malloc_fail_on_cnt = 89;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_pass"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8486,9 +8110,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass_2) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 99;
+    this->m_malloc_fail_on_cnt = 90;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_pass"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8505,9 +8129,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass_3) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 100;
+    this->m_malloc_fail_on_cnt = 91;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_pass"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8524,9 +8148,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_type) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 101;
+    this->m_malloc_fail_on_cnt = 92;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_type"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8543,9 +8167,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_type_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 102;
+    this->m_malloc_fail_on_cnt = 93;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_type"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8562,9 +8186,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_type_3) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 103;
+    this->m_malloc_fail_on_cnt = 94;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_type"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8581,9 +8205,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_user) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 104;
+    this->m_malloc_fail_on_cnt = 95;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8600,9 +8224,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_user_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 105;
+    this->m_malloc_fail_on_cnt = 96;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8619,9 +8243,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_user_3) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 106;
+    this->m_malloc_fail_on_cnt = 97;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8638,9 +8262,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_pass) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 107;
+    this->m_malloc_fail_on_cnt = 98;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_pass"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8657,9 +8281,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_pass_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 108;
+    this->m_malloc_fail_on_cnt = 99;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_pass"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8676,9 +8300,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_pass_3) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 109;
+    this->m_malloc_fail_on_cnt = 100;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_pass"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8695,9 +8319,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 110;
+    this->m_malloc_fail_on_cnt = 101;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_api_key"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8714,9 +8338,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_2) 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 111;
+    this->m_malloc_fail_on_cnt = 102;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_api_key"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8733,9 +8357,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_3) 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 112;
+    this->m_malloc_fail_on_cnt = 103;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_api_key"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8752,9 +8376,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_rw)
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 113;
+    this->m_malloc_fail_on_cnt = 104;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_api_key_rw"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8771,9 +8395,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_rw_
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 114;
+    this->m_malloc_fail_on_cnt = 105;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_api_key_rw"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8790,9 +8414,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_rw_
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 115;
+    this->m_malloc_fail_on_cnt = 106;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_api_key_rw"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8809,9 +8433,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_cycle) /
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 116;
+    this->m_malloc_fail_on_cnt = 107;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_cycle"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8828,9 +8452,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_cycle_2)
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 117;
+    this->m_malloc_fail_on_cnt = 108;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_cycle"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8847,9 +8471,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_cycle_3)
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 118;
+    this->m_malloc_fail_on_cnt = 109;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_cycle"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8866,9 +8490,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_weekdays
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 119;
+    this->m_malloc_fail_on_cnt = 110;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_weekdays_bitmask"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8885,9 +8509,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_weekdays
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 120;
+    this->m_malloc_fail_on_cnt = 111;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_weekdays_bitmask"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8904,9 +8528,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 121;
+    this->m_malloc_fail_on_cnt = 112;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_interval_from"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8923,9 +8547,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 122;
+    this->m_malloc_fail_on_cnt = 113;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_interval_from"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8942,9 +8566,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 123;
+    this->m_malloc_fail_on_cnt = 114;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_interval_to"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8961,9 +8585,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 124;
+    this->m_malloc_fail_on_cnt = 115;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_interval_to"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8980,9 +8604,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_tz) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 125;
+    this->m_malloc_fail_on_cnt = 116;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_tz_offset_hours"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -8999,9 +8623,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_tz_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 126;
+    this->m_malloc_fail_on_cnt = 117;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_tz_offset_hours"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9018,9 +8642,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 127;
+    this->m_malloc_fail_on_cnt = 118;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_use"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9037,9 +8661,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use_2) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 128;
+    this->m_malloc_fail_on_cnt = 119;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_use"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9056,9 +8680,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use_dhcp) // NOL
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 129;
+    this->m_malloc_fail_on_cnt = 120;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_use_dhcp"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9075,9 +8699,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use_dhcp_2) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 130;
+    this->m_malloc_fail_on_cnt = 121;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_use_dhcp"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9094,9 +8718,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server1) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 131;
+    this->m_malloc_fail_on_cnt = 122;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server1"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9113,9 +8737,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server1_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 132;
+    this->m_malloc_fail_on_cnt = 123;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server1"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9132,9 +8756,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server1_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 133;
+    this->m_malloc_fail_on_cnt = 124;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server1"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9151,9 +8775,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server2) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 134;
+    this->m_malloc_fail_on_cnt = 125;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server2"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9170,9 +8794,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server2_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 135;
+    this->m_malloc_fail_on_cnt = 126;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server2"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9189,9 +8813,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server2_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 136;
+    this->m_malloc_fail_on_cnt = 127;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server2"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9208,9 +8832,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server3) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 137;
+    this->m_malloc_fail_on_cnt = 128;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server3"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9227,9 +8851,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server3_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 138;
+    this->m_malloc_fail_on_cnt = 129;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server3"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9246,9 +8870,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server3_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 139;
+    this->m_malloc_fail_on_cnt = 130;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server3"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9265,9 +8889,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server4) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 140;
+    this->m_malloc_fail_on_cnt = 131;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server4"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9284,9 +8908,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server4_1) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 141;
+    this->m_malloc_fail_on_cnt = 132;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server4"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9303,9 +8927,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server4_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 142;
+    this->m_malloc_fail_on_cnt = 133;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server4"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9322,9 +8946,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_company_id) // NOLIN
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 143;
+    this->m_malloc_fail_on_cnt = 134;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: company_id"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9341,9 +8965,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_company_id_2) // NOL
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 144;
+    this->m_malloc_fail_on_cnt = 135;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: company_id"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9360,9 +8984,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_filtering) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 145;
+    this->m_malloc_fail_on_cnt = 136;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: company_use_filtering"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9379,9 +9003,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_filtering_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 146;
+    this->m_malloc_fail_on_cnt = 137;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: company_use_filtering"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9398,9 +9022,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_coded_phy) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 147;
+    this->m_malloc_fail_on_cnt = 138;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_coded_phy"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9417,9 +9041,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_coded_phy_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 148;
+    this->m_malloc_fail_on_cnt = 139;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_coded_phy"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9436,9 +9060,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_1mbit_phy) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 149;
+    this->m_malloc_fail_on_cnt = 140;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_1mbit_phy"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9455,9 +9079,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_1mbit_phy_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 150;
+    this->m_malloc_fail_on_cnt = 141;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_1mbit_phy"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9474,9 +9098,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_extended_payload
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 151;
+    this->m_malloc_fail_on_cnt = 142;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_extended_payload"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9493,9 +9117,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_extended_payload
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 152;
+    this->m_malloc_fail_on_cnt = 143;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_extended_payload"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9512,9 +9136,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_37) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 153;
+    this->m_malloc_fail_on_cnt = 144;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_channel_37"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9531,9 +9155,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_37_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 154;
+    this->m_malloc_fail_on_cnt = 145;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_channel_37"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9550,9 +9174,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_38) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 155;
+    this->m_malloc_fail_on_cnt = 146;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_channel_38"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9569,9 +9193,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_38_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 156;
+    this->m_malloc_fail_on_cnt = 147;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_channel_38"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9588,9 +9212,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_39) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 157;
+    this->m_malloc_fail_on_cnt = 148;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_channel_39"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9607,9 +9231,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_39_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 158;
+    this->m_malloc_fail_on_cnt = 149;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_channel_39"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9626,9 +9250,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 159;
+    this->m_malloc_fail_on_cnt = 150;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: coordinates"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9645,9 +9269,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 160;
+    this->m_malloc_fail_on_cnt = 151;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: coordinates"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9664,9 +9288,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 161;
+    this->m_malloc_fail_on_cnt = 152;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: coordinates"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -9683,9 +9307,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_converting_to_json_s
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 162;
+    this->m_malloc_fail_on_cnt = 153;
 
-    ASSERT_FALSE(gw_cfg_json_generate_full(&gw_cfg, &json_str));
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't create json string"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
