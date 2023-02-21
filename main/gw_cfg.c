@@ -1064,6 +1064,12 @@ gw_cfg_get_wifi_ap_ssid(void)
     return gw_cfg_default_get_wifi_ap_ssid();
 }
 
+const wifiman_hostname_t*
+gw_cfg_get_hostname(void)
+{
+    return gw_cfg_default_get_hostname();
+}
+
 const char*
 gw_cfg_auth_type_to_str(const ruuvi_gw_cfg_lan_auth_t* const p_lan_auth)
 {

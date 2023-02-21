@@ -48,7 +48,8 @@ extern "C" {
 
 typedef struct gw_cfg_device_info_t
 {
-    wifiman_wifi_ssid_t      wifi_ap_hostname;
+    wifiman_wifi_ssid_t      wifi_ap;
+    wifiman_hostname_t       hostname;
     ruuvi_esp32_fw_ver_str_t esp32_fw_ver;
     ruuvi_nrf52_fw_ver_str_t nrf52_fw_ver;
     mac_address_str_t        nrf52_mac_addr;
@@ -403,6 +404,9 @@ gw_cfg_get_esp32_mac_addr_eth(void);
 
 const wifiman_wifi_ssid_t*
 gw_cfg_get_wifi_ap_ssid(void);
+
+const wifiman_hostname_t*
+gw_cfg_get_hostname(void);
 
 const char*
 gw_cfg_auth_type_to_str(const ruuvi_gw_cfg_lan_auth_t* const p_lan_auth);

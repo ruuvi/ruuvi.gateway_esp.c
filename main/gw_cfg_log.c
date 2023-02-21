@@ -194,6 +194,7 @@ gw_cfg_log_wifi_cfg_sta(const wifiman_config_sta_t* const p_wifi_cfg_sta, const 
     }
     gw_cfg_log_wifi_config_sta(&p_wifi_cfg_sta->wifi_config_sta);
     gw_cfg_log_wifi_settings_sta(&p_wifi_cfg_sta->wifi_settings_sta);
+    LOG_INFO("config: wifi_sta_settings: Hostname: %s", p_wifi_cfg_sta->hostname.hostname_buf);
 }
 
 void
@@ -203,7 +204,8 @@ gw_cfg_log_device_info(const gw_cfg_device_info_t* const p_dev_info, const char*
     {
         LOG_INFO("%s", p_title);
     }
-    LOG_INFO("config: device_info: WiFi AP SSID / Hostname: %s", p_dev_info->wifi_ap_hostname.ssid_buf);
+    LOG_INFO("config: device_info: WiFi AP SSID: %s", p_dev_info->wifi_ap.ssid_buf);
+    LOG_INFO("config: device_info: Hostname: %s", p_dev_info->hostname.hostname_buf);
     LOG_INFO("config: device_info: ESP32 fw ver: %s", p_dev_info->esp32_fw_ver.buf);
     LOG_INFO("config: device_info: ESP32 WiFi MAC ADDR: %s", p_dev_info->esp32_mac_addr_wifi.str_buf);
     LOG_INFO("config: device_info: ESP32 Eth MAC ADDR: %s", p_dev_info->esp32_mac_addr_eth.str_buf);

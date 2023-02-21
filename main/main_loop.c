@@ -262,7 +262,7 @@ main_task_handle_sig_deactivate_wifi_ap(void)
     if (gw_status_get_first_boot_after_cfg_erase() && gw_cfg_is_empty())
     {
         LOG_INFO("Gateway has not configured yet, so don't stop Wi-Fi hotspot, start Ethernet instead");
-        ethernet_start(gw_cfg_get_wifi_ap_ssid()->ssid_buf);
+        ethernet_start();
     }
     else
     {
@@ -319,7 +319,7 @@ main_task_handle_sig_network_reconnect(void)
     if (gw_cfg_get_eth_use_eth())
     {
         ethernet_stop();
-        ethernet_start(gw_cfg_get_wifi_ap_ssid()->ssid_buf);
+        ethernet_start();
     }
     else
     {

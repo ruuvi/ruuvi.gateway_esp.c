@@ -106,6 +106,7 @@ protected:
 
         const gw_cfg_default_init_param_t init_params = {
             .wifi_ap_ssid        = { "my_ssid1" },
+            .hostname            = { "RuuviGatewayAABB" },
             .device_id           = { 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88 },
             .esp32_fw_ver        = { "v1.10.0" },
             .nrf52_fw_ver        = { "v0.7.2" },
@@ -265,7 +266,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default) // NOLINT
 {
     const gw_cfg_t gw_cfg = get_gateway_config_default();
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS (default):"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID / Hostname: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: Hostname: RuuviGatewayAABB"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 fw ver: v1.10.0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 WiFi MAC ADDR: AA:BB:CC:DD:EE:11"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 Eth MAC ADDR: AA:BB:CC:DD:EE:22"));
@@ -348,6 +350,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Required: false"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Power save: NONE"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Use Static IP: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Hostname: RuuviGatewayAABB"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -364,7 +367,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_no) // NOLINT
     gw_cfg_log(&gw_cfg, "Gateway SETTINGS", true);
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS:"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID / Hostname: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: Hostname: RuuviGatewayAABB"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 fw ver: v1.10.0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 WiFi MAC ADDR: AA:BB:CC:DD:EE:11"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 Eth MAC ADDR: AA:BB:CC:DD:EE:22"));
@@ -447,6 +451,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_no) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Required: false"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Power save: NONE"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Use Static IP: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Hostname: RuuviGatewayAABB"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -471,7 +476,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_basic) // NOLI
     gw_cfg_log(&gw_cfg, "Gateway SETTINGS", true);
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS:"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID / Hostname: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: Hostname: RuuviGatewayAABB"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 fw ver: v1.10.0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 WiFi MAC ADDR: AA:BB:CC:DD:EE:11"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 Eth MAC ADDR: AA:BB:CC:DD:EE:22"));
@@ -556,6 +562,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_basic) // NOLI
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Required: false"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Power save: NONE"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Use Static IP: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Hostname: RuuviGatewayAABB"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -576,7 +583,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_bearer) // NOL
     gw_cfg_log(&gw_cfg, "Gateway SETTINGS", true);
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS:"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID / Hostname: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: Hostname: RuuviGatewayAABB"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 fw ver: v1.10.0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 WiFi MAC ADDR: AA:BB:CC:DD:EE:11"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 Eth MAC ADDR: AA:BB:CC:DD:EE:22"));
@@ -660,6 +668,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_bearer) // NOL
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Required: false"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Power save: NONE"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Use Static IP: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Hostname: RuuviGatewayAABB"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -674,7 +683,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_beta_tester_and_
     gw_cfg_log(&gw_cfg, "Gateway SETTINGS", true);
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS:"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID / Hostname: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: Hostname: RuuviGatewayAABB"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 fw ver: v1.10.0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 WiFi MAC ADDR: AA:BB:CC:DD:EE:11"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 Eth MAC ADDR: AA:BB:CC:DD:EE:22"));
@@ -757,6 +767,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_beta_tester_and_
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Required: false"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Power save: NONE"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Use Static IP: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Hostname: RuuviGatewayAABB"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -770,7 +781,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_manual) // NOLIN
     gw_cfg_log(&gw_cfg, "Gateway SETTINGS", true);
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS:"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID / Hostname: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: Hostname: RuuviGatewayAABB"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 fw ver: v1.10.0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 WiFi MAC ADDR: AA:BB:CC:DD:EE:11"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 Eth MAC ADDR: AA:BB:CC:DD:EE:22"));
@@ -853,6 +865,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_manual) // NOLIN
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Required: false"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Power save: NONE"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Use Static IP: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Hostname: RuuviGatewayAABB"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -866,7 +879,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_invalid) // NOLI
     gw_cfg_log(&gw_cfg, "Gateway SETTINGS", true);
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS:"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID / Hostname: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: Hostname: RuuviGatewayAABB"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 fw ver: v1.10.0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 WiFi MAC ADDR: AA:BB:CC:DD:EE:11"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 Eth MAC ADDR: AA:BB:CC:DD:EE:22"));
@@ -949,6 +963,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_invalid) // NOLI
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Required: false"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Power save: NONE"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Use Static IP: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Hostname: RuuviGatewayAABB"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -968,7 +983,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_ntp_changed) // NOLINT
     gw_cfg_log(&gw_cfg, "Gateway SETTINGS", true);
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS:"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID / Hostname: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: Hostname: RuuviGatewayAABB"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 fw ver: v1.10.0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 WiFi MAC ADDR: AA:BB:CC:DD:EE:11"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 Eth MAC ADDR: AA:BB:CC:DD:EE:22"));
@@ -1051,5 +1067,6 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_ntp_changed) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Required: false"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Power save: NONE"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Use Static IP: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Hostname: RuuviGatewayAABB"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }

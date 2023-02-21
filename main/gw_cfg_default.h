@@ -27,6 +27,7 @@ typedef bool (*gw_cfg_default_json_read_callback_t)(gw_cfg_t* const p_gw_cfg_def
 typedef struct gw_cfg_default_init_param_t
 {
     const wifiman_wifi_ssid_t      wifi_ap_ssid;
+    const wifiman_hostname_t       hostname;
     const nrf52_device_id_t        device_id;
     const ruuvi_esp32_fw_ver_str_t esp32_fw_ver;
     const ruuvi_nrf52_fw_ver_str_t nrf52_fw_ver;
@@ -75,6 +76,9 @@ gw_cfg_default_get_wifi_config_sta_ptr(void);
 
 const wifiman_wifi_ssid_t*
 gw_cfg_default_get_wifi_ap_ssid(void);
+
+const wifiman_hostname_t*
+gw_cfg_default_get_hostname(void);
 
 #ifdef __cplusplus
 }
