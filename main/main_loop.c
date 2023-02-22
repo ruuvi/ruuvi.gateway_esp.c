@@ -15,6 +15,7 @@
 #include "ethernet.h"
 #include "leds.h"
 #include "mqtt.h"
+#include "mdns.h"
 #include "time_task.h"
 #include "event_mgr.h"
 #include "gw_status.h"
@@ -50,12 +51,13 @@ typedef enum main_task_sig_e
     MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT                = OS_SIGNAL_NUM_6,
     MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG                = OS_SIGNAL_NUM_7,
     MAIN_TASK_SIG_NETWORK_CONNECTED                   = OS_SIGNAL_NUM_8,
-    MAIN_TASK_SIG_RECONNECT_NETWORK                   = OS_SIGNAL_NUM_9,
-    MAIN_TASK_SIG_SET_DEFAULT_CONFIG                  = OS_SIGNAL_NUM_10,
-    MAIN_TASK_SIG_ON_GET_HISTORY                      = OS_SIGNAL_NUM_11,
-    MAIN_TASK_SIG_ON_GET_HISTORY_TIMEOUT              = OS_SIGNAL_NUM_12,
-    MAIN_TASK_SIG_RELAYING_MODE_CHANGED               = OS_SIGNAL_NUM_13,
-    MAIN_TASK_SIG_TASK_WATCHDOG_FEED                  = OS_SIGNAL_NUM_14,
+    MAIN_TASK_SIG_NETWORK_DISCONNECTED                = OS_SIGNAL_NUM_9,
+    MAIN_TASK_SIG_RECONNECT_NETWORK                   = OS_SIGNAL_NUM_10,
+    MAIN_TASK_SIG_SET_DEFAULT_CONFIG                  = OS_SIGNAL_NUM_11,
+    MAIN_TASK_SIG_ON_GET_HISTORY                      = OS_SIGNAL_NUM_12,
+    MAIN_TASK_SIG_ON_GET_HISTORY_TIMEOUT              = OS_SIGNAL_NUM_13,
+    MAIN_TASK_SIG_RELAYING_MODE_CHANGED               = OS_SIGNAL_NUM_14,
+    MAIN_TASK_SIG_TASK_WATCHDOG_FEED                  = OS_SIGNAL_NUM_15,
 } main_task_sig_e;
 
 #define MAIN_TASK_SIG_FIRST (MAIN_TASK_SIG_LOG_HEAP_USAGE)
@@ -77,6 +79,8 @@ static os_timer_sig_periodic_t*       g_p_timer_sig_task_watchdog_feed;
 static os_timer_sig_periodic_static_t g_timer_sig_task_watchdog_feed_mem;
 static event_mgr_ev_info_static_t     g_main_loop_ev_info_mem_wifi_connected;
 static event_mgr_ev_info_static_t     g_main_loop_ev_info_mem_eth_connected;
+static event_mgr_ev_info_static_t     g_main_loop_ev_info_mem_wifi_disconnected;
+static event_mgr_ev_info_static_t     g_main_loop_ev_info_mem_eth_disconnected;
 static event_mgr_ev_info_static_t     g_main_loop_ev_info_mem_relaying_mode_changed;
 
 ATTR_PURE
@@ -278,6 +282,54 @@ main_task_handle_sig_check_for_remote_cfg(void)
 }
 
 static void
+start_mdns(void)
+{
+    esp_err_t err = mdns_init();
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "mdns_init failed");
+        return;
+    }
+
+    const wifiman_hostname_t* const p_hostname = gw_cfg_get_hostname();
+    err = mdns_hostname_set(p_hostname->hostname_buf);
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "mdns_hostname_set failed");
+    }
+    const wifiman_wifi_ssid_t* const p_wifi_ap_ssid = gw_cfg_default_get_wifi_ap_ssid();
+    const char* p_instance_name = strchr(p_wifi_ap_ssid->ssid_buf, ' ');
+    if (NULL == p_instance_name)
+    {
+        p_instance_name = p_wifi_ap_ssid->ssid_buf;
+    }
+    else
+    {
+        // AP SSID: "Configure Ruuvi Gateway XXXX"
+        // Here we skip "Configure " prefix:
+        p_instance_name += 1;
+    }
+    LOG_INFO("### Start mDNS: Hostname: \"%s\", Instance: \"%s\"", p_hostname->hostname_buf, p_instance_name);
+    err = mdns_instance_name_set(p_instance_name);
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "mdns_instance_name_set failed");
+    }
+    err = mdns_service_add(NULL, "_http", "_tcp", 80, NULL, 0);
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "mdns_service_add failed");
+    }
+}
+
+static void
+stop_mdns(void)
+{
+    LOG_INFO("### Stop mDNS");
+    mdns_free();
+}
+
+static void
 main_task_handle_sig_network_connected(void)
 {
     LOG_INFO("### Handle event: NETWORK_CONNECTED");
@@ -290,6 +342,8 @@ main_task_handle_sig_network_connected(void)
         settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_DISABLED);
     }
 
+    start_mdns();
+
     gw_cfg_remote_refresh_interval_minutes_t remote_cfg_refresh_interval_minutes = 0;
     const bool  flag_use_remote_cfg = gw_cfg_get_remote_cfg_use(&remote_cfg_refresh_interval_minutes);
     static bool g_flag_initial_request_for_remote_cfg_performed = false;
@@ -299,6 +353,13 @@ main_task_handle_sig_network_connected(void)
         LOG_INFO("Activate checking for remote cfg");
         os_signal_send(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG));
     }
+}
+
+static void
+main_task_handle_sig_network_disconnected(void)
+{
+    LOG_INFO("### Handle event: NETWORK_DISCONNECTED");
+    stop_mdns();
 }
 
 static void
@@ -433,6 +494,9 @@ main_task_handle_sig(const main_task_sig_e main_task_sig)
         case MAIN_TASK_SIG_NETWORK_CONNECTED:
             main_task_handle_sig_network_connected();
             break;
+        case MAIN_TASK_SIG_NETWORK_DISCONNECTED:
+            main_task_handle_sig_network_disconnected();
+            break;
         case MAIN_TASK_SIG_RECONNECT_NETWORK:
             main_task_handle_sig_network_reconnect();
             break;
@@ -564,6 +628,7 @@ main_task_init_signals(void)
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_NETWORK_CONNECTED));
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_NETWORK_DISCONNECTED));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_RECONNECT_NETWORK));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_SET_DEFAULT_CONFIG));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_ON_GET_HISTORY));
@@ -631,6 +696,18 @@ main_task_subscribe_events(void)
         EVENT_MGR_EV_ETH_CONNECTED,
         g_p_signal_main_task,
         main_task_conv_to_sig_num(MAIN_TASK_SIG_NETWORK_CONNECTED));
+
+    event_mgr_subscribe_sig_static(
+        &g_main_loop_ev_info_mem_wifi_disconnected,
+        EVENT_MGR_EV_WIFI_DISCONNECTED,
+        g_p_signal_main_task,
+        main_task_conv_to_sig_num(MAIN_TASK_SIG_NETWORK_DISCONNECTED));
+
+    event_mgr_subscribe_sig_static(
+        &g_main_loop_ev_info_mem_eth_disconnected,
+        EVENT_MGR_EV_ETH_DISCONNECTED,
+        g_p_signal_main_task,
+        main_task_conv_to_sig_num(MAIN_TASK_SIG_NETWORK_DISCONNECTED));
 
     event_mgr_subscribe_sig_static(
         &g_main_loop_ev_info_mem_relaying_mode_changed,
