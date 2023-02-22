@@ -56,7 +56,8 @@
 
 static const char TAG[] = "ruuvi_gateway";
 
-#define RUUVI_GATEWAY_WIFI_AP_PREFIX "Configure Ruuvi Gateway "
+#define RUUVI_GATEWAY_WIFI_AP_PREFIX  "Configure Ruuvi Gateway "
+#define RUUVI_GATEWAY_HOSTNAME_PREFIX "RuuviGateway"
 
 #define MAC_ADDRESS_IDX_OF_LAST_BYTE        (MAC_ADDRESS_NUM_BYTES - 1U)
 #define MAC_ADDRESS_IDX_OF_PENULTIMATE_BYTE (MAC_ADDRESS_NUM_BYTES - 2U)
@@ -168,6 +169,37 @@ generate_wifi_ap_ssid(const mac_address_bin_t mac_addr)
     return wifi_ap_ssid;
 }
 
+static wifiman_hostname_t
+generate_hostname(const mac_address_bin_t mac_addr)
+{
+    wifiman_hostname_t hostname       = { 0 };
+    bool               flag_mac_valid = false;
+    for (uint32_t i = 0; i < sizeof(mac_addr.mac); ++i)
+    {
+        if (0 != mac_addr.mac[i])
+        {
+            flag_mac_valid = true;
+            break;
+        }
+    }
+
+    if (!flag_mac_valid)
+    {
+        sniprintf(hostname.hostname_buf, sizeof(hostname.hostname_buf), "%sXXXX", RUUVI_GATEWAY_HOSTNAME_PREFIX);
+    }
+    else
+    {
+        sniprintf(
+            hostname.hostname_buf,
+            sizeof(hostname.hostname_buf),
+            "%s%02X%02X",
+            RUUVI_GATEWAY_HOSTNAME_PREFIX,
+            mac_addr.mac[MAC_ADDRESS_IDX_OF_PENULTIMATE_BYTE],
+            mac_addr.mac[MAC_ADDRESS_IDX_OF_LAST_BYTE]);
+    }
+    return hostname;
+}
+
 static void
 ruuvi_init_gw_cfg(
     const ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver,
@@ -180,6 +212,7 @@ ruuvi_init_gw_cfg(
 
     const gw_cfg_default_init_param_t gw_cfg_default_init_param = {
         .wifi_ap_ssid        = generate_wifi_ap_ssid(nrf52_mac_addr),
+        .hostname            = generate_hostname(nrf52_mac_addr),
         .device_id           = nrf52_device_id,
         .esp32_fw_ver        = fw_update_get_cur_version(),
         .nrf52_fw_ver        = nrf52_fw_ver_get_str(p_nrf52_fw_ver),
@@ -200,7 +233,7 @@ ruuvi_init_gw_cfg(
         dev_info.nrf52_device_id.str_buf,
         dev_info.nrf52_mac_addr.str_buf,
         dev_info.nrf52_fw_ver.buf,
-        dev_info.wifi_ap_hostname.ssid_buf);
+        dev_info.wifi_ap.ssid_buf);
 
     gw_cfg_init((NULL != p_nrf52_fw_ver) ? &ruuvi_cb_on_change_cfg : NULL);
 
@@ -306,7 +339,7 @@ static void
 cb_on_connect_eth_cmd(void)
 {
     LOG_INFO("callback: on_connect_eth_cmd");
-    ethernet_start(gw_cfg_get_wifi_ap_ssid()->ssid_buf);
+    ethernet_start();
 }
 
 static void
@@ -343,7 +376,7 @@ cb_on_ap_stopped(void)
     main_task_stop_timer_hotspot_deactivation();
     if (gw_cfg_get_eth_use_eth() || (!wifi_manager_is_sta_configured()))
     {
-        ethernet_start(gw_cfg_get_wifi_ap_ssid()->ssid_buf);
+        ethernet_start();
     }
     else
     {
@@ -500,10 +533,12 @@ cb_before_nrf52_fw_updating(void)
         LOG_ERR("%s failed", "http_server_set_auth");
     }
 
-    const wifiman_wifi_ssid_t* p_wifi_ap_ssid = gw_cfg_get_wifi_ap_ssid();
-    LOG_INFO("Read saved WiFi SSID / Hostname: %s", p_wifi_ap_ssid->ssid_buf);
+    const wifiman_wifi_ssid_t* const p_wifi_ap_ssid = gw_cfg_get_wifi_ap_ssid();
+    LOG_INFO("Read saved WiFi SSID: %s", p_wifi_ap_ssid->ssid_buf);
+    const wifiman_hostname_t* const p_hostname = gw_cfg_get_hostname();
+    LOG_INFO("Read saved hostname: %s", p_hostname->hostname_buf);
 
-    const wifiman_config_t* const p_wifi_cfg             = wifi_manager_default_config_init(p_wifi_ap_ssid);
+    const wifiman_config_t* const p_wifi_cfg             = wifi_manager_default_config_init(p_wifi_ap_ssid, p_hostname);
     const bool                    flag_connect_sta_false = false;
     if (!wifi_init(flag_connect_sta_false, p_wifi_cfg, fw_update_get_current_fatfs_gwui_partition_name()))
     {
@@ -701,7 +736,7 @@ network_subsystem_init(
     {
         if (gw_cfg_get_eth_use_eth() || (!is_wifi_sta_configured))
         {
-            ethernet_start(gw_cfg_get_wifi_ap_ssid()->ssid_buf);
+            ethernet_start();
             if (!gw_status_is_eth_link_up())
             {
                 LOG_INFO("### Force start WiFi hotspot (there is no Ethernet connection)");
@@ -726,7 +761,7 @@ network_subsystem_init(
             if (!flag_connect_sta)
             {
                 LOG_INFO("Start Ethernet (gateway has not configured yet)");
-                ethernet_start(gw_cfg_get_wifi_ap_ssid()->ssid_buf);
+                ethernet_start();
             }
         }
         if (FORCE_START_WIFI_HOTSPOT_ONCE == force_start_wifi_hotspot)

@@ -377,8 +377,9 @@ ethernet_deinit(void)
 }
 
 void
-ethernet_start(const char* const hostname)
+ethernet_start(void)
 {
+    const wifiman_hostname_t* const p_hostname = gw_cfg_get_hostname();
     if (NULL == g_eth_handle)
     {
         return;
@@ -403,8 +404,8 @@ ethernet_start(const char* const hostname)
 
     esp_netif_t* const p_netif_eth = esp_netif_get_handle_from_ifkey("ETH_DEF");
 
-    LOG_INFO("### Set hostname for Ethernet interface: %s", hostname);
-    err = esp_netif_set_hostname(p_netif_eth, hostname);
+    LOG_INFO("### Set hostname for Ethernet interface: %s", p_hostname->hostname_buf);
+    err = esp_netif_set_hostname(p_netif_eth, p_hostname->hostname_buf);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(err, "%s failed", "esp_netif_set_hostname");
