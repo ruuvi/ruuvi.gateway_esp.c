@@ -292,13 +292,14 @@ start_mdns(void)
     }
 
     const wifiman_hostname_t* const p_hostname = gw_cfg_get_hostname();
+
     err = mdns_hostname_set(p_hostname->hostname_buf);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(err, "mdns_hostname_set failed");
     }
-    const wifiman_wifi_ssid_t* const p_wifi_ap_ssid = gw_cfg_default_get_wifi_ap_ssid();
-    const char* p_instance_name = strchr(p_wifi_ap_ssid->ssid_buf, ' ');
+    const wifiman_wifi_ssid_t* const p_wifi_ap_ssid  = gw_cfg_default_get_wifi_ap_ssid();
+    const char*                      p_instance_name = strchr(p_wifi_ap_ssid->ssid_buf, ' ');
     if (NULL == p_instance_name)
     {
         p_instance_name = p_wifi_ap_ssid->ssid_buf;
