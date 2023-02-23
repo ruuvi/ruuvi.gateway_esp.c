@@ -25,8 +25,3 @@ target_compile_options(${COMPONENT_LIB} PRIVATE "-Wno-format")
 if(${target} STREQUAL "linux")
     target_link_libraries(${COMPONENT_LIB} PRIVATE "-lbsd")
 endif()
-
-
-if(CONFIG_ETH_ENABLED)
-    idf_component_optional_requires(PRIVATE esp_eth)
-endif()

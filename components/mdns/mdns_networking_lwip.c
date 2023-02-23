@@ -147,7 +147,7 @@ static void _udp_recv(void *arg, struct udp_pcb *upcb, struct pbuf *pb, const ip
         memcpy(&packet->src.u_addr, &raddr->u_addr, sizeof(raddr->u_addr));
 #else
         packet->src.type = IPADDR_TYPE_V4;
-        memcpy(&packet->src.u_addr.ip4, &raddr->addr, sizeof(ip_addr_t));
+        memcpy(&packet->src.u_addr.ip4, &raddr->u_addr.ip4, sizeof(ip_addr_t));
 #endif
         packet->dest.type = packet->src.type;
 
@@ -177,7 +177,7 @@ static void _udp_recv(void *arg, struct udp_pcb *upcb, struct pbuf *pb, const ip
 #if CONFIG_LWIP_IPV6
                     if ((packet->src.u_addr.ip4.addr & netif->netmask.u_addr.ip4.addr) != (netif->ip_addr.u_addr.ip4.addr & netif->netmask.u_addr.ip4.addr)) {
 #else
-                    if ((packet->src.u_addr.ip4.addr & netif->netmask.addr) != (netif->ip_addr.addr & netif->netmask.addr)) {
+                    if ((packet->src.u_addr.ip4.addr & netif->netmask.u_addr.ip4.addr) != (netif->ip_addr.u_addr.ip4.addr & netif->netmask.u_addr.ip4.addr)) {
 #endif                  //packet source is not in the same subnet
                         pcb = NULL;
                         break;
@@ -349,7 +349,7 @@ size_t _mdns_udp_pcb_write(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, c
     ip_add_copy.type = ip->type;
     memcpy(&(ip_add_copy.u_addr), &(ip->u_addr), sizeof(ip_add_copy.u_addr));
 #else
-    memcpy(&(ip_add_copy.addr), &(ip->u_addr), sizeof(ip_add_copy.addr));
+    memcpy(&(ip_add_copy.u_addr), &(ip->u_addr), sizeof(ip_add_copy.u_addr));
 #endif // CONFIG_LWIP_IPV6
 
     mdns_api_call_t msg = {
