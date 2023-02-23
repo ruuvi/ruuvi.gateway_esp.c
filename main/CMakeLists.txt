@@ -103,6 +103,7 @@ idf_component_register(
             url_encode.h
         REQUIRES
             app_update
+            mdns
             mqtt
             lwip
             esp_http_client
