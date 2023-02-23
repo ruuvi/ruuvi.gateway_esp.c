@@ -298,20 +298,8 @@ start_mdns(void)
     {
         LOG_ERR_ESP(err, "mdns_hostname_set failed");
     }
-    const wifiman_wifi_ssid_t* const p_wifi_ap_ssid  = gw_cfg_default_get_wifi_ap_ssid();
-    const char*                      p_instance_name = strchr(p_wifi_ap_ssid->ssid_buf, ' ');
-    if (NULL == p_instance_name)
-    {
-        p_instance_name = p_wifi_ap_ssid->ssid_buf;
-    }
-    else
-    {
-        // AP SSID: "Configure Ruuvi Gateway XXXX"
-        // Here we skip "Configure " prefix:
-        p_instance_name += 1;
-    }
-    LOG_INFO("### Start mDNS: Hostname: \"%s\", Instance: \"%s\"", p_hostname->hostname_buf, p_instance_name);
-    err = mdns_instance_name_set(p_instance_name);
+    LOG_INFO("### Start mDNS: Hostname: \"%s\", Instance: \"%s\"", p_hostname->hostname_buf, p_hostname->hostname_buf);
+    err = mdns_instance_name_set(p_hostname->hostname_buf);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(err, "mdns_instance_name_set failed");
