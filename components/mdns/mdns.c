@@ -16,7 +16,7 @@
 #include "mdns_private.h"
 #include "mdns_networking.h"
 #include "esp_log.h"
-#include "esp_random.h"
+#include "lwip/ip_addr.h"
 
 #if CONFIG_ETH_ENABLED && CONFIG_MDNS_PREDEF_NETIF_ETH
 #include "esp_eth.h"
@@ -1698,7 +1698,8 @@ static mdns_tx_packet_t *_mdns_alloc_packet_default(mdns_if_t tcpip_if, mdns_ip_
     packet->ip_protocol = ip_protocol;
     packet->port = MDNS_SERVICE_PORT;
     if (ip_protocol == MDNS_IP_PROTOCOL_V4) {
-        esp_ip_addr_t addr = ESP_IP4ADDR_INIT(224, 0, 0, 251);
+        esp_ip_addr_t addr = { 0 };
+        IP_ADDR4(&addr, 224, 0, 0, 251);
         memcpy(&packet->dst, &addr, sizeof(esp_ip_addr_t));
     }
 #if CONFIG_LWIP_IPV6
@@ -3485,7 +3486,7 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
     parsed_packet->authoritative = (header.flags == MDNS_FLAGS_QR_AUTHORITATIVE);
     parsed_packet->distributed = header.flags == MDNS_FLAGS_DISTRIBUTED;
     parsed_packet->id = header.id;
-    esp_netif_ip_addr_copy(&parsed_packet->src, &packet->src);
+    ip_addr_copy(parsed_packet->src, packet->src);
     parsed_packet->src_port = packet->src_port;
 
     if (header.questions) {
