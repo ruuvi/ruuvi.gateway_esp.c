@@ -1,0 +1,20 @@
+{
+   "data":{
+      "coordinates":"",
+      "timestamp":"1665742208",
+      "gw_mac":"C8:25:2D:8E:9C:2C",
+      "tags":{
+         "F4:1F:0C:28:CB:D6":{
+            "rssi":-34,
+            "timestamp":"1665742208",
+            "data":"0201061BFF99040514EE4C08C5370018FFB803E8A7F6E67A8EF41F0C28CBD6"
+         },
+         "C6:A5:B9:E0:AD:06":{
+            "rssi":-33,
+            "timestamp":"1665742208",
+            "data":"0201061BFF99040514A24454C4FF0030FFFC0420AB76207A89C6A5B9E0AD06"
+         }
+      }
+   }
+}
+

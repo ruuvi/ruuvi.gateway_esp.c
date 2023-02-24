@@ -134,7 +134,7 @@
       "default": true
     },
     "http_url": {
-      "title": "URL of the server to which the data collected from Bluetooth-sensors will be sent",
+      "title": "URL of the server to which the data collected from Bluetooth sensors will be sent",
       "type": "string",
       "default": "https://network.ruuvi.com/record",
       "examples": [
@@ -178,6 +178,11 @@
     },
     "use_mqtt": {
       "title": "Enable MQTT relaying mode",
+      "type": "boolean",
+      "default": false
+    },
+    "mqtt_disable_retained_messages": {
+      "title": "Disable MQTT retained messages",
       "type": "boolean",
       "default": false
     },
@@ -374,7 +379,7 @@
       ]
     },
     "company_use_filtering": {
-      "title": "Enable filtering messages from Bluetooth-sensors by company ID.",
+      "title": "Enable filtering messages from Bluetooth sensors by company ID.",
       "type": "boolean",
       "default": true
     },
@@ -457,6 +462,7 @@
       "http_stat_user": "",
       "http_stat_pass": "",
       "use_mqtt": false,
+      "mqtt_disable_retained_messages": false,
       "mqtt_transport": "TCP",
       "mqtt_server": "test.mosquitto.org",
       "mqtt_port": 1883,
@@ -490,3 +496,4 @@
     }
   ]
 }
+

@@ -1,0 +1,20 @@
+{
+   "data":{
+      "coordinates":"",
+      "nonce":"2896361039",
+      "gw_mac":"C8:25:2D:8E:9C:2C",
+      "tags":{
+         "E3:75:CF:37:4E:23":{
+            "rssi":-50,
+            "counter":"363",
+            "data":"0201061BFF990405158A5B05C6810004004403DCAB767A45BDE375CF374E23"
+         },
+         "F4:1F:0C:28:CB:D6":{
+            "rssi":-32,
+            "counter":"365",
+            "data":"0201061BFF990405166455D5C6DD0008FFF803F0ADB60F2A92F41F0C28CBD6"
+         }
+      }
+   }
+}
+
