@@ -16,16 +16,17 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
-#define WIFI_CONNECTED_BIT    (1U << 0U)
-#define ETH_CONNECTED_BIT     (1U << 1U)
-#define ETH_LINK_UP_BIT       (1U << 2U)
-#define MQTT_STARTED_BIT      (1U << 3U)
-#define MQTT_CONNECTED_BIT    (1U << 4U)
-#define MQTT_RELAYING_CMD_BIT (1U << 5U)
-#define HTTP_RELAYING_CMD_BIT (1U << 6U)
-#define NRF_STATUS_BIT        (1U << 7U)
-#define MQTT_ERROR_BIT        (1U << 8U)
-#define MQTT_AUTH_FAIL_BIT    (1U << 9U)
+#define GW_STATUS_WIFI_CONNECTED_BIT         (1U << 0U)
+#define GW_STATUS_ETH_CONNECTED_BIT          (1U << 1U)
+#define GW_STATUS_ETH_LINK_UP_BIT            (1U << 2U)
+#define GW_STATUS_MQTT_STARTED_BIT           (1U << 3U)
+#define GW_STATUS_MQTT_CONNECTED_BIT         (1U << 4U)
+#define GW_STATUS_MQTT_RELAYING_CMD_BIT      (1U << 5U)
+#define GW_STATUS_HTTP_RELAYING_CMD_BIT      (1U << 6U)
+#define GW_STATUS_NRF_STATUS_BIT             (1U << 7U)
+#define GW_STATUS_MQTT_ERROR_BIT             (1U << 8U)
+#define GW_STATUS_MQTT_AUTH_FAIL_BIT         (1U << 9U)
+#define GW_STATUS_FIRST_BOOT_AFTER_CFG_ERASE (1U << 10U)
 
 #define TIMEOUT_WAITING_UNTIL_RELAYING_STOPPED_SECONDS (15)
 
@@ -61,37 +62,37 @@ gw_status_init(void)
 void
 gw_status_set_wifi_connected(void)
 {
-    xEventGroupSetBits(g_p_ev_grp_status_bits, WIFI_CONNECTED_BIT);
+    xEventGroupSetBits(g_p_ev_grp_status_bits, GW_STATUS_WIFI_CONNECTED_BIT);
 }
 
 void
 gw_status_clear_wifi_connected(void)
 {
-    xEventGroupClearBits(g_p_ev_grp_status_bits, WIFI_CONNECTED_BIT);
+    xEventGroupClearBits(g_p_ev_grp_status_bits, GW_STATUS_WIFI_CONNECTED_BIT);
 }
 
 void
 gw_status_set_eth_connected(void)
 {
-    xEventGroupSetBits(g_p_ev_grp_status_bits, ETH_CONNECTED_BIT);
+    xEventGroupSetBits(g_p_ev_grp_status_bits, GW_STATUS_ETH_CONNECTED_BIT);
 }
 
 void
 gw_status_clear_eth_connected(void)
 {
-    xEventGroupClearBits(g_p_ev_grp_status_bits, ETH_CONNECTED_BIT | ETH_LINK_UP_BIT);
+    xEventGroupClearBits(g_p_ev_grp_status_bits, GW_STATUS_ETH_CONNECTED_BIT | GW_STATUS_ETH_LINK_UP_BIT);
 }
 
 void
 gw_status_set_eth_link_up(void)
 {
-    xEventGroupSetBits(g_p_ev_grp_status_bits, ETH_LINK_UP_BIT);
+    xEventGroupSetBits(g_p_ev_grp_status_bits, GW_STATUS_ETH_LINK_UP_BIT);
 }
 
 bool
 gw_status_is_eth_link_up(void)
 {
-    if (0 != (xEventGroupGetBits(g_p_ev_grp_status_bits) & ETH_LINK_UP_BIT))
+    if (0 != (xEventGroupGetBits(g_p_ev_grp_status_bits) & GW_STATUS_ETH_LINK_UP_BIT))
     {
         return true;
     }
@@ -101,7 +102,8 @@ gw_status_is_eth_link_up(void)
 bool
 gw_status_is_network_connected(void)
 {
-    if (0 != (xEventGroupGetBits(g_p_ev_grp_status_bits) & (WIFI_CONNECTED_BIT | ETH_CONNECTED_BIT)))
+    if (0
+        != (xEventGroupGetBits(g_p_ev_grp_status_bits) & (GW_STATUS_WIFI_CONNECTED_BIT | GW_STATUS_ETH_CONNECTED_BIT)))
     {
         return true;
     }
@@ -112,20 +114,20 @@ void
 gw_status_set_mqtt_started(void)
 {
     LOG_INFO("MQTT started");
-    xEventGroupSetBits(g_p_ev_grp_status_bits, MQTT_STARTED_BIT);
+    xEventGroupSetBits(g_p_ev_grp_status_bits, GW_STATUS_MQTT_STARTED_BIT);
 }
 
 void
 gw_status_clear_mqtt_started(void)
 {
     LOG_INFO("MQTT stopped");
-    xEventGroupClearBits(g_p_ev_grp_status_bits, MQTT_STARTED_BIT);
+    xEventGroupClearBits(g_p_ev_grp_status_bits, GW_STATUS_MQTT_STARTED_BIT);
 }
 
 bool
 gw_status_is_mqtt_started(void)
 {
-    if (0 != (xEventGroupGetBits(g_p_ev_grp_status_bits) & MQTT_STARTED_BIT))
+    if (0 != (xEventGroupGetBits(g_p_ev_grp_status_bits) & GW_STATUS_MQTT_STARTED_BIT))
     {
         return true;
     }
@@ -135,21 +137,21 @@ gw_status_is_mqtt_started(void)
 static void
 gw_status_set_mqtt_relaying_cmd(void)
 {
-    LOG_INFO("Set MQTT_RELAYING_CMD_BIT");
-    xEventGroupSetBits(g_p_ev_grp_status_bits, MQTT_RELAYING_CMD_BIT);
+    LOG_INFO("Set GW_STATUS_MQTT_RELAYING_CMD_BIT");
+    xEventGroupSetBits(g_p_ev_grp_status_bits, GW_STATUS_MQTT_RELAYING_CMD_BIT);
 }
 
 void
 gw_status_clear_mqtt_relaying_cmd(void)
 {
-    LOG_INFO("Clear MQTT_RELAYING_CMD_BIT");
-    xEventGroupClearBits(g_p_ev_grp_status_bits, MQTT_RELAYING_CMD_BIT);
+    LOG_INFO("Clear GW_STATUS_MQTT_RELAYING_CMD_BIT");
+    xEventGroupClearBits(g_p_ev_grp_status_bits, GW_STATUS_MQTT_RELAYING_CMD_BIT);
 }
 
 bool
 gw_status_is_mqtt_relaying_cmd_handled(void)
 {
-    if (0 == (xEventGroupGetBits(g_p_ev_grp_status_bits) & MQTT_RELAYING_CMD_BIT))
+    if (0 == (xEventGroupGetBits(g_p_ev_grp_status_bits) & GW_STATUS_MQTT_RELAYING_CMD_BIT))
     {
         return true;
     }
@@ -160,35 +162,41 @@ void
 gw_status_set_mqtt_connected(void)
 {
     LOG_INFO("MQTT connected");
-    xEventGroupClearBits(g_p_ev_grp_status_bits, MQTT_ERROR_BIT | MQTT_AUTH_FAIL_BIT);
-    xEventGroupSetBits(g_p_ev_grp_status_bits, MQTT_CONNECTED_BIT);
+    xEventGroupClearBits(g_p_ev_grp_status_bits, GW_STATUS_MQTT_ERROR_BIT | GW_STATUS_MQTT_AUTH_FAIL_BIT);
+    xEventGroupSetBits(g_p_ev_grp_status_bits, GW_STATUS_MQTT_CONNECTED_BIT);
 }
 
 void
 gw_status_clear_mqtt_connected(void)
 {
     LOG_INFO("MQTT disconnected");
-    xEventGroupClearBits(g_p_ev_grp_status_bits, MQTT_CONNECTED_BIT);
+    xEventGroupClearBits(g_p_ev_grp_status_bits, GW_STATUS_MQTT_CONNECTED_BIT);
 }
 
 void
 gw_status_set_mqtt_error(const bool flag_auth_failed)
 {
     LOG_INFO("MQTT connection error: flag_auth_failed=%d", (printf_int_t)flag_auth_failed);
-    xEventGroupClearBits(g_p_ev_grp_status_bits, MQTT_CONNECTED_BIT | MQTT_ERROR_BIT | MQTT_AUTH_FAIL_BIT);
-    xEventGroupSetBits(g_p_ev_grp_status_bits, MQTT_ERROR_BIT | (flag_auth_failed ? MQTT_AUTH_FAIL_BIT : 0));
+    xEventGroupClearBits(
+        g_p_ev_grp_status_bits,
+        GW_STATUS_MQTT_CONNECTED_BIT | GW_STATUS_MQTT_ERROR_BIT | GW_STATUS_MQTT_AUTH_FAIL_BIT);
+    xEventGroupSetBits(
+        g_p_ev_grp_status_bits,
+        GW_STATUS_MQTT_ERROR_BIT | (flag_auth_failed ? GW_STATUS_MQTT_AUTH_FAIL_BIT : 0));
 }
 
 void
 gw_status_clear_mqtt_connected_and_error(void)
 {
-    xEventGroupClearBits(g_p_ev_grp_status_bits, MQTT_CONNECTED_BIT | MQTT_ERROR_BIT | MQTT_AUTH_FAIL_BIT);
+    xEventGroupClearBits(
+        g_p_ev_grp_status_bits,
+        GW_STATUS_MQTT_CONNECTED_BIT | GW_STATUS_MQTT_ERROR_BIT | GW_STATUS_MQTT_AUTH_FAIL_BIT);
 }
 
 bool
 gw_status_is_mqtt_connected(void)
 {
-    if (0 != (xEventGroupGetBits(g_p_ev_grp_status_bits) & MQTT_CONNECTED_BIT))
+    if (0 != (xEventGroupGetBits(g_p_ev_grp_status_bits) & GW_STATUS_MQTT_CONNECTED_BIT))
     {
         return true;
     }
@@ -198,7 +206,7 @@ gw_status_is_mqtt_connected(void)
 bool
 gw_status_is_mqtt_error(void)
 {
-    if (0 != (xEventGroupGetBits(g_p_ev_grp_status_bits) & MQTT_ERROR_BIT))
+    if (0 != (xEventGroupGetBits(g_p_ev_grp_status_bits) & GW_STATUS_MQTT_ERROR_BIT))
     {
         return true;
     }
@@ -208,7 +216,7 @@ gw_status_is_mqtt_error(void)
 bool
 gw_status_is_mqtt_auth_error(void)
 {
-    if (0 != (xEventGroupGetBits(g_p_ev_grp_status_bits) & MQTT_AUTH_FAIL_BIT))
+    if (0 != (xEventGroupGetBits(g_p_ev_grp_status_bits) & GW_STATUS_MQTT_AUTH_FAIL_BIT))
     {
         return true;
     }
@@ -218,7 +226,7 @@ gw_status_is_mqtt_auth_error(void)
 bool
 gw_status_is_mqtt_connected_or_error(void)
 {
-    if (0 != (xEventGroupGetBits(g_p_ev_grp_status_bits) & (MQTT_CONNECTED_BIT | MQTT_ERROR_BIT)))
+    if (0 != (xEventGroupGetBits(g_p_ev_grp_status_bits) & (GW_STATUS_MQTT_CONNECTED_BIT | GW_STATUS_MQTT_ERROR_BIT)))
     {
         return true;
     }
@@ -228,21 +236,21 @@ gw_status_is_mqtt_connected_or_error(void)
 static void
 gw_status_set_http_relaying_cmd(void)
 {
-    LOG_INFO("Set HTTP_RELAYING_CMD_BIT");
-    xEventGroupSetBits(g_p_ev_grp_status_bits, HTTP_RELAYING_CMD_BIT);
+    LOG_INFO("Set GW_STATUS_HTTP_RELAYING_CMD_BIT");
+    xEventGroupSetBits(g_p_ev_grp_status_bits, GW_STATUS_HTTP_RELAYING_CMD_BIT);
 }
 
 void
 gw_status_clear_http_relaying_cmd(void)
 {
-    LOG_INFO("Clear HTTP_RELAYING_CMD_BIT");
-    xEventGroupClearBits(g_p_ev_grp_status_bits, HTTP_RELAYING_CMD_BIT);
+    LOG_INFO("Clear GW_STATUS_HTTP_RELAYING_CMD_BIT");
+    xEventGroupClearBits(g_p_ev_grp_status_bits, GW_STATUS_HTTP_RELAYING_CMD_BIT);
 }
 
 static bool
 gw_status_is_http_relaying_cmd_handled(void)
 {
-    if (0 == (xEventGroupGetBits(g_p_ev_grp_status_bits) & HTTP_RELAYING_CMD_BIT))
+    if (0 == (xEventGroupGetBits(g_p_ev_grp_status_bits) & GW_STATUS_HTTP_RELAYING_CMD_BIT))
     {
         return true;
     }
@@ -435,19 +443,41 @@ gw_status_is_relaying_via_mqtt_enabled(void)
 void
 gw_status_set_nrf_status(void)
 {
-    xEventGroupSetBits(g_p_ev_grp_status_bits, NRF_STATUS_BIT);
+    xEventGroupSetBits(g_p_ev_grp_status_bits, GW_STATUS_NRF_STATUS_BIT);
 }
 
 void
 gw_status_clear_nrf_status(void)
 {
-    xEventGroupClearBits(g_p_ev_grp_status_bits, NRF_STATUS_BIT);
+    xEventGroupClearBits(g_p_ev_grp_status_bits, GW_STATUS_NRF_STATUS_BIT);
 }
 
 bool
 gw_status_get_nrf_status(void)
 {
-    if (0 != (xEventGroupGetBits(g_p_ev_grp_status_bits) & NRF_STATUS_BIT))
+    if (0 != (xEventGroupGetBits(g_p_ev_grp_status_bits) & GW_STATUS_NRF_STATUS_BIT))
+    {
+        return true;
+    }
+    return false;
+}
+
+void
+gw_status_set_first_boot_after_cfg_erase(void)
+{
+    xEventGroupSetBits(g_p_ev_grp_status_bits, GW_STATUS_FIRST_BOOT_AFTER_CFG_ERASE);
+}
+
+void
+gw_status_clear_first_boot_after_cfg_erase(void)
+{
+    xEventGroupClearBits(g_p_ev_grp_status_bits, GW_STATUS_FIRST_BOOT_AFTER_CFG_ERASE);
+}
+
+bool
+gw_status_get_first_boot_after_cfg_erase(void)
+{
+    if (0 != (xEventGroupGetBits(g_p_ev_grp_status_bits) & GW_STATUS_FIRST_BOOT_AFTER_CFG_ERASE))
     {
         return true;
     }

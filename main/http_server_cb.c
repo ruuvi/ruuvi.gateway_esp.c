@@ -317,8 +317,7 @@ http_server_gw_cfg_download_and_parse(
             "gw_cfg.json",
             "Read Gateway SETTINGS from remote server:",
             download_info.p_json_buf,
-            p_gw_cfg_tmp,
-            NULL))
+            p_gw_cfg_tmp))
     {
         LOG_ERR("Failed to parse gw_cfg.json or no memory");
         if (NULL != p_err_msg)

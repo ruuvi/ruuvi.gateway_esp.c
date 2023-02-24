@@ -147,10 +147,11 @@ gw_cfg_default_init(
     g_gw_cfg_default.ruuvi_cfg = g_gateway_config_default_ruuvi;
     g_gw_cfg_default.eth_cfg   = g_gateway_config_default_eth;
 
-    g_gw_cfg_default.wifi_cfg = *wifi_manager_default_config_init(&p_init_param->wifi_ap_ssid);
+    g_gw_cfg_default.wifi_cfg = *wifi_manager_default_config_init(&p_init_param->wifi_ap_ssid, &p_init_param->hostname);
 
     gw_cfg_device_info_t* const p_def_dev_info = &g_gw_cfg_default.device_info;
-    p_def_dev_info->wifi_ap_hostname           = p_init_param->wifi_ap_ssid;
+    p_def_dev_info->wifi_ap                    = p_init_param->wifi_ap_ssid;
+    p_def_dev_info->hostname                   = p_init_param->hostname;
     p_def_dev_info->esp32_fw_ver               = p_init_param->esp32_fw_ver;
     p_def_dev_info->nrf52_fw_ver               = p_init_param->nrf52_fw_ver;
     p_def_dev_info->nrf52_device_id            = gw_cfg_default_nrf52_device_id_to_str(&p_init_param->device_id);
@@ -207,7 +208,8 @@ gw_cfg_default_deinit(void)
 void
 gw_cfg_default_log(void)
 {
-    gw_cfg_log(&g_gw_cfg_default, "Gateway SETTINGS (default)", true);
+    const bool flag_log_device_info = true;
+    gw_cfg_log(&g_gw_cfg_default, "Gateway SETTINGS (default)", flag_log_device_info);
 }
 
 void
@@ -267,5 +269,11 @@ gw_cfg_default_get_wifi_config_sta_ptr(void)
 const wifiman_wifi_ssid_t*
 gw_cfg_default_get_wifi_ap_ssid(void)
 {
-    return &g_gw_cfg_default.device_info.wifi_ap_hostname;
+    return &g_gw_cfg_default.device_info.wifi_ap;
+}
+
+const wifiman_hostname_t*
+gw_cfg_default_get_hostname(void)
+{
+    return &g_gw_cfg_default.device_info.hostname;
 }
