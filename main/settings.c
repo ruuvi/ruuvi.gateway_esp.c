@@ -34,8 +34,10 @@
 #define RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_KEY   "ruuvi_auto_udp"
 #define RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_VALUE (0xAACC5533U)
 
-#define RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_KEY   "ruuvi_wifi_ap"
-#define RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_VALUE (0xAACC5533U)
+#define RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_KEY       "ruuvi_wifi_ap"
+#define RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_DISABLED  (0)
+#define RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_ONCE      (0xAACC5533U)
+#define RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_PERMANENT (0xBBDD6677U)
 
 static const char TAG[] = "settings";
 
@@ -51,7 +53,7 @@ settings_check_in_flash(void)
     return true;
 }
 
-static char *
+static char*
 settings_read_gw_cfg_json_from_nvs(nvs_handle handle)
 {
     size_t    cfg_json_size = 0;
@@ -62,7 +64,7 @@ settings_read_gw_cfg_json_from_nvs(nvs_handle handle)
         return NULL;
     }
 
-    char *p_cfg_json = os_malloc(cfg_json_size);
+    char* p_cfg_json = os_malloc(cfg_json_size);
     if (NULL == p_cfg_json)
     {
         LOG_ERR("Can't allocate %lu bytes for configuration", (printf_ulong_t)cfg_json_size);
@@ -80,7 +82,7 @@ settings_read_gw_cfg_json_from_nvs(nvs_handle handle)
 }
 
 static bool
-settings_save_to_flash_cjson(const char *const p_json_str)
+settings_save_to_flash_cjson(const char* const p_json_str)
 {
     LOG_DBG("Save config to NVS: %s", (NULL != p_json_str) ? p_json_str : "");
 
@@ -91,7 +93,7 @@ settings_save_to_flash_cjson(const char *const p_json_str)
         return false;
     }
 
-    char *p_gw_cfg_prev = settings_read_gw_cfg_json_from_nvs(handle);
+    char* p_gw_cfg_prev = settings_read_gw_cfg_json_from_nvs(handle);
     if (NULL == p_gw_cfg_prev)
     {
         LOG_WARN("%s failed", "settings_read_gw_cfg_json_from_nvs");
@@ -103,7 +105,7 @@ settings_save_to_flash_cjson(const char *const p_json_str)
         if (flag_is_cfg_equal)
         {
             nvs_close(handle);
-            LOG_INFO("Save config to NVS: not needed (gw_cfg was not modified)");
+            LOG_INFO("### Save config to NVS: not needed (gw_cfg was not modified)");
             return true;
         }
     }
@@ -124,49 +126,58 @@ settings_save_to_flash_cjson(const char *const p_json_str)
     }
     nvs_close(handle);
 
-    LOG_INFO("Save config to NVS: successfully updated");
+    LOG_INFO("### Save config to NVS: successfully updated");
 
     return true;
 }
 
 void
-settings_save_to_flash(const gw_cfg_t *const p_gw_cfg)
+settings_save_to_flash(const gw_cfg_t* const p_gw_cfg)
 {
+    if (NULL == p_gw_cfg)
+    {
+        settings_save_to_flash_cjson("");
+        return;
+    }
     cjson_wrap_str_t cjson_str = { 0 };
-    if (!gw_cfg_json_generate_full(p_gw_cfg, &cjson_str))
+    if (!gw_cfg_json_generate_for_saving(p_gw_cfg, &cjson_str))
     {
-        LOG_ERR("%s failed", "gw_cfg_json_generate");
+        LOG_ERR("%s failed", "gw_cfg_json_generate_for_saving");
+        return;
     }
-    else
-    {
-        settings_save_to_flash_cjson(cjson_str.p_str);
-    }
+    settings_save_to_flash_cjson(cjson_str.p_str);
+
     cjson_wrap_free_json_str(&cjson_str);
 }
 
-static bool
-settings_get_gw_cfg_from_nvs(nvs_handle handle, gw_cfg_t *const p_gw_cfg, bool *const p_flag_modified)
+static settings_in_nvs_status_e
+settings_get_gw_cfg_from_nvs(nvs_handle handle, gw_cfg_t* const p_gw_cfg)
 {
     gw_cfg_default_get(p_gw_cfg);
 
-    char *p_cfg_json = settings_read_gw_cfg_json_from_nvs(handle);
+    char* p_cfg_json = settings_read_gw_cfg_json_from_nvs(handle);
     if (NULL == p_cfg_json)
     {
         LOG_ERR("%s failed", "settings_read_gw_cfg_json_from_nvs");
-        return false;
+        return SETTINGS_IN_NVS_STATUS_NOT_EXIST;
     }
 
-    gw_cfg_default_get(p_gw_cfg);
+    LOG_DBG("Save config to NVS: %s", p_cfg_json);
 
-    if (!gw_cfg_json_parse("NVS", "Read config from NVS:", p_cfg_json, p_gw_cfg, p_flag_modified))
+    if ('\0' == *p_cfg_json)
+    {
+        return SETTINGS_IN_NVS_STATUS_EMPTY;
+    }
+
+    if (!gw_cfg_json_parse("NVS", "Read config from NVS:", p_cfg_json, p_gw_cfg))
     {
         LOG_ERR("Failed to parse config-json or no memory");
         os_free(p_cfg_json);
-        return false;
+        return SETTINGS_IN_NVS_STATUS_NOT_EXIST;
     }
     os_free(p_cfg_json);
 
-    return true;
+    return SETTINGS_IN_NVS_STATUS_OK;
 }
 
 static void
@@ -187,7 +198,7 @@ settings_erase_gw_cfg_blob_if_exist(nvs_handle handle)
 }
 
 static bool
-settings_get_gw_cfg_blob_from_nvs(nvs_handle handle, ruuvi_gateway_config_blob_t *const p_gw_cfg_blob)
+settings_get_gw_cfg_blob_from_nvs(nvs_handle handle, ruuvi_gateway_config_blob_t* const p_gw_cfg_blob)
 {
     size_t    sz      = 0;
     esp_err_t esp_err = nvs_get_blob(handle, RUUVI_GATEWAY_NVS_CFG_BLOB_KEY, NULL, &sz);
@@ -226,79 +237,92 @@ settings_get_gw_cfg_blob_from_nvs(nvs_handle handle, ruuvi_gateway_config_blob_t
     return true;
 }
 
-static bool
-settings_read_from_blob(nvs_handle handle, gw_cfg_t *const p_gw_cfg)
+static settings_in_nvs_status_e
+settings_read_from_blob(nvs_handle handle, gw_cfg_t* const p_gw_cfg)
 {
     LOG_WARN("Try to read config from BLOB");
-    bool                         flag_use_default_config = false;
-    ruuvi_gateway_config_blob_t *p_gw_cfg_blob           = os_calloc(1, sizeof(*p_gw_cfg_blob));
+    settings_in_nvs_status_e     settings_status = SETTINGS_IN_NVS_STATUS_NOT_EXIST;
+    ruuvi_gateway_config_blob_t* p_gw_cfg_blob   = os_calloc(1, sizeof(*p_gw_cfg_blob));
     if (NULL == p_gw_cfg_blob)
     {
-        flag_use_default_config = true;
+        settings_status = SETTINGS_IN_NVS_STATUS_NOT_EXIST;
     }
     else
     {
         if (!settings_get_gw_cfg_blob_from_nvs(handle, p_gw_cfg_blob))
         {
-            flag_use_default_config = true;
+            settings_status = SETTINGS_IN_NVS_STATUS_NOT_EXIST;
         }
         else
         {
             LOG_INFO("Convert Cfg BLOB");
             gw_cfg_blob_convert(p_gw_cfg, p_gw_cfg_blob);
+            settings_status = SETTINGS_IN_NVS_STATUS_OK;
         }
         os_free(p_gw_cfg_blob);
     }
-    return flag_use_default_config;
+    return settings_status;
 }
 
-const gw_cfg_t *
-settings_get_from_flash(void)
+const gw_cfg_t*
+settings_get_from_flash(const bool flag_allow_cfg_updating, settings_in_nvs_status_e* const p_status)
 {
-    gw_cfg_t *p_gw_cfg_tmp = os_calloc(1, sizeof(*p_gw_cfg_tmp));
+    gw_cfg_t* p_gw_cfg_tmp = os_calloc(1, sizeof(*p_gw_cfg_tmp));
     if (NULL == p_gw_cfg_tmp)
     {
         LOG_ERR("Can't allocate memory for gw_cfg");
         return NULL;
     }
-    bool       flag_use_default_config = false;
-    bool       flag_modified           = false;
-    nvs_handle handle                  = 0;
+    settings_in_nvs_status_e settings_status    = SETTINGS_IN_NVS_STATUS_NOT_EXIST;
+    bool                     flag_cfg_blob_used = false;
+    nvs_handle               handle             = 0;
     if (!ruuvi_nvs_open(NVS_READWRITE, &handle))
     {
-        flag_use_default_config = true;
+        settings_status = SETTINGS_IN_NVS_STATUS_NOT_EXIST;
     }
     else
     {
-        if (!settings_get_gw_cfg_from_nvs(handle, p_gw_cfg_tmp, &flag_modified))
+        settings_status = settings_get_gw_cfg_from_nvs(handle, p_gw_cfg_tmp);
+        if (SETTINGS_IN_NVS_STATUS_NOT_EXIST == settings_status)
         {
-            flag_modified           = true;
-            flag_use_default_config = settings_read_from_blob(handle, p_gw_cfg_tmp);
+            settings_status = settings_read_from_blob(handle, p_gw_cfg_tmp);
+            if (SETTINGS_IN_NVS_STATUS_OK == settings_status)
+            {
+                flag_cfg_blob_used = true;
+            }
         }
         nvs_close(handle);
     }
-    if (flag_use_default_config)
+    *p_status = settings_status;
+    if (SETTINGS_IN_NVS_STATUS_OK != settings_status)
     {
-        LOG_WARN("Using default config");
-        flag_modified = true;
         gw_cfg_default_get(p_gw_cfg_tmp);
     }
 
     const bool flag_wifi_cfg_blob_used = wifi_manager_cfg_blob_read(&p_gw_cfg_tmp->wifi_cfg);
     if (flag_wifi_cfg_blob_used)
     {
-        gw_cfg_log_wifi_cfg(&p_gw_cfg_tmp->wifi_cfg, "Got wifi_cfg from NVS BLOB:");
+        gw_cfg_log_wifi_cfg_ap(&p_gw_cfg_tmp->wifi_cfg.ap, "Got wifi_cfg from NVS BLOB:");
+        gw_cfg_log_wifi_cfg_sta(&p_gw_cfg_tmp->wifi_cfg.sta, "Got wifi_cfg from NVS BLOB:");
     }
 
-    if (flag_modified || flag_wifi_cfg_blob_used)
+    if (flag_allow_cfg_updating)
     {
-        LOG_INFO("Update config in flash");
-        settings_save_to_flash(p_gw_cfg_tmp); // Update configuration in NVS before erasing BLOBs
-    }
-    settings_erase_gw_cfg_blob_if_exist(handle);
-    if (flag_wifi_cfg_blob_used)
-    {
-        if (!wifi_manager_cfg_blob_erase_if_exist())
+        if (SETTINGS_IN_NVS_STATUS_NOT_EXIST == settings_status)
+        {
+            LOG_WARN("No configuration in NVS, write an empty configuration");
+            settings_save_to_flash_cjson("");
+        }
+        else
+        {
+            if (flag_cfg_blob_used || flag_wifi_cfg_blob_used)
+            {
+                LOG_WARN("Update configuration in NVS with data from BLOB");
+                settings_save_to_flash(p_gw_cfg_tmp); // Update configuration in NVS before erasing BLOBs
+            }
+        }
+        settings_erase_gw_cfg_blob_if_exist(handle);
+        if (flag_wifi_cfg_blob_used && (!wifi_manager_cfg_blob_mark_deprecated()))
         {
             LOG_ERR("Failed to erase wifi_cfg_blob");
         }
@@ -330,7 +354,7 @@ settings_read_mac_addr(void)
 }
 
 void
-settings_write_mac_addr(const mac_address_bin_t *const p_mac_addr)
+settings_write_mac_addr(const mac_address_bin_t* const p_mac_addr)
 {
     nvs_handle handle = 0;
     if (!ruuvi_nvs_open(NVS_READWRITE, &handle))
@@ -355,7 +379,7 @@ settings_update_mac_addr(const mac_address_bin_t new_mac_addr)
     if (0 != memcmp(&saved_mac_addr, &new_mac_addr, sizeof(new_mac_addr)))
     {
         const mac_address_str_t new_mac_addr_str = mac_address_to_str(&new_mac_addr);
-        LOG_INFO("Save new MAC-address: %s", new_mac_addr_str.str_buf);
+        LOG_INFO("### Save new MAC-address: %s", new_mac_addr_str.str_buf);
         settings_write_mac_addr(&new_mac_addr);
     }
 }
@@ -396,7 +420,7 @@ settings_read_flag_rebooting_after_auto_update(void)
 void
 settings_write_flag_rebooting_after_auto_update(const bool flag_rebooting_after_auto_update)
 {
-    LOG_INFO("SETTINGS: Write flag_rebooting_after_auto_update: %d", flag_rebooting_after_auto_update);
+    LOG_INFO("### SETTINGS: Write flag_rebooting_after_auto_update: %d", flag_rebooting_after_auto_update);
     nvs_handle handle = 0;
     if (!ruuvi_nvs_open(NVS_READWRITE, &handle))
     {
@@ -406,6 +430,7 @@ settings_write_flag_rebooting_after_auto_update(const bool flag_rebooting_after_
     const uint32_t flag_rebooting_after_auto_update_val = flag_rebooting_after_auto_update
                                                               ? RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_VALUE
                                                               : 0;
+
     const esp_err_t esp_err = nvs_set_blob(
         handle,
         RUUVI_GATEWAY_NVS_FLAG_REBOOTING_AFTER_AUTO_UPDATE_KEY,
@@ -418,53 +443,66 @@ settings_write_flag_rebooting_after_auto_update(const bool flag_rebooting_after_
     nvs_close(handle);
 }
 
-bool
+force_start_wifi_hotspot_e
 settings_read_flag_force_start_wifi_hotspot(void)
 {
-    uint32_t   flag_force_start_wifi_hotspot = 0;
-    nvs_handle handle                        = 0;
+    uint32_t   flag_force_start_wifi_hotspot_val = 0;
+    nvs_handle handle                            = 0;
     if (!ruuvi_nvs_open(NVS_READONLY, &handle))
     {
-        LOG_WARN("ruuvi_nvs_open failed, flag_force_start_wifi_hotspot = false");
-        return false;
+        LOG_WARN("ruuvi_nvs_open failed, flag_force_start_wifi_hotspot_val = false");
+        return FORCE_START_WIFI_HOTSPOT_DISABLED;
     }
-    size_t    sz      = sizeof(flag_force_start_wifi_hotspot);
+    size_t    sz      = sizeof(flag_force_start_wifi_hotspot_val);
     esp_err_t esp_err = nvs_get_blob(
         handle,
         RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_KEY,
-        &flag_force_start_wifi_hotspot,
+        &flag_force_start_wifi_hotspot_val,
         &sz);
     if (ESP_OK != esp_err)
     {
         LOG_WARN_ESP(esp_err, "Can't read '%s' from flash", RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_KEY);
         nvs_close(handle);
-        settings_write_flag_force_start_wifi_hotspot(false);
+        settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_DISABLED);
     }
     else
     {
         nvs_close(handle);
     }
-    if (RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_VALUE == flag_force_start_wifi_hotspot)
+
+    force_start_wifi_hotspot_e force_start_wifi_hotspot = FORCE_START_WIFI_HOTSPOT_DISABLED;
+    switch (flag_force_start_wifi_hotspot_val)
     {
-        return true;
+        case RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_DISABLED:
+            force_start_wifi_hotspot = FORCE_START_WIFI_HOTSPOT_DISABLED;
+            break;
+        case RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_ONCE:
+            force_start_wifi_hotspot = FORCE_START_WIFI_HOTSPOT_ONCE;
+            break;
+        case RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_PERMANENT:
+            force_start_wifi_hotspot = FORCE_START_WIFI_HOTSPOT_ONCE;
+            break;
+        default:
+            force_start_wifi_hotspot = FORCE_START_WIFI_HOTSPOT_DISABLED;
+            break;
     }
-    return false;
+    return force_start_wifi_hotspot;
 }
 
 void
-settings_write_flag_force_start_wifi_hotspot(const bool flag_force_start_wifi_hotspot)
+settings_write_flag_force_start_wifi_hotspot(const force_start_wifi_hotspot_e force_start_wifi_hotspot)
 {
     nvs_handle handle = 0;
-    LOG_INFO("SETTINGS: Write flag_force_start_wifi_hotspot: %d", flag_force_start_wifi_hotspot);
+    LOG_INFO("### SETTINGS: Write flag_force_start_wifi_hotspot: %d", (printf_int_t)force_start_wifi_hotspot);
     if (!ruuvi_nvs_open(NVS_READWRITE, &handle))
     {
         LOG_ERR("%s failed", "ruuvi_nvs_open");
         return;
     }
-    const uint32_t flag_force_start_wifi_hotspot_val = flag_force_start_wifi_hotspot
-                                                           ? RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_VALUE
-                                                           : 0;
-    const esp_err_t esp_err = nvs_set_blob(
+    const uint32_t  flag_force_start_wifi_hotspot_val = (FORCE_START_WIFI_HOTSPOT_ONCE == force_start_wifi_hotspot)
+                                                            ? RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_ONCE
+                                                            : RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_DISABLED;
+    const esp_err_t esp_err                           = nvs_set_blob(
         handle,
         RUUVI_GATEWAY_NVS_FLAG_FORCE_START_WIFI_HOTSPOT_KEY,
         &flag_force_start_wifi_hotspot_val,

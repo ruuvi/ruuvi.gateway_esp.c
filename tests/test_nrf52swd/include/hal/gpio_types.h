@@ -334,8 +334,7 @@ typedef enum
     GPIO_MODE_INPUT_OUTPUT_OD
     = ((GPIO_MODE_DEF_INPUT) | (GPIO_MODE_DEF_OUTPUT)
        | (GPIO_MODE_DEF_OD)), /*!< GPIO mode : output and input with open-drain mode*/
-    GPIO_MODE_INPUT_OUTPUT
-    = ((GPIO_MODE_DEF_INPUT) | (GPIO_MODE_DEF_OUTPUT)), /*!< GPIO mode : output and input mode                */
+    GPIO_MODE_INPUT_OUTPUT = ((GPIO_MODE_DEF_INPUT) | (GPIO_MODE_DEF_OUTPUT)), /*!< GPIO mode : output and input mode */
 } gpio_mode_t;
 
 typedef enum
@@ -380,7 +379,7 @@ typedef enum
     GPIO_DRIVE_CAP_MAX,
 } gpio_drive_cap_t;
 
-typedef void (*gpio_isr_t)(void *);
+typedef void (*gpio_isr_t)(void*);
 
 #ifdef __cplusplus
 }

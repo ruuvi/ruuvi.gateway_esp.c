@@ -13,6 +13,7 @@
 #include "esp_eth.h"
 #include "esp_eth_com.h"
 #include "esp_event.h"
+#include "esp_task_wdt.h"
 #include "mqtt.h"
 #include "ruuvi_gateway.h"
 #include "esp_netif.h"
@@ -31,9 +32,9 @@
 #define SW_RESET_TIMEOUT_MS 500
 
 // Cloudfare public DNS
-const char *dns_fallback_server = "1.1.1.1";
+const char* dns_fallback_server = "1.1.1.1";
 
-static const char *TAG = "ETH";
+static const char* TAG = "ETH";
 
 static esp_eth_handle_t            g_eth_handle;
 static ethernet_cb_link_up_t       g_ethernet_link_up_cb;
@@ -45,7 +46,7 @@ eth_on_event_connected(esp_eth_handle_t eth_handle)
 {
     mac_address_bin_t mac_bin = { 0 };
     esp_eth_ioctl(eth_handle, ETH_CMD_G_MAC_ADDR, &mac_bin.mac[0]);
-    LOG_INFO("Ethernet Link Up");
+    LOG_INFO("### Ethernet Link Up");
     const mac_address_str_t mac_str = mac_address_to_str(&mac_bin);
     LOG_INFO("Ethernet HW Addr %s", mac_str.str_buf);
     g_ethernet_link_up_cb();
@@ -53,12 +54,12 @@ eth_on_event_connected(esp_eth_handle_t eth_handle)
 
 /** Event handler for Ethernet events */
 static void
-eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
+eth_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
     (void)arg;
     (void)event_base;
     /* we can get the ethernet driver handle from event data */
-    esp_eth_handle_t eth_handle = *(esp_eth_handle_t *)event_data;
+    esp_eth_handle_t eth_handle = *(esp_eth_handle_t*)event_data;
 
     switch (event_id)
     {
@@ -67,16 +68,16 @@ eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void
             break;
 
         case ETHERNET_EVENT_DISCONNECTED:
-            LOG_INFO("Ethernet Link Down");
+            LOG_INFO("### Ethernet Link Down");
             g_ethernet_link_down_cb();
             break;
 
         case ETHERNET_EVENT_START:
-            LOG_INFO("Ethernet Started");
+            LOG_INFO("### Ethernet Started");
             break;
 
         case ETHERNET_EVENT_STOP:
-            LOG_INFO("Ethernet Stopped");
+            LOG_INFO("### Ethernet Stopped");
             event_mgr_notify(EVENT_MGR_EV_ETH_DISCONNECTED);
             break;
 
@@ -87,13 +88,13 @@ eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void
 
 /** Event handler for IP_EVENT_ETH_GOT_IP */
 static void
-got_ip_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
+got_ip_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
     (void)arg;
     (void)event_base;
     (void)event_id;
-    const ip_event_got_ip_t *  p_event   = (ip_event_got_ip_t *)event_data;
-    const esp_netif_ip_info_t *p_ip_info = &p_event->ip_info;
+    const ip_event_got_ip_t*   p_event   = (ip_event_got_ip_t*)event_data;
+    const esp_netif_ip_info_t* p_ip_info = &p_event->ip_info;
     LOG_INFO("Ethernet Got IP Address");
     LOG_INFO("~~~~~~~~~~~");
     LOG_INFO("ETH:IP:" IPSTR, IP2STR(&p_ip_info->ip));
@@ -106,7 +107,7 @@ got_ip_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, v
 static bool
 ethernet_update_ip_dhcp(void)
 {
-    esp_netif_t *const p_netif_eth = esp_netif_get_handle_from_ifkey("ETH_DEF");
+    esp_netif_t* const p_netif_eth = esp_netif_get_handle_from_ifkey("ETH_DEF");
     LOG_INFO("Using ETH DHCP");
     const esp_err_t ret = esp_netif_dhcpc_start(p_netif_eth);
     if (ESP_OK != ret)
@@ -120,7 +121,7 @@ ethernet_update_ip_dhcp(void)
 static bool
 eth_netif_dhcpc_stop(void)
 {
-    esp_netif_t *const p_netif_eth = esp_netif_get_handle_from_ifkey("ETH_DEF");
+    esp_netif_t* const p_netif_eth = esp_netif_get_handle_from_ifkey("ETH_DEF");
     const esp_err_t    ret         = esp_netif_dhcpc_stop(p_netif_eth);
     if (ESP_OK != ret)
     {
@@ -138,10 +139,10 @@ eth_netif_dhcpc_stop(void)
 }
 
 static void
-eth_netif_set_dns_info(const char *p_dns_ip, const esp_netif_dns_type_t type)
+eth_netif_set_dns_info(const char* p_dns_ip, const esp_netif_dns_type_t type)
 {
-    esp_netif_t *const p_netif_eth = esp_netif_get_handle_from_ifkey("ETH_DEF");
-    const char *       dns_server  = "Undef";
+    esp_netif_t* const p_netif_eth = esp_netif_get_handle_from_ifkey("ETH_DEF");
+    const char*        dns_server  = "Undef";
     switch (type)
     {
         case ESP_NETIF_DNS_MAIN:
@@ -183,7 +184,7 @@ eth_netif_set_dns_info(const char *p_dns_ip, const esp_netif_dns_type_t type)
 }
 
 static bool
-ethernet_update_ip_static(const gw_cfg_eth_t *const p_gw_cfg_eth)
+ethernet_update_ip_static(const gw_cfg_eth_t* const p_gw_cfg_eth)
 {
     esp_netif_ip_info_t ip_info = { 0 };
 
@@ -215,7 +216,7 @@ ethernet_update_ip_static(const gw_cfg_eth_t *const p_gw_cfg_eth)
         return false;
     }
 
-    esp_netif_t *const p_netif_eth = esp_netif_get_handle_from_ifkey("ETH_DEF");
+    esp_netif_t* const p_netif_eth = esp_netif_get_handle_from_ifkey("ETH_DEF");
     const esp_err_t    ret         = esp_netif_set_ip_info(p_netif_eth, &ip_info);
     if (ESP_OK != ret)
     {
@@ -231,7 +232,7 @@ ethernet_update_ip_static(const gw_cfg_eth_t *const p_gw_cfg_eth)
 void
 ethernet_update_ip(void)
 {
-    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
     if (p_gw_cfg->eth_cfg.eth_dhcp)
     {
         gw_cfg_unlock_ro(&p_gw_cfg);
@@ -262,7 +263,7 @@ ethernet_init(
     ethernet_cb_link_down_t     ethernet_link_down_cb,
     ethernet_cb_connection_ok_t ethernet_connection_ok_cb)
 {
-    LOG_INFO("Ethernet init");
+    LOG_INFO("### Ethernet init");
 
     g_ethernet_link_up_cb       = ethernet_link_up_cb;
     g_ethernet_link_down_cb     = ethernet_link_down_cb;
@@ -272,7 +273,7 @@ ethernet_init(
     esp_netif_init();
 
     const esp_netif_config_t netif_cfg   = ESP_NETIF_DEFAULT_ETH();
-    esp_netif_t *const       p_netif_eth = esp_netif_new(&netif_cfg);
+    esp_netif_t* const       p_netif_eth = esp_netif_new(&netif_cfg);
     if (NULL == p_netif_eth)
     {
         LOG_ERR("%s failed", "esp_netif_new");
@@ -311,8 +312,8 @@ ethernet_init(
     mac_config.smi_mdio_gpio_num   = ETH_MDIO_GPIO;
     mac_config.sw_reset_timeout_ms = SW_RESET_TIMEOUT_MS;
 
-    esp_eth_mac_t *  mac    = esp_eth_mac_new_esp32(&mac_config);
-    esp_eth_phy_t *  phy    = esp_eth_phy_new_lan8720(&phy_config);
+    esp_eth_mac_t*   mac    = esp_eth_mac_new_esp32(&mac_config);
+    esp_eth_phy_t*   phy    = esp_eth_phy_new_lan8720(&phy_config);
     esp_eth_config_t config = ETH_DEFAULT_CONFIG(mac, phy);
     LOG_INFO("esp_eth_driver_install");
     err_code = esp_eth_driver_install(&config, &g_eth_handle);
@@ -322,7 +323,7 @@ ethernet_init(
         return false;
     }
 
-    void *p_eth_glue = esp_eth_new_netif_glue(g_eth_handle);
+    void* p_eth_glue = esp_eth_new_netif_glue(g_eth_handle);
     if (NULL == p_eth_glue)
     {
         LOG_ERR_ESP(err_code, "esp_eth_new_netif_glue failed");
@@ -376,23 +377,35 @@ ethernet_deinit(void)
 }
 
 void
-ethernet_start(const char *const hostname)
+ethernet_start(void)
 {
+    const wifiman_hostname_t* const p_hostname = gw_cfg_get_hostname();
     if (NULL == g_eth_handle)
     {
         return;
     }
-    LOG_INFO("Ethernet start");
+    LOG_INFO("### Ethernet start");
+
+    // esp_eth_start can take up to 4 seconds
+    // (see initialization of autonego_timeout_ms in macro ETH_PHY_DEFAULT_CONFIG, which is used in ethernet_init),
+    // task watchdog is configured to 5 seconds, and the feeding period of the task watchdog is 1 second,
+    // so to prevent the task watchdog from triggering, we must feed it before and after calling esp_eth_start.
+
+    esp_task_wdt_reset();
+
     esp_err_t err = esp_eth_start(g_eth_handle);
+
+    esp_task_wdt_reset();
+
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(err, "Ethernet start failed");
     }
 
-    esp_netif_t *const p_netif_eth = esp_netif_get_handle_from_ifkey("ETH_DEF");
+    esp_netif_t* const p_netif_eth = esp_netif_get_handle_from_ifkey("ETH_DEF");
 
-    LOG_INFO("Set hostname for Ethernet interface: %s", hostname);
-    err = esp_netif_set_hostname(p_netif_eth, hostname);
+    LOG_INFO("### Set hostname for Ethernet interface: %s", p_hostname->hostname_buf);
+    err = esp_netif_set_hostname(p_netif_eth, p_hostname->hostname_buf);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(err, "%s failed", "esp_netif_set_hostname");

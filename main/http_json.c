@@ -9,29 +9,22 @@
 #include "bin2hex.h"
 #include "os_malloc.h"
 
-static cJSON *
-http_json_generate_records_data_attributes(
-    cJSON *const             p_json_data,
-    const bool               flag_use_timestamps,
-    const time_t             timestamp,
-    const mac_address_str_t *p_mac_addr,
-    const char *             p_coordinates_str,
-    const bool               flag_use_nonce,
-    const uint32_t           nonce)
+static cJSON*
+http_json_generate_records_data_attributes(cJSON* const p_json_data, const http_json_header_info_t header_info)
 {
-    if (NULL == cJSON_AddStringToObject(p_json_data, "coordinates", p_coordinates_str))
+    if (NULL == cJSON_AddStringToObject(p_json_data, "coordinates", header_info.p_coordinates_str))
     {
         return NULL;
     }
-    if (flag_use_timestamps && (!cjson_wrap_add_timestamp(p_json_data, "timestamp", timestamp)))
+    if (header_info.flag_use_timestamps && (!cjson_wrap_add_timestamp(p_json_data, "timestamp", header_info.timestamp)))
     {
         return NULL;
     }
-    if (flag_use_nonce && (!cjson_wrap_add_uint32(p_json_data, "nonce", nonce)))
+    if (header_info.flag_use_nonce && (!cjson_wrap_add_uint32(p_json_data, "nonce", header_info.nonce)))
     {
         return NULL;
     }
-    if (NULL == cJSON_AddStringToObject(p_json_data, "gw_mac", p_mac_addr->str_buf))
+    if (NULL == cJSON_AddStringToObject(p_json_data, "gw_mac", header_info.p_mac_addr->str_buf))
     {
         return NULL;
     }
@@ -40,12 +33,12 @@ http_json_generate_records_data_attributes(
 
 static bool
 http_json_generate_records_tag_mac_section(
-    cJSON *const              p_json_tags,
-    const adv_report_t *const p_adv,
+    cJSON* const              p_json_tags,
+    const adv_report_t* const p_adv,
     const bool                flag_use_timestamps)
 {
     const mac_address_str_t mac_str    = mac_address_to_str(&p_adv->tag_mac);
-    cJSON *const            p_json_tag = cJSON_AddObjectToObject(p_json_tags, mac_str.str_buf);
+    cJSON* const            p_json_tag = cJSON_AddObjectToObject(p_json_tags, mac_str.str_buf);
     if (NULL == p_json_tag)
     {
         return false;
@@ -68,7 +61,7 @@ http_json_generate_records_tag_mac_section(
             return false;
         }
     }
-    char *p_hex_str = bin2hex_with_malloc(p_adv->data_buf, p_adv->data_len);
+    char* p_hex_str = bin2hex_with_malloc(p_adv->data_buf, p_adv->data_len);
     if (NULL == p_hex_str)
     {
         return false;
@@ -84,68 +77,47 @@ http_json_generate_records_tag_mac_section(
 
 static bool
 http_json_generate_records_data_section(
-    cJSON *const                    p_json_root,
-    const adv_report_table_t *const p_reports,
-    const bool                      flag_use_timestamps,
-    const time_t                    timestamp,
-    const mac_address_str_t *       p_mac_addr,
-    const char *                    p_coordinates_str,
-    const bool                      flag_use_nonce,
-    const uint32_t                  nonce)
+    cJSON* const                    p_json_root,
+    const adv_report_table_t* const p_reports,
+    const http_json_header_info_t   header_info)
 {
-    cJSON *const p_json_data = cJSON_AddObjectToObject(p_json_root, "data");
+    cJSON* const p_json_data = cJSON_AddObjectToObject(p_json_root, "data");
     if (NULL == p_json_data)
     {
         return false;
     }
 
-    cJSON *const p_json_tags = http_json_generate_records_data_attributes(
-        p_json_data,
-        flag_use_timestamps,
-        timestamp,
-        p_mac_addr,
-        p_coordinates_str,
-        flag_use_nonce,
-        nonce);
+    cJSON* const p_json_tags = http_json_generate_records_data_attributes(p_json_data, header_info);
     if (NULL == p_json_tags)
     {
         return false;
     }
 
-    for (num_of_advs_t i = 0; i < p_reports->num_of_advs; ++i)
+    if (NULL != p_reports)
     {
-        if (!http_json_generate_records_tag_mac_section(p_json_tags, &p_reports->table[i], flag_use_timestamps))
+        for (num_of_advs_t i = 0; i < p_reports->num_of_advs; ++i)
         {
-            return false;
+            if (!http_json_generate_records_tag_mac_section(
+                    p_json_tags,
+                    &p_reports->table[i],
+                    header_info.flag_use_timestamps))
+            {
+                return false;
+            }
         }
     }
     return true;
 }
 
-static cJSON *
-http_json_generate_records(
-    const adv_report_table_t *const p_reports,
-    const bool                      flag_use_timestamps,
-    const time_t                    timestamp,
-    const mac_address_str_t *       p_mac_addr,
-    const char *                    p_coordinates_str,
-    const bool                      flag_use_nonce,
-    const uint32_t                  nonce)
+static cJSON*
+http_json_generate_records(const adv_report_table_t* const p_reports, const http_json_header_info_t header_info)
 {
-    cJSON *p_json_root = cJSON_CreateObject();
+    cJSON* p_json_root = cJSON_CreateObject();
     if (NULL == p_json_root)
     {
         return NULL;
     }
-    if (!http_json_generate_records_data_section(
-            p_json_root,
-            p_reports,
-            flag_use_timestamps,
-            timestamp,
-            p_mac_addr,
-            p_coordinates_str,
-            flag_use_nonce,
-            nonce))
+    if (!http_json_generate_records_data_section(p_json_root, p_reports, header_info))
     {
         cjson_wrap_delete(&p_json_root);
         return NULL;
@@ -155,23 +127,11 @@ http_json_generate_records(
 
 bool
 http_json_create_records_str(
-    const adv_report_table_t *const p_reports,
-    const bool                      flag_use_timestamps,
-    const time_t                    timestamp,
-    const mac_address_str_t *const  p_mac_addr,
-    const char *const               p_coordinates_str,
-    const bool                      flag_use_nonce,
-    const uint32_t                  nonce,
-    cjson_wrap_str_t *const         p_json_str)
+    const adv_report_table_t* const p_reports,
+    const http_json_header_info_t   header_info,
+    cjson_wrap_str_t* const         p_json_str)
 {
-    cJSON *p_json_root = http_json_generate_records(
-        p_reports,
-        flag_use_timestamps,
-        timestamp,
-        p_mac_addr,
-        p_coordinates_str,
-        flag_use_nonce,
-        nonce);
+    cJSON* p_json_root = http_json_generate_records(p_reports, header_info);
     if (NULL == p_json_root)
     {
         return false;
@@ -186,17 +146,21 @@ http_json_create_records_str(
 
 static bool
 http_json_generate_attributes_for_sensors(
-    const adv_report_table_t *const p_reports,
-    cJSON *const                    p_json_active_sensors,
-    cJSON *const                    p_json_inactive_sensors)
+    const adv_report_table_t* const p_reports,
+    cJSON* const                    p_json_active_sensors,
+    cJSON* const                    p_json_inactive_sensors)
 {
+    if (NULL == p_reports)
+    {
+        return true;
+    }
     for (num_of_advs_t i = 0; i < p_reports->num_of_advs; ++i)
     {
-        const adv_report_t *const p_adv   = &p_reports->table[i];
+        const adv_report_t* const p_adv   = &p_reports->table[i];
         const mac_address_str_t   mac_str = mac_address_to_str(&p_adv->tag_mac);
         if (0 != p_adv->samples_counter)
         {
-            cJSON *p_json_obj = cJSON_CreateObject();
+            cJSON* p_json_obj = cJSON_CreateObject();
             if (NULL == p_json_obj)
             {
                 return false;
@@ -213,7 +177,7 @@ http_json_generate_attributes_for_sensors(
         }
         else
         {
-            cJSON *p_json_str = cJSON_CreateString(mac_str.str_buf);
+            cJSON* p_json_str = cJSON_CreateString(mac_str.str_buf);
             if (NULL == p_json_str)
             {
                 return false;
@@ -226,9 +190,9 @@ http_json_generate_attributes_for_sensors(
 
 static bool
 http_json_generate_status_attributes(
-    cJSON *const                             p_json_root,
-    const http_json_statistics_info_t *const p_stat_info,
-    const adv_report_table_t *const          p_reports)
+    cJSON* const                             p_json_root,
+    const http_json_statistics_info_t* const p_stat_info,
+    const adv_report_table_t* const          p_reports)
 {
     if (NULL == cJSON_AddStringToObject(p_json_root, "DEVICE_ADDR", p_stat_info->nrf52_mac_addr.str_buf))
     {
@@ -242,6 +206,10 @@ http_json_generate_status_attributes(
     {
         return false;
     }
+    if (NULL == cJSON_AddBoolToObject(p_json_root, "NRF_STATUS", p_stat_info->nrf_status))
+    {
+        return false;
+    }
     if (!cjson_wrap_add_uint32(p_json_root, "UPTIME", p_stat_info->uptime))
     {
         return false;
@@ -250,7 +218,7 @@ http_json_generate_status_attributes(
     {
         return false;
     }
-    const char *const p_connection_type = p_stat_info->is_connected_to_wifi ? "WIFI" : "ETHERNET";
+    const char* const p_connection_type = p_stat_info->is_connected_to_wifi ? "WIFI" : "ETHERNET";
     if (NULL == cJSON_AddStringToObject(p_json_root, "CONNECTION", p_connection_type))
     {
         return false;
@@ -259,25 +227,40 @@ http_json_generate_status_attributes(
     {
         return false;
     }
-    uint32_t num_sensors_seen = 0;
-    for (num_of_advs_t i = 0; i < p_reports->num_of_advs; ++i)
+    if (NULL == cJSON_AddStringToObject(p_json_root, "RESET_REASON", p_stat_info->reset_reason.buf))
     {
-        const adv_report_t *const p_adv = &p_reports->table[i];
-        if (0 != p_adv->samples_counter)
+        return false;
+    }
+    if (!cjson_wrap_add_uint32(p_json_root, "RESET_CNT", p_stat_info->reset_cnt))
+    {
+        return false;
+    }
+    if (NULL == cJSON_AddStringToObject(p_json_root, "RESET_INFO", p_stat_info->p_reset_info))
+    {
+        return false;
+    }
+    uint32_t num_sensors_seen = 0;
+    if (NULL != p_reports)
+    {
+        for (num_of_advs_t i = 0; i < p_reports->num_of_advs; ++i)
         {
-            num_sensors_seen += 1;
+            const adv_report_t* const p_adv = &p_reports->table[i];
+            if (0 != p_adv->samples_counter)
+            {
+                num_sensors_seen += 1;
+            }
         }
     }
     if (!cjson_wrap_add_uint32(p_json_root, "SENSORS_SEEN", num_sensors_seen))
     {
         return false;
     }
-    cJSON *p_json_active_sensors = cJSON_AddArrayToObject(p_json_root, "ACTIVE_SENSORS");
+    cJSON* p_json_active_sensors = cJSON_AddArrayToObject(p_json_root, "ACTIVE_SENSORS");
     if (NULL == p_json_active_sensors)
     {
         return false;
     }
-    cJSON *p_json_inactive_sensors = cJSON_AddArrayToObject(p_json_root, "INACTIVE_SENSORS");
+    cJSON* p_json_inactive_sensors = cJSON_AddArrayToObject(p_json_root, "INACTIVE_SENSORS");
     if (NULL == p_json_inactive_sensors)
     {
         return false;
@@ -285,12 +268,12 @@ http_json_generate_status_attributes(
     return http_json_generate_attributes_for_sensors(p_reports, p_json_active_sensors, p_json_inactive_sensors);
 }
 
-static cJSON *
+static cJSON*
 http_json_generate_status(
-    const http_json_statistics_info_t *const p_stat_info,
-    const adv_report_table_t *const          p_reports)
+    const http_json_statistics_info_t* const p_stat_info,
+    const adv_report_table_t* const          p_reports)
 {
-    cJSON *p_json_root = cJSON_CreateObject();
+    cJSON* p_json_root = cJSON_CreateObject();
     if (NULL == p_json_root)
     {
         return NULL;
@@ -305,11 +288,11 @@ http_json_generate_status(
 
 bool
 http_json_create_status_str(
-    const http_json_statistics_info_t *const p_stat_info,
-    const adv_report_table_t *const          p_reports,
-    cjson_wrap_str_t *const                  p_json_str)
+    const http_json_statistics_info_t* const p_stat_info,
+    const adv_report_table_t* const          p_reports,
+    cjson_wrap_str_t* const                  p_json_str)
 {
-    cJSON *p_json_root = http_json_generate_status(p_stat_info, p_reports);
+    cJSON* p_json_root = http_json_generate_status(p_stat_info, p_reports);
     if (NULL == p_json_root)
     {
         return false;

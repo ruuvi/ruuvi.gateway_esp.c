@@ -13,6 +13,7 @@
 #include "gw_cfg_default.h"
 #include "os_mutex_recursive.h"
 #include "os_mutex.h"
+#include "os_task.h"
 #include "lwip/ip4_addr.h"
 #include "event_mgr.h"
 
@@ -22,15 +23,21 @@ using namespace std;
  * *********************************************************************************/
 
 class TestGwCfgBlob;
-static TestGwCfgBlob *g_pTestClass;
+static TestGwCfgBlob* g_pTestClass;
 
 extern "C" {
 
-const char *
+const char*
 os_task_get_name(void)
 {
     static const char g_task_name[] = "main";
-    return const_cast<char *>(g_task_name);
+    return const_cast<char*>(g_task_name);
+}
+
+os_task_priority_t
+os_task_get_priority(void)
+{
+    return 0;
 }
 
 } // extern "C"
@@ -60,6 +67,7 @@ protected:
     void
     TearDown() override
     {
+        gw_cfg_default_deinit();
         g_pTestClass = nullptr;
         esp_log_wrapper_deinit();
     }
@@ -78,13 +86,13 @@ TestGwCfgBlob::TestGwCfgBlob()
 extern "C" {
 
 os_mutex_recursive_t
-os_mutex_recursive_create_static(os_mutex_recursive_static_t *const p_mutex_static)
+os_mutex_recursive_create_static(os_mutex_recursive_static_t* const p_mutex_static)
 {
     return (os_mutex_recursive_t)p_mutex_static;
 }
 
 void
-os_mutex_recursive_delete(os_mutex_recursive_t *const ph_mutex)
+os_mutex_recursive_delete(os_mutex_recursive_t* const ph_mutex)
 {
 }
 
@@ -99,13 +107,13 @@ os_mutex_recursive_unlock(os_mutex_recursive_t const h_mutex)
 }
 
 os_mutex_t
-os_mutex_create_static(os_mutex_static_t *const p_mutex_static)
+os_mutex_create_static(os_mutex_static_t* const p_mutex_static)
 {
     return reinterpret_cast<os_mutex_t>(p_mutex_static);
 }
 
 void
-os_mutex_delete(os_mutex_t *const ph_mutex)
+os_mutex_delete(os_mutex_t* const ph_mutex)
 {
     (void)ph_mutex;
 }
@@ -122,20 +130,20 @@ os_mutex_unlock(os_mutex_t const h_mutex)
     (void)h_mutex;
 }
 
-char *
-esp_ip4addr_ntoa(const esp_ip4_addr_t *addr, char *buf, int buflen)
+char*
+esp_ip4addr_ntoa(const esp_ip4_addr_t* addr, char* buf, int buflen)
 {
-    return ip4addr_ntoa_r((ip4_addr_t *)addr, buf, buflen);
+    return ip4addr_ntoa_r((ip4_addr_t*)addr, buf, buflen);
 }
 
 uint32_t
-esp_ip4addr_aton(const char *addr)
+esp_ip4addr_aton(const char* addr)
 {
     return ipaddr_addr(addr);
 }
 
 void
-wifi_manager_cb_save_wifi_config(const wifiman_config_t *const p_cfg)
+wifi_manager_cb_save_wifi_config_sta(const wifiman_config_sta_t* const p_cfg_sta)
 {
 }
 
@@ -152,6 +160,207 @@ TestGwCfgBlob::~TestGwCfgBlob() = default;
 
 /*** Unit-Tests
  * *******************************************************************************************************/
+
+TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_lan_auth_ruuvi_to_default) // NOLINT
+{
+    const ruuvi_gw_cfg_lan_auth_t* const p_default_lan_auth = gw_cfg_default_get_lan_auth();
+    const ruuvi_gateway_config_blob_t gw_cfg_blob = {
+        .header = RUUVI_GATEWAY_CONFIG_BLOB_HEADER,
+        .fmt_version = RUUVI_GATEWAY_CONFIG_BLOB_FMT_VERSION,
+        .eth = {
+            .use_eth = false,
+            .eth_dhcp = true,
+            .eth_static_ip = { 0 },
+            .eth_netmask = { 0 },
+            .eth_gw = { 0 },
+            .eth_dns1 = { 0 },
+            .eth_dns2 = { 0 },
+        },
+        .mqtt = {
+            .use_mqtt = false,
+            .mqtt_use_default_prefix = true,
+            .mqtt_server = { 0 },
+            .mqtt_port = 0,
+            .mqtt_prefix = { 0 },
+            .mqtt_client_id = { 0 },
+            .mqtt_user = { 0 },
+            .mqtt_pass = { 0 },
+        },
+        .http = {
+            true,
+            "https://network.ruuvi.com/record",
+            "",
+            "",
+        },
+        .lan_auth = {
+            RUUVI_GW_CFG_BLOB_AUTH_TYPE_STR_RUUVI,
+            RUUVI_GATEWAY_AUTH_DEFAULT_USER,
+            "1d45bdb0aab662c03ac3fac45da43f8b",
+        },
+        .auto_update = {
+            .auto_update_cycle = RUUVI_GW_CFG_BLOB_AUTO_UPDATE_CYCLE_TYPE_REGULAR,
+            .auto_update_weekdays_bitmask = 0x7F,
+            .auto_update_interval_from = 0,
+            .auto_update_interval_to = 24,
+            .auto_update_tz_offset_hours = 3,
+        },
+        .filter = {
+            .company_id = RUUVI_COMPANY_ID,
+            .company_filter = true,
+        },
+        .scan = {
+            .scan_coded_phy = false,
+            .scan_1mbit_phy = true,
+            .scan_extended_payload = true,
+            .scan_channel_37 = true,
+            .scan_channel_38 = true,
+            .scan_channel_39 = true,
+        },
+        .coordinates = { 0 },
+    };
+
+    gw_cfg_t gw_cfg {};
+    gw_cfg_blob_convert(&gw_cfg, &gw_cfg_blob);
+
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_DEFAULT, gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
+    ASSERT_EQ(string(p_default_lan_auth->lan_auth_pass.buf), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+}
+
+TEST_F(TestGwCfgBlob, test_gw_cfg_blob_do_not_convert_lan_auth_ruuvi_to_default_non_default_password) // NOLINT
+{
+    const ruuvi_gw_cfg_lan_auth_t* const p_default_lan_auth = gw_cfg_default_get_lan_auth();
+    const ruuvi_gateway_config_blob_t gw_cfg_blob = {
+        .header = RUUVI_GATEWAY_CONFIG_BLOB_HEADER,
+        .fmt_version = RUUVI_GATEWAY_CONFIG_BLOB_FMT_VERSION,
+        .eth = {
+            .use_eth = false,
+            .eth_dhcp = true,
+            .eth_static_ip = { 0 },
+            .eth_netmask = { 0 },
+            .eth_gw = { 0 },
+            .eth_dns1 = { 0 },
+            .eth_dns2 = { 0 },
+        },
+        .mqtt = {
+            .use_mqtt = false,
+            .mqtt_use_default_prefix = true,
+            .mqtt_server = { 0 },
+            .mqtt_port = 0,
+            .mqtt_prefix = { 0 },
+            .mqtt_client_id = { 0 },
+            .mqtt_user = { 0 },
+            .mqtt_pass = { 0 },
+        },
+        .http = {
+            true,
+            "https://network.ruuvi.com/record",
+            "",
+            "",
+        },
+        .lan_auth = {
+            RUUVI_GW_CFG_BLOB_AUTH_TYPE_STR_RUUVI,
+            RUUVI_GATEWAY_AUTH_DEFAULT_USER,
+            "non_default_password",
+        },
+        .auto_update = {
+            .auto_update_cycle = RUUVI_GW_CFG_BLOB_AUTO_UPDATE_CYCLE_TYPE_REGULAR,
+            .auto_update_weekdays_bitmask = 0x7F,
+            .auto_update_interval_from = 0,
+            .auto_update_interval_to = 24,
+            .auto_update_tz_offset_hours = 3,
+        },
+        .filter = {
+            .company_id = RUUVI_COMPANY_ID,
+            .company_filter = true,
+        },
+        .scan = {
+            .scan_coded_phy = false,
+            .scan_1mbit_phy = true,
+            .scan_extended_payload = true,
+            .scan_channel_37 = true,
+            .scan_channel_38 = true,
+            .scan_channel_39 = true,
+        },
+                  .coordinates = { 0 },
+    };
+
+    gw_cfg_t gw_cfg {};
+    gw_cfg_blob_convert(&gw_cfg, &gw_cfg_blob);
+
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
+    ASSERT_EQ(string("non_default_password"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+}
+
+TEST_F(TestGwCfgBlob, test_gw_cfg_blob_do_not_convert_lan_auth_ruuvi_to_default_non_default_user) // NOLINT
+{
+    const ruuvi_gw_cfg_lan_auth_t* const p_default_lan_auth = gw_cfg_default_get_lan_auth();
+    const ruuvi_gateway_config_blob_t gw_cfg_blob = {
+        .header = RUUVI_GATEWAY_CONFIG_BLOB_HEADER,
+        .fmt_version = RUUVI_GATEWAY_CONFIG_BLOB_FMT_VERSION,
+        .eth = {
+            .use_eth = false,
+            .eth_dhcp = true,
+            .eth_static_ip = { 0 },
+            .eth_netmask = { 0 },
+            .eth_gw = { 0 },
+            .eth_dns1 = { 0 },
+            .eth_dns2 = { 0 },
+        },
+        .mqtt = {
+            .use_mqtt = false,
+            .mqtt_use_default_prefix = true,
+            .mqtt_server = { 0 },
+            .mqtt_port = 0,
+            .mqtt_prefix = { 0 },
+            .mqtt_client_id = { 0 },
+            .mqtt_user = { 0 },
+            .mqtt_pass = { 0 },
+        },
+        .http = {
+            true,
+            "https://network.ruuvi.com/record",
+            "",
+            "",
+        },
+        .lan_auth = {
+            RUUVI_GW_CFG_BLOB_AUTH_TYPE_STR_RUUVI,
+            "non_default_user",
+            "1d45bdb0aab662c03ac3fac45da43f8b",
+        },
+        .auto_update = {
+            .auto_update_cycle = RUUVI_GW_CFG_BLOB_AUTO_UPDATE_CYCLE_TYPE_REGULAR,
+            .auto_update_weekdays_bitmask = 0x7F,
+            .auto_update_interval_from = 0,
+            .auto_update_interval_to = 24,
+            .auto_update_tz_offset_hours = 3,
+        },
+        .filter = {
+            .company_id = RUUVI_COMPANY_ID,
+            .company_filter = true,
+        },
+        .scan = {
+            .scan_coded_phy = false,
+            .scan_1mbit_phy = true,
+            .scan_extended_payload = true,
+            .scan_channel_37 = true,
+            .scan_channel_38 = true,
+            .scan_channel_39 = true,
+        },
+                  .coordinates = { 0 },
+    };
+
+    gw_cfg_t gw_cfg {};
+    gw_cfg_blob_convert(&gw_cfg, &gw_cfg_blob);
+
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(string("non_default_user"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
+    ASSERT_EQ(string(p_default_lan_auth->lan_auth_pass.buf), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
+    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
+}
 
 TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_update_cycle_regular) // NOLINT
 {
@@ -655,7 +864,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_with_incorrect_header) // NOLINT
     gw_cfg_t gw_cfg {};
     gw_cfg_blob_convert(&gw_cfg, &gw_cfg_blob);
 
-    ASSERT_EQ(false, gw_cfg.eth_cfg.use_eth);
+    ASSERT_EQ(true, gw_cfg.eth_cfg.use_eth);
     ASSERT_EQ(true, gw_cfg.eth_cfg.eth_dhcp);
     ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_static_ip.buf);
     ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_netmask.buf);
@@ -682,7 +891,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_with_incorrect_header) // NOLINT
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http_stat.http_stat_user.buf);
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http_stat.http_stat_pass.buf);
 
-    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_DEFAULT, gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type);
     ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
     ASSERT_EQ(string("1d45bdb0aab662c03ac3fac45da43f8b"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);
@@ -766,7 +975,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_with_incorrect_fmt_version) // NO
     gw_cfg_t gw_cfg {};
     gw_cfg_blob_convert(&gw_cfg, &gw_cfg_blob);
 
-    ASSERT_EQ(false, gw_cfg.eth_cfg.use_eth);
+    ASSERT_EQ(true, gw_cfg.eth_cfg.use_eth);
     ASSERT_EQ(true, gw_cfg.eth_cfg.eth_dhcp);
     ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_static_ip.buf);
     ASSERT_EQ(string(""), gw_cfg.eth_cfg.eth_netmask.buf);
@@ -793,7 +1002,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_with_incorrect_fmt_version) // NO
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http_stat.http_stat_user.buf);
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http_stat.http_stat_pass.buf);
 
-    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_DEFAULT, gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type);
     ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf);
     ASSERT_EQ(string("1d45bdb0aab662c03ac3fac45da43f8b"), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf);
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf);

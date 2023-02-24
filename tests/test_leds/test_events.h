@@ -8,6 +8,7 @@ typedef enum TestEventType_Tag
     TestEventType_LedcSetFadeWithTime,
     TestEventType_LedcFadeStart,
     TestEventType_LedcFadeFuncInstall,
+    TestEventType_LedcStop,
 } TestEventType_e;
 
 /*** Test-Events classes implementation
@@ -33,7 +34,7 @@ public:
     uint32_t         freq_hz;
     ledc_clk_cfg_t   clk_cfg;
 
-    explicit TestEventLedcTimerConfig(const ledc_timer_config_t *timer_conf)
+    explicit TestEventLedcTimerConfig(const ledc_timer_config_t* timer_conf)
         : TestEvent(TestEventType_LedcTimerConfig)
         , speed_mode(timer_conf->speed_mode)
         , duty_resolution(timer_conf->duty_resolution)
@@ -55,7 +56,7 @@ public:
     uint32_t         duty;
     int              hpoint;
 
-    explicit TestEventLedcChannelConfig(const ledc_channel_config_t *ledc_conf)
+    explicit TestEventLedcChannelConfig(const ledc_channel_config_t* ledc_conf)
         : TestEvent(TestEventType_LedcChannelConfig)
         , gpio_num(ledc_conf->gpio_num)
         , speed_mode(ledc_conf->speed_mode)
@@ -114,6 +115,22 @@ public:
     explicit TestEventLedcFadeFuncInstall(int intr_alloc_flags)
         : TestEvent(TestEventType_LedcFadeFuncInstall)
         , intr_alloc_flags(intr_alloc_flags)
+    {
+    }
+};
+
+class TestEventLedcStop : public TestEvent
+{
+public:
+    ledc_mode_t    speed_mode;
+    ledc_channel_t channel;
+    uint32_t       idle_level;
+
+    explicit TestEventLedcStop(ledc_mode_t speed_mode, ledc_channel_t channel, uint32_t idle_level)
+        : TestEvent(TestEventType_LedcStop)
+        , speed_mode(speed_mode)
+        , channel(channel)
+        , idle_level(idle_level)
     {
     }
 };

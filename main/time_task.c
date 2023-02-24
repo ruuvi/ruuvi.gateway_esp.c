@@ -48,7 +48,7 @@ typedef enum time_task_sig_e
 #define TIME_TASK_SIG_LAST  (TIME_TASK_SIG_STOP)
 
 static os_signal_static_t g_time_task_signal_mem;
-static os_signal_t *      gp_time_task_signal;
+static os_signal_t*       gp_time_task_signal;
 
 static os_task_stack_type_t g_time_task_stack_mem[RUUVI_STACK_SIZE_TIME_TASK];
 static os_task_static_t     g_time_task_mem;
@@ -121,7 +121,7 @@ time_task_conv_from_sig_num(const os_signal_num_e sig_num)
 }
 
 static void
-time_task_cb_notification_on_sync(struct timeval *p_tv)
+time_task_cb_notification_on_sync(struct timeval* p_tv)
 {
     struct tm tm_time = { 0 };
     gmtime_r(&p_tv->tv_sec, &tm_time);
@@ -130,14 +130,14 @@ time_task_cb_notification_on_sync(struct timeval *p_tv)
     if (p_tv->tv_sec < g_time_min_valid)
     {
         LOG_WARN(
-            "Time has been synchronized but timestamp is bad: %s.%03u",
+            "### Time has been synchronized but timestamp is bad: %s.%03u",
             buf_time_str,
             (printf_uint_t)(p_tv->tv_usec / 1000));
         g_time_is_synchronized = false;
     }
     else
     {
-        LOG_INFO("Time has been synchronized: %s.%03u", buf_time_str, (printf_uint_t)(p_tv->tv_usec / 1000));
+        LOG_INFO("### Time has been synchronized: %s.%03u", buf_time_str, (printf_uint_t)(p_tv->tv_usec / 1000));
         g_time_is_synchronized = true;
         if (SNTP_SYNC_MODE_IMMED == sntp_get_sync_mode())
         {
@@ -151,7 +151,7 @@ time_task_cb_notification_on_sync(struct timeval *p_tv)
 static void
 time_task_sntp_start(void)
 {
-    LOG_INFO("Activate SNTP time synchronization");
+    LOG_INFO("### Activate SNTP time synchronization");
     g_time_is_synchronized = false;
     sntp_init();
 }
@@ -159,7 +159,7 @@ time_task_sntp_start(void)
 static void
 time_task_sntp_stop(void)
 {
-    LOG_INFO("Deactivate SNTP time synchronization");
+    LOG_INFO("### Deactivate SNTP time synchronization");
     g_time_is_synchronized = false;
     sntp_stop();
 }
@@ -263,7 +263,7 @@ time_task_configure_signals(void)
 }
 
 static void
-time_task_sntp_add_ntp_server(const uint32_t server_idx, const ruuvi_gw_cfg_ntp_server_addr_str_t *const p_ntp_srv_addr)
+time_task_sntp_add_ntp_server(const uint32_t server_idx, const ruuvi_gw_cfg_ntp_server_addr_str_t* const p_ntp_srv_addr)
 {
     if ((NULL != p_ntp_srv_addr) && ('\0' != p_ntp_srv_addr->buf[0]))
     {
@@ -279,9 +279,9 @@ time_task_sntp_add_ntp_server(const uint32_t server_idx, const ruuvi_gw_cfg_ntp_
 
 static void
 time_task_add_ntp_server(
-    ruuvi_gw_cfg_ntp_server_addr_str_t *const       p_arr_of_time_servers,
-    const ruuvi_gw_cfg_ntp_server_addr_str_t *const p_ntp_srv_addr,
-    uint32_t *const                                 p_srv_idx)
+    ruuvi_gw_cfg_ntp_server_addr_str_t* const       p_arr_of_time_servers,
+    const ruuvi_gw_cfg_ntp_server_addr_str_t* const p_ntp_srv_addr,
+    uint32_t* const                                 p_srv_idx)
 {
     if ('\0' != p_ntp_srv_addr->buf[0])
     {
@@ -293,7 +293,7 @@ time_task_add_ntp_server(
 static void
 time_task_save_settings(void)
 {
-    const gw_cfg_t *p_gw_cfg = gw_cfg_lock_ro();
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
 
     g_time_task_ntp_use      = p_gw_cfg->ruuvi_cfg.ntp.ntp_use;
     g_time_task_ntp_use_dhcp = p_gw_cfg->ruuvi_cfg.ntp.ntp_use_dhcp;
@@ -325,12 +325,12 @@ time_task_configure_ntp_sources(void)
     {
         if (g_time_task_ntp_use_dhcp)
         {
-            LOG_INFO("Configure SNTP to use DHCP");
+            LOG_INFO("### Configure SNTP to use DHCP");
             sntp_servermode_dhcp(1);
         }
         else
         {
-            LOG_INFO("Configure SNTP to not use DHCP");
+            LOG_INFO("### Configure SNTP to not use DHCP");
             sntp_servermode_dhcp(0);
         }
     }

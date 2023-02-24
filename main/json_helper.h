@@ -21,7 +21,7 @@ extern "C" {
  * @return str_buf_t containing the value corresponding to the key or STR_BUF_INIT_NULL if json parsing failed.
  */
 str_buf_t
-json_helper_get_by_key(const char *const p_json, const char *const p_key);
+json_helper_get_by_key(const char* const p_json, const char* const p_key);
 
 #ifdef __cplusplus
 }

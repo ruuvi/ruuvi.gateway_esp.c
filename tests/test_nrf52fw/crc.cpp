@@ -49,7 +49,7 @@ static const unsigned int crc32_le_table[256] = {
 };
 
 extern "C" uint32_t
-crc32_le(uint32_t crc, uint8_t const *buf, uint32_t len)
+crc32_le(uint32_t crc, uint8_t const* buf, uint32_t len)
 {
     unsigned int i;
     crc = ~crc;

@@ -28,8 +28,8 @@
 
 static const char TAG[] = "gw_cfg";
 
-static const char *
-gw_cfg_default_json_read_from_nvs(nvs_handle handle, const char *const p_nvs_key)
+static const char*
+gw_cfg_default_json_read_from_nvs(nvs_handle handle, const char* const p_nvs_key)
 {
     size_t    json_size = 0;
     esp_err_t esp_err   = nvs_get_str(handle, p_nvs_key, NULL, &json_size);
@@ -39,7 +39,7 @@ gw_cfg_default_json_read_from_nvs(nvs_handle handle, const char *const p_nvs_key
         return NULL;
     }
 
-    char *p_cfg_json = os_malloc(json_size);
+    char* p_cfg_json = os_malloc(json_size);
     if (NULL == p_cfg_json)
     {
         LOG_ERR("Can't allocate %lu bytes for configuration", (printf_ulong_t)json_size);
@@ -57,9 +57,9 @@ gw_cfg_default_json_read_from_nvs(nvs_handle handle, const char *const p_nvs_key
 }
 
 bool
-gw_cfg_default_json_read(gw_cfg_t *const p_gw_cfg_default)
+gw_cfg_default_json_read(gw_cfg_t* const p_gw_cfg_default)
 {
-    static const char *const p_nvs_key_gw_cfg_default = "gw_cfg_default";
+    static const char* const p_nvs_key_gw_cfg_default = "gw_cfg_default";
 
     if (!ruuvi_nvs_init_gw_cfg_default())
     {
@@ -76,7 +76,7 @@ gw_cfg_default_json_read(gw_cfg_t *const p_gw_cfg_default)
         return false;
     }
 
-    const char *p_cfg_json = gw_cfg_default_json_read_from_nvs(handle, p_nvs_key_gw_cfg_default);
+    const char* p_cfg_json = gw_cfg_default_json_read_from_nvs(handle, p_nvs_key_gw_cfg_default);
 
     nvs_close(handle);
     (void)ruuvi_nvs_deinit_gw_cfg_default();
@@ -87,8 +87,9 @@ gw_cfg_default_json_read(gw_cfg_t *const p_gw_cfg_default)
         return false;
     }
     LOG_INFO("Default gw_cfg was successfully read from NVS");
+    LOG_DBG("Default gw_cfg: %s", p_cfg_json);
 
-    const bool res = gw_cfg_json_parse(p_nvs_key_gw_cfg_default, NULL, p_cfg_json, p_gw_cfg_default, NULL);
+    const bool res = gw_cfg_json_parse(p_nvs_key_gw_cfg_default, NULL, p_cfg_json, p_gw_cfg_default);
     os_free(p_cfg_json);
 
     if (!res)

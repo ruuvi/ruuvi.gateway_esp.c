@@ -130,7 +130,7 @@ typedef struct
  *         - ESP_OK                on success
  */
 esp_err_t
-spi_bus_initialize(spi_host_device_t host, const spi_bus_config_t *bus_config, int dma_chan);
+spi_bus_initialize(spi_host_device_t host, const spi_bus_config_t* bus_config, int dma_chan);
 
 /**
  * @brief Free a SPI bus

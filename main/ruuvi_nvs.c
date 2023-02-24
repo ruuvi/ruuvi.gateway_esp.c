@@ -24,7 +24,7 @@
 static const char TAG[] = "ruuvi_nvs";
 
 static bool
-ruuvi_nvs_init_partition(const char *const p_partition_name)
+ruuvi_nvs_init_partition(const char* const p_partition_name)
 {
     LOG_INFO("NVS init partition: %s", p_partition_name);
     const esp_err_t err = nvs_flash_init_partition(p_partition_name);
@@ -49,7 +49,7 @@ ruuvi_nvs_init_gw_cfg_default(void)
 }
 
 static bool
-ruuvi_nvs_deinit_partition(const char *const p_partition_name)
+ruuvi_nvs_deinit_partition(const char* const p_partition_name)
 {
     LOG_INFO("NVS deinit partition: %s", p_partition_name);
     const esp_err_t err = nvs_flash_deinit_partition(p_partition_name);
@@ -85,9 +85,9 @@ ruuvi_nvs_erase(void)
 }
 
 static bool
-ruuvi_nvs_open_partition(const char *const p_partition_name, nvs_open_mode_t open_mode, nvs_handle_t *p_handle)
+ruuvi_nvs_open_partition(const char* const p_partition_name, nvs_open_mode_t open_mode, nvs_handle_t* p_handle)
 {
-    const char *const p_nvs_name = RUUVI_GATEWAY_NVS_NAMESPACE;
+    const char* const p_nvs_name = RUUVI_GATEWAY_NVS_NAMESPACE;
 
     esp_err_t err = nvs_open_from_partition(p_partition_name, p_nvs_name, open_mode, p_handle);
     if (ESP_OK != err)
@@ -124,7 +124,7 @@ ruuvi_nvs_open_partition(const char *const p_partition_name, nvs_open_mode_t ope
             }
             nvs_close(handle);
 
-            LOG_INFO("NVS partition %s, namespace '%s' created successfully", p_partition_name, p_nvs_name);
+            LOG_INFO("### NVS partition %s, namespace '%s' created successfully", p_partition_name, p_nvs_name);
             err = nvs_open_from_partition(p_partition_name, p_nvs_name, open_mode, p_handle);
             if (ESP_OK != err)
             {
@@ -142,13 +142,13 @@ ruuvi_nvs_open_partition(const char *const p_partition_name, nvs_open_mode_t ope
 }
 
 bool
-ruuvi_nvs_open(nvs_open_mode_t open_mode, nvs_handle_t *p_handle)
+ruuvi_nvs_open(nvs_open_mode_t open_mode, nvs_handle_t* p_handle)
 {
     return ruuvi_nvs_open_partition(NVS_DEFAULT_PART_NAME, open_mode, p_handle);
 }
 
 bool
-ruuvi_nvs_open_gw_cfg_default(nvs_open_mode_t open_mode, nvs_handle_t *p_handle)
+ruuvi_nvs_open_gw_cfg_default(nvs_open_mode_t open_mode, nvs_handle_t* p_handle)
 {
     return ruuvi_nvs_open_partition(RUUVI_GATEWAY_NVS_PARTITION_GW_CFG_DEFAULT, open_mode, p_handle);
 }

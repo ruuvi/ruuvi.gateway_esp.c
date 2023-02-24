@@ -112,7 +112,7 @@ typedef struct
  * @return ESP_OK on success, ESP_ERR_INVALID_STATE if partition table is not valid.
  */
 esp_err_t
-esp_partition_table_verify(const esp_partition_info_t *partition_table, bool log_errors, int *num_partitions);
+esp_partition_table_verify(const esp_partition_info_t* partition_table, bool log_errors, int* num_partitions);
 
 /**
  * Check whether the region on the main flash is safe to write.

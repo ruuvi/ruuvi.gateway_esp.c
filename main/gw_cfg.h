@@ -48,7 +48,8 @@ extern "C" {
 
 typedef struct gw_cfg_device_info_t
 {
-    wifiman_wifi_ssid_t      wifi_ap_hostname;
+    wifiman_wifi_ssid_t      wifi_ap;
+    wifiman_hostname_t       hostname;
     ruuvi_esp32_fw_ver_str_t esp32_fw_ver;
     ruuvi_nrf52_fw_ver_str_t nrf52_fw_ver;
     mac_address_str_t        nrf52_mac_addr;
@@ -111,6 +112,7 @@ typedef struct ruuvi_gw_cfg_mqtt_password_t
 typedef struct ruuvi_gw_cfg_mqtt_t
 {
     bool                          use_mqtt;
+    bool                          mqtt_disable_retained_messages;
     ruuvi_gw_cfg_mqtt_transport_t mqtt_transport;
     ruuvi_gw_cfg_mqtt_server_t    mqtt_server;
     uint16_t                      mqtt_port;
@@ -199,6 +201,7 @@ typedef struct ruuvi_gw_cfg_lan_auth_t
     http_server_auth_user_t    lan_auth_user;
     http_server_auth_pass_t    lan_auth_pass;
     http_server_auth_api_key_t lan_auth_api_key;
+    http_server_auth_api_key_t lan_auth_api_key_rw;
 } ruuvi_gw_cfg_lan_auth_t;
 
 #define AUTO_UPDATE_CYCLE_TYPE_STR_REGULAR     "regular"
@@ -288,10 +291,11 @@ typedef struct gw_cfg_update_status_t
 {
     bool flag_ruuvi_cfg_modified;
     bool flag_eth_cfg_modified;
-    bool flag_wifi_cfg_modified;
+    bool flag_wifi_ap_cfg_modified;
+    bool flag_wifi_sta_cfg_modified;
 } gw_cfg_update_status_t;
 
-typedef void (*gw_cfg_cb_on_change_cfg)(const gw_cfg_t *const p_gw_cfg);
+typedef void (*gw_cfg_cb_on_change_cfg)(const gw_cfg_t* const p_gw_cfg);
 
 void
 gw_cfg_init(gw_cfg_cb_on_change_cfg p_cb_on_change_cfg);
@@ -302,31 +306,37 @@ gw_cfg_deinit(void);
 bool
 gw_cfg_is_initialized(void);
 
-const gw_cfg_t *
+const gw_cfg_t*
 gw_cfg_lock_ro(void);
 
 void
-gw_cfg_unlock_ro(const gw_cfg_t **const p_p_gw_cfg);
-
-void
-gw_cfg_update_eth_cfg(const gw_cfg_eth_t *const p_gw_cfg_eth_new);
-
-void
-gw_cfg_update_ruuvi_cfg(const gw_cfg_ruuvi_t *const p_gw_cfg_ruuvi_new);
-
-void
-gw_cfg_update_wifi_config(const wifiman_config_t *const p_wifi_cfg);
-
-gw_cfg_update_status_t
-gw_cfg_update(const gw_cfg_t *const p_gw_cfg);
-
-void
-gw_cfg_get_copy(gw_cfg_t *const p_gw_cfg);
+gw_cfg_unlock_ro(const gw_cfg_t** const p_p_gw_cfg);
 
 bool
-gw_cfg_get_remote_cfg_use(gw_cfg_remote_refresh_interval_minutes_t *const p_interval_minutes);
+gw_cfg_is_empty(void);
 
-const ruuvi_gw_cfg_remote_t *
+void
+gw_cfg_update_eth_cfg(const gw_cfg_eth_t* const p_gw_cfg_eth_new);
+
+void
+gw_cfg_update_ruuvi_cfg(const gw_cfg_ruuvi_t* const p_gw_cfg_ruuvi_new);
+
+void
+gw_cfg_update_wifi_ap_config(const wifiman_config_ap_t* const p_wifi_ap_cfg);
+
+void
+gw_cfg_update_wifi_sta_config(const wifiman_config_sta_t* const p_wifi_sta_cfg);
+
+gw_cfg_update_status_t
+gw_cfg_update(const gw_cfg_t* const p_gw_cfg);
+
+void
+gw_cfg_get_copy(gw_cfg_t* const p_gw_cfg);
+
+bool
+gw_cfg_get_remote_cfg_use(gw_cfg_remote_refresh_interval_minutes_t* const p_interval_minutes);
+
+const ruuvi_gw_cfg_remote_t*
 gw_cfg_get_remote_cfg_copy(void);
 
 bool
@@ -339,19 +349,34 @@ bool
 gw_cfg_get_mqtt_use_mqtt(void);
 
 bool
+gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss(void);
+
+bool
 gw_cfg_get_http_use_http(void);
+
+ruuvi_gw_cfg_http_t*
+gw_cfg_get_http_copy(void);
+
+str_buf_t
+gw_cfg_get_http_password_copy(void);
 
 bool
 gw_cfg_get_http_stat_use_http_stat(void);
 
-ruuvi_gw_cfg_mqtt_prefix_t
-gw_cfg_get_mqtt_prefix(void);
+ruuvi_gw_cfg_http_stat_t*
+gw_cfg_get_http_stat_copy(void);
+
+str_buf_t
+gw_cfg_get_http_stat_password_copy(void);
+
+ruuvi_gw_cfg_mqtt_t*
+gw_cfg_get_mqtt_copy(void);
+
+str_buf_t
+gw_cfg_get_mqtt_password_copy(void);
 
 auto_update_cycle_type_e
 gw_cfg_get_auto_update_cycle(void);
-
-ruuvi_gw_cfg_lan_auth_t
-gw_cfg_get_lan_auth(void);
 
 bool
 gw_cfg_get_ntp_use(void);
@@ -359,32 +384,38 @@ gw_cfg_get_ntp_use(void);
 ruuvi_gw_cfg_coordinates_t
 gw_cfg_get_coordinates(void);
 
-const ruuvi_esp32_fw_ver_str_t *
+const ruuvi_esp32_fw_ver_str_t*
 gw_cfg_get_esp32_fw_ver(void);
 
-const ruuvi_nrf52_fw_ver_str_t *
+const ruuvi_nrf52_fw_ver_str_t*
 gw_cfg_get_nrf52_fw_ver(void);
 
-const nrf52_device_id_str_t *
+const nrf52_device_id_str_t*
 gw_cfg_get_nrf52_device_id(void);
 
-const mac_address_str_t *
+const mac_address_str_t*
 gw_cfg_get_nrf52_mac_addr(void);
 
-const mac_address_str_t *
+const mac_address_str_t*
 gw_cfg_get_esp32_mac_addr_wifi(void);
 
-const mac_address_str_t *
+const mac_address_str_t*
 gw_cfg_get_esp32_mac_addr_eth(void);
 
-const wifiman_wifi_ssid_t *
+const wifiman_wifi_ssid_t*
 gw_cfg_get_wifi_ap_ssid(void);
 
-const char *
-gw_cfg_auth_type_to_str(const ruuvi_gw_cfg_lan_auth_t *const p_lan_auth);
+const wifiman_hostname_t*
+gw_cfg_get_hostname(void);
+
+const char*
+gw_cfg_auth_type_to_str(const ruuvi_gw_cfg_lan_auth_t* const p_lan_auth);
 
 wifiman_config_t
 gw_cfg_get_wifi_cfg(void);
+
+bool
+gw_cfg_ruuvi_cmp(const gw_cfg_ruuvi_t* const p_cfg_ruuvi1, const gw_cfg_ruuvi_t* const p_cfg_ruuvi2);
 
 #ifdef __cplusplus
 }

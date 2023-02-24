@@ -63,7 +63,7 @@ public:
     u8_t        idx;
     std::string server;
 
-    TestEventSntpSetServerName(const u8_t idx, const char *server)
+    TestEventSntpSetServerName(const u8_t idx, const char* server)
         : TestEvent(TestEventType_SNTP_SetServerName)
         , idx(idx)
         , server(server)
@@ -79,7 +79,7 @@ public:
     u8_t            idx;
     const ip_addr_t addr;
 
-    TestEventSntpSetServer(const u8_t idx, const ip_addr_t *p_addr)
+    TestEventSntpSetServer(const u8_t idx, const ip_addr_t* p_addr)
         : TestEvent(TestEventType_SNTP_SetServer)
         , idx(idx)
         , addr((nullptr != p_addr) ? *p_addr : ip_addr_zero)

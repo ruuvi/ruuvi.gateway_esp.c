@@ -15,7 +15,7 @@
 #include "gw_cfg_log.h"
 
 static const gw_cfg_eth_t g_gateway_config_default_eth = {
-    .use_eth       = false,
+    .use_eth       = true,
     .eth_dhcp      = true,
     .eth_static_ip = { { "" } },
     .eth_netmask   = { { "" } },
@@ -51,6 +51,7 @@ static const gw_cfg_ruuvi_t g_gateway_config_default_ruuvi = {
         },
         .mqtt = {
             .use_mqtt = false,
+            .mqtt_disable_retained_messages = false,
             .mqtt_transport = {{ MQTT_TRANSPORT_TCP }},
             .mqtt_server = {{ "test.mosquitto.org" }},
             .mqtt_port = 1883,
@@ -60,10 +61,11 @@ static const gw_cfg_ruuvi_t g_gateway_config_default_ruuvi = {
             .mqtt_pass = {{ "" }},
         },
         .lan_auth = {
-            .lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI,
+            .lan_auth_type = HTTP_SERVER_AUTH_TYPE_DEFAULT,
             .lan_auth_user = { RUUVI_GATEWAY_AUTH_DEFAULT_USER },
             .lan_auth_pass = { "" },  // default password is set in gw_cfg_default_init
             .lan_auth_api_key = { "" },
+            .lan_auth_api_key_rw = { "" },
         },
         .auto_update = {
             .auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR,
@@ -99,9 +101,9 @@ static gw_cfg_t g_gw_cfg_default;
 
 static void
 gw_cfg_default_generate_lan_auth_password(
-    const wifiman_wifi_ssid_t *const    p_gw_wifi_ssid,
-    const nrf52_device_id_str_t *const  p_device_id,
-    wifiman_md5_digest_hex_str_t *const p_lan_auth_default_password_md5)
+    const wifiman_wifi_ssid_t* const    p_gw_wifi_ssid,
+    const nrf52_device_id_str_t* const  p_device_id,
+    wifiman_md5_digest_hex_str_t* const p_lan_auth_default_password_md5)
 {
     char tmp_buf[sizeof(RUUVI_GATEWAY_AUTH_DEFAULT_USER) + 1 + MAX_SSID_SIZE + 1 + sizeof(nrf52_device_id_str_t)];
     snprintf(
@@ -116,13 +118,13 @@ gw_cfg_default_generate_lan_auth_password(
 }
 
 static nrf52_device_id_str_t
-gw_cfg_default_nrf52_device_id_to_str(const nrf52_device_id_t *const p_dev_id)
+gw_cfg_default_nrf52_device_id_to_str(const nrf52_device_id_t* const p_dev_id)
 {
     nrf52_device_id_str_t device_id_str = { 0 };
     str_buf_t             str_buf       = {
-        .buf  = device_id_str.str_buf,
-        .size = sizeof(device_id_str.str_buf),
-        .idx  = 0,
+                          .buf  = device_id_str.str_buf,
+                          .size = sizeof(device_id_str.str_buf),
+                          .idx  = 0,
     };
     for (size_t i = 0; i < sizeof(p_dev_id->id); ++i)
     {
@@ -137,18 +139,19 @@ gw_cfg_default_nrf52_device_id_to_str(const nrf52_device_id_t *const p_dev_id)
 
 void
 gw_cfg_default_init(
-    const gw_cfg_default_init_param_t *const p_init_param,
-    bool (*p_cb_gw_cfg_default_json_read)(gw_cfg_t *const p_gw_cfg_default))
+    const gw_cfg_default_init_param_t* const p_init_param,
+    gw_cfg_default_json_read_callback_t      p_cb_gw_cfg_default_json_read)
 {
     memset(&g_gw_cfg_default, 0, sizeof(g_gw_cfg_default));
 
     g_gw_cfg_default.ruuvi_cfg = g_gateway_config_default_ruuvi;
     g_gw_cfg_default.eth_cfg   = g_gateway_config_default_eth;
 
-    g_gw_cfg_default.wifi_cfg = *wifi_manager_default_config_init(&p_init_param->wifi_ap_ssid);
+    g_gw_cfg_default.wifi_cfg = *wifi_manager_default_config_init(&p_init_param->wifi_ap_ssid, &p_init_param->hostname);
 
-    gw_cfg_device_info_t *const p_def_dev_info = &g_gw_cfg_default.device_info;
-    p_def_dev_info->wifi_ap_hostname           = p_init_param->wifi_ap_ssid;
+    gw_cfg_device_info_t* const p_def_dev_info = &g_gw_cfg_default.device_info;
+    p_def_dev_info->wifi_ap                    = p_init_param->wifi_ap_ssid;
+    p_def_dev_info->hostname                   = p_init_param->hostname;
     p_def_dev_info->esp32_fw_ver               = p_init_param->esp32_fw_ver;
     p_def_dev_info->nrf52_fw_ver               = p_init_param->nrf52_fw_ver;
     p_def_dev_info->nrf52_device_id            = gw_cfg_default_nrf52_device_id_to_str(&p_init_param->device_id);
@@ -156,15 +159,12 @@ gw_cfg_default_init(
     p_def_dev_info->esp32_mac_addr_wifi        = mac_address_to_str(&p_init_param->esp32_mac_addr_wifi);
     p_def_dev_info->esp32_mac_addr_eth         = mac_address_to_str(&p_init_param->esp32_mac_addr_eth);
 
-    if (NULL != p_cb_gw_cfg_default_json_read)
+    if ((NULL != p_cb_gw_cfg_default_json_read) && p_cb_gw_cfg_default_json_read(&g_gw_cfg_default))
     {
-        if (p_cb_gw_cfg_default_json_read(&g_gw_cfg_default))
-        {
-            wifi_manager_set_default_config(&g_gw_cfg_default.wifi_cfg);
-        }
+        wifi_manager_set_default_config(&g_gw_cfg_default.wifi_cfg);
     }
 
-    ruuvi_gw_cfg_mqtt_t *const p_mqtt = &g_gw_cfg_default.ruuvi_cfg.mqtt;
+    ruuvi_gw_cfg_mqtt_t* const p_mqtt = &g_gw_cfg_default.ruuvi_cfg.mqtt;
     (void)snprintf(
         p_mqtt->mqtt_prefix.buf,
         sizeof(p_mqtt->mqtt_prefix.buf),
@@ -182,7 +182,7 @@ gw_cfg_default_init(
         &p_def_dev_info->nrf52_device_id,
         &lan_auth_default_password_md5);
 
-    ruuvi_gw_cfg_lan_auth_t *const p_lan_auth = &g_gw_cfg_default.ruuvi_cfg.lan_auth;
+    ruuvi_gw_cfg_lan_auth_t* const p_lan_auth = &g_gw_cfg_default.ruuvi_cfg.lan_auth;
     _Static_assert(
         sizeof(p_lan_auth->lan_auth_pass) >= sizeof(lan_auth_default_password_md5),
         "sizeof lan_auth_pass >= sizeof wifiman_md5_digest_hex_str_t");
@@ -197,12 +197,23 @@ gw_cfg_default_init(
         sizeof(p_lan_auth->lan_auth_pass.buf),
         "%s",
         lan_auth_default_password_md5.buf);
-
-    gw_cfg_log(&g_gw_cfg_default, "Gateway SETTINGS (default)", true);
 }
 
 void
-gw_cfg_default_get(gw_cfg_t *const p_gw_cfg)
+gw_cfg_default_deinit(void)
+{
+    memset(&g_gw_cfg_default, 0, sizeof(g_gw_cfg_default));
+}
+
+void
+gw_cfg_default_log(void)
+{
+    const bool flag_log_device_info = true;
+    gw_cfg_log(&g_gw_cfg_default, "Gateway SETTINGS (default)", flag_log_device_info);
+}
+
+void
+gw_cfg_default_get(gw_cfg_t* const p_gw_cfg)
 {
     *p_gw_cfg = g_gw_cfg_default;
 }
@@ -213,44 +224,56 @@ gw_cfg_default_device_info(void)
     return g_gw_cfg_default.device_info;
 }
 
-const ruuvi_gw_cfg_mqtt_t *
+const ruuvi_gw_cfg_mqtt_t*
 gw_cfg_default_get_mqtt(void)
 {
     return &g_gw_cfg_default.ruuvi_cfg.mqtt;
 }
 
-const ruuvi_gw_cfg_ntp_t *
+const ruuvi_gw_cfg_ntp_t*
 gw_cfg_default_get_ntp(void)
 {
     return &g_gw_cfg_default.ruuvi_cfg.ntp;
 }
 
-const ruuvi_gw_cfg_filter_t *
+const ruuvi_gw_cfg_filter_t*
 gw_cfg_default_get_filter(void)
 {
     return &g_gw_cfg_default.ruuvi_cfg.filter;
 }
 
-const ruuvi_gw_cfg_lan_auth_t *
+const ruuvi_gw_cfg_lan_auth_t*
 gw_cfg_default_get_lan_auth(void)
 {
     return &g_gw_cfg_default.ruuvi_cfg.lan_auth;
 }
 
-const gw_cfg_eth_t *
+const gw_cfg_eth_t*
 gw_cfg_default_get_eth(void)
 {
     return &g_gw_cfg_default.eth_cfg;
 }
 
-const wifi_sta_config_t *
-gw_cfg_default_get_wifi_sta_config_ptr(void)
+const wifiman_config_ap_t*
+gw_cfg_default_get_wifi_config_ap_ptr(void)
 {
-    return &g_gw_cfg_default.wifi_cfg.wifi_config_sta;
+    return &g_gw_cfg_default.wifi_cfg.ap;
 }
 
-const wifiman_wifi_ssid_t *
+const wifiman_config_sta_t*
+gw_cfg_default_get_wifi_config_sta_ptr(void)
+{
+    return &g_gw_cfg_default.wifi_cfg.sta;
+}
+
+const wifiman_wifi_ssid_t*
 gw_cfg_default_get_wifi_ap_ssid(void)
 {
-    return &g_gw_cfg_default.device_info.wifi_ap_hostname;
+    return &g_gw_cfg_default.device_info.wifi_ap;
+}
+
+const wifiman_hostname_t*
+gw_cfg_default_get_hostname(void)
+{
+    return &g_gw_cfg_default.device_info.hostname;
 }

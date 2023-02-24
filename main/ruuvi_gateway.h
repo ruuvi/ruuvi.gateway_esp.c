@@ -45,16 +45,16 @@ void
 ruuvi_send_nrf_settings(void);
 
 void
-start_services(void);
+main_task_start_timer_hotspot_deactivation(void);
 
 void
-restart_services(void);
+main_task_stop_timer_hotspot_deactivation(void);
+
+bool
+main_task_is_active_timer_hotspot_deactivation(void);
 
 void
-main_task_start_timer_after_hotspot_activation(void);
-
-void
-main_task_stop_timer_after_hotspot_activation(void);
+main_task_stop_wifi_hotspot_after_short_delay(void);
 
 void
 main_task_stop_timer_check_for_remote_cfg(void);
@@ -72,6 +72,9 @@ void
 main_task_send_sig_reconnect_network(void);
 
 void
+main_task_send_sig_set_default_config(void);
+
+void
 main_task_send_sig_mqtt_publish_connect(void);
 
 void
@@ -80,6 +83,9 @@ main_task_timer_sig_check_for_fw_updates_restart(const os_delta_ticks_t delay_ti
 void
 main_task_timer_sig_check_for_fw_updates_stop(void);
 
+void
+main_task_on_get_history(void);
+
 bool
 main_loop_init(void);
 
@@ -87,11 +93,17 @@ void
 main_task_init_timers(void);
 
 void
+main_task_subscribe_events(void);
+
+void
 main_task_configure_periodic_remote_cfg_check(void);
 
 ATTR_NORETURN
 void
 main_loop(void);
+
+void
+sleep_with_task_watchdog_feeding(const int32_t delay_seconds);
 
 #ifdef __cplusplus
 }

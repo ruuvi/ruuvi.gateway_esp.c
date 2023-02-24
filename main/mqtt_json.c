@@ -11,12 +11,12 @@
 
 static bool
 mqtt_create_json_attributes(
-    cJSON *const                   p_json_root,
-    const adv_report_t *const      p_adv,
+    cJSON* const                   p_json_root,
+    const adv_report_t* const      p_adv,
     const bool                     flag_use_timestamps,
     const time_t                   timestamp,
-    const mac_address_str_t *const p_mac_addr,
-    const char *const              p_coordinates_str)
+    const mac_address_str_t* const p_mac_addr,
+    const char* const              p_coordinates_str)
 {
     if (NULL == cJSON_AddStringToObject(p_json_root, "gw_mac", p_mac_addr->str_buf))
     {
@@ -48,7 +48,7 @@ mqtt_create_json_attributes(
             return false;
         }
     }
-    char *p_hex_str = bin2hex_with_malloc(p_adv->data_buf, p_adv->data_len);
+    char* p_hex_str = bin2hex_with_malloc(p_adv->data_buf, p_adv->data_len);
     if (NULL == p_hex_str)
     {
         return false;
@@ -66,15 +66,15 @@ mqtt_create_json_attributes(
     return true;
 }
 
-static cJSON *
+static cJSON*
 mqtt_create_json(
-    const adv_report_t *const      p_adv,
+    const adv_report_t* const      p_adv,
     const bool                     flag_use_timestamps,
     const time_t                   timestamp,
-    const mac_address_str_t *const p_mac_addr,
-    const char *const              p_coordinates_str)
+    const mac_address_str_t* const p_mac_addr,
+    const char* const              p_coordinates_str)
 {
-    cJSON *p_json_root = cJSON_CreateObject();
+    cJSON* p_json_root = cJSON_CreateObject();
     if (NULL == p_json_root)
     {
         return NULL;
@@ -90,14 +90,14 @@ mqtt_create_json(
 
 bool
 mqtt_create_json_str(
-    const adv_report_t *const      p_adv,
+    const adv_report_t* const      p_adv,
     const bool                     flag_use_timestamps,
     const time_t                   timestamp,
-    const mac_address_str_t *const p_mac_addr,
-    const char *const              p_coordinates_str,
-    cjson_wrap_str_t *const        p_json_str)
+    const mac_address_str_t* const p_mac_addr,
+    const char* const              p_coordinates_str,
+    cjson_wrap_str_t* const        p_json_str)
 {
-    cJSON *p_json_root = mqtt_create_json(p_adv, flag_use_timestamps, timestamp, p_mac_addr, p_coordinates_str);
+    cJSON* p_json_root = mqtt_create_json(p_adv, flag_use_timestamps, timestamp, p_mac_addr, p_coordinates_str);
     if (NULL == p_json_root)
     {
         return false;

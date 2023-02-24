@@ -19,33 +19,49 @@
 extern "C" {
 #endif
 
+#define HTTP_JSON_STATISTICS_RESET_REASON_MAX_LEN (24)
+
+typedef struct http_json_statistics_reset_reason_buf_t
+{
+    char buf[HTTP_JSON_STATISTICS_RESET_REASON_MAX_LEN];
+} http_json_statistics_reset_reason_buf_t;
+
 typedef struct http_json_statistics_info_t
 {
-    mac_address_str_t        nrf52_mac_addr;
-    ruuvi_esp32_fw_ver_str_t esp_fw;
-    ruuvi_nrf52_fw_ver_str_t nrf_fw;
-    uint32_t                 uptime;
-    uint32_t                 nonce;
-    bool                     is_connected_to_wifi;
-    uint32_t                 network_disconnect_cnt;
+    mac_address_str_t                       nrf52_mac_addr;
+    ruuvi_esp32_fw_ver_str_t                esp_fw;
+    ruuvi_nrf52_fw_ver_str_t                nrf_fw;
+    uint32_t                                uptime;
+    uint32_t                                nonce;
+    bool                                    nrf_status;
+    bool                                    is_connected_to_wifi;
+    uint32_t                                network_disconnect_cnt;
+    http_json_statistics_reset_reason_buf_t reset_reason;
+    uint32_t                                reset_cnt;
+    const char* const                       p_reset_info;
 } http_json_statistics_info_t;
+
+typedef struct http_json_header_info_t
+{
+    const bool                     flag_use_timestamps;
+    const time_t                   timestamp;
+    const mac_address_str_t* const p_mac_addr;
+    const char* const              p_coordinates_str;
+    const bool                     flag_use_nonce;
+    const uint32_t                 nonce;
+} http_json_header_info_t;
 
 bool
 http_json_create_records_str(
-    const adv_report_table_t *const p_reports,
-    const bool                      flag_use_timestamps,
-    const time_t                    timestamp,
-    const mac_address_str_t *const  p_mac_addr,
-    const char *const               p_coordinates_str,
-    const bool                      flag_use_nonce,
-    const uint32_t                  nonce,
-    cjson_wrap_str_t *const         p_json_str);
+    const adv_report_table_t* const p_reports,
+    const http_json_header_info_t   header_info,
+    cjson_wrap_str_t* const         p_json_str);
 
 bool
 http_json_create_status_str(
-    const http_json_statistics_info_t *const p_stat_info,
-    const adv_report_table_t *const          p_reports,
-    cjson_wrap_str_t *const                  p_json_str);
+    const http_json_statistics_info_t* const p_stat_info,
+    const adv_report_table_t* const          p_reports,
+    cjson_wrap_str_t* const                  p_json_str);
 
 #ifdef __cplusplus
 }

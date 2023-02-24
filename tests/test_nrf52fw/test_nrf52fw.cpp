@@ -29,7 +29,7 @@ struct FlashFatFs_Tag
 };
 
 class TestNRF52Fw;
-static TestNRF52Fw *g_pTestClass;
+static TestNRF52Fw* g_pTestClass;
 
 class NRF52Fw_VFS_FAT_MountInfo
 {
@@ -45,10 +45,10 @@ public:
 
 class MemAllocTrace
 {
-    vector<void *> allocated_mem;
+    vector<void*> allocated_mem;
 
-    std::vector<void *>::iterator
-    find(void *ptr)
+    std::vector<void*>::iterator
+    find(void* ptr)
     {
         for (auto iter = this->allocated_mem.begin(); iter != this->allocated_mem.end(); ++iter)
         {
@@ -62,14 +62,14 @@ class MemAllocTrace
 
 public:
     void
-    add(void *ptr)
+    add(void* ptr)
     {
         auto iter = find(ptr);
         assert(iter == this->allocated_mem.end()); // ptr was found in the list of allocated memory blocks
         this->allocated_mem.push_back(ptr);
     }
     void
-    remove(void *ptr)
+    remove(void* ptr)
     {
         auto iter = find(ptr);
         assert(iter != this->allocated_mem.end()); // ptr was not found in the list of allocated memory blocks
@@ -87,7 +87,7 @@ class ProgressInfo
 public:
     size_t      num_bytes_flashed;
     size_t      total_size;
-    void *const p_param;
+    void* const p_param;
 };
 
 class MemSegment
@@ -96,7 +96,7 @@ public:
     uint32_t         segmentAddr;
     vector<uint32_t> data;
 
-    MemSegment(const uint32_t addr, const uint32_t num_words, const uint32_t *p_buf)
+    MemSegment(const uint32_t addr, const uint32_t num_words, const uint32_t* p_buf)
         : segmentAddr(addr)
     {
         for (uint32_t i = 0; i < num_words; ++i)
@@ -106,7 +106,7 @@ public:
     }
 
     void
-    append(const uint32_t addr, const uint32_t num_words, const uint32_t *p_buf)
+    append(const uint32_t addr, const uint32_t num_words, const uint32_t* p_buf)
     {
         const uint32_t segmentEndAddr = this->segmentAddr + this->data.size() * sizeof(uint32_t);
         assert(addr == segmentEndAddr);
@@ -118,13 +118,13 @@ public:
 };
 
 static int
-remove_file(const char *filename, const struct stat *status, int flag, struct FTW *p_info)
+remove_file(const char* filename, const struct stat* status, int flag, struct FTW* p_info)
 {
     return remove(filename);
 }
 
 static void
-remove_dir_with_files(const char *path)
+remove_dir_with_files(const char* path)
 {
     struct stat st = { 0 };
     if (stat(path, &st) == 0)
@@ -146,11 +146,11 @@ class TestNRF52Fw : public ::testing::Test
 {
 private:
 protected:
-    FILE *                m_fd;
-    const flash_fat_fs_t *m_p_ffs;
-    const char *          m_mount_point_dir;
-    const char *          m_mount_point;
-    const char *          m_info_txt_name;
+    FILE*                 m_fd;
+    const flash_fat_fs_t* m_p_ffs;
+    const char*           m_mount_point_dir;
+    const char*           m_mount_point;
+    const char*           m_info_txt_name;
 
     void
     SetUp() override
@@ -211,8 +211,8 @@ protected:
         esp_log_wrapper_deinit();
     }
 
-    FILE *
-    open_file(const char *file_name, const char *mode)
+    FILE*
+    open_file(const char* file_name, const char* mode)
     {
         char full_path_info_txt[40];
         snprintf(full_path_info_txt, sizeof(full_path_info_txt), "%s/%s", this->m_mount_point_dir, file_name);
@@ -243,9 +243,9 @@ public:
     uint32_t                  cb_after_updating_cnt;
 
     bool
-    write_mem(const uint32_t addr, const uint32_t num_words, const uint32_t *p_buf)
+    write_mem(const uint32_t addr, const uint32_t num_words, const uint32_t* p_buf)
     {
-        for (auto &x : this->m_memSegmentsWrite)
+        for (auto& x : this->m_memSegmentsWrite)
         {
             const uint32_t segmentEndAddr = x.segmentAddr + x.data.size() * sizeof(uint32_t);
             const uint32_t endAddr        = addr + num_words * sizeof(uint32_t);
@@ -266,10 +266,10 @@ public:
     }
 
     bool
-    read_mem(const uint32_t addr, const uint32_t num_words, uint32_t *p_buf)
+    read_mem(const uint32_t addr, const uint32_t num_words, uint32_t* p_buf)
     {
         assert(0 == (addr % sizeof(uint32_t)));
-        for (const auto &x : this->m_memSegmentsRead)
+        for (const auto& x : this->m_memSegmentsRead)
         {
             const uint32_t segmentEndAddr = x.segmentAddr + x.data.size() * sizeof(uint32_t);
             if ((addr >= x.segmentAddr) && (addr < segmentEndAddr))
@@ -312,41 +312,47 @@ nrf52swd_init_gpio_cfg_nreset(void)
     return true;
 }
 
-const char *
+const char*
 os_task_get_name(void)
 {
     static const char g_task_name[] = "main";
-    return const_cast<char *>(g_task_name);
+    return const_cast<char*>(g_task_name);
 }
 
-void *
+os_task_priority_t
+os_task_get_priority(void)
+{
+    return 0;
+}
+
+void*
 os_malloc(const size_t size)
 {
     if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
     {
         return nullptr;
     }
-    void *ptr = malloc(size);
+    void* ptr = malloc(size);
     assert(nullptr != ptr);
     g_pTestClass->m_mem_alloc_trace.add(ptr);
     return ptr;
 }
 
 void
-os_free_internal(void *ptr)
+os_free_internal(void* ptr)
 {
     g_pTestClass->m_mem_alloc_trace.remove(ptr);
     free(ptr);
 }
 
-void *
+void*
 os_calloc(const size_t nmemb, const size_t size)
 {
     if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
     {
         return nullptr;
     }
-    void *ptr = calloc(nmemb, size);
+    void* ptr = calloc(nmemb, size);
     assert(nullptr != ptr);
     g_pTestClass->m_mem_alloc_trace.add(ptr);
     return ptr;
@@ -407,23 +413,23 @@ nrf52swd_erase_all(void)
 }
 
 bool
-nrf52swd_write_mem(const uint32_t addr, const uint32_t num_words, const uint32_t *p_buf)
+nrf52swd_write_mem(const uint32_t addr, const uint32_t num_words, const uint32_t* p_buf)
 {
     return g_pTestClass->write_mem(addr, num_words, p_buf);
 }
 
 bool
-nrf52swd_read_mem(const uint32_t addr, const uint32_t num_words, uint32_t *p_buf)
+nrf52swd_read_mem(const uint32_t addr, const uint32_t num_words, uint32_t* p_buf)
 {
     return g_pTestClass->read_mem(addr, num_words, p_buf);
 }
 
 esp_err_t
 esp_vfs_fat_spiflash_mount(
-    const char *                      base_path,
-    const char *                      partition_label,
-    const esp_vfs_fat_mount_config_t *mount_config,
-    wl_handle_t *                     wl_handle)
+    const char*                       base_path,
+    const char*                       partition_label,
+    const esp_vfs_fat_mount_config_t* mount_config,
+    wl_handle_t*                      wl_handle)
 {
     g_pTestClass->m_mount_info.base_path       = string(base_path);
     g_pTestClass->m_mount_info.partition_label = string(partition_label);
@@ -434,7 +440,7 @@ esp_vfs_fat_spiflash_mount(
 }
 
 esp_err_t
-esp_vfs_fat_spiflash_unmount(const char *base_path, wl_handle_t wl_handle)
+esp_vfs_fat_spiflash_unmount(const char* base_path, wl_handle_t wl_handle)
 {
     assert(g_pTestClass->m_mount_info.flag_mounted);
     assert(g_pTestClass->m_mount_info.wl_handle == wl_handle);
@@ -515,8 +521,8 @@ TEST_F(TestNRF52Fw, test_parse_version_digit_1q) // NOLINT
 TEST_F(TestNRF52Fw, test_parse_version_digit_ext_123_dot) // NOLINT
 {
     uint8_t     val         = 0;
-    const char *version_str = "123.";
-    const char *token_end   = strchr(version_str, '.');
+    const char* version_str = "123.";
+    const char* token_end   = strchr(version_str, '.');
     ASSERT_TRUE(nrf52fw_parse_version_digit(version_str, token_end, &val));
     ASSERT_EQ(123, val);
 }
@@ -524,17 +530,17 @@ TEST_F(TestNRF52Fw, test_parse_version_digit_ext_123_dot) // NOLINT
 TEST_F(TestNRF52Fw, test_parse_version_digit_ext_12q_dot) // NOLINT
 {
     uint8_t     val         = 0;
-    const char *version_str = "12q.";
-    const char *token_end   = strchr(version_str, '.');
+    const char* version_str = "12q.";
+    const char* token_end   = strchr(version_str, '.');
     ASSERT_FALSE(nrf52fw_parse_version_digit(version_str, token_end, &val));
     ASSERT_EQ(0, val);
 }
 
 TEST_F(TestNRF52Fw, test_nrf52fw_parse_digit_update_ver_byte_num_0_ok) // NOLINT
 {
-    const char *  ver_str       = "qq12.";
-    const char *  p_token_begin = &ver_str[2];
-    const char *  p_token_end   = &ver_str[4];
+    const char*   ver_str       = "qq12.";
+    const char*   p_token_begin = &ver_str[2];
+    const char*   p_token_end   = &ver_str[4];
     const uint8_t byte_num      = 0;
     uint32_t      version       = 0;
     ASSERT_TRUE(nrf52fw_parse_digit_update_ver(p_token_begin, p_token_end, &version, byte_num));
@@ -543,9 +549,9 @@ TEST_F(TestNRF52Fw, test_nrf52fw_parse_digit_update_ver_byte_num_0_ok) // NOLINT
 
 TEST_F(TestNRF52Fw, test_nrf52fw_parse_digit_update_ver_byte_num_1_ok) // NOLINT
 {
-    const char *  ver_str       = "qq13.";
-    const char *  p_token_begin = &ver_str[2];
-    const char *  p_token_end   = &ver_str[4];
+    const char*   ver_str       = "qq13.";
+    const char*   p_token_begin = &ver_str[2];
+    const char*   p_token_end   = &ver_str[4];
     const uint8_t byte_num      = 1;
     uint32_t      version       = 0;
     ASSERT_TRUE(nrf52fw_parse_digit_update_ver(p_token_begin, p_token_end, &version, byte_num));
@@ -554,9 +560,9 @@ TEST_F(TestNRF52Fw, test_nrf52fw_parse_digit_update_ver_byte_num_1_ok) // NOLINT
 
 TEST_F(TestNRF52Fw, test_nrf52fw_parse_digit_update_ver_byte_num_2_ok) // NOLINT
 {
-    const char *  ver_str       = "qq255.";
-    const char *  p_token_begin = &ver_str[2];
-    const char *  p_token_end   = &ver_str[5];
+    const char*   ver_str       = "qq255.";
+    const char*   p_token_begin = &ver_str[2];
+    const char*   p_token_end   = &ver_str[5];
     const uint8_t byte_num      = 2;
     uint32_t      version       = 0;
     ASSERT_TRUE(nrf52fw_parse_digit_update_ver(p_token_begin, p_token_end, &version, byte_num));
@@ -565,9 +571,9 @@ TEST_F(TestNRF52Fw, test_nrf52fw_parse_digit_update_ver_byte_num_2_ok) // NOLINT
 
 TEST_F(TestNRF52Fw, test_nrf52fw_parse_digit_update_ver_byte_num_3_ok) // NOLINT
 {
-    const char *  ver_str       = "qq12.";
-    const char *  p_token_begin = &ver_str[2];
-    const char *  p_token_end   = &ver_str[4];
+    const char*   ver_str       = "qq12.";
+    const char*   p_token_begin = &ver_str[2];
+    const char*   p_token_end   = &ver_str[4];
     const uint8_t byte_num      = 3;
     uint32_t      version       = 0;
     ASSERT_TRUE(nrf52fw_parse_digit_update_ver(p_token_begin, p_token_end, &version, byte_num));
@@ -576,9 +582,9 @@ TEST_F(TestNRF52Fw, test_nrf52fw_parse_digit_update_ver_byte_num_3_ok) // NOLINT
 
 TEST_F(TestNRF52Fw, test_nrf52fw_parse_digit_update_ver_byte_num_3_fail) // NOLINT
 {
-    const char *  ver_str       = "qq12.";
-    const char *  p_token_begin = &ver_str[2];
-    const char *  p_token_end   = &ver_str[5];
+    const char*   ver_str       = "qq12.";
+    const char*   p_token_begin = &ver_str[2];
+    const char*   p_token_end   = &ver_str[5];
     const uint8_t byte_num      = 3;
     uint32_t      version       = 0;
     ASSERT_FALSE(nrf52fw_parse_digit_update_ver(p_token_begin, p_token_end, &version, byte_num));
@@ -804,7 +810,7 @@ TEST_F(TestNRF52Fw, test_nrf52fw_parse_segment_info_line_fail_6) // NOLINT
 
 TEST_F(TestNRF52Fw, test_nrf52fw_parse_info_file_1) // NOLINT
 {
-    const char *p_path_info_txt = "info.txt";
+    const char* p_path_info_txt = "info.txt";
     {
         this->m_fd = this->open_file(p_path_info_txt, "w");
         ASSERT_NE(nullptr, this->m_fd);
@@ -825,21 +831,21 @@ TEST_F(TestNRF52Fw, test_nrf52fw_parse_info_file_1) // NOLINT
         ASSERT_EQ(3, info.num_segments);
 
         {
-            const nrf52fw_segment_t *p_segment = &info.segments[0];
+            const nrf52fw_segment_t* p_segment = &info.segments[0];
             ASSERT_EQ(0x00000000, p_segment->address);
             ASSERT_EQ(2816, p_segment->size);
             ASSERT_EQ(string("segment_1.bin"), string(p_segment->file_name));
             ASSERT_EQ(0xc9924e37, p_segment->crc);
         }
         {
-            const nrf52fw_segment_t *p_segment = &info.segments[1];
+            const nrf52fw_segment_t* p_segment = &info.segments[1];
             ASSERT_EQ(0x00001000, p_segment->address);
             ASSERT_EQ(151016, p_segment->size);
             ASSERT_EQ(string("segment_2.bin"), string(p_segment->file_name));
             ASSERT_EQ(0x0e326e66, p_segment->crc);
         }
         {
-            const nrf52fw_segment_t *p_segment = &info.segments[2];
+            const nrf52fw_segment_t* p_segment = &info.segments[2];
             ASSERT_EQ(0x00026000, p_segment->address);
             ASSERT_EQ(24448, p_segment->size);
             ASSERT_EQ(string("segment_3.bin"), string(p_segment->file_name));
@@ -853,7 +859,7 @@ TEST_F(TestNRF52Fw, test_nrf52fw_parse_info_file_1) // NOLINT
 
 TEST_F(TestNRF52Fw, test_nrf52fw_parse_info_file_no_version) // NOLINT
 {
-    const char *p_path_info_txt = "info.txt";
+    const char* p_path_info_txt = "info.txt";
     {
         this->m_fd = this->open_file(p_path_info_txt, "w");
         ASSERT_NE(nullptr, this->m_fd);
@@ -879,7 +885,7 @@ TEST_F(TestNRF52Fw, test_nrf52fw_parse_info_file_no_version) // NOLINT
 
 TEST_F(TestNRF52Fw, test_nrf52fw_parse_info_file_bad_line_2) // NOLINT
 {
-    const char *p_path_info_txt = "info.txt";
+    const char* p_path_info_txt = "info.txt";
     {
         this->m_fd = this->open_file(p_path_info_txt, "w");
         ASSERT_NE(nullptr, this->m_fd);
@@ -906,7 +912,7 @@ TEST_F(TestNRF52Fw, test_nrf52fw_parse_info_file_bad_line_2) // NOLINT
 
 TEST_F(TestNRF52Fw, test_nrf52fw_parse_info_file_segments_overflow) // NOLINT
 {
-    const char *p_path_info_txt = "info.txt";
+    const char* p_path_info_txt = "info.txt";
     {
         this->m_fd = this->open_file(p_path_info_txt, "w");
         ASSERT_NE(nullptr, this->m_fd);
@@ -957,21 +963,21 @@ TEST_F(TestNRF52Fw, nrf52fw_read_info_txt) // NOLINT
         ASSERT_EQ(3, info.num_segments);
 
         {
-            const nrf52fw_segment_t *p_segment = &info.segments[0];
+            const nrf52fw_segment_t* p_segment = &info.segments[0];
             ASSERT_EQ(0x00000000, p_segment->address);
             ASSERT_EQ(2816, p_segment->size);
             ASSERT_EQ(string("segment_1.bin"), string(p_segment->file_name));
             ASSERT_EQ(0xc9924e37, p_segment->crc);
         }
         {
-            const nrf52fw_segment_t *p_segment = &info.segments[1];
+            const nrf52fw_segment_t* p_segment = &info.segments[1];
             ASSERT_EQ(0x00001000, p_segment->address);
             ASSERT_EQ(151016, p_segment->size);
             ASSERT_EQ(string("segment_2.bin"), string(p_segment->file_name));
             ASSERT_EQ(0x0e326e66, p_segment->crc);
         }
         {
-            const nrf52fw_segment_t *p_segment = &info.segments[2];
+            const nrf52fw_segment_t* p_segment = &info.segments[2];
             ASSERT_EQ(0x00026000, p_segment->address);
             ASSERT_EQ(24448, p_segment->size);
             ASSERT_EQ(string("segment_3.bin"), string(p_segment->file_name));
@@ -1081,7 +1087,7 @@ TEST_F(TestNRF52Fw, nrf52fw_write_current_fw_version_fail) // NOLINT
 
 TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_ok_16_words) // NOLINT
 {
-    const char *segment_path = "segment_1.bin";
+    const char* segment_path = "segment_1.bin";
     uint32_t    segment_buf[16];
     for (int i = 0; i < sizeof(segment_buf) / sizeof(segment_buf[0]); ++i)
     {
@@ -1118,7 +1124,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_ok_16_words) // NOLINT
 
 TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_ok_257_words) // NOLINT
 {
-    const char *segment_path = "segment_1.bin";
+    const char* segment_path = "segment_1.bin";
     uint32_t    segment_buf[257];
     for (int i = 0; i < sizeof(segment_buf) / sizeof(segment_buf[0]); ++i)
     {
@@ -1159,7 +1165,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_ok_257_words) // NOLINT
 
 TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_ok_513_words_with_progress_info) // NOLINT
 {
-    const char *   segment_path    = "segment_1.bin";
+    const char*    segment_path    = "segment_1.bin";
     const uint32_t num_words_total = 513;
     uint32_t       segment_buf[num_words_total];
     for (int i = 0; i < sizeof(segment_buf) / sizeof(segment_buf[0]); ++i)
@@ -1214,11 +1220,11 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_ok_513_words_with_progress_info)
 }
 
 static void
-cb_progress(const size_t num_bytes_flashed, const size_t total_size, void *const p_param)
+cb_progress(const size_t num_bytes_flashed, const size_t total_size, void* const p_param)
 {
     if (nullptr != p_param)
     {
-        auto p_cnt = static_cast<uint32_t *const>(p_param);
+        auto p_cnt = static_cast<uint32_t* const>(p_param);
         *p_cnt += 1;
     }
     const ProgressInfo progress_info = {
@@ -1231,7 +1237,7 @@ cb_progress(const size_t num_bytes_flashed, const size_t total_size, void *const
 
 TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_ok_513_words_with_progress_info_and_callback) // NOLINT
 {
-    const char *   segment_path    = "segment_1.bin";
+    const char*    segment_path    = "segment_1.bin";
     const uint32_t num_words_total = 513;
     uint32_t       segment_buf[num_words_total];
     for (int i = 0; i < sizeof(segment_buf) / sizeof(segment_buf[0]); ++i)
@@ -1258,10 +1264,10 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_ok_513_words_with_progress_info_
 
     uint32_t                cb_progress_cnt = 0;
     nrf52fw_progress_info_t progress_info   = {
-        .accum_num_bytes_flashed = 0,
-        .total_size              = num_words_total * sizeof(uint32_t),
-        .cb_progress             = &cb_progress,
-        .p_param_cb_progress     = &cb_progress_cnt,
+          .accum_num_bytes_flashed = 0,
+          .total_size              = num_words_total * sizeof(uint32_t),
+          .cb_progress             = &cb_progress,
+          .p_param_cb_progress     = &cb_progress_cnt,
     };
 
     ASSERT_TRUE(
@@ -1356,7 +1362,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_ok_513_words_with_progress_info_
 
 TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_error_on_verify) // NOLINT
 {
-    const char *segment_path = "segment_1.bin";
+    const char* segment_path = "segment_1.bin";
     uint32_t    segment_buf[16];
     for (int i = 0; i < sizeof(segment_buf) / sizeof(segment_buf[0]); ++i)
     {
@@ -1391,7 +1397,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_error_on_verify) // NOLINT
 
 TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_error_on_read) // NOLINT
 {
-    const char *segment_path = "segment_1.bin";
+    const char* segment_path = "segment_1.bin";
     uint32_t    segment_buf[16];
     for (int i = 0; i < sizeof(segment_buf) / sizeof(segment_buf[0]); ++i)
     {
@@ -1422,7 +1428,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_error_on_read) // NOLINT
 
 TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_error_on_write) // NOLINT
 {
-    const char *segment_path = "segment_1.bin";
+    const char* segment_path = "segment_1.bin";
     uint32_t    segment_buf[16];
     for (int i = 0; i < sizeof(segment_buf) / sizeof(segment_buf[0]); ++i)
     {
@@ -1455,7 +1461,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_error_on_write) // NOLINT
 
 TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_fail_file_greater_than_expected) // NOLINT
 {
-    const char *segment_path = "segment_1.bin";
+    const char* segment_path = "segment_1.bin";
     uint32_t    segment_buf[16];
     for (int i = 0; i < sizeof(segment_buf) / sizeof(segment_buf[0]); ++i)
     {
@@ -1492,7 +1498,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_fail_file_greater_than_expected)
 
 TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_fail_bad_length) // NOLINT
 {
-    const char *segment_path = "segment_1.bin";
+    const char* segment_path = "segment_1.bin";
     uint32_t    segment_buf[16];
     for (int i = 0; i < sizeof(segment_buf) / sizeof(segment_buf[0]); ++i)
     {
@@ -1525,7 +1531,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_fail_bad_length) // NOLINT
 
 TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_fail_after_file_read_error) // NOLINT
 {
-    const char *segment_path = "segment_1.bin";
+    const char* segment_path = "segment_1.bin";
     uint32_t    segment_buf[16];
     for (int i = 0; i < sizeof(segment_buf) / sizeof(segment_buf[0]); ++i)
     {
@@ -1558,7 +1564,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_fail_after_file_read_error) // N
 
 TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_from_file_ok) // NOLINT
 {
-    const char *segment_path = "segment_1.bin";
+    const char* segment_path = "segment_1.bin";
     uint32_t    segment_buf[16];
     for (int i = 0; i < sizeof(segment_buf) / sizeof(segment_buf[0]); ++i)
     {
@@ -1608,7 +1614,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_from_file_ok) // NOLINT
 
 TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_from_file_error_on_writing_segment) // NOLINT
 {
-    const char *segment_path = "segment_1.bin";
+    const char* segment_path = "segment_1.bin";
     uint32_t    segment_buf[16];
     for (int i = 0; i < sizeof(segment_buf) / sizeof(segment_buf[0]); ++i)
     {
@@ -1657,7 +1663,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_from_file_error_on_writing_segme
 
 TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_from_file_error_no_file) // NOLINT
 {
-    const char *segment_path = "segment_1.bin";
+    const char* segment_path = "segment_1.bin";
     uint32_t    segment_buf[16];
     for (int i = 0; i < sizeof(segment_buf) / sizeof(segment_buf[0]); ++i)
     {
@@ -1699,14 +1705,14 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_ok) // NOLINT
     fw_info.fw_ver.version = 0x01020300;
     fw_info.num_segments   = 2;
     {
-        nrf52fw_segment_t *p_segment = &fw_info.segments[0];
+        nrf52fw_segment_t* p_segment = &fw_info.segments[0];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "segment_1.bin");
         p_segment->address = 0x00000000;
         p_segment->size    = 516;
         p_segment->crc     = 0;
     }
     {
-        nrf52fw_segment_t *p_segment = &fw_info.segments[1];
+        nrf52fw_segment_t* p_segment = &fw_info.segments[1];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "segment_2.bin");
         p_segment->address = 0x00001000;
         p_segment->size    = 1028;
@@ -1714,8 +1720,8 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_ok) // NOLINT
     }
 
     {
-        nrf52fw_segment_t *p_segment      = &fw_info.segments[0];
-        uint32_t *         p_segment_buf1 = (uint32_t *)malloc(p_segment->size);
+        nrf52fw_segment_t* p_segment      = &fw_info.segments[0];
+        uint32_t*          p_segment_buf1 = (uint32_t*)malloc(p_segment->size);
         ASSERT_NE(nullptr, p_segment_buf1);
         for (unsigned i = 0; i < p_segment->size / sizeof(uint32_t); ++i)
         {
@@ -1732,8 +1738,8 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_ok) // NOLINT
     }
 
     {
-        nrf52fw_segment_t *p_segment      = &fw_info.segments[1];
-        uint32_t *         p_segment_buf2 = (uint32_t *)malloc(p_segment->size);
+        nrf52fw_segment_t* p_segment      = &fw_info.segments[1];
+        uint32_t*          p_segment_buf2 = (uint32_t*)malloc(p_segment->size);
         ASSERT_NE(nullptr, p_segment_buf2);
         for (unsigned i = 0; i < p_segment->size / sizeof(uint32_t); ++i)
         {
@@ -1798,14 +1804,14 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_version) // NOLIN
     fw_info.fw_ver.version = 0x01020300;
     fw_info.num_segments   = 2;
     {
-        nrf52fw_segment_t *p_segment = &fw_info.segments[0];
+        nrf52fw_segment_t* p_segment = &fw_info.segments[0];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "segment_1.bin");
         p_segment->address = 0x00000000;
         p_segment->size    = 516;
         p_segment->crc     = 0;
     }
     {
-        nrf52fw_segment_t *p_segment = &fw_info.segments[1];
+        nrf52fw_segment_t* p_segment = &fw_info.segments[1];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "segment_2.bin");
         p_segment->address = 0x00001000;
         p_segment->size    = 1028;
@@ -1813,8 +1819,8 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_version) // NOLIN
     }
 
     {
-        nrf52fw_segment_t *p_segment      = &fw_info.segments[0];
-        uint32_t *         p_segment_buf1 = (uint32_t *)malloc(p_segment->size);
+        nrf52fw_segment_t* p_segment      = &fw_info.segments[0];
+        uint32_t*          p_segment_buf1 = (uint32_t*)malloc(p_segment->size);
         ASSERT_NE(nullptr, p_segment_buf1);
         for (unsigned i = 0; i < p_segment->size / sizeof(uint32_t); ++i)
         {
@@ -1831,8 +1837,8 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_version) // NOLIN
     }
 
     {
-        nrf52fw_segment_t *p_segment      = &fw_info.segments[1];
-        uint32_t *         p_segment_buf2 = (uint32_t *)malloc(p_segment->size);
+        nrf52fw_segment_t* p_segment      = &fw_info.segments[1];
+        uint32_t*          p_segment_buf2 = (uint32_t*)malloc(p_segment->size);
         ASSERT_NE(nullptr, p_segment_buf2);
         for (unsigned i = 0; i < p_segment->size / sizeof(uint32_t); ++i)
         {
@@ -1898,14 +1904,14 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_segment) // NOLIN
     fw_info.fw_ver.version = 0x01020300;
     fw_info.num_segments   = 2;
     {
-        nrf52fw_segment_t *p_segment = &fw_info.segments[0];
+        nrf52fw_segment_t* p_segment = &fw_info.segments[0];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "segment_1.bin");
         p_segment->address = 0x00000000;
         p_segment->size    = 516;
         p_segment->crc     = 0;
     }
     {
-        nrf52fw_segment_t *p_segment = &fw_info.segments[1];
+        nrf52fw_segment_t* p_segment = &fw_info.segments[1];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "segment_2.bin");
         p_segment->address = 0x00001000;
         p_segment->size    = 1028;
@@ -1913,8 +1919,8 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_segment) // NOLIN
     }
 
     {
-        nrf52fw_segment_t *p_segment      = &fw_info.segments[0];
-        uint32_t *         p_segment_buf1 = (uint32_t *)malloc(p_segment->size);
+        nrf52fw_segment_t* p_segment      = &fw_info.segments[0];
+        uint32_t*          p_segment_buf1 = (uint32_t*)malloc(p_segment->size);
         ASSERT_NE(nullptr, p_segment_buf1);
         for (unsigned i = 0; i < p_segment->size / sizeof(uint32_t); ++i)
         {
@@ -1931,8 +1937,8 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_segment) // NOLIN
     }
 
     {
-        nrf52fw_segment_t *p_segment      = &fw_info.segments[1];
-        uint32_t *         p_segment_buf2 = (uint32_t *)malloc(p_segment->size);
+        nrf52fw_segment_t* p_segment      = &fw_info.segments[1];
+        uint32_t*          p_segment_buf2 = (uint32_t*)malloc(p_segment->size);
         ASSERT_NE(nullptr, p_segment_buf2);
         for (unsigned i = 0; i < p_segment->size / sizeof(uint32_t); ++i)
         {
@@ -1992,14 +1998,14 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_erasing) // NOLINT
     fw_info.fw_ver.version = 0x01020300;
     fw_info.num_segments   = 2;
     {
-        nrf52fw_segment_t *p_segment = &fw_info.segments[0];
+        nrf52fw_segment_t* p_segment = &fw_info.segments[0];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "segment_1.bin");
         p_segment->address = 0x00000000;
         p_segment->size    = 516;
         p_segment->crc     = 0;
     }
     {
-        nrf52fw_segment_t *p_segment = &fw_info.segments[1];
+        nrf52fw_segment_t* p_segment = &fw_info.segments[1];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "segment_2.bin");
         p_segment->address = 0x00001000;
         p_segment->size    = 1028;
@@ -2007,8 +2013,8 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_erasing) // NOLINT
     }
 
     {
-        nrf52fw_segment_t *p_segment      = &fw_info.segments[0];
-        uint32_t *         p_segment_buf1 = (uint32_t *)malloc(p_segment->size);
+        nrf52fw_segment_t* p_segment      = &fw_info.segments[0];
+        uint32_t*          p_segment_buf1 = (uint32_t*)malloc(p_segment->size);
         ASSERT_NE(nullptr, p_segment_buf1);
         for (unsigned i = 0; i < p_segment->size / sizeof(uint32_t); ++i)
         {
@@ -2025,8 +2031,8 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_erasing) // NOLINT
     }
 
     {
-        nrf52fw_segment_t *p_segment      = &fw_info.segments[1];
-        uint32_t *         p_segment_buf2 = (uint32_t *)malloc(p_segment->size);
+        nrf52fw_segment_t* p_segment      = &fw_info.segments[1];
+        uint32_t*          p_segment_buf2 = (uint32_t*)malloc(p_segment->size);
         ASSERT_NE(nullptr, p_segment_buf2);
         for (unsigned i = 0; i < p_segment->size / sizeof(uint32_t); ++i)
         {
@@ -2067,7 +2073,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_erasing) // NOLINT
 
 TEST_F(TestNRF52Fw, nrf52fw_calc_segment_crc_ok) // NOLINT
 {
-    const char *                segment_path = "segment_1.bin";
+    const char*                 segment_path = "segment_1.bin";
     const size_t                segment_size = 2816;
     std::unique_ptr<uint32_t[]> segment_buf(new uint32_t[segment_size / sizeof(uint32_t)]);
     for (int i = 0; i < segment_size / sizeof(uint32_t); ++i)
@@ -2097,7 +2103,7 @@ TEST_F(TestNRF52Fw, nrf52fw_calc_segment_crc_ok) // NOLINT
 
 TEST_F(TestNRF52Fw, nrf52fw_calc_segment_crc_fail_file_greater_than_expected) // NOLINT
 {
-    const char *                segment_path = "segment_1.bin";
+    const char*                 segment_path = "segment_1.bin";
     const size_t                segment_size = 2816;
     std::unique_ptr<uint32_t[]> segment_buf(new uint32_t[segment_size / sizeof(uint32_t)]);
     for (int i = 0; i < segment_size / sizeof(uint32_t); ++i)
@@ -2127,7 +2133,7 @@ TEST_F(TestNRF52Fw, nrf52fw_calc_segment_crc_fail_file_greater_than_expected) //
 
 TEST_F(TestNRF52Fw, nrf52fw_calc_segment_crc_fail_bad_length) // NOLINT
 {
-    const char *                segment_path = "segment_1.bin";
+    const char*                 segment_path = "segment_1.bin";
     const size_t                segment_size = 2816;
     std::unique_ptr<uint32_t[]> segment_buf(new uint32_t[segment_size / sizeof(uint32_t)]);
     for (int i = 0; i < segment_size / sizeof(uint32_t); ++i)
@@ -2157,7 +2163,7 @@ TEST_F(TestNRF52Fw, nrf52fw_calc_segment_crc_fail_bad_length) // NOLINT
 
 TEST_F(TestNRF52Fw, nrf52fw_calc_segment_crc_fail_after_file_read_error) // NOLINT
 {
-    const char *                segment_path = "segment_1.bin";
+    const char*                 segment_path = "segment_1.bin";
     const size_t                segment_size = 2816;
     std::unique_ptr<uint32_t[]> segment_buf(new uint32_t[segment_size / sizeof(uint32_t)]);
     for (int i = 0; i < segment_size / sizeof(uint32_t); ++i)
@@ -2188,36 +2194,36 @@ TEST_F(TestNRF52Fw, nrf52fw_calc_segment_crc_fail_after_file_read_error) // NOLI
 
 TEST_F(TestNRF52Fw, nrf52fw_check_firmware_ok) // NOLINT
 {
-    const char *                segment1_path = "segment_1.bin";
+    const char*                 segment1_path = "segment_1.bin";
     const size_t                segment1_size = 2816;
     std::unique_ptr<uint32_t[]> segment1_buf(new uint32_t[segment1_size / sizeof(uint32_t)]);
     for (int i = 0; i < segment1_size / sizeof(uint32_t); ++i)
     {
         segment1_buf[i] = 0xAA000000 + i;
     }
-    const uint32_t segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment1_buf.get()), segment1_size);
+    const uint32_t segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment1_buf.get()), segment1_size);
 
-    const char *                segment2_path = "segment_2.bin";
+    const char*                 segment2_path = "segment_2.bin";
     const size_t                segment2_size = 3500;
     std::unique_ptr<uint32_t[]> segment2_buf(new uint32_t[segment2_size / sizeof(uint32_t)]);
     for (int i = 0; i < segment2_size / sizeof(uint32_t); ++i)
     {
         segment2_buf[i] = 0xAA000000 + i;
     }
-    const uint32_t segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
+    const uint32_t segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment2_buf.get()), segment2_size);
 
     nrf52fw_info_t fw_info = { 0 };
     fw_info.fw_ver.version = 0x03040500;
     fw_info.num_segments   = 2;
     {
-        nrf52fw_segment_t *p_segment = &fw_info.segments[0];
+        nrf52fw_segment_t* p_segment = &fw_info.segments[0];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "%s", segment1_path);
         p_segment->address = 0x00000000;
         p_segment->size    = segment1_size;
         p_segment->crc     = segment1_crc;
     }
     {
-        nrf52fw_segment_t *p_segment = &fw_info.segments[1];
+        nrf52fw_segment_t* p_segment = &fw_info.segments[1];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "%s", segment2_path);
         p_segment->address = 0x00001000;
         p_segment->size    = segment2_size;
@@ -2258,36 +2264,36 @@ TEST_F(TestNRF52Fw, nrf52fw_check_firmware_ok) // NOLINT
 
 TEST_F(TestNRF52Fw, nrf52fw_check_firmware_error_bad_crc) // NOLINT
 {
-    const char *                segment1_path = "segment_1.bin";
+    const char*                 segment1_path = "segment_1.bin";
     const size_t                segment1_size = 2816;
     std::unique_ptr<uint32_t[]> segment1_buf(new uint32_t[segment1_size / sizeof(uint32_t)]);
     for (int i = 0; i < segment1_size / sizeof(uint32_t); ++i)
     {
         segment1_buf[i] = 0xAA000000 + i;
     }
-    const uint32_t segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment1_buf.get()), segment1_size);
+    const uint32_t segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment1_buf.get()), segment1_size);
 
-    const char *                segment2_path = "segment_2.bin";
+    const char*                 segment2_path = "segment_2.bin";
     const size_t                segment2_size = 3500;
     std::unique_ptr<uint32_t[]> segment2_buf(new uint32_t[segment2_size / sizeof(uint32_t)]);
     for (int i = 0; i < segment2_size / sizeof(uint32_t); ++i)
     {
         segment2_buf[i] = 0xAA000000 + i;
     }
-    const uint32_t segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
+    const uint32_t segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment2_buf.get()), segment2_size);
 
     nrf52fw_info_t fw_info = { 0 };
     fw_info.fw_ver.version = 0x03040500;
     fw_info.num_segments   = 2;
     {
-        nrf52fw_segment_t *p_segment = &fw_info.segments[0];
+        nrf52fw_segment_t* p_segment = &fw_info.segments[0];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "%s", segment1_path);
         p_segment->address = 0x00000000;
         p_segment->size    = segment1_size;
         p_segment->crc     = segment1_crc;
     }
     {
-        nrf52fw_segment_t *p_segment = &fw_info.segments[1];
+        nrf52fw_segment_t* p_segment = &fw_info.segments[1];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "%s", segment2_path);
         p_segment->address = 0x00001000;
         p_segment->size    = segment2_size;
@@ -2329,36 +2335,36 @@ TEST_F(TestNRF52Fw, nrf52fw_check_firmware_error_bad_crc) // NOLINT
 
 TEST_F(TestNRF52Fw, nrf52fw_check_firmware_fail_open_file) // NOLINT
 {
-    const char *                segment1_path = "segment_1.bin";
+    const char*                 segment1_path = "segment_1.bin";
     const size_t                segment1_size = 2816;
     std::unique_ptr<uint32_t[]> segment1_buf(new uint32_t[segment1_size / sizeof(uint32_t)]);
     for (int i = 0; i < segment1_size / sizeof(uint32_t); ++i)
     {
         segment1_buf[i] = 0xAA000000 + i;
     }
-    const uint32_t segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment1_buf.get()), segment1_size);
+    const uint32_t segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment1_buf.get()), segment1_size);
 
-    const char *                segment2_path = "segment_2.bin";
+    const char*                 segment2_path = "segment_2.bin";
     const size_t                segment2_size = 3500;
     std::unique_ptr<uint32_t[]> segment2_buf(new uint32_t[segment2_size / sizeof(uint32_t)]);
     for (int i = 0; i < segment2_size / sizeof(uint32_t); ++i)
     {
         segment2_buf[i] = 0xAA000000 + i;
     }
-    const uint32_t segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
+    const uint32_t segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment2_buf.get()), segment2_size);
 
     nrf52fw_info_t fw_info = { 0 };
     fw_info.fw_ver.version = 0x03040500;
     fw_info.num_segments   = 2;
     {
-        nrf52fw_segment_t *p_segment = &fw_info.segments[0];
+        nrf52fw_segment_t* p_segment = &fw_info.segments[0];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "%s", segment1_path);
         p_segment->address = 0x00000000;
         p_segment->size    = segment1_size;
         p_segment->crc     = segment1_crc;
     }
     {
-        nrf52fw_segment_t *p_segment = &fw_info.segments[1];
+        nrf52fw_segment_t* p_segment = &fw_info.segments[1];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "%s", segment2_path);
         p_segment->address = 0x00001000;
         p_segment->size    = segment2_size;
@@ -2394,36 +2400,36 @@ TEST_F(TestNRF52Fw, nrf52fw_check_firmware_fail_open_file) // NOLINT
 
 TEST_F(TestNRF52Fw, nrf52fw_check_firmware_fail_calc_segment_crc) // NOLINT
 {
-    const char *                segment1_path = "segment_1.bin";
+    const char*                 segment1_path = "segment_1.bin";
     const size_t                segment1_size = 2816;
     std::unique_ptr<uint32_t[]> segment1_buf(new uint32_t[segment1_size / sizeof(uint32_t)]);
     for (int i = 0; i < segment1_size / sizeof(uint32_t); ++i)
     {
         segment1_buf[i] = 0xAA000000 + i;
     }
-    const uint32_t segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment1_buf.get()), segment1_size);
+    const uint32_t segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment1_buf.get()), segment1_size);
 
-    const char *                segment2_path = "segment_2.bin";
+    const char*                 segment2_path = "segment_2.bin";
     const size_t                segment2_size = 3500;
     std::unique_ptr<uint32_t[]> segment2_buf(new uint32_t[segment2_size / sizeof(uint32_t)]);
     for (int i = 0; i < segment2_size / sizeof(uint32_t); ++i)
     {
         segment2_buf[i] = 0xAA000000 + i;
     }
-    const uint32_t segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
+    const uint32_t segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment2_buf.get()), segment2_size);
 
     nrf52fw_info_t fw_info = { 0 };
     fw_info.fw_ver.version = 0x03040500;
     fw_info.num_segments   = 2;
     {
-        nrf52fw_segment_t *p_segment = &fw_info.segments[0];
+        nrf52fw_segment_t* p_segment = &fw_info.segments[0];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "%s", segment1_path);
         p_segment->address = 0x00000000;
         p_segment->size    = segment1_size;
         p_segment->crc     = segment1_crc;
     }
     {
-        nrf52fw_segment_t *p_segment = &fw_info.segments[1];
+        nrf52fw_segment_t* p_segment = &fw_info.segments[1];
         snprintf(p_segment->file_name, sizeof(p_segment->file_name), "%s", segment2_path);
         p_segment->address = 0x00001000;
         p_segment->size    = segment2_size;
@@ -2467,9 +2473,9 @@ TEST_F(TestNRF52Fw, nrf52fw_check_firmware_fail_calc_segment_crc) // NOLINT
 
 TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_not_needed) // NOLINT
 {
-    const char *segment1_path = "segment_1.bin";
-    const char *segment2_path = "segment_2.bin";
-    const char *segment3_path = "segment_3.bin";
+    const char* segment1_path = "segment_1.bin";
+    const char* segment2_path = "segment_2.bin";
+    const char* segment3_path = "segment_3.bin";
 
     const size_t segment1_size = 2816;
     const size_t segment2_size = 151016;
@@ -2485,7 +2491,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_not_needed) // 
         {
             segment1_buf[i] = 0xAA000000 + i;
         }
-        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment1_buf.get()), segment1_size);
+        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment1_buf.get()), segment1_size);
         {
             this->m_fd = this->open_file(segment1_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -2501,7 +2507,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_not_needed) // 
         {
             segment2_buf[i] = 0xBB000000 + i;
         }
-        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
+        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment2_buf.get()), segment2_size);
         {
             this->m_fd = this->open_file(segment2_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -2517,7 +2523,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_not_needed) // 
         {
             segment3_buf[i] = 0xCC000000 + i;
         }
-        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment3_buf.get()), segment3_size);
+        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment3_buf.get()), segment3_size);
         {
             this->m_fd = this->open_file(segment3_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -2554,8 +2560,8 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_not_needed) // 
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on nRF52: v1.2.3");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware updating is not needed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware on nRF52: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware updating is not needed");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
@@ -2566,9 +2572,9 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_not_needed) // 
 
 TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required) // NOLINT
 {
-    const char *segment1_path = "segment_1.bin";
-    const char *segment2_path = "segment_2.bin";
-    const char *segment3_path = "segment_3.bin";
+    const char* segment1_path = "segment_1.bin";
+    const char* segment2_path = "segment_2.bin";
+    const char* segment3_path = "segment_3.bin";
 
     const size_t segment1_size = 2816;
     const size_t segment2_size = 151016;
@@ -2584,7 +2590,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required) // NO
         {
             segment1_buf[i] = 0xAA000000 + i;
         }
-        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment1_buf.get()), segment1_size);
+        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment1_buf.get()), segment1_size);
         {
             this->m_fd = this->open_file(segment1_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -2600,7 +2606,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required) // NO
         {
             segment2_buf[i] = 0xBB000000 + i;
         }
-        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
+        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment2_buf.get()), segment2_size);
         {
             this->m_fd = this->open_file(segment2_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -2616,7 +2622,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required) // NO
         {
             segment3_buf[i] = 0xCC000000 + i;
         }
-        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment3_buf.get()), segment3_size);
+        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment3_buf.get()), segment3_size);
         {
             this->m_fd = this->open_file(segment3_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -2656,8 +2662,8 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required) // NO
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on nRF52: v1.2.0");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Need to update firmware on nRF52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware on nRF52: v1.2.0");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Need to update firmware on nRF52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Erasing flash memory...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash 3 segments");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 0: 0x00000000 size=2816 from segment_1.bin");
@@ -2696,22 +2702,22 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required) // NO
 }
 
 static void
-cb_before_updating()
+cb_before_updating(void)
 {
     g_pTestClass->cb_before_updating_cnt += 1;
 }
 
 static void
-cb_after_updating()
+cb_after_updating(const bool flag_success)
 {
     g_pTestClass->cb_after_updating_cnt += 1;
 }
 
 TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required__with_callbacks) // NOLINT
 {
-    const char *segment1_path = "segment_1.bin";
-    const char *segment2_path = "segment_2.bin";
-    const char *segment3_path = "segment_3.bin";
+    const char* segment1_path = "segment_1.bin";
+    const char* segment2_path = "segment_2.bin";
+    const char* segment3_path = "segment_3.bin";
 
     const size_t segment1_size = 2816;
     const size_t segment2_size = 151016;
@@ -2727,7 +2733,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required__with_
         {
             segment1_buf[i] = 0xAA000000 + i;
         }
-        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment1_buf.get()), segment1_size);
+        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment1_buf.get()), segment1_size);
         {
             this->m_fd = this->open_file(segment1_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -2743,7 +2749,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required__with_
         {
             segment2_buf[i] = 0xBB000000 + i;
         }
-        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
+        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment2_buf.get()), segment2_size);
         {
             this->m_fd = this->open_file(segment2_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -2759,7 +2765,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required__with_
         {
             segment3_buf[i] = 0xCC000000 + i;
         }
-        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment3_buf.get()), segment3_size);
+        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment3_buf.get()), segment3_size);
         {
             this->m_fd = this->open_file(segment3_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -2813,8 +2819,8 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required__with_
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on nRF52: v1.2.0");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Need to update firmware on nRF52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware on nRF52: v1.2.0");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Need to update firmware on nRF52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Erasing flash memory...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash 3 segments");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 0: 0x00000000 size=2816 from segment_1.bin");
@@ -2854,9 +2860,9 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required__with_
 
 TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52swd_init) // NOLINT
 {
-    const char *segment1_path = "segment_1.bin";
-    const char *segment2_path = "segment_2.bin";
-    const char *segment3_path = "segment_3.bin";
+    const char* segment1_path = "segment_1.bin";
+    const char* segment2_path = "segment_2.bin";
+    const char* segment3_path = "segment_3.bin";
 
     const size_t segment1_size = 2816;
     const size_t segment2_size = 151016;
@@ -2872,7 +2878,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
         {
             segment1_buf[i] = 0xAA000000 + i;
         }
-        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment1_buf.get()), segment1_size);
+        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment1_buf.get()), segment1_size);
         {
             this->m_fd = this->open_file(segment1_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -2888,7 +2894,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
         {
             segment2_buf[i] = 0xBB000000 + i;
         }
-        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
+        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment2_buf.get()), segment2_size);
         {
             this->m_fd = this->open_file(segment2_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -2904,7 +2910,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
         {
             segment3_buf[i] = 0xCC000000 + i;
         }
-        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment3_buf.get()), segment3_size);
+        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment3_buf.get()), segment3_size);
         {
             this->m_fd = this->open_file(segment3_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -2949,9 +2955,9 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
 
 TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52swd_check_id_code) // NOLINT
 {
-    const char *segment1_path = "segment_1.bin";
-    const char *segment2_path = "segment_2.bin";
-    const char *segment3_path = "segment_3.bin";
+    const char* segment1_path = "segment_1.bin";
+    const char* segment2_path = "segment_2.bin";
+    const char* segment3_path = "segment_3.bin";
 
     const size_t segment1_size = 2816;
     const size_t segment2_size = 151016;
@@ -2967,7 +2973,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
         {
             segment1_buf[i] = 0xAA000000 + i;
         }
-        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment1_buf.get()), segment1_size);
+        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment1_buf.get()), segment1_size);
         {
             this->m_fd = this->open_file(segment1_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -2983,7 +2989,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
         {
             segment2_buf[i] = 0xBB000000 + i;
         }
-        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
+        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment2_buf.get()), segment2_size);
         {
             this->m_fd = this->open_file(segment2_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -2999,7 +3005,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
         {
             segment3_buf[i] = 0xCC000000 + i;
         }
-        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment3_buf.get()), segment3_size);
+        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment3_buf.get()), segment3_size);
         {
             this->m_fd = this->open_file(segment3_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3044,9 +3050,9 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
 
 TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52swd_debug_halt) // NOLINT
 {
-    const char *segment1_path = "segment_1.bin";
-    const char *segment2_path = "segment_2.bin";
-    const char *segment3_path = "segment_3.bin";
+    const char* segment1_path = "segment_1.bin";
+    const char* segment2_path = "segment_2.bin";
+    const char* segment3_path = "segment_3.bin";
 
     const size_t segment1_size = 2816;
     const size_t segment2_size = 151016;
@@ -3062,7 +3068,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
         {
             segment1_buf[i] = 0xAA000000 + i;
         }
-        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment1_buf.get()), segment1_size);
+        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment1_buf.get()), segment1_size);
         {
             this->m_fd = this->open_file(segment1_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3078,7 +3084,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
         {
             segment2_buf[i] = 0xBB000000 + i;
         }
-        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
+        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment2_buf.get()), segment2_size);
         {
             this->m_fd = this->open_file(segment2_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3094,7 +3100,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
         {
             segment3_buf[i] = 0xCC000000 + i;
         }
-        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment3_buf.get()), segment3_size);
+        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment3_buf.get()), segment3_size);
         {
             this->m_fd = this->open_file(segment3_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3139,9 +3145,9 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
 
 TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52swd_debug_reset) // NOLINT
 {
-    const char *segment1_path = "segment_1.bin";
-    const char *segment2_path = "segment_2.bin";
-    const char *segment3_path = "segment_3.bin";
+    const char* segment1_path = "segment_1.bin";
+    const char* segment2_path = "segment_2.bin";
+    const char* segment3_path = "segment_3.bin";
 
     const size_t segment1_size = 2816;
     const size_t segment2_size = 151016;
@@ -3157,7 +3163,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
         {
             segment1_buf[i] = 0xAA000000 + i;
         }
-        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment1_buf.get()), segment1_size);
+        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment1_buf.get()), segment1_size);
         {
             this->m_fd = this->open_file(segment1_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3173,7 +3179,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
         {
             segment2_buf[i] = 0xBB000000 + i;
         }
-        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
+        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment2_buf.get()), segment2_size);
         {
             this->m_fd = this->open_file(segment2_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3189,7 +3195,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
         {
             segment3_buf[i] = 0xCC000000 + i;
         }
-        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment3_buf.get()), segment3_size);
+        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment3_buf.get()), segment3_size);
         {
             this->m_fd = this->open_file(segment3_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3236,9 +3242,9 @@ TEST_F(
     TestNRF52Fw,
     nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52swd_debug_enable_reset_vector_catch) // NOLINT
 {
-    const char *segment1_path = "segment_1.bin";
-    const char *segment2_path = "segment_2.bin";
-    const char *segment3_path = "segment_3.bin";
+    const char* segment1_path = "segment_1.bin";
+    const char* segment2_path = "segment_2.bin";
+    const char* segment3_path = "segment_3.bin";
 
     const size_t segment1_size = 2816;
     const size_t segment2_size = 151016;
@@ -3254,7 +3260,7 @@ TEST_F(
         {
             segment1_buf[i] = 0xAA000000 + i;
         }
-        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment1_buf.get()), segment1_size);
+        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment1_buf.get()), segment1_size);
         {
             this->m_fd = this->open_file(segment1_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3270,7 +3276,7 @@ TEST_F(
         {
             segment2_buf[i] = 0xBB000000 + i;
         }
-        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
+        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment2_buf.get()), segment2_size);
         {
             this->m_fd = this->open_file(segment2_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3286,7 +3292,7 @@ TEST_F(
         {
             segment3_buf[i] = 0xCC000000 + i;
         }
-        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment3_buf.get()), segment3_size);
+        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment3_buf.get()), segment3_size);
         {
             this->m_fd = this->open_file(segment3_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3331,9 +3337,9 @@ TEST_F(
 
 TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__debug_run_failed) // NOLINT
 {
-    const char *segment1_path = "segment_1.bin";
-    const char *segment2_path = "segment_2.bin";
-    const char *segment3_path = "segment_3.bin";
+    const char* segment1_path = "segment_1.bin";
+    const char* segment2_path = "segment_2.bin";
+    const char* segment3_path = "segment_3.bin";
 
     const size_t segment1_size = 2816;
     const size_t segment2_size = 151016;
@@ -3349,7 +3355,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__debug_run_failed) // N
         {
             segment1_buf[i] = 0xAA000000 + i;
         }
-        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment1_buf.get()), segment1_size);
+        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment1_buf.get()), segment1_size);
         {
             this->m_fd = this->open_file(segment1_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3365,7 +3371,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__debug_run_failed) // N
         {
             segment2_buf[i] = 0xBB000000 + i;
         }
-        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
+        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment2_buf.get()), segment2_size);
         {
             this->m_fd = this->open_file(segment2_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3381,7 +3387,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__debug_run_failed) // N
         {
             segment3_buf[i] = 0xCC000000 + i;
         }
-        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment3_buf.get()), segment3_size);
+        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment3_buf.get()), segment3_size);
         {
             this->m_fd = this->open_file(segment3_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3419,8 +3425,8 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__debug_run_failed) // N
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on nRF52: v1.2.3");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware updating is not needed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware on nRF52: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware updating is not needed");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_debug_run failed");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
@@ -3432,9 +3438,9 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__debug_run_failed) // N
 
 TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_mount_failed) // NOLINT
 {
-    const char *segment1_path = "segment_1.bin";
-    const char *segment2_path = "segment_2.bin";
-    const char *segment3_path = "segment_3.bin";
+    const char* segment1_path = "segment_1.bin";
+    const char* segment2_path = "segment_2.bin";
+    const char* segment3_path = "segment_3.bin";
 
     const size_t segment1_size = 2816;
     const size_t segment2_size = 151016;
@@ -3450,7 +3456,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_mount_failed) //
         {
             segment1_buf[i] = 0xAA000000 + i;
         }
-        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment1_buf.get()), segment1_size);
+        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment1_buf.get()), segment1_size);
         {
             this->m_fd = this->open_file(segment1_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3466,7 +3472,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_mount_failed) //
         {
             segment2_buf[i] = 0xBB000000 + i;
         }
-        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
+        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment2_buf.get()), segment2_size);
         {
             this->m_fd = this->open_file(segment2_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3482,7 +3488,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_mount_failed) //
         {
             segment3_buf[i] = 0xCC000000 + i;
         }
-        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment3_buf.get()), segment3_size);
+        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment3_buf.get()), segment3_size);
         {
             this->m_fd = this->open_file(segment3_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3529,9 +3535,9 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_mount_failed) //
 
 TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_mount_failed_no_mem) // NOLINT
 {
-    const char *segment1_path = "segment_1.bin";
-    const char *segment2_path = "segment_2.bin";
-    const char *segment3_path = "segment_3.bin";
+    const char* segment1_path = "segment_1.bin";
+    const char* segment2_path = "segment_2.bin";
+    const char* segment3_path = "segment_3.bin";
 
     const size_t segment1_size = 2816;
     const size_t segment2_size = 151016;
@@ -3547,7 +3553,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_mount_failed_no_
         {
             segment1_buf[i] = 0xAA000000 + i;
         }
-        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment1_buf.get()), segment1_size);
+        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment1_buf.get()), segment1_size);
         {
             this->m_fd = this->open_file(segment1_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3563,7 +3569,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_mount_failed_no_
         {
             segment2_buf[i] = 0xBB000000 + i;
         }
-        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
+        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment2_buf.get()), segment2_size);
         {
             this->m_fd = this->open_file(segment2_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3579,7 +3585,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_mount_failed_no_
         {
             segment3_buf[i] = 0xCC000000 + i;
         }
-        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment3_buf.get()), segment3_size);
+        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment3_buf.get()), segment3_size);
         {
             this->m_fd = this->open_file(segment3_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3626,9 +3632,9 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_mount_failed_no_
 
 TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_step2_no_mem) // NOLINT
 {
-    const char *segment1_path = "segment_1.bin";
-    const char *segment2_path = "segment_2.bin";
-    const char *segment3_path = "segment_3.bin";
+    const char* segment1_path = "segment_1.bin";
+    const char* segment2_path = "segment_2.bin";
+    const char* segment3_path = "segment_3.bin";
 
     const size_t segment1_size = 2816;
     const size_t segment2_size = 151016;
@@ -3644,7 +3650,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_step2_no_mem) //
         {
             segment1_buf[i] = 0xAA000000 + i;
         }
-        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment1_buf.get()), segment1_size);
+        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment1_buf.get()), segment1_size);
         {
             this->m_fd = this->open_file(segment1_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3660,7 +3666,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_step2_no_mem) //
         {
             segment2_buf[i] = 0xBB000000 + i;
         }
-        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
+        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment2_buf.get()), segment2_size);
         {
             this->m_fd = this->open_file(segment2_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3676,7 +3682,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_step2_no_mem) //
         {
             segment3_buf[i] = 0xCC000000 + i;
         }
-        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment3_buf.get()), segment3_size);
+        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment3_buf.get()), segment3_size);
         {
             this->m_fd = this->open_file(segment3_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3724,9 +3730,9 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_step2_no_mem) //
 
 TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_read_info_txt) // NOLINT
 {
-    const char *segment1_path = "segment_1.bin";
-    const char *segment2_path = "segment_2.bin";
-    const char *segment3_path = "segment_3.bin";
+    const char* segment1_path = "segment_1.bin";
+    const char* segment2_path = "segment_2.bin";
+    const char* segment3_path = "segment_3.bin";
 
     const size_t segment1_size = 2816;
     const size_t segment2_size = 151016;
@@ -3742,7 +3748,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_read_info_txt) /
         {
             segment1_buf[i] = 0xAA000000 + i;
         }
-        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment1_buf.get()), segment1_size);
+        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment1_buf.get()), segment1_size);
         {
             this->m_fd = this->open_file(segment1_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3758,7 +3764,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_read_info_txt) /
         {
             segment2_buf[i] = 0xBB000000 + i;
         }
-        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
+        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment2_buf.get()), segment2_size);
         {
             this->m_fd = this->open_file(segment2_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3774,7 +3780,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_read_info_txt) /
         {
             segment3_buf[i] = 0xCC000000 + i;
         }
-        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment3_buf.get()), segment3_size);
+        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment3_buf.get()), segment3_size);
         {
             this->m_fd = this->open_file(segment3_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3814,9 +3820,9 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_read_info_txt) /
 
 TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_read_version) // NOLINT
 {
-    const char *segment1_path = "segment_1.bin";
-    const char *segment2_path = "segment_2.bin";
-    const char *segment3_path = "segment_3.bin";
+    const char* segment1_path = "segment_1.bin";
+    const char* segment2_path = "segment_2.bin";
+    const char* segment3_path = "segment_3.bin";
 
     const size_t segment1_size = 2816;
     const size_t segment2_size = 151016;
@@ -3832,7 +3838,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_read_version) //
         {
             segment1_buf[i] = 0xAA000000 + i;
         }
-        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment1_buf.get()), segment1_size);
+        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment1_buf.get()), segment1_size);
         {
             this->m_fd = this->open_file(segment1_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3848,7 +3854,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_read_version) //
         {
             segment2_buf[i] = 0xBB000000 + i;
         }
-        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
+        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment2_buf.get()), segment2_size);
         {
             this->m_fd = this->open_file(segment2_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3864,7 +3870,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_read_version) //
         {
             segment3_buf[i] = 0xCC000000 + i;
         }
-        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment3_buf.get()), segment3_size);
+        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment3_buf.get()), segment3_size);
         {
             this->m_fd = this->open_file(segment3_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3907,9 +3913,9 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_read_version) //
 
 TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_check_firmware) // NOLINT
 {
-    const char *segment1_path = "segment_1.bin";
-    const char *segment2_path = "segment_2.bin";
-    const char *segment3_path = "segment_3.bin";
+    const char* segment1_path = "segment_1.bin";
+    const char* segment2_path = "segment_2.bin";
+    const char* segment3_path = "segment_3.bin";
 
     const size_t segment1_size = 2816;
     const size_t segment2_size = 151016;
@@ -3925,7 +3931,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_check_firmware) 
         {
             segment1_buf[i] = 0xAA000000 + i;
         }
-        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment1_buf.get()), segment1_size);
+        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment1_buf.get()), segment1_size);
         {
             this->m_fd = this->open_file(segment1_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3941,7 +3947,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_check_firmware) 
         {
             segment2_buf[i] = 0xBB000000 + i;
         }
-        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
+        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment2_buf.get()), segment2_size);
         {
             this->m_fd = this->open_file(segment2_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3957,7 +3963,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_check_firmware) 
         {
             segment3_buf[i] = 0xCC000000 + i;
         }
-        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment3_buf.get()), segment3_size);
+        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment3_buf.get()), segment3_size);
         {
             this->m_fd = this->open_file(segment3_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -3994,8 +4000,8 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_check_firmware) 
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on nRF52: v1.2.0");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Need to update firmware on nRF52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware on nRF52: v1.2.0");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Need to update firmware on nRF52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "Segment: 0x00001000: expected CRC: 0x5b3ddbc1, actual CRC: 0x5b3ddbc0");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_check_firmware failed");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
@@ -4008,9 +4014,9 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_check_firmware) 
 
 TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_write_firmware) // NOLINT
 {
-    const char *segment1_path = "segment_1.bin";
-    const char *segment2_path = "segment_2.bin";
-    const char *segment3_path = "segment_3.bin";
+    const char* segment1_path = "segment_1.bin";
+    const char* segment2_path = "segment_2.bin";
+    const char* segment3_path = "segment_3.bin";
 
     const size_t segment1_size = 2816;
     const size_t segment2_size = 151016;
@@ -4026,7 +4032,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_write_firmware) 
         {
             segment1_buf[i] = 0xAA000000 + i;
         }
-        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment1_buf.get()), segment1_size);
+        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment1_buf.get()), segment1_size);
         {
             this->m_fd = this->open_file(segment1_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -4042,7 +4048,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_write_firmware) 
         {
             segment2_buf[i] = 0xBB000000 + i;
         }
-        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment2_buf.get()), segment2_size);
+        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment2_buf.get()), segment2_size);
         {
             this->m_fd = this->open_file(segment2_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -4058,7 +4064,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_write_firmware) 
         {
             segment3_buf[i] = 0xCC000000 + i;
         }
-        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t *>(segment3_buf.get()), segment3_size);
+        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment3_buf.get()), segment3_size);
         {
             this->m_fd = this->open_file(segment3_path, "wb");
             ASSERT_NE(nullptr, this->m_fd);
@@ -4099,8 +4105,8 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_write_firmware) 
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on nRF52: v1.2.0");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Need to update firmware on nRF52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware on nRF52: v1.2.0");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Need to update firmware on nRF52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Erasing flash memory...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash 3 segments");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 0: 0x00000000 size=2816 from segment_1.bin");

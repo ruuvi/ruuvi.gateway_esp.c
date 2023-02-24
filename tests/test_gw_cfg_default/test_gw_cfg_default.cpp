@@ -10,6 +10,7 @@
 #include "esp_log_wrapper.hpp"
 #include "os_mutex_recursive.h"
 #include "os_mutex.h"
+#include "os_task.h"
 #include "lwip/ip4_addr.h"
 #include "event_mgr.h"
 
@@ -19,15 +20,21 @@ using namespace std;
  * *********************************************************************************/
 
 class TestGwCfgDefault;
-static TestGwCfgDefault *g_pTestClass;
+static TestGwCfgDefault* g_pTestClass;
 
 extern "C" {
 
-const char *
+const char*
 os_task_get_name(void)
 {
     static const char g_task_name[] = "main";
-    return const_cast<char *>(g_task_name);
+    return const_cast<char*>(g_task_name);
+}
+
+os_task_priority_t
+os_task_get_priority(void)
+{
+    return 0;
 }
 
 } // extern "C"
@@ -43,6 +50,7 @@ protected:
         g_pTestClass                                  = this;
         const gw_cfg_default_init_param_t init_params = {
             .wifi_ap_ssid        = { "my_ssid1" },
+            .hostname            = { "RuuviGatewayAABB" },
             .device_id           = { 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88 },
             .esp32_fw_ver        = { "v1.10.0" },
             .nrf52_fw_ver        = { "v0.7.2" },
@@ -52,11 +60,13 @@ protected:
         };
 
         gw_cfg_default_init(&init_params, nullptr);
+        gw_cfg_default_log();
     }
 
     void
     TearDown() override
     {
+        gw_cfg_default_deinit();
         g_pTestClass = nullptr;
         esp_log_wrapper_deinit();
     }
@@ -76,13 +86,13 @@ TestGwCfgDefault::~TestGwCfgDefault() = default;
 extern "C" {
 
 os_mutex_recursive_t
-os_mutex_recursive_create_static(os_mutex_recursive_static_t *const p_mutex_static)
+os_mutex_recursive_create_static(os_mutex_recursive_static_t* const p_mutex_static)
 {
     return (os_mutex_recursive_t)p_mutex_static;
 }
 
 void
-os_mutex_recursive_delete(os_mutex_recursive_t *const ph_mutex)
+os_mutex_recursive_delete(os_mutex_recursive_t* const ph_mutex)
 {
 }
 
@@ -97,13 +107,13 @@ os_mutex_recursive_unlock(os_mutex_recursive_t const h_mutex)
 }
 
 os_mutex_t
-os_mutex_create_static(os_mutex_static_t *const p_mutex_static)
+os_mutex_create_static(os_mutex_static_t* const p_mutex_static)
 {
     return reinterpret_cast<os_mutex_t>(p_mutex_static);
 }
 
 void
-os_mutex_delete(os_mutex_t *const ph_mutex)
+os_mutex_delete(os_mutex_t* const ph_mutex)
 {
     (void)ph_mutex;
 }
@@ -120,20 +130,20 @@ os_mutex_unlock(os_mutex_t const h_mutex)
     (void)h_mutex;
 }
 
-char *
-esp_ip4addr_ntoa(const esp_ip4_addr_t *addr, char *buf, int buflen)
+char*
+esp_ip4addr_ntoa(const esp_ip4_addr_t* addr, char* buf, int buflen)
 {
-    return ip4addr_ntoa_r((ip4_addr_t *)addr, buf, buflen);
+    return ip4addr_ntoa_r((ip4_addr_t*)addr, buf, buflen);
 }
 
 uint32_t
-esp_ip4addr_aton(const char *addr)
+esp_ip4addr_aton(const char* addr)
 {
     return ipaddr_addr(addr);
 }
 
 void
-wifi_manager_cb_save_wifi_config(const wifiman_config_t *const p_cfg)
+wifi_manager_cb_save_wifi_config_sta(const wifiman_config_sta_t* const p_cfg_sta)
 {
 }
 
@@ -162,7 +172,7 @@ TEST_F(TestGwCfgDefault, test_1) // NOLINT
     gw_cfg_t gw_cfg {};
     gw_cfg_default_get(&gw_cfg);
 
-    ASSERT_FALSE(gw_cfg.eth_cfg.use_eth);
+    ASSERT_TRUE(gw_cfg.eth_cfg.use_eth);
     ASSERT_TRUE(gw_cfg.eth_cfg.eth_dhcp);
     ASSERT_EQ(string(""), string(gw_cfg.eth_cfg.eth_static_ip.buf));
     ASSERT_EQ(string(""), string(gw_cfg.eth_cfg.eth_netmask.buf));
@@ -194,7 +204,7 @@ TEST_F(TestGwCfgDefault, test_1) // NOLINT
     ASSERT_EQ(string(""), string(gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf));
     ASSERT_EQ(string(""), string(gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf));
 
-    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_DEFAULT, gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type);
     ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), string(gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf));
     ASSERT_EQ(string("0d6c6f1c27ca628806eb9247740d8ba1"), string(gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf));
     ASSERT_EQ(string(""), string(gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf));
@@ -225,14 +235,15 @@ TEST_F(TestGwCfgDefault, test_1) // NOLINT
     ASSERT_EQ(string(""), string(gw_cfg.ruuvi_cfg.coordinates.buf));
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS (default):"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID / Hostname: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: Hostname: RuuviGatewayAABB"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 fw ver: v1.10.0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 WiFi MAC ADDR: AA:BB:CC:DD:EE:11"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 Eth MAC ADDR: AA:BB:CC:DD:EE:22"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: netmask: "));
@@ -252,6 +263,7 @@ TEST_F(TestGwCfgDefault, test_1) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat user: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat pass: ********"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use mqtt: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt disable retained messages: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt port: 1883"));
@@ -263,6 +275,7 @@ TEST_F(TestGwCfgDefault, test_1) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth user: Admin"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth API key: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth API key (RW): ********"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Auto update cycle: regular"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Auto update weekdays_bitmask: 0x7f"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Auto update interval: 00:00..24:00"));
@@ -306,13 +319,14 @@ TEST_F(TestGwCfgDefault, test_1) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Required: false"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Power save: NONE"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Use Static IP: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Hostname: RuuviGatewayAABB"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
 TEST_F(TestGwCfgDefault, test_gw_cfg_default_get_lan_auth) // NOLINT
 {
-    const ruuvi_gw_cfg_lan_auth_t *const p_lan_auth = gw_cfg_default_get_lan_auth();
-    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, p_lan_auth->lan_auth_type);
+    const ruuvi_gw_cfg_lan_auth_t* const p_lan_auth = gw_cfg_default_get_lan_auth();
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_DEFAULT, p_lan_auth->lan_auth_type);
     ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), string(p_lan_auth->lan_auth_user.buf));
     ASSERT_EQ(string("0d6c6f1c27ca628806eb9247740d8ba1"), string(p_lan_auth->lan_auth_pass.buf));
 }
@@ -321,7 +335,7 @@ TEST_F(TestGwCfgDefault, test_gw_cfg_default_get_eth) // NOLINT
 {
     const gw_cfg_eth_t gw_cfg_eth = *gw_cfg_default_get_eth();
 
-    ASSERT_FALSE(gw_cfg_eth.use_eth);
+    ASSERT_TRUE(gw_cfg_eth.use_eth);
     ASSERT_TRUE(gw_cfg_eth.eth_dhcp);
     ASSERT_EQ(string(""), string(gw_cfg_eth.eth_static_ip.buf));
     ASSERT_EQ(string(""), string(gw_cfg_eth.eth_netmask.buf));

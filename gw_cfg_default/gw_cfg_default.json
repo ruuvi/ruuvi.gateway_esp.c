@@ -4,9 +4,10 @@
     "password": ""
   },
   "wifi_ap_config": {
-    "password": ""
+    "password": "",
+    "channel": 1
   },
-  "use_eth": false,
+  "use_eth": true,
   "eth_dhcp": true,
   "eth_static_ip": "",
   "eth_netmask": "",
@@ -29,6 +30,7 @@
   "http_stat_user": "",
   "http_stat_pass": "",
   "use_mqtt": false,
+  "mqtt_disable_retained_messages": false,
   "mqtt_transport": "TCP",
   "mqtt_server": "test.mosquitto.org",
   "mqtt_port": 1883,
@@ -37,8 +39,8 @@
   "mqtt_user": "",
   "mqtt_pass": "",
   "lan_auth_type": "lan_auth_default",
-  "lan_auth_user": "Admin",
   "lan_auth_api_key": "",
+  "lan_auth_api_key_rw": "",
   "auto_update_cycle": "regular",
   "auto_update_weekdays_bitmask": 127,
   "auto_update_interval_from": 0,

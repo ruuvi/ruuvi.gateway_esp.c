@@ -13,16 +13,16 @@
 #include "esp_type_wrapper.h"
 
 static bool
-json_helper_find_token_start_and_end(const char *const p_val, const char **p_p_begin, const char **p_p_end)
+json_helper_find_token_start_and_end(const char* const p_val, const char** p_p_begin, const char** p_p_end)
 {
     *p_p_end = NULL;
     if ('"' == *p_val)
     {
-        const char *p_begin = p_val + 1;
+        const char* p_begin = p_val + 1;
         *p_p_begin          = p_begin;
         for (;;)
         {
-            const char *p_end = strpbrk(p_begin, "\\\"");
+            const char* p_end = strpbrk(p_begin, "\\\"");
             if (NULL == p_end)
             {
                 return false;
@@ -44,7 +44,7 @@ json_helper_find_token_start_and_end(const char *const p_val, const char **p_p_b
     else
     {
         *p_p_begin              = p_val;
-        const char *const p_end = strpbrk(p_val, " \t,\n}");
+        const char* const p_end = strpbrk(p_val, " \t,\n}");
         if (NULL == p_end)
         {
             return false;
@@ -61,10 +61,10 @@ json_helper_find_token_start_and_end(const char *const p_val, const char **p_p_b
 }
 
 str_buf_t
-json_helper_get_by_key(const char *const p_json, const char *const p_key)
+json_helper_get_by_key(const char* const p_json, const char* const p_key)
 {
     const size_t key_len = strlen(p_key);
-    const char * p_token = p_json;
+    const char*  p_token = p_json;
     for (;;)
     {
         p_token = strpbrk(p_token, "\\\"");
@@ -96,13 +96,13 @@ json_helper_get_by_key(const char *const p_json, const char *const p_key)
     {
         return str_buf_init_null();
     }
-    const char *p_val = p_token + 1;
+    const char* p_val = p_token + 1;
     while (' ' == *p_val)
     {
         p_val += 1;
     }
-    const char *p_begin = NULL;
-    const char *p_end   = NULL;
+    const char* p_begin = NULL;
+    const char* p_end   = NULL;
     if (!json_helper_find_token_start_and_end(p_val, &p_begin, &p_end))
     {
         return str_buf_init_null();

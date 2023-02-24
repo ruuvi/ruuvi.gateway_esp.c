@@ -12,13 +12,15 @@
 #include "cJSON.h"
 #include "cjson_wrap.h"
 #include "wifi_manager.h"
-#include "http_server.h"
 #include "esp_ota_ops_patched.h"
 #include "nrf52fw.h"
+#include "reset_task.h"
+#include "settings.h"
+#include "ruuvi_gateway.h"
 #include "leds.h"
-#include "adv_post.h"
+#include "gw_status.h"
 
-#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
+#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
 #define GW_GWUI_PARTITION_2 GW_GWUI_PARTITION "_2"
@@ -26,12 +28,10 @@
 
 #define FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS (20)
 
-#define FW_UPDATE_URL_MAX_LEN (128U)
-
 #define FW_UPDATE_PERCENTAGE_50  (50U)
 #define FW_UPDATE_PERCENTAGE_100 (100U)
 
-#define FW_UPDATE_DELAY_BEFORE_REBOOT_MS (5U * 1000U)
+#define FW_UPDATE_DELAY_BEFORE_REBOOT_SECONDS (5U)
 
 typedef struct fw_update_config_t
 {
@@ -40,27 +40,28 @@ typedef struct fw_update_config_t
 
 typedef struct fw_update_data_partition_info_t
 {
-    const esp_partition_t *const p_partition;
+    const esp_partition_t* const p_partition;
     size_t                       offset;
     bool                         is_error;
 } fw_update_data_partition_info_t;
 
 typedef struct fw_update_ota_partition_info_t
 {
-    const esp_partition_t *const p_partition;
+    const esp_partition_t* const p_partition;
     esp_ota_handle_t             out_handle;
     bool                         is_error;
 } fw_update_ota_partition_info_t;
 
 typedef enum fw_update_stage_e
 {
-    FW_UPDATE_STAGE_NONE       = 0,
-    FW_UPDATE_STAGE_1          = 1,
-    FW_UPDATE_STAGE_2          = 2,
-    FW_UPDATE_STAGE_3          = 3,
-    FW_UPDATE_STAGE_4          = 4,
-    FW_UPDATE_STAGE_SUCCESSFUL = 5,
-    FW_UPDATE_STAGE_FAILED     = 6,
+    FW_UPDATE_STAGE_NONE         = 0,
+    FW_UPDATE_STAGE_1            = 1, // start firmware updating process and download ruuvi_gateway_esp.bin
+    FW_UPDATE_STAGE_2            = 2, // download fatfs_gwui.bin
+    FW_UPDATE_STAGE_3            = 3, // download fatfs_nrf52.bin
+    FW_UPDATE_STAGE_4            = 4, // flashing nRF52
+    FW_UPDATE_STAGE_SUCCESSFUL   = 5,
+    FW_UPDATE_STAGE_FAILED       = 6,
+    FW_UPDATE_STAGE_FAILED_NRF52 = 7,
 } fw_update_stage_e;
 
 typedef uint32_t fw_update_percentage_t;
@@ -77,8 +78,8 @@ static fw_update_config_t   g_fw_update_cfg;
 static fw_update_stage_e    g_update_progress_stage;
 static fw_updating_reason_e g_fw_updating_reason;
 
-static const esp_partition_t *
-find_data_fat_partition_by_name(const char *const p_partition_name)
+static const esp_partition_t*
+find_data_fat_partition_by_name(const char* const p_partition_name)
 {
     esp_partition_iterator_t iter = esp_partition_find(
         ESP_PARTITION_TYPE_DATA,
@@ -89,21 +90,21 @@ find_data_fat_partition_by_name(const char *const p_partition_name)
         LOG_ERR("Can't find partition: %s", p_partition_name);
         return NULL;
     }
-    const esp_partition_t *p_partition = esp_partition_get(iter);
+    const esp_partition_t* p_partition = esp_partition_get(iter);
     esp_partition_iterator_release(iter);
     return p_partition;
 }
 
 static bool
-fw_update_read_flash_info_internal(ruuvi_flash_info_t *const p_flash_info)
+fw_update_read_flash_info_internal(ruuvi_flash_info_t* const p_flash_info)
 {
     p_flash_info->is_valid = false;
 
     p_flash_info->running_partition_state = ESP_OTA_IMG_UNDEFINED;
 
     p_flash_info->p_app_desc = esp_ota_get_app_description();
-    LOG_INFO("Project name     : %s", p_flash_info->p_app_desc->project_name);
-    LOG_INFO("Firmware version : %s", p_flash_info->p_app_desc->version);
+    LOG_INFO("### Project name     : %s", p_flash_info->p_app_desc->project_name);
+    LOG_INFO("### Firmware version : %s", p_flash_info->p_app_desc->version);
 
     p_flash_info->p_boot_partition = esp_ota_get_boot_partition();
     if (NULL == p_flash_info->p_boot_partition)
@@ -111,7 +112,7 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t *const p_flash_info)
         LOG_ERR("There is no boot partition info");
         return false;
     }
-    LOG_INFO("Boot partition: %s", p_flash_info->p_boot_partition->label);
+    LOG_INFO("### Boot partition: %s", p_flash_info->p_boot_partition->label);
 
     p_flash_info->p_running_partition = esp_ota_get_running_partition();
     if (NULL == p_flash_info->p_running_partition)
@@ -168,7 +169,7 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t *const p_flash_info)
         p_flash_info->p_next_update_partition->address,
         p_flash_info->p_next_update_partition->size);
     p_flash_info->is_ota0_active = (0 == strcmp("ota_0", p_flash_info->p_running_partition->label)) ? true : false;
-    const char *const p_gwui_parition_name    = p_flash_info->is_ota0_active ? GW_GWUI_PARTITION_2 : GW_GWUI_PARTITION;
+    const char* const p_gwui_parition_name    = p_flash_info->is_ota0_active ? GW_GWUI_PARTITION_2 : GW_GWUI_PARTITION;
     p_flash_info->p_next_fatfs_gwui_partition = find_data_fat_partition_by_name(p_gwui_parition_name);
     if (NULL == p_flash_info->p_next_fatfs_gwui_partition)
     {
@@ -180,9 +181,9 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t *const p_flash_info)
         p_flash_info->p_next_fatfs_gwui_partition->address,
         p_flash_info->p_next_fatfs_gwui_partition->size);
 
-    const char *const p_fatfs_nrf52_partition_name = p_flash_info->is_ota0_active ? GW_NRF_PARTITION_2
+    const char* const p_fatfs_nrf52_partition_name = p_flash_info->is_ota0_active ? GW_NRF_PARTITION_2
                                                                                   : GW_NRF_PARTITION;
-    p_flash_info->p_next_fatfs_nrf52_partition = find_data_fat_partition_by_name(p_fatfs_nrf52_partition_name);
+    p_flash_info->p_next_fatfs_nrf52_partition     = find_data_fat_partition_by_name(p_fatfs_nrf52_partition_name);
     if (NULL == p_flash_info->p_next_fatfs_nrf52_partition)
     {
         return false;
@@ -200,7 +201,7 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t *const p_flash_info)
 bool
 fw_update_read_flash_info(void)
 {
-    ruuvi_flash_info_t *p_flash_info = &g_ruuvi_flash_info;
+    ruuvi_flash_info_t* p_flash_info = &g_ruuvi_flash_info;
     fw_update_read_flash_info_internal(p_flash_info);
     return p_flash_info->is_valid;
 }
@@ -208,7 +209,7 @@ fw_update_read_flash_info(void)
 bool
 fw_update_mark_app_valid_cancel_rollback(void)
 {
-    ruuvi_flash_info_t *p_flash_info = &g_ruuvi_flash_info;
+    ruuvi_flash_info_t* p_flash_info = &g_ruuvi_flash_info;
     if (ESP_OTA_IMG_PENDING_VERIFY == p_flash_info->running_partition_state)
     {
         LOG_INFO("Mark current OTA partition valid and cancel rollback");
@@ -223,31 +224,31 @@ fw_update_mark_app_valid_cancel_rollback(void)
     return true;
 }
 
-const char *
+const char*
 fw_update_get_current_fatfs_nrf52_partition_name(void)
 {
-    const ruuvi_flash_info_t *const p_flash_info = &g_ruuvi_flash_info;
+    const ruuvi_flash_info_t* const p_flash_info = &g_ruuvi_flash_info;
     return p_flash_info->is_ota0_active ? GW_NRF_PARTITION : GW_NRF_PARTITION_2;
 }
 
-const char *
+const char*
 fw_update_get_current_fatfs_gwui_partition_name(void)
 {
-    const ruuvi_flash_info_t *const p_flash_info = &g_ruuvi_flash_info;
+    const ruuvi_flash_info_t* const p_flash_info = &g_ruuvi_flash_info;
     return p_flash_info->is_ota0_active ? GW_GWUI_PARTITION : GW_GWUI_PARTITION_2;
 }
 
 ruuvi_esp32_fw_ver_str_t
 fw_update_get_cur_version(void)
 {
-    const ruuvi_flash_info_t *const p_flash_info = &g_ruuvi_flash_info;
+    const ruuvi_flash_info_t* const p_flash_info = &g_ruuvi_flash_info;
     ruuvi_esp32_fw_ver_str_t        version_str  = { 0 };
     snprintf(&version_str.buf[0], sizeof(version_str.buf), "%s", p_flash_info->p_app_desc->version);
     return version_str;
 }
 
 esp_err_t
-erase_partition_with_sleep(const esp_partition_t *const p_partition)
+erase_partition_with_sleep(const esp_partition_t* const p_partition)
 {
     assert(p_partition != NULL);
     if ((p_partition->size % SPI_FLASH_SEC_SIZE) != 0)
@@ -275,19 +276,19 @@ erase_partition_with_sleep(const esp_partition_t *const p_partition)
 static bool
 fw_update_handle_http_resp_code(
     const http_resp_code_e http_resp_code,
-    const uint8_t *const   p_buf,
+    const uint8_t* const   p_buf,
     const size_t           buf_size,
-    bool *const            p_result)
+    bool* const            p_result)
 {
     if (HTTP_RESP_CODE_200 != http_resp_code)
     {
-        if (HTTP_RESP_CODE_302 == http_resp_code)
+        if ((HTTP_RESP_CODE_301 == http_resp_code) || (HTTP_RESP_CODE_302 == http_resp_code))
         {
             LOG_INFO("Got HTTP error %d: Redirect to another location", (printf_int_t)http_resp_code);
             *p_result = true;
             return true;
         }
-        LOG_ERR("Got HTTP error %d: %.*s", (printf_int_t)http_resp_code, (printf_int_t)buf_size, (const char *)p_buf);
+        LOG_ERR("Got HTTP error %d: %.*s", (printf_int_t)http_resp_code, (printf_int_t)buf_size, (const char*)p_buf);
         *p_result = false;
         return true;
     }
@@ -296,14 +297,14 @@ fw_update_handle_http_resp_code(
 
 static bool
 fw_update_data_partition_cb_on_recv_data(
-    const uint8_t *const   p_buf,
+    const uint8_t* const   p_buf,
     const size_t           buf_size,
     const size_t           offset,
     const size_t           content_length,
     const http_resp_code_e http_resp_code,
-    void *const            p_user_data)
+    void* const            p_user_data)
 {
-    fw_update_data_partition_info_t *const p_info = p_user_data;
+    fw_update_data_partition_info_t* const p_info = p_user_data;
     if (p_info->is_error)
     {
         return false;
@@ -346,7 +347,7 @@ fw_update_data_partition_cb_on_recv_data(
 }
 
 static bool
-fw_update_data_partition(const esp_partition_t *const p_partition, const char *const p_url)
+fw_update_data_partition(const esp_partition_t* const p_partition, const char* const p_url)
 {
     LOG_INFO(
         "Update partition %s (address 0x%08x, size 0x%x) from %s",
@@ -373,12 +374,14 @@ fw_update_data_partition(const esp_partition_t *const p_partition, const char *c
     }
     LOG_INFO("fw_update_data_partition: Download and write partition data");
     const bool flag_feed_task_watchdog = false;
-    if (!http_download(
-            p_url,
-            HTTP_DOWNLOAD_TIMEOUT_SECONDS,
-            &fw_update_data_partition_cb_on_recv_data,
-            &fw_update_info,
-            flag_feed_task_watchdog))
+    if (!http_download((http_download_param_t) {
+            .p_url                   = p_url,
+            .timeout_seconds         = HTTP_DOWNLOAD_FW_BINARIES_TIMEOUT_SECONDS,
+            .p_cb_on_data            = &fw_update_data_partition_cb_on_recv_data,
+            .p_user_data             = &fw_update_info,
+            .flag_feed_task_watchdog = flag_feed_task_watchdog,
+            .flag_free_memory        = true,
+        }))
     {
         LOG_ERR("Failed to update partition %s - failed to download %s", p_partition->label, p_url);
         return false;
@@ -393,9 +396,9 @@ fw_update_data_partition(const esp_partition_t *const p_partition, const char *c
 }
 
 bool
-fw_update_fatfs_gwui(const char *const p_url)
+fw_update_fatfs_gwui(const char* const p_url)
 {
-    const esp_partition_t *const p_partition = g_ruuvi_flash_info.p_next_fatfs_gwui_partition;
+    const esp_partition_t* const p_partition = g_ruuvi_flash_info.p_next_fatfs_gwui_partition;
     if (NULL == p_partition)
     {
         LOG_ERR("Can't find partition to update fatfs_gwui");
@@ -405,9 +408,9 @@ fw_update_fatfs_gwui(const char *const p_url)
 }
 
 bool
-fw_update_fatfs_nrf52(const char *const p_url)
+fw_update_fatfs_nrf52(const char* const p_url)
 {
-    const esp_partition_t *const p_partition = g_ruuvi_flash_info.p_next_fatfs_nrf52_partition;
+    const esp_partition_t* const p_partition = g_ruuvi_flash_info.p_next_fatfs_nrf52_partition;
     if (NULL == p_partition)
     {
         LOG_ERR("Can't find partition to update fatfs_nrf52");
@@ -418,14 +421,14 @@ fw_update_fatfs_nrf52(const char *const p_url)
 
 static bool
 fw_update_ota_partition_cb_on_recv_data(
-    const uint8_t *const   p_buf,
+    const uint8_t* const   p_buf,
     const size_t           buf_size,
     const size_t           offset,
     const size_t           content_length,
     const http_resp_code_e http_resp_code,
-    void *const            p_user_data)
+    void* const            p_user_data)
 {
-    fw_update_ota_partition_info_t *const p_info = p_user_data;
+    fw_update_ota_partition_info_t* const p_info = p_user_data;
     if (p_info->is_error)
     {
         LOG_INFO("Drop data after an error, offset %lu, size %lu", (printf_ulong_t)offset, (printf_ulong_t)buf_size);
@@ -464,9 +467,9 @@ fw_update_ota_partition_cb_on_recv_data(
 
 static bool
 fw_update_ota_partition(
-    const esp_partition_t *const p_partition,
+    const esp_partition_t* const p_partition,
     const esp_ota_handle_t       out_handle,
-    const char *const            p_url)
+    const char* const            p_url)
 {
     LOG_INFO(
         "Update OTA-partition %s (address 0x%08x, size 0x%x) from %s",
@@ -482,12 +485,14 @@ fw_update_ota_partition(
     };
 
     const bool flag_feed_task_watchdog = false;
-    if (!http_download(
-            p_url,
-            HTTP_DOWNLOAD_TIMEOUT_SECONDS,
-            &fw_update_ota_partition_cb_on_recv_data,
-            &fw_update_info,
-            flag_feed_task_watchdog))
+    if (!http_download((http_download_param_t) {
+            .p_url                   = p_url,
+            .timeout_seconds         = HTTP_DOWNLOAD_FW_BINARIES_TIMEOUT_SECONDS,
+            .p_cb_on_data            = &fw_update_ota_partition_cb_on_recv_data,
+            .p_user_data             = &fw_update_info,
+            .flag_feed_task_watchdog = flag_feed_task_watchdog,
+            .flag_free_memory        = true,
+        }))
     {
         LOG_ERR("Failed to update OTA-partition %s - failed to download %s", p_partition->label, p_url);
         return false;
@@ -503,9 +508,9 @@ fw_update_ota_partition(
 }
 
 static bool
-fw_update_ota(const char *const p_url)
+fw_update_ota(const char* const p_url)
 {
-    const esp_partition_t *const p_partition = g_ruuvi_flash_info.p_next_update_partition;
+    const esp_partition_t* const p_partition = g_ruuvi_flash_info.p_next_update_partition;
     if (NULL == p_partition)
     {
         LOG_ERR("Can't find partition to update firmware");
@@ -537,9 +542,9 @@ fw_update_ota(const char *const p_url)
 
 static bool
 json_fw_update_copy_string_val(
-    const cJSON *const p_json_root,
-    const char *const  p_attr_name,
-    char *const        p_buf,
+    const cJSON* const p_json_root,
+    const char* const  p_attr_name,
+    char* const        p_buf,
     const size_t       buf_len,
     const bool         flag_log_err_if_not_found)
 {
@@ -556,19 +561,24 @@ json_fw_update_copy_string_val(
 }
 
 static bool
-json_fw_update_parse(const cJSON *const p_json_root, fw_update_config_t *const p_cfg)
+json_fw_update_parse(const cJSON* const p_json_root, fw_update_config_t* const p_cfg)
 {
     if (!json_fw_update_copy_string_val(p_json_root, "url", p_cfg->url, sizeof(p_cfg->url), true))
     {
         return false;
     }
+    const size_t len = strlen(p_cfg->url);
+    if ('/' == p_cfg->url[len - 1])
+    {
+        p_cfg->url[len - 1] = '\0';
+    }
     return true;
 }
 
 bool
-json_fw_update_parse_http_body(const char *const p_body)
+json_fw_update_parse_http_body(const char* const p_body)
 {
-    cJSON *p_json_root = cJSON_Parse(p_body);
+    cJSON* p_json_root = cJSON_Parse(p_body);
     if (NULL == p_json_root)
     {
         LOG_ERR("Failed to parse json or no memory");
@@ -603,6 +613,12 @@ fw_update_set_extra_info_for_status_json(
 }
 
 void
+fw_update_set_extra_info_for_status_json_update_reset(void)
+{
+    fw_update_set_extra_info_for_status_json(FW_UPDATE_STAGE_NONE, 0);
+}
+
+void
 fw_update_set_extra_info_for_status_json_update_start(void)
 {
     fw_update_set_extra_info_for_status_json(FW_UPDATE_STAGE_1, 0);
@@ -617,7 +633,7 @@ fw_update_set_extra_info_for_status_json_update_successful(void)
 }
 
 void
-fw_update_set_extra_info_for_status_json_update_failed(const char *const p_message)
+fw_update_set_extra_info_for_status_json_update_failed(const char* const p_message)
 {
     char extra_info_buf[JSON_NETWORK_EXTRA_INFO_SIZE];
     snprintf(
@@ -630,7 +646,20 @@ fw_update_set_extra_info_for_status_json_update_failed(const char *const p_messa
 }
 
 void
-fw_update_nrf52fw_cb_progress(const size_t num_bytes_flashed, const size_t total_size, void *const p_param)
+fw_update_set_extra_info_for_status_json_update_failed_nrf52(const char* const p_message)
+{
+    char extra_info_buf[JSON_NETWORK_EXTRA_INFO_SIZE];
+    snprintf(
+        extra_info_buf,
+        sizeof(extra_info_buf),
+        "\"fw_updating\":%u,\"message\":\"%s\"",
+        (printf_uint_t)FW_UPDATE_STAGE_FAILED_NRF52,
+        (NULL != p_message) ? p_message : "");
+    wifi_manager_set_extra_info_for_status_json(extra_info_buf);
+}
+
+void
+fw_update_nrf52fw_cb_progress(const size_t num_bytes_flashed, const size_t total_size, void* const p_param)
 {
     (void)p_param;
     const fw_update_percentage_t percentage = (num_bytes_flashed * FW_UPDATE_PERCENTAGE_100) / total_size;
@@ -644,14 +673,26 @@ fw_update_set_stage_nrf52_updating(void)
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, 0);
 }
 
+static void
+fw_update_nrf52fw_cb_before_updating(void)
+{
+    LOG_INFO("### Start nRF52 updating");
+}
+
+static void
+fw_update_nrf52fw_cb_after_updating(const bool flag_success)
+{
+    LOG_INFO("### Finish nRF52 updating, flag_success=%d", (printf_int_t)flag_success);
+}
+
 static bool
 fw_update_do_actions(void)
 {
     g_update_progress_stage = FW_UPDATE_STAGE_1;
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, 0);
 
-    char url[sizeof(g_fw_update_cfg.url) + 32];
-    snprintf(url, sizeof(url), "%s/%s", g_fw_update_cfg.url, "ruuvi_gateway_esp.bin");
+    char url[FW_UPDATE_URL_WITH_FW_IMAGE_MAX_LEN];
+    (void)snprintf(url, sizeof(url), "%s/%s", g_fw_update_cfg.url, "ruuvi_gateway_esp.bin");
     LOG_INFO("fw_update_ota");
     if (!fw_update_ota(url))
     {
@@ -663,7 +704,7 @@ fw_update_do_actions(void)
     g_update_progress_stage = FW_UPDATE_STAGE_2;
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, 0);
 
-    snprintf(url, sizeof(url), "%s/%s", g_fw_update_cfg.url, "fatfs_gwui.bin");
+    (void)snprintf(url, sizeof(url), "%s/%s", g_fw_update_cfg.url, "fatfs_gwui.bin");
     LOG_INFO("fw_update_fatfs_gwui");
     if (!fw_update_fatfs_gwui(url))
     {
@@ -675,7 +716,7 @@ fw_update_do_actions(void)
     g_update_progress_stage = FW_UPDATE_STAGE_3;
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, 0);
 
-    snprintf(url, sizeof(url), "%s/%s", g_fw_update_cfg.url, "fatfs_nrf52.bin");
+    (void)snprintf(url, sizeof(url), "%s/%s", g_fw_update_cfg.url, "fatfs_nrf52.bin");
     LOG_INFO("fw_update_fatfs_nrf52");
     if (!fw_update_fatfs_nrf52(url))
     {
@@ -698,27 +739,20 @@ fw_update_do_actions(void)
 
     fw_update_set_stage_nrf52_updating();
 
-    leds_indication_on_nrf52_fw_updating();
-
     LOG_INFO("nrf52fw_update_fw_if_necessary");
-    nrf52fw_update_fw_if_necessary(
-        fw_update_get_current_fatfs_nrf52_partition_name(),
-        &fw_update_nrf52fw_cb_progress,
-        NULL,
-        NULL,
-        NULL,
-        NULL);
-    if (wifi_manager_is_connected_to_wifi_or_ethernet())
+    if (!nrf52fw_update_fw_if_necessary(
+            fw_update_get_current_fatfs_nrf52_partition_name(),
+            &fw_update_nrf52fw_cb_progress,
+            NULL,
+            &fw_update_nrf52fw_cb_before_updating,
+            &fw_update_nrf52fw_cb_after_updating,
+            NULL))
     {
-        leds_indication_on_network_ok();
+        LOG_ERR("%s failed", "nrf52fw_update_fw_if_necessary");
+        fw_update_set_extra_info_for_status_json_update_failed_nrf52("Failed to update nRF52 firmware");
+        return false;
     }
-    else
-    {
-        leds_indication_network_no_connection();
-    }
-
     fw_update_set_extra_info_for_status_json_update_successful();
-
     return true;
 }
 
@@ -727,22 +761,44 @@ fw_update_task(void)
 {
     LOG_INFO("Firmware updating started, URL: %s", g_fw_update_cfg.url);
 
-    adv_post_stop();
-    http_server_disable_ap_stopping_by_timeout();
+    leds_notify_nrf52_fw_updating();
+    main_task_stop_timer_check_for_remote_cfg();
+
+    const bool flag_wait_until_relaying_stopped = true;
+    gw_status_suspend_relaying(flag_wait_until_relaying_stopped);
+
     if (!wifi_manager_is_ap_active())
     {
         LOG_INFO("WiFi AP is not active - start WiFi AP");
-        wifi_manager_start_ap();
-        leds_indication_on_hotspot_activation();
+        const bool flag_block_req_from_lan = (FW_UPDATE_REASON_MANUAL_VIA_LAN == g_fw_updating_reason) ? false : true;
+        wifi_manager_start_ap(flag_block_req_from_lan);
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
-    else
-    {
-        LOG_INFO("WiFi AP is already active");
-    }
+    main_task_stop_timer_hotspot_deactivation();
 
+    const char* p_reboot_reason_msg = "";
     if (!fw_update_do_actions())
     {
-        LOG_ERR("Firmware updating failed");
+        switch (g_fw_updating_reason)
+        {
+            case FW_UPDATE_REASON_NONE:
+                LOG_ERR("Firmware updating failed");
+                p_reboot_reason_msg = "Restart the system after firmware update (failed)";
+                break;
+            case FW_UPDATE_REASON_AUTO:
+                LOG_INFO("Firmware updating failed (auto-updating)");
+                p_reboot_reason_msg = "Restart the system after firmware update (auto-updating failed)";
+                break;
+            case FW_UPDATE_REASON_MANUAL_VIA_HOTSPOT:
+                LOG_INFO("Firmware updating failed (manual updating via WiFi hotspot)");
+                p_reboot_reason_msg
+                    = "Restart the system after firmware update (manual updating via WiFi hotspot failed)";
+                break;
+            case FW_UPDATE_REASON_MANUAL_VIA_LAN:
+                LOG_INFO("Firmware updating failed (manual updating via LAN)");
+                p_reboot_reason_msg = "Restart the system after firmware update (manual updating via LAN failed)";
+                break;
+        }
         g_fw_updating_reason = FW_UPDATE_REASON_NONE;
     }
     else
@@ -751,40 +807,54 @@ fw_update_task(void)
         {
             case FW_UPDATE_REASON_NONE:
                 LOG_INFO("Firmware updating completed successfully (unknown reason)");
+                p_reboot_reason_msg = "Restart the system after firmware update (completed successfully)";
                 break;
             case FW_UPDATE_REASON_AUTO:
                 LOG_INFO("Firmware updating completed successfully (auto-updating)");
+                p_reboot_reason_msg = "Restart the system after firmware update (auto-updating completed successfully)";
                 settings_write_flag_rebooting_after_auto_update(true);
                 break;
             case FW_UPDATE_REASON_MANUAL_VIA_HOTSPOT:
                 LOG_INFO("Firmware updating completed successfully (manual updating via WiFi hotspot)");
-                settings_write_flag_force_start_wifi_hotspot(true);
+                p_reboot_reason_msg
+                    = "Restart the system after firmware update (manual updating via WiFi hotspot completed "
+                      "successfully)";
+                if (wifi_manager_is_ap_sta_ip_assigned())
+                {
+                    settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_ONCE);
+                }
                 break;
             case FW_UPDATE_REASON_MANUAL_VIA_LAN:
                 LOG_INFO("Firmware updating completed successfully (manual updating via LAN)");
+                p_reboot_reason_msg
+                    = "Restart the system after firmware update (manual updating via LAN completed successfully)";
                 break;
         }
         LOG_INFO("Wait 5 seconds before reboot");
-        vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_BEFORE_REBOOT_MS));
+        sleep_with_task_watchdog_feeding(FW_UPDATE_DELAY_BEFORE_REBOOT_SECONDS);
     }
-    LOG_INFO("Restart system");
-    esp_restart();
+    gateway_restart(p_reboot_reason_msg);
 }
 
 bool
 fw_update_is_url_valid(void)
 {
-    const char url_prefix[] = "http";
-    if (0 != strncmp(g_fw_update_cfg.url, url_prefix, strlen(url_prefix)))
+    const char url_http_prefix[] = "http://";
+    if (0 == strncmp(g_fw_update_cfg.url, url_http_prefix, strlen(url_http_prefix)))
     {
-        return false;
+        return true;
     }
-    return true;
+    const char url_https_prefix[] = "https://";
+    if (0 == strncmp(g_fw_update_cfg.url, url_https_prefix, strlen(url_https_prefix)))
+    {
+        return true;
+    }
+    return false;
 }
 
 ATTR_PRINTF(1, 2)
 void
-fw_update_set_url(const char *const p_url_fmt, ...)
+fw_update_set_url(const char* const p_url_fmt, ...)
 {
     va_list ap;
     va_start(ap, p_url_fmt);
@@ -792,7 +862,7 @@ fw_update_set_url(const char *const p_url_fmt, ...)
     va_end(ap);
 }
 
-const char *
+const char*
 fw_update_get_url(void)
 {
     return g_fw_update_cfg.url;

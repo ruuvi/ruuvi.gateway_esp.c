@@ -8,9 +8,10 @@
 #ifndef RUUVI_ADV_POST_H
 #define RUUVI_ADV_POST_H
 
-#include "ruuvi_gateway.h"
 #include <stdbool.h>
+#include <stdint.h>
 #include "gw_cfg.h"
+#include "http_json.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,6 +20,9 @@ extern "C" {
 void
 adv_post_init(void);
 
+bool
+adv_post_is_initialized(void);
+
 void
 adv_post_set_period(const uint32_t period_ms);
 
@@ -26,13 +30,13 @@ void
 adv_post_stop(void);
 
 void
-adv_post_disable_retransmission(void);
-
-void
-adv_post_enable_retransmission(void);
-
-void
 adv_post_last_successful_network_comm_timestamp_update(void);
+
+bool
+adv_post_stat(const ruuvi_gw_cfg_http_stat_t* const p_cfg_http_stat, void* const p_user_data);
+
+http_json_statistics_info_t
+adv_post_generate_statistics_info(const str_buf_t* const p_reset_info);
 
 #ifdef __cplusplus
 }

@@ -13,6 +13,7 @@
 #include "os_malloc.h"
 #include "os_mutex.h"
 #include "os_mutex_recursive.h"
+#include "os_task.h"
 #include "mac_addr.h"
 #include "gw_mac.h"
 #include "nrf52fw.h"
@@ -27,17 +28,17 @@ using namespace std;
 
 class TestMetrics;
 
-static TestMetrics *g_pTestClass;
+static TestMetrics* g_pTestClass;
 
 /*** Google-test class implementation
  * *********************************************************************************/
 
 class MemAllocTrace
 {
-    vector<void *> allocated_mem;
+    vector<void*> allocated_mem;
 
-    std::vector<void *>::iterator
-    find(void *ptr)
+    std::vector<void*>::iterator
+    find(void* ptr)
     {
         for (auto iter = this->allocated_mem.begin(); iter != this->allocated_mem.end(); ++iter)
         {
@@ -51,7 +52,7 @@ class MemAllocTrace
 
 public:
     void
-    add(void *ptr)
+    add(void* ptr)
     {
         auto iter = find(ptr);
         assert(iter == this->allocated_mem.end()); // ptr was found in the list of allocated memory blocks
@@ -59,7 +60,7 @@ public:
     }
 
     void
-    remove(void *ptr)
+    remove(void* ptr)
     {
         auto iter = find(ptr);
         assert(iter != this->allocated_mem.end()); // ptr was not found in the list of allocated memory blocks
@@ -118,6 +119,8 @@ protected:
     TearDown() override
     {
         metrics_deinit();
+        gw_cfg_deinit();
+        gw_cfg_default_deinit();
         g_pTestClass = nullptr;
         esp_log_wrapper_deinit();
     }
@@ -143,54 +146,60 @@ TestMetrics::~TestMetrics() = default;
 
 extern "C" {
 
-void *
+void*
 os_malloc(const size_t size)
 {
     if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
     {
         return nullptr;
     }
-    void *ptr = malloc(size);
+    void* ptr = malloc(size);
     assert(nullptr != ptr);
     g_pTestClass->m_mem_alloc_trace.add(ptr);
     return ptr;
 }
 
 void
-os_free_internal(void *ptr)
+os_free_internal(void* ptr)
 {
     g_pTestClass->m_mem_alloc_trace.remove(ptr);
     free(ptr);
 }
 
-void *
+void*
 os_calloc(const size_t nmemb, const size_t size)
 {
     if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
     {
         return nullptr;
     }
-    void *ptr = calloc(nmemb, size);
+    void* ptr = calloc(nmemb, size);
     assert(nullptr != ptr);
     g_pTestClass->m_mem_alloc_trace.add(ptr);
     return ptr;
 }
 
-const char *
+const char*
 os_task_get_name(void)
 {
     static const char g_task_name[] = "main";
-    return const_cast<char *>(g_task_name);
+    return const_cast<char*>(g_task_name);
+}
+
+os_task_priority_t
+os_task_get_priority(void)
+{
+    return 0;
 }
 
 os_mutex_recursive_t
-os_mutex_recursive_create_static(os_mutex_recursive_static_t *const p_mutex_static)
+os_mutex_recursive_create_static(os_mutex_recursive_static_t* const p_mutex_static)
 {
     return reinterpret_cast<os_mutex_recursive_t>(p_mutex_static);
 }
 
 void
-os_mutex_recursive_delete(os_mutex_recursive_t *const ph_mutex)
+os_mutex_recursive_delete(os_mutex_recursive_t* const ph_mutex)
 {
 }
 
@@ -205,13 +214,13 @@ os_mutex_recursive_unlock(os_mutex_recursive_t const h_mutex)
 }
 
 os_mutex_t
-os_mutex_create_static(os_mutex_static_t *const p_mutex_static)
+os_mutex_create_static(os_mutex_static_t* const p_mutex_static)
 {
     return reinterpret_cast<os_mutex_t>(p_mutex_static);
 }
 
 void
-os_mutex_delete(os_mutex_t *const ph_mutex)
+os_mutex_delete(os_mutex_t* const ph_mutex)
 {
     (void)ph_mutex;
 }
@@ -228,20 +237,20 @@ os_mutex_unlock(os_mutex_t const h_mutex)
     (void)h_mutex;
 }
 
-char *
-esp_ip4addr_ntoa(const esp_ip4_addr_t *addr, char *buf, int buflen)
+char*
+esp_ip4addr_ntoa(const esp_ip4_addr_t* addr, char* buf, int buflen)
 {
-    return ip4addr_ntoa_r((ip4_addr_t *)addr, buf, buflen);
+    return ip4addr_ntoa_r((ip4_addr_t*)addr, buf, buflen);
 }
 
 uint32_t
-esp_ip4addr_aton(const char *addr)
+esp_ip4addr_aton(const char* addr)
 {
     return ipaddr_addr(addr);
 }
 
 void
-wifi_manager_cb_save_wifi_config(const wifiman_config_t *const p_cfg)
+wifi_manager_cb_save_wifi_config_sta(const wifiman_config_sta_t* const p_cfg_sta)
 {
 }
 
@@ -257,7 +266,7 @@ esp_timer_get_time()
 }
 
 void
-heap_caps_get_info(multi_heap_info_t *info, uint32_t caps)
+heap_caps_get_info(multi_heap_info_t* info, uint32_t caps)
 {
     memset(info, 0, sizeof(*info));
 
@@ -341,7 +350,7 @@ heap_caps_get_largest_free_block(uint32_t caps)
 }
 
 uint32_t
-crc32_le(uint32_t crc, uint8_t const *buf, uint32_t len)
+crc32_le(uint32_t crc, uint8_t const* buf, uint32_t len)
 {
     return 0xAABBCCDD;
 }
@@ -371,7 +380,7 @@ TEST_F(TestMetrics, test_metrics_generate) // NOLINT
     metrics_init();
 
     this->m_uptime            = 15317668796;
-    const char *p_metrics_str = metrics_generate();
+    const char* p_metrics_str = metrics_generate();
     ASSERT_EQ(
         string("ruuvigw_received_advertisements 0\n"
                "ruuvigw_uptime_us 15317668796\n"

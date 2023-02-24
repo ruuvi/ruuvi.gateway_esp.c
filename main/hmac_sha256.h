@@ -37,7 +37,7 @@ typedef struct hmac_sha256_str_t
  * @return true if successful, false if the length of the secret key exceeds HMAC_SHA256_MAX_KEY_SIZE
  */
 bool
-hmac_sha256_set_key_bin(const uint8_t *const p_key, const size_t key_size);
+hmac_sha256_set_key_bin(const uint8_t* const p_key, const size_t key_size);
 
 /**
  * @brief Set the secret key.
@@ -45,7 +45,7 @@ hmac_sha256_set_key_bin(const uint8_t *const p_key, const size_t key_size);
  * @return true if successful, false if the length of the secret key exceeds HMAC_SHA256_MAX_KEY_SIZE
  */
 bool
-hmac_sha256_set_key_str(const char *const p_key);
+hmac_sha256_set_key_str(const char* const p_key);
 
 /**
  * @brief Compute HMAC_SHA256 for the message using the stored secret key and return the result as a binary buffer.
@@ -55,7 +55,7 @@ hmac_sha256_set_key_str(const char *const p_key);
  * @return true if successful, false - otherwise
  */
 bool
-hmac_sha256_calc(const uint8_t *const p_msg_buf, const size_t msg_len, hmac_sha256_t *const p_hmac_sha256);
+hmac_sha256_calc(const uint8_t* const p_msg_buf, const size_t msg_len, hmac_sha256_t* const p_hmac_sha256);
 
 /**
  * @brief Compute HMAC_SHA256 for the message using the stored secret key and return the result as a string.
@@ -63,7 +63,7 @@ hmac_sha256_calc(const uint8_t *const p_msg_buf, const size_t msg_len, hmac_sha2
  * @return 64-byte hex-encoded string hmac_sha256_str_t or empty string in case of error.
  */
 hmac_sha256_str_t
-hmac_sha256_calc_str(const char *const p_msg);
+hmac_sha256_calc_str(const char* const p_msg);
 
 /**
  * @brief Check if hmac_sha256_str_t is valid
@@ -71,7 +71,7 @@ hmac_sha256_calc_str(const char *const p_msg);
  * @return true if p_hmac_sha256_str contains hex-encoded HMAC_SHA256, false if p_hmac_sha256_str is empty.
  */
 bool
-hmac_sha256_is_str_valid(const hmac_sha256_str_t *const p_hmac_sha256_str);
+hmac_sha256_is_str_valid(const hmac_sha256_str_t* const p_hmac_sha256_str);
 
 #ifdef __cplusplus
 }

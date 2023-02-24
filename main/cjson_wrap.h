@@ -21,8 +21,8 @@ typedef double cjson_number_t;
 
 typedef union cjson_wrap_str_t
 {
-    const char *p_str;
-    void *      p_mem;
+    const char* p_str;
+    void*       p_mem;
 } cjson_wrap_str_t;
 
 void
@@ -38,37 +38,37 @@ cjson_wrap_str_null(void)
 }
 
 bool
-cjson_wrap_add_timestamp(cJSON *const p_object, const char *const p_name, const time_t timestamp);
+cjson_wrap_add_timestamp(cJSON* const p_object, const char* const p_name, const time_t timestamp);
 
 bool
-cjson_wrap_add_uint32(cJSON *const p_object, const char *const p_name, const uint32_t val);
+cjson_wrap_add_uint32(cJSON* const p_object, const char* const p_name, const uint32_t val);
 
 cjson_wrap_str_t
-cjson_wrap_print(const cJSON *p_item);
+cjson_wrap_print(const cJSON* p_item);
 
 void
-cjson_wrap_delete(cJSON **pp_object);
+cjson_wrap_delete(cJSON** pp_object);
 
 cjson_wrap_str_t
-cjson_wrap_print_and_delete(cJSON **pp_object);
+cjson_wrap_print_and_delete(cJSON** pp_object);
 
 void
-cjson_wrap_free_json_str(cjson_wrap_str_t *p_json_str);
+cjson_wrap_free_json_str(cjson_wrap_str_t* p_json_str);
 
 bool
-json_wrap_copy_string_val(const cJSON *p_json_root, const char *p_attr_name, char *buf, const size_t buf_len);
+json_wrap_copy_string_val(const cJSON* p_json_root, const char* p_attr_name, char* buf, const size_t buf_len);
 
 bool
-json_wrap_get_bool_val(const cJSON *p_json_root, const char *p_attr_name, bool *p_val);
+json_wrap_get_bool_val(const cJSON* p_json_root, const char* p_attr_name, bool* p_val);
 
 bool
-json_wrap_get_uint16_val(const cJSON *p_json_root, const char *p_attr_name, uint16_t *p_val);
+json_wrap_get_uint16_val(const cJSON* p_json_root, const char* p_attr_name, uint16_t* p_val);
 
 bool
-json_wrap_get_uint8_val(const cJSON *p_json_root, const char *p_attr_name, uint8_t *p_val);
+json_wrap_get_uint8_val(const cJSON* p_json_root, const char* p_attr_name, uint8_t* p_val);
 
 bool
-json_wrap_get_int8_val(const cJSON *p_json_root, const char *p_attr_name, int8_t *p_val);
+json_wrap_get_int8_val(const cJSON* p_json_root, const char* p_attr_name, int8_t* p_val);
 
 #ifdef __cplusplus
 }

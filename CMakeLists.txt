@@ -3,8 +3,13 @@
 cmake_minimum_required(VERSION 3.5)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffile-prefix-map=${CMAKE_SOURCE_DIR}=.")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffile-prefix-map=$ENV{IDF_PATH}=IDF")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffile-prefix-map=${CMAKE_SOURCE_DIR}=.")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffile-prefix-map=$ENV{IDF_PATH}=IDF")
+
 set(EXPECTED_IDF_VERSION v4.2.2)
-set(RUUVI_NRF52_FW_URL https://github.com/ruuvi/ruuvi.gateway_nrf.c/releases/download/v0.7.2/ruuvigw_nrf_armgcc_ruuvigw_release_v0.7.2_full.hex)
+set(RUUVI_NRF52_FW_URL https://github.com/ruuvi/ruuvi.gateway_nrf.c/releases/download/v1.0.0/ruuvigw_nrf_armgcc_ruuvigw_release_v1.0.0_full.hex)
 
 set(EXTRA_COMPONENT_DIRS
         ${CMAKE_SOURCE_DIR}/components/ruuvi.comm_tester.c/components
@@ -87,3 +92,5 @@ target_compile_definitions(__idf_main PUBLIC
 )
 
 target_compile_definitions(__idf_esp_netif PUBLIC "-DLWIP_DHCP_GET_NTP_SRV=1")
+
+target_include_directories(__idf_lwip BEFORE PUBLIC ./include)

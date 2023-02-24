@@ -27,7 +27,7 @@ extern "C" {
 #endif
 
 /** @brief Opaque handle to a registered heap */
-typedef struct multi_heap_info *multi_heap_handle_t;
+typedef struct multi_heap_info* multi_heap_handle_t;
 
 /**
  * @brief allocate a chunk of memory with specific alignment
@@ -38,7 +38,7 @@ typedef struct multi_heap_info *multi_heap_handle_t;
  *
  * @return pointer to the memory allocated, NULL on failure
  */
-void *
+void*
 multi_heap_aligned_alloc(multi_heap_handle_t heap, size_t size, size_t alignment);
 
 /** @brief malloc() a buffer in a given heap
@@ -50,7 +50,7 @@ multi_heap_aligned_alloc(multi_heap_handle_t heap, size_t size, size_t alignment
  *
  * @return Pointer to new memory, or NULL if allocation fails.
  */
-void *
+void*
 multi_heap_malloc(multi_heap_handle_t heap, size_t size);
 
 /** @brief free() a buffer aligned in a given heap.
@@ -59,7 +59,7 @@ multi_heap_malloc(multi_heap_handle_t heap, size_t size);
  * @param p NULL, or a pointer previously returned from multi_heap_aligned_alloc() for the same heap.
  * @note This function is deprecated, consider using  multi_heap_free() instead
  */
-void __attribute__((deprecated)) multi_heap_aligned_free(multi_heap_handle_t heap, void *p);
+void __attribute__((deprecated)) multi_heap_aligned_free(multi_heap_handle_t heap, void* p);
 
 /** @brief free() a buffer in a given heap.
  *
@@ -70,7 +70,7 @@ void __attribute__((deprecated)) multi_heap_aligned_free(multi_heap_handle_t hea
  * @param p NULL, or a pointer previously returned from multi_heap_malloc() or multi_heap_realloc() for the same heap.
  */
 void
-multi_heap_free(multi_heap_handle_t heap, void *p);
+multi_heap_free(multi_heap_handle_t heap, void* p);
 
 /** @brief realloc() a buffer in a given heap.
  *
@@ -83,8 +83,8 @@ multi_heap_free(multi_heap_handle_t heap, void *p);
  *
  * @return New buffer of 'size' containing contents of 'p', or NULL if reallocation failed.
  */
-void *
-multi_heap_realloc(multi_heap_handle_t heap, void *p, size_t size);
+void*
+multi_heap_realloc(multi_heap_handle_t heap, void* p, size_t size);
 
 /** @brief Return the size that a particular pointer was allocated with.
  *
@@ -96,7 +96,7 @@ multi_heap_realloc(multi_heap_handle_t heap, void *p, size_t size);
  * to padding and minimum block sizes.
  */
 size_t
-multi_heap_get_allocated_size(multi_heap_handle_t heap, void *p);
+multi_heap_get_allocated_size(multi_heap_handle_t heap, void* p);
 
 /** @brief Register a new heap for use
  *
@@ -111,7 +111,7 @@ multi_heap_get_allocated_size(multi_heap_handle_t heap, void *p);
  * @return Handle of a new heap ready for use, or NULL if the heap region was too small to be initialised.
  */
 multi_heap_handle_t
-multi_heap_register(void *start, size_t size);
+multi_heap_register(void* start, size_t size);
 
 /** @brief Associate a private lock pointer with a heap
  *
@@ -126,7 +126,7 @@ multi_heap_register(void *start, size_t size);
  * @param lock Optional pointer to a locking structure to associate with this heap.
  */
 void
-multi_heap_set_lock(multi_heap_handle_t heap, void *lock);
+multi_heap_set_lock(multi_heap_handle_t heap, void* lock);
 
 /** @brief Dump heap information to stdout
  *
@@ -198,7 +198,7 @@ typedef struct
  * @param info Pointer to a structure to fill with heap metadata.
  */
 void
-multi_heap_get_info(multi_heap_handle_t heap, multi_heap_info_t *info);
+multi_heap_get_info(multi_heap_handle_t heap, multi_heap_info_t* info);
 
 #ifdef __cplusplus
 }

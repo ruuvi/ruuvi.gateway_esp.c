@@ -193,8 +193,7 @@ typedef enum
     GPIO_MODE_INPUT_OUTPUT_OD
     = ((GPIO_MODE_DEF_INPUT) | (GPIO_MODE_DEF_OUTPUT)
        | (GPIO_MODE_DEF_OD)), /*!< GPIO mode : output and input with open-drain mode*/
-    GPIO_MODE_INPUT_OUTPUT
-    = ((GPIO_MODE_DEF_INPUT) | (GPIO_MODE_DEF_OUTPUT)), /*!< GPIO mode : output and input mode                */
+    GPIO_MODE_INPUT_OUTPUT = ((GPIO_MODE_DEF_INPUT) | (GPIO_MODE_DEF_OUTPUT)), /*!< GPIO mode : output and input mode */
 } gpio_mode_t;
 
 typedef enum
@@ -239,7 +238,7 @@ typedef enum
     GPIO_DRIVE_CAP_MAX,
 } gpio_drive_cap_t;
 
-typedef void (*gpio_isr_t)(void *);
+typedef void (*gpio_isr_t)(void*);
 
 /**
  * @brief GPIO common configuration
@@ -254,7 +253,7 @@ typedef void (*gpio_isr_t)(void *);
  *
  */
 esp_err_t
-gpio_config(const gpio_config_t *pGPIOConfig);
+gpio_config(const gpio_config_t* pGPIOConfig);
 
 /**
  * @brief Reset an gpio to default state (select gpio function, enable pullup and disable input and output).
@@ -507,7 +506,7 @@ gpio_uninstall_isr_service();
  *     - ESP_ERR_INVALID_ARG Parameter error
  */
 esp_err_t
-gpio_isr_handler_add(gpio_num_t gpio_num, gpio_isr_t isr_handler, void *args);
+gpio_isr_handler_add(gpio_num_t gpio_num, gpio_isr_t isr_handler, void* args);
 
 /**
  * @brief Remove ISR handler for the corresponding GPIO pin.
@@ -546,7 +545,7 @@ gpio_set_drive_capability(gpio_num_t gpio_num, gpio_drive_cap_t strength);
  *     - ESP_ERR_INVALID_ARG Parameter error
  */
 esp_err_t
-gpio_get_drive_capability(gpio_num_t gpio_num, gpio_drive_cap_t *strength);
+gpio_get_drive_capability(gpio_num_t gpio_num, gpio_drive_cap_t* strength);
 
 /**
  * @brief Enable gpio pad hold function.

@@ -16,23 +16,24 @@
 #include "str_buf.h"
 #include "wifiman_md5.h"
 #include "os_mutex.h"
+#include "os_task.h"
 #include "lwip/ip4_addr.h"
 #include "event_mgr.h"
 
 using namespace std;
 
 class TestRuuviAuth;
-static TestRuuviAuth *g_pTestClass;
+static TestRuuviAuth* g_pTestClass;
 
 /*** Google-test class implementation
  * *********************************************************************************/
 
 class MemAllocTrace
 {
-    vector<void *> allocated_mem;
+    vector<void*> allocated_mem;
 
-    std::vector<void *>::iterator
-    find(void *ptr)
+    std::vector<void*>::iterator
+    find(void* ptr)
     {
         for (auto iter = this->allocated_mem.begin(); iter != this->allocated_mem.end(); ++iter)
         {
@@ -46,7 +47,7 @@ class MemAllocTrace
 
 public:
     void
-    add(void *ptr)
+    add(void* ptr)
     {
         auto iter = find(ptr);
         assert(iter == this->allocated_mem.end()); // ptr was found in the list of allocated memory blocks
@@ -54,7 +55,7 @@ public:
     }
 
     void
-    remove(void *ptr)
+    remove(void* ptr)
     {
         auto iter = find(ptr);
         assert(iter != this->allocated_mem.end()); // ptr was not found in the list of allocated memory blocks
@@ -94,6 +95,7 @@ protected:
     {
         g_pTestClass = nullptr;
         gw_cfg_deinit();
+        gw_cfg_default_deinit();
         esp_log_wrapper_deinit();
     }
 
@@ -107,7 +109,7 @@ public:
     uint32_t      m_malloc_fail_on_cnt {};
 
     void
-    initGwCfg(const nrf52_device_id_t &device_id)
+    initGwCfg(const nrf52_device_id_t& device_id)
     {
         const gw_cfg_default_init_param_t init_params = {
             .wifi_ap_ssid        = { "my_ssid1" },
@@ -132,54 +134,60 @@ TestRuuviAuth::~TestRuuviAuth() = default;
 
 extern "C" {
 
-const char *
+const char*
 os_task_get_name(void)
 {
     static const char g_task_name[] = "main";
-    return const_cast<char *>(g_task_name);
+    return const_cast<char*>(g_task_name);
 }
 
-void *
+os_task_priority_t
+os_task_get_priority(void)
+{
+    return 0;
+}
+
+void*
 os_malloc(const size_t size)
 {
     if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
     {
         return nullptr;
     }
-    void *ptr = malloc(size);
+    void* ptr = malloc(size);
     assert(nullptr != ptr);
     g_pTestClass->m_mem_alloc_trace.add(ptr);
     return ptr;
 }
 
 void
-os_free_internal(void *ptr)
+os_free_internal(void* ptr)
 {
     g_pTestClass->m_mem_alloc_trace.remove(ptr);
     free(ptr);
 }
 
-void *
+void*
 os_calloc(const size_t nmemb, const size_t size)
 {
     if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
     {
         return nullptr;
     }
-    void *ptr = calloc(nmemb, size);
+    void* ptr = calloc(nmemb, size);
     assert(nullptr != ptr);
     g_pTestClass->m_mem_alloc_trace.add(ptr);
     return ptr;
 }
 
 os_mutex_recursive_t
-os_mutex_recursive_create_static(os_mutex_recursive_static_t *const p_mutex_static)
+os_mutex_recursive_create_static(os_mutex_recursive_static_t* const p_mutex_static)
 {
-    return nullptr;
+    return reinterpret_cast<os_mutex_recursive_t>(p_mutex_static);
 }
 
 void
-os_mutex_recursive_delete(os_mutex_recursive_t *const ph_mutex)
+os_mutex_recursive_delete(os_mutex_recursive_t* const ph_mutex)
 {
 }
 
@@ -194,13 +202,13 @@ os_mutex_recursive_unlock(os_mutex_recursive_t const h_mutex)
 }
 
 os_mutex_t
-os_mutex_create_static(os_mutex_static_t *const p_mutex_static)
+os_mutex_create_static(os_mutex_static_t* const p_mutex_static)
 {
     return reinterpret_cast<os_mutex_t>(p_mutex_static);
 }
 
 void
-os_mutex_delete(os_mutex_t *const ph_mutex)
+os_mutex_delete(os_mutex_t* const ph_mutex)
 {
     (void)ph_mutex;
 }
@@ -217,20 +225,20 @@ os_mutex_unlock(os_mutex_t const h_mutex)
     (void)h_mutex;
 }
 
-char *
-esp_ip4addr_ntoa(const esp_ip4_addr_t *addr, char *buf, int buflen)
+char*
+esp_ip4addr_ntoa(const esp_ip4_addr_t* addr, char* buf, int buflen)
 {
-    return ip4addr_ntoa_r((ip4_addr_t *)addr, buf, buflen);
+    return ip4addr_ntoa_r((ip4_addr_t*)addr, buf, buflen);
 }
 
 uint32_t
-esp_ip4addr_aton(const char *addr)
+esp_ip4addr_aton(const char* addr)
 {
     return ipaddr_addr(addr);
 }
 
 void
-wifi_manager_cb_save_wifi_config(const wifiman_config_t *const p_cfg)
+wifi_manager_cb_save_wifi_config_sta(const wifiman_config_sta_t* const p_cfg_sta)
 {
 }
 
@@ -255,15 +263,19 @@ get_gateway_config_default()
 TEST_F(TestRuuviAuth, test_default_auth_zero_id) // NOLINT
 {
     this->initGwCfg((nrf52_device_id_t) { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 });
-    const ruuvi_gw_cfg_lan_auth_t lan_auth = gw_cfg_get_lan_auth();
+    const gw_cfg_t*               p_gw_cfg = gw_cfg_lock_ro();
+    const ruuvi_gw_cfg_lan_auth_t lan_auth = p_gw_cfg->ruuvi_cfg.lan_auth;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+
     ASSERT_TRUE(http_server_set_auth(
         lan_auth.lan_auth_type,
         &lan_auth.lan_auth_user,
         &lan_auth.lan_auth_pass,
-        &lan_auth.lan_auth_api_key));
-    const http_server_auth_info_t *const p_auth_info = http_server_get_auth();
+        &lan_auth.lan_auth_api_key,
+        &lan_auth.lan_auth_api_key_rw));
+    const http_server_auth_info_t* const p_auth_info = http_server_get_auth();
     ASSERT_NE(nullptr, p_auth_info);
-    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, p_auth_info->auth_type);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_DEFAULT, p_auth_info->auth_type);
     ASSERT_EQ("Admin", string(p_auth_info->auth_user.buf));
     ASSERT_EQ("6bd2d4090d98c5a5c9992fbb35d6b821", string(p_auth_info->auth_pass.buf));
 }
@@ -271,15 +283,19 @@ TEST_F(TestRuuviAuth, test_default_auth_zero_id) // NOLINT
 TEST_F(TestRuuviAuth, test_default_auth_non_zero_id) // NOLINT
 {
     this->initGwCfg((nrf52_device_id_t) { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x0A, 0x0B });
-    const ruuvi_gw_cfg_lan_auth_t lan_auth = gw_cfg_get_lan_auth();
+    const gw_cfg_t*               p_gw_cfg = gw_cfg_lock_ro();
+    const ruuvi_gw_cfg_lan_auth_t lan_auth = p_gw_cfg->ruuvi_cfg.lan_auth;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+
     ASSERT_TRUE(http_server_set_auth(
         lan_auth.lan_auth_type,
         &lan_auth.lan_auth_user,
         &lan_auth.lan_auth_pass,
-        &lan_auth.lan_auth_api_key));
-    const http_server_auth_info_t *const p_auth_info = http_server_get_auth();
+        &lan_auth.lan_auth_api_key,
+        &lan_auth.lan_auth_api_key_rw));
+    const http_server_auth_info_t* const p_auth_info = http_server_get_auth();
     ASSERT_NE(nullptr, p_auth_info);
-    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, p_auth_info->auth_type);
+    ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_DEFAULT, p_auth_info->auth_type);
     ASSERT_EQ("Admin", string(p_auth_info->auth_user.buf));
     ASSERT_EQ("cc6b2a4405af90c7a738f72b64f3c34e", string(p_auth_info->auth_pass.buf));
 }
@@ -287,19 +303,24 @@ TEST_F(TestRuuviAuth, test_default_auth_non_zero_id) // NOLINT
 TEST_F(TestRuuviAuth, test_non_default_auth_password) // NOLINT
 {
     this->initGwCfg((nrf52_device_id_t) { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x0A, 0x0B });
-    gw_cfg_t gw_cfg_tmp = get_gateway_config_default();
+    gw_cfg_t gw_cfg_tmp                         = get_gateway_config_default();
+    gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI;
     snprintf(
         &gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_pass.buf[0],
         sizeof(gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_pass.buf),
         "qwe");
     gw_cfg_update_ruuvi_cfg(&gw_cfg_tmp.ruuvi_cfg);
-    const ruuvi_gw_cfg_lan_auth_t lan_auth = gw_cfg_get_lan_auth();
+    const gw_cfg_t*               p_gw_cfg = gw_cfg_lock_ro();
+    const ruuvi_gw_cfg_lan_auth_t lan_auth = p_gw_cfg->ruuvi_cfg.lan_auth;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+
     ASSERT_TRUE(http_server_set_auth(
         lan_auth.lan_auth_type,
         &lan_auth.lan_auth_user,
         &lan_auth.lan_auth_pass,
-        &lan_auth.lan_auth_api_key));
-    const http_server_auth_info_t *const p_auth_info = http_server_get_auth();
+        &lan_auth.lan_auth_api_key,
+        &lan_auth.lan_auth_api_key_rw));
+    const http_server_auth_info_t* const p_auth_info = http_server_get_auth();
     ASSERT_NE(nullptr, p_auth_info);
     ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, p_auth_info->auth_type);
     ASSERT_EQ("Admin", string(p_auth_info->auth_user.buf));
@@ -309,7 +330,8 @@ TEST_F(TestRuuviAuth, test_non_default_auth_password) // NOLINT
 TEST_F(TestRuuviAuth, test_non_default_auth_user_password) // NOLINT
 {
     this->initGwCfg((nrf52_device_id_t) { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x0A, 0x0B });
-    gw_cfg_t gw_cfg_tmp = get_gateway_config_default();
+    gw_cfg_t gw_cfg_tmp                         = get_gateway_config_default();
+    gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_type = HTTP_SERVER_AUTH_TYPE_RUUVI;
     snprintf(
         &gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_user.buf[0],
         sizeof(gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_user.buf),
@@ -319,13 +341,16 @@ TEST_F(TestRuuviAuth, test_non_default_auth_user_password) // NOLINT
         sizeof(gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_pass.buf),
         "qwe");
     gw_cfg_update_ruuvi_cfg(&gw_cfg_tmp.ruuvi_cfg);
-    const ruuvi_gw_cfg_lan_auth_t lan_auth = gw_cfg_get_lan_auth();
+    const gw_cfg_t*               p_gw_cfg = gw_cfg_lock_ro();
+    const ruuvi_gw_cfg_lan_auth_t lan_auth = p_gw_cfg->ruuvi_cfg.lan_auth;
+    gw_cfg_unlock_ro(&p_gw_cfg);
     ASSERT_TRUE(http_server_set_auth(
         lan_auth.lan_auth_type,
         &lan_auth.lan_auth_user,
         &lan_auth.lan_auth_pass,
-        &lan_auth.lan_auth_api_key));
-    const http_server_auth_info_t *const p_auth_info = http_server_get_auth();
+        &lan_auth.lan_auth_api_key,
+        &lan_auth.lan_auth_api_key_rw));
+    const http_server_auth_info_t* const p_auth_info = http_server_get_auth();
     ASSERT_NE(nullptr, p_auth_info);
     ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_RUUVI, p_auth_info->auth_type);
     ASSERT_EQ("user1", string(p_auth_info->auth_user.buf));
@@ -346,13 +371,16 @@ TEST_F(TestRuuviAuth, test_non_default_auth_type_user_password) // NOLINT
         sizeof(gw_cfg_tmp.ruuvi_cfg.lan_auth.lan_auth_pass.buf),
         "qwe");
     gw_cfg_update_ruuvi_cfg(&gw_cfg_tmp.ruuvi_cfg);
-    const ruuvi_gw_cfg_lan_auth_t lan_auth = gw_cfg_get_lan_auth();
+    const gw_cfg_t*               p_gw_cfg = gw_cfg_lock_ro();
+    const ruuvi_gw_cfg_lan_auth_t lan_auth = p_gw_cfg->ruuvi_cfg.lan_auth;
+    gw_cfg_unlock_ro(&p_gw_cfg);
     ASSERT_TRUE(http_server_set_auth(
         lan_auth.lan_auth_type,
         &lan_auth.lan_auth_user,
         &lan_auth.lan_auth_pass,
-        &lan_auth.lan_auth_api_key));
-    const http_server_auth_info_t *const p_auth_info = http_server_get_auth();
+        &lan_auth.lan_auth_api_key,
+        &lan_auth.lan_auth_api_key_rw));
+    const http_server_auth_info_t* const p_auth_info = http_server_get_auth();
     ASSERT_NE(nullptr, p_auth_info);
     ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_DIGEST, p_auth_info->auth_type);
     ASSERT_EQ("user1", string(p_auth_info->auth_user.buf));

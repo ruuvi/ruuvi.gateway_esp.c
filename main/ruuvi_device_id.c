@@ -11,6 +11,7 @@
 #include "os_mutex.h"
 #include "api.h"
 #include "ruuvi_endpoint_ca_uart.h"
+#include "settings.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -45,7 +46,7 @@ ruuvi_device_id_deinit(void)
 }
 
 void
-ruuvi_device_id_set(const nrf52_device_id_t *const p_nrf52_device_id, const mac_address_bin_t *const p_nrf52_mac_addr)
+ruuvi_device_id_set(const nrf52_device_id_t* const p_nrf52_device_id, const mac_address_bin_t* const p_nrf52_mac_addr)
 {
     os_mutex_lock(g_ruuvi_device_id_mutex);
     g_nrf52_device_info.nrf52_device_id      = *p_nrf52_device_id;
@@ -55,7 +56,7 @@ ruuvi_device_id_set(const nrf52_device_id_t *const p_nrf52_device_id, const mac_
 }
 
 static bool
-ruuvi_device_id_is_set(nrf52_device_info_t *const p_nrf52_device_info)
+ruuvi_device_id_is_set(nrf52_device_info_t* const p_nrf52_device_info)
 {
     os_mutex_lock(g_ruuvi_device_id_mutex);
     const bool flag_is_set = g_ruuvi_device_id_flag_nrf52_id_received;
@@ -97,6 +98,15 @@ ruuvi_device_id_request_and_wait(void)
     if (!ruuvi_device_id_is_set(&nrf52_device_info))
     {
         LOG_ERR("Failed to read nRF52 DEVICE ID");
+        for (int32_t i = 0; i < sizeof(nrf52_device_info.nrf52_device_id.id); ++i)
+        {
+            nrf52_device_info.nrf52_device_id.id[i] = 0xFFU;
+        }
+        nrf52_device_info.nrf52_mac_addr = settings_read_mac_addr();
+    }
+    else
+    {
+        settings_update_mac_addr(nrf52_device_info.nrf52_mac_addr);
     }
     return nrf52_device_info;
 }

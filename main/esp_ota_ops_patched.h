@@ -18,10 +18,10 @@ extern "C" {
 #endif
 
 esp_err_t
-esp_ota_begin_patched(const esp_partition_t *const p_partition, esp_ota_handle_t *const p_out_handle);
+esp_ota_begin_patched(const esp_partition_t* const p_partition, esp_ota_handle_t* const p_out_handle);
 
 esp_err_t
-esp_ota_write_patched(const esp_ota_handle_t handle, const void *const p_data, const size_t size);
+esp_ota_write_patched(const esp_ota_handle_t handle, const void* const p_data, const size_t size);
 
 esp_err_t
 esp_ota_end_patched(const esp_ota_handle_t handle);

@@ -22,13 +22,13 @@
 
 static const char TAG[] = "gw_cfg";
 
-static const char *
-gw_cfg_log_get_sta_password_for_logging(const wifi_sta_config_t *const p_wifi_cfg_sta)
+static const char*
+gw_cfg_log_get_sta_password_for_logging(const wifi_sta_config_t* const p_wifi_cfg_sta)
 {
-    return ((LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG) ? (const char *)p_wifi_cfg_sta->password : "********");
+    return ((LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG) ? (const char*)p_wifi_cfg_sta->password : "********");
 }
 
-static const char *
+static const char*
 gw_cfg_log_wifi_auth_mode_to_str(const wifi_auth_mode_t auth_mode)
 {
     switch (auth_mode)
@@ -56,7 +56,7 @@ gw_cfg_log_wifi_auth_mode_to_str(const wifi_auth_mode_t auth_mode)
     return "Unknown";
 }
 
-static const char *
+static const char*
 gw_cfg_log_wifi_bandwidth_to_str(const wifi_bandwidth_t bandwidth)
 {
     switch (bandwidth)
@@ -71,7 +71,7 @@ gw_cfg_log_wifi_bandwidth_to_str(const wifi_bandwidth_t bandwidth)
 }
 
 static void
-gw_cfg_log_wifi_config_ap(const wifi_ap_config_t *const p_wifi_cfg_ap)
+gw_cfg_log_wifi_config_ap(const wifi_ap_config_t* const p_wifi_cfg_ap)
 {
     LOG_INFO("config: wifi_ap_config: SSID: %s", p_wifi_cfg_ap->ssid);
     LOG_INFO("config: wifi_ap_config: password: %s", p_wifi_cfg_ap->password);
@@ -84,7 +84,7 @@ gw_cfg_log_wifi_config_ap(const wifi_ap_config_t *const p_wifi_cfg_ap)
 }
 
 static void
-gw_cfg_log_wifi_settings_ap(const wifi_settings_ap_t *const p_settings_ap)
+gw_cfg_log_wifi_settings_ap(const wifi_settings_ap_t* const p_settings_ap)
 {
     LOG_INFO("config: wifi_ap_settings: bandwidth: %s", gw_cfg_log_wifi_bandwidth_to_str(p_settings_ap->ap_bandwidth));
     LOG_INFO("config: wifi_ap_settings: IP: %s", p_settings_ap->ap_ip.buf);
@@ -93,7 +93,7 @@ gw_cfg_log_wifi_settings_ap(const wifi_settings_ap_t *const p_settings_ap)
 }
 
 static void
-gw_cfg_log_wifi_config_sta(const wifi_sta_config_t *const p_wifi_cfg_sta)
+gw_cfg_log_wifi_config_sta(const wifi_sta_config_t* const p_wifi_cfg_sta)
 {
     LOG_INFO(
         "config: wifi_sta_config: SSID:'%s', password:'%s'",
@@ -135,7 +135,7 @@ gw_cfg_log_wifi_config_sta(const wifi_sta_config_t *const p_wifi_cfg_sta)
         p_wifi_cfg_sta->pmf_cfg.required ? "true" : "false");
 }
 
-static const char *
+static const char*
 gw_cfg_log_wifi_ps_type_to_str(const wifi_ps_type_t ps_type)
 {
     switch (ps_type)
@@ -152,7 +152,7 @@ gw_cfg_log_wifi_ps_type_to_str(const wifi_ps_type_t ps_type)
 }
 
 static void
-gw_cfg_log_wifi_settings_sta(const wifi_settings_sta_t *const p_settings_sta)
+gw_cfg_log_wifi_settings_sta(const wifi_settings_sta_t* const p_settings_sta)
 {
     LOG_INFO(
         "config: wifi_sta_settings: Power save: %s",
@@ -175,26 +175,37 @@ gw_cfg_log_wifi_settings_sta(const wifi_settings_sta_t *const p_settings_sta)
 }
 
 void
-gw_cfg_log_wifi_cfg(const wifiman_config_t *const p_wifi_cfg, const char *const p_title)
+gw_cfg_log_wifi_cfg_ap(const wifiman_config_ap_t* const p_wifi_cfg_ap, const char* const p_title)
 {
     if (NULL != p_title)
     {
         LOG_INFO("%s", p_title);
     }
-    gw_cfg_log_wifi_config_ap(&p_wifi_cfg->wifi_config_ap);
-    gw_cfg_log_wifi_settings_ap(&p_wifi_cfg->wifi_settings_ap);
-    gw_cfg_log_wifi_config_sta(&p_wifi_cfg->wifi_config_sta);
-    gw_cfg_log_wifi_settings_sta(&p_wifi_cfg->wifi_settings_sta);
+    gw_cfg_log_wifi_config_ap(&p_wifi_cfg_ap->wifi_config_ap);
+    gw_cfg_log_wifi_settings_ap(&p_wifi_cfg_ap->wifi_settings_ap);
 }
 
 void
-gw_cfg_log_device_info(const gw_cfg_device_info_t *const p_dev_info, const char *const p_title)
+gw_cfg_log_wifi_cfg_sta(const wifiman_config_sta_t* const p_wifi_cfg_sta, const char* const p_title)
 {
     if (NULL != p_title)
     {
         LOG_INFO("%s", p_title);
     }
-    LOG_INFO("config: device_info: WiFi AP SSID / Hostname: %s", p_dev_info->wifi_ap_hostname.ssid_buf);
+    gw_cfg_log_wifi_config_sta(&p_wifi_cfg_sta->wifi_config_sta);
+    gw_cfg_log_wifi_settings_sta(&p_wifi_cfg_sta->wifi_settings_sta);
+    LOG_INFO("config: wifi_sta_settings: Hostname: %s", p_wifi_cfg_sta->hostname.hostname_buf);
+}
+
+void
+gw_cfg_log_device_info(const gw_cfg_device_info_t* const p_dev_info, const char* const p_title)
+{
+    if (NULL != p_title)
+    {
+        LOG_INFO("%s", p_title);
+    }
+    LOG_INFO("config: device_info: WiFi AP SSID: %s", p_dev_info->wifi_ap.ssid_buf);
+    LOG_INFO("config: device_info: Hostname: %s", p_dev_info->hostname.hostname_buf);
     LOG_INFO("config: device_info: ESP32 fw ver: %s", p_dev_info->esp32_fw_ver.buf);
     LOG_INFO("config: device_info: ESP32 WiFi MAC ADDR: %s", p_dev_info->esp32_mac_addr_wifi.str_buf);
     LOG_INFO("config: device_info: ESP32 Eth MAC ADDR: %s", p_dev_info->esp32_mac_addr_eth.str_buf);
@@ -204,7 +215,7 @@ gw_cfg_log_device_info(const gw_cfg_device_info_t *const p_dev_info, const char 
 }
 
 void
-gw_cfg_log_eth_cfg(const gw_cfg_eth_t *const p_gw_cfg_eth, const char *const p_title)
+gw_cfg_log_eth_cfg(const gw_cfg_eth_t* const p_gw_cfg_eth, const char* const p_title)
 {
     if (NULL != p_title)
     {
@@ -220,7 +231,7 @@ gw_cfg_log_eth_cfg(const gw_cfg_eth_t *const p_gw_cfg_eth, const char *const p_t
 }
 
 static void
-gw_cfg_log_ruuvi_cfg_remote(const ruuvi_gw_cfg_remote_t *const p_remote)
+gw_cfg_log_ruuvi_cfg_remote(const ruuvi_gw_cfg_remote_t* const p_remote)
 {
     LOG_INFO("config: use remote cfg: %d", p_remote->use_remote_cfg);
     LOG_INFO("config: remote cfg: URL: %s", p_remote->url.buf);
@@ -251,7 +262,7 @@ gw_cfg_log_ruuvi_cfg_remote(const ruuvi_gw_cfg_remote_t *const p_remote)
 }
 
 static void
-gw_cfg_log_ruuvi_cfg_http(const ruuvi_gw_cfg_http_t *const p_http)
+gw_cfg_log_ruuvi_cfg_http(const ruuvi_gw_cfg_http_t* const p_http)
 {
     LOG_INFO("config: use http: %d", p_http->use_http);
     LOG_INFO("config: http url: %s", p_http->http_url.buf);
@@ -264,7 +275,7 @@ gw_cfg_log_ruuvi_cfg_http(const ruuvi_gw_cfg_http_t *const p_http)
 }
 
 static void
-gw_cfg_log_ruuvi_cfg_http_stat(const ruuvi_gw_cfg_http_stat_t *const p_http_stat)
+gw_cfg_log_ruuvi_cfg_http_stat(const ruuvi_gw_cfg_http_stat_t* const p_http_stat)
 {
     LOG_INFO("config: use http_stat: %d", p_http_stat->use_http_stat);
     LOG_INFO("config: http_stat url: %s", p_http_stat->http_stat_url.buf);
@@ -277,9 +288,10 @@ gw_cfg_log_ruuvi_cfg_http_stat(const ruuvi_gw_cfg_http_stat_t *const p_http_stat
 }
 
 static void
-gw_cfg_log_ruuvi_cfg_mqtt(const ruuvi_gw_cfg_mqtt_t *const p_mqtt)
+gw_cfg_log_ruuvi_cfg_mqtt(const ruuvi_gw_cfg_mqtt_t* const p_mqtt)
 {
     LOG_INFO("config: use mqtt: %d", p_mqtt->use_mqtt);
+    LOG_INFO("config: mqtt disable retained messages: %d", p_mqtt->mqtt_disable_retained_messages);
     LOG_INFO("config: mqtt transport: %s", p_mqtt->mqtt_transport.buf);
     LOG_INFO("config: mqtt server: %s", p_mqtt->mqtt_server.buf);
     LOG_INFO("config: mqtt port: %u", p_mqtt->mqtt_port);
@@ -294,7 +306,7 @@ gw_cfg_log_ruuvi_cfg_mqtt(const ruuvi_gw_cfg_mqtt_t *const p_mqtt)
 }
 
 static void
-gw_cfg_log_ruuvi_cfg_lan_auth(const ruuvi_gw_cfg_lan_auth_t *const p_lan_auth)
+gw_cfg_log_ruuvi_cfg_lan_auth(const ruuvi_gw_cfg_lan_auth_t* const p_lan_auth)
 {
     LOG_INFO("config: LAN auth type: %s", gw_cfg_auth_type_to_str(p_lan_auth));
     LOG_INFO("config: LAN auth user: %s", p_lan_auth->lan_auth_user.buf);
@@ -308,10 +320,15 @@ gw_cfg_log_ruuvi_cfg_lan_auth(const ruuvi_gw_cfg_lan_auth_t *const p_lan_auth)
 #else
     LOG_INFO("config: LAN auth API key: %s", "********");
 #endif
+#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
+    LOG_DBG("config: LAN auth API key (RW): %s", p_lan_auth->lan_auth_api_key_rw.buf);
+#else
+    LOG_INFO("config: LAN auth API key (RW): %s", "********");
+#endif
 }
 
 static void
-gw_cfg_log_ruuvi_cfg_auto_update(const ruuvi_gw_cfg_auto_update_t *const p_auto_update)
+gw_cfg_log_ruuvi_cfg_auto_update(const ruuvi_gw_cfg_auto_update_t* const p_auto_update)
 {
     switch (p_auto_update->auto_update_cycle)
     {
@@ -325,10 +342,7 @@ gw_cfg_log_ruuvi_cfg_auto_update(const ruuvi_gw_cfg_auto_update_t *const p_auto_
             LOG_INFO("config: Auto update cycle: %s", AUTO_UPDATE_CYCLE_TYPE_STR_MANUAL);
             break;
         default:
-            LOG_INFO(
-                "config: Auto update cycle: %s (%d)",
-                AUTO_UPDATE_CYCLE_TYPE_STR_MANUAL,
-                p_auto_update->auto_update_cycle);
+            LOG_INFO("config: Auto update cycle: Unknown (%d)", p_auto_update->auto_update_cycle);
             break;
     }
     LOG_INFO("config: Auto update weekdays_bitmask: 0x%02x", p_auto_update->auto_update_weekdays_bitmask);
@@ -343,7 +357,7 @@ gw_cfg_log_ruuvi_cfg_auto_update(const ruuvi_gw_cfg_auto_update_t *const p_auto_
 }
 
 static void
-gw_cfg_log_ruuvi_cfg_ntp(const ruuvi_gw_cfg_ntp_t *const p_ntp)
+gw_cfg_log_ruuvi_cfg_ntp(const ruuvi_gw_cfg_ntp_t* const p_ntp)
 {
     LOG_INFO("config: NTP: Use: %s", p_ntp->ntp_use ? "yes" : "no");
     LOG_INFO("config: NTP: Use DHCP: %s", p_ntp->ntp_use_dhcp ? "yes" : "no");
@@ -354,14 +368,14 @@ gw_cfg_log_ruuvi_cfg_ntp(const ruuvi_gw_cfg_ntp_t *const p_ntp)
 }
 
 static void
-gw_cfg_log_ruuvi_cfg_filter(const ruuvi_gw_cfg_filter_t *const p_filter)
+gw_cfg_log_ruuvi_cfg_filter(const ruuvi_gw_cfg_filter_t* const p_filter)
 {
     LOG_INFO("config: use company id filter: %d", p_filter->company_use_filtering);
     LOG_INFO("config: company id: 0x%04x", p_filter->company_id);
 }
 
 static void
-gw_cfg_log_ruuvi_cfg_scan(const ruuvi_gw_cfg_scan_t *const p_scan)
+gw_cfg_log_ruuvi_cfg_scan(const ruuvi_gw_cfg_scan_t* const p_scan)
 {
     LOG_INFO("config: use scan coded phy: %d", p_scan->scan_coded_phy);
     LOG_INFO("config: use scan 1mbit/phy: %d", p_scan->scan_1mbit_phy);
@@ -372,7 +386,7 @@ gw_cfg_log_ruuvi_cfg_scan(const ruuvi_gw_cfg_scan_t *const p_scan)
 }
 
 void
-gw_cfg_log_ruuvi_cfg(const gw_cfg_ruuvi_t *const p_gw_cfg_ruuvi, const char *const p_title)
+gw_cfg_log_ruuvi_cfg(const gw_cfg_ruuvi_t* const p_gw_cfg_ruuvi, const char* const p_title)
 {
     if (NULL != p_title)
     {
@@ -393,7 +407,7 @@ gw_cfg_log_ruuvi_cfg(const gw_cfg_ruuvi_t *const p_gw_cfg_ruuvi, const char *con
 }
 
 void
-gw_cfg_log(const gw_cfg_t *const p_gw_cfg, const char *const p_title, const bool flag_log_device_info)
+gw_cfg_log(const gw_cfg_t* const p_gw_cfg, const char* const p_title, const bool flag_log_device_info)
 {
     LOG_INFO("%s:", p_title);
     if (flag_log_device_info)
@@ -402,5 +416,6 @@ gw_cfg_log(const gw_cfg_t *const p_gw_cfg, const char *const p_title, const bool
     }
     gw_cfg_log_eth_cfg(&p_gw_cfg->eth_cfg, NULL);
     gw_cfg_log_ruuvi_cfg(&p_gw_cfg->ruuvi_cfg, NULL);
-    gw_cfg_log_wifi_cfg(&p_gw_cfg->wifi_cfg, NULL);
+    gw_cfg_log_wifi_cfg_ap(&p_gw_cfg->wifi_cfg.ap, NULL);
+    gw_cfg_log_wifi_cfg_sta(&p_gw_cfg->wifi_cfg.sta, NULL);
 }

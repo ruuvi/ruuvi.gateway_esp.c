@@ -16,14 +16,14 @@ using namespace std;
  * *********************************************************************************/
 
 class TestBin2Hex;
-static TestBin2Hex *g_pTestClass;
+static TestBin2Hex* g_pTestClass;
 
 class MemAllocTrace
 {
-    vector<void *> allocated_mem;
+    vector<void*> allocated_mem;
 
-    std::vector<void *>::iterator
-    find(void *p_mem)
+    std::vector<void*>::iterator
+    find(void* p_mem)
     {
         for (auto iter = this->allocated_mem.begin(); iter != this->allocated_mem.end(); ++iter)
         {
@@ -37,14 +37,14 @@ class MemAllocTrace
 
 public:
     void
-    add(void *p_mem)
+    add(void* p_mem)
     {
         auto iter = find(p_mem);
         assert(iter == this->allocated_mem.end()); // p_mem was found in the list of allocated memory blocks
         this->allocated_mem.push_back(p_mem);
     }
     void
-    remove(void *p_mem)
+    remove(void* p_mem)
     {
         auto iter = find(p_mem);
         assert(iter != this->allocated_mem.end()); // p_mem was not found in the list of allocated memory blocks
@@ -88,7 +88,7 @@ public:
     MemAllocTrace m_mem_alloc_trace;
     uint32_t      m_malloc_cnt {};
     uint32_t      m_malloc_fail_on_cnt {};
-    char *        m_p_str {};
+    char*         m_p_str {};
 };
 
 TestBin2Hex::TestBin2Hex()
@@ -100,7 +100,7 @@ TestBin2Hex::~TestBin2Hex() = default;
 
 extern "C" {
 
-void *
+void*
 os_malloc(const size_t size)
 {
     assert(nullptr != g_pTestClass);
@@ -108,21 +108,21 @@ os_malloc(const size_t size)
     {
         return nullptr;
     }
-    void *p_mem = malloc(size);
+    void* p_mem = malloc(size);
     assert(nullptr != p_mem);
     g_pTestClass->m_mem_alloc_trace.add(p_mem);
     return p_mem;
 }
 
 void
-os_free_internal(void *p_mem)
+os_free_internal(void* p_mem)
 {
     assert(nullptr != g_pTestClass);
     g_pTestClass->m_mem_alloc_trace.remove(p_mem);
     free(p_mem);
 }
 
-void *
+void*
 os_calloc(const size_t nmemb, const size_t size)
 {
     assert(nullptr != g_pTestClass);
@@ -130,7 +130,7 @@ os_calloc(const size_t nmemb, const size_t size)
     {
         return nullptr;
     }
-    void *p_mem = calloc(nmemb, size);
+    void* p_mem = calloc(nmemb, size);
     assert(nullptr != p_mem);
     g_pTestClass->m_mem_alloc_trace.add(p_mem);
     return p_mem;
@@ -212,7 +212,7 @@ TEST_F(TestBin2Hex, test_bin2hex_with_malloc_success) // NOLINT
 {
     const std::array<uint8_t, 5> bin_buf = { 0x01, 0x02, 0x03, 0x04, 0x05 };
 
-    char *p_str = bin2hex_with_malloc(bin_buf.data(), bin_buf.size());
+    char* p_str = bin2hex_with_malloc(bin_buf.data(), bin_buf.size());
     ASSERT_EQ(string("0102030405"), string(p_str));
     os_free(p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
@@ -224,7 +224,7 @@ TEST_F(TestBin2Hex, test_bin2hex_with_malloc_fail) // NOLINT
 
     this->m_malloc_fail_on_cnt = 1;
 
-    char *p_str = bin2hex_with_malloc(bin_buf.data(), bin_buf.size());
+    char* p_str = bin2hex_with_malloc(bin_buf.data(), bin_buf.size());
     ASSERT_EQ(nullptr, p_str);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }

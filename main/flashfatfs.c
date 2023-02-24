@@ -24,31 +24,31 @@
 #define RUUVI_TESTS_FLASHFATFS (0)
 #endif
 
-static const char *TAG = "FlashFatFS";
+static const char* TAG = "FlashFatFS";
 
 struct flash_fat_fs_t
 {
-    char *      mount_point;
+    char*       mount_point;
     wl_handle_t wl_handle;
 };
 
-const flash_fat_fs_t *
-flashfatfs_mount(const char *mount_point, const char *partition_label, const flash_fat_fs_num_files_t max_files)
+const flash_fat_fs_t*
+flashfatfs_mount(const char* mount_point, const char* partition_label, const flash_fat_fs_num_files_t max_files)
 {
-    const char *mount_point_prefix = "";
+    const char* mount_point_prefix = "";
 #if RUUVI_TESTS_NRF52FW || RUUVI_TESTS_FLASHFATFS
     mount_point_prefix = (mount_point[0] == '/') ? "." : "";
 #endif
     size_t mount_point_buf_size = strlen(mount_point_prefix) + strlen(mount_point) + 1;
 
     LOG_DBG("Mount partition '%s' to the mount point %s", partition_label, mount_point);
-    flash_fat_fs_t *p_obj = os_calloc(1, sizeof(*p_obj) + mount_point_buf_size);
+    flash_fat_fs_t* p_obj = os_calloc(1, sizeof(*p_obj) + mount_point_buf_size);
     if (NULL == p_obj)
     {
         LOG_ERR("Can't allocate memory");
         return NULL;
     }
-    p_obj->mount_point = (void *)(p_obj + 1);
+    p_obj->mount_point = (void*)(p_obj + 1);
     snprintf(p_obj->mount_point, mount_point_buf_size, "%s%s", mount_point_prefix, mount_point);
 
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
@@ -68,9 +68,9 @@ flashfatfs_mount(const char *mount_point, const char *partition_label, const fla
 }
 
 bool
-flashfatfs_unmount(const flash_fat_fs_t **pp_ffs)
+flashfatfs_unmount(const flash_fat_fs_t** pp_ffs)
 {
-    const flash_fat_fs_t *p_ffs = *pp_ffs;
+    const flash_fat_fs_t* p_ffs = *pp_ffs;
     LOG_INFO("Unmount %s", p_ffs->mount_point);
     const esp_err_t err = esp_vfs_fat_spiflash_unmount(p_ffs->mount_point, p_ffs->wl_handle);
     os_free(p_ffs);
@@ -85,16 +85,16 @@ flashfatfs_unmount(const flash_fat_fs_t **pp_ffs)
 
 FLASHFATFS_CB_STATIC
 flashfatfs_path_t
-flashfatfs_get_full_path(const flash_fat_fs_t *p_ffs, const char *file_path)
+flashfatfs_get_full_path(const flash_fat_fs_t* p_ffs, const char* file_path)
 {
-    const char *      mount_point = (NULL != p_ffs) ? p_ffs->mount_point : "";
+    const char*       mount_point = (NULL != p_ffs) ? p_ffs->mount_point : "";
     flashfatfs_path_t tmp_path    = { '\0' };
     snprintf(tmp_path.buf, sizeof(tmp_path.buf), "%s/%s", mount_point, file_path);
     return tmp_path;
 }
 
 file_descriptor_t
-flashfatfs_open(const flash_fat_fs_t *p_ffs, const char *file_path)
+flashfatfs_open(const flash_fat_fs_t* p_ffs, const char* file_path)
 {
     if (NULL == p_ffs)
     {
@@ -110,13 +110,13 @@ flashfatfs_open(const flash_fat_fs_t *p_ffs, const char *file_path)
     return fd;
 }
 
-FILE *
-flashfatfs_fopen(const flash_fat_fs_t *p_ffs, const char *file_path, const bool flag_use_binary_mode)
+FILE*
+flashfatfs_fopen(const flash_fat_fs_t* p_ffs, const char* file_path, const bool flag_use_binary_mode)
 {
     const flashfatfs_path_t tmp_path = flashfatfs_get_full_path(p_ffs, file_path);
-    const char *            mode     = flag_use_binary_mode ? "rb" : "r";
+    const char*             mode     = flag_use_binary_mode ? "rb" : "r";
 
-    FILE *fd = fopen(tmp_path.buf, mode);
+    FILE* fd = fopen(tmp_path.buf, mode);
     if (NULL == fd)
     {
         LOG_ERR("Can't open: %s", tmp_path.buf);
@@ -125,7 +125,7 @@ flashfatfs_fopen(const flash_fat_fs_t *p_ffs, const char *file_path, const bool 
 }
 
 bool
-flashfatfs_stat(const flash_fat_fs_t *p_ffs, const char *file_path, struct stat *p_st)
+flashfatfs_stat(const flash_fat_fs_t* p_ffs, const char* file_path, struct stat* p_st)
 {
     const flashfatfs_path_t tmp_path = flashfatfs_get_full_path(p_ffs, file_path);
     if (stat(tmp_path.buf, p_st) < 0)
@@ -136,7 +136,7 @@ flashfatfs_stat(const flash_fat_fs_t *p_ffs, const char *file_path, struct stat 
 }
 
 bool
-flashfatfs_get_file_size(const flash_fat_fs_t *p_ffs, const char *file_path, size_t *p_size)
+flashfatfs_get_file_size(const flash_fat_fs_t* p_ffs, const char* file_path, size_t* p_size)
 {
     struct stat st = { 0 };
     *p_size        = 0;

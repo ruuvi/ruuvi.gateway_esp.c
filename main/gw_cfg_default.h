@@ -22,9 +22,12 @@ extern "C" {
 
 #define RUUVI_GATEWAY_AUTH_DEFAULT_USER "Admin"
 
+typedef bool (*gw_cfg_default_json_read_callback_t)(gw_cfg_t* const p_gw_cfg_default);
+
 typedef struct gw_cfg_default_init_param_t
 {
     const wifiman_wifi_ssid_t      wifi_ap_ssid;
+    const wifiman_hostname_t       hostname;
     const nrf52_device_id_t        device_id;
     const ruuvi_esp32_fw_ver_str_t esp32_fw_ver;
     const ruuvi_nrf52_fw_ver_str_t nrf52_fw_ver;
@@ -35,35 +38,47 @@ typedef struct gw_cfg_default_init_param_t
 
 void
 gw_cfg_default_init(
-    const gw_cfg_default_init_param_t *const p_init_param,
-    bool (*p_cb_gw_cfg_default_json_read)(gw_cfg_t *const p_gw_cfg_default));
+    const gw_cfg_default_init_param_t* const p_init_param,
+    gw_cfg_default_json_read_callback_t      p_cb_gw_cfg_default_json_read);
 
 void
-gw_cfg_default_get(gw_cfg_t *const p_gw_cfg);
+gw_cfg_default_deinit(void);
+
+void
+gw_cfg_default_log(void);
+
+void
+gw_cfg_default_get(gw_cfg_t* const p_gw_cfg);
 
 gw_cfg_device_info_t
 gw_cfg_default_device_info(void);
 
-const ruuvi_gw_cfg_mqtt_t *
+const ruuvi_gw_cfg_mqtt_t*
 gw_cfg_default_get_mqtt(void);
 
-const ruuvi_gw_cfg_ntp_t *
+const ruuvi_gw_cfg_ntp_t*
 gw_cfg_default_get_ntp(void);
 
-const ruuvi_gw_cfg_filter_t *
+const ruuvi_gw_cfg_filter_t*
 gw_cfg_default_get_filter(void);
 
-const ruuvi_gw_cfg_lan_auth_t *
+const ruuvi_gw_cfg_lan_auth_t*
 gw_cfg_default_get_lan_auth(void);
 
-const gw_cfg_eth_t *
+const gw_cfg_eth_t*
 gw_cfg_default_get_eth(void);
 
-const wifi_sta_config_t *
-gw_cfg_default_get_wifi_sta_config_ptr(void);
+const wifiman_config_ap_t*
+gw_cfg_default_get_wifi_config_ap_ptr(void);
 
-const wifiman_wifi_ssid_t *
+const wifiman_config_sta_t*
+gw_cfg_default_get_wifi_config_sta_ptr(void);
+
+const wifiman_wifi_ssid_t*
 gw_cfg_default_get_wifi_ap_ssid(void);
+
+const wifiman_hostname_t*
+gw_cfg_default_get_hostname(void);
 
 #ifdef __cplusplus
 }

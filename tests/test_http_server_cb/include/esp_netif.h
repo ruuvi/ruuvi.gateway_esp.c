@@ -83,8 +83,8 @@ esp_netif_deinit(void);
  *         - pointer to esp-netif object on success
  *         - NULL otherwise
  */
-esp_netif_t *
-esp_netif_new(const esp_netif_config_t *esp_netif_config);
+esp_netif_t*
+esp_netif_new(const esp_netif_config_t* esp_netif_config);
 
 /**
  * @brief   Destroys the esp_netif object
@@ -92,7 +92,7 @@ esp_netif_new(const esp_netif_config_t *esp_netif_config);
  * @param[in]  esp_netif pointer to the object to be deleted
  */
 void
-esp_netif_destroy(esp_netif_t *esp_netif);
+esp_netif_destroy(esp_netif_t* esp_netif);
 
 /**
  * @brief   Configures driver related options of esp_netif object
@@ -105,7 +105,7 @@ esp_netif_destroy(esp_netif_t *esp_netif);
  *
  */
 esp_err_t
-esp_netif_set_driver_config(esp_netif_t *esp_netif, const esp_netif_driver_ifconfig_t *driver_config);
+esp_netif_set_driver_config(esp_netif_t* esp_netif, const esp_netif_driver_ifconfig_t* driver_config);
 
 /**
  * @brief   Attaches esp_netif instance to the io driver handle
@@ -122,7 +122,7 @@ esp_netif_set_driver_config(esp_netif_t *esp_netif, const esp_netif_driver_ifcon
  *         - ESP_ERR_ESP_NETIF_DRIVER_ATTACH_FAILED if driver's pot_attach callback failed
  */
 esp_err_t
-esp_netif_attach(esp_netif_t *esp_netif, esp_netif_iodriver_handle driver_handle);
+esp_netif_attach(esp_netif_t* esp_netif, esp_netif_iodriver_handle driver_handle);
 
 /**
  * @}
@@ -164,7 +164,7 @@ esp_netif_attach(esp_netif_t *esp_netif, esp_netif_iodriver_handle driver_handle
  *         - ESP_OK
  */
 esp_err_t
-esp_netif_receive(esp_netif_t *esp_netif, void *buffer, size_t len, void *eb);
+esp_netif_receive(esp_netif_t* esp_netif, void* buffer, size_t len, void* eb);
 
 /**
  * @}
@@ -194,7 +194,7 @@ esp_netif_receive(esp_netif_t *esp_netif, void *buffer, size_t len, void *eb);
  * @param data
  */
 void
-esp_netif_action_start(void *esp_netif, esp_event_base_t base, int32_t event_id, void *data);
+esp_netif_action_start(void* esp_netif, esp_event_base_t base, int32_t event_id, void* data);
 
 /**
  * @brief Default building block for network interface action upon IO driver stop event
@@ -207,7 +207,7 @@ esp_netif_action_start(void *esp_netif, esp_event_base_t base, int32_t event_id,
  * @param data
  */
 void
-esp_netif_action_stop(void *esp_netif, esp_event_base_t base, int32_t event_id, void *data);
+esp_netif_action_stop(void* esp_netif, esp_event_base_t base, int32_t event_id, void* data);
 
 /**
  * @brief Default building block for network interface action upon IO driver connected event
@@ -220,7 +220,7 @@ esp_netif_action_stop(void *esp_netif, esp_event_base_t base, int32_t event_id, 
  * @param data
  */
 void
-esp_netif_action_connected(void *esp_netif, esp_event_base_t base, int32_t event_id, void *data);
+esp_netif_action_connected(void* esp_netif, esp_event_base_t base, int32_t event_id, void* data);
 
 /**
  * @brief Default building block for network interface action upon IO driver disconnected event
@@ -233,7 +233,7 @@ esp_netif_action_connected(void *esp_netif, esp_event_base_t base, int32_t event
  * @param data
  */
 void
-esp_netif_action_disconnected(void *esp_netif, esp_event_base_t base, int32_t event_id, void *data);
+esp_netif_action_disconnected(void* esp_netif, esp_event_base_t base, int32_t event_id, void* data);
 
 /**
  * @brief Default building block for network interface action upon network got IP event
@@ -246,7 +246,7 @@ esp_netif_action_disconnected(void *esp_netif, esp_event_base_t base, int32_t ev
  * @param data
  */
 void
-esp_netif_action_got_ip(void *esp_netif, esp_event_base_t base, int32_t event_id, void *data);
+esp_netif_action_got_ip(void* esp_netif, esp_event_base_t base, int32_t event_id, void* data);
 
 /**
  * @}
@@ -272,7 +272,7 @@ esp_netif_action_got_ip(void *esp_netif, esp_event_base_t base, int32_t event_id
  *         - ESP_ERR_NOT_SUPPORTED - mac not supported on this interface
  */
 esp_err_t
-esp_netif_set_mac(esp_netif_t *esp_netif, uint8_t mac[]);
+esp_netif_set_mac(esp_netif_t* esp_netif, uint8_t mac[]);
 
 /**
  * @brief Get the mac address for the interface instance
@@ -285,7 +285,7 @@ esp_netif_set_mac(esp_netif_t *esp_netif, uint8_t mac[]);
  *         - ESP_ERR_NOT_SUPPORTED - mac not supported on this interface
  */
 esp_err_t
-esp_netif_get_mac(esp_netif_t *esp_netif, uint8_t mac[]);
+esp_netif_get_mac(esp_netif_t* esp_netif, uint8_t mac[]);
 
 /**
  * @brief  Set the hostname of an interface
@@ -303,7 +303,7 @@ esp_netif_get_mac(esp_netif_t *esp_netif, uint8_t mac[]);
  *         - ESP_ERR_ESP_NETIF_INVALID_PARAMS - parameter error
  */
 esp_err_t
-esp_netif_set_hostname(esp_netif_t *esp_netif, const char *hostname);
+esp_netif_set_hostname(esp_netif_t* esp_netif, const char* hostname);
 
 /**
  * @brief  Get interface hostname.
@@ -318,7 +318,7 @@ esp_netif_set_hostname(esp_netif_t *esp_netif, const char *hostname);
  *         - ESP_ERR_ESP_NETIF_INVALID_PARAMS - parameter error
  */
 esp_err_t
-esp_netif_get_hostname(esp_netif_t *esp_netif, const char **hostname);
+esp_netif_get_hostname(esp_netif_t* esp_netif, const char** hostname);
 
 /**
  * @brief  Test if supplied interface is up or down
@@ -330,7 +330,7 @@ esp_netif_get_hostname(esp_netif_t *esp_netif, const char **hostname);
  *         - false - Interface is down
  */
 bool
-esp_netif_is_netif_up(esp_netif_t *esp_netif);
+esp_netif_is_netif_up(esp_netif_t* esp_netif);
 
 /**
  * @brief  Get interface's IP address information
@@ -346,7 +346,7 @@ esp_netif_is_netif_up(esp_netif_t *esp_netif);
  *         - ESP_ERR_ESP_NETIF_INVALID_PARAMS
  */
 esp_err_t
-esp_netif_get_ip_info(esp_netif_t *esp_netif, esp_netif_ip_info_t *ip_info);
+esp_netif_get_ip_info(esp_netif_t* esp_netif, esp_netif_ip_info_t* ip_info);
 
 /**
  * @brief  Get interface's old IP information
@@ -364,7 +364,7 @@ esp_netif_get_ip_info(esp_netif_t *esp_netif, esp_netif_ip_info_t *ip_info);
  *         - ESP_ERR_ESP_NETIF_INVALID_PARAMS
  */
 esp_err_t
-esp_netif_get_old_ip_info(esp_netif_t *esp_netif, esp_netif_ip_info_t *ip_info);
+esp_netif_get_old_ip_info(esp_netif_t* esp_netif, esp_netif_ip_info_t* ip_info);
 
 /**
  * @brief  Set interface's IP address information
@@ -389,7 +389,7 @@ esp_netif_get_old_ip_info(esp_netif_t *esp_netif, esp_netif_ip_info_t *ip_info);
  *      - ESP_ERR_ESP_NETIF_DHCP_NOT_STOPPED If DHCP server or client is still running
  */
 esp_err_t
-esp_netif_set_ip_info(esp_netif_t *esp_netif, const esp_netif_ip_info_t *ip_info);
+esp_netif_set_ip_info(esp_netif_t* esp_netif, const esp_netif_ip_info_t* ip_info);
 
 /**
  * @brief  Set interface old IP information
@@ -411,7 +411,7 @@ esp_netif_set_ip_info(esp_netif_t *esp_netif, const esp_netif_ip_info_t *ip_info
  *         - ESP_ERR_ESP_NETIF_INVALID_PARAMS
  */
 esp_err_t
-esp_netif_set_old_ip_info(esp_netif_t *esp_netif, const esp_netif_ip_info_t *ip_info);
+esp_netif_set_old_ip_info(esp_netif_t* esp_netif, const esp_netif_ip_info_t* ip_info);
 
 /**
  * @brief  Get net interface index from network stack implementation
@@ -424,7 +424,7 @@ esp_netif_set_old_ip_info(esp_netif_t *esp_netif, const esp_netif_ip_info_t *ip_
  *         implementation specific index of interface represented with supplied esp_netif
  */
 int
-esp_netif_get_netif_impl_index(esp_netif_t *esp_netif);
+esp_netif_get_netif_impl_index(esp_netif_t* esp_netif);
 
 /**
  * @brief  Get net interface name from network stack implementation
@@ -441,7 +441,7 @@ esp_netif_get_netif_impl_index(esp_netif_t *esp_netif);
  *         - ESP_ERR_ESP_NETIF_INVALID_PARAMS
  */
 esp_err_t
-esp_netif_get_netif_impl_name(esp_netif_t *esp_netif, char *name);
+esp_netif_get_netif_impl_name(esp_netif_t* esp_netif, char* name);
 
 /**
  * @}
@@ -473,10 +473,10 @@ esp_netif_get_netif_impl_name(esp_netif_t *esp_netif, char *name);
  */
 esp_err_t
 esp_netif_dhcps_option(
-    esp_netif_t *                esp_netif,
+    esp_netif_t*                 esp_netif,
     esp_netif_dhcp_option_mode_t opt_op,
     esp_netif_dhcp_option_id_t   opt_id,
-    void *                       opt_val,
+    void*                        opt_val,
     uint32_t                     opt_len);
 
 /**
@@ -496,10 +496,10 @@ esp_netif_dhcps_option(
  */
 esp_err_t
 esp_netif_dhcpc_option(
-    esp_netif_t *                esp_netif,
+    esp_netif_t*                 esp_netif,
     esp_netif_dhcp_option_mode_t opt_op,
     esp_netif_dhcp_option_id_t   opt_id,
-    void *                       opt_val,
+    void*                        opt_val,
     uint32_t                     opt_len);
 
 /**
@@ -517,7 +517,7 @@ esp_netif_dhcpc_option(
  *         - ESP_ERR_ESP_NETIF_DHCPC_START_FAILED
  */
 esp_err_t
-esp_netif_dhcpc_start(esp_netif_t *esp_netif);
+esp_netif_dhcpc_start(esp_netif_t* esp_netif);
 
 /**
  * @brief  Stop DHCP client (only if enabled in interface object)
@@ -533,7 +533,7 @@ esp_netif_dhcpc_start(esp_netif_t *esp_netif);
  *      - ESP_ERR_ESP_NETIF_IF_NOT_READY
  */
 esp_err_t
-esp_netif_dhcpc_stop(esp_netif_t *esp_netif);
+esp_netif_dhcpc_stop(esp_netif_t* esp_netif);
 
 /**
  * @brief  Get DHCP client status
@@ -545,7 +545,7 @@ esp_netif_dhcpc_stop(esp_netif_t *esp_netif);
  *         - ESP_OK
  */
 esp_err_t
-esp_netif_dhcpc_get_status(esp_netif_t *esp_netif, esp_netif_dhcp_status_t *status);
+esp_netif_dhcpc_get_status(esp_netif_t* esp_netif, esp_netif_dhcp_status_t* status);
 
 /**
  * @brief  Get DHCP Server status
@@ -557,7 +557,7 @@ esp_netif_dhcpc_get_status(esp_netif_t *esp_netif, esp_netif_dhcp_status_t *stat
  *         - ESP_OK
  */
 esp_err_t
-esp_netif_dhcps_get_status(esp_netif_t *esp_netif, esp_netif_dhcp_status_t *status);
+esp_netif_dhcps_get_status(esp_netif_t* esp_netif, esp_netif_dhcp_status_t* status);
 
 /**
  * @brief  Start DHCP server (only if enabled in interface object)
@@ -570,7 +570,7 @@ esp_netif_dhcps_get_status(esp_netif_t *esp_netif, esp_netif_dhcp_status_t *stat
  *         - ESP_ERR_ESP_NETIF_DHCP_ALREADY_STARTED
  */
 esp_err_t
-esp_netif_dhcps_start(esp_netif_t *esp_netif);
+esp_netif_dhcps_start(esp_netif_t* esp_netif);
 
 /**
  * @brief  Stop DHCP server (only if enabled in interface object)
@@ -584,7 +584,7 @@ esp_netif_dhcps_start(esp_netif_t *esp_netif);
  *      - ESP_ERR_ESP_NETIF_IF_NOT_READY
  */
 esp_err_t
-esp_netif_dhcps_stop(esp_netif_t *esp_netif);
+esp_netif_dhcps_stop(esp_netif_t* esp_netif);
 
 /**
  * @}
@@ -624,7 +624,7 @@ esp_netif_dhcps_stop(esp_netif_t *esp_netif);
  *      - ESP_ERR_ESP_NETIF_INVALID_PARAMS invalid params
  */
 esp_err_t
-esp_netif_set_dns_info(esp_netif_t *esp_netif, esp_netif_dns_type_t type, esp_netif_dns_info_t *dns);
+esp_netif_set_dns_info(esp_netif_t* esp_netif, esp_netif_dns_type_t type, esp_netif_dns_info_t* dns);
 
 /**
  * @brief  Get DNS Server information
@@ -643,7 +643,7 @@ esp_netif_set_dns_info(esp_netif_t *esp_netif, esp_netif_dns_type_t type, esp_ne
  *      - ESP_ERR_ESP_NETIF_INVALID_PARAMS invalid params
  */
 esp_err_t
-esp_netif_get_dns_info(esp_netif_t *esp_netif, esp_netif_dns_type_t type, esp_netif_dns_info_t *dns);
+esp_netif_get_dns_info(esp_netif_t* esp_netif, esp_netif_dns_type_t type, esp_netif_dns_info_t* dns);
 
 /**
  * @}
@@ -673,7 +673,7 @@ esp_netif_get_dns_info(esp_netif_t *esp_netif, esp_netif_dns_type_t type, esp_ne
  *         - ESP_ERR_ESP_NETIF_INVALID_PARAMS
  */
 esp_err_t
-esp_netif_create_ip6_linklocal(esp_netif_t *esp_netif);
+esp_netif_create_ip6_linklocal(esp_netif_t* esp_netif);
 
 /**
  * @brief  Get interface link-local IPv6 address
@@ -690,7 +690,7 @@ esp_netif_create_ip6_linklocal(esp_netif_t *esp_netif);
  *        or the link-local IPv6 address is not a preferred address.
  */
 esp_err_t
-esp_netif_get_ip6_linklocal(esp_netif_t *esp_netif, esp_ip6_addr_t *if_ip6);
+esp_netif_get_ip6_linklocal(esp_netif_t* esp_netif, esp_ip6_addr_t* if_ip6);
 
 /**
  * @brief  Get interface global IPv6 address
@@ -707,7 +707,7 @@ esp_netif_get_ip6_linklocal(esp_netif_t *esp_netif, esp_ip6_addr_t *if_ip6);
  *        or the global IPv6 address is not a preferred address.
  */
 esp_err_t
-esp_netif_get_ip6_global(esp_netif_t *esp_netif, esp_ip6_addr_t *if_ip6);
+esp_netif_get_ip6_global(esp_netif_t* esp_netif, esp_ip6_addr_t* if_ip6);
 
 /**
  * @brief  Get all IPv6 addresses of the specified interface
@@ -719,7 +719,7 @@ esp_netif_get_ip6_global(esp_netif_t *esp_netif, esp_ip6_addr_t *if_ip6);
  *      number of returned IPv6 addresses
  */
 int
-esp_netif_get_all_ip6(esp_netif_t *esp_netif, esp_ip6_addr_t if_ip6[]);
+esp_netif_get_all_ip6(esp_netif_t* esp_netif, esp_ip6_addr_t if_ip6[]);
 #endif
 
 /**
@@ -732,7 +732,7 @@ esp_netif_get_all_ip6(esp_netif_t *esp_netif, esp_ip6_addr_t if_ip6[]);
  * @param d
  */
 void
-esp_netif_set_ip4_addr(esp_ip4_addr_t *addr, uint8_t a, uint8_t b, uint8_t c, uint8_t d);
+esp_netif_set_ip4_addr(esp_ip4_addr_t* addr, uint8_t a, uint8_t b, uint8_t c, uint8_t d);
 
 /**
  * @brief Converts numeric IP address into decimal dotted ASCII representation.
@@ -743,8 +743,8 @@ esp_netif_set_ip4_addr(esp_ip4_addr_t *addr, uint8_t a, uint8_t b, uint8_t c, ui
  * @return either pointer to buf which now holds the ASCII
  *         representation of addr or NULL if buf was too small
  */
-char *
-esp_ip4addr_ntoa(const esp_ip4_addr_t *addr, char *buf, int buflen);
+char*
+esp_ip4addr_ntoa(const esp_ip4_addr_t* addr, char* buf, int buflen);
 
 /**
  * @brief Ascii internet address interpretation routine
@@ -754,7 +754,7 @@ esp_ip4addr_ntoa(const esp_ip4_addr_t *addr, char *buf, int buflen);
  * @return ip address in network order
  */
 uint32_t
-esp_ip4addr_aton(const char *addr);
+esp_ip4addr_aton(const char* addr);
 
 /**
  * @brief Converts Ascii internet IPv4 address into esp_ip4_addr_t
@@ -767,7 +767,7 @@ esp_ip4addr_aton(const char *addr);
  *         - ESP_ERR_INVALID_ARG if invalid parameter is passed into
  */
 esp_err_t
-esp_netif_str_to_ip4(const char *src, esp_ip4_addr_t *dst);
+esp_netif_str_to_ip4(const char* src, esp_ip4_addr_t* dst);
 
 /**
  * @brief Converts Ascii internet IPv6 address into esp_ip4_addr_t
@@ -781,7 +781,7 @@ esp_netif_str_to_ip4(const char *src, esp_ip4_addr_t *dst);
  *         - ESP_ERR_INVALID_ARG if invalid parameter is passed into
  */
 esp_err_t
-esp_netif_str_to_ip6(const char *src, esp_ip6_addr_t *dst);
+esp_netif_str_to_ip6(const char* src, esp_ip6_addr_t* dst);
 
 /**
  * @}
@@ -804,7 +804,7 @@ esp_netif_str_to_ip6(const char *src, esp_ip6_addr_t *dst);
  * @return opaque pointer of related IO driver
  */
 esp_netif_iodriver_handle
-esp_netif_get_io_driver(esp_netif_t *esp_netif);
+esp_netif_get_io_driver(esp_netif_t* esp_netif);
 
 /**
  * @brief Searches over a list of created objects to find an instance with supplied if key
@@ -813,8 +813,8 @@ esp_netif_get_io_driver(esp_netif_t *esp_netif);
  *
  * @return Handle to esp-netif instance
  */
-esp_netif_t *
-esp_netif_get_handle_from_ifkey(const char *if_key);
+esp_netif_t*
+esp_netif_get_handle_from_ifkey(const char* if_key);
 
 /**
  * @brief Returns configured flags for this interface
@@ -824,7 +824,7 @@ esp_netif_get_handle_from_ifkey(const char *if_key);
  * @return Configuration flags
  */
 esp_netif_flags_t
-esp_netif_get_flags(esp_netif_t *esp_netif);
+esp_netif_get_flags(esp_netif_t* esp_netif);
 
 /**
  * @brief Returns configured interface key for this esp-netif instance
@@ -833,8 +833,8 @@ esp_netif_get_flags(esp_netif_t *esp_netif);
  *
  * @return Textual description of related interface
  */
-const char *
-esp_netif_get_ifkey(esp_netif_t *esp_netif);
+const char*
+esp_netif_get_ifkey(esp_netif_t* esp_netif);
 
 /**
  * @brief Returns configured interface type for this esp-netif instance
@@ -843,8 +843,8 @@ esp_netif_get_ifkey(esp_netif_t *esp_netif);
  *
  * @return Enumerated type of this interface, such as station, AP, ethernet
  */
-const char *
-esp_netif_get_desc(esp_netif_t *esp_netif);
+const char*
+esp_netif_get_desc(esp_netif_t* esp_netif);
 
 /**
  * @brief Returns configured routing priority number
@@ -854,7 +854,7 @@ esp_netif_get_desc(esp_netif_t *esp_netif);
  * @return Integer representing the instance's route-prio, or -1 if invalid paramters
  */
 int
-esp_netif_get_route_prio(esp_netif_t *esp_netif);
+esp_netif_get_route_prio(esp_netif_t* esp_netif);
 
 /**
  * @brief Returns configured event for this esp-netif instance and supplied event type
@@ -867,7 +867,7 @@ esp_netif_get_route_prio(esp_netif_t *esp_netif);
  *         -1 if supplied event_type is not known
  */
 int32_t
-esp_netif_get_event_id(esp_netif_t *esp_netif, esp_netif_ip_event_type_t event_type);
+esp_netif_get_event_id(esp_netif_t* esp_netif, esp_netif_ip_event_type_t event_type);
 
 /**
  * @}
@@ -889,8 +889,8 @@ esp_netif_get_event_id(esp_netif_t *esp_netif, esp_netif_ip_event_type_t event_t
  *
  * @return First netif from the list if supplied parameter is NULL, next one otherwise
  */
-esp_netif_t *
-esp_netif_next(esp_netif_t *esp_netif);
+esp_netif_t*
+esp_netif_next(esp_netif_t* esp_netif);
 
 /**
  * @brief Returns number of registered esp_netif objects
@@ -907,7 +907,7 @@ esp_netif_get_nr_of_ifs(void);
  *
  */
 void
-esp_netif_netstack_buf_ref(void *netstack_buf);
+esp_netif_netstack_buf_ref(void* netstack_buf);
 
 /**
  * @brief free the netstack buffer
@@ -916,7 +916,7 @@ esp_netif_netstack_buf_ref(void *netstack_buf);
  *
  */
 void
-esp_netif_netstack_buf_free(void *netstack_buf);
+esp_netif_netstack_buf_free(void* netstack_buf);
 
 /**
  * @}
