@@ -2,6 +2,17 @@
 
 Here you can find a complete Ruuvi Gateway configuration guide for advanced users.
 
+## Current firmware version information
+
+Firmware version information can be found at the bottom of each page:
+
+![start_page](images/start_page.png)
+
+There are two version numbers:
+* Ruuvi Gateway firmware version (v1.13.0). [GitHub repo](https://github.com/ruuvi/ruuvi.gateway_esp.c)
+* Ruuvi Gateway nRF52 co-processor firmware version (v1.0.0) [GitHub repo](https://github.com/ruuvi/ruuvi.gateway_nrf.c)
+
+
 ## Connect Ruuvi Gateway to the Internet
 
 ### Ethernet – Advanced options
@@ -43,6 +54,21 @@ Alternatively, you can choose your own location for updates by checking **Specif
 contains required firmware update binaries** under **Advanced**.
 
 ![software_update_advanced_options](images/software_update_advanced_options.png)
+
+If you want to use a previous release version, you can provide a link 
+to GitHub `https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/<VERSION_TAG>` 
+where you need to replace **<VERSION_TAG>** with the version number you need.
+
+For example: `https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.13.0`
+
+Here you will find a list of the releases available for download: 
+https://github.com/ruuvi/ruuvi.gateway_esp.c/releases
+
+If you want to use a developer build, you can provide a link to the Jenkins build server
+`https://jenkins.ruuvi.com/job/ruuvi_gateway_esp-PR/<BUILD>/artifact/build/`
+where you need to replace **<BUILD>** with the build number you need.
+
+For example: `https://jenkins.ruuvi.com/job/ruuvi_gateway_esp-PR/805/artifact/build/`
 
 To start the firmware update process press the *Update* button.  
 The firmware update process takes a few minutes,and you will see the progress on the screen.
