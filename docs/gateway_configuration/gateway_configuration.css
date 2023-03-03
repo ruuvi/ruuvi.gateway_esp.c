@@ -1,0 +1,31 @@
+body {
+    font-family: "Mulish", sans-serif;
+    font-size: 1rem;
+    color: #0c3c3d;
+    background-color: white;
+}
+
+h1 h2 h3 h4 {
+    font-family: "Montserrat", sans-serif;
+    font-weight: 800;
+    margin: 0 0 0.3em;
+}
+
+h1 {
+    font-size: 3rem;
+    line-height: 3.5rem;
+}
+
+h2 {
+    font-size: 2.25rem;
+    line-height: 2.75rem;
+}
+
+h3 {
+    font-size: 1.5rem;
+    line-height: 2rem;
+}
+
+b strong {
+    font-weight: bolder;
+}
