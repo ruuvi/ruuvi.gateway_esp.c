@@ -10,7 +10,6 @@ Latest documentation and roadmap is at https://docs.ruuvi.com/gw-esp32-firmware.
 
 ### Driver installation for the USB-to-Serial converter **CH340**
 
-
 The Ruuvi Gateway contains a USB-to-Serial converter **CH340**, so to communicate with it, you
 need drivers for this chip.
 
