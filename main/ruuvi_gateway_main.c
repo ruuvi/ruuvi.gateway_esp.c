@@ -737,6 +737,7 @@ network_subsystem_init(
         if (gw_cfg_get_eth_use_eth() || (!is_wifi_sta_configured))
         {
             ethernet_start();
+            vTaskDelay(pdMS_TO_TICKS(100));
             if (!gw_status_is_eth_link_up())
             {
                 LOG_INFO("### Force start WiFi hotspot (there is no Ethernet connection)");
