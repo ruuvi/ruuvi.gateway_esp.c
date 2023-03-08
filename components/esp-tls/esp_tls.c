@@ -487,6 +487,8 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
                 if (delta_ticks > pdMS_TO_TICKS(cfg->timeout_ms))
                 {
                     ESP_LOGE(TAG, "connection timeout");
+                    ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_SYSTEM, ESP_ERR_TIMEOUT);
+                    ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, ESP_ERR_TIMEOUT);
                     tls->conn_state = ESP_TLS_FAIL;
                     close(tls->sockfd);
                     tls->sockfd = -1;
@@ -527,6 +529,8 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
             if (delta_ticks > pdMS_TO_TICKS(cfg->timeout_ms))
             {
                 ESP_LOGE(TAG, "connection timeout");
+                ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_SYSTEM, ESP_ERR_TIMEOUT);
+                ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, ESP_ERR_TIMEOUT);
                 tls->conn_state = ESP_TLS_FAIL;
                 // after create_ssl_handle we don't need to close the socket manually
                 return -1;
