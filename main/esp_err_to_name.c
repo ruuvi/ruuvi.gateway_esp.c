@@ -24,8 +24,11 @@ const char *__wrap_esp_err_to_name_r(esp_err_t code, char *buf, size_t buflen)
         return buf;
     }
 
-    if (strerror_r(code, buf, buflen) == 0) {
-        return buf;
+    if (strerror_r(code, buf, buflen) != NULL) {
+        if ('\0' != buf[0])
+        {
+            return buf;
+        }
     }
 
     snprintf(buf, buflen, "%s 0x%x(%d)", esp_unknown_msg, code, code);
