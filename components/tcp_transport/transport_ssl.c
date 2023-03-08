@@ -30,6 +30,12 @@
 
 static const char *TAG = "TRANS_SSL";
 
+typedef struct err_desc_t
+{
+#define ERR_DESC_SIZE 80
+    char buf[ERR_DESC_SIZE];
+} err_desc_t;
+
 typedef enum {
     TRANS_SSL_INIT = 0,
     TRANS_SSL_CONNECTING,
@@ -114,7 +120,9 @@ static int ssl_poll_read(esp_transport_handle_t t, int timeout_ms)
         uint32_t optlen = sizeof(sock_errno);
         getsockopt(ssl->tls->sockfd, SOL_SOCKET, SO_ERROR, &sock_errno, &optlen);
         esp_transport_capture_errno(t, sock_errno);
-        ESP_LOGE(TAG, "ssl_poll_read select error %d, errno = %s, fd = %d", sock_errno, strerror(sock_errno), ssl->tls->sockfd);
+        err_desc_t err_desc;
+        esp_err_to_name_r(sock_errno, err_desc.buf, sizeof(err_desc.buf));
+        ESP_LOGE(TAG, "ssl_poll_read select error %d, errno = %s, fd = %d", sock_errno, err_desc.buf, ssl->tls->sockfd);
         ret = -1;
     }
     return ret;
@@ -137,7 +145,9 @@ static int ssl_poll_write(esp_transport_handle_t t, int timeout_ms)
         uint32_t optlen = sizeof(sock_errno);
         getsockopt(ssl->tls->sockfd, SOL_SOCKET, SO_ERROR, &sock_errno, &optlen);
         esp_transport_capture_errno(t, sock_errno);
-        ESP_LOGE(TAG, "ssl_poll_write select error %d, errno = %s, fd = %d", sock_errno, strerror(sock_errno), ssl->tls->sockfd);
+        err_desc_t err_desc;
+        esp_err_to_name_r(sock_errno, err_desc.buf, sizeof(err_desc.buf));
+        ESP_LOGE(TAG, "ssl_poll_write select error %d, errno = %s, fd = %d", sock_errno, err_desc.buf, ssl->tls->sockfd);
         ret = -1;
     }
     return ret;
@@ -150,7 +160,9 @@ static int ssl_write(esp_transport_handle_t t, const char *buffer, int len, int 
 
     if (!ssl->cfg.non_block) {
         if ((poll = esp_transport_poll_write(t, timeout_ms)) <= 0) {
-            ESP_LOGW(TAG, "Poll timeout or error, errno=%s, fd=%d, timeout_ms=%d", strerror(errno), ssl->tls->sockfd, timeout_ms);
+            err_desc_t err_desc;
+            esp_err_to_name_r(errno, err_desc.buf, sizeof(err_desc.buf));
+            ESP_LOGW(TAG, "Poll timeout or error, errno=%d (%s), fd=%d, timeout_ms=%d", errno, err_desc.buf, ssl->tls->sockfd, timeout_ms);
             return poll;
         }
     } else {
@@ -165,7 +177,9 @@ static int ssl_write(esp_transport_handle_t t, const char *buffer, int len, int 
     if (ret <= 0) {
         if (ssl->cfg.non_block) {
             if (((errno == EAGAIN) || (errno == EWOULDBLOCK))) {
-                ESP_LOGD(TAG, "esp_tls_conn_write error, errno=%s", strerror(errno));
+                err_desc_t err_desc;
+                esp_err_to_name_r(errno, err_desc.buf, sizeof(err_desc.buf));
+                ESP_LOGD(TAG, "esp_tls_conn_write error, errno=%d (%s)", errno, err_desc.buf);
                 const TickType_t delta_ticks = xTaskGetTickCount() - ssl->timer_start;
                 if (delta_ticks > pdMS_TO_TICKS(timeout_ms)) {
                     ESP_LOGE(TAG, "%s: timeout", __func__);
@@ -174,11 +188,15 @@ static int ssl_write(esp_transport_handle_t t, const char *buffer, int len, int 
                     return -1;
                 }
             } else {
-                ESP_LOGE(TAG, "esp_tls_conn_write error, errno=%s", strerror(errno));
+                err_desc_t err_desc;
+                esp_err_to_name_r(errno, err_desc.buf, sizeof(err_desc.buf));
+                ESP_LOGE(TAG, "esp_tls_conn_write error, errno=%d (%s)", errno, err_desc.buf);
                 ssl->timer_write_initialized = false;
             }
         } else {
-            ESP_LOGE(TAG, "esp_tls_conn_write error, errno=%s", strerror(errno));
+            err_desc_t err_desc;
+            esp_err_to_name_r(errno, err_desc.buf, sizeof(err_desc.buf));
+            ESP_LOGE(TAG, "esp_tls_conn_write error, errno=%d (%s)", errno, err_desc.buf);
             esp_transport_set_errors(t, ssl->tls->error_handle);
         }
     } else {
@@ -211,7 +229,9 @@ static int ssl_read(esp_transport_handle_t t, char *buffer, int len, int timeout
     if (ret <= 0) {
         if (ssl->cfg.non_block) {
             if (((errno == EAGAIN) || (errno == EWOULDBLOCK))) {
-                ESP_LOGD(TAG, "esp_tls_conn_read error, errno=%s", strerror(errno));
+                err_desc_t err_desc;
+                esp_err_to_name_r(errno, err_desc.buf, sizeof(err_desc.buf));
+                ESP_LOGD(TAG, "esp_tls_conn_read error, errno=%d (%s)", errno, err_desc.buf);
                 const TickType_t delta_ticks = xTaskGetTickCount() - ssl->timer_start;
                 if (delta_ticks > pdMS_TO_TICKS(timeout_ms)) {
                     ESP_LOGE(TAG, "%s: timeout", __func__);
@@ -220,11 +240,15 @@ static int ssl_read(esp_transport_handle_t t, char *buffer, int len, int timeout
                     return -1;
                 }
             } else {
-                ESP_LOGE(TAG, "esp_tls_conn_read error, errno=%s", strerror(errno));
+                err_desc_t err_desc;
+                esp_err_to_name_r(errno, err_desc.buf, sizeof(err_desc.buf));
+                ESP_LOGE(TAG, "esp_tls_conn_read error, errno=%d (%s)", errno, err_desc.buf);
                 ssl->timer_read_initialized = false;
             }
         } else {
-            ESP_LOGE(TAG, "esp_tls_conn_read error, errno=%s", strerror(errno));
+            err_desc_t err_desc;
+            esp_err_to_name_r(errno, err_desc.buf, sizeof(err_desc.buf));
+            ESP_LOGE(TAG, "esp_tls_conn_read error, errno=%d (%s)", errno, err_desc.buf);
             esp_transport_set_errors(t, ssl->tls->error_handle);
         }
     } else {

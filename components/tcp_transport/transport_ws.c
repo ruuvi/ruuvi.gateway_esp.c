@@ -46,6 +46,11 @@ static const char *TAG = "TRANSPORT_WS";
 #define WS_RESPONSE_OK              101
 #define WS_TRANSPORT_MAX_CONTROL_FRAME_BUFFER_LEN 125
 
+typedef struct err_desc_t
+{
+#define ERR_DESC_SIZE 80
+    char buf[ERR_DESC_SIZE];
+} err_desc_t;
 
 typedef struct {
     uint8_t opcode;
@@ -822,7 +827,9 @@ int esp_transport_ws_poll_connection_closed(esp_transport_handle_t t, int timeou
             int sock_errno = 0;
             uint32_t optlen = sizeof(sock_errno);
             getsockopt(sock, SOL_SOCKET, SO_ERROR, &sock_errno, &optlen);
-            ESP_LOGD(TAG, "esp_transport_ws_poll_connection_closed select error %d, errno = %s, fd = %d", sock_errno, strerror(sock_errno), sock);
+            err_desc_t err_desc;
+            esp_err_to_name_r(sock_errno, err_desc.buf, sizeof(err_desc.buf));
+            ESP_LOGD(TAG, "esp_transport_ws_poll_connection_closed select error %d (%s), fd = %d", sock_errno, err_desc.buf, sock);
             if (sock_errno == ENOTCONN || sock_errno == ECONNRESET || sock_errno == ECONNABORTED) {
                 // the three err codes above might be caused by connection termination by RTS flag
                 // which we still assume as expected closing sequence of ws-transport connection

@@ -29,6 +29,12 @@
 
 static const char *TAG = "TRANS_TCP";
 
+typedef struct err_desc_t
+{
+#define ERR_DESC_SIZE 80
+    char buf[ERR_DESC_SIZE];
+} err_desc_t;
+
 typedef enum {
     TRANS_TCP_INIT = 0,
     TRANS_TCP_CONNECT,
@@ -145,11 +151,15 @@ static int tcp_connect(esp_transport_handle_t t, const char *host_or_ip, int por
     // Set socket to non-blocking
     int flags;
     if ((flags = fcntl(tcp->sock, F_GETFL, NULL)) < 0) {
-        ESP_LOGE(TAG, "[sock=%d] get file flags error: %s", tcp->sock, strerror(errno));
+        err_desc_t err_desc;
+        esp_err_to_name_r(errno, err_desc.buf, sizeof(err_desc.buf));
+        ESP_LOGE(TAG, "[sock=%d] get file flags error: %d (%s)", tcp->sock, errno, err_desc.buf);
         goto error;
     }
     if (fcntl(tcp->sock, F_SETFL, flags |= O_NONBLOCK) < 0) {
-        ESP_LOGE(TAG, "[sock=%d] set nonblocking error: %s", tcp->sock, strerror(errno));
+        err_desc_t err_desc;
+        esp_err_to_name_r(errno, err_desc.buf, sizeof(err_desc.buf));
+        ESP_LOGE(TAG, "[sock=%d] set nonblocking error: %d (%s)", tcp->sock, errno, err_desc.buf);
         goto error;
     }
 
@@ -167,7 +177,9 @@ static int tcp_connect(esp_transport_handle_t t, const char *host_or_ip, int por
 
             int res = select(tcp->sock+1, NULL, &fdset, NULL, &tv);
             if (res < 0) {
-                ESP_LOGE(TAG, "[sock=%d] select() error: %s", tcp->sock, strerror(errno));
+                err_desc_t err_desc;
+                esp_err_to_name_r(errno, err_desc.buf, sizeof(err_desc.buf));
+                ESP_LOGE(TAG, "[sock=%d] select() error: %d (%s)", tcp->sock, errno, err_desc.buf);
                 esp_transport_capture_errno(t, errno);
                 goto error;
             }
@@ -180,28 +192,38 @@ static int tcp_connect(esp_transport_handle_t t, const char *host_or_ip, int por
                 socklen_t len = (socklen_t)sizeof(int);
 
                 if (getsockopt(tcp->sock, SOL_SOCKET, SO_ERROR, (void*)(&sockerr), &len) < 0) {
-                    ESP_LOGE(TAG, "[sock=%d] getsockopt() error: %s", tcp->sock, strerror(errno));
+                    err_desc_t err_desc;
+                    esp_err_to_name_r(errno, err_desc.buf, sizeof(err_desc.buf));
+                    ESP_LOGE(TAG, "[sock=%d] getsockopt() error: %d (%s)", tcp->sock, errno, err_desc.buf);
                     goto error;
                 }
                 else if (sockerr) {
                     esp_transport_capture_errno(t, sockerr);
-                    ESP_LOGE(TAG, "[sock=%d] delayed connect error: %s", tcp->sock, strerror(sockerr));
+                    err_desc_t err_desc;
+                    esp_err_to_name_r(sockerr, err_desc.buf, sizeof(err_desc.buf));
+                    ESP_LOGE(TAG, "[sock=%d] delayed connect error: %d (%s)", tcp->sock, sockerr, err_desc.buf);
                     goto error;
                 }
             }
         } else if (!tcp->non_block || (errno != EINPROGRESS)) {
-            ESP_LOGE(TAG, "[sock=%d] connect() error: %s", tcp->sock, strerror(errno));
+            err_desc_t err_desc;
+            esp_err_to_name_r(errno, err_desc.buf, sizeof(err_desc.buf));
+            ESP_LOGE(TAG, "[sock=%d] connect() error: %d (%s)", tcp->sock, errno, err_desc.buf);
             goto error;
         }
     }
     if (!tcp->non_block) {
         // Reset socket to blocking
         if ((flags = fcntl(tcp->sock, F_GETFL, NULL)) < 0) {
-            ESP_LOGE(TAG, "[sock=%d] get file flags error: %s", tcp->sock, strerror(errno));
+            err_desc_t err_desc;
+            esp_err_to_name_r(errno, err_desc.buf, sizeof(err_desc.buf));
+            ESP_LOGE(TAG, "[sock=%d] get file flags error: %d (%s)", tcp->sock, errno, err_desc.buf);
             goto error;
         }
         if (fcntl(tcp->sock, F_SETFL, flags & ~O_NONBLOCK) < 0) {
-            ESP_LOGE(TAG, "[sock=%d] reset blocking error: %s", tcp->sock, strerror(errno));
+            err_desc_t err_desc;
+            esp_err_to_name_r(errno, err_desc.buf, sizeof(err_desc.buf));
+            ESP_LOGE(TAG, "[sock=%d] reset blocking error: %d (%s)", tcp->sock, errno, err_desc.buf);
             goto error;
         }
     }
@@ -470,7 +492,9 @@ static int tcp_poll_read(esp_transport_handle_t t, int timeout_ms)
         uint32_t optlen = sizeof(sock_errno);
         getsockopt(tcp->sock, SOL_SOCKET, SO_ERROR, &sock_errno, &optlen);
         esp_transport_capture_errno(t, sock_errno);
-        ESP_LOGE(TAG, "tcp_poll_read select error %d, errno = %s, fd = %d", sock_errno, strerror(sock_errno), tcp->sock);
+        err_desc_t err_desc;
+        esp_err_to_name_r(sock_errno, err_desc.buf, sizeof(err_desc.buf));
+        ESP_LOGE(TAG, "tcp_poll_read select error %d (%s), fd = %d", sock_errno, err_desc.buf, tcp->sock);
         ret = -1;
     }
     return ret;
@@ -494,7 +518,9 @@ static int tcp_poll_write(esp_transport_handle_t t, int timeout_ms)
         uint32_t optlen = sizeof(sock_errno);
         getsockopt(tcp->sock, SOL_SOCKET, SO_ERROR, &sock_errno, &optlen);
         esp_transport_capture_errno(t, sock_errno);
-        ESP_LOGE(TAG, "tcp_poll_write select error %d, errno = %s, fd = %d", sock_errno, strerror(sock_errno), tcp->sock);
+        err_desc_t err_desc;
+        esp_err_to_name_r(sock_errno, err_desc.buf, sizeof(err_desc.buf));
+        ESP_LOGE(TAG, "tcp_poll_write select error %d (%s), fd = %d", sock_errno, err_desc.buf, tcp->sock);
         ret = -1;
     }
     return ret;
