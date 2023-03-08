@@ -397,6 +397,7 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
 
         if (err != ERR_OK) {
             ESP_LOGE(TAG, "Failed to resolve hostname '%s', error %d", hostname, err);
+            ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, ESP_ERR_ESP_TLS_CANNOT_RESOLVE_HOSTNAME);
             return -1;
         }
         char remote_ip4_str[IP4ADDR_STRLEN_MAX];
@@ -533,17 +534,23 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
         if (tls->dns_cb_ready) {
             tls->dns_cb_ready = false;
             tls->remote_ip = tls->dns_cb_remote_ip;
-            tls->conn_state = tls->dns_cb_status ? ESP_TLS_CONNECT : ESP_TLS_FAIL;
             if (tls->dns_cb_status) {
                 char remote_ip4_str[IP4ADDR_STRLEN_MAX];
                 ip4addr_ntoa_r(&tls->remote_ip.u_addr.ip4, remote_ip4_str, sizeof(remote_ip4_str));
                 ESP_LOGI(TAG, "[%s] hostname '%s' resolved to %s", pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", hostname, remote_ip4_str);
+                tls->conn_state = ESP_TLS_CONNECT;
             } else {
                 ESP_LOGE(TAG, "[%s] hostname '%s' resolving failed", pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", hostname);
                 ESP_LOGD(TAG, "[%s] %s: tls->error_handle=%p", pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", __func__, tls->error_handle);
+                ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, ESP_ERR_ESP_TLS_CANNOT_RESOLVE_HOSTNAME);
+                tls->conn_state = ESP_TLS_FAIL;
             }
         }
         xSemaphoreGive(tls->dns_mutex);
+        if (ESP_TLS_FAIL == tls->conn_state) {
+            ESP_LOGE(TAG, "failed to open a new connection");
+            break;
+        }
         return 0;
     }
     default:
