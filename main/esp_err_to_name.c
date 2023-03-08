@@ -31,7 +31,13 @@ const char *__wrap_esp_err_to_name_r(esp_err_t code, char *buf, size_t buflen)
         }
     }
 
-    snprintf(buf, buflen, "%s 0x%x(%d)", esp_unknown_msg, code, code);
+    mbedtls_strerror(code, buf, buflen);
+
+    const char* const p_unknown_error_code_prefix = "UNKNOWN ERROR CODE (";
+    if (0 == strncmp(p_unknown_error_code_prefix, buf, strlen(p_unknown_error_code_prefix)))
+    {
+        (void)snprintf(buf, buflen, "%s 0x%x(%d)", esp_unknown_msg, code, code);
+    }
 
     return buf;
 }
