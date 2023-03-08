@@ -18,6 +18,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_tls.h"
+#define LOG_LOCAL_LEVEL 3
 #include "esp_log.h"
 #include "esp_system.h"
 
@@ -64,13 +65,19 @@ static int ssl_connect_async(esp_transport_handle_t t, const char *host, int por
         ssl->cfg.non_block = true;
         ssl->ssl_initialized = true;
         ssl->tls = esp_tls_init();
+        ESP_LOGD(TAG, "%s: esp_tls_init, tls=%p, tls->error_handle=%p", __func__, ssl->tls, ssl->tls->error_handle);
         if (!ssl->tls) {
             return -1;
         }
         ssl->conn_state = TRANS_SSL_CONNECTING;
     }
     if (ssl->conn_state == TRANS_SSL_CONNECTING) {
-        return esp_tls_conn_new_async(host, strlen(host), port, &ssl->cfg, ssl->tls);
+        ESP_LOGD(TAG, "%s: esp_tls_conn_new_async", __func__);
+        const int ret = esp_tls_conn_new_async(host, strlen(host), port, &ssl->cfg, ssl->tls);
+        if (ret < 0) {
+            ESP_LOGD(TAG, "%s: esp_tls_conn_new_async failed", __func__);
+        }
+        return ret;
     }
     return 0;
 }
@@ -82,6 +89,7 @@ static int ssl_connect(esp_transport_handle_t t, const char *host, int port, int
     ssl->cfg.timeout_ms = timeout_ms;
     ssl->ssl_initialized = true;
     ssl->tls = esp_tls_init();
+    ESP_LOGD(TAG, "%s: esp_tls_init, tls=%p, tls->error_handle=%p", __func__, ssl->tls, ssl->tls->error_handle);
     if (ssl->tls == NULL) {
         ESP_LOGE(TAG, "Failed to initialize new connection object");
         return -1;

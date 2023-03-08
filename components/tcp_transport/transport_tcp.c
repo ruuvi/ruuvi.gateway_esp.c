@@ -19,6 +19,7 @@
 #include "lwip/dns.h"
 #include "lwip/netdb.h"
 
+#define LOG_LOCAL_LEVEL 3
 #include "esp_log.h"
 #include "esp_system.h"
 #include "esp_err.h"
