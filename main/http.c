@@ -485,7 +485,7 @@ http_check_post_advs_internal3(
             &p_http_async_info->http_post_cb_info))
     {
         LOG_ERR("http_send_advs failed");
-        return http_server_resp_err(HTTP_RESP_CODE_500);
+        return http_server_resp_500();
     }
 
     const bool         flag_feed_task_watchdog = true;
@@ -528,7 +528,7 @@ http_check_post_advs_internal2(
     if (NULL == p_cfg_http)
     {
         LOG_ERR("Can't allocate memory for ruuvi_gw_cfg_http_t");
-        return http_server_resp_err(HTTP_RESP_CODE_500);
+        return http_server_resp_500();
     }
 
     const http_server_resp_t resp
@@ -673,7 +673,7 @@ http_check_post_stat_internal3(
             &p_http_async_info->http_post_cb_info))
     {
         LOG_ERR("http_send_statistics failed");
-        return http_server_resp_err(HTTP_RESP_CODE_500);
+        return http_server_resp_500();
     }
 
     const bool         flag_feed_task_watchdog = true;
@@ -716,7 +716,7 @@ http_check_post_stat_internal2(
     if (NULL == p_cfg_http_stat)
     {
         LOG_ERR("Can't allocate memory for ruuvi_gw_cfg_http_t");
-        return http_server_resp_err(HTTP_RESP_CODE_500);
+        return http_server_resp_500();
     }
 
     const http_server_resp_t resp

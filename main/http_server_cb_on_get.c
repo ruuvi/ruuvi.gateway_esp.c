@@ -800,7 +800,7 @@ http_server_resp_validate_post_advs(
     if (NULL == saved_password.buf)
     {
         LOG_ERR("Can't allocate memory for saved http_password");
-        return http_server_resp_err(HTTP_RESP_CODE_500);
+        return http_server_resp_500();
     }
     const http_server_resp_t http_resp = http_check_post_advs(
         p_url->buf,
@@ -823,7 +823,7 @@ http_server_resp_validate_post_stat(
     if (NULL == saved_password.buf)
     {
         LOG_ERR("Can't allocate memory for saved http_stat_password");
-        return http_server_resp_err(HTTP_RESP_CODE_500);
+        return http_server_resp_500();
     }
     const http_server_resp_t http_resp = http_check_post_stat(
         p_url->buf,
@@ -847,7 +847,7 @@ http_server_resp_validate_check_mqtt(
     if (NULL == saved_password.buf)
     {
         LOG_ERR("Can't allocate memory for saved mqtt_password");
-        return http_server_resp_err(HTTP_RESP_CODE_500);
+        return http_server_resp_500();
     }
     const http_server_resp_t http_resp = http_server_on_get_check_mqtt(
         p_url->buf,
@@ -872,7 +872,7 @@ http_server_resp_validate_check_remote_cfg(
     if (NULL == p_saved_remote_cfg)
     {
         LOG_ERR("Can't allocate memory for copy of remote_cfg");
-        return http_server_resp_err(HTTP_RESP_CODE_500);
+        return http_server_resp_500();
     }
     const char* p_saved_password = NULL;
     switch (p_saved_remote_cfg->auth_type)
@@ -910,7 +910,7 @@ http_server_resp_validate_check_file(
         if (NULL == p_http_auth)
         {
             LOG_ERR("Can't allocate memory for http_auth");
-            return http_server_resp_err(HTTP_RESP_CODE_500);
+            return http_server_resp_500();
         }
         if (NULL != p_user)
         {
@@ -1030,7 +1030,7 @@ http_server_resp_validate_url(const char* const p_params)
     {
         case HTTP_VALIDATE_TYPE_INVALID:
             LOG_ERR("HTTP validate: invalid 'validate_type' param: %s", p_params);
-            http_resp = http_server_resp_err(HTTP_RESP_CODE_500);
+            http_resp = http_server_resp_500();
             break;
         case HTTP_VALIDATE_TYPE_POST_ADVS:
             http_resp = http_server_resp_validate_post_advs(&url, &user, &password, flag_use_saved_password);
