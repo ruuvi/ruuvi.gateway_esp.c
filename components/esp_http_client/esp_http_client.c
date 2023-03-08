@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include "esp_system.h"
+#define LOG_LOCAL_LEVEL 3
 #include "esp_log.h"
 
 #include "http_header.h"
@@ -33,6 +34,12 @@
 #endif
 
 static const char *TAG = "HTTP_CLIENT";
+
+typedef struct err_desc_t
+{
+#define ERR_DESC_SIZE 80
+    char buf[ERR_DESC_SIZE];
+} err_desc_t;
 
 /**
  * HTTP Buffer
@@ -702,6 +709,7 @@ error:
 
 esp_err_t esp_http_client_cleanup(esp_http_client_handle_t client)
 {
+    ESP_LOGD(TAG, "esp_http_client_cleanup");
     if (client == NULL) {
         return ESP_FAIL;
     }
@@ -1013,6 +1021,7 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
 #endif
             case HTTP_STATE_CONNECTING:
                 if (client->is_async) {
+                    ESP_LOGD(TAG, "%s: esp_transport_connect_async", __func__);
                     int ret = esp_transport_connect_async(client->transport, client->connection_info.host,
                                                           client->connection_info.port, client->timeout_ms);
                     if (ret == ASYNC_TRANS_CONNECT_FAIL) {
@@ -1151,6 +1160,7 @@ static esp_err_t esp_http_client_connect(esp_http_client_handle_t client)
     if (client->state < HTTP_STATE_CONNECTED) {
         ESP_LOGD(TAG, "Begin connect to: %s://%s:%d", client->connection_info.scheme, client->connection_info.host, client->connection_info.port);
         client->transport = esp_transport_list_get_transport(client->transport_list, client->connection_info.scheme);
+        ESP_LOGD(TAG, "%s: client->transport=%p", __func__, client->transport);
         if (client->transport == NULL) {
             ESP_LOGE(TAG, "No transport found");
 #ifndef CONFIG_ESP_HTTP_CLIENT_ENABLE_HTTPS
@@ -1166,6 +1176,7 @@ static esp_err_t esp_http_client_connect(esp_http_client_handle_t client)
                 return ESP_ERR_HTTP_CONNECT;
             }
         } else {
+            ESP_LOGD(TAG, "esp_transport_connect_async");
             int ret = esp_transport_connect_async(client->transport, client->connection_info.host, client->connection_info.port, client->timeout_ms);
             if (ret == ASYNC_TRANS_CONNECT_FAIL) {
                 ESP_LOGE(TAG, "Connection failed");
