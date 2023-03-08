@@ -9,13 +9,14 @@
 #include "mbedtls/error.h"
 #include "esp_tls.h"
 
-const char *__wrap_esp_err_to_name_r(esp_err_t code, char *buf, size_t buflen)
+const char*
+__wrap_esp_err_to_name_r(esp_err_t code, char* buf, size_t buflen)
 {
     static const char* esp_unknown_msg = NULL;
     if (NULL == esp_unknown_msg)
     {
         const esp_err_t unknown_esp_err_code = 1;
-        esp_unknown_msg = esp_err_to_name(unknown_esp_err_code);
+        esp_unknown_msg                      = esp_err_to_name(unknown_esp_err_code);
     }
     const char* p_err_desc = esp_err_to_name(code);
     if (esp_unknown_msg != p_err_desc)
@@ -24,7 +25,8 @@ const char *__wrap_esp_err_to_name_r(esp_err_t code, char *buf, size_t buflen)
         return buf;
     }
 
-    if (strerror_r(code, buf, buflen) != NULL) {
+    if (strerror_r(code, buf, buflen) != NULL)
+    {
         if ('\0' != buf[0])
         {
             return buf;
