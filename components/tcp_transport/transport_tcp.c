@@ -231,7 +231,7 @@ static int tcp_connect(esp_transport_handle_t t, const char *host_or_ip, int por
             }
             else if (res == 0) {
                 ESP_LOGE(TAG, "[sock=%d] select() timeout", tcp->sock);
-                esp_transport_capture_errno(t, EINPROGRESS);    // errno=EINPROGRESS indicates connection timeout
+                esp_transport_capture_errno(t, ESP_ERR_TIMEOUT);
                 goto error;
             } else {
                 int sockerr;
@@ -420,6 +420,12 @@ static int esp_transport_tcp_connect_async(esp_transport_handle_t t, const char 
                 if (delta_ticks > pdMS_TO_TICKS(timeout_ms))
                 {
                     ESP_LOGE(TAG, "connection timeout");
+                    esp_tls_last_error_t last_err = {
+                        .last_error = ESP_ERR_TIMEOUT,
+                        .esp_tls_error_code = 0,
+                        .esp_tls_flags = 0,
+                    };
+                    esp_transport_set_errors(t, &last_err);
                     tcp->conn_state = TRANS_TCP_FAIL;
                     return -1;
                 }
