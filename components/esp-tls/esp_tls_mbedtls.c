@@ -53,6 +53,12 @@ static esp_err_t esp_mbedtls_init_pk_ctx_for_ds(const void *pki);
 static const char *TAG = "esp-tls-mbedtls";
 static mbedtls_x509_crt *global_cacert = NULL;
 
+typedef struct err_desc_t
+{
+#define ERR_DESC_SIZE 100
+    char buf[ERR_DESC_SIZE];
+} err_desc_t;
+
 typedef struct esp_tls_pki_t {
     mbedtls_x509_crt *public_cert;
     mbedtls_pk_context *pk_key;
@@ -141,7 +147,9 @@ int esp_mbedtls_handshake(esp_tls_t *tls, const esp_tls_cfg_t *cfg)
         return 1;
     } else {
         if (ret != ESP_TLS_ERR_SSL_WANT_READ && ret != ESP_TLS_ERR_SSL_WANT_WRITE) {
-            ESP_LOGE(TAG, "mbedtls_ssl_handshake returned -0x%x", -ret);
+            err_desc_t err_desc;
+            mbedtls_strerror(ret, err_desc.buf, sizeof(err_desc.buf));
+            ESP_LOGE(TAG, "mbedtls_ssl_handshake returned -0x%x (%s)", -ret, err_desc.buf);
             ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_MBEDTLS, -ret);
             ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, ESP_ERR_MBEDTLS_SSL_HANDSHAKE_FAILED);
             if (cfg->cacert_buf != NULL || cfg->use_global_ca_store == true) {

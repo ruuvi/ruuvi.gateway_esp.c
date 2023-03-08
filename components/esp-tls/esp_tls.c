@@ -32,6 +32,7 @@ static const char *TAG = "esp-tls";
 #include "esp_tls_wolfssl.h"
 #endif
 
+#define LOG_LOCAL_LEVEL 3
 #ifdef ESP_PLATFORM
 #include <esp_log.h>
 #else
@@ -71,6 +72,12 @@ static const char *TAG = "esp-tls";
 #else   /* ESP_TLS_USING_WOLFSSL */
 #error "No TLS stack configured"
 #endif
+
+typedef struct err_desc_t
+{
+#define ERR_DESC_SIZE 80
+    char buf[ERR_DESC_SIZE];
+} err_desc_t;
 
 static esp_err_t create_ssl_handle(const char *hostname, size_t hostlen, const void *cfg, esp_tls_t *tls)
 {
@@ -269,7 +276,9 @@ static esp_err_t esp_tcp_connect(const ip_addr_t* const p_remote_ip, int port, i
     ret = connect(fd, (struct sockaddr*)&sa4, sa4.sin_len);
     if (ret < 0 && !(errno == EINPROGRESS && cfg && cfg->non_block)) {
 
-        ESP_LOGE(TAG, "Failed to connnect to host (errno %d)", errno);
+        err_desc_t err_desc;
+        esp_err_to_name_r(errno, err_desc.buf, sizeof(err_desc.buf));
+        ESP_LOGE(TAG, "Failed to connnect to host, error=%d (%s)", errno, err_desc.buf);
         ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_SYSTEM, errno);
         ret = ESP_ERR_ESP_TLS_FAILED_CONNECT_TO_HOST;
         goto err_freesocket;
@@ -406,6 +415,9 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
         ip4addr_ntoa_r(&tls->remote_ip.u_addr.ip4, remote_ip4_str, sizeof(remote_ip4_str));
         ESP_LOGD(TAG, "Connect to IP: %s", remote_ip4_str);
         if ((esp_ret = esp_tcp_connect(&tls->remote_ip, port, &tls->sockfd, tls, cfg)) != ESP_OK) {
+            err_desc_t err_desc;
+            esp_err_to_name_r(esp_ret, err_desc.buf, sizeof(err_desc.buf));
+            ESP_LOGE(TAG, "esp_tcp_connect failed, err=%d (%s)", esp_ret, err_desc.buf);
             ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, esp_ret);
             return -1;
         }
@@ -512,11 +524,11 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
         return res;
     }
     case ESP_TLS_FAIL:
-        ESP_LOGE(TAG, "failed to open a new connection");;
+        ESP_LOGE(TAG, "failed to open a new connection");
         break;
     case ESP_TLS_HOSTNAME_RESOLVING:
     {
-        ESP_LOGD(TAG, "ESP_TLS_HOSTNAME_RESOLVING");
+        ESP_LOGD(TAG, "%s: ESP_TLS_HOSTNAME_RESOLVING", __func__);
         xSemaphoreTake(tls->dns_mutex, portMAX_DELAY);
         if (tls->dns_cb_ready) {
             tls->dns_cb_ready = false;
@@ -528,6 +540,7 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
                 ESP_LOGI(TAG, "[%s] hostname '%s' resolved to %s", pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", hostname, remote_ip4_str);
             } else {
                 ESP_LOGE(TAG, "[%s] hostname '%s' resolving failed", pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", hostname);
+                ESP_LOGD(TAG, "[%s] %s: tls->error_handle=%p", pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", __func__, tls->error_handle);
             }
         }
         xSemaphoreGive(tls->dns_mutex);
@@ -546,6 +559,7 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
 esp_tls_t *esp_tls_conn_new(const char *hostname, int hostlen, int port, const esp_tls_cfg_t *cfg)
 {
     esp_tls_t *tls = esp_tls_init();
+    ESP_LOGD(TAG, "%s: esp_tls_init, tls=%p, tls->error_handle=%p", __func__, tls, tls->error_handle);
     if (!tls) {
         return NULL;
     }
@@ -608,7 +622,10 @@ int esp_tls_conn_new_sync(const char *hostname, int hostlen, int port, const esp
  */
 int esp_tls_conn_new_async(const char *hostname, int hostlen, int port, const esp_tls_cfg_t *cfg, esp_tls_t *tls)
 {
-    return esp_tls_low_level_conn(hostname, hostlen, port, cfg, tls);
+    ESP_LOGD(TAG, "%s: esp_tls_low_level_conn", __func__);
+    const int ret = esp_tls_low_level_conn(hostname, hostlen, port, cfg, tls);
+    ESP_LOGD(TAG, "%s: esp_tls_low_level_conn, ret=%d", __func__, ret);
+    return ret;
 }
 
 static int get_port(const char *url, struct http_parser_url *u)
@@ -635,6 +652,7 @@ esp_tls_t *esp_tls_conn_http_new(const char *url, const esp_tls_cfg_t *cfg)
     http_parser_url_init(&u);
     http_parser_parse_url(url, strlen(url), 0, &u);
     esp_tls_t *tls = esp_tls_init();
+    ESP_LOGD(TAG, "%s: esp_tls_init, tls=%p, tls->error_handle=%p", __func__, tls, tls->error_handle);
     if (!tls) {
         return NULL;
     }
