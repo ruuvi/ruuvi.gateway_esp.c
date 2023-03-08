@@ -41,9 +41,10 @@
 typedef int esp_http_client_len_t;
 typedef int esp_http_client_http_status_code_t;
 
+#define ERR_DESC_SIZE 80
+
 typedef struct err_desc_t
 {
-#define ERR_DESC_SIZE 80
     char buf[ERR_DESC_SIZE];
 } err_desc_t;
 
@@ -568,10 +569,10 @@ http_check_post_advs_internal3(
         http_resp_code = HTTP_RESP_CODE_200;
     }
 
-    const char* const p_json = (((HTTP_CONTENT_LOCATION_FLASH_MEM == server_resp.content_location)
-                                 || (HTTP_CONTENT_LOCATION_STATIC_MEM == server_resp.content_location)
-                                 || (HTTP_CONTENT_LOCATION_HEAP == server_resp.content_location))
-                                && (NULL != server_resp.select_location.memory.p_buf))
+    const bool flag_is_in_memory = (HTTP_CONTENT_LOCATION_FLASH_MEM == server_resp.content_location)
+                                   || (HTTP_CONTENT_LOCATION_STATIC_MEM == server_resp.content_location)
+                                   || (HTTP_CONTENT_LOCATION_HEAP == server_resp.content_location);
+    const char* const p_json = (flag_is_in_memory && (NULL != server_resp.select_location.memory.p_buf))
                                    ? (const char*)server_resp.select_location.memory.p_buf
                                    : NULL;
 
@@ -766,10 +767,10 @@ http_check_post_stat_internal3(
         http_resp_code = HTTP_RESP_CODE_200;
     }
 
-    const char* const p_json = (((HTTP_CONTENT_LOCATION_FLASH_MEM == server_resp.content_location)
-                                 || (HTTP_CONTENT_LOCATION_STATIC_MEM == server_resp.content_location)
-                                 || (HTTP_CONTENT_LOCATION_HEAP == server_resp.content_location))
-                                && (NULL != server_resp.select_location.memory.p_buf))
+    const bool flag_is_in_memory = (HTTP_CONTENT_LOCATION_FLASH_MEM == server_resp.content_location)
+                                   || (HTTP_CONTENT_LOCATION_STATIC_MEM == server_resp.content_location)
+                                   || (HTTP_CONTENT_LOCATION_HEAP == server_resp.content_location);
+    const char* const p_json = (flag_is_in_memory && (NULL != server_resp.select_location.memory.p_buf))
                                    ? (const char*)server_resp.select_location.memory.p_buf
                                    : NULL;
 

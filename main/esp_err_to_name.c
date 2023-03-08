@@ -25,12 +25,9 @@ __wrap_esp_err_to_name_r(esp_err_t code, char* buf, size_t buflen)
         return buf;
     }
 
-    if (strerror_r(code, buf, buflen) != NULL)
+    if ((strerror_r(code, buf, buflen) != NULL) && ('\0' != buf[0]))
     {
-        if ('\0' != buf[0])
-        {
-            return buf;
-        }
+        return buf;
     }
 
     mbedtls_strerror(code, buf, buflen);

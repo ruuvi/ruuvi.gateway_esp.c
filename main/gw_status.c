@@ -321,7 +321,7 @@ gw_status_notify_relaying_mode_changed_and_wait(
     const bool flag_notify_change_for_mqtt,
     const bool flag_wait)
 {
-    if (!flag_notify_change_for_http && (!flag_notify_change_for_mqtt))
+    if ((!flag_notify_change_for_http) && (!flag_notify_change_for_mqtt))
     {
         return;
     }

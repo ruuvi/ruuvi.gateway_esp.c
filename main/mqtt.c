@@ -33,9 +33,10 @@
 
 #define MQTT_NETWORK_TIMEOUT_MS (10U * 1000U)
 
+#define ERR_DESC_SIZE 80
+
 typedef struct err_desc_t
 {
-#define ERR_DESC_SIZE 80
     char buf[ERR_DESC_SIZE];
 } err_desc_t;
 
@@ -218,6 +219,143 @@ mqtt_publish_state_offline(mqtt_protected_data_t* const p_mqtt_data)
     }
 }
 
+static const char*
+mqtt_connect_return_code_to_str(const esp_mqtt_connect_return_code_t connect_return_code)
+{
+    switch (connect_return_code)
+    {
+        case MQTT_CONNECTION_ACCEPTED:
+            return "MQTT_CONNECTION_ACCEPTED";
+        case MQTT_CONNECTION_REFUSE_PROTOCOL:
+            return "MQTT_CONNECTION_REFUSE_PROTOCOL";
+        case MQTT_CONNECTION_REFUSE_ID_REJECTED:
+            return "MQTT_CONNECTION_REFUSE_ID_REJECTED";
+        case MQTT_CONNECTION_REFUSE_SERVER_UNAVAILABLE:
+            return "MQTT_CONNECTION_REFUSE_SERVER_UNAVAILABLE";
+        case MQTT_CONNECTION_REFUSE_BAD_USERNAME:
+            return "MQTT_CONNECTION_REFUSE_BAD_USERNAME";
+        case MQTT_CONNECTION_REFUSE_NOT_AUTHORIZED:
+            return "MQTT_CONNECTION_REFUSE_NOT_AUTHORIZED";
+    }
+    return "Unknown";
+}
+
+static void
+mqtt_event_handler_on_error(
+    mqtt_protected_data_t* const        p_mqtt_protected_data,
+    const esp_mqtt_error_codes_t* const p_error_handle)
+{
+    p_mqtt_protected_data->err_msg[0] = '\0';
+
+    mqtt_error_e                         mqtt_error               = MQTT_ERROR_NONE;
+    const esp_err_t                      esp_tls_last_esp_err     = p_error_handle->esp_tls_last_esp_err;
+    const esp_mqtt_error_type_t          error_type               = p_error_handle->error_type;
+    const int                            esp_transport_sock_errno = p_error_handle->esp_transport_sock_errno;
+    const esp_mqtt_connect_return_code_t connect_return_code      = p_error_handle->connect_return_code;
+    const char* const                    p_connect_ret_code_desc = mqtt_connect_return_code_to_str(connect_return_code);
+    if (MQTT_ERROR_TYPE_TCP_TRANSPORT == error_type)
+    {
+        if (ESP_ERR_ESP_TLS_CANNOT_RESOLVE_HOSTNAME == esp_tls_last_esp_err)
+        {
+            LOG_ERR("MQTT_EVENT_ERROR (MQTT_ERROR_TYPE_TCP_TRANSPORT): ESP_ERR_ESP_TLS_CANNOT_RESOLVE_HOSTNAME");
+            mqtt_error = MQTT_ERROR_DNS;
+            (void)snprintf(
+                p_mqtt_protected_data->err_msg,
+                sizeof(p_mqtt_protected_data->err_msg),
+                "Failed to resolve hostname");
+        }
+        else if (ESP_ERR_ESP_TLS_FAILED_CONNECT_TO_HOST == esp_tls_last_esp_err)
+        {
+            LOG_ERR("MQTT_EVENT_ERROR (MQTT_ERROR_TYPE_TCP_TRANSPORT): ESP_ERR_ESP_TLS_FAILED_CONNECT_TO_HOST");
+            mqtt_error = MQTT_ERROR_CONNECT;
+            err_desc_t err_desc;
+            esp_err_to_name_r(esp_transport_sock_errno, err_desc.buf, sizeof(err_desc.buf));
+            (void)snprintf(
+                p_mqtt_protected_data->err_msg,
+                sizeof(p_mqtt_protected_data->err_msg),
+                "Failed to connect to host, error %d (%s)",
+                esp_transport_sock_errno,
+                err_desc.buf);
+        }
+        else
+        {
+            if (0 != esp_tls_last_esp_err)
+            {
+                err_desc_t err_desc;
+                esp_err_to_name_r(esp_tls_last_esp_err, err_desc.buf, sizeof(err_desc.buf));
+                LOG_ERR(
+                    "MQTT_EVENT_ERROR (MQTT_ERROR_TYPE_TCP_TRANSPORT): %d (%s)",
+                    esp_tls_last_esp_err,
+                    err_desc.buf);
+                (void)snprintf(
+                    p_mqtt_protected_data->err_msg,
+                    sizeof(p_mqtt_protected_data->err_msg),
+                    "Error %d (%s)",
+                    esp_tls_last_esp_err,
+                    err_desc.buf);
+            }
+            else if (0 != esp_transport_sock_errno)
+            {
+                err_desc_t err_desc;
+                esp_err_to_name_r(esp_transport_sock_errno, err_desc.buf, sizeof(err_desc.buf));
+                LOG_ERR(
+                    "MQTT_EVENT_ERROR (MQTT_ERROR_TYPE_TCP_TRANSPORT): %d (%s)",
+                    esp_transport_sock_errno,
+                    err_desc.buf);
+                (void)snprintf(
+                    p_mqtt_protected_data->err_msg,
+                    sizeof(p_mqtt_protected_data->err_msg),
+                    "%s",
+                    err_desc.buf);
+            }
+            else
+            {
+                LOG_ERR("MQTT_EVENT_ERROR (MQTT_ERROR_TYPE_TCP_TRANSPORT): Unknown error");
+                (void)snprintf(p_mqtt_protected_data->err_msg, sizeof(p_mqtt_protected_data->err_msg), "Unknown error");
+            }
+            mqtt_error = MQTT_ERROR_CONNECT;
+        }
+    }
+    else if (MQTT_ERROR_TYPE_CONNECTION_REFUSED == error_type)
+    {
+        LOG_ERR(
+            "MQTT_EVENT_ERROR (MQTT_ERROR_TYPE_CONNECTION_REFUSED): connect_return_code=%d (%s)",
+            connect_return_code,
+            p_connect_ret_code_desc);
+        if ((MQTT_CONNECTION_REFUSE_BAD_USERNAME == connect_return_code)
+            || (MQTT_CONNECTION_REFUSE_NOT_AUTHORIZED == connect_return_code))
+        {
+            mqtt_error = MQTT_ERROR_AUTH;
+        }
+        else
+        {
+            mqtt_error = MQTT_ERROR_CONNECT;
+        }
+        (void)snprintf(
+            p_mqtt_protected_data->err_msg,
+            sizeof(p_mqtt_protected_data->err_msg),
+            "Refusal to connect: %s",
+            p_connect_ret_code_desc);
+    }
+    else
+    {
+        LOG_ERR(
+            "MQTT_EVENT_ERROR (unknown error_type=%d): connect_return_code=%d (%s), "
+            "esp_transport_sock_errno=%d, esp_tls_last_esp_err=%d",
+            error_type,
+            connect_return_code,
+            p_connect_ret_code_desc,
+            esp_transport_sock_errno,
+            esp_tls_last_esp_err);
+        mqtt_error = MQTT_ERROR_CONNECT;
+        (void)snprintf(
+            p_mqtt_protected_data->err_msg,
+            sizeof(p_mqtt_protected_data->err_msg),
+            "Failed to connect (Unknown error type)");
+    }
+    gw_status_set_mqtt_error(mqtt_error);
+}
+
 static esp_err_t
 mqtt_event_handler(esp_mqtt_event_handle_t h_event)
 {
@@ -258,142 +396,8 @@ mqtt_event_handler(esp_mqtt_event_handle_t h_event)
             break;
 
         case MQTT_EVENT_ERROR:
-        {
-            p_mqtt_protected_data->err_msg[0]                        = '\0';
-            mqtt_error_e                mqtt_error                   = MQTT_ERROR_NONE;
-            const esp_err_t             esp_tls_last_esp_err         = h_event->error_handle->esp_tls_last_esp_err;
-            const esp_mqtt_error_type_t error_type                   = h_event->error_handle->error_type;
-            const int                   esp_transport_sock_errno     = h_event->error_handle->esp_transport_sock_errno;
-            const esp_mqtt_connect_return_code_t connect_return_code = h_event->error_handle->connect_return_code;
-            const char*                          p_connect_ret_code_desc = "Unknown";
-            switch (connect_return_code)
-            {
-                case MQTT_CONNECTION_ACCEPTED:
-                    p_connect_ret_code_desc = "MQTT_CONNECTION_ACCEPTED";
-                    break;
-                case MQTT_CONNECTION_REFUSE_PROTOCOL:
-                    p_connect_ret_code_desc = "MQTT_CONNECTION_REFUSE_PROTOCOL";
-                    break;
-                case MQTT_CONNECTION_REFUSE_ID_REJECTED:
-                    p_connect_ret_code_desc = "MQTT_CONNECTION_REFUSE_ID_REJECTED";
-                    break;
-                case MQTT_CONNECTION_REFUSE_SERVER_UNAVAILABLE:
-                    p_connect_ret_code_desc = "MQTT_CONNECTION_REFUSE_SERVER_UNAVAILABLE";
-                    break;
-                case MQTT_CONNECTION_REFUSE_BAD_USERNAME:
-                    p_connect_ret_code_desc = "MQTT_CONNECTION_REFUSE_BAD_USERNAME";
-                    break;
-                case MQTT_CONNECTION_REFUSE_NOT_AUTHORIZED:
-                    p_connect_ret_code_desc = "MQTT_CONNECTION_REFUSE_NOT_AUTHORIZED";
-                    break;
-            }
-            if (MQTT_ERROR_TYPE_TCP_TRANSPORT == error_type)
-            {
-                if (ESP_ERR_ESP_TLS_CANNOT_RESOLVE_HOSTNAME == esp_tls_last_esp_err)
-                {
-                    LOG_ERR(
-                        "MQTT_EVENT_ERROR (MQTT_ERROR_TYPE_TCP_TRANSPORT): ESP_ERR_ESP_TLS_CANNOT_RESOLVE_HOSTNAME");
-                    mqtt_error = MQTT_ERROR_DNS;
-                    (void)snprintf(
-                        p_mqtt_protected_data->err_msg,
-                        sizeof(p_mqtt_protected_data->err_msg),
-                        "Failed to resolve hostname");
-                }
-                else if (ESP_ERR_ESP_TLS_FAILED_CONNECT_TO_HOST == esp_tls_last_esp_err)
-                {
-                    LOG_ERR("MQTT_EVENT_ERROR (MQTT_ERROR_TYPE_TCP_TRANSPORT): ESP_ERR_ESP_TLS_FAILED_CONNECT_TO_HOST");
-                    mqtt_error = MQTT_ERROR_CONNECT;
-                    err_desc_t err_desc;
-                    esp_err_to_name_r(esp_transport_sock_errno, err_desc.buf, sizeof(err_desc.buf));
-                    (void)snprintf(
-                        p_mqtt_protected_data->err_msg,
-                        sizeof(p_mqtt_protected_data->err_msg),
-                        "Failed to connect to host, error %d (%s)",
-                        esp_transport_sock_errno,
-                        err_desc.buf);
-                }
-                else
-                {
-                    if (0 != esp_tls_last_esp_err)
-                    {
-                        err_desc_t err_desc;
-                        esp_err_to_name_r(esp_tls_last_esp_err, err_desc.buf, sizeof(err_desc.buf));
-                        LOG_ERR(
-                            "MQTT_EVENT_ERROR (MQTT_ERROR_TYPE_TCP_TRANSPORT): %d (%s)",
-                            esp_tls_last_esp_err,
-                            err_desc.buf);
-                        (void)snprintf(
-                            p_mqtt_protected_data->err_msg,
-                            sizeof(p_mqtt_protected_data->err_msg),
-                            "Error %d (%s)",
-                            esp_tls_last_esp_err,
-                            err_desc.buf);
-                    }
-                    else if (0 != esp_transport_sock_errno)
-                    {
-                        err_desc_t err_desc;
-                        esp_err_to_name_r(esp_transport_sock_errno, err_desc.buf, sizeof(err_desc.buf));
-                        LOG_ERR(
-                            "MQTT_EVENT_ERROR (MQTT_ERROR_TYPE_TCP_TRANSPORT): %d (%s)",
-                            esp_transport_sock_errno,
-                            err_desc.buf);
-                        (void)snprintf(
-                            p_mqtt_protected_data->err_msg,
-                            sizeof(p_mqtt_protected_data->err_msg),
-                            "%s",
-                            err_desc.buf);
-                    }
-                    else
-                    {
-                        LOG_ERR("MQTT_EVENT_ERROR (MQTT_ERROR_TYPE_TCP_TRANSPORT): Unknown error");
-                        (void)snprintf(
-                            p_mqtt_protected_data->err_msg,
-                            sizeof(p_mqtt_protected_data->err_msg),
-                            "Unknown error");
-                    }
-                    mqtt_error = MQTT_ERROR_CONNECT;
-                }
-            }
-            else if (MQTT_ERROR_TYPE_CONNECTION_REFUSED == error_type)
-            {
-                LOG_ERR(
-                    "MQTT_EVENT_ERROR (MQTT_ERROR_TYPE_CONNECTION_REFUSED): connect_return_code=%d (%s)",
-                    connect_return_code,
-                    p_connect_ret_code_desc);
-                if ((MQTT_CONNECTION_REFUSE_BAD_USERNAME == connect_return_code)
-                    || (MQTT_CONNECTION_REFUSE_NOT_AUTHORIZED == connect_return_code))
-                {
-                    mqtt_error = MQTT_ERROR_AUTH;
-                }
-                else
-                {
-                    mqtt_error = MQTT_ERROR_CONNECT;
-                }
-                (void)snprintf(
-                    p_mqtt_protected_data->err_msg,
-                    sizeof(p_mqtt_protected_data->err_msg),
-                    "Refusal to connect: %s",
-                    p_connect_ret_code_desc);
-            }
-            else
-            {
-                LOG_ERR(
-                    "MQTT_EVENT_ERROR (unknown error_type=%d): connect_return_code=%d (%s), "
-                    "esp_transport_sock_errno=%d, esp_tls_last_esp_err=%d",
-                    error_type,
-                    connect_return_code,
-                    p_connect_ret_code_desc,
-                    esp_transport_sock_errno,
-                    esp_tls_last_esp_err);
-                mqtt_error = MQTT_ERROR_CONNECT;
-                (void)snprintf(
-                    p_mqtt_protected_data->err_msg,
-                    sizeof(p_mqtt_protected_data->err_msg),
-                    "Failed to connect (Unknown error type)");
-            }
-            gw_status_set_mqtt_error(mqtt_error);
+            mqtt_event_handler_on_error(p_mqtt_protected_data, h_event->error_handle);
             break;
-        }
 
         case MQTT_EVENT_BEFORE_CONNECT:
             LOG_INFO("MQTT_EVENT_BEFORE_CONNECT");
