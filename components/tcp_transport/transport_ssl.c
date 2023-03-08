@@ -76,6 +76,8 @@ static int ssl_connect_async(esp_transport_handle_t t, const char *host, int por
         const int ret = esp_tls_conn_new_async(host, strlen(host), port, &ssl->cfg, ssl->tls);
         if (ret < 0) {
             ESP_LOGD(TAG, "%s: esp_tls_conn_new_async failed", __func__);
+            ESP_LOGD(TAG, "%s: esp_transport_set_errors", __func__);
+            esp_transport_set_errors(t, ssl->tls->error_handle);
         }
         return ret;
     }
@@ -205,7 +207,12 @@ static int ssl_write(esp_transport_handle_t t, const char *buffer, int len, int 
             err_desc_t err_desc;
             esp_err_to_name_r(errno, err_desc.buf, sizeof(err_desc.buf));
             ESP_LOGE(TAG, "esp_tls_conn_write error, errno=%d (%s)", errno, err_desc.buf);
-            esp_transport_set_errors(t, ssl->tls->error_handle);
+            esp_tls_last_error_t last_err = {
+                .last_error = errno,
+                .esp_tls_error_code = 0,
+                .esp_tls_flags = 0,
+            };
+            esp_transport_set_errors(t, &last_err);
         }
     } else {
         if (ssl->cfg.non_block) {
@@ -251,13 +258,25 @@ static int ssl_read(esp_transport_handle_t t, char *buffer, int len, int timeout
                 err_desc_t err_desc;
                 esp_err_to_name_r(errno, err_desc.buf, sizeof(err_desc.buf));
                 ESP_LOGE(TAG, "esp_tls_conn_read error, errno=%d (%s)", errno, err_desc.buf);
+                esp_tls_last_error_t last_err = {
+                    .last_error = errno,
+                    .esp_tls_error_code = 0,
+                    .esp_tls_flags = 0,
+                };
+                esp_transport_set_errors(t, &last_err);
+
                 ssl->timer_read_initialized = false;
             }
         } else {
             err_desc_t err_desc;
             esp_err_to_name_r(errno, err_desc.buf, sizeof(err_desc.buf));
             ESP_LOGE(TAG, "esp_tls_conn_read error, errno=%d (%s)", errno, err_desc.buf);
-            esp_transport_set_errors(t, ssl->tls->error_handle);
+            esp_tls_last_error_t last_err = {
+                .last_error = errno,
+                .esp_tls_error_code = 0,
+                .esp_tls_flags = 0,
+            };
+            esp_transport_set_errors(t, &last_err);
         }
     } else {
         if (ssl->cfg.non_block) {
