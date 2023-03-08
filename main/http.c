@@ -363,6 +363,7 @@ http_send_async(http_async_info_t* const p_http_async_info)
     if (ESP_ERR_HTTP_EAGAIN != err)
     {
         LOG_ERR_ESP(err, "### HTTP POST to URL=%s: request failed", p_http_config->url);
+        LOG_DBG("esp_http_client_cleanup");
         esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
         p_http_async_info->p_http_client_handle = NULL;
         return false;
@@ -422,6 +423,7 @@ http_send_advs_internal(
 
     if (!http_send_async(p_http_async_info))
     {
+        LOG_DBG("esp_http_client_cleanup");
         esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
         p_http_async_info->p_http_client_handle = NULL;
         cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
@@ -509,6 +511,7 @@ http_check_post_advs_internal3(
         os_free(server_resp.select_location.memory.p_buf);
     }
 
+    LOG_DBG("esp_http_client_cleanup");
     esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
     p_http_async_info->p_http_client_handle = NULL;
     cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
@@ -608,6 +611,7 @@ http_send_statistics_internal(
 
     if (!http_send_async(p_http_async_info))
     {
+        LOG_DBG("esp_http_client_cleanup");
         esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
         p_http_async_info->p_http_client_handle = NULL;
         cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
@@ -697,6 +701,7 @@ http_check_post_stat_internal3(
         os_free(server_resp.select_location.memory.p_buf);
     }
 
+    LOG_DBG("esp_http_client_cleanup");
     esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
     p_http_async_info->p_http_client_handle = NULL;
     cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
@@ -886,6 +891,7 @@ http_async_poll(void)
             p_http_async_info->http_client_config.esp_http_client_config.url);
     }
 
+    LOG_DBG("esp_http_client_cleanup");
     esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
     p_http_async_info->p_http_client_handle = NULL;
 
@@ -1404,6 +1410,7 @@ http_abort_any_req_during_processing(void)
             assert(p_http_async_info->p_task == os_task_get_cur_task_handle());
         }
 
+        LOG_DBG("esp_http_client_cleanup");
         esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
         p_http_async_info->p_http_client_handle = NULL;
         cjson_wrap_free_json_str(&p_http_async_info->cjson_str);

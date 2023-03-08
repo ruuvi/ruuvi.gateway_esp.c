@@ -645,6 +645,7 @@ http_server_on_get_check_mqtt(
     {
         str_buf_free_buf(&client_id);
         str_buf_free_buf(&topic_prefix);
+        LOG_ERR("Can't allocate memory for mqtt_cfg");
         return http_server_resp_500();
     }
 
