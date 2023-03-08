@@ -394,7 +394,21 @@ static int esp_transport_tcp_connect_async(esp_transport_handle_t t, const char 
                 /* pending error check */
                 if (getsockopt(tcp->sock, SOL_SOCKET, SO_ERROR, &error, &len) < 0)
                 {
-                    ESP_LOGD(TAG, "Non blocking connect failed");
+                    ESP_LOGE(TAG, "%s: Non blocking connect failed", __func__);
+                    tcp->conn_state = TRANS_TCP_FAIL;
+                    return -1;
+                }
+                if (0 != error)
+                {
+                    err_desc_t err_desc;
+                    esp_err_to_name_r(error, err_desc.buf, sizeof(err_desc.buf));
+                    ESP_LOGE(TAG, "%s: Non blocking connect failed: error=%d (%s)", __func__, error, err_desc.buf);
+                    esp_tls_last_error_t last_err = {
+                        .last_error = error,
+                        .esp_tls_error_code = 0,
+                        .esp_tls_flags = 0,
+                    };
+                    esp_transport_set_errors(t, &last_err);
                     tcp->conn_state = TRANS_TCP_FAIL;
                     return -1;
                 }
