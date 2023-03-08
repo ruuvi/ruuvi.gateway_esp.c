@@ -469,6 +469,17 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
                     tls->sockfd = -1;
                     return -1;
                 }
+                if (0 != error) {
+                    err_desc_t err_desc;
+                    esp_err_to_name_r(error, err_desc.buf, sizeof(err_desc.buf));
+                    ESP_LOGE(TAG, "%s: Non blocking connect failed: error=%d (%s)", __func__, error, err_desc.buf);
+                    ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_SYSTEM, error);
+                    ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, error);
+                    tls->conn_state = ESP_TLS_FAIL;
+                    close(tls->sockfd);
+                    tls->sockfd = -1;
+                    return -1;
+                }
             } else {
                 const TickType_t now = xTaskGetTickCount();
                 const uint32_t delta_ticks = now - tls->timer_start;
