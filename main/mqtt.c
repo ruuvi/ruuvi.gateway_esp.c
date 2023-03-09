@@ -20,6 +20,7 @@
 #include "esp_crt_bundle.h"
 #include "gw_status.h"
 #include "os_malloc.h"
+#include "esp_tls.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -32,6 +33,13 @@
 
 #define MQTT_NETWORK_TIMEOUT_MS (10U * 1000U)
 
+#define ERR_DESC_SIZE 80
+
+typedef struct err_desc_t
+{
+    char buf[ERR_DESC_SIZE];
+} err_desc_t;
+
 typedef int mqtt_message_id_t;
 
 typedef int esp_mqtt_client_data_len_t;
@@ -41,12 +49,15 @@ typedef struct mqtt_topic_buf_t
     char buf[TOPIC_LEN];
 } mqtt_topic_buf_t;
 
+#define MQTT_PROTECTED_DATA_ERR_MSG_SIZE 120
+
 typedef struct mqtt_protected_data_t
 {
     esp_mqtt_client_handle_t   p_mqtt_client;
     mqtt_topic_buf_t           mqtt_topic;
     ruuvi_gw_cfg_mqtt_prefix_t mqtt_prefix;
     bool                       mqtt_disable_retained_messages;
+    char                       err_msg[MQTT_PROTECTED_DATA_ERR_MSG_SIZE];
 } mqtt_protected_data_t;
 
 static bool                  g_mqtt_mutex_initialized = false;
@@ -208,9 +219,147 @@ mqtt_publish_state_offline(mqtt_protected_data_t* const p_mqtt_data)
     }
 }
 
+static const char*
+mqtt_connect_return_code_to_str(const esp_mqtt_connect_return_code_t connect_return_code)
+{
+    switch (connect_return_code)
+    {
+        case MQTT_CONNECTION_ACCEPTED:
+            return "MQTT_CONNECTION_ACCEPTED";
+        case MQTT_CONNECTION_REFUSE_PROTOCOL:
+            return "MQTT_CONNECTION_REFUSE_PROTOCOL";
+        case MQTT_CONNECTION_REFUSE_ID_REJECTED:
+            return "MQTT_CONNECTION_REFUSE_ID_REJECTED";
+        case MQTT_CONNECTION_REFUSE_SERVER_UNAVAILABLE:
+            return "MQTT_CONNECTION_REFUSE_SERVER_UNAVAILABLE";
+        case MQTT_CONNECTION_REFUSE_BAD_USERNAME:
+            return "MQTT_CONNECTION_REFUSE_BAD_USERNAME";
+        case MQTT_CONNECTION_REFUSE_NOT_AUTHORIZED:
+            return "MQTT_CONNECTION_REFUSE_NOT_AUTHORIZED";
+    }
+    return "Unknown";
+}
+
+static void
+mqtt_event_handler_on_error(
+    mqtt_protected_data_t* const        p_mqtt_protected_data,
+    const esp_mqtt_error_codes_t* const p_error_handle)
+{
+    p_mqtt_protected_data->err_msg[0] = '\0';
+
+    mqtt_error_e                         mqtt_error               = MQTT_ERROR_NONE;
+    const esp_err_t                      esp_tls_last_esp_err     = p_error_handle->esp_tls_last_esp_err;
+    const esp_mqtt_error_type_t          error_type               = p_error_handle->error_type;
+    const int                            esp_transport_sock_errno = p_error_handle->esp_transport_sock_errno;
+    const esp_mqtt_connect_return_code_t connect_return_code      = p_error_handle->connect_return_code;
+    const char* const                    p_connect_ret_code_desc = mqtt_connect_return_code_to_str(connect_return_code);
+    if (MQTT_ERROR_TYPE_TCP_TRANSPORT == error_type)
+    {
+        if (ESP_ERR_ESP_TLS_CANNOT_RESOLVE_HOSTNAME == esp_tls_last_esp_err)
+        {
+            LOG_ERR("MQTT_EVENT_ERROR (MQTT_ERROR_TYPE_TCP_TRANSPORT): ESP_ERR_ESP_TLS_CANNOT_RESOLVE_HOSTNAME");
+            mqtt_error = MQTT_ERROR_DNS;
+            (void)snprintf(
+                p_mqtt_protected_data->err_msg,
+                sizeof(p_mqtt_protected_data->err_msg),
+                "Failed to resolve hostname");
+        }
+        else if (ESP_ERR_ESP_TLS_FAILED_CONNECT_TO_HOST == esp_tls_last_esp_err)
+        {
+            LOG_ERR("MQTT_EVENT_ERROR (MQTT_ERROR_TYPE_TCP_TRANSPORT): ESP_ERR_ESP_TLS_FAILED_CONNECT_TO_HOST");
+            mqtt_error = MQTT_ERROR_CONNECT;
+            err_desc_t err_desc;
+            esp_err_to_name_r(esp_transport_sock_errno, err_desc.buf, sizeof(err_desc.buf));
+            (void)snprintf(
+                p_mqtt_protected_data->err_msg,
+                sizeof(p_mqtt_protected_data->err_msg),
+                "Failed to connect to host, error %d (%s)",
+                esp_transport_sock_errno,
+                err_desc.buf);
+        }
+        else
+        {
+            if (0 != esp_tls_last_esp_err)
+            {
+                err_desc_t err_desc;
+                esp_err_to_name_r(esp_tls_last_esp_err, err_desc.buf, sizeof(err_desc.buf));
+                LOG_ERR(
+                    "MQTT_EVENT_ERROR (MQTT_ERROR_TYPE_TCP_TRANSPORT): %d (%s)",
+                    esp_tls_last_esp_err,
+                    err_desc.buf);
+                (void)snprintf(
+                    p_mqtt_protected_data->err_msg,
+                    sizeof(p_mqtt_protected_data->err_msg),
+                    "Error %d (%s)",
+                    esp_tls_last_esp_err,
+                    err_desc.buf);
+            }
+            else if (0 != esp_transport_sock_errno)
+            {
+                err_desc_t err_desc;
+                esp_err_to_name_r(esp_transport_sock_errno, err_desc.buf, sizeof(err_desc.buf));
+                LOG_ERR(
+                    "MQTT_EVENT_ERROR (MQTT_ERROR_TYPE_TCP_TRANSPORT): %d (%s)",
+                    esp_transport_sock_errno,
+                    err_desc.buf);
+                (void)snprintf(
+                    p_mqtt_protected_data->err_msg,
+                    sizeof(p_mqtt_protected_data->err_msg),
+                    "%s",
+                    err_desc.buf);
+            }
+            else
+            {
+                LOG_ERR("MQTT_EVENT_ERROR (MQTT_ERROR_TYPE_TCP_TRANSPORT): Unknown error");
+                (void)snprintf(p_mqtt_protected_data->err_msg, sizeof(p_mqtt_protected_data->err_msg), "Unknown error");
+            }
+            mqtt_error = MQTT_ERROR_CONNECT;
+        }
+    }
+    else if (MQTT_ERROR_TYPE_CONNECTION_REFUSED == error_type)
+    {
+        LOG_ERR(
+            "MQTT_EVENT_ERROR (MQTT_ERROR_TYPE_CONNECTION_REFUSED): connect_return_code=%d (%s)",
+            connect_return_code,
+            p_connect_ret_code_desc);
+        if ((MQTT_CONNECTION_REFUSE_BAD_USERNAME == connect_return_code)
+            || (MQTT_CONNECTION_REFUSE_NOT_AUTHORIZED == connect_return_code))
+        {
+            mqtt_error = MQTT_ERROR_AUTH;
+        }
+        else
+        {
+            mqtt_error = MQTT_ERROR_CONNECT;
+        }
+        (void)snprintf(
+            p_mqtt_protected_data->err_msg,
+            sizeof(p_mqtt_protected_data->err_msg),
+            "Refusal to connect: %s",
+            p_connect_ret_code_desc);
+    }
+    else
+    {
+        LOG_ERR(
+            "MQTT_EVENT_ERROR (unknown error_type=%d): connect_return_code=%d (%s), "
+            "esp_transport_sock_errno=%d, esp_tls_last_esp_err=%d",
+            error_type,
+            connect_return_code,
+            p_connect_ret_code_desc,
+            esp_transport_sock_errno,
+            esp_tls_last_esp_err);
+        mqtt_error = MQTT_ERROR_CONNECT;
+        (void)snprintf(
+            p_mqtt_protected_data->err_msg,
+            sizeof(p_mqtt_protected_data->err_msg),
+            "Failed to connect (Unknown error type)");
+    }
+    gw_status_set_mqtt_error(mqtt_error);
+}
+
 static esp_err_t
 mqtt_event_handler(esp_mqtt_event_handle_t h_event)
 {
+    mqtt_protected_data_t* const p_mqtt_protected_data = h_event->user_context;
     switch (h_event->event_id)
     {
         case MQTT_EVENT_CONNECTED:
@@ -247,15 +396,8 @@ mqtt_event_handler(esp_mqtt_event_handle_t h_event)
             break;
 
         case MQTT_EVENT_ERROR:
-        {
-            const esp_mqtt_connect_return_code_t connect_return_code = h_event->error_handle->connect_return_code;
-            LOG_INFO("MQTT_EVENT_ERROR: connect_return_code=%d", connect_return_code);
-            const bool flag_auth_failed = (MQTT_ERROR_TYPE_CONNECTION_REFUSED == h_event->error_handle->error_type)
-                                          && ((MQTT_CONNECTION_REFUSE_BAD_USERNAME == connect_return_code)
-                                              || (MQTT_CONNECTION_REFUSE_NOT_AUTHORIZED == connect_return_code));
-            gw_status_set_mqtt_error(flag_auth_failed);
+            mqtt_event_handler_on_error(p_mqtt_protected_data, h_event->error_handle);
             break;
-        }
 
         case MQTT_EVENT_BEFORE_CONNECT:
             LOG_INFO("MQTT_EVENT_BEFORE_CONNECT");
@@ -299,7 +441,8 @@ static esp_mqtt_client_config_t
 mqtt_generate_client_config(
     const ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg,
     const mqtt_topic_buf_t* const    p_mqtt_topic,
-    const char* const                p_lwt_message)
+    const char* const                p_lwt_message,
+    void* const                      p_user_context)
 {
     const esp_mqtt_client_config_t mqtt_cfg = {
         .event_handle                = &mqtt_event_handler,
@@ -318,7 +461,7 @@ mqtt_generate_client_config(
         .disable_clean_session       = 0,
         .keepalive                   = 0,
         .disable_auto_reconnect      = false,
-        .user_context                = NULL,
+        .user_context                = p_user_context,
         .task_prio                   = 0,
         .task_stack                  = 0,
         .buffer_size                 = 0,
@@ -366,7 +509,7 @@ mqtt_prep_client_config(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg_m
         p_mqtt_cfg->mqtt_user.buf,
         (LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG) ? p_mqtt_cfg->mqtt_pass.buf : "******");
 
-    return mqtt_generate_client_config(p_mqtt_cfg, &p_mqtt_data->mqtt_topic, p_lwt_message);
+    return mqtt_generate_client_config(p_mqtt_cfg, &p_mqtt_data->mqtt_topic, p_lwt_message, p_mqtt_data);
 }
 
 static bool
@@ -392,6 +535,7 @@ void
 mqtt_app_start_internal(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg)
 {
     gw_status_clear_mqtt_connected_and_error();
+    p_mqtt_data->err_msg[0] = '\0';
 
     if (('\0' == p_mqtt_cfg->mqtt_server.buf[0]) || (0 == p_mqtt_cfg->mqtt_port))
     {
@@ -402,7 +546,7 @@ mqtt_app_start_internal(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg_m
             p_mqtt_cfg->mqtt_port,
             p_mqtt_cfg->mqtt_user.buf,
             "******");
-        gw_status_set_mqtt_error(false);
+        gw_status_set_mqtt_error(MQTT_ERROR_CONNECT);
         return;
     }
     const esp_mqtt_client_config_t mqtt_cli_cfg = mqtt_prep_client_config(p_mqtt_data, p_mqtt_cfg);
@@ -437,7 +581,7 @@ mqtt_app_start_with_gw_cfg(void)
     if (NULL == p_mqtt_cfg)
     {
         LOG_ERR("Can't allocate memory for MQTT config");
-        gw_status_set_mqtt_error(false);
+        gw_status_set_mqtt_error(MQTT_ERROR_CONNECT);
         return;
     }
 
@@ -496,4 +640,17 @@ mqtt_app_is_working(void)
     const bool             is_working  = (NULL != p_mqtt_data->p_mqtt_client) ? true : false;
     mqtt_mutex_unlock(&p_mqtt_data);
     return is_working;
+}
+
+str_buf_t
+mqtt_app_get_error_message(void)
+{
+    str_buf_t              str_buf     = str_buf_init_null();
+    mqtt_protected_data_t* p_mqtt_data = mqtt_mutex_lock();
+    if (NULL != p_mqtt_data->p_mqtt_client)
+    {
+        str_buf = str_buf_printf_with_alloc("%s", p_mqtt_data->err_msg);
+    }
+    mqtt_mutex_unlock(&p_mqtt_data);
+    return str_buf;
 }

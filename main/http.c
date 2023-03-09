@@ -27,6 +27,7 @@
 #include "http_server_resp.h"
 #include "mqtt.h"
 #include "http_server_cb.h"
+#include "esp_tls.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -39,6 +40,13 @@
 
 typedef int esp_http_client_len_t;
 typedef int esp_http_client_http_status_code_t;
+
+#define ERR_DESC_SIZE 80
+
+typedef struct err_desc_t
+{
+    char buf[ERR_DESC_SIZE];
+} err_desc_t;
 
 typedef struct http_download_cb_info_t
 {
@@ -266,6 +274,22 @@ http_download_feed_task_watchdog_if_needed(const bool flag_feed_task_watchdog)
     }
 }
 
+static void
+escape_message_from_server(const char* const p_json, str_buf_t* const p_str_buf)
+{
+    for (const char* p_cur = p_json; '\0' != *p_cur; ++p_cur)
+    {
+        if ('"' == *p_cur)
+        {
+            str_buf_printf(p_str_buf, "\\%c", *p_cur);
+        }
+        else
+        {
+            str_buf_printf(p_str_buf, "%c", *p_cur);
+        }
+    }
+}
+
 static http_server_resp_t
 http_wait_until_async_req_completed_handle_http_resp(
     esp_http_client_handle_t   p_http_handle,
@@ -295,7 +319,34 @@ http_wait_until_async_req_completed_handle_http_resp(
         return http_server_resp_err(http_resp_code);
     }
     LOG_DBG("HTTP response: %.*s", p_cb_info->offset, p_cb_info->p_buf);
-    return http_server_resp_json_in_heap(http_resp_code, p_cb_info->p_buf);
+
+    str_buf_t str_buf = STR_BUF_INIT_NULL();
+    escape_message_from_server(p_cb_info->p_buf, &str_buf);
+    if (str_buf_init_with_alloc(&str_buf))
+    {
+        escape_message_from_server(p_cb_info->p_buf, &str_buf);
+    }
+    os_free(p_cb_info->p_buf);
+    p_cb_info->p_buf = NULL;
+
+    if (NULL == str_buf.buf)
+    {
+        LOG_ERR("Can't allocate memory for escapes message from the server");
+        return http_server_resp_500();
+    }
+    const str_buf_t http_resp_buf = str_buf_printf_with_alloc(
+        "HTTP response status: %u, Message from the server: %s",
+        http_resp_code,
+        str_buf.buf);
+    str_buf_free_buf(&str_buf);
+
+    if (NULL == http_resp_buf.buf)
+    {
+        LOG_ERR("Can't allocate memory for http_resp");
+        return http_server_resp_500();
+    }
+
+    return http_server_resp_json_in_heap(http_resp_code, http_resp_buf.buf);
 }
 
 static http_server_resp_t
@@ -322,7 +373,20 @@ http_wait_until_async_req_completed(
                 os_free(p_cb_info->p_buf);
                 p_cb_info->p_buf = NULL;
             }
-            return http_server_resp_err(HTTP_RESP_CODE_502);
+            if (ESP_ERR_ESP_TLS_CANNOT_RESOLVE_HOSTNAME == err)
+            {
+                LOG_ERR("%s failed, err=%d (%s)", "esp_http_client_perform", err, "CANNOT_RESOLVE_HOSTNAME");
+                const str_buf_t str_buf = str_buf_printf_with_alloc("Failed to resolve hostname");
+                return http_server_resp_502_json_in_heap(str_buf.buf);
+            }
+            LOG_ERR_ESP(err, "%s failed", "esp_http_client_perform");
+            err_desc_t err_desc;
+            esp_err_to_name_r(err, err_desc.buf, sizeof(err_desc.buf));
+            const str_buf_t str_buf = str_buf_printf_with_alloc(
+                "Network error when communicating with the server, err=%d, description=%s",
+                err,
+                err_desc.buf);
+            return http_server_resp_502_json_in_heap(str_buf.buf);
         }
         LOG_DBG("esp_http_client_perform: ESP_ERR_HTTP_EAGAIN");
         vTaskDelay(pdMS_TO_TICKS(50));
@@ -334,7 +398,8 @@ http_wait_until_async_req_completed(
         os_free(p_cb_info->p_buf);
         p_cb_info->p_buf = NULL;
     }
-    return http_server_resp_err(HTTP_RESP_CODE_502);
+    const str_buf_t str_buf = str_buf_printf_with_alloc("Timeout waiting for a response from the server");
+    return http_server_resp_502_json_in_heap(str_buf.buf);
 }
 
 static bool
@@ -363,6 +428,7 @@ http_send_async(http_async_info_t* const p_http_async_info)
     if (ESP_ERR_HTTP_EAGAIN != err)
     {
         LOG_ERR_ESP(err, "### HTTP POST to URL=%s: request failed", p_http_config->url);
+        LOG_DBG("esp_http_client_cleanup");
         esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
         p_http_async_info->p_http_client_handle = NULL;
         return false;
@@ -422,6 +488,7 @@ http_send_advs_internal(
 
     if (!http_send_async(p_http_async_info))
     {
+        LOG_DBG("esp_http_client_cleanup");
         esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
         p_http_async_info->p_http_client_handle = NULL;
         cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
@@ -485,7 +552,7 @@ http_check_post_advs_internal3(
             &p_http_async_info->http_post_cb_info))
     {
         LOG_ERR("http_send_advs failed");
-        return http_server_resp_err(HTTP_RESP_CODE_500);
+        return http_server_resp_500();
     }
 
     const bool         flag_feed_task_watchdog = true;
@@ -502,13 +569,22 @@ http_check_post_advs_internal3(
         http_resp_code = HTTP_RESP_CODE_200;
     }
 
-    const http_server_resp_t resp = http_server_cb_gen_resp(http_resp_code, "%s", "");
+    const bool flag_is_in_memory = (HTTP_CONTENT_LOCATION_FLASH_MEM == server_resp.content_location)
+                                   || (HTTP_CONTENT_LOCATION_STATIC_MEM == server_resp.content_location)
+                                   || (HTTP_CONTENT_LOCATION_HEAP == server_resp.content_location);
+    const char* const p_json = (flag_is_in_memory && (NULL != server_resp.select_location.memory.p_buf))
+                                   ? (const char*)server_resp.select_location.memory.p_buf
+                                   : NULL;
+
+    const http_server_resp_t resp = http_server_cb_gen_resp(http_resp_code, "%s", (NULL != p_json) ? p_json : "");
+
     if ((HTTP_CONTENT_LOCATION_HEAP == server_resp.content_location)
         && (NULL != server_resp.select_location.memory.p_buf))
     {
         os_free(server_resp.select_location.memory.p_buf);
     }
 
+    LOG_DBG("esp_http_client_cleanup");
     esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
     p_http_async_info->p_http_client_handle = NULL;
     cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
@@ -528,7 +604,7 @@ http_check_post_advs_internal2(
     if (NULL == p_cfg_http)
     {
         LOG_ERR("Can't allocate memory for ruuvi_gw_cfg_http_t");
-        return http_server_resp_err(HTTP_RESP_CODE_500);
+        return http_server_resp_500();
     }
 
     const http_server_resp_t resp
@@ -608,6 +684,7 @@ http_send_statistics_internal(
 
     if (!http_send_async(p_http_async_info))
     {
+        LOG_DBG("esp_http_client_cleanup");
         esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
         p_http_async_info->p_http_client_handle = NULL;
         cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
@@ -673,7 +750,7 @@ http_check_post_stat_internal3(
             &p_http_async_info->http_post_cb_info))
     {
         LOG_ERR("http_send_statistics failed");
-        return http_server_resp_err(HTTP_RESP_CODE_500);
+        return http_server_resp_500();
     }
 
     const bool         flag_feed_task_watchdog = true;
@@ -690,13 +767,22 @@ http_check_post_stat_internal3(
         http_resp_code = HTTP_RESP_CODE_200;
     }
 
-    const http_server_resp_t resp = http_server_cb_gen_resp(http_resp_code, "%s", "");
+    const bool flag_is_in_memory = (HTTP_CONTENT_LOCATION_FLASH_MEM == server_resp.content_location)
+                                   || (HTTP_CONTENT_LOCATION_STATIC_MEM == server_resp.content_location)
+                                   || (HTTP_CONTENT_LOCATION_HEAP == server_resp.content_location);
+    const char* const p_json = (flag_is_in_memory && (NULL != server_resp.select_location.memory.p_buf))
+                                   ? (const char*)server_resp.select_location.memory.p_buf
+                                   : NULL;
+
+    const http_server_resp_t resp = http_server_cb_gen_resp(http_resp_code, "%s", (NULL != p_json) ? p_json : "");
+
     if ((HTTP_CONTENT_LOCATION_HEAP == server_resp.content_location)
         && (NULL != server_resp.select_location.memory.p_buf))
     {
         os_free(server_resp.select_location.memory.p_buf);
     }
 
+    LOG_DBG("esp_http_client_cleanup");
     esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
     p_http_async_info->p_http_client_handle = NULL;
     cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
@@ -716,7 +802,7 @@ http_check_post_stat_internal2(
     if (NULL == p_cfg_http_stat)
     {
         LOG_ERR("Can't allocate memory for ruuvi_gw_cfg_http_t");
-        return http_server_resp_err(HTTP_RESP_CODE_500);
+        return http_server_resp_500();
     }
 
     const http_server_resp_t resp
@@ -777,27 +863,50 @@ http_check_mqtt_internal(const ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg, const Time
         vTaskDelay(pdMS_TO_TICKS(50));
     }
 
-    const bool flag_is_mqtt_connected  = gw_status_is_mqtt_connected();
-    const bool flag_is_mqtt_error      = gw_status_is_mqtt_error();
-    const bool flag_is_mqtt_auth_error = gw_status_is_mqtt_auth_error();
+    const bool         flag_is_mqtt_connected = gw_status_is_mqtt_connected();
+    const mqtt_error_e mqtt_error             = gw_status_get_mqtt_error();
+    str_buf_t          mqtt_err_msg           = mqtt_app_get_error_message();
 
     LOG_DBG("mqtt_app_stop");
+    LOG_DBG("mqtt_err_msg: %s", mqtt_err_msg.buf ? mqtt_err_msg.buf : ":NULL:");
     mqtt_app_stop();
 
     http_resp_code_e http_resp_code = HTTP_RESP_CODE_200;
-    if ((!flag_is_mqtt_connected) || flag_is_mqtt_error)
+    str_buf_t        err_desc       = STR_BUF_INIT_NULL();
+    if (!flag_is_mqtt_connected)
     {
-        if (flag_is_mqtt_auth_error)
+        switch (mqtt_error)
         {
-            http_resp_code = HTTP_RESP_CODE_401;
-        }
-        else
-        {
-            http_resp_code = HTTP_RESP_CODE_404;
+            case MQTT_ERROR_NONE:
+                http_resp_code = HTTP_RESP_CODE_502; // Not Found
+                err_desc       = str_buf_printf_with_alloc("Timeout waiting for a response from the server");
+                break;
+            case MQTT_ERROR_DNS:
+                http_resp_code = HTTP_RESP_CODE_502; // Not Found
+                err_desc       = str_buf_printf_with_alloc("Failed to resolve hostname");
+                break;
+            case MQTT_ERROR_AUTH:
+                http_resp_code = HTTP_RESP_CODE_401; // Unauthorized
+                err_desc       = str_buf_printf_with_alloc(
+                    "Access with the specified credentials is prohibited (%s)",
+                    (NULL != mqtt_err_msg.buf) ? mqtt_err_msg.buf : "");
+                break;
+            case MQTT_ERROR_CONNECT:
+                http_resp_code = HTTP_RESP_CODE_502; // Not Found
+                err_desc       = str_buf_printf_with_alloc(
+                    "Failed to connect (%s)",
+                    (NULL != mqtt_err_msg.buf) ? mqtt_err_msg.buf : "");
+                break;
         }
     }
+    str_buf_free_buf(&mqtt_err_msg);
 
-    return http_server_cb_gen_resp(http_resp_code, "%s", "");
+    const http_server_resp_t resp = http_server_cb_gen_resp(
+        http_resp_code,
+        "%s",
+        (NULL != err_desc.buf) ? err_desc.buf : "");
+    str_buf_free_buf(&err_desc);
+    return resp;
 }
 
 http_server_resp_t
@@ -886,6 +995,7 @@ http_async_poll(void)
             p_http_async_info->http_client_config.esp_http_client_config.url);
     }
 
+    LOG_DBG("esp_http_client_cleanup");
     esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
     p_http_async_info->p_http_client_handle = NULL;
 
@@ -1404,6 +1514,7 @@ http_abort_any_req_during_processing(void)
             assert(p_http_async_info->p_task == os_task_get_cur_task_handle());
         }
 
+        LOG_DBG("esp_http_client_cleanup");
         esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
         p_http_async_info->p_http_client_handle = NULL;
         cjson_wrap_free_json_str(&p_http_async_info->cjson_str);

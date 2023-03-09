@@ -10,6 +10,7 @@ idf_component_register(
             cjson_wrap.h
             esp_ota_ops_patched.c
             esp_ota_ops_patched.h
+            esp_err_to_name.c
             ethernet.c
             ethernet.h
             event_mgr.c
@@ -132,4 +133,5 @@ target_link_options(${COMPONENT_LIB} INTERFACE
         "-Wl,--wrap,esp_panic_handler"
         "-Wl,--defsym,panic_print_char=panic_print_char_override"
         "-Wl,--wrap,panic_restart"
+        "-Wl,--wrap,esp_err_to_name_r"
         )
