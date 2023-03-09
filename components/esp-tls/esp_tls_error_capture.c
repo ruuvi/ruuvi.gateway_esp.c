@@ -14,6 +14,10 @@
 
 #include "esp_tls.h"
 #include "esp_tls_error_capture_internal.h"
+#define LOG_LOCAL_LEVEL 3
+#include "esp_log.h"
+
+static const char* TAG = "esp_tls_error";
 
 typedef struct esp_tls_error_storage {
     struct esp_tls_last_error parent;   /*!< standard esp-tls last error container */
@@ -24,6 +28,8 @@ void esp_tls_internal_event_tracker_capture(esp_tls_error_handle_t h, uint32_t t
 {
     if (h) {
         esp_tls_error_storage_t * storage = __containerof(h, esp_tls_error_storage_t, parent);
+
+        ESP_LOGD(TAG, "[%s] %s: type=%d, code=%d", pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", __func__, type, code);
 
         if (type == ESP_TLS_ERR_TYPE_ESP) {
             storage->parent.last_error = code;

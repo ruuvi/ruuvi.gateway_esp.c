@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include "esp_system.h"
+#define LOG_LOCAL_LEVEL 3
 #include "esp_log.h"
 
 #include "http_header.h"
@@ -33,6 +34,12 @@
 #endif
 
 static const char *TAG = "HTTP_CLIENT";
+
+typedef struct err_desc_t
+{
+#define ERR_DESC_SIZE 80
+    char buf[ERR_DESC_SIZE];
+} err_desc_t;
 
 /**
  * HTTP Buffer
@@ -702,6 +709,7 @@ error:
 
 esp_err_t esp_http_client_cleanup(esp_http_client_handle_t client)
 {
+    ESP_LOGD(TAG, "esp_http_client_cleanup");
     if (client == NULL) {
         return ESP_FAIL;
     }
@@ -1013,12 +1021,42 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
 #endif
             case HTTP_STATE_CONNECTING:
                 if (client->is_async) {
+                    ESP_LOGD(TAG, "%s: esp_transport_connect_async", __func__);
                     int ret = esp_transport_connect_async(client->transport, client->connection_info.host,
                                                           client->connection_info.port, client->timeout_ms);
                     if (ret == ASYNC_TRANS_CONNECT_FAIL) {
                         ESP_LOGE(TAG, "Connection failed");
+                        esp_tls_error_handle_t err_handle = esp_transport_get_error_handle(client->transport);
+                        if (NULL != err_handle) {
+                            int esp_tls_code = 0;
+                            int esp_tls_flags = 0;
+                            esp_err_t esp_tls_last_esp_err = esp_tls_get_and_clear_last_error(
+                                err_handle,
+                                &esp_tls_code,
+                                &esp_tls_flags);
+                            const int sock_errno = esp_transport_get_errno(client->transport);
+                            if (0 != esp_tls_last_esp_err) {
+                                err_desc_t err_desc;
+                                esp_err_to_name_r(esp_tls_last_esp_err, err_desc.buf, sizeof(err_desc.buf));
+                                ESP_LOGE(
+                                    TAG,
+                                    "Connection failed: esp_tls_last_esp_err=%d (%s)",
+                                    esp_tls_last_esp_err,
+                                    err_desc.buf);
+                                return esp_tls_last_esp_err;
+                            }
+                            if (0 != sock_errno) {
+                                err_desc_t err_desc;
+                                esp_err_to_name_r(sock_errno, err_desc.buf, sizeof(err_desc.buf));
+                                ESP_LOGE(TAG, "Connection failed: sock_errno=%d (%s)", sock_errno, err_desc.buf);
+                                return sock_errno;
+                            }
+                            ESP_LOGE(TAG, "Connection failed: Connection timeout");
+                            return ESP_ERR_HTTP_CONNECT;
+                        }
                         return ESP_ERR_HTTP_CONNECT;
-                    } else if (ret == ASYNC_TRANS_CONNECTING) {
+                    }
+                    if (ret == ASYNC_TRANS_CONNECTING) {
                         ESP_LOGD(TAG, "Connection not yet established");
                         return ESP_ERR_HTTP_EAGAIN;
                     }
@@ -1151,6 +1189,7 @@ static esp_err_t esp_http_client_connect(esp_http_client_handle_t client)
     if (client->state < HTTP_STATE_CONNECTED) {
         ESP_LOGD(TAG, "Begin connect to: %s://%s:%d", client->connection_info.scheme, client->connection_info.host, client->connection_info.port);
         client->transport = esp_transport_list_get_transport(client->transport_list, client->connection_info.scheme);
+        ESP_LOGD(TAG, "%s: client->transport=%p", __func__, client->transport);
         if (client->transport == NULL) {
             ESP_LOGE(TAG, "No transport found");
 #ifndef CONFIG_ESP_HTTP_CLIENT_ENABLE_HTTPS
@@ -1166,9 +1205,33 @@ static esp_err_t esp_http_client_connect(esp_http_client_handle_t client)
                 return ESP_ERR_HTTP_CONNECT;
             }
         } else {
+            ESP_LOGD(TAG, "esp_transport_connect_async");
             int ret = esp_transport_connect_async(client->transport, client->connection_info.host, client->connection_info.port, client->timeout_ms);
             if (ret == ASYNC_TRANS_CONNECT_FAIL) {
-                ESP_LOGE(TAG, "Connection failed");
+                int esp_tls_code = 0;
+                int esp_tls_flags = 0;
+                const esp_err_t esp_tls_last_esp_err = esp_tls_get_and_clear_last_error(
+                    esp_transport_get_error_handle(client->transport),
+                    &esp_tls_code,
+                    &esp_tls_flags);
+                const int sock_errno = esp_transport_get_errno(client->transport);
+                if (0 != esp_tls_last_esp_err) {
+                    err_desc_t err_desc;
+                    esp_err_to_name_r(esp_tls_last_esp_err, err_desc.buf, sizeof(err_desc.buf));
+                    ESP_LOGE(
+                        TAG,
+                        "Connection failed: esp_tls_last_esp_err=%d (%s)",
+                        esp_tls_last_esp_err,
+                        err_desc.buf);
+                }
+                else if (0 != sock_errno) {
+                    err_desc_t err_desc;
+                    esp_err_to_name_r(sock_errno, err_desc.buf, sizeof(err_desc.buf));
+                    ESP_LOGE(TAG, "Connection failed: sock_errno=%d (%s)", sock_errno, err_desc.buf);
+                }
+                else {
+                    ESP_LOGE(TAG, "Connection failed: Unknown error");
+                }
                 return ESP_ERR_HTTP_CONNECT;
             } else if (ret == ASYNC_TRANS_CONNECTING) {
                 ESP_LOGD(TAG, "Connection not yet established");

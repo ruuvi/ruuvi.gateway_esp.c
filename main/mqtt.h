@@ -10,6 +10,7 @@
 
 #include "adv_table.h"
 #include "gw_cfg.h"
+#include "str_buf.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,6 +33,9 @@ mqtt_publish_adv(const adv_report_t* const p_adv, const bool flag_use_timestamps
 
 void
 mqtt_publish_connect(void);
+
+str_buf_t
+mqtt_app_get_error_message(void);
 
 #ifdef __cplusplus
 }

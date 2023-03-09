@@ -19,6 +19,7 @@
 #include "lwip/dns.h"
 #include "lwip/netdb.h"
 
+#define LOG_LOCAL_LEVEL 3
 #include "esp_log.h"
 #include "esp_system.h"
 #include "esp_err.h"
@@ -26,8 +27,16 @@
 #include "esp_transport_utils.h"
 #include "esp_transport.h"
 #include "esp_transport_internal.h"
+#include "esp_transport_ssl_internal.h"
+#include "esp_tls.h"
 
 static const char *TAG = "TRANS_TCP";
+
+typedef struct err_desc_t
+{
+#define ERR_DESC_SIZE 80
+    char buf[ERR_DESC_SIZE];
+} err_desc_t;
 
 typedef enum {
     TRANS_TCP_INIT = 0,
@@ -67,7 +76,43 @@ static int resolve_dns(const char *host, struct sockaddr_in *ip)
 
     int err = getaddrinfo(host, NULL, &hints, &res);
     if(err != 0 || res == NULL) {
-        ESP_LOGE(TAG, "DNS lookup failed err=%d res=%p", err, res);
+        const char* p_err_desc = "Unknown";
+        err_desc_t err_desc;
+        switch (err)
+        {
+            case EAI_NONAME:
+                p_err_desc = "EAI_NONAME";
+                break;
+            case EAI_SERVICE:
+                p_err_desc = "EAI_SERVICE";
+                break;
+            case EAI_FAIL:
+                p_err_desc = "EAI_FAIL";
+                break;
+            case EAI_MEMORY:
+                p_err_desc = "EAI_MEMORY";
+                break;
+            case EAI_FAMILY:
+                p_err_desc = "EAI_FAMILY";
+                break;
+            case HOST_NOT_FOUND:
+                p_err_desc = "HOST_NOT_FOUND";
+                break;
+            case NO_DATA:
+                p_err_desc = "NO_DATA";
+                break;
+            case NO_RECOVERY:
+                p_err_desc = "NO_RECOVERY";
+                break;
+            case TRY_AGAIN:
+                p_err_desc = "TRY_AGAIN";
+                break;
+            default:
+                esp_err_to_name_r(err, err_desc.buf, sizeof(err_desc.buf));
+                p_err_desc = err_desc.buf;
+                break;
+        }
+        ESP_LOGE(TAG, "DNS lookup failed err=%d (%s) res=%p", err, p_err_desc, res);
         return ESP_FAIL;
     }
     ip->sin_family = AF_INET;
@@ -117,6 +162,13 @@ static int tcp_connect(esp_transport_handle_t t, const char *host_or_ip, int por
     //if stream_host is not ip address, resolve it AF_INET,servername,&serveraddr.sin_addr
     if (inet_pton(AF_INET, host_or_ip, &remote_ip.sin_addr) != 1) {
         if (resolve_dns(host_or_ip, &remote_ip) < 0) {
+            ESP_LOGE(TAG, "%s: failed to resolve hostname '%s'", __func__, host_or_ip);
+            esp_tls_last_error_t last_err = {
+                .last_error = ESP_ERR_ESP_TLS_CANNOT_RESOLVE_HOSTNAME,
+                .esp_tls_error_code = 0,
+                .esp_tls_flags = 0,
+            };
+            esp_transport_set_errors(t, &last_err);
             return -1;
         }
     }
@@ -145,11 +197,15 @@ static int tcp_connect(esp_transport_handle_t t, const char *host_or_ip, int por
     // Set socket to non-blocking
     int flags;
     if ((flags = fcntl(tcp->sock, F_GETFL, NULL)) < 0) {
-        ESP_LOGE(TAG, "[sock=%d] get file flags error: %s", tcp->sock, strerror(errno));
+        err_desc_t err_desc;
+        esp_err_to_name_r(errno, err_desc.buf, sizeof(err_desc.buf));
+        ESP_LOGE(TAG, "[sock=%d] get file flags error: %d (%s)", tcp->sock, errno, err_desc.buf);
         goto error;
     }
     if (fcntl(tcp->sock, F_SETFL, flags |= O_NONBLOCK) < 0) {
-        ESP_LOGE(TAG, "[sock=%d] set nonblocking error: %s", tcp->sock, strerror(errno));
+        err_desc_t err_desc;
+        esp_err_to_name_r(errno, err_desc.buf, sizeof(err_desc.buf));
+        ESP_LOGE(TAG, "[sock=%d] set nonblocking error: %d (%s)", tcp->sock, errno, err_desc.buf);
         goto error;
     }
 
@@ -167,41 +223,53 @@ static int tcp_connect(esp_transport_handle_t t, const char *host_or_ip, int por
 
             int res = select(tcp->sock+1, NULL, &fdset, NULL, &tv);
             if (res < 0) {
-                ESP_LOGE(TAG, "[sock=%d] select() error: %s", tcp->sock, strerror(errno));
+                err_desc_t err_desc;
+                esp_err_to_name_r(errno, err_desc.buf, sizeof(err_desc.buf));
+                ESP_LOGE(TAG, "[sock=%d] select() error: %d (%s)", tcp->sock, errno, err_desc.buf);
                 esp_transport_capture_errno(t, errno);
                 goto error;
             }
             else if (res == 0) {
                 ESP_LOGE(TAG, "[sock=%d] select() timeout", tcp->sock);
-                esp_transport_capture_errno(t, EINPROGRESS);    // errno=EINPROGRESS indicates connection timeout
+                esp_transport_capture_errno(t, ESP_ERR_TIMEOUT);
                 goto error;
             } else {
                 int sockerr;
                 socklen_t len = (socklen_t)sizeof(int);
 
                 if (getsockopt(tcp->sock, SOL_SOCKET, SO_ERROR, (void*)(&sockerr), &len) < 0) {
-                    ESP_LOGE(TAG, "[sock=%d] getsockopt() error: %s", tcp->sock, strerror(errno));
+                    err_desc_t err_desc;
+                    esp_err_to_name_r(errno, err_desc.buf, sizeof(err_desc.buf));
+                    ESP_LOGE(TAG, "[sock=%d] getsockopt() error: %d (%s)", tcp->sock, errno, err_desc.buf);
                     goto error;
                 }
                 else if (sockerr) {
                     esp_transport_capture_errno(t, sockerr);
-                    ESP_LOGE(TAG, "[sock=%d] delayed connect error: %s", tcp->sock, strerror(sockerr));
+                    err_desc_t err_desc;
+                    esp_err_to_name_r(sockerr, err_desc.buf, sizeof(err_desc.buf));
+                    ESP_LOGE(TAG, "[sock=%d] delayed connect error: %d (%s)", tcp->sock, sockerr, err_desc.buf);
                     goto error;
                 }
             }
         } else if (!tcp->non_block || (errno != EINPROGRESS)) {
-            ESP_LOGE(TAG, "[sock=%d] connect() error: %s", tcp->sock, strerror(errno));
+            err_desc_t err_desc;
+            esp_err_to_name_r(errno, err_desc.buf, sizeof(err_desc.buf));
+            ESP_LOGE(TAG, "[sock=%d] connect() error: %d (%s)", tcp->sock, errno, err_desc.buf);
             goto error;
         }
     }
     if (!tcp->non_block) {
         // Reset socket to blocking
         if ((flags = fcntl(tcp->sock, F_GETFL, NULL)) < 0) {
-            ESP_LOGE(TAG, "[sock=%d] get file flags error: %s", tcp->sock, strerror(errno));
+            err_desc_t err_desc;
+            esp_err_to_name_r(errno, err_desc.buf, sizeof(err_desc.buf));
+            ESP_LOGE(TAG, "[sock=%d] get file flags error: %d (%s)", tcp->sock, errno, err_desc.buf);
             goto error;
         }
         if (fcntl(tcp->sock, F_SETFL, flags & ~O_NONBLOCK) < 0) {
-            ESP_LOGE(TAG, "[sock=%d] reset blocking error: %s", tcp->sock, strerror(errno));
+            err_desc_t err_desc;
+            esp_err_to_name_r(errno, err_desc.buf, sizeof(err_desc.buf));
+            ESP_LOGE(TAG, "[sock=%d] reset blocking error: %d (%s)", tcp->sock, errno, err_desc.buf);
             goto error;
         }
     }
@@ -218,19 +286,32 @@ esp_transport_tcp_connect_async_callback_dns_found(const char *hostname, const i
     transport_tcp_t *tcp = arg;
     LWIP_UNUSED_ARG(hostname);
 
+    if (NULL == tcp)
+    {
+        ESP_LOGE(TAG, "[%s] %s: arg is NULL", pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", __func__);
+        return;
+    }
+
+    xSemaphoreTake(tcp->dns_mutex, portMAX_DELAY);
     if (ipaddr != NULL) {
-        xSemaphoreTake(tcp->dns_mutex, portMAX_DELAY);
+        ESP_LOGI(
+            TAG,
+            "[%s] %s: resolved successfully",
+            pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???",
+            __func__);
         tcp->dns_cb_remote_ip = *ipaddr;
         tcp->dns_cb_status = true;
-        tcp->dns_cb_ready = true;
-        xSemaphoreGive(tcp->dns_mutex);
     } else {
-        xSemaphoreTake(tcp->dns_mutex, portMAX_DELAY);
+        ESP_LOGE(
+            TAG,
+            "[%s] %s: resolved unsuccessfully",
+            pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???",
+            __func__);
         tcp->dns_cb_remote_ip = (ip_addr_t){0};
         tcp->dns_cb_status = false;
-        tcp->dns_cb_ready = true;
-        xSemaphoreGive(tcp->dns_mutex);
     }
+    tcp->dns_cb_ready = true;
+    xSemaphoreGive(tcp->dns_mutex);
 }
 
 static int esp_transport_tcp_connect_async(esp_transport_handle_t t, const char *host, int port, int timeout_ms)
@@ -256,6 +337,12 @@ static int esp_transport_tcp_connect_async(esp_transport_handle_t t, const char 
             }
             if (err != ERR_OK) {
                 ESP_LOGE(TAG, "Failed to resolve hostname '%s', error %d", host, err);
+                esp_tls_last_error_t last_err = {
+                    .last_error = ESP_ERR_ESP_TLS_CANNOT_RESOLVE_HOSTNAME,
+                    .esp_tls_error_code = 0,
+                    .esp_tls_flags = 0,
+                };
+                esp_transport_set_errors(t, &last_err);
                 return -1;
             }
 
@@ -307,7 +394,21 @@ static int esp_transport_tcp_connect_async(esp_transport_handle_t t, const char 
                 /* pending error check */
                 if (getsockopt(tcp->sock, SOL_SOCKET, SO_ERROR, &error, &len) < 0)
                 {
-                    ESP_LOGD(TAG, "Non blocking connect failed");
+                    ESP_LOGE(TAG, "%s: Non blocking connect failed", __func__);
+                    tcp->conn_state = TRANS_TCP_FAIL;
+                    return -1;
+                }
+                if (0 != error)
+                {
+                    err_desc_t err_desc;
+                    esp_err_to_name_r(error, err_desc.buf, sizeof(err_desc.buf));
+                    ESP_LOGE(TAG, "%s: Non blocking connect failed: error=%d (%s)", __func__, error, err_desc.buf);
+                    esp_tls_last_error_t last_err = {
+                        .last_error = error,
+                        .esp_tls_error_code = 0,
+                        .esp_tls_flags = 0,
+                    };
+                    esp_transport_set_errors(t, &last_err);
                     tcp->conn_state = TRANS_TCP_FAIL;
                     return -1;
                 }
@@ -319,6 +420,12 @@ static int esp_transport_tcp_connect_async(esp_transport_handle_t t, const char 
                 if (delta_ticks > pdMS_TO_TICKS(timeout_ms))
                 {
                     ESP_LOGE(TAG, "connection timeout");
+                    esp_tls_last_error_t last_err = {
+                        .last_error = ESP_ERR_TIMEOUT,
+                        .esp_tls_error_code = 0,
+                        .esp_tls_flags = 0,
+                    };
+                    esp_transport_set_errors(t, &last_err);
                     tcp->conn_state = TRANS_TCP_FAIL;
                     return -1;
                 }
@@ -344,17 +451,28 @@ static int esp_transport_tcp_connect_async(esp_transport_handle_t t, const char 
             if (tcp->dns_cb_ready) {
                 tcp->dns_cb_ready = false;
                 tcp->remote_ip = tcp->dns_cb_remote_ip;
-                tcp->conn_state = tcp->dns_cb_status ? TRANS_TCP_CONNECT : TRANS_TCP_FAIL;
                 if (tcp->dns_cb_status)
                 {
                     char remote_ip4_str[IP4ADDR_STRLEN_MAX];
                     ip4addr_ntoa_r(&tcp->remote_ip.u_addr.ip4, remote_ip4_str, sizeof(remote_ip4_str));
                     ESP_LOGI(TAG, "[%s] hostname '%s' resolved to %s", pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", host, remote_ip4_str);
+                    tcp->conn_state = TRANS_TCP_CONNECT;
                 } else {
                     ESP_LOGE(TAG, "[%s] hostname '%s' resolving failed", pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", host);
+                    tcp->conn_state = TRANS_TCP_FAIL;
                 }
             }
             xSemaphoreGive(tcp->dns_mutex);
+            if (TRANS_TCP_FAIL == tcp->conn_state) {
+                ESP_LOGE(TAG, "%s: failed to open a new connection", __func__);
+                esp_tls_last_error_t last_err = {
+                    .last_error = ESP_ERR_ESP_TLS_CANNOT_RESOLVE_HOSTNAME,
+                    .esp_tls_error_code = 0,
+                    .esp_tls_flags = 0,
+                };
+                esp_transport_set_errors(t, &last_err);
+                break;
+            }
             return 0;
         }
         default:
@@ -470,7 +588,9 @@ static int tcp_poll_read(esp_transport_handle_t t, int timeout_ms)
         uint32_t optlen = sizeof(sock_errno);
         getsockopt(tcp->sock, SOL_SOCKET, SO_ERROR, &sock_errno, &optlen);
         esp_transport_capture_errno(t, sock_errno);
-        ESP_LOGE(TAG, "tcp_poll_read select error %d, errno = %s, fd = %d", sock_errno, strerror(sock_errno), tcp->sock);
+        err_desc_t err_desc;
+        esp_err_to_name_r(sock_errno, err_desc.buf, sizeof(err_desc.buf));
+        ESP_LOGE(TAG, "tcp_poll_read select error %d (%s), fd = %d", sock_errno, err_desc.buf, tcp->sock);
         ret = -1;
     }
     return ret;
@@ -494,7 +614,9 @@ static int tcp_poll_write(esp_transport_handle_t t, int timeout_ms)
         uint32_t optlen = sizeof(sock_errno);
         getsockopt(tcp->sock, SOL_SOCKET, SO_ERROR, &sock_errno, &optlen);
         esp_transport_capture_errno(t, sock_errno);
-        ESP_LOGE(TAG, "tcp_poll_write select error %d, errno = %s, fd = %d", sock_errno, strerror(sock_errno), tcp->sock);
+        err_desc_t err_desc;
+        esp_err_to_name_r(sock_errno, err_desc.buf, sizeof(err_desc.buf));
+        ESP_LOGE(TAG, "tcp_poll_write select error %d (%s), fd = %d", sock_errno, err_desc.buf, tcp->sock);
         ret = -1;
     }
     return ret;

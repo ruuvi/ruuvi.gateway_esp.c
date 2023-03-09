@@ -14,6 +14,14 @@
 extern "C" {
 #endif
 
+typedef enum mqtt_error_e
+{
+    MQTT_ERROR_NONE    = 0,
+    MQTT_ERROR_DNS     = 1,
+    MQTT_ERROR_AUTH    = 2,
+    MQTT_ERROR_CONNECT = 3,
+} mqtt_error_e;
+
 bool
 gw_status_init(void);
 
@@ -45,7 +53,7 @@ void
 gw_status_clear_mqtt_connected(void);
 
 void
-gw_status_set_mqtt_error(const bool flag_auth_failed);
+gw_status_set_mqtt_error(const mqtt_error_e mqtt_error);
 
 void
 gw_status_clear_mqtt_connected_and_error(void);
@@ -53,11 +61,8 @@ gw_status_clear_mqtt_connected_and_error(void);
 bool
 gw_status_is_mqtt_connected(void);
 
-bool
-gw_status_is_mqtt_error(void);
-
-bool
-gw_status_is_mqtt_auth_error(void);
+mqtt_error_e
+gw_status_get_mqtt_error(void);
 
 bool
 gw_status_is_mqtt_connected_or_error(void);
