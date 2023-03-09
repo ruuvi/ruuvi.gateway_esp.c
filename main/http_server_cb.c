@@ -424,7 +424,7 @@ http_server_cb_gen_resp(const http_resp_code_e resp_code, const char* const p_fm
     if (NULL == msg.buf)
     {
         LOG_ERR("Can't allocate memory for response");
-        return http_server_resp_err(HTTP_RESP_CODE_500);
+        return http_server_resp_500();
     }
 
     const str_buf_t resp_buf = str_buf_printf_with_alloc(
@@ -435,7 +435,7 @@ http_server_cb_gen_resp(const http_resp_code_e resp_code, const char* const p_fm
     if (NULL == resp_buf.buf)
     {
         LOG_ERR("Can't allocate memory for response");
-        return http_server_resp_err(HTTP_RESP_CODE_500);
+        return http_server_resp_500();
     }
     return http_server_resp_json_in_heap(HTTP_RESP_CODE_200, resp_buf.buf);
 }

@@ -24,8 +24,11 @@
 #define GW_STATUS_MQTT_RELAYING_CMD_BIT      (1U << 5U)
 #define GW_STATUS_HTTP_RELAYING_CMD_BIT      (1U << 6U)
 #define GW_STATUS_NRF_STATUS_BIT             (1U << 7U)
-#define GW_STATUS_MQTT_ERROR_BIT             (1U << 8U)
-#define GW_STATUS_MQTT_AUTH_FAIL_BIT         (1U << 9U)
+#define GW_STATUS_MQTT_ERROR_MASK            (3U << 8U)
+#define GW_STATUS_MQTT_ERROR_NONE            (0U << 8U)
+#define GW_STATUS_MQTT_ERROR_DNS             (1U << 8U)
+#define GW_STATUS_MQTT_ERROR_AUTH            (2U << 8U)
+#define GW_STATUS_MQTT_ERROR_CONNECT         (3U << 8U)
 #define GW_STATUS_FIRST_BOOT_AFTER_CFG_ERASE (1U << 10U)
 
 #define TIMEOUT_WAITING_UNTIL_RELAYING_STOPPED_SECONDS (15)
@@ -162,7 +165,7 @@ void
 gw_status_set_mqtt_connected(void)
 {
     LOG_INFO("MQTT connected");
-    xEventGroupClearBits(g_p_ev_grp_status_bits, GW_STATUS_MQTT_ERROR_BIT | GW_STATUS_MQTT_AUTH_FAIL_BIT);
+    xEventGroupClearBits(g_p_ev_grp_status_bits, GW_STATUS_MQTT_ERROR_MASK);
     xEventGroupSetBits(g_p_ev_grp_status_bits, GW_STATUS_MQTT_CONNECTED_BIT);
 }
 
@@ -174,23 +177,35 @@ gw_status_clear_mqtt_connected(void)
 }
 
 void
-gw_status_set_mqtt_error(const bool flag_auth_failed)
+gw_status_set_mqtt_error(const mqtt_error_e mqtt_error)
 {
-    LOG_INFO("MQTT connection error: flag_auth_failed=%d", (printf_int_t)flag_auth_failed);
-    xEventGroupClearBits(
-        g_p_ev_grp_status_bits,
-        GW_STATUS_MQTT_CONNECTED_BIT | GW_STATUS_MQTT_ERROR_BIT | GW_STATUS_MQTT_AUTH_FAIL_BIT);
-    xEventGroupSetBits(
-        g_p_ev_grp_status_bits,
-        GW_STATUS_MQTT_ERROR_BIT | (flag_auth_failed ? GW_STATUS_MQTT_AUTH_FAIL_BIT : 0));
+    xEventGroupClearBits(g_p_ev_grp_status_bits, GW_STATUS_MQTT_CONNECTED_BIT | GW_STATUS_MQTT_ERROR_MASK);
+    EventBits_t event_bits = 0;
+    switch (mqtt_error)
+    {
+        case MQTT_ERROR_NONE:
+            LOG_INFO("MQTT connection error: NONE");
+            break;
+        case MQTT_ERROR_DNS:
+            event_bits = GW_STATUS_MQTT_ERROR_DNS;
+            LOG_INFO("MQTT connection error: DNS");
+            break;
+        case MQTT_ERROR_AUTH:
+            event_bits = GW_STATUS_MQTT_ERROR_AUTH;
+            LOG_INFO("MQTT connection error: AUTH");
+            break;
+        case MQTT_ERROR_CONNECT:
+            event_bits = GW_STATUS_MQTT_ERROR_CONNECT;
+            LOG_INFO("MQTT connection error: CONNECT");
+            break;
+    }
+    xEventGroupSetBits(g_p_ev_grp_status_bits, event_bits);
 }
 
 void
 gw_status_clear_mqtt_connected_and_error(void)
 {
-    xEventGroupClearBits(
-        g_p_ev_grp_status_bits,
-        GW_STATUS_MQTT_CONNECTED_BIT | GW_STATUS_MQTT_ERROR_BIT | GW_STATUS_MQTT_AUTH_FAIL_BIT);
+    xEventGroupClearBits(g_p_ev_grp_status_bits, GW_STATUS_MQTT_CONNECTED_BIT | GW_STATUS_MQTT_ERROR_MASK);
 }
 
 bool
@@ -203,30 +218,35 @@ gw_status_is_mqtt_connected(void)
     return false;
 }
 
-bool
-gw_status_is_mqtt_error(void)
+mqtt_error_e
+gw_status_get_mqtt_error(void)
 {
-    if (0 != (xEventGroupGetBits(g_p_ev_grp_status_bits) & GW_STATUS_MQTT_ERROR_BIT))
+    const EventBits_t event_bits = xEventGroupGetBits(g_p_ev_grp_status_bits) & GW_STATUS_MQTT_ERROR_MASK;
+    if (GW_STATUS_MQTT_ERROR_NONE == event_bits)
     {
-        return true;
+        return MQTT_ERROR_NONE;
     }
-    return false;
-}
-
-bool
-gw_status_is_mqtt_auth_error(void)
-{
-    if (0 != (xEventGroupGetBits(g_p_ev_grp_status_bits) & GW_STATUS_MQTT_AUTH_FAIL_BIT))
+    if (GW_STATUS_MQTT_ERROR_DNS == event_bits)
     {
-        return true;
+        return MQTT_ERROR_DNS;
     }
-    return false;
+    if (GW_STATUS_MQTT_ERROR_AUTH == event_bits)
+    {
+        return MQTT_ERROR_AUTH;
+    }
+    if (GW_STATUS_MQTT_ERROR_CONNECT == event_bits)
+    {
+        return MQTT_ERROR_CONNECT;
+    }
+    LOG_ERR("Unknown event_bits=0x%08x", (printf_uint_t)event_bits);
+    assert(0);
+    return MQTT_ERROR_NONE;
 }
 
 bool
 gw_status_is_mqtt_connected_or_error(void)
 {
-    if (0 != (xEventGroupGetBits(g_p_ev_grp_status_bits) & (GW_STATUS_MQTT_CONNECTED_BIT | GW_STATUS_MQTT_ERROR_BIT)))
+    if (0 != (xEventGroupGetBits(g_p_ev_grp_status_bits) & (GW_STATUS_MQTT_CONNECTED_BIT | GW_STATUS_MQTT_ERROR_MASK)))
     {
         return true;
     }
@@ -301,7 +321,7 @@ gw_status_notify_relaying_mode_changed_and_wait(
     const bool flag_notify_change_for_mqtt,
     const bool flag_wait)
 {
-    if (!flag_notify_change_for_http && (!flag_notify_change_for_mqtt))
+    if ((!flag_notify_change_for_http) && (!flag_notify_change_for_mqtt))
     {
         return;
     }

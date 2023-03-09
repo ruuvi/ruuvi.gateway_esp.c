@@ -18,6 +18,7 @@
 #include <esp_tls.h>
 
 #include "sys/queue.h"
+#define LOG_LOCAL_LEVEL 3
 #include "esp_log.h"
 
 #include "esp_transport.h"
@@ -159,7 +160,8 @@ int esp_transport_connect_async(esp_transport_handle_t t, const char *host, int 
 {
     int ret = -1;
     if (t && t->_connect_async) {
-        return t->_connect_async(t, host, port, timeout_ms);
+        ret = t->_connect_async(t, host, port, timeout_ms);
+        ESP_LOGD(TAG, "%s: t->_connect_async: ret=%d", __func__, ret);
     }
     return ret;
 }
