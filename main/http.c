@@ -283,6 +283,14 @@ escape_message_from_server(const char* const p_json, str_buf_t* const p_str_buf)
         {
             str_buf_printf(p_str_buf, "\\%c", *p_cur);
         }
+        else if ('\r' == *p_cur)
+        {
+            str_buf_printf(p_str_buf, "\\r");
+        }
+        else if ('\n' == *p_cur)
+        {
+            str_buf_printf(p_str_buf, "\\n");
+        }
         else
         {
             str_buf_printf(p_str_buf, "%c", *p_cur);
