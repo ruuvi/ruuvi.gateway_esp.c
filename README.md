@@ -160,6 +160,38 @@ idf.py -p <PORT> monitor
 
 **Note**: To use `esptool.py` you need to have the Python package `esptool` installed.
 
+The compiled files are located here:
+* build/binaries_v1.9.2/bootloader.bin
+* build/binaries_v1.9.2/partition-table.bin
+* build/ota_data_initial.bin
+* build/ruuvi_gateway_esp.bin
+* build/fatfs_gwui.bin
+* build/fatfs_nrf52.bin
+
+```shell
+esptool.py -p (PORT) -b 460800 --before default_reset --after hard_reset --chip esp32 \
+    write_flash \
+    --flash_mode dio --flash_size detect --flash_freq 40m \
+    0x1000 bootloader.bin \
+    0x8000 partition-table.bin \
+    0xd000 ota_data_initial.bin \
+    0x100000 ruuvi_gateway_esp.bin \
+    0x500000 fatfs_gwui.bin \
+    0x5C0000 fatfs_nrf52.bin
+```
+
+If you are using a newer format of partition table with support for custom default configuration,
+then you need to use the following command with an extra argument to flash gw_cfg_def.bin.
+
+The compiled files are located here:
+* build/binaries_v1.9.2/bootloader.bin
+* build/partition_table/partition-table.bin
+* build/ota_data_initial.bin
+* build/ruuvi_gateway_esp.bin
+* build/fatfs_gwui.bin
+* build/fatfs_nrf52.bin
+* build/gw_cfg_def.bin
+
 ```shell
 esptool.py -p (PORT) -b 460800 --before default_reset --after hard_reset --chip esp32 \
     write_flash \
@@ -173,7 +205,9 @@ esptool.py -p (PORT) -b 460800 --before default_reset --after hard_reset --chip 
     0xB00000 gw_cfg_def.bin
 ```
 
-On Windows you can use GUI tool `Flash Download Tools` with these settings:
+On Windows you can use GUI tool `Flash Download Tools` with the following settings.
+**Note:** If you're not using the partition with the custom default configuration, 
+simply uncheck the checkbox next to "gw_cfg_def.bin".
 ![alt text](docs/readme_images/guiflasher.png "Bootloader 0x1000, partition table 0x8000, ota_data_initial 0xD000, ruuvi_gateway_esp 0x100000, fatfs_gwui 0x500000, fatfs_nrf52 0x5C0000, gw_cfg_def 0xB00000")
 
 ### Flashing nRF52 co-processor
