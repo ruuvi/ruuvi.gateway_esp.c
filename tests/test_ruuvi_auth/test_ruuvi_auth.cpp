@@ -113,6 +113,7 @@ public:
     {
         const gw_cfg_default_init_param_t init_params = {
             .wifi_ap_ssid        = { "my_ssid1" },
+            .hostname            = { "my_ssid1" },
             .device_id           = device_id,
             .esp32_fw_ver        = { "v1.10.0" },
             .nrf52_fw_ver        = { "v0.7.1" },
