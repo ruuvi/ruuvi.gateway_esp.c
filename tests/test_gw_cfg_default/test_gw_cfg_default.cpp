@@ -206,7 +206,7 @@ TEST_F(TestGwCfgDefault, test_1) // NOLINT
 
     ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_DEFAULT, gw_cfg.ruuvi_cfg.lan_auth.lan_auth_type);
     ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), string(gw_cfg.ruuvi_cfg.lan_auth.lan_auth_user.buf));
-    ASSERT_EQ(string("0d6c6f1c27ca628806eb9247740d8ba1"), string(gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf));
+    ASSERT_EQ(string("35305258d71bec64f796d2f36a55ffb1"), string(gw_cfg.ruuvi_cfg.lan_auth.lan_auth_pass.buf));
     ASSERT_EQ(string(""), string(gw_cfg.ruuvi_cfg.lan_auth.lan_auth_api_key.buf));
 
     ASSERT_EQ(AUTO_UPDATE_CYCLE_TYPE_REGULAR, gw_cfg.ruuvi_cfg.auto_update.auto_update_cycle);
@@ -328,7 +328,7 @@ TEST_F(TestGwCfgDefault, test_gw_cfg_default_get_lan_auth) // NOLINT
     const ruuvi_gw_cfg_lan_auth_t* const p_lan_auth = gw_cfg_default_get_lan_auth();
     ASSERT_EQ(HTTP_SERVER_AUTH_TYPE_DEFAULT, p_lan_auth->lan_auth_type);
     ASSERT_EQ(string(RUUVI_GATEWAY_AUTH_DEFAULT_USER), string(p_lan_auth->lan_auth_user.buf));
-    ASSERT_EQ(string("0d6c6f1c27ca628806eb9247740d8ba1"), string(p_lan_auth->lan_auth_pass.buf));
+    ASSERT_EQ(string("35305258d71bec64f796d2f36a55ffb1"), string(p_lan_auth->lan_auth_pass.buf));
 }
 
 TEST_F(TestGwCfgDefault, test_gw_cfg_default_get_eth) // NOLINT

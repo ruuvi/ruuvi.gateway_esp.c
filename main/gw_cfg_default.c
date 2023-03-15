@@ -101,17 +101,17 @@ static gw_cfg_t g_gw_cfg_default;
 
 static void
 gw_cfg_default_generate_lan_auth_password(
-    const wifiman_wifi_ssid_t* const    p_gw_wifi_ssid,
+    const wifiman_hostname_t* const     p_gw_hostname,
     const nrf52_device_id_str_t* const  p_device_id,
     wifiman_md5_digest_hex_str_t* const p_lan_auth_default_password_md5)
 {
     char tmp_buf[sizeof(RUUVI_GATEWAY_AUTH_DEFAULT_USER) + 1 + MAX_SSID_SIZE + 1 + sizeof(nrf52_device_id_str_t)];
-    snprintf(
+    (void)snprintf(
         tmp_buf,
         sizeof(tmp_buf),
         "%s:%s:%s",
         RUUVI_GATEWAY_AUTH_DEFAULT_USER,
-        p_gw_wifi_ssid->ssid_buf,
+        p_gw_hostname->hostname_buf,
         p_device_id->str_buf);
 
     *p_lan_auth_default_password_md5 = wifiman_md5_calc_hex_str(tmp_buf, strlen(tmp_buf));
@@ -178,7 +178,7 @@ gw_cfg_default_init(
 
     wifiman_md5_digest_hex_str_t lan_auth_default_password_md5 = { 0 };
     gw_cfg_default_generate_lan_auth_password(
-        &p_init_param->wifi_ap_ssid,
+        &p_init_param->hostname,
         &p_def_dev_info->nrf52_device_id,
         &lan_auth_default_password_md5);
 
