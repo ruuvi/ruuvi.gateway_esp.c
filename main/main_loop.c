@@ -24,6 +24,7 @@
 #include "gw_cfg_default.h"
 #include "gw_cfg_log.h"
 #include "reset_task.h"
+#include "runtime_stat.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -36,6 +37,7 @@ static const char TAG[] = "ruuvi_gateway";
 #define MAIN_TASK_HOTSPOT_DEACTIVATION_SHORT_DELAY_SEC (5)
 #define MAIN_TASK_CHECK_FOR_REMOTE_CFG_PERIOD_MS       (60U * TIME_UNITS_SECONDS_PER_MINUTE * TIME_UNITS_MS_PER_SECOND)
 #define MAIN_TASK_GET_HISTORY_TIMEOUT_MS               (70U * TIME_UNITS_MS_PER_SECOND)
+#define MAIN_TASK_LOG_RUNTIME_STAT_PERIOD_MS           (30 * TIME_UNITS_MS_PER_SECOND)
 #define MAIN_TASK_WATCHDOG_FEED_PERIOD_MS              (1 * TIME_UNITS_MS_PER_SECOND)
 
 #define RUUVI_NUM_BYTES_IN_1KB (1024U)
@@ -57,7 +59,8 @@ typedef enum main_task_sig_e
     MAIN_TASK_SIG_ON_GET_HISTORY                      = OS_SIGNAL_NUM_12,
     MAIN_TASK_SIG_ON_GET_HISTORY_TIMEOUT              = OS_SIGNAL_NUM_13,
     MAIN_TASK_SIG_RELAYING_MODE_CHANGED               = OS_SIGNAL_NUM_14,
-    MAIN_TASK_SIG_TASK_WATCHDOG_FEED                  = OS_SIGNAL_NUM_15,
+    MAIN_TASK_SIG_LOG_RUNTIME_STAT                    = OS_SIGNAL_NUM_15,
+    MAIN_TASK_SIG_TASK_WATCHDOG_FEED                  = OS_SIGNAL_NUM_16,
 } main_task_sig_e;
 
 #define MAIN_TASK_SIG_FIRST (MAIN_TASK_SIG_LOG_HEAP_USAGE)
@@ -67,6 +70,8 @@ static os_signal_t*                   g_p_signal_main_task;
 static os_signal_static_t             g_signal_main_task_mem;
 static os_timer_sig_periodic_t*       g_p_timer_sig_log_heap_usage;
 static os_timer_sig_periodic_static_t g_timer_sig_log_heap_usage;
+static os_timer_sig_periodic_t*       g_p_timer_sig_log_runtime_stat;
+static os_timer_sig_periodic_static_t g_timer_sig_log_runtime_stat;
 static os_timer_sig_one_shot_t*       g_p_timer_sig_check_for_fw_updates;
 static os_timer_sig_one_shot_static_t g_timer_sig_check_for_fw_updates_mem;
 static os_timer_sig_one_shot_t*       g_p_timer_sig_deactivate_wifi_ap;
@@ -505,6 +510,9 @@ main_task_handle_sig(const main_task_sig_e main_task_sig)
             LOG_INFO("MAIN_TASK_SIG_ON_GET_HISTORY_TIMEOUT");
             leds_notify_http_poll_timeout();
             break;
+        case MAIN_TASK_SIG_LOG_RUNTIME_STAT:
+            log_runtime_statistics();
+            break;
         case MAIN_TASK_SIG_TASK_WATCHDOG_FEED:
             main_task_handle_sig_task_watchdog_feed();
             break;
@@ -568,6 +576,7 @@ main_loop(void)
     }
 
     os_timer_sig_periodic_start(g_p_timer_sig_log_heap_usage);
+    os_timer_sig_periodic_start(g_p_timer_sig_log_runtime_stat);
     os_timer_sig_one_shot_start(g_p_timer_sig_get_history_timeout);
 
     main_task_configure_periodic_remote_cfg_check();
@@ -623,6 +632,7 @@ main_task_init_signals(void)
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_ON_GET_HISTORY));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_ON_GET_HISTORY_TIMEOUT));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_RELAYING_MODE_CHANGED));
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_LOG_RUNTIME_STAT));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_WATCHDOG_FEED));
 }
 
@@ -662,6 +672,13 @@ main_task_init_timers(void)
         g_p_signal_main_task,
         main_task_conv_to_sig_num(MAIN_TASK_SIG_ON_GET_HISTORY_TIMEOUT),
         pdMS_TO_TICKS(MAIN_TASK_GET_HISTORY_TIMEOUT_MS));
+
+    g_p_timer_sig_log_runtime_stat = os_timer_sig_periodic_create_static(
+        &g_timer_sig_log_runtime_stat,
+        "log_runtime_stat",
+        g_p_signal_main_task,
+        main_task_conv_to_sig_num(MAIN_TASK_SIG_LOG_RUNTIME_STAT),
+        pdMS_TO_TICKS(MAIN_TASK_LOG_RUNTIME_STAT_PERIOD_MS));
 
     g_p_timer_sig_task_watchdog_feed = os_timer_sig_periodic_create_static(
         &g_timer_sig_task_watchdog_feed_mem,

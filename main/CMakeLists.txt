@@ -17,6 +17,8 @@ idf_component_register(
             event_mgr.h
             flashfatfs.c
             flashfatfs.h
+            freertos_task_stack_size.c
+            freertos_task_stack_size.h
             fw_update.c
             fw_update.h
             fw_ver.c
@@ -89,6 +91,8 @@ idf_component_register(
             reset_reason.h
             reset_task.c
             reset_task.h
+            runtime_stat.c
+            runtime_stat.h
             ruuvi_device_id.c
             ruuvi_device_id.h
             ruuvi_gateway_main.c
