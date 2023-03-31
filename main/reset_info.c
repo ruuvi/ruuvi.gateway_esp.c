@@ -50,8 +50,8 @@ typedef struct reset_info_data_panic_t
 
 typedef union reset_info_data_t
 {
-    reset_info_data_software_t      sw;
-    reset_info_data_panic_t         panic;
+    reset_info_data_software_t sw;
+    reset_info_data_panic_t    panic;
 } reset_info_data_t;
 
 typedef enum reset_info_reason_e
