@@ -17,25 +17,96 @@
 
 static const char TAG[] = "runtime_stat";
 
-extern UBaseType_t
-uxTaskGetStackSize(TaskHandle_t xTask);
+enum
+{
+    RUNTIME_STAT_MAX_NUM_TASKS = 24,
+};
+
+typedef struct RuntimeStatTaskInfo_t
+{
+    UBaseType_t task_number;
+    uint32_t    runtime_counter;
+} RuntimeStatTaskInfo_t;
+
+typedef uint32_t RuntimeStatTaskInfoIdx_t;
+
+static RuntimeStatTaskInfoIdx_t
+runtime_stat_find_task_info(
+    const RuntimeStatTaskInfo_t* const p_arr_of_tasks,
+    const uint32_t                     max_num_tasks,
+    const UBaseType_t                  task_num)
+{
+    for (RuntimeStatTaskInfoIdx_t i = 0; i < max_num_tasks; ++i)
+    {
+        const RuntimeStatTaskInfo_t* const p_task_info = &p_arr_of_tasks[i];
+        if (task_num == p_task_info->task_number)
+        {
+            return i;
+        }
+    }
+    return UINT32_MAX;
+}
+
+static RuntimeStatTaskInfoIdx_t
+runtime_stat_add_task_info(
+    RuntimeStatTaskInfo_t* const p_arr_of_tasks,
+    const uint32_t               max_num_tasks,
+    const UBaseType_t            task_num,
+    const uint32_t               runtime_counter)
+{
+    for (RuntimeStatTaskInfoIdx_t i = 0; i < max_num_tasks; ++i)
+    {
+        RuntimeStatTaskInfo_t* const p_task_info = &p_arr_of_tasks[i];
+        if (0 == p_task_info->task_number)
+        {
+            p_task_info->task_number     = task_num;
+            p_task_info->runtime_counter = runtime_counter;
+            return i;
+        }
+    }
+    return UINT32_MAX;
+}
+
+static void
+runtime_stat_remove_deleted_tasks_info(
+    RuntimeStatTaskInfo_t* const p_arr_of_tasks,
+    const uint32_t               max_num_tasks,
+    const uint32_t               task_info_bit_mask)
+{
+    for (RuntimeStatTaskInfoIdx_t i = 0; i < max_num_tasks; ++i)
+    {
+        RuntimeStatTaskInfo_t* const p_task_info = &p_arr_of_tasks[i];
+        if (0 == (task_info_bit_mask & (1U << i)))
+        {
+            p_task_info->task_number     = 0;
+            p_task_info->runtime_counter = 0;
+        }
+    }
+}
 
 void
 log_runtime_statistics(void)
 {
-    uint32_t      num_tasks      = 24;
-    TaskStatus_t* p_arr_of_tasks = os_calloc(num_tasks, sizeof(*p_arr_of_tasks));
+    static RuntimeStatTaskInfo_t g_tasks_info[RUNTIME_STAT_MAX_NUM_TASKS] = { 0 };
+
+    TaskStatus_t* p_arr_of_tasks = os_calloc(RUNTIME_STAT_MAX_NUM_TASKS, sizeof(*p_arr_of_tasks));
     if (NULL == p_arr_of_tasks)
     {
         LOG_ERR("Can't allocate memory");
         return;
     }
 
-    uint32_t total_time = 0;
+    static uint32_t prev_total_time = 0;
+    uint32_t        total_time      = 0;
 
-    num_tasks = uxTaskGetSystemState(p_arr_of_tasks, num_tasks, &total_time);
+    const uint32_t num_tasks = uxTaskGetSystemState(p_arr_of_tasks, RUNTIME_STAT_MAX_NUM_TASKS, &total_time);
 
-    LOG_INFO("======== totalTime %8u =================================================", (printf_uint_t)total_time);
+    const uint32_t total_time_delta = total_time - prev_total_time;
+    prev_total_time                 = total_time;
+
+    LOG_INFO(
+        "======== totalTime %8u =================================================",
+        (printf_uint_t)total_time_delta);
     LOG_INFO("|  #  |    Task name     | Pri | Stat|    cnt    |  %%  |        Stack       |");
 
     if (num_tasks == 0)
@@ -44,76 +115,119 @@ log_runtime_statistics(void)
         os_free(p_arr_of_tasks);
         return;
     }
-    if (total_time == 0)
-    {
-        LOG_ERR("Total time is zero");
-        os_free(p_arr_of_tasks);
-        return;
-    }
+    uint32_t task_info_bit_mask = 0;
     for (uint32_t task_idx = 0; task_idx < num_tasks; task_idx++)
     {
-        TaskStatus_t*     pTaskStatus = &p_arr_of_tasks[task_idx];
-        const UBaseType_t stackSize   = uxTaskGetStackSize(pTaskStatus->xHandle);
-        /* What percentage of the total run time has the task used?
-         This will always be rounded down to the nearest integer.
-         ulTotalRunTimeDiv100 has already been divided by 100. */
-        const uint32_t ulStatsAsPercentage = (pTaskStatus->ulRunTimeCounter * 100 + total_time / 2) / total_time;
+        TaskStatus_t* p_task_status = &p_arr_of_tasks[task_idx];
 
-        const char* taskStatus = "";
-        switch (pTaskStatus->eCurrentState)
-        {
-            case eReady:
-                taskStatus = "Rdy";
-                break;
-            case eBlocked:
-                taskStatus = "Blk";
-                break;
-            case eSuspended:
-                taskStatus = "Sus";
-                break;
-            case eDeleted:
-                taskStatus = "Del";
-                break;
-            default:
-                taskStatus = "???";
-                break;
-        }
+        RuntimeStatTaskInfoIdx_t task_info_idx = runtime_stat_find_task_info(
+            g_tasks_info,
+            sizeof(g_tasks_info) / sizeof(*g_tasks_info),
+            p_task_status->xTaskNumber);
 
-        const size_t taskNameLen = strlen(pTaskStatus->pcTaskName);
-        if ((ulStatsAsPercentage > 0UL) || (0 == pTaskStatus->ulRunTimeCounter))
+        RuntimeStatTaskInfo_t* const p_task_info = (task_info_idx < sizeof(g_tasks_info) / sizeof(*g_tasks_info))
+                                                       ? &g_tasks_info[task_info_idx]
+                                                       : NULL;
+
+        const uint32_t runtime_counter_delta = p_task_status->ulRunTimeCounter
+                                               - ((NULL != p_task_info) ? p_task_info->runtime_counter : 0);
+        if (NULL != p_task_info)
         {
-            LOG_INFO(
-                "|%4u | %s%*s | %3u | %s |%10u |%3u%% |%5d of %5u (%2u%%)|",
-                (printf_uint_t)pTaskStatus->xTaskNumber,
-                pTaskStatus->pcTaskName,
-                16 - taskNameLen,
-                "",
-                (printf_uint_t)pTaskStatus->uxBasePriority,
-                taskStatus,
-                (printf_uint_t)pTaskStatus->ulRunTimeCounter,
-                (printf_uint_t)ulStatsAsPercentage,
-                (printf_int_t)(stackSize - pTaskStatus->usStackHighWaterMark),
-                (printf_uint_t)stackSize,
-                (printf_uint_t)((stackSize - pTaskStatus->usStackHighWaterMark) * 100 / stackSize));
+            p_task_info->runtime_counter = p_task_status->ulRunTimeCounter;
         }
         else
         {
-            /* If the percentage is zero here then the task has
-             consumed less than 1% of the total run time. */
+            task_info_idx = runtime_stat_add_task_info(
+                g_tasks_info,
+                sizeof(g_tasks_info) / sizeof(*g_tasks_info),
+                p_task_status->xTaskNumber,
+                p_task_status->ulRunTimeCounter);
+        }
+        if (UINT32_MAX != task_info_idx)
+        {
+            task_info_bit_mask |= 1U << task_info_idx;
+        }
+
+        const UBaseType_t stack_size = uxTaskGetStackSize(p_task_status->xHandle);
+
+        const uint32_t percentage_of_cpu_usage = (total_time_delta != 0)
+                                                     ? (runtime_counter_delta * 100 + total_time_delta / 2)
+                                                           / total_time_delta
+                                                     : UINT32_MAX;
+
+        const char* p_task_status_str = "";
+        switch (p_task_status->eCurrentState)
+        {
+            case eReady:
+                p_task_status_str = "Rdy";
+                break;
+            case eBlocked:
+                p_task_status_str = "Blk";
+                break;
+            case eSuspended:
+                p_task_status_str = "Sus";
+                break;
+            case eDeleted:
+                p_task_status_str = "Del";
+                break;
+            default:
+                p_task_status_str = "???";
+                break;
+        }
+
+        const size_t task_name_len = strlen(p_task_status->pcTaskName);
+        if (UINT32_MAX == percentage_of_cpu_usage)
+        {
+            LOG_INFO(
+                "|%4u | %s%*s | %3u | %s |%10u |  -  |%5d of %5u (%2u%%)|",
+                (printf_uint_t)p_task_status->xTaskNumber,
+                p_task_status->pcTaskName,
+                16 - task_name_len,
+                "",
+                (printf_uint_t)p_task_status->uxBasePriority,
+                p_task_status_str,
+                runtime_counter_delta,
+                (printf_int_t)(stack_size - p_task_status->usStackHighWaterMark),
+                (printf_uint_t)stack_size,
+                (printf_uint_t)((stack_size - p_task_status->usStackHighWaterMark) * 100 / stack_size));
+        }
+        else if ((percentage_of_cpu_usage > 0UL) || (0 == runtime_counter_delta))
+        {
+            LOG_INFO(
+                "|%4u | %s%*s | %3u | %s |%10u |%3u%% |%5d of %5u (%2u%%)|",
+                (printf_uint_t)p_task_status->xTaskNumber,
+                p_task_status->pcTaskName,
+                16 - task_name_len,
+                "",
+                (printf_uint_t)p_task_status->uxBasePriority,
+                p_task_status_str,
+                (printf_uint_t)runtime_counter_delta,
+                (printf_uint_t)percentage_of_cpu_usage,
+                (printf_int_t)(stack_size - p_task_status->usStackHighWaterMark),
+                (printf_uint_t)stack_size,
+                (printf_uint_t)((stack_size - p_task_status->usStackHighWaterMark) * 100 / stack_size));
+        }
+        else
+        {
+            /* If the percentage is zero here then the task has consumed less than 1% of the total run time. */
             LOG_INFO(
                 "|%4u | %s%*s | %3u | %s |%10u | <1%% |%5d of %5u (%2u%%)|",
-                (printf_uint_t)pTaskStatus->xTaskNumber,
-                pTaskStatus->pcTaskName,
-                16 - taskNameLen,
+                (printf_uint_t)p_task_status->xTaskNumber,
+                p_task_status->pcTaskName,
+                16 - task_name_len,
                 "",
-                (printf_uint_t)pTaskStatus->uxBasePriority,
-                taskStatus,
-                pTaskStatus->ulRunTimeCounter,
-                (printf_int_t)(stackSize - pTaskStatus->usStackHighWaterMark),
-                (printf_uint_t)stackSize,
-                (printf_uint_t)((stackSize - pTaskStatus->usStackHighWaterMark) * 100 / stackSize));
+                (printf_uint_t)p_task_status->uxBasePriority,
+                p_task_status_str,
+                runtime_counter_delta,
+                (printf_int_t)(stack_size - p_task_status->usStackHighWaterMark),
+                (printf_uint_t)stack_size,
+                (printf_uint_t)((stack_size - p_task_status->usStackHighWaterMark) * 100 / stack_size));
         }
     }
+    runtime_stat_remove_deleted_tasks_info(
+        g_tasks_info,
+        sizeof(g_tasks_info) / sizeof(*g_tasks_info),
+        task_info_bit_mask);
     LOG_INFO("=============================================================================");
     os_free(p_arr_of_tasks);
 }
