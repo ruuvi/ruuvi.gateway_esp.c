@@ -16,6 +16,7 @@
 #include "mqtt.h"
 #include "event_mgr.h"
 #include "reset_info.h"
+#include "runtime_stat.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -163,6 +164,7 @@ reset_task_handle_sig(const reset_task_sig_e reset_task_sig)
             break;
         case RESET_TASK_SIG_RESTART:
             LOG_WARN("RESET_TASK_SIG_RESTART");
+            log_runtime_statistics();
             // leds_task can be blocked for 25 ms when the red LED is on/off,
             // so we need to wait some time to give leds_task time
             // to complete the current operation and turn off the green and red LEDs
