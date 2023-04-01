@@ -13,6 +13,7 @@
 #include <esp_crc.h>
 #include <esp_attr.h>
 #include <hal/uart_hal.h>
+#include <esp_private/system_internal.h>
 #include "freertos/FreeRTOSConfig.h"
 #include "str_buf.h"
 #include "reset_reason.h"
@@ -49,9 +50,8 @@ typedef struct reset_info_data_panic_t
 
 typedef union reset_info_data_t
 {
-    reset_info_data_task_watchdog_t task_wdt;
-    reset_info_data_software_t      sw;
-    reset_info_data_panic_t         panic;
+    reset_info_data_software_t sw;
+    reset_info_data_panic_t    panic;
 } reset_info_data_t;
 
 typedef enum reset_info_reason_e
@@ -64,14 +64,15 @@ typedef enum reset_info_reason_e
 
 typedef struct reset_info_t
 {
-    uint32_t            signature_begin;
-    uint32_t            version_fmt;
-    uint32_t            len;
-    uint32_t            reset_cnt;
-    reset_info_reason_e reset_reason;
-    reset_info_data_t   data;
-    uint32_t            signature_end;
-    uint32_t            crc;
+    uint32_t                        signature_begin;
+    uint32_t                        version_fmt;
+    uint32_t                        len;
+    uint32_t                        reset_cnt;
+    reset_info_reason_e             reset_reason;
+    reset_info_data_task_watchdog_t task_wdt;
+    reset_info_data_t               data;
+    uint32_t                        signature_end;
+    uint32_t                        crc;
 } reset_info_t;
 
 /**
@@ -189,15 +190,6 @@ reset_info_init(void)
     {
         reset_info_clear();
     }
-    else if ((int)p_info->reset_reason != (int)reset_reason)
-    {
-        memset(&p_info->data, 0, sizeof(p_info->data));
-        p_info->crc = reset_info_calc_crc(p_info);
-    }
-    else
-    {
-        // MISRA C:2012, 15.7 - All if...else if constructs shall be terminated with an else statement
-    }
 
     p_info->reset_cnt += 1;
     p_info->crc = reset_info_calc_crc(p_info);
@@ -213,8 +205,8 @@ reset_info_init(void)
         case RESET_INFO_REASON_TASK_WDT:
             LOG_INFO(
                 "### Reset by task wdt: %s (active task: %s)",
-                p_info->data.task_wdt.task_name.buf,
-                p_info->data.task_wdt.active_task.buf);
+                p_info->task_wdt.task_name.buf,
+                p_info->task_wdt.active_task.buf);
             break;
         case RESET_INFO_REASON_OTHER:
             break;
@@ -247,8 +239,8 @@ reset_info_gen_str_buf(str_buf_t* const p_str_buf, const reset_info_t* const p_i
             str_buf_printf(
                 p_str_buf,
                 "Reset by task wdt: %s (active task: %s)",
-                p_info->data.task_wdt.task_name.buf,
-                p_info->data.task_wdt.active_task.buf);
+                p_info->task_wdt.task_name.buf,
+                p_info->task_wdt.active_task.buf);
             break;
         case RESET_INFO_REASON_OTHER:
             str_buf_printf(p_str_buf, "%s", "");
@@ -294,10 +286,14 @@ panic_print_char_override(const char c)
 void
 __wrap_esp_panic_handler(void* p_param)
 {
-    reset_info_t* const p_info      = &g_reset_info;
-    p_info->reset_reason            = RESET_INFO_REASON_PANIC;
-    g_reset_info_data_panic_str_buf = str_buf_init(p_info->data.panic.msg, sizeof(p_info->data.panic.msg));
-    str_buf_printf(&g_reset_info_data_panic_str_buf, "%s", "");
+
+    if (ESP_RST_UNKNOWN == esp_reset_reason_get_hint())
+    {
+        reset_info_t* const p_info      = &g_reset_info;
+        p_info->reset_reason            = RESET_INFO_REASON_PANIC;
+        g_reset_info_data_panic_str_buf = str_buf_init(p_info->data.panic.msg, sizeof(p_info->data.panic.msg));
+        str_buf_printf(&g_reset_info_data_panic_str_buf, "%s", "");
+    }
 
     __real_esp_panic_handler(p_param); /* Call the former implementation */
 }
@@ -306,6 +302,25 @@ void __attribute__((noreturn)) __wrap_panic_restart(void)
 {
     reset_info_t* const p_info = &g_reset_info;
     p_info->crc                = esp_crc32_le(0, (const uint8_t*)p_info, offsetof(reset_info_t, crc));
+    switch (p_info->reset_reason)
+    {
+        case RESET_INFO_REASON_SW:
+            ESP_EARLY_LOGE(TAG, "__wrap_panic_restart: SW: %s", p_info->data.sw.msg);
+            break;
+        case RESET_INFO_REASON_PANIC:
+            ESP_EARLY_LOGE(TAG, "__wrap_panic_restart: PANIC: %s", p_info->data.panic.msg);
+            break;
+        case RESET_INFO_REASON_TASK_WDT:
+            ESP_EARLY_LOGE(
+                TAG,
+                "__wrap_panic_restart: TASK_WDT: task_name=%s, active_task=%s",
+                p_info->task_wdt.task_name.buf,
+                p_info->task_wdt.active_task.buf);
+            break;
+        case RESET_INFO_REASON_OTHER:
+            ESP_EARLY_LOGE(TAG, "__wrap_panic_restart: OTHER");
+            break;
+    }
 
     __real_panic_restart();
 }
@@ -318,12 +333,13 @@ void __attribute__((noreturn)) __wrap_panic_restart(void)
 void
 esp_task_wdt_isr_user_handler(const char* const p_task_name)
 {
+    ESP_EARLY_LOGE(TAG, "esp_task_wdt_isr_user_handler: task_name=%s", p_task_name);
     reset_info_t* const p_info = &g_reset_info;
     p_info->reset_reason       = RESET_INFO_REASON_TASK_WDT;
-    (void)snprintf(p_info->data.task_wdt.task_name.buf, sizeof(p_info->data.task_wdt.task_name.buf), "%s", p_task_name);
+    (void)snprintf(p_info->task_wdt.task_name.buf, sizeof(p_info->task_wdt.task_name.buf), "%s", p_task_name);
     (void)snprintf(
-        p_info->data.task_wdt.active_task.buf,
-        sizeof(p_info->data.task_wdt.active_task.buf),
+        p_info->task_wdt.active_task.buf,
+        sizeof(p_info->task_wdt.active_task.buf),
         "%s",
         pcTaskGetTaskName(xTaskGetCurrentTaskHandleForCPU(0)));
 
