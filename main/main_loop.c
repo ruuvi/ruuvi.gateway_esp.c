@@ -454,6 +454,7 @@ main_task_handle_sig_relaying_mode_changed(void)
         mqtt_app_stop();
     }
     gw_status_clear_mqtt_relaying_cmd();
+    main_task_send_sig_log_runtime_stat();
 }
 
 static void
