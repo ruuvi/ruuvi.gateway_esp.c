@@ -593,6 +593,8 @@ main_loop(void)
         LOG_INFO("Firmware auto-updating is not active");
     }
 
+    main_task_send_sig_log_runtime_stat();
+
     for (;;)
     {
         os_signal_events_t sig_events = { 0 };
@@ -768,6 +770,12 @@ void
 main_task_send_sig_mqtt_publish_connect(void)
 {
     os_signal_send(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT));
+}
+
+void
+main_task_send_sig_log_runtime_stat(void)
+{
+    os_timer_sig_periodic_simulate(g_p_timer_sig_log_runtime_stat);
 }
 
 void
