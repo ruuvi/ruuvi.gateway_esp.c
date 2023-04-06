@@ -8,6 +8,7 @@
 #include "http_json.h"
 #include "bin2hex.h"
 #include "os_malloc.h"
+#include "runtime_stat.h"
 
 static cJSON*
 http_json_generate_records_data_attributes(cJSON* const p_json_data, const http_json_header_info_t header_info)
@@ -145,10 +146,27 @@ http_json_create_records_str(
 }
 
 static bool
+http_json_generate_task_info(const char* const p_task_name, const uint32_t min_free_stack_size, void* p_userdata)
+{
+    cJSON* const p_json_tasks = p_userdata;
+    cJSON*       p_task_obj   = cJSON_AddObjectToObject(p_json_tasks, p_task_name);
+    if (NULL == p_task_obj)
+    {
+        return false;
+    }
+    if (NULL == cJSON_AddNumberToObject(p_task_obj, "MIN_FREE_STACK_SIZE", min_free_stack_size))
+    {
+        return false;
+    }
+    return true;
+}
+
+static bool
 http_json_generate_attributes_for_sensors(
     const adv_report_table_t* const p_reports,
     cJSON* const                    p_json_active_sensors,
-    cJSON* const                    p_json_inactive_sensors)
+    cJSON* const                    p_json_inactive_sensors,
+    cJSON* const                    p_json_tasks)
 {
     if (NULL == p_reports)
     {
@@ -184,6 +202,10 @@ http_json_generate_attributes_for_sensors(
             }
             cJSON_AddItemToArray(p_json_inactive_sensors, p_json_str);
         }
+    }
+    if (!runtime_stat_for_each_accumulated_info(&http_json_generate_task_info, p_json_tasks))
+    {
+        return false;
     }
     return true;
 }
@@ -265,7 +287,16 @@ http_json_generate_status_attributes(
     {
         return false;
     }
-    return http_json_generate_attributes_for_sensors(p_reports, p_json_active_sensors, p_json_inactive_sensors);
+    cJSON* p_json_tasks = cJSON_AddObjectToObject(p_json_root, "TASKS");
+    if (NULL == p_json_tasks)
+    {
+        return false;
+    }
+    return http_json_generate_attributes_for_sensors(
+        p_reports,
+        p_json_active_sensors,
+        p_json_inactive_sensors,
+        p_json_tasks);
 }
 
 static cJSON*

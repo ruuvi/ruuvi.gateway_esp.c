@@ -288,6 +288,22 @@ http_check_mqtt(const ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg, const TimeUnitsSeco
     return resp;
 }
 
+bool
+runtime_stat_for_each_accumulated_info(
+    bool (*p_cb)(const char* const p_task_name, const uint32_t min_free_stack_size, void* p_userdata),
+    void* p_userdata)
+{
+    if (!p_cb("main", 1000, p_userdata))
+    {
+        return false;
+    }
+    if (!p_cb("IDLE0", 500, p_userdata))
+    {
+        return false;
+    }
+    return true;
+}
+
 } // extern "C"
 
 class MemAllocTrace
