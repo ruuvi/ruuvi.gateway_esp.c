@@ -164,6 +164,24 @@ runtime_stat_remove_deleted_tasks_info(
     }
 }
 
+static int
+log_runtime_compare_tasks(const void* const p_task1, const void* const p_task2)
+{
+    const TaskStatus_t* const p_task_stat1 = p_task1;
+    const TaskStatus_t* const p_task_stat2 = p_task2;
+    if (p_task_stat1->uxBasePriority == p_task_stat2->uxBasePriority)
+    {
+        return (int)(p_task_stat1->xTaskNumber - p_task_stat2->xTaskNumber);
+    }
+    return (int)(p_task_stat1->uxBasePriority - p_task_stat2->uxBasePriority);
+}
+
+static void
+log_runtime_sort_tasks(TaskStatus_t* const p_arr_of_tasks, const uint32_t num_tasks)
+{
+    qsort(p_arr_of_tasks, num_tasks, sizeof(*p_arr_of_tasks), &log_runtime_compare_tasks);
+}
+
 void
 log_runtime_statistics(void)
 {
@@ -196,6 +214,7 @@ log_runtime_statistics(void)
         os_free(p_arr_of_tasks);
         return;
     }
+    log_runtime_sort_tasks(p_arr_of_tasks, num_tasks);
     uint32_t task_info_bit_mask = 0;
     for (uint32_t task_idx = 0; task_idx < num_tasks; task_idx++)
     {
