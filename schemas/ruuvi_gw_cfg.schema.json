@@ -3,6 +3,7 @@
   "$id": "http://ruuvi.com/schemas/ruuvi_gw_cfg.schema.json",
   "title": "Ruuvi gateway configuration",
   "type": "object",
+  "additionalProperties": false,
   "required": [
   ],
   "properties": {
@@ -275,8 +276,17 @@
       "type": "string"
     },
     "lan_auth_api_key": {
-      "title": "API key (token) for HTTP bearer authentication when accessing from LAN",
+      "title": "API key (token) for HTTP bearer authentication for read-only access from LAN",
       "description": "If 'lan_auth_api_key' is empty, then bearer authentication is disabled.",
+      "type": "string",
+      "default": "",
+      "examples": [
+        "304uOrJMoCNEVaPaXswV9U1qRDPZFbl0V2x7OXHM5nw="
+      ]
+    },
+    "lan_auth_api_key_rw": {
+      "title": "API key (token) for HTTP bearer authentication for read/write access from LAN",
+      "description": "If 'lan_auth_api_key_rw' is empty, then bearer authentication is disabled.",
       "type": "string",
       "default": "",
       "examples": [

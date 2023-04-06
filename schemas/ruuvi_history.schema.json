@@ -3,6 +3,7 @@
     "$id": "http://ruuvi.com/schemas/ruuvi_history.schema.json",
     "type": "object",
     "title": "Accumulated time-stamped data from Bluetooth sensors returned in response to HTTP GET /history",
+    "additionalProperties": false,
     "required": [
         "data"
     ],

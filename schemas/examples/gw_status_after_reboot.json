@@ -1,0 +1,73 @@
+{
+        "DEVICE_ADDR":  "C8:25:2D:8E:9C:2C",
+        "ESP_FW":       "v1.13.1-2-gb295815-dirty",
+        "NRF_FW":       "v1.0.0",
+        "NRF_STATUS":   true,
+        "UPTIME":       "10",
+        "NONCE":        "2147378831",
+        "CONNECTION":   "ETHERNET",
+        "NUM_CONN_LOST":        "0",
+        "RESET_REASON": "POWER_ON",
+        "RESET_CNT":    "1",
+        "RESET_INFO":   "",
+        "SENSORS_SEEN": "1",
+        "ACTIVE_SENSORS":       [{
+                        "MAC":  "C6:A5:B9:E0:AD:06",
+                        "COUNTER":      "5"
+                }],
+        "INACTIVE_SENSORS":     [],
+        "TASKS":        {
+                "IDLE0":        {
+                        "MIN_FREE_STACK_SIZE":  804
+                },
+                "main": {
+                        "MIN_FREE_STACK_SIZE":  440
+                },
+                "reset_task":   {
+                        "MIN_FREE_STACK_SIZE":  2064
+                },
+                "time_task":    {
+                        "MIN_FREE_STACK_SIZE":  988
+                },
+                "http_server":  {
+                        "MIN_FREE_STACK_SIZE":  18460
+                },
+                "adv_post_task":        {
+                        "MIN_FREE_STACK_SIZE":  1948
+                },
+                "wifi_manager": {
+                        "MIN_FREE_STACK_SIZE":  2088
+                },
+                "leds_task":    {
+                        "MIN_FREE_STACK_SIZE":  1124
+                },
+                "uart_rx_task": {
+                        "MIN_FREE_STACK_SIZE":  5180
+                },
+                "rx_parse_task":        {
+                        "MIN_FREE_STACK_SIZE":  924
+                },
+                "emac_rx":      {
+                        "MIN_FREE_STACK_SIZE":  2872
+                },
+                "tiT":  {
+                        "MIN_FREE_STACK_SIZE":  1224
+                },
+                "sys_evt":      {
+                        "MIN_FREE_STACK_SIZE":  444
+                },
+                "esp_timer":    {
+                        "MIN_FREE_STACK_SIZE":  3200
+                },
+                "wifi": {
+                        "MIN_FREE_STACK_SIZE":  4492
+                },
+                "Tmr Svc":      {
+                        "MIN_FREE_STACK_SIZE":  2260
+                },
+                "mdns": {
+                        "MIN_FREE_STACK_SIZE":  1920
+                }
+        }
+}
+
