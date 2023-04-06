@@ -12,62 +12,60 @@
         "RESET_INFO":   "",
         "SENSORS_SEEN": "1",
         "ACTIVE_SENSORS":       [{
-                        "MAC":  "C6:A5:B9:E0:AD:06",
-                        "COUNTER":      "5"
-                }],
+                "MAC":  "C6:A5:B9:E0:AD:06",
+                "COUNTER":      "5"
+        }],
         "INACTIVE_SENSORS":     [],
-        "TASKS":        {
-                "IDLE0":        {
-                        "MIN_FREE_STACK_SIZE":  804
-                },
-                "main": {
-                        "MIN_FREE_STACK_SIZE":  440
-                },
-                "reset_task":   {
-                        "MIN_FREE_STACK_SIZE":  2064
-                },
-                "time_task":    {
-                        "MIN_FREE_STACK_SIZE":  988
-                },
-                "http_server":  {
-                        "MIN_FREE_STACK_SIZE":  18460
-                },
-                "adv_post_task":        {
-                        "MIN_FREE_STACK_SIZE":  1948
-                },
-                "wifi_manager": {
-                        "MIN_FREE_STACK_SIZE":  2088
-                },
-                "leds_task":    {
-                        "MIN_FREE_STACK_SIZE":  1124
-                },
-                "uart_rx_task": {
-                        "MIN_FREE_STACK_SIZE":  5180
-                },
-                "rx_parse_task":        {
-                        "MIN_FREE_STACK_SIZE":  924
-                },
-                "emac_rx":      {
-                        "MIN_FREE_STACK_SIZE":  2872
-                },
-                "tiT":  {
-                        "MIN_FREE_STACK_SIZE":  1224
-                },
-                "sys_evt":      {
-                        "MIN_FREE_STACK_SIZE":  444
-                },
-                "esp_timer":    {
-                        "MIN_FREE_STACK_SIZE":  3200
-                },
-                "wifi": {
-                        "MIN_FREE_STACK_SIZE":  4492
-                },
-                "Tmr Svc":      {
-                        "MIN_FREE_STACK_SIZE":  2260
-                },
-                "mdns": {
-                        "MIN_FREE_STACK_SIZE":  1920
-                }
-        }
+        "TASKS":        [{
+                "TASK_NAME":    "IDLE0",
+                "MIN_FREE_STACK_SIZE":  804
+        }, {
+                "TASK_NAME":    "main",
+                "MIN_FREE_STACK_SIZE":  536
+        }, {
+                "TASK_NAME":    "reset_task",
+                "MIN_FREE_STACK_SIZE":  2064
+        }, {
+                "TASK_NAME":    "time_task",
+                "MIN_FREE_STACK_SIZE":  988
+        }, {
+                "TASK_NAME":    "http_server",
+                "MIN_FREE_STACK_SIZE":  18460
+        }, {
+                "TASK_NAME":    "adv_post_task",
+                "MIN_FREE_STACK_SIZE":  1948
+        }, {
+                "TASK_NAME":    "wifi_manager",
+                "MIN_FREE_STACK_SIZE":  2088
+        }, {
+                "TASK_NAME":    "leds_task",
+                "MIN_FREE_STACK_SIZE":  1124
+        }, {
+                "TASK_NAME":    "uart_rx_task",
+                "MIN_FREE_STACK_SIZE":  5180
+        }, {
+                "TASK_NAME":    "rx_parse_task",
+                "MIN_FREE_STACK_SIZE":  924
+        }, {
+                "TASK_NAME":    "emac_rx",
+                "MIN_FREE_STACK_SIZE":  3084
+        }, {
+                "TASK_NAME":    "tiT",
+                "MIN_FREE_STACK_SIZE":  1256
+        }, {
+                "TASK_NAME":    "sys_evt",
+                "MIN_FREE_STACK_SIZE":  444
+        }, {
+                "TASK_NAME":    "esp_timer",
+                "MIN_FREE_STACK_SIZE":  3200
+        }, {
+                "TASK_NAME":    "wifi",
+                "MIN_FREE_STACK_SIZE":  4492
+        }, {
+                "TASK_NAME":    "Tmr Svc",
+                "MIN_FREE_STACK_SIZE":  2260
+        }, {
+                "TASK_NAME":    "mdns",
+                "MIN_FREE_STACK_SIZE":  1932
+        }]
 }
-

@@ -13,7 +13,7 @@
         "SENSORS_SEEN": "0",
         "ACTIVE_SENSORS":       [],
         "INACTIVE_SENSORS":     [],
-        "TASKS": {
-        }
+        "TASKS": [
+        ]
 }
 

@@ -198,28 +198,35 @@
     },
     "TASKS": {
       "title": "List of tasks",
-      "type": "object",
-      "additionalProperties": {
+      "type": "array",
+      "items": {
+        "title": "Task object",
         "type": "object",
+        "additionalProperties": false,
         "properties": {
+          "TASK_NAME": {
+            "title": "Task name",
+            "type": "string"
+          },
           "MIN_FREE_STACK_SIZE": {
-            "title": "The minimum recorded value of the free stack",
+            "title": "The minimum recorded value of the free stack for the task",
             "type": "integer"
           }
         },
-        "required": [
-          "MIN_FREE_STACK_SIZE"
-        ]
+        "required": ["TASK_NAME", "MIN_FREE_STACK_SIZE"]
       },
       "examples": [
-        {
-          "IDLE0": {
+        [],
+        [
+          {
+            "TASK_NAME": "IDLE0",
             "MIN_FREE_STACK_SIZE": 804
           },
-          "main": {
-            "MIN_FREE_STACK_SIZE": 440
+          {
+            "TASK_NAME": "main",
+            "MIN_FREE_STACK_SIZE": 536
           }
-        }
+        ]
       ]
     }
   },
@@ -250,17 +257,16 @@
         "F4:1F:0C:28:CB:D6",
         "F4:C6:46:2C:3E:B4"
       ],
-      "TASKS": {
-        "IDLE0":        {
-          "MIN_FREE_STACK_SIZE":  804
-        },
-        "main": {
-          "MIN_FREE_STACK_SIZE":  440
-        },
-        "reset_task":   {
-          "MIN_FREE_STACK_SIZE":  2064
-        }
-      }
+      "TASKS":        [{
+        "TASK_NAME":    "IDLE0",
+        "MIN_FREE_STACK_SIZE":  804
+      }, {
+        "TASK_NAME":    "main",
+        "MIN_FREE_STACK_SIZE":  536
+      }, {
+        "TASK_NAME":    "reset_task",
+        "MIN_FREE_STACK_SIZE":  2064
+      }]
     },
     {
       "DEVICE_ADDR": "C8:25:2D:8E:9C:2C",
@@ -276,14 +282,16 @@
       "SENSORS_SEEN": "0",
       "ACTIVE_SENSORS": [],
       "INACTIVE_SENSORS": [],
-      "TASKS": {
-        "IDLE0":        {
-          "MIN_FREE_STACK_SIZE":  804
-        },
-        "main": {
-          "MIN_FREE_STACK_SIZE":  440
-        }
-      }
+      "TASKS":        [{
+        "TASK_NAME":    "IDLE0",
+        "MIN_FREE_STACK_SIZE":  804
+      }, {
+        "TASK_NAME":    "main",
+        "MIN_FREE_STACK_SIZE":  536
+      }, {
+        "TASK_NAME":    "reset_task",
+        "MIN_FREE_STACK_SIZE":  2064
+      }]
     },
     {
       "DEVICE_ADDR": "C8:25:2D:8E:9C:2C",
@@ -299,11 +307,10 @@
       "SENSORS_SEEN": "0",
       "ACTIVE_SENSORS": [],
       "INACTIVE_SENSORS": [],
-      "TASKS": {
-        "IDLE0":        {
-          "MIN_FREE_STACK_SIZE":  804
-        }
-      }
+      "TASKS":        [{
+        "TASK_NAME":    "IDLE0",
+        "MIN_FREE_STACK_SIZE":  804
+      }]
     }
   ]
 }
