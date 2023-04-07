@@ -79,6 +79,8 @@ idf_component_register(
             mqtt.h
             mqtt_json.c
             mqtt_json.h
+            network_subsystem.c
+            network_subsystem.h
             nrf52_fw_ver.c
             nrf52_fw_ver.h
             nrf52fw.c
