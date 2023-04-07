@@ -218,10 +218,10 @@ gw_cfg_default_get(gw_cfg_t* const p_gw_cfg)
     *p_gw_cfg = g_gw_cfg_default;
 }
 
-gw_cfg_device_info_t
+const gw_cfg_device_info_t*
 gw_cfg_default_device_info(void)
 {
-    return g_gw_cfg_default.device_info;
+    return &g_gw_cfg_default.device_info;
 }
 
 const ruuvi_gw_cfg_mqtt_t*

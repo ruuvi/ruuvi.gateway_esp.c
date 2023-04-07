@@ -200,40 +200,56 @@ generate_hostname(const mac_address_bin_t mac_addr)
     return hostname;
 }
 
-static void
-ruuvi_init_gw_cfg(
+static const gw_cfg_default_init_param_t*
+ruuvi_generate_init_params(
     const ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver,
     const nrf52_device_info_t* const  p_nrf52_device_info)
 {
+    gw_cfg_default_init_param_t* const p_init_params = os_calloc(1, sizeof(*p_init_params));
+    if (NULL == p_init_params)
+    {
+        return NULL;
+    }
     const nrf52_device_id_t nrf52_device_id = (NULL != p_nrf52_device_info) ? p_nrf52_device_info->nrf52_device_id
                                                                             : (nrf52_device_id_t) { 0 };
     const mac_address_bin_t nrf52_mac_addr  = (NULL != p_nrf52_device_info) ? p_nrf52_device_info->nrf52_mac_addr
                                                                             : settings_read_mac_addr();
 
-    const gw_cfg_default_init_param_t gw_cfg_default_init_param = {
-        .wifi_ap_ssid        = generate_wifi_ap_ssid(nrf52_mac_addr),
-        .hostname            = generate_hostname(nrf52_mac_addr),
-        .device_id           = nrf52_device_id,
-        .esp32_fw_ver        = fw_update_get_cur_version(),
-        .nrf52_fw_ver        = nrf52_fw_ver_get_str(p_nrf52_fw_ver),
-        .nrf52_mac_addr      = nrf52_mac_addr,
-        .esp32_mac_addr_wifi = gateway_read_mac_addr(ESP_MAC_WIFI_STA),
-        .esp32_mac_addr_eth  = gateway_read_mac_addr(ESP_MAC_ETH),
-    };
-    gw_cfg_default_init(&gw_cfg_default_init_param, &gw_cfg_default_json_read);
+    p_init_params->wifi_ap_ssid        = generate_wifi_ap_ssid(nrf52_mac_addr);
+    p_init_params->hostname            = generate_hostname(nrf52_mac_addr);
+    p_init_params->device_id           = nrf52_device_id;
+    p_init_params->esp32_fw_ver        = fw_update_get_cur_version();
+    p_init_params->nrf52_fw_ver        = nrf52_fw_ver_get_str(p_nrf52_fw_ver);
+    p_init_params->nrf52_mac_addr      = nrf52_mac_addr;
+    p_init_params->esp32_mac_addr_wifi = gateway_read_mac_addr(ESP_MAC_WIFI_STA);
+    p_init_params->esp32_mac_addr_eth  = gateway_read_mac_addr(ESP_MAC_ETH);
+    return p_init_params;
+}
+
+static void
+ruuvi_init_gw_cfg(
+    const ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver,
+    const nrf52_device_info_t* const  p_nrf52_device_info)
+{
+    const gw_cfg_default_init_param_t* p_gw_cfg_default_init_param = ruuvi_generate_init_params(
+        p_nrf52_fw_ver,
+        p_nrf52_device_info);
+
+    gw_cfg_default_init(p_gw_cfg_default_init_param, &gw_cfg_default_json_read);
+    os_free(p_gw_cfg_default_init_param);
     if (NULL != p_nrf52_fw_ver)
     {
         gw_cfg_default_log();
     }
 
-    const gw_cfg_device_info_t dev_info = gw_cfg_default_device_info();
+    const gw_cfg_device_info_t* const p_dev_info = gw_cfg_default_device_info();
 
     LOG_INFO(
         "### Init gw_cfg: device_id=%s, MAC=%s, nRF52_fw_ver=%s, WiFi_AP=%s",
-        dev_info.nrf52_device_id.str_buf,
-        dev_info.nrf52_mac_addr.str_buf,
-        dev_info.nrf52_fw_ver.buf,
-        dev_info.wifi_ap.ssid_buf);
+        p_dev_info->nrf52_device_id.str_buf,
+        p_dev_info->nrf52_mac_addr.str_buf,
+        p_dev_info->nrf52_fw_ver.buf,
+        p_dev_info->wifi_ap.ssid_buf);
 
     gw_cfg_init((NULL != p_nrf52_fw_ver) ? &ruuvi_cb_on_change_cfg : NULL);
 
