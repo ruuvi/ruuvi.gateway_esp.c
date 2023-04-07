@@ -17,9 +17,7 @@ extern "C" {
 #endif
 
 bool
-network_subsystem_init(
-    const force_start_wifi_hotspot_e force_start_wifi_hotspot,
-    const wifiman_config_t* const    p_wifi_cfg);
+network_subsystem_init(const force_start_wifi_hotspot_e force_start_wifi_hotspot, const gw_cfg_t* const p_gw_cfg);
 
 bool
 wifi_init(

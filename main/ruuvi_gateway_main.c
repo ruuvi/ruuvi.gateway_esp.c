@@ -490,12 +490,15 @@ main_task_init(void)
     time_task_init();
 
     const force_start_wifi_hotspot_e force_start_wifi_hotspot = settings_read_flag_force_start_wifi_hotspot();
-    const wifiman_config_t           wifi_cfg                 = gw_cfg_get_wifi_cfg();
-    if (!network_subsystem_init(force_start_wifi_hotspot, &wifi_cfg))
+
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
+    if (!network_subsystem_init(force_start_wifi_hotspot, p_gw_cfg))
     {
         LOG_ERR("%s failed", "network_subsystem_init");
+        gw_cfg_unlock_ro(&p_gw_cfg);
         return false;
     }
+    gw_cfg_unlock_ro(&p_gw_cfg);
 
     return true;
 }

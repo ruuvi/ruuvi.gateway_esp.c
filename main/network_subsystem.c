@@ -205,15 +205,14 @@ wifi_disconnect_cb(void* p_param)
 }
 
 static void
-configure_mbedtls_rng(void)
+configure_mbedtls_rng(const nrf52_device_id_str_t* const p_nrf52_device_id_str)
 {
     mbedtls_entropy_init(&g_entropy);
     mbedtls_ctr_drbg_init(&g_ctr_drbg);
 
     LOG_INFO("Seeding the random number generator...");
 
-    const nrf52_device_id_str_t* const p_nrf52_device_id_str = gw_cfg_get_nrf52_device_id();
-    str_buf_t                          custom_seed           = str_buf_printf_with_alloc(
+    str_buf_t custom_seed = str_buf_printf_with_alloc(
         "%s:%lu:%lu",
         p_nrf52_device_id_str->str_buf,
         (printf_ulong_t)time(NULL),
@@ -232,11 +231,11 @@ configure_mbedtls_rng(void)
 }
 
 bool
-network_subsystem_init(
-    const force_start_wifi_hotspot_e force_start_wifi_hotspot,
-    const wifiman_config_t* const    p_wifi_cfg)
+network_subsystem_init(const force_start_wifi_hotspot_e force_start_wifi_hotspot, const gw_cfg_t* const p_gw_cfg)
 {
-    configure_mbedtls_rng();
+    const wifiman_config_t* const      p_wifi_cfg            = &p_gw_cfg->wifi_cfg;
+    const nrf52_device_id_str_t* const p_nrf52_device_id_str = gw_cfg_get_nrf52_device_id();
+    configure_mbedtls_rng(p_nrf52_device_id_str);
 
     const bool is_wifi_sta_configured = ('\0' != p_wifi_cfg->sta.wifi_config_sta.ssid[0]) ? true : false;
 
