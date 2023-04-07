@@ -3,6 +3,7 @@
   "$id": "http://ruuvi.com/schemas/ruuvi_mqtt_data_with_timestamps.schema.json",
   "title": "Time-stamped data from Bluetooth-sensors relayed via MQTT",
   "type": "object",
+  "additionalProperties": false,
   "required": [
     "data"
   ],

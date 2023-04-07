@@ -138,6 +138,22 @@ os_calloc(const size_t nmemb, const size_t size)
     return static_cast<void*>(p_mem);
 }
 
+bool
+runtime_stat_for_each_accumulated_info(
+    bool (*p_cb)(const char* const p_task_name, const uint32_t min_free_stack_size, void* p_userdata),
+    void* p_userdata)
+{
+    if (!p_cb("main", 1000, p_userdata))
+    {
+        return false;
+    }
+    if (!p_cb("IDLE0", 500, p_userdata))
+    {
+        return false;
+    }
+    return true;
+}
+
 } // extern "C"
 
 TestHttpJson::~TestHttpJson() = default;
@@ -437,11 +453,18 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_wifi) // NOLINT
                "\t\t\t\"MAC\":\t\"AA:BB:CC:01:02:04\",\n"
                "\t\t\t\"COUNTER\":\t\"10\"\n"
                "\t\t}],\n"
-               "\t\"INACTIVE_SENSORS\":\t[\"AA:BB:CC:01:02:05\", \"AA:BB:CC:01:02:06\"]\n"
+               "\t\"INACTIVE_SENSORS\":\t[\"AA:BB:CC:01:02:05\", \"AA:BB:CC:01:02:06\"],\n"
+               "\t\"TASKS\":\t[{\n"
+               "\t\t\t\"TASK_NAME\":\t\"main\",\n"
+               "\t\t\t\"MIN_FREE_STACK_SIZE\":\t1000\n"
+               "\t\t}, {\n"
+               "\t\t\t\"TASK_NAME\":\t\"IDLE0\",\n"
+               "\t\t\t\"MIN_FREE_STACK_SIZE\":\t500\n"
+               "\t\t}]\n"
                "}"),
         string(this->m_json_str.p_str));
     cjson_wrap_free_json_str(&this->m_json_str);
-    ASSERT_EQ(61, this->m_malloc_cnt);
+    ASSERT_EQ(76, this->m_malloc_cnt);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
@@ -514,11 +537,18 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_ethernet) // NOLINT
                "\t\t\t\"MAC\":\t\"AB:BB:CC:01:02:F4\",\n"
                "\t\t\t\"COUNTER\":\t\"11\"\n"
                "\t\t}],\n"
-               "\t\"INACTIVE_SENSORS\":\t[\"AB:BB:CC:01:02:F5\"]\n"
+               "\t\"INACTIVE_SENSORS\":\t[\"AB:BB:CC:01:02:F5\"],\n"
+               "\t\"TASKS\":\t[{\n"
+               "\t\t\t\"TASK_NAME\":\t\"main\",\n"
+               "\t\t\t\"MIN_FREE_STACK_SIZE\":\t1000\n"
+               "\t\t}, {\n"
+               "\t\t\t\"TASK_NAME\":\t\"IDLE0\",\n"
+               "\t\t\t\"MIN_FREE_STACK_SIZE\":\t500\n"
+               "\t\t}]\n"
                "}"),
         string(this->m_json_str.p_str));
     cjson_wrap_free_json_str(&this->m_json_str);
-    ASSERT_EQ(59, this->m_malloc_cnt);
+    ASSERT_EQ(74, this->m_malloc_cnt);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
@@ -578,7 +608,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_malloc_failed) // NOLINT
         .p_reset_info           = "",
     };
 
-    for (uint32_t i = 1; i < 62; ++i)
+    for (uint32_t i = 1; i < 76; ++i)
     {
         this->m_malloc_fail_on_cnt = i;
         this->m_malloc_cnt         = 0;
@@ -591,12 +621,12 @@ TEST_F(TestHttpJson, test_create_status_json_str_malloc_failed) // NOLINT
     }
 
     {
-        this->m_malloc_fail_on_cnt = 62;
+        this->m_malloc_fail_on_cnt = 77;
         this->m_malloc_cnt         = 0;
         ASSERT_TRUE(http_json_create_status_str(&stat_info, &adv_table, &this->m_json_str));
         ASSERT_NE(nullptr, this->m_json_str.p_str);
         cjson_wrap_free_json_str(&this->m_json_str);
-        ASSERT_EQ(61, this->m_malloc_cnt);
+        ASSERT_EQ(76, this->m_malloc_cnt);
         ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
     }
 }

@@ -3,6 +3,7 @@
   "$id": "http://ruuvi.com/schemas/ruuvi_mqtt_data_without_timestamps.schema.json",
   "title": "Data from Bluetooth-sensors (without timestamps) relayed via MQTT",
   "type": "object",
+  "additionalProperties": false,
   "required": [
     "data"
   ],

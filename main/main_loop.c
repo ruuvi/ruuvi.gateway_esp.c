@@ -454,6 +454,7 @@ main_task_handle_sig_relaying_mode_changed(void)
         mqtt_app_stop();
     }
     gw_status_clear_mqtt_relaying_cmd();
+    main_task_send_sig_log_runtime_stat();
 }
 
 static void
@@ -592,6 +593,8 @@ main_loop(void)
     {
         LOG_INFO("Firmware auto-updating is not active");
     }
+
+    main_task_send_sig_log_runtime_stat();
 
     for (;;)
     {
@@ -768,6 +771,12 @@ void
 main_task_send_sig_mqtt_publish_connect(void)
 {
     os_signal_send(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT));
+}
+
+void
+main_task_send_sig_log_runtime_stat(void)
+{
+    os_timer_sig_periodic_simulate(g_p_timer_sig_log_runtime_stat);
 }
 
 void
