@@ -928,11 +928,10 @@ gw_cfg_json_parse(
         return false;
     }
 
-    gw_cfg_device_info_t dev_info = { 0 };
     gw_cfg_json_parse_cjson(
         p_json_root,
         p_log_title,
-        &dev_info,
+        NULL,
         &p_gw_cfg->ruuvi_cfg,
         &p_gw_cfg->eth_cfg,
         &p_gw_cfg->wifi_cfg.ap,
