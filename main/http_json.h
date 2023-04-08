@@ -38,7 +38,7 @@ typedef struct http_json_statistics_info_t
     uint32_t                                network_disconnect_cnt;
     http_json_statistics_reset_reason_buf_t reset_reason;
     uint32_t                                reset_cnt;
-    const char* const                       p_reset_info;
+    const char*                             p_reset_info;
 } http_json_statistics_info_t;
 
 typedef struct http_json_header_info_t

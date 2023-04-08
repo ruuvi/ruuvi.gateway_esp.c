@@ -748,18 +748,25 @@ http_check_post_stat_internal3(
     (void)snprintf(p_cfg_http_stat->http_stat_user.buf, sizeof(p_cfg_http_stat->http_stat_user), "%s", p_user);
     (void)snprintf(p_cfg_http_stat->http_stat_pass.buf, sizeof(p_cfg_http_stat->http_stat_pass), "%s", p_pass);
 
-    const http_json_statistics_info_t stat_info = adv_post_generate_statistics_info(NULL);
+    const http_json_statistics_info_t* p_stat_info = adv_post_generate_statistics_info(NULL);
+    if (NULL == p_stat_info)
+    {
+        LOG_ERR("Can't allocate memory");
+        return http_server_resp_500();
+    }
 
     if (!http_send_statistics_internal(
             p_http_async_info,
-            &stat_info,
+            p_stat_info,
             NULL,
             p_cfg_http_stat,
             &p_http_async_info->http_post_cb_info))
     {
+        os_free(p_stat_info);
         LOG_ERR("http_send_statistics failed");
         return http_server_resp_500();
     }
+    os_free(p_stat_info);
 
     const bool         flag_feed_task_watchdog = true;
     http_server_resp_t server_resp             = http_wait_until_async_req_completed(

@@ -391,31 +391,34 @@ adv_post_do_retransmission(const bool flag_network_connected, const bool flag_us
     return adv_post_retransmit_advs(&g_adv_reports_buf, flag_use_timestamps);
 }
 
-http_json_statistics_info_t
+http_json_statistics_info_t*
 adv_post_generate_statistics_info(const str_buf_t* const p_reset_info)
 {
-    const esp_reset_reason_t                reset_reason       = esp_reset_reason();
-    const char* const                       p_reset_reason_str = reset_reason_to_str(reset_reason);
-    http_json_statistics_reset_reason_buf_t reset_reason_buf   = { 0 };
-    (void)sniprintf(reset_reason_buf.buf, sizeof(reset_reason_buf.buf), "%s", p_reset_reason_str);
+    http_json_statistics_info_t* p_stat_info = os_calloc(1, sizeof(*p_stat_info));
+    if (NULL == p_stat_info)
+    {
+        return NULL;
+    }
 
-    const http_json_statistics_info_t stat_info = {
-        .nrf52_mac_addr         = *gw_cfg_get_nrf52_mac_addr(),
-        .esp_fw                 = *gw_cfg_get_esp32_fw_ver(),
-        .nrf_fw                 = *gw_cfg_get_nrf52_fw_ver(),
-        .uptime                 = g_uptime_counter,
-        .nonce                  = g_adv_post_nonce,
-        .nrf_status             = gw_status_get_nrf_status(),
-        .is_connected_to_wifi   = wifi_manager_is_connected_to_wifi(),
-        .network_disconnect_cnt = g_network_disconnect_cnt,
-        .reset_reason           = reset_reason_buf,
-        .reset_cnt              = reset_info_get_cnt(),
-        .p_reset_info           = (NULL != p_reset_info) ? &p_reset_info->buf[0] : "",
-    };
+    p_stat_info->nrf52_mac_addr         = *gw_cfg_get_nrf52_mac_addr();
+    p_stat_info->esp_fw                 = *gw_cfg_get_esp32_fw_ver();
+    p_stat_info->nrf_fw                 = *gw_cfg_get_nrf52_fw_ver();
+    p_stat_info->uptime                 = g_uptime_counter;
+    p_stat_info->nonce                  = g_adv_post_nonce;
+    p_stat_info->nrf_status             = gw_status_get_nrf_status();
+    p_stat_info->is_connected_to_wifi   = wifi_manager_is_connected_to_wifi();
+    p_stat_info->network_disconnect_cnt = g_network_disconnect_cnt;
+    (void)sniprintf(
+        p_stat_info->reset_reason.buf,
+        sizeof(p_stat_info->reset_reason.buf),
+        "%s",
+        reset_reason_to_str(esp_reset_reason()));
+    p_stat_info->reset_cnt    = reset_info_get_cnt();
+    p_stat_info->p_reset_info = (NULL != p_reset_info) ? &p_reset_info->buf[0] : "";
 
     g_adv_post_nonce += 1;
 
-    return stat_info;
+    return p_stat_info;
 }
 
 bool
@@ -429,10 +432,18 @@ adv_post_stat(const ruuvi_gw_cfg_http_stat_t* const p_cfg_http_stat, void* const
     }
     adv_table_statistics_read(p_reports);
 
-    str_buf_t                         reset_info = reset_info_get();
-    const http_json_statistics_info_t stat_info  = adv_post_generate_statistics_info(&reset_info);
+    str_buf_t                          reset_info  = reset_info_get();
+    const http_json_statistics_info_t* p_stat_info = adv_post_generate_statistics_info(&reset_info);
+    if (NULL == p_stat_info)
+    {
+        LOG_ERR("Can't allocate memory");
+        str_buf_free_buf(&reset_info);
+        os_free(p_reports);
+        return false;
+    }
 
-    const bool res = http_send_statistics(&stat_info, p_reports, p_cfg_http_stat, p_user_data);
+    const bool res = http_send_statistics(p_stat_info, p_reports, p_cfg_http_stat, p_user_data);
+    os_free(p_stat_info);
     str_buf_free_buf(&reset_info);
     os_free(p_reports);
 

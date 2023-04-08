@@ -35,7 +35,7 @@ adv_post_last_successful_network_comm_timestamp_update(void);
 bool
 adv_post_stat(const ruuvi_gw_cfg_http_stat_t* const p_cfg_http_stat, void* const p_user_data);
 
-http_json_statistics_info_t
+http_json_statistics_info_t*
 adv_post_generate_statistics_info(const str_buf_t* const p_reset_info);
 
 #ifdef __cplusplus
