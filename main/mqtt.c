@@ -437,68 +437,72 @@ mqtt_transport_name_to_code(const char* const p_mqtt_transport_name)
     return mqtt_transport;
 }
 
-static esp_mqtt_client_config_t
+static void
 mqtt_generate_client_config(
+    esp_mqtt_client_config_t* const  p_cli_cfg,
     const ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg,
     const mqtt_topic_buf_t* const    p_mqtt_topic,
     const char* const                p_lwt_message,
     void* const                      p_user_context)
 {
-    const esp_mqtt_client_config_t mqtt_cfg = {
-        .event_handle                = &mqtt_event_handler,
-        .event_loop_handle           = NULL,
-        .host                        = p_mqtt_cfg->mqtt_server.buf,
-        .uri                         = NULL,
-        .port                        = p_mqtt_cfg->mqtt_port,
-        .client_id                   = p_mqtt_cfg->mqtt_client_id.buf,
-        .username                    = p_mqtt_cfg->mqtt_user.buf,
-        .password                    = p_mqtt_cfg->mqtt_pass.buf,
-        .lwt_topic                   = p_mqtt_topic->buf,
-        .lwt_msg                     = p_lwt_message,
-        .lwt_qos                     = 1,
-        .lwt_retain                  = true,
-        .lwt_msg_len                 = 0,
-        .disable_clean_session       = 0,
-        .keepalive                   = 0,
-        .disable_auto_reconnect      = false,
-        .user_context                = p_user_context,
-        .task_prio                   = 0,
-        .task_stack                  = 0,
-        .buffer_size                 = 0,
-        .cert_pem                    = NULL,
-        .cert_len                    = 0,
-        .client_cert_pem             = NULL,
-        .client_cert_len             = 0,
-        .client_key_pem              = NULL,
-        .client_key_len              = 0,
-        .transport                   = mqtt_transport_name_to_code(p_mqtt_cfg->mqtt_transport.buf),
-        .refresh_connection_after_ms = 0,
-        .psk_hint_key                = NULL,
-        .use_global_ca_store         = false,
-        .crt_bundle_attach           = &esp_crt_bundle_attach,
-        .reconnect_timeout_ms        = 0,
-        .alpn_protos                 = NULL,
-        .clientkey_password          = NULL,
-        .clientkey_password_len      = 0,
-        .protocol_ver                = MQTT_PROTOCOL_UNDEFINED,
-        .out_buffer_size             = 0,
-        .skip_cert_common_name_check = false,
-        .use_secure_element          = false,
-        .ds_data                     = NULL,
-        .network_timeout_ms          = MQTT_NETWORK_TIMEOUT_MS,
-        .disable_keepalive           = false,
-        .path                        = NULL,
-    };
-    return mqtt_cfg;
+    p_cli_cfg->event_handle                = &mqtt_event_handler;
+    p_cli_cfg->event_loop_handle           = NULL;
+    p_cli_cfg->host                        = p_mqtt_cfg->mqtt_server.buf;
+    p_cli_cfg->uri                         = NULL;
+    p_cli_cfg->port                        = p_mqtt_cfg->mqtt_port;
+    p_cli_cfg->client_id                   = p_mqtt_cfg->mqtt_client_id.buf;
+    p_cli_cfg->username                    = p_mqtt_cfg->mqtt_user.buf;
+    p_cli_cfg->password                    = p_mqtt_cfg->mqtt_pass.buf;
+    p_cli_cfg->lwt_topic                   = p_mqtt_topic->buf;
+    p_cli_cfg->lwt_msg                     = p_lwt_message;
+    p_cli_cfg->lwt_qos                     = 1;
+    p_cli_cfg->lwt_retain                  = true;
+    p_cli_cfg->lwt_msg_len                 = 0;
+    p_cli_cfg->disable_clean_session       = 0;
+    p_cli_cfg->keepalive                   = 0;
+    p_cli_cfg->disable_auto_reconnect      = false;
+    p_cli_cfg->user_context                = p_user_context;
+    p_cli_cfg->task_prio                   = 0;
+    p_cli_cfg->task_stack                  = 0;
+    p_cli_cfg->buffer_size                 = 0;
+    p_cli_cfg->cert_pem                    = NULL;
+    p_cli_cfg->cert_len                    = 0;
+    p_cli_cfg->client_cert_pem             = NULL;
+    p_cli_cfg->client_cert_len             = 0;
+    p_cli_cfg->client_key_pem              = NULL;
+    p_cli_cfg->client_key_len              = 0;
+    p_cli_cfg->transport                   = mqtt_transport_name_to_code(p_mqtt_cfg->mqtt_transport.buf);
+    p_cli_cfg->refresh_connection_after_ms = 0;
+    p_cli_cfg->psk_hint_key                = NULL;
+    p_cli_cfg->use_global_ca_store         = false;
+    p_cli_cfg->crt_bundle_attach           = &esp_crt_bundle_attach;
+    p_cli_cfg->reconnect_timeout_ms        = 0;
+    p_cli_cfg->alpn_protos                 = NULL;
+    p_cli_cfg->clientkey_password          = NULL;
+    p_cli_cfg->clientkey_password_len      = 0;
+    p_cli_cfg->protocol_ver                = MQTT_PROTOCOL_UNDEFINED;
+    p_cli_cfg->out_buffer_size             = 0;
+    p_cli_cfg->skip_cert_common_name_check = false;
+    p_cli_cfg->use_secure_element          = false;
+    p_cli_cfg->ds_data                     = NULL;
+    p_cli_cfg->network_timeout_ms          = MQTT_NETWORK_TIMEOUT_MS;
+    p_cli_cfg->disable_keepalive           = false;
+    p_cli_cfg->path                        = NULL;
 }
 
-static esp_mqtt_client_config_t
-mqtt_prep_client_config(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg)
+static esp_mqtt_client_config_t*
+mqtt_create_client_config(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg)
 {
+    esp_mqtt_client_config_t* const p_cli_cfg = os_calloc(1, sizeof(*p_cli_cfg));
+    if (NULL == p_cli_cfg)
+    {
+        LOG_ERR("Can't allocate memory");
+        return NULL;
+    }
     mqtt_create_full_topic(&p_mqtt_data->mqtt_topic, p_mqtt_cfg->mqtt_prefix.buf, "gw_status");
     p_mqtt_data->mqtt_prefix                    = p_mqtt_cfg->mqtt_prefix;
     p_mqtt_data->mqtt_disable_retained_messages = p_mqtt_cfg->mqtt_disable_retained_messages;
-    const char* p_lwt_message                   = "{\"state\": \"offline\"}";
+    const char* const p_lwt_message             = "{\"state\": \"offline\"}";
 
     LOG_INFO(
         "Using server: %s, client id: '%s', topic prefix: '%s', port: %u, user: '%s', password: '%s'",
@@ -509,7 +513,9 @@ mqtt_prep_client_config(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg_m
         p_mqtt_cfg->mqtt_user.buf,
         (LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG) ? p_mqtt_cfg->mqtt_pass.buf : "******");
 
-    return mqtt_generate_client_config(p_mqtt_cfg, &p_mqtt_data->mqtt_topic, p_lwt_message, p_mqtt_data);
+    mqtt_generate_client_config(p_cli_cfg, p_mqtt_cfg, &p_mqtt_data->mqtt_topic, p_lwt_message, p_mqtt_data);
+
+    return p_cli_cfg;
 }
 
 static bool
@@ -549,12 +555,18 @@ mqtt_app_start_internal(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg_m
         gw_status_set_mqtt_error(MQTT_ERROR_CONNECT);
         return;
     }
-    const esp_mqtt_client_config_t mqtt_cli_cfg = mqtt_prep_client_config(p_mqtt_data, p_mqtt_cfg);
+    const esp_mqtt_client_config_t* p_mqtt_cli_cfg = mqtt_create_client_config(p_mqtt_data, p_mqtt_cfg);
+    if (NULL == p_mqtt_cfg)
+    {
+        LOG_ERR("Can't create MQTT client config");
+        return;
+    }
 
-    if (mqtt_app_start_internal2(&mqtt_cli_cfg, p_mqtt_data))
+    if (mqtt_app_start_internal2(p_mqtt_cli_cfg, p_mqtt_data))
     {
         gw_status_set_mqtt_started();
     }
+    os_free(p_mqtt_cli_cfg);
 }
 
 void
