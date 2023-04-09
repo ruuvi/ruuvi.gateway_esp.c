@@ -1240,6 +1240,54 @@ resume_relaying_and_wait(const bool flag_force_free_memory)
     }
 }
 
+static esp_http_client_config_t*
+http_download_create_config(
+    const http_download_param_t* const    p_param,
+    const esp_http_client_auth_type_t     http_client_auth_type,
+    const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
+    http_download_cb_info_t* const        p_cb_info)
+{
+    esp_http_client_config_t* p_http_config = os_calloc(1, sizeof(*p_http_config));
+    if (NULL == p_http_config)
+    {
+        LOG_ERR("Can't allocate memory for http_config");
+        return false;
+    }
+    p_http_config->url  = p_param->p_url;
+    p_http_config->host = NULL;
+    p_http_config->port = 0;
+
+    p_http_config->username = (HTTP_AUTH_TYPE_BASIC == http_client_auth_type) ? p_http_auth->auth_basic.user.buf : NULL;
+    p_http_config->password = (HTTP_AUTH_TYPE_BASIC == http_client_auth_type) ? p_http_auth->auth_basic.password.buf
+                                                                              : NULL;
+    p_http_config->auth_type = http_client_auth_type;
+
+    p_http_config->path                        = NULL;
+    p_http_config->query                       = NULL;
+    p_http_config->cert_pem                    = NULL;
+    p_http_config->client_cert_pem             = NULL;
+    p_http_config->client_key_pem              = NULL;
+    p_http_config->user_agent                  = NULL;
+    p_http_config->method                      = HTTP_METHOD_GET;
+    p_http_config->timeout_ms                  = (int)(p_param->timeout_seconds * TIME_UNITS_MS_PER_SECOND);
+    p_http_config->disable_auto_redirect       = false;
+    p_http_config->max_redirection_count       = 0;
+    p_http_config->max_authorization_retries   = 0;
+    p_http_config->event_handler               = &http_download_event_handler;
+    p_http_config->transport_type              = HTTP_TRANSPORT_UNKNOWN;
+    p_http_config->buffer_size                 = 2048;
+    p_http_config->buffer_size_tx              = 1024;
+    p_http_config->user_data                   = p_cb_info;
+    p_http_config->is_async                    = true;
+    p_http_config->use_global_ca_store         = false;
+    p_http_config->skip_cert_common_name_check = false;
+    p_http_config->keep_alive_enable           = false;
+    p_http_config->keep_alive_idle             = 0;
+    p_http_config->keep_alive_interval         = 0;
+    p_http_config->keep_alive_count            = 0;
+    return p_http_config;
+}
+
 bool
 http_download_with_auth(
     const http_download_param_t           param,
@@ -1247,6 +1295,8 @@ http_download_with_auth(
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
     const http_header_item_t* const       p_extra_header_item)
 {
+    LOG_INFO("http_download: URL: %s", param.p_url);
+
     http_download_cb_info_t cb_info = {
         .cb_on_data              = param.p_cb_on_data,
         .p_user_data             = param.p_user_data,
@@ -1265,40 +1315,6 @@ http_download_with_auth(
                                                                   ? HTTP_AUTH_TYPE_BASIC
                                                                   : HTTP_AUTH_TYPE_NONE;
 
-    const esp_http_client_config_t http_config = {
-        .url  = param.p_url,
-        .host = NULL,
-        .port = 0,
-
-        .username  = (HTTP_AUTH_TYPE_BASIC == http_client_auth_type) ? p_http_auth->auth_basic.user.buf : NULL,
-        .password  = (HTTP_AUTH_TYPE_BASIC == http_client_auth_type) ? p_http_auth->auth_basic.password.buf : NULL,
-        .auth_type = http_client_auth_type,
-
-        .path                        = NULL,
-        .query                       = NULL,
-        .cert_pem                    = NULL,
-        .client_cert_pem             = NULL,
-        .client_key_pem              = NULL,
-        .user_agent                  = NULL,
-        .method                      = HTTP_METHOD_GET,
-        .timeout_ms                  = (int)(param.timeout_seconds * TIME_UNITS_MS_PER_SECOND),
-        .disable_auto_redirect       = false,
-        .max_redirection_count       = 0,
-        .max_authorization_retries   = 0,
-        .event_handler               = &http_download_event_handler,
-        .transport_type              = HTTP_TRANSPORT_UNKNOWN,
-        .buffer_size                 = 2048,
-        .buffer_size_tx              = 1024,
-        .user_data                   = &cb_info,
-        .is_async                    = true,
-        .use_global_ca_store         = false,
-        .skip_cert_common_name_check = false,
-        .keep_alive_enable           = false,
-        .keep_alive_idle             = 0,
-        .keep_alive_interval         = 0,
-        .keep_alive_count            = 0,
-    };
-    LOG_INFO("http_download: URL: %s", param.p_url);
     if (HTTP_AUTH_TYPE_BASIC == http_client_auth_type)
     {
         LOG_INFO("http_download: Auth: Basic, Username: %s", p_http_auth->auth_basic.user.buf);
@@ -1310,12 +1326,24 @@ http_download_with_auth(
         return false;
     }
 
+    esp_http_client_config_t* p_http_config = http_download_create_config(
+        &param,
+        http_client_auth_type,
+        p_http_auth,
+        &cb_info);
+    if (NULL == p_http_config)
+    {
+        LOG_ERR("Can't allocate memory for http_config");
+        return false;
+    }
+
     suspend_relaying_and_wait(param.flag_free_memory);
 
-    cb_info.http_handle = esp_http_client_init(&http_config);
+    cb_info.http_handle = esp_http_client_init(p_http_config);
     if (NULL == cb_info.http_handle)
     {
         LOG_ERR("Can't init http client");
+        os_free(p_http_config);
         resume_relaying_and_wait(param.flag_free_memory);
         return false;
     }
@@ -1326,6 +1354,7 @@ http_download_with_auth(
         if (NULL == str_buf.buf)
         {
             LOG_ERR("Can't allocate memory for bearer token");
+            os_free(p_http_config);
             resume_relaying_and_wait(param.flag_free_memory);
             return false;
         }
@@ -1358,6 +1387,7 @@ http_download_with_auth(
         LOG_ERR_ESP(err, "esp_http_client_cleanup failed");
     }
 
+    os_free(p_http_config);
     resume_relaying_and_wait(param.flag_free_memory);
 
     return result;
