@@ -275,11 +275,19 @@ esp_ota_end_patched(const esp_ota_handle_t handle)
                 .size   = p_it->part->size,
             };
 
-            esp_image_metadata_t data = { 0 };
-            if (esp_image_verify(ESP_IMAGE_VERIFY, &part_pos, &data) != ESP_OK)
+            esp_image_metadata_t* p_metadata = os_calloc(1, sizeof(*p_metadata));
+            if (NULL == p_metadata)
             {
-                ret = ESP_ERR_OTA_VALIDATE_FAILED;
+                ret = ESP_ERR_NO_MEM;
             }
+            else
+            {
+                if (esp_image_verify(ESP_IMAGE_VERIFY, &part_pos, p_metadata) != ESP_OK)
+                {
+                    ret = ESP_ERR_OTA_VALIDATE_FAILED;
+                }
+            }
+            os_free(p_metadata);
         }
     }
 
