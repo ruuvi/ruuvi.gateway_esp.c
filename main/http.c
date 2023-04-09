@@ -1242,10 +1242,13 @@ resume_relaying_and_wait(const bool flag_force_free_memory)
 
 static esp_http_client_config_t*
 http_download_create_config(
-    const http_download_param_t* const    p_param,
+    const char* const                     p_url,
+    const TimeUnitsSeconds_t              timeout_seconds,
+    const esp_http_client_method_t        http_method,
     const esp_http_client_auth_type_t     http_client_auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
-    http_download_cb_info_t* const        p_cb_info)
+    http_event_handle_cb                  p_event_handler,
+    void* const                           p_cb_info)
 {
     esp_http_client_config_t* p_http_config = os_calloc(1, sizeof(*p_http_config));
     if (NULL == p_http_config)
@@ -1253,7 +1256,7 @@ http_download_create_config(
         LOG_ERR("Can't allocate memory for http_config");
         return false;
     }
-    p_http_config->url  = p_param->p_url;
+    p_http_config->url  = p_url;
     p_http_config->host = NULL;
     p_http_config->port = 0;
 
@@ -1268,12 +1271,12 @@ http_download_create_config(
     p_http_config->client_cert_pem             = NULL;
     p_http_config->client_key_pem              = NULL;
     p_http_config->user_agent                  = NULL;
-    p_http_config->method                      = HTTP_METHOD_GET;
-    p_http_config->timeout_ms                  = (int)(p_param->timeout_seconds * TIME_UNITS_MS_PER_SECOND);
+    p_http_config->method                      = http_method;
+    p_http_config->timeout_ms                  = (int)(timeout_seconds * TIME_UNITS_MS_PER_SECOND);
     p_http_config->disable_auto_redirect       = false;
     p_http_config->max_redirection_count       = 0;
     p_http_config->max_authorization_retries   = 0;
-    p_http_config->event_handler               = &http_download_event_handler;
+    p_http_config->event_handler               = p_event_handler;
     p_http_config->transport_type              = HTTP_TRANSPORT_UNKNOWN;
     p_http_config->buffer_size                 = 2048;
     p_http_config->buffer_size_tx              = 1024;
@@ -1297,6 +1300,17 @@ http_download_with_auth(
 {
     LOG_INFO("http_download: URL: %s", param.p_url);
 
+    if ((GW_CFG_REMOTE_AUTH_TYPE_NO != gw_cfg_http_auth_type) && (NULL == p_http_auth))
+    {
+        LOG_ERR("Auth type is not NONE, but p_http_auth is NULL");
+        return false;
+    }
+    if (!gw_status_is_network_connected())
+    {
+        LOG_ERR("HTTP download failed - no network connection");
+        return false;
+    }
+
     http_download_cb_info_t cb_info = {
         .cb_on_data              = param.p_cb_on_data,
         .p_user_data             = param.p_user_data,
@@ -1306,11 +1320,6 @@ http_download_with_auth(
         .flag_feed_task_watchdog = param.flag_feed_task_watchdog,
     };
 
-    if ((GW_CFG_REMOTE_AUTH_TYPE_NO != gw_cfg_http_auth_type) && (NULL == p_http_auth))
-    {
-        LOG_ERR("Auth type is not NONE, but p_http_auth is NULL");
-        return false;
-    }
     const esp_http_client_auth_type_t http_client_auth_type = (GW_CFG_REMOTE_AUTH_TYPE_BASIC == gw_cfg_http_auth_type)
                                                                   ? HTTP_AUTH_TYPE_BASIC
                                                                   : HTTP_AUTH_TYPE_NONE;
@@ -1320,16 +1329,14 @@ http_download_with_auth(
         LOG_INFO("http_download: Auth: Basic, Username: %s", p_http_auth->auth_basic.user.buf);
         LOG_DBG("http_download: Auth: Basic, Password: %s", p_http_auth->auth_basic.password.buf);
     }
-    if (!gw_status_is_network_connected())
-    {
-        LOG_ERR("HTTP download failed - no network connection");
-        return false;
-    }
 
     esp_http_client_config_t* p_http_config = http_download_create_config(
-        &param,
+        param.p_url,
+        param.timeout_seconds,
+        HTTP_METHOD_GET,
         http_client_auth_type,
         p_http_auth,
+        &http_download_event_handler,
         &cb_info);
     if (NULL == p_http_config)
     {
@@ -1401,58 +1408,12 @@ http_check_with_auth(
     const http_header_item_t* const       p_extra_header_item,
     http_resp_code_e* const               p_http_resp_code)
 {
-    http_check_cb_info_t cb_info = {
-        .http_handle             = NULL,
-        .content_length          = 0,
-        .flag_feed_task_watchdog = param.flag_feed_task_watchdog,
-    };
+    LOG_INFO("http_check: URL: %s", param.p_url);
 
     if ((GW_CFG_REMOTE_AUTH_TYPE_NO != gw_cfg_http_auth_type) && (NULL == p_http_auth))
     {
         LOG_ERR("Auth type is not NONE, but p_http_auth is NULL");
         return false;
-    }
-    const esp_http_client_auth_type_t http_client_auth_type = (GW_CFG_REMOTE_AUTH_TYPE_BASIC == gw_cfg_http_auth_type)
-                                                                  ? HTTP_AUTH_TYPE_BASIC
-                                                                  : HTTP_AUTH_TYPE_NONE;
-
-    const esp_http_client_config_t http_config = {
-        .url  = param.p_url,
-        .host = NULL,
-        .port = 0,
-
-        .username  = (HTTP_AUTH_TYPE_BASIC == http_client_auth_type) ? p_http_auth->auth_basic.user.buf : NULL,
-        .password  = (HTTP_AUTH_TYPE_BASIC == http_client_auth_type) ? p_http_auth->auth_basic.password.buf : NULL,
-        .auth_type = http_client_auth_type,
-
-        .path                        = NULL,
-        .query                       = NULL,
-        .cert_pem                    = NULL,
-        .client_cert_pem             = NULL,
-        .client_key_pem              = NULL,
-        .user_agent                  = NULL,
-        .method                      = HTTP_METHOD_HEAD,
-        .timeout_ms                  = (int)(param.timeout_seconds * TIME_UNITS_MS_PER_SECOND),
-        .disable_auto_redirect       = false,
-        .max_redirection_count       = 0,
-        .max_authorization_retries   = 0,
-        .event_handler               = &http_check_event_handler,
-        .transport_type              = HTTP_TRANSPORT_UNKNOWN,
-        .buffer_size                 = 2048,
-        .buffer_size_tx              = 1024,
-        .user_data                   = &cb_info,
-        .is_async                    = true,
-        .use_global_ca_store         = false,
-        .skip_cert_common_name_check = false,
-        .keep_alive_enable           = false,
-        .keep_alive_idle             = 0,
-        .keep_alive_interval         = 0,
-        .keep_alive_count            = 0,
-    };
-    LOG_INFO("http_check: URL: %s", param.p_url);
-    if (HTTP_AUTH_TYPE_BASIC == http_client_auth_type)
-    {
-        LOG_INFO("http_check: Auth: Basic, Username: %s", p_http_auth->auth_basic.user.buf);
     }
     if (!gw_status_is_network_connected())
     {
@@ -1460,12 +1421,41 @@ http_check_with_auth(
         return false;
     }
 
+    http_check_cb_info_t cb_info = {
+        .http_handle             = NULL,
+        .content_length          = 0,
+        .flag_feed_task_watchdog = param.flag_feed_task_watchdog,
+    };
+
+    const esp_http_client_auth_type_t http_client_auth_type = (GW_CFG_REMOTE_AUTH_TYPE_BASIC == gw_cfg_http_auth_type)
+                                                                  ? HTTP_AUTH_TYPE_BASIC
+                                                                  : HTTP_AUTH_TYPE_NONE;
+
+    esp_http_client_config_t* p_http_config = http_download_create_config(
+        param.p_url,
+        param.timeout_seconds,
+        HTTP_METHOD_HEAD,
+        http_client_auth_type,
+        p_http_auth,
+        &http_check_event_handler,
+        &cb_info);
+    if (NULL == p_http_config)
+    {
+        LOG_ERR("Can't allocate memory for http_config");
+        return false;
+    }
+    if (HTTP_AUTH_TYPE_BASIC == http_client_auth_type)
+    {
+        LOG_INFO("http_check: Auth: Basic, Username: %s", p_http_auth->auth_basic.user.buf);
+    }
+
     suspend_relaying_and_wait(param.flag_free_memory);
 
-    cb_info.http_handle = esp_http_client_init(&http_config);
+    cb_info.http_handle = esp_http_client_init(p_http_config);
     if (NULL == cb_info.http_handle)
     {
         LOG_ERR("Can't init http client");
+        os_free(p_http_config);
         resume_relaying_and_wait(param.flag_free_memory);
         return false;
     }
@@ -1476,6 +1466,7 @@ http_check_with_auth(
         if (NULL == str_buf.buf)
         {
             LOG_ERR("Can't allocate memory for bearer token");
+            os_free(p_http_config);
             resume_relaying_and_wait(param.flag_free_memory);
             return false;
         }
@@ -1506,6 +1497,7 @@ http_check_with_auth(
         LOG_ERR_ESP(err, "esp_http_client_cleanup failed");
     }
 
+    os_free(p_http_config);
     resume_relaying_and_wait(param.flag_free_memory);
 
     return result;
