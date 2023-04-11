@@ -125,7 +125,7 @@ idf_component_register(
 )
 
 target_compile_options(${COMPONENT_LIB} PRIVATE
-        -Wstack-usage=512
+        -Wstack-usage=180
         -fstack-usage
 )
 
