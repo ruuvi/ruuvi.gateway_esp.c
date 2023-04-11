@@ -14,6 +14,7 @@
 #include "freertos/event_groups.h"
 #include <errno.h>
 #include <string.h>
+#include "snprintf_with_esp_err_desc.h"
 
 #include "mqtt_supported_features.h"
 
@@ -42,12 +43,6 @@ static const char *TAG = "MQTT_CLIENT";
  */
 ESP_EVENT_DEFINE_BASE(MQTT_EVENTS);
 #endif
-
-typedef struct err_desc_t
-{
-#define ERR_DESC_SIZE 80
-    char buf[ERR_DESC_SIZE];
-} err_desc_t;
 
 typedef struct mqtt_state {
     mqtt_connect_info_t *connect_info;
@@ -1888,8 +1883,7 @@ static void esp_mqtt_client_dispatch_transport_error(esp_mqtt_client_handle_t cl
     }
     else if (ESP_ERR_ESP_TLS_FAILED_CONNECT_TO_HOST == client->event.error_handle->esp_tls_last_esp_err)
     {
-        err_desc_t err_desc;
-        esp_err_to_name_r(client->event.error_handle->esp_transport_sock_errno, err_desc.buf, sizeof(err_desc.buf));
+        str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(client->event.error_handle->esp_transport_sock_errno);
         ESP_LOGE(
             TAG,
             "[%s] %s: last_esp_err=%d (%s), sock_errno=%d (%s)",
@@ -1898,34 +1892,34 @@ static void esp_mqtt_client_dispatch_transport_error(esp_mqtt_client_handle_t cl
             client->event.error_handle->esp_tls_last_esp_err,
             "ESP_ERR_ESP_TLS_FAILED_CONNECT_TO_HOST",
             client->event.error_handle->esp_transport_sock_errno,
-            err_desc.buf);
+            (NULL != err_desc.buf) ? err_desc.buf : "");
+        str_buf_free_buf(&err_desc);
     }
     else
     {
         if (0 != client->event.error_handle->esp_tls_last_esp_err)
         {
-            err_desc_t err_desc;
-            esp_err_to_name_r(client->event.error_handle->esp_tls_last_esp_err, err_desc.buf, sizeof(err_desc.buf));
+            str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(client->event.error_handle->esp_tls_last_esp_err);
             ESP_LOGE(
                 TAG,
                 "[%s] %s: esp_tls_last_esp_err=%d (%s)",
                 pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???",
                 __func__,
                 client->event.error_handle->esp_tls_last_esp_err,
-                err_desc.buf);
-
+                (NULL != err_desc.buf) ? err_desc.buf : "");
+            str_buf_free_buf(&err_desc);
         }
         else if (0 != client->event.error_handle->esp_transport_sock_errno)
         {
-            err_desc_t err_desc;
-            esp_err_to_name_r(client->event.error_handle->esp_transport_sock_errno, err_desc.buf, sizeof(err_desc.buf));
+            str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(client->event.error_handle->esp_transport_sock_errno);
             ESP_LOGE(
                 TAG,
                 "[%s] %s: sock_errno=%d (%s)",
                 pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???",
                 __func__,
                 client->event.error_handle->esp_transport_sock_errno,
-                err_desc.buf);
+                (NULL != err_desc.buf) ? err_desc.buf : "");
+            str_buf_free_buf(&err_desc);
         }
     }
 #ifdef MQTT_SUPPORTED_FEATURE_TRANSPORT_SOCK_ERRNO_REPORTING

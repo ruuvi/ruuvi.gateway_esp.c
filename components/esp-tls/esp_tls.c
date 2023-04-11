@@ -24,6 +24,8 @@
 #include "esp_tls.h"
 #include "esp_tls_error_capture_internal.h"
 #include <errno.h>
+#include "snprintf_with_esp_err_desc.h"
+
 static const char *TAG = "esp-tls";
 
 #ifdef CONFIG_ESP_TLS_USING_MBEDTLS
@@ -72,12 +74,6 @@ static const char *TAG = "esp-tls";
 #else   /* ESP_TLS_USING_WOLFSSL */
 #error "No TLS stack configured"
 #endif
-
-typedef struct err_desc_t
-{
-#define ERR_DESC_SIZE 80
-    char buf[ERR_DESC_SIZE];
-} err_desc_t;
 
 static esp_err_t create_ssl_handle(const char *hostname, size_t hostlen, const void *cfg, esp_tls_t *tls)
 {
@@ -276,9 +272,9 @@ static esp_err_t esp_tcp_connect(const ip_addr_t* const p_remote_ip, int port, i
     ret = connect(fd, (struct sockaddr*)&sa4, sa4.sin_len);
     if (ret < 0 && !(errno == EINPROGRESS && cfg && cfg->non_block)) {
 
-        err_desc_t err_desc;
-        esp_err_to_name_r(errno, err_desc.buf, sizeof(err_desc.buf));
-        ESP_LOGE(TAG, "Failed to connnect to host, error=%d (%s)", errno, err_desc.buf);
+        str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(errno);
+        ESP_LOGE(TAG, "Failed to connnect to host, error=%d (%s)", errno, (NULL != err_desc.buf) ? err_desc.buf : "");
+        str_buf_free_buf(&err_desc);
         ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_SYSTEM, errno);
         ret = ESP_ERR_ESP_TLS_FAILED_CONNECT_TO_HOST;
         goto err_freesocket;
@@ -415,10 +411,11 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
         char remote_ip4_str[IP4ADDR_STRLEN_MAX];
         ip4addr_ntoa_r(&tls->remote_ip.u_addr.ip4, remote_ip4_str, sizeof(remote_ip4_str));
         ESP_LOGD(TAG, "Connect to IP: %s", remote_ip4_str);
-        if ((esp_ret = esp_tcp_connect(&tls->remote_ip, port, &tls->sockfd, tls, cfg)) != ESP_OK) {
-            err_desc_t err_desc;
-            esp_err_to_name_r(esp_ret, err_desc.buf, sizeof(err_desc.buf));
-            ESP_LOGE(TAG, "esp_tcp_connect failed, err=%d (%s)", esp_ret, err_desc.buf);
+        esp_ret = esp_tcp_connect(&tls->remote_ip, port, &tls->sockfd, tls, cfg);
+        if (esp_ret != ESP_OK) {
+            str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(esp_ret);
+            ESP_LOGE(TAG, "esp_tcp_connect failed, err=%d (%s)", esp_ret, (NULL != err_desc.buf) ? err_desc.buf : "");
+            str_buf_free_buf(&err_desc);
             ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, esp_ret);
             return -1;
         }
@@ -470,9 +467,9 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
                     return -1;
                 }
                 if (0 != error) {
-                    err_desc_t err_desc;
-                    esp_err_to_name_r(error, err_desc.buf, sizeof(err_desc.buf));
-                    ESP_LOGE(TAG, "%s: Non blocking connect failed: error=%d (%s)", __func__, error, err_desc.buf);
+                    str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(error);
+                    ESP_LOGE(TAG, "%s: Non blocking connect failed: error=%d (%s)", __func__, error, (NULL != err_desc.buf) ? err_desc.buf : "");
+                    str_buf_free_buf(&err_desc);
                     ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_SYSTEM, error);
                     ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, error);
                     tls->conn_state = ESP_TLS_FAIL;

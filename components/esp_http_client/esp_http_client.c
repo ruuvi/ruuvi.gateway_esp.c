@@ -28,18 +28,13 @@
 #include "esp_http_client.h"
 #include "errno.h"
 #include "esp_crt_bundle.h"
+#include "snprintf_with_esp_err_desc.h"
 
 #ifdef CONFIG_ESP_HTTP_CLIENT_ENABLE_HTTPS
 #include "esp_transport_ssl.h"
 #endif
 
 static const char *TAG = "HTTP_CLIENT";
-
-typedef struct err_desc_t
-{
-#define ERR_DESC_SIZE 80
-    char buf[ERR_DESC_SIZE];
-} err_desc_t;
 
 /**
  * HTTP Buffer
@@ -1036,19 +1031,23 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                                 &esp_tls_flags);
                             const int sock_errno = esp_transport_get_errno(client->transport);
                             if (0 != esp_tls_last_esp_err) {
-                                err_desc_t err_desc;
-                                esp_err_to_name_r(esp_tls_last_esp_err, err_desc.buf, sizeof(err_desc.buf));
+                                str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(esp_tls_last_esp_err);
                                 ESP_LOGE(
                                     TAG,
                                     "Connection failed: esp_tls_last_esp_err=%d (%s)",
                                     esp_tls_last_esp_err,
-                                    err_desc.buf);
+                                    (NULL != err_desc.buf) ? err_desc.buf : "");
+                                str_buf_free_buf(&err_desc);
                                 return esp_tls_last_esp_err;
                             }
                             if (0 != sock_errno) {
-                                err_desc_t err_desc;
-                                esp_err_to_name_r(sock_errno, err_desc.buf, sizeof(err_desc.buf));
-                                ESP_LOGE(TAG, "Connection failed: sock_errno=%d (%s)", sock_errno, err_desc.buf);
+                                str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(sock_errno);
+                                ESP_LOGE(
+                                    TAG,
+                                    "Connection failed: sock_errno=%d (%s)",
+                                    sock_errno,
+                                    (NULL != err_desc.buf) ? err_desc.buf : "");
+                                str_buf_free_buf(&err_desc);
                                 return sock_errno;
                             }
                             ESP_LOGE(TAG, "Connection failed: Connection timeout");
@@ -1216,18 +1215,22 @@ static esp_err_t esp_http_client_connect(esp_http_client_handle_t client)
                     &esp_tls_flags);
                 const int sock_errno = esp_transport_get_errno(client->transport);
                 if (0 != esp_tls_last_esp_err) {
-                    err_desc_t err_desc;
-                    esp_err_to_name_r(esp_tls_last_esp_err, err_desc.buf, sizeof(err_desc.buf));
+                    str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(esp_tls_last_esp_err);
                     ESP_LOGE(
                         TAG,
                         "Connection failed: esp_tls_last_esp_err=%d (%s)",
                         esp_tls_last_esp_err,
-                        err_desc.buf);
+                        (NULL != err_desc.buf) ? err_desc.buf : "");
+                    str_buf_free_buf(&err_desc);
                 }
                 else if (0 != sock_errno) {
-                    err_desc_t err_desc;
-                    esp_err_to_name_r(sock_errno, err_desc.buf, sizeof(err_desc.buf));
-                    ESP_LOGE(TAG, "Connection failed: sock_errno=%d (%s)", sock_errno, err_desc.buf);
+                    str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(sock_errno);
+                    ESP_LOGE(
+                        TAG,
+                        "Connection failed: sock_errno=%d (%s)",
+                        sock_errno,
+                        (NULL != err_desc.buf) ? err_desc.buf : "");
+                    str_buf_free_buf(&err_desc);
                 }
                 else {
                     ESP_LOGE(TAG, "Connection failed: Unknown error");

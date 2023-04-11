@@ -21,6 +21,7 @@
 #include "gw_status.h"
 #include "os_malloc.h"
 #include "esp_tls.h"
+#include "snprintf_with_esp_err_desc.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -32,13 +33,6 @@
 #define TOPIC_LEN 512
 
 #define MQTT_NETWORK_TIMEOUT_MS (10U * 1000U)
-
-#define ERR_DESC_SIZE 80
-
-typedef struct err_desc_t
-{
-    char buf[ERR_DESC_SIZE];
-} err_desc_t;
 
 typedef int mqtt_message_id_t;
 
@@ -268,45 +262,42 @@ mqtt_event_handler_on_error(
         {
             LOG_ERR("MQTT_EVENT_ERROR (MQTT_ERROR_TYPE_TCP_TRANSPORT): ESP_ERR_ESP_TLS_FAILED_CONNECT_TO_HOST");
             mqtt_error = MQTT_ERROR_CONNECT;
-            err_desc_t err_desc;
-            esp_err_to_name_r(esp_transport_sock_errno, err_desc.buf, sizeof(err_desc.buf));
-            (void)snprintf(
+            (void)snprintf_with_esp_err_desc(
+                esp_transport_sock_errno,
                 p_mqtt_protected_data->err_msg,
                 sizeof(p_mqtt_protected_data->err_msg),
-                "Failed to connect to host, error %d (%s)",
-                esp_transport_sock_errno,
-                err_desc.buf);
+                "Failed to connect to host");
         }
         else
         {
             if (0 != esp_tls_last_esp_err)
             {
-                err_desc_t err_desc;
-                esp_err_to_name_r(esp_tls_last_esp_err, err_desc.buf, sizeof(err_desc.buf));
+                str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(esp_tls_last_esp_err);
                 LOG_ERR(
                     "MQTT_EVENT_ERROR (MQTT_ERROR_TYPE_TCP_TRANSPORT): %d (%s)",
                     esp_tls_last_esp_err,
-                    err_desc.buf);
+                    (NULL != err_desc.buf) ? err_desc.buf : "");
                 (void)snprintf(
                     p_mqtt_protected_data->err_msg,
                     sizeof(p_mqtt_protected_data->err_msg),
                     "Error %d (%s)",
                     esp_tls_last_esp_err,
-                    err_desc.buf);
+                    (NULL != err_desc.buf) ? err_desc.buf : "");
+                str_buf_free_buf(&err_desc);
             }
             else if (0 != esp_transport_sock_errno)
             {
-                err_desc_t err_desc;
-                esp_err_to_name_r(esp_transport_sock_errno, err_desc.buf, sizeof(err_desc.buf));
+                str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(esp_transport_sock_errno);
                 LOG_ERR(
                     "MQTT_EVENT_ERROR (MQTT_ERROR_TYPE_TCP_TRANSPORT): %d (%s)",
                     esp_transport_sock_errno,
-                    err_desc.buf);
+                    (NULL != err_desc.buf) ? err_desc.buf : "");
                 (void)snprintf(
                     p_mqtt_protected_data->err_msg,
                     sizeof(p_mqtt_protected_data->err_msg),
                     "%s",
-                    err_desc.buf);
+                    (NULL != err_desc.buf) ? err_desc.buf : "");
+                str_buf_free_buf(&err_desc);
             }
             else
             {

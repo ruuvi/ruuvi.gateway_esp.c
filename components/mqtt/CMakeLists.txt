@@ -4,4 +4,5 @@ idf_component_register(SRCS "esp-mqtt/mqtt_client.c"
                             "esp-mqtt/lib/platform_esp32_idf.c"
                     INCLUDE_DIRS esp-mqtt/include
                     PRIV_INCLUDE_DIRS "esp-mqtt/lib/include"
-                    REQUIRES lwip nghttp mbedtls tcp_transport)
+                    REQUIRES lwip nghttp mbedtls tcp_transport
+                    PRIV_REQUIRES ruuvi.esp_wrappers.c)

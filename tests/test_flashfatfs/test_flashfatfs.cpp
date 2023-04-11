@@ -335,7 +335,7 @@ TEST_F(TestFlashFatFs, flashfatfs_mount_ok_unmount_failed) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Unmount fs_nrf52");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "esp_vfs_fat_spiflash_unmount failed, err=262 (UNKNOWN ERROR)");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "esp_vfs_fat_spiflash_unmount failed, err=262 (Unknown error 262)");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -361,7 +361,7 @@ TEST_F(TestFlashFatFs, flashfatfs_mount_failed_on_spiflash_mount) // NOLINT
     ASSERT_EQ(nullptr, this->m_p_ffs);
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "esp_vfs_fat_spiflash_mount failed, err=261 (UNKNOWN ERROR)");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "esp_vfs_fat_spiflash_mount failed, err=261 (Unknown error 261)");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }

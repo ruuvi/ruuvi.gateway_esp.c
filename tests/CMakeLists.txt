@@ -4,6 +4,7 @@ project(ruuvi_gateway_esp-tests)
 
 add_definitions(
         -DRUUVI_TESTS=1
+        -D_GNU_SOURCE
 )
 
 set(RUUVI_ESP_WRAPPERS ${CMAKE_CURRENT_SOURCE_DIR}/../components/ruuvi.esp_wrappers.c)

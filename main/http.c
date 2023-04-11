@@ -28,6 +28,7 @@
 #include "mqtt.h"
 #include "http_server_cb.h"
 #include "esp_tls.h"
+#include "snprintf_with_esp_err_desc.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -40,13 +41,6 @@
 
 typedef int esp_http_client_len_t;
 typedef int esp_http_client_http_status_code_t;
-
-#define ERR_DESC_SIZE 80
-
-typedef struct err_desc_t
-{
-    char buf[ERR_DESC_SIZE];
-} err_desc_t;
 
 typedef struct http_download_cb_info_t
 {
@@ -388,12 +382,12 @@ http_wait_until_async_req_completed(
                 return http_server_resp_502_json_in_heap(str_buf.buf);
             }
             LOG_ERR_ESP(err, "%s failed", "esp_http_client_perform");
-            err_desc_t err_desc;
-            esp_err_to_name_r(err, err_desc.buf, sizeof(err_desc.buf));
-            const str_buf_t str_buf = str_buf_printf_with_alloc(
+            str_buf_t       err_desc = esp_err_to_name_with_alloc_str_buf(err);
+            const str_buf_t str_buf  = str_buf_printf_with_alloc(
                 "Network error when communicating with the server, err=%d, description=%s",
                 err,
-                err_desc.buf);
+                (NULL != err_desc.buf) ? err_desc.buf : "");
+            str_buf_free_buf(&err_desc);
             return http_server_resp_502_json_in_heap(str_buf.buf);
         }
         LOG_DBG("esp_http_client_perform: ESP_ERR_HTTP_EAGAIN");
