@@ -283,7 +283,7 @@ TEST_F(TestFlashFatFs, flashfatfs_mount_ok_rel_path) // NOLINT
     ASSERT_TRUE(flashfatfs_unmount(&this->m_p_ffs));
     this->m_p_ffs = nullptr;
 
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point fs_nrf52");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Unmount fs_nrf52");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -311,7 +311,7 @@ TEST_F(TestFlashFatFs, flashfatfs_mount_ok_abs_path) // NOLINT
     ASSERT_TRUE(flashfatfs_unmount(&this->m_p_ffs));
     this->m_p_ffs = nullptr;
 
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -332,7 +332,7 @@ TEST_F(TestFlashFatFs, flashfatfs_mount_ok_unmount_failed) // NOLINT
     ASSERT_FALSE(flashfatfs_unmount(&this->m_p_ffs));
     this->m_p_ffs = nullptr;
 
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point fs_nrf52");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Unmount fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "esp_vfs_fat_spiflash_unmount failed, err=262 (Unknown error 262)");
@@ -347,7 +347,7 @@ TEST_F(TestFlashFatFs, flashfatfs_mount_failed_no_mem) // NOLINT
     this->m_p_ffs              = flashfatfs_mount(this->m_mount_point, GW_NRF_PARTITION, max_files);
     ASSERT_EQ(nullptr, this->m_p_ffs);
 
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "Can't allocate memory");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
@@ -360,7 +360,7 @@ TEST_F(TestFlashFatFs, flashfatfs_mount_failed_on_spiflash_mount) // NOLINT
     this->m_p_ffs                = flashfatfs_mount(this->m_mount_point, GW_NRF_PARTITION, max_files);
     ASSERT_EQ(nullptr, this->m_p_ffs);
 
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "esp_vfs_fat_spiflash_mount failed, err=261 (Unknown error 261)");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
@@ -369,20 +369,16 @@ TEST_F(TestFlashFatFs, flashfatfs_mount_failed_on_spiflash_mount) // NOLINT
 TEST_F(TestFlashFatFs, flashfatfs_get_full_path_no_mount_point) // NOLINT
 {
     {
-        const char*       file_name = "abc";
-        flashfatfs_path_t path      = flashfatfs_get_full_path(nullptr, file_name);
+        const char* file_name = "abc";
+        str_buf_t   path      = flashfatfs_get_full_path(nullptr, file_name);
         ASSERT_EQ(string(path.buf), "/abc");
+        str_buf_free_buf(&path);
     }
     {
-        const char*       file_name = "123456789012345678901234567890123456789012345678901234567890123456789012345678";
-        flashfatfs_path_t path      = flashfatfs_get_full_path(nullptr, file_name);
+        const char* file_name = "123456789012345678901234567890123456789012345678901234567890123456789012345678";
+        str_buf_t   path      = flashfatfs_get_full_path(nullptr, file_name);
         ASSERT_EQ(string(path.buf), string("/") + string(file_name));
-    }
-    {
-        flashfatfs_path_t path = flashfatfs_get_full_path(
-            nullptr,
-            "123456789012345678901234567890123456789012345678901234567890123456789012345678A");
-        ASSERT_EQ(string(path.buf), "/123456789012345678901234567890123456789012345678901234567890123456789012345678");
+        str_buf_free_buf(&path);
     }
 }
 
@@ -391,15 +387,10 @@ TEST_F(TestFlashFatFs, flashfatfs_get_full_path_with_mount_point) // NOLINT
     const char* mount_point = "/fs_nrf52";
     this->m_p_ffs           = flashfatfs_mount(mount_point, GW_NRF_PARTITION, 1);
     {
-        const char*       file_name = "abc";
-        flashfatfs_path_t path      = flashfatfs_get_full_path(this->m_p_ffs, file_name);
+        const char* file_name = "abc";
+        str_buf_t   path      = flashfatfs_get_full_path(this->m_p_ffs, file_name);
         ASSERT_EQ(string(path.buf), string("./fs_nrf52/abc"));
-    }
-    {
-        flashfatfs_path_t path = flashfatfs_get_full_path(
-            this->m_p_ffs,
-            "123456789012345678901234567890123456789012345678901234567890123456789012345678A");
-        ASSERT_EQ(string(path.buf), "./fs_nrf52/12345678901234567890123456789012345678901234567890123456789012345678");
+        str_buf_free_buf(&path);
     }
 }
 
@@ -460,7 +451,7 @@ TEST_F(TestFlashFatFs, flashfatfs_open_ok) // NOLINT
     ASSERT_TRUE(flashfatfs_unmount(&this->m_p_ffs));
     this->m_p_ffs = nullptr;
 
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point fs_nrf52");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Unmount fs_nrf52");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -484,7 +475,7 @@ TEST_F(TestFlashFatFs, flashfatfs_open_failed) // NOLINT
     ASSERT_TRUE(flashfatfs_unmount(&this->m_p_ffs));
     this->m_p_ffs = nullptr;
 
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point fs_nrf52");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "Can't open: fs_nrf52/test1.txt");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Unmount fs_nrf52");
@@ -529,7 +520,7 @@ TEST_F(TestFlashFatFs, flashfatfs_fopen_ascii_ok) // NOLINT
     ASSERT_TRUE(flashfatfs_unmount(&this->m_p_ffs));
     this->m_p_ffs = nullptr;
 
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point fs_nrf52");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Unmount fs_nrf52");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -573,7 +564,7 @@ TEST_F(TestFlashFatFs, flashfatfs_fopen_binary_ok) // NOLINT
     ASSERT_TRUE(flashfatfs_unmount(&this->m_p_ffs));
     this->m_p_ffs = nullptr;
 
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point fs_nrf52");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Unmount fs_nrf52");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -598,7 +589,7 @@ TEST_F(TestFlashFatFs, flashfatfs_fopen_failed) // NOLINT
     ASSERT_TRUE(flashfatfs_unmount(&this->m_p_ffs));
     this->m_p_ffs = nullptr;
 
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point fs_nrf52");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "Can't open: fs_nrf52/test1.txt");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Unmount fs_nrf52");
@@ -633,7 +624,7 @@ TEST_F(TestFlashFatFs, flashfatfs_stat_ok) // NOLINT
     ASSERT_TRUE(flashfatfs_unmount(&this->m_p_ffs));
     this->m_p_ffs = nullptr;
 
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point fs_nrf52");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Unmount fs_nrf52");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -657,7 +648,7 @@ TEST_F(TestFlashFatFs, flashfatfs_stat_failed) // NOLINT
     ASSERT_TRUE(flashfatfs_unmount(&this->m_p_ffs));
     this->m_p_ffs = nullptr;
 
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point fs_nrf52");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Unmount fs_nrf52");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -691,7 +682,7 @@ TEST_F(TestFlashFatFs, flashfatfs_get_file_size_ok) // NOLINT
     ASSERT_TRUE(flashfatfs_unmount(&this->m_p_ffs));
     this->m_p_ffs = nullptr;
 
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point fs_nrf52");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Unmount fs_nrf52");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -715,7 +706,7 @@ TEST_F(TestFlashFatFs, flashfatfs_get_file_size_failed) // NOLINT
     ASSERT_TRUE(flashfatfs_unmount(&this->m_p_ffs));
     this->m_p_ffs = nullptr;
 
-    TEST_CHECK_LOG_RECORD(ESP_LOG_DEBUG, "Mount partition 'fatfs_nrf52' to the mount point fs_nrf52");
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to fs_nrf52");
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "Unmount fs_nrf52");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
