@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include "str_buf.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -24,11 +25,6 @@ typedef struct hmac_sha256_t
 {
     uint8_t buf[HMAC_SHA256_SIZE];
 } hmac_sha256_t;
-
-typedef struct hmac_sha256_str_t
-{
-    char buf[(HMAC_SHA256_SIZE * 2) + 1];
-} hmac_sha256_str_t;
 
 /**
  * @brief Set the secret key.
@@ -58,11 +54,11 @@ bool
 hmac_sha256_calc(const uint8_t* const p_msg_buf, const size_t msg_len, hmac_sha256_t* const p_hmac_sha256);
 
 /**
- * @brief Compute HMAC_SHA256 for the message using the stored secret key and return the result as a string.
+ * @brief Compute HMAC_SHA256 for the message using the stored secret key and return the result as a str_buf_t.
  * @param p_msg - ptr to the message
- * @return 64-byte hex-encoded string hmac_sha256_str_t or empty string in case of error.
+ * @return 64-byte hex-encoded string in str_buf_t (the allocated memory must be freed by the caller).
  */
-hmac_sha256_str_t
+str_buf_t
 hmac_sha256_calc_str(const char* const p_msg);
 
 /**
@@ -71,7 +67,7 @@ hmac_sha256_calc_str(const char* const p_msg);
  * @return true if p_hmac_sha256_str contains hex-encoded HMAC_SHA256, false if p_hmac_sha256_str is empty.
  */
 bool
-hmac_sha256_is_str_valid(const hmac_sha256_str_t* const p_hmac_sha256_str);
+hmac_sha256_is_str_valid(const str_buf_t* const p_hmac_sha256_str);
 
 #ifdef __cplusplus
 }

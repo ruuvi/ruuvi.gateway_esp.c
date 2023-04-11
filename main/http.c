@@ -419,11 +419,12 @@ http_send_async(http_async_info_t* const p_http_async_info)
         (esp_http_client_len_t)strlen(p_msg));
     esp_http_client_set_header(p_http_async_info->p_http_client_handle, "Content-Type", "application/json");
 
-    const hmac_sha256_str_t hmac_sha256_str = hmac_sha256_calc_str(p_msg);
+    str_buf_t hmac_sha256_str = hmac_sha256_calc_str(p_msg);
     if (hmac_sha256_is_str_valid(&hmac_sha256_str))
     {
         esp_http_client_set_header(p_http_async_info->p_http_client_handle, "Ruuvi-HMAC-SHA256", hmac_sha256_str.buf);
     }
+    str_buf_free_buf(&hmac_sha256_str);
 
     LOG_DBG("esp_http_client_perform");
     const esp_err_t err = esp_http_client_perform(p_http_async_info->p_http_client_handle);
