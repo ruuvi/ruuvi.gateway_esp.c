@@ -448,21 +448,26 @@ http_send_advs_internal(
     const ruuvi_gw_cfg_http_t* const p_cfg_http,
     void* const                      p_user_data)
 {
-    const ruuvi_gw_cfg_coordinates_t coordinates = gw_cfg_get_coordinates();
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
 
     p_http_async_info->flag_sending_advs = true;
     p_http_async_info->cjson_str         = cjson_wrap_str_null();
-    if (!http_json_create_records_str(
-            p_reports,
-            (http_json_header_info_t) {
-                .flag_use_timestamps = flag_use_timestamps,
-                .timestamp           = time(NULL),
-                .p_mac_addr          = gw_cfg_get_nrf52_mac_addr(),
-                .p_coordinates_str   = coordinates.buf,
-                .flag_use_nonce      = true,
-                .nonce               = nonce,
-            },
-            &p_http_async_info->cjson_str))
+
+    const bool res = http_json_create_records_str(
+        p_reports,
+        (http_json_header_info_t) {
+            .flag_use_timestamps = flag_use_timestamps,
+            .timestamp           = time(NULL),
+            .p_mac_addr          = gw_cfg_get_nrf52_mac_addr(),
+            .p_coordinates_str   = p_gw_cfg->ruuvi_cfg.coordinates.buf,
+            .flag_use_nonce      = true,
+            .nonce               = nonce,
+        },
+        &p_http_async_info->cjson_str);
+
+    gw_cfg_unlock_ro(&p_gw_cfg);
+
+    if (!res)
     {
         LOG_ERR("Not enough memory to generate json");
         return false;
