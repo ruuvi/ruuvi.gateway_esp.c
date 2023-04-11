@@ -105,15 +105,17 @@ mqtt_create_full_topic(
 bool
 mqtt_publish_adv(const adv_report_t* const p_adv, const bool flag_use_timestamps, const time_t timestamp)
 {
-    cjson_wrap_str_t                 json_str    = cjson_wrap_str_null();
-    const ruuvi_gw_cfg_coordinates_t coordinates = gw_cfg_get_coordinates();
-    if (!mqtt_create_json_str(
-            p_adv,
-            flag_use_timestamps,
-            timestamp,
-            gw_cfg_get_nrf52_mac_addr(),
-            coordinates.buf,
-            &json_str))
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+    const gw_cfg_t*  p_gw_cfg = gw_cfg_lock_ro();
+    const bool       res      = mqtt_create_json_str(
+        p_adv,
+        flag_use_timestamps,
+        timestamp,
+        gw_cfg_get_nrf52_mac_addr(),
+        p_gw_cfg->ruuvi_cfg.coordinates.buf,
+        &json_str);
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    if (!res)
     {
         LOG_ERR("%s failed", "mqtt_create_json_str");
         return false;
