@@ -296,7 +296,7 @@ http_server_read_history(
     adv_table_history_read(p_reports, cur_time, flag_use_timestamps, filter, flag_use_filter);
     *p_num_of_advs = p_reports->num_of_advs;
 
-    const ruuvi_gw_cfg_coordinates_t coordinates = gw_cfg_get_coordinates();
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
 
     const bool res = http_json_create_records_str(
         p_reports,
@@ -304,11 +304,13 @@ http_server_read_history(
             .flag_use_timestamps = flag_use_timestamps,
             .timestamp           = cur_time,
             .p_mac_addr          = gw_cfg_get_nrf52_mac_addr(),
-            .p_coordinates_str   = coordinates.buf,
+            .p_coordinates_str   = p_gw_cfg->ruuvi_cfg.coordinates.buf,
             .flag_use_nonce      = false,
             .nonce               = 0,
         },
         p_json_str);
+
+    gw_cfg_unlock_ro(&p_gw_cfg);
 
     os_free(p_reports);
     return res;
