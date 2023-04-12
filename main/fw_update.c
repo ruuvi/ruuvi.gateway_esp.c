@@ -686,17 +686,74 @@ fw_update_nrf52fw_cb_after_updating(const bool flag_success)
 }
 
 static bool
+fw_update_ruuvi_gateway_esp_bin(void)
+{
+    LOG_INFO("fw_update_ota");
+    str_buf_t url = str_buf_printf_with_alloc("%s/%s", g_fw_update_cfg.url, "ruuvi_gateway_esp.bin");
+    if (NULL == url.buf)
+    {
+        LOG_ERR("Can't allocate memory");
+        return false;
+    }
+    if (!fw_update_ota(url.buf))
+    {
+        LOG_ERR("%s failed", "fw_update_ota");
+        str_buf_free_buf(&url);
+        return false;
+    }
+    str_buf_free_buf(&url);
+    return true;
+}
+
+static bool
+fw_update_fatfs_gwui_bin(void)
+{
+    LOG_INFO("fw_update_fatfs_gwui");
+    str_buf_t url = str_buf_printf_with_alloc("%s/%s", g_fw_update_cfg.url, "fatfs_gwui.bin");
+    if (NULL == url.buf)
+    {
+        LOG_ERR("Can't allocate memory");
+        return false;
+    }
+    if (!fw_update_fatfs_gwui(url.buf))
+    {
+        LOG_ERR("%s failed", "fw_update_fatfs_gwui");
+        str_buf_free_buf(&url);
+        return false;
+    }
+    str_buf_free_buf(&url);
+    return true;
+}
+
+static bool
+fw_update_fatfs_nrf52_bin(void)
+{
+    LOG_INFO("fw_update_fatfs_nrf52");
+    str_buf_t url = str_buf_printf_with_alloc("%s/%s", g_fw_update_cfg.url, "fatfs_nrf52.bin");
+    if (NULL == url.buf)
+    {
+        LOG_ERR("Can't allocate memory");
+        return false;
+    }
+    if (!fw_update_fatfs_nrf52(url.buf))
+    {
+        LOG_ERR("%s failed", "fw_update_fatfs_nrf52");
+        str_buf_free_buf(&url);
+        return false;
+    }
+    str_buf_free_buf(&url);
+    return true;
+}
+
+static bool
 fw_update_do_actions(void)
 {
     g_update_progress_stage = FW_UPDATE_STAGE_1;
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, 0);
 
-    char url[FW_UPDATE_URL_WITH_FW_IMAGE_MAX_LEN];
-    (void)snprintf(url, sizeof(url), "%s/%s", g_fw_update_cfg.url, "ruuvi_gateway_esp.bin");
-    LOG_INFO("fw_update_ota");
-    if (!fw_update_ota(url))
+    if (!fw_update_ruuvi_gateway_esp_bin())
     {
-        LOG_ERR("%s failed", "fw_update_ota");
+        LOG_ERR("%s failed", "fw_update_ruuvi_gateway_esp_bin");
         fw_update_set_extra_info_for_status_json_update_failed("Failed to update OTA");
         return false;
     }
@@ -704,11 +761,9 @@ fw_update_do_actions(void)
     g_update_progress_stage = FW_UPDATE_STAGE_2;
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, 0);
 
-    (void)snprintf(url, sizeof(url), "%s/%s", g_fw_update_cfg.url, "fatfs_gwui.bin");
-    LOG_INFO("fw_update_fatfs_gwui");
-    if (!fw_update_fatfs_gwui(url))
+    if (!fw_update_fatfs_gwui_bin())
     {
-        LOG_ERR("%s failed", "fw_update_fatfs_gwui");
+        LOG_ERR("%s failed", "fw_update_fatfs_gwui_bin");
         fw_update_set_extra_info_for_status_json_update_failed("Failed to update GWUI");
         return false;
     }
@@ -716,11 +771,9 @@ fw_update_do_actions(void)
     g_update_progress_stage = FW_UPDATE_STAGE_3;
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, 0);
 
-    (void)snprintf(url, sizeof(url), "%s/%s", g_fw_update_cfg.url, "fatfs_nrf52.bin");
-    LOG_INFO("fw_update_fatfs_nrf52");
-    if (!fw_update_fatfs_nrf52(url))
+    if (!fw_update_fatfs_nrf52_bin())
     {
-        LOG_ERR("%s failed", "fw_update_fatfs_nrf52");
+        LOG_ERR("%s failed", "fw_update_fatfs_nrf52_bin");
         fw_update_set_extra_info_for_status_json_update_failed("Failed to update nRF52");
         return false;
     }

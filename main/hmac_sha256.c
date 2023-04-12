@@ -9,6 +9,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "mbedtls/md.h"
+#include "os_malloc.h"
 
 static uint8_t g_hmac_sha256_key[HMAC_SHA256_MAX_KEY_SIZE];
 static size_t  g_hmac_sha256_key_size;
@@ -53,28 +54,37 @@ hmac_sha256_calc(const uint8_t* const p_msg_buf, const size_t msg_len, hmac_sha2
     return true;
 }
 
-hmac_sha256_str_t
+str_buf_t
 hmac_sha256_calc_str(const char* const p_msg)
 {
-    hmac_sha256_str_t hmac_str    = { 0 };
-    hmac_sha256_t     hmac_sha256 = { 0 };
-    const size_t      msg_len     = strlen(p_msg);
+    const size_t hmac_str_buf_size = HMAC_SHA256_SIZE * 2 + 1;
+    char* const  p_hmac_str_buf    = os_malloc(hmac_str_buf_size);
+    if (NULL == p_hmac_str_buf)
+    {
+        return str_buf_init_null();
+    }
+    str_buf_t     hmac_str_buf = str_buf_init(p_hmac_str_buf, hmac_str_buf_size);
+    hmac_sha256_t hmac_sha256  = { 0 };
+    const size_t  msg_len      = strlen(p_msg);
     if (!hmac_sha256_calc((const uint8_t*)p_msg, msg_len, &hmac_sha256))
     {
-        return hmac_str; // empty string
+        str_buf_free_buf(&hmac_str_buf);
+        return str_buf_init_null();
     }
     for (uint32_t i = 0; i < HMAC_SHA256_SIZE; ++i)
     {
-        char* const  p_str   = &hmac_str.buf[i * 2];
-        const size_t rem_len = (ptrdiff_t)(&hmac_str.buf[sizeof(hmac_str.buf) - 1] - p_str) + 1U;
-        snprintf(p_str, rem_len, "%02x", hmac_sha256.buf[i]);
+        str_buf_printf(&hmac_str_buf, "%02x", hmac_sha256.buf[i]);
     }
-    return hmac_str;
+    return hmac_str_buf;
 }
 
 bool
-hmac_sha256_is_str_valid(const hmac_sha256_str_t* const p_hmac_sha256_str)
+hmac_sha256_is_str_valid(const str_buf_t* const p_hmac_sha256_str)
 {
+    if (NULL == p_hmac_sha256_str->buf)
+    {
+        return false;
+    }
     if ('\0' == p_hmac_sha256_str->buf[0])
     {
         return false;

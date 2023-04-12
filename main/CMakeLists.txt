@@ -79,6 +79,8 @@ idf_component_register(
             mqtt.h
             mqtt_json.c
             mqtt_json.h
+            network_subsystem.c
+            network_subsystem.h
             nrf52_fw_ver.c
             nrf52_fw_ver.h
             nrf52fw.c
@@ -123,7 +125,7 @@ idf_component_register(
 )
 
 target_compile_options(${COMPONENT_LIB} PRIVATE
-        -Wstack-usage=512
+        -Wstack-usage=180
         -fstack-usage
 )
 

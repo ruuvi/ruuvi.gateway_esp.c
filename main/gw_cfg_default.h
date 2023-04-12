@@ -26,14 +26,14 @@ typedef bool (*gw_cfg_default_json_read_callback_t)(gw_cfg_t* const p_gw_cfg_def
 
 typedef struct gw_cfg_default_init_param_t
 {
-    const wifiman_wifi_ssid_t      wifi_ap_ssid;
-    const wifiman_hostname_t       hostname;
-    const nrf52_device_id_t        device_id;
-    const ruuvi_esp32_fw_ver_str_t esp32_fw_ver;
-    const ruuvi_nrf52_fw_ver_str_t nrf52_fw_ver;
-    const mac_address_bin_t        nrf52_mac_addr;
-    const mac_address_bin_t        esp32_mac_addr_wifi;
-    const mac_address_bin_t        esp32_mac_addr_eth;
+    wifiman_wifi_ssid_t      wifi_ap_ssid;
+    wifiman_hostname_t       hostname;
+    nrf52_device_id_t        device_id;
+    ruuvi_esp32_fw_ver_str_t esp32_fw_ver;
+    ruuvi_nrf52_fw_ver_str_t nrf52_fw_ver;
+    mac_address_bin_t        nrf52_mac_addr;
+    mac_address_bin_t        esp32_mac_addr_wifi;
+    mac_address_bin_t        esp32_mac_addr_eth;
 } gw_cfg_default_init_param_t;
 
 void
@@ -50,7 +50,7 @@ gw_cfg_default_log(void);
 void
 gw_cfg_default_get(gw_cfg_t* const p_gw_cfg);
 
-gw_cfg_device_info_t
+const gw_cfg_device_info_t*
 gw_cfg_default_device_info(void);
 
 const ruuvi_gw_cfg_mqtt_t*

@@ -106,11 +106,15 @@ http_server_cb_on_post_fw_update(const char* p_body, const bool flag_access_from
     const bool flag_wait_until_relaying_stopped = true;
     gw_status_suspend_relaying(flag_wait_until_relaying_stopped);
 
-    char url[FW_UPDATE_URL_WITH_FW_IMAGE_MAX_LEN];
-
-    (void)snprintf(url, sizeof(url), "%s/%s", fw_update_get_url(), "ruuvi_gateway_esp.bin");
+    str_buf_t url = str_buf_printf_with_alloc("%s/%s", fw_update_get_url(), "ruuvi_gateway_esp.bin");
+    if (NULL == url.buf)
+    {
+        LOG_ERR("Can't allocate memory");
+        return http_server_resp_500();
+    }
     http_resp_code_e http_resp_code
-        = http_check(url, HTTP_DOWNLOAD_TIMEOUT_SECONDS, GW_CFG_REMOTE_AUTH_TYPE_NO, NULL, NULL, true);
+        = http_check(url.buf, HTTP_DOWNLOAD_TIMEOUT_SECONDS, GW_CFG_REMOTE_AUTH_TYPE_NO, NULL, NULL, true);
+    str_buf_free_buf(&url);
     if (HTTP_RESP_CODE_200 != http_resp_code)
     {
         LOG_ERR("Failed to download ruuvi_gateway_esp.bin");
@@ -118,8 +122,14 @@ http_server_cb_on_post_fw_update(const char* p_body, const bool flag_access_from
         return http_server_cb_gen_resp(http_resp_code, "Failed to download ruuvi_gateway_esp.bin");
     }
 
-    (void)snprintf(url, sizeof(url), "%s/%s", fw_update_get_url(), "fatfs_gwui.bin");
-    http_resp_code = http_check(url, HTTP_DOWNLOAD_TIMEOUT_SECONDS, GW_CFG_REMOTE_AUTH_TYPE_NO, NULL, NULL, true);
+    url = str_buf_printf_with_alloc("%s/%s", fw_update_get_url(), "fatfs_gwui.bin");
+    if (NULL == url.buf)
+    {
+        LOG_ERR("Can't allocate memory");
+        return http_server_resp_500();
+    }
+    http_resp_code = http_check(url.buf, HTTP_DOWNLOAD_TIMEOUT_SECONDS, GW_CFG_REMOTE_AUTH_TYPE_NO, NULL, NULL, true);
+    str_buf_free_buf(&url);
     if (HTTP_RESP_CODE_200 != http_resp_code)
     {
         LOG_ERR("Failed to download fatfs_gwui.bin");
@@ -127,8 +137,14 @@ http_server_cb_on_post_fw_update(const char* p_body, const bool flag_access_from
         return http_server_cb_gen_resp(http_resp_code, "Failed to download fatfs_gwui.bin");
     }
 
-    (void)snprintf(url, sizeof(url), "%s/%s", fw_update_get_url(), "fatfs_nrf52.bin");
-    http_resp_code = http_check(url, HTTP_DOWNLOAD_TIMEOUT_SECONDS, GW_CFG_REMOTE_AUTH_TYPE_NO, NULL, NULL, true);
+    url = str_buf_printf_with_alloc("%s/%s", fw_update_get_url(), "fatfs_nrf52.bin");
+    if (NULL == url.buf)
+    {
+        LOG_ERR("Can't allocate memory");
+        return http_server_resp_500();
+    }
+    http_resp_code = http_check(url.buf, HTTP_DOWNLOAD_TIMEOUT_SECONDS, GW_CFG_REMOTE_AUTH_TYPE_NO, NULL, NULL, true);
+    str_buf_free_buf(&url);
     if (HTTP_RESP_CODE_200 != http_resp_code)
     {
         gw_status_resume_relaying(true);

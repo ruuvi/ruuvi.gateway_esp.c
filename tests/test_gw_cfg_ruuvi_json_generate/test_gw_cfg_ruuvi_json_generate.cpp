@@ -117,6 +117,7 @@ protected:
         gw_cfg_default_init(&init_params, nullptr);
         gw_cfg_init(nullptr);
         esp_log_wrapper_clear();
+        this->m_malloc_cnt = 0;
     }
 
     void

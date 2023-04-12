@@ -6,7 +6,7 @@
  */
 
 #include "flashfatfs.h"
-#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
+#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 #include <string.h>
 #include <stdlib.h>
@@ -15,6 +15,7 @@
 #include "esp_vfs_fat.h"
 #include "wear_levelling.h"
 #include "os_malloc.h"
+#include "str_buf.h"
 
 #if !defined(RUUVI_TESTS_NRF52FW)
 #define RUUVI_TESTS_NRF52FW (0)
@@ -41,7 +42,7 @@ flashfatfs_mount(const char* mount_point, const char* partition_label, const fla
 #endif
     size_t mount_point_buf_size = strlen(mount_point_prefix) + strlen(mount_point) + 1;
 
-    LOG_DBG("Mount partition '%s' to the mount point %s", partition_label, mount_point);
+    LOG_INFO("Mount partition '%s' to the mount point %s", partition_label, mount_point);
     flash_fat_fs_t* p_obj = os_calloc(1, sizeof(*p_obj) + mount_point_buf_size);
     if (NULL == p_obj)
     {
@@ -84,13 +85,11 @@ flashfatfs_unmount(const flash_fat_fs_t** pp_ffs)
 }
 
 FLASHFATFS_CB_STATIC
-flashfatfs_path_t
+str_buf_t
 flashfatfs_get_full_path(const flash_fat_fs_t* p_ffs, const char* file_path)
 {
-    const char*       mount_point = (NULL != p_ffs) ? p_ffs->mount_point : "";
-    flashfatfs_path_t tmp_path    = { '\0' };
-    snprintf(tmp_path.buf, sizeof(tmp_path.buf), "%s/%s", mount_point, file_path);
-    return tmp_path;
+    const char* mount_point = (NULL != p_ffs) ? p_ffs->mount_point : "";
+    return str_buf_printf_with_alloc("%s/%s", mount_point, file_path);
 }
 
 file_descriptor_t
@@ -101,37 +100,56 @@ flashfatfs_open(const flash_fat_fs_t* p_ffs, const char* file_path)
         LOG_ERR("p_ffs is NULL");
         return FILE_DESCRIPTOR_INVALID;
     }
-    const flashfatfs_path_t tmp_path = flashfatfs_get_full_path(p_ffs, file_path);
-    file_descriptor_t       fd       = open(tmp_path.buf, O_RDONLY);
+    str_buf_t tmp_path = flashfatfs_get_full_path(p_ffs, file_path);
+    if (NULL == tmp_path.buf)
+    {
+        LOG_ERR("Can't allocate memory");
+        return (file_descriptor_t)-1;
+    }
+    file_descriptor_t fd = open(tmp_path.buf, O_RDONLY);
     if (fd < 0)
     {
         LOG_ERR("Can't open: %s", tmp_path.buf);
     }
+    str_buf_free_buf(&tmp_path);
     return fd;
 }
 
 FILE*
 flashfatfs_fopen(const flash_fat_fs_t* p_ffs, const char* file_path, const bool flag_use_binary_mode)
 {
-    const flashfatfs_path_t tmp_path = flashfatfs_get_full_path(p_ffs, file_path);
-    const char*             mode     = flag_use_binary_mode ? "rb" : "r";
+    str_buf_t   tmp_path = flashfatfs_get_full_path(p_ffs, file_path);
+    const char* mode     = flag_use_binary_mode ? "rb" : "r";
+    if (NULL == tmp_path.buf)
+    {
+        LOG_ERR("Can't allocate memory");
+        return (FILE*)NULL;
+    }
 
-    FILE* fd = fopen(tmp_path.buf, mode);
-    if (NULL == fd)
+    FILE* p_fd = fopen(tmp_path.buf, mode);
+    if (NULL == p_fd)
     {
         LOG_ERR("Can't open: %s", tmp_path.buf);
     }
-    return fd;
+    str_buf_free_buf(&tmp_path);
+    return p_fd;
 }
 
 bool
 flashfatfs_stat(const flash_fat_fs_t* p_ffs, const char* file_path, struct stat* p_st)
 {
-    const flashfatfs_path_t tmp_path = flashfatfs_get_full_path(p_ffs, file_path);
-    if (stat(tmp_path.buf, p_st) < 0)
+    str_buf_t tmp_path = flashfatfs_get_full_path(p_ffs, file_path);
+    if (NULL == tmp_path.buf)
     {
+        LOG_ERR("Can't allocate memory");
         return false;
     }
+    if (stat(tmp_path.buf, p_st) < 0)
+    {
+        str_buf_free_buf(&tmp_path);
+        return false;
+    }
+    str_buf_free_buf(&tmp_path);
     return true;
 }
 

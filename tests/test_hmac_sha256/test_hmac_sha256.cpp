@@ -106,18 +106,20 @@ TEST_F(TestHMAC_SHA256, test_hmac_sha256_in_str_buf) // NOLINT
     // f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8
 
     ASSERT_TRUE(hmac_sha256_set_key_str("key"));
-    const hmac_sha256_str_t hmac_sha256_str = hmac_sha256_calc_str("The quick brown fox jumps over the lazy dog");
+    str_buf_t hmac_sha256_str = hmac_sha256_calc_str("The quick brown fox jumps over the lazy dog");
     ASSERT_TRUE(hmac_sha256_is_str_valid(&hmac_sha256_str));
     ASSERT_EQ(string("f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8"), string(hmac_sha256_str.buf));
+    str_buf_free_buf(&hmac_sha256_str);
 }
 
 TEST_F(TestHMAC_SHA256, test1_hmac_sha256_with_device_id_as_encryption_key) // NOLINT
 {
     const nrf52_device_id_str_t hmac_key = { "40:98:A7:78:58:1A:E1:38" };
     ASSERT_TRUE(hmac_sha256_set_key_str(hmac_key.str_buf));
-    const hmac_sha256_str_t hmac_sha256_str = hmac_sha256_calc_str("The quick brown fox jumps over the lazy dog");
+    str_buf_t hmac_sha256_str = hmac_sha256_calc_str("The quick brown fox jumps over the lazy dog");
     ASSERT_TRUE(hmac_sha256_is_str_valid(&hmac_sha256_str));
     ASSERT_EQ(string("04c84e84c41c795e449b3ad9f11304f3d6665d74f33df10d2bf8e832ca26a814"), string(hmac_sha256_str.buf));
+    str_buf_free_buf(&hmac_sha256_str);
 }
 
 TEST_F(TestHMAC_SHA256, test2_hmac_sha256_with_device_id_as_encryption_key) // NOLINT
@@ -132,9 +134,10 @@ TEST_F(TestHMAC_SHA256, test2_hmac_sha256_with_device_id_as_encryption_key) // N
 	"nonce":	"1763874810"
 })";
 
-    const hmac_sha256_str_t hmac_sha256_str = hmac_sha256_calc_str(json_str.c_str());
+    str_buf_t hmac_sha256_str = hmac_sha256_calc_str(json_str.c_str());
     ASSERT_TRUE(hmac_sha256_is_str_valid(&hmac_sha256_str));
     ASSERT_EQ(string("040f70eaf7e23084d2ae1171bb48ca3ebf66271c4ec24c4cff03d3d5d96f0d5d"), string(hmac_sha256_str.buf));
+    str_buf_free_buf(&hmac_sha256_str);
 }
 
 TEST_F(TestHMAC_SHA256, test1_hmac_sha256_twice_with_the_same_key) // NOLINT
@@ -142,9 +145,10 @@ TEST_F(TestHMAC_SHA256, test1_hmac_sha256_twice_with_the_same_key) // NOLINT
     const nrf52_device_id_str_t hmac_key = { "40:98:A7:78:58:1A:E1:38" };
     ASSERT_TRUE(hmac_sha256_set_key_str(hmac_key.str_buf));
     ASSERT_TRUE(hmac_sha256_set_key_str(hmac_key.str_buf));
-    const hmac_sha256_str_t hmac_sha256_str = hmac_sha256_calc_str("The quick brown fox jumps over the lazy dog");
+    str_buf_t hmac_sha256_str = hmac_sha256_calc_str("The quick brown fox jumps over the lazy dog");
     ASSERT_TRUE(hmac_sha256_is_str_valid(&hmac_sha256_str));
     ASSERT_EQ(string("04c84e84c41c795e449b3ad9f11304f3d6665d74f33df10d2bf8e832ca26a814"), string(hmac_sha256_str.buf));
+    str_buf_free_buf(&hmac_sha256_str);
 }
 
 TEST_F(TestHMAC_SHA256, test1_hmac_sha256_twice_with_the_different_key) // NOLINT
@@ -152,20 +156,22 @@ TEST_F(TestHMAC_SHA256, test1_hmac_sha256_twice_with_the_different_key) // NOLIN
     {
         const nrf52_device_id_str_t hmac_key = { "40:98:A7:78:58:1A:E1:38" };
         ASSERT_TRUE(hmac_sha256_set_key_str(hmac_key.str_buf));
-        const hmac_sha256_str_t hmac_sha256_str = hmac_sha256_calc_str("The quick brown fox jumps over the lazy dog");
+        str_buf_t hmac_sha256_str = hmac_sha256_calc_str("The quick brown fox jumps over the lazy dog");
         ASSERT_TRUE(hmac_sha256_is_str_valid(&hmac_sha256_str));
         ASSERT_EQ(
             string("04c84e84c41c795e449b3ad9f11304f3d6665d74f33df10d2bf8e832ca26a814"),
             string(hmac_sha256_str.buf));
+        str_buf_free_buf(&hmac_sha256_str);
     }
     {
         const nrf52_device_id_str_t hmac_key = { "40:98:A7:78:58:1A:E1:39" };
         ASSERT_TRUE(hmac_sha256_set_key_str(hmac_key.str_buf));
-        const hmac_sha256_str_t hmac_sha256_str = hmac_sha256_calc_str("The quick brown fox jumps over the lazy dog");
+        str_buf_t hmac_sha256_str = hmac_sha256_calc_str("The quick brown fox jumps over the lazy dog");
         ASSERT_TRUE(hmac_sha256_is_str_valid(&hmac_sha256_str));
         ASSERT_EQ(
             string("b058603d92e7b3adb834f009b2e2bbf720d3046921203983cf49139b1c177dbd"),
             string(hmac_sha256_str.buf));
+        str_buf_free_buf(&hmac_sha256_str);
     }
 }
 
@@ -179,8 +185,9 @@ TEST_F(TestHMAC_SHA256, test_hmac_sha256_malloc_fail_1) // NOLINT
     g_pObj->malloc_fail_on_cnt           = 1;
     const nrf52_device_id_str_t hmac_key = { "40:98:A7:78:58:1A:E1:38" };
     ASSERT_TRUE(hmac_sha256_set_key_str(hmac_key.str_buf));
-    const hmac_sha256_str_t hmac_sha256_str = hmac_sha256_calc_str("The quick brown fox jumps over the lazy dog");
+    str_buf_t hmac_sha256_str = hmac_sha256_calc_str("The quick brown fox jumps over the lazy dog");
     ASSERT_FALSE(hmac_sha256_is_str_valid(&hmac_sha256_str));
+    str_buf_free_buf(&hmac_sha256_str);
 }
 
 TEST_F(TestHMAC_SHA256, test_hmac_sha256_malloc_fail_2) // NOLINT
@@ -188,6 +195,7 @@ TEST_F(TestHMAC_SHA256, test_hmac_sha256_malloc_fail_2) // NOLINT
     g_pObj->malloc_fail_on_cnt           = 2;
     const nrf52_device_id_str_t hmac_key = { "40:98:A7:78:58:1A:E1:38" };
     ASSERT_TRUE(hmac_sha256_set_key_str(hmac_key.str_buf));
-    const hmac_sha256_str_t hmac_sha256_str = hmac_sha256_calc_str("The quick brown fox jumps over the lazy dog");
+    str_buf_t hmac_sha256_str = hmac_sha256_calc_str("The quick brown fox jumps over the lazy dog");
     ASSERT_FALSE(hmac_sha256_is_str_valid(&hmac_sha256_str));
+    str_buf_free_buf(&hmac_sha256_str);
 }

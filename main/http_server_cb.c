@@ -198,14 +198,11 @@ http_server_download_gw_cfg(const ruuvi_gw_cfg_remote_t* const p_remote, const b
     }
     else
     {
-        ruuvi_gw_cfg_http_url_t url = { 0 };
         if ('/' == p_remote->url.buf[base_url_len - 1])
         {
             base_url_len -= 1;
         }
-        (void)snprintf(
-            &url.buf[0],
-            sizeof(url.buf),
+        str_buf_t url = str_buf_printf_with_alloc(
             "%.*s/%.2s%.2s%.2s%.2s%.2s%.2s.json",
             (printf_int_t)base_url_len,
             &p_remote->url.buf[0],
@@ -215,6 +212,17 @@ http_server_download_gw_cfg(const ruuvi_gw_cfg_remote_t* const p_remote, const b
             &p_nrf52_mac_addr->str_buf[MAC_ADDR_STR_BYTE_OFFSET(3)],
             &p_nrf52_mac_addr->str_buf[MAC_ADDR_STR_BYTE_OFFSET(4)],
             &p_nrf52_mac_addr->str_buf[MAC_ADDR_STR_BYTE_OFFSET(5)]);
+        if (NULL == url.buf)
+        {
+            LOG_ERR("Can't allocate memory for URL");
+            download_info = (http_server_download_info_t) {
+                .is_error       = true,
+                .http_resp_code = HTTP_RESP_CODE_500,
+                .p_json_buf     = NULL,
+                .json_buf_size  = 0,
+            };
+            return download_info;
+        }
         LOG_INFO("Try to download gateway configuration from the remote server: %s", url.buf);
         download_info = http_download_json(
             url.buf,
@@ -223,15 +231,24 @@ http_server_download_gw_cfg(const ruuvi_gw_cfg_remote_t* const p_remote, const b
             &p_remote->auth,
             &extra_header_item,
             flag_free_memory);
+
+        str_buf_free_buf(&url);
+
         if (download_info.is_error)
         {
             LOG_WARN("Download gw_cfg: failed, http_resp_code=%u", (printf_uint_t)download_info.http_resp_code);
-            (void)snprintf(
-                &url.buf[0],
-                sizeof(url.buf),
-                "%.*s/gw_cfg.json",
-                (printf_int_t)base_url_len,
-                p_remote->url.buf);
+            url = str_buf_printf_with_alloc("%.*s/gw_cfg.json", (printf_int_t)base_url_len, p_remote->url.buf);
+            if (NULL == url.buf)
+            {
+                LOG_ERR("Can't allocate memory for URL");
+                download_info = (http_server_download_info_t) {
+                    .is_error       = true,
+                    .http_resp_code = HTTP_RESP_CODE_500,
+                    .p_json_buf     = NULL,
+                    .json_buf_size  = 0,
+                };
+                return download_info;
+            }
             LOG_INFO("Try to download gateway configuration from the remote server: %s", url.buf);
             download_info = http_download_json(
                 url.buf,
@@ -240,6 +257,8 @@ http_server_download_gw_cfg(const ruuvi_gw_cfg_remote_t* const p_remote, const b
                 &p_remote->auth,
                 &extra_header_item,
                 flag_free_memory);
+
+            str_buf_free_buf(&url);
         }
     }
     return download_info;

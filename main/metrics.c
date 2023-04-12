@@ -104,6 +104,16 @@ typedef struct metrics_info_t
     metrics_sha256_str_t        ruuvi_json_sha256;
 } metrics_info_t;
 
+typedef struct metrics_tmp_buf_t
+{
+    metrics_crc32_str_t    gw_cfg_crc32_str;
+    metrics_sha256_str_t   gw_cfg_sha256_str;
+    metrics_crc32_str_t    ruuvi_json_crc32_str;
+    metrics_sha256_str_t   ruuvi_json_sha256_str;
+    metrics_sha256_t       tmp_sha256;
+    mbedtls_sha256_context tmp_sha256_ctx;
+} metrics_tmp_buf_t;
+
 static const char TAG[] = "metrics";
 
 static uint64_t          g_received_advertisements;
@@ -165,38 +175,43 @@ get_total_free_bytes(const uint32_t caps)
 }
 
 static void
-metrics_calc_gw_cfg_hash(metrics_crc32_str_t* const p_crc32, metrics_sha256_str_t* const p_sha256)
+metrics_calc_gw_cfg_hash(
+    metrics_crc32_str_t* const    p_crc32,
+    metrics_sha256_str_t* const   p_sha256,
+    metrics_sha256_t* const       p_tmp_sha256,
+    mbedtls_sha256_context* const p_tmp_sha256_ctx)
 {
-    metrics_sha256_t gw_cfg_sha256 = { 0 };
-
     const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
 
     const metrics_crc32_t crc32 = {
         .val = crc32_le(0, (const void*)&p_gw_cfg->ruuvi_cfg, sizeof(*p_gw_cfg) - offsetof(gw_cfg_t, ruuvi_cfg)),
     };
 
-    mbedtls_sha256_context sha256_ctx = { 0 };
-    mbedtls_sha256_init(&sha256_ctx);
-    mbedtls_sha256_starts_ret(&sha256_ctx, false);
+    mbedtls_sha256_init(p_tmp_sha256_ctx);
+    mbedtls_sha256_starts_ret(p_tmp_sha256_ctx, false);
     mbedtls_sha256_update_ret(
-        &sha256_ctx,
+        p_tmp_sha256_ctx,
         (const void*)&p_gw_cfg->ruuvi_cfg,
         sizeof(*p_gw_cfg) - offsetof(gw_cfg_t, ruuvi_cfg));
-    mbedtls_sha256_finish_ret(&sha256_ctx, gw_cfg_sha256.buf);
-    mbedtls_sha256_free(&sha256_ctx);
+    mbedtls_sha256_finish_ret(p_tmp_sha256_ctx, p_tmp_sha256->buf);
+    mbedtls_sha256_free(p_tmp_sha256_ctx);
 
     gw_cfg_unlock_ro(&p_gw_cfg);
 
     (void)snprintf(p_crc32->buf, sizeof(p_crc32->buf), "%lu", (printf_ulong_t)crc32.val);
     str_buf_t str_buf = STR_BUF_INIT(p_sha256->buf, sizeof(p_sha256->buf));
-    for (uint32_t i = 0; i < sizeof(gw_cfg_sha256.buf); ++i)
+    for (uint32_t i = 0; i < sizeof(p_tmp_sha256->buf); ++i)
     {
-        str_buf_printf(&str_buf, "%02x", gw_cfg_sha256.buf[i]);
+        str_buf_printf(&str_buf, "%02x", p_tmp_sha256->buf[i]);
     }
 }
 
 static void
-metrics_calc_ruuvi_json_hash(metrics_crc32_str_t* const p_crc32, metrics_sha256_str_t* const p_sha256)
+metrics_calc_ruuvi_json_hash(
+    metrics_crc32_str_t* const    p_crc32,
+    metrics_sha256_str_t* const   p_sha256,
+    metrics_sha256_t* const       p_tmp_sha256,
+    mbedtls_sha256_context* const p_tmp_sha256_ctx)
 {
     memset(p_crc32, 0, sizeof(*p_crc32));
     memset(p_sha256, 0, sizeof(*p_sha256));
@@ -214,74 +229,88 @@ metrics_calc_ruuvi_json_hash(metrics_crc32_str_t* const p_crc32, metrics_sha256_
         .val = crc32_le(0, (const void*)json_str.p_str, strlen(json_str.p_str)),
     };
 
-    metrics_sha256_t       sha256     = { 0 };
-    mbedtls_sha256_context sha256_ctx = { 0 };
-    mbedtls_sha256_init(&sha256_ctx);
-    mbedtls_sha256_starts_ret(&sha256_ctx, false);
-    mbedtls_sha256_update_ret(&sha256_ctx, (const void*)json_str.p_str, strlen(json_str.p_str));
-    mbedtls_sha256_finish_ret(&sha256_ctx, sha256.buf);
-    mbedtls_sha256_free(&sha256_ctx);
+    mbedtls_sha256_init(p_tmp_sha256_ctx);
+    mbedtls_sha256_starts_ret(p_tmp_sha256_ctx, false);
+    mbedtls_sha256_update_ret(p_tmp_sha256_ctx, (const void*)json_str.p_str, strlen(json_str.p_str));
+    mbedtls_sha256_finish_ret(p_tmp_sha256_ctx, p_tmp_sha256->buf);
+    mbedtls_sha256_free(p_tmp_sha256_ctx);
 
     os_free(json_str.p_str);
 
     (void)snprintf(p_crc32->buf, sizeof(p_crc32->buf), "%lu", (printf_ulong_t)crc32.val);
     str_buf_t str_buf = STR_BUF_INIT(p_sha256->buf, sizeof(p_sha256->buf));
-    for (uint32_t i = 0; i < sizeof(sha256.buf); ++i)
+    for (uint32_t i = 0; i < sizeof(p_tmp_sha256->buf); ++i)
     {
-        str_buf_printf(&str_buf, "%02x", sha256.buf[i]);
+        str_buf_printf(&str_buf, "%02x", p_tmp_sha256->buf[i]);
     }
 }
 
-static metrics_info_t
+static metrics_info_t*
 gen_metrics(void)
 {
-    metrics_crc32_str_t  gw_cfg_crc32_str  = { 0 };
-    metrics_sha256_str_t gw_cfg_sha256_str = { 0 };
-    metrics_calc_gw_cfg_hash(&gw_cfg_crc32_str, &gw_cfg_sha256_str);
+    metrics_tmp_buf_t* p_tmp_buf = os_calloc(1, sizeof(*p_tmp_buf));
+    if (NULL == p_tmp_buf)
+    {
+        return NULL;
+    }
+    metrics_info_t* p_metrics = os_calloc(1, sizeof(*p_metrics));
+    if (NULL == p_metrics)
+    {
+        os_free(p_tmp_buf);
+        return NULL;
+    }
 
-    metrics_crc32_str_t  ruuvi_json_crc32_str  = { 0 };
-    metrics_sha256_str_t ruuvi_json_sha256_str = { 0 };
-    metrics_calc_ruuvi_json_hash(&ruuvi_json_crc32_str, &ruuvi_json_sha256_str);
+    metrics_calc_gw_cfg_hash(
+        &p_tmp_buf->gw_cfg_crc32_str,
+        &p_tmp_buf->gw_cfg_sha256_str,
+        &p_tmp_buf->tmp_sha256,
+        &p_tmp_buf->tmp_sha256_ctx);
+    metrics_calc_ruuvi_json_hash(
+        &p_tmp_buf->ruuvi_json_crc32_str,
+        &p_tmp_buf->ruuvi_json_sha256_str,
+        &p_tmp_buf->tmp_sha256,
+        &p_tmp_buf->tmp_sha256_ctx);
 
-    const metrics_info_t metrics = {
-        .received_advertisements        = metrics_received_advs_get(),
-        .uptime_us                      = esp_timer_get_time(),
-        .total_free_bytes.size_exec     = (ulong_t)get_total_free_bytes(MALLOC_CAP_EXEC),
-        .total_free_bytes.size_32bit    = (ulong_t)get_total_free_bytes(MALLOC_CAP_32BIT),
-        .total_free_bytes.size_8bit     = (ulong_t)get_total_free_bytes(MALLOC_CAP_8BIT),
-        .total_free_bytes.size_dma      = (ulong_t)get_total_free_bytes(MALLOC_CAP_DMA),
-        .total_free_bytes.size_pid2     = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID2),
-        .total_free_bytes.size_pid3     = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID3),
-        .total_free_bytes.size_pid4     = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID4),
-        .total_free_bytes.size_pid5     = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID5),
-        .total_free_bytes.size_pid6     = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID6),
-        .total_free_bytes.size_pid7     = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID7),
-        .total_free_bytes.size_spiram   = (ulong_t)get_total_free_bytes(MALLOC_CAP_SPIRAM),
-        .total_free_bytes.size_internal = (ulong_t)get_total_free_bytes(MALLOC_CAP_INTERNAL),
-        .total_free_bytes.size_default  = (ulong_t)get_total_free_bytes(MALLOC_CAP_DEFAULT),
+    p_metrics->received_advertisements        = metrics_received_advs_get();
+    p_metrics->uptime_us                      = esp_timer_get_time();
+    p_metrics->total_free_bytes.size_exec     = (ulong_t)get_total_free_bytes(MALLOC_CAP_EXEC);
+    p_metrics->total_free_bytes.size_32bit    = (ulong_t)get_total_free_bytes(MALLOC_CAP_32BIT);
+    p_metrics->total_free_bytes.size_8bit     = (ulong_t)get_total_free_bytes(MALLOC_CAP_8BIT);
+    p_metrics->total_free_bytes.size_dma      = (ulong_t)get_total_free_bytes(MALLOC_CAP_DMA);
+    p_metrics->total_free_bytes.size_pid2     = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID2);
+    p_metrics->total_free_bytes.size_pid3     = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID3);
+    p_metrics->total_free_bytes.size_pid4     = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID4);
+    p_metrics->total_free_bytes.size_pid5     = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID5);
+    p_metrics->total_free_bytes.size_pid6     = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID6);
+    p_metrics->total_free_bytes.size_pid7     = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID7);
+    p_metrics->total_free_bytes.size_spiram   = (ulong_t)get_total_free_bytes(MALLOC_CAP_SPIRAM);
+    p_metrics->total_free_bytes.size_internal = (ulong_t)get_total_free_bytes(MALLOC_CAP_INTERNAL);
+    p_metrics->total_free_bytes.size_default  = (ulong_t)get_total_free_bytes(MALLOC_CAP_DEFAULT);
 
-        .largest_free_block.size_exec     = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_EXEC),
-        .largest_free_block.size_32bit    = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_32BIT),
-        .largest_free_block.size_8bit     = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT),
-        .largest_free_block.size_dma      = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_DMA),
-        .largest_free_block.size_pid2     = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_PID2),
-        .largest_free_block.size_pid3     = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_PID3),
-        .largest_free_block.size_pid4     = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_PID4),
-        .largest_free_block.size_pid5     = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_PID5),
-        .largest_free_block.size_pid6     = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_PID6),
-        .largest_free_block.size_pid7     = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_PID7),
-        .largest_free_block.size_spiram   = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM),
-        .largest_free_block.size_internal = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
-        .largest_free_block.size_default  = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT),
-        .mac_addr_str                     = *gw_cfg_get_nrf52_mac_addr(),
-        .esp_fw                           = *gw_cfg_get_esp32_fw_ver(),
-        .nrf_fw                           = *gw_cfg_get_nrf52_fw_ver(),
-        .gw_cfg_crc32                     = gw_cfg_crc32_str,
-        .gw_cfg_sha256                    = gw_cfg_sha256_str,
-        .ruuvi_json_crc32                 = ruuvi_json_crc32_str,
-        .ruuvi_json_sha256                = ruuvi_json_sha256_str,
-    };
-    return metrics;
+    p_metrics->largest_free_block.size_exec     = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_EXEC);
+    p_metrics->largest_free_block.size_32bit    = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_32BIT);
+    p_metrics->largest_free_block.size_8bit     = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+    p_metrics->largest_free_block.size_dma      = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_DMA);
+    p_metrics->largest_free_block.size_pid2     = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_PID2);
+    p_metrics->largest_free_block.size_pid3     = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_PID3);
+    p_metrics->largest_free_block.size_pid4     = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_PID4);
+    p_metrics->largest_free_block.size_pid5     = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_PID5);
+    p_metrics->largest_free_block.size_pid6     = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_PID6);
+    p_metrics->largest_free_block.size_pid7     = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_PID7);
+    p_metrics->largest_free_block.size_spiram   = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM);
+    p_metrics->largest_free_block.size_internal = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
+    p_metrics->largest_free_block.size_default  = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT);
+    p_metrics->mac_addr_str                     = *gw_cfg_get_nrf52_mac_addr();
+    p_metrics->esp_fw                           = *gw_cfg_get_esp32_fw_ver();
+    p_metrics->nrf_fw                           = *gw_cfg_get_nrf52_fw_ver();
+    p_metrics->gw_cfg_crc32                     = p_tmp_buf->gw_cfg_crc32_str;
+    p_metrics->gw_cfg_sha256                    = p_tmp_buf->gw_cfg_sha256_str;
+    p_metrics->ruuvi_json_crc32                 = p_tmp_buf->ruuvi_json_crc32_str;
+    p_metrics->ruuvi_json_sha256                = p_tmp_buf->ruuvi_json_sha256_str;
+
+    os_free(p_tmp_buf);
+
+    return p_metrics;
 }
 
 static void
@@ -416,8 +445,8 @@ metrics_print_gw_cfg_info(str_buf_t* const p_str_buf, const metrics_info_t* cons
     str_buf_printf(p_str_buf, METRICS_PREFIX "gw_cfg_crc32 %s\n", p_metrics->gw_cfg_crc32.buf);
     str_buf_printf(p_str_buf, METRICS_PREFIX "ruuvi_json_crc32 %s\n", p_metrics->ruuvi_json_crc32.buf);
 #if 0
-    str_buf_printf(p_str_buf, METRICS_PREFIX "gw_cfg_sha256 %s\n", p_metrics->gw_cfg_sha256.buf);
-    str_buf_printf(p_str_buf, METRICS_PREFIX "ruuvi_json_sha256 %s\n", p_metrics->ruuvi_json_sha256.buf);
+    str_buf_printf(p_str_buf, METRICS_PREFIX "tmp_sha256 %s\n", p_metrics->tmp_sha256.buf);
+    str_buf_printf(p_str_buf, METRICS_PREFIX "tmp_sha256 %s\n", p_metrics->tmp_sha256.buf);
 #endif
 }
 
@@ -438,16 +467,17 @@ metrics_print(str_buf_t* p_str_buf, const metrics_info_t* p_metrics)
 char*
 metrics_generate(void)
 {
-    const metrics_info_t metrics_info = gen_metrics();
+    const metrics_info_t* p_metrics_info = gen_metrics();
 
     str_buf_t str_buf = str_buf_init_null();
-    metrics_print(&str_buf, &metrics_info);
+    metrics_print(&str_buf, p_metrics_info);
 
     if (!str_buf_init_with_alloc(&str_buf))
     {
         LOG_ERR("Can't allocate memory");
         return NULL;
     }
-    metrics_print(&str_buf, &metrics_info);
+    metrics_print(&str_buf, p_metrics_info);
+    os_free(p_metrics_info);
     return str_buf.buf;
 }

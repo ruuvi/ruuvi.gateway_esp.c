@@ -102,16 +102,6 @@ main_task_conv_from_sig_num(const os_signal_num_e sig_num)
     return (main_task_sig_e)sig_num;
 }
 
-static const char*
-get_wday_if_set_in_bitmask(const auto_update_weekdays_bitmask_t auto_update_weekdays_bitmask, const os_time_wday_e wday)
-{
-    if (0 != (auto_update_weekdays_bitmask & (1U << (uint32_t)wday)))
-    {
-        return os_time_wday_name_mid(wday);
-    }
-    return "";
-}
-
 static bool
 check_if_checking_for_fw_updates_allowed2(const ruuvi_gw_cfg_auto_update_t* const p_cfg_auto_update)
 {
@@ -129,16 +119,13 @@ check_if_checking_for_fw_updates_allowed2(const ruuvi_gw_cfg_auto_update_t* cons
         return false;
     }
 
-    LOG_INFO(
-        "Check for fw updates: configured weekdays: %s %s %s %s %s %s %s, current: %s",
-        get_wday_if_set_in_bitmask(p_cfg_auto_update->auto_update_weekdays_bitmask, OS_TIME_WDAY_SUN),
-        get_wday_if_set_in_bitmask(p_cfg_auto_update->auto_update_weekdays_bitmask, OS_TIME_WDAY_MON),
-        get_wday_if_set_in_bitmask(p_cfg_auto_update->auto_update_weekdays_bitmask, OS_TIME_WDAY_TUE),
-        get_wday_if_set_in_bitmask(p_cfg_auto_update->auto_update_weekdays_bitmask, OS_TIME_WDAY_WED),
-        get_wday_if_set_in_bitmask(p_cfg_auto_update->auto_update_weekdays_bitmask, OS_TIME_WDAY_THU),
-        get_wday_if_set_in_bitmask(p_cfg_auto_update->auto_update_weekdays_bitmask, OS_TIME_WDAY_FRI),
-        get_wday_if_set_in_bitmask(p_cfg_auto_update->auto_update_weekdays_bitmask, OS_TIME_WDAY_SAT),
-        os_time_wday_name_mid(os_time_get_tm_wday(&tm_time)));
+    LOG_INFO("Check for fw updates: Current day: %s", os_time_wday_name_mid(os_time_get_tm_wday(&tm_time)));
+    for (os_time_wday_e wday = OS_TIME_WDAY_SUN; wday <= OS_TIME_WDAY_SAT; ++wday)
+    {
+        const bool flag_active = (p_cfg_auto_update->auto_update_weekdays_bitmask & (1U << (uint32_t)wday)) ? true
+                                                                                                            : false;
+        LOG_INFO("Check for fw updates: %s - %s", os_time_wday_name_mid(wday), flag_active ? "Yes" : "No");
+    }
 
     const uint32_t cur_day_bit_mask = 1U << (uint8_t)tm_time.tm_wday;
     if (0 == (p_cfg_auto_update->auto_update_weekdays_bitmask & cur_day_bit_mask))

@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include "esp_type_wrapper.h"
+#include "str_buf.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,11 +31,6 @@ extern "C" {
 typedef struct flash_fat_fs_t flash_fat_fs_t;
 
 typedef int flash_fat_fs_num_files_t;
-
-typedef struct flashfatfs_path_t
-{
-    char buf[80];
-} flashfatfs_path_t;
 
 const flash_fat_fs_t*
 flashfatfs_mount(const char* mount_point, const char* partition_label, const flash_fat_fs_num_files_t max_files);
@@ -57,7 +53,7 @@ flashfatfs_get_file_size(const flash_fat_fs_t* p_ffs, const char* file_path, siz
 #if RUUVI_TESTS_FLASHFATFS
 
 FLASHFATFS_CB_STATIC
-flashfatfs_path_t
+str_buf_t
 flashfatfs_get_full_path(const flash_fat_fs_t* p_ffs, const char* file_path);
 
 #endif // RUUVI_TESTS_FLASHFATFS
