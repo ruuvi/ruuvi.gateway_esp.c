@@ -78,6 +78,9 @@ void
 main_task_send_sig_mqtt_publish_connect(void);
 
 void
+main_task_send_sig_log_runtime_stat(void);
+
+void
 main_task_timer_sig_check_for_fw_updates_restart(const os_delta_ticks_t delay_ticks);
 
 void

@@ -31,13 +31,13 @@
 #include "mac_addr.h"
 #include "ruuvi_device_id.h"
 #include "event_mgr.h"
-#include "nrf52fw.h"
 #include "reset_task.h"
 #include "time_units.h"
 #include "gw_status.h"
 #include "leds.h"
 #include "reset_info.h"
 #include "reset_reason.h"
+#include "runtime_stat.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -424,6 +424,8 @@ adv_post_generate_statistics_info(const str_buf_t* const p_reset_info)
 bool
 adv_post_stat(const ruuvi_gw_cfg_http_stat_t* const p_cfg_http_stat, void* const p_user_data)
 {
+    log_runtime_statistics();
+
     adv_report_table_t* p_reports = os_malloc(sizeof(*p_reports));
     if (NULL == p_reports)
     {

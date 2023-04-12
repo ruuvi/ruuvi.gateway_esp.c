@@ -8,6 +8,8 @@ set -e -x
 
 check-jsonschema --schemafile ./ruuvi_gw_cfg.schema.json ../gw_cfg_default/gw_cfg_default.json
 
+check-jsonschema --schemafile ./ruuvi_gw_status.schema.json ./examples/gw_status_after_reboot.json
+
 check-jsonschema --schemafile ./ruuvi_gw_status.schema.json ./examples/gw_status_reset_reason_panic.json
 
 check-jsonschema --schemafile ./ruuvi_history.schema.json ./examples/history.json
