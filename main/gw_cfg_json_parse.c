@@ -505,6 +505,7 @@ gw_cfg_json_parse_lan_auth(const cJSON* const p_json_root, ruuvi_gw_cfg_lan_auth
 
             case HTTP_SERVER_AUTH_TYPE_ALLOW:
             case HTTP_SERVER_AUTH_TYPE_DENY:
+            case HTTP_SERVER_AUTH_TYPE_BEARER:
                 p_gw_cfg_lan_auth->lan_auth_user.buf[0] = '\0';
                 p_gw_cfg_lan_auth->lan_auth_pass.buf[0] = '\0';
                 break;

@@ -404,8 +404,8 @@ ethernet_start(void)
 
     esp_netif_t* const p_netif_eth = esp_netif_get_handle_from_ifkey("ETH_DEF");
 
-    LOG_INFO("### Set hostname for Ethernet interface: %s", p_hostname->hostname_buf);
-    err = esp_netif_set_hostname(p_netif_eth, p_hostname->hostname_buf);
+    LOG_INFO("### Set hostname for Ethernet interface: %s", p_hostname->buf);
+    err = esp_netif_set_hostname(p_netif_eth, p_hostname->buf);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(err, "%s failed", "esp_netif_set_hostname");

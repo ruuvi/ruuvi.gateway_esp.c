@@ -167,13 +167,13 @@ generate_hostname(const mac_address_bin_t mac_addr)
 
     if (!flag_mac_valid)
     {
-        sniprintf(hostname.hostname_buf, sizeof(hostname.hostname_buf), "%sXXXX", RUUVI_GATEWAY_HOSTNAME_PREFIX);
+        sniprintf(hostname.buf, sizeof(hostname.buf), "%sXXXX", RUUVI_GATEWAY_HOSTNAME_PREFIX);
     }
     else
     {
         sniprintf(
-            hostname.hostname_buf,
-            sizeof(hostname.hostname_buf),
+            hostname.buf,
+            sizeof(hostname.buf),
             "%s%02X%02X",
             RUUVI_GATEWAY_HOSTNAME_PREFIX,
             mac_addr.mac[MAC_ADDRESS_IDX_OF_PENULTIMATE_BYTE],
@@ -288,9 +288,16 @@ cb_before_nrf52_fw_updating(void)
     const wifiman_wifi_ssid_t* const p_wifi_ap_ssid = gw_cfg_get_wifi_ap_ssid();
     LOG_INFO("Read saved WiFi SSID: %s", p_wifi_ap_ssid->ssid_buf);
     const wifiman_hostname_t* const p_hostname = gw_cfg_get_hostname();
-    LOG_INFO("Read saved hostname: %s", p_hostname->hostname_buf);
+    LOG_INFO("Read saved hostname: %s", p_hostname->buf);
+    const ruuvi_esp32_fw_ver_str_t* const p_fw_ver       = gw_cfg_get_esp32_fw_ver();
+    const ruuvi_nrf52_fw_ver_str_t* const p_nrf52_fw_ver = gw_cfg_get_nrf52_fw_ver();
 
-    const wifiman_config_t* const p_wifi_cfg             = wifi_manager_default_config_init(p_wifi_ap_ssid, p_hostname);
+    wifiman_hostinfo_t hostinfo = { 0 };
+    (void)snprintf(hostinfo.hostname.buf, sizeof(hostinfo.hostname.buf), "%s", p_hostname->buf);
+    (void)snprintf(hostinfo.fw_ver.buf, sizeof(hostinfo.fw_ver.buf), "%s", p_fw_ver->buf);
+    (void)snprintf(hostinfo.nrf52_fw_ver.buf, sizeof(hostinfo.nrf52_fw_ver.buf), "%s", p_nrf52_fw_ver->buf);
+
+    const wifiman_config_t* const p_wifi_cfg             = wifi_manager_default_config_init(p_wifi_ap_ssid, &hostinfo);
     const bool                    flag_connect_sta_false = false;
     if (!wifi_init(flag_connect_sta_false, p_wifi_cfg, fw_update_get_current_fatfs_gwui_partition_name()))
     {

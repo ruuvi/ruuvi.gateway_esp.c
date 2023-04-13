@@ -285,13 +285,13 @@ start_mdns(void)
 
     const wifiman_hostname_t* const p_hostname = gw_cfg_get_hostname();
 
-    err = mdns_hostname_set(p_hostname->hostname_buf);
+    err = mdns_hostname_set(p_hostname->buf);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(err, "mdns_hostname_set failed");
     }
-    LOG_INFO("### Start mDNS: Hostname: \"%s\", Instance: \"%s\"", p_hostname->hostname_buf, p_hostname->hostname_buf);
-    err = mdns_instance_name_set(p_hostname->hostname_buf);
+    LOG_INFO("### Start mDNS: Hostname: \"%s\", Instance: \"%s\"", p_hostname->buf, p_hostname->buf);
+    err = mdns_instance_name_set(p_hostname->buf);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(err, "mdns_instance_name_set failed");
