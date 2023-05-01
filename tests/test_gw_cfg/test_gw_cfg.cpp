@@ -350,7 +350,9 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Required: false"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Power save: NONE"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Use Static IP: no"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Hostname: RuuviGatewayAABB"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: Hostname: RuuviGatewayAABB"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: fw_ver: v1.10.0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: nrf52_fw_ver: v0.7.2"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -451,7 +453,9 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_no) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Required: false"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Power save: NONE"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Use Static IP: no"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Hostname: RuuviGatewayAABB"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: Hostname: RuuviGatewayAABB"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: fw_ver: v1.10.0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: nrf52_fw_ver: v0.7.2"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -562,7 +566,9 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_basic) // NOLI
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Required: false"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Power save: NONE"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Use Static IP: no"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Hostname: RuuviGatewayAABB"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: Hostname: RuuviGatewayAABB"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: fw_ver: v1.10.0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: nrf52_fw_ver: v0.7.2"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -668,7 +674,9 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_bearer) // NOL
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Required: false"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Power save: NONE"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Use Static IP: no"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Hostname: RuuviGatewayAABB"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: Hostname: RuuviGatewayAABB"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: fw_ver: v1.10.0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: nrf52_fw_ver: v0.7.2"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -767,7 +775,9 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_beta_tester_and_
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Required: false"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Power save: NONE"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Use Static IP: no"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Hostname: RuuviGatewayAABB"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: Hostname: RuuviGatewayAABB"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: fw_ver: v1.10.0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: nrf52_fw_ver: v0.7.2"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -865,7 +875,9 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_manual) // NOLIN
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Required: false"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Power save: NONE"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Use Static IP: no"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Hostname: RuuviGatewayAABB"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: Hostname: RuuviGatewayAABB"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: fw_ver: v1.10.0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: nrf52_fw_ver: v0.7.2"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -963,7 +975,9 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_invalid) // NOLI
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Required: false"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Power save: NONE"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Use Static IP: no"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Hostname: RuuviGatewayAABB"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: Hostname: RuuviGatewayAABB"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: fw_ver: v1.10.0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: nrf52_fw_ver: v0.7.2"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1067,6 +1081,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_ntp_changed) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Required: false"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Power save: NONE"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Use Static IP: no"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Hostname: RuuviGatewayAABB"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: Hostname: RuuviGatewayAABB"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: fw_ver: v1.10.0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: nrf52_fw_ver: v0.7.2"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }

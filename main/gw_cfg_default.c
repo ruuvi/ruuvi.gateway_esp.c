@@ -108,7 +108,7 @@ gw_cfg_default_generate_lan_auth_password(
     str_buf_t tmp_str_buf = str_buf_printf_with_alloc(
         "%s:%s:%s",
         RUUVI_GATEWAY_AUTH_DEFAULT_USER,
-        p_gw_hostname->hostname_buf,
+        p_gw_hostname->buf,
         p_device_id->str_buf);
 
     p_lan_auth_default_password_md5->buf[0] = '\0';
@@ -150,7 +150,12 @@ gw_cfg_default_init(
     g_gw_cfg_default.ruuvi_cfg = g_gateway_config_default_ruuvi;
     g_gw_cfg_default.eth_cfg   = g_gateway_config_default_eth;
 
-    g_gw_cfg_default.wifi_cfg = *wifi_manager_default_config_init(&p_init_param->wifi_ap_ssid, &p_init_param->hostname);
+    wifiman_hostinfo_t hostinfo = { 0 };
+    (void)snprintf(hostinfo.hostname.buf, sizeof(hostinfo.hostname.buf), "%s", p_init_param->hostname.buf);
+    (void)snprintf(hostinfo.fw_ver.buf, sizeof(hostinfo.fw_ver.buf), "%s", p_init_param->esp32_fw_ver.buf);
+    (void)snprintf(hostinfo.nrf52_fw_ver.buf, sizeof(hostinfo.nrf52_fw_ver.buf), "%s", p_init_param->nrf52_fw_ver.buf);
+
+    g_gw_cfg_default.wifi_cfg = *wifi_manager_default_config_init(&p_init_param->wifi_ap_ssid, &hostinfo);
 
     gw_cfg_device_info_t* const p_def_dev_info = &g_gw_cfg_default.device_info;
     p_def_dev_info->wifi_ap                    = p_init_param->wifi_ap_ssid;

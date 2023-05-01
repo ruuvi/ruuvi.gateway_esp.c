@@ -1,9 +1,9 @@
 idf_component_register(PRIV_REQUIRES partition_table)
 
+set(RUUVI_GWUI_HTML ${CMAKE_SOURCE_DIR}/ruuvi.gwui.html)
 set(FATFS_GWUI_TMP_DIR ${CMAKE_BINARY_DIR}/fatfs_gwui)
 set(FATFS_GWUI_IMG ${CMAKE_BINARY_DIR}/fatfs_gwui.bin)
 set(MKFATFS ${CMAKE_BINARY_DIR}/mkfatfs/mkfatfs)
-set(RUUVI_GWUI_HTML ${CMAKE_SOURCE_DIR}/ruuvi.gwui.html/src)
 
 ExternalProject_Add(fatfs_gwui_ext
         PREFIX fatfs_gwui_ext
@@ -12,8 +12,7 @@ ExternalProject_Add(fatfs_gwui_ext
         BUILD_BYPRODUCTS ${FATFS_GWUI_IMG}
         CONFIGURE_COMMAND ""
         BUILD_COMMAND
-            python3 ${CMAKE_SOURCE_DIR}/scripts/prep_gwui.py -i=${RUUVI_GWUI_HTML} -o=${FATFS_GWUI_TMP_DIR} &&
-            ${MKFATFS} -c ${FATFS_GWUI_TMP_DIR} -s ${FATFS_GWUI_SIZE} ${FATFS_GWUI_IMG}
+            ${CMAKE_SOURCE_DIR}/scripts/build_gwui_fatfs.sh ${RUUVI_GWUI_HTML} ${FATFS_GWUI_TMP_DIR} ${FATFS_GWUI_IMG} ${FATFS_GWUI_SIZE} ${MKFATFS}
         INSTALL_COMMAND ""
         BUILD_ALWAYS 1
 )

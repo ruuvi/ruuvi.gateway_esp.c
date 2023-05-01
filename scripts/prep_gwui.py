@@ -11,7 +11,6 @@ import subprocess
 import sys
 import shutil
 import gzip
-import re
 from datetime import datetime
 
 
@@ -22,10 +21,6 @@ def main():
     args = parser.parse_args()
     input_dir = args.input
     output_dir = args.output
-    res = subprocess.call(f'{input_dir}/../scripts/gen_crypto_browserify_js.sh', shell=True)
-    if res != 0:
-        print('Error: gen_crypto_browserify_js.sh failed', file=sys.stderr)
-        sys.exit(res)
     if os.path.exists(output_dir):
         if os.path.isfile(output_dir):
             print('Error: %s is a file, but it should be a dir' % output_dir, file=sys.stderr)
@@ -42,20 +37,6 @@ def main():
             os.mkdir(os.path.join(target_dir, dir_name))
         for file in files:
             file_ext = os.path.splitext(file)[1]
-            if file_ext == '.gz':
-                continue
-            if re.match(r'jquery-(\d+\.\d+\.\d+)\.js', file) is not None:
-                continue
-            m = re.match(r'jquery-(\d+\.\d+\.\d+)\.min\.js', file)
-            if m is not None:
-                src_file = os.path.join(root, file)
-                with open(src_file, 'rb') as f_in:
-                    jquery_js_gz = 'jquery-%s.js.gz' % m.group(1)
-                    dst_file = os.path.join(target_dir, jquery_js_gz)
-                    print('%s -> %s' % (src_file, dst_file))
-                    with gzip.GzipFile(filename=dst_file, mode='wb', mtime=timestamp) as f_out:
-                        shutil.copyfileobj(f_in, f_out)
-                continue
             if file_ext == '.js' or file_ext == '.html' or file_ext == '.css':
                 src_file = os.path.join(root, file)
                 with open(src_file, 'rb') as f_in:
@@ -63,11 +44,14 @@ def main():
                     print('%s -> %s' % (src_file, dst_file))
                     with gzip.GzipFile(filename=dst_file, mode='wb', mtime=timestamp) as f_out:
                         shutil.copyfileobj(f_in, f_out)
-            else:
+            elif file_ext == '.ico' or file_ext == '.woff' or file_ext == '.woff2':
                 src_file = os.path.join(root, file)
                 dst_file = os.path.join(target_dir, file)
                 print('%s -> %s' % (src_file, dst_file))
                 shutil.copy(src_file, dst_file)
+            else:
+                src_file = os.path.join(root, file)
+                print('Skip %s' % src_file)
 
 
 if __name__ == '__main__':
