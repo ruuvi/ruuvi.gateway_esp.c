@@ -116,7 +116,7 @@ http_server_download_info_t
 http_download_json(
     const char* const                     p_url,
     const TimeUnitsSeconds_t              timeout_seconds,
-    const gw_cfg_remote_auth_type_e       auth_type,
+    const gw_cfg_http_auth_type_e         auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
     const http_header_item_t* const       p_extra_header_item,
     const bool                            flag_free_memory)
@@ -183,7 +183,7 @@ http_download_latest_release_info(const bool flag_free_memory)
     return http_download_json(
         p_url,
         HTTP_DOWNLOAD_FW_RELEASE_INFO_TIMEOUT_SECONDS,
-        GW_CFG_REMOTE_AUTH_TYPE_NO,
+        GW_CFG_HTTP_AUTH_TYPE_NONE,
         NULL,
         NULL,
         flag_free_memory);
@@ -193,7 +193,7 @@ http_resp_code_e
 http_check(
     const char* const                     p_url,
     const TimeUnitsSeconds_t              timeout_seconds,
-    const gw_cfg_remote_auth_type_e       auth_type,
+    const gw_cfg_http_auth_type_e         auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
     const http_header_item_t* const       p_extra_header_item,
     const bool                            flag_free_memory)

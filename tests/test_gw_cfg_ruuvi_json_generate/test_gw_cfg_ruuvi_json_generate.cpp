@@ -290,11 +290,13 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -364,11 +366,13 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -440,11 +444,13 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -516,11 +522,13 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -594,11 +602,13 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -672,11 +682,13 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -746,11 +758,13 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_auto_updat
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -820,11 +834,13 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_auto_updat
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -894,11 +910,13 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_auto_updat
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -951,10 +969,17 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_non_default) // NO
         },
         .ruuvi_cfg = {
             .http = {
-                true,
-                "https://my_server1.com",
-                "h_user1",
-                "h_pass1",
+                .use_http_ruuvi = false,
+                .use_http = true,
+                .http_url = { "https://my_server1.com" },
+                .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
+                .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
+                .auth = {
+                    .auth_basic = {
+                        .user = {"h_user1"},
+                        .password = {"h_user1"},
+                    },
+                },
             },
             .http_stat = {
                 true,
@@ -1042,10 +1067,13 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_non_default) // NO
                "\t\"eth_dns2\":\t\"4.4.4.4\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"https://my_server1.com\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"basic\",\n"
                "\t\"http_user\":\t\"h_user1\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"https://my_server2.com/status\",\n"
@@ -2004,7 +2032,7 @@ TEST_F(
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_use_http) // NOLINT
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_use_http_ruuvi) // NOLINT
 {
     const gw_cfg_t   gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -2015,6 +2043,44 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 49;
+
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_http_ruuvi"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_use_http_ruuvi_2) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 50;
+
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_http_ruuvi"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_use_http) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 51;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2033,7 +2099,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 50;
+    this->m_malloc_fail_on_cnt = 52;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2052,7 +2118,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 51;
+    this->m_malloc_fail_on_cnt = 53;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2071,7 +2137,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 52;
+    this->m_malloc_fail_on_cnt = 54;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2090,7 +2156,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 53;
+    this->m_malloc_fail_on_cnt = 55;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2099,45 +2165,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_http_user) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 54;
-
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_user"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_http_user_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 55;
-
-    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_user"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_http_user_3) // NOLINT
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_http_data_format) // NOLINT
 {
     const gw_cfg_t   gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -2151,7 +2179,102 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_user"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_data_format"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_http_data_format_2) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 57;
+
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_data_format"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_http_data_format_3) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 58;
+
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_data_format"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_http_auth) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 59;
+
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_auth"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_http_auth_2) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 60;
+
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_auth"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_http_auth_3) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 61;
+
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_auth"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -2166,7 +2289,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 57;
+    this->m_malloc_fail_on_cnt = 62;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2185,7 +2308,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 58;
+    this->m_malloc_fail_on_cnt = 63;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2204,7 +2327,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 59;
+    this->m_malloc_fail_on_cnt = 64;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2223,7 +2346,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 60;
+    this->m_malloc_fail_on_cnt = 65;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2242,7 +2365,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 61;
+    this->m_malloc_fail_on_cnt = 66;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2261,7 +2384,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 62;
+    this->m_malloc_fail_on_cnt = 67;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2280,7 +2403,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 63;
+    this->m_malloc_fail_on_cnt = 68;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2299,7 +2422,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_h
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 64;
+    this->m_malloc_fail_on_cnt = 69;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2318,7 +2441,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 65;
+    this->m_malloc_fail_on_cnt = 70;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2337,7 +2460,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 66;
+    this->m_malloc_fail_on_cnt = 71;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2356,7 +2479,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 67;
+    this->m_malloc_fail_on_cnt = 72;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2377,7 +2500,7 @@ TEST_F(
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 68;
+    this->m_malloc_fail_on_cnt = 73;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2396,7 +2519,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 69;
+    this->m_malloc_fail_on_cnt = 74;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2415,7 +2538,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 70;
+    this->m_malloc_fail_on_cnt = 75;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2434,7 +2557,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 71;
+    this->m_malloc_fail_on_cnt = 76;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2453,7 +2576,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 72;
+    this->m_malloc_fail_on_cnt = 77;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2472,7 +2595,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 73;
+    this->m_malloc_fail_on_cnt = 78;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2491,7 +2614,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 74;
+    this->m_malloc_fail_on_cnt = 79;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2510,7 +2633,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 75;
+    this->m_malloc_fail_on_cnt = 80;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2529,7 +2652,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 76;
+    this->m_malloc_fail_on_cnt = 81;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2548,7 +2671,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 77;
+    this->m_malloc_fail_on_cnt = 82;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2567,7 +2690,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 78;
+    this->m_malloc_fail_on_cnt = 83;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2586,7 +2709,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 79;
+    this->m_malloc_fail_on_cnt = 84;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2605,7 +2728,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 80;
+    this->m_malloc_fail_on_cnt = 85;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2624,7 +2747,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 81;
+    this->m_malloc_fail_on_cnt = 86;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2643,7 +2766,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 82;
+    this->m_malloc_fail_on_cnt = 87;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2662,7 +2785,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 83;
+    this->m_malloc_fail_on_cnt = 88;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2681,7 +2804,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 84;
+    this->m_malloc_fail_on_cnt = 89;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2700,7 +2823,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_m
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 85;
+    this->m_malloc_fail_on_cnt = 90;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2719,7 +2842,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_l
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 86;
+    this->m_malloc_fail_on_cnt = 91;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2738,7 +2861,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_l
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 87;
+    this->m_malloc_fail_on_cnt = 92;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2757,7 +2880,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_l
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 88;
+    this->m_malloc_fail_on_cnt = 93;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2776,7 +2899,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_l
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 89;
+    this->m_malloc_fail_on_cnt = 94;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2795,7 +2918,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_l
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 90;
+    this->m_malloc_fail_on_cnt = 95;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2814,7 +2937,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_l
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 91;
+    this->m_malloc_fail_on_cnt = 96;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2833,7 +2956,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_l
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 92;
+    this->m_malloc_fail_on_cnt = 97;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2852,7 +2975,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_l
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 93;
+    this->m_malloc_fail_on_cnt = 98;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2871,7 +2994,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_l
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 94;
+    this->m_malloc_fail_on_cnt = 99;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2890,7 +3013,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_l
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 95;
+    this->m_malloc_fail_on_cnt = 100;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2909,7 +3032,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 96;
+    this->m_malloc_fail_on_cnt = 101;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2928,7 +3051,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 97;
+    this->m_malloc_fail_on_cnt = 102;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2947,7 +3070,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 98;
+    this->m_malloc_fail_on_cnt = 103;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2966,7 +3089,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 99;
+    this->m_malloc_fail_on_cnt = 104;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -2985,7 +3108,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 100;
+    this->m_malloc_fail_on_cnt = 105;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3004,7 +3127,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 101;
+    this->m_malloc_fail_on_cnt = 106;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3023,7 +3146,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 102;
+    this->m_malloc_fail_on_cnt = 107;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3042,7 +3165,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 103;
+    this->m_malloc_fail_on_cnt = 108;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3061,7 +3184,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 104;
+    this->m_malloc_fail_on_cnt = 109;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3080,7 +3203,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 105;
+    this->m_malloc_fail_on_cnt = 110;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3099,7 +3222,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_a
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 106;
+    this->m_malloc_fail_on_cnt = 111;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3118,7 +3241,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_n
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 107;
+    this->m_malloc_fail_on_cnt = 112;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3137,7 +3260,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_n
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 108;
+    this->m_malloc_fail_on_cnt = 113;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3156,7 +3279,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_n
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 109;
+    this->m_malloc_fail_on_cnt = 114;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3175,7 +3298,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_n
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 110;
+    this->m_malloc_fail_on_cnt = 115;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3194,7 +3317,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_n
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 111;
+    this->m_malloc_fail_on_cnt = 116;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3213,7 +3336,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_n
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 112;
+    this->m_malloc_fail_on_cnt = 117;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3232,7 +3355,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_n
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 113;
+    this->m_malloc_fail_on_cnt = 118;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3251,7 +3374,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_n
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 114;
+    this->m_malloc_fail_on_cnt = 119;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3270,7 +3393,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_n
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 115;
+    this->m_malloc_fail_on_cnt = 120;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3289,7 +3412,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_n
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 116;
+    this->m_malloc_fail_on_cnt = 121;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3308,7 +3431,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_n
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 117;
+    this->m_malloc_fail_on_cnt = 122;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3327,7 +3450,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_n
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 118;
+    this->m_malloc_fail_on_cnt = 123;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3346,7 +3469,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_n
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 119;
+    this->m_malloc_fail_on_cnt = 124;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3365,7 +3488,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_n
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 120;
+    this->m_malloc_fail_on_cnt = 125;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3384,7 +3507,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_n
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 121;
+    this->m_malloc_fail_on_cnt = 126;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3403,7 +3526,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_n
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 122;
+    this->m_malloc_fail_on_cnt = 127;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3422,7 +3545,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_c
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 123;
+    this->m_malloc_fail_on_cnt = 128;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3441,7 +3564,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_c
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 124;
+    this->m_malloc_fail_on_cnt = 129;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3460,7 +3583,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_c
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 125;
+    this->m_malloc_fail_on_cnt = 130;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3479,7 +3602,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_c
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 126;
+    this->m_malloc_fail_on_cnt = 131;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3498,7 +3621,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 127;
+    this->m_malloc_fail_on_cnt = 132;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3517,7 +3640,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 128;
+    this->m_malloc_fail_on_cnt = 133;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3536,7 +3659,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 129;
+    this->m_malloc_fail_on_cnt = 134;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3555,7 +3678,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 130;
+    this->m_malloc_fail_on_cnt = 135;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3574,7 +3697,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 131;
+    this->m_malloc_fail_on_cnt = 136;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3593,7 +3716,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 132;
+    this->m_malloc_fail_on_cnt = 137;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3612,7 +3735,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 133;
+    this->m_malloc_fail_on_cnt = 138;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3631,7 +3754,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 134;
+    this->m_malloc_fail_on_cnt = 139;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3650,7 +3773,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 135;
+    this->m_malloc_fail_on_cnt = 140;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3669,7 +3792,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 136;
+    this->m_malloc_fail_on_cnt = 141;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3688,7 +3811,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 137;
+    this->m_malloc_fail_on_cnt = 142;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3707,7 +3830,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 138;
+    this->m_malloc_fail_on_cnt = 143;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3726,7 +3849,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_c
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 139;
+    this->m_malloc_fail_on_cnt = 144;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3745,7 +3868,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_c
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 140;
+    this->m_malloc_fail_on_cnt = 145;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3764,7 +3887,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_c
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 141;
+    this->m_malloc_fail_on_cnt = 146;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -3783,7 +3906,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_c
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 142;
+    this->m_malloc_fail_on_cnt = 147;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);

@@ -368,19 +368,6 @@ http_server_resp_history(const char* const p_params)
 }
 
 HTTP_SERVER_CB_STATIC
-bool
-http_server_find_key_in_params(const char* const p_params, const char* const p_key)
-{
-    const char* const p_param = strstr(p_params, p_key);
-    if (NULL == p_param)
-    {
-        LOG_DBG("Can't find key '%s' in URL params", p_key);
-        return false;
-    }
-    return true;
-}
-
-HTTP_SERVER_CB_STATIC
 str_buf_t
 http_server_get_from_params(const char* const p_params, const char* const p_key)
 {
@@ -712,7 +699,7 @@ http_server_on_get_check_remote_cfg(
     (void)snprintf(p_remote_cfg->url.buf, sizeof(p_remote_cfg->url.buf), "%s", p_url);
     if (0 == strcmp(auth_type.buf, "none"))
     {
-        p_remote_cfg->auth_type = GW_CFG_REMOTE_AUTH_TYPE_NO;
+        p_remote_cfg->auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE;
     }
     else if (0 == strcmp(auth_type.buf, "basic"))
     {
@@ -730,7 +717,7 @@ http_server_on_get_check_remote_cfg(
             os_free(p_remote_cfg);
             return http_server_resp_400();
         }
-        p_remote_cfg->auth_type = GW_CFG_REMOTE_AUTH_TYPE_BASIC;
+        p_remote_cfg->auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC;
         (void)snprintf(
             p_remote_cfg->auth.auth_basic.user.buf,
             sizeof(p_remote_cfg->auth.auth_basic.user.buf),
@@ -751,10 +738,26 @@ http_server_on_get_check_remote_cfg(
             os_free(p_remote_cfg);
             return http_server_resp_400();
         }
-        p_remote_cfg->auth_type = GW_CFG_REMOTE_AUTH_TYPE_BEARER;
+        p_remote_cfg->auth_type = GW_CFG_HTTP_AUTH_TYPE_BEARER;
         (void)snprintf(
             p_remote_cfg->auth.auth_bearer.token.buf,
             sizeof(p_remote_cfg->auth.auth_bearer.token.buf),
+            "%s",
+            p_pass);
+    }
+    else if (0 == strcmp(auth_type.buf, "token"))
+    {
+        if (strlen(p_pass) >= sizeof(p_remote_cfg->auth.auth_token.token.buf))
+        {
+            LOG_ERR("remote_cfg token is too long: %s", p_pass);
+            str_buf_free_buf(&auth_type);
+            os_free(p_remote_cfg);
+            return http_server_resp_400();
+        }
+        p_remote_cfg->auth_type = GW_CFG_HTTP_AUTH_TYPE_TOKEN;
+        (void)snprintf(
+            p_remote_cfg->auth.auth_token.token.buf,
+            sizeof(p_remote_cfg->auth.auth_token.token.buf),
             "%s",
             p_pass);
     }
@@ -794,10 +797,11 @@ http_server_on_get_check_remote_cfg(
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_validate_post_advs(
-    const str_buf_t* const p_url,
-    const str_buf_t* const p_user,
-    const str_buf_t* const p_password,
-    const bool             flag_use_saved_password)
+    const str_buf_t* const        p_url,
+    const gw_cfg_http_auth_type_e auth_type,
+    const str_buf_t* const        p_user,
+    const str_buf_t* const        p_password,
+    const bool                    flag_use_saved_password)
 {
     str_buf_t saved_password = gw_cfg_get_http_password_copy();
     if (NULL == saved_password.buf)
@@ -807,6 +811,7 @@ http_server_resp_validate_post_advs(
     }
     const http_server_resp_t http_resp = http_check_post_advs(
         p_url->buf,
+        auth_type,
         p_user->buf,
         flag_use_saved_password ? saved_password.buf : p_password->buf,
         HTTP_DOWNLOAD_TIMEOUT_SECONDS);
@@ -817,10 +822,11 @@ http_server_resp_validate_post_advs(
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_validate_post_stat(
-    const str_buf_t* const p_url,
-    const str_buf_t* const p_user,
-    const str_buf_t* const p_password,
-    const bool             flag_use_saved_password)
+    const str_buf_t* const        p_url,
+    const gw_cfg_http_auth_type_e auth_type,
+    const str_buf_t* const        p_user,
+    const str_buf_t* const        p_password,
+    const bool                    flag_use_saved_password)
 {
     str_buf_t saved_password = gw_cfg_get_http_stat_password_copy();
     if (NULL == saved_password.buf)
@@ -828,10 +834,11 @@ http_server_resp_validate_post_stat(
         LOG_ERR("Can't allocate memory for saved http_stat_password");
         return http_server_resp_500();
     }
+    const char* const        p_pass    = flag_use_saved_password ? saved_password.buf : p_password->buf;
     const http_server_resp_t http_resp = http_check_post_stat(
         p_url->buf,
-        p_user->buf,
-        flag_use_saved_password ? saved_password.buf : p_password->buf,
+        (GW_CFG_HTTP_AUTH_TYPE_NONE == auth_type) ? "" : p_user->buf,
+        (GW_CFG_HTTP_AUTH_TYPE_NONE == auth_type) ? "" : p_pass,
         HTTP_DOWNLOAD_TIMEOUT_SECONDS);
     str_buf_free_buf(&saved_password);
     return http_resp;
@@ -840,11 +847,12 @@ http_server_resp_validate_post_stat(
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_validate_check_mqtt(
-    const str_buf_t* const p_url,
-    const str_buf_t* const p_user,
-    const str_buf_t* const p_password,
-    const bool             flag_use_saved_password,
-    const char* const      p_params)
+    const str_buf_t* const        p_url,
+    const gw_cfg_http_auth_type_e auth_type,
+    const str_buf_t* const        p_user,
+    const str_buf_t* const        p_password,
+    const bool                    flag_use_saved_password,
+    const char* const             p_params)
 {
     str_buf_t saved_password = gw_cfg_get_mqtt_password_copy();
     if (NULL == saved_password.buf)
@@ -852,10 +860,12 @@ http_server_resp_validate_check_mqtt(
         LOG_ERR("Can't allocate memory for saved mqtt_password");
         return http_server_resp_500();
     }
+
+    const char*              p_pass    = flag_use_saved_password ? saved_password.buf : p_password->buf;
     const http_server_resp_t http_resp = http_server_on_get_check_mqtt(
         p_url->buf,
-        p_user->buf,
-        flag_use_saved_password ? saved_password.buf : p_password->buf,
+        (GW_CFG_HTTP_AUTH_TYPE_NONE == auth_type) ? "" : p_user->buf,
+        (GW_CFG_HTTP_AUTH_TYPE_NONE == auth_type) ? "" : p_pass,
         p_params,
         HTTP_DOWNLOAD_CHECK_MQTT_TIMEOUT_SECONDS);
     str_buf_free_buf(&saved_password);
@@ -865,11 +875,12 @@ http_server_resp_validate_check_mqtt(
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_validate_check_remote_cfg(
-    const str_buf_t* const p_url,
-    const str_buf_t* const p_user,
-    const str_buf_t* const p_password,
-    const bool             flag_use_saved_password,
-    const char* const      p_params)
+    const str_buf_t* const        p_url,
+    const gw_cfg_http_auth_type_e auth_type,
+    const str_buf_t* const        p_user,
+    const str_buf_t* const        p_password,
+    const bool                    flag_use_saved_password,
+    const char* const             p_params)
 {
     const ruuvi_gw_cfg_remote_t* p_saved_remote_cfg = gw_cfg_get_remote_cfg_copy();
     if (NULL == p_saved_remote_cfg)
@@ -878,36 +889,39 @@ http_server_resp_validate_check_remote_cfg(
         return http_server_resp_500();
     }
     const char* p_saved_password = NULL;
-    switch (p_saved_remote_cfg->auth_type)
+    switch (auth_type)
     {
-        case GW_CFG_REMOTE_AUTH_TYPE_NO:
+        case GW_CFG_HTTP_AUTH_TYPE_NONE:
             break;
-        case GW_CFG_REMOTE_AUTH_TYPE_BASIC:
+        case GW_CFG_HTTP_AUTH_TYPE_BASIC:
             p_saved_password = p_saved_remote_cfg->auth.auth_basic.password.buf;
             break;
-        case GW_CFG_REMOTE_AUTH_TYPE_BEARER:
+        case GW_CFG_HTTP_AUTH_TYPE_BEARER:
             p_saved_password = p_saved_remote_cfg->auth.auth_bearer.token.buf;
             break;
+        case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
+            p_saved_password = p_saved_remote_cfg->auth.auth_token.token.buf;
+            break;
     }
+    os_free(p_saved_remote_cfg);
     const http_server_resp_t http_resp = http_server_on_get_check_remote_cfg(
         p_url->buf,
         p_user->buf,
         flag_use_saved_password ? p_saved_password : p_password->buf,
         p_params);
-    os_free(p_saved_remote_cfg);
     return http_resp;
 }
 
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_validate_check_file(
-    const str_buf_t* const p_url,
-    const str_buf_t* const p_user,
-    const str_buf_t* const p_password)
+    const str_buf_t* const        p_url,
+    const gw_cfg_http_auth_type_e auth_type,
+    const str_buf_t* const        p_user,
+    const str_buf_t* const        p_password)
 {
-    gw_cfg_remote_auth_type_e auth_type   = GW_CFG_REMOTE_AUTH_TYPE_NO;
     ruuvi_gw_cfg_http_auth_t* p_http_auth = NULL;
-    if ((NULL != p_user) || (NULL != p_password))
+    if (GW_CFG_HTTP_AUTH_TYPE_NONE != auth_type)
     {
         p_http_auth = os_calloc(1, sizeof(*p_http_auth));
         if (NULL == p_http_auth)
@@ -915,9 +929,14 @@ http_server_resp_validate_check_file(
             LOG_ERR("Can't allocate memory for http_auth");
             return http_server_resp_500();
         }
-        if (NULL != p_user)
+        if (GW_CFG_HTTP_AUTH_TYPE_BASIC == auth_type)
         {
-            auth_type = GW_CFG_REMOTE_AUTH_TYPE_BASIC;
+            if (('\0' == p_user->buf[0]) || ('\0' == p_password->buf[0]))
+            {
+                LOG_ERR("Username or password is empty");
+                os_free(p_http_auth);
+                return http_server_resp_400();
+            }
             (void)
                 snprintf(p_http_auth->auth_basic.user.buf, sizeof(p_http_auth->auth_basic.user.buf), "%s", p_user->buf);
             (void)snprintf(
@@ -926,12 +945,31 @@ http_server_resp_validate_check_file(
                 "%s",
                 p_password->buf);
         }
-        else
+        else if (GW_CFG_HTTP_AUTH_TYPE_BEARER == auth_type)
         {
-            auth_type = GW_CFG_REMOTE_AUTH_TYPE_BEARER;
+            if ('\0' == p_password->buf[0])
+            {
+                LOG_ERR("Token is empty");
+                os_free(p_http_auth);
+                return http_server_resp_400();
+            }
             (void)snprintf(
                 p_http_auth->auth_bearer.token.buf,
                 sizeof(p_http_auth->auth_bearer.token.buf),
+                "%s",
+                p_password->buf);
+        }
+        else if (GW_CFG_HTTP_AUTH_TYPE_TOKEN == auth_type)
+        {
+            if ('\0' == p_password->buf[0])
+            {
+                LOG_ERR("Token is empty");
+                os_free(p_http_auth);
+                return http_server_resp_400();
+            }
+            (void)snprintf(
+                p_http_auth->auth_token.token.buf,
+                sizeof(p_http_auth->auth_token.token.buf),
                 "%s",
                 p_password->buf);
         }
@@ -947,6 +985,43 @@ http_server_resp_validate_check_file(
     return http_server_cb_gen_resp(http_resp_code, "%s", "");
 }
 
+static bool
+http_server_resp_validate_url_get_auth_type(const char* const p_params, gw_cfg_http_auth_type_e* const p_auth_type)
+{
+    str_buf_t auth_type_str_buf = http_server_get_from_params_with_decoding(p_params, "auth_type=");
+    if (NULL == auth_type_str_buf.buf)
+    {
+        LOG_ERR("HTTP validate: can't find 'auth_type' in params: %s", p_params);
+        return false;
+    }
+    gw_cfg_http_auth_type_e auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE;
+    if (0 == strcmp(GW_CFG_HTTP_AUTH_TYPE_STR_NONE, auth_type_str_buf.buf))
+    {
+        auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE;
+    }
+    else if (0 == strcmp(GW_CFG_HTTP_AUTH_TYPE_STR_BASIC, auth_type_str_buf.buf))
+    {
+        auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC;
+    }
+    else if (0 == strcmp(GW_CFG_HTTP_AUTH_TYPE_STR_BEARER, auth_type_str_buf.buf))
+    {
+        auth_type = GW_CFG_HTTP_AUTH_TYPE_BEARER;
+    }
+    else if (0 == strcmp(GW_CFG_HTTP_AUTH_TYPE_STR_TOKEN, auth_type_str_buf.buf))
+    {
+        auth_type = GW_CFG_HTTP_AUTH_TYPE_TOKEN;
+    }
+    else
+    {
+        LOG_ERR("HTTP validate: unknown 'auth_type' in params: %s", p_params);
+        str_buf_free_buf(&auth_type_str_buf);
+        return false;
+    }
+    *p_auth_type = auth_type;
+    str_buf_free_buf(&auth_type_str_buf);
+    return true;
+}
+
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_validate_url(const char* const p_params)
@@ -956,6 +1031,14 @@ http_server_resp_validate_url(const char* const p_params)
         LOG_ERR("Expected params for HTTP validate");
         return http_server_resp_400();
     }
+
+    gw_cfg_http_auth_type_e auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE;
+    if (!http_server_resp_validate_url_get_auth_type(p_params, &auth_type))
+    {
+        return http_server_resp_400();
+    }
+    const bool flag_use_saved_password = http_server_get_bool_from_params(p_params, "use_saved_password=");
+
     str_buf_t url = http_server_get_from_params_with_decoding(p_params, "url=");
     if (NULL == url.buf)
     {
@@ -964,65 +1047,8 @@ http_server_resp_validate_url(const char* const p_params)
     }
     LOG_DBG("Got URL from params: %s", url.buf);
 
-    str_buf_t user = str_buf_init_null();
-    if (http_server_find_key_in_params(p_params, "user="))
-    {
-        user = http_server_get_from_params_with_decoding(p_params, "user=");
-    }
-    else
-    {
-        user = str_buf_printf_with_alloc("%s", "");
-    }
-    if (NULL == user.buf)
-    {
-        LOG_ERR("Can't allocate memory");
-        str_buf_free_buf(&url);
-        return http_server_resp_400();
-    }
-    bool flag_use_saved_password = false;
-    if (http_server_find_key_in_params(p_params, "use_saved_password="))
-    {
-        flag_use_saved_password = http_server_get_bool_from_params(p_params, "use_saved_password=");
-    }
-
-    str_buf_t password = str_buf_init_null();
-    if (flag_use_saved_password)
-    {
-        if ('\0' == user.buf[0])
-        {
-            LOG_ERR("HTTP validate: can't 'user' in params: %s", p_params);
-            str_buf_free_buf(&url);
-            str_buf_free_buf(&user);
-            return http_server_resp_400();
-        }
-        password = str_buf_printf_with_alloc("%s", "");
-    }
-    else
-    {
-        if ('\0' != user.buf[0])
-        {
-            password = http_server_get_password_from_params(p_params);
-        }
-        else
-        {
-            if (http_server_find_key_in_params(p_params, "encrypted_password="))
-            {
-                // if there is no username, then a bearer token is passed as a password
-                password = http_server_get_password_from_params(p_params);
-            }
-            else
-            {
-                password = str_buf_printf_with_alloc("%s", "");
-            }
-        }
-    }
-    if (NULL == password.buf)
-    {
-        LOG_ERR("HTTP validate: can't find or decrypt password in params: %s", p_params);
-        str_buf_free_buf(&url);
-        str_buf_free_buf(&user);
-        return http_server_resp_400();
-    }
+    str_buf_t user     = http_server_get_from_params_with_decoding(p_params, "user=");
+    str_buf_t password = http_server_get_password_from_params(p_params);
 
     const bool flag_wait_until_relaying_stopped = true;
     gw_status_suspend_relaying(flag_wait_until_relaying_stopped);
@@ -1036,24 +1062,31 @@ http_server_resp_validate_url(const char* const p_params)
             http_resp = http_server_resp_500();
             break;
         case HTTP_VALIDATE_TYPE_POST_ADVS:
-            http_resp = http_server_resp_validate_post_advs(&url, &user, &password, flag_use_saved_password);
+            http_resp = http_server_resp_validate_post_advs(&url, auth_type, &user, &password, flag_use_saved_password);
             break;
         case HTTP_VALIDATE_TYPE_POST_STAT:
-            http_resp = http_server_resp_validate_post_stat(&url, &user, &password, flag_use_saved_password);
+            http_resp = http_server_resp_validate_post_stat(&url, auth_type, &user, &password, flag_use_saved_password);
             break;
         case HTTP_VALIDATE_TYPE_CHECK_MQTT:
-            http_resp = http_server_resp_validate_check_mqtt(&url, &user, &password, flag_use_saved_password, p_params);
+            http_resp = http_server_resp_validate_check_mqtt(
+                &url,
+                auth_type,
+                &user,
+                &password,
+                flag_use_saved_password,
+                p_params);
             break;
         case HTTP_VALIDATE_TYPE_CHECK_REMOTE_CFG:
             http_resp = http_server_resp_validate_check_remote_cfg(
                 &url,
+                auth_type,
                 &user,
                 &password,
                 flag_use_saved_password,
                 p_params);
             break;
         case HTTP_VALIDATE_TYPE_CHECK_FILE:
-            http_resp = http_server_resp_validate_check_file(&url, &user, &password);
+            http_resp = http_server_resp_validate_check_file(&url, auth_type, &user, &password);
             break;
     }
 

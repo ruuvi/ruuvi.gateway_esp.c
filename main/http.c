@@ -29,6 +29,7 @@
 #include "http_server_cb.h"
 #include "esp_tls.h"
 #include "snprintf_with_esp_err_desc.h"
+#include "gw_cfg_default.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -214,23 +215,37 @@ http_init_client_config(
     void* const                               p_user_data)
 {
     LOG_DBG("p_user_data=%p", p_user_data);
-    p_http_client_config->http_url  = *p_url;
-    p_http_client_config->http_user = *p_user;
-    p_http_client_config->http_pass = *p_password;
+    p_http_client_config->http_url = *p_url;
+    if (NULL != p_user)
+    {
+        p_http_client_config->http_user = *p_user;
+    }
+    else
+    {
+        p_http_client_config->http_user.buf[0] = '\0';
+    }
+    if (NULL != p_password)
+    {
+        p_http_client_config->http_pass = *p_password;
+    }
+    else
+    {
+        p_http_client_config->http_pass.buf[0] = '\0';
+    }
     LOG_DBG("URL=%s", p_http_client_config->http_url.buf);
     LOG_DBG("user=%s", p_http_client_config->http_user.buf);
     LOG_DBG("pass=%s", p_http_client_config->http_pass.buf);
 
     p_http_client_config->esp_http_client_config = (esp_http_client_config_t) {
-        .url                         = &p_http_client_config->http_url.buf[0],
-        .host                        = NULL,
-        .port                        = 0,
-        .username                    = &p_http_client_config->http_user.buf[0],
-        .password                    = &p_http_client_config->http_pass.buf[0],
-        .auth_type                   = ('\0' != p_user->buf[0]) ? HTTP_AUTH_TYPE_BASIC : HTTP_AUTH_TYPE_NONE,
-        .path                        = NULL,
-        .query                       = NULL,
-        .cert_pem                    = NULL,
+        .url       = &p_http_client_config->http_url.buf[0],
+        .host      = NULL,
+        .port      = 0,
+        .username  = &p_http_client_config->http_user.buf[0],
+        .password  = &p_http_client_config->http_pass.buf[0],
+        .auth_type = ('\0' != p_http_client_config->http_user.buf[0]) ? HTTP_AUTH_TYPE_BASIC : HTTP_AUTH_TYPE_NONE,
+        .path      = NULL,
+        .query     = NULL,
+        .cert_pem  = NULL,
         .client_cert_pem             = NULL,
         .client_key_pem              = NULL,
         .user_agent                  = NULL,
@@ -445,6 +460,7 @@ http_send_advs_internal(
     const adv_report_table_t* const  p_reports,
     const uint32_t                   nonce,
     const bool                       flag_use_timestamps,
+    const bool                       flagPostToRuuvi,
     const ruuvi_gw_cfg_http_t* const p_cfg_http,
     void* const                      p_user_data)
 {
@@ -474,16 +490,35 @@ http_send_advs_internal(
     }
 
     LOG_DBG(
-        "http_init_client_config: URL=%s, user=%s, pass=%s",
+        "http_init_client_config: URL=%s, auth_type=%d, user=%s, pass=%s",
         p_cfg_http->http_url.buf,
+        p_cfg_http->auth_type,
         p_cfg_http->http_user.buf,
         p_cfg_http->http_pass.buf);
-    http_init_client_config(
-        &p_http_async_info->http_client_config,
-        &p_cfg_http->http_url,
-        &p_cfg_http->http_user,
-        &p_cfg_http->http_pass,
-        p_user_data);
+
+    const ruuvi_gw_cfg_http_user_t*     p_http_user = NULL;
+    const ruuvi_gw_cfg_http_password_t* p_http_pass = NULL;
+    if (!flagPostToRuuvi && (GW_CFG_HTTP_AUTH_TYPE_BASIC == p_cfg_http->auth_type))
+    {
+        p_http_user = &p_cfg_http->auth.auth_basic.user;
+        p_http_pass = &p_cfg_http->auth.auth_basic.password;
+    }
+
+    ruuvi_gw_cfg_http_url_t* p_http_url = os_malloc(sizeof(*p_http_url));
+    if (NULL == p_http_url)
+    {
+        LOG_ERR("Can't allocate memory");
+        return false;
+    }
+    (void)snprintf(
+        p_http_url->buf,
+        sizeof(p_http_url->buf),
+        "%s",
+        flagPostToRuuvi ? RUUVI_GATEWAY_HTTP_DEFAULT_URL : p_cfg_http->http_url.buf);
+
+    http_init_client_config(&p_http_async_info->http_client_config, p_http_url, p_http_user, p_http_pass, p_user_data);
+
+    os_free(p_http_url);
 
     p_http_async_info->p_http_client_handle = esp_http_client_init(
         &p_http_async_info->http_client_config.esp_http_client_config);
@@ -492,6 +527,31 @@ http_send_advs_internal(
         LOG_ERR("HTTP POST to URL=%s: Can't init http client", p_http_async_info->http_client_config.http_url.buf);
         cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
         return false;
+    }
+
+    if (!flagPostToRuuvi && (GW_CFG_HTTP_AUTH_TYPE_BEARER == p_cfg_http->auth_type))
+    {
+        str_buf_t str_buf = str_buf_printf_with_alloc("Bearer %s", p_cfg_http->auth.auth_bearer.token.buf);
+        if (NULL == str_buf.buf)
+        {
+            LOG_ERR("Can't allocate memory for bearer token");
+            cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
+            return false;
+        }
+        esp_http_client_set_header(p_http_async_info->p_http_client_handle, "Authorization", str_buf.buf);
+        str_buf_free_buf(&str_buf);
+    }
+    else if (!flagPostToRuuvi && (GW_CFG_HTTP_AUTH_TYPE_TOKEN == p_cfg_http->auth_type))
+    {
+        str_buf_t str_buf = str_buf_printf_with_alloc("Token %s", p_cfg_http->auth.auth_token.token.buf);
+        if (NULL == str_buf.buf)
+        {
+            LOG_ERR("Can't allocate memory for bearer token");
+            cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
+            return false;
+        }
+        esp_http_client_set_header(p_http_async_info->p_http_client_handle, "Authorization", str_buf.buf);
+        str_buf_free_buf(&str_buf);
     }
 
     if (!http_send_async(p_http_async_info))
@@ -510,6 +570,7 @@ http_send_advs(
     const adv_report_table_t* const  p_reports,
     const uint32_t                   nonce,
     const bool                       flag_use_timestamps,
+    const bool                       flag_post_to_ruuvi,
     const ruuvi_gw_cfg_http_t* const p_cfg_http,
     void* const                      p_user_data)
 {
@@ -524,7 +585,14 @@ http_send_advs(
     }
     p_http_async_info->p_task = xTaskGetCurrentTaskHandle();
 
-    if (!http_send_advs_internal(p_http_async_info, p_reports, nonce, flag_use_timestamps, p_cfg_http, p_user_data))
+    if (!http_send_advs_internal(
+            p_http_async_info,
+            p_reports,
+            nonce,
+            flag_use_timestamps,
+            flag_post_to_ruuvi,
+            p_cfg_http,
+            p_user_data))
     {
         LOG_DBG("os_sema_signal: p_http_async_sema");
         os_sema_signal(p_http_async_info->p_http_async_sema);
@@ -535,27 +603,73 @@ http_send_advs(
 
 static http_server_resp_t
 http_check_post_advs_internal3(
-    http_async_info_t* const   p_http_async_info,
-    ruuvi_gw_cfg_http_t* const p_cfg_http,
-    const char* const          p_url,
-    const char* const          p_user,
-    const char* const          p_pass,
-    const TimeUnitsSeconds_t   timeout_seconds)
+    http_async_info_t* const      p_http_async_info,
+    ruuvi_gw_cfg_http_t* const    p_cfg_http,
+    const char* const             p_url,
+    const gw_cfg_http_auth_type_e auth_type,
+    const char* const             p_user,
+    const char* const             p_pass,
+    const TimeUnitsSeconds_t      timeout_seconds)
 {
-    if ((strlen(p_url) >= sizeof(p_cfg_http->http_url.buf)) || (strlen(p_user) >= sizeof(p_cfg_http->http_user.buf))
-        || (strlen(p_pass) >= sizeof(p_cfg_http->http_pass.buf)))
+    if (strlen(p_url) >= sizeof(p_cfg_http->http_url.buf))
     {
         return http_server_resp_err(HTTP_RESP_CODE_400);
     }
+    switch (auth_type)
+    {
+        case GW_CFG_HTTP_AUTH_TYPE_NONE:
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_BASIC:
+            if ((strlen(p_user) >= sizeof(p_cfg_http->auth.auth_basic.user.buf))
+                || (strlen(p_pass) >= sizeof(p_cfg_http->auth.auth_basic.password.buf)))
+            {
+                return http_server_resp_err(HTTP_RESP_CODE_400);
+            }
+            (void)snprintf(
+                p_cfg_http->auth.auth_basic.user.buf,
+                sizeof(p_cfg_http->auth.auth_basic.user.buf),
+                "%s",
+                p_user);
+            (void)snprintf(
+                p_cfg_http->auth.auth_basic.password.buf,
+                sizeof(p_cfg_http->auth.auth_basic.password.buf),
+                "%s",
+                p_pass);
+
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_BEARER:
+            if ((strlen(p_pass) >= sizeof(p_cfg_http->auth.auth_bearer.token.buf)))
+            {
+                return http_server_resp_err(HTTP_RESP_CODE_400);
+            }
+            (void)snprintf(
+                p_cfg_http->auth.auth_bearer.token.buf,
+                sizeof(p_cfg_http->auth.auth_bearer.token.buf),
+                "%s",
+                p_pass);
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
+            if ((strlen(p_pass) >= sizeof(p_cfg_http->auth.auth_token.token.buf)))
+            {
+                return http_server_resp_err(HTTP_RESP_CODE_400);
+            }
+            (void)snprintf(
+                p_cfg_http->auth.auth_token.token.buf,
+                sizeof(p_cfg_http->auth.auth_token.token.buf),
+                "%s",
+                p_pass);
+            break;
+    }
+
     (void)snprintf(p_cfg_http->http_url.buf, sizeof(p_cfg_http->http_url), "%s", p_url);
-    (void)snprintf(p_cfg_http->http_user.buf, sizeof(p_cfg_http->http_user), "%s", p_user);
-    (void)snprintf(p_cfg_http->http_pass.buf, sizeof(p_cfg_http->http_pass), "%s", p_pass);
+    p_cfg_http->auth_type = auth_type;
 
     if (!http_send_advs_internal(
             p_http_async_info,
             NULL,
             esp_random(),
             gw_cfg_get_ntp_use(),
+            false,
             p_cfg_http,
             &p_http_async_info->http_post_cb_info))
     {
@@ -602,11 +716,12 @@ http_check_post_advs_internal3(
 
 static http_server_resp_t
 http_check_post_advs_internal2(
-    http_async_info_t* const p_http_async_info,
-    const char* const        p_url,
-    const char* const        p_user,
-    const char* const        p_pass,
-    const TimeUnitsSeconds_t timeout_seconds)
+    http_async_info_t* const      p_http_async_info,
+    const char* const             p_url,
+    const gw_cfg_http_auth_type_e auth_type,
+    const char* const             p_user,
+    const char* const             p_pass,
+    const TimeUnitsSeconds_t      timeout_seconds)
 {
     ruuvi_gw_cfg_http_t* p_cfg_http = os_malloc(sizeof(*p_cfg_http));
     if (NULL == p_cfg_http)
@@ -615,8 +730,14 @@ http_check_post_advs_internal2(
         return http_server_resp_500();
     }
 
-    const http_server_resp_t resp
-        = http_check_post_advs_internal3(p_http_async_info, p_cfg_http, p_url, p_user, p_pass, timeout_seconds);
+    const http_server_resp_t resp = http_check_post_advs_internal3(
+        p_http_async_info,
+        p_cfg_http,
+        p_url,
+        auth_type,
+        p_user,
+        p_pass,
+        timeout_seconds);
 
     os_free(p_cfg_http);
 
@@ -625,10 +746,11 @@ http_check_post_advs_internal2(
 
 http_server_resp_t
 http_check_post_advs(
-    const char* const        p_url,
-    const char* const        p_user,
-    const char* const        p_pass,
-    const TimeUnitsSeconds_t timeout_seconds)
+    const char* const             p_url,
+    const gw_cfg_http_auth_type_e auth_type,
+    const char* const             p_user,
+    const char* const             p_pass,
+    const TimeUnitsSeconds_t      timeout_seconds)
 {
     http_async_info_t* const p_http_async_info = get_http_async_info();
     LOG_DBG("os_sema_wait_immediate: p_http_async_sema");
@@ -641,12 +763,8 @@ http_check_post_advs(
     }
     p_http_async_info->p_task = xTaskGetCurrentTaskHandle();
 
-    const http_server_resp_t resp = http_check_post_advs_internal2(
-        p_http_async_info,
-        p_url,
-        p_user,
-        p_pass,
-        timeout_seconds);
+    const http_server_resp_t resp
+        = http_check_post_advs_internal2(p_http_async_info, p_url, auth_type, p_user, p_pass, timeout_seconds);
 
     LOG_DBG("os_sema_signal: p_http_async_sema");
     os_sema_signal(p_http_async_info->p_http_async_sema);
@@ -1294,13 +1412,13 @@ http_download_create_config(
 bool
 http_download_with_auth(
     const http_download_param_t           param,
-    const gw_cfg_remote_auth_type_e       gw_cfg_http_auth_type,
+    const gw_cfg_http_auth_type_e         auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
     const http_header_item_t* const       p_extra_header_item)
 {
     LOG_INFO("http_download: URL: %s", param.p_url);
 
-    if ((GW_CFG_REMOTE_AUTH_TYPE_NO != gw_cfg_http_auth_type) && (NULL == p_http_auth))
+    if ((GW_CFG_HTTP_AUTH_TYPE_NONE != auth_type) && (NULL == p_http_auth))
     {
         LOG_ERR("Auth type is not NONE, but p_http_auth is NULL");
         return false;
@@ -1320,7 +1438,7 @@ http_download_with_auth(
         .flag_feed_task_watchdog = param.flag_feed_task_watchdog,
     };
 
-    const esp_http_client_auth_type_t http_client_auth_type = (GW_CFG_REMOTE_AUTH_TYPE_BASIC == gw_cfg_http_auth_type)
+    const esp_http_client_auth_type_t http_client_auth_type = (GW_CFG_HTTP_AUTH_TYPE_BASIC == auth_type)
                                                                   ? HTTP_AUTH_TYPE_BASIC
                                                                   : HTTP_AUTH_TYPE_NONE;
 
@@ -1355,9 +1473,26 @@ http_download_with_auth(
         return false;
     }
 
-    if (GW_CFG_REMOTE_AUTH_TYPE_BEARER == gw_cfg_http_auth_type)
+    if (GW_CFG_HTTP_AUTH_TYPE_BEARER == auth_type)
     {
         str_buf_t str_buf = str_buf_printf_with_alloc("Bearer %s", p_http_auth->auth_bearer.token.buf);
+        if (NULL == str_buf.buf)
+        {
+            LOG_ERR("Can't allocate memory for bearer token");
+            os_free(p_http_config);
+            resume_relaying_and_wait(param.flag_free_memory);
+            return false;
+        }
+        LOG_INFO(
+            "http_download: Add HTTP header: %s: %s",
+            "Authorization",
+            (LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG) ? str_buf.buf : "********");
+        esp_http_client_set_header(cb_info.http_handle, "Authorization", str_buf.buf);
+        str_buf_free_buf(&str_buf);
+    }
+    if (GW_CFG_HTTP_AUTH_TYPE_TOKEN == auth_type)
+    {
+        str_buf_t str_buf = str_buf_printf_with_alloc("Token %s", p_http_auth->auth_token.token.buf);
         if (NULL == str_buf.buf)
         {
             LOG_ERR("Can't allocate memory for bearer token");
@@ -1403,14 +1538,14 @@ http_download_with_auth(
 bool
 http_check_with_auth(
     const http_check_param_t              param,
-    const gw_cfg_remote_auth_type_e       gw_cfg_http_auth_type,
+    const gw_cfg_http_auth_type_e         auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
     const http_header_item_t* const       p_extra_header_item,
     http_resp_code_e* const               p_http_resp_code)
 {
     LOG_INFO("http_check: URL: %s", param.p_url);
 
-    if ((GW_CFG_REMOTE_AUTH_TYPE_NO != gw_cfg_http_auth_type) && (NULL == p_http_auth))
+    if ((GW_CFG_HTTP_AUTH_TYPE_NONE != auth_type) && (NULL == p_http_auth))
     {
         LOG_ERR("Auth type is not NONE, but p_http_auth is NULL");
         return false;
@@ -1427,7 +1562,7 @@ http_check_with_auth(
         .flag_feed_task_watchdog = param.flag_feed_task_watchdog,
     };
 
-    const esp_http_client_auth_type_t http_client_auth_type = (GW_CFG_REMOTE_AUTH_TYPE_BASIC == gw_cfg_http_auth_type)
+    const esp_http_client_auth_type_t http_client_auth_type = (GW_CFG_HTTP_AUTH_TYPE_BASIC == auth_type)
                                                                   ? HTTP_AUTH_TYPE_BASIC
                                                                   : HTTP_AUTH_TYPE_NONE;
 
@@ -1460,12 +1595,29 @@ http_check_with_auth(
         return false;
     }
 
-    if (GW_CFG_REMOTE_AUTH_TYPE_BEARER == gw_cfg_http_auth_type)
+    if (GW_CFG_HTTP_AUTH_TYPE_BEARER == auth_type)
     {
         str_buf_t str_buf = str_buf_printf_with_alloc("Bearer %s", p_http_auth->auth_bearer.token.buf);
         if (NULL == str_buf.buf)
         {
             LOG_ERR("Can't allocate memory for bearer token");
+            os_free(p_http_config);
+            resume_relaying_and_wait(param.flag_free_memory);
+            return false;
+        }
+        LOG_INFO(
+            "http_check: Add HTTP header: %s: %s",
+            "Authorization",
+            (LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG) ? str_buf.buf : "********");
+        esp_http_client_set_header(cb_info.http_handle, "Authorization", str_buf.buf);
+        str_buf_free_buf(&str_buf);
+    }
+    if (GW_CFG_HTTP_AUTH_TYPE_TOKEN == auth_type)
+    {
+        str_buf_t str_buf = str_buf_printf_with_alloc("Token %s", p_http_auth->auth_token.token.buf);
+        if (NULL == str_buf.buf)
+        {
+            LOG_ERR("Can't allocate memory for Token");
             os_free(p_http_config);
             resume_relaying_and_wait(param.flag_free_memory);
             return false;
@@ -1506,7 +1658,7 @@ http_check_with_auth(
 bool
 http_download(const http_download_param_t param)
 {
-    return http_download_with_auth(param, GW_CFG_REMOTE_AUTH_TYPE_NO, NULL, NULL);
+    return http_download_with_auth(param, GW_CFG_HTTP_AUTH_TYPE_NONE, NULL, NULL);
 }
 
 static const char*

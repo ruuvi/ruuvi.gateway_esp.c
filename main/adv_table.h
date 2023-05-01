@@ -62,7 +62,10 @@ bool
 adv_table_put(const adv_report_t* const p_adv);
 
 void
-adv_table_read_retransmission_list_and_clear(adv_report_table_t* const p_reports);
+adv_table_read_retransmission_list1_and_clear(adv_report_table_t* const p_reports);
+
+void
+adv_table_read_retransmission_list2_and_clear(adv_report_table_t* const p_reports);
 
 void
 adv_table_history_read(

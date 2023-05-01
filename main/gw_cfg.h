@@ -31,6 +31,7 @@ extern "C" {
 #endif
 
 #define GW_CFG_MAX_HTTP_BEARER_TOKEN_LEN 256
+#define GW_CFG_MAX_HTTP_TOKEN_LEN        256
 #define GW_CFG_MAX_HTTP_URL_LEN          256
 #define GW_CFG_MAX_HTTP_USER_LEN         51
 #define GW_CFG_MAX_HTTP_PASS_LEN         51
@@ -142,20 +143,26 @@ typedef struct ruuvi_gw_cfg_http_bearer_token_t
     char buf[GW_CFG_MAX_HTTP_BEARER_TOKEN_LEN];
 } ruuvi_gw_cfg_http_bearer_token_t;
 
-#define GW_CFG_REMOTE_AUTH_TYPE_STR_SIZE 16
-
-#define GW_CFG_REMOTE_AUTH_TYPE_STR_NO     "no"
-#define GW_CFG_REMOTE_AUTH_TYPE_STR_BASIC  "basic"
-#define GW_CFG_REMOTE_AUTH_TYPE_STR_BEARER "bearer"
-
-typedef enum gw_cfg_remote_auth_type_e
+typedef struct ruuvi_gw_cfg_http_token_t
 {
-    GW_CFG_REMOTE_AUTH_TYPE_NO     = 0,
-    GW_CFG_REMOTE_AUTH_TYPE_BASIC  = 1,
-    GW_CFG_REMOTE_AUTH_TYPE_BEARER = 2,
-} gw_cfg_remote_auth_type_e;
+    char buf[GW_CFG_MAX_HTTP_TOKEN_LEN];
+} ruuvi_gw_cfg_http_token_t;
 
-typedef uint16_t gw_cfg_remote_refresh_interval_minutes_t;
+#define GW_CFG_HTTP_AUTH_TYPE_STR_SIZE 8
+
+#define GW_CFG_HTTP_AUTH_TYPE_STR_NO     "no" /* deprecated */
+#define GW_CFG_HTTP_AUTH_TYPE_STR_NONE   "none"
+#define GW_CFG_HTTP_AUTH_TYPE_STR_BASIC  "basic"
+#define GW_CFG_HTTP_AUTH_TYPE_STR_BEARER "bearer"
+#define GW_CFG_HTTP_AUTH_TYPE_STR_TOKEN  "token"
+
+typedef enum gw_cfg_http_auth_type_e
+{
+    GW_CFG_HTTP_AUTH_TYPE_NONE   = 0,
+    GW_CFG_HTTP_AUTH_TYPE_BASIC  = 1,
+    GW_CFG_HTTP_AUTH_TYPE_BEARER = 2,
+    GW_CFG_HTTP_AUTH_TYPE_TOKEN  = 3,
+} gw_cfg_http_auth_type_e;
 
 typedef union ruuvi_gw_cfg_http_auth_t
 {
@@ -168,23 +175,40 @@ typedef union ruuvi_gw_cfg_http_auth_t
     {
         ruuvi_gw_cfg_http_bearer_token_t token;
     } auth_bearer;
+    struct
+    {
+        ruuvi_gw_cfg_http_token_t token;
+    } auth_token;
 } ruuvi_gw_cfg_http_auth_t;
+
+typedef uint16_t gw_cfg_remote_refresh_interval_minutes_t;
 
 typedef struct ruuvi_gw_cfg_remote_t
 {
     bool                                     use_remote_cfg;
     ruuvi_gw_cfg_http_url_t                  url;
-    gw_cfg_remote_auth_type_e                auth_type;
+    gw_cfg_http_auth_type_e                  auth_type;
     ruuvi_gw_cfg_http_auth_t                 auth;
     gw_cfg_remote_refresh_interval_minutes_t refresh_interval_minutes;
 } ruuvi_gw_cfg_remote_t;
 
+#define GW_CFG_HTTP_DATA_FORMAT_STR_SIZE 8
+
+#define GW_CFG_HTTP_DATA_FORMAT_STR_RUUVI "ruuvi"
+
+typedef enum gw_cfg_http_data_format_e
+{
+    GW_CFG_HTTP_DATA_FORMAT_RUUVI = 0,
+} gw_cfg_http_data_format_e;
+
 typedef struct ruuvi_gw_cfg_http_t
 {
-    bool                         use_http;
-    ruuvi_gw_cfg_http_url_t      http_url;
-    ruuvi_gw_cfg_http_user_t     http_user;
-    ruuvi_gw_cfg_http_password_t http_pass;
+    bool                      use_http_ruuvi;
+    bool                      use_http;
+    ruuvi_gw_cfg_http_url_t   http_url;
+    gw_cfg_http_data_format_e data_format;
+    gw_cfg_http_auth_type_e   auth_type;
+    ruuvi_gw_cfg_http_auth_t  auth;
 } ruuvi_gw_cfg_http_t;
 
 typedef struct ruuvi_gw_cfg_http_stat_t
@@ -350,6 +374,9 @@ gw_cfg_get_mqtt_use_mqtt(void);
 
 bool
 gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss(void);
+
+bool
+gw_cfg_get_http_use_http_ruuvi(void);
 
 bool
 gw_cfg_get_http_use_http(void);

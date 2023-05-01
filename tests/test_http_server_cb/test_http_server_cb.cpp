@@ -80,7 +80,7 @@ esp_random(void)
 bool
 http_download_with_auth(
     const http_download_param_t           param,
-    const gw_cfg_remote_auth_type_e       gw_cfg_http_auth_type,
+    const gw_cfg_http_auth_type_e         gw_cfg_http_auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
     const http_header_item_t* const       p_extra_header_item)
 {
@@ -90,7 +90,7 @@ http_download_with_auth(
 bool
 http_check_with_auth(
     const http_check_param_t              param,
-    const gw_cfg_remote_auth_type_e       gw_cfg_http_auth_type,
+    const gw_cfg_http_auth_type_e         gw_cfg_http_auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
     const http_header_item_t* const       p_extra_header_item,
     http_resp_code_e* const               p_http_resp_code)
@@ -219,10 +219,11 @@ gw_status_resume_http_relaying(void)
 
 http_server_resp_t
 http_check_post_advs(
-    const char* const        p_url,
-    const char* const        p_user,
-    const char* const        p_pass,
-    const TimeUnitsSeconds_t timeout_seconds)
+    const char* const             p_url,
+    const gw_cfg_http_auth_type_e auth_type,
+    const char* const             p_user,
+    const char* const             p_pass,
+    const TimeUnitsSeconds_t      timeout_seconds)
 {
     const http_server_resp_t resp = {
         .http_resp_code       = HTTP_RESP_CODE_500,
@@ -797,13 +798,15 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
           "\t\"eth_dns2\":\t\"\",\n"
           "\t\"remote_cfg_use\":\tfalse,\n"
           "\t\"remote_cfg_url\":\t\"\",\n"
-          "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+          "\t\"remote_cfg_auth_type\":\t\"none\",\n"
           "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
 
+          "\t\"use_http_ruuvi\":\tfalse,\n"
           "\t\"use_http\":\tfalse,\n"
           "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
           "\",\n"
-          "\t\"http_user\":\t\"\",\n"
+          "\t\"http_data_format\":\t\"ruuvi\",\n"
+          "\t\"http_auth\":\t\"none\",\n"
           "\t\"use_http_stat\":\ttrue,\n"
           "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL
           "\",\n"
@@ -843,45 +846,43 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
           "}";
     bool     flag_network_cfg = false;
     gw_cfg_t gw_cfg           = get_gateway_config_default();
-    ASSERT_TRUE(
-        json_ruuvi_parse_http_body(
-            "{"
-            "\"remote_cfg_use\":false,\n"
-            "\"remote_cfg_url\":\"\",\n"
-            "\"remote_cfg_auth_type\":\"no\",\n"
-            "\"remote_cfg_refresh_interval_minutes\":0,\n"
-            "\"use_mqtt\":true,"
-            "\"mqtt_disable_retained_messages\":false,"
-            "\"mqtt_server\":\"test.mosquitto.org\","
-            "\"mqtt_port\":1883,"
-            "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
-            "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
-            "\"mqtt_user\":\"\","
-            "\"mqtt_pass\":\"\","
-            "\"use_http\":false,"
-            "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\","
-            "\"http_user\":\"\","
-            "\"http_pass\":\"\","
-            "\"use_http_stat\":true,"
-            "\"http_stat_url\":\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\","
-            "\"http_stat_user\":\"\","
-            "\"http_stat_pass\":\"\","
-            "\"lan_auth_api_key\":\"wH3F9SIiAA3rhG32aJki2Z7ekdFc0vtxuDhxl39zFvw=\","
-            "\"auto_update_cycle\":\"regular\","
-            "\"auto_update_weekdays_bitmask\":127,"
-            "\"auto_update_interval_from\":0,"
-            "\"auto_update_interval_to\":24,"
-            "\"auto_update_tz_offset_hours\":3,"
-            "\"ntp_use\":true,"
-            "\"ntp_use_dhcp\":false,"
-            "\"ntp_server1\":\"time1.server.com\","
-            "\"ntp_server2\":\"time2.server.com\","
-            "\"ntp_server3\":\"time3.server.com\","
-            "\"ntp_server4\":\"time4.server.com\","
-            "\"company_use_filtering\":true"
-            "}",
-            &gw_cfg,
-            &flag_network_cfg));
+    ASSERT_TRUE(json_ruuvi_parse_http_body(
+        "{"
+        "\"remote_cfg_use\":false,\n"
+        "\"remote_cfg_url\":\"\",\n"
+        "\"remote_cfg_auth_type\":\"none\",\n"
+        "\"remote_cfg_refresh_interval_minutes\":0,\n"
+        "\"use_mqtt\":true,"
+        "\"mqtt_disable_retained_messages\":false,"
+        "\"mqtt_server\":\"test.mosquitto.org\","
+        "\"mqtt_port\":1883,"
+        "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
+        "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
+        "\"mqtt_user\":\"\","
+        "\"mqtt_pass\":\"\","
+        "\"use_http_ruuvi\":false,"
+        "\"use_http\":false,"
+        "\"use_http_stat\":true,"
+        "\"http_stat_url\":\"" RUUVI_GATEWAY_HTTP_STATUS_URL
+        "\","
+        "\"http_stat_user\":\"\","
+        "\"http_stat_pass\":\"\","
+        "\"lan_auth_api_key\":\"wH3F9SIiAA3rhG32aJki2Z7ekdFc0vtxuDhxl39zFvw=\","
+        "\"auto_update_cycle\":\"regular\","
+        "\"auto_update_weekdays_bitmask\":127,"
+        "\"auto_update_interval_from\":0,"
+        "\"auto_update_interval_to\":24,"
+        "\"auto_update_tz_offset_hours\":3,"
+        "\"ntp_use\":true,"
+        "\"ntp_use_dhcp\":false,"
+        "\"ntp_server1\":\"time1.server.com\","
+        "\"ntp_server2\":\"time2.server.com\","
+        "\"ntp_server3\":\"time3.server.com\","
+        "\"ntp_server4\":\"time4.server.com\","
+        "\"company_use_filtering\":true"
+        "}",
+        &gw_cfg,
+        &flag_network_cfg));
     ASSERT_FALSE(flag_network_cfg);
     gw_cfg_update_ruuvi_cfg(&gw_cfg.ruuvi_cfg);
 
@@ -1004,12 +1005,14 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
           "\t\"eth_dns2\":\t\"\",\n"
           "\t\"remote_cfg_use\":\tfalse,\n"
           "\t\"remote_cfg_url\":\t\"\",\n"
-          "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+          "\t\"remote_cfg_auth_type\":\t\"none\",\n"
           "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
-          "\t\"use_http\":\tfalse,\n"
+          "\t\"use_http_ruuvi\":\ttrue,\n"
+          "\t\"use_http\":\ttrue,\n"
           "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
           "\",\n"
-          "\t\"http_user\":\t\"\",\n"
+          "\t\"http_data_format\":\t\"ruuvi\",\n"
+          "\t\"http_auth\":\t\"none\",\n"
           "\t\"use_http_stat\":\ttrue,\n"
           "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL
           "\",\n"
@@ -1054,7 +1057,7 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
             "{"
             "\"remote_cfg_use\":false,\n"
             "\"remote_cfg_url\":\"\",\n"
-            "\"remote_cfg_auth_type\":\"no\",\n"
+            "\"remote_cfg_auth_type\":\"none\",\n"
             "\"remote_cfg_refresh_interval_minutes\":0,\n"
             "\"use_mqtt\":true,"
             "\"mqtt_disable_retained_messages\":false,"
@@ -1465,12 +1468,14 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
           "\t\"eth_dns2\":\t\"\",\n"
           "\t\"remote_cfg_use\":\tfalse,\n"
           "\t\"remote_cfg_url\":\t\"\",\n"
-          "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+          "\t\"remote_cfg_auth_type\":\t\"none\",\n"
           "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+          "\t\"use_http_ruuvi\":\tfalse,\n"
           "\t\"use_http\":\tfalse,\n"
           "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
           "\",\n"
-          "\t\"http_user\":\t\"\",\n"
+          "\t\"http_data_format\":\t\"ruuvi\",\n"
+          "\t\"http_auth\":\t\"none\",\n"
           "\t\"use_http_stat\":\ttrue,\n"
           "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL
           "\",\n"
@@ -1515,7 +1520,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
             "{"
             "\"remote_cfg_use\":false,\n"
             "\"remote_cfg_url\":\"\",\n"
-            "\"remote_cfg_auth_type\":\"no\",\n"
+            "\"remote_cfg_auth_type\":\"none\",\n"
             "\"remote_cfg_refresh_interval_minutes\":0,\n"
             "\"use_mqtt\":true,"
             "\"mqtt_disable_retained_messages\":false,"
@@ -1525,6 +1530,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
             "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
             "\"mqtt_user\":\"\","
             "\"mqtt_pass\":\"\","
+            "\"use_http_ruuvi\":false,"
             "\"use_http\":false,"
             "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\","
             "\"http_user\":\"\","
@@ -1816,16 +1822,18 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg_from_lan) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'remote_cfg_auth_type' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: not found or invalid");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'remote_cfg_refresh_interval_minutes' in config-json");
+
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'use_http_ruuvi' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'use_http' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'http_data_format' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'http_auth' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'http_url' in config-json");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_user: not found");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'http_user' in config-json");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_pass: not found");
-    TEST_CHECK_LOG_RECORD_GW_CFG(
-        ESP_LOG_INFO,
-        "Can't find key 'http_pass' in config-json, leave the previous value unchanged");
+
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'use_http_stat' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: not found");
@@ -1915,12 +1923,12 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg_from_lan) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'coordinates' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use remote cfg: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: URL: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: auth_type: no"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http: 1"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http user: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, string("config: http pass: "));
+
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http ruuvi: 1"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http: 0"));
+
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http_stat: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat user: "));
@@ -1971,9 +1979,13 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
         "{"
                  "\"remote_cfg_use\":false,\n"
                  "\"remote_cfg_url\":\"\",\n"
-                 "\"remote_cfg_auth_type\":\"no\",\n"
+                 "\"remote_cfg_auth_type\":\"none\",\n"
                  "\"remote_cfg_refresh_interval_minutes\":0,\n"
+                 "\"use_http_ruuvi\":false,"
+                 "\"use_http_ruuvi\":false,"
                  "\"use_http\":false,"
+                 "\"http_data_format\":\"ruuvi\","
+                 "\"http_auth\":\"none\","
                  "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
         "\","
                  "\"http_user\":\"\","
@@ -2012,12 +2024,13 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_url: ");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_auth_type: no");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_auth_type: none");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_user: ");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_pass: ");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: ");
@@ -2086,12 +2099,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'coordinates' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use remote cfg: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: URL: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: auth_type: no"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http ruuvi: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http user: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, string("config: http pass: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http_stat: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat user: "));
@@ -2149,7 +2160,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed1) // NOLINT
         "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
         "\"mqtt_user\":\"\","
         "\"mqtt_pass\":\"\","
+        "\"use_http_ruuvi\":false,"
         "\"use_http\":false,"
+        "\"http_data_format\":\"ruuvi\","
+        "\"http_auth\":\"none\","
         "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
         "\","
         "\"http_user\":\"\","
@@ -2195,7 +2209,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed2) // NOLINT
         "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
         "\"mqtt_user\":\"\","
         "\"mqtt_pass\":\"\","
+        "\"use_http_ruuvi\":false,"
         "\"use_http\":false,"
+        "\"http_data_format\":\"ruuvi\","
+        "\"http_auth\":\"none\","
         "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
         "\","
         "\"http_user\":\"\","
@@ -2241,7 +2258,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed3) // NOLINT
         "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
         "\"mqtt_user\":\"\","
         "\"mqtt_pass\":\"\","
+        "\"use_http_ruuvi\":false,"
         "\"use_http\":false,"
+        "\"http_data_format\":\"ruuvi\","
+        "\"http_auth\":\"none\","
         "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
         "\","
         "\"http_user\":\"\","
@@ -2294,9 +2314,12 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
         "{"
         "\"remote_cfg_use\":false,\n"
         "\"remote_cfg_url\":\"\",\n"
-        "\"remote_cfg_auth_type\":\"no\",\n"
+        "\"remote_cfg_auth_type\":\"none\",\n"
         "\"remote_cfg_refresh_interval_minutes\":0,\n"
+        "\"use_http_ruuvi\":false,"
         "\"use_http\":false,"
+        "\"http_data_format\":\"ruuvi\","
+        "\"http_auth\":\"none\","
         "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
         "\","
         "\"http_user\":\"\","
@@ -2336,12 +2359,13 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_url: ");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_auth_type: no");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_auth_type: none");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_user: ");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_pass: ");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: ");
@@ -2407,12 +2431,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'coordinates' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use remote cfg: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: URL: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: auth_type: no"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http ruuvi: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http user: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, string("config: http pass: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http_stat: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat user: "));
@@ -2481,9 +2503,12 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
         "{"
         "\"remote_cfg_use\":false,\n"
         "\"remote_cfg_url\":\"\",\n"
-        "\"remote_cfg_auth_type\":\"no\",\n"
+        "\"remote_cfg_auth_type\":\"none\",\n"
         "\"remote_cfg_refresh_interval_minutes\":0,\n"
+        "\"use_http_ruuvi\":false,"
         "\"use_http\":false,"
+        "\"http_data_format\":\"ruuvi\","
+        "\"http_auth\":\"none\","
         "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
         "\","
         "\"http_user\":\"\","
@@ -2527,12 +2552,13 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_url: ");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_auth_type: no");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_auth_type: none");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_user: ");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_pass: ");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: ");
@@ -2594,12 +2620,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'coordinates' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use remote cfg: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: URL: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: auth_type: no"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http ruuvi: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http user: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, string("config: http pass: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http_stat: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat user: "));
@@ -2654,9 +2678,12 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
         "{"
                  "\"remote_cfg_use\":false,\n"
                  "\"remote_cfg_url\":\"\",\n"
-                 "\"remote_cfg_auth_type\":\"no\",\n"
+                 "\"remote_cfg_auth_type\":\"none\",\n"
                  "\"remote_cfg_refresh_interval_minutes\":0,\n"
+                 "\"use_http_ruuvi\":false,"
                  "\"use_http\":false,"
+                 "\"http_data_format\":\"ruuvi\","
+                 "\"http_auth\":\"none\","
                  "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
         "\","
                  "\"http_user\":\"\","
@@ -2696,12 +2723,13 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_url: ");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_auth_type: no");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_auth_type: none");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_user: ");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_pass: ");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: ");
@@ -2770,12 +2798,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'coordinates' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use remote cfg: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: URL: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: auth_type: no"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http ruuvi: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http user: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, string("config: http pass: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http_stat: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat user: "));
@@ -2827,9 +2853,12 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_wifi_ap_active) //
         "{"
                  "\"remote_cfg_use\":false,\n"
                  "\"remote_cfg_url\":\"\",\n"
-                 "\"remote_cfg_auth_type\":\"no\",\n"
+                 "\"remote_cfg_auth_type\":\"none\",\n"
                  "\"remote_cfg_refresh_interval_minutes\":0,\n"
+                 "\"use_http_ruuvi\":false,"
                  "\"use_http\":false,"
+                 "\"http_data_format\":\"ruuvi\","
+                 "\"http_auth\":\"none\","
                  "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
         "\","
                  "\"http_user\":\"\","
@@ -2869,12 +2898,13 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_wifi_ap_active) //
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_url: ");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_auth_type: no");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_auth_type: none");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_user: ");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_pass: ");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: ");
@@ -2943,12 +2973,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_wifi_ap_active) //
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'coordinates' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use remote cfg: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: URL: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: auth_type: no"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 0"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http ruuvi: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http: 0"));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http user: "));
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, string("config: http pass: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use http_stat: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: http_stat user: "));
@@ -3004,6 +3032,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_unknown_json) // NOLINT
         "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
         "\"mqtt_user\":\"\","
         "\"mqtt_pass\":\"\","
+        "\"use_http_ruuvi\":false,"
         "\"use_http\":false,"
         "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
         "\","

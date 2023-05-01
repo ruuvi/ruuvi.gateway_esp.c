@@ -55,17 +55,18 @@ typedef enum adv_post_sig_e
     ADV_POST_SIG_NETWORK_CONNECTED     = OS_SIGNAL_NUM_2,
     ADV_POST_SIG_TIME_SYNCHRONIZED     = OS_SIGNAL_NUM_3,
     ADV_POST_SIG_RETRANSMIT            = OS_SIGNAL_NUM_4,
-    ADV_POST_SIG_SEND_STATISTICS       = OS_SIGNAL_NUM_5,
-    ADV_POST_SIG_DO_ASYNC_COMM         = OS_SIGNAL_NUM_6,
-    ADV_POST_SIG_RELAYING_MODE_CHANGED = OS_SIGNAL_NUM_7,
-    ADV_POST_SIG_NETWORK_WATCHDOG      = OS_SIGNAL_NUM_8,
-    ADV_POST_SIG_TASK_WATCHDOG_FEED    = OS_SIGNAL_NUM_9,
-    ADV_POST_SIG_GW_CFG_READY          = OS_SIGNAL_NUM_10,
-    ADV_POST_SIG_GW_CFG_CHANGED_RUUVI  = OS_SIGNAL_NUM_11,
-    ADV_POST_SIG_GREEN_LED_TURN_ON     = OS_SIGNAL_NUM_12,
-    ADV_POST_SIG_GREEN_LED_TURN_OFF    = OS_SIGNAL_NUM_13,
-    ADV_POST_SIG_GREEN_LED_UPDATE      = OS_SIGNAL_NUM_14,
-    ADV_POST_SIG_RECV_ADV_TIMEOUT      = OS_SIGNAL_NUM_15,
+    ADV_POST_SIG_RETRANSMIT2           = OS_SIGNAL_NUM_5,
+    ADV_POST_SIG_SEND_STATISTICS       = OS_SIGNAL_NUM_6,
+    ADV_POST_SIG_DO_ASYNC_COMM         = OS_SIGNAL_NUM_7,
+    ADV_POST_SIG_RELAYING_MODE_CHANGED = OS_SIGNAL_NUM_8,
+    ADV_POST_SIG_NETWORK_WATCHDOG      = OS_SIGNAL_NUM_9,
+    ADV_POST_SIG_TASK_WATCHDOG_FEED    = OS_SIGNAL_NUM_10,
+    ADV_POST_SIG_GW_CFG_READY          = OS_SIGNAL_NUM_11,
+    ADV_POST_SIG_GW_CFG_CHANGED_RUUVI  = OS_SIGNAL_NUM_12,
+    ADV_POST_SIG_GREEN_LED_TURN_ON     = OS_SIGNAL_NUM_13,
+    ADV_POST_SIG_GREEN_LED_TURN_OFF    = OS_SIGNAL_NUM_14,
+    ADV_POST_SIG_GREEN_LED_UPDATE      = OS_SIGNAL_NUM_15,
+    ADV_POST_SIG_RECV_ADV_TIMEOUT      = OS_SIGNAL_NUM_16,
 } adv_post_sig_e;
 
 typedef struct adv_post_state_t
@@ -73,7 +74,8 @@ typedef struct adv_post_state_t
     bool flag_primary_time_sync_is_done;
     bool flag_network_connected;
     bool flag_async_comm_in_progress;
-    bool flag_need_to_send_advs;
+    bool flag_need_to_send_advs1;
+    bool flag_need_to_send_advs2;
     bool flag_need_to_send_statistics;
     bool flag_relaying_enabled;
     bool flag_use_timestamps;
@@ -114,6 +116,8 @@ static os_signal_t*                   g_p_adv_post_sig;
 static os_signal_static_t             g_adv_post_sig_mem;
 static os_timer_sig_periodic_t*       g_p_adv_post_timer_sig_retransmit;
 static os_timer_sig_periodic_static_t g_adv_post_timer_sig_retransmit_mem;
+static os_timer_sig_periodic_t*       g_p_adv_post_timer_sig_retransmit2;
+static os_timer_sig_periodic_static_t g_adv_post_timer_sig_retransmit2_mem;
 static os_timer_sig_periodic_t*       g_p_adv_post_timer_sig_send_statistics;
 static os_timer_sig_periodic_static_t g_adv_post_timer_sig_send_statistics_mem;
 static os_timer_sig_one_shot_t*       g_p_adv_post_timer_sig_do_async_comm;
@@ -141,7 +145,9 @@ static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_relaying_mode_chang
 static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_green_led_turn_on;
 static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_green_led_turn_off;
 
-static uint32_t g_adv_post_interval_ms = ADV_POST_DEFAULT_INTERVAL_SECONDS * TIME_UNITS_MS_PER_SECOND;
+static bool     g_is_adv1_post_active   = false;
+static uint32_t g_adv1_post_interval_ms = ADV_POST_DEFAULT_INTERVAL_SECONDS * TIME_UNITS_MS_PER_SECOND;
+static uint32_t g_adv2_post_interval_ms = ADV_POST_DEFAULT_INTERVAL_SECONDS * TIME_UNITS_MS_PER_SECOND;
 
 ATTR_PURE
 static os_signal_num_e
@@ -354,7 +360,10 @@ adv_post_log(const adv_report_table_t* p_reports, const bool flag_use_timestamps
 }
 
 static bool
-adv_post_retransmit_advs(const adv_report_table_t* p_reports, const bool flag_use_timestamps)
+adv_post_retransmit_advs(
+    const adv_report_table_t* const p_reports,
+    const bool                      flag_use_timestamps,
+    const bool                      flag_post_to_ruuvi)
 {
     const ruuvi_gw_cfg_http_t* p_cfg_http = gw_cfg_get_http_copy();
     if (NULL == p_cfg_http)
@@ -362,7 +371,8 @@ adv_post_retransmit_advs(const adv_report_table_t* p_reports, const bool flag_us
         LOG_ERR("%s failed", "gw_cfg_get_http_copy");
         return false;
     }
-    const bool res = http_send_advs(p_reports, g_adv_post_nonce, flag_use_timestamps, p_cfg_http, NULL);
+    const bool res
+        = http_send_advs(p_reports, g_adv_post_nonce, flag_use_timestamps, flag_post_to_ruuvi, p_cfg_http, NULL);
     os_free(p_cfg_http);
     if (!res)
     {
@@ -373,12 +383,22 @@ adv_post_retransmit_advs(const adv_report_table_t* p_reports, const bool flag_us
 }
 
 static bool
-adv_post_do_retransmission(const bool flag_network_connected, const bool flag_use_timestamps)
+adv_post_do_retransmission(
+    const bool flag_network_connected,
+    const bool flag_use_timestamps,
+    const bool flag_post_to_ruuvi)
 {
     static adv_report_table_t g_adv_reports_buf;
 
     // for thread safety copy the advertisements to a separate buffer for posting
-    adv_table_read_retransmission_list_and_clear(&g_adv_reports_buf);
+    if (g_is_adv1_post_active)
+    {
+        adv_table_read_retransmission_list1_and_clear(&g_adv_reports_buf);
+    }
+    else
+    {
+        adv_table_read_retransmission_list2_and_clear(&g_adv_reports_buf);
+    }
 
     adv_post_log(&g_adv_reports_buf, flag_use_timestamps);
 
@@ -388,7 +408,7 @@ adv_post_do_retransmission(const bool flag_network_connected, const bool flag_us
         return false;
     }
 
-    return adv_post_retransmit_advs(&g_adv_reports_buf, flag_use_timestamps);
+    return adv_post_retransmit_advs(&g_adv_reports_buf, flag_use_timestamps, flag_post_to_ruuvi);
 }
 
 http_json_statistics_info_t*
@@ -481,7 +501,7 @@ adv_post_wdt_add_and_start(void)
 }
 
 static void
-adv_post_do_async_comm_send_advs(adv_post_state_t* const p_adv_post_state)
+adv_post_do_async_comm_send_advs(adv_post_state_t* const p_adv_post_state, const bool flag_post_to_ruuvi)
 {
     if (!p_adv_post_state->flag_network_connected)
     {
@@ -495,8 +515,19 @@ adv_post_do_async_comm_send_advs(adv_post_state_t* const p_adv_post_state)
         leds_notify_http1_data_sent_fail();
         return;
     }
-    p_adv_post_state->flag_need_to_send_advs = false;
-    if (adv_post_do_retransmission(p_adv_post_state->flag_network_connected, p_adv_post_state->flag_use_timestamps))
+    g_is_adv1_post_active = flag_post_to_ruuvi;
+    if (g_is_adv1_post_active)
+    {
+        p_adv_post_state->flag_need_to_send_advs1 = false;
+    }
+    else
+    {
+        p_adv_post_state->flag_need_to_send_advs2 = false;
+    }
+    if (adv_post_do_retransmission(
+            p_adv_post_state->flag_network_connected,
+            p_adv_post_state->flag_use_timestamps,
+            flag_post_to_ruuvi))
     {
         p_adv_post_state->flag_async_comm_in_progress = true;
     }
@@ -548,10 +579,15 @@ adv_post_do_async_comm(adv_post_state_t* const p_adv_post_state)
             os_timer_sig_one_shot_start(g_p_adv_post_timer_sig_do_async_comm);
         }
     }
-    if ((!p_adv_post_state->flag_async_comm_in_progress) && p_adv_post_state->flag_need_to_send_advs
+    if ((!p_adv_post_state->flag_async_comm_in_progress) && p_adv_post_state->flag_need_to_send_advs1
         && p_adv_post_state->flag_relaying_enabled)
     {
-        adv_post_do_async_comm_send_advs(p_adv_post_state);
+        adv_post_do_async_comm_send_advs(p_adv_post_state, true);
+    }
+    if ((!p_adv_post_state->flag_async_comm_in_progress) && p_adv_post_state->flag_need_to_send_advs2
+        && p_adv_post_state->flag_relaying_enabled)
+    {
+        adv_post_do_async_comm_send_advs(p_adv_post_state, false);
     }
     if ((!p_adv_post_state->flag_async_comm_in_progress) && p_adv_post_state->flag_need_to_send_statistics
         && p_adv_post_state->flag_relaying_enabled)
@@ -621,9 +657,15 @@ adv_post_handle_sig_task_watchdog_feed(void)
 }
 
 static void
-adv_post_timer_restart(void)
+adv1_post_timer_restart(void)
 {
-    os_timer_sig_periodic_restart(g_p_adv_post_timer_sig_retransmit, pdMS_TO_TICKS(g_adv_post_interval_ms));
+    os_timer_sig_periodic_restart(g_p_adv_post_timer_sig_retransmit, pdMS_TO_TICKS(g_adv1_post_interval_ms));
+}
+
+static void
+adv2_post_timer_restart(void)
+{
+    os_timer_sig_periodic_restart(g_p_adv_post_timer_sig_retransmit2, pdMS_TO_TICKS(g_adv2_post_interval_ms));
 }
 
 static void
@@ -640,12 +682,19 @@ adv_post_handle_sig_time_synchronized(adv_post_state_t* const p_adv_post_state)
 static void
 adv_post_restart_pending_retransmissions(const adv_post_state_t* const p_adv_post_state)
 {
-    if (p_adv_post_state->flag_need_to_send_advs)
+    if (p_adv_post_state->flag_need_to_send_advs1)
     {
-        LOG_INFO("Force pending advs retransmission");
+        LOG_INFO("Force pending advs1 retransmission");
         os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_retransmit);
         os_timer_sig_periodic_start(g_p_adv_post_timer_sig_retransmit);
         os_timer_sig_periodic_simulate(g_p_adv_post_timer_sig_retransmit);
+    }
+    if (p_adv_post_state->flag_need_to_send_advs2)
+    {
+        LOG_INFO("Force pending advs2 retransmission");
+        os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_retransmit2);
+        os_timer_sig_periodic_start(g_p_adv_post_timer_sig_retransmit2);
+        os_timer_sig_periodic_simulate(g_p_adv_post_timer_sig_retransmit2);
     }
     if (p_adv_post_state->flag_need_to_send_statistics)
     {
@@ -660,16 +709,27 @@ static void
 adv_post_on_gw_cfg_change(adv_post_state_t* const p_adv_post_state)
 {
     p_adv_post_state->flag_use_timestamps = gw_cfg_get_ntp_use();
-    if (gw_cfg_get_http_use_http())
+    if (gw_cfg_get_http_use_http_ruuvi())
     {
-        LOG_INFO("Start timer for advs retransmission");
+        LOG_INFO("Start timer1 for advs retransmission");
         os_timer_sig_periodic_start(g_p_adv_post_timer_sig_retransmit);
     }
     else
     {
-        LOG_INFO("Stop timer for advs retransmission");
+        LOG_INFO("Stop timer1 for advs retransmission");
         os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_retransmit);
-        p_adv_post_state->flag_need_to_send_advs = false;
+        p_adv_post_state->flag_need_to_send_advs1 = false;
+    }
+    if (gw_cfg_get_http_use_http())
+    {
+        LOG_INFO("Start timer2 for advs retransmission");
+        os_timer_sig_periodic_start(g_p_adv_post_timer_sig_retransmit2);
+    }
+    else
+    {
+        LOG_INFO("Stop timer2 for advs retransmission");
+        os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_retransmit2);
+        p_adv_post_state->flag_need_to_send_advs2 = false;
     }
     if (gw_cfg_get_http_stat_use_http_stat())
     {
@@ -725,9 +785,17 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p
             break;
         case ADV_POST_SIG_RETRANSMIT:
             LOG_INFO("Got ADV_POST_SIG_RETRANSMIT");
+            if (p_adv_post_state->flag_relaying_enabled && gw_cfg_get_http_use_http_ruuvi())
+            {
+                p_adv_post_state->flag_need_to_send_advs1 = true;
+                os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DO_ASYNC_COMM));
+            }
+            break;
+        case ADV_POST_SIG_RETRANSMIT2:
+            LOG_INFO("Got ADV_POST_SIG_RETRANSMIT2");
             if (p_adv_post_state->flag_relaying_enabled && gw_cfg_get_http_use_http())
             {
-                p_adv_post_state->flag_need_to_send_advs = true;
+                p_adv_post_state->flag_need_to_send_advs2 = true;
                 os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DO_ASYNC_COMM));
             }
             break;
@@ -801,7 +869,8 @@ adv_post_task(void)
         .flag_primary_time_sync_is_done = false,
         .flag_network_connected         = false,
         .flag_async_comm_in_progress    = false,
-        .flag_need_to_send_advs         = false,
+        .flag_need_to_send_advs1        = false,
+        .flag_need_to_send_advs2        = false,
         .flag_need_to_send_statistics   = false,
         .flag_relaying_enabled          = true,
         .flag_use_timestamps            = false,
@@ -850,6 +919,7 @@ adv_post_register_signals(void)
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_NETWORK_CONNECTED));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_TIME_SYNCHRONIZED));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT));
+    os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT2));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_SEND_STATISTICS));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DO_ASYNC_COMM));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_RELAYING_MODE_CHANGED));
@@ -951,6 +1021,13 @@ adv_post_create_timers(void)
         adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT),
         pdMS_TO_TICKS(ADV_POST_DEFAULT_INTERVAL_SECONDS * TIME_UNITS_MS_PER_SECOND));
 
+    g_p_adv_post_timer_sig_retransmit2 = os_timer_sig_periodic_create_static(
+        &g_adv_post_timer_sig_retransmit2_mem,
+        "adv_post_retransmit2",
+        g_p_adv_post_sig,
+        adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT2),
+        pdMS_TO_TICKS(ADV_POST_DEFAULT_INTERVAL_SECONDS * TIME_UNITS_MS_PER_SECOND));
+
     g_p_adv_post_timer_sig_send_statistics = os_timer_sig_periodic_create_static(
         &g_adv_post_timer_sig_send_statistics_mem,
         "adv_post_send_status",
@@ -999,6 +1076,8 @@ adv_post_delete_timers(void)
 {
     os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_retransmit);
     os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_retransmit);
+    os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_retransmit2);
+    os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_retransmit2);
     os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_send_statistics);
     os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_send_statistics);
     os_timer_sig_one_shot_stop(g_p_adv_post_timer_sig_do_async_comm);
@@ -1047,14 +1126,29 @@ adv_post_is_initialized(void)
 void
 adv_post_set_period(const uint32_t period_ms)
 {
-    if (period_ms != g_adv_post_interval_ms)
+    if (g_is_adv1_post_active)
     {
-        LOG_INFO(
-            "X-Ruuvi-Gateway-Rate: Change period from %u ms to %u ms",
-            (printf_uint_t)g_adv_post_interval_ms,
-            (printf_uint_t)period_ms);
-        g_adv_post_interval_ms = period_ms;
-        adv_post_timer_restart();
+        if (period_ms != g_adv1_post_interval_ms)
+        {
+            LOG_INFO(
+                "X-Ruuvi-Gateway-Rate: Change period(1) from %u ms to %u ms",
+                (printf_uint_t)g_adv1_post_interval_ms,
+                (printf_uint_t)period_ms);
+            g_adv1_post_interval_ms = period_ms;
+            adv1_post_timer_restart();
+        }
+    }
+    else
+    {
+        if (period_ms != g_adv2_post_interval_ms)
+        {
+            LOG_INFO(
+                "X-Ruuvi-Gateway-Rate: Change period(2) from %u ms to %u ms",
+                (printf_uint_t)g_adv2_post_interval_ms,
+                (printf_uint_t)period_ms);
+            g_adv2_post_interval_ms = period_ms;
+            adv2_post_timer_restart();
+        }
     }
 }
 
