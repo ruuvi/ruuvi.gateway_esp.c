@@ -4166,13 +4166,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
             .http = {
                 .use_http_ruuvi = false,
                 .use_http = false,
-                .http_url = "https://myserver1.com",
+                .http_url = { "https://myserver1.com" },
                 .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
                 .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
                 .auth = {
                     .auth_basic = {
-                        .user = "h_user1",
-                        .password = "h_pass1",
+                        .user = { "h_user1" },
+                        .password = { "h_pass1" },
                     },
                 },
             },
@@ -4390,13 +4390,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
             .http = {
                 .use_http_ruuvi = false,
                 .use_http = false,
-                .http_url = "https://myserver1.com",
+                .http_url = { "https://myserver1.com" },
                 .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
                 .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
                 .auth = {
                     .auth_basic = {
-                        .user = "h_user1",
-                        .password = "h_pass1",
+                        .user = { "h_user1" },
+                        .password = { "h_pass1" },
                     },
                 },
             },
@@ -4614,13 +4614,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
             .http = {
                 .use_http_ruuvi = false,
                 .use_http = false,
-                .http_url = "https://myserver1.com",
+                .http_url = { "https://myserver1.com" },
                 .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
                 .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
                 .auth = {
                     .auth_basic = {
-                        .user = "h_user1",
-                        .password = "h_pass1",
+                        .user = { "h_user1" },
+                        .password = { "h_pass1" },
                     },
                 },
             },
@@ -5040,13 +5040,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
             .http = {
                 .use_http_ruuvi = false,
                 .use_http = false,
-                .http_url = "https://myserver1.com",
+                .http_url = { "https://myserver1.com" },
                 .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
                 .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
                 .auth = {
                     .auth_basic = {
-                        .user = "h_user1",
-                        .password = "h_pass1",
+                        .user = { "h_user1" },
+                        .password = { "h_pass1" },
                     },
                 },
             },
@@ -5264,13 +5264,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
             .http = {
                 .use_http_ruuvi = false,
                 .use_http = false,
-                .http_url = "https://myserver1.com",
+                .http_url = { "https://myserver1.com" },
                 .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
                 .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
                 .auth = {
                     .auth_basic = {
-                        .user = "h_user1",
-                        .password = "h_pass1",
+                        .user = { "h_user1" },
+                        .password = { "h_pass1" },
                     },
                 },
             },
@@ -5488,13 +5488,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_custom) // NOLINT
             .http = {
                 .use_http_ruuvi = false,
                 .use_http = false,
-                .http_url = "https://myserver1.com",
+                .http_url = { "https://myserver1.com" },
                 .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
                 .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
                 .auth = {
                     .auth_basic = {
-                        .user = "h_user1",
-                        .password = "h_pass1",
+                        .user = { "h_user1" },
+                        .password = { "h_pass1" },
                     },
                 },
             },
