@@ -208,6 +208,12 @@ event_mgr_notify(const event_mgr_ev_e event)
 }
 
 bool
+gw_cfg_get_http_use_http_ruuvi(void)
+{
+    return true;
+}
+
+bool
 gw_cfg_get_http_use_http(void)
 {
     return true;

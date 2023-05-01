@@ -15,7 +15,7 @@
 extern "C" {
 #endif
 
-#define LEDS_CTRL_MAX_NUM_HTTP_CONN (1)
+#define LEDS_CTRL_MAX_NUM_HTTP_CONN (2)
 #define LEDS_CTRL_MAX_NUM_MQTT_CONN (1)
 
 #define LEDS_BLINKING_AFTER_REBOOT "R-R-R-R-" /* LED blinking, the step is 25ms */

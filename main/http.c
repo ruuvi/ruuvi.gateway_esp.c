@@ -75,6 +75,13 @@ typedef struct http_post_cb_info_t
     char*    p_buf;
 } http_post_cb_info_t;
 
+typedef enum http_post_recipient_e
+{
+    HTTP_POST_RECIPIENT_STATS,
+    HTTP_POST_RECIPIENT_ADVS1,
+    HTTP_POST_RECIPIENT_ADVS2,
+} http_post_recipient_e;
+
 typedef struct http_async_info_t
 {
     os_sema_t                p_http_async_sema;
@@ -82,7 +89,7 @@ typedef struct http_async_info_t
     http_client_config_t     http_client_config;
     esp_http_client_handle_t p_http_client_handle;
     cjson_wrap_str_t         cjson_str;
-    bool                     flag_sending_advs;
+    http_post_recipient_e    recipient;
     os_task_handle_t         p_task;
     http_post_cb_info_t      http_post_cb_info;
 } http_async_info_t;
@@ -460,14 +467,14 @@ http_send_advs_internal(
     const adv_report_table_t* const  p_reports,
     const uint32_t                   nonce,
     const bool                       flag_use_timestamps,
-    const bool                       flagPostToRuuvi,
+    const bool                       flag_post_to_ruuvi,
     const ruuvi_gw_cfg_http_t* const p_cfg_http,
     void* const                      p_user_data)
 {
     const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
 
-    p_http_async_info->flag_sending_advs = true;
-    p_http_async_info->cjson_str         = cjson_wrap_str_null();
+    p_http_async_info->recipient = flag_post_to_ruuvi ? HTTP_POST_RECIPIENT_ADVS1 : HTTP_POST_RECIPIENT_ADVS2;
+    p_http_async_info->cjson_str = cjson_wrap_str_null();
 
     const bool res = http_json_create_records_str(
         p_reports,
@@ -498,7 +505,7 @@ http_send_advs_internal(
 
     const ruuvi_gw_cfg_http_user_t*     p_http_user = NULL;
     const ruuvi_gw_cfg_http_password_t* p_http_pass = NULL;
-    if (!flagPostToRuuvi && (GW_CFG_HTTP_AUTH_TYPE_BASIC == p_cfg_http->auth_type))
+    if (!flag_post_to_ruuvi && (GW_CFG_HTTP_AUTH_TYPE_BASIC == p_cfg_http->auth_type))
     {
         p_http_user = &p_cfg_http->auth.auth_basic.user;
         p_http_pass = &p_cfg_http->auth.auth_basic.password;
@@ -514,7 +521,7 @@ http_send_advs_internal(
         p_http_url->buf,
         sizeof(p_http_url->buf),
         "%s",
-        flagPostToRuuvi ? RUUVI_GATEWAY_HTTP_DEFAULT_URL : p_cfg_http->http_url.buf);
+        flag_post_to_ruuvi ? RUUVI_GATEWAY_HTTP_DEFAULT_URL : p_cfg_http->http_url.buf);
 
     http_init_client_config(&p_http_async_info->http_client_config, p_http_url, p_http_user, p_http_pass, p_user_data);
 
@@ -529,7 +536,7 @@ http_send_advs_internal(
         return false;
     }
 
-    if (!flagPostToRuuvi && (GW_CFG_HTTP_AUTH_TYPE_BEARER == p_cfg_http->auth_type))
+    if (!flag_post_to_ruuvi && (GW_CFG_HTTP_AUTH_TYPE_BEARER == p_cfg_http->auth_type))
     {
         str_buf_t str_buf = str_buf_printf_with_alloc("Bearer %s", p_cfg_http->auth.auth_bearer.token.buf);
         if (NULL == str_buf.buf)
@@ -541,7 +548,7 @@ http_send_advs_internal(
         esp_http_client_set_header(p_http_async_info->p_http_client_handle, "Authorization", str_buf.buf);
         str_buf_free_buf(&str_buf);
     }
-    else if (!flagPostToRuuvi && (GW_CFG_HTTP_AUTH_TYPE_TOKEN == p_cfg_http->auth_type))
+    else if (!flag_post_to_ruuvi && (GW_CFG_HTTP_AUTH_TYPE_TOKEN == p_cfg_http->auth_type))
     {
         str_buf_t str_buf = str_buf_printf_with_alloc("Token %s", p_cfg_http->auth.auth_token.token.buf);
         if (NULL == str_buf.buf)
@@ -780,8 +787,8 @@ http_send_statistics_internal(
     const ruuvi_gw_cfg_http_stat_t* const    p_cfg_http_stat,
     void* const                              p_user_data)
 {
-    p_http_async_info->flag_sending_advs = false;
-    p_http_async_info->cjson_str         = cjson_wrap_str_null();
+    p_http_async_info->recipient = HTTP_POST_RECIPIENT_STATS;
+    p_http_async_info->cjson_str = cjson_wrap_str_null();
     if (!http_json_create_status_str(p_stat_info, p_reports, &p_http_async_info->cjson_str))
     {
         LOG_ERR("Not enough memory to generate status json");
@@ -1098,13 +1105,15 @@ http_async_poll(void)
                 "### HTTP POST to URL=%s: STATUS=%d",
                 p_http_async_info->http_client_config.esp_http_client_config.url,
                 http_status);
-            if (p_http_async_info->flag_sending_advs)
+            switch (p_http_async_info->recipient)
             {
-                adv_post_last_successful_network_comm_timestamp_update();
-            }
-            else
-            {
-                reset_info_clear_extra_info();
+                case HTTP_POST_RECIPIENT_STATS:
+                    reset_info_clear_extra_info();
+                    break;
+                case HTTP_POST_RECIPIENT_ADVS1:
+                case HTTP_POST_RECIPIENT_ADVS2:
+                    adv_post_last_successful_network_comm_timestamp_update();
+                    break;
             }
             flag_success = true;
         }
@@ -1114,9 +1123,17 @@ http_async_poll(void)
                 "### HTTP POST to URL=%s: STATUS=%d",
                 p_http_async_info->http_client_config.esp_http_client_config.url,
                 http_status);
-            if ((HTTP_RESP_CODE_429 == http_status) && (p_http_async_info->flag_sending_advs))
+            if (HTTP_RESP_CODE_429 == http_status)
             {
-                adv_post_last_successful_network_comm_timestamp_update();
+                switch (p_http_async_info->recipient)
+                {
+                    case HTTP_POST_RECIPIENT_STATS:
+                        break;
+                    case HTTP_POST_RECIPIENT_ADVS1:
+                    case HTTP_POST_RECIPIENT_ADVS2:
+                        adv_post_last_successful_network_comm_timestamp_update();
+                        break;
+                }
             }
         }
     }
@@ -1135,20 +1152,37 @@ http_async_poll(void)
     cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
     p_http_async_info->cjson_str = cjson_wrap_str_null();
 
-    if (p_http_async_info->flag_sending_advs)
+    if (flag_success && (HTTP_POST_RECIPIENT_STATS != p_http_async_info->recipient))
     {
-        if (flag_success)
+        if (!fw_update_mark_app_valid_cancel_rollback())
         {
-            if (!fw_update_mark_app_valid_cancel_rollback())
+            LOG_ERR("%s failed", "fw_update_mark_app_valid_cancel_rollback");
+        }
+    }
+    switch (p_http_async_info->recipient)
+    {
+        case HTTP_POST_RECIPIENT_STATS:
+            break;
+        case HTTP_POST_RECIPIENT_ADVS1:
+            if (flag_success)
             {
-                LOG_ERR("%s failed", "fw_update_mark_app_valid_cancel_rollback");
+                leds_notify_http1_data_sent_successfully();
             }
-            leds_notify_http1_data_sent_successfully();
-        }
-        else
-        {
-            leds_notify_http1_data_sent_fail();
-        }
+            else
+            {
+                leds_notify_http1_data_sent_fail();
+            }
+            break;
+        case HTTP_POST_RECIPIENT_ADVS2:
+            if (flag_success)
+            {
+                leds_notify_http2_data_sent_successfully();
+            }
+            else
+            {
+                leds_notify_http2_data_sent_fail();
+            }
+            break;
     }
     LOG_DBG("os_sema_signal: p_http_async_sema");
     os_sema_signal(p_http_async_info->p_http_async_sema);
