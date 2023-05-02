@@ -56,6 +56,12 @@ void
 leds_notify_http1_data_sent_fail(void);
 
 void
+leds_notify_http2_data_sent_successfully(void);
+
+void
+leds_notify_http2_data_sent_fail(void);
+
+void
 leds_notify_http_poll_ok(void);
 
 void

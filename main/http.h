@@ -62,15 +62,17 @@ http_send_advs(
     const adv_report_table_t* const  p_reports,
     const uint32_t                   nonce,
     const bool                       flag_use_timestamps,
+    const bool                       flag_post_to_ruuvi,
     const ruuvi_gw_cfg_http_t* const p_cfg_http,
     void* const                      p_user_data);
 
 http_server_resp_t
 http_check_post_advs(
-    const char* const        p_url,
-    const char* const        p_user,
-    const char* const        p_pass,
-    const TimeUnitsSeconds_t timeout_seconds);
+    const char* const             p_url,
+    const gw_cfg_http_auth_type_e auth_type,
+    const char* const             p_user,
+    const char* const             p_pass,
+    const TimeUnitsSeconds_t      timeout_seconds);
 
 http_server_resp_t
 http_check_post_stat(
@@ -98,14 +100,14 @@ http_download(const http_download_param_t param);
 bool
 http_download_with_auth(
     const http_download_param_t           param,
-    const gw_cfg_remote_auth_type_e       gw_cfg_http_auth_type,
+    const gw_cfg_http_auth_type_e         auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
     const http_header_item_t* const       p_extra_header_item);
 
 bool
 http_check_with_auth(
     const http_check_param_t              param,
-    const gw_cfg_remote_auth_type_e       gw_cfg_http_auth_type,
+    const gw_cfg_http_auth_type_e         auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
     const http_header_item_t* const       p_extra_header_item,
     http_resp_code_e* const               p_http_resp_code);

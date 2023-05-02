@@ -113,7 +113,7 @@ http_server_cb_on_post_fw_update(const char* p_body, const bool flag_access_from
         return http_server_resp_500();
     }
     http_resp_code_e http_resp_code
-        = http_check(url.buf, HTTP_DOWNLOAD_TIMEOUT_SECONDS, GW_CFG_REMOTE_AUTH_TYPE_NO, NULL, NULL, true);
+        = http_check(url.buf, HTTP_DOWNLOAD_TIMEOUT_SECONDS, GW_CFG_HTTP_AUTH_TYPE_NONE, NULL, NULL, true);
     str_buf_free_buf(&url);
     if (HTTP_RESP_CODE_200 != http_resp_code)
     {
@@ -128,7 +128,7 @@ http_server_cb_on_post_fw_update(const char* p_body, const bool flag_access_from
         LOG_ERR("Can't allocate memory");
         return http_server_resp_500();
     }
-    http_resp_code = http_check(url.buf, HTTP_DOWNLOAD_TIMEOUT_SECONDS, GW_CFG_REMOTE_AUTH_TYPE_NO, NULL, NULL, true);
+    http_resp_code = http_check(url.buf, HTTP_DOWNLOAD_TIMEOUT_SECONDS, GW_CFG_HTTP_AUTH_TYPE_NONE, NULL, NULL, true);
     str_buf_free_buf(&url);
     if (HTTP_RESP_CODE_200 != http_resp_code)
     {
@@ -143,7 +143,7 @@ http_server_cb_on_post_fw_update(const char* p_body, const bool flag_access_from
         LOG_ERR("Can't allocate memory");
         return http_server_resp_500();
     }
-    http_resp_code = http_check(url.buf, HTTP_DOWNLOAD_TIMEOUT_SECONDS, GW_CFG_REMOTE_AUTH_TYPE_NO, NULL, NULL, true);
+    http_resp_code = http_check(url.buf, HTTP_DOWNLOAD_TIMEOUT_SECONDS, GW_CFG_HTTP_AUTH_TYPE_NONE, NULL, NULL, true);
     str_buf_free_buf(&url);
     if (HTTP_RESP_CODE_200 != http_resp_code)
     {

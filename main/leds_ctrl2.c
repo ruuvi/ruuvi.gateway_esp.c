@@ -172,6 +172,12 @@ leds_ctrl2_on_event(leds_ctrl2_state_t* const p_state, const leds_ctrl2_event_e 
         case LEDS_CTRL2_EVENT_HTTP1_DATA_SENT_FAIL:
             p_state->flag_http_conn_status[0] = false;
             break;
+        case LEDS_CTRL2_EVENT_HTTP2_DATA_SENT_SUCCESSFULLY:
+            p_state->flag_http_conn_status[1] = true;
+            break;
+        case LEDS_CTRL2_EVENT_HTTP2_DATA_SENT_FAIL:
+            p_state->flag_http_conn_status[1] = false;
+            break;
         case LEDS_CTRL2_EVENT_HTTP_POLL_OK:
             p_state->flag_http_poll_status = true;
             break;
@@ -200,10 +206,11 @@ leds_ctrl2_get_new_blinking_sequence(void)
     const leds_ctrl2_state_t* const p_state = &g_leds_ctrl2;
 
     LOG_DBG(
-        "Get new blinking sequence in state: ap_active=%d, network=%d, http=%d, mqtt=%d, poll=%d",
+        "Get new blinking sequence in state: ap_active=%d, network=%d, http1=%d, http2=%d, mqtt=%d, poll=%d",
         p_state->flag_wifi_ap_active,
         p_state->flag_network_connected,
         p_state->flag_http_conn_status[0],
+        p_state->flag_http_conn_status[1],
         p_state->flag_mqtt_conn_status[0],
         p_state->flag_http_poll_status);
 

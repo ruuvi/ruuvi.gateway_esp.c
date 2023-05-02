@@ -438,10 +438,11 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_update_cycle_regular) // NOLINT
     ASSERT_EQ(string("ruuvi/AA:BB:CC:DD:EE:FF/"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
     ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
 
-    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.http.use_http);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.http.use_http);
+    ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
+    ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_DEFAULT_URL), gw_cfg.ruuvi_cfg.http.http_url.buf);
-    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http.http_user.buf);
-    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http.http_pass.buf);
 
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
     ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_STATUS_URL), gw_cfg.ruuvi_cfg.http_stat.http_stat_url.buf);
@@ -497,7 +498,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_update_cycle_beta) // NOLINT
             "m_pass1",
         },
         .http = {
-            false,
+            true,
             "https://myserver.com/record",
             "h_user1",
             "h_pass1",
@@ -549,10 +550,13 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_update_cycle_beta) // NOLINT
     ASSERT_EQ(string("m_user1"), gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf);
     ASSERT_EQ(string("m_pass1"), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
 
-    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.http.use_http);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.http.use_http);
+    ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
+    ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_BASIC, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_EQ(string("https://myserver.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
-    ASSERT_EQ(string("h_user1"), gw_cfg.ruuvi_cfg.http.http_user.buf);
-    ASSERT_EQ(string("h_pass1"), gw_cfg.ruuvi_cfg.http.http_pass.buf);
+    ASSERT_EQ(string("h_user1"), gw_cfg.ruuvi_cfg.http.auth.auth_basic.user.buf);
+    ASSERT_EQ(string("h_pass1"), gw_cfg.ruuvi_cfg.http.auth.auth_basic.password.buf);
 
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
     ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_STATUS_URL), gw_cfg.ruuvi_cfg.http_stat.http_stat_url.buf);
@@ -660,10 +664,8 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_update_cycle_manual) // NOLINT
     ASSERT_EQ(string("m_user1"), gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf);
     ASSERT_EQ(string("m_pass1"), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
 
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://myserver.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
-    ASSERT_EQ(string("h_user1"), gw_cfg.ruuvi_cfg.http.http_user.buf);
-    ASSERT_EQ(string("h_pass1"), gw_cfg.ruuvi_cfg.http.http_pass.buf);
 
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
     ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_STATUS_URL), gw_cfg.ruuvi_cfg.http_stat.http_stat_url.buf);
@@ -771,10 +773,8 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_update_cycle_unknown) // NOLINT
     ASSERT_EQ(string("m_user1"), gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf);
     ASSERT_EQ(string("m_pass1"), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
 
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://myserver.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
-    ASSERT_EQ(string("h_user1"), gw_cfg.ruuvi_cfg.http.http_user.buf);
-    ASSERT_EQ(string("h_pass1"), gw_cfg.ruuvi_cfg.http.http_pass.buf);
 
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
     ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_STATUS_URL), gw_cfg.ruuvi_cfg.http_stat.http_stat_url.buf);
@@ -882,10 +882,11 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_with_incorrect_header) // NOLINT
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf);
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
 
-    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.http.use_http);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.http.use_http);
+    ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
+    ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_DEFAULT_URL), gw_cfg.ruuvi_cfg.http.http_url.buf);
-    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http.http_user.buf);
-    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http.http_pass.buf);
 
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
     ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_STATUS_URL), gw_cfg.ruuvi_cfg.http_stat.http_stat_url.buf);
@@ -993,10 +994,11 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_with_incorrect_fmt_version) // NO
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.mqtt.mqtt_user.buf);
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
 
-    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.http.use_http);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.http.use_http);
+    ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
+    ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_DEFAULT_URL), gw_cfg.ruuvi_cfg.http.http_url.buf);
-    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http.http_user.buf);
-    ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.http.http_pass.buf);
 
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
     ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_STATUS_URL), gw_cfg.ruuvi_cfg.http_stat.http_stat_url.buf);

@@ -74,12 +74,50 @@ gw_cfg_blob_convert_http(
     ruuvi_gw_cfg_http_t* const            p_cfg_dst_http,
     const ruuvi_gw_cfg_blob_http_t* const p_cfg_src_http)
 {
-    p_cfg_dst_http->use_http = p_cfg_src_http->use_http;
-    (void)snprintf(p_cfg_dst_http->http_url.buf, sizeof(p_cfg_dst_http->http_url.buf), "%s", p_cfg_src_http->http_url);
-    (void)
-        snprintf(p_cfg_dst_http->http_user.buf, sizeof(p_cfg_dst_http->http_user.buf), "%s", p_cfg_src_http->http_user);
-    (void)
-        snprintf(p_cfg_dst_http->http_pass.buf, sizeof(p_cfg_dst_http->http_pass.buf), "%s", p_cfg_src_http->http_pass);
+    p_cfg_dst_http->data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI;
+
+    if (!p_cfg_src_http->use_http)
+    {
+        p_cfg_dst_http->use_http_ruuvi = false;
+        p_cfg_dst_http->use_http       = false;
+    }
+    else
+    {
+        if ((0 == strcmp(RUUVI_GATEWAY_HTTP_DEFAULT_URL, p_cfg_src_http->http_url))
+            && ('\0' == p_cfg_src_http->http_user[0]))
+        {
+            p_cfg_dst_http->use_http_ruuvi = true;
+            p_cfg_dst_http->use_http       = false;
+        }
+        else
+        {
+            p_cfg_dst_http->use_http_ruuvi = false;
+            p_cfg_dst_http->use_http       = true;
+            (void)snprintf(
+                p_cfg_dst_http->http_url.buf,
+                sizeof(p_cfg_dst_http->http_url.buf),
+                "%s",
+                p_cfg_src_http->http_url);
+            if ('\0' == p_cfg_src_http->http_user[0])
+            {
+                p_cfg_dst_http->auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE;
+            }
+            else
+            {
+                p_cfg_dst_http->auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC;
+                (void)snprintf(
+                    p_cfg_dst_http->auth.auth_basic.user.buf,
+                    sizeof(p_cfg_dst_http->auth.auth_basic.user.buf),
+                    "%s",
+                    p_cfg_src_http->http_user);
+                (void)snprintf(
+                    p_cfg_dst_http->auth.auth_basic.password.buf,
+                    sizeof(p_cfg_dst_http->auth.auth_basic.password.buf),
+                    "%s",
+                    p_cfg_src_http->http_pass);
+            }
+        }
+    }
 }
 
 static void

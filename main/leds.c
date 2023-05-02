@@ -66,11 +66,13 @@ typedef enum leds_task_sig_e
     LEDS_TASK_SIG_ON_EV_MQTT1_DISCONNECTED           = OS_SIGNAL_NUM_14,
     LEDS_TASK_SIG_ON_EV_HTTP1_DATA_SENT_SUCCESSFULLY = OS_SIGNAL_NUM_15,
     LEDS_TASK_SIG_ON_EV_HTTP1_DATA_SENT_FAIL         = OS_SIGNAL_NUM_16,
-    LEDS_TASK_SIG_ON_EV_HTTP_POLL_OK                 = OS_SIGNAL_NUM_17,
-    LEDS_TASK_SIG_ON_EV_HTTP_POLL_TIMEOUT            = OS_SIGNAL_NUM_18,
-    LEDS_TASK_SIG_ON_EV_RECV_ADV                     = OS_SIGNAL_NUM_19,
-    LEDS_TASK_SIG_ON_EV_RECV_ADV_TIMEOUT             = OS_SIGNAL_NUM_20,
-    LEDS_TASK_SIG_TASK_WATCHDOG_FEED                 = OS_SIGNAL_NUM_21,
+    LEDS_TASK_SIG_ON_EV_HTTP2_DATA_SENT_SUCCESSFULLY = OS_SIGNAL_NUM_17,
+    LEDS_TASK_SIG_ON_EV_HTTP2_DATA_SENT_FAIL         = OS_SIGNAL_NUM_18,
+    LEDS_TASK_SIG_ON_EV_HTTP_POLL_OK                 = OS_SIGNAL_NUM_19,
+    LEDS_TASK_SIG_ON_EV_HTTP_POLL_TIMEOUT            = OS_SIGNAL_NUM_20,
+    LEDS_TASK_SIG_ON_EV_RECV_ADV                     = OS_SIGNAL_NUM_21,
+    LEDS_TASK_SIG_ON_EV_RECV_ADV_TIMEOUT             = OS_SIGNAL_NUM_22,
+    LEDS_TASK_SIG_TASK_WATCHDOG_FEED                 = OS_SIGNAL_NUM_23,
 } leds_task_sig_e;
 
 #define LEDS_TASK_SIG_FIRST (LEDS_TASK_SIG_UPDATE)
@@ -270,13 +272,19 @@ leds_task_handle_sig_update(void)
     }
 }
 
+static bool
+is_gateway_in_polling_mode(void)
+{
+    return (!gw_cfg_get_http_use_http_ruuvi()) && (!gw_cfg_get_http_use_http()) && (!gw_cfg_get_mqtt_use_mqtt());
+}
+
 static void
 leds_task_handle_sig_on_ev_cfg_ready(void)
 {
     LOG_DBG("LEDS_TASK_SIG_ON_EV_CFG_READY");
     leds_ctrl_configure_sub_machine((leds_ctrl_params_t) {
-        .flag_polling_mode = (!gw_cfg_get_http_use_http()) && (!gw_cfg_get_mqtt_use_mqtt()),
-        .num_http_targets  = gw_cfg_get_http_use_http() ? 1 : 0,
+        .flag_polling_mode = is_gateway_in_polling_mode(),
+        .num_http_targets  = (gw_cfg_get_http_use_http_ruuvi() ? 1 : 0) + (gw_cfg_get_http_use_http() ? 1 : 0),
         .num_mqtt_targets  = gw_cfg_get_mqtt_use_mqtt() ? 1 : 0,
     });
     leds_ctrl_handle_event(LEDS_CTRL_EVENT_CFG_READY);
@@ -287,8 +295,8 @@ leds_task_handle_sig_on_ev_cfg_changed_ruuvi(void)
 {
     LOG_DBG("LEDS_TASK_SIG_ON_EV_CFG_CHANGED_RUUVI");
     leds_ctrl_configure_sub_machine((leds_ctrl_params_t) {
-        .flag_polling_mode = (!gw_cfg_get_http_use_http()) && (!gw_cfg_get_mqtt_use_mqtt()),
-        .num_http_targets  = gw_cfg_get_http_use_http() ? 1 : 0,
+        .flag_polling_mode = is_gateway_in_polling_mode(),
+        .num_http_targets  = (gw_cfg_get_http_use_http_ruuvi() ? 1 : 0) + (gw_cfg_get_http_use_http() ? 1 : 0),
         .num_mqtt_targets  = gw_cfg_get_mqtt_use_mqtt() ? 1 : 0,
     });
 }
@@ -370,6 +378,26 @@ leds_task_handle_sig_on_ev_http1_data_sent_fail(void)
     if (leds_ctrl_is_in_substate())
     {
         leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_HTTP1_DATA_SENT_FAIL);
+    }
+}
+
+static void
+leds_task_handle_sig_on_ev_http2_data_sent_successfully(void)
+{
+    LOG_DBG("LEDS_TASK_SIG_ON_EV_HTTP2_DATA_SENT_SUCCESSFULLY");
+    if (leds_ctrl_is_in_substate())
+    {
+        leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_HTTP2_DATA_SENT_SUCCESSFULLY);
+    }
+}
+
+static void
+leds_task_handle_sig_on_ev_http2_data_sent_fail(void)
+{
+    LOG_DBG("LEDS_TASK_SIG_ON_EV_HTTP2_DATA_SENT_FAIL");
+    if (leds_ctrl_is_in_substate())
+    {
+        leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_HTTP2_DATA_SENT_FAIL);
     }
 }
 
@@ -490,6 +518,12 @@ leds_task_handle_sig(const leds_task_sig_e leds_task_sig)
             break;
         case LEDS_TASK_SIG_ON_EV_HTTP1_DATA_SENT_FAIL:
             leds_task_handle_sig_on_ev_http1_data_sent_fail();
+            break;
+        case LEDS_TASK_SIG_ON_EV_HTTP2_DATA_SENT_SUCCESSFULLY:
+            leds_task_handle_sig_on_ev_http2_data_sent_successfully();
+            break;
+        case LEDS_TASK_SIG_ON_EV_HTTP2_DATA_SENT_FAIL:
+            leds_task_handle_sig_on_ev_http2_data_sent_fail();
             break;
         case LEDS_TASK_SIG_ON_EV_HTTP_POLL_OK:
             leds_task_handle_sig_on_ev_http_poll_ok();
@@ -616,6 +650,8 @@ leds_register_signals(void)
     os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_MQTT1_DISCONNECTED));
     os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_HTTP1_DATA_SENT_SUCCESSFULLY));
     os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_HTTP1_DATA_SENT_FAIL));
+    os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_HTTP2_DATA_SENT_SUCCESSFULLY));
+    os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_HTTP2_DATA_SENT_FAIL));
     os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_HTTP_POLL_OK));
     os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_HTTP_POLL_TIMEOUT));
     os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_RECV_ADV));
@@ -824,6 +860,24 @@ void
 leds_notify_http1_data_sent_fail(void)
 {
     if (!os_signal_send(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_HTTP1_DATA_SENT_FAIL)))
+    {
+        LOG_ERR("%s failed", "os_signal_send");
+    }
+}
+
+void
+leds_notify_http2_data_sent_successfully(void)
+{
+    if (!os_signal_send(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_HTTP2_DATA_SENT_SUCCESSFULLY)))
+    {
+        LOG_ERR("%s failed", "os_signal_send");
+    }
+}
+
+void
+leds_notify_http2_data_sent_fail(void)
+{
+    if (!os_signal_send(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_HTTP2_DATA_SENT_FAIL)))
     {
         LOG_ERR("%s failed", "os_signal_send");
     }

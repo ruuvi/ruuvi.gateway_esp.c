@@ -12,9 +12,13 @@
 #include "event_mgr.h"
 #include "os_malloc.h"
 
-_Static_assert(sizeof(GW_CFG_REMOTE_AUTH_TYPE_STR_NO) <= GW_CFG_REMOTE_AUTH_TYPE_STR_SIZE, "");
-_Static_assert(sizeof(GW_CFG_REMOTE_AUTH_TYPE_STR_BASIC) <= GW_CFG_REMOTE_AUTH_TYPE_STR_SIZE, "");
-_Static_assert(sizeof(GW_CFG_REMOTE_AUTH_TYPE_STR_BEARER) <= GW_CFG_REMOTE_AUTH_TYPE_STR_SIZE, "");
+_Static_assert(sizeof(GW_CFG_HTTP_AUTH_TYPE_STR_NO) <= GW_CFG_HTTP_AUTH_TYPE_STR_SIZE, "");
+_Static_assert(sizeof(GW_CFG_HTTP_AUTH_TYPE_STR_NONE) <= GW_CFG_HTTP_AUTH_TYPE_STR_SIZE, "");
+_Static_assert(sizeof(GW_CFG_HTTP_AUTH_TYPE_STR_BASIC) <= GW_CFG_HTTP_AUTH_TYPE_STR_SIZE, "");
+_Static_assert(sizeof(GW_CFG_HTTP_AUTH_TYPE_STR_BEARER) <= GW_CFG_HTTP_AUTH_TYPE_STR_SIZE, "");
+_Static_assert(sizeof(GW_CFG_HTTP_AUTH_TYPE_STR_TOKEN) <= GW_CFG_HTTP_AUTH_TYPE_STR_SIZE, "");
+
+_Static_assert(sizeof(GW_CFG_HTTP_DATA_FORMAT_STR_RUUVI) <= GW_CFG_HTTP_DATA_FORMAT_STR_SIZE, "");
 
 static gw_cfg_t                    g_gateway_config  = { 0 };
 static bool                        g_gw_cfg_ready    = false;
@@ -118,16 +122,22 @@ ruuvi_gw_cfg_remote_cmp(const ruuvi_gw_cfg_remote_t* const p_remote1, const ruuv
     }
     switch (p_remote1->auth_type)
     {
-        case GW_CFG_REMOTE_AUTH_TYPE_NO:
+        case GW_CFG_HTTP_AUTH_TYPE_NONE:
             break;
-        case GW_CFG_REMOTE_AUTH_TYPE_BASIC:
+        case GW_CFG_HTTP_AUTH_TYPE_BASIC:
             if (!ruuvi_gw_cfg_remote_cmp_auth_basic(p_remote1, p_remote2))
             {
                 return false;
             }
             break;
-        case GW_CFG_REMOTE_AUTH_TYPE_BEARER:
+        case GW_CFG_HTTP_AUTH_TYPE_BEARER:
             if (0 != strcmp(p_remote1->auth.auth_bearer.token.buf, p_remote2->auth.auth_bearer.token.buf))
+            {
+                return false;
+            }
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
+            if (0 != strcmp(p_remote1->auth.auth_token.token.buf, p_remote2->auth.auth_token.token.buf))
             {
                 return false;
             }
@@ -143,6 +153,10 @@ ruuvi_gw_cfg_remote_cmp(const ruuvi_gw_cfg_remote_t* const p_remote1, const ruuv
 static bool
 ruuvi_gw_cfg_http_cmp(const ruuvi_gw_cfg_http_t* const p_http1, const ruuvi_gw_cfg_http_t* const p_http2)
 {
+    if (p_http1->use_http_ruuvi != p_http2->use_http_ruuvi)
+    {
+        return false;
+    }
     if (p_http1->use_http != p_http2->use_http)
     {
         return false;
@@ -151,13 +165,40 @@ ruuvi_gw_cfg_http_cmp(const ruuvi_gw_cfg_http_t* const p_http1, const ruuvi_gw_c
     {
         return false;
     }
-    if (0 != strcmp(p_http1->http_user.buf, p_http2->http_user.buf))
+    if (p_http1->data_format != p_http2->data_format)
     {
         return false;
     }
-    if (0 != strcmp(p_http1->http_pass.buf, p_http2->http_pass.buf))
+    if (p_http1->auth_type != p_http2->auth_type)
     {
         return false;
+    }
+    switch (p_http1->auth_type)
+    {
+        case GW_CFG_HTTP_AUTH_TYPE_NONE:
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_BASIC:
+            if (0 != strcmp(p_http1->auth.auth_basic.user.buf, p_http2->auth.auth_basic.user.buf))
+            {
+                return false;
+            }
+            if (0 != strcmp(p_http1->auth.auth_basic.password.buf, p_http2->auth.auth_basic.password.buf))
+            {
+                return false;
+            }
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_BEARER:
+            if (0 != strcmp(p_http1->auth.auth_bearer.token.buf, p_http2->auth.auth_bearer.token.buf))
+            {
+                return false;
+            }
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
+            if (0 != strcmp(p_http1->auth.auth_token.token.buf, p_http2->auth.auth_token.token.buf))
+            {
+                return false;
+            }
+            break;
     }
     return true;
 }
@@ -881,6 +922,16 @@ gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss(void)
 }
 
 bool
+gw_cfg_get_http_use_http_ruuvi(void)
+{
+    assert(NULL != g_gw_cfg_mutex);
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
+    const bool      use_http = p_gw_cfg->ruuvi_cfg.http.use_http_ruuvi;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    return use_http;
+}
+
+bool
 gw_cfg_get_http_use_http(void)
 {
     assert(NULL != g_gw_cfg_mutex);
@@ -911,7 +962,22 @@ gw_cfg_get_http_password_copy(void)
 {
     assert(NULL != g_gw_cfg_mutex);
     const gw_cfg_t* p_gw_cfg      = gw_cfg_lock_ro();
-    str_buf_t       http_password = str_buf_printf_with_alloc("%s", p_gw_cfg->ruuvi_cfg.http.http_pass.buf);
+    str_buf_t       http_password = str_buf_init_null();
+    switch (p_gw_cfg->ruuvi_cfg.http.auth_type)
+    {
+        case GW_CFG_HTTP_AUTH_TYPE_NONE:
+            http_password = str_buf_printf_with_alloc("%s", "");
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_BASIC:
+            http_password = str_buf_printf_with_alloc("%s", p_gw_cfg->ruuvi_cfg.http.auth.auth_basic.password.buf);
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_BEARER:
+            http_password = str_buf_printf_with_alloc("%s", p_gw_cfg->ruuvi_cfg.http.auth.auth_bearer.token.buf);
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
+            http_password = str_buf_printf_with_alloc("%s", p_gw_cfg->ruuvi_cfg.http.auth.auth_token.token.buf);
+            break;
+    }
     gw_cfg_unlock_ro(&p_gw_cfg);
     return http_password;
 }

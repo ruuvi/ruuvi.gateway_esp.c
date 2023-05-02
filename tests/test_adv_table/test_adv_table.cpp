@@ -122,7 +122,7 @@ TEST_F(TestAdvTable, test_1) // NOLINT
     ASSERT_TRUE(adv_table_put(&adv));
     {
         adv_report_table_t reports = {};
-        adv_table_read_retransmission_list_and_clear(&reports);
+        adv_table_read_retransmission_list1_and_clear(&reports);
         ASSERT_EQ(1, reports.num_of_advs);
         CHECK_ADV_REPORT(adv, data, &reports.table[0]);
     }
@@ -160,7 +160,7 @@ TEST_F(TestAdvTable, test_1_read_clear_add) // NOLINT
     ASSERT_TRUE(adv_table_put(&adv));
     {
         adv_report_table_t reports = {};
-        adv_table_read_retransmission_list_and_clear(&reports);
+        adv_table_read_retransmission_list1_and_clear(&reports);
         ASSERT_EQ(1, reports.num_of_advs);
         CHECK_ADV_REPORT(adv, data, &reports.table[0]);
     }
@@ -168,7 +168,7 @@ TEST_F(TestAdvTable, test_1_read_clear_add) // NOLINT
     ASSERT_TRUE(adv_table_put(&adv));
     {
         adv_report_table_t reports = {};
-        adv_table_read_retransmission_list_and_clear(&reports);
+        adv_table_read_retransmission_list1_and_clear(&reports);
         ASSERT_EQ(1, reports.num_of_advs);
         CHECK_ADV_REPORT(adv, data, &reports.table[0]);
     }
@@ -196,7 +196,7 @@ TEST_F(TestAdvTable, test_2) // NOLINT
 
     {
         adv_report_table_t reports = {};
-        adv_table_read_retransmission_list_and_clear(&reports);
+        adv_table_read_retransmission_list1_and_clear(&reports);
         ASSERT_EQ(2, reports.num_of_advs);
         CHECK_ADV_REPORT(adv1, data1, &reports.table[0]);
         CHECK_ADV_REPORT(adv2, data2, &reports.table[1]);
@@ -239,7 +239,7 @@ TEST_F(TestAdvTable, test_2_filter_by_timestamp) // NOLINT
 
     {
         adv_report_table_t reports = {};
-        adv_table_read_retransmission_list_and_clear(&reports);
+        adv_table_read_retransmission_list1_and_clear(&reports);
         ASSERT_EQ(2, reports.num_of_advs);
         CHECK_ADV_REPORT(adv1, data1, &reports.table[0]);
         CHECK_ADV_REPORT(adv2, data2, &reports.table[1]);
@@ -287,7 +287,7 @@ TEST_F(TestAdvTable, test_2_without_timestamps) // NOLINT
 
     {
         adv_report_table_t reports = {};
-        adv_table_read_retransmission_list_and_clear(&reports);
+        adv_table_read_retransmission_list1_and_clear(&reports);
         ASSERT_EQ(2, reports.num_of_advs);
         CHECK_ADV_REPORT(adv1, data1, &reports.table[0]);
         CHECK_ADV_REPORT(adv2, data2, &reports.table[1]);
@@ -341,7 +341,7 @@ TEST_F(TestAdvTable, test_3_without_timestamps_counter_overflow) // NOLINT
 
     {
         adv_report_table_t reports = {};
-        adv_table_read_retransmission_list_and_clear(&reports);
+        adv_table_read_retransmission_list1_and_clear(&reports);
         ASSERT_EQ(3, reports.num_of_advs);
         CHECK_ADV_REPORT(adv1, data1, &reports.table[0]);
         CHECK_ADV_REPORT(adv2, data2, &reports.table[1]);
@@ -406,7 +406,7 @@ TEST_F(TestAdvTable, test_2_with_the_same_hash) // NOLINT
 
     {
         adv_report_table_t reports = {};
-        adv_table_read_retransmission_list_and_clear(&reports);
+        adv_table_read_retransmission_list1_and_clear(&reports);
         ASSERT_EQ(2, reports.num_of_advs);
         CHECK_ADV_REPORT(adv1, data1, &reports.table[0]);
         CHECK_ADV_REPORT(adv2, data2, &reports.table[1]);
@@ -447,7 +447,7 @@ TEST_F(TestAdvTable, test_2_with_the_same_hash_with_clear) // NOLINT
 
     {
         adv_report_table_t reports = {};
-        adv_table_read_retransmission_list_and_clear(&reports);
+        adv_table_read_retransmission_list1_and_clear(&reports);
         ASSERT_EQ(1, reports.num_of_advs);
         CHECK_ADV_REPORT(adv1, data1, &reports.table[0]);
     }
@@ -460,7 +460,7 @@ TEST_F(TestAdvTable, test_2_with_the_same_hash_with_clear) // NOLINT
 
     {
         adv_report_table_t reports = {};
-        adv_table_read_retransmission_list_and_clear(&reports);
+        adv_table_read_retransmission_list1_and_clear(&reports);
         ASSERT_EQ(1, reports.num_of_advs);
         CHECK_ADV_REPORT(adv2, data2, &reports.table[0]);
     }
@@ -504,7 +504,7 @@ TEST_F(TestAdvTable, test_3_overwrite_1) // NOLINT
 
     {
         adv_report_table_t reports = {};
-        adv_table_read_retransmission_list_and_clear(&reports);
+        adv_table_read_retransmission_list1_and_clear(&reports);
         ASSERT_EQ(2, reports.num_of_advs);
         CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
         CHECK_ADV_REPORT(adv2, data2, &reports.table[1]);
@@ -557,7 +557,7 @@ TEST_F(TestAdvTable, test_3_overwrite_2) // NOLINT
 
     {
         adv_report_table_t reports = {};
-        adv_table_read_retransmission_list_and_clear(&reports);
+        adv_table_read_retransmission_list1_and_clear(&reports);
         ASSERT_EQ(2, reports.num_of_advs);
         CHECK_ADV_REPORT(adv1, data1, &reports.table[0]);
         CHECK_ADV_REPORT(adv3, data3, &reports.table[1]);
@@ -609,7 +609,7 @@ TEST_F(TestAdvTable, test_3_with_the_same_hash_overwrite_1) // NOLINT
 
     {
         adv_report_table_t reports = {};
-        adv_table_read_retransmission_list_and_clear(&reports);
+        adv_table_read_retransmission_list1_and_clear(&reports);
         ASSERT_EQ(2, reports.num_of_advs);
         CHECK_ADV_REPORT(adv3, data3, &reports.table[0]);
         CHECK_ADV_REPORT(adv2, data2, &reports.table[1]);
@@ -664,7 +664,7 @@ TEST_F(TestAdvTable, test_3_with_the_same_hash_overwrite_2) // NOLINT
 
     {
         adv_report_table_t reports = {};
-        adv_table_read_retransmission_list_and_clear(&reports);
+        adv_table_read_retransmission_list1_and_clear(&reports);
         ASSERT_EQ(2, reports.num_of_advs);
         CHECK_ADV_REPORT(adv1, data1, &reports.table[0]);
         CHECK_ADV_REPORT(adv3, data3, &reports.table[1]);

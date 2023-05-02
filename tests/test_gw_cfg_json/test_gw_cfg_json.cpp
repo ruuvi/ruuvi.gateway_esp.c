@@ -382,11 +382,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_for_ui_client) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -459,12 +461,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_default) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -608,12 +611,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_disabled) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -691,12 +695,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_enabled) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -779,12 +784,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_disabled) // NOLINT
                "\t\"eth_dns2\":\t\"4.4.4.4\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -840,7 +846,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_no) // NOLINT
 
     gw_cfg.ruuvi_cfg.remote.use_remote_cfg = true;
     snprintf(gw_cfg.ruuvi_cfg.remote.url.buf, sizeof(gw_cfg.ruuvi_cfg.remote.url.buf), "http://my_server1.com");
-    gw_cfg.ruuvi_cfg.remote.auth_type                = GW_CFG_REMOTE_AUTH_TYPE_NO;
+    gw_cfg.ruuvi_cfg.remote.auth_type                = GW_CFG_HTTP_AUTH_TYPE_NONE;
     gw_cfg.ruuvi_cfg.remote.refresh_interval_minutes = 10;
 
     ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
@@ -864,12 +870,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_no) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\ttrue,\n"
                "\t\"remote_cfg_url\":\t\"http://my_server1.com\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t10,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -927,7 +934,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_basic) // NOL
         ruuvi_gw_cfg_remote_t* const p_remote = &gw_cfg.ruuvi_cfg.remote;
         p_remote->use_remote_cfg              = true;
         snprintf(p_remote->url.buf, sizeof(p_remote->url.buf), "https://my_server2.com");
-        p_remote->auth_type = GW_CFG_REMOTE_AUTH_TYPE_BASIC;
+        p_remote->auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC;
         snprintf(p_remote->auth.auth_basic.user.buf, sizeof(p_remote->auth.auth_basic.user.buf), "user1");
         snprintf(p_remote->auth.auth_basic.password.buf, sizeof(p_remote->auth.auth_basic.password.buf), "pass1");
         p_remote->refresh_interval_minutes = 20;
@@ -958,10 +965,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_basic) // NOL
                "\t\"remote_cfg_auth_basic_user\":\t\"user1\",\n"
                "\t\"remote_cfg_auth_basic_pass\":\t\"pass1\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t20,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -1019,7 +1027,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_bearer) // NO
         ruuvi_gw_cfg_remote_t* const p_remote = &gw_cfg.ruuvi_cfg.remote;
         p_remote->use_remote_cfg              = true;
         snprintf(p_remote->url.buf, sizeof(p_remote->url.buf), "https://my_server2.com");
-        p_remote->auth_type = GW_CFG_REMOTE_AUTH_TYPE_BEARER;
+        p_remote->auth_type = GW_CFG_HTTP_AUTH_TYPE_BEARER;
         snprintf(p_remote->auth.auth_bearer.token.buf, sizeof(p_remote->auth.auth_bearer.token.buf), "token1");
         p_remote->refresh_interval_minutes = 30;
     }
@@ -1048,10 +1056,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_bearer) // NO
                "\t\"remote_cfg_auth_type\":\t\"bearer\",\n"
                "\t\"remote_cfg_auth_bearer_token\":\t\"token1\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t30,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -1128,12 +1137,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_disabled) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -1221,12 +1231,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_TCP) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -1314,12 +1325,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_TCP_disable_retained_mes
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -1407,12 +1419,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_SSL) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -1500,12 +1513,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WS) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -1593,12 +1607,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WSS) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -1652,7 +1667,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_disabled) // NOLINT
     gw_cfg_t         gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    gw_cfg.ruuvi_cfg.http.use_http = false;
+    gw_cfg.ruuvi_cfg.http.use_http_ruuvi = false;
+    gw_cfg.ruuvi_cfg.http.use_http       = false;
     ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
@@ -1674,12 +1690,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_disabled) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -1733,13 +1750,20 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled) // NOLINT
     gw_cfg_t         gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    gw_cfg.ruuvi_cfg.http.use_http = true;
+    gw_cfg.ruuvi_cfg.http.use_http  = true;
+    gw_cfg.ruuvi_cfg.http.auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC;
     snprintf(
         gw_cfg.ruuvi_cfg.http.http_url.buf,
         sizeof(gw_cfg.ruuvi_cfg.http.http_url.buf),
         "https://my_url1.com/status");
-    snprintf(gw_cfg.ruuvi_cfg.http.http_user.buf, sizeof(gw_cfg.ruuvi_cfg.http.http_user.buf), "user2");
-    snprintf(gw_cfg.ruuvi_cfg.http.http_pass.buf, sizeof(gw_cfg.ruuvi_cfg.http.http_pass.buf), "pass2");
+    snprintf(
+        gw_cfg.ruuvi_cfg.http.auth.auth_basic.user.buf,
+        sizeof(gw_cfg.ruuvi_cfg.http.auth.auth_basic.user.buf),
+        "user2");
+    snprintf(
+        gw_cfg.ruuvi_cfg.http.auth.auth_basic.password.buf,
+        sizeof(gw_cfg.ruuvi_cfg.http.auth.auth_basic.password.buf),
+        "pass2");
     ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_EQ(
@@ -1761,12 +1785,15 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\""
                "https://my_url1.com/status"
                "\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"basic\",\n"
                "\t\"http_user\":\t\"user2\",\n"
                "\t\"http_pass\":\t\"pass2\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
@@ -1844,12 +1871,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_disabled) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\tfalse,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -1937,12 +1965,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_enabled) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"https://my_stat_url1.com/status\",\n"
                "\t\"http_stat_user\":\t\"user1\",\n"
@@ -2017,12 +2046,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_default) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -2103,12 +2133,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -2196,12 +2227,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi_with_api_key) // NOLIN
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -2283,12 +2315,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_digest) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -2370,12 +2403,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_basic) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -2457,12 +2491,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_allow) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -2543,12 +2578,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_deny) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -2628,12 +2664,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_beta_tester) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -2713,12 +2750,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_manual) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -2794,12 +2832,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_unknown) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -2872,12 +2911,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_disabled) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -2955,12 +2995,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_enabled_via_dhcp) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -3047,12 +3088,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_custom) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -3130,12 +3172,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_enabled) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -3213,12 +3256,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_disabled) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -3300,12 +3344,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_default) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -3387,12 +3432,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_coded_phy_true) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -3474,12 +3520,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_1mbit_phy_false) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -3561,12 +3608,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_extended_payload_false) // NOLIN
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -3648,12 +3696,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_37_false) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -3735,12 +3784,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_38_false) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -3822,12 +3872,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_39_false) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -3904,12 +3955,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_coordinates) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -3987,10 +4039,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_default) // NOLINT
     ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.mqtt.mqtt_user.buf);
     ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.mqtt.mqtt_pass.buf);
 
-    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_DEFAULT_URL), gw_cfg2.ruuvi_cfg.http.http_url.buf);
-    ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.http.http_user.buf);
-    ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.http.http_pass.buf);
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.http.use_http_ruuvi);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http);
+    ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg2.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg2.ruuvi_cfg.http.data_format);
+    ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg2.ruuvi_cfg.http.auth_type);
 
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.http_stat.use_http_stat);
     ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_STATUS_URL), gw_cfg2.ruuvi_cfg.http_stat.http_stat_url.buf);
@@ -4050,12 +4103,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_default) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -4110,10 +4164,17 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
         },
         .ruuvi_cfg = {
             .http = {
-                false,
-                "https://myserver1.com",
-                "h_user1",
-                "h_pass1",
+                .use_http_ruuvi = false,
+                .use_http = false,
+                .http_url = { "https://myserver1.com" },
+                .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
+                .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
+                .auth = {
+                    .auth_basic = {
+                        .user = { "h_user1" },
+                        .password = { "h_pass1" },
+                    },
+                },
             },
             .http_stat = {
                 false,
@@ -4204,10 +4265,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
     ASSERT_EQ(string("m_user1"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_user.buf);
     ASSERT_EQ(string("m_pass1"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_pass.buf);
 
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://myserver1.com"), gw_cfg2.ruuvi_cfg.http.http_url.buf);
-    ASSERT_EQ(string("h_user1"), gw_cfg2.ruuvi_cfg.http.http_user.buf);
-    ASSERT_EQ(string("h_pass1"), gw_cfg2.ruuvi_cfg.http.http_pass.buf);
 
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http_stat.use_http_stat);
     ASSERT_EQ(string("https://myserver1.com/status"), gw_cfg2.ruuvi_cfg.http_stat.http_stat_url.buf);
@@ -4265,10 +4324,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
                "\t\"eth_dns2\":\t\"4.4.4.4\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
                "\t\"http_url\":\t\"https://myserver1.com\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"basic\",\n"
                "\t\"http_user\":\t\"h_user1\",\n"
                "\t\"http_pass\":\t\"h_pass1\",\n"
                "\t\"use_http_stat\":\tfalse,\n"
@@ -4326,10 +4388,17 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
         },
         .ruuvi_cfg = {
             .http = {
-                false,
-                "https://myserver1.com",
-                "h_user1",
-                "h_pass1",
+                .use_http_ruuvi = false,
+                .use_http = false,
+                .http_url = { "https://myserver1.com" },
+                .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
+                .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
+                .auth = {
+                    .auth_basic = {
+                        .user = { "h_user1" },
+                        .password = { "h_pass1" },
+                    },
+                },
             },
             .http_stat = {
                 false,
@@ -4420,10 +4489,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
     ASSERT_EQ(string("m_user1"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_user.buf);
     ASSERT_EQ(string("m_pass1"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_pass.buf);
 
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://myserver1.com"), gw_cfg2.ruuvi_cfg.http.http_url.buf);
-    ASSERT_EQ(string("h_user1"), gw_cfg2.ruuvi_cfg.http.http_user.buf);
-    ASSERT_EQ(string("h_pass1"), gw_cfg2.ruuvi_cfg.http.http_pass.buf);
 
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http_stat.use_http_stat);
     ASSERT_EQ(string("https://myserver1.com/status"), gw_cfg2.ruuvi_cfg.http_stat.http_stat_url.buf);
@@ -4481,10 +4548,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
                "\t\"eth_dns2\":\t\"4.4.4.4\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
                "\t\"http_url\":\t\"https://myserver1.com\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"basic\",\n"
                "\t\"http_user\":\t\"h_user1\",\n"
                "\t\"http_pass\":\t\"h_pass1\",\n"
                "\t\"use_http_stat\":\tfalse,\n"
@@ -4542,10 +4612,17 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
         },
         .ruuvi_cfg = {
             .http = {
-                false,
-                "https://myserver1.com",
-                "h_user1",
-                "h_pass1",
+                .use_http_ruuvi = false,
+                .use_http = false,
+                .http_url = { "https://myserver1.com" },
+                .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
+                .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
+                .auth = {
+                    .auth_basic = {
+                        .user = { "h_user1" },
+                        .password = { "h_pass1" },
+                    },
+                },
             },
             .http_stat = {
                 false,
@@ -4636,10 +4713,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
     ASSERT_EQ(string("m_user1"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_user.buf);
     ASSERT_EQ(string("m_pass1"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_pass.buf);
 
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://myserver1.com"), gw_cfg2.ruuvi_cfg.http.http_url.buf);
-    ASSERT_EQ(string("h_user1"), gw_cfg2.ruuvi_cfg.http.http_user.buf);
-    ASSERT_EQ(string("h_pass1"), gw_cfg2.ruuvi_cfg.http.http_pass.buf);
 
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http_stat.use_http_stat);
     ASSERT_EQ(string("https://myserver1.com/status"), gw_cfg2.ruuvi_cfg.http_stat.http_stat_url.buf);
@@ -4697,10 +4772,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
                "\t\"eth_dns2\":\t\"4.4.4.4\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
                "\t\"http_url\":\t\"https://myserver1.com\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"basic\",\n"
                "\t\"http_user\":\t\"h_user1\",\n"
                "\t\"http_pass\":\t\"h_pass1\",\n"
                "\t\"use_http_stat\":\tfalse,\n"
@@ -4768,12 +4846,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
           "\t\"eth_dns2\":\t\"4.4.4.4\",\n"
           "\t\"remote_cfg_use\":\tfalse,\n"
           "\t\"remote_cfg_url\":\t\"\",\n"
-          "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+          "\t\"remote_cfg_auth_type\":\t\"none\",\n"
           "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+          "\t\"use_http_ruuvi\":\tfalse,\n"
           "\t\"use_http\":\tfalse,\n"
           "\t\"http_url\":\t\"https://myserver1.com\",\n"
-          "\t\"http_user\":\t\"h_user1\",\n"
-          "\t\"http_pass\":\t\"h_pass1\",\n"
+          "\t\"http_data_format\":\t\"ruuvi\",\n"
+          "\t\"http_auth\":\t\"none\",\n"
           "\t\"use_http_stat\":\tfalse,\n"
           "\t\"http_stat_url\":\t\"https://myserver1.com/status\",\n"
           "\t\"http_stat_user\":\t\"h_user2\",\n"
@@ -4837,10 +4916,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
     ASSERT_EQ(string("m_user1"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_user.buf);
     ASSERT_EQ(string("m_pass1"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_pass.buf);
 
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://myserver1.com"), gw_cfg2.ruuvi_cfg.http.http_url.buf);
-    ASSERT_EQ(string("h_user1"), gw_cfg2.ruuvi_cfg.http.http_user.buf);
-    ASSERT_EQ(string("h_pass1"), gw_cfg2.ruuvi_cfg.http.http_pass.buf);
 
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http_stat.use_http_stat);
     ASSERT_EQ(string("https://myserver1.com/status"), gw_cfg2.ruuvi_cfg.http_stat.http_stat_url.buf);
@@ -4899,12 +4976,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
                "\t\"eth_dns2\":\t\"4.4.4.4\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
                "\t\"http_url\":\t\"https://myserver1.com\",\n"
-               "\t\"http_user\":\t\"h_user1\",\n"
-               "\t\"http_pass\":\t\"h_pass1\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\tfalse,\n"
                "\t\"http_stat_url\":\t\"https://myserver1.com/status\",\n"
                "\t\"http_stat_user\":\t\"h_user2\",\n"
@@ -4960,10 +5038,17 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
         },
         .ruuvi_cfg = {
             .http = {
-                false,
-                "https://myserver1.com",
-                "h_user1",
-                "h_pass1",
+                .use_http_ruuvi = false,
+                .use_http = false,
+                .http_url = { "https://myserver1.com" },
+                .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
+                .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
+                .auth = {
+                    .auth_basic = {
+                        .user = { "h_user1" },
+                        .password = { "h_pass1" },
+                    },
+                },
             },
             .http_stat = {
                 false,
@@ -5054,10 +5139,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
     ASSERT_EQ(string("m_user1"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_user.buf);
     ASSERT_EQ(string("m_pass1"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_pass.buf);
 
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://myserver1.com"), gw_cfg2.ruuvi_cfg.http.http_url.buf);
-    ASSERT_EQ(string("h_user1"), gw_cfg2.ruuvi_cfg.http.http_user.buf);
-    ASSERT_EQ(string("h_pass1"), gw_cfg2.ruuvi_cfg.http.http_pass.buf);
 
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http_stat.use_http_stat);
     ASSERT_EQ(string("https://myserver1.com/status"), gw_cfg2.ruuvi_cfg.http_stat.http_stat_url.buf);
@@ -5115,10 +5198,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
                "\t\"eth_dns2\":\t\"4.4.4.4\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
                "\t\"http_url\":\t\"https://myserver1.com\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"basic\",\n"
                "\t\"http_user\":\t\"h_user1\",\n"
                "\t\"http_pass\":\t\"h_pass1\",\n"
                "\t\"use_http_stat\":\tfalse,\n"
@@ -5176,10 +5262,17 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
         },
         .ruuvi_cfg = {
             .http = {
-                false,
-                "https://myserver1.com",
-                "h_user1",
-                "h_pass1",
+                .use_http_ruuvi = false,
+                .use_http = false,
+                .http_url = { "https://myserver1.com" },
+                .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
+                .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
+                .auth = {
+                    .auth_basic = {
+                        .user = { "h_user1" },
+                        .password = { "h_pass1" },
+                    },
+                },
             },
             .http_stat = {
                 false,
@@ -5270,10 +5363,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
     ASSERT_EQ(string("m_user1"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_user.buf);
     ASSERT_EQ(string("m_pass1"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_pass.buf);
 
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://myserver1.com"), gw_cfg2.ruuvi_cfg.http.http_url.buf);
-    ASSERT_EQ(string("h_user1"), gw_cfg2.ruuvi_cfg.http.http_user.buf);
-    ASSERT_EQ(string("h_pass1"), gw_cfg2.ruuvi_cfg.http.http_pass.buf);
 
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http_stat.use_http_stat);
     ASSERT_EQ(string("https://myserver1.com/status"), gw_cfg2.ruuvi_cfg.http_stat.http_stat_url.buf);
@@ -5331,10 +5422,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
                "\t\"eth_dns2\":\t\"4.4.4.4\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
                "\t\"http_url\":\t\"https://myserver1.com\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"basic\",\n"
                "\t\"http_user\":\t\"h_user1\",\n"
                "\t\"http_pass\":\t\"h_pass1\",\n"
                "\t\"use_http_stat\":\tfalse,\n"
@@ -5392,10 +5486,17 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_custom) // NOLINT
         },
         .ruuvi_cfg = {
             .http = {
-                false,
-                "https://myserver1.com",
-                "h_user1",
-                "h_pass1",
+                .use_http_ruuvi = false,
+                .use_http = false,
+                .http_url = { "https://myserver1.com" },
+                .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
+                .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
+                .auth = {
+                    .auth_basic = {
+                        .user = { "h_user1" },
+                        .password = { "h_pass1" },
+                    },
+                },
             },
             .http_stat = {
                 false,
@@ -5486,10 +5587,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_custom) // NOLINT
     ASSERT_EQ(string("m_user1"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_user.buf);
     ASSERT_EQ(string("m_pass1"), gw_cfg2.ruuvi_cfg.mqtt.mqtt_pass.buf);
 
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://myserver1.com"), gw_cfg2.ruuvi_cfg.http.http_url.buf);
-    ASSERT_EQ(string("h_user1"), gw_cfg2.ruuvi_cfg.http.http_user.buf);
-    ASSERT_EQ(string("h_pass1"), gw_cfg2.ruuvi_cfg.http.http_pass.buf);
 
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http_stat.use_http_stat);
     ASSERT_EQ(string("https://myserver1.com/status"), gw_cfg2.ruuvi_cfg.http_stat.http_stat_url.buf);
@@ -5547,10 +5646,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_custom) // NOLINT
                "\t\"eth_dns2\":\t\"4.4.4.4\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
                "\t\"http_url\":\t\"https://myserver1.com\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"basic\",\n"
                "\t\"http_user\":\t\"h_user1\",\n"
                "\t\"http_pass\":\t\"h_pass1\",\n"
                "\t\"use_http_stat\":\tfalse,\n"
@@ -5625,12 +5727,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
-               "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"https://network.ruuvi.com/status\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -5692,12 +5795,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
           "\t\"eth_dns2\":\t\"\",\n"
           "\t\"remote_cfg_use\":\tfalse,\n"
           "\t\"remote_cfg_url\":\t\"\",\n"
-          "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+          "\t\"remote_cfg_auth_type\":\t\"none\",\n"
           "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+          "\t\"use_http_ruuvi\":\ttrue,\n"
           "\t\"use_http\":\ttrue,\n"
           "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
-          "\t\"http_user\":\t\"\",\n"
-          "\t\"http_pass\":\t\"\",\n"
+          "\t\"http_data_format\":\t\"ruuvi\",\n"
+          "\t\"http_auth\":\t\"none\",\n"
           "\t\"use_http_stat\":\ttrue,\n"
           "\t\"http_stat_url\":\t\"https://network.ruuvi.com/status\",\n"
           "\t\"http_stat_user\":\t\"\",\n"
@@ -5767,12 +5871,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"https://network.ruuvi.com/status\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -5848,12 +5953,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"https://network.ruuvi.com/status\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -5925,12 +6031,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"https://network.ruuvi.com/status\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -6000,10 +6107,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
     ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.mqtt.mqtt_user.buf);
     ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.mqtt.mqtt_pass.buf);
 
-    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.http.use_http);
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.http.use_http_ruuvi);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http);
     ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_DEFAULT_URL), gw_cfg2.ruuvi_cfg.http.http_url.buf);
-    ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.http.http_user.buf);
-    ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.http.http_pass.buf);
+    ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg2.ruuvi_cfg.http.data_format);
+    ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg2.ruuvi_cfg.http.auth_type);
 
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.http_stat.use_http_stat);
     ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_STATUS_URL), gw_cfg2.ruuvi_cfg.http_stat.http_stat_url.buf);
@@ -6065,12 +6173,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -6114,12 +6223,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'remote_cfg_url' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'remote_cfg_auth_type' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'remote_cfg_refresh_interval_minutes' in config-json"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'use_http_ruuvi' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'use_http' in config-json"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'http_data_format' in config-json"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'http_auth' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'http_url' in config-json"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'http_user' in config-json"));
-    TEST_CHECK_LOG_RECORD(
-        ESP_LOG_INFO,
-        string("Can't find key 'http_pass' in config-json, leave the previous value unchanged"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'use_http_stat' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'http_stat_url' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'http_stat_user' in config-json"));
@@ -6205,10 +6313,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_string) // NOLINT
     ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.mqtt.mqtt_user.buf);
     ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.mqtt.mqtt_pass.buf);
 
-    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.http.use_http);
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.http.use_http_ruuvi);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http);
     ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_DEFAULT_URL), gw_cfg2.ruuvi_cfg.http.http_url.buf);
-    ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.http.http_user.buf);
-    ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.http.http_pass.buf);
 
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.http_stat.use_http_stat);
     ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_STATUS_URL), gw_cfg2.ruuvi_cfg.http_stat.http_stat_url.buf);
@@ -6270,12 +6377,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_string) // NOLINT
                "\t\"eth_dns2\":\t\"\",\n"
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
-               "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_user\":\t\"\",\n"
-               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -6345,7 +6453,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_malloc_failed) // NOLINT
           "\t\"eth_dns2\":\t\"\",\n"
           "\t\"remote_cfg_use\":\tfalse,\n"
           "\t\"remote_cfg_url\":\t\"\",\n"
-          "\t\"remote_cfg_auth_type\":\t\"no\",\n"
+          "\t\"remote_cfg_auth_type\":\t\"none\",\n"
           "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
           "\t\"use_http\":\ttrue,\n"
           "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
@@ -7266,7 +7374,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_refresh_i
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http) // NOLINT
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http_ruuvi) // NOLINT
 {
     const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -7277,6 +7385,44 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http) // NOLINT
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 46;
+
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_http_ruuvi"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http_ruuvi_2) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 47;
+
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_http_ruuvi"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 48;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7295,7 +7441,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http_2) // NOLIN
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 47;
+    this->m_malloc_fail_on_cnt = 49;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7314,7 +7460,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_url) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 48;
+    this->m_malloc_fail_on_cnt = 50;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7333,7 +7479,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_url_2) // NOLIN
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 49;
+    this->m_malloc_fail_on_cnt = 51;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7352,7 +7498,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_url_3) // NOLIN
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 50;
+    this->m_malloc_fail_on_cnt = 52;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7361,45 +7507,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_url_3) // NOLIN
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_user) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 51;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_user"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_user_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 52;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_user"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_user_3) // NOLINT
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_data_format) // NOLINT
 {
     const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -7413,12 +7521,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_user_3) // NOLI
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_user"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_data_format"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_pass) // NOLINT
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_data_format_2) // NOLINT
 {
     const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -7432,12 +7540,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_pass) // NOLINT
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_pass"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_data_format"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_pass_2) // NOLINT
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_data_format_3) // NOLINT
 {
     const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -7451,12 +7559,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_pass_2) // NOLI
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_pass"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_data_format"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_pass_3) // NOLINT
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_auth) // NOLINT
 {
     const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -7470,7 +7578,45 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_pass_3) // NOLI
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_pass"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_auth"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_auth_2) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 57;
+
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_auth"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_auth_3) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 58;
+
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_auth"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -7485,7 +7631,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http_stat) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 57;
+    this->m_malloc_fail_on_cnt = 59;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7504,7 +7650,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http_stat_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 58;
+    this->m_malloc_fail_on_cnt = 60;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7523,7 +7669,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_url) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 59;
+    this->m_malloc_fail_on_cnt = 61;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7542,7 +7688,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_url_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 60;
+    this->m_malloc_fail_on_cnt = 62;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7561,7 +7707,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_url_3) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 61;
+    this->m_malloc_fail_on_cnt = 63;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7580,7 +7726,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_user) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 62;
+    this->m_malloc_fail_on_cnt = 64;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7599,7 +7745,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_user_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 63;
+    this->m_malloc_fail_on_cnt = 65;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7618,7 +7764,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_user_3) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 64;
+    this->m_malloc_fail_on_cnt = 66;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7637,7 +7783,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_pass) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 65;
+    this->m_malloc_fail_on_cnt = 67;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7656,7 +7802,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_pass_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 66;
+    this->m_malloc_fail_on_cnt = 68;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7675,7 +7821,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_pass_3) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 67;
+    this->m_malloc_fail_on_cnt = 69;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7694,7 +7840,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_mqtt) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 68;
+    this->m_malloc_fail_on_cnt = 70;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7713,7 +7859,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_mqtt_2) // NOLIN
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 69;
+    this->m_malloc_fail_on_cnt = 71;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7732,7 +7878,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_disable_retaine
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 70;
+    this->m_malloc_fail_on_cnt = 72;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7751,7 +7897,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_disable_retaine
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 71;
+    this->m_malloc_fail_on_cnt = 73;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7770,7 +7916,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_trnasport) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 72;
+    this->m_malloc_fail_on_cnt = 74;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7789,7 +7935,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_trnasport_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 73;
+    this->m_malloc_fail_on_cnt = 75;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7808,7 +7954,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_trnasport_3) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 74;
+    this->m_malloc_fail_on_cnt = 76;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7827,7 +7973,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_server) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 75;
+    this->m_malloc_fail_on_cnt = 77;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7846,7 +7992,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_server_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 76;
+    this->m_malloc_fail_on_cnt = 78;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7865,7 +8011,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_server_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 77;
+    this->m_malloc_fail_on_cnt = 79;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7884,7 +8030,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_port) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 78;
+    this->m_malloc_fail_on_cnt = 80;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7903,7 +8049,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_port_2) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 79;
+    this->m_malloc_fail_on_cnt = 81;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7922,7 +8068,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 80;
+    this->m_malloc_fail_on_cnt = 82;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7941,7 +8087,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 81;
+    this->m_malloc_fail_on_cnt = 83;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7960,7 +8106,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 82;
+    this->m_malloc_fail_on_cnt = 84;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7979,7 +8125,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 83;
+    this->m_malloc_fail_on_cnt = 85;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7998,7 +8144,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 84;
+    this->m_malloc_fail_on_cnt = 86;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8017,7 +8163,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id_3) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 85;
+    this->m_malloc_fail_on_cnt = 87;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8036,7 +8182,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 86;
+    this->m_malloc_fail_on_cnt = 88;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8055,7 +8201,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user_2) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 87;
+    this->m_malloc_fail_on_cnt = 89;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8074,7 +8220,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user_3) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 88;
+    this->m_malloc_fail_on_cnt = 90;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8093,7 +8239,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 89;
+    this->m_malloc_fail_on_cnt = 91;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8112,7 +8258,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass_2) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 90;
+    this->m_malloc_fail_on_cnt = 92;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8131,7 +8277,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass_3) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 91;
+    this->m_malloc_fail_on_cnt = 93;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8150,7 +8296,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_type) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 92;
+    this->m_malloc_fail_on_cnt = 94;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8169,7 +8315,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_type_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 93;
+    this->m_malloc_fail_on_cnt = 95;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8188,7 +8334,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_type_3) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 94;
+    this->m_malloc_fail_on_cnt = 96;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8207,7 +8353,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_user) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 95;
+    this->m_malloc_fail_on_cnt = 97;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8226,7 +8372,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_user_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 96;
+    this->m_malloc_fail_on_cnt = 98;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8245,7 +8391,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_user_3) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 97;
+    this->m_malloc_fail_on_cnt = 99;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8264,7 +8410,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_pass) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 98;
+    this->m_malloc_fail_on_cnt = 100;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8283,7 +8429,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_pass_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 99;
+    this->m_malloc_fail_on_cnt = 101;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8302,7 +8448,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_pass_3) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 100;
+    this->m_malloc_fail_on_cnt = 102;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8321,7 +8467,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 101;
+    this->m_malloc_fail_on_cnt = 103;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8340,7 +8486,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_2) 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 102;
+    this->m_malloc_fail_on_cnt = 104;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8359,7 +8505,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_3) 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 103;
+    this->m_malloc_fail_on_cnt = 105;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8378,7 +8524,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_rw)
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 104;
+    this->m_malloc_fail_on_cnt = 106;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8397,7 +8543,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_rw_
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 105;
+    this->m_malloc_fail_on_cnt = 107;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8416,7 +8562,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_rw_
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 106;
+    this->m_malloc_fail_on_cnt = 108;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8435,7 +8581,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_cycle) /
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 107;
+    this->m_malloc_fail_on_cnt = 109;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8454,7 +8600,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_cycle_2)
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 108;
+    this->m_malloc_fail_on_cnt = 110;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8473,7 +8619,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_cycle_3)
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 109;
+    this->m_malloc_fail_on_cnt = 111;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8492,7 +8638,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_weekdays
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 110;
+    this->m_malloc_fail_on_cnt = 112;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8511,7 +8657,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_weekdays
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 111;
+    this->m_malloc_fail_on_cnt = 113;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8530,7 +8676,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 112;
+    this->m_malloc_fail_on_cnt = 114;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8549,7 +8695,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 113;
+    this->m_malloc_fail_on_cnt = 115;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8568,7 +8714,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 114;
+    this->m_malloc_fail_on_cnt = 116;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8587,7 +8733,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 115;
+    this->m_malloc_fail_on_cnt = 117;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8606,7 +8752,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_tz) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 116;
+    this->m_malloc_fail_on_cnt = 118;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8625,7 +8771,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_tz_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 117;
+    this->m_malloc_fail_on_cnt = 119;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8644,7 +8790,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 118;
+    this->m_malloc_fail_on_cnt = 120;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8663,7 +8809,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use_2) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 119;
+    this->m_malloc_fail_on_cnt = 121;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8682,7 +8828,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use_dhcp) // NOL
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 120;
+    this->m_malloc_fail_on_cnt = 122;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8701,7 +8847,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use_dhcp_2) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 121;
+    this->m_malloc_fail_on_cnt = 123;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8720,7 +8866,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server1) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 122;
+    this->m_malloc_fail_on_cnt = 124;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8739,7 +8885,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server1_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 123;
+    this->m_malloc_fail_on_cnt = 125;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8758,7 +8904,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server1_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 124;
+    this->m_malloc_fail_on_cnt = 126;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8777,7 +8923,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server2) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 125;
+    this->m_malloc_fail_on_cnt = 127;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8796,7 +8942,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server2_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 126;
+    this->m_malloc_fail_on_cnt = 128;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8815,7 +8961,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server2_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 127;
+    this->m_malloc_fail_on_cnt = 129;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8834,7 +8980,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server3) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 128;
+    this->m_malloc_fail_on_cnt = 130;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8853,7 +8999,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server3_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 129;
+    this->m_malloc_fail_on_cnt = 131;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8872,7 +9018,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server3_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 130;
+    this->m_malloc_fail_on_cnt = 132;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8891,7 +9037,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server4) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 131;
+    this->m_malloc_fail_on_cnt = 133;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8910,7 +9056,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server4_1) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 132;
+    this->m_malloc_fail_on_cnt = 134;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8929,7 +9075,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server4_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 133;
+    this->m_malloc_fail_on_cnt = 135;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8948,7 +9094,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_company_id) // NOLIN
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 134;
+    this->m_malloc_fail_on_cnt = 136;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8967,7 +9113,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_company_id_2) // NOL
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 135;
+    this->m_malloc_fail_on_cnt = 137;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8986,7 +9132,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_filtering) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 136;
+    this->m_malloc_fail_on_cnt = 138;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9005,7 +9151,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_filtering_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 137;
+    this->m_malloc_fail_on_cnt = 139;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9024,7 +9170,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_coded_phy) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 138;
+    this->m_malloc_fail_on_cnt = 140;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9043,7 +9189,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_coded_phy_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 139;
+    this->m_malloc_fail_on_cnt = 141;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9062,7 +9208,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_1mbit_phy) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 140;
+    this->m_malloc_fail_on_cnt = 142;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9081,7 +9227,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_1mbit_phy_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 141;
+    this->m_malloc_fail_on_cnt = 143;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9100,7 +9246,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_extended_payload
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 142;
+    this->m_malloc_fail_on_cnt = 144;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9119,7 +9265,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_extended_payload
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 143;
+    this->m_malloc_fail_on_cnt = 145;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9138,7 +9284,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_37) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 144;
+    this->m_malloc_fail_on_cnt = 146;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9157,7 +9303,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_37_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 145;
+    this->m_malloc_fail_on_cnt = 147;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9176,7 +9322,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_38) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 146;
+    this->m_malloc_fail_on_cnt = 148;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9195,7 +9341,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_38_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 147;
+    this->m_malloc_fail_on_cnt = 149;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9214,7 +9360,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_39) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 148;
+    this->m_malloc_fail_on_cnt = 150;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9233,7 +9379,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_39_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 149;
+    this->m_malloc_fail_on_cnt = 151;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9252,7 +9398,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 150;
+    this->m_malloc_fail_on_cnt = 152;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9271,7 +9417,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 151;
+    this->m_malloc_fail_on_cnt = 153;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9290,7 +9436,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 152;
+    this->m_malloc_fail_on_cnt = 154;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9309,7 +9455,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_converting_to_json_s
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 153;
+    this->m_malloc_fail_on_cnt = 155;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);

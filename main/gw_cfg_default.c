@@ -28,20 +28,27 @@ static const gw_cfg_ruuvi_t g_gateway_config_default_ruuvi = {
         .remote = {
             .use_remote_cfg = false,
             .url = {{ "" }},
-            .auth_type = GW_CFG_REMOTE_AUTH_TYPE_NO,
+            .auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE,
             .auth = {
                 .auth_basic = {
-                    .user = {{ "" }},
-                    .password = {{ "" }},
+                    .user = {{""}},
+                    .password = {{""}},
                 },
             },
             .refresh_interval_minutes = 0,
         },
         .http = {
-            .use_http = true,
+            .use_http_ruuvi = true,
+            .use_http = false,
             .http_url = { { RUUVI_GATEWAY_HTTP_DEFAULT_URL } },
-            .http_user = {{ "" }},
-            .http_pass = {{ "" }},
+            .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
+            .auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE,
+            .auth = {
+                .auth_basic = {
+                    .user = {{""}},
+                    .password = {{""}},
+                },
+            },
         },
         .http_stat = {
             .use_http_stat = true,

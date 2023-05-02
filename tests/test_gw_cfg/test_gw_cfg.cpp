@@ -283,12 +283,10 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: DNS2: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use remote cfg: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: URL: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 1"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http user: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http pass: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http ruuvi: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http_stat: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat user: "));
@@ -361,7 +359,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_no) // NOLINT
     gw_cfg_t gw_cfg                        = get_gateway_config_default();
     gw_cfg.ruuvi_cfg.remote.use_remote_cfg = true;
     snprintf(gw_cfg.ruuvi_cfg.remote.url.buf, sizeof(gw_cfg.ruuvi_cfg.remote.url.buf), "http://my_server1.com");
-    gw_cfg.ruuvi_cfg.remote.auth_type                = GW_CFG_REMOTE_AUTH_TYPE_NO;
+    gw_cfg.ruuvi_cfg.remote.auth_type                = GW_CFG_HTTP_AUTH_TYPE_NONE;
     gw_cfg.ruuvi_cfg.remote.refresh_interval_minutes = 10;
 
     esp_log_wrapper_clear();
@@ -386,12 +384,10 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_no) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: DNS2: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use remote cfg: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: URL: http://my_server1.com"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 10"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 1"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http user: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http pass: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http ruuvi: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http_stat: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat user: "));
@@ -464,7 +460,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_basic) // NOLI
     gw_cfg_t gw_cfg                        = get_gateway_config_default();
     gw_cfg.ruuvi_cfg.remote.use_remote_cfg = true;
     snprintf(gw_cfg.ruuvi_cfg.remote.url.buf, sizeof(gw_cfg.ruuvi_cfg.remote.url.buf), "https://my_server1.com");
-    gw_cfg.ruuvi_cfg.remote.auth_type = GW_CFG_REMOTE_AUTH_TYPE_BASIC;
+    gw_cfg.ruuvi_cfg.remote.auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC;
     snprintf(
         gw_cfg.ruuvi_cfg.remote.auth.auth_basic.user.buf,
         sizeof(gw_cfg.ruuvi_cfg.remote.auth.auth_basic.user.buf),
@@ -501,10 +497,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_basic) // NOLI
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth user: user1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth pass: ********"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 20"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 1"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http user: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http pass: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http ruuvi: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http_stat: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat user: "));
@@ -577,7 +571,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_bearer) // NOL
     gw_cfg_t gw_cfg                        = get_gateway_config_default();
     gw_cfg.ruuvi_cfg.remote.use_remote_cfg = true;
     snprintf(gw_cfg.ruuvi_cfg.remote.url.buf, sizeof(gw_cfg.ruuvi_cfg.remote.url.buf), "https://my_server1.com");
-    gw_cfg.ruuvi_cfg.remote.auth_type = GW_CFG_REMOTE_AUTH_TYPE_BEARER;
+    gw_cfg.ruuvi_cfg.remote.auth_type = GW_CFG_HTTP_AUTH_TYPE_BEARER;
     snprintf(
         gw_cfg.ruuvi_cfg.remote.auth.auth_bearer.token.buf,
         sizeof(gw_cfg.ruuvi_cfg.remote.auth.auth_bearer.token.buf),
@@ -609,10 +603,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_bearer) // NOL
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: bearer"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth bearer token: ********"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 30"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 1"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http user: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http pass: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http ruuvi: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http_stat: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat user: "));
@@ -708,12 +700,10 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_beta_tester_and_
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: DNS2: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use remote cfg: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: URL: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 1"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http user: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http pass: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http ruuvi: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http_stat: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat user: "));
@@ -808,12 +798,10 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_manual) // NOLIN
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: DNS2: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use remote cfg: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: URL: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 1"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http user: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http pass: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http ruuvi: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http_stat: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat user: "));
@@ -908,12 +896,10 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_invalid) // NOLI
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: DNS2: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use remote cfg: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: URL: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 1"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http user: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http pass: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http ruuvi: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http_stat: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat user: "));
@@ -1014,12 +1000,10 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_ntp_changed) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: DNS2: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use remote cfg: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: URL: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 1"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http user: "));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http pass: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http ruuvi: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http_stat: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat user: "));

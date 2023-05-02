@@ -239,11 +239,11 @@ gw_cfg_log_ruuvi_cfg_remote(const ruuvi_gw_cfg_remote_t* const p_remote)
     LOG_INFO("config: remote cfg: URL: %s", p_remote->url.buf);
     switch (p_remote->auth_type)
     {
-        case GW_CFG_REMOTE_AUTH_TYPE_NO:
-            LOG_INFO("config: remote cfg: auth_type: %s", GW_CFG_REMOTE_AUTH_TYPE_STR_NO);
+        case GW_CFG_HTTP_AUTH_TYPE_NONE:
+            LOG_INFO("config: remote cfg: auth_type: %s", GW_CFG_HTTP_AUTH_TYPE_STR_NONE);
             break;
-        case GW_CFG_REMOTE_AUTH_TYPE_BASIC:
-            LOG_INFO("config: remote cfg: auth_type: %s", GW_CFG_REMOTE_AUTH_TYPE_STR_BASIC);
+        case GW_CFG_HTTP_AUTH_TYPE_BASIC:
+            LOG_INFO("config: remote cfg: auth_type: %s", GW_CFG_HTTP_AUTH_TYPE_STR_BASIC);
             LOG_INFO("config: remote cfg: auth user: %s", p_remote->auth.auth_basic.user.buf);
 #if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
             LOG_DBG("config: remote cfg: auth pass: %s", p_remote->auth.auth_basic.password.buf);
@@ -251,12 +251,20 @@ gw_cfg_log_ruuvi_cfg_remote(const ruuvi_gw_cfg_remote_t* const p_remote)
             LOG_INFO("config: remote cfg: auth pass: %s", "********");
 #endif
             break;
-        case GW_CFG_REMOTE_AUTH_TYPE_BEARER:
-            LOG_INFO("config: remote cfg: auth_type: %s", GW_CFG_REMOTE_AUTH_TYPE_STR_BEARER);
+        case GW_CFG_HTTP_AUTH_TYPE_BEARER:
+            LOG_INFO("config: remote cfg: auth_type: %s", GW_CFG_HTTP_AUTH_TYPE_STR_BEARER);
 #if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
             LOG_DBG("config: remote cfg: auth bearer token: %s", p_remote->auth.auth_bearer.token.buf);
 #else
             LOG_INFO("config: remote cfg: auth bearer token: %s", "********");
+#endif
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
+            LOG_INFO("config: remote cfg: auth_type: %s", GW_CFG_HTTP_AUTH_TYPE_STR_TOKEN);
+#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
+            LOG_DBG("config: remote cfg: auth token: %s", p_remote->auth.auth_token.token.buf);
+#else
+            LOG_INFO("config: remote cfg: auth token: %s", "********");
 #endif
             break;
     }
@@ -266,14 +274,49 @@ gw_cfg_log_ruuvi_cfg_remote(const ruuvi_gw_cfg_remote_t* const p_remote)
 static void
 gw_cfg_log_ruuvi_cfg_http(const ruuvi_gw_cfg_http_t* const p_http)
 {
+    LOG_INFO("config: use http ruuvi: %d", p_http->use_http_ruuvi);
     LOG_INFO("config: use http: %d", p_http->use_http);
-    LOG_INFO("config: http url: %s", p_http->http_url.buf);
-    LOG_INFO("config: http user: %s", p_http->http_user.buf);
+    if (p_http->use_http)
+    {
+        LOG_INFO("config: http url: %s", p_http->http_url.buf);
+        switch (p_http->data_format)
+        {
+            case GW_CFG_HTTP_DATA_FORMAT_RUUVI:
+                LOG_INFO("config: http data format: %s", "ruuvi");
+                break;
+        }
+        switch (p_http->auth_type)
+        {
+            case GW_CFG_HTTP_AUTH_TYPE_NONE:
+                LOG_INFO("config: http auth_type: %s", "none");
+                break;
+            case GW_CFG_HTTP_AUTH_TYPE_BASIC:
+                LOG_INFO("config: http auth_type: %s", "basic");
+                LOG_INFO("config: http user: %s", p_http->auth.auth_basic.user.buf);
 #if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
-    LOG_DBG("config: http pass: %s", p_http->http_pass.buf);
+                LOG_DBG("config: http pass: %s", p_http->auth.auth_basic.password.buf);
 #else
-    LOG_INFO("config: http pass: %s", "********");
+                LOG_INFO("config: http pass: %s", "********");
 #endif
+                break;
+            case GW_CFG_HTTP_AUTH_TYPE_BEARER:
+                LOG_INFO("config: http auth_type: %s", "bearer");
+#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
+                LOG_DBG("config: http bearer token: %s", p_http->auth.auth_bearer.token.buf);
+#else
+                LOG_INFO("config: http bearer token: %s", "********");
+#endif
+                break;
+            case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
+                LOG_INFO("config: http auth_type: %s", "token");
+#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
+                LOG_DBG("config: http token: %s", p_http->auth.auth_token.token.buf);
+#else
+                LOG_INFO("config: http token: %s", "********");
+#endif
+                break;
+        }
+    }
 }
 
 static void
