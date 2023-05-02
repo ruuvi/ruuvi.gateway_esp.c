@@ -48,25 +48,28 @@
 
 #define ADV_POST_GREEN_LED_ON_INTERVAL_MS (1500)
 
+#define ADV_POST_INITIAL_DELAY_IN_SENDING_STATISTICS_SECONDS (60)
+
 typedef enum adv_post_sig_e
 {
-    ADV_POST_SIG_STOP                  = OS_SIGNAL_NUM_0,
-    ADV_POST_SIG_NETWORK_DISCONNECTED  = OS_SIGNAL_NUM_1,
-    ADV_POST_SIG_NETWORK_CONNECTED     = OS_SIGNAL_NUM_2,
-    ADV_POST_SIG_TIME_SYNCHRONIZED     = OS_SIGNAL_NUM_3,
-    ADV_POST_SIG_RETRANSMIT            = OS_SIGNAL_NUM_4,
-    ADV_POST_SIG_RETRANSMIT2           = OS_SIGNAL_NUM_5,
-    ADV_POST_SIG_SEND_STATISTICS       = OS_SIGNAL_NUM_6,
-    ADV_POST_SIG_DO_ASYNC_COMM         = OS_SIGNAL_NUM_7,
-    ADV_POST_SIG_RELAYING_MODE_CHANGED = OS_SIGNAL_NUM_8,
-    ADV_POST_SIG_NETWORK_WATCHDOG      = OS_SIGNAL_NUM_9,
-    ADV_POST_SIG_TASK_WATCHDOG_FEED    = OS_SIGNAL_NUM_10,
-    ADV_POST_SIG_GW_CFG_READY          = OS_SIGNAL_NUM_11,
-    ADV_POST_SIG_GW_CFG_CHANGED_RUUVI  = OS_SIGNAL_NUM_12,
-    ADV_POST_SIG_GREEN_LED_TURN_ON     = OS_SIGNAL_NUM_13,
-    ADV_POST_SIG_GREEN_LED_TURN_OFF    = OS_SIGNAL_NUM_14,
-    ADV_POST_SIG_GREEN_LED_UPDATE      = OS_SIGNAL_NUM_15,
-    ADV_POST_SIG_RECV_ADV_TIMEOUT      = OS_SIGNAL_NUM_16,
+    ADV_POST_SIG_STOP                        = OS_SIGNAL_NUM_0,
+    ADV_POST_SIG_NETWORK_DISCONNECTED        = OS_SIGNAL_NUM_1,
+    ADV_POST_SIG_NETWORK_CONNECTED           = OS_SIGNAL_NUM_2,
+    ADV_POST_SIG_TIME_SYNCHRONIZED           = OS_SIGNAL_NUM_3,
+    ADV_POST_SIG_RETRANSMIT                  = OS_SIGNAL_NUM_4,
+    ADV_POST_SIG_RETRANSMIT2                 = OS_SIGNAL_NUM_5,
+    ADV_POST_SIG_ACTIVATE_SENDING_STATISTICS = OS_SIGNAL_NUM_6,
+    ADV_POST_SIG_SEND_STATISTICS             = OS_SIGNAL_NUM_7,
+    ADV_POST_SIG_DO_ASYNC_COMM               = OS_SIGNAL_NUM_8,
+    ADV_POST_SIG_RELAYING_MODE_CHANGED       = OS_SIGNAL_NUM_9,
+    ADV_POST_SIG_NETWORK_WATCHDOG            = OS_SIGNAL_NUM_10,
+    ADV_POST_SIG_TASK_WATCHDOG_FEED          = OS_SIGNAL_NUM_11,
+    ADV_POST_SIG_GW_CFG_READY                = OS_SIGNAL_NUM_12,
+    ADV_POST_SIG_GW_CFG_CHANGED_RUUVI        = OS_SIGNAL_NUM_13,
+    ADV_POST_SIG_GREEN_LED_TURN_ON           = OS_SIGNAL_NUM_14,
+    ADV_POST_SIG_GREEN_LED_TURN_OFF          = OS_SIGNAL_NUM_15,
+    ADV_POST_SIG_GREEN_LED_UPDATE            = OS_SIGNAL_NUM_16,
+    ADV_POST_SIG_RECV_ADV_TIMEOUT            = OS_SIGNAL_NUM_17,
 } adv_post_sig_e;
 
 typedef struct adv_post_state_t
@@ -114,6 +117,8 @@ static adv_callbacks_fn_t adv_callback_func_tbl = {
 static uint32_t                       g_adv_post_nonce;
 static os_signal_t*                   g_p_adv_post_sig;
 static os_signal_static_t             g_adv_post_sig_mem;
+static os_timer_sig_one_shot_t*       g_p_adv_post_timer_sig_activate_sending_statistics;
+static os_timer_sig_one_shot_static_t g_p_adv_post_timer_sig_activate_sending_statistics_mem;
 static os_timer_sig_periodic_t*       g_p_adv_post_timer_sig_retransmit;
 static os_timer_sig_periodic_static_t g_adv_post_timer_sig_retransmit_mem;
 static os_timer_sig_periodic_t*       g_p_adv_post_timer_sig_retransmit2;
@@ -140,12 +145,13 @@ static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_eth_connected;
 static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_time_synchronized;
 static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_cfg_ready;
 static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_gw_cfg_ruuvi_changed;
-static bool                           g_adv_post_green_led_state;
 static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_relaying_mode_changed;
 static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_green_led_turn_on;
 static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_green_led_turn_off;
 
-static bool     g_is_adv1_post_active   = false;
+static bool g_adv_post_green_led_state = false;
+static bool g_is_adv1_post_active      = false;
+
 static uint32_t g_adv1_post_interval_ms = ADV_POST_DEFAULT_INTERVAL_SECONDS * TIME_UNITS_MS_PER_SECOND;
 static uint32_t g_adv2_post_interval_ms = ADV_POST_DEFAULT_INTERVAL_SECONDS * TIME_UNITS_MS_PER_SECOND;
 
@@ -799,6 +805,13 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p
                 os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DO_ASYNC_COMM));
             }
             break;
+        case ADV_POST_SIG_ACTIVATE_SENDING_STATISTICS:
+            LOG_INFO("Got ADV_POST_SIG_ACTIVATE_SENDING_STATISTICS");
+            os_timer_sig_one_shot_delete(&g_p_adv_post_timer_sig_activate_sending_statistics);
+            p_adv_post_state->flag_need_to_send_statistics = true;
+            os_timer_sig_periodic_start(g_p_adv_post_timer_sig_send_statistics);
+            os_timer_sig_periodic_simulate(g_p_adv_post_timer_sig_send_statistics);
+            break;
         case ADV_POST_SIG_SEND_STATISTICS:
             LOG_INFO("Got ADV_POST_SIG_SEND_STATISTICS");
             if (p_adv_post_state->flag_relaying_enabled && gw_cfg_get_http_stat_use_http_stat())
@@ -822,7 +835,10 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p
         case ADV_POST_SIG_GW_CFG_READY:
             LOG_INFO("Got ADV_POST_SIG_GW_CFG_READY");
             ruuvi_send_nrf_settings();
-            p_adv_post_state->flag_need_to_send_statistics = gw_cfg_get_http_stat_use_http_stat();
+            if (gw_cfg_get_http_stat_use_http_stat())
+            {
+                os_timer_sig_one_shot_start(g_p_adv_post_timer_sig_activate_sending_statistics);
+            }
             adv_post_on_gw_cfg_change(p_adv_post_state);
             break;
         case ADV_POST_SIG_GW_CFG_CHANGED_RUUVI:
@@ -920,6 +936,7 @@ adv_post_register_signals(void)
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_TIME_SYNCHRONIZED));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT2));
+    os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_ACTIVATE_SENDING_STATISTICS));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_SEND_STATISTICS));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DO_ASYNC_COMM));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_RELAYING_MODE_CHANGED));
@@ -1028,6 +1045,13 @@ adv_post_create_timers(void)
         adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT2),
         pdMS_TO_TICKS(ADV_POST_DEFAULT_INTERVAL_SECONDS * TIME_UNITS_MS_PER_SECOND));
 
+    g_p_adv_post_timer_sig_activate_sending_statistics = os_timer_sig_one_shot_create_static(
+        &g_p_adv_post_timer_sig_activate_sending_statistics_mem,
+        "adv_post_act_send_stat",
+        g_p_adv_post_sig,
+        adv_post_conv_to_sig_num(ADV_POST_SIG_ACTIVATE_SENDING_STATISTICS),
+        pdMS_TO_TICKS(ADV_POST_INITIAL_DELAY_IN_SENDING_STATISTICS_SECONDS) * TIME_UNITS_MS_PER_SECOND);
+
     g_p_adv_post_timer_sig_send_statistics = os_timer_sig_periodic_create_static(
         &g_adv_post_timer_sig_send_statistics_mem,
         "adv_post_send_status",
@@ -1078,6 +1102,8 @@ adv_post_delete_timers(void)
     os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_retransmit);
     os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_retransmit2);
     os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_retransmit2);
+    os_timer_sig_one_shot_stop(g_p_adv_post_timer_sig_activate_sending_statistics);
+    os_timer_sig_one_shot_delete(&g_p_adv_post_timer_sig_activate_sending_statistics);
     os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_send_statistics);
     os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_send_statistics);
     os_timer_sig_one_shot_stop(g_p_adv_post_timer_sig_do_async_comm);
