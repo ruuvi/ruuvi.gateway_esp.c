@@ -24,7 +24,19 @@ bool
 adv_post_is_initialized(void);
 
 void
-adv_post_set_period(const uint32_t period_ms);
+adv_post_set_default_period(const uint32_t period_ms);
+
+void
+adv1_post_timer_restart_with_default_period(void);
+
+void
+adv1_post_timer_restart_with_increased_period(void);
+
+void
+adv2_post_timer_restart_with_default_period(void);
+
+void
+adv2_post_timer_restart_with_increased_period(void);
 
 void
 adv_post_stop(void);
