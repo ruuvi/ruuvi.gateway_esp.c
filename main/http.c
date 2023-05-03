@@ -133,7 +133,7 @@ http_post_event_handler_on_header(const esp_http_client_event_t* const p_evt)
             LOG_WARN("X-Ruuvi-Gateway-Rate: Got incorrect value: %s", p_evt->header_value);
             period_seconds = ADV_POST_DEFAULT_INTERVAL_SECONDS;
         }
-        adv_post_set_period(period_seconds * TIME_UNITS_MS_PER_SECOND);
+        adv_post_set_default_period(period_seconds * TIME_UNITS_MS_PER_SECOND);
     }
     else if ((0 == strcasecmp("Content-Length", p_evt->header_key)) && (NULL != p_evt->user_data))
     {
@@ -1167,20 +1167,24 @@ http_async_poll(void)
             if (flag_success)
             {
                 leds_notify_http1_data_sent_successfully();
+                adv1_post_timer_restart_with_default_period();
             }
             else
             {
                 leds_notify_http1_data_sent_fail();
+                adv1_post_timer_restart_with_increased_period();
             }
             break;
         case HTTP_POST_RECIPIENT_ADVS2:
             if (flag_success)
             {
                 leds_notify_http2_data_sent_successfully();
+                adv2_post_timer_restart_with_default_period();
             }
             else
             {
                 leds_notify_http2_data_sent_fail();
+                adv2_post_timer_restart_with_increased_period();
             }
             break;
     }

@@ -48,25 +48,29 @@
 
 #define ADV_POST_GREEN_LED_ON_INTERVAL_MS (1500)
 
+#define ADV_POST_DELAY_BEFORE_RETRYING_POST_AFTER_ERROR_MS   (67 * 1000)
+#define ADV_POST_INITIAL_DELAY_IN_SENDING_STATISTICS_SECONDS (60)
+
 typedef enum adv_post_sig_e
 {
-    ADV_POST_SIG_STOP                  = OS_SIGNAL_NUM_0,
-    ADV_POST_SIG_NETWORK_DISCONNECTED  = OS_SIGNAL_NUM_1,
-    ADV_POST_SIG_NETWORK_CONNECTED     = OS_SIGNAL_NUM_2,
-    ADV_POST_SIG_TIME_SYNCHRONIZED     = OS_SIGNAL_NUM_3,
-    ADV_POST_SIG_RETRANSMIT            = OS_SIGNAL_NUM_4,
-    ADV_POST_SIG_RETRANSMIT2           = OS_SIGNAL_NUM_5,
-    ADV_POST_SIG_SEND_STATISTICS       = OS_SIGNAL_NUM_6,
-    ADV_POST_SIG_DO_ASYNC_COMM         = OS_SIGNAL_NUM_7,
-    ADV_POST_SIG_RELAYING_MODE_CHANGED = OS_SIGNAL_NUM_8,
-    ADV_POST_SIG_NETWORK_WATCHDOG      = OS_SIGNAL_NUM_9,
-    ADV_POST_SIG_TASK_WATCHDOG_FEED    = OS_SIGNAL_NUM_10,
-    ADV_POST_SIG_GW_CFG_READY          = OS_SIGNAL_NUM_11,
-    ADV_POST_SIG_GW_CFG_CHANGED_RUUVI  = OS_SIGNAL_NUM_12,
-    ADV_POST_SIG_GREEN_LED_TURN_ON     = OS_SIGNAL_NUM_13,
-    ADV_POST_SIG_GREEN_LED_TURN_OFF    = OS_SIGNAL_NUM_14,
-    ADV_POST_SIG_GREEN_LED_UPDATE      = OS_SIGNAL_NUM_15,
-    ADV_POST_SIG_RECV_ADV_TIMEOUT      = OS_SIGNAL_NUM_16,
+    ADV_POST_SIG_STOP                        = OS_SIGNAL_NUM_0,
+    ADV_POST_SIG_NETWORK_DISCONNECTED        = OS_SIGNAL_NUM_1,
+    ADV_POST_SIG_NETWORK_CONNECTED           = OS_SIGNAL_NUM_2,
+    ADV_POST_SIG_TIME_SYNCHRONIZED           = OS_SIGNAL_NUM_3,
+    ADV_POST_SIG_RETRANSMIT                  = OS_SIGNAL_NUM_4,
+    ADV_POST_SIG_RETRANSMIT2                 = OS_SIGNAL_NUM_5,
+    ADV_POST_SIG_ACTIVATE_SENDING_STATISTICS = OS_SIGNAL_NUM_6,
+    ADV_POST_SIG_SEND_STATISTICS             = OS_SIGNAL_NUM_7,
+    ADV_POST_SIG_DO_ASYNC_COMM               = OS_SIGNAL_NUM_8,
+    ADV_POST_SIG_RELAYING_MODE_CHANGED       = OS_SIGNAL_NUM_9,
+    ADV_POST_SIG_NETWORK_WATCHDOG            = OS_SIGNAL_NUM_10,
+    ADV_POST_SIG_TASK_WATCHDOG_FEED          = OS_SIGNAL_NUM_11,
+    ADV_POST_SIG_GW_CFG_READY                = OS_SIGNAL_NUM_12,
+    ADV_POST_SIG_GW_CFG_CHANGED_RUUVI        = OS_SIGNAL_NUM_13,
+    ADV_POST_SIG_GREEN_LED_TURN_ON           = OS_SIGNAL_NUM_14,
+    ADV_POST_SIG_GREEN_LED_TURN_OFF          = OS_SIGNAL_NUM_15,
+    ADV_POST_SIG_GREEN_LED_UPDATE            = OS_SIGNAL_NUM_16,
+    ADV_POST_SIG_RECV_ADV_TIMEOUT            = OS_SIGNAL_NUM_17,
 } adv_post_sig_e;
 
 typedef struct adv_post_state_t
@@ -80,6 +84,15 @@ typedef struct adv_post_state_t
     bool flag_relaying_enabled;
     bool flag_use_timestamps;
 } adv_post_state_t;
+
+typedef struct adv_post_timer_t
+{
+    uint32_t                       num;
+    uint32_t                       default_interval_ms;
+    uint32_t                       cur_interval_ms;
+    os_timer_sig_periodic_t*       p_timer_sig;
+    os_timer_sig_periodic_static_t timer_sig_mem;
+} adv_post_timer_t;
 
 #define ADV_POST_SIG_FIRST (ADV_POST_SIG_STOP)
 #define ADV_POST_SIG_LAST  (ADV_POST_SIG_RECV_ADV_TIMEOUT)
@@ -102,6 +115,9 @@ adv_post_unsubscribe_events(void);
 static void
 adv_post_delete_timers(void);
 
+static void
+adv_post_timer_start_with_default_period(adv_post_timer_t* const p_adv_post_timer);
+
 static const char* TAG = "ADV_POST_TASK";
 
 static adv_callbacks_fn_t adv_callback_func_tbl = {
@@ -114,10 +130,8 @@ static adv_callbacks_fn_t adv_callback_func_tbl = {
 static uint32_t                       g_adv_post_nonce;
 static os_signal_t*                   g_p_adv_post_sig;
 static os_signal_static_t             g_adv_post_sig_mem;
-static os_timer_sig_periodic_t*       g_p_adv_post_timer_sig_retransmit;
-static os_timer_sig_periodic_static_t g_adv_post_timer_sig_retransmit_mem;
-static os_timer_sig_periodic_t*       g_p_adv_post_timer_sig_retransmit2;
-static os_timer_sig_periodic_static_t g_adv_post_timer_sig_retransmit2_mem;
+static os_timer_sig_one_shot_t*       g_p_adv_post_timer_sig_activate_sending_statistics;
+static os_timer_sig_one_shot_static_t g_p_adv_post_timer_sig_activate_sending_statistics_mem;
 static os_timer_sig_periodic_t*       g_p_adv_post_timer_sig_send_statistics;
 static os_timer_sig_periodic_static_t g_adv_post_timer_sig_send_statistics_mem;
 static os_timer_sig_one_shot_t*       g_p_adv_post_timer_sig_do_async_comm;
@@ -140,14 +154,27 @@ static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_eth_connected;
 static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_time_synchronized;
 static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_cfg_ready;
 static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_gw_cfg_ruuvi_changed;
-static bool                           g_adv_post_green_led_state;
 static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_relaying_mode_changed;
 static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_green_led_turn_on;
 static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_green_led_turn_off;
 
-static bool     g_is_adv1_post_active   = false;
-static uint32_t g_adv1_post_interval_ms = ADV_POST_DEFAULT_INTERVAL_SECONDS * TIME_UNITS_MS_PER_SECOND;
-static uint32_t g_adv2_post_interval_ms = ADV_POST_DEFAULT_INTERVAL_SECONDS * TIME_UNITS_MS_PER_SECOND;
+static bool g_adv_post_green_led_state = false;
+static bool g_is_adv1_post_active      = false;
+
+static adv_post_timer_t g_adv_post_timers[2] = {
+    {
+        .num                 = 1,
+        .default_interval_ms = ADV_POST_DEFAULT_INTERVAL_SECONDS * TIME_UNITS_MS_PER_SECOND,
+        .cur_interval_ms     = 0,
+        .p_timer_sig         = NULL,
+    },
+    {
+        .num                 = 2,
+        .default_interval_ms = ADV_POST_DEFAULT_INTERVAL_SECONDS * TIME_UNITS_MS_PER_SECOND,
+        .cur_interval_ms     = 0,
+        .p_timer_sig         = NULL,
+    },
+};
 
 ATTR_PURE
 static os_signal_num_e
@@ -675,18 +702,6 @@ adv_post_handle_sig_task_watchdog_feed(void)
 }
 
 static void
-adv1_post_timer_restart(void)
-{
-    os_timer_sig_periodic_restart(g_p_adv_post_timer_sig_retransmit, pdMS_TO_TICKS(g_adv1_post_interval_ms));
-}
-
-static void
-adv2_post_timer_restart(void)
-{
-    os_timer_sig_periodic_restart(g_p_adv_post_timer_sig_retransmit2, pdMS_TO_TICKS(g_adv2_post_interval_ms));
-}
-
-static void
 adv_post_handle_sig_time_synchronized(adv_post_state_t* const p_adv_post_state)
 {
     if (!p_adv_post_state->flag_primary_time_sync_is_done)
@@ -703,23 +718,26 @@ adv_post_restart_pending_retransmissions(const adv_post_state_t* const p_adv_pos
     if (p_adv_post_state->flag_need_to_send_advs1)
     {
         LOG_INFO("Force pending advs1 retransmission");
-        os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_retransmit);
-        os_timer_sig_periodic_start(g_p_adv_post_timer_sig_retransmit);
-        os_timer_sig_periodic_simulate(g_p_adv_post_timer_sig_retransmit);
+        os_timer_sig_periodic_t* const p_timer_sig = g_adv_post_timers[0].p_timer_sig;
+        os_timer_sig_periodic_stop(p_timer_sig);
+        os_timer_sig_periodic_start(p_timer_sig);
+        os_timer_sig_periodic_simulate(p_timer_sig);
     }
     if (p_adv_post_state->flag_need_to_send_advs2)
     {
         LOG_INFO("Force pending advs2 retransmission");
-        os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_retransmit2);
-        os_timer_sig_periodic_start(g_p_adv_post_timer_sig_retransmit2);
-        os_timer_sig_periodic_simulate(g_p_adv_post_timer_sig_retransmit2);
+        os_timer_sig_periodic_t* const p_timer_sig = g_adv_post_timers[1].p_timer_sig;
+        os_timer_sig_periodic_stop(p_timer_sig);
+        os_timer_sig_periodic_start(p_timer_sig);
+        os_timer_sig_periodic_simulate(p_timer_sig);
     }
     if (p_adv_post_state->flag_need_to_send_statistics)
     {
         LOG_INFO("Force pending statistics retransmission");
-        os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_send_statistics);
-        os_timer_sig_periodic_start(g_p_adv_post_timer_sig_send_statistics);
-        os_timer_sig_periodic_simulate(g_p_adv_post_timer_sig_send_statistics);
+        os_timer_sig_periodic_t* const p_timer_sig = g_p_adv_post_timer_sig_send_statistics;
+        os_timer_sig_periodic_stop(p_timer_sig);
+        os_timer_sig_periodic_start(p_timer_sig);
+        os_timer_sig_periodic_simulate(p_timer_sig);
     }
 }
 
@@ -729,24 +747,24 @@ adv_post_on_gw_cfg_change(adv_post_state_t* const p_adv_post_state)
     p_adv_post_state->flag_use_timestamps = gw_cfg_get_ntp_use();
     if (gw_cfg_get_http_use_http_ruuvi())
     {
-        LOG_INFO("Start timer1 for advs retransmission");
-        os_timer_sig_periodic_start(g_p_adv_post_timer_sig_retransmit);
+        LOG_INFO("Start timer for advs1 retransmission");
+        adv_post_timer_start_with_default_period(&g_adv_post_timers[0]);
     }
     else
     {
-        LOG_INFO("Stop timer1 for advs retransmission");
-        os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_retransmit);
+        LOG_INFO("Stop timer for advs1 retransmission");
+        os_timer_sig_periodic_stop(g_adv_post_timers[0].p_timer_sig);
         p_adv_post_state->flag_need_to_send_advs1 = false;
     }
     if (gw_cfg_get_http_use_http())
     {
-        LOG_INFO("Start timer2 for advs retransmission");
-        os_timer_sig_periodic_start(g_p_adv_post_timer_sig_retransmit2);
+        LOG_INFO("Start timer for advs2 retransmission");
+        adv_post_timer_start_with_default_period(&g_adv_post_timers[1]);
     }
     else
     {
-        LOG_INFO("Stop timer2 for advs retransmission");
-        os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_retransmit2);
+        LOG_INFO("Stop timer for advs2 retransmission");
+        os_timer_sig_periodic_stop(g_adv_post_timers[1].p_timer_sig);
         p_adv_post_state->flag_need_to_send_advs2 = false;
     }
     if (gw_cfg_get_http_stat_use_http_stat())
@@ -817,6 +835,13 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p
                 os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DO_ASYNC_COMM));
             }
             break;
+        case ADV_POST_SIG_ACTIVATE_SENDING_STATISTICS:
+            LOG_INFO("Got ADV_POST_SIG_ACTIVATE_SENDING_STATISTICS");
+            os_timer_sig_one_shot_delete(&g_p_adv_post_timer_sig_activate_sending_statistics);
+            p_adv_post_state->flag_need_to_send_statistics = true;
+            os_timer_sig_periodic_start(g_p_adv_post_timer_sig_send_statistics);
+            os_timer_sig_periodic_simulate(g_p_adv_post_timer_sig_send_statistics);
+            break;
         case ADV_POST_SIG_SEND_STATISTICS:
             LOG_INFO("Got ADV_POST_SIG_SEND_STATISTICS");
             if (p_adv_post_state->flag_relaying_enabled && gw_cfg_get_http_stat_use_http_stat())
@@ -840,7 +865,10 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p
         case ADV_POST_SIG_GW_CFG_READY:
             LOG_INFO("Got ADV_POST_SIG_GW_CFG_READY");
             ruuvi_send_nrf_settings();
-            p_adv_post_state->flag_need_to_send_statistics = gw_cfg_get_http_stat_use_http_stat();
+            if (gw_cfg_get_http_stat_use_http_stat())
+            {
+                os_timer_sig_one_shot_start(g_p_adv_post_timer_sig_activate_sending_statistics);
+            }
             adv_post_on_gw_cfg_change(p_adv_post_state);
             if (gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss()
                 && (gw_cfg_get_http_use_http_ruuvi() || gw_cfg_get_http_use_http()))
@@ -956,6 +984,7 @@ adv_post_register_signals(void)
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_TIME_SYNCHRONIZED));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT2));
+    os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_ACTIVATE_SENDING_STATISTICS));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_SEND_STATISTICS));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DO_ASYNC_COMM));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_RELAYING_MODE_CHANGED));
@@ -1050,19 +1079,26 @@ adv_post_unsubscribe_events(void)
 static void
 adv_post_create_timers(void)
 {
-    g_p_adv_post_timer_sig_retransmit = os_timer_sig_periodic_create_static(
-        &g_adv_post_timer_sig_retransmit_mem,
+    g_adv_post_timers[0].p_timer_sig = os_timer_sig_periodic_create_static(
+        &g_adv_post_timers[0].timer_sig_mem,
         "adv_post_retransmit",
         g_p_adv_post_sig,
         adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT),
         pdMS_TO_TICKS(ADV_POST_DEFAULT_INTERVAL_SECONDS * TIME_UNITS_MS_PER_SECOND));
 
-    g_p_adv_post_timer_sig_retransmit2 = os_timer_sig_periodic_create_static(
-        &g_adv_post_timer_sig_retransmit2_mem,
+    g_adv_post_timers[1].p_timer_sig = os_timer_sig_periodic_create_static(
+        &g_adv_post_timers[1].timer_sig_mem,
         "adv_post_retransmit2",
         g_p_adv_post_sig,
         adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT2),
         pdMS_TO_TICKS(ADV_POST_DEFAULT_INTERVAL_SECONDS * TIME_UNITS_MS_PER_SECOND));
+
+    g_p_adv_post_timer_sig_activate_sending_statistics = os_timer_sig_one_shot_create_static(
+        &g_p_adv_post_timer_sig_activate_sending_statistics_mem,
+        "adv_post_act_send_stat",
+        g_p_adv_post_sig,
+        adv_post_conv_to_sig_num(ADV_POST_SIG_ACTIVATE_SENDING_STATISTICS),
+        pdMS_TO_TICKS(ADV_POST_INITIAL_DELAY_IN_SENDING_STATISTICS_SECONDS) * TIME_UNITS_MS_PER_SECOND);
 
     g_p_adv_post_timer_sig_send_statistics = os_timer_sig_periodic_create_static(
         &g_adv_post_timer_sig_send_statistics_mem,
@@ -1110,10 +1146,12 @@ adv_post_create_timers(void)
 static void
 adv_post_delete_timers(void)
 {
-    os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_retransmit);
-    os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_retransmit);
-    os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_retransmit2);
-    os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_retransmit2);
+    os_timer_sig_periodic_stop(g_adv_post_timers[0].p_timer_sig);
+    os_timer_sig_periodic_delete(&g_adv_post_timers[0].p_timer_sig);
+    os_timer_sig_periodic_stop(g_adv_post_timers[1].p_timer_sig);
+    os_timer_sig_periodic_delete(&g_adv_post_timers[1].p_timer_sig);
+    os_timer_sig_one_shot_stop(g_p_adv_post_timer_sig_activate_sending_statistics);
+    os_timer_sig_one_shot_delete(&g_p_adv_post_timer_sig_activate_sending_statistics);
     os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_send_statistics);
     os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_send_statistics);
     os_timer_sig_one_shot_stop(g_p_adv_post_timer_sig_do_async_comm);
@@ -1159,33 +1197,97 @@ adv_post_is_initialized(void)
     return os_signal_is_any_thread_registered(g_p_adv_post_sig);
 }
 
+static void
+adv_post_set_default_period_for_timer(adv_post_timer_t* const p_adv_post_timer, const uint32_t period_ms)
+{
+    if (period_ms != p_adv_post_timer->default_interval_ms)
+    {
+        LOG_INFO(
+            "X-Ruuvi-Gateway-Rate: adv%d: Change period from %u ms to %u ms",
+            p_adv_post_timer->num,
+            (printf_uint_t)p_adv_post_timer->default_interval_ms,
+            (printf_uint_t)period_ms);
+        p_adv_post_timer->default_interval_ms = period_ms;
+    }
+}
+
 void
-adv_post_set_period(const uint32_t period_ms)
+adv_post_set_default_period(const uint32_t period_ms)
 {
     if (g_is_adv1_post_active)
     {
-        if (period_ms != g_adv1_post_interval_ms)
-        {
-            LOG_INFO(
-                "X-Ruuvi-Gateway-Rate: Change period(1) from %u ms to %u ms",
-                (printf_uint_t)g_adv1_post_interval_ms,
-                (printf_uint_t)period_ms);
-            g_adv1_post_interval_ms = period_ms;
-            adv1_post_timer_restart();
-        }
+        adv_post_set_default_period_for_timer(&g_adv_post_timers[0], period_ms);
     }
     else
     {
-        if (period_ms != g_adv2_post_interval_ms)
-        {
-            LOG_INFO(
-                "X-Ruuvi-Gateway-Rate: Change period(2) from %u ms to %u ms",
-                (printf_uint_t)g_adv2_post_interval_ms,
-                (printf_uint_t)period_ms);
-            g_adv2_post_interval_ms = period_ms;
-            adv2_post_timer_restart();
-        }
+        adv_post_set_default_period_for_timer(&g_adv_post_timers[1], period_ms);
     }
+}
+
+static void
+adv_post_timer_start_with_default_period(adv_post_timer_t* const p_adv_post_timer)
+{
+    if (p_adv_post_timer->cur_interval_ms != p_adv_post_timer->default_interval_ms)
+    {
+        p_adv_post_timer->cur_interval_ms = p_adv_post_timer->default_interval_ms;
+    }
+    LOG_INFO(
+        "advs%u: start timer with default period %ums",
+        (printf_uint_t)p_adv_post_timer->num,
+        (printf_uint_t)p_adv_post_timer->cur_interval_ms);
+    os_timer_sig_periodic_restart(p_adv_post_timer->p_timer_sig, pdMS_TO_TICKS(p_adv_post_timer->cur_interval_ms));
+}
+
+static void
+adv_post_timer_restart_with_default_period(adv_post_timer_t* const p_adv_post_timer)
+{
+    if (p_adv_post_timer->cur_interval_ms != p_adv_post_timer->default_interval_ms)
+    {
+        p_adv_post_timer->cur_interval_ms = p_adv_post_timer->default_interval_ms;
+        LOG_INFO(
+            "advs%u: restart timer with default period %ums",
+            (printf_uint_t)p_adv_post_timer->num,
+            (printf_uint_t)p_adv_post_timer->cur_interval_ms);
+        os_timer_sig_periodic_restart(p_adv_post_timer->p_timer_sig, pdMS_TO_TICKS(p_adv_post_timer->cur_interval_ms));
+    }
+}
+
+static void
+adv_post_timer_restart_with_increased_period(adv_post_timer_t* const p_adv_post_timer)
+{
+    if (p_adv_post_timer->cur_interval_ms != ADV_POST_DELAY_BEFORE_RETRYING_POST_AFTER_ERROR_MS)
+    {
+        p_adv_post_timer->cur_interval_ms = ADV_POST_DELAY_BEFORE_RETRYING_POST_AFTER_ERROR_MS;
+        LOG_INFO(
+            "advs%u: restart timer with increased period %ums",
+            (printf_uint_t)p_adv_post_timer->num,
+            (printf_uint_t)p_adv_post_timer->cur_interval_ms);
+        os_timer_sig_periodic_restart(p_adv_post_timer->p_timer_sig, pdMS_TO_TICKS(p_adv_post_timer->cur_interval_ms));
+    }
+}
+
+void
+adv1_post_timer_restart_with_default_period(void)
+{
+    adv_post_timer_restart_with_default_period(&g_adv_post_timers[0]);
+}
+
+void
+adv1_post_timer_restart_with_increased_period(void)
+{
+    adv_post_timer_restart_with_increased_period(&g_adv_post_timers[0]);
+}
+
+void
+adv2_post_timer_restart_with_default_period(void)
+{
+    adv_post_timer_restart_with_default_period(&g_adv_post_timers[1]);
+}
+
+void
+adv2_post_timer_restart_with_increased_period(void)
+{
+    adv_post_timer_restart_with_increased_period(&g_adv_post_timers[1]);
 }
 
 void
