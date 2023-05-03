@@ -60,6 +60,33 @@ static const char TAG[] = "ruuvi_gateway";
 
 uint32_t volatile g_network_disconnect_cnt;
 
+static os_mutex_t        g_http_server_mutex_incoming_connection;
+static os_mutex_static_t g_http_server_mutex_incoming_connection_mem;
+
+void
+http_server_mutex_activate(void)
+{
+    http_server_use_mutex_for_incoming_connection_handling(g_http_server_mutex_incoming_connection);
+}
+
+void
+http_server_mutex_deactivate(void)
+{
+    http_server_use_mutex_for_incoming_connection_handling(NULL);
+}
+
+bool
+http_server_mutex_try_lock(void)
+{
+    return os_mutex_try_lock(g_http_server_mutex_incoming_connection);
+}
+
+void
+http_server_mutex_unlock(void)
+{
+    os_mutex_unlock(g_http_server_mutex_incoming_connection);
+}
+
 static void
 ruuvi_cb_on_change_cfg(const gw_cfg_t* const p_gw_cfg);
 
@@ -395,6 +422,8 @@ main_task_init(void)
     esp_log_level_set(TAG, ESP_LOG_INFO);
     reset_info_init();
     cjson_wrap_init();
+
+    g_http_server_mutex_incoming_connection = os_mutex_create_static(&g_http_server_mutex_incoming_connection_mem);
 
     if (!main_loop_init())
     {

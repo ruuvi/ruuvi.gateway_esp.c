@@ -108,6 +108,18 @@ main_loop(void);
 void
 sleep_with_task_watchdog_feeding(const int32_t delay_seconds);
 
+void
+http_server_mutex_activate(void);
+
+void
+http_server_mutex_deactivate(void);
+
+bool
+http_server_mutex_try_lock(void);
+
+void
+http_server_mutex_unlock(void);
+
 #ifdef __cplusplus
 }
 #endif
