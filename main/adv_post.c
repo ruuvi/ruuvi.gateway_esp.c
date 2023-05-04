@@ -410,10 +410,7 @@ adv_post_retransmit_advs(
 }
 
 static bool
-adv_post_do_retransmission(
-    const bool flag_network_connected,
-    const bool flag_use_timestamps,
-    const bool flag_post_to_ruuvi)
+adv_post_do_retransmission(const bool flag_use_timestamps, const bool flag_post_to_ruuvi)
 {
     static adv_report_table_t g_adv_reports_buf;
 
@@ -428,12 +425,6 @@ adv_post_do_retransmission(
     }
 
     adv_post_log(&g_adv_reports_buf, flag_use_timestamps);
-
-    if (!flag_network_connected)
-    {
-        LOG_WARN("Can't send advs, no network connection");
-        return false;
-    }
 
     return adv_post_retransmit_advs(&g_adv_reports_buf, flag_use_timestamps, flag_post_to_ruuvi);
 }
@@ -527,20 +518,20 @@ adv_post_wdt_add_and_start(void)
     os_timer_sig_periodic_start(g_p_adv_post_timer_sig_watchdog_feed);
 }
 
-static void
+static bool
 adv_post_do_async_comm_send_advs(adv_post_state_t* const p_adv_post_state, const bool flag_post_to_ruuvi)
 {
     if (!p_adv_post_state->flag_network_connected)
     {
         LOG_WARN("Can't send advs, no network connection");
         leds_notify_http1_data_sent_fail();
-        return;
+        return false;
     }
     if (p_adv_post_state->flag_use_timestamps && (!time_is_synchronized()))
     {
         LOG_WARN("Can't send advs, the time is not yet synchronized");
         leds_notify_http1_data_sent_fail();
-        return;
+        return false;
     }
     g_is_adv1_post_active = flag_post_to_ruuvi;
     if (g_is_adv1_post_active)
@@ -551,45 +542,44 @@ adv_post_do_async_comm_send_advs(adv_post_state_t* const p_adv_post_state, const
     {
         p_adv_post_state->flag_need_to_send_advs2 = false;
     }
-    if (adv_post_do_retransmission(
-            p_adv_post_state->flag_network_connected,
-            p_adv_post_state->flag_use_timestamps,
-            flag_post_to_ruuvi))
+    if (adv_post_do_retransmission(p_adv_post_state->flag_use_timestamps, flag_post_to_ruuvi))
     {
         p_adv_post_state->flag_async_comm_in_progress = true;
     }
     g_adv_post_nonce += 1;
+    return p_adv_post_state->flag_async_comm_in_progress;
 }
 
-static void
+static bool
 adv_post_do_async_comm_send_statistics(adv_post_state_t* const p_adv_post_state)
 {
     if (!gw_cfg_get_http_stat_use_http_stat())
     {
         LOG_INFO("Can't send statistics, it was disabled in gw_cfg");
         p_adv_post_state->flag_need_to_send_statistics = false;
+        return false;
     }
-    else if (!p_adv_post_state->flag_network_connected)
+    if (!p_adv_post_state->flag_network_connected)
     {
         LOG_WARN("Can't send statistics, no network connection");
+        return false;
     }
-    else if (p_adv_post_state->flag_use_timestamps && (!time_is_synchronized()))
+    if (p_adv_post_state->flag_use_timestamps && (!time_is_synchronized()))
     {
         LOG_WARN("Can't send statistics, the time is not yet synchronized");
+        return false;
+    }
+    p_adv_post_state->flag_need_to_send_statistics = false;
+    if (adv_post_do_send_statistics())
+    {
+        p_adv_post_state->flag_async_comm_in_progress = true;
+        os_timer_sig_one_shot_start(g_p_adv_post_timer_sig_do_async_comm);
     }
     else
     {
-        p_adv_post_state->flag_need_to_send_statistics = false;
-        if (adv_post_do_send_statistics())
-        {
-            p_adv_post_state->flag_async_comm_in_progress = true;
-            os_timer_sig_one_shot_start(g_p_adv_post_timer_sig_do_async_comm);
-        }
-        else
-        {
-            LOG_ERR("Failed to send statistics");
-        }
+        LOG_ERR("Failed to send statistics");
     }
+    return p_adv_post_state->flag_async_comm_in_progress;
 }
 
 static void
@@ -600,6 +590,7 @@ adv_post_do_async_comm(adv_post_state_t* const p_adv_post_state)
         if (http_async_poll())
         {
             p_adv_post_state->flag_async_comm_in_progress = false;
+            http_server_mutex_unlock();
         }
         else
         {
@@ -609,17 +600,44 @@ adv_post_do_async_comm(adv_post_state_t* const p_adv_post_state)
     if ((!p_adv_post_state->flag_async_comm_in_progress) && p_adv_post_state->flag_need_to_send_advs1
         && p_adv_post_state->flag_relaying_enabled)
     {
-        adv_post_do_async_comm_send_advs(p_adv_post_state, true);
+        if (!http_server_mutex_try_lock())
+        {
+            LOG_DBG("http_server_mutex_try_lock failed, postpone sending advs1");
+            os_timer_sig_one_shot_start(g_p_adv_post_timer_sig_do_async_comm);
+            return;
+        }
+        if (!adv_post_do_async_comm_send_advs(p_adv_post_state, true))
+        {
+            http_server_mutex_unlock();
+        }
     }
     if ((!p_adv_post_state->flag_async_comm_in_progress) && p_adv_post_state->flag_need_to_send_advs2
         && p_adv_post_state->flag_relaying_enabled)
     {
-        adv_post_do_async_comm_send_advs(p_adv_post_state, false);
+        if (!http_server_mutex_try_lock())
+        {
+            LOG_DBG("http_server_mutex_try_lock failed, postpone sending advs2");
+            os_timer_sig_one_shot_start(g_p_adv_post_timer_sig_do_async_comm);
+            return;
+        }
+        if (!adv_post_do_async_comm_send_advs(p_adv_post_state, false))
+        {
+            http_server_mutex_unlock();
+        }
     }
     if ((!p_adv_post_state->flag_async_comm_in_progress) && p_adv_post_state->flag_need_to_send_statistics
         && p_adv_post_state->flag_relaying_enabled)
     {
-        adv_post_do_async_comm_send_statistics(p_adv_post_state);
+        if (!http_server_mutex_try_lock())
+        {
+            LOG_DBG("http_server_mutex_try_lock failed, postpone sending statistics");
+            os_timer_sig_one_shot_start(g_p_adv_post_timer_sig_do_async_comm);
+            return;
+        }
+        if (!adv_post_do_async_comm_send_statistics(p_adv_post_state))
+        {
+            http_server_mutex_unlock();
+        }
     }
 }
 
@@ -852,11 +870,29 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p
                 os_timer_sig_one_shot_start(g_p_adv_post_timer_sig_activate_sending_statistics);
             }
             adv_post_on_gw_cfg_change(p_adv_post_state);
+            if (gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss()
+                && (gw_cfg_get_http_use_http_ruuvi() || gw_cfg_get_http_use_http()))
+            {
+                http_server_mutex_activate();
+            }
+            else
+            {
+                http_server_mutex_deactivate();
+            }
             break;
         case ADV_POST_SIG_GW_CFG_CHANGED_RUUVI:
             LOG_INFO("Got ADV_POST_SIG_GW_CFG_CHANGED_RUUVI");
             ruuvi_send_nrf_settings();
             adv_post_on_gw_cfg_change(p_adv_post_state);
+            if (gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss()
+                && (gw_cfg_get_http_use_http_ruuvi() || gw_cfg_get_http_use_http()))
+            {
+                http_server_mutex_activate();
+            }
+            else
+            {
+                http_server_mutex_deactivate();
+            }
             break;
         case ADV_POST_SIG_GREEN_LED_TURN_ON:
             g_adv_post_green_led_state = true;
