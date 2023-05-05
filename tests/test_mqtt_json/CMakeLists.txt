@@ -26,8 +26,12 @@ target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}
         ${RUUVI_GW_SRC}
         include
-        $ENV{IDF_PATH}/components/json/cJSON
+        ${WIFI_MANAGER_INC}
         ${CMAKE_CURRENT_SOURCE_DIR}
+        $ENV{IDF_PATH}/components/json/cJSON
+        $ENV{IDF_PATH}/components/esp_wifi/include
+        $ENV{IDF_PATH}/components/esp_common/include
+        $ENV{IDF_PATH}/components/esp_event/include
 )
 
 target_compile_definitions(${ProjectId} PUBLIC

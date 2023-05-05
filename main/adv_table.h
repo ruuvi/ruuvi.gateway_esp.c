@@ -12,6 +12,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include "mac_addr.h"
+#include "gw_cfg.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,7 +29,7 @@ extern "C" {
 #endif
 
 #define ADV_DATA_MAX_LEN (32)
-#define MAX_ADVS_TABLE   (100U)
+#define MAX_ADVS_TABLE   (GW_CFG_MAX_NUM_SENSORS)
 
 typedef int8_t   wifi_rssi_t;
 typedef uint8_t  ble_data_len_t;

@@ -15,14 +15,18 @@ set_target_properties(${ProjectId} PROPERTIES
 )
 
 target_include_directories(${ProjectId} SYSTEM BEFORE PUBLIC
-        sys_include
+        include
 )
 
 target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
         ${RUUVI_GW_SRC}
+        ${WIFI_MANAGER_INC}
         ${CMAKE_CURRENT_SOURCE_DIR}
+        $ENV{IDF_PATH}/components/esp_wifi/include
+        $ENV{IDF_PATH}/components/esp_common/include
+        $ENV{IDF_PATH}/components/esp_event/include
 )
 
 target_compile_definitions(${ProjectId} PUBLIC

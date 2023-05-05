@@ -94,6 +94,16 @@ typedef struct adv_post_timer_t
     os_timer_sig_periodic_static_t timer_sig_mem;
 } adv_post_timer_t;
 
+typedef struct adv_post_cfg_cache_t
+{
+    bool flag_use_mqtt;
+    bool flag_use_ntp;
+
+    bool               scan_filter_allow_listed;
+    uint32_t           scan_filter_length;
+    mac_address_bin_t* p_arr_of_scan_filter_mac;
+} adv_post_cfg_cache_t;
+
 #define ADV_POST_SIG_FIRST (ADV_POST_SIG_STOP)
 #define ADV_POST_SIG_LAST  (ADV_POST_SIG_RECV_ADV_TIMEOUT)
 
@@ -126,6 +136,10 @@ static adv_callbacks_fn_t adv_callback_func_tbl = {
     .AdvIdCallback     = adv_post_cb_on_recv_device_id,
     .AdvGetAllCallback = adv_post_send_get_all,
 };
+
+static adv_post_cfg_cache_t g_adv_post_cfg_cache;
+static os_mutex_t           g_p_adv_post_cfg_access_mutex;
+static os_mutex_static_t    g_adv_post_cfg_access_mutex_mem;
 
 static uint32_t                       g_adv_post_nonce;
 static os_signal_t*                   g_p_adv_post_sig;
@@ -203,6 +217,38 @@ u64_to_array(const uint64_t u64, uint8_t* const p_array, const uint8_t num_bytes
     }
 }
 
+static adv_post_cfg_cache_t*
+adv_post_cfg_access_mutex_try_lock(void)
+{
+    if (NULL == g_p_adv_post_cfg_access_mutex)
+    {
+        g_p_adv_post_cfg_access_mutex = os_mutex_create_static(&g_adv_post_cfg_access_mutex_mem);
+    }
+    if (!os_mutex_try_lock(g_p_adv_post_cfg_access_mutex))
+    {
+        return NULL;
+    }
+    return &g_adv_post_cfg_cache;
+}
+
+static adv_post_cfg_cache_t*
+adv_post_cfg_access_mutex_lock(void)
+{
+    if (NULL == g_p_adv_post_cfg_access_mutex)
+    {
+        g_p_adv_post_cfg_access_mutex = os_mutex_create_static(&g_adv_post_cfg_access_mutex_mem);
+    }
+    os_mutex_lock(g_p_adv_post_cfg_access_mutex);
+    return &g_adv_post_cfg_cache;
+}
+
+static void
+adv_post_cfg_access_mutex_unlock(adv_post_cfg_cache_t** p_p_cfg_cache)
+{
+    *p_p_cfg_cache = NULL;
+    os_mutex_unlock(g_p_adv_post_cfg_access_mutex);
+}
+
 static esp_err_t
 adv_put_to_table(const adv_report_t* const p_adv)
 {
@@ -277,6 +323,40 @@ adv_post_cb_on_recv_device_id(void* p_arg)
     ruuvi_device_id_set(&nrf52_device_id, &nrf52_mac_addr);
 }
 
+static bool
+adv_post_check_if_mac_filtered_out(
+    const adv_post_cfg_cache_t* const p_cfg_cache,
+    const mac_address_bin_t* const    p_mac_addr)
+{
+    if (0 == p_cfg_cache->scan_filter_length)
+    {
+        return false;
+    }
+    bool flag_is_filtered_out = false;
+    if (p_cfg_cache->scan_filter_allow_listed)
+    {
+        for (uint32_t i = 0; i < p_cfg_cache->scan_filter_length; ++i)
+        {
+            if (0 == memcmp(p_mac_addr, &p_cfg_cache->p_arr_of_scan_filter_mac[i], sizeof(*p_mac_addr)))
+            {
+                return false;
+            }
+        }
+        flag_is_filtered_out = true;
+    }
+    else
+    {
+        for (uint32_t i = 0; i < p_cfg_cache->scan_filter_length; ++i)
+        {
+            if (0 == memcmp(p_mac_addr, &p_cfg_cache->p_arr_of_scan_filter_mac[i], sizeof(*p_mac_addr)))
+            {
+                return true;
+            }
+        }
+    }
+    return flag_is_filtered_out;
+}
+
 static void
 adv_post_send_report(void* p_arg)
 {
@@ -286,7 +366,14 @@ adv_post_send_report(void* p_arg)
         return;
     }
 
-    const bool   flag_ntp_use              = gw_cfg_get_ntp_use();
+    adv_post_cfg_cache_t* p_cfg_cache = adv_post_cfg_access_mutex_try_lock();
+    if (NULL == p_cfg_cache)
+    {
+        LOG_WARN("Drop adv - gateway in the process of reconfiguration");
+        return;
+    }
+
+    const bool   flag_ntp_use              = p_cfg_cache->flag_use_ntp;
     const time_t timestamp_if_synchronized = time_is_synchronized() ? time(NULL) : 0;
     const time_t timestamp = flag_ntp_use ? timestamp_if_synchronized : (time_t)metrics_received_advs_get();
 
@@ -294,6 +381,13 @@ adv_post_send_report(void* p_arg)
     if (!parse_adv_report_from_uart((re_ca_uart_payload_t*)p_arg, timestamp, &adv_report))
     {
         LOG_WARN("Drop adv - parsing failed");
+        adv_post_cfg_access_mutex_unlock(&p_cfg_cache);
+        return;
+    }
+
+    if (adv_post_check_if_mac_filtered_out(p_cfg_cache, &adv_report.tag_mac))
+    {
+        adv_post_cfg_access_mutex_unlock(&p_cfg_cache);
         return;
     }
 
@@ -315,7 +409,7 @@ adv_post_send_report(void* p_arg)
     {
         LOG_WARN("Drop adv - table full");
     }
-    if (gw_cfg_get_mqtt_use_mqtt() && gw_status_is_mqtt_connected())
+    if (p_cfg_cache->flag_use_mqtt && gw_status_is_mqtt_connected())
     {
         if (mqtt_publish_adv(&adv_report, flag_ntp_use, (flag_ntp_use ? time(NULL) : 0)))
         {
@@ -326,6 +420,7 @@ adv_post_send_report(void* p_arg)
             LOG_ERR("%s failed", "mqtt_publish_adv");
         }
     }
+    adv_post_cfg_access_mutex_unlock(&p_cfg_cache);
 }
 
 static void
@@ -745,6 +840,51 @@ static void
 adv_post_on_gw_cfg_change(adv_post_state_t* const p_adv_post_state)
 {
     p_adv_post_state->flag_use_timestamps = gw_cfg_get_ntp_use();
+
+    adv_post_cfg_cache_t* p_cfg_cache = adv_post_cfg_access_mutex_lock();
+
+    p_cfg_cache->flag_use_mqtt = gw_cfg_get_mqtt_use_mqtt();
+    p_cfg_cache->flag_use_ntp  = p_adv_post_state->flag_use_timestamps;
+    if (NULL != p_cfg_cache->p_arr_of_scan_filter_mac)
+    {
+        p_cfg_cache->scan_filter_length = 0;
+        os_free(p_cfg_cache->p_arr_of_scan_filter_mac);
+        p_cfg_cache->p_arr_of_scan_filter_mac = NULL;
+    }
+
+    const gw_cfg_t*                  p_gw_cfg = gw_cfg_lock_ro();
+    const ruuvi_gw_cfg_scan_t* const p_scan   = &p_gw_cfg->ruuvi_cfg.scan;
+
+    p_cfg_cache->scan_filter_allow_listed = p_scan->scan_filter_allow_listed;
+
+    if (0 != p_scan->scan_filter_length)
+    {
+        p_cfg_cache->p_arr_of_scan_filter_mac = os_calloc(
+            p_scan->scan_filter_length,
+            sizeof(*p_cfg_cache->p_arr_of_scan_filter_mac));
+        if (NULL == p_cfg_cache->p_arr_of_scan_filter_mac)
+        {
+            LOG_ERR("Can't allocate memory for scan_filter");
+        }
+    }
+    if (NULL != p_cfg_cache->p_arr_of_scan_filter_mac)
+    {
+        for (uint32_t i = 0; i < p_scan->scan_filter_length; ++i)
+        {
+            memcpy(
+                &p_cfg_cache->p_arr_of_scan_filter_mac[i],
+                &p_scan->scan_filter_list[i],
+                sizeof(p_cfg_cache->p_arr_of_scan_filter_mac[i]));
+        }
+        p_cfg_cache->scan_filter_length = p_scan->scan_filter_length;
+    }
+    else
+    {
+        p_cfg_cache->scan_filter_length = 0;
+    }
+
+    gw_cfg_unlock_ro(&p_gw_cfg);
+
     if (gw_cfg_get_http_use_http_ruuvi())
     {
         LOG_INFO("Start timer for advs1 retransmission");
@@ -778,6 +918,9 @@ adv_post_on_gw_cfg_change(adv_post_state_t* const p_adv_post_state)
         os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_send_statistics);
         p_adv_post_state->flag_need_to_send_statistics = false;
     }
+    adv_post_cfg_access_mutex_unlock(&p_cfg_cache);
+
+    adv_table_clear();
 }
 
 static void

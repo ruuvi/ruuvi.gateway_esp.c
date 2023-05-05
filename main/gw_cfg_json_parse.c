@@ -794,6 +794,31 @@ gw_cfg_json_parse_scan(const cJSON* const p_json_root, ruuvi_gw_cfg_scan_t* cons
     {
         LOG_WARN("Can't find key '%s' in config-json", "scan_channel_39");
     }
+    if (!gw_cfg_json_get_bool_val(p_json_root, "scan_filter_allow_listed", &p_gw_cfg_scan->scan_filter_allow_listed))
+    {
+        LOG_WARN("Can't find key '%s' in config-json", "scan_filter_allow_listed");
+    }
+    const cJSON* const p_json_scan_filter_list = cJSON_GetObjectItem(p_json_root, "scan_filter_list");
+    if (NULL == p_json_scan_filter_list)
+    {
+        LOG_WARN("Can't find key '%s' in config-json", "scan_filter_list");
+    }
+    else
+    {
+        const int32_t scan_filter_length = cJSON_GetArraySize(p_json_scan_filter_list);
+        uint32_t      arr_idx            = 0;
+        for (int32_t i = 0; i < scan_filter_length; ++i)
+        {
+            cJSON* const      p_filter_item = cJSON_GetArrayItem(p_json_scan_filter_list, i);
+            const char* const p_str         = cJSON_GetStringValue(p_filter_item);
+            if (!mac_addr_from_str(p_str, &p_gw_cfg_scan->scan_filter_list[arr_idx]))
+            {
+                LOG_ERR("Can't parse MAC address in scan_filter_list: %s", p_str);
+            }
+            arr_idx += 1;
+        }
+        p_gw_cfg_scan->scan_filter_length = arr_idx;
+    }
 }
 
 static void
