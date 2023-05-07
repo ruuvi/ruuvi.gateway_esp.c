@@ -110,6 +110,9 @@ leds_ctrl_state_to_str(leds_ctrl_state_e leds_ctrl_sm_state)
         case LEDS_CTRL_STATE_FLASHING_NRF52_FW:
             p_desc = "FLASHING_NRF52_FW";
             break;
+        case LEDS_CTRL_STATE_NRF52_FAILURE:
+            p_desc = "NRF52_FAILURE";
+            break;
         case LEDS_CTRL_STATE_CFG_ERASING:
             p_desc = "CFG_ERASING";
             break;
