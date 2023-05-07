@@ -1822,8 +1822,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_none) // NOLINT
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
-               "\t\"scan_filter_allow_listed\":\tfalse,\n"
-               "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\"\n"
                "}"),
         string(json_str.p_str));
@@ -2017,8 +2015,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_bearer) // NOLINT
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
-               "\t\"scan_filter_allow_listed\":\tfalse,\n"
-               "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\"\n"
                "}"),
         string(json_str.p_str));
@@ -2113,8 +2109,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_token) // NOLINT
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
-               "\t\"scan_filter_allow_listed\":\tfalse,\n"
-               "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\"\n"
                "}"),
         string(json_str.p_str));
@@ -2205,8 +2199,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_equal_to_default) // NOL
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
-               "\t\"scan_filter_allow_listed\":\tfalse,\n"
-               "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\"\n"
                "}"),
         string(json_str.p_str));
@@ -2308,8 +2300,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_equal_to_default_auth_di
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
-               "\t\"scan_filter_allow_listed\":\tfalse,\n"
-               "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\"\n"
                "}"),
         string(json_str.p_str));
