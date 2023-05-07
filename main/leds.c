@@ -272,20 +272,15 @@ leds_task_handle_sig_update(void)
     }
 }
 
-static bool
-is_gateway_in_polling_mode(void)
-{
-    return (!gw_cfg_get_http_use_http_ruuvi()) && (!gw_cfg_get_http_use_http()) && (!gw_cfg_get_mqtt_use_mqtt());
-}
-
 static void
 leds_task_handle_sig_on_ev_cfg_ready(void)
 {
     LOG_DBG("LEDS_TASK_SIG_ON_EV_CFG_READY");
+    const uint32_t flag_use_http_0 = gw_cfg_get_http_use_http_ruuvi() ? 1 : 0;
+    const uint32_t flag_use_http_1 = gw_cfg_get_http_use_http() ? 1 : 0;
     leds_ctrl_configure_sub_machine((leds_ctrl_params_t) {
-        .flag_polling_mode = is_gateway_in_polling_mode(),
-        .num_http_targets  = (gw_cfg_get_http_use_http_ruuvi() ? 1 : 0) + (gw_cfg_get_http_use_http() ? 1 : 0),
-        .num_mqtt_targets  = gw_cfg_get_mqtt_use_mqtt() ? 1 : 0,
+        .flag_use_mqtt        = gw_cfg_get_mqtt_use_mqtt(),
+        .http_targets_bitmask = (flag_use_http_0 << 0U) | (flag_use_http_1 << 1U),
     });
     leds_ctrl_handle_event(LEDS_CTRL_EVENT_CFG_READY);
 }
@@ -294,10 +289,11 @@ static void
 leds_task_handle_sig_on_ev_cfg_changed_ruuvi(void)
 {
     LOG_DBG("LEDS_TASK_SIG_ON_EV_CFG_CHANGED_RUUVI");
+    const uint32_t flag_use_http_0 = gw_cfg_get_http_use_http_ruuvi() ? 1 : 0;
+    const uint32_t flag_use_http_1 = gw_cfg_get_http_use_http() ? 1 : 0;
     leds_ctrl_configure_sub_machine((leds_ctrl_params_t) {
-        .flag_polling_mode = is_gateway_in_polling_mode(),
-        .num_http_targets  = (gw_cfg_get_http_use_http_ruuvi() ? 1 : 0) + (gw_cfg_get_http_use_http() ? 1 : 0),
-        .num_mqtt_targets  = gw_cfg_get_mqtt_use_mqtt() ? 1 : 0,
+        .flag_use_mqtt        = gw_cfg_get_mqtt_use_mqtt(),
+        .http_targets_bitmask = (flag_use_http_0 << 0U) | (flag_use_http_1 << 1U),
     });
 }
 

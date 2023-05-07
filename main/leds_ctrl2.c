@@ -32,9 +32,8 @@ leds_ctrl2_init(void)
     leds_ctrl2_state_t* const p_state = &g_leds_ctrl2;
 
     p_state->params = (leds_ctrl_params_t) {
-        .flag_polling_mode = false,
-        .num_http_targets  = 0,
-        .num_mqtt_targets  = 0,
+        .flag_use_mqtt        = 0,
+        .http_targets_bitmask = 0,
     };
     p_state->flag_wifi_ap_active    = false;
     p_state->flag_network_connected = true;
@@ -56,9 +55,8 @@ leds_ctrl2_deinit(void)
     leds_ctrl2_state_t* const p_state = &g_leds_ctrl2;
 
     p_state->params = (leds_ctrl_params_t) {
-        .flag_polling_mode = false,
-        .num_http_targets  = 0,
-        .num_mqtt_targets  = 0,
+        .flag_use_mqtt        = 0,
+        .http_targets_bitmask = 0,
     };
     p_state->flag_wifi_ap_active    = false;
     p_state->flag_network_connected = false;
@@ -79,19 +77,7 @@ leds_ctrl2_configure(const leds_ctrl_params_t params)
 {
     leds_ctrl2_state_t* const p_state = &g_leds_ctrl2;
 
-    assert(params.num_http_targets <= LEDS_CTRL_MAX_NUM_HTTP_CONN);
-    assert(params.num_mqtt_targets <= LEDS_CTRL_MAX_NUM_MQTT_CONN);
-
     p_state->params = params;
-
-    if (p_state->params.num_http_targets > LEDS_CTRL_MAX_NUM_HTTP_CONN)
-    {
-        p_state->params.num_http_targets = LEDS_CTRL_MAX_NUM_HTTP_CONN;
-    }
-    if (p_state->params.num_mqtt_targets > LEDS_CTRL_MAX_NUM_MQTT_CONN)
-    {
-        p_state->params.num_mqtt_targets = LEDS_CTRL_MAX_NUM_MQTT_CONN;
-    }
 }
 
 #if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
@@ -124,6 +110,12 @@ leds_ctrl2_event_to_str(const leds_ctrl2_event_e event)
             break;
         case LEDS_CTRL2_EVENT_HTTP1_DATA_SENT_FAIL:
             p_desc = "EVENT_HTTP1_DATA_SENT_FAIL";
+            break;
+        case LEDS_CTRL2_EVENT_HTTP2_DATA_SENT_SUCCESSFULLY:
+            p_desc = "EVENT_HTTP2_DATA_SENT_SUCCESSFULLY";
+            break;
+        case LEDS_CTRL2_EVENT_HTTP2_DATA_SENT_FAIL:
+            p_desc = "EVENT_HTTP2_DATA_SENT_FAIL";
             break;
         case LEDS_CTRL2_EVENT_HTTP_POLL_OK:
             p_desc = "EVENT_HTTP_POLL_OK";
@@ -200,6 +192,24 @@ leds_ctrl2_handle_event(const leds_ctrl2_event_e event)
     leds_ctrl2_on_event(p_state, event);
 }
 
+static uint32_t
+leds_ctrl2_get_num_configured_targets(const leds_ctrl2_state_t* const p_state)
+{
+    uint32_t cnt = 0;
+    for (uint32_t i = 0; i < LEDS_CTRL_MAX_NUM_HTTP_CONN; ++i)
+    {
+        if (0 != (p_state->params.http_targets_bitmask & (1U << i)))
+        {
+            cnt += 1;
+        }
+    }
+    if (p_state->params.flag_use_mqtt)
+    {
+        cnt += 1;
+    }
+    return cnt;
+}
+
 leds_blinking_mode_t
 leds_ctrl2_get_new_blinking_sequence(void)
 {
@@ -226,8 +236,8 @@ leds_ctrl2_get_new_blinking_sequence(void)
     {
         return (leds_blinking_mode_t) { .p_sequence = LEDS_BLINKING_MODE_NO_ADVS };
     }
-    const int32_t num_targets = p_state->params.num_http_targets + p_state->params.num_mqtt_targets;
-    if (0 == num_targets)
+    const uint32_t num_configured_targets = leds_ctrl2_get_num_configured_targets(p_state);
+    if (0 == num_configured_targets)
     {
         if (!p_state->flag_http_poll_status)
         {
@@ -235,26 +245,27 @@ leds_ctrl2_get_new_blinking_sequence(void)
         }
         return (leds_blinking_mode_t) { .p_sequence = LEDS_BLINKING_MODE_CONNECTED_TO_ALL_TARGETS };
     }
-    int32_t num_active_targets = 0;
-    for (int32_t i = 0; (i < p_state->params.num_http_targets) && (i < LEDS_CTRL_MAX_NUM_HTTP_CONN); ++i)
+    uint32_t num_active_targets = 0;
+
+    for (int32_t i = 0; i < LEDS_CTRL_MAX_NUM_HTTP_CONN; ++i)
     {
-        if (p_state->flag_http_conn_status[i])
+        if (0 != (p_state->params.http_targets_bitmask & (1U << (uint32_t)i)))
         {
-            num_active_targets += 1;
+            if (p_state->flag_http_conn_status[i])
+            {
+                num_active_targets += 1;
+            }
         }
     }
-    for (int32_t i = 0; (i < p_state->params.num_mqtt_targets) && (i < LEDS_CTRL_MAX_NUM_MQTT_CONN); ++i)
+    if (p_state->params.flag_use_mqtt && p_state->flag_mqtt_conn_status[0])
     {
-        if (p_state->flag_mqtt_conn_status[i])
-        {
-            num_active_targets += 1;
-        }
+        num_active_targets += 1;
     }
     if (0 == num_active_targets)
     {
         return (leds_blinking_mode_t) { .p_sequence = LEDS_BLINKING_MODE_NOT_CONNECTED_TO_ANY_TARGET };
     }
-    if (num_targets != num_active_targets)
+    if (num_configured_targets != num_active_targets)
     {
         return (leds_blinking_mode_t) { .p_sequence = LEDS_BLINKING_MODE_CONNECTED_TO_SOME_TARGETS };
     }

@@ -46,9 +46,8 @@ typedef enum leds_color_e
 
 typedef struct leds_ctrl_params_t
 {
-    bool    flag_polling_mode;
-    int32_t num_http_targets;
-    int32_t num_mqtt_targets;
+    bool     flag_use_mqtt;
+    uint32_t http_targets_bitmask;
 } leds_ctrl_params_t;
 
 typedef void (*leds_ctrl_callback_on_enter_state_after_reboot_t)(void);

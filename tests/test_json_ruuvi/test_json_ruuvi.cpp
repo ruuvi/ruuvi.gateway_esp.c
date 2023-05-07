@@ -863,7 +863,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords_and_remote_cfg_auth_cha
 
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
 
@@ -906,9 +906,6 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords_and_remote_cfg_auth_cha
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
@@ -1048,7 +1045,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_empty_prefix_and_client_id) // NOLIN
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
@@ -1083,9 +1080,6 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_empty_prefix_and_client_id) // NOLIN
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
@@ -1216,7 +1210,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_no_prefix_and_client_id) // NOLINT
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
@@ -1251,9 +1245,6 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_no_prefix_and_client_id) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
@@ -1386,7 +1377,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
@@ -1421,9 +1412,6 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
@@ -1550,7 +1538,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket) // NOLINT
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
@@ -1585,9 +1573,6 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
@@ -1714,7 +1699,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
@@ -1749,9 +1734,6 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
@@ -1880,7 +1862,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_full_config) // NOLINT
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
@@ -1915,9 +1897,6 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_full_config) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
@@ -2036,7 +2015,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_min_config) // NOLINT
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
@@ -2071,9 +2050,6 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_min_config) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
@@ -2193,7 +2169,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_via_dhcp) // NOLINT
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
@@ -2228,9 +2204,6 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_via_dhcp) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
@@ -2353,7 +2326,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_custom) // NOLINT
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
@@ -2388,9 +2361,6 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_custom) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
@@ -2521,7 +2491,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_default) // NOLINT
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
@@ -2556,9 +2526,6 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_default) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
@@ -2687,7 +2654,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     ASSERT_EQ(string(""), gw_cfg.ruuvi_cfg.mqtt.mqtt_pass.buf);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.http_stat.use_http_stat);
@@ -2716,9 +2683,6 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: ");
