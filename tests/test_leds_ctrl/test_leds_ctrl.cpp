@@ -73,9 +73,8 @@ TEST_F(TestLedsCtrl, test_erase_cfg_on_boot) // NOLINT
     leds_ctrl_init(true, g_cb_null);
 
     const leds_ctrl_params_t params = {
-        .flag_polling_mode = false,
-        .num_http_targets  = 1,
-        .num_mqtt_targets  = 0,
+        .flag_use_mqtt        = false,
+        .http_targets_bitmask = (1U << 0U) | (0U << 1U),
     };
     leds_ctrl_configure_sub_machine(params);
 
@@ -93,9 +92,8 @@ TEST_F(TestLedsCtrl, test_nrf52_fw_updating) // NOLINT
     leds_ctrl_init(false, g_cb_null);
 
     const leds_ctrl_params_t params = {
-        .flag_polling_mode = false,
-        .num_http_targets  = 1,
-        .num_mqtt_targets  = 0,
+        .flag_use_mqtt        = false,
+        .http_targets_bitmask = (1U << 0U) | (0U << 1U),
     };
     leds_ctrl_configure_sub_machine(params);
 
@@ -116,9 +114,8 @@ TEST_F(TestLedsCtrl, test_nrf52_failure_while_fw_updating) // NOLINT
     leds_ctrl_init(false, g_cb_null);
 
     const leds_ctrl_params_t params = {
-        .flag_polling_mode = false,
-        .num_http_targets  = 1,
-        .num_mqtt_targets  = 0,
+        .flag_use_mqtt        = false,
+        .http_targets_bitmask = (1U << 0U) | (0U << 1U),
     };
     leds_ctrl_configure_sub_machine(params);
 
@@ -142,9 +139,8 @@ TEST_F(TestLedsCtrl, test_nrf52_failure_while_fw_checking) // NOLINT
     leds_ctrl_init(false, g_cb_null);
 
     const leds_ctrl_params_t params = {
-        .flag_polling_mode = false,
-        .num_http_targets  = 1,
-        .num_mqtt_targets  = 0,
+        .flag_use_mqtt        = false,
+        .http_targets_bitmask = (1U << 0U) | (0U << 1U),
     };
     leds_ctrl_configure_sub_machine(params);
 
@@ -165,9 +161,8 @@ TEST_F(TestLedsCtrl, test_regular_boot) // NOLINT
     leds_ctrl_init(false, g_cb_null);
 
     const leds_ctrl_params_t params = {
-        .flag_polling_mode = false,
-        .num_http_targets  = 1,
-        .num_mqtt_targets  = 0,
+        .flag_use_mqtt        = false,
+        .http_targets_bitmask = (1U << 0U) | (0U << 1U),
     };
     leds_ctrl_configure_sub_machine(params);
 
@@ -218,9 +213,8 @@ TEST_F(TestLedsCtrl, test_regular_boot_then_firmware_updating) // NOLINT
     leds_ctrl_init(false, g_cb_null);
 
     const leds_ctrl_params_t params = {
-        .flag_polling_mode = false,
-        .num_http_targets  = 1,
-        .num_mqtt_targets  = 0,
+        .flag_use_mqtt        = false,
+        .http_targets_bitmask = (1U << 0U) | (0U << 1U),
     };
     leds_ctrl_configure_sub_machine(params);
 

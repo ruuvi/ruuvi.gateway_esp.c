@@ -1833,12 +1833,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg_from_lan) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'use_http_ruuvi' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'use_http' in config-json");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: not found");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'http_data_format' in config-json");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: not found");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'http_auth' in config-json");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: not found");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'http_url' in config-json");
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'use_http_stat' in config-json");
@@ -2038,9 +2032,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: ");
@@ -2377,9 +2368,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: ");
@@ -2574,9 +2562,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: ");
@@ -2749,9 +2734,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: ");
@@ -2928,9 +2910,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_wifi_ap_active) //
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: ");

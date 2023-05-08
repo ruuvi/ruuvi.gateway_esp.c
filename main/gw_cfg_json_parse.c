@@ -355,69 +355,72 @@ gw_cfg_json_parse_http(const cJSON* const p_json_root, ruuvi_gw_cfg_http_t* cons
         LOG_WARN("Can't find key '%s' in config-json", "use_http");
     }
 
-    p_gw_cfg_http->data_format = gw_cfg_json_parse_http_data_format(p_json_root);
-    p_gw_cfg_http->auth_type   = gw_cfg_json_parse_http_auth_type(p_json_root);
+    if (p_gw_cfg_http->use_http)
+    {
+        p_gw_cfg_http->data_format = gw_cfg_json_parse_http_data_format(p_json_root);
+        p_gw_cfg_http->auth_type   = gw_cfg_json_parse_http_auth_type(p_json_root);
 
-    if (!gw_cfg_json_copy_string_val(
-            p_json_root,
-            "http_url",
-            &p_gw_cfg_http->http_url.buf[0],
-            sizeof(p_gw_cfg_http->http_url.buf)))
-    {
-        LOG_WARN("Can't find key '%s' in config-json", "http_url");
-    }
-    switch (p_gw_cfg_http->auth_type)
-    {
-        case GW_CFG_HTTP_AUTH_TYPE_NONE:
-            break;
-        case GW_CFG_HTTP_AUTH_TYPE_BASIC:
-            if (!gw_cfg_json_copy_string_val(
-                    p_json_root,
-                    "http_user",
-                    &p_gw_cfg_http->auth.auth_basic.user.buf[0],
-                    sizeof(p_gw_cfg_http->auth.auth_basic.user.buf)))
-            {
-                LOG_WARN("Can't find key '%s' in config-json", "http_user");
-            }
-            if (!gw_cfg_json_copy_string_val(
-                    p_json_root,
-                    "http_pass",
-                    &p_gw_cfg_http->auth.auth_basic.password.buf[0],
-                    sizeof(p_gw_cfg_http->auth.auth_basic.password.buf)))
-            {
-                LOG_INFO("Can't find key '%s' in config-json, leave the previous value unchanged", "http_pass");
-            }
-            break;
-        case GW_CFG_HTTP_AUTH_TYPE_BEARER:
-            if (!gw_cfg_json_copy_string_val(
-                    p_json_root,
-                    "http_bearer_token",
-                    &p_gw_cfg_http->auth.auth_bearer.token.buf[0],
-                    sizeof(p_gw_cfg_http->auth.auth_bearer.token.buf)))
-            {
-                LOG_WARN("Can't find key '%s' in config-json", "http_bearer_token");
-            }
-            break;
-        case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
-            if (!gw_cfg_json_copy_string_val(
-                    p_json_root,
-                    "http_api_key",
-                    &p_gw_cfg_http->auth.auth_token.token.buf[0],
-                    sizeof(p_gw_cfg_http->auth.auth_token.token.buf)))
-            {
-                LOG_WARN("Can't find key '%s' in config-json", "http_api_key");
-            }
-            break;
-    }
-    if (p_gw_cfg_http->use_http && (GW_CFG_HTTP_DATA_FORMAT_RUUVI == p_gw_cfg_http->data_format)
-        && (GW_CFG_HTTP_AUTH_TYPE_NONE == p_gw_cfg_http->auth_type)
-        && (0 == strcmp(RUUVI_GATEWAY_HTTP_DEFAULT_URL, p_gw_cfg_http->http_url.buf)))
-    {
-        // 'use_http_ruuvi' was added in v1.14, so we need to patch configuration
-        // to ensure compatibility between configuration versions when upgrading firmware to a new version
-        // or rolling back to an old one
-        p_gw_cfg_http->use_http_ruuvi = true;
-        p_gw_cfg_http->use_http       = false;
+        if (!gw_cfg_json_copy_string_val(
+                p_json_root,
+                "http_url",
+                &p_gw_cfg_http->http_url.buf[0],
+                sizeof(p_gw_cfg_http->http_url.buf)))
+        {
+            LOG_WARN("Can't find key '%s' in config-json", "http_url");
+        }
+        switch (p_gw_cfg_http->auth_type)
+        {
+            case GW_CFG_HTTP_AUTH_TYPE_NONE:
+                break;
+            case GW_CFG_HTTP_AUTH_TYPE_BASIC:
+                if (!gw_cfg_json_copy_string_val(
+                        p_json_root,
+                        "http_user",
+                        &p_gw_cfg_http->auth.auth_basic.user.buf[0],
+                        sizeof(p_gw_cfg_http->auth.auth_basic.user.buf)))
+                {
+                    LOG_WARN("Can't find key '%s' in config-json", "http_user");
+                }
+                if (!gw_cfg_json_copy_string_val(
+                        p_json_root,
+                        "http_pass",
+                        &p_gw_cfg_http->auth.auth_basic.password.buf[0],
+                        sizeof(p_gw_cfg_http->auth.auth_basic.password.buf)))
+                {
+                    LOG_INFO("Can't find key '%s' in config-json, leave the previous value unchanged", "http_pass");
+                }
+                break;
+            case GW_CFG_HTTP_AUTH_TYPE_BEARER:
+                if (!gw_cfg_json_copy_string_val(
+                        p_json_root,
+                        "http_bearer_token",
+                        &p_gw_cfg_http->auth.auth_bearer.token.buf[0],
+                        sizeof(p_gw_cfg_http->auth.auth_bearer.token.buf)))
+                {
+                    LOG_WARN("Can't find key '%s' in config-json", "http_bearer_token");
+                }
+                break;
+            case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
+                if (!gw_cfg_json_copy_string_val(
+                        p_json_root,
+                        "http_api_key",
+                        &p_gw_cfg_http->auth.auth_token.token.buf[0],
+                        sizeof(p_gw_cfg_http->auth.auth_token.token.buf)))
+                {
+                    LOG_WARN("Can't find key '%s' in config-json", "http_api_key");
+                }
+                break;
+        }
+        if ((GW_CFG_HTTP_DATA_FORMAT_RUUVI == p_gw_cfg_http->data_format)
+            && (GW_CFG_HTTP_AUTH_TYPE_NONE == p_gw_cfg_http->auth_type)
+            && (0 == strcmp(RUUVI_GATEWAY_HTTP_DEFAULT_URL, p_gw_cfg_http->http_url.buf)))
+        {
+            // 'use_http_ruuvi' was added in v1.14, so we need to patch configuration
+            // to ensure compatibility between configuration versions when upgrading firmware to a new version
+            // or rolling back to an old one
+            p_gw_cfg_http->use_http_ruuvi = true;
+            p_gw_cfg_http->use_http       = false;
+        }
     }
 }
 
