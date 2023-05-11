@@ -19,7 +19,7 @@
 
 #define RUUVI_GATEWAY_NVS_NAMESPACE "ruuvi_gateway"
 
-#define RUUVI_GATEWAY_NVS_PARTITION_GW_CFG_DEFAULT "gw_cfg_def"
+#define RUUVI_GATEWAY_NVS_PARTITION_GW_CFG_STORAGE "gw_cfg_def"
 
 static const char TAG[] = "ruuvi_nvs";
 
@@ -39,13 +39,21 @@ ruuvi_nvs_init_partition(const char* const p_partition_name)
 bool
 ruuvi_nvs_init(void)
 {
-    return ruuvi_nvs_init_partition(NVS_DEFAULT_PART_NAME);
+    if (!ruuvi_nvs_init_partition(NVS_DEFAULT_PART_NAME))
+    {
+        return false;
+    }
+    return true;
 }
 
 bool
-ruuvi_nvs_init_gw_cfg_default(void)
+ruuvi_nvs_init_gw_cfg_storage(void)
 {
-    return ruuvi_nvs_init_partition(RUUVI_GATEWAY_NVS_PARTITION_GW_CFG_DEFAULT);
+    if (!ruuvi_nvs_init_partition(RUUVI_GATEWAY_NVS_PARTITION_GW_CFG_STORAGE))
+    {
+        return false;
+    }
+    return true;
 }
 
 static bool
@@ -68,9 +76,9 @@ ruuvi_nvs_deinit(void)
 }
 
 bool
-ruuvi_nvs_deinit_gw_cfg_default(void)
+ruuvi_nvs_deinit_gw_cfg_storage(void)
 {
-    return ruuvi_nvs_deinit_partition(RUUVI_GATEWAY_NVS_PARTITION_GW_CFG_DEFAULT);
+    return ruuvi_nvs_deinit_partition(RUUVI_GATEWAY_NVS_PARTITION_GW_CFG_STORAGE);
 }
 
 void
@@ -78,6 +86,17 @@ ruuvi_nvs_erase(void)
 {
     LOG_INFO("Erase NVS");
     const esp_err_t err = nvs_flash_erase();
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "nvs_flash_erase failed");
+    }
+}
+
+void
+ruuvi_nvs_erase_gw_cfg_storage(void)
+{
+    LOG_INFO("Erase NVS GW_CFG_STORAGE");
+    const esp_err_t err = nvs_flash_erase_partition(RUUVI_GATEWAY_NVS_PARTITION_GW_CFG_STORAGE);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(err, "nvs_flash_erase failed");
@@ -148,7 +167,7 @@ ruuvi_nvs_open(nvs_open_mode_t open_mode, nvs_handle_t* p_handle)
 }
 
 bool
-ruuvi_nvs_open_gw_cfg_default(nvs_open_mode_t open_mode, nvs_handle_t* p_handle)
+ruuvi_nvs_open_gw_cfg_storage(nvs_open_mode_t open_mode, nvs_handle_t* p_handle)
 {
-    return ruuvi_nvs_open_partition(RUUVI_GATEWAY_NVS_PARTITION_GW_CFG_DEFAULT, open_mode, p_handle);
+    return ruuvi_nvs_open_partition(RUUVI_GATEWAY_NVS_PARTITION_GW_CFG_STORAGE, open_mode, p_handle);
 }

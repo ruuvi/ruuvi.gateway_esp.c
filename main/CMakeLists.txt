@@ -43,6 +43,8 @@ idf_component_register(
             gw_cfg_default.h
             gw_cfg_default_json.c
             gw_cfg_default_json.h
+            gw_cfg_storage.c
+            gw_cfg_storage.h
             gw_status.c
             gw_status.h
             gw_mac.c

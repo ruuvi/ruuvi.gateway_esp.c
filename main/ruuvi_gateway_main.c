@@ -42,6 +42,7 @@
 #include "gw_status.h"
 #include "reset_info.h"
 #include "network_subsystem.h"
+#include "gw_cfg_storage.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -376,6 +377,8 @@ handle_reset_button_is_pressed_during_boot(void)
     ruuvi_nvs_erase();
     ruuvi_nvs_init();
 
+    gw_cfg_storage_deinit_erase_init();
+
     const mac_address_bin_t mac_addr_zero = { 0 };
     if (0 != memcmp(&mac_addr_zero, &mac_addr, sizeof(mac_addr)))
     {
@@ -461,6 +464,7 @@ main_task_init(void)
     }
 
     ruuvi_nvs_init();
+    ruuvi_nvs_init_gw_cfg_storage();
 
     LOG_INFO(
         "Checking the state of CONFIGURE button during startup: is_pressed: %s",
