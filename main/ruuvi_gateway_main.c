@@ -417,7 +417,7 @@ ruuvi_cb_on_change_cfg(const gw_cfg_t* const p_gw_cfg)
 }
 
 static void
-ruuvi_check_partition_table(void)
+partition_table_check_and_update(void)
 {
     const uint32_t       partition_table_address = 0x8000;
     static const uint8_t g_partition_table[]     = {
@@ -521,7 +521,7 @@ main_task_init(void)
         return false;
     }
 
-    ruuvi_check_partition_table();
+    partition_table_check_and_update();
 
     ruuvi_nvs_init();
 
