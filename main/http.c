@@ -1310,26 +1310,23 @@ http_check_event_handler(esp_http_client_event_t* p_evt)
     return ESP_OK;
 }
 
-static bool
+static http_server_resp_t
 http_download_by_handle(
     esp_http_client_handle_t http_handle,
     const bool               flag_feed_task_watchdog,
-    const TimeUnitsSeconds_t timeout_seconds,
-    http_resp_code_e* const  p_http_resp_code)
+    const TimeUnitsSeconds_t timeout_seconds)
 {
     esp_err_t err = esp_http_client_set_header(http_handle, "Accept", "text/html,application/octet-stream,*/*");
     if (ESP_OK != err)
     {
         LOG_ERR("%s failed", "esp_http_client_set_header");
-        *p_http_resp_code = HTTP_RESP_CODE_500;
-        return false;
+        return http_server_resp_500();
     }
     err = esp_http_client_set_header(http_handle, "User-Agent", "RuuviGateway");
     if (ESP_OK != err)
     {
         LOG_ERR("%s failed", "esp_http_client_set_header");
-        *p_http_resp_code = HTTP_RESP_CODE_500;
-        return false;
+        return http_server_resp_500();
     }
 
     LOG_DBG("esp_http_client_perform");
@@ -1340,8 +1337,7 @@ http_download_by_handle(
             "HTTP GET Status = %d, content_length = %d",
             esp_http_client_get_status_code(http_handle),
             esp_http_client_get_content_length(http_handle));
-        *p_http_resp_code = esp_http_client_get_status_code(http_handle);
-        return true;
+        return http_server_resp_err(esp_http_client_get_status_code(http_handle));
     }
     if (ESP_ERR_HTTP_EAGAIN != err)
     {
@@ -1350,22 +1346,16 @@ http_download_by_handle(
             "esp_http_client_perform failed, HTTP resp code %d (http_handle=%ld)",
             (printf_int_t)esp_http_client_get_status_code(http_handle),
             (printf_long_t)http_handle);
-        *p_http_resp_code = HTTP_RESP_CODE_502;
-        return false;
+        return http_server_resp_502();
     }
 
-    const http_server_resp_t resp = http_wait_until_async_req_completed(
+    http_server_resp_t resp = http_wait_until_async_req_completed(
         http_handle,
         NULL,
         flag_feed_task_watchdog,
         timeout_seconds);
 
-    *p_http_resp_code = resp.http_resp_code;
-    if (HTTP_RESP_CODE_200 == resp.http_resp_code)
-    {
-        return true;
-    }
-    return false;
+    return resp;
 }
 
 static void
@@ -1552,13 +1542,10 @@ http_download_with_auth(
     }
 
     LOG_DBG("http_download_by_handle");
-    http_resp_code_e http_resp_code = HTTP_RESP_CODE_200;
-
-    const bool result = http_download_by_handle(
+    http_server_resp_t resp = http_download_by_handle(
         cb_info.http_handle,
         param.flag_feed_task_watchdog,
-        param.timeout_seconds,
-        &http_resp_code);
+        param.timeout_seconds);
 
     LOG_DBG("esp_http_client_cleanup");
     const esp_err_t err = esp_http_client_cleanup(cb_info.http_handle);
@@ -1570,7 +1557,16 @@ http_download_with_auth(
     os_free(p_http_config);
     resume_relaying_and_wait(param.flag_free_memory);
 
-    return result;
+    if ((HTTP_CONTENT_LOCATION_HEAP == resp.content_location) && (NULL != resp.select_location.memory.p_buf))
+    {
+        os_free(resp.select_location.memory.p_buf);
+    }
+
+    if (HTTP_RESP_CODE_200 == resp.http_resp_code)
+    {
+        return true;
+    }
+    return false;
 }
 
 bool
@@ -1674,11 +1670,10 @@ http_check_with_auth(
     }
 
     LOG_DBG("http_check_by_handle");
-    const bool result = http_download_by_handle(
+    http_server_resp_t resp = http_download_by_handle(
         cb_info.http_handle,
         param.flag_feed_task_watchdog,
-        param.timeout_seconds,
-        p_http_resp_code);
+        param.timeout_seconds);
 
     LOG_DBG("esp_http_client_cleanup");
     const esp_err_t err = esp_http_client_cleanup(cb_info.http_handle);
@@ -1690,7 +1685,16 @@ http_check_with_auth(
     os_free(p_http_config);
     resume_relaying_and_wait(param.flag_free_memory);
 
-    return result;
+    if ((HTTP_CONTENT_LOCATION_HEAP == resp.content_location) && (NULL != resp.select_location.memory.p_buf))
+    {
+        os_free(resp.select_location.memory.p_buf);
+    }
+
+    if (HTTP_RESP_CODE_200 == resp.http_resp_code)
+    {
+        return true;
+    }
+    return false;
 }
 
 bool
