@@ -86,6 +86,9 @@ ATTR_NONNULL(2)
 http_server_resp_t
 http_server_cb_gen_resp(const http_resp_code_e resp_code, const char* const p_fmt, ...);
 
+str_buf_t
+http_server_get_from_params_with_decoding(const char* const p_params, const char* const p_key);
+
 #if RUUVI_TESTS_HTTP_SERVER_CB
 
 time_t

@@ -22,6 +22,7 @@
 #include "os_malloc.h"
 #include "esp_tls.h"
 #include "snprintf_with_esp_err_desc.h"
+#include "gw_cfg_storage.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -52,6 +53,9 @@ typedef struct mqtt_protected_data_t
     ruuvi_gw_cfg_mqtt_prefix_t mqtt_prefix;
     bool                       mqtt_disable_retained_messages;
     char                       err_msg[MQTT_PROTECTED_DATA_ERR_MSG_SIZE];
+    str_buf_t                  str_buf_server_cert_mqtt;
+    str_buf_t                  str_buf_client_cert;
+    str_buf_t                  str_buf_client_key;
 } mqtt_protected_data_t;
 
 static bool                  g_mqtt_mutex_initialized = false;
@@ -436,6 +440,9 @@ mqtt_generate_client_config(
     const ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg,
     const mqtt_topic_buf_t* const    p_mqtt_topic,
     const char* const                p_lwt_message,
+    const char* const                p_cert_pem,
+    const char* const                p_client_cert_pem,
+    const char* const                p_client_key_pem,
     void* const                      p_user_context)
 {
     p_cli_cfg->event_handle                = &mqtt_event_handler;
@@ -458,11 +465,11 @@ mqtt_generate_client_config(
     p_cli_cfg->task_prio                   = 0;
     p_cli_cfg->task_stack                  = 0;
     p_cli_cfg->buffer_size                 = 0;
-    p_cli_cfg->cert_pem                    = NULL;
+    p_cli_cfg->cert_pem                    = p_cert_pem;
     p_cli_cfg->cert_len                    = 0;
-    p_cli_cfg->client_cert_pem             = NULL;
+    p_cli_cfg->client_cert_pem             = p_client_cert_pem;
     p_cli_cfg->client_cert_len             = 0;
-    p_cli_cfg->client_key_pem              = NULL;
+    p_cli_cfg->client_key_pem              = p_client_key_pem;
     p_cli_cfg->client_key_len              = 0;
     p_cli_cfg->transport                   = mqtt_transport_name_to_code(p_mqtt_cfg->mqtt_transport.buf);
     p_cli_cfg->refresh_connection_after_ms = 0;
@@ -498,15 +505,34 @@ mqtt_create_client_config(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg
     const char* const p_lwt_message             = "{\"state\": \"offline\"}";
 
     LOG_INFO(
-        "Using server: %s, client id: '%s', topic prefix: '%s', port: %u, user: '%s', password: '%s'",
+        "Using server: %s, client id: '%s', topic prefix: '%s', port: %u",
         p_mqtt_cfg->mqtt_server.buf,
         p_mqtt_cfg->mqtt_client_id.buf,
         p_mqtt_cfg->mqtt_prefix.buf,
-        p_mqtt_cfg->mqtt_port,
+        p_mqtt_cfg->mqtt_port);
+    LOG_INFO(
+        "Authentication: user: '%s', password: '%s'",
         p_mqtt_cfg->mqtt_user.buf,
         (LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG) ? p_mqtt_cfg->mqtt_pass.buf : "******");
+    LOG_INFO(
+        "Certificates: use_ssl_client_cert=%d, use_ssl_server_cert=%d",
+        p_mqtt_cfg->use_ssl_client_cert,
+        p_mqtt_cfg->use_ssl_server_cert);
+    LOG_INFO(
+        "server_cert_mqtt: %s",
+        p_mqtt_data->str_buf_server_cert_mqtt.buf ? p_mqtt_data->str_buf_server_cert_mqtt.buf : "NULL");
+    LOG_INFO("client_cert: %s", p_mqtt_data->str_buf_client_cert.buf ? p_mqtt_data->str_buf_client_cert.buf : "NULL");
+    LOG_INFO("client_key: %s", p_mqtt_data->str_buf_client_key.buf ? p_mqtt_data->str_buf_client_key.buf : "NULL");
 
-    mqtt_generate_client_config(p_cli_cfg, p_mqtt_cfg, &p_mqtt_data->mqtt_topic, p_lwt_message, p_mqtt_data);
+    mqtt_generate_client_config(
+        p_cli_cfg,
+        p_mqtt_cfg,
+        &p_mqtt_data->mqtt_topic,
+        p_lwt_message,
+        p_mqtt_data->str_buf_server_cert_mqtt.buf,
+        p_mqtt_data->str_buf_client_cert.buf,
+        p_mqtt_data->str_buf_client_key.buf,
+        p_mqtt_data);
 
     return p_cli_cfg;
 }
@@ -535,6 +561,19 @@ mqtt_app_start_internal(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg_m
 {
     gw_status_clear_mqtt_connected_and_error();
     p_mqtt_data->err_msg[0] = '\0';
+
+    p_mqtt_data->str_buf_server_cert_mqtt = str_buf_init_null();
+    p_mqtt_data->str_buf_client_cert      = str_buf_init_null();
+    p_mqtt_data->str_buf_client_key       = str_buf_init_null();
+    if (p_mqtt_cfg->use_ssl_client_cert)
+    {
+        p_mqtt_data->str_buf_client_cert = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_CLIENT_CERT);
+        p_mqtt_data->str_buf_client_key  = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_CLIENT_KEY);
+    }
+    if (p_mqtt_cfg->use_ssl_server_cert)
+    {
+        p_mqtt_data->str_buf_server_cert_mqtt = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_CERT_MQTT);
+    }
 
     if (('\0' == p_mqtt_cfg->mqtt_server.buf[0]) || (0 == p_mqtt_cfg->mqtt_port))
     {
@@ -635,6 +674,10 @@ mqtt_app_stop(void)
     }
     gw_status_clear_mqtt_connected_and_error();
     gw_status_clear_mqtt_started();
+    LOG_INFO("Free memory, allocated for certificates");
+    str_buf_free_buf(&p_mqtt_data->str_buf_server_cert_mqtt);
+    str_buf_free_buf(&p_mqtt_data->str_buf_client_cert);
+    str_buf_free_buf(&p_mqtt_data->str_buf_client_key);
     mqtt_mutex_unlock(&p_mqtt_data);
 }
 

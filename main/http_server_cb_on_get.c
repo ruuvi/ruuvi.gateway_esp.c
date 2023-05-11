@@ -368,53 +368,6 @@ http_server_resp_history(const char* const p_params)
 }
 
 HTTP_SERVER_CB_STATIC
-str_buf_t
-http_server_get_from_params(const char* const p_params, const char* const p_key)
-{
-    const size_t      key_len = strlen(p_key);
-    const char* const p_param = strstr(p_params, p_key);
-    if (NULL == p_param)
-    {
-        LOG_DBG("Can't find key '%s' in URL params", p_key);
-        return str_buf_init_null();
-    }
-    const char* const p_value = &p_param[key_len];
-    const char* const p_end   = strchr(p_value, '&');
-    const size_t      val_len = (NULL == p_end) ? strlen(p_value) : (size_t)(ptrdiff_t)(p_end - p_value);
-    LOG_DBG("HTTP params: %s%.*s", p_key, val_len, p_value);
-
-    const str_buf_t result = str_buf_printf_with_alloc("%.*s", (printf_int_t)val_len, p_value);
-    if (NULL == result.buf)
-    {
-        LOG_ERR("Can't allocate memory param %s%.*s", p_key, val_len, p_value);
-    }
-    return result;
-}
-
-HTTP_SERVER_CB_STATIC
-str_buf_t
-http_server_get_from_params_with_decoding(const char* const p_params, const char* const p_key)
-{
-    str_buf_t val_encoded = http_server_get_from_params(p_params, p_key);
-    if (NULL == val_encoded.buf)
-    {
-        LOG_ERR("HTTP params: Can't find '%s'", p_key);
-        return str_buf_init_null();
-    }
-    LOG_DBG("HTTP params: key '%s': value (encoded): %s", p_key, val_encoded.buf);
-
-    const str_buf_t val_decoded = url_decode_with_alloc(val_encoded.buf);
-    str_buf_free_buf(&val_encoded);
-    if (NULL == val_decoded.buf)
-    {
-        LOG_ERR("HTTP params: key '%s': Can't decode value: %s", p_key, val_encoded.buf);
-        return str_buf_init_null();
-    }
-    LOG_DBG("HTTP params: key '%s': value (decoded): %s", p_key, val_decoded.buf);
-    return val_decoded;
-}
-
-HTTP_SERVER_CB_STATIC
 bool
 http_server_get_bool_from_params(const char* const p_params, const char* const p_key)
 {
@@ -525,6 +478,52 @@ http_server_get_validate_type_from_params(const char* const p_params)
 
 HTTP_SERVER_CB_STATIC
 bool
+http_server_get_use_ssl_client_cert(const char* const p_params)
+{
+    const char* const p_prefix   = "use_ssl_client_cert=";
+    const size_t      prefix_len = strlen(p_prefix);
+    const char* const p_param    = strstr(p_params, p_prefix);
+    if (NULL == p_param)
+    {
+        LOG_ERR("Can't find prefix '%s'", p_prefix);
+        return false;
+    }
+    const char* const p_value = &p_param[prefix_len];
+    const char* const p_end   = strchr(p_value, '&');
+    const size_t      val_len = (NULL == p_end) ? strlen(p_value) : (size_t)(ptrdiff_t)(p_end - p_value);
+    LOG_INFO("Found use_ssl_client_cert: %.*s", val_len, p_value);
+    if (0 == strncmp(p_value, "true", val_len))
+    {
+        return true;
+    }
+    return false;
+}
+
+HTTP_SERVER_CB_STATIC
+bool
+http_server_get_use_ssl_server_cert(const char* const p_params)
+{
+    const char* const p_prefix   = "use_ssl_server_cert=";
+    const size_t      prefix_len = strlen(p_prefix);
+    const char* const p_param    = strstr(p_params, p_prefix);
+    if (NULL == p_param)
+    {
+        LOG_ERR("Can't find prefix '%s'", p_prefix);
+        return false;
+    }
+    const char* const p_value = &p_param[prefix_len];
+    const char* const p_end   = strchr(p_value, '&');
+    const size_t      val_len = (NULL == p_end) ? strlen(p_value) : (size_t)(ptrdiff_t)(p_end - p_value);
+    LOG_INFO("Found use_ssl_server_cert: %.*s", val_len, p_value);
+    if (0 == strncmp(p_value, "true", val_len))
+    {
+        return true;
+    }
+    return false;
+}
+
+HTTP_SERVER_CB_STATIC
+bool
 http_server_parse_mqtt_url(const char* const p_url, ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg)
 {
     LOG_DBG("Parse MQTT URL: %s", p_url);
@@ -615,7 +614,9 @@ http_server_on_get_check_mqtt(
     const char* const        p_user,
     const char* const        p_pass,
     const char* const        p_params,
-    const TimeUnitsSeconds_t timeout_seconds)
+    const TimeUnitsSeconds_t timeout_seconds,
+    const bool               use_ssl_client_cert,
+    const bool               use_ssl_server_cert)
 {
     str_buf_t topic_prefix = http_server_get_from_params_with_decoding(p_params, "mqtt_topic_prefix=");
     if (NULL == topic_prefix.buf)
@@ -659,6 +660,8 @@ http_server_on_get_check_mqtt(
 
     p_mqtt_cfg->use_mqtt                       = true;
     p_mqtt_cfg->mqtt_disable_retained_messages = true;
+    p_mqtt_cfg->use_ssl_client_cert            = use_ssl_client_cert;
+    p_mqtt_cfg->use_ssl_server_cert            = use_ssl_server_cert;
 
     (void)snprintf(p_mqtt_cfg->mqtt_prefix.buf, sizeof(p_mqtt_cfg->mqtt_prefix.buf), "%s", topic_prefix.buf);
     (void)snprintf(p_mqtt_cfg->mqtt_client_id.buf, sizeof(p_mqtt_cfg->mqtt_client_id.buf), "%s", client_id.buf);
@@ -680,7 +683,9 @@ http_server_on_get_check_remote_cfg(
     const char* const p_url,
     const char* const p_user,
     const char* const p_pass,
-    const char* const p_params)
+    const char* const p_params,
+    const bool        use_ssl_client_cert,
+    const bool        use_ssl_server_cert)
 {
     str_buf_t auth_type = http_server_get_from_params_with_decoding(p_params, "auth_type=");
     if (NULL == auth_type.buf)
@@ -695,6 +700,8 @@ http_server_on_get_check_remote_cfg(
         return http_server_resp_500();
     }
     p_remote_cfg->use_remote_cfg           = true;
+    p_remote_cfg->use_ssl_client_cert      = use_ssl_client_cert;
+    p_remote_cfg->use_ssl_server_cert      = use_ssl_server_cert;
     p_remote_cfg->refresh_interval_minutes = 0;
     (void)snprintf(p_remote_cfg->url.buf, sizeof(p_remote_cfg->url.buf), "%s", p_url);
     if (0 == strcmp(auth_type.buf, "none"))
@@ -801,7 +808,9 @@ http_server_resp_validate_post_advs(
     const gw_cfg_http_auth_type_e auth_type,
     const str_buf_t* const        p_user,
     const str_buf_t* const        p_password,
-    const bool                    flag_use_saved_password)
+    const bool                    flag_use_saved_password,
+    const bool                    use_ssl_client_cert,
+    const bool                    use_ssl_server_cert)
 {
     str_buf_t saved_password = gw_cfg_get_http_password_copy();
     if (NULL == saved_password.buf)
@@ -814,7 +823,9 @@ http_server_resp_validate_post_advs(
         auth_type,
         p_user->buf,
         flag_use_saved_password ? saved_password.buf : p_password->buf,
-        HTTP_DOWNLOAD_TIMEOUT_SECONDS);
+        HTTP_DOWNLOAD_TIMEOUT_SECONDS,
+        use_ssl_client_cert,
+        use_ssl_server_cert);
     str_buf_free_buf(&saved_password);
     return http_resp;
 }
@@ -826,7 +837,9 @@ http_server_resp_validate_post_stat(
     const gw_cfg_http_auth_type_e auth_type,
     const str_buf_t* const        p_user,
     const str_buf_t* const        p_password,
-    const bool                    flag_use_saved_password)
+    const bool                    flag_use_saved_password,
+    const bool                    use_ssl_client_cert,
+    const bool                    use_ssl_server_cert)
 {
     str_buf_t saved_password = gw_cfg_get_http_stat_password_copy();
     if (NULL == saved_password.buf)
@@ -839,7 +852,9 @@ http_server_resp_validate_post_stat(
         p_url->buf,
         (GW_CFG_HTTP_AUTH_TYPE_NONE == auth_type) ? "" : p_user->buf,
         (GW_CFG_HTTP_AUTH_TYPE_NONE == auth_type) ? "" : p_pass,
-        HTTP_DOWNLOAD_TIMEOUT_SECONDS);
+        HTTP_DOWNLOAD_TIMEOUT_SECONDS,
+        use_ssl_client_cert,
+        use_ssl_server_cert);
     str_buf_free_buf(&saved_password);
     return http_resp;
 }
@@ -852,7 +867,9 @@ http_server_resp_validate_check_mqtt(
     const str_buf_t* const        p_user,
     const str_buf_t* const        p_password,
     const bool                    flag_use_saved_password,
-    const char* const             p_params)
+    const char* const             p_params,
+    const bool                    use_ssl_client_cert,
+    const bool                    use_ssl_server_cert)
 {
     str_buf_t saved_password = gw_cfg_get_mqtt_password_copy();
     if (NULL == saved_password.buf)
@@ -867,7 +884,9 @@ http_server_resp_validate_check_mqtt(
         (GW_CFG_HTTP_AUTH_TYPE_NONE == auth_type) ? "" : p_user->buf,
         (GW_CFG_HTTP_AUTH_TYPE_NONE == auth_type) ? "" : p_pass,
         p_params,
-        HTTP_DOWNLOAD_CHECK_MQTT_TIMEOUT_SECONDS);
+        HTTP_DOWNLOAD_CHECK_MQTT_TIMEOUT_SECONDS,
+        use_ssl_client_cert,
+        use_ssl_server_cert);
     str_buf_free_buf(&saved_password);
     return http_resp;
 }
@@ -880,7 +899,9 @@ http_server_resp_validate_check_remote_cfg(
     const str_buf_t* const        p_user,
     const str_buf_t* const        p_password,
     const bool                    flag_use_saved_password,
-    const char* const             p_params)
+    const char* const             p_params,
+    const bool                    use_ssl_client_cert,
+    const bool                    use_ssl_server_cert)
 {
     const ruuvi_gw_cfg_remote_t* p_saved_remote_cfg = gw_cfg_get_remote_cfg_copy();
     if (NULL == p_saved_remote_cfg)
@@ -908,7 +929,9 @@ http_server_resp_validate_check_remote_cfg(
         p_url->buf,
         p_user->buf,
         flag_use_saved_password ? p_saved_password : p_password->buf,
-        p_params);
+        p_params,
+        use_ssl_client_cert,
+        use_ssl_server_cert);
     return http_resp;
 }
 
@@ -1053,8 +1076,10 @@ http_server_resp_validate_url(const char* const p_params)
     const bool flag_wait_until_relaying_stopped = true;
     gw_status_suspend_relaying(flag_wait_until_relaying_stopped);
 
-    http_server_resp_t         http_resp     = http_server_resp_err(HTTP_RESP_CODE_400);
-    const http_validate_type_e validate_type = http_server_get_validate_type_from_params(p_params);
+    http_server_resp_t         http_resp           = http_server_resp_err(HTTP_RESP_CODE_400);
+    const http_validate_type_e validate_type       = http_server_get_validate_type_from_params(p_params);
+    const bool                 use_ssl_client_cert = http_server_get_use_ssl_client_cert(p_params);
+    const bool                 use_ssl_server_cert = http_server_get_use_ssl_server_cert(p_params);
     switch (validate_type)
     {
         case HTTP_VALIDATE_TYPE_INVALID:
@@ -1062,10 +1087,24 @@ http_server_resp_validate_url(const char* const p_params)
             http_resp = http_server_resp_500();
             break;
         case HTTP_VALIDATE_TYPE_POST_ADVS:
-            http_resp = http_server_resp_validate_post_advs(&url, auth_type, &user, &password, flag_use_saved_password);
+            http_resp = http_server_resp_validate_post_advs(
+                &url,
+                auth_type,
+                &user,
+                &password,
+                flag_use_saved_password,
+                use_ssl_client_cert,
+                use_ssl_server_cert);
             break;
         case HTTP_VALIDATE_TYPE_POST_STAT:
-            http_resp = http_server_resp_validate_post_stat(&url, auth_type, &user, &password, flag_use_saved_password);
+            http_resp = http_server_resp_validate_post_stat(
+                &url,
+                auth_type,
+                &user,
+                &password,
+                flag_use_saved_password,
+                use_ssl_client_cert,
+                use_ssl_server_cert);
             break;
         case HTTP_VALIDATE_TYPE_CHECK_MQTT:
             http_resp = http_server_resp_validate_check_mqtt(
@@ -1074,7 +1113,9 @@ http_server_resp_validate_url(const char* const p_params)
                 &user,
                 &password,
                 flag_use_saved_password,
-                p_params);
+                p_params,
+                use_ssl_client_cert,
+                use_ssl_server_cert);
             break;
         case HTTP_VALIDATE_TYPE_CHECK_REMOTE_CFG:
             http_resp = http_server_resp_validate_check_remote_cfg(
@@ -1083,7 +1124,9 @@ http_server_resp_validate_url(const char* const p_params)
                 &user,
                 &password,
                 flag_use_saved_password,
-                p_params);
+                p_params,
+                use_ssl_client_cert,
+                use_ssl_server_cert);
             break;
         case HTTP_VALIDATE_TYPE_CHECK_FILE:
             http_resp = http_server_resp_validate_check_file(&url, auth_type, &user, &password);

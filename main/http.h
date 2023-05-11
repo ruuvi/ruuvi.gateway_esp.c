@@ -47,6 +47,9 @@ typedef struct http_download_param_t
     void* const                p_user_data;
     const bool                 flag_feed_task_watchdog;
     const bool                 flag_free_memory;
+    const char* const          p_server_cert;
+    const char* const          p_client_cert;
+    const char* const          p_client_key;
 } http_download_param_t;
 
 typedef struct http_check_param_t
@@ -55,6 +58,9 @@ typedef struct http_check_param_t
     const TimeUnitsSeconds_t timeout_seconds;
     const bool               flag_feed_task_watchdog;
     const bool               flag_free_memory;
+    const char* const        p_server_cert;
+    const char* const        p_client_cert;
+    const char* const        p_client_key;
 } http_check_param_t;
 
 bool
@@ -72,14 +78,18 @@ http_check_post_advs(
     const gw_cfg_http_auth_type_e auth_type,
     const char* const             p_user,
     const char* const             p_pass,
-    const TimeUnitsSeconds_t      timeout_seconds);
+    const TimeUnitsSeconds_t      timeout_seconds,
+    const bool                    use_ssl_client_cert,
+    const bool                    use_ssl_server_cert);
 
 http_server_resp_t
 http_check_post_stat(
     const char* const        p_url,
     const char* const        p_user,
     const char* const        p_pass,
-    const TimeUnitsSeconds_t timeout_seconds);
+    const TimeUnitsSeconds_t timeout_seconds,
+    const bool               use_ssl_client_cert,
+    const bool               use_ssl_server_cert);
 
 http_server_resp_t
 http_check_mqtt(const ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg, const TimeUnitsSeconds_t timeout_seconds);
@@ -89,7 +99,9 @@ http_send_statistics(
     const http_json_statistics_info_t* const p_stat_info,
     const adv_report_table_t* const          p_reports,
     const ruuvi_gw_cfg_http_stat_t* const    p_cfg_http_stat,
-    void* const                              p_user_data);
+    void* const                              p_user_data,
+    const bool                               use_ssl_client_cert,
+    const bool                               use_ssl_server_cert);
 
 bool
 http_async_poll(void);

@@ -482,7 +482,13 @@ adv_post_stat(const ruuvi_gw_cfg_http_stat_t* const p_cfg_http_stat, void* const
         return false;
     }
 
-    const bool res = http_send_statistics(p_stat_info, p_reports, p_cfg_http_stat, p_user_data);
+    const bool res = http_send_statistics(
+        p_stat_info,
+        p_reports,
+        p_cfg_http_stat,
+        p_user_data,
+        p_cfg_http_stat->http_stat_use_ssl_client_cert,
+        p_cfg_http_stat->http_stat_use_ssl_server_cert);
     os_free(p_stat_info);
     str_buf_free_buf(&reset_info);
     os_free(p_reports);
