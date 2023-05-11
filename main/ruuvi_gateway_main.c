@@ -521,8 +521,6 @@ main_task_init(void)
         return false;
     }
 
-    partition_table_check_and_update();
-
     ruuvi_nvs_init();
 
     LOG_INFO(
