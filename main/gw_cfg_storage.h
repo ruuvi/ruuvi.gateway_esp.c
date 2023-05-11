@@ -18,6 +18,36 @@ _Static_assert(
     sizeof(GW_CFG_STORAGE_GW_CFG_DEFAULT) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
     "sizeof(GW_CFG_STORAGE_GW_CFG_DEFAULT)");
 
+#define GW_CFG_STORAGE_SSL_CLIENT_CERT "client_cert.pem"
+_Static_assert(
+    sizeof(GW_CFG_STORAGE_SSL_CLIENT_CERT) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
+    "sizeof(GW_CFG_STORAGE_SSL_CLIENT_CERT)");
+
+#define GW_CFG_STORAGE_SSL_CLIENT_KEY "client_key.pem"
+_Static_assert(
+    sizeof(GW_CFG_STORAGE_SSL_CLIENT_KEY) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
+    "sizeof(GW_CFG_STORAGE_SSL_CLIENT_KEY)");
+
+#define GW_CFG_STORAGE_SSL_CERT_HTTP "cert_http.pem"
+_Static_assert(
+    sizeof(GW_CFG_STORAGE_SSL_CERT_HTTP) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
+    "sizeof(GW_CFG_STORAGE_SSL_CERT_HTTP)");
+
+#define GW_CFG_STORAGE_SSL_CERT_STAT "cert_stat.pem"
+_Static_assert(
+    sizeof(GW_CFG_STORAGE_SSL_CERT_STAT) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
+    "sizeof(GW_CFG_STORAGE_SSL_CERT_STAT)");
+
+#define GW_CFG_STORAGE_SSL_CERT_MQTT "cert_mqtt.pem"
+_Static_assert(
+    sizeof(GW_CFG_STORAGE_SSL_CERT_MQTT) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
+    "sizeof(GW_CFG_STORAGE_SSL_CERT_MQTT)");
+
+#define GW_CFG_STORAGE_SSL_CERT_REMOTE "cert_remote.pem"
+_Static_assert(
+    sizeof(GW_CFG_STORAGE_SSL_CERT_REMOTE) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
+    "sizeof(GW_CFG_STORAGE_SSL_CERT_REMOTE)");
+
 #ifdef __cplusplus
 extern "C" {
 #endif

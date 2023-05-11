@@ -8,6 +8,7 @@
 #include "gw_cfg_json_generate.h"
 #include <string.h>
 #include "gw_cfg_default.h"
+#include "gw_cfg_storage.h"
 
 #if !defined(RUUVI_TESTS_HTTP_SERVER_CB)
 #define RUUVI_TESTS_HTTP_SERVER_CB 0
@@ -75,6 +76,54 @@ gw_cfg_json_add_items_device_info(cJSON* const p_json_root, const gw_cfg_device_
         return false;
     }
     if (!gw_cfg_json_add_string(p_json_root, "gw_mac", p_dev_info->nrf52_mac_addr.str_buf))
+    {
+        return false;
+    }
+    cJSON* p_storage = cJSON_AddObjectToObject(p_json_root, "storage");
+    if (NULL == p_storage)
+    {
+        LOG_ERR("Can't add json item: %s", "storage");
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(
+            p_storage,
+            GW_CFG_STORAGE_SSL_CLIENT_CERT,
+            gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CLIENT_CERT)))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(
+            p_storage,
+            GW_CFG_STORAGE_SSL_CLIENT_KEY,
+            gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CLIENT_KEY)))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(
+            p_storage,
+            GW_CFG_STORAGE_SSL_CERT_HTTP,
+            gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CERT_HTTP)))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(
+            p_storage,
+            GW_CFG_STORAGE_SSL_CERT_STAT,
+            gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CERT_STAT)))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(
+            p_storage,
+            GW_CFG_STORAGE_SSL_CERT_MQTT,
+            gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CERT_MQTT)))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(
+            p_storage,
+            GW_CFG_STORAGE_SSL_CERT_REMOTE,
+            gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CERT_REMOTE)))
     {
         return false;
     }
