@@ -15,7 +15,8 @@ extern "C" {
 #endif
 
 /**
- * @brief Check that the partition table in the flash memory is the latest version, and write the latest version if it is not.
+ * @brief Check that the partition table in the flash memory is the latest version, and write the latest version if it
+ * is not.
  * @return true if the partition table in the flash memory has been updated and a reboot is required.
  */
 bool
