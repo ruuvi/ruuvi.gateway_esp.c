@@ -317,6 +317,14 @@ gw_cfg_json_add_items_remote(
             }
             break;
     }
+    if (!gw_cfg_json_add_bool(p_json_root, "remote_cfg_use_ssl_client_cert", p_cfg_remote->use_ssl_client_cert))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(p_json_root, "remote_cfg_use_ssl_server_cert", p_cfg_remote->use_ssl_server_cert))
+    {
+        return false;
+    }
     if (!gw_cfg_json_add_number(
             p_json_root,
             "remote_cfg_refresh_interval_minutes",
@@ -392,6 +400,14 @@ gw_cfg_json_add_items_http(
     }
 
     if (!gw_cfg_json_add_bool(p_json_root, "use_http", p_cfg_http->use_http))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(p_json_root, "http_use_ssl_client_cert", p_cfg_http->http_use_ssl_client_cert))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(p_json_root, "http_use_ssl_server_cert", p_cfg_http->http_use_ssl_server_cert))
     {
         return false;
     }
@@ -480,6 +496,20 @@ gw_cfg_json_add_items_http_stat(
     {
         return false;
     }
+    if (!gw_cfg_json_add_bool(
+            p_json_root,
+            "http_stat_use_ssl_client_cert",
+            p_cfg_http_stat->http_stat_use_ssl_client_cert))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(
+            p_json_root,
+            "http_stat_use_ssl_server_cert",
+            p_cfg_http_stat->http_stat_use_ssl_server_cert))
+    {
+        return false;
+    }
     return true;
 }
 
@@ -525,6 +555,14 @@ gw_cfg_json_add_items_mqtt(
         return false;
     }
     if ((!flag_hide_passwords) && (!gw_cfg_json_add_string(p_json_root, "mqtt_pass", p_cfg_mqtt->mqtt_pass.buf)))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(p_json_root, "mqtt_use_ssl_client_cert", p_cfg_mqtt->use_ssl_client_cert))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(p_json_root, "mqtt_use_ssl_server_cert", p_cfg_mqtt->use_ssl_server_cert))
     {
         return false;
     }

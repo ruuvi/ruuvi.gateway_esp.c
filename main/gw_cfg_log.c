@@ -268,6 +268,8 @@ gw_cfg_log_ruuvi_cfg_remote(const ruuvi_gw_cfg_remote_t* const p_remote)
 #endif
             break;
     }
+    LOG_INFO("config: remote cfg: use SSL client cert: %d", p_remote->use_ssl_client_cert);
+    LOG_INFO("config: remote cfg: use SSL server cert: %d", p_remote->use_ssl_server_cert);
     LOG_INFO("config: remote cfg: refresh_interval_minutes: %u", (printf_uint_t)p_remote->refresh_interval_minutes);
 }
 
@@ -316,6 +318,8 @@ gw_cfg_log_ruuvi_cfg_http(const ruuvi_gw_cfg_http_t* const p_http)
 #endif
                 break;
         }
+        LOG_INFO("config: http: use SSL client cert: %d", p_http->http_use_ssl_client_cert);
+        LOG_INFO("config: http: use SSL server cert: %d", p_http->http_use_ssl_server_cert);
     }
 }
 
@@ -330,6 +334,8 @@ gw_cfg_log_ruuvi_cfg_http_stat(const ruuvi_gw_cfg_http_stat_t* const p_http_stat
 #else
     LOG_INFO("config: http_stat pass: %s", "********");
 #endif
+    LOG_INFO("config: http_stat: use SSL client cert: %d", p_http_stat->http_stat_use_ssl_client_cert);
+    LOG_INFO("config: http_stat: use SSL server cert: %d", p_http_stat->http_stat_use_ssl_server_cert);
 }
 
 static void
@@ -348,6 +354,8 @@ gw_cfg_log_ruuvi_cfg_mqtt(const ruuvi_gw_cfg_mqtt_t* const p_mqtt)
 #else
     LOG_INFO("config: mqtt password: %s", "********");
 #endif
+    LOG_INFO("config: mqtt: use SSL client cert: %d", p_mqtt->use_ssl_client_cert);
+    LOG_INFO("config: mqtt: use SSL server cert: %d", p_mqtt->use_ssl_server_cert);
 }
 
 static void
