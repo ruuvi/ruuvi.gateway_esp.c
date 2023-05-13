@@ -519,7 +519,9 @@ main_task_init(void)
     ruuvi_init_gw_cfg(&nrf52_fw_ver, &nrf52_device_info);
     LOG_INFO("### Config is empty: %s", gw_cfg_is_empty() ? "true" : "false");
 
-    hmac_sha256_set_key_str(gw_cfg_get_nrf52_device_id()->str_buf); // set default encryption key
+    hmac_sha256_set_key_for_http_ruuvi(gw_cfg_get_nrf52_device_id()->str_buf);  // set default encryption key
+    hmac_sha256_set_key_for_http_custom(gw_cfg_get_nrf52_device_id()->str_buf); // set default encryption key
+    hmac_sha256_set_key_for_stats(gw_cfg_get_nrf52_device_id()->str_buf);       // set default encryption key
 
     main_task_subscribe_events();
 
