@@ -7,6 +7,8 @@ add_executable(${ProjectId}
         test_hmac_sha256.cpp
         ${RUUVI_GW_SRC}/hmac_sha256.c
         ${RUUVI_GW_SRC}/hmac_sha256.h
+        ${RUUVI_ESP_WRAPPERS}/src/str_buf.c
+        ${RUUVI_ESP_WRAPPERS}/include/str_buf.h
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/md_wrap.c
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/md.c
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/md5.c
@@ -53,7 +55,6 @@ target_link_libraries(${ProjectId}
         gtest
         gtest_main
         gcov
-        ruuvi_esp_wrappers
         ruuvi_esp_wrappers-common_test_funcs
         --coverage
 )

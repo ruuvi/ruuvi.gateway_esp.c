@@ -38,6 +38,7 @@
 #include "reset_info.h"
 #include "reset_reason.h"
 #include "runtime_stat.h"
+#include "hmac_sha256.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -93,6 +94,14 @@ typedef struct adv_post_timer_t
     os_timer_sig_periodic_t*       p_timer_sig;
     os_timer_sig_periodic_static_t timer_sig_mem;
 } adv_post_timer_t;
+
+typedef enum adv_post_action_e
+{
+    ADV_POST_ACTION_NONE = 0,
+    ADV_POST_ACTION_POST_ADVS_TO_RUUVI,
+    ADV_POST_ACTION_POST_ADVS_TO_CUSTOM,
+    ADV_POST_ACTION_POST_STATS,
+} adv_post_action_e;
 
 #define ADV_POST_SIG_FIRST (ADV_POST_SIG_STOP)
 #define ADV_POST_SIG_LAST  (ADV_POST_SIG_RECV_ADV_TIMEOUT)
@@ -159,7 +168,8 @@ static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_green_led_turn_on;
 static event_mgr_ev_info_static_t     g_adv_post_ev_info_mem_green_led_turn_off;
 
 static bool g_adv_post_green_led_state = false;
-static bool g_is_adv1_post_active      = false;
+
+static adv_post_action_e g_adv_post_action = ADV_POST_ACTION_NONE;
 
 static adv_post_timer_t g_adv_post_timers[2] = {
     {
@@ -415,7 +425,7 @@ adv_post_do_retransmission(const bool flag_use_timestamps, const bool flag_post_
     static adv_report_table_t g_adv_reports_buf;
 
     // for thread safety copy the advertisements to a separate buffer for posting
-    if (g_is_adv1_post_active)
+    if (flag_post_to_ruuvi)
     {
         adv_table_read_retransmission_list1_and_clear(&g_adv_reports_buf);
     }
@@ -533,8 +543,7 @@ adv_post_do_async_comm_send_advs(adv_post_state_t* const p_adv_post_state, const
         leds_notify_http1_data_sent_fail();
         return false;
     }
-    g_is_adv1_post_active = flag_post_to_ruuvi;
-    if (g_is_adv1_post_active)
+    if (flag_post_to_ruuvi)
     {
         p_adv_post_state->flag_need_to_send_advs1 = false;
     }
@@ -606,8 +615,11 @@ adv_post_do_async_comm(adv_post_state_t* const p_adv_post_state)
             os_timer_sig_one_shot_start(g_p_adv_post_timer_sig_do_async_comm);
             return;
         }
-        if (!adv_post_do_async_comm_send_advs(p_adv_post_state, true))
+        g_adv_post_action             = ADV_POST_ACTION_POST_ADVS_TO_RUUVI;
+        const bool flag_send_to_ruuvi = true;
+        if (!adv_post_do_async_comm_send_advs(p_adv_post_state, flag_send_to_ruuvi))
         {
+            g_adv_post_action = ADV_POST_ACTION_NONE;
             http_server_mutex_unlock();
         }
     }
@@ -620,8 +632,11 @@ adv_post_do_async_comm(adv_post_state_t* const p_adv_post_state)
             os_timer_sig_one_shot_start(g_p_adv_post_timer_sig_do_async_comm);
             return;
         }
-        if (!adv_post_do_async_comm_send_advs(p_adv_post_state, false))
+        g_adv_post_action             = ADV_POST_ACTION_POST_ADVS_TO_CUSTOM;
+        const bool flag_send_to_ruuvi = false;
+        if (!adv_post_do_async_comm_send_advs(p_adv_post_state, flag_send_to_ruuvi))
         {
+            g_adv_post_action = ADV_POST_ACTION_NONE;
             http_server_mutex_unlock();
         }
     }
@@ -634,8 +649,10 @@ adv_post_do_async_comm(adv_post_state_t* const p_adv_post_state)
             os_timer_sig_one_shot_start(g_p_adv_post_timer_sig_do_async_comm);
             return;
         }
+        g_adv_post_action = ADV_POST_ACTION_POST_STATS;
         if (!adv_post_do_async_comm_send_statistics(p_adv_post_state))
         {
+            g_adv_post_action = ADV_POST_ACTION_NONE;
             http_server_mutex_unlock();
         }
     }
@@ -1214,14 +1231,39 @@ adv_post_set_default_period_for_timer(adv_post_timer_t* const p_adv_post_timer, 
 void
 adv_post_set_default_period(const uint32_t period_ms)
 {
-    if (g_is_adv1_post_active)
+    switch (g_adv_post_action)
     {
-        adv_post_set_default_period_for_timer(&g_adv_post_timers[0], period_ms);
+        case ADV_POST_ACTION_NONE:
+            break;
+        case ADV_POST_ACTION_POST_ADVS_TO_RUUVI:
+            adv_post_set_default_period_for_timer(&g_adv_post_timers[0], period_ms);
+            break;
+        case ADV_POST_ACTION_POST_ADVS_TO_CUSTOM:
+            adv_post_set_default_period_for_timer(&g_adv_post_timers[1], period_ms);
+            break;
+        case ADV_POST_ACTION_POST_STATS:
+            break;
     }
-    else
+}
+
+bool
+adv_post_set_hmac_sha256_key(const char* const p_key_str)
+{
+    switch (g_adv_post_action)
     {
-        adv_post_set_default_period_for_timer(&g_adv_post_timers[1], period_ms);
+        case ADV_POST_ACTION_NONE:
+            break;
+        case ADV_POST_ACTION_POST_ADVS_TO_RUUVI:
+            LOG_INFO("Ruuvi-HMAC-KEY: Server updated HMAC_SHA256 key for Ruuvi target");
+            return hmac_sha256_set_key_for_http_ruuvi(p_key_str);
+        case ADV_POST_ACTION_POST_ADVS_TO_CUSTOM:
+            LOG_INFO("Ruuvi-HMAC-KEY: Server updated HMAC_SHA256 key for custom target");
+            return hmac_sha256_set_key_for_http_custom(p_key_str);
+        case ADV_POST_ACTION_POST_STATS:
+            LOG_INFO("Ruuvi-HMAC-KEY: Server updated HMAC_SHA256 key for stats");
+            return hmac_sha256_set_key_for_stats(p_key_str);
     }
+    return false;
 }
 
 static void
