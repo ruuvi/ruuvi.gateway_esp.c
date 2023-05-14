@@ -89,6 +89,7 @@ typedef struct http_async_info_t
     http_client_config_t     http_client_config;
     esp_http_client_handle_t p_http_client_handle;
     cjson_wrap_str_t         cjson_str;
+    hmac_sha256_t            hmac_sha256;
     http_post_recipient_e    recipient;
     os_task_handle_t         p_task;
     http_post_cb_info_t      http_post_cb_info;
@@ -120,7 +121,7 @@ http_post_event_handler_on_header(const esp_http_client_event_t* const p_evt)
         p_evt->user_data);
     if (0 == strcasecmp("Ruuvi-HMAC-KEY", p_evt->header_key))
     {
-        if (!hmac_sha256_set_key_str(p_evt->header_value))
+        if (!adv_post_set_hmac_sha256_key(p_evt->header_value))
         {
             LOG_ERR("Failed to update Ruuvi-HMAC-KEY");
         }
@@ -441,7 +442,7 @@ http_send_async(http_async_info_t* const p_http_async_info)
         (esp_http_client_len_t)strlen(p_msg));
     esp_http_client_set_header(p_http_async_info->p_http_client_handle, "Content-Type", "application/json");
 
-    str_buf_t hmac_sha256_str = hmac_sha256_calc_str(p_msg);
+    str_buf_t hmac_sha256_str = hmac_sha256_to_str_buf(&p_http_async_info->hmac_sha256);
     if (hmac_sha256_is_str_valid(&hmac_sha256_str))
     {
         esp_http_client_set_header(p_http_async_info->p_http_client_handle, "Ruuvi-HMAC-SHA256", hmac_sha256_str.buf);
@@ -461,20 +462,16 @@ http_send_async(http_async_info_t* const p_http_async_info)
     return true;
 }
 
-bool
-http_send_advs_internal(
-    http_async_info_t* const         p_http_async_info,
-    const adv_report_table_t* const  p_reports,
-    const uint32_t                   nonce,
-    const bool                       flag_use_timestamps,
-    const bool                       flag_post_to_ruuvi,
-    const ruuvi_gw_cfg_http_t* const p_cfg_http,
-    void* const                      p_user_data)
+static bool
+http_send_advs_create_records_str(
+    const adv_report_table_t* const p_reports,
+    const bool                      flag_use_timestamps,
+    const uint32_t                  nonce,
+    cjson_wrap_str_t* const         p_cjson_str)
 {
     const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
 
-    p_http_async_info->recipient = flag_post_to_ruuvi ? HTTP_POST_RECIPIENT_ADVS1 : HTTP_POST_RECIPIENT_ADVS2;
-    p_http_async_info->cjson_str = cjson_wrap_str_null();
+    *p_cjson_str = cjson_wrap_str_null();
 
     const bool res = http_json_create_records_str(
         p_reports,
@@ -486,11 +483,25 @@ http_send_advs_internal(
             .flag_use_nonce      = true,
             .nonce               = nonce,
         },
-        &p_http_async_info->cjson_str);
+        p_cjson_str);
 
     gw_cfg_unlock_ro(&p_gw_cfg);
+    return res;
+}
 
-    if (!res)
+bool
+http_send_advs_internal(
+    http_async_info_t* const         p_http_async_info,
+    const adv_report_table_t* const  p_reports,
+    const uint32_t                   nonce,
+    const bool                       flag_use_timestamps,
+    const bool                       flag_post_to_ruuvi,
+    const ruuvi_gw_cfg_http_t* const p_cfg_http,
+    void* const                      p_user_data)
+{
+    p_http_async_info->recipient = flag_post_to_ruuvi ? HTTP_POST_RECIPIENT_ADVS1 : HTTP_POST_RECIPIENT_ADVS2;
+
+    if (!http_send_advs_create_records_str(p_reports, flag_use_timestamps, nonce, &p_http_async_info->cjson_str))
     {
         LOG_ERR("Not enough memory to generate json");
         return false;
@@ -559,6 +570,14 @@ http_send_advs_internal(
         }
         esp_http_client_set_header(p_http_async_info->p_http_client_handle, "Authorization", str_buf.buf);
         str_buf_free_buf(&str_buf);
+    }
+    if (flag_post_to_ruuvi)
+    {
+        (void)hmac_sha256_calc_for_http_ruuvi(p_http_async_info->cjson_str.p_str, &p_http_async_info->hmac_sha256);
+    }
+    else
+    {
+        (void)hmac_sha256_calc_for_http_custom(p_http_async_info->cjson_str.p_str, &p_http_async_info->hmac_sha256);
     }
 
     if (!http_send_async(p_http_async_info))
@@ -814,6 +833,8 @@ http_send_statistics_internal(
         cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
         return false;
     }
+
+    (void)hmac_sha256_calc_for_stats(p_http_async_info->cjson_str.p_str, &p_http_async_info->hmac_sha256);
 
     if (!http_send_async(p_http_async_info))
     {
