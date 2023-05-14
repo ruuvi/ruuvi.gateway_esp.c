@@ -204,7 +204,13 @@ static esp_err_t esp_mqtt_set_ssl_transport_properties(esp_transport_list_handle
 {
     esp_transport_handle_t ssl = esp_transport_list_get_transport(transport_list, "mqtts");
 
-    if (cfg->use_global_ca_store == true) {
+    if (NULL != cfg->cacert_buf) {
+        ESP_LOGI(TAG, "Set custom SSL certificate for the server");
+        ESP_OK_CHECK(
+            TAG,
+            esp_mqtt_set_cert_key_data(ssl, MQTT_SSL_DATA_API_CA_CERT, cfg->cacert_buf, cfg->cacert_bytes),
+            goto esp_mqtt_set_transport_failed);
+    } else if (cfg->use_global_ca_store == true) {
         esp_transport_ssl_enable_global_ca_store(ssl);
     } else if (cfg->crt_bundle_attach != NULL) {
 #ifdef MQTT_SUPPORTED_FEATURE_CERTIFICATE_BUNDLE
@@ -215,13 +221,7 @@ static esp_err_t esp_mqtt_set_ssl_transport_properties(esp_transport_list_handle
             ESP_LOGE(TAG, "Certificate bundle feature is not available in IDF version %s", IDF_VER);
             goto esp_mqtt_set_transport_failed;
 #endif
-    } else {
-        ESP_OK_CHECK(TAG, esp_mqtt_set_cert_key_data(ssl, MQTT_SSL_DATA_API_CA_CERT, cfg->cacert_buf, cfg->cacert_bytes),
-                     goto esp_mqtt_set_transport_failed);
-        
     }
-
-    
 
     if (cfg->use_secure_element) {
 #ifdef MQTT_SUPPORTED_FEATURE_SECURE_ELEMENT
