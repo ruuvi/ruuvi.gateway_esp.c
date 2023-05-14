@@ -89,6 +89,7 @@ typedef struct http_async_info_t
     http_client_config_t     http_client_config;
     esp_http_client_handle_t p_http_client_handle;
     cjson_wrap_str_t         cjson_str;
+    hmac_sha256_t            hmac_sha256;
     http_post_recipient_e    recipient;
     os_task_handle_t         p_task;
     http_post_cb_info_t      http_post_cb_info;
@@ -120,7 +121,7 @@ http_post_event_handler_on_header(const esp_http_client_event_t* const p_evt)
         p_evt->user_data);
     if (0 == strcasecmp("Ruuvi-HMAC-KEY", p_evt->header_key))
     {
-        if (!hmac_sha256_set_key_str(p_evt->header_value))
+        if (!adv_post_set_hmac_sha256_key(p_evt->header_value))
         {
             LOG_ERR("Failed to update Ruuvi-HMAC-KEY");
         }
@@ -441,7 +442,7 @@ http_send_async(http_async_info_t* const p_http_async_info)
         (esp_http_client_len_t)strlen(p_msg));
     esp_http_client_set_header(p_http_async_info->p_http_client_handle, "Content-Type", "application/json");
 
-    str_buf_t hmac_sha256_str = hmac_sha256_calc_str(p_msg);
+    str_buf_t hmac_sha256_str = hmac_sha256_to_str_buf(&p_http_async_info->hmac_sha256);
     if (hmac_sha256_is_str_valid(&hmac_sha256_str))
     {
         esp_http_client_set_header(p_http_async_info->p_http_client_handle, "Ruuvi-HMAC-SHA256", hmac_sha256_str.buf);
@@ -461,20 +462,16 @@ http_send_async(http_async_info_t* const p_http_async_info)
     return true;
 }
 
-bool
-http_send_advs_internal(
-    http_async_info_t* const         p_http_async_info,
-    const adv_report_table_t* const  p_reports,
-    const uint32_t                   nonce,
-    const bool                       flag_use_timestamps,
-    const bool                       flag_post_to_ruuvi,
-    const ruuvi_gw_cfg_http_t* const p_cfg_http,
-    void* const                      p_user_data)
+static bool
+http_send_advs_create_records_str(
+    const adv_report_table_t* const p_reports,
+    const bool                      flag_use_timestamps,
+    const uint32_t                  nonce,
+    cjson_wrap_str_t* const         p_cjson_str)
 {
     const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
 
-    p_http_async_info->recipient = flag_post_to_ruuvi ? HTTP_POST_RECIPIENT_ADVS1 : HTTP_POST_RECIPIENT_ADVS2;
-    p_http_async_info->cjson_str = cjson_wrap_str_null();
+    *p_cjson_str = cjson_wrap_str_null();
 
     const bool res = http_json_create_records_str(
         p_reports,
@@ -486,11 +483,25 @@ http_send_advs_internal(
             .flag_use_nonce      = true,
             .nonce               = nonce,
         },
-        &p_http_async_info->cjson_str);
+        p_cjson_str);
 
     gw_cfg_unlock_ro(&p_gw_cfg);
+    return res;
+}
 
-    if (!res)
+bool
+http_send_advs_internal(
+    http_async_info_t* const         p_http_async_info,
+    const adv_report_table_t* const  p_reports,
+    const uint32_t                   nonce,
+    const bool                       flag_use_timestamps,
+    const bool                       flag_post_to_ruuvi,
+    const ruuvi_gw_cfg_http_t* const p_cfg_http,
+    void* const                      p_user_data)
+{
+    p_http_async_info->recipient = flag_post_to_ruuvi ? HTTP_POST_RECIPIENT_ADVS1 : HTTP_POST_RECIPIENT_ADVS2;
+
+    if (!http_send_advs_create_records_str(p_reports, flag_use_timestamps, nonce, &p_http_async_info->cjson_str))
     {
         LOG_ERR("Not enough memory to generate json");
         return false;
@@ -559,6 +570,14 @@ http_send_advs_internal(
         }
         esp_http_client_set_header(p_http_async_info->p_http_client_handle, "Authorization", str_buf.buf);
         str_buf_free_buf(&str_buf);
+    }
+    if (flag_post_to_ruuvi)
+    {
+        (void)hmac_sha256_calc_for_http_ruuvi(p_http_async_info->cjson_str.p_str, &p_http_async_info->hmac_sha256);
+    }
+    else
+    {
+        (void)hmac_sha256_calc_for_http_custom(p_http_async_info->cjson_str.p_str, &p_http_async_info->hmac_sha256);
     }
 
     if (!http_send_async(p_http_async_info))
@@ -814,6 +833,8 @@ http_send_statistics_internal(
         cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
         return false;
     }
+
+    (void)hmac_sha256_calc_for_stats(p_http_async_info->cjson_str.p_str, &p_http_async_info->hmac_sha256);
 
     if (!http_send_async(p_http_async_info))
     {
@@ -1310,26 +1331,23 @@ http_check_event_handler(esp_http_client_event_t* p_evt)
     return ESP_OK;
 }
 
-static bool
+static http_server_resp_t
 http_download_by_handle(
     esp_http_client_handle_t http_handle,
     const bool               flag_feed_task_watchdog,
-    const TimeUnitsSeconds_t timeout_seconds,
-    http_resp_code_e* const  p_http_resp_code)
+    const TimeUnitsSeconds_t timeout_seconds)
 {
     esp_err_t err = esp_http_client_set_header(http_handle, "Accept", "text/html,application/octet-stream,*/*");
     if (ESP_OK != err)
     {
         LOG_ERR("%s failed", "esp_http_client_set_header");
-        *p_http_resp_code = HTTP_RESP_CODE_500;
-        return false;
+        return http_server_resp_500();
     }
     err = esp_http_client_set_header(http_handle, "User-Agent", "RuuviGateway");
     if (ESP_OK != err)
     {
         LOG_ERR("%s failed", "esp_http_client_set_header");
-        *p_http_resp_code = HTTP_RESP_CODE_500;
-        return false;
+        return http_server_resp_500();
     }
 
     LOG_DBG("esp_http_client_perform");
@@ -1340,8 +1358,7 @@ http_download_by_handle(
             "HTTP GET Status = %d, content_length = %d",
             esp_http_client_get_status_code(http_handle),
             esp_http_client_get_content_length(http_handle));
-        *p_http_resp_code = esp_http_client_get_status_code(http_handle);
-        return true;
+        return http_server_resp_err(esp_http_client_get_status_code(http_handle));
     }
     if (ESP_ERR_HTTP_EAGAIN != err)
     {
@@ -1350,22 +1367,16 @@ http_download_by_handle(
             "esp_http_client_perform failed, HTTP resp code %d (http_handle=%ld)",
             (printf_int_t)esp_http_client_get_status_code(http_handle),
             (printf_long_t)http_handle);
-        *p_http_resp_code = HTTP_RESP_CODE_502;
-        return false;
+        return http_server_resp_502();
     }
 
-    const http_server_resp_t resp = http_wait_until_async_req_completed(
+    http_server_resp_t resp = http_wait_until_async_req_completed(
         http_handle,
         NULL,
         flag_feed_task_watchdog,
         timeout_seconds);
 
-    *p_http_resp_code = resp.http_resp_code;
-    if (HTTP_RESP_CODE_200 == resp.http_resp_code)
-    {
-        return true;
-    }
-    return false;
+    return resp;
 }
 
 static void
@@ -1552,13 +1563,10 @@ http_download_with_auth(
     }
 
     LOG_DBG("http_download_by_handle");
-    http_resp_code_e http_resp_code = HTTP_RESP_CODE_200;
-
-    const bool result = http_download_by_handle(
+    http_server_resp_t resp = http_download_by_handle(
         cb_info.http_handle,
         param.flag_feed_task_watchdog,
-        param.timeout_seconds,
-        &http_resp_code);
+        param.timeout_seconds);
 
     LOG_DBG("esp_http_client_cleanup");
     const esp_err_t err = esp_http_client_cleanup(cb_info.http_handle);
@@ -1570,7 +1578,16 @@ http_download_with_auth(
     os_free(p_http_config);
     resume_relaying_and_wait(param.flag_free_memory);
 
-    return result;
+    if ((HTTP_CONTENT_LOCATION_HEAP == resp.content_location) && (NULL != resp.select_location.memory.p_buf))
+    {
+        os_free(resp.select_location.memory.p_buf);
+    }
+
+    if (HTTP_RESP_CODE_200 == resp.http_resp_code)
+    {
+        return true;
+    }
+    return false;
 }
 
 bool
@@ -1674,11 +1691,10 @@ http_check_with_auth(
     }
 
     LOG_DBG("http_check_by_handle");
-    const bool result = http_download_by_handle(
+    http_server_resp_t resp = http_download_by_handle(
         cb_info.http_handle,
         param.flag_feed_task_watchdog,
-        param.timeout_seconds,
-        p_http_resp_code);
+        param.timeout_seconds);
 
     LOG_DBG("esp_http_client_cleanup");
     const esp_err_t err = esp_http_client_cleanup(cb_info.http_handle);
@@ -1690,7 +1706,16 @@ http_check_with_auth(
     os_free(p_http_config);
     resume_relaying_and_wait(param.flag_free_memory);
 
-    return result;
+    if ((HTTP_CONTENT_LOCATION_HEAP == resp.content_location) && (NULL != resp.select_location.memory.p_buf))
+    {
+        os_free(resp.select_location.memory.p_buf);
+    }
+
+    if (HTTP_RESP_CODE_200 == resp.http_resp_code)
+    {
+        return true;
+    }
+    return false;
 }
 
 bool
