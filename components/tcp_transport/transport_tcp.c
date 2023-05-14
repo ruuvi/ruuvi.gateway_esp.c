@@ -164,12 +164,7 @@ static int tcp_connect(esp_transport_handle_t t, const char *host_or_ip, int por
     if (inet_pton(AF_INET, host_or_ip, &remote_ip.sin_addr) != 1) {
         if (resolve_dns(host_or_ip, &remote_ip) < 0) {
             ESP_LOGE(TAG, "%s: failed to resolve hostname '%s'", __func__, host_or_ip);
-            esp_tls_last_error_t last_err = {
-                .last_error = ESP_ERR_ESP_TLS_CANNOT_RESOLVE_HOSTNAME,
-                .esp_tls_error_code = 0,
-                .esp_tls_flags = 0,
-            };
-            esp_transport_set_errors(t, &last_err);
+            esp_transport_capture_errno(t, ESP_ERR_ESP_TLS_CANNOT_RESOLVE_HOSTNAME);
             return -1;
         }
     }
@@ -380,12 +375,7 @@ static int esp_transport_tcp_connect_async(esp_transport_handle_t t, const char 
             }
             if (err != ERR_OK) {
                 ESP_LOGE(TAG, "Failed to resolve hostname '%s', error %d", host, err);
-                esp_tls_last_error_t last_err = {
-                    .last_error = ESP_ERR_ESP_TLS_CANNOT_RESOLVE_HOSTNAME,
-                    .esp_tls_error_code = 0,
-                    .esp_tls_flags = 0,
-                };
-                esp_transport_set_errors(t, &last_err);
+                esp_transport_capture_errno(t, ESP_ERR_ESP_TLS_CANNOT_RESOLVE_HOSTNAME);
                 return -1;
             }
 
@@ -451,12 +441,7 @@ static int esp_transport_tcp_connect_async(esp_transport_handle_t t, const char 
                         error,
                         (NULL != err_desc.buf) ? err_desc.buf : "");
                     str_buf_free_buf(&err_desc);
-                    esp_tls_last_error_t last_err = {
-                        .last_error = error,
-                        .esp_tls_error_code = 0,
-                        .esp_tls_flags = 0,
-                    };
-                    esp_transport_set_errors(t, &last_err);
+                    esp_transport_capture_errno(t, error);
                     tcp->conn_state = TRANS_TCP_FAIL;
                     return -1;
                 }
@@ -468,12 +453,7 @@ static int esp_transport_tcp_connect_async(esp_transport_handle_t t, const char 
                 if (delta_ticks > pdMS_TO_TICKS(timeout_ms))
                 {
                     ESP_LOGE(TAG, "connection timeout");
-                    esp_tls_last_error_t last_err = {
-                        .last_error = ESP_ERR_TIMEOUT,
-                        .esp_tls_error_code = 0,
-                        .esp_tls_flags = 0,
-                    };
-                    esp_transport_set_errors(t, &last_err);
+                    esp_transport_capture_errno(t, ESP_ERR_TIMEOUT);
                     tcp->conn_state = TRANS_TCP_FAIL;
                     return -1;
                 }
@@ -513,12 +493,7 @@ static int esp_transport_tcp_connect_async(esp_transport_handle_t t, const char 
             xSemaphoreGive(tcp->dns_mutex);
             if (TRANS_TCP_FAIL == tcp->conn_state) {
                 ESP_LOGE(TAG, "%s: failed to open a new connection", __func__);
-                esp_tls_last_error_t last_err = {
-                    .last_error = ESP_ERR_ESP_TLS_CANNOT_RESOLVE_HOSTNAME,
-                    .esp_tls_error_code = 0,
-                    .esp_tls_flags = 0,
-                };
-                esp_transport_set_errors(t, &last_err);
+                esp_transport_capture_errno(t, ESP_ERR_ESP_TLS_CANNOT_RESOLVE_HOSTNAME);
                 break;
             }
             return 0;
