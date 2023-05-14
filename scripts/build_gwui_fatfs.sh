@@ -44,7 +44,7 @@ fi
 
 cd "$RUUVI_GWUI_HTML"
 [ ! -d "$RUUVI_GWUI_HTML/node_modules" ] && npm install
-npm run build
+npm run build-prod
 npm run test
 python3 "$SCRIPT_PATH/prep_gwui.py" -i="$RUUVI_GWUI_HTML/build" -o="$FATFS_GWUI_TMP_DIR"
 "$MKFATFS" -c "$FATFS_GWUI_TMP_DIR" -s "$FATFS_GWUI_SIZE" "$FATFS_GWUI_IMG"
