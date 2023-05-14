@@ -226,12 +226,7 @@ static int ssl_write(esp_transport_handle_t t, const char *buffer, int len, int 
             str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(errno);
             ESP_LOGE(TAG, "esp_tls_conn_write error, errno=%d (%s)", errno, (NULL != err_desc.buf) ? err_desc.buf : "");
             str_buf_free_buf(&err_desc);
-            esp_tls_last_error_t last_err = {
-                .last_error = errno,
-                .esp_tls_error_code = 0,
-                .esp_tls_flags = 0,
-            };
-            esp_transport_set_errors(t, &last_err);
+            esp_transport_capture_errno(t, errno);
         }
     } else {
         if (ssl->cfg.non_block) {
@@ -285,12 +280,7 @@ static int ssl_read(esp_transport_handle_t t, char *buffer, int len, int timeout
                     errno,
                     (NULL != err_desc.buf) ? err_desc.buf : "");
                 str_buf_free_buf(&err_desc);
-                esp_tls_last_error_t last_err = {
-                    .last_error = errno,
-                    .esp_tls_error_code = 0,
-                    .esp_tls_flags = 0,
-                };
-                esp_transport_set_errors(t, &last_err);
+                esp_transport_capture_errno(t, errno);
 
                 ssl->timer_read_initialized = false;
             }
@@ -298,12 +288,7 @@ static int ssl_read(esp_transport_handle_t t, char *buffer, int len, int timeout
             str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(errno);
             ESP_LOGE(TAG, "esp_tls_conn_read error, errno=%d (%s)", errno, (NULL != err_desc.buf) ? err_desc.buf : "");
             str_buf_free_buf(&err_desc);
-            esp_tls_last_error_t last_err = {
-                .last_error = errno,
-                .esp_tls_error_code = 0,
-                .esp_tls_flags = 0,
-            };
-            esp_transport_set_errors(t, &last_err);
+            esp_transport_capture_errno(t, errno);
         }
     } else {
         if (ssl->cfg.non_block) {
