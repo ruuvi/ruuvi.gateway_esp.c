@@ -1254,13 +1254,13 @@ adv_post_set_hmac_sha256_key(const char* const p_key_str)
         case ADV_POST_ACTION_NONE:
             break;
         case ADV_POST_ACTION_POST_ADVS_TO_RUUVI:
-            LOG_INFO("Ruuvi-HMAC-KEY: Sever updated HMAC_SHA256 key for Ruuvi target");
+            LOG_INFO("Ruuvi-HMAC-KEY: Server updated HMAC_SHA256 key for Ruuvi target");
             return hmac_sha256_set_key_for_http_ruuvi(p_key_str);
         case ADV_POST_ACTION_POST_ADVS_TO_CUSTOM:
-            LOG_INFO("Ruuvi-HMAC-KEY: Sever updated HMAC_SHA256 key for custom target");
+            LOG_INFO("Ruuvi-HMAC-KEY: Server updated HMAC_SHA256 key for custom target");
             return hmac_sha256_set_key_for_http_custom(p_key_str);
         case ADV_POST_ACTION_POST_STATS:
-            LOG_INFO("Ruuvi-HMAC-KEY: Sever updated HMAC_SHA256 key for stats");
+            LOG_INFO("Ruuvi-HMAC-KEY: Server updated HMAC_SHA256 key for stats");
             return hmac_sha256_set_key_for_stats(p_key_str);
     }
     return false;
