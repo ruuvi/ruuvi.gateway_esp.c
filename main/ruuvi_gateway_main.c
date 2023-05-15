@@ -45,6 +45,7 @@
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
+#include "partition_table.h"
 
 static const char TAG[] = "ruuvi_gateway";
 
@@ -422,6 +423,7 @@ main_task_init(void)
     esp_log_level_set(TAG, ESP_LOG_INFO);
     reset_info_init();
     cjson_wrap_init();
+    partition_table_update_init_mutex();
 
     g_http_server_mutex_incoming_connection = os_mutex_create_static(&g_http_server_mutex_incoming_connection_mem);
 

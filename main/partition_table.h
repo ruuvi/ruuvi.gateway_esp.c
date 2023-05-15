@@ -14,6 +14,9 @@
 extern "C" {
 #endif
 
+void
+partition_table_update_init_mutex(void);
+
 /**
  * @brief Check that the partition table in the flash memory is the latest version, and write the latest version if it
  * is not.
