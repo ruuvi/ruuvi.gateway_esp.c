@@ -411,72 +411,78 @@ gw_cfg_json_add_items_http(
     {
         return false;
     }
-    if (!gw_cfg_json_add_bool(p_json_root, "http_use_ssl_client_cert", p_cfg_http->http_use_ssl_client_cert))
+    if (p_cfg_http->use_http)
     {
-        return false;
-    }
-    if (!gw_cfg_json_add_bool(p_json_root, "http_use_ssl_server_cert", p_cfg_http->http_use_ssl_server_cert))
-    {
-        return false;
-    }
-    if (!gw_cfg_json_add_string(p_json_root, "http_url", p_cfg_http->http_url.buf))
-    {
-        return false;
-    }
-    switch (p_cfg_http->data_format)
-    {
-        case GW_CFG_HTTP_DATA_FORMAT_RUUVI:
-            if (!gw_cfg_json_add_string(p_json_root, "http_data_format", GW_CFG_HTTP_DATA_FORMAT_STR_RUUVI))
-            {
-                return false;
-            }
-            break;
-    }
-    switch (p_cfg_http->auth_type)
-    {
-        case GW_CFG_HTTP_AUTH_TYPE_NONE:
-            if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_NONE))
-            {
-                return false;
-            }
-            break;
-        case GW_CFG_HTTP_AUTH_TYPE_BASIC:
-            if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_BASIC))
-            {
-                return false;
-            }
-            if (!gw_cfg_json_add_string(p_json_root, "http_user", p_cfg_http->auth.auth_basic.user.buf))
-            {
-                return false;
-            }
-            if ((!flag_hide_passwords)
-                && (!gw_cfg_json_add_string(p_json_root, "http_pass", p_cfg_http->auth.auth_basic.password.buf)))
-            {
-                return false;
-            }
-            break;
-        case GW_CFG_HTTP_AUTH_TYPE_BEARER:
-            if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_BEARER))
-            {
-                return false;
-            }
-            if ((!flag_hide_passwords)
-                && (!gw_cfg_json_add_string(p_json_root, "http_bearer_token", p_cfg_http->auth.auth_bearer.token.buf)))
-            {
-                return false;
-            }
-            break;
-        case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
-            if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_TOKEN))
-            {
-                return false;
-            }
-            if ((!flag_hide_passwords)
-                && (!gw_cfg_json_add_string(p_json_root, "http_api_key", p_cfg_http->auth.auth_token.token.buf)))
-            {
-                return false;
-            }
-            break;
+        if (!gw_cfg_json_add_bool(p_json_root, "http_use_ssl_client_cert", p_cfg_http->http_use_ssl_client_cert))
+        {
+            return false;
+        }
+        if (!gw_cfg_json_add_bool(p_json_root, "http_use_ssl_server_cert", p_cfg_http->http_use_ssl_server_cert))
+        {
+            return false;
+        }
+        if (!gw_cfg_json_add_string(p_json_root, "http_url", p_cfg_http->http_url.buf))
+        {
+            return false;
+        }
+        switch (p_cfg_http->data_format)
+        {
+            case GW_CFG_HTTP_DATA_FORMAT_RUUVI:
+                if (!gw_cfg_json_add_string(p_json_root, "http_data_format", GW_CFG_HTTP_DATA_FORMAT_STR_RUUVI))
+                {
+                    return false;
+                }
+                break;
+        }
+        switch (p_cfg_http->auth_type)
+        {
+            case GW_CFG_HTTP_AUTH_TYPE_NONE:
+                if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_NONE))
+                {
+                    return false;
+                }
+                break;
+            case GW_CFG_HTTP_AUTH_TYPE_BASIC:
+                if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_BASIC))
+                {
+                    return false;
+                }
+                if (!gw_cfg_json_add_string(p_json_root, "http_user", p_cfg_http->auth.auth_basic.user.buf))
+                {
+                    return false;
+                }
+                if ((!flag_hide_passwords)
+                    && (!gw_cfg_json_add_string(p_json_root, "http_pass", p_cfg_http->auth.auth_basic.password.buf)))
+                {
+                    return false;
+                }
+                break;
+            case GW_CFG_HTTP_AUTH_TYPE_BEARER:
+                if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_BEARER))
+                {
+                    return false;
+                }
+                if ((!flag_hide_passwords)
+                    && (!gw_cfg_json_add_string(
+                        p_json_root,
+                        "http_bearer_token",
+                        p_cfg_http->auth.auth_bearer.token.buf)))
+                {
+                    return false;
+                }
+                break;
+            case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
+                if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_TOKEN))
+                {
+                    return false;
+                }
+                if ((!flag_hide_passwords)
+                    && (!gw_cfg_json_add_string(p_json_root, "http_api_key", p_cfg_http->auth.auth_token.token.buf)))
+                {
+                    return false;
+                }
+                break;
+        }
     }
     return true;
 }

@@ -288,22 +288,13 @@ gw_cfg_json_parse_remote(const cJSON* const p_json_root, ruuvi_gw_cfg_remote_t* 
                 break;
         }
     }
-    if (p_gw_cfg_remote->use_remote_cfg)
+    if (!gw_cfg_json_get_bool_val(p_json_root, "remote_cfg_use_ssl_client_cert", &p_gw_cfg_remote->use_ssl_client_cert))
     {
-        if (!gw_cfg_json_get_bool_val(
-                p_json_root,
-                "remote_cfg_use_ssl_client_cert",
-                &p_gw_cfg_remote->use_ssl_client_cert))
-        {
-            LOG_WARN("Can't find key '%s' in config-json", "remote_cfg_use_ssl_client_cert");
-        }
-        if (!gw_cfg_json_get_bool_val(
-                p_json_root,
-                "remote_cfg_use_ssl_server_cert",
-                &p_gw_cfg_remote->use_ssl_server_cert))
-        {
-            LOG_WARN("Can't find key '%s' in config-json", "remote_cfg_use_ssl_server_cert");
-        }
+        LOG_WARN("Can't find key '%s' in config-json", "remote_cfg_use_ssl_client_cert");
+    }
+    if (!gw_cfg_json_get_bool_val(p_json_root, "remote_cfg_use_ssl_server_cert", &p_gw_cfg_remote->use_ssl_server_cert))
+    {
+        LOG_WARN("Can't find key '%s' in config-json", "remote_cfg_use_ssl_server_cert");
     }
     if (!gw_cfg_json_get_uint16_val(
             p_json_root,
