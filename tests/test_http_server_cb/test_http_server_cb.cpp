@@ -29,6 +29,7 @@
 #include "lwip/ip4_addr.h"
 #include "event_mgr.h"
 #include "gw_cfg_storage.h"
+#include "partition_table.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -338,6 +339,12 @@ bool
 gw_cfg_storage_delete_file(const char* const p_file_name)
 {
     return false;
+}
+
+bool
+partition_table_check_and_update(void)
+{
+    return true;
 }
 
 } // extern "C"
