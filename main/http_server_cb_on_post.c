@@ -18,6 +18,8 @@
 #include "gw_cfg.h"
 #include "gw_status.h"
 #include "gw_cfg_storage.h"
+#include "partition_table.h"
+#include "reset_task.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -247,6 +249,20 @@ http_server_cb_on_post_ssl_cert(const char* const p_body, const char* const p_ur
     return http_server_resp_200_json("{}");
 }
 
+HTTP_SERVER_CB_STATIC
+http_server_resp_t
+http_server_cb_on_post_init_storage(const char* const p_body, const char* const p_uri_params)
+{
+    LOG_INFO("POST /init_storage, params=%s", (NULL != p_uri_params) ? p_uri_params : "NULL");
+
+    if (partition_table_check_and_update())
+    {
+        reset_task_reboot_after_timeout();
+    }
+
+    return http_server_resp_200_json("{}");
+}
+
 http_server_resp_t
 http_server_cb_on_post(
     const char* const p_file_name,
@@ -279,6 +295,10 @@ http_server_cb_on_post(
     if (0 == strcmp(p_file_name, "ssl_cert"))
     {
         return http_server_cb_on_post_ssl_cert(p_body, p_uri_params);
+    }
+    if (0 == strcmp(p_file_name, "init_storage"))
+    {
+        return http_server_cb_on_post_init_storage(p_body, p_uri_params);
     }
     LOG_WARN("POST /%s", p_file_name);
     return http_server_resp_404();
