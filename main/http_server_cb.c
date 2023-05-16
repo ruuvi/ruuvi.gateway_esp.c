@@ -122,7 +122,7 @@ http_server_cb_on_delete(
     {
         return http_server_cb_on_delete_ssl_cert(p_uri_params);
     }
-    LOG_INFO("DELETE /%s, params=%s", p_file_name, p_uri_params);
+    LOG_INFO("DELETE /%s, params=%s", p_file_name, (NULL != p_uri_params) ? p_uri_params : "");
     return http_server_resp_404();
 }
 
