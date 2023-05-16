@@ -53,6 +53,9 @@ extern "C" {
 #endif
 
 bool
+gw_cfg_storage_check(void);
+
+bool
 gw_cfg_storage_check_file(const char* const p_file_name);
 
 str_buf_t

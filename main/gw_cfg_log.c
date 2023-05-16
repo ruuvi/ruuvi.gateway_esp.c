@@ -8,6 +8,7 @@
 #include "gw_cfg_log.h"
 #include "esp_netif.h"
 #include "wifi_manager_defs.h"
+#include "gw_cfg_storage.h"
 
 #if defined(RUUVI_TESTS_HTTP_SERVER_CB)
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -214,6 +215,35 @@ gw_cfg_log_device_info(const gw_cfg_device_info_t* const p_dev_info, const char*
     LOG_INFO("config: device_info: NRF52 fw ver: %s", p_dev_info->nrf52_fw_ver.buf);
     LOG_INFO("config: device_info: NRF52 MAC ADDR: %s", p_dev_info->nrf52_mac_addr.str_buf);
     LOG_INFO("config: device_info: NRF52 DEVICE ID: %s", p_dev_info->nrf52_device_id.str_buf);
+    const bool is_storage_ready = gw_cfg_storage_check();
+    LOG_INFO("config: device_info: storage_ready: %d", (printf_int_t)is_storage_ready);
+    if (is_storage_ready)
+    {
+        LOG_INFO(
+            "config: device_info: storage: %s: %d",
+            GW_CFG_STORAGE_SSL_CLIENT_CERT,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CLIENT_CERT));
+        LOG_INFO(
+            "config: device_info: storage: %s: %d",
+            GW_CFG_STORAGE_SSL_CLIENT_KEY,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CLIENT_KEY));
+        LOG_INFO(
+            "config: device_info: storage: %s: %d",
+            GW_CFG_STORAGE_SSL_CERT_HTTP,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CERT_HTTP));
+        LOG_INFO(
+            "config: device_info: storage: %s: %d",
+            GW_CFG_STORAGE_SSL_CERT_STAT,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CERT_STAT));
+        LOG_INFO(
+            "config: device_info: storage: %s: %d",
+            GW_CFG_STORAGE_SSL_CERT_MQTT,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CERT_MQTT));
+        LOG_INFO(
+            "config: device_info: storage: %s: %d",
+            GW_CFG_STORAGE_SSL_CERT_REMOTE,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CERT_REMOTE));
+    }
 }
 
 void

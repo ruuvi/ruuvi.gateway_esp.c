@@ -26,6 +26,19 @@
 static const char TAG[] = "gw_cfg";
 
 bool
+gw_cfg_storage_check(void)
+{
+    nvs_handle handle = 0;
+    if (!ruuvi_nvs_open_gw_cfg_storage(NVS_READONLY, &handle))
+    {
+        LOG_ERR("%s failed", "ruuvi_nvs_open_gw_cfg_storage");
+        return false;
+    }
+    nvs_close(handle);
+    return true;
+}
+
+bool
 gw_cfg_storage_check_file(const char* const p_file_name)
 {
     LOG_INFO("Check file '%s' in NVS", p_file_name);

@@ -85,47 +85,55 @@ gw_cfg_json_add_items_device_info(cJSON* const p_json_root, const gw_cfg_device_
         LOG_ERR("Can't add json item: %s", "storage");
         return false;
     }
-    if (!gw_cfg_json_add_bool(
-            p_storage,
-            GW_CFG_STORAGE_SSL_CLIENT_CERT,
-            gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CLIENT_CERT)))
+    const bool is_storage_ready = gw_cfg_storage_check();
+    if (!gw_cfg_json_add_bool(p_storage, "storage_ready", is_storage_ready))
     {
         return false;
     }
-    if (!gw_cfg_json_add_bool(
-            p_storage,
-            GW_CFG_STORAGE_SSL_CLIENT_KEY,
-            gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CLIENT_KEY)))
+    if (is_storage_ready)
     {
-        return false;
-    }
-    if (!gw_cfg_json_add_bool(
-            p_storage,
-            GW_CFG_STORAGE_SSL_CERT_HTTP,
-            gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CERT_HTTP)))
-    {
-        return false;
-    }
-    if (!gw_cfg_json_add_bool(
-            p_storage,
-            GW_CFG_STORAGE_SSL_CERT_STAT,
-            gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CERT_STAT)))
-    {
-        return false;
-    }
-    if (!gw_cfg_json_add_bool(
-            p_storage,
-            GW_CFG_STORAGE_SSL_CERT_MQTT,
-            gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CERT_MQTT)))
-    {
-        return false;
-    }
-    if (!gw_cfg_json_add_bool(
-            p_storage,
-            GW_CFG_STORAGE_SSL_CERT_REMOTE,
-            gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CERT_REMOTE)))
-    {
-        return false;
+        if (!gw_cfg_json_add_bool(
+                p_storage,
+                GW_CFG_STORAGE_SSL_CLIENT_CERT,
+                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CLIENT_CERT)))
+        {
+            return false;
+        }
+        if (!gw_cfg_json_add_bool(
+                p_storage,
+                GW_CFG_STORAGE_SSL_CLIENT_KEY,
+                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CLIENT_KEY)))
+        {
+            return false;
+        }
+        if (!gw_cfg_json_add_bool(
+                p_storage,
+                GW_CFG_STORAGE_SSL_CERT_HTTP,
+                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CERT_HTTP)))
+        {
+            return false;
+        }
+        if (!gw_cfg_json_add_bool(
+                p_storage,
+                GW_CFG_STORAGE_SSL_CERT_STAT,
+                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CERT_STAT)))
+        {
+            return false;
+        }
+        if (!gw_cfg_json_add_bool(
+                p_storage,
+                GW_CFG_STORAGE_SSL_CERT_MQTT,
+                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CERT_MQTT)))
+        {
+            return false;
+        }
+        if (!gw_cfg_json_add_bool(
+                p_storage,
+                GW_CFG_STORAGE_SSL_CERT_REMOTE,
+                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CERT_REMOTE)))
+        {
+            return false;
+        }
     }
     return true;
 }
