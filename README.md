@@ -6,6 +6,7 @@ Developed with:
 
 Latest documentation and roadmap is at https://docs.ruuvi.com/gw-esp32-firmware. 
 
+
 ## Installing Prerequisites
 
 ### Driver installation for the USB-to-Serial converter **CH340**
