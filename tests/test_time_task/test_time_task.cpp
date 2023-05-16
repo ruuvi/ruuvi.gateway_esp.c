@@ -355,6 +355,18 @@ os_task_delay(const os_delta_ticks_t delay_ticks)
 {
 }
 
+bool
+gw_cfg_storage_check(void)
+{
+    return false;
+}
+
+bool
+gw_cfg_storage_check_file(const char* const p_file_name)
+{
+    return false;
+}
+
 } // extern "C"
 
 /*** Cmd-handler task

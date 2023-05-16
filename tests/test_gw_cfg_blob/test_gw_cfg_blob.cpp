@@ -16,6 +16,7 @@
 #include "os_task.h"
 #include "lwip/ip4_addr.h"
 #include "event_mgr.h"
+#include "gw_cfg_storage.h"
 
 using namespace std;
 
@@ -77,6 +78,14 @@ public:
     TestGwCfgBlob();
 
     ~TestGwCfgBlob() override;
+
+    bool m_flag_storage_ready { false };
+    bool m_flag_storage_client_cert { false };
+    bool m_flag_storage_client_key { false };
+    bool m_flag_storage_cert_http { false };
+    bool m_flag_storage_cert_stat { false };
+    bool m_flag_storage_cert_mqtt { false };
+    bool m_flag_storage_cert_remote { false };
 };
 
 TestGwCfgBlob::TestGwCfgBlob()
@@ -151,6 +160,42 @@ wifi_manager_cb_save_wifi_config_sta(const wifiman_config_sta_t* const p_cfg_sta
 void
 event_mgr_notify(const event_mgr_ev_e event)
 {
+}
+
+bool
+gw_cfg_storage_check(void)
+{
+    return g_pTestClass->m_flag_storage_ready;
+}
+
+bool
+gw_cfg_storage_check_file(const char* const p_file_name)
+{
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_CLIENT_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_client_cert;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_CLIENT_KEY, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_client_key;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_CERT_HTTP, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_cert_http;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_CERT_STAT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_cert_stat;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_CERT_MQTT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_cert_mqtt;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_CERT_REMOTE, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_cert_remote;
+    }
+    return false;
 }
 
 } // extern "C"

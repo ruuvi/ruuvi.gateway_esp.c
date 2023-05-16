@@ -18,6 +18,7 @@
 #include "os_task.h"
 #include "lwip/ip4_addr.h"
 #include "event_mgr.h"
+#include "gw_cfg_storage.h"
 
 using namespace std;
 
@@ -104,6 +105,7 @@ protected:
         this->m_mem_alloc_trace.clear();
         this->m_malloc_cnt         = 0;
         this->m_malloc_fail_on_cnt = 0;
+        this->m_flag_storage_ready = false;
 
         const gw_cfg_default_init_param_t init_params = {
             .wifi_ap_ssid        = { "my_ssid1" },
@@ -138,8 +140,15 @@ public:
     ~TestGwCfgJson() override;
 
     MemAllocTrace m_mem_alloc_trace;
-    uint32_t      m_malloc_cnt {};
-    uint32_t      m_malloc_fail_on_cnt {};
+    uint32_t      m_malloc_cnt { 0 };
+    uint32_t      m_malloc_fail_on_cnt { 0 };
+    bool          m_flag_storage_ready { false };
+    bool          m_flag_storage_client_cert { false };
+    bool          m_flag_storage_client_key { false };
+    bool          m_flag_storage_cert_http { false };
+    bool          m_flag_storage_cert_stat { false };
+    bool          m_flag_storage_cert_mqtt { false };
+    bool          m_flag_storage_cert_remote { false };
 };
 
 TestGwCfgJson::TestGwCfgJson()
@@ -247,6 +256,42 @@ wifi_manager_cb_save_wifi_config_sta(const wifiman_config_sta_t* const p_cfg_sta
 void
 event_mgr_notify(const event_mgr_ev_e event)
 {
+}
+
+bool
+gw_cfg_storage_check(void)
+{
+    return g_pTestClass->m_flag_storage_ready;
+}
+
+bool
+gw_cfg_storage_check_file(const char* const p_file_name)
+{
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_CLIENT_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_client_cert;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_CLIENT_KEY, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_client_key;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_CERT_HTTP, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_cert_http;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_CERT_STAT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_cert_stat;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_CERT_MQTT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_cert_mqtt;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_CERT_REMOTE, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_cert_remote;
+    }
+    return false;
 }
 
 } // extern "C"
@@ -367,6 +412,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_for_ui_client) // NOLINT
                "\t\"fw_ver\":\t\"v1.10.0\",\n"
                "\t\"nrf52_fw_ver\":\t\"v0.7.2\",\n"
                "\t\"gw_mac\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"storage\":\t{\n"
+               "\t\t\"storage_ready\":\tfalse\n"
+               "\t},\n"
                "\t\"wifi_sta_config\":\t{\n"
                "\t\t\"ssid\":\t\"\"\n"
                "\t},\n"
@@ -383,6 +431,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_for_ui_client) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -392,6 +442,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_for_ui_client) // NOLINT
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -400,6 +452,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_for_ui_client) // NOLINT
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key_use\":\tfalse,\n"
@@ -462,6 +516,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_default) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -472,6 +528,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_default) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -481,6 +539,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_default) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -540,6 +600,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_default_company_id_0x0500) // NOLINT
         "\",\n"
         "\t\"http_stat_user\":\t\"\",\n"
         "\t\"http_stat_pass\":\t\"\",\n"
+        "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+        "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
         "\t\"use_mqtt\":\tfalse,\n"
         "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -549,6 +611,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_default_company_id_0x0500) // NOLINT
         "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
         "\t\"mqtt_user\":\t\"\",\n"
         "\t\"mqtt_pass\":\t\"\",\n"
+        "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+        "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
         "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
         "\t\"lan_auth_user\":\t\"Admin\",\n"
         "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -612,6 +676,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_disabled) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -622,6 +688,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_disabled) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -631,6 +699,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_disabled) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -696,6 +766,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_enabled) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -706,6 +778,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_enabled) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -715,6 +789,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_enabled) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -785,6 +861,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_disabled) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -795,6 +873,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_disabled) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -804,6 +884,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_disabled) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -871,6 +953,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_no) // NOLINT
                "\t\"remote_cfg_use\":\ttrue,\n"
                "\t\"remote_cfg_url\":\t\"http://my_server1.com\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t10,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -881,6 +965,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_no) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -890,6 +976,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_no) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -964,6 +1052,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_basic) // NOL
                "\t\"remote_cfg_auth_type\":\t\"basic\",\n"
                "\t\"remote_cfg_auth_basic_user\":\t\"user1\",\n"
                "\t\"remote_cfg_auth_basic_pass\":\t\"pass1\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t20,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -974,6 +1064,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_basic) // NOL
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -983,6 +1075,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_basic) // NOL
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -1055,6 +1149,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_bearer) // NO
                "\t\"remote_cfg_url\":\t\"https://my_server2.com\",\n"
                "\t\"remote_cfg_auth_type\":\t\"bearer\",\n"
                "\t\"remote_cfg_auth_bearer_token\":\t\"token1\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t30,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -1065,6 +1161,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_bearer) // NO
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -1074,6 +1172,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_bearer) // NO
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -1138,6 +1238,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_disabled) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -1148,6 +1250,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_disabled) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -1157,6 +1261,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_disabled) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -1232,6 +1338,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_TCP) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -1242,6 +1350,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_TCP) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\ttrue,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"" MQTT_TRANSPORT_TCP "\",\n"
@@ -1251,6 +1361,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_TCP) // NOLINT
                "\t\"mqtt_client_id\":\t\"client123\",\n"
                "\t\"mqtt_user\":\t\"user1\",\n"
                "\t\"mqtt_pass\":\t\"pass1\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -1326,6 +1438,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_TCP_disable_retained_mes
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -1336,6 +1450,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_TCP_disable_retained_mes
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\ttrue,\n"
                "\t\"mqtt_disable_retained_messages\":\ttrue,\n"
                "\t\"mqtt_transport\":\t\"" MQTT_TRANSPORT_TCP "\",\n"
@@ -1345,6 +1461,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_TCP_disable_retained_mes
                "\t\"mqtt_client_id\":\t\"client123\",\n"
                "\t\"mqtt_user\":\t\"user1\",\n"
                "\t\"mqtt_pass\":\t\"pass1\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -1420,6 +1538,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_SSL) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -1430,6 +1550,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_SSL) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\ttrue,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"" MQTT_TRANSPORT_SSL "\",\n"
@@ -1439,6 +1561,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_SSL) // NOLINT
                "\t\"mqtt_client_id\":\t\"client124\",\n"
                "\t\"mqtt_user\":\t\"user2\",\n"
                "\t\"mqtt_pass\":\t\"pass2\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -1514,6 +1638,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WS) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -1524,6 +1650,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WS) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\ttrue,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"" MQTT_TRANSPORT_WS "\",\n"
@@ -1533,6 +1661,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WS) // NOLINT
                "\t\"mqtt_client_id\":\t\"client124\",\n"
                "\t\"mqtt_user\":\t\"user2\",\n"
                "\t\"mqtt_pass\":\t\"pass2\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -1608,6 +1738,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WSS) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -1618,6 +1750,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WSS) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\ttrue,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"" MQTT_TRANSPORT_WSS "\",\n"
@@ -1627,6 +1761,108 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WSS) // NOLINT
                "\t\"mqtt_client_id\":\t\"client124\",\n"
                "\t\"mqtt_user\":\t\"user2\",\n"
                "\t\"mqtt_pass\":\t\"pass2\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
+               "\t\"lan_auth_user\":\t\"Admin\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
+               "\t\"lan_auth_api_key_rw\":\t\"\",\n"
+               "\t\"auto_update_cycle\":\t\"regular\",\n"
+               "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+               "\t\"auto_update_interval_from\":\t0,\n"
+               "\t\"auto_update_interval_to\":\t24,\n"
+               "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"company_id\":\t1177,\n"
+               "\t\"company_use_filtering\":\ttrue,\n"
+               "\t\"scan_coded_phy\":\tfalse,\n"
+               "\t\"scan_1mbit_phy\":\ttrue,\n"
+               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_channel_37\":\ttrue,\n"
+               "\t\"scan_channel_38\":\ttrue,\n"
+               "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"coordinates\":\t\"\"\n"
+               "}"),
+        string(json_str.p_str));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
+    cjson_wrap_free_json_str(&json_str);
+
+    ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_custom_http_enabled) // NOLINT
+{
+    gw_cfg_t         gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    gw_cfg.ruuvi_cfg.http.use_http_ruuvi           = false;
+    gw_cfg.ruuvi_cfg.http.use_http                 = true;
+    gw_cfg.ruuvi_cfg.http.http_use_ssl_client_cert = false;
+    gw_cfg.ruuvi_cfg.http.http_use_ssl_server_cert = true;
+    snprintf(
+        gw_cfg.ruuvi_cfg.http.http_url.buf,
+        sizeof(gw_cfg.ruuvi_cfg.http.http_url.buf),
+        "https://my_url1.com/record");
+    gw_cfg.ruuvi_cfg.http.data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI;
+    gw_cfg.ruuvi_cfg.http.auth_type   = GW_CFG_HTTP_AUTH_TYPE_NONE;
+
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_NE(nullptr, json_str.p_str);
+    ASSERT_EQ(
+        string("{\n"
+               "\t\"wifi_sta_config\":\t{\n"
+               "\t\t\"ssid\":\t\"\",\n"
+               "\t\t\"password\":\t\"\"\n"
+               "\t},\n"
+               "\t\"wifi_ap_config\":\t{\n"
+               "\t\t\"password\":\t\"\",\n"
+               "\t\t\"channel\":\t1\n"
+               "\t},\n"
+               "\t\"use_eth\":\ttrue,\n"
+               "\t\"eth_dhcp\":\ttrue,\n"
+               "\t\"eth_static_ip\":\t\"\",\n"
+               "\t\"eth_netmask\":\t\"\",\n"
+               "\t\"eth_gw\":\t\"\",\n"
+               "\t\"eth_dns1\":\t\"\",\n"
+               "\t\"eth_dns2\":\t\"\",\n"
+               "\t\"remote_cfg_use\":\tfalse,\n"
+               "\t\"remote_cfg_url\":\t\"\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\tfalse,\n"
+               "\t\"use_http\":\ttrue,\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\ttrue,\n"
+               "\t\"http_url\":\t\"https://my_url1.com/record\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
+               "\t\"use_http_stat\":\ttrue,\n"
+               "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
+               "\t\"http_stat_user\":\t\"\",\n"
+               "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"use_mqtt\":\tfalse,\n"
+               "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
+               "\t\"mqtt_transport\":\t\"TCP\",\n"
+               "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+               "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
+               "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"mqtt_user\":\t\"\",\n"
+               "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -1691,16 +1927,17 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_disabled) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
-               "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_data_format\":\t\"ruuvi\",\n"
-               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -1710,6 +1947,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_disabled) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -1778,9 +2017,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_none) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
                "\t\"http_url\":\t\""
                "https://my_url1.com/status"
                "\",\n"
@@ -1790,6 +2033,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_none) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -1799,6 +2044,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_none) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -1875,9 +2122,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_basic) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
                "\t\"http_url\":\t\""
                "https://my_url1.com/status"
                "\",\n"
@@ -1889,6 +2140,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_basic) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -1898,6 +2151,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_basic) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -1970,9 +2225,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_bearer) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
                "\t\"http_url\":\t\""
                "https://my_url1.com/status"
                "\",\n"
@@ -1983,6 +2242,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_bearer) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -1992,6 +2253,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_bearer) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -2064,9 +2327,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_token) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
                "\t\"http_url\":\t\""
                "https://my_url1.com/status"
                "\",\n"
@@ -2077,6 +2344,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_token) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -2086,6 +2355,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_token) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -2155,6 +2426,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_equal_to_default) // NOL
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -2167,6 +2440,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_equal_to_default) // NOL
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -2176,6 +2451,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_equal_to_default) // NOL
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -2254,9 +2531,13 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_equal_to_default_auth_di
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\ttrue,\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
                "\t\"http_url\":\t\""
                "https://network.ruuvi.com/record"
                "\",\n"
@@ -2268,6 +2549,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_equal_to_default_auth_di
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -2277,6 +2560,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_equal_to_default_auth_di
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -2340,6 +2625,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_disabled) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -2350,6 +2637,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_disabled) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -2359,6 +2648,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_disabled) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -2434,6 +2725,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_enabled) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -2444,6 +2737,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_enabled) // NOLINT
                "\t\"http_stat_url\":\t\"https://my_stat_url1.com/status\",\n"
                "\t\"http_stat_user\":\t\"user1\",\n"
                "\t\"http_stat_pass\":\t\"pass1\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -2453,6 +2748,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_enabled) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -2515,6 +2812,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_default) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -2525,6 +2824,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_default) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -2534,6 +2835,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_default) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -2602,6 +2905,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -2612,6 +2917,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -2621,6 +2928,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"user1\",\n"
                "\t\"lan_auth_pass\":\t\"pass1\",\n"
@@ -2696,6 +3005,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi_with_api_key) // NOLIN
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -2706,6 +3017,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi_with_api_key) // NOLIN
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -2715,6 +3028,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi_with_api_key) // NOLIN
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"user1\",\n"
                "\t\"lan_auth_pass\":\t\"pass1\",\n"
@@ -2784,6 +3099,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_digest) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -2794,6 +3111,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_digest) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -2803,6 +3122,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_digest) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_digest\",\n"
                "\t\"lan_auth_user\":\t\"user1\",\n"
                "\t\"lan_auth_pass\":\t\"pass1\",\n"
@@ -2872,6 +3193,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_basic) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -2882,6 +3205,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_basic) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -2891,6 +3216,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_basic) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_basic\",\n"
                "\t\"lan_auth_user\":\t\"user1\",\n"
                "\t\"lan_auth_pass\":\t\"pass1\",\n"
@@ -2960,6 +3287,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_allow) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -2970,6 +3299,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_allow) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -2979,6 +3310,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_allow) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_allow\",\n"
                "\t\"lan_auth_user\":\t\"\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -3047,6 +3380,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_deny) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -3057,6 +3392,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_deny) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -3066,6 +3403,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_deny) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_deny\",\n"
                "\t\"lan_auth_user\":\t\"\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -3133,6 +3472,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_beta_tester) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -3143,6 +3484,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_beta_tester) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -3152,6 +3495,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_beta_tester) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -3219,6 +3564,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_manual) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -3229,6 +3576,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_manual) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -3238,6 +3587,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_manual) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -3301,6 +3652,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_unknown) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -3311,6 +3664,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_unknown) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -3320,6 +3675,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_unknown) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -3380,6 +3737,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_disabled) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -3390,6 +3749,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_disabled) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -3399,6 +3760,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_disabled) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -3464,6 +3827,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_enabled_via_dhcp) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -3474,6 +3839,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_enabled_via_dhcp) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -3483,6 +3850,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_enabled_via_dhcp) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -3557,6 +3926,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_custom) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -3567,6 +3938,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_custom) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -3576,6 +3949,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_custom) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -3641,6 +4016,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_enabled) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -3651,6 +4028,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_enabled) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -3660,6 +4039,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_enabled) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -3725,6 +4106,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_disabled) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -3735,6 +4118,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_disabled) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -3744,6 +4129,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_disabled) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -3813,6 +4200,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_default) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -3823,6 +4212,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_default) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -3832,6 +4223,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_default) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -3901,6 +4294,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_coded_phy_true) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -3911,6 +4306,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_coded_phy_true) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -3920,6 +4317,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_coded_phy_true) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -3989,6 +4388,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_1mbit_phy_false) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -3999,6 +4400,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_1mbit_phy_false) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -4008,6 +4411,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_1mbit_phy_false) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -4077,6 +4482,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_extended_payload_false) // NOLIN
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -4087,6 +4494,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_extended_payload_false) // NOLIN
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -4096,6 +4505,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_extended_payload_false) // NOLIN
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -4165,6 +4576,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_37_false) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -4175,6 +4588,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_37_false) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -4184,6 +4599,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_37_false) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -4253,6 +4670,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_38_false) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -4263,6 +4682,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_38_false) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -4272,6 +4693,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_38_false) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -4341,6 +4764,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_39_false) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -4351,6 +4776,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_39_false) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -4360,6 +4787,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_39_false) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -4424,6 +4853,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_coordinates) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -4434,6 +4865,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_coordinates) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -4443,6 +4876,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_coordinates) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -4572,6 +5007,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_default) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -4582,6 +5019,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_default) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -4591,6 +5030,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_default) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -4634,6 +5075,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
             .http = {
                 .use_http_ruuvi = false,
                 .use_http = false,
+                .http_use_ssl_client_cert = false,
+                .http_use_ssl_server_cert = false,
                 .http_url = { "https://myserver1.com" },
                 .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
                 .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
@@ -4645,21 +5088,25 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
                 },
             },
             .http_stat = {
-                false,
-                "https://myserver1.com/status",
-                "h_user2",
-                "h_pass2",
+                .use_http_stat = false,
+                .http_stat_use_ssl_client_cert = false,
+                .http_stat_use_ssl_server_cert = false,
+                .http_stat_url = { "https://myserver1.com/status" },
+                .http_stat_user = { "h_user2" },
+                .http_stat_pass = { "h_pass2" },
             },
             .mqtt = {
-                true,
-                false,
-                "SSL",
-                "test.mosquitto.org",
-                1338,
-                "my_prefix",
-                "my_client",
-                "m_user1",
-                "m_pass1",
+                .use_mqtt = true,
+                .mqtt_disable_retained_messages = false,
+                .use_ssl_client_cert = false,
+                .use_ssl_server_cert = false,
+                .mqtt_transport = { "SSL" },
+                .mqtt_server = { "test.mosquitto.org" },
+                .mqtt_port = 1338,
+                .mqtt_prefix = { "my_prefix" },
+                .mqtt_client_id = { "my_client" },
+                .mqtt_user = { "m_user1" },
+                .mqtt_pass = { "m_pass1" },
             },
             .lan_auth = {
                 HTTP_SERVER_AUTH_TYPE_DIGEST,
@@ -4793,16 +5240,17 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
-               "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
-               "\t\"http_data_format\":\t\"ruuvi\",\n"
-               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\tfalse,\n"
                "\t\"http_stat_url\":\t\"https://myserver1.com/status\",\n"
                "\t\"http_stat_user\":\t\"h_user2\",\n"
                "\t\"http_stat_pass\":\t\"h_pass2\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\ttrue,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"SSL\",\n"
@@ -4812,6 +5260,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
                "\t\"mqtt_client_id\":\t\"my_client\",\n"
                "\t\"mqtt_user\":\t\"m_user1\",\n"
                "\t\"mqtt_pass\":\t\"m_pass1\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_digest\",\n"
                "\t\"lan_auth_user\":\t\"l_user1\",\n"
                "\t\"lan_auth_pass\":\t\"l_pass1\",\n"
@@ -4856,6 +5306,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
             .http = {
                 .use_http_ruuvi = false,
                 .use_http = false,
+                .http_use_ssl_client_cert = false,
+                .http_use_ssl_server_cert = false,
                 .http_url = { "https://myserver1.com" },
                 .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
                 .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
@@ -4867,21 +5319,25 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
                 },
             },
             .http_stat = {
-                false,
-                "https://myserver1.com/status",
-                "h_user2",
-                "h_pass2",
+                .use_http_stat = false,
+                .http_stat_use_ssl_client_cert = false,
+                .http_stat_use_ssl_server_cert = false,
+                .http_stat_url = { "https://myserver1.com/status" },
+                .http_stat_user = { "h_user2" },
+                .http_stat_pass = { "h_pass2" },
             },
             .mqtt = {
-                true,
-                true,
-                "SSL",
-                "test.mosquitto.org",
-                1338,
-                "my_prefix",
-                "my_client",
-                "m_user1",
-                "m_pass1",
+                .use_mqtt = true,
+                .mqtt_disable_retained_messages = true,
+                .use_ssl_client_cert = false,
+                .use_ssl_server_cert = false,
+                .mqtt_transport = { "SSL" },
+                .mqtt_server = { "test.mosquitto.org" },
+                .mqtt_port = 1338,
+                .mqtt_prefix = { "my_prefix" },
+                .mqtt_client_id = { "my_client" },
+                .mqtt_user = { "m_user1" },
+                .mqtt_pass = { "m_pass1" },
             },
             .lan_auth = {
                 HTTP_SERVER_AUTH_TYPE_DIGEST,
@@ -5015,16 +5471,17 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
-               "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
-               "\t\"http_data_format\":\t\"ruuvi\",\n"
-               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\tfalse,\n"
                "\t\"http_stat_url\":\t\"https://myserver1.com/status\",\n"
                "\t\"http_stat_user\":\t\"h_user2\",\n"
                "\t\"http_stat_pass\":\t\"h_pass2\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\ttrue,\n"
                "\t\"mqtt_disable_retained_messages\":\ttrue,\n"
                "\t\"mqtt_transport\":\t\"SSL\",\n"
@@ -5034,6 +5491,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
                "\t\"mqtt_client_id\":\t\"my_client\",\n"
                "\t\"mqtt_user\":\t\"m_user1\",\n"
                "\t\"mqtt_pass\":\t\"m_pass1\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_digest\",\n"
                "\t\"lan_auth_user\":\t\"l_user1\",\n"
                "\t\"lan_auth_pass\":\t\"l_pass1\",\n"
@@ -5078,6 +5537,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
             .http = {
                 .use_http_ruuvi = false,
                 .use_http = false,
+                .http_use_ssl_client_cert = false,
+                .http_use_ssl_server_cert = false,
                 .http_url = { "https://myserver1.com" },
                 .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
                 .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
@@ -5089,21 +5550,25 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
                 },
             },
             .http_stat = {
-                false,
-                "https://myserver1.com/status",
-                "h_user2",
-                "h_pass2",
+                .use_http_stat = false,
+                .http_stat_use_ssl_client_cert = false,
+                .http_stat_use_ssl_server_cert = false,
+                .http_stat_url = { "https://myserver1.com/status" },
+                .http_stat_user = { "h_user2" },
+                .http_stat_pass = { "h_pass2" },
             },
             .mqtt = {
-                true,
-                false,
-                "SSL",
-                "test.mosquitto.org",
-                1338,
-                "my_prefix",
-                "my_client",
-                "m_user1",
-                "m_pass1",
+                .use_mqtt = true,
+                .mqtt_disable_retained_messages = false,
+                .use_ssl_client_cert = false,
+                .use_ssl_server_cert = false,
+                .mqtt_transport = { "SSL" },
+                .mqtt_server = { "test.mosquitto.org" },
+                .mqtt_port = 1338,
+                .mqtt_prefix = { "my_prefix" },
+                .mqtt_client_id = { "my_client" },
+                .mqtt_user = { "m_user1" },
+                .mqtt_pass = { "m_pass1" },
             },
             .lan_auth = {
                 HTTP_SERVER_AUTH_TYPE_DIGEST,
@@ -5237,16 +5702,17 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
-               "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
-               "\t\"http_data_format\":\t\"ruuvi\",\n"
-               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\tfalse,\n"
                "\t\"http_stat_url\":\t\"https://myserver1.com/status\",\n"
                "\t\"http_stat_user\":\t\"h_user2\",\n"
                "\t\"http_stat_pass\":\t\"h_pass2\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\ttrue,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"SSL\",\n"
@@ -5256,6 +5722,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
                "\t\"mqtt_client_id\":\t\"my_client\",\n"
                "\t\"mqtt_user\":\t\"m_user1\",\n"
                "\t\"mqtt_pass\":\t\"m_pass1\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_digest\",\n"
                "\t\"lan_auth_user\":\t\"l_user1\",\n"
                "\t\"lan_auth_pass\":\t\"l_pass1\",\n"
@@ -5309,6 +5777,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
           "\t\"remote_cfg_use\":\tfalse,\n"
           "\t\"remote_cfg_url\":\t\"\",\n"
           "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+          "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
           "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
           "\t\"use_http_ruuvi\":\tfalse,\n"
           "\t\"use_http\":\tfalse,\n"
@@ -5319,6 +5789,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
           "\t\"http_stat_url\":\t\"https://myserver1.com/status\",\n"
           "\t\"http_stat_user\":\t\"h_user2\",\n"
           "\t\"http_stat_pass\":\t\"h_pass2\",\n"
+          "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
           "\t\"use_mqtt\":\ttrue,\n"
           "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
           "\t\"mqtt_transport\":\t\"SSL\",\n"
@@ -5328,6 +5800,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
           "\t\"mqtt_client_id\":\t\"my_client\",\n"
           "\t\"mqtt_user\":\t\"m_user1\",\n"
           "\t\"mqtt_pass\":\t\"m_pass1\",\n"
+          "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
           "\t\"lan_auth_type\":\t\"lan_auth_digest\",\n"
           "\t\"lan_auth_user\":\t\"l_user1\",\n"
           "\t\"lan_auth_pass\":\t\"l_pass1\",\n"
@@ -5439,16 +5913,17 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
-               "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
-               "\t\"http_data_format\":\t\"ruuvi\",\n"
-               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\tfalse,\n"
                "\t\"http_stat_url\":\t\"https://myserver1.com/status\",\n"
                "\t\"http_stat_user\":\t\"h_user2\",\n"
                "\t\"http_stat_pass\":\t\"h_pass2\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\ttrue,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"SSL\",\n"
@@ -5458,6 +5933,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
                "\t\"mqtt_client_id\":\t\"my_client\",\n"
                "\t\"mqtt_user\":\t\"m_user1\",\n"
                "\t\"mqtt_pass\":\t\"m_pass1\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_digest\",\n"
                "\t\"lan_auth_user\":\t\"l_user1\",\n"
                "\t\"lan_auth_pass\":\t\"l_pass1\",\n"
@@ -5502,6 +5979,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
             .http = {
                 .use_http_ruuvi = false,
                 .use_http = false,
+                .http_use_ssl_client_cert = false,
+                .http_use_ssl_server_cert = false,
                 .http_url = { "https://myserver1.com" },
                 .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
                 .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
@@ -5513,21 +5992,25 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
                 },
             },
             .http_stat = {
-                false,
-                "https://myserver1.com/status",
-                "h_user2",
-                "h_pass2",
+                .use_http_stat = false,
+                .http_stat_use_ssl_client_cert = false,
+                .http_stat_use_ssl_server_cert = false,
+                .http_stat_url = { "https://myserver1.com/status" },
+                .http_stat_user = { "h_user2" },
+                .http_stat_pass = { "h_pass2" },
             },
             .mqtt = {
-                true,
-                false,
-                "SSL",
-                "test.mosquitto.org",
-                1338,
-                "my_prefix",
-                "my_client",
-                "m_user1",
-                "m_pass1",
+                .use_mqtt = true,
+                .mqtt_disable_retained_messages = false,
+                .use_ssl_client_cert = false,
+                .use_ssl_server_cert = false,
+                .mqtt_transport = { "SSL" },
+                .mqtt_server = { "test.mosquitto.org" },
+                .mqtt_port = 1338,
+                .mqtt_prefix = { "my_prefix" },
+                .mqtt_client_id = { "my_client" },
+                .mqtt_user = { "m_user1" },
+                .mqtt_pass = { "m_pass1" },
             },
             .lan_auth = {
                 HTTP_SERVER_AUTH_TYPE_DIGEST,
@@ -5661,16 +6144,17 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
-               "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
-               "\t\"http_data_format\":\t\"ruuvi\",\n"
-               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\tfalse,\n"
                "\t\"http_stat_url\":\t\"https://myserver1.com/status\",\n"
                "\t\"http_stat_user\":\t\"h_user2\",\n"
                "\t\"http_stat_pass\":\t\"h_pass2\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\ttrue,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"SSL\",\n"
@@ -5680,6 +6164,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
                "\t\"mqtt_client_id\":\t\"my_client\",\n"
                "\t\"mqtt_user\":\t\"m_user1\",\n"
                "\t\"mqtt_pass\":\t\"m_pass1\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_digest\",\n"
                "\t\"lan_auth_user\":\t\"l_user1\",\n"
                "\t\"lan_auth_pass\":\t\"l_pass1\",\n"
@@ -5724,6 +6210,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
             .http = {
                 .use_http_ruuvi = false,
                 .use_http = false,
+                .http_use_ssl_client_cert = false,
+                .http_use_ssl_server_cert = false,
                 .http_url = { "https://myserver1.com" },
                 .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
                 .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
@@ -5735,21 +6223,25 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
                 },
             },
             .http_stat = {
-                false,
-                "https://myserver1.com/status",
-                "h_user2",
-                "h_pass2",
+                .use_http_stat = false,
+                .http_stat_use_ssl_client_cert = false,
+                .http_stat_use_ssl_server_cert = false,
+                .http_stat_url = { "https://myserver1.com/status" },
+                .http_stat_user = { "h_user2" },
+                .http_stat_pass = { "h_pass2" },
             },
             .mqtt = {
-                true,
-                false,
-                "SSL",
-                "test.mosquitto.org",
-                1338,
-                "my_prefix",
-                "my_client",
-                "m_user1",
-                "m_pass1",
+                .use_mqtt = true,
+                .mqtt_disable_retained_messages = false,
+                .use_ssl_client_cert = false,
+                .use_ssl_server_cert = false,
+                .mqtt_transport = { "SSL" },
+                .mqtt_server = { "test.mosquitto.org" },
+                .mqtt_port = 1338,
+                .mqtt_prefix = { "my_prefix" },
+                .mqtt_client_id = { "my_client" },
+                .mqtt_user = { "m_user1" },
+                .mqtt_pass = { "m_pass1" },
             },
             .lan_auth = {
                 HTTP_SERVER_AUTH_TYPE_DIGEST,
@@ -5883,16 +6375,17 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
-               "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
-               "\t\"http_data_format\":\t\"ruuvi\",\n"
-               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\tfalse,\n"
                "\t\"http_stat_url\":\t\"https://myserver1.com/status\",\n"
                "\t\"http_stat_user\":\t\"h_user2\",\n"
                "\t\"http_stat_pass\":\t\"h_pass2\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\ttrue,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"SSL\",\n"
@@ -5902,6 +6395,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
                "\t\"mqtt_client_id\":\t\"my_client\",\n"
                "\t\"mqtt_user\":\t\"m_user1\",\n"
                "\t\"mqtt_pass\":\t\"m_pass1\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_digest\",\n"
                "\t\"lan_auth_user\":\t\"l_user1\",\n"
                "\t\"lan_auth_pass\":\t\"l_pass1\",\n"
@@ -5946,6 +6441,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_custom) // NOLINT
             .http = {
                 .use_http_ruuvi = false,
                 .use_http = false,
+                .http_use_ssl_client_cert = false,
+                .http_use_ssl_server_cert = false,
                 .http_url = { "https://myserver1.com" },
                 .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
                 .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
@@ -5957,21 +6454,25 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_custom) // NOLINT
                 },
             },
             .http_stat = {
-                false,
-                "https://myserver1.com/status",
-                "h_user2",
-                "h_pass2",
+                .use_http_stat = false,
+                .http_stat_use_ssl_client_cert = false,
+                .http_stat_use_ssl_server_cert = false,
+                .http_stat_url = { "https://myserver1.com/status" },
+                .http_stat_user = { "h_user2" },
+                .http_stat_pass = { "h_pass2" },
             },
             .mqtt = {
-                true,
-                false,
-                "SSL",
-                "test.mosquitto.org",
-                1338,
-                "my_prefix",
-                "my_client",
-                "m_user1",
-                "m_pass1",
+                .use_mqtt = true,
+                .mqtt_disable_retained_messages = false,
+                .use_ssl_client_cert = false,
+                .use_ssl_server_cert = false,
+                .mqtt_transport = { "SSL" },
+                .mqtt_server = { "test.mosquitto.org" },
+                .mqtt_port = 1338,
+                .mqtt_prefix = { "my_prefix" },
+                .mqtt_client_id = { "my_client" },
+                .mqtt_user = { "m_user1" },
+                .mqtt_pass = { "m_pass1" },
             },
             .lan_auth = {
                 HTTP_SERVER_AUTH_TYPE_DIGEST,
@@ -6105,16 +6606,17 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_custom) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
-               "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
-               "\t\"http_data_format\":\t\"ruuvi\",\n"
-               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\tfalse,\n"
                "\t\"http_stat_url\":\t\"https://myserver1.com/status\",\n"
                "\t\"http_stat_user\":\t\"h_user2\",\n"
                "\t\"http_stat_pass\":\t\"h_pass2\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\ttrue,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"SSL\",\n"
@@ -6124,6 +6626,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_custom) // NOLINT
                "\t\"mqtt_client_id\":\t\"my_client\",\n"
                "\t\"mqtt_user\":\t\"m_user1\",\n"
                "\t\"mqtt_pass\":\t\"m_pass1\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_digest\",\n"
                "\t\"lan_auth_user\":\t\"l_user1\",\n"
                "\t\"lan_auth_pass\":\t\"l_pass1\",\n"
@@ -6184,6 +6688,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -6194,6 +6700,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
                "\t\"http_stat_url\":\t\"https://network.ruuvi.com/status\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -6203,6 +6711,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n" // <--
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
@@ -6252,6 +6762,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
           "\t\"remote_cfg_use\":\tfalse,\n"
           "\t\"remote_cfg_url\":\t\"\",\n"
           "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+          "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
           "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
           "\t\"use_http_ruuvi\":\ttrue,\n"
           "\t\"use_http\":\ttrue,\n"
@@ -6262,6 +6774,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
           "\t\"http_stat_url\":\t\"https://network.ruuvi.com/status\",\n"
           "\t\"http_stat_user\":\t\"\",\n"
           "\t\"http_stat_pass\":\t\"\",\n"
+          "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
           "\t\"use_mqtt\":\tfalse,\n"
           "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
           "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -6271,6 +6785,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
           "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
           "\t\"mqtt_user\":\t\"\",\n"
           "\t\"mqtt_pass\":\t\"\",\n"
+          "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
           "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n" // <--
           "\t\"lan_auth_user\":\t\"Admin\",\n"
           "\t\"lan_auth_pass\":\t\"0d6c6f1c27ca628806eb9247740d8ba1\",\n"
@@ -6328,6 +6844,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -6338,6 +6856,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
                "\t\"http_stat_url\":\t\"https://network.ruuvi.com/status\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -6347,6 +6867,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -6410,6 +6932,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -6420,6 +6944,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi) // NOLINT
                "\t\"http_stat_url\":\t\"https://network.ruuvi.com/status\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -6429,6 +6955,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"non_default_pass\",\n"
@@ -6488,6 +7016,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -6498,6 +7028,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi) // NOLINT
                "\t\"http_stat_url\":\t\"https://network.ruuvi.com/status\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -6507,6 +7039,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_pass\":\t\"non_default_pass\",\n"
@@ -6630,6 +7164,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -6640,6 +7176,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -6649,6 +7187,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -6678,6 +7218,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'remote_cfg_use' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'remote_cfg_url' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'remote_cfg_auth_type' in config-json"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'remote_cfg_use_ssl_client_cert' in config-json"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'remote_cfg_use_ssl_server_cert' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'remote_cfg_refresh_interval_minutes' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'use_http_ruuvi' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'use_http' in config-json"));
@@ -6687,6 +7229,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
     TEST_CHECK_LOG_RECORD(
         ESP_LOG_INFO,
         string("Can't find key 'http_stat_pass' in config-json, leave the previous value unchanged"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'http_stat_use_ssl_client_cert' in config-json"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'http_stat_use_ssl_server_cert' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'use_mqtt' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'mqtt_disable_retained_messages' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'mqtt_transport' in config-json"));
@@ -6831,6 +7375,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_string) // NOLINT
                "\t\"remote_cfg_use\":\tfalse,\n"
                "\t\"remote_cfg_url\":\t\"\",\n"
                "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
@@ -6841,6 +7387,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_string) // NOLINT
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
                "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
                "\t\"use_mqtt\":\tfalse,\n"
                "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
                "\t\"mqtt_transport\":\t\"TCP\",\n"
@@ -6850,6 +7398,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_string) // NOLINT
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
                "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
                "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
                "\t\"lan_auth_user\":\t\"Admin\",\n"
                "\t\"lan_auth_api_key\":\t\"\",\n"
@@ -6925,6 +7475,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_malloc_failed) // NOLINT
           "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
           "\t\"mqtt_user\":\t\"\",\n"
           "\t\"mqtt_pass\":\t\"\",\n"
+          "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
           "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
           "\t\"lan_auth_user\":\t\"Admin\",\n"
           "\t\"lan_auth_pass\":\t\"\377password_md5\377\",\n"
@@ -6951,7 +7503,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_malloc_failed) // NOLINT
           "\t\"scan_channel_39\":\ttrue,\n"
           "\t\"coordinates\":\t\"\"\n"
           "}";
-    for (uint32_t i = 0; i < 152; ++i)
+    for (uint32_t i = 0; i < 156; ++i)
     {
         this->m_malloc_cnt         = 0;
         this->m_malloc_fail_on_cnt = i + 1;
@@ -6965,7 +7517,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_malloc_failed) // NOLINT
 
     {
         this->m_malloc_cnt         = 0;
-        this->m_malloc_fail_on_cnt = 153;
+        this->m_malloc_fail_on_cnt = 157;
         gw_cfg_t gw_cfg2           = get_gateway_config_default();
         ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, p_json_str, &gw_cfg2));
         ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
@@ -7789,7 +8341,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_auth_type
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_refresh_interval_minutes) // NOLINT
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_use_ssl_client_cert) // NOLINT
 {
     const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -7800,6 +8352,82 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_refresh_i
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 44;
+
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_use_ssl_client_cert"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_use_ssl_client_cert_2) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 45;
+
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_use_ssl_client_cert"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_use_ssl_server_cert) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 46;
+
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_use_ssl_server_cert"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_use_ssl_server_cert_2) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 47;
+
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_use_ssl_server_cert"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_refresh_interval_minutes) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 48;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7818,7 +8446,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_refresh_i
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 45;
+    this->m_malloc_fail_on_cnt = 49;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7837,7 +8465,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http_ruuvi) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 46;
+    this->m_malloc_fail_on_cnt = 50;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7856,7 +8484,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http_ruuvi_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 47;
+    this->m_malloc_fail_on_cnt = 51;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7875,7 +8503,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 48;
+    this->m_malloc_fail_on_cnt = 52;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7894,7 +8522,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http_2) // NOLIN
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 49;
+    this->m_malloc_fail_on_cnt = 53;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7913,7 +8541,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_url) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 50;
+    this->m_malloc_fail_on_cnt = 54;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7932,7 +8560,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_url_2) // NOLIN
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 51;
+    this->m_malloc_fail_on_cnt = 55;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7951,7 +8579,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_url_3) // NOLIN
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 52;
+    this->m_malloc_fail_on_cnt = 56;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7970,7 +8598,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_data_format) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 53;
+    this->m_malloc_fail_on_cnt = 57;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -7989,7 +8617,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_data_format_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 54;
+    this->m_malloc_fail_on_cnt = 58;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8008,7 +8636,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_data_format_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 55;
+    this->m_malloc_fail_on_cnt = 59;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8027,7 +8655,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_auth) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 56;
+    this->m_malloc_fail_on_cnt = 60;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8046,7 +8674,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_auth_2) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 57;
+    this->m_malloc_fail_on_cnt = 61;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8065,7 +8693,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_auth_3) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 58;
+    this->m_malloc_fail_on_cnt = 62;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8084,7 +8712,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http_stat) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 59;
+    this->m_malloc_fail_on_cnt = 63;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8103,7 +8731,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http_stat_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 60;
+    this->m_malloc_fail_on_cnt = 64;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8122,7 +8750,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_url) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 61;
+    this->m_malloc_fail_on_cnt = 65;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8141,7 +8769,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_url_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 62;
+    this->m_malloc_fail_on_cnt = 66;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8160,7 +8788,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_url_3) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 63;
+    this->m_malloc_fail_on_cnt = 67;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8179,7 +8807,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_user) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 64;
+    this->m_malloc_fail_on_cnt = 68;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8198,7 +8826,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_user_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 65;
+    this->m_malloc_fail_on_cnt = 69;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8217,7 +8845,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_user_3) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 66;
+    this->m_malloc_fail_on_cnt = 70;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8236,7 +8864,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_pass) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 67;
+    this->m_malloc_fail_on_cnt = 71;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8255,7 +8883,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_pass_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 68;
+    this->m_malloc_fail_on_cnt = 72;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8274,11 +8902,87 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_pass_3) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 69;
+    this->m_malloc_fail_on_cnt = 73;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_pass"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_use_ssl_client_cert) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 74;
+
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_use_ssl_client_cert"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_use_ssl_client_cert_2) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 75;
+
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_use_ssl_client_cert"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_use_ssl_server_cert) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 76;
+
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_use_ssl_server_cert"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_use_ssl_server_cert_2) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 76;
+
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_use_ssl_server_cert"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -8293,7 +8997,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_mqtt) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 70;
+    this->m_malloc_fail_on_cnt = 78;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8312,7 +9016,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_mqtt_2) // NOLIN
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 71;
+    this->m_malloc_fail_on_cnt = 79;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8331,7 +9035,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_disable_retaine
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 72;
+    this->m_malloc_fail_on_cnt = 80;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8350,7 +9054,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_disable_retaine
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 73;
+    this->m_malloc_fail_on_cnt = 81;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8369,7 +9073,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_trnasport) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 74;
+    this->m_malloc_fail_on_cnt = 82;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8388,7 +9092,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_trnasport_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 75;
+    this->m_malloc_fail_on_cnt = 83;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8407,7 +9111,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_trnasport_3) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 76;
+    this->m_malloc_fail_on_cnt = 84;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8426,7 +9130,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_server) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 77;
+    this->m_malloc_fail_on_cnt = 85;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8445,7 +9149,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_server_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 78;
+    this->m_malloc_fail_on_cnt = 86;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8464,7 +9168,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_server_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 79;
+    this->m_malloc_fail_on_cnt = 87;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8483,7 +9187,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_port) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 80;
+    this->m_malloc_fail_on_cnt = 88;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8502,7 +9206,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_port_2) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 81;
+    this->m_malloc_fail_on_cnt = 89;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8521,7 +9225,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 82;
+    this->m_malloc_fail_on_cnt = 90;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8540,7 +9244,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 83;
+    this->m_malloc_fail_on_cnt = 91;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8559,7 +9263,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 84;
+    this->m_malloc_fail_on_cnt = 92;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8578,7 +9282,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 85;
+    this->m_malloc_fail_on_cnt = 93;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8597,7 +9301,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 86;
+    this->m_malloc_fail_on_cnt = 94;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8616,7 +9320,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id_3) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 87;
+    this->m_malloc_fail_on_cnt = 95;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8635,7 +9339,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 88;
+    this->m_malloc_fail_on_cnt = 96;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8654,7 +9358,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user_2) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 89;
+    this->m_malloc_fail_on_cnt = 97;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8673,7 +9377,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user_3) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 90;
+    this->m_malloc_fail_on_cnt = 98;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8692,7 +9396,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 91;
+    this->m_malloc_fail_on_cnt = 99;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8711,7 +9415,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass_2) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 92;
+    this->m_malloc_fail_on_cnt = 100;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8730,11 +9434,87 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass_3) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 93;
+    this->m_malloc_fail_on_cnt = 101;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_pass"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_use_ssl_client_cert) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 102;
+
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_use_ssl_client_cert"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_use_ssl_client_cert_2) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 103;
+
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_use_ssl_client_cert"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_use_ssl_server_cert) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 104;
+
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_use_ssl_server_cert"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_use_ssl_server_cert_2) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 105;
+
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_use_ssl_server_cert"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -8749,7 +9529,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_type) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 94;
+    this->m_malloc_fail_on_cnt = 106;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8768,7 +9548,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_type_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 95;
+    this->m_malloc_fail_on_cnt = 107;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8787,7 +9567,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_type_3) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 96;
+    this->m_malloc_fail_on_cnt = 108;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8806,7 +9586,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_user) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 97;
+    this->m_malloc_fail_on_cnt = 109;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8825,7 +9605,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_user_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 98;
+    this->m_malloc_fail_on_cnt = 110;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8844,7 +9624,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_user_3) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 99;
+    this->m_malloc_fail_on_cnt = 111;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8863,7 +9643,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_pass) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 100;
+    this->m_malloc_fail_on_cnt = 112;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8882,7 +9662,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_pass_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 101;
+    this->m_malloc_fail_on_cnt = 113;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8901,7 +9681,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_pass_3) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 102;
+    this->m_malloc_fail_on_cnt = 114;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8920,7 +9700,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 103;
+    this->m_malloc_fail_on_cnt = 115;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8939,7 +9719,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_2) 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 104;
+    this->m_malloc_fail_on_cnt = 116;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8958,7 +9738,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_3) 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 105;
+    this->m_malloc_fail_on_cnt = 117;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8977,7 +9757,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_rw)
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 106;
+    this->m_malloc_fail_on_cnt = 118;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -8996,7 +9776,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_rw_
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 107;
+    this->m_malloc_fail_on_cnt = 119;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9015,7 +9795,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_rw_
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 108;
+    this->m_malloc_fail_on_cnt = 120;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9034,7 +9814,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_cycle) /
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 109;
+    this->m_malloc_fail_on_cnt = 121;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9053,7 +9833,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_cycle_2)
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 110;
+    this->m_malloc_fail_on_cnt = 122;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9072,7 +9852,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_cycle_3)
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 111;
+    this->m_malloc_fail_on_cnt = 123;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9091,7 +9871,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_weekdays
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 112;
+    this->m_malloc_fail_on_cnt = 124;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9110,7 +9890,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_weekdays
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 113;
+    this->m_malloc_fail_on_cnt = 125;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9129,7 +9909,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 114;
+    this->m_malloc_fail_on_cnt = 126;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9148,7 +9928,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 115;
+    this->m_malloc_fail_on_cnt = 127;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9167,7 +9947,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 116;
+    this->m_malloc_fail_on_cnt = 128;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9186,7 +9966,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 117;
+    this->m_malloc_fail_on_cnt = 129;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9205,7 +9985,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_tz) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 118;
+    this->m_malloc_fail_on_cnt = 130;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9224,7 +10004,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_tz_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 119;
+    this->m_malloc_fail_on_cnt = 131;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9243,7 +10023,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 120;
+    this->m_malloc_fail_on_cnt = 132;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9262,7 +10042,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use_2) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 121;
+    this->m_malloc_fail_on_cnt = 133;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9281,7 +10061,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use_dhcp) // NOL
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 122;
+    this->m_malloc_fail_on_cnt = 134;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9300,7 +10080,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use_dhcp_2) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 123;
+    this->m_malloc_fail_on_cnt = 135;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9319,7 +10099,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server1) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 124;
+    this->m_malloc_fail_on_cnt = 136;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9338,7 +10118,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server1_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 125;
+    this->m_malloc_fail_on_cnt = 137;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9357,7 +10137,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server1_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 126;
+    this->m_malloc_fail_on_cnt = 138;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9376,7 +10156,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server2) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 127;
+    this->m_malloc_fail_on_cnt = 139;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9395,7 +10175,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server2_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 128;
+    this->m_malloc_fail_on_cnt = 140;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9414,7 +10194,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server2_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 129;
+    this->m_malloc_fail_on_cnt = 141;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9433,7 +10213,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server3) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 130;
+    this->m_malloc_fail_on_cnt = 142;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9452,7 +10232,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server3_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 131;
+    this->m_malloc_fail_on_cnt = 143;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9471,7 +10251,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server3_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 132;
+    this->m_malloc_fail_on_cnt = 144;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9490,7 +10270,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server4) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 133;
+    this->m_malloc_fail_on_cnt = 145;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9509,7 +10289,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server4_1) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 134;
+    this->m_malloc_fail_on_cnt = 146;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9528,7 +10308,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server4_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 135;
+    this->m_malloc_fail_on_cnt = 147;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9547,7 +10327,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_company_id) // NOLIN
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 136;
+    this->m_malloc_fail_on_cnt = 148;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9566,7 +10346,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_company_id_2) // NOL
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 137;
+    this->m_malloc_fail_on_cnt = 149;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9585,7 +10365,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_filtering) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 138;
+    this->m_malloc_fail_on_cnt = 150;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9604,7 +10384,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_filtering_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 139;
+    this->m_malloc_fail_on_cnt = 151;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9623,7 +10403,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_coded_phy) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 140;
+    this->m_malloc_fail_on_cnt = 152;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9642,7 +10422,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_coded_phy_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 141;
+    this->m_malloc_fail_on_cnt = 153;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9661,7 +10441,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_1mbit_phy) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 142;
+    this->m_malloc_fail_on_cnt = 154;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9680,7 +10460,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_1mbit_phy_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 143;
+    this->m_malloc_fail_on_cnt = 155;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9699,7 +10479,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_extended_payload
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 144;
+    this->m_malloc_fail_on_cnt = 156;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9718,7 +10498,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_extended_payload
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 145;
+    this->m_malloc_fail_on_cnt = 157;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9737,7 +10517,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_37) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 146;
+    this->m_malloc_fail_on_cnt = 158;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9756,7 +10536,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_37_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 147;
+    this->m_malloc_fail_on_cnt = 159;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9775,7 +10555,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_38) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 148;
+    this->m_malloc_fail_on_cnt = 160;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9794,7 +10574,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_38_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 149;
+    this->m_malloc_fail_on_cnt = 161;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9813,7 +10593,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_39) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 150;
+    this->m_malloc_fail_on_cnt = 162;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9832,7 +10612,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_39_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 151;
+    this->m_malloc_fail_on_cnt = 163;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9851,7 +10631,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 152;
+    this->m_malloc_fail_on_cnt = 164;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9870,7 +10650,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 153;
+    this->m_malloc_fail_on_cnt = 165;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9889,7 +10669,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 154;
+    this->m_malloc_fail_on_cnt = 166;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9908,7 +10688,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_converting_to_json_s
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 155;
+    this->m_malloc_fail_on_cnt = 167;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
