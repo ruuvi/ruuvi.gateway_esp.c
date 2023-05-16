@@ -46,6 +46,7 @@
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
+#include "partition_table.h"
 
 static const char TAG[] = "ruuvi_gateway";
 
@@ -425,6 +426,7 @@ main_task_init(void)
     esp_log_level_set(TAG, ESP_LOG_INFO);
     reset_info_init();
     cjson_wrap_init();
+    partition_table_update_init_mutex();
 
     g_http_server_mutex_incoming_connection = os_mutex_create_static(&g_http_server_mutex_incoming_connection_mem);
 
@@ -523,7 +525,9 @@ main_task_init(void)
     ruuvi_init_gw_cfg(&nrf52_fw_ver, &nrf52_device_info);
     LOG_INFO("### Config is empty: %s", gw_cfg_is_empty() ? "true" : "false");
 
-    hmac_sha256_set_key_str(gw_cfg_get_nrf52_device_id()->str_buf); // set default encryption key
+    hmac_sha256_set_key_for_http_ruuvi(gw_cfg_get_nrf52_device_id()->str_buf);  // set default encryption key
+    hmac_sha256_set_key_for_http_custom(gw_cfg_get_nrf52_device_id()->str_buf); // set default encryption key
+    hmac_sha256_set_key_for_stats(gw_cfg_get_nrf52_device_id()->str_buf);       // set default encryption key
 
     main_task_subscribe_events();
 

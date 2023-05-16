@@ -89,6 +89,8 @@ idf_component_register(
             nrf52fw.h
             nrf52swd.c
             nrf52swd.h
+            partition_table.c
+            partition_table.h
             reset_info.c
             reset_info.h
             reset_reason.c

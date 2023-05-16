@@ -10,8 +10,7 @@ ExternalProject_Add(binaries_prj
         BUILD_COMMAND
             rm -rf ${TARGET_DIR} &&
             mkdir ${TARGET_DIR} &&
-            cp ${CMAKE_CURRENT_SOURCE_DIR}/bootloader.bin ${TARGET_DIR} &&
-            cp ${CMAKE_CURRENT_SOURCE_DIR}/partition-table.bin ${TARGET_DIR}
+            cp ${CMAKE_CURRENT_SOURCE_DIR}/bootloader.bin ${TARGET_DIR}
         INSTALL_COMMAND ""
         BUILD_ALWAYS 1
 )
