@@ -453,10 +453,10 @@ mqtt_generate_client_config(
     p_cli_cfg->client_id                   = p_mqtt_cfg->mqtt_client_id.buf;
     p_cli_cfg->username                    = p_mqtt_cfg->mqtt_user.buf;
     p_cli_cfg->password                    = p_mqtt_cfg->mqtt_pass.buf;
-    p_cli_cfg->lwt_topic                   = p_mqtt_topic->buf;
-    p_cli_cfg->lwt_msg                     = p_lwt_message;
+    p_cli_cfg->lwt_topic                   = p_mqtt_cfg->mqtt_disable_retained_messages ? NULL : p_mqtt_topic->buf;
+    p_cli_cfg->lwt_msg                     = p_mqtt_cfg->mqtt_disable_retained_messages ? NULL : p_lwt_message;
     p_cli_cfg->lwt_qos                     = 1;
-    p_cli_cfg->lwt_retain                  = true;
+    p_cli_cfg->lwt_retain                  = !p_mqtt_cfg->mqtt_disable_retained_messages;
     p_cli_cfg->lwt_msg_len                 = 0;
     p_cli_cfg->disable_clean_session       = 0;
     p_cli_cfg->keepalive                   = 0;
@@ -527,8 +527,8 @@ mqtt_create_client_config(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg
     mqtt_generate_client_config(
         p_cli_cfg,
         p_mqtt_cfg,
-        &p_mqtt_data->mqtt_topic,
-        p_lwt_message,
+        p_mqtt_data->mqtt_disable_retained_messages ? NULL : &p_mqtt_data->mqtt_topic,
+        p_mqtt_data->mqtt_disable_retained_messages ? NULL : p_lwt_message,
         p_mqtt_data->str_buf_server_cert_mqtt.buf,
         p_mqtt_data->str_buf_client_cert.buf,
         p_mqtt_data->str_buf_client_key.buf,
