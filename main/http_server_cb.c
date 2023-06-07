@@ -86,12 +86,18 @@ http_server_cb_on_delete_ssl_cert(const char* const p_uri_params)
         return http_server_resp_400();
     }
 
-    if ((0 != strcmp(GW_CFG_STORAGE_SSL_CLIENT_CERT, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_CLIENT_KEY, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_CERT_HTTP, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_CERT_STAT, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_CERT_MQTT, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_CERT_REMOTE, filename_str_buf.buf)))
+    if ((0 != strcmp(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_STAT_CLI_CERT, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_STAT_CLI_KEY, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_MQTT_CLI_CERT, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_MQTT_CLI_KEY, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_STAT_SRV_CERT, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_MQTT_SRV_CERT, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT, filename_str_buf.buf)))
     {
         LOG_ERR("HTTP delete_ssl_cert: Unknown file name: %s", filename_str_buf.buf);
         str_buf_free_buf(&filename_str_buf);
@@ -225,12 +231,12 @@ http_server_download_gw_cfg(const ruuvi_gw_cfg_remote_t* const p_remote, const b
     str_buf_t str_buf_client_key         = str_buf_init_null();
     if (p_remote->use_ssl_client_cert)
     {
-        str_buf_client_cert = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_CLIENT_CERT);
-        str_buf_client_key  = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_CLIENT_KEY);
+        str_buf_client_cert = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT);
+        str_buf_client_key  = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY);
     }
     if (p_remote->use_ssl_server_cert)
     {
-        str_buf_server_cert_remote = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_CERT_REMOTE);
+        str_buf_server_cert_remote = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT);
     }
 
     const char* const p_ext = strrchr(p_remote->url.buf, '.');

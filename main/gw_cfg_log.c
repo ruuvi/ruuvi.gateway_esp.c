@@ -221,28 +221,55 @@ gw_cfg_log_device_info(const gw_cfg_device_info_t* const p_dev_info, const char*
     {
         LOG_INFO(
             "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_CLIENT_CERT,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CLIENT_CERT));
+            GW_CFG_STORAGE_SSL_HTTP_CLI_CERT,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT));
         LOG_INFO(
             "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_CLIENT_KEY,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CLIENT_KEY));
+            GW_CFG_STORAGE_SSL_HTTP_CLI_KEY,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY));
         LOG_INFO(
             "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_CERT_HTTP,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CERT_HTTP));
+            GW_CFG_STORAGE_SSL_HTTP_SRV_CERT,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT));
+
         LOG_INFO(
             "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_CERT_STAT,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CERT_STAT));
+            GW_CFG_STORAGE_SSL_STAT_CLI_CERT,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_STAT_CLI_CERT));
         LOG_INFO(
             "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_CERT_MQTT,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CERT_MQTT));
+            GW_CFG_STORAGE_SSL_STAT_CLI_KEY,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_STAT_CLI_KEY));
         LOG_INFO(
             "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_CERT_REMOTE,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_CERT_REMOTE));
+            GW_CFG_STORAGE_SSL_STAT_SRV_CERT,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_STAT_SRV_CERT));
+
+        LOG_INFO(
+            "config: device_info: storage: %s: %d",
+            GW_CFG_STORAGE_SSL_MQTT_CLI_CERT,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_MQTT_CLI_CERT));
+        LOG_INFO(
+            "config: device_info: storage: %s: %d",
+            GW_CFG_STORAGE_SSL_MQTT_CLI_KEY,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_MQTT_CLI_KEY));
+        LOG_INFO(
+            "config: device_info: storage: %s: %d",
+            GW_CFG_STORAGE_SSL_MQTT_SRV_CERT,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_MQTT_SRV_CERT));
+
+        LOG_INFO(
+            "config: device_info: storage: %s: %d",
+            GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT));
+        LOG_INFO(
+            "config: device_info: storage: %s: %d",
+            GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY));
+        LOG_INFO(
+            "config: device_info: storage: %s: %d",
+            GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT));
     }
 }
 

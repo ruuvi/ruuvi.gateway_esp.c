@@ -574,12 +574,12 @@ http_send_advs_internal(
     str_buf_t str_buf_client_key       = str_buf_init_null();
     if (use_ssl_client_cert)
     {
-        str_buf_client_cert = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_CLIENT_CERT);
-        str_buf_client_key  = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_CLIENT_KEY);
+        str_buf_client_cert = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT);
+        str_buf_client_key  = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY);
     }
     if (use_ssl_server_cert)
     {
-        str_buf_server_cert_http = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_CERT_HTTP);
+        str_buf_server_cert_http = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT);
     }
 
     http_init_client_config(
@@ -926,12 +926,12 @@ http_send_statistics_internal(
     str_buf_t str_buf_client_key       = str_buf_init_null();
     if (use_ssl_client_cert)
     {
-        str_buf_client_cert = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_CLIENT_CERT);
-        str_buf_client_key  = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_CLIENT_KEY);
+        str_buf_client_cert = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_STAT_CLI_CERT);
+        str_buf_client_key  = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_STAT_CLI_KEY);
     }
     if (use_ssl_server_cert)
     {
-        str_buf_server_cert_stat = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_CERT_STAT);
+        str_buf_server_cert_stat = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_STAT_SRV_CERT);
     }
 
     http_init_client_config(

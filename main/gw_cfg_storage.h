@@ -20,46 +20,88 @@ _Static_assert(
     "sizeof(GW_CFG_STORAGE_GW_CFG_DEFAULT)");
 #endif
 
-#define GW_CFG_STORAGE_SSL_CLIENT_CERT "client_cert.pem"
+#define GW_CFG_STORAGE_SSL_HTTP_CLI_CERT "http_cli_cert"
 #ifndef __cplusplus
 _Static_assert(
-    sizeof(GW_CFG_STORAGE_SSL_CLIENT_CERT) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
-    "sizeof(GW_CFG_STORAGE_SSL_CLIENT_CERT)");
+    sizeof(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
+    "sizeof(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT)");
 #endif
 
-#define GW_CFG_STORAGE_SSL_CLIENT_KEY "client_key.pem"
+#define GW_CFG_STORAGE_SSL_HTTP_CLI_KEY "http_cli_key"
 #ifndef __cplusplus
 _Static_assert(
-    sizeof(GW_CFG_STORAGE_SSL_CLIENT_KEY) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
-    "sizeof(GW_CFG_STORAGE_SSL_CLIENT_KEY)");
+    sizeof(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
+    "sizeof(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY)");
 #endif
 
-#define GW_CFG_STORAGE_SSL_CERT_HTTP "cert_http.pem"
+#define GW_CFG_STORAGE_SSL_STAT_CLI_CERT "stat_cli_cert"
 #ifndef __cplusplus
 _Static_assert(
-    sizeof(GW_CFG_STORAGE_SSL_CERT_HTTP) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
-    "sizeof(GW_CFG_STORAGE_SSL_CERT_HTTP)");
+    sizeof(GW_CFG_STORAGE_SSL_STAT_CLI_CERT) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
+    "sizeof(GW_CFG_STORAGE_SSL_STAT_CLI_CERT)");
 #endif
 
-#define GW_CFG_STORAGE_SSL_CERT_STAT "cert_stat.pem"
+#define GW_CFG_STORAGE_SSL_STAT_CLI_KEY "stat_cli_key"
 #ifndef __cplusplus
 _Static_assert(
-    sizeof(GW_CFG_STORAGE_SSL_CERT_STAT) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
-    "sizeof(GW_CFG_STORAGE_SSL_CERT_STAT)");
+    sizeof(GW_CFG_STORAGE_SSL_STAT_CLI_KEY) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
+    "sizeof(GW_CFG_STORAGE_SSL_STAT_CLI_KEY)");
 #endif
 
-#define GW_CFG_STORAGE_SSL_CERT_MQTT "cert_mqtt.pem"
+#define GW_CFG_STORAGE_SSL_MQTT_CLI_CERT "mqtt_cli_cert"
 #ifndef __cplusplus
 _Static_assert(
-    sizeof(GW_CFG_STORAGE_SSL_CERT_MQTT) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
-    "sizeof(GW_CFG_STORAGE_SSL_CERT_MQTT)");
+    sizeof(GW_CFG_STORAGE_SSL_MQTT_CLI_CERT) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
+    "sizeof(GW_CFG_STORAGE_SSL_MQTT_CLI_CERT)");
 #endif
 
-#define GW_CFG_STORAGE_SSL_CERT_REMOTE "cert_remote.pem"
+#define GW_CFG_STORAGE_SSL_MQTT_CLI_KEY "mqtt_cli_key"
 #ifndef __cplusplus
 _Static_assert(
-    sizeof(GW_CFG_STORAGE_SSL_CERT_REMOTE) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
-    "sizeof(GW_CFG_STORAGE_SSL_CERT_REMOTE)");
+    sizeof(GW_CFG_STORAGE_SSL_MQTT_CLI_KEY) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
+    "sizeof(GW_CFG_STORAGE_SSL_MQTT_CLI_KEY)");
+#endif
+
+#define GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT "rcfg_cli_cert"
+#ifndef __cplusplus
+_Static_assert(
+    sizeof(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
+    "sizeof(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT)");
+#endif
+
+#define GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY "rcfg_cli_key"
+#ifndef __cplusplus
+_Static_assert(
+    sizeof(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
+    "sizeof(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY)");
+#endif
+
+#define GW_CFG_STORAGE_SSL_HTTP_SRV_CERT "http_srv_cert"
+#ifndef __cplusplus
+_Static_assert(
+    sizeof(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
+    "sizeof(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT)");
+#endif
+
+#define GW_CFG_STORAGE_SSL_STAT_SRV_CERT "stat_srv_cert"
+#ifndef __cplusplus
+_Static_assert(
+    sizeof(GW_CFG_STORAGE_SSL_STAT_SRV_CERT) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
+    "sizeof(GW_CFG_STORAGE_SSL_STAT_SRV_CERT)");
+#endif
+
+#define GW_CFG_STORAGE_SSL_MQTT_SRV_CERT "mqtt_srv_cert"
+#ifndef __cplusplus
+_Static_assert(
+    sizeof(GW_CFG_STORAGE_SSL_MQTT_SRV_CERT) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
+    "sizeof(GW_CFG_STORAGE_SSL_MQTT_SRV_CERT)");
+#endif
+
+#define GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT "rcfg_srv_cert"
+#ifndef __cplusplus
+_Static_assert(
+    sizeof(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
+    "sizeof(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT)");
 #endif
 
 #ifdef __cplusplus

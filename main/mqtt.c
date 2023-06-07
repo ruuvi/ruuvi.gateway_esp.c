@@ -567,12 +567,12 @@ mqtt_app_start_internal(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg_m
     p_mqtt_data->str_buf_client_key       = str_buf_init_null();
     if (p_mqtt_cfg->use_ssl_client_cert)
     {
-        p_mqtt_data->str_buf_client_cert = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_CLIENT_CERT);
-        p_mqtt_data->str_buf_client_key  = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_CLIENT_KEY);
+        p_mqtt_data->str_buf_client_cert = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_MQTT_CLI_CERT);
+        p_mqtt_data->str_buf_client_key  = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_MQTT_CLI_KEY);
     }
     if (p_mqtt_cfg->use_ssl_server_cert)
     {
-        p_mqtt_data->str_buf_server_cert_mqtt = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_CERT_MQTT);
+        p_mqtt_data->str_buf_server_cert_mqtt = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_MQTT_SRV_CERT);
     }
 
     if (('\0' == p_mqtt_cfg->mqtt_server.buf[0]) || (0 == p_mqtt_cfg->mqtt_port))
