@@ -518,11 +518,13 @@ mqtt_create_client_config(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg
         "Certificates: use_ssl_client_cert=%d, use_ssl_server_cert=%d",
         p_mqtt_cfg->use_ssl_client_cert,
         p_mqtt_cfg->use_ssl_server_cert);
-    LOG_INFO(
+    LOG_DBG(
         "server_cert_mqtt: %s",
         p_mqtt_data->str_buf_server_cert_mqtt.buf ? p_mqtt_data->str_buf_server_cert_mqtt.buf : "NULL");
-    LOG_INFO("client_cert: %s", p_mqtt_data->str_buf_client_cert.buf ? p_mqtt_data->str_buf_client_cert.buf : "NULL");
-    LOG_INFO("client_key: %s", p_mqtt_data->str_buf_client_key.buf ? p_mqtt_data->str_buf_client_key.buf : "NULL");
+    LOG_DBG(
+        "client_cert_mqtt: %s",
+        p_mqtt_data->str_buf_client_cert.buf ? p_mqtt_data->str_buf_client_cert.buf : "NULL");
+    LOG_DBG("client_key_mqtt: %s", p_mqtt_data->str_buf_client_key.buf ? p_mqtt_data->str_buf_client_key.buf : "NULL");
 
     mqtt_generate_client_config(
         p_cli_cfg,
