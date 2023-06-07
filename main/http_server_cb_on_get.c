@@ -608,6 +608,29 @@ http_server_parse_mqtt_url(const char* const p_url, ruuvi_gw_cfg_mqtt_t* const p
 }
 
 HTTP_SERVER_CB_STATIC
+bool
+http_server_get_mqtt_disable_retained_messages(const char* const p_params)
+{
+    const char* const p_prefix   = "mqtt_disable_retained_messages=";
+    const size_t      prefix_len = strlen(p_prefix);
+    const char* const p_param    = strstr(p_params, p_prefix);
+    if (NULL == p_param)
+    {
+        LOG_ERR("Can't find prefix '%s'", p_prefix);
+        return false;
+    }
+    const char* const p_value = &p_param[prefix_len];
+    const char* const p_end   = strchr(p_value, '&');
+    const size_t      val_len = (NULL == p_end) ? strlen(p_value) : (size_t)(ptrdiff_t)(p_end - p_value);
+    LOG_INFO("Found mqtt_disable_retained_messages: %.*s", val_len, p_value);
+    if (0 == strncmp(p_value, "true", val_len))
+    {
+        return true;
+    }
+    return false;
+}
+
+HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_on_get_check_mqtt(
     const char* const        p_url,
@@ -657,9 +680,10 @@ http_server_on_get_check_mqtt(
         os_free(p_mqtt_cfg);
         return http_server_resp_400();
     }
+    const bool flag_disable_retained_messages = http_server_get_mqtt_disable_retained_messages(p_params);
 
     p_mqtt_cfg->use_mqtt                       = true;
-    p_mqtt_cfg->mqtt_disable_retained_messages = true;
+    p_mqtt_cfg->mqtt_disable_retained_messages = flag_disable_retained_messages;
     p_mqtt_cfg->use_ssl_client_cert            = use_ssl_client_cert;
     p_mqtt_cfg->use_ssl_server_cert            = use_ssl_server_cert;
 
