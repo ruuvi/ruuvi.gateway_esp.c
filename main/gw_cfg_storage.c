@@ -53,7 +53,7 @@ gw_cfg_storage_check_file(const char* const p_file_name)
     esp_err_t esp_err   = nvs_get_str(handle, p_file_name, NULL, &file_size);
     if (ESP_OK != esp_err)
     {
-        LOG_ERR_ESP(esp_err, "Can't find config key '%s' in flash", p_file_name);
+        LOG_INFO("Can't find config key '%s' in flash", p_file_name);
         nvs_close(handle);
         return false;
     }
