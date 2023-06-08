@@ -42,6 +42,10 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/event_mgr.h
         ${RUUVI_GW_SRC}/url_encode.c
         ${RUUVI_GW_SRC}/url_encode.h
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_5.c
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_5.h
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_6.c
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_6.h
         ${RUUVI_ESP_WRAPPERS_INC}/log.h
         ${RUUVI_ESP_WRAPPERS_INC}/mac_addr.h
         ${RUUVI_ESP_WRAPPERS_INC}/os_mkgmtime.h
@@ -90,6 +94,7 @@ target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}
         ${RUUVI_GW_SRC}
         include
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src
         $ENV{IDF_PATH}/components/json/cJSON
         $ENV{IDF_PATH}/components/esp_wifi/include
         $ENV{IDF_PATH}/components/tcpip_adapter/include
@@ -116,6 +121,7 @@ target_compile_definitions(${ProjectId} PUBLIC
         CONFIG_DEFAULT_AP_SSID=\"RuuviGateway\"
         GW_GWUI_PARTITION="fatfs_gwui"
         GW_NRF_PARTITION="fatfs_nrf52"
+        TEST=1
 )
 
 target_compile_options(${ProjectId} PUBLIC
