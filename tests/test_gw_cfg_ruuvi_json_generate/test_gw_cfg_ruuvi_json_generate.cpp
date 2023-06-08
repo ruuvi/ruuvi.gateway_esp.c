@@ -139,12 +139,19 @@ public:
     uint32_t      m_malloc_cnt {};
     uint32_t      m_malloc_fail_on_cnt {};
     bool          m_flag_storage_ready { false };
-    bool          m_flag_storage_client_cert { false };
-    bool          m_flag_storage_client_key { false };
-    bool          m_flag_storage_cert_http { false };
-    bool          m_flag_storage_cert_stat { false };
-    bool          m_flag_storage_cert_mqtt { false };
-    bool          m_flag_storage_cert_remote { false };
+    bool          m_flag_storage_http_cli_cert { false };
+    bool          m_flag_storage_http_cli_key { false };
+    bool          m_flag_storage_stat_cli_cert { false };
+    bool          m_flag_storage_stat_cli_key { false };
+    bool          m_flag_storage_mqtt_cli_cert { false };
+    bool          m_flag_storage_mqtt_cli_key { false };
+    bool          m_flag_storage_remote_cfg_cli_cert { false };
+    bool          m_flag_storage_remote_cfg_cli_key { false };
+
+    bool m_flag_storage_http_srv_cert { false };
+    bool m_flag_storage_stat_srv_cert { false };
+    bool m_flag_storage_mqtt_srv_cert { false };
+    bool m_flag_storage_remote_cfg_srv_cert { false };
 };
 
 TestGwCfgRuuviJsonGenerate::TestGwCfgRuuviJsonGenerate()
@@ -263,29 +270,54 @@ gw_cfg_storage_check(void)
 bool
 gw_cfg_storage_check_file(const char* const p_file_name)
 {
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_CLIENT_CERT, p_file_name))
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT, p_file_name))
     {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_client_cert;
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_cli_cert;
     }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_CLIENT_KEY, p_file_name))
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY, p_file_name))
     {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_client_key;
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_cli_key;
     }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_CERT_HTTP, p_file_name))
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_STAT_CLI_CERT, p_file_name))
     {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_cert_http;
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_stat_cli_cert;
     }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_CERT_STAT, p_file_name))
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_STAT_CLI_KEY, p_file_name))
     {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_cert_stat;
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_stat_cli_key;
     }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_CERT_MQTT, p_file_name))
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_MQTT_CLI_CERT, p_file_name))
     {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_cert_mqtt;
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_mqtt_cli_cert;
     }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_CERT_REMOTE, p_file_name))
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_MQTT_CLI_KEY, p_file_name))
     {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_cert_remote;
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_mqtt_cli_key;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_remote_cfg_cli_cert;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_remote_cfg_cli_key;
+    }
+
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_srv_cert;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_STAT_SRV_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_stat_srv_cert;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_MQTT_SRV_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_mqtt_srv_cert;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_remote_cfg_srv_cert;
     }
     return false;
 }

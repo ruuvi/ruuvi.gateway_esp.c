@@ -138,12 +138,19 @@ public:
     uint32_t      m_malloc_cnt {};
     uint32_t      m_malloc_fail_on_cnt {};
     bool          m_flag_storage_ready { false };
-    bool          m_flag_storage_client_cert { false };
-    bool          m_flag_storage_client_key { false };
-    bool          m_flag_storage_cert_http { false };
-    bool          m_flag_storage_cert_stat { false };
-    bool          m_flag_storage_cert_mqtt { false };
-    bool          m_flag_storage_cert_remote { false };
+    bool          m_flag_storage_http_cli_cert { false };
+    bool          m_flag_storage_http_cli_key { false };
+    bool          m_flag_storage_stat_cli_cert { false };
+    bool          m_flag_storage_stat_cli_key { false };
+    bool          m_flag_storage_mqtt_cli_cert { false };
+    bool          m_flag_storage_mqtt_cli_key { false };
+    bool          m_flag_storage_remote_cfg_cli_cert { false };
+    bool          m_flag_storage_remote_cfg_cli_key { false };
+
+    bool m_flag_storage_http_srv_cert { false };
+    bool m_flag_storage_stat_srv_cert { false };
+    bool m_flag_storage_mqtt_srv_cert { false };
+    bool m_flag_storage_remote_cfg_srv_cert { false };
 };
 
 TestGwCfg::TestGwCfg()
@@ -262,29 +269,54 @@ gw_cfg_storage_check(void)
 bool
 gw_cfg_storage_check_file(const char* const p_file_name)
 {
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_CLIENT_CERT, p_file_name))
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT, p_file_name))
     {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_client_cert;
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_cli_cert;
     }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_CLIENT_KEY, p_file_name))
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY, p_file_name))
     {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_client_key;
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_cli_key;
     }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_CERT_HTTP, p_file_name))
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_STAT_CLI_CERT, p_file_name))
     {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_cert_http;
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_stat_cli_cert;
     }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_CERT_STAT, p_file_name))
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_STAT_CLI_KEY, p_file_name))
     {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_cert_stat;
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_stat_cli_key;
     }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_CERT_MQTT, p_file_name))
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_MQTT_CLI_CERT, p_file_name))
     {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_cert_mqtt;
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_mqtt_cli_cert;
     }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_CERT_REMOTE, p_file_name))
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_MQTT_CLI_KEY, p_file_name))
     {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_cert_remote;
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_mqtt_cli_key;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_remote_cfg_cli_cert;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_remote_cfg_cli_key;
+    }
+
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_srv_cert;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_STAT_SRV_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_stat_srv_cert;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_MQTT_SRV_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_mqtt_srv_cert;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_remote_cfg_srv_cert;
     }
     return false;
 }
@@ -409,13 +441,20 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_and_gw_cfg_stroage_is_ready) // NO
 {
     esp_log_wrapper_clear();
 
-    this->m_flag_storage_ready       = true;
-    this->m_flag_storage_client_cert = true;
-    this->m_flag_storage_client_key  = true;
-    this->m_flag_storage_cert_http   = false;
-    this->m_flag_storage_cert_stat   = false;
-    this->m_flag_storage_cert_mqtt   = false;
-    this->m_flag_storage_cert_remote = false;
+    this->m_flag_storage_ready               = true;
+    this->m_flag_storage_http_cli_cert       = true;
+    this->m_flag_storage_http_cli_key        = true;
+    this->m_flag_storage_stat_cli_cert       = false;
+    this->m_flag_storage_stat_cli_key        = false;
+    this->m_flag_storage_mqtt_cli_cert       = false;
+    this->m_flag_storage_mqtt_cli_key        = false;
+    this->m_flag_storage_remote_cfg_cli_cert = false;
+    this->m_flag_storage_remote_cfg_cli_key  = false;
+
+    this->m_flag_storage_http_srv_cert       = false;
+    this->m_flag_storage_stat_srv_cert       = false;
+    this->m_flag_storage_mqtt_srv_cert       = false;
+    this->m_flag_storage_remote_cfg_srv_cert = false;
 
     const gw_cfg_t gw_cfg = get_gateway_config_default();
     gw_cfg_log(&gw_cfg, "Gateway SETTINGS", true);
@@ -430,12 +469,18 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_and_gw_cfg_stroage_is_ready) // NO
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage_ready: 1"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: client_cert.pem: 1"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: client_key.pem: 1"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: cert_http.pem: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: cert_stat.pem: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: cert_mqtt.pem: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: cert_remote.pem: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_cli_cert: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_cli_key: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_srv_cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: stat_cli_cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: stat_cli_key: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: stat_srv_cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: mqtt_cli_cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: mqtt_cli_key: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: mqtt_srv_cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: rcfg_cli_cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: rcfg_cli_key: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: rcfg_srv_cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
