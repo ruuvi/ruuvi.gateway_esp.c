@@ -15,6 +15,8 @@ add_executable(${ProjectId}
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_5.h
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_6.c
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_6.h
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint.c
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint.h
         $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.h
@@ -45,7 +47,6 @@ target_include_directories(${ProjectId} PUBLIC
 
 target_compile_definitions(${ProjectId} PUBLIC
         RUUVI_TESTS_HTTP_JSON=1
-        TEST=1
 )
 
 target_compile_options(${ProjectId} PUBLIC

@@ -204,7 +204,7 @@ http_json_generate_records_decode_format_5(cJSON* const p_json_tag, const uint8_
     mac_address_bin_t tag_mac = { 0 };
     for (uint32_t i = 0; i < MAC_ADDRESS_NUM_BYTES; ++i)
     {
-        tag_mac.mac[i] = (data.address >> (i * NUM_BITS_PER_BYTE)) & BYTE_MASK;
+        tag_mac.mac[i] = (data.address >> ((MAC_ADDRESS_NUM_BYTES - i - 1U) * NUM_BITS_PER_BYTE)) & BYTE_MASK;
     }
     const mac_address_str_t tag_mac_str = mac_address_to_str(&tag_mac);
     if (NULL == cJSON_AddStringToObject(p_json_tag, "mac", tag_mac_str.str_buf))
@@ -266,7 +266,7 @@ http_json_generate_records_decode_format_6(cJSON* const p_json_tag, const uint8_
     mac_address_bin_t tag_mac = { 0 };
     for (uint32_t i = 0; i < MAC_ADDRESS_NUM_BYTES; ++i)
     {
-        tag_mac.mac[i] = (data.address >> (i * NUM_BITS_PER_BYTE)) & BYTE_MASK;
+        tag_mac.mac[i] = (data.address >> ((MAC_ADDRESS_NUM_BYTES - i - 1U) * NUM_BITS_PER_BYTE)) & BYTE_MASK;
     }
     const mac_address_str_t tag_mac_str = mac_address_to_str(&tag_mac);
     if (NULL == cJSON_AddStringToObject(p_json_tag, "mac", tag_mac_str.str_buf))

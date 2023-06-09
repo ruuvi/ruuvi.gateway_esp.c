@@ -46,6 +46,8 @@ add_executable(${ProjectId}
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_5.h
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_6.c
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_6.h
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint.c
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint.h
         ${RUUVI_ESP_WRAPPERS_INC}/log.h
         ${RUUVI_ESP_WRAPPERS_INC}/mac_addr.h
         ${RUUVI_ESP_WRAPPERS_INC}/os_mkgmtime.h
@@ -121,7 +123,6 @@ target_compile_definitions(${ProjectId} PUBLIC
         CONFIG_DEFAULT_AP_SSID=\"RuuviGateway\"
         GW_GWUI_PARTITION="fatfs_gwui"
         GW_NRF_PARTITION="fatfs_nrf52"
-        TEST=1
 )
 
 target_compile_options(${ProjectId} PUBLIC
