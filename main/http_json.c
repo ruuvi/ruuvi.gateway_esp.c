@@ -49,7 +49,7 @@ http_json_add_number_with_0_digits_after_point(cJSON* const p_cjson, const char*
 {
     if (isnanf(val) || isinff(val))
     {
-        if (NULL == cJSON_AddStringToObject(p_cjson, p_name, "null"))
+        if (NULL == cJSON_AddRawToObject(p_cjson, p_name, "null"))
         {
             return false;
         }
@@ -58,7 +58,7 @@ http_json_add_number_with_0_digits_after_point(cJSON* const p_cjson, const char*
     const uint32_t integral_part = (uint32_t)lrintf(fabsf(val));
     char           tmp_buf[HTTP_JSON_STR_BUF_SIZE_FLOAT];
     (void)snprintf(tmp_buf, sizeof(tmp_buf), "%s%lu", (val < 0) ? "-" : "", (printf_ulong_t)integral_part);
-    if (NULL == cJSON_AddStringToObject(p_cjson, p_name, tmp_buf))
+    if (NULL == cJSON_AddRawToObject(p_cjson, p_name, tmp_buf))
     {
         return false;
     }
@@ -66,11 +66,11 @@ http_json_add_number_with_0_digits_after_point(cJSON* const p_cjson, const char*
 }
 
 static bool
-http_json_add_number_with_one_digit_after_point(cJSON* const p_cjson, const char* const p_name, const float val)
+http_json_add_number_with_1_digit_after_point(cJSON* const p_cjson, const char* const p_name, const float val)
 {
     if (isnanf(val) || isinff(val))
     {
-        if (NULL == cJSON_AddStringToObject(p_cjson, p_name, "null"))
+        if (NULL == cJSON_AddRawToObject(p_cjson, p_name, "null"))
         {
             return false;
         }
@@ -87,7 +87,7 @@ http_json_add_number_with_one_digit_after_point(cJSON* const p_cjson, const char
         (val < 0) ? "-" : "",
         (printf_ulong_t)integral_part,
         (printf_uint_t)fractional_part);
-    if (NULL == cJSON_AddStringToObject(p_cjson, p_name, tmp_buf))
+    if (NULL == cJSON_AddRawToObject(p_cjson, p_name, tmp_buf))
     {
         return false;
     }
@@ -99,7 +99,7 @@ http_json_add_number_with_3_digits_after_point(cJSON* const p_cjson, const char*
 {
     if (isnanf(val) || isinff(val))
     {
-        if (NULL == cJSON_AddStringToObject(p_cjson, p_name, "null"))
+        if (NULL == cJSON_AddRawToObject(p_cjson, p_name, "null"))
         {
             return false;
         }
@@ -116,7 +116,7 @@ http_json_add_number_with_3_digits_after_point(cJSON* const p_cjson, const char*
         (val < 0) ? "-" : "",
         (printf_ulong_t)integral_part,
         (printf_uint_t)fractional_part);
-    if (NULL == cJSON_AddStringToObject(p_cjson, p_name, tmp_buf))
+    if (NULL == cJSON_AddRawToObject(p_cjson, p_name, tmp_buf))
     {
         return false;
     }
@@ -128,7 +128,7 @@ http_json_add_number_with_4_digits_after_point(cJSON* const p_cjson, const char*
 {
     if (isnanf(val) || isinff(val))
     {
-        if (NULL == cJSON_AddStringToObject(p_cjson, p_name, "null"))
+        if (NULL == cJSON_AddRawToObject(p_cjson, p_name, "null"))
         {
             return false;
         }
@@ -145,7 +145,7 @@ http_json_add_number_with_4_digits_after_point(cJSON* const p_cjson, const char*
         (val < 0) ? "-" : "",
         (printf_ulong_t)integral_part,
         (printf_uint_t)fractional_part);
-    if (NULL == cJSON_AddStringToObject(p_cjson, p_name, tmp_buf))
+    if (NULL == cJSON_AddRawToObject(p_cjson, p_name, tmp_buf))
     {
         return false;
     }
@@ -161,11 +161,15 @@ http_json_generate_records_decode_format_5(cJSON* const p_json_tag, const uint8_
     {
         return false;
     }
-    if (!http_json_add_number_with_3_digits_after_point(p_json_tag, "t", data.temperature_c))
+    if (NULL == cJSON_AddNumberToObject(p_json_tag, "dataFormat", RE_5_DESTINATION))
     {
         return false;
     }
-    if (!http_json_add_number_with_4_digits_after_point(p_json_tag, "humid", data.humidity_rh))
+    if (!http_json_add_number_with_3_digits_after_point(p_json_tag, "temperature", data.temperature_c))
+    {
+        return false;
+    }
+    if (!http_json_add_number_with_4_digits_after_point(p_json_tag, "humidity", data.humidity_rh))
     {
         return false;
     }
@@ -173,31 +177,31 @@ http_json_generate_records_decode_format_5(cJSON* const p_json_tag, const uint8_
     {
         return false;
     }
-    if (!http_json_add_number_with_3_digits_after_point(p_json_tag, "accel_x", data.accelerationx_g))
+    if (!http_json_add_number_with_3_digits_after_point(p_json_tag, "accelX", data.accelerationx_g))
     {
         return false;
     }
-    if (!http_json_add_number_with_3_digits_after_point(p_json_tag, "accel_y", data.accelerationy_g))
+    if (!http_json_add_number_with_3_digits_after_point(p_json_tag, "accelY", data.accelerationy_g))
     {
         return false;
     }
-    if (!http_json_add_number_with_3_digits_after_point(p_json_tag, "accel_z", data.accelerationz_g))
+    if (!http_json_add_number_with_3_digits_after_point(p_json_tag, "accelZ", data.accelerationz_g))
     {
         return false;
     }
-    if (!http_json_add_number_with_3_digits_after_point(p_json_tag, "battery_v", data.battery_v))
+    if (!http_json_add_number_with_0_digits_after_point(p_json_tag, "movementCounter", data.movement_count))
     {
         return false;
     }
-    if (!http_json_add_number_with_0_digits_after_point(p_json_tag, "tx_power", RE_5_TXPWR_MIN + (data.tx_power * 2)))
+    if (!http_json_add_number_with_3_digits_after_point(p_json_tag, "voltage", data.battery_v))
     {
         return false;
     }
-    if (!http_json_add_number_with_0_digits_after_point(p_json_tag, "move_cnt", data.movement_count))
+    if (!http_json_add_number_with_0_digits_after_point(p_json_tag, "txPower", RE_5_TXPWR_MIN + (data.tx_power * 2)))
     {
         return false;
     }
-    if (NULL == cJSON_AddNumberToObject(p_json_tag, "cnt", data.measurement_count))
+    if (NULL == cJSON_AddNumberToObject(p_json_tag, "measurementSequenceNumber", data.measurement_count))
     {
         return false;
     }
@@ -207,7 +211,7 @@ http_json_generate_records_decode_format_5(cJSON* const p_json_tag, const uint8_
         tag_mac.mac[i] = (data.address >> ((MAC_ADDRESS_NUM_BYTES - i - 1U) * NUM_BITS_PER_BYTE)) & BYTE_MASK;
     }
     const mac_address_str_t tag_mac_str = mac_address_to_str(&tag_mac);
-    if (NULL == cJSON_AddStringToObject(p_json_tag, "mac", tag_mac_str.str_buf))
+    if (NULL == cJSON_AddStringToObject(p_json_tag, "id", tag_mac_str.str_buf))
     {
         return false;
     }
@@ -223,43 +227,47 @@ http_json_generate_records_decode_format_6(cJSON* const p_json_tag, const uint8_
     {
         return false;
     }
-    if (!http_json_add_number_with_one_digit_after_point(p_json_tag, "pm1p0", data.pm1p0_ppm))
+    if (NULL == cJSON_AddNumberToObject(p_json_tag, "dataFormat", RE_6_DESTINATION))
     {
         return false;
     }
-    if (!http_json_add_number_with_one_digit_after_point(p_json_tag, "pm2p5", data.pm2p5_ppm))
+    if (!http_json_add_number_with_1_digit_after_point(p_json_tag, "temperature", data.temperature_c))
     {
         return false;
     }
-    if (!http_json_add_number_with_one_digit_after_point(p_json_tag, "pm4p0", data.pm4p0_ppm))
+    if (!http_json_add_number_with_1_digit_after_point(p_json_tag, "humidity", data.humidity_rh))
     {
         return false;
     }
-    if (!http_json_add_number_with_one_digit_after_point(p_json_tag, "pm10p0", data.pm10p0_ppm))
+    if (!http_json_add_number_with_1_digit_after_point(p_json_tag, "PM1.0", data.pm1p0_ppm))
     {
         return false;
     }
-    if (!http_json_add_number_with_0_digits_after_point(p_json_tag, "co2", data.co2))
+    if (!http_json_add_number_with_1_digit_after_point(p_json_tag, "PM2.5", data.pm2p5_ppm))
     {
         return false;
     }
-    if (!http_json_add_number_with_one_digit_after_point(p_json_tag, "humid", data.humidity_rh))
+    if (!http_json_add_number_with_1_digit_after_point(p_json_tag, "PM4.0", data.pm4p0_ppm))
     {
         return false;
     }
-    if (!http_json_add_number_with_0_digits_after_point(p_json_tag, "voc", data.voc_index))
+    if (!http_json_add_number_with_1_digit_after_point(p_json_tag, "PM10.0", data.pm10p0_ppm))
     {
         return false;
     }
-    if (!http_json_add_number_with_0_digits_after_point(p_json_tag, "nox", data.nox_index))
+    if (!http_json_add_number_with_0_digits_after_point(p_json_tag, "CO2", data.co2))
     {
         return false;
     }
-    if (!http_json_add_number_with_one_digit_after_point(p_json_tag, "t", data.temperature_c))
+    if (!http_json_add_number_with_0_digits_after_point(p_json_tag, "VOC", data.voc_index))
     {
         return false;
     }
-    if (NULL == cJSON_AddNumberToObject(p_json_tag, "cnt", data.measurement_count))
+    if (!http_json_add_number_with_0_digits_after_point(p_json_tag, "NOx", data.nox_index))
+    {
+        return false;
+    }
+    if (NULL == cJSON_AddNumberToObject(p_json_tag, "measurementSequenceNumber", data.measurement_count))
     {
         return false;
     }
@@ -269,7 +277,7 @@ http_json_generate_records_decode_format_6(cJSON* const p_json_tag, const uint8_
         tag_mac.mac[i] = (data.address >> ((MAC_ADDRESS_NUM_BYTES - i - 1U) * NUM_BITS_PER_BYTE)) & BYTE_MASK;
     }
     const mac_address_str_t tag_mac_str = mac_address_to_str(&tag_mac);
-    if (NULL == cJSON_AddStringToObject(p_json_tag, "mac", tag_mac_str.str_buf))
+    if (NULL == cJSON_AddStringToObject(p_json_tag, "id", tag_mac_str.str_buf))
     {
         return false;
     }
