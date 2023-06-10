@@ -303,6 +303,7 @@ ethernet_init(
     ethernet_update_ip();
 
     eth_mac_config_t mac_config = ETH_MAC_DEFAULT_CONFIG();
+    mac_config.rx_task_stack_size = 3072U;
     eth_phy_config_t phy_config = ETH_PHY_DEFAULT_CONFIG();
 
     phy_config.phy_addr       = ETH_PHY_ADDR;

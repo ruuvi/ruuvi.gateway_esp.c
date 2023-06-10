@@ -939,7 +939,7 @@ fw_update_get_url(void)
 bool
 fw_update_run(const fw_updating_reason_e fw_updating_reason)
 {
-    const uint32_t stack_size_for_fw_update_task = 7 * 1024;
+    const uint32_t stack_size_for_fw_update_task = 7 * 1024 - 512;
     g_fw_updating_reason                         = fw_updating_reason;
     if (!os_task_create_finite_without_param(&fw_update_task, "fw_update_task", stack_size_for_fw_update_task, 1))
     {

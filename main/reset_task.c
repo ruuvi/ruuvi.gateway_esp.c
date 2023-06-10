@@ -272,7 +272,7 @@ reset_task_init(void)
         g_p_reset_task_signal,
         reset_task_conv_to_sig_num(RESET_TASK_SIG_RESTART));
 
-    const uint32_t stack_size_for_reset_task = 4 * 1024;
+    const uint32_t stack_size_for_reset_task = 2816;
     if (!os_task_create_without_param(&reset_task, "reset_task", stack_size_for_reset_task, 1, &g_p_reset_task_handle))
     {
         LOG_ERR("Can't create thread");
