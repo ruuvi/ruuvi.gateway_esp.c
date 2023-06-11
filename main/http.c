@@ -489,16 +489,18 @@ http_send_advs_create_records_str(
 
     *p_cjson_str = cjson_wrap_str_null();
 
-    const bool res = http_json_create_records_str(
+    const bool flag_decode = false;
+    const bool res         = http_json_create_records_str(
         p_reports,
         (http_json_header_info_t) {
-            .flag_use_timestamps = flag_use_timestamps,
-            .timestamp           = time(NULL),
-            .p_mac_addr          = gw_cfg_get_nrf52_mac_addr(),
-            .p_coordinates_str   = p_gw_cfg->ruuvi_cfg.coordinates.buf,
-            .flag_use_nonce      = true,
-            .nonce               = nonce,
+                    .flag_use_timestamps = flag_use_timestamps,
+                    .timestamp           = time(NULL),
+                    .p_mac_addr          = gw_cfg_get_nrf52_mac_addr(),
+                    .p_coordinates_str   = p_gw_cfg->ruuvi_cfg.coordinates.buf,
+                    .flag_use_nonce      = true,
+                    .nonce               = nonce,
         },
+        flag_decode,
         p_cjson_str);
 
     gw_cfg_unlock_ro(&p_gw_cfg);

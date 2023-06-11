@@ -186,6 +186,7 @@ TEST_F(TestHttpJson, test_1) // NOLINT
             .flag_use_nonce      = true,
             .nonce               = 12345678,
         },
+        false,
         &this->m_json_str));
     ASSERT_EQ(
         string("{\n"
@@ -234,6 +235,7 @@ TEST_F(TestHttpJson, test_1_without_timestamp) // NOLINT
             .flag_use_nonce      = true,
             .nonce               = 12345678,
         },
+        false,
         &this->m_json_str));
     ASSERT_EQ(
         string("{\n"
@@ -291,6 +293,7 @@ TEST_F(TestHttpJson, test_2) // NOLINT
             .flag_use_nonce      = true,
             .nonce               = 12345678,
         },
+        false,
         &this->m_json_str));
     ASSERT_EQ(
         string("{\n"
@@ -349,6 +352,7 @@ TEST_F(TestHttpJson, test_http_json_create_records_str_malloc_failed) // NOLINT
                     .flag_use_nonce      = true,
                     .nonce               = 12345678,
                 },
+                false,
                 &this->m_json_str))
         {
             ASSERT_FALSE(true);
@@ -370,6 +374,7 @@ TEST_F(TestHttpJson, test_http_json_create_records_str_malloc_failed) // NOLINT
                 .flag_use_nonce      = true,
                 .nonce               = 12345678,
             },
+            false,
             &this->m_json_str));
         ASSERT_NE(nullptr, this->m_json_str.p_str);
         cjson_wrap_free_json_str(&this->m_json_str);

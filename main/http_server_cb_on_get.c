@@ -53,6 +53,10 @@ extern const flash_fat_fs_t* gp_ffs_gwui;
 static const char TAG[] = "http_server";
 
 HTTP_SERVER_CB_STATIC
+str_buf_t
+http_server_get_from_params(const char* const p_params, const char* const p_key);
+
+HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_json_ruuvi(void)
 {
@@ -255,27 +259,45 @@ http_server_get_filter_from_params(
 {
     if (flag_use_timestamps)
     {
-        const char* const p_time_prefix   = "time=";
-        const size_t      time_prefix_len = strlen(p_time_prefix);
-        if (0 == strncmp(p_params, p_time_prefix, time_prefix_len))
+        str_buf_t str_buf = http_server_get_from_params(p_params, "time=");
+        if (NULL != str_buf.buf)
         {
-            *p_filter = (uint32_t)strtoul(&p_params[time_prefix_len], NULL, 0);
+            *p_filter = (uint32_t)strtoul(str_buf.buf, NULL, 0);
             if (flag_time_is_synchronized)
             {
                 *p_flag_use_filter = true;
             }
+            str_buf_free_buf(&str_buf);
         }
     }
     else
     {
-        const char* const p_counter_prefix   = "counter=";
-        const size_t      counter_prefix_len = strlen(p_counter_prefix);
-        if (0 == strncmp(p_params, p_counter_prefix, counter_prefix_len))
+        str_buf_t str_buf = http_server_get_from_params(p_params, "counter=");
+        if (NULL != str_buf.buf)
         {
-            *p_filter          = (uint32_t)strtoul(&p_params[counter_prefix_len], NULL, 0);
+            *p_filter          = (uint32_t)strtoul(str_buf.buf, NULL, 0);
             *p_flag_use_filter = true;
+            str_buf_free_buf(&str_buf);
         }
     }
+}
+
+HTTP_SERVER_CB_STATIC
+bool
+http_server_get_decode_from_params(const char* const p_params)
+{
+    str_buf_t str_buf = http_server_get_from_params(p_params, "decode=");
+    if (NULL == str_buf.buf)
+    {
+        return false;
+    }
+    bool flag_decode = false;
+    if (0 == strcmp("true", str_buf.buf))
+    {
+        flag_decode = true;
+    }
+    str_buf_free_buf(&str_buf);
+    return flag_decode;
 }
 
 HTTP_SERVER_CB_STATIC
@@ -286,6 +308,7 @@ http_server_read_history(
     const bool           flag_use_timestamps,
     const uint32_t       filter,
     const bool           flag_use_filter,
+    const bool           flag_decode,
     num_of_advs_t* const p_num_of_advs)
 {
     adv_report_table_t* p_reports = os_malloc(sizeof(*p_reports));
@@ -308,6 +331,7 @@ http_server_read_history(
             .flag_use_nonce      = false,
             .nonce               = 0,
         },
+        flag_decode,
         p_json_str);
 
     gw_cfg_unlock_ro(&p_gw_cfg);
@@ -324,6 +348,7 @@ http_server_resp_history(const char* const p_params)
     const bool flag_time_is_synchronized = time_is_synchronized();
     uint32_t   filter                    = flag_use_timestamps ? HTTP_SERVER_DEFAULT_HISTORY_INTERVAL_SECONDS : 0;
     bool       flag_use_filter           = (flag_use_timestamps && flag_time_is_synchronized) ? true : false;
+    bool       flag_decode               = false;
     if (NULL != p_params)
     {
         http_server_get_filter_from_params(
@@ -332,11 +357,19 @@ http_server_resp_history(const char* const p_params)
             flag_time_is_synchronized,
             &flag_use_filter,
             &filter);
+        flag_decode = http_server_get_decode_from_params(p_params);
     }
     cjson_wrap_str_t json_str    = cjson_wrap_str_null();
     const time_t     cur_time    = http_server_get_cur_time();
     num_of_advs_t    num_of_advs = 0;
-    if (!http_server_read_history(&json_str, cur_time, flag_use_timestamps, filter, flag_use_filter, &num_of_advs))
+    if (!http_server_read_history(
+            &json_str,
+            cur_time,
+            flag_use_timestamps,
+            filter,
+            flag_use_filter,
+            flag_decode,
+            &num_of_advs))
     {
         LOG_ERR("Not enough memory");
         return http_server_resp_503();
