@@ -11,6 +11,12 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/bin2hex.h
         ${RUUVI_GW_SRC}/cjson_wrap.c
         ${RUUVI_GW_SRC}/cjson_wrap.h
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_5.c
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_5.h
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_6.c
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_6.h
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoints.c
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoints.h
         $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.h
@@ -27,6 +33,7 @@ target_include_directories(${ProjectId} PUBLIC
         ${RUUVI_GW_SRC}
         ${WIFI_MANAGER_INC}
         include
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src
         $ENV{IDF_PATH}/components/json/cJSON
         $ENV{IDF_PATH}/components/esp_common/include
         $ENV{IDF_PATH}/components/app_update/include

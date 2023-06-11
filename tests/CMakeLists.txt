@@ -20,6 +20,8 @@ include_directories(
 
 set(RUUVI_GW_SRC ${CMAKE_CURRENT_SOURCE_DIR}/../main)
 
+set(COMPONENTS ${CMAKE_CURRENT_SOURCE_DIR}/../components)
+
 set(WIFI_MANAGER ${CMAKE_CURRENT_SOURCE_DIR}/../components/esp32-wifi-manager)
 set(WIFI_MANAGER_SRC ${WIFI_MANAGER}/src)
 set(WIFI_MANAGER_INC ${WIFI_MANAGER}/src/include)
