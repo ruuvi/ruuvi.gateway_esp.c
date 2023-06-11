@@ -41,26 +41,26 @@ typedef bool (*http_download_cb_on_data_t)(
 
 typedef struct http_download_param_t
 {
-    const char* const          p_url;
-    const TimeUnitsSeconds_t   timeout_seconds;
+    const char*                p_url;
+    TimeUnitsSeconds_t         timeout_seconds;
     http_download_cb_on_data_t p_cb_on_data;
-    void* const                p_user_data;
-    const bool                 flag_feed_task_watchdog;
-    const bool                 flag_free_memory;
-    const char* const          p_server_cert;
-    const char* const          p_client_cert;
-    const char* const          p_client_key;
+    void*                      p_user_data;
+    bool                       flag_feed_task_watchdog;
+    bool                       flag_free_memory;
+    const char*                p_server_cert;
+    const char*                p_client_cert;
+    const char*                p_client_key;
 } http_download_param_t;
 
 typedef struct http_check_param_t
 {
-    const char* const        p_url;
-    const TimeUnitsSeconds_t timeout_seconds;
-    const bool               flag_feed_task_watchdog;
-    const bool               flag_free_memory;
-    const char* const        p_server_cert;
-    const char* const        p_client_cert;
-    const char* const        p_client_key;
+    const char*        p_url;
+    TimeUnitsSeconds_t timeout_seconds;
+    bool               flag_feed_task_watchdog;
+    bool               flag_free_memory;
+    const char*        p_server_cert;
+    const char*        p_client_cert;
+    const char*        p_client_key;
 } http_check_param_t;
 
 bool
@@ -107,18 +107,18 @@ bool
 http_async_poll(void);
 
 bool
-http_download(const http_download_param_t param);
+http_download(const http_download_param_t* const p_param);
 
 bool
 http_download_with_auth(
-    const http_download_param_t           param,
+    const http_download_param_t* const    p_param,
     const gw_cfg_http_auth_type_e         auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
     const http_header_item_t* const       p_extra_header_item);
 
 bool
 http_check_with_auth(
-    const http_check_param_t              param,
+    const http_check_param_t* const       p_param,
     const gw_cfg_http_auth_type_e         auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
     const http_header_item_t* const       p_extra_header_item,

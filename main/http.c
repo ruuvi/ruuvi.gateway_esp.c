@@ -47,7 +47,7 @@ typedef int esp_http_client_http_status_code_t;
 typedef struct http_download_cb_info_t
 {
     http_download_cb_on_data_t cb_on_data;
-    void* const                p_user_data;
+    void*                      p_user_data;
     esp_http_client_handle_t   http_handle;
     uint32_t                   content_length;
     uint32_t                   offset;
@@ -1647,12 +1647,12 @@ http_download_create_config(
 
 bool
 http_download_with_auth(
-    const http_download_param_t           param,
+    const http_download_param_t* const    p_param,
     const gw_cfg_http_auth_type_e         auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
     const http_header_item_t* const       p_extra_header_item)
 {
-    LOG_INFO("http_download: URL: %s", param.p_url);
+    LOG_INFO("http_download: URL: %s", p_param->p_url);
 
     if ((GW_CFG_HTTP_AUTH_TYPE_NONE != auth_type) && (NULL == p_http_auth))
     {
@@ -1665,15 +1665,6 @@ http_download_with_auth(
         return false;
     }
 
-    http_download_cb_info_t cb_info = {
-        .cb_on_data              = param.p_cb_on_data,
-        .p_user_data             = param.p_user_data,
-        .http_handle             = NULL,
-        .content_length          = 0,
-        .offset                  = 0,
-        .flag_feed_task_watchdog = param.flag_feed_task_watchdog,
-    };
-
     const esp_http_client_auth_type_t http_client_auth_type = (GW_CFG_HTTP_AUTH_TYPE_BASIC == auth_type)
                                                                   ? HTTP_AUTH_TYPE_BASIC
                                                                   : HTTP_AUTH_TYPE_NONE;
@@ -1684,31 +1675,46 @@ http_download_with_auth(
         LOG_DBG("http_download: Auth: Basic, Password: %s", p_http_auth->auth_basic.password.buf);
     }
 
+    http_download_cb_info_t* p_cb_info = os_calloc(1, sizeof(*p_cb_info));
+    if (NULL == p_cb_info)
+    {
+        LOG_ERR("Can't allocate memory");
+        return false;
+    }
+    p_cb_info->cb_on_data              = p_param->p_cb_on_data;
+    p_cb_info->p_user_data             = p_param->p_user_data;
+    p_cb_info->http_handle             = NULL;
+    p_cb_info->content_length          = 0;
+    p_cb_info->offset                  = 0;
+    p_cb_info->flag_feed_task_watchdog = p_param->flag_feed_task_watchdog;
+
     esp_http_client_config_t* p_http_config = http_download_create_config(
-        param.p_url,
-        param.timeout_seconds,
+        p_param->p_url,
+        p_param->timeout_seconds,
         HTTP_METHOD_GET,
         http_client_auth_type,
         p_http_auth,
         &http_download_event_handler,
-        &cb_info,
-        param.p_server_cert,
-        param.p_client_cert,
-        param.p_client_key);
+        p_cb_info,
+        p_param->p_server_cert,
+        p_param->p_client_cert,
+        p_param->p_client_key);
     if (NULL == p_http_config)
     {
         LOG_ERR("Can't allocate memory for http_config");
+        os_free(p_cb_info);
         return false;
     }
 
-    suspend_relaying_and_wait(param.flag_free_memory);
+    suspend_relaying_and_wait(p_param->flag_free_memory);
 
-    cb_info.http_handle = esp_http_client_init(p_http_config);
-    if (NULL == cb_info.http_handle)
+    p_cb_info->http_handle = esp_http_client_init(p_http_config);
+    if (NULL == p_cb_info->http_handle)
     {
         LOG_ERR("Can't init http client");
         os_free(p_http_config);
-        resume_relaying_and_wait(param.flag_free_memory);
+        os_free(p_cb_info);
+        resume_relaying_and_wait(p_param->flag_free_memory);
         return false;
     }
 
@@ -1719,14 +1725,15 @@ http_download_with_auth(
         {
             LOG_ERR("Can't allocate memory for bearer token");
             os_free(p_http_config);
-            resume_relaying_and_wait(param.flag_free_memory);
+            os_free(p_cb_info);
+            resume_relaying_and_wait(p_param->flag_free_memory);
             return false;
         }
         LOG_INFO(
             "http_download: Add HTTP header: %s: %s",
             "Authorization",
             (LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG) ? str_buf.buf : "********");
-        esp_http_client_set_header(cb_info.http_handle, "Authorization", str_buf.buf);
+        esp_http_client_set_header(p_cb_info->http_handle, "Authorization", str_buf.buf);
         str_buf_free_buf(&str_buf);
     }
     if (GW_CFG_HTTP_AUTH_TYPE_TOKEN == auth_type)
@@ -1736,37 +1743,39 @@ http_download_with_auth(
         {
             LOG_ERR("Can't allocate memory for bearer token");
             os_free(p_http_config);
-            resume_relaying_and_wait(param.flag_free_memory);
+            os_free(p_cb_info);
+            resume_relaying_and_wait(p_param->flag_free_memory);
             return false;
         }
         LOG_INFO(
             "http_download: Add HTTP header: %s: %s",
             "Authorization",
             (LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG) ? str_buf.buf : "********");
-        esp_http_client_set_header(cb_info.http_handle, "Authorization", str_buf.buf);
+        esp_http_client_set_header(p_cb_info->http_handle, "Authorization", str_buf.buf);
         str_buf_free_buf(&str_buf);
     }
     if (NULL != p_extra_header_item)
     {
         LOG_INFO("http_download: Add HTTP header: %s: %s", p_extra_header_item->p_key, p_extra_header_item->p_value);
-        esp_http_client_set_header(cb_info.http_handle, p_extra_header_item->p_key, p_extra_header_item->p_value);
+        esp_http_client_set_header(p_cb_info->http_handle, p_extra_header_item->p_key, p_extra_header_item->p_value);
     }
 
     LOG_DBG("http_download_by_handle");
     http_server_resp_t resp = http_download_by_handle(
-        cb_info.http_handle,
-        param.flag_feed_task_watchdog,
-        param.timeout_seconds);
+        p_cb_info->http_handle,
+        p_param->flag_feed_task_watchdog,
+        p_param->timeout_seconds);
 
     LOG_DBG("esp_http_client_cleanup");
-    const esp_err_t err = esp_http_client_cleanup(cb_info.http_handle);
+    const esp_err_t err = esp_http_client_cleanup(p_cb_info->http_handle);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(err, "esp_http_client_cleanup failed");
     }
 
     os_free(p_http_config);
-    resume_relaying_and_wait(param.flag_free_memory);
+    os_free(p_cb_info);
+    resume_relaying_and_wait(p_param->flag_free_memory);
 
     if ((HTTP_CONTENT_LOCATION_HEAP == resp.content_location) && (NULL != resp.select_location.memory.p_buf))
     {
@@ -1782,13 +1791,13 @@ http_download_with_auth(
 
 bool
 http_check_with_auth(
-    const http_check_param_t              param,
+    const http_check_param_t* const       p_param,
     const gw_cfg_http_auth_type_e         auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
     const http_header_item_t* const       p_extra_header_item,
     http_resp_code_e* const               p_http_resp_code)
 {
-    LOG_INFO("http_check: URL: %s", param.p_url);
+    LOG_INFO("http_check: URL: %s", p_param->p_url);
 
     if ((GW_CFG_HTTP_AUTH_TYPE_NONE != auth_type) && (NULL == p_http_auth))
     {
@@ -1801,30 +1810,38 @@ http_check_with_auth(
         return false;
     }
 
-    http_check_cb_info_t cb_info = {
-        .http_handle             = NULL,
-        .content_length          = 0,
-        .flag_feed_task_watchdog = param.flag_feed_task_watchdog,
-    };
+    http_download_cb_info_t* p_cb_info = os_calloc(1, sizeof(*p_cb_info));
+    if (NULL == p_cb_info)
+    {
+        LOG_ERR("Can't allocate memory");
+        return false;
+    }
+    p_cb_info->cb_on_data              = NULL;
+    p_cb_info->p_user_data             = NULL;
+    p_cb_info->http_handle             = NULL;
+    p_cb_info->content_length          = 0;
+    p_cb_info->offset                  = 0;
+    p_cb_info->flag_feed_task_watchdog = p_param->flag_feed_task_watchdog;
 
     const esp_http_client_auth_type_t http_client_auth_type = (GW_CFG_HTTP_AUTH_TYPE_BASIC == auth_type)
                                                                   ? HTTP_AUTH_TYPE_BASIC
                                                                   : HTTP_AUTH_TYPE_NONE;
 
     esp_http_client_config_t* p_http_config = http_download_create_config(
-        param.p_url,
-        param.timeout_seconds,
+        p_param->p_url,
+        p_param->timeout_seconds,
         HTTP_METHOD_HEAD,
         http_client_auth_type,
         p_http_auth,
         &http_check_event_handler,
-        &cb_info,
-        param.p_server_cert,
-        param.p_client_cert,
-        param.p_client_key);
+        p_cb_info,
+        p_param->p_server_cert,
+        p_param->p_client_cert,
+        p_param->p_client_key);
     if (NULL == p_http_config)
     {
         LOG_ERR("Can't allocate memory for http_config");
+        os_free(p_cb_info);
         return false;
     }
     if (HTTP_AUTH_TYPE_BASIC == http_client_auth_type)
@@ -1832,14 +1849,15 @@ http_check_with_auth(
         LOG_INFO("http_check: Auth: Basic, Username: %s", p_http_auth->auth_basic.user.buf);
     }
 
-    suspend_relaying_and_wait(param.flag_free_memory);
+    suspend_relaying_and_wait(p_param->flag_free_memory);
 
-    cb_info.http_handle = esp_http_client_init(p_http_config);
-    if (NULL == cb_info.http_handle)
+    p_cb_info->http_handle = esp_http_client_init(p_http_config);
+    if (NULL == p_cb_info->http_handle)
     {
         LOG_ERR("Can't init http client");
         os_free(p_http_config);
-        resume_relaying_and_wait(param.flag_free_memory);
+        os_free(p_cb_info);
+        resume_relaying_and_wait(p_param->flag_free_memory);
         return false;
     }
 
@@ -1850,14 +1868,15 @@ http_check_with_auth(
         {
             LOG_ERR("Can't allocate memory for bearer token");
             os_free(p_http_config);
-            resume_relaying_and_wait(param.flag_free_memory);
+            os_free(p_cb_info);
+            resume_relaying_and_wait(p_param->flag_free_memory);
             return false;
         }
         LOG_INFO(
             "http_check: Add HTTP header: %s: %s",
             "Authorization",
             (LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG) ? str_buf.buf : "********");
-        esp_http_client_set_header(cb_info.http_handle, "Authorization", str_buf.buf);
+        esp_http_client_set_header(p_cb_info->http_handle, "Authorization", str_buf.buf);
         str_buf_free_buf(&str_buf);
     }
     if (GW_CFG_HTTP_AUTH_TYPE_TOKEN == auth_type)
@@ -1867,37 +1886,39 @@ http_check_with_auth(
         {
             LOG_ERR("Can't allocate memory for Token");
             os_free(p_http_config);
-            resume_relaying_and_wait(param.flag_free_memory);
+            os_free(p_cb_info);
+            resume_relaying_and_wait(p_param->flag_free_memory);
             return false;
         }
         LOG_INFO(
             "http_check: Add HTTP header: %s: %s",
             "Authorization",
             (LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG) ? str_buf.buf : "********");
-        esp_http_client_set_header(cb_info.http_handle, "Authorization", str_buf.buf);
+        esp_http_client_set_header(p_cb_info->http_handle, "Authorization", str_buf.buf);
         str_buf_free_buf(&str_buf);
     }
     if (NULL != p_extra_header_item)
     {
         LOG_INFO("http_check: Add HTTP header: %s: %s", p_extra_header_item->p_key, p_extra_header_item->p_value);
-        esp_http_client_set_header(cb_info.http_handle, p_extra_header_item->p_key, p_extra_header_item->p_value);
+        esp_http_client_set_header(p_cb_info->http_handle, p_extra_header_item->p_key, p_extra_header_item->p_value);
     }
 
     LOG_DBG("http_check_by_handle");
     http_server_resp_t resp = http_download_by_handle(
-        cb_info.http_handle,
-        param.flag_feed_task_watchdog,
-        param.timeout_seconds);
+        p_cb_info->http_handle,
+        p_param->flag_feed_task_watchdog,
+        p_param->timeout_seconds);
 
     LOG_DBG("esp_http_client_cleanup");
-    const esp_err_t err = esp_http_client_cleanup(cb_info.http_handle);
+    const esp_err_t err = esp_http_client_cleanup(p_cb_info->http_handle);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(err, "esp_http_client_cleanup failed");
     }
 
     os_free(p_http_config);
-    resume_relaying_and_wait(param.flag_free_memory);
+    os_free(p_cb_info);
+    resume_relaying_and_wait(p_param->flag_free_memory);
 
     if ((HTTP_CONTENT_LOCATION_HEAP == resp.content_location) && (NULL != resp.select_location.memory.p_buf))
     {
@@ -1912,9 +1933,9 @@ http_check_with_auth(
 }
 
 bool
-http_download(const http_download_param_t param)
+http_download(const http_download_param_t* const p_param)
 {
-    return http_download_with_auth(param, GW_CFG_HTTP_AUTH_TYPE_NONE, NULL, NULL);
+    return http_download_with_auth(p_param, GW_CFG_HTTP_AUTH_TYPE_NONE, NULL, NULL);
 }
 
 static const char*

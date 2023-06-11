@@ -533,7 +533,6 @@ http_server_cb_gen_resp(const http_resp_code_e resp_code, const char* const p_fm
     return http_server_resp_json_in_heap(HTTP_RESP_CODE_200, resp_buf.buf);
 }
 
-HTTP_SERVER_CB_STATIC
 str_buf_t
 http_server_get_from_params(const char* const p_params, const char* const p_key)
 {

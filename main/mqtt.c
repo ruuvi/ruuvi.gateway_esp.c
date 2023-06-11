@@ -35,6 +35,8 @@
 
 #define MQTT_NETWORK_TIMEOUT_MS (10U * 1000U)
 
+#define MQTT_TASK_STACK_SIZE (4352U)
+
 typedef int mqtt_message_id_t;
 
 typedef int esp_mqtt_client_data_len_t;
@@ -463,7 +465,7 @@ mqtt_generate_client_config(
     p_cli_cfg->disable_auto_reconnect      = false;
     p_cli_cfg->user_context                = p_user_context;
     p_cli_cfg->task_prio                   = 0;
-    p_cli_cfg->task_stack                  = 0;
+    p_cli_cfg->task_stack                  = MQTT_TASK_STACK_SIZE;
     p_cli_cfg->buffer_size                 = 0;
     p_cli_cfg->cert_pem                    = p_cert_pem;
     p_cli_cfg->cert_len                    = 0;

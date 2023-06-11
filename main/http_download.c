@@ -130,27 +130,32 @@ http_download_json(
         .p_json_buf     = NULL,
         .json_buf_size  = 0,
     };
-    const TickType_t download_started_at_tick = xTaskGetTickCount();
-    const bool       flag_feed_task_watchdog  = true;
-    if (!http_download_with_auth(
-            (http_download_param_t) {
-                .p_url                   = p_url,
-                .timeout_seconds         = timeout_seconds,
-                .p_cb_on_data            = &cb_on_http_download_json_data,
-                .p_user_data             = &info,
-                .flag_feed_task_watchdog = flag_feed_task_watchdog,
-                .flag_free_memory        = flag_free_memory,
-                .p_server_cert           = p_server_cert,
-                .p_client_cert           = p_client_cert,
-                .p_client_key            = p_client_key,
-            },
-            auth_type,
-            p_http_auth,
-            p_extra_header_item))
+    const TickType_t       download_started_at_tick = xTaskGetTickCount();
+    const bool             flag_feed_task_watchdog  = true;
+    http_download_param_t* p_download_param         = os_calloc(1, sizeof(*p_download_param));
+    if (NULL == p_download_param)
+    {
+        LOG_ERR("Can't allocate memory");
+        info.is_error       = true;
+        info.http_resp_code = HTTP_RESP_CODE_500;
+        return info;
+    }
+    p_download_param->p_url                   = p_url;
+    p_download_param->timeout_seconds         = timeout_seconds;
+    p_download_param->p_cb_on_data            = &cb_on_http_download_json_data;
+    p_download_param->p_user_data             = &info;
+    p_download_param->flag_feed_task_watchdog = flag_feed_task_watchdog;
+    p_download_param->flag_free_memory        = flag_free_memory;
+    p_download_param->p_server_cert           = p_server_cert;
+    p_download_param->p_client_cert           = p_client_cert;
+    p_download_param->p_client_key            = p_client_key;
+
+    if (!http_download_with_auth(p_download_param, auth_type, p_http_auth, p_extra_header_item))
     {
         LOG_ERR("http_download failed for URL: %s", p_url);
         info.is_error = true;
     }
+    os_free(p_download_param);
     if (HTTP_RESP_CODE_200 != info.http_resp_code)
     {
         if (NULL == info.p_json_buf)
@@ -207,26 +212,28 @@ http_check(
     const http_header_item_t* const       p_extra_header_item,
     const bool                            flag_free_memory)
 {
-    const TickType_t download_started_at_tick = xTaskGetTickCount();
-    const bool       flag_feed_task_watchdog  = true;
-    http_resp_code_e http_resp_code           = HTTP_RESP_CODE_200;
-    if (!http_check_with_auth(
-            (http_check_param_t) {
-                .p_url                   = p_url,
-                .timeout_seconds         = timeout_seconds,
-                .flag_feed_task_watchdog = flag_feed_task_watchdog,
-                .flag_free_memory        = flag_free_memory,
-                .p_server_cert           = NULL,
-                .p_client_cert           = NULL,
-                .p_client_key            = NULL,
-            },
-            auth_type,
-            p_http_auth,
-            p_extra_header_item,
-            &http_resp_code))
+    const TickType_t    download_started_at_tick = xTaskGetTickCount();
+    const bool          flag_feed_task_watchdog  = true;
+    http_resp_code_e    http_resp_code           = HTTP_RESP_CODE_200;
+    http_check_param_t* p_check_param            = os_calloc(1, sizeof(*p_check_param));
+    if (NULL == p_check_param)
+    {
+        LOG_ERR("Can't allocate memory");
+        return HTTP_RESP_CODE_500;
+    }
+    p_check_param->p_url                   = p_url;
+    p_check_param->timeout_seconds         = timeout_seconds;
+    p_check_param->flag_feed_task_watchdog = flag_feed_task_watchdog;
+    p_check_param->flag_free_memory        = flag_free_memory;
+    p_check_param->p_server_cert           = NULL;
+    p_check_param->p_client_cert           = NULL;
+    p_check_param->p_client_key            = NULL;
+
+    if (!http_check_with_auth(p_check_param, auth_type, p_http_auth, p_extra_header_item, &http_resp_code))
     {
         LOG_ERR("http_check failed for URL: %s", p_url);
     }
+    os_free(p_check_param);
     const TickType_t download_completed_within_ticks = xTaskGetTickCount() - download_started_at_tick;
     LOG_INFO("%s: completed within %u ticks", __func__, (printf_uint_t)download_completed_within_ticks);
     return http_resp_code;

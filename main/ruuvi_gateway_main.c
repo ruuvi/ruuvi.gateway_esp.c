@@ -237,7 +237,7 @@ ruuvi_generate_init_params(
     return p_init_params;
 }
 
-static void
+static bool
 ruuvi_init_gw_cfg(
     const ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver,
     const nrf52_device_info_t* const  p_nrf52_device_info)
@@ -245,8 +245,16 @@ ruuvi_init_gw_cfg(
     const gw_cfg_default_init_param_t* p_gw_cfg_default_init_param = ruuvi_generate_init_params(
         p_nrf52_fw_ver,
         p_nrf52_device_info);
+    if (NULL == p_gw_cfg_default_init_param)
+    {
+        return false;
+    }
 
-    gw_cfg_default_init(p_gw_cfg_default_init_param, &gw_cfg_default_json_read);
+    if (!gw_cfg_default_init(p_gw_cfg_default_init_param, &gw_cfg_default_json_read))
+    {
+        os_free(p_gw_cfg_default_init_param);
+        return false;
+    }
     os_free(p_gw_cfg_default_init_param);
     if (NULL != p_nrf52_fw_ver)
     {
@@ -271,7 +279,7 @@ ruuvi_init_gw_cfg(
     if (NULL == p_gw_cfg_tmp)
     {
         LOG_ERR("Can't get settings from flash");
-        return;
+        return false;
     }
     if (NULL != p_nrf52_fw_ver)
     {
@@ -291,6 +299,7 @@ ruuvi_init_gw_cfg(
         (void)gw_cfg_update((SETTINGS_IN_NVS_STATUS_OK == settings_status) ? p_gw_cfg_tmp : NULL);
     }
     os_free(p_gw_cfg_tmp);
+    return true;
 }
 
 static void
@@ -485,7 +494,11 @@ main_task_init(void)
         ruuvi_nvs_init();
     }
 
-    ruuvi_init_gw_cfg(NULL, NULL);
+    if (!ruuvi_init_gw_cfg(NULL, NULL))
+    {
+        LOG_ERR("%s failed", "ruuvi_init_gw_cfg");
+        return false;
+    }
 
     main_task_init_timers();
 

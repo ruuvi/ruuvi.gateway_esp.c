@@ -53,10 +53,6 @@ extern const flash_fat_fs_t* gp_ffs_gwui;
 static const char TAG[] = "http_server";
 
 HTTP_SERVER_CB_STATIC
-str_buf_t
-http_server_get_from_params(const char* const p_params, const char* const p_key);
-
-HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_json_ruuvi(void)
 {
