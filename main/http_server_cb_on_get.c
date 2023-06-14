@@ -854,6 +854,26 @@ http_server_on_get_check_remote_cfg(
     return resp;
 }
 
+static bool
+http_server_check_url(const str_buf_t* const p_url)
+{
+    struct http_parser_url* p_parser_url = os_calloc(1, sizeof(*p_parser_url));
+    if (NULL == p_parser_url)
+    {
+        LOG_ERR("Can't allocate memory");
+        return false;
+    }
+    http_parser_url_init(p_parser_url);
+    const int parser_status = http_parser_parse_url(p_url->buf, strlen(p_url->buf), 0, p_parser_url);
+    os_free(p_parser_url);
+    if (0 != parser_status)
+    {
+        LOG_ERR("Incorrect URL: %s", p_url->buf);
+        return false;
+    }
+    return true;
+}
+
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_validate_post_advs(
@@ -865,6 +885,11 @@ http_server_resp_validate_post_advs(
     const bool                    use_ssl_client_cert,
     const bool                    use_ssl_server_cert)
 {
+    if (!http_server_check_url(p_url))
+    {
+        return http_server_cb_gen_resp(HTTP_RESP_CODE_400, "Incorrect URL: '%s'", p_url->buf);
+    }
+
     str_buf_t saved_password = gw_cfg_get_http_password_copy();
     if (NULL == saved_password.buf)
     {
@@ -894,6 +919,11 @@ http_server_resp_validate_post_stat(
     const bool                    use_ssl_client_cert,
     const bool                    use_ssl_server_cert)
 {
+    if (!http_server_check_url(p_url))
+    {
+        return http_server_cb_gen_resp(HTTP_RESP_CODE_400, "Incorrect URL: '%s'", p_url->buf);
+    }
+
     str_buf_t saved_password = gw_cfg_get_http_stat_password_copy();
     if (NULL == saved_password.buf)
     {
@@ -956,6 +986,11 @@ http_server_resp_validate_check_remote_cfg(
     const bool                    use_ssl_client_cert,
     const bool                    use_ssl_server_cert)
 {
+    if (!http_server_check_url(p_url))
+    {
+        return http_server_cb_gen_resp(HTTP_RESP_CODE_400, "Incorrect URL: '%s'", p_url->buf);
+    }
+
     const ruuvi_gw_cfg_remote_t* p_saved_remote_cfg = gw_cfg_get_remote_cfg_copy();
     if (NULL == p_saved_remote_cfg)
     {
