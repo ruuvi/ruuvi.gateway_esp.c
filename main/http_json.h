@@ -55,6 +55,7 @@ bool
 http_json_create_records_str(
     const adv_report_table_t* const p_reports,
     const http_json_header_info_t   header_info,
+    const bool                      flag_decode,
     cjson_wrap_str_t* const         p_json_str);
 
 bool

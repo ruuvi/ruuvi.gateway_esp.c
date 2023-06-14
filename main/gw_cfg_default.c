@@ -149,7 +149,7 @@ gw_cfg_default_nrf52_device_id_to_str(const nrf52_device_id_t* const p_dev_id)
     return device_id_str;
 }
 
-void
+bool
 gw_cfg_default_init(
     const gw_cfg_default_init_param_t* const p_init_param,
     gw_cfg_default_json_read_callback_t      p_cb_gw_cfg_default_json_read)
@@ -159,12 +159,21 @@ gw_cfg_default_init(
     g_gw_cfg_default.ruuvi_cfg = g_gateway_config_default_ruuvi;
     g_gw_cfg_default.eth_cfg   = g_gateway_config_default_eth;
 
-    wifiman_hostinfo_t hostinfo = { 0 };
-    (void)snprintf(hostinfo.hostname.buf, sizeof(hostinfo.hostname.buf), "%s", p_init_param->hostname.buf);
-    (void)snprintf(hostinfo.fw_ver.buf, sizeof(hostinfo.fw_ver.buf), "%s", p_init_param->esp32_fw_ver.buf);
-    (void)snprintf(hostinfo.nrf52_fw_ver.buf, sizeof(hostinfo.nrf52_fw_ver.buf), "%s", p_init_param->nrf52_fw_ver.buf);
+    wifiman_hostinfo_t* p_host_info = os_calloc(1, sizeof(*p_host_info));
+    if (NULL == p_host_info)
+    {
+        return false;
+    }
+    (void)snprintf(p_host_info->hostname.buf, sizeof(p_host_info->hostname.buf), "%s", p_init_param->hostname.buf);
+    (void)snprintf(p_host_info->fw_ver.buf, sizeof(p_host_info->fw_ver.buf), "%s", p_init_param->esp32_fw_ver.buf);
+    (void)snprintf(
+        p_host_info->nrf52_fw_ver.buf,
+        sizeof(p_host_info->nrf52_fw_ver.buf),
+        "%s",
+        p_init_param->nrf52_fw_ver.buf);
 
-    g_gw_cfg_default.wifi_cfg = *wifi_manager_default_config_init(&p_init_param->wifi_ap_ssid, &hostinfo);
+    g_gw_cfg_default.wifi_cfg = *wifi_manager_default_config_init(&p_init_param->wifi_ap_ssid, p_host_info);
+    os_free(p_host_info);
 
     gw_cfg_device_info_t* const p_def_dev_info = &g_gw_cfg_default.device_info;
     p_def_dev_info->wifi_ap                    = p_init_param->wifi_ap_ssid;
@@ -214,6 +223,7 @@ gw_cfg_default_init(
         sizeof(p_lan_auth->lan_auth_pass.buf),
         "%s",
         lan_auth_default_password_md5.buf);
+    return true;
 }
 
 void

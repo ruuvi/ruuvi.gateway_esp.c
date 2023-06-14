@@ -79,7 +79,7 @@ esp_random(void)
 
 bool
 http_download_with_auth(
-    const http_download_param_t           param,
+    const http_download_param_t* const    p_param,
     const gw_cfg_http_auth_type_e         gw_cfg_http_auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
     const http_header_item_t* const       p_extra_header_item)
@@ -89,7 +89,7 @@ http_download_with_auth(
 
 bool
 http_check_with_auth(
-    const http_check_param_t              param,
+    const http_check_param_t* const       p_param,
     const gw_cfg_http_auth_type_e         gw_cfg_http_auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
     const http_header_item_t* const       p_extra_header_item,
@@ -1666,6 +1666,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_with_time_interval_20) //
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /history?time=20"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: time=20"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'decode=' in URL params"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("History on 20 seconds interval: ") + string(expected_resp));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
@@ -1748,6 +1750,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps_with_f
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /history?counter=10"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: counter=10"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'decode=' in URL params"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_INFO,
         string("History starting from counter 10: ") + string(expected_resp));
