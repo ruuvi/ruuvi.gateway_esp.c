@@ -79,7 +79,7 @@ esp_random(void)
 
 bool
 http_download_with_auth(
-    const http_download_param_t           param,
+    const http_download_param_t* const    p_param,
     const gw_cfg_http_auth_type_e         gw_cfg_http_auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
     const http_header_item_t* const       p_extra_header_item)
@@ -89,7 +89,7 @@ http_download_with_auth(
 
 bool
 http_check_with_auth(
-    const http_check_param_t              param,
+    const http_check_param_t* const       p_param,
     const gw_cfg_http_auth_type_e         gw_cfg_http_auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
     const http_header_item_t* const       p_extra_header_item,

@@ -36,7 +36,7 @@ typedef struct gw_cfg_default_init_param_t
     mac_address_bin_t        esp32_mac_addr_eth;
 } gw_cfg_default_init_param_t;
 
-void
+bool
 gw_cfg_default_init(
     const gw_cfg_default_init_param_t* const p_init_param,
     gw_cfg_default_json_read_callback_t      p_cb_gw_cfg_default_json_read);

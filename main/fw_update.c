@@ -19,6 +19,7 @@
 #include "ruuvi_gateway.h"
 #include "leds.h"
 #include "gw_status.h"
+#include "os_malloc.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -373,19 +374,26 @@ fw_update_data_partition(const esp_partition_t* const p_partition, const char* c
         return false;
     }
     LOG_INFO("fw_update_data_partition: Download and write partition data");
-    const bool flag_feed_task_watchdog = false;
-    if (!http_download((http_download_param_t) {
-            .p_url                   = p_url,
-            .timeout_seconds         = HTTP_DOWNLOAD_FW_BINARIES_TIMEOUT_SECONDS,
-            .p_cb_on_data            = &fw_update_data_partition_cb_on_recv_data,
-            .p_user_data             = &fw_update_info,
-            .flag_feed_task_watchdog = flag_feed_task_watchdog,
-            .flag_free_memory        = true,
-        }))
+    const bool             flag_feed_task_watchdog = false;
+    http_download_param_t* p_download_param        = os_calloc(1, sizeof(*p_download_param));
+    if (NULL == p_download_param)
     {
-        LOG_ERR("Failed to update partition %s - failed to download %s", p_partition->label, p_url);
+        LOG_ERR("Can't allocate memory");
         return false;
     }
+    p_download_param->p_url                   = p_url;
+    p_download_param->timeout_seconds         = HTTP_DOWNLOAD_FW_BINARIES_TIMEOUT_SECONDS;
+    p_download_param->p_cb_on_data            = &fw_update_data_partition_cb_on_recv_data;
+    p_download_param->p_user_data             = &fw_update_info;
+    p_download_param->flag_feed_task_watchdog = flag_feed_task_watchdog;
+    p_download_param->flag_free_memory        = true;
+    if (!http_download(p_download_param))
+    {
+        LOG_ERR("Failed to update partition %s - failed to download %s", p_partition->label, p_url);
+        os_free(p_download_param);
+        return false;
+    }
+    os_free(p_download_param);
     if (fw_update_info.is_error)
     {
         LOG_ERR("Failed to update partition %s - some problem during writing", p_partition->label);
@@ -484,19 +492,26 @@ fw_update_ota_partition(
         .is_error    = false,
     };
 
-    const bool flag_feed_task_watchdog = false;
-    if (!http_download((http_download_param_t) {
-            .p_url                   = p_url,
-            .timeout_seconds         = HTTP_DOWNLOAD_FW_BINARIES_TIMEOUT_SECONDS,
-            .p_cb_on_data            = &fw_update_ota_partition_cb_on_recv_data,
-            .p_user_data             = &fw_update_info,
-            .flag_feed_task_watchdog = flag_feed_task_watchdog,
-            .flag_free_memory        = true,
-        }))
+    const bool             flag_feed_task_watchdog = false;
+    http_download_param_t* p_download_param        = os_calloc(1, sizeof(*p_download_param));
+    if (NULL == p_download_param)
     {
-        LOG_ERR("Failed to update OTA-partition %s - failed to download %s", p_partition->label, p_url);
+        LOG_ERR("Can't allocate memory");
         return false;
     }
+    p_download_param->p_url                   = p_url;
+    p_download_param->timeout_seconds         = HTTP_DOWNLOAD_FW_BINARIES_TIMEOUT_SECONDS;
+    p_download_param->p_cb_on_data            = &fw_update_ota_partition_cb_on_recv_data;
+    p_download_param->p_user_data             = &fw_update_info;
+    p_download_param->flag_feed_task_watchdog = flag_feed_task_watchdog;
+    p_download_param->flag_free_memory        = true;
+    if (!http_download(p_download_param))
+    {
+        LOG_ERR("Failed to update OTA-partition %s - failed to download %s", p_partition->label, p_url);
+        os_free(p_download_param);
+        return false;
+    }
+    os_free(p_download_param);
     if (fw_update_info.is_error)
     {
         LOG_ERR("Failed to update OTA-partition %s - some problem during writing", p_partition->label);
@@ -924,7 +939,7 @@ fw_update_get_url(void)
 bool
 fw_update_run(const fw_updating_reason_e fw_updating_reason)
 {
-    const uint32_t stack_size_for_fw_update_task = 7 * 1024;
+    const uint32_t stack_size_for_fw_update_task = 7 * 1024 - 512;
     g_fw_updating_reason                         = fw_updating_reason;
     if (!os_task_create_finite_without_param(&fw_update_task, "fw_update_task", stack_size_for_fw_update_task, 1))
     {
