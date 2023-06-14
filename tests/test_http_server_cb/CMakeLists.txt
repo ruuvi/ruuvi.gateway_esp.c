@@ -84,6 +84,8 @@ add_executable(${ProjectId}
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/include/mbedtls/sha256.h
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/platform_util.c
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/include/mbedtls/platform_util.h
+        $ENV{IDF_PATH}/components/nghttp/nghttp2/third-party/http-parser/http_parser.c
+        $ENV{IDF_PATH}/components/nghttp/nghttp2/third-party/http-parser/http_parser.h
 )
 
 set_target_properties(${ProjectId} PROPERTIES
