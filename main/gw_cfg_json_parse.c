@@ -757,7 +757,7 @@ gw_cfg_json_parse_ntp(const cJSON* const p_json_root, ruuvi_gw_cfg_ntp_t* const 
     }
 }
 
-static void
+void
 gw_cfg_json_parse_filter(const cJSON* const p_json_root, ruuvi_gw_cfg_filter_t* const p_gw_cfg_filter)
 {
     if (!gw_cfg_json_get_uint16_val(p_json_root, "company_id", &p_gw_cfg_filter->company_id))
@@ -770,7 +770,7 @@ gw_cfg_json_parse_filter(const cJSON* const p_json_root, ruuvi_gw_cfg_filter_t* 
     }
 }
 
-static void
+void
 gw_cfg_json_parse_scan(const cJSON* const p_json_root, ruuvi_gw_cfg_scan_t* const p_gw_cfg_scan)
 {
     if (!gw_cfg_json_get_bool_val(p_json_root, "scan_coded_phy", &p_gw_cfg_scan->scan_coded_phy))
@@ -797,7 +797,15 @@ gw_cfg_json_parse_scan(const cJSON* const p_json_root, ruuvi_gw_cfg_scan_t* cons
     {
         LOG_WARN("Can't find key '%s' in config-json", "scan_channel_39");
     }
-    if (!gw_cfg_json_get_bool_val(p_json_root, "scan_filter_allow_listed", &p_gw_cfg_scan->scan_filter_allow_listed))
+}
+
+static void
+gw_cfg_json_parse_scan_filter(const cJSON* const p_json_root, ruuvi_gw_cfg_scan_filter_t* const p_gw_cfg_scan_filter)
+{
+    if (!gw_cfg_json_get_bool_val(
+            p_json_root,
+            "scan_filter_allow_listed",
+            &p_gw_cfg_scan_filter->scan_filter_allow_listed))
     {
         LOG_WARN("Can't find key '%s' in config-json", "scan_filter_allow_listed");
     }
@@ -814,13 +822,13 @@ gw_cfg_json_parse_scan(const cJSON* const p_json_root, ruuvi_gw_cfg_scan_t* cons
         {
             cJSON* const      p_filter_item = cJSON_GetArrayItem(p_json_scan_filter_list, i);
             const char* const p_str         = cJSON_GetStringValue(p_filter_item);
-            if (!mac_addr_from_str(p_str, &p_gw_cfg_scan->scan_filter_list[arr_idx]))
+            if (!mac_addr_from_str(p_str, &p_gw_cfg_scan_filter->scan_filter_list[arr_idx]))
             {
                 LOG_ERR("Can't parse MAC address in scan_filter_list: %s", p_str);
             }
             arr_idx += 1;
         }
-        p_gw_cfg_scan->scan_filter_length = arr_idx;
+        p_gw_cfg_scan_filter->scan_filter_length = arr_idx;
     }
 }
 
@@ -911,6 +919,7 @@ gw_cfg_json_parse_cjson_ruuvi_cfg(const cJSON* const p_json_root, gw_cfg_ruuvi_t
     gw_cfg_json_parse_ntp(p_json_root, &p_ruuvi_cfg->ntp);
     gw_cfg_json_parse_filter(p_json_root, &p_ruuvi_cfg->filter);
     gw_cfg_json_parse_scan(p_json_root, &p_ruuvi_cfg->scan);
+    gw_cfg_json_parse_scan_filter(p_json_root, &p_ruuvi_cfg->scan_filter);
     if (!gw_cfg_json_copy_string_val(
             p_json_root,
             "coordinates",

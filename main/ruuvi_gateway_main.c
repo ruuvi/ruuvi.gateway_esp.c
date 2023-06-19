@@ -98,12 +98,8 @@ conv_bool_to_u8(const bool x)
 }
 
 void
-ruuvi_send_nrf_settings(void)
+ruuvi_send_nrf_settings(const ruuvi_gw_cfg_scan_t* const p_scan, const ruuvi_gw_cfg_filter_t* const p_filter)
 {
-    const gw_cfg_t*                    p_gw_cfg   = gw_cfg_lock_ro();
-    const ruuvi_gw_cfg_filter_t* const p_filter   = &p_gw_cfg->ruuvi_cfg.filter;
-    const ruuvi_gw_cfg_scan_t* const   p_scan     = &p_gw_cfg->ruuvi_cfg.scan;
-    const uint16_t                     company_id = p_filter->company_id;
     LOG_INFO(
         "### "
         "sending settings to NRF: use filter: %d, "
@@ -115,7 +111,7 @@ ruuvi_send_nrf_settings(void)
         "use scan channel 38: %d,"
         "use scan channel 39: %d",
         p_filter->company_use_filtering,
-        company_id,
+        p_filter->company_id,
         p_scan->scan_coded_phy,
         p_scan->scan_1mbit_phy,
         p_scan->scan_extended_payload,
@@ -125,7 +121,7 @@ ruuvi_send_nrf_settings(void)
 
     api_send_all(
         RE_CA_UART_SET_ALL,
-        company_id,
+        p_filter->company_id,
         conv_bool_to_u8(p_filter->company_use_filtering),
         conv_bool_to_u8(p_scan->scan_coded_phy),
         conv_bool_to_u8(p_scan->scan_extended_payload),
@@ -133,6 +129,13 @@ ruuvi_send_nrf_settings(void)
         conv_bool_to_u8(p_scan->scan_channel_37),
         conv_bool_to_u8(p_scan->scan_channel_38),
         conv_bool_to_u8(p_scan->scan_channel_39));
+}
+
+void
+ruuvi_send_nrf_settings_from_gw_cfg(void)
+{
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
+    ruuvi_send_nrf_settings(&p_gw_cfg->ruuvi_cfg.scan, &p_gw_cfg->ruuvi_cfg.filter);
     gw_cfg_unlock_ro(&p_gw_cfg);
 }
 

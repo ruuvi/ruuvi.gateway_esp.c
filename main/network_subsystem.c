@@ -124,10 +124,6 @@ cb_on_ap_started(void)
 {
     LOG_INFO("### callback: on_ap_started");
     event_mgr_notify(EVENT_MGR_EV_WIFI_AP_STARTED);
-    main_task_stop_timer_check_for_remote_cfg();
-    main_task_start_timer_hotspot_deactivation();
-    const bool flag_wait_until_relaying_stopped = false;
-    gw_status_suspend_relaying(flag_wait_until_relaying_stopped);
 }
 
 static void
@@ -135,19 +131,6 @@ cb_on_ap_stopped(void)
 {
     LOG_INFO("### callback: on_ap_stopped");
     event_mgr_notify(EVENT_MGR_EV_WIFI_AP_STOPPED);
-    main_task_stop_timer_hotspot_deactivation();
-    if (gw_cfg_get_eth_use_eth() || (!wifi_manager_is_sta_configured()))
-    {
-        ethernet_start();
-    }
-    else
-    {
-        wifi_manager_connect_async();
-    }
-    main_task_send_sig_restart_services();
-
-    const bool flag_wait_until_relaying_resumed = false;
-    gw_status_resume_relaying(flag_wait_until_relaying_resumed);
 }
 
 static void
@@ -155,7 +138,6 @@ cb_on_ap_sta_connected(void)
 {
     LOG_INFO("### callback: on_ap_sta_connected");
     event_mgr_notify(EVENT_MGR_EV_WIFI_AP_STA_CONNECTED);
-    main_task_stop_timer_hotspot_deactivation();
     ethernet_stop();
 }
 
@@ -163,10 +145,7 @@ static void
 cb_on_ap_sta_ip_assigned(void)
 {
     LOG_INFO("callback: on_ap_sta_ip_assigned");
-    if (main_task_is_active_timer_hotspot_deactivation())
-    {
-        main_task_start_timer_hotspot_deactivation();
-    }
+    timer_cfg_mode_deactivation_start();
 }
 
 static void
@@ -174,7 +153,7 @@ cb_on_ap_sta_disconnected(void)
 {
     LOG_INFO("### callback: on_ap_sta_disconnected");
     event_mgr_notify(EVENT_MGR_EV_WIFI_AP_STA_DISCONNECTED);
-    main_task_start_timer_hotspot_deactivation();
+    timer_cfg_mode_deactivation_start();
 }
 
 static void
@@ -187,10 +166,9 @@ static void
 cb_on_request_status_json(void)
 {
     LOG_INFO("callback: cb_on_request_status_json");
-    if (main_task_is_active_timer_hotspot_deactivation())
+    if (timer_cfg_mode_deactivation_is_active())
     {
-        main_task_stop_timer_hotspot_deactivation();
-        main_task_start_timer_hotspot_deactivation();
+        timer_cfg_mode_deactivation_start();
     }
 }
 

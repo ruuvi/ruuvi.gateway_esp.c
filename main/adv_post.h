@@ -42,6 +42,15 @@ void
 adv2_post_timer_restart_with_increased_period(void);
 
 void
+adv_post_send_sig_ble_scan_changed(void);
+
+void
+adv_post_send_sig_activate_cfg_mode(void);
+
+void
+adv_post_send_sig_deactivate_cfg_mode(void);
+
+void
 adv_post_stop(void);
 
 void

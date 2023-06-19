@@ -842,7 +842,7 @@ fw_update_task(void)
         wifi_manager_start_ap(flag_block_req_from_lan);
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
-    main_task_stop_timer_hotspot_deactivation();
+    timer_cfg_mode_deactivation_stop();
 
     const char* p_reboot_reason_msg = "";
     if (!fw_update_do_actions())

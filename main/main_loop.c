@@ -25,20 +25,21 @@
 #include "gw_cfg_log.h"
 #include "reset_task.h"
 #include "runtime_stat.h"
+#include "adv_post.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
 static const char TAG[] = "ruuvi_gateway";
 
-#define MAIN_TASK_LOG_HEAP_STAT_PERIOD_MS              (100U)
-#define MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS        (10U)
-#define MAIN_TASK_TIMEOUT_HOTSPOT_DEACTIVATION_SEC     (60)
-#define MAIN_TASK_HOTSPOT_DEACTIVATION_SHORT_DELAY_SEC (5)
-#define MAIN_TASK_CHECK_FOR_REMOTE_CFG_PERIOD_MS       (60U * TIME_UNITS_SECONDS_PER_MINUTE * TIME_UNITS_MS_PER_SECOND)
-#define MAIN_TASK_GET_HISTORY_TIMEOUT_MS               (70U * TIME_UNITS_MS_PER_SECOND)
-#define MAIN_TASK_LOG_RUNTIME_STAT_PERIOD_MS           (30 * TIME_UNITS_MS_PER_SECOND)
-#define MAIN_TASK_WATCHDOG_FEED_PERIOD_MS              (1 * TIME_UNITS_MS_PER_SECOND)
+#define MAIN_TASK_LOG_HEAP_STAT_PERIOD_MS                (100U)
+#define MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS          (10U)
+#define MAIN_TASK_DELAY_BEFORE_DEACTIVATING_CFG_MODE_SEC (60)
+#define MAIN_TASK_HOTSPOT_DEACTIVATION_SHORT_DELAY_SEC   (5)
+#define MAIN_TASK_CHECK_FOR_REMOTE_CFG_PERIOD_MS         (60U * TIME_UNITS_SECONDS_PER_MINUTE * TIME_UNITS_MS_PER_SECOND)
+#define MAIN_TASK_GET_HISTORY_TIMEOUT_MS                 (70U * TIME_UNITS_MS_PER_SECOND)
+#define MAIN_TASK_LOG_RUNTIME_STAT_PERIOD_MS             (30 * TIME_UNITS_MS_PER_SECOND)
+#define MAIN_TASK_WATCHDOG_FEED_PERIOD_MS                (1 * TIME_UNITS_MS_PER_SECOND)
 
 #define RUUVI_NUM_BYTES_IN_1KB (1024U)
 
@@ -48,19 +49,20 @@ typedef enum main_task_sig_e
     MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES                = OS_SIGNAL_NUM_1,
     MAIN_TASK_SIG_SCHEDULE_NEXT_CHECK_FOR_FW_UPDATES  = OS_SIGNAL_NUM_2,
     MAIN_TASK_SIG_SCHEDULE_RETRY_CHECK_FOR_FW_UPDATES = OS_SIGNAL_NUM_3,
-    MAIN_TASK_SIG_DEACTIVATE_WIFI_AP                  = OS_SIGNAL_NUM_4,
-    MAIN_TASK_SIG_TASK_RESTART_SERVICES               = OS_SIGNAL_NUM_5,
-    MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT                = OS_SIGNAL_NUM_6,
-    MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG                = OS_SIGNAL_NUM_7,
-    MAIN_TASK_SIG_NETWORK_CONNECTED                   = OS_SIGNAL_NUM_8,
-    MAIN_TASK_SIG_NETWORK_DISCONNECTED                = OS_SIGNAL_NUM_9,
-    MAIN_TASK_SIG_RECONNECT_NETWORK                   = OS_SIGNAL_NUM_10,
-    MAIN_TASK_SIG_SET_DEFAULT_CONFIG                  = OS_SIGNAL_NUM_11,
-    MAIN_TASK_SIG_ON_GET_HISTORY                      = OS_SIGNAL_NUM_12,
-    MAIN_TASK_SIG_ON_GET_HISTORY_TIMEOUT              = OS_SIGNAL_NUM_13,
-    MAIN_TASK_SIG_RELAYING_MODE_CHANGED               = OS_SIGNAL_NUM_14,
-    MAIN_TASK_SIG_LOG_RUNTIME_STAT                    = OS_SIGNAL_NUM_15,
-    MAIN_TASK_SIG_TASK_WATCHDOG_FEED                  = OS_SIGNAL_NUM_16,
+    MAIN_TASK_SIG_ACTIVATE_CFG_MODE                   = OS_SIGNAL_NUM_4,
+    MAIN_TASK_SIG_DEACTIVATE_CFG_MODE                 = OS_SIGNAL_NUM_5,
+    MAIN_TASK_SIG_TASK_RESTART_SERVICES               = OS_SIGNAL_NUM_6,
+    MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT                = OS_SIGNAL_NUM_7,
+    MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG                = OS_SIGNAL_NUM_8,
+    MAIN_TASK_SIG_NETWORK_CONNECTED                   = OS_SIGNAL_NUM_9,
+    MAIN_TASK_SIG_NETWORK_DISCONNECTED                = OS_SIGNAL_NUM_10,
+    MAIN_TASK_SIG_RECONNECT_NETWORK                   = OS_SIGNAL_NUM_11,
+    MAIN_TASK_SIG_SET_DEFAULT_CONFIG                  = OS_SIGNAL_NUM_12,
+    MAIN_TASK_SIG_ON_GET_HISTORY                      = OS_SIGNAL_NUM_13,
+    MAIN_TASK_SIG_ON_GET_HISTORY_TIMEOUT              = OS_SIGNAL_NUM_14,
+    MAIN_TASK_SIG_RELAYING_MODE_CHANGED               = OS_SIGNAL_NUM_15,
+    MAIN_TASK_SIG_LOG_RUNTIME_STAT                    = OS_SIGNAL_NUM_16,
+    MAIN_TASK_SIG_TASK_WATCHDOG_FEED                  = OS_SIGNAL_NUM_17,
 } main_task_sig_e;
 
 #define MAIN_TASK_SIG_FIRST (MAIN_TASK_SIG_LOG_HEAP_USAGE)
@@ -74,8 +76,8 @@ static os_timer_sig_periodic_t*       g_p_timer_sig_log_runtime_stat;
 static os_timer_sig_periodic_static_t g_timer_sig_log_runtime_stat;
 static os_timer_sig_one_shot_t*       g_p_timer_sig_check_for_fw_updates;
 static os_timer_sig_one_shot_static_t g_timer_sig_check_for_fw_updates_mem;
-static os_timer_sig_one_shot_t*       g_p_timer_sig_deactivate_wifi_ap;
-static os_timer_sig_one_shot_static_t g_p_timer_sig_deactivate_wifi_ap_mem;
+static os_timer_sig_one_shot_t*       g_p_timer_sig_deactivate_cfg_mode;
+static os_timer_sig_one_shot_static_t g_p_timer_sig_deactivate_cfg_mode_mem;
 static os_timer_sig_periodic_t*       g_p_timer_sig_check_for_remote_cfg;
 static os_timer_sig_periodic_static_t g_timer_sig_check_for_remote_cfg_mem;
 static os_timer_sig_one_shot_t*       g_p_timer_sig_get_history_timeout;
@@ -87,6 +89,8 @@ static event_mgr_ev_info_static_t     g_main_loop_ev_info_mem_eth_connected;
 static event_mgr_ev_info_static_t     g_main_loop_ev_info_mem_wifi_disconnected;
 static event_mgr_ev_info_static_t     g_main_loop_ev_info_mem_eth_disconnected;
 static event_mgr_ev_info_static_t     g_main_loop_ev_info_mem_relaying_mode_changed;
+static event_mgr_ev_info_static_t     g_main_loop_ev_info_mem_ap_started;
+static event_mgr_ev_info_static_t     g_main_loop_ev_info_mem_ap_stopped;
 
 ATTR_PURE
 static os_signal_num_e
@@ -252,18 +256,77 @@ main_task_handle_sig_schedule_retry_check_for_fw_updates(void)
 }
 
 static void
-main_task_handle_sig_deactivate_wifi_ap(void)
+main_task_handle_sig_activate_cfg_mode(void)
 {
-    LOG_INFO("MAIN_TASK_SIG_DEACTIVATE_WIFI_AP");
-    if (gw_status_get_first_boot_after_cfg_erase() && gw_cfg_is_empty())
+    LOG_INFO("MAIN_TASK_SIG_ACTIVATE_CFG_MODE");
+
+    if (gw_status_get_cfg_mode())
     {
-        LOG_INFO("Gateway has not configured yet, so don't stop Wi-Fi hotspot, start Ethernet instead");
+        LOG_INFO("Configuration mode is already active");
+        return;
+    }
+
+    gw_status_set_cfg_mode();
+
+    if (os_timer_sig_periodic_is_active(g_p_timer_sig_check_for_remote_cfg))
+    {
+        main_task_stop_timer_check_for_remote_cfg();
+    }
+
+    if (os_timer_sig_one_shot_is_active(g_p_timer_sig_check_for_fw_updates))
+    {
+        main_task_timer_sig_check_for_fw_updates_stop();
+    }
+
+    const bool flag_wait_until_relaying_stopped = false;
+    gw_status_suspend_relaying(flag_wait_until_relaying_stopped);
+
+    adv_post_send_sig_activate_cfg_mode();
+
+    timer_cfg_mode_deactivation_start();
+}
+
+static void
+main_task_handle_sig_deactivate_cfg_mode(void)
+{
+    LOG_INFO("MAIN_TASK_SIG_DEACTIVATE_CFG_MODE");
+
+    timer_cfg_mode_deactivation_stop();
+
+    if (!gw_status_get_cfg_mode())
+    {
+        LOG_WARN("Configuration mode is not active");
+        return;
+    }
+    gw_status_clear_cfg_mode();
+
+    if (wifi_manager_is_ap_active())
+    {
+        if (gw_status_get_first_boot_after_cfg_erase() && gw_cfg_is_empty())
+        {
+            LOG_INFO("Gateway has not configured yet, so don't stop Wi-Fi hotspot, start Ethernet instead");
+            ethernet_start();
+        }
+        else
+        {
+            wifi_manager_stop_ap();
+        }
+    }
+    if (gw_cfg_get_eth_use_eth() || (!wifi_manager_is_sta_configured()))
+    {
         ethernet_start();
     }
     else
     {
-        wifi_manager_stop_ap();
+        wifi_manager_connect_async();
     }
+
+    main_task_send_sig_restart_services();
+
+    adv_post_send_sig_deactivate_cfg_mode();
+
+    const bool flag_wait_until_relaying_resumed = false;
+    gw_status_resume_relaying(flag_wait_until_relaying_resumed);
 }
 
 static void
@@ -461,8 +524,11 @@ main_task_handle_sig(const main_task_sig_e main_task_sig)
         case MAIN_TASK_SIG_SCHEDULE_RETRY_CHECK_FOR_FW_UPDATES:
             main_task_handle_sig_schedule_retry_check_for_fw_updates();
             break;
-        case MAIN_TASK_SIG_DEACTIVATE_WIFI_AP:
-            main_task_handle_sig_deactivate_wifi_ap();
+        case MAIN_TASK_SIG_ACTIVATE_CFG_MODE:
+            main_task_handle_sig_activate_cfg_mode();
+            break;
+        case MAIN_TASK_SIG_DEACTIVATE_CFG_MODE:
+            main_task_handle_sig_deactivate_cfg_mode();
             break;
         case MAIN_TASK_SIG_TASK_RESTART_SERVICES:
             main_task_handle_sig_restart_services();
@@ -611,7 +677,8 @@ main_task_init_signals(void)
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_SCHEDULE_NEXT_CHECK_FOR_FW_UPDATES));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_SCHEDULE_RETRY_CHECK_FOR_FW_UPDATES));
-    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_DEACTIVATE_WIFI_AP));
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_ACTIVATE_CFG_MODE));
+    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_DEACTIVATE_CFG_MODE));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_RESTART_SERVICES));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG));
@@ -642,12 +709,12 @@ main_task_init_timers(void)
         main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_FW_UPDATES),
         pdMS_TO_TICKS(RUUVI_CHECK_FOR_FW_UPDATES_DELAY_AFTER_REBOOT_SECONDS) * TIME_UNITS_MS_PER_SECOND);
 
-    g_p_timer_sig_deactivate_wifi_ap = os_timer_sig_one_shot_create_static(
-        &g_p_timer_sig_deactivate_wifi_ap_mem,
-        "deactivate_ap",
+    g_p_timer_sig_deactivate_cfg_mode = os_timer_sig_one_shot_create_static(
+        &g_p_timer_sig_deactivate_cfg_mode_mem,
+        "stop_cfg_mode",
         g_p_signal_main_task,
-        main_task_conv_to_sig_num(MAIN_TASK_SIG_DEACTIVATE_WIFI_AP),
-        pdMS_TO_TICKS(MAIN_TASK_TIMEOUT_HOTSPOT_DEACTIVATION_SEC * TIME_UNITS_MS_PER_SECOND));
+        main_task_conv_to_sig_num(MAIN_TASK_SIG_DEACTIVATE_CFG_MODE),
+        pdMS_TO_TICKS(MAIN_TASK_DELAY_BEFORE_DEACTIVATING_CFG_MODE_SEC * TIME_UNITS_MS_PER_SECOND));
 
     g_p_timer_sig_check_for_remote_cfg = os_timer_sig_periodic_create_static(
         &g_timer_sig_check_for_remote_cfg_mem,
@@ -710,6 +777,18 @@ main_task_subscribe_events(void)
         EVENT_MGR_EV_RELAYING_MODE_CHANGED,
         g_p_signal_main_task,
         main_task_conv_to_sig_num(MAIN_TASK_SIG_RELAYING_MODE_CHANGED));
+
+    event_mgr_subscribe_sig_static(
+        &g_main_loop_ev_info_mem_ap_started,
+        EVENT_MGR_EV_WIFI_AP_STARTED,
+        g_p_signal_main_task,
+        main_task_conv_to_sig_num(MAIN_TASK_SIG_ACTIVATE_CFG_MODE));
+
+    event_mgr_subscribe_sig_static(
+        &g_main_loop_ev_info_mem_ap_stopped,
+        EVENT_MGR_EV_WIFI_AP_STOPPED,
+        g_p_signal_main_task,
+        main_task_conv_to_sig_num(MAIN_TASK_SIG_DEACTIVATE_CFG_MODE));
 }
 
 bool
@@ -743,6 +822,12 @@ main_task_send_sig_restart_services(void)
 }
 
 void
+main_task_send_sig_activate_cfg_mode(void)
+{
+    os_signal_send(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_ACTIVATE_CFG_MODE));
+}
+
+void
 main_task_send_sig_reconnect_network(void)
 {
     os_signal_send(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_RECONNECT_NETWORK));
@@ -769,45 +854,51 @@ main_task_send_sig_log_runtime_stat(void)
 void
 main_task_timer_sig_check_for_fw_updates_restart(const os_delta_ticks_t delay_ticks)
 {
+    LOG_INFO("### Start timer: Check for firmware updates");
     os_timer_sig_one_shot_restart(g_p_timer_sig_check_for_fw_updates, delay_ticks);
 }
 
 void
 main_task_timer_sig_check_for_fw_updates_stop(void)
 {
+    LOG_INFO("### Stop timer: Check for firmware updates");
     os_timer_sig_one_shot_stop(g_p_timer_sig_check_for_fw_updates);
 }
 
 void
-main_task_start_timer_hotspot_deactivation(void)
+timer_cfg_mode_deactivation_start(void)
 {
-    LOG_INFO("### Start Wi-Fi AP deactivation timer (%u seconds)", MAIN_TASK_TIMEOUT_HOTSPOT_DEACTIVATION_SEC);
-    os_timer_sig_one_shot_stop(g_p_timer_sig_deactivate_wifi_ap);
+    LOG_INFO(
+        "### Start timer for deactivation of configuration mode after timeout (%u seconds)",
+        MAIN_TASK_DELAY_BEFORE_DEACTIVATING_CFG_MODE_SEC);
+    os_timer_sig_one_shot_stop(g_p_timer_sig_deactivate_cfg_mode);
     os_timer_sig_one_shot_restart(
-        g_p_timer_sig_deactivate_wifi_ap,
-        pdMS_TO_TICKS(MAIN_TASK_TIMEOUT_HOTSPOT_DEACTIVATION_SEC * TIME_UNITS_MS_PER_SECOND));
+        g_p_timer_sig_deactivate_cfg_mode,
+        pdMS_TO_TICKS(MAIN_TASK_DELAY_BEFORE_DEACTIVATING_CFG_MODE_SEC * TIME_UNITS_MS_PER_SECOND));
 }
 
 void
-main_task_stop_timer_hotspot_deactivation(void)
+timer_cfg_mode_deactivation_stop(void)
 {
-    LOG_INFO("### Stop Wi-Fi AP deactivation timer");
-    os_timer_sig_one_shot_stop(g_p_timer_sig_deactivate_wifi_ap);
+    LOG_INFO("### Stop the timer for the deactivation of Configuration Mode");
+    os_timer_sig_one_shot_stop(g_p_timer_sig_deactivate_cfg_mode);
 }
 
 bool
-main_task_is_active_timer_hotspot_deactivation(void)
+timer_cfg_mode_deactivation_is_active(void)
 {
-    return os_timer_sig_one_shot_is_active(g_p_timer_sig_deactivate_wifi_ap);
+    return os_timer_sig_one_shot_is_active(g_p_timer_sig_deactivate_cfg_mode);
 }
 
 void
-main_task_stop_wifi_hotspot_after_short_delay(void)
+timer_cfg_mode_deactivation_start_with_short_delay(void)
 {
-    LOG_INFO("### Force stop WiFi hotspot after %u seconds", MAIN_TASK_HOTSPOT_DEACTIVATION_SHORT_DELAY_SEC);
-    os_timer_sig_one_shot_stop(g_p_timer_sig_deactivate_wifi_ap);
+    LOG_INFO(
+        "### Start timer for deactivation of configuration mode after timeout (%u seconds)",
+        MAIN_TASK_HOTSPOT_DEACTIVATION_SHORT_DELAY_SEC);
+    os_timer_sig_one_shot_stop(g_p_timer_sig_deactivate_cfg_mode);
     os_timer_sig_one_shot_restart(
-        g_p_timer_sig_deactivate_wifi_ap,
+        g_p_timer_sig_deactivate_cfg_mode,
         pdMS_TO_TICKS(MAIN_TASK_HOTSPOT_DEACTIVATION_SHORT_DELAY_SEC * TIME_UNITS_MS_PER_SECOND));
 }
 

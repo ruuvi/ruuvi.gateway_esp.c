@@ -102,6 +102,32 @@ reset_task_watchdog_feed(void)
 }
 
 static void
+activate_wifi_hotspot(void)
+{
+    if (gw_cfg_get_eth_use_eth())
+    {
+        LOG_INFO("Disconnect from Ethernet");
+        wifi_manager_disconnect_eth();
+        ethernet_stop();
+    }
+    else
+    {
+        LOG_INFO("Disconnect from WiFi");
+        wifi_manager_disconnect_wifi();
+    }
+    if (!wifi_manager_is_ap_active())
+    {
+        LOG_INFO("WiFi AP is not active - start WiFi AP");
+        const bool flag_block_req_from_lan = true;
+        wifi_manager_start_ap(flag_block_req_from_lan);
+    }
+    else
+    {
+        LOG_INFO("WiFi AP is already active");
+    }
+}
+
+static void
 reset_task_handle_sig(const reset_task_sig_e reset_task_sig)
 {
     switch (reset_task_sig)
@@ -116,36 +142,7 @@ reset_task_handle_sig(const reset_task_sig_e reset_task_sig)
         case RESET_TASK_SIG_CONFIGURE_BUTTON_RELEASED:
             LOG_INFO("The CONFIGURE button has been released");
             os_timer_sig_one_shot_stop(g_p_timer_sig_reset_by_configure_button);
-            if (mqtt_app_is_working())
-            {
-                LOG_INFO("MQTT is active - stop it");
-                mqtt_app_stop();
-            }
-            else
-            {
-                LOG_INFO("MQTT is not active");
-            }
-            if (gw_cfg_get_eth_use_eth())
-            {
-                LOG_INFO("Disconnect from Ethernet");
-                wifi_manager_disconnect_eth();
-                ethernet_stop();
-            }
-            else
-            {
-                LOG_INFO("Disconnect from WiFi");
-                wifi_manager_disconnect_wifi();
-            }
-            if (!wifi_manager_is_ap_active())
-            {
-                LOG_INFO("WiFi AP is not active - start WiFi AP");
-                const bool flag_block_req_from_lan = true;
-                wifi_manager_start_ap(flag_block_req_from_lan);
-            }
-            else
-            {
-                LOG_INFO("WiFi AP is already active");
-            }
+            activate_wifi_hotspot();
             break;
         case RESET_TASK_SIG_INCREMENT_UPTIME_COUNTER:
             g_uptime_counter += 1;

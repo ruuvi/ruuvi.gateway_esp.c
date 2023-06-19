@@ -3862,14 +3862,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_default) // NOLINT
     gw_cfg_t         gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    gw_cfg.ruuvi_cfg.scan.scan_coded_phy           = false;
-    gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy           = true;
-    gw_cfg.ruuvi_cfg.scan.scan_extended_payload    = true;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_37          = true;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_38          = true;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_39          = true;
-    gw_cfg.ruuvi_cfg.scan.scan_filter_allow_listed = false;
-    gw_cfg.ruuvi_cfg.scan.scan_filter_length       = 0;
+    gw_cfg.ruuvi_cfg.scan.scan_coded_phy                  = false;
+    gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy                  = true;
+    gw_cfg.ruuvi_cfg.scan.scan_extended_payload           = true;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_37                 = true;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_38                 = true;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_39                 = true;
+    gw_cfg.ruuvi_cfg.scan_filter.scan_filter_allow_listed = false;
+    gw_cfg.ruuvi_cfg.scan_filter.scan_filter_length       = 0;
 
     ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
@@ -3954,14 +3954,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_coded_phy_true) // NOLINT
     gw_cfg_t         gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    gw_cfg.ruuvi_cfg.scan.scan_coded_phy           = true;
-    gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy           = true;
-    gw_cfg.ruuvi_cfg.scan.scan_extended_payload    = true;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_37          = true;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_38          = true;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_39          = true;
-    gw_cfg.ruuvi_cfg.scan.scan_filter_allow_listed = false;
-    gw_cfg.ruuvi_cfg.scan.scan_filter_length       = 0;
+    gw_cfg.ruuvi_cfg.scan.scan_coded_phy                  = true;
+    gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy                  = true;
+    gw_cfg.ruuvi_cfg.scan.scan_extended_payload           = true;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_37                 = true;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_38                 = true;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_39                 = true;
+    gw_cfg.ruuvi_cfg.scan_filter.scan_filter_allow_listed = false;
+    gw_cfg.ruuvi_cfg.scan_filter.scan_filter_length       = 0;
 
     ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
@@ -4046,14 +4046,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_1mbit_phy_false) // NOLINT
     gw_cfg_t         gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    gw_cfg.ruuvi_cfg.scan.scan_coded_phy           = false;
-    gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy           = false;
-    gw_cfg.ruuvi_cfg.scan.scan_extended_payload    = true;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_37          = true;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_38          = true;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_39          = true;
-    gw_cfg.ruuvi_cfg.scan.scan_filter_allow_listed = false;
-    gw_cfg.ruuvi_cfg.scan.scan_filter_length       = 0;
+    gw_cfg.ruuvi_cfg.scan.scan_coded_phy                  = false;
+    gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy                  = false;
+    gw_cfg.ruuvi_cfg.scan.scan_extended_payload           = true;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_37                 = true;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_38                 = true;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_39                 = true;
+    gw_cfg.ruuvi_cfg.scan_filter.scan_filter_allow_listed = false;
+    gw_cfg.ruuvi_cfg.scan_filter.scan_filter_length       = 0;
 
     ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
@@ -4138,14 +4138,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_extended_payload_false) // NOLIN
     gw_cfg_t         gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    gw_cfg.ruuvi_cfg.scan.scan_coded_phy           = false;
-    gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy           = true;
-    gw_cfg.ruuvi_cfg.scan.scan_extended_payload    = false;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_37          = true;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_38          = true;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_39          = true;
-    gw_cfg.ruuvi_cfg.scan.scan_filter_allow_listed = false;
-    gw_cfg.ruuvi_cfg.scan.scan_filter_length       = 0;
+    gw_cfg.ruuvi_cfg.scan.scan_coded_phy                  = false;
+    gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy                  = true;
+    gw_cfg.ruuvi_cfg.scan.scan_extended_payload           = false;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_37                 = true;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_38                 = true;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_39                 = true;
+    gw_cfg.ruuvi_cfg.scan_filter.scan_filter_allow_listed = false;
+    gw_cfg.ruuvi_cfg.scan_filter.scan_filter_length       = 0;
 
     ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
@@ -4230,14 +4230,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_37_false) // NOLINT
     gw_cfg_t         gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    gw_cfg.ruuvi_cfg.scan.scan_coded_phy           = false;
-    gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy           = true;
-    gw_cfg.ruuvi_cfg.scan.scan_extended_payload    = true;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_37          = false;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_38          = true;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_39          = true;
-    gw_cfg.ruuvi_cfg.scan.scan_filter_allow_listed = false;
-    gw_cfg.ruuvi_cfg.scan.scan_filter_length       = 0;
+    gw_cfg.ruuvi_cfg.scan.scan_coded_phy                  = false;
+    gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy                  = true;
+    gw_cfg.ruuvi_cfg.scan.scan_extended_payload           = true;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_37                 = false;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_38                 = true;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_39                 = true;
+    gw_cfg.ruuvi_cfg.scan_filter.scan_filter_allow_listed = false;
+    gw_cfg.ruuvi_cfg.scan_filter.scan_filter_length       = 0;
 
     ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
@@ -4322,14 +4322,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_38_false) // NOLINT
     gw_cfg_t         gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    gw_cfg.ruuvi_cfg.scan.scan_coded_phy           = false;
-    gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy           = true;
-    gw_cfg.ruuvi_cfg.scan.scan_extended_payload    = true;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_37          = true;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_38          = false;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_39          = true;
-    gw_cfg.ruuvi_cfg.scan.scan_filter_allow_listed = false;
-    gw_cfg.ruuvi_cfg.scan.scan_filter_length       = 0;
+    gw_cfg.ruuvi_cfg.scan.scan_coded_phy                  = false;
+    gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy                  = true;
+    gw_cfg.ruuvi_cfg.scan.scan_extended_payload           = true;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_37                 = true;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_38                 = false;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_39                 = true;
+    gw_cfg.ruuvi_cfg.scan_filter.scan_filter_allow_listed = false;
+    gw_cfg.ruuvi_cfg.scan_filter.scan_filter_length       = 0;
 
     ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
@@ -4414,14 +4414,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_39_false) // NOLINT
     gw_cfg_t         gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    gw_cfg.ruuvi_cfg.scan.scan_coded_phy           = false;
-    gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy           = true;
-    gw_cfg.ruuvi_cfg.scan.scan_extended_payload    = true;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_37          = true;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_38          = true;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_39          = false;
-    gw_cfg.ruuvi_cfg.scan.scan_filter_allow_listed = false;
-    gw_cfg.ruuvi_cfg.scan.scan_filter_length       = 0;
+    gw_cfg.ruuvi_cfg.scan.scan_coded_phy                  = false;
+    gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy                  = true;
+    gw_cfg.ruuvi_cfg.scan.scan_extended_payload           = true;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_37                 = true;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_38                 = true;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_39                 = false;
+    gw_cfg.ruuvi_cfg.scan_filter.scan_filter_allow_listed = false;
+    gw_cfg.ruuvi_cfg.scan_filter.scan_filter_length       = 0;
 
     ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
@@ -4506,15 +4506,15 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_filter1_not_allow_listed) // NOL
     gw_cfg_t         gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    gw_cfg.ruuvi_cfg.scan.scan_coded_phy           = false;
-    gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy           = true;
-    gw_cfg.ruuvi_cfg.scan.scan_extended_payload    = true;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_37          = true;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_38          = true;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_39          = false;
-    gw_cfg.ruuvi_cfg.scan.scan_filter_allow_listed = false;
-    gw_cfg.ruuvi_cfg.scan.scan_filter_length       = 1;
-    mac_addr_from_str("AA:BB:CC:DD:EE:FF", &gw_cfg.ruuvi_cfg.scan.scan_filter_list[0]);
+    gw_cfg.ruuvi_cfg.scan.scan_coded_phy                  = false;
+    gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy                  = true;
+    gw_cfg.ruuvi_cfg.scan.scan_extended_payload           = true;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_37                 = true;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_38                 = true;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_39                 = false;
+    gw_cfg.ruuvi_cfg.scan_filter.scan_filter_allow_listed = false;
+    gw_cfg.ruuvi_cfg.scan_filter.scan_filter_length       = 1;
+    mac_addr_from_str("AA:BB:CC:DD:EE:FF", &gw_cfg.ruuvi_cfg.scan_filter.scan_filter_list[0]);
 
     ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
@@ -4599,16 +4599,16 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_filter2_allow_listed) // NOLINT
     gw_cfg_t         gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    gw_cfg.ruuvi_cfg.scan.scan_coded_phy           = false;
-    gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy           = true;
-    gw_cfg.ruuvi_cfg.scan.scan_extended_payload    = true;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_37          = true;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_38          = true;
-    gw_cfg.ruuvi_cfg.scan.scan_channel_39          = false;
-    gw_cfg.ruuvi_cfg.scan.scan_filter_allow_listed = true;
-    gw_cfg.ruuvi_cfg.scan.scan_filter_length       = 2;
-    mac_addr_from_str("A0:B0:C0:D0:E0:F0", &gw_cfg.ruuvi_cfg.scan.scan_filter_list[0]);
-    mac_addr_from_str("A1:B1:C1:D1:E1:F1", &gw_cfg.ruuvi_cfg.scan.scan_filter_list[1]);
+    gw_cfg.ruuvi_cfg.scan.scan_coded_phy                  = false;
+    gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy                  = true;
+    gw_cfg.ruuvi_cfg.scan.scan_extended_payload           = true;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_37                 = true;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_38                 = true;
+    gw_cfg.ruuvi_cfg.scan.scan_channel_39                 = false;
+    gw_cfg.ruuvi_cfg.scan_filter.scan_filter_allow_listed = true;
+    gw_cfg.ruuvi_cfg.scan_filter.scan_filter_length       = 2;
+    mac_addr_from_str("A0:B0:C0:D0:E0:F0", &gw_cfg.ruuvi_cfg.scan_filter.scan_filter_list[0]);
+    mac_addr_from_str("A1:B1:C1:D1:E1:F1", &gw_cfg.ruuvi_cfg.scan_filter.scan_filter_list[1]);
 
     ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
@@ -4841,8 +4841,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_default) // NOLINT
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_channel_39);
-    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_filter_allow_listed);
-    ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan.scan_filter_length);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_allow_listed);
+    ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
     ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.coordinates.buf);
 
@@ -4992,6 +4992,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
                 .scan_channel_37 = false,
                 .scan_channel_38 = false,
                 .scan_channel_39 = false,
+            },
+            .scan_filter = {
                 .scan_filter_allow_listed = false,
                 .scan_filter_length = 0,
                 .scan_filter_list = { 0 },
@@ -5071,8 +5073,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_39);
-    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_filter_allow_listed);
-    ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan.scan_filter_length);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_allow_listed);
+    ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
     ASSERT_EQ(string("coordinates1"), gw_cfg2.ruuvi_cfg.coordinates.buf);
 
@@ -5221,6 +5223,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
                 .scan_channel_37 = false,
                 .scan_channel_38 = false,
                 .scan_channel_39 = false,
+            },
+            .scan_filter = {
                 .scan_filter_allow_listed = false,
                 .scan_filter_length = 0,
                 .scan_filter_list = { 0 },
@@ -5300,8 +5304,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_39);
-    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_filter_allow_listed);
-    ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan.scan_filter_length);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_allow_listed);
+    ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
     ASSERT_EQ(string("coordinates1"), gw_cfg2.ruuvi_cfg.coordinates.buf);
 
@@ -5450,6 +5454,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
                 .scan_channel_37 = false,
                 .scan_channel_38 = false,
                 .scan_channel_39 = false,
+            },
+            .scan_filter = {
                 .scan_filter_allow_listed = false,
                 .scan_filter_length = 0,
                 .scan_filter_list = { 0 },
@@ -5529,8 +5535,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_39);
-    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_filter_allow_listed);
-    ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan.scan_filter_length);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_allow_listed);
+    ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
     ASSERT_EQ(string("coordinates1"), gw_cfg2.ruuvi_cfg.coordinates.buf);
 
@@ -5736,8 +5742,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_39);
-    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_filter_allow_listed);
-    ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan.scan_filter_length);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_allow_listed);
+    ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
     ASSERT_EQ(string("coordinates1"), gw_cfg2.ruuvi_cfg.coordinates.buf);
 
@@ -5887,6 +5893,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
                 .scan_channel_37 = false,
                 .scan_channel_38 = false,
                 .scan_channel_39 = false,
+            },
+            .scan_filter = {
                 .scan_filter_allow_listed = false,
                 .scan_filter_length = 0,
                 .scan_filter_list = { 0 },
@@ -5966,8 +5974,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_39);
-    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_filter_allow_listed);
-    ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan.scan_filter_length);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_allow_listed);
+    ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
     ASSERT_EQ(string("coordinates1"), gw_cfg2.ruuvi_cfg.coordinates.buf);
 
@@ -6116,6 +6124,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
                 .scan_channel_37 = false,
                 .scan_channel_38 = false,
                 .scan_channel_39 = false,
+            },
+            .scan_filter = {
                 .scan_filter_allow_listed = false,
                 .scan_filter_length = 0,
                 .scan_filter_list = { 0 },
@@ -6195,8 +6205,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_39);
-    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_filter_allow_listed);
-    ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan.scan_filter_length);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_allow_listed);
+    ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
     ASSERT_EQ(string("coordinates1"), gw_cfg2.ruuvi_cfg.coordinates.buf);
 
@@ -6345,6 +6355,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_custom) // NOLINT
                 .scan_channel_37 = false,
                 .scan_channel_38 = false,
                 .scan_channel_39 = false,
+            },
+            .scan_filter = {
                 .scan_filter_allow_listed = false,
                 .scan_filter_length = 0,
                 .scan_filter_list = { 0 },
@@ -6424,8 +6436,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_custom) // NOLINT
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_39);
-    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_filter_allow_listed);
-    ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan.scan_filter_length);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_allow_listed);
+    ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
     ASSERT_EQ(string("coordinates1"), gw_cfg2.ruuvi_cfg.coordinates.buf);
 
@@ -6959,8 +6971,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_channel_39);
-    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_filter_allow_listed);
-    ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan.scan_filter_length);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_allow_listed);
+    ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
     ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.coordinates.buf);
 
@@ -7166,8 +7178,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_string) // NOLINT
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_channel_39);
-    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_filter_allow_listed);
-    ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan.scan_filter_length);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_allow_listed);
+    ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
     ASSERT_EQ(string(""), gw_cfg2.ruuvi_cfg.coordinates.buf);
 

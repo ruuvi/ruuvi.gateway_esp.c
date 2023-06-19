@@ -278,16 +278,20 @@ typedef struct ruuvi_gw_cfg_filter_t
 
 typedef struct ruuvi_gw_cfg_scan_t
 {
-    bool              scan_coded_phy;
-    bool              scan_1mbit_phy;
-    bool              scan_extended_payload;
-    bool              scan_channel_37;
-    bool              scan_channel_38;
-    bool              scan_channel_39;
+    bool scan_coded_phy;
+    bool scan_1mbit_phy;
+    bool scan_extended_payload;
+    bool scan_channel_37;
+    bool scan_channel_38;
+    bool scan_channel_39;
+} ruuvi_gw_cfg_scan_t;
+
+typedef struct ruuvi_gw_cfg_scan_filter_t
+{
     bool              scan_filter_allow_listed;
     uint32_t          scan_filter_length;
     mac_address_bin_t scan_filter_list[GW_CFG_MAX_NUM_SENSORS];
-} ruuvi_gw_cfg_scan_t;
+} ruuvi_gw_cfg_scan_filter_t;
 
 typedef struct ruuvi_gw_cfg_coordinates_t
 {
@@ -305,6 +309,7 @@ typedef struct ruuvi_gw_cfg_t
     ruuvi_gw_cfg_ntp_t         ntp;
     ruuvi_gw_cfg_filter_t      filter;
     ruuvi_gw_cfg_scan_t        scan;
+    ruuvi_gw_cfg_scan_filter_t scan_filter;
     ruuvi_gw_cfg_coordinates_t coordinates;
 } gw_cfg_ruuvi_t;
 

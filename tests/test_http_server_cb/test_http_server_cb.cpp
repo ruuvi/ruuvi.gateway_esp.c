@@ -305,6 +305,31 @@ runtime_stat_for_each_accumulated_info(
     return true;
 }
 
+void
+main_task_send_sig_activate_cfg_mode(void)
+{
+}
+
+void
+main_task_send_sig_deactivate_cfg_mode(void)
+{
+}
+
+void
+ruuvi_send_nrf_settings(void)
+{
+}
+
+void
+adv_post_send_sig_ble_scan_changed(void)
+{
+}
+
+void
+timer_cfg_mode_deactivation_start_with_short_delay(void)
+{
+}
+
 } // extern "C"
 
 class MemAllocTrace
@@ -1974,7 +1999,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg_from_lan) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan filter: no"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: coordinates: "));
-    TEST_CHECK_LOG_RECORD_TEST(ESP_LOG_VERBOSE, string("restart_services"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -2149,7 +2173,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan filter: no"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: coordinates: "));
-    TEST_CHECK_LOG_RECORD_TEST(ESP_LOG_VERBOSE, string("restart_services"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -2484,7 +2507,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan filter: no"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: coordinates: "));
-    TEST_CHECK_LOG_RECORD_TEST(ESP_LOG_VERBOSE, string("restart_services"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -2676,7 +2698,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan filter: no"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: coordinates: "));
-    TEST_CHECK_LOG_RECORD_TEST(ESP_LOG_VERBOSE, string("restart_services"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -2851,7 +2872,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan filter: no"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: coordinates: "));
-    TEST_CHECK_LOG_RECORD_TEST(ESP_LOG_VERBOSE, string("restart_services"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -3027,7 +3047,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_wifi_ap_active) //
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan filter: no"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: coordinates: "));
-    TEST_CHECK_LOG_RECORD_TEST(ESP_LOG_VERBOSE, string("stop_wifi_hotspot_after_short_delay"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 

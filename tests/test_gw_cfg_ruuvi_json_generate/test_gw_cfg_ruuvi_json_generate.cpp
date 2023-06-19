@@ -1048,6 +1048,8 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_non_default) // NO
                 .scan_channel_37 = false,
                 .scan_channel_38 = false,
                 .scan_channel_39 = false,
+            },
+            .scan_filter = {
                 .scan_filter_allow_listed = false,
                 .scan_filter_length = 0,
                 .scan_filter_list = {0},

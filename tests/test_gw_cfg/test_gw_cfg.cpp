@@ -1083,9 +1083,9 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_scan_filter_1) // NOLINT
 {
     gw_cfg_t gw_cfg = get_gateway_config_default();
 
-    gw_cfg.ruuvi_cfg.scan.scan_filter_allow_listed = false;
-    gw_cfg.ruuvi_cfg.scan.scan_filter_length       = 1;
-    mac_addr_from_str("AA:BB:CC:DD:EE:FF", &gw_cfg.ruuvi_cfg.scan.scan_filter_list[0]);
+    gw_cfg.ruuvi_cfg.scan_filter.scan_filter_allow_listed = false;
+    gw_cfg.ruuvi_cfg.scan_filter.scan_filter_length       = 1;
+    mac_addr_from_str("AA:BB:CC:DD:EE:FF", &gw_cfg.ruuvi_cfg.scan_filter.scan_filter_list[0]);
 
     esp_log_wrapper_clear();
 
@@ -1187,10 +1187,10 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_scan_filter_2) // NOLINT
 {
     gw_cfg_t gw_cfg = get_gateway_config_default();
 
-    gw_cfg.ruuvi_cfg.scan.scan_filter_allow_listed = true;
-    gw_cfg.ruuvi_cfg.scan.scan_filter_length       = 2;
-    mac_addr_from_str("A0:B0:C0:D0:E0:F0", &gw_cfg.ruuvi_cfg.scan.scan_filter_list[0]);
-    mac_addr_from_str("A1:B1:C1:D1:E1:F1", &gw_cfg.ruuvi_cfg.scan.scan_filter_list[1]);
+    gw_cfg.ruuvi_cfg.scan_filter.scan_filter_allow_listed = true;
+    gw_cfg.ruuvi_cfg.scan_filter.scan_filter_length       = 2;
+    mac_addr_from_str("A0:B0:C0:D0:E0:F0", &gw_cfg.ruuvi_cfg.scan_filter.scan_filter_list[0]);
+    mac_addr_from_str("A1:B1:C1:D1:E1:F1", &gw_cfg.ruuvi_cfg.scan_filter.scan_filter_list[1]);
 
     esp_log_wrapper_clear();
 

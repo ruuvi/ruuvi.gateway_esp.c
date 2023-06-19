@@ -428,17 +428,22 @@ gw_cfg_log_ruuvi_cfg_scan(const ruuvi_gw_cfg_scan_t* const p_scan)
     LOG_INFO("config: use scan channel 37: %d", p_scan->scan_channel_37);
     LOG_INFO("config: use scan channel 38: %d", p_scan->scan_channel_38);
     LOG_INFO("config: use scan channel 39: %d", p_scan->scan_channel_39);
-    if (0 == p_scan->scan_filter_length)
+}
+
+static void
+gw_cfg_log_ruuvi_cfg_scan_filter(const ruuvi_gw_cfg_scan_filter_t* const p_scan_filter)
+{
+    if (0 == p_scan_filter->scan_filter_length)
     {
         LOG_INFO("config: use scan filter: no");
     }
     else
     {
         LOG_INFO("config: use scan filter: yes");
-        LOG_INFO("config: scan filter: allow_listed: %d", p_scan->scan_filter_allow_listed);
-        for (uint32_t i = 0; i < p_scan->scan_filter_length; ++i)
+        LOG_INFO("config: scan filter: allow_listed: %d", p_scan_filter->scan_filter_allow_listed);
+        for (uint32_t i = 0; i < p_scan_filter->scan_filter_length; ++i)
         {
-            const mac_address_str_t mac_addr_str = mac_address_to_str(&p_scan->scan_filter_list[i]);
+            const mac_address_str_t mac_addr_str = mac_address_to_str(&p_scan_filter->scan_filter_list[i]);
             LOG_INFO("config: scan filter [%2u]: %s", (printf_uint_t)i, mac_addr_str.str_buf);
         }
     }
@@ -461,6 +466,7 @@ gw_cfg_log_ruuvi_cfg(const gw_cfg_ruuvi_t* const p_gw_cfg_ruuvi, const char* con
     gw_cfg_log_ruuvi_cfg_ntp(&p_gw_cfg_ruuvi->ntp);
     gw_cfg_log_ruuvi_cfg_filter(&p_gw_cfg_ruuvi->filter);
     gw_cfg_log_ruuvi_cfg_scan(&p_gw_cfg_ruuvi->scan);
+    gw_cfg_log_ruuvi_cfg_scan_filter(&p_gw_cfg_ruuvi->scan_filter);
 
     LOG_INFO("config: coordinates: %s", p_gw_cfg_ruuvi->coordinates.buf);
 }

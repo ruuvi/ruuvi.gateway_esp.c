@@ -484,8 +484,8 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
-    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_filter_allow_listed);
-    ASSERT_EQ(0, gw_cfg.ruuvi_cfg.scan.scan_filter_length);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan_filter.scan_filter_allow_listed);
+    ASSERT_EQ(0, gw_cfg.ruuvi_cfg.scan_filter.scan_filter_length);
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");

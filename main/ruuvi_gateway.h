@@ -24,7 +24,7 @@ extern "C" {
 
 #define ADV_POST_DEFAULT_INTERVAL_SECONDS (10)
 
-#define ADV_POST_STATISTICS_INTERVAL_SECONDS (60 * 60)
+#define ADV_POST_STATISTICS_INTERVAL_SECONDS (30)
 #define ADV_POST_DO_ASYNC_COMM_INTERVAL_MS   (100)
 
 #define HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO (HTTP_SERVER_USER_REQ_CODE_1)
@@ -42,19 +42,22 @@ extern "C" {
 extern volatile uint32_t g_network_disconnect_cnt;
 
 void
-ruuvi_send_nrf_settings(void);
+ruuvi_send_nrf_settings(const ruuvi_gw_cfg_scan_t* const p_scan, const ruuvi_gw_cfg_filter_t* const p_filter);
 
 void
-main_task_start_timer_hotspot_deactivation(void);
+ruuvi_send_nrf_settings_from_gw_cfg(void);
 
 void
-main_task_stop_timer_hotspot_deactivation(void);
+timer_cfg_mode_deactivation_start(void);
+
+void
+timer_cfg_mode_deactivation_stop(void);
 
 bool
-main_task_is_active_timer_hotspot_deactivation(void);
+timer_cfg_mode_deactivation_is_active(void);
 
 void
-main_task_stop_wifi_hotspot_after_short_delay(void);
+timer_cfg_mode_deactivation_start_with_short_delay(void);
 
 void
 main_task_stop_timer_check_for_remote_cfg(void);
@@ -67,6 +70,9 @@ main_task_schedule_retry_check_for_fw_updates(void);
 
 void
 main_task_send_sig_restart_services(void);
+
+void
+main_task_send_sig_activate_cfg_mode(void);
 
 void
 main_task_send_sig_reconnect_network(void);
