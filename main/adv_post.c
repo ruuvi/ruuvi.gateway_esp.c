@@ -50,6 +50,7 @@
 #define ADV_POST_GREEN_LED_ON_INTERVAL_MS (1500)
 
 #define ADV_POST_DELAY_BEFORE_RETRYING_POST_AFTER_ERROR_MS   (67 * 1000)
+#define ADV_POST_DELAY_AFTER_CONFIGURATION_CHANGED_MS        (5 * 1000)
 #define ADV_POST_INITIAL_DELAY_IN_SENDING_STATISTICS_SECONDS (60)
 
 typedef enum adv_post_sig_e
@@ -136,9 +137,6 @@ adv_post_unsubscribe_events(void);
 
 static void
 adv_post_delete_timers(void);
-
-static void
-adv_post_timer_start_with_default_period(adv_post_timer_t* const p_adv_post_timer);
 
 static const char* TAG = "ADV_POST_TASK";
 
@@ -925,7 +923,7 @@ adv_post_on_gw_cfg_change(adv_post_state_t* const p_adv_post_state)
     if (gw_cfg_get_http_use_http_ruuvi())
     {
         LOG_INFO("Start timer for advs1 retransmission");
-        adv_post_timer_start_with_default_period(&g_adv_post_timers[0]);
+        adv1_post_timer_restart_with_short_period();
     }
     else
     {
@@ -936,7 +934,7 @@ adv_post_on_gw_cfg_change(adv_post_state_t* const p_adv_post_state)
     if (gw_cfg_get_http_use_http())
     {
         LOG_INFO("Start timer for advs2 retransmission");
-        adv_post_timer_start_with_default_period(&g_adv_post_timers[1]);
+        adv2_post_timer_restart_with_short_period();
     }
     else
     {
@@ -948,11 +946,15 @@ adv_post_on_gw_cfg_change(adv_post_state_t* const p_adv_post_state)
     {
         LOG_INFO("Start timer to send statistics");
         os_timer_sig_periodic_start(g_p_adv_post_timer_sig_send_statistics);
+        os_timer_sig_one_shot_restart(
+            g_p_adv_post_timer_sig_activate_sending_statistics,
+            pdMS_TO_TICKS(ADV_POST_DELAY_AFTER_CONFIGURATION_CHANGED_MS));
     }
     else
     {
         LOG_INFO("Stop timer to send statistics");
         os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_send_statistics);
+        os_timer_sig_one_shot_stop(g_p_adv_post_timer_sig_activate_sending_statistics);
         p_adv_post_state->flag_need_to_send_statistics = false;
     }
     adv_post_cfg_access_mutex_unlock(&p_cfg_cache);
@@ -1018,7 +1020,6 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p
             break;
         case ADV_POST_SIG_ACTIVATE_SENDING_STATISTICS:
             LOG_INFO("Got ADV_POST_SIG_ACTIVATE_SENDING_STATISTICS");
-            os_timer_sig_one_shot_delete(&g_p_adv_post_timer_sig_activate_sending_statistics);
             p_adv_post_state->flag_need_to_send_statistics = true;
             os_timer_sig_periodic_start(g_p_adv_post_timer_sig_send_statistics);
             os_timer_sig_periodic_simulate(g_p_adv_post_timer_sig_send_statistics);
@@ -1448,41 +1449,13 @@ adv_post_set_hmac_sha256_key(const char* const p_key_str)
 }
 
 static void
-adv_post_timer_start_with_default_period(adv_post_timer_t* const p_adv_post_timer)
+adv_post_timer_restart_with_period(adv_post_timer_t* const p_adv_post_timer, const uint32_t period_ms)
 {
-    if (p_adv_post_timer->cur_interval_ms != p_adv_post_timer->default_interval_ms)
+    if (p_adv_post_timer->cur_interval_ms != period_ms)
     {
-        p_adv_post_timer->cur_interval_ms = p_adv_post_timer->default_interval_ms;
-    }
-    LOG_INFO(
-        "advs%u: start timer with default period %ums",
-        (printf_uint_t)p_adv_post_timer->num,
-        (printf_uint_t)p_adv_post_timer->cur_interval_ms);
-    os_timer_sig_periodic_restart(p_adv_post_timer->p_timer_sig, pdMS_TO_TICKS(p_adv_post_timer->cur_interval_ms));
-}
-
-static void
-adv_post_timer_restart_with_default_period(adv_post_timer_t* const p_adv_post_timer)
-{
-    if (p_adv_post_timer->cur_interval_ms != p_adv_post_timer->default_interval_ms)
-    {
-        p_adv_post_timer->cur_interval_ms = p_adv_post_timer->default_interval_ms;
+        p_adv_post_timer->cur_interval_ms = period_ms;
         LOG_INFO(
-            "advs%u: restart timer with default period %ums",
-            (printf_uint_t)p_adv_post_timer->num,
-            (printf_uint_t)p_adv_post_timer->cur_interval_ms);
-        os_timer_sig_periodic_restart(p_adv_post_timer->p_timer_sig, pdMS_TO_TICKS(p_adv_post_timer->cur_interval_ms));
-    }
-}
-
-static void
-adv_post_timer_restart_with_increased_period(adv_post_timer_t* const p_adv_post_timer)
-{
-    if (p_adv_post_timer->cur_interval_ms != ADV_POST_DELAY_BEFORE_RETRYING_POST_AFTER_ERROR_MS)
-    {
-        p_adv_post_timer->cur_interval_ms = ADV_POST_DELAY_BEFORE_RETRYING_POST_AFTER_ERROR_MS;
-        LOG_INFO(
-            "advs%u: restart timer with increased period %ums",
+            "advs%u: restart timer with period %u ms",
             (printf_uint_t)p_adv_post_timer->num,
             (printf_uint_t)p_adv_post_timer->cur_interval_ms);
         os_timer_sig_periodic_restart(p_adv_post_timer->p_timer_sig, pdMS_TO_TICKS(p_adv_post_timer->cur_interval_ms));
@@ -1492,25 +1465,43 @@ adv_post_timer_restart_with_increased_period(adv_post_timer_t* const p_adv_post_
 void
 adv1_post_timer_restart_with_default_period(void)
 {
-    adv_post_timer_restart_with_default_period(&g_adv_post_timers[0]);
+    adv_post_timer_t* const p_adv_post_timer = &g_adv_post_timers[0];
+    adv_post_timer_restart_with_period(p_adv_post_timer, p_adv_post_timer->default_interval_ms);
 }
 
 void
 adv1_post_timer_restart_with_increased_period(void)
 {
-    adv_post_timer_restart_with_increased_period(&g_adv_post_timers[0]);
+    adv_post_timer_t* const p_adv_post_timer = &g_adv_post_timers[0];
+    adv_post_timer_restart_with_period(p_adv_post_timer, ADV_POST_DELAY_BEFORE_RETRYING_POST_AFTER_ERROR_MS);
+}
+
+void
+adv1_post_timer_restart_with_short_period(void)
+{
+    adv_post_timer_t* const p_adv_post_timer = &g_adv_post_timers[0];
+    adv_post_timer_restart_with_period(p_adv_post_timer, ADV_POST_DELAY_AFTER_CONFIGURATION_CHANGED_MS);
 }
 
 void
 adv2_post_timer_restart_with_default_period(void)
 {
-    adv_post_timer_restart_with_default_period(&g_adv_post_timers[1]);
+    adv_post_timer_t* const p_adv_post_timer = &g_adv_post_timers[1];
+    adv_post_timer_restart_with_period(p_adv_post_timer, p_adv_post_timer->default_interval_ms);
 }
 
 void
 adv2_post_timer_restart_with_increased_period(void)
 {
-    adv_post_timer_restart_with_increased_period(&g_adv_post_timers[1]);
+    adv_post_timer_t* const p_adv_post_timer = &g_adv_post_timers[1];
+    adv_post_timer_restart_with_period(p_adv_post_timer, ADV_POST_DELAY_BEFORE_RETRYING_POST_AFTER_ERROR_MS);
+}
+
+void
+adv2_post_timer_restart_with_short_period(void)
+{
+    adv_post_timer_t* const p_adv_post_timer = &g_adv_post_timers[1];
+    adv_post_timer_restart_with_period(p_adv_post_timer, ADV_POST_DELAY_AFTER_CONFIGURATION_CHANGED_MS);
 }
 
 void

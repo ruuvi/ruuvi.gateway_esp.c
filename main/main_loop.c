@@ -314,11 +314,17 @@ main_task_handle_sig_deactivate_cfg_mode(void)
     }
     if (gw_cfg_get_eth_use_eth() || (!wifi_manager_is_sta_configured()))
     {
-        ethernet_start();
+        if (!wifi_manager_is_connected_to_ethernet())
+        {
+            ethernet_start();
+        }
     }
     else
     {
-        wifi_manager_connect_async();
+        if (!wifi_manager_is_connected_to_wifi())
+        {
+            wifi_manager_connect_async();
+        }
     }
 
     main_task_send_sig_restart_services();
