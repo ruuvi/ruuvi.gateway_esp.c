@@ -818,6 +818,8 @@ adv_post_handle_sig_relaying_mode_changed(adv_post_state_t* const p_adv_post_sta
         os_timer_sig_one_shot_stop(g_p_adv_post_timer_sig_do_async_comm);
         http_abort_any_req_during_processing();
         p_adv_post_state->flag_async_comm_in_progress = false;
+        LOG_DBG("http_server_mutex_unlock");
+        http_server_mutex_unlock();
     }
     gw_status_clear_http_relaying_cmd();
 }
