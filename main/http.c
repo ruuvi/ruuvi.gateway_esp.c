@@ -1773,7 +1773,7 @@ http_abort_any_req_during_processing(void)
     LOG_DBG("os_sema_wait_immediate: p_http_async_sema");
     if (!os_sema_wait_immediate(p_http_async_info->p_http_async_sema))
     {
-        LOG_INFO(
+        LOG_WARN(
             "### Abort HTTP %s to URL=%s",
             http_method_to_str(p_http_async_info),
             p_http_async_info->http_client_config.esp_http_client_config.url);

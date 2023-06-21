@@ -406,7 +406,7 @@ adv_post_send_report(void* p_arg)
     os_timer_sig_one_shot_start(g_p_adv_post_timer_sig_recv_adv_timeout);
     event_mgr_notify(EVENT_MGR_EV_RECV_ADV);
 
-    LOG_DUMP_DBG(
+    LOG_DUMP_VERBOSE(
         adv_report.data_buf,
         adv_report.data_len,
         "Recv Adv: MAC=%s, ID=0x%02x%02x, time=%lu",
@@ -690,21 +690,25 @@ adv_post_do_async_comm_send_statistics(adv_post_state_t* const p_adv_post_state)
 static void
 adv_post_do_async_comm(adv_post_state_t* const p_adv_post_state)
 {
+    LOG_DBG("flag_async_comm_in_progress=%d", p_adv_post_state->flag_async_comm_in_progress);
     if (p_adv_post_state->flag_async_comm_in_progress)
     {
         if (http_async_poll())
         {
             p_adv_post_state->flag_async_comm_in_progress = false;
+            LOG_DBG("http_server_mutex_unlock");
             http_server_mutex_unlock();
         }
         else
         {
+            LOG_DBG("os_timer_sig_one_shot_start: g_p_adv_post_timer_sig_do_async_comm");
             os_timer_sig_one_shot_start(g_p_adv_post_timer_sig_do_async_comm);
         }
     }
     if ((!p_adv_post_state->flag_async_comm_in_progress) && p_adv_post_state->flag_need_to_send_advs1
         && p_adv_post_state->flag_relaying_enabled)
     {
+        LOG_DBG("http_server_mutex_try_lock");
         if (!http_server_mutex_try_lock())
         {
             LOG_DBG("http_server_mutex_try_lock failed, postpone sending advs1");
@@ -716,12 +720,14 @@ adv_post_do_async_comm(adv_post_state_t* const p_adv_post_state)
         if (!adv_post_do_async_comm_send_advs(p_adv_post_state, flag_send_to_ruuvi))
         {
             g_adv_post_action = ADV_POST_ACTION_NONE;
+            LOG_DBG("http_server_mutex_unlock");
             http_server_mutex_unlock();
         }
     }
     if ((!p_adv_post_state->flag_async_comm_in_progress) && p_adv_post_state->flag_need_to_send_advs2
         && p_adv_post_state->flag_relaying_enabled)
     {
+        LOG_DBG("http_server_mutex_try_lock");
         if (!http_server_mutex_try_lock())
         {
             LOG_DBG("http_server_mutex_try_lock failed, postpone sending advs2");
@@ -733,12 +739,14 @@ adv_post_do_async_comm(adv_post_state_t* const p_adv_post_state)
         if (!adv_post_do_async_comm_send_advs(p_adv_post_state, flag_send_to_ruuvi))
         {
             g_adv_post_action = ADV_POST_ACTION_NONE;
+            LOG_DBG("http_server_mutex_unlock");
             http_server_mutex_unlock();
         }
     }
     if ((!p_adv_post_state->flag_async_comm_in_progress) && p_adv_post_state->flag_need_to_send_statistics
         && p_adv_post_state->flag_relaying_enabled)
     {
+        LOG_DBG("http_server_mutex_try_lock");
         if (!http_server_mutex_try_lock())
         {
             LOG_DBG("http_server_mutex_try_lock failed, postpone sending statistics");
@@ -749,6 +757,7 @@ adv_post_do_async_comm(adv_post_state_t* const p_adv_post_state)
         if (!adv_post_do_async_comm_send_statistics(p_adv_post_state))
         {
             g_adv_post_action = ADV_POST_ACTION_NONE;
+            LOG_DBG("http_server_mutex_unlock");
             http_server_mutex_unlock();
         }
     }
@@ -975,6 +984,8 @@ adv_post_handle_sig_relaying_mode_changed(adv_post_state_t* const p_adv_post_sta
         os_timer_sig_one_shot_stop(g_p_adv_post_timer_sig_do_async_comm);
         http_abort_any_req_during_processing();
         p_adv_post_state->flag_async_comm_in_progress = false;
+        LOG_DBG("http_server_mutex_unlock");
+        http_server_mutex_unlock();
     }
     gw_status_clear_http_relaying_cmd();
 }
