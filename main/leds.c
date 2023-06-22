@@ -430,7 +430,7 @@ leds_task_handle_sig_on_ev_recv_adv(void)
 static void
 leds_task_handle_sig_on_ev_recv_adv_timeout(void)
 {
-    LOG_DBG("LEDS_TASK_SIG_ON_EV_RECV_ADV_TIMEOUT");
+    LOG_WARN("LEDS_TASK_SIG_ON_EV_RECV_ADV_TIMEOUT");
     if (leds_ctrl_is_in_substate())
     {
         leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_RECV_ADV_TIMEOUT);
