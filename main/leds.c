@@ -783,6 +783,7 @@ leds_init(const bool flag_configure_button_pressed)
 void
 leds_notify_nrf52_ready(void)
 {
+    LOG_INFO("Notify: nRF52 ready");
     if (!os_signal_send(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_NRF52_READY)))
     {
         LOG_ERR("%s failed", "os_signal_send");
@@ -792,6 +793,7 @@ leds_notify_nrf52_ready(void)
 void
 leds_notify_nrf52_failure(void)
 {
+    LOG_INFO("Notify: nRF52 failure");
     if (!os_signal_send(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_NRF52_FAILURE)))
     {
         LOG_ERR("%s failed", "os_signal_send");
@@ -801,6 +803,7 @@ leds_notify_nrf52_failure(void)
 void
 leds_notify_nrf52_fw_check(void)
 {
+    LOG_INFO("Notify: nRF52 fw_check");
     if (!os_signal_send(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_NRF52_FW_CHECK)))
     {
         LOG_ERR("%s failed", "os_signal_send");
@@ -810,6 +813,7 @@ leds_notify_nrf52_fw_check(void)
 void
 leds_notify_nrf52_fw_updating(void)
 {
+    LOG_INFO("Notify: nRF52 fw_updating");
     if (!os_signal_send(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_NRF52_FW_UPDATING)))
     {
         LOG_ERR("%s failed", "os_signal_send");
@@ -819,6 +823,7 @@ leds_notify_nrf52_fw_updating(void)
 void
 leds_notify_cfg_erased(void)
 {
+    LOG_INFO("Notify: Cfg erased");
     if (!os_signal_send(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_CFG_ERASED)))
     {
         LOG_ERR("%s failed", "os_signal_send");
@@ -828,6 +833,7 @@ leds_notify_cfg_erased(void)
 void
 leds_notify_mqtt1_connected(void)
 {
+    LOG_INFO("Notify: MQTT(1) connected");
     if (!os_signal_send(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_MQTT1_CONNECTED)))
     {
         LOG_ERR("%s failed", "os_signal_send");
@@ -837,6 +843,7 @@ leds_notify_mqtt1_connected(void)
 void
 leds_notify_mqtt1_disconnected(void)
 {
+    LOG_INFO("Notify: MQTT(1) disconnected");
     if (!os_signal_send(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_MQTT1_DISCONNECTED)))
     {
         LOG_ERR("%s failed", "os_signal_send");
@@ -846,6 +853,7 @@ leds_notify_mqtt1_disconnected(void)
 void
 leds_notify_http1_data_sent_successfully(void)
 {
+    LOG_INFO("Notify: HTTP(1) data sent successfully");
     if (!os_signal_send(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_HTTP1_DATA_SENT_SUCCESSFULLY)))
     {
         LOG_ERR("%s failed", "os_signal_send");
@@ -855,6 +863,7 @@ leds_notify_http1_data_sent_successfully(void)
 void
 leds_notify_http1_data_sent_fail(void)
 {
+    LOG_INFO("Notify: HTTP(1) data sent fail");
     if (!os_signal_send(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_HTTP1_DATA_SENT_FAIL)))
     {
         LOG_ERR("%s failed", "os_signal_send");
@@ -864,6 +873,7 @@ leds_notify_http1_data_sent_fail(void)
 void
 leds_notify_http2_data_sent_successfully(void)
 {
+    LOG_INFO("Notify: HTTP(2) data sent successfully");
     if (!os_signal_send(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_HTTP2_DATA_SENT_SUCCESSFULLY)))
     {
         LOG_ERR("%s failed", "os_signal_send");
@@ -873,6 +883,7 @@ leds_notify_http2_data_sent_successfully(void)
 void
 leds_notify_http2_data_sent_fail(void)
 {
+    LOG_INFO("Notify: HTTP(2) data sent fail");
     if (!os_signal_send(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_HTTP2_DATA_SENT_FAIL)))
     {
         LOG_ERR("%s failed", "os_signal_send");
@@ -882,6 +893,7 @@ leds_notify_http2_data_sent_fail(void)
 void
 leds_notify_http_poll_ok(void)
 {
+    LOG_INFO("Notify: HTTP_Poll ok");
     if (!os_signal_send(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_HTTP_POLL_OK)))
     {
         LOG_ERR("%s failed", "os_signal_send");
@@ -891,6 +903,7 @@ leds_notify_http_poll_ok(void)
 void
 leds_notify_http_poll_timeout(void)
 {
+    LOG_INFO("Notify: HTTP_Poll timeout");
     if (!os_signal_send(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_HTTP_POLL_TIMEOUT)))
     {
         LOG_ERR("%s failed", "os_signal_send");
