@@ -1554,11 +1554,13 @@ http_download_by_handle(
         return http_server_resp_502();
     }
 
+    LOG_DBG("http_wait_until_async_req_completed");
     http_server_resp_t resp = http_wait_until_async_req_completed(
         http_handle,
         NULL,
         flag_feed_task_watchdog,
         timeout_seconds);
+    LOG_DBG("http_wait_until_async_req_completed: finished");
 
     return resp;
 }
@@ -1706,7 +1708,9 @@ http_download_with_auth(
         return false;
     }
 
+    LOG_DBG("suspend_relaying_and_wait");
     suspend_relaying_and_wait(p_param->flag_free_memory);
+    LOG_DBG("suspend_relaying_and_wait: finished");
 
     p_cb_info->http_handle = esp_http_client_init(p_http_config);
     if (NULL == p_cb_info->http_handle)
@@ -1965,7 +1969,7 @@ http_abort_any_req_during_processing(void)
     LOG_DBG("os_sema_wait_immediate: p_http_async_sema");
     if (!os_sema_wait_immediate(p_http_async_info->p_http_async_sema))
     {
-        LOG_INFO(
+        LOG_WARN(
             "### Abort HTTP %s to URL=%s",
             http_method_to_str(p_http_async_info),
             p_http_async_info->http_client_config.esp_http_client_config.url);

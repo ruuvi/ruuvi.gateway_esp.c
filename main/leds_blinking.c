@@ -8,8 +8,14 @@
 #include "leds_blinking.h"
 #include <stdint.h>
 #include <assert.h>
+#include <string.h>
 #include "os_task.h"
+#if RUUVI_TESTS_LEDS_BLINKING
+#define LOG_LOCAL_DISABLED
+#define LOG_LOCAL_LEVEL LOG_LEVEL_NONE
+#else
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
+#endif
 #include "log.h"
 
 #if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
@@ -19,6 +25,8 @@ static const char* TAG = "leds_blinking";
 static leds_blinking_mode_t g_leds_blinking_mode;
 static int32_t              g_leds_blinking_sequence_idx;
 static os_task_handle_t     g_leds_blinking_task_handle;
+
+static const char TAG[] = "LEDS";
 
 void
 leds_blinking_init(const leds_blinking_mode_t blinking_mode)
@@ -48,6 +56,11 @@ leds_blinking_set_new_sequence(const leds_blinking_mode_t blinking_mode)
     {
         // Blinking sequence can be changed only after completing of the previous one
         assert(0 == g_leds_blinking_sequence_idx);
+    }
+    if ((NULL == g_leds_blinking_mode.p_sequence)
+        || (0 != strcmp(g_leds_blinking_mode.p_sequence, blinking_mode.p_sequence)))
+    {
+        LOG_INFO("LEDS: New blinking mode: %s", blinking_mode.p_sequence);
     }
     g_leds_blinking_mode = blinking_mode;
 }

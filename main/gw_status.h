@@ -121,6 +121,15 @@ gw_status_clear_first_boot_after_cfg_erase(void);
 bool
 gw_status_get_first_boot_after_cfg_erase(void);
 
+void
+gw_status_set_cfg_mode(void);
+
+void
+gw_status_clear_cfg_mode(void);
+
+bool
+gw_status_get_cfg_mode(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -19,6 +19,8 @@
 #include "gw_status.h"
 #include "gw_cfg_storage.h"
 #include "partition_table.h"
+#include "gw_cfg_json_parse.h"
+#include "adv_post.h"
 #include "reset_task.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
@@ -70,16 +72,40 @@ http_server_cb_on_post_ruuvi(const char* p_body, const bool flag_access_from_lan
     else
     {
         gw_cfg_update_ruuvi_cfg(&p_gw_cfg_tmp->ruuvi_cfg);
-        if (wifi_manager_is_ap_active())
-        {
-            main_task_stop_wifi_hotspot_after_short_delay();
-        }
-        else
-        {
-            main_task_send_sig_restart_services();
-        }
+        timer_cfg_mode_deactivation_start_with_short_delay();
     }
     os_free(p_gw_cfg_tmp);
+
+    const bool flag_no_cache = true;
+    return http_server_resp_data_in_flash(
+        HTTP_CONENT_TYPE_APPLICATION_JSON,
+        NULL,
+        strlen(g_empty_json),
+        HTTP_CONENT_ENCODING_NONE,
+        (const uint8_t*)g_empty_json,
+        flag_no_cache);
+}
+
+HTTP_SERVER_CB_STATIC
+http_server_resp_t
+http_server_cb_on_post_ble_scanning(const char* const p_body)
+{
+    cJSON* p_json_root = cJSON_Parse(p_body);
+    if (NULL == p_json_root)
+    {
+        LOG_ERR("Failed to parse json or no memory");
+        return http_server_resp_503();
+    }
+    const gw_cfg_t*       p_gw_cfg = gw_cfg_lock_ro();
+    ruuvi_gw_cfg_filter_t filter   = p_gw_cfg->ruuvi_cfg.filter;
+    ruuvi_gw_cfg_scan_t   scan     = p_gw_cfg->ruuvi_cfg.scan;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    gw_cfg_json_parse_filter(p_json_root, &filter);
+    gw_cfg_json_parse_scan(p_json_root, &scan);
+    ruuvi_send_nrf_settings(&scan, &filter);
+    cJSON_Delete(p_json_root);
+
+    adv_post_send_sig_ble_scan_changed();
 
     const bool flag_no_cache = true;
     return http_server_resp_data_in_flash(
@@ -289,6 +315,10 @@ http_server_cb_on_post(
     if (0 == strcmp(p_file_name, "ruuvi.json"))
     {
         return http_server_cb_on_post_ruuvi(p_body, flag_access_from_lan);
+    }
+    if (0 == strcmp(p_file_name, "bluetooth_scanning.json"))
+    {
+        return http_server_cb_on_post_ble_scanning(p_body);
     }
     if (0 == strcmp(p_file_name, "fw_update.json"))
     {

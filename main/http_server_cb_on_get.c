@@ -66,6 +66,9 @@ http_server_resp_json_ruuvi(void)
     gw_cfg_unlock_ro(&p_gw_cfg);
 
     LOG_INFO("ruuvi.json: %s", json_str.p_str);
+
+    main_task_send_sig_activate_cfg_mode();
+
     return http_server_resp_200_json_in_heap(json_str.p_str);
 }
 

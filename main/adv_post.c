@@ -50,6 +50,7 @@
 #define ADV_POST_GREEN_LED_ON_INTERVAL_MS (1500)
 
 #define ADV_POST_DELAY_BEFORE_RETRYING_POST_AFTER_ERROR_MS   (67 * 1000)
+#define ADV_POST_DELAY_AFTER_CONFIGURATION_CHANGED_MS        (5 * 1000)
 #define ADV_POST_INITIAL_DELAY_IN_SENDING_STATISTICS_SECONDS (60)
 
 typedef enum adv_post_sig_e
@@ -68,10 +69,13 @@ typedef enum adv_post_sig_e
     ADV_POST_SIG_TASK_WATCHDOG_FEED          = OS_SIGNAL_NUM_11,
     ADV_POST_SIG_GW_CFG_READY                = OS_SIGNAL_NUM_12,
     ADV_POST_SIG_GW_CFG_CHANGED_RUUVI        = OS_SIGNAL_NUM_13,
-    ADV_POST_SIG_GREEN_LED_TURN_ON           = OS_SIGNAL_NUM_14,
-    ADV_POST_SIG_GREEN_LED_TURN_OFF          = OS_SIGNAL_NUM_15,
-    ADV_POST_SIG_GREEN_LED_UPDATE            = OS_SIGNAL_NUM_16,
-    ADV_POST_SIG_RECV_ADV_TIMEOUT            = OS_SIGNAL_NUM_17,
+    ADV_POST_SIG_BLE_SCAN_CHANGED            = OS_SIGNAL_NUM_14,
+    ADV_POST_SIG_ACTIVATE_CFG_MODE           = OS_SIGNAL_NUM_15,
+    ADV_POST_SIG_DEACTIVATE_CFG_MODE         = OS_SIGNAL_NUM_16,
+    ADV_POST_SIG_GREEN_LED_TURN_ON           = OS_SIGNAL_NUM_17,
+    ADV_POST_SIG_GREEN_LED_TURN_OFF          = OS_SIGNAL_NUM_18,
+    ADV_POST_SIG_GREEN_LED_UPDATE            = OS_SIGNAL_NUM_19,
+    ADV_POST_SIG_RECV_ADV_TIMEOUT            = OS_SIGNAL_NUM_20,
 } adv_post_sig_e;
 
 typedef struct adv_post_state_t
@@ -94,6 +98,16 @@ typedef struct adv_post_timer_t
     os_timer_sig_periodic_t*       p_timer_sig;
     os_timer_sig_periodic_static_t timer_sig_mem;
 } adv_post_timer_t;
+
+typedef struct adv_post_cfg_cache_t
+{
+    bool flag_use_mqtt;
+    bool flag_use_ntp;
+
+    bool               scan_filter_allow_listed;
+    uint32_t           scan_filter_length;
+    mac_address_bin_t* p_arr_of_scan_filter_mac;
+} adv_post_cfg_cache_t;
 
 typedef enum adv_post_action_e
 {
@@ -124,9 +138,6 @@ adv_post_unsubscribe_events(void);
 static void
 adv_post_delete_timers(void);
 
-static void
-adv_post_timer_start_with_default_period(adv_post_timer_t* const p_adv_post_timer);
-
 static const char* TAG = "ADV_POST_TASK";
 
 static adv_callbacks_fn_t adv_callback_func_tbl = {
@@ -135,6 +146,10 @@ static adv_callbacks_fn_t adv_callback_func_tbl = {
     .AdvIdCallback     = adv_post_cb_on_recv_device_id,
     .AdvGetAllCallback = adv_post_send_get_all,
 };
+
+static adv_post_cfg_cache_t g_adv_post_cfg_cache;
+static os_mutex_t           g_p_adv_post_cfg_access_mutex;
+static os_mutex_static_t    g_adv_post_cfg_access_mutex_mem;
 
 static uint32_t                       g_adv_post_nonce;
 static os_signal_t*                   g_p_adv_post_sig;
@@ -213,6 +228,38 @@ u64_to_array(const uint64_t u64, uint8_t* const p_array, const uint8_t num_bytes
     }
 }
 
+static adv_post_cfg_cache_t*
+adv_post_cfg_access_mutex_try_lock(void)
+{
+    if (NULL == g_p_adv_post_cfg_access_mutex)
+    {
+        g_p_adv_post_cfg_access_mutex = os_mutex_create_static(&g_adv_post_cfg_access_mutex_mem);
+    }
+    if (!os_mutex_try_lock(g_p_adv_post_cfg_access_mutex))
+    {
+        return NULL;
+    }
+    return &g_adv_post_cfg_cache;
+}
+
+static adv_post_cfg_cache_t*
+adv_post_cfg_access_mutex_lock(void)
+{
+    if (NULL == g_p_adv_post_cfg_access_mutex)
+    {
+        g_p_adv_post_cfg_access_mutex = os_mutex_create_static(&g_adv_post_cfg_access_mutex_mem);
+    }
+    os_mutex_lock(g_p_adv_post_cfg_access_mutex);
+    return &g_adv_post_cfg_cache;
+}
+
+static void
+adv_post_cfg_access_mutex_unlock(adv_post_cfg_cache_t** p_p_cfg_cache)
+{
+    *p_p_cfg_cache = NULL;
+    os_mutex_unlock(g_p_adv_post_cfg_access_mutex);
+}
+
 static esp_err_t
 adv_put_to_table(const adv_report_t* const p_adv)
 {
@@ -287,6 +334,40 @@ adv_post_cb_on_recv_device_id(void* p_arg)
     ruuvi_device_id_set(&nrf52_device_id, &nrf52_mac_addr);
 }
 
+static bool
+adv_post_check_if_mac_filtered_out(
+    const adv_post_cfg_cache_t* const p_cfg_cache,
+    const mac_address_bin_t* const    p_mac_addr)
+{
+    if (0 == p_cfg_cache->scan_filter_length)
+    {
+        return false;
+    }
+    bool flag_is_filtered_out = false;
+    if (p_cfg_cache->scan_filter_allow_listed)
+    {
+        for (uint32_t i = 0; i < p_cfg_cache->scan_filter_length; ++i)
+        {
+            if (0 == memcmp(p_mac_addr, &p_cfg_cache->p_arr_of_scan_filter_mac[i], sizeof(*p_mac_addr)))
+            {
+                return false;
+            }
+        }
+        flag_is_filtered_out = true;
+    }
+    else
+    {
+        for (uint32_t i = 0; i < p_cfg_cache->scan_filter_length; ++i)
+        {
+            if (0 == memcmp(p_mac_addr, &p_cfg_cache->p_arr_of_scan_filter_mac[i], sizeof(*p_mac_addr)))
+            {
+                return true;
+            }
+        }
+    }
+    return flag_is_filtered_out;
+}
+
 static void
 adv_post_send_report(void* p_arg)
 {
@@ -296,7 +377,14 @@ adv_post_send_report(void* p_arg)
         return;
     }
 
-    const bool   flag_ntp_use              = gw_cfg_get_ntp_use();
+    adv_post_cfg_cache_t* p_cfg_cache = adv_post_cfg_access_mutex_try_lock();
+    if (NULL == p_cfg_cache)
+    {
+        LOG_WARN("Drop adv - gateway in the process of reconfiguration");
+        return;
+    }
+
+    const bool   flag_ntp_use              = p_cfg_cache->flag_use_ntp;
     const time_t timestamp_if_synchronized = time_is_synchronized() ? time(NULL) : 0;
     const time_t timestamp = flag_ntp_use ? timestamp_if_synchronized : (time_t)metrics_received_advs_get();
 
@@ -304,6 +392,13 @@ adv_post_send_report(void* p_arg)
     if (!parse_adv_report_from_uart((re_ca_uart_payload_t*)p_arg, timestamp, &adv_report))
     {
         LOG_WARN("Drop adv - parsing failed");
+        adv_post_cfg_access_mutex_unlock(&p_cfg_cache);
+        return;
+    }
+
+    if (adv_post_check_if_mac_filtered_out(p_cfg_cache, &adv_report.tag_mac))
+    {
+        adv_post_cfg_access_mutex_unlock(&p_cfg_cache);
         return;
     }
 
@@ -311,7 +406,7 @@ adv_post_send_report(void* p_arg)
     os_timer_sig_one_shot_start(g_p_adv_post_timer_sig_recv_adv_timeout);
     event_mgr_notify(EVENT_MGR_EV_RECV_ADV);
 
-    LOG_DUMP_DBG(
+    LOG_DUMP_VERBOSE(
         adv_report.data_buf,
         adv_report.data_len,
         "Recv Adv: MAC=%s, ID=0x%02x%02x, time=%lu",
@@ -325,7 +420,7 @@ adv_post_send_report(void* p_arg)
     {
         LOG_WARN("Drop adv - table full");
     }
-    if (gw_cfg_get_mqtt_use_mqtt() && gw_status_is_mqtt_connected())
+    if (p_cfg_cache->flag_use_mqtt && gw_status_is_mqtt_connected())
     {
         if (mqtt_publish_adv(&adv_report, flag_ntp_use, (flag_ntp_use ? time(NULL) : 0)))
         {
@@ -336,6 +431,7 @@ adv_post_send_report(void* p_arg)
             LOG_ERR("%s failed", "mqtt_publish_adv");
         }
     }
+    adv_post_cfg_access_mutex_unlock(&p_cfg_cache);
 }
 
 static void
@@ -359,7 +455,7 @@ adv_post_send_get_all(void* arg)
     (void)arg;
     LOG_INFO("Got configuration request from NRF52");
     adv_post_on_green_led_update();
-    ruuvi_send_nrf_settings();
+    ruuvi_send_nrf_settings_from_gw_cfg();
 }
 
 static void
@@ -600,21 +696,25 @@ adv_post_do_async_comm_send_statistics(adv_post_state_t* const p_adv_post_state)
 static void
 adv_post_do_async_comm(adv_post_state_t* const p_adv_post_state)
 {
+    LOG_DBG("flag_async_comm_in_progress=%d", p_adv_post_state->flag_async_comm_in_progress);
     if (p_adv_post_state->flag_async_comm_in_progress)
     {
         if (http_async_poll())
         {
             p_adv_post_state->flag_async_comm_in_progress = false;
+            LOG_DBG("http_server_mutex_unlock");
             http_server_mutex_unlock();
         }
         else
         {
+            LOG_DBG("os_timer_sig_one_shot_start: g_p_adv_post_timer_sig_do_async_comm");
             os_timer_sig_one_shot_start(g_p_adv_post_timer_sig_do_async_comm);
         }
     }
     if ((!p_adv_post_state->flag_async_comm_in_progress) && p_adv_post_state->flag_need_to_send_advs1
         && p_adv_post_state->flag_relaying_enabled)
     {
+        LOG_DBG("http_server_mutex_try_lock");
         if (!http_server_mutex_try_lock())
         {
             LOG_DBG("http_server_mutex_try_lock failed, postpone sending advs1");
@@ -626,12 +726,14 @@ adv_post_do_async_comm(adv_post_state_t* const p_adv_post_state)
         if (!adv_post_do_async_comm_send_advs(p_adv_post_state, flag_send_to_ruuvi))
         {
             g_adv_post_action = ADV_POST_ACTION_NONE;
+            LOG_DBG("http_server_mutex_unlock");
             http_server_mutex_unlock();
         }
     }
     if ((!p_adv_post_state->flag_async_comm_in_progress) && p_adv_post_state->flag_need_to_send_advs2
         && p_adv_post_state->flag_relaying_enabled)
     {
+        LOG_DBG("http_server_mutex_try_lock");
         if (!http_server_mutex_try_lock())
         {
             LOG_DBG("http_server_mutex_try_lock failed, postpone sending advs2");
@@ -643,12 +745,14 @@ adv_post_do_async_comm(adv_post_state_t* const p_adv_post_state)
         if (!adv_post_do_async_comm_send_advs(p_adv_post_state, flag_send_to_ruuvi))
         {
             g_adv_post_action = ADV_POST_ACTION_NONE;
+            LOG_DBG("http_server_mutex_unlock");
             http_server_mutex_unlock();
         }
     }
     if ((!p_adv_post_state->flag_async_comm_in_progress) && p_adv_post_state->flag_need_to_send_statistics
         && p_adv_post_state->flag_relaying_enabled)
     {
+        LOG_DBG("http_server_mutex_try_lock");
         if (!http_server_mutex_try_lock())
         {
             LOG_DBG("http_server_mutex_try_lock failed, postpone sending statistics");
@@ -659,6 +763,7 @@ adv_post_do_async_comm(adv_post_state_t* const p_adv_post_state)
         if (!adv_post_do_async_comm_send_statistics(p_adv_post_state))
         {
             g_adv_post_action = ADV_POST_ACTION_NONE;
+            LOG_DBG("http_server_mutex_unlock");
             http_server_mutex_unlock();
         }
     }
@@ -731,6 +836,7 @@ adv_post_handle_sig_time_synchronized(adv_post_state_t* const p_adv_post_state)
     {
         p_adv_post_state->flag_primary_time_sync_is_done = true;
         LOG_INFO("Remove all accumulated data with zero timestamps");
+        LOG_INFO("Clear adv_table");
         adv_table_clear();
     }
 }
@@ -765,13 +871,74 @@ adv_post_restart_pending_retransmissions(const adv_post_state_t* const p_adv_pos
 }
 
 static void
+adv_post_disable_ble_filtering(void)
+{
+    adv_post_cfg_cache_t* p_cfg_cache = adv_post_cfg_access_mutex_lock();
+    if (NULL != p_cfg_cache->p_arr_of_scan_filter_mac)
+    {
+        p_cfg_cache->scan_filter_length = 0;
+        os_free(p_cfg_cache->p_arr_of_scan_filter_mac);
+        p_cfg_cache->p_arr_of_scan_filter_mac = NULL;
+    }
+    adv_post_cfg_access_mutex_unlock(&p_cfg_cache);
+
+    LOG_INFO("Clear adv_table");
+    adv_table_clear();
+}
+
+static void
 adv_post_on_gw_cfg_change(adv_post_state_t* const p_adv_post_state)
 {
     p_adv_post_state->flag_use_timestamps = gw_cfg_get_ntp_use();
+
+    adv_post_cfg_cache_t* p_cfg_cache = adv_post_cfg_access_mutex_lock();
+
+    p_cfg_cache->flag_use_mqtt = gw_cfg_get_mqtt_use_mqtt();
+    p_cfg_cache->flag_use_ntp  = p_adv_post_state->flag_use_timestamps;
+    if (NULL != p_cfg_cache->p_arr_of_scan_filter_mac)
+    {
+        p_cfg_cache->scan_filter_length = 0;
+        os_free(p_cfg_cache->p_arr_of_scan_filter_mac);
+        p_cfg_cache->p_arr_of_scan_filter_mac = NULL;
+    }
+
+    const gw_cfg_t*                         p_gw_cfg      = gw_cfg_lock_ro();
+    const ruuvi_gw_cfg_scan_filter_t* const p_scan_filter = &p_gw_cfg->ruuvi_cfg.scan_filter;
+
+    p_cfg_cache->scan_filter_allow_listed = p_scan_filter->scan_filter_allow_listed;
+
+    if (0 != p_scan_filter->scan_filter_length)
+    {
+        p_cfg_cache->p_arr_of_scan_filter_mac = os_calloc(
+            p_scan_filter->scan_filter_length,
+            sizeof(*p_cfg_cache->p_arr_of_scan_filter_mac));
+        if (NULL == p_cfg_cache->p_arr_of_scan_filter_mac)
+        {
+            LOG_ERR("Can't allocate memory for scan_filter");
+        }
+    }
+    if (NULL != p_cfg_cache->p_arr_of_scan_filter_mac)
+    {
+        for (uint32_t i = 0; i < p_scan_filter->scan_filter_length; ++i)
+        {
+            memcpy(
+                &p_cfg_cache->p_arr_of_scan_filter_mac[i],
+                &p_scan_filter->scan_filter_list[i],
+                sizeof(p_cfg_cache->p_arr_of_scan_filter_mac[i]));
+        }
+        p_cfg_cache->scan_filter_length = p_scan_filter->scan_filter_length;
+    }
+    else
+    {
+        p_cfg_cache->scan_filter_length = 0;
+    }
+
+    gw_cfg_unlock_ro(&p_gw_cfg);
+
     if (gw_cfg_get_http_use_http_ruuvi())
     {
         LOG_INFO("Start timer for advs1 retransmission");
-        adv_post_timer_start_with_default_period(&g_adv_post_timers[0]);
+        adv1_post_timer_restart_with_short_period();
     }
     else
     {
@@ -782,7 +949,7 @@ adv_post_on_gw_cfg_change(adv_post_state_t* const p_adv_post_state)
     if (gw_cfg_get_http_use_http())
     {
         LOG_INFO("Start timer for advs2 retransmission");
-        adv_post_timer_start_with_default_period(&g_adv_post_timers[1]);
+        adv2_post_timer_restart_with_short_period();
     }
     else
     {
@@ -794,13 +961,21 @@ adv_post_on_gw_cfg_change(adv_post_state_t* const p_adv_post_state)
     {
         LOG_INFO("Start timer to send statistics");
         os_timer_sig_periodic_start(g_p_adv_post_timer_sig_send_statistics);
+        os_timer_sig_one_shot_restart(
+            g_p_adv_post_timer_sig_activate_sending_statistics,
+            pdMS_TO_TICKS(ADV_POST_DELAY_AFTER_CONFIGURATION_CHANGED_MS));
     }
     else
     {
         LOG_INFO("Stop timer to send statistics");
         os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_send_statistics);
+        os_timer_sig_one_shot_stop(g_p_adv_post_timer_sig_activate_sending_statistics);
         p_adv_post_state->flag_need_to_send_statistics = false;
     }
+    adv_post_cfg_access_mutex_unlock(&p_cfg_cache);
+
+    LOG_INFO("Clear adv_table");
+    adv_table_clear();
 }
 
 static void
@@ -815,6 +990,19 @@ adv_post_handle_sig_relaying_mode_changed(adv_post_state_t* const p_adv_post_sta
         os_timer_sig_one_shot_stop(g_p_adv_post_timer_sig_do_async_comm);
         http_abort_any_req_during_processing();
         p_adv_post_state->flag_async_comm_in_progress = false;
+        LOG_DBG("http_server_mutex_unlock");
+        http_server_mutex_unlock();
+    }
+    if (!p_adv_post_state->flag_relaying_enabled)
+    {
+        if (gw_cfg_get_http_use_http_ruuvi())
+        {
+            leds_notify_http1_data_sent_fail();
+        }
+        if (gw_cfg_get_http_use_http())
+        {
+            leds_notify_http2_data_sent_fail();
+        }
     }
     gw_status_clear_http_relaying_cmd();
 }
@@ -860,7 +1048,6 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p
             break;
         case ADV_POST_SIG_ACTIVATE_SENDING_STATISTICS:
             LOG_INFO("Got ADV_POST_SIG_ACTIVATE_SENDING_STATISTICS");
-            os_timer_sig_one_shot_delete(&g_p_adv_post_timer_sig_activate_sending_statistics);
             p_adv_post_state->flag_need_to_send_statistics = true;
             os_timer_sig_periodic_start(g_p_adv_post_timer_sig_send_statistics);
             os_timer_sig_periodic_simulate(g_p_adv_post_timer_sig_send_statistics);
@@ -887,7 +1074,7 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p
             break;
         case ADV_POST_SIG_GW_CFG_READY:
             LOG_INFO("Got ADV_POST_SIG_GW_CFG_READY");
-            ruuvi_send_nrf_settings();
+            ruuvi_send_nrf_settings_from_gw_cfg();
             if (gw_cfg_get_http_stat_use_http_stat())
             {
                 os_timer_sig_one_shot_start(g_p_adv_post_timer_sig_activate_sending_statistics);
@@ -905,7 +1092,7 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p
             break;
         case ADV_POST_SIG_GW_CFG_CHANGED_RUUVI:
             LOG_INFO("Got ADV_POST_SIG_GW_CFG_CHANGED_RUUVI");
-            ruuvi_send_nrf_settings();
+            ruuvi_send_nrf_settings_from_gw_cfg();
             adv_post_on_gw_cfg_change(p_adv_post_state);
             if (gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss()
                 && (gw_cfg_get_http_use_http_ruuvi() || gw_cfg_get_http_use_http()))
@@ -916,6 +1103,20 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p
             {
                 http_server_mutex_deactivate();
             }
+            break;
+        case ADV_POST_SIG_BLE_SCAN_CHANGED:
+            LOG_INFO("Got ADV_POST_SIG_BLE_SCAN_CHANGED");
+            LOG_INFO("Clear adv_table");
+            adv_table_clear();
+            break;
+        case ADV_POST_SIG_ACTIVATE_CFG_MODE:
+            LOG_INFO("Got ADV_POST_SIG_ACTIVATE_CFG_MODE");
+            adv_post_disable_ble_filtering();
+            break;
+        case ADV_POST_SIG_DEACTIVATE_CFG_MODE:
+            LOG_INFO("Got ADV_POST_SIG_DEACTIVATE_CFG_MODE");
+            ruuvi_send_nrf_settings_from_gw_cfg();
+            adv_post_on_gw_cfg_change(p_adv_post_state);
             break;
         case ADV_POST_SIG_GREEN_LED_TURN_ON:
             g_adv_post_green_led_state = true;
@@ -1015,6 +1216,9 @@ adv_post_register_signals(void)
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_TASK_WATCHDOG_FEED));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_GW_CFG_READY));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_GW_CFG_CHANGED_RUUVI));
+    os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_BLE_SCAN_CHANGED));
+    os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_ACTIVATE_CFG_MODE));
+    os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DEACTIVATE_CFG_MODE));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_TURN_ON));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_TURN_OFF));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_UPDATE));
@@ -1273,41 +1477,13 @@ adv_post_set_hmac_sha256_key(const char* const p_key_str)
 }
 
 static void
-adv_post_timer_start_with_default_period(adv_post_timer_t* const p_adv_post_timer)
+adv_post_timer_restart_with_period(adv_post_timer_t* const p_adv_post_timer, const uint32_t period_ms)
 {
-    if (p_adv_post_timer->cur_interval_ms != p_adv_post_timer->default_interval_ms)
+    if (p_adv_post_timer->cur_interval_ms != period_ms)
     {
-        p_adv_post_timer->cur_interval_ms = p_adv_post_timer->default_interval_ms;
-    }
-    LOG_INFO(
-        "advs%u: start timer with default period %ums",
-        (printf_uint_t)p_adv_post_timer->num,
-        (printf_uint_t)p_adv_post_timer->cur_interval_ms);
-    os_timer_sig_periodic_restart(p_adv_post_timer->p_timer_sig, pdMS_TO_TICKS(p_adv_post_timer->cur_interval_ms));
-}
-
-static void
-adv_post_timer_restart_with_default_period(adv_post_timer_t* const p_adv_post_timer)
-{
-    if (p_adv_post_timer->cur_interval_ms != p_adv_post_timer->default_interval_ms)
-    {
-        p_adv_post_timer->cur_interval_ms = p_adv_post_timer->default_interval_ms;
+        p_adv_post_timer->cur_interval_ms = period_ms;
         LOG_INFO(
-            "advs%u: restart timer with default period %ums",
-            (printf_uint_t)p_adv_post_timer->num,
-            (printf_uint_t)p_adv_post_timer->cur_interval_ms);
-        os_timer_sig_periodic_restart(p_adv_post_timer->p_timer_sig, pdMS_TO_TICKS(p_adv_post_timer->cur_interval_ms));
-    }
-}
-
-static void
-adv_post_timer_restart_with_increased_period(adv_post_timer_t* const p_adv_post_timer)
-{
-    if (p_adv_post_timer->cur_interval_ms != ADV_POST_DELAY_BEFORE_RETRYING_POST_AFTER_ERROR_MS)
-    {
-        p_adv_post_timer->cur_interval_ms = ADV_POST_DELAY_BEFORE_RETRYING_POST_AFTER_ERROR_MS;
-        LOG_INFO(
-            "advs%u: restart timer with increased period %ums",
+            "advs%u: restart timer with period %u ms",
             (printf_uint_t)p_adv_post_timer->num,
             (printf_uint_t)p_adv_post_timer->cur_interval_ms);
         os_timer_sig_periodic_restart(p_adv_post_timer->p_timer_sig, pdMS_TO_TICKS(p_adv_post_timer->cur_interval_ms));
@@ -1317,25 +1493,61 @@ adv_post_timer_restart_with_increased_period(adv_post_timer_t* const p_adv_post_
 void
 adv1_post_timer_restart_with_default_period(void)
 {
-    adv_post_timer_restart_with_default_period(&g_adv_post_timers[0]);
+    adv_post_timer_t* const p_adv_post_timer = &g_adv_post_timers[0];
+    adv_post_timer_restart_with_period(p_adv_post_timer, p_adv_post_timer->default_interval_ms);
 }
 
 void
 adv1_post_timer_restart_with_increased_period(void)
 {
-    adv_post_timer_restart_with_increased_period(&g_adv_post_timers[0]);
+    adv_post_timer_t* const p_adv_post_timer = &g_adv_post_timers[0];
+    adv_post_timer_restart_with_period(p_adv_post_timer, ADV_POST_DELAY_BEFORE_RETRYING_POST_AFTER_ERROR_MS);
+}
+
+void
+adv1_post_timer_restart_with_short_period(void)
+{
+    adv_post_timer_t* const p_adv_post_timer = &g_adv_post_timers[0];
+    adv_post_timer_restart_with_period(p_adv_post_timer, ADV_POST_DELAY_AFTER_CONFIGURATION_CHANGED_MS);
 }
 
 void
 adv2_post_timer_restart_with_default_period(void)
 {
-    adv_post_timer_restart_with_default_period(&g_adv_post_timers[1]);
+    adv_post_timer_t* const p_adv_post_timer = &g_adv_post_timers[1];
+    adv_post_timer_restart_with_period(p_adv_post_timer, p_adv_post_timer->default_interval_ms);
 }
 
 void
 adv2_post_timer_restart_with_increased_period(void)
 {
-    adv_post_timer_restart_with_increased_period(&g_adv_post_timers[1]);
+    adv_post_timer_t* const p_adv_post_timer = &g_adv_post_timers[1];
+    adv_post_timer_restart_with_period(p_adv_post_timer, ADV_POST_DELAY_BEFORE_RETRYING_POST_AFTER_ERROR_MS);
+}
+
+void
+adv2_post_timer_restart_with_short_period(void)
+{
+    adv_post_timer_t* const p_adv_post_timer = &g_adv_post_timers[1];
+    adv_post_timer_restart_with_period(p_adv_post_timer, ADV_POST_DELAY_AFTER_CONFIGURATION_CHANGED_MS);
+}
+
+void
+adv_post_send_sig_ble_scan_changed(void)
+{
+    os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_BLE_SCAN_CHANGED));
+}
+
+void
+adv_post_send_sig_activate_cfg_mode(void)
+{
+    os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_ACTIVATE_CFG_MODE));
+}
+
+void
+adv_post_send_sig_deactivate_cfg_mode(void)
+{
+    os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DEACTIVATE_CFG_MODE));
 }
 
 void

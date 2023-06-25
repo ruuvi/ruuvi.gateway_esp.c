@@ -30,6 +30,8 @@
 extern "C" {
 #endif
 
+#define GW_CFG_MAX_NUM_SENSORS (100U)
+
 #define GW_CFG_MAX_HTTP_BEARER_TOKEN_LEN 256
 #define GW_CFG_MAX_HTTP_TOKEN_LEN        256
 #define GW_CFG_MAX_HTTP_URL_LEN          256
@@ -292,6 +294,13 @@ typedef struct ruuvi_gw_cfg_scan_t
     bool scan_channel_39;
 } ruuvi_gw_cfg_scan_t;
 
+typedef struct ruuvi_gw_cfg_scan_filter_t
+{
+    bool              scan_filter_allow_listed;
+    uint32_t          scan_filter_length;
+    mac_address_bin_t scan_filter_list[GW_CFG_MAX_NUM_SENSORS];
+} ruuvi_gw_cfg_scan_filter_t;
+
 typedef struct ruuvi_gw_cfg_coordinates_t
 {
     char buf[GW_CFG_MAX_COORDINATES_STR_LEN];
@@ -308,6 +317,7 @@ typedef struct ruuvi_gw_cfg_t
     ruuvi_gw_cfg_ntp_t         ntp;
     ruuvi_gw_cfg_filter_t      filter;
     ruuvi_gw_cfg_scan_t        scan;
+    ruuvi_gw_cfg_scan_filter_t scan_filter;
     ruuvi_gw_cfg_coordinates_t coordinates;
 } gw_cfg_ruuvi_t;
 

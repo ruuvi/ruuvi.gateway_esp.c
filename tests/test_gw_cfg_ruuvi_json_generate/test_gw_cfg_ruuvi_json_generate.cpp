@@ -416,6 +416,8 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default) // NOLINT
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_filter_allow_listed\":\tfalse,\n"
+               "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\"\n"
                "}"),
         string(json_str.p_str));
@@ -501,6 +503,8 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_filter_allow_listed\":\tfalse,\n"
+               "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\"\n"
                "}"),
         string(json_str.p_str));
@@ -588,6 +592,8 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_filter_allow_listed\":\tfalse,\n"
+               "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\"\n"
                "}"),
         string(json_str.p_str));
@@ -675,6 +681,8 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_filter_allow_listed\":\tfalse,\n"
+               "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\"\n"
                "}"),
         string(json_str.p_str));
@@ -764,6 +772,8 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_filter_allow_listed\":\tfalse,\n"
+               "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\"\n"
                "}"),
         string(json_str.p_str));
@@ -853,6 +863,8 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_filter_allow_listed\":\tfalse,\n"
+               "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\"\n"
                "}"),
         string(json_str.p_str));
@@ -938,6 +950,8 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_auto_updat
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_filter_allow_listed\":\tfalse,\n"
+               "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\"\n"
                "}"),
         string(json_str.p_str));
@@ -1023,6 +1037,8 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_auto_updat
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_filter_allow_listed\":\tfalse,\n"
+               "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\"\n"
                "}"),
         string(json_str.p_str));
@@ -1108,6 +1124,8 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_auto_updat
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_filter_allow_listed\":\tfalse,\n"
+               "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\"\n"
                "}"),
         string(json_str.p_str));
@@ -1193,6 +1211,11 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_non_default) // NO
                 .scan_channel_37 = false,
                 .scan_channel_38 = false,
                 .scan_channel_39 = false,
+            },
+            .scan_filter = {
+                .scan_filter_allow_listed = false,
+                .scan_filter_length = 0,
+                .scan_filter_list = {0},
             },
             .coordinates = { { 'q', 'w', 'e', '\0' } },
         },
@@ -1283,6 +1306,8 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_non_default) // NO
                "\t\"scan_channel_37\":\tfalse,\n"
                "\t\"scan_channel_38\":\tfalse,\n"
                "\t\"scan_channel_39\":\tfalse,\n"
+               "\t\"scan_filter_allow_listed\":\tfalse,\n"
+               "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"qwe\"\n"
                "}"),
         string(json_str.p_str));
@@ -4323,7 +4348,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_u
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_coordinates) // NOLINT
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_scan_filter_allow_listed) // NOLINT
 {
     const gw_cfg_t   gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -4334,6 +4359,82 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_c
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 160;
+
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_filter_allow_listed"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_scan_filter_allow_listed_2) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 161;
+
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_filter_allow_listed"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_scan_filter_list) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 162;
+
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_filter_list"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_scan_filter_list_2) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 163;
+
+    ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_filter_list"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_coordinates) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 164;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -4352,7 +4453,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_c
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 161;
+    this->m_malloc_fail_on_cnt = 165;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -4371,7 +4472,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_c
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 162;
+    this->m_malloc_fail_on_cnt = 166;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -4390,7 +4491,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_c
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 163;
+    this->m_malloc_fail_on_cnt = 167;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);

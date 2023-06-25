@@ -814,6 +814,33 @@ gw_cfg_json_add_items_scan(cJSON* const p_json_root, const ruuvi_gw_cfg_scan_t* 
 }
 
 static bool
+gw_cfg_json_add_items_scan_filter(cJSON* const p_json_root, const ruuvi_gw_cfg_scan_filter_t* const p_cfg_scan_filter)
+{
+    if (!gw_cfg_json_add_bool(p_json_root, "scan_filter_allow_listed", p_cfg_scan_filter->scan_filter_allow_listed))
+    {
+        return false;
+    }
+    cJSON* const p_array_of_mac = cJSON_AddArrayToObject(p_json_root, "scan_filter_list");
+    if (NULL == p_array_of_mac)
+    {
+        LOG_ERR("Can't add json item: %s", "scan_filter_list");
+        return false;
+    }
+    for (uint32_t i = 0; i < p_cfg_scan_filter->scan_filter_length; ++i)
+    {
+        const mac_address_str_t mac_addr_str = mac_address_to_str(&p_cfg_scan_filter->scan_filter_list[i]);
+        cJSON* const            p_item       = cJSON_CreateString(mac_addr_str.str_buf);
+        if (NULL == p_item)
+        {
+            LOG_ERR("Can't add MAC addr to scan_filter_list array: %s", mac_addr_str.str_buf);
+            return false;
+        }
+        cJSON_AddItemToArray(p_array_of_mac, p_item);
+    }
+    return true;
+}
+
+static bool
 gw_cfg_json_add_items(
     cJSON* const          p_json_root,
     const gw_cfg_t* const p_cfg,
@@ -877,6 +904,10 @@ gw_cfg_json_add_items(
         return false;
     }
     if (!gw_cfg_json_add_items_scan(p_json_root, &p_cfg->ruuvi_cfg.scan))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_items_scan_filter(p_json_root, &p_cfg->ruuvi_cfg.scan_filter))
     {
         return false;
     }
