@@ -370,7 +370,10 @@ adv_table_clear(void)
     adv_reports_list_elem_t* p_elem = NULL;
     TAILQ_FOREACH(p_elem, &g_adv_reports_hist_list, hist_list)
     {
-        p_elem->adv_report.data_len = 0; // mark adv_report as free in hist_list
+        p_elem->adv_report.timestamp       = 0;
+        p_elem->adv_report.samples_counter = 0;
+        p_elem->adv_report.data_len        = 0; // mark adv_report as free in hist_list
     }
+
     os_mutex_unlock(gp_adv_reports_mutex);
 }

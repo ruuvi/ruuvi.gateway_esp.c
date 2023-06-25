@@ -101,6 +101,10 @@ static const gw_cfg_ruuvi_t g_gateway_config_default_ruuvi = {
             .scan_channel_38 = true,
             .scan_channel_39 = true,
         },
+        .scan_filter = {
+            .scan_filter_allow_listed = false,
+            .scan_filter_length = 0,
+        },
         .coordinates = {{ "" }},
     };
 

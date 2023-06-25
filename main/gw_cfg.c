@@ -400,6 +400,33 @@ ruuvi_gw_cfg_scan_cmp(const ruuvi_gw_cfg_scan_t* const p_scan1, const ruuvi_gw_c
 }
 
 static bool
+ruuvi_gw_cfg_scan_filter_cmp(
+    const ruuvi_gw_cfg_scan_filter_t* const p_scan_filter1,
+    const ruuvi_gw_cfg_scan_filter_t* const p_scan_filter2)
+{
+    if (p_scan_filter1->scan_filter_allow_listed != p_scan_filter2->scan_filter_allow_listed)
+    {
+        return false;
+    }
+    if (p_scan_filter1->scan_filter_length != p_scan_filter2->scan_filter_length)
+    {
+        return false;
+    }
+    for (uint32_t i = 0; i < p_scan_filter1->scan_filter_length; ++i)
+    {
+        if (0
+            != memcmp(
+                &p_scan_filter1->scan_filter_list[i],
+                &p_scan_filter2->scan_filter_list[i],
+                sizeof(p_scan_filter1->scan_filter_list[i])))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool
 ruuvi_gw_cfg_coordinates_cmp(
     const ruuvi_gw_cfg_coordinates_t* const p_coordinates1,
     const ruuvi_gw_cfg_coordinates_t* const p_coordinates2)
@@ -447,6 +474,10 @@ gw_cfg_ruuvi_cmp(const gw_cfg_ruuvi_t* const p_cfg_ruuvi1, const gw_cfg_ruuvi_t*
         return false;
     }
     if (!ruuvi_gw_cfg_scan_cmp(&p_cfg_ruuvi1->scan, &p_cfg_ruuvi2->scan))
+    {
+        return false;
+    }
+    if (!ruuvi_gw_cfg_scan_filter_cmp(&p_cfg_ruuvi1->scan_filter, &p_cfg_ruuvi2->scan_filter))
     {
         return false;
     }

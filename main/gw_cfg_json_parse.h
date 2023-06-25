@@ -71,6 +71,12 @@ gw_cfg_json_parse_cjson_wifi_sta(
     const char* const           p_log_title,
     wifiman_config_sta_t* const p_wifi_cfg_sta);
 
+void
+gw_cfg_json_parse_filter(const cJSON* const p_json_root, ruuvi_gw_cfg_filter_t* const p_gw_cfg_filter);
+
+void
+gw_cfg_json_parse_scan(const cJSON* const p_json_root, ruuvi_gw_cfg_scan_t* const p_gw_cfg_scan);
+
 #if RUUVI_TESTS_GW_CFG_JSON
 
 GW_CFG_JSON_STATIC
