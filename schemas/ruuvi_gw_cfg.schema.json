@@ -7,13 +7,36 @@
   "required": [
   ],
   "properties": {
+    "fw_ver": {
+      "title": "Current firmware version",
+      "description": "This field is generated only when configuration is requested via HTTP.",
+      "type": "string",
+      "examples": [
+        "v1.13.1"
+      ]
+    },
+    "nrf52_fw_ver": {
+      "title": "Current firmware version of nRF52",
+      "description": "This field is generated only when configuration is requested via HTTP.",
+      "type": "string",
+      "examples": [
+        "v1.0.0"
+      ]
+    },
+    "gw_mac": {
+      "title": "Gateway MAC address",
+      "description": "This field is generated only when configuration is requested via HTTP.",
+      "type": "string",
+      "examples": [
+        "C8:25:2D:8E:9C:2C"
+      ]
+    },
     "wifi_sta_config": {
       "title": "Wi-Fi credentials",
       "description": "Gateway will connect to the specified WiFi SSID if it's not empty. Note: 'use_eth' should be 'false'",
       "type": "object",
       "required": [
-        "ssid",
-        "password"
+        "ssid"
       ],
       "properties": {
         "ssid": {
@@ -48,7 +71,6 @@
       "title": "WiFi access point default settings",
       "type": "object",
       "required": [
-        "password"
       ],
       "properties": {
         "password": {
@@ -59,6 +81,11 @@
             "",
             "12345678"
           ]
+        },
+        "channel": {
+          "type": "integer",
+          "default": 1,
+          "title": "Default channel for Wi-Fi access point"
         }
       }
     },
@@ -104,11 +131,11 @@
       "title": "HTTP authentication credentials for the remote server for automatic Gateway configuration downloading",
       "description": "It should not be empty if 'remote_cfg_use' is 'true'",
       "type": "string",
-      "pattern": "^(|no|basic|bearer)$",
+      "pattern": "^(|none|no|basic|bearer)$",
       "default": "",
       "examples": [
         "",
-        "no",
+        "none",
         "basic",
         "bearer"
       ]
@@ -129,10 +156,37 @@
       "title": "Period for checking a new gateway configuration on the remote server (in minutes)",
       "type": "integer"
     },
-    "use_http": {
-      "title": "Enable HTTP relaying mode",
+    "use_http_ruuvi": {
+      "title": "Enable HTTP relaying mode to Ruuvi cloud",
       "type": "boolean",
       "default": true
+    },
+    "use_http": {
+      "title": "Enable HTTP relaying mode to a custom server",
+      "type": "boolean",
+      "default": false
+    },
+    "http_data_format": {
+      "title": "Data format used for HTTP transmission",
+      "type": "string",
+      "pattern": "^(|ruuvi)$",
+      "default": "ruuvi",
+      "examples": [
+        "ruuvi"
+      ]
+    },
+    "http_auth": {
+      "title": "HTTP authentication type",
+      "type": "string",
+      "pattern": "^(|none|basic|bearer|token)$",
+      "default": "none",
+      "examples": [
+        "",
+        "none",
+        "basic",
+        "bearer",
+        "token"
+      ]
     },
     "http_url": {
       "title": "URL of the server to which the data collected from Bluetooth sensors will be sent",
@@ -150,6 +204,18 @@
     },
     "http_pass": {
       "title": "Password for HTTP basic authentication for the server",
+      "type": "string",
+      "default": ""
+    },
+    "http_bearer_token": {
+      "title": "Bearer token used for authentication",
+      "description": "Bearer token is used when http_auth equals to 'bearer'",
+      "type": "string",
+      "default": ""
+    },
+    "http_api_key": {
+      "title": "API key used for authentication",
+      "description": "This API key is used when http_auth equals to 'token'",
       "type": "string",
       "default": ""
     },
@@ -275,6 +341,11 @@
       "title": "Password for authentication when accessing from LAN",
       "type": "string"
     },
+    "lan_auth_api_key_use": {
+      "title": "Use API key (token) for HTTP bearer authentication for read-only access from LAN",
+      "description": "This field is generated when configuration is read via HTTP ('lan_auth_api_key' is not generated in this case)",
+      "type": "boolean"
+    },
     "lan_auth_api_key": {
       "title": "API key (token) for HTTP bearer authentication for read-only access from LAN",
       "description": "If 'lan_auth_api_key' is empty, then bearer authentication is disabled.",
@@ -283,6 +354,11 @@
       "examples": [
         "304uOrJMoCNEVaPaXswV9U1qRDPZFbl0V2x7OXHM5nw="
       ]
+    },
+    "lan_auth_api_key_rw_use": {
+      "title": "Use API key (token) for HTTP bearer authentication for read/write access from LAN",
+      "description": "This field is generated when configuration is read via HTTP ('lan_auth_api_key_rw' is not generated in this case)",
+      "type": "boolean"
     },
     "lan_auth_api_key_rw": {
       "title": "API key (token) for HTTP bearer authentication for read/write access from LAN",
@@ -430,6 +506,23 @@
       "title": "Configure Bluetooth scanning: Use channel 39",
       "type": "boolean",
       "default": true
+    },
+    "scan_filter_allow_listed": {
+      "title": "Type of Bluetooth sensors filtering",
+      "description": "If it's true, only the sensors in the list will pass through the filter, other sensors will be filtered out. If it's false, then all sensors will pass through the filter except those in the list.",
+      "type": "boolean",
+      "default": false
+    },
+    "scan_filter_list": {
+      "title": "List of sensors to filter.",
+      "description": "Type of filtering is set by scan_filter_allow_listed. If scan_filter_list is empty, then filtering is not active",
+      "type": "array",
+      "default": [],
+      "examples": [
+        [],
+        ["F4:1F:0C:28:CB:D6"],
+        ["F4:1F:0C:28:CB:D6", "F4:C6:46:2C:3E:B4"]
+      ]
     },
     "coordinates": {
       "title": "GPS-coordinates of the Gateway",

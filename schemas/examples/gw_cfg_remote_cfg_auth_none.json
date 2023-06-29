@@ -1,0 +1,9 @@
+{
+  "remote_cfg_use": true,
+  "remote_cfg_url": "http://192.168.1.101:7000/",
+  "remote_cfg_auth_type": "none",
+  "remote_cfg_auth_bearer_token": "",
+  "remote_cfg_auth_basic_user": "",
+  "remote_cfg_auth_basic_pass": "",
+  "remote_cfg_refresh_interval_minutes": 1
+}

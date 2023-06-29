@@ -1,0 +1,44 @@
+{
+  "data": {
+    "coordinates": "",
+    "timestamp": "1687922293",
+    "gw_mac": "C8:25:2D:8E:9C:2C",
+    "tags": {
+      "F4:1F:0C:28:CB:D6": {
+        "rssi": -51,
+        "timestamp": "1687922293",
+        "data": "0201061BFF990405167546CAC67C000CFFB403E07796A44D5FF41F0C28CBD6",
+        "dataFormat": 5,
+        "temperature": 28.745,
+        "humidity": 45.3050,
+        "pressure": 150812,
+        "accelX": 0.012,
+        "accelY": -0.076,
+        "accelZ": 0.992,
+        "movementCounter": 164,
+        "voltage": 2.556,
+        "txPower": -32,
+        "measurementSequenceNumber": 19807,
+        "id": "F4:1F:0C:28:CB:D6"
+      },
+      "F4:C6:46:2C:3E:B4": {
+        "rssi": -46,
+        "timestamp": "1687922292",
+        "data": "0201061BFF99040515EF481EC6630038001003F08376502051F4C6462C3EB4",
+        "dataFormat": 5,
+        "temperature": 28.075,
+        "humidity": 46.1550,
+        "pressure": 150787,
+        "accelX": 0.056,
+        "accelY": 0.016,
+        "accelZ": 1.008,
+        "movementCounter": 80,
+        "voltage": 2.651,
+        "txPower": -32,
+        "measurementSequenceNumber": 8273,
+        "id": "F4:C6:46:2C:3E:B4"
+      }
+    }
+  }
+}
+
