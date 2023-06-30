@@ -1,0 +1,7 @@
+{
+  "remote_cfg_use": true,
+  "remote_cfg_url": "http://192.168.1.101:7000/",
+  "remote_cfg_auth_type": "bearer",
+  "remote_cfg_auth_bearer_token": "my_secret_token1",
+  "remote_cfg_refresh_interval_minutes": 1
+}

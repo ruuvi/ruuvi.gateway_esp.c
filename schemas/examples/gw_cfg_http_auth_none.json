@@ -1,0 +1,6 @@
+{
+  "use_http": true,
+  "http_url": "https://network.ruuvi.com/record",
+  "http_data_format": "ruuvi",
+  "http_auth": "none"
+}
