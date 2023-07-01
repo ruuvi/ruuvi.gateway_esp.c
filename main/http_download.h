@@ -35,7 +35,10 @@ http_download_json(
     const gw_cfg_http_auth_type_e         auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
     const http_header_item_t* const       p_extra_header_item,
-    const bool                            flag_free_memory);
+    const bool                            flag_free_memory,
+    const char* const                     p_server_cert,
+    const char* const                     p_client_cert,
+    const char* const                     p_client_key);
 
 http_server_download_info_t
 http_download_latest_release_info(const bool flag_free_memory);

@@ -17,8 +17,11 @@
 #include "fw_update.h"
 #include "gw_cfg.h"
 #include "gw_status.h"
+#include "gw_cfg_storage.h"
+#include "partition_table.h"
 #include "gw_cfg_json_parse.h"
 #include "adv_post.h"
+#include "reset_task.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -236,6 +239,62 @@ http_server_cb_on_post_gw_cfg_download(void)
     return resp;
 }
 
+HTTP_SERVER_CB_STATIC
+http_server_resp_t
+http_server_cb_on_post_ssl_cert(const char* const p_body, const char* const p_uri_params)
+{
+    LOG_DBG("POST /ssl_cert %s", (NULL != p_uri_params) ? p_uri_params : "NULL");
+    str_buf_t filename_str_buf = http_server_get_from_params_with_decoding(p_uri_params, "file=");
+    if (NULL == filename_str_buf.buf)
+    {
+        LOG_ERR("HTTP post_ssl_cert: can't find 'file' in params: %s", p_uri_params);
+        return http_server_resp_400();
+    }
+    LOG_DBG("Content: %s", p_body);
+
+    if ((0 != strcmp(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_STAT_CLI_CERT, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_STAT_CLI_KEY, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_MQTT_CLI_CERT, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_MQTT_CLI_KEY, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_STAT_SRV_CERT, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_MQTT_SRV_CERT, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT, filename_str_buf.buf)))
+    {
+        LOG_ERR("HTTP post_ssl_cert: Unknown file name: %s", filename_str_buf.buf);
+        str_buf_free_buf(&filename_str_buf);
+        return http_server_resp_400();
+    }
+
+    if (!gw_cfg_storage_write_file(filename_str_buf.buf, p_body))
+    {
+        LOG_ERR("Can't write file '%s', length=%lu", filename_str_buf.buf, (printf_ulong_t)strlen(p_body));
+        str_buf_free_buf(&filename_str_buf);
+        return http_server_resp_500();
+    }
+    str_buf_free_buf(&filename_str_buf);
+
+    return http_server_resp_200_json("{}");
+}
+
+HTTP_SERVER_CB_STATIC
+http_server_resp_t
+http_server_cb_on_post_init_storage(const char* const p_body, const char* const p_uri_params)
+{
+    LOG_INFO("POST /init_storage, params=%s", (NULL != p_uri_params) ? p_uri_params : "NULL");
+
+    if (partition_table_check_and_update())
+    {
+        reset_task_reboot_after_timeout();
+    }
+
+    return http_server_resp_200_json("{}");
+}
+
 http_server_resp_t
 http_server_cb_on_post(
     const char* const p_file_name,
@@ -243,7 +302,7 @@ http_server_cb_on_post(
     const char* const p_body,
     const bool        flag_access_from_lan)
 {
-    (void)p_uri_params;
+    LOG_DBG("http_server_cb_on_post /%s, params=%s", p_file_name, (NULL != p_uri_params) ? p_uri_params : "");
     if (0 == strcmp(p_file_name, "fw_update_reset"))
     {
         return http_server_cb_on_post_fw_update_reset();
@@ -268,6 +327,14 @@ http_server_cb_on_post(
     if (0 == strcmp(p_file_name, "gw_cfg_download"))
     {
         return http_server_cb_on_post_gw_cfg_download();
+    }
+    if (0 == strcmp(p_file_name, "ssl_cert"))
+    {
+        return http_server_cb_on_post_ssl_cert(p_body, p_uri_params);
+    }
+    if (0 == strcmp(p_file_name, "init_storage"))
+    {
+        return http_server_cb_on_post_init_storage(p_body, p_uri_params);
     }
     LOG_WARN("POST /%s", p_file_name);
     return http_server_resp_404();

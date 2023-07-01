@@ -119,7 +119,10 @@ http_download_json(
     const gw_cfg_http_auth_type_e         auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
     const http_header_item_t* const       p_extra_header_item,
-    const bool                            flag_free_memory)
+    const bool                            flag_free_memory,
+    const char* const                     p_server_cert,
+    const char* const                     p_client_cert,
+    const char* const                     p_client_key)
 {
     http_server_download_info_t info = {
         .is_error       = false,
@@ -143,6 +146,9 @@ http_download_json(
     p_download_param->p_user_data             = &info;
     p_download_param->flag_feed_task_watchdog = flag_feed_task_watchdog;
     p_download_param->flag_free_memory        = flag_free_memory;
+    p_download_param->p_server_cert           = p_server_cert;
+    p_download_param->p_client_cert           = p_client_cert;
+    p_download_param->p_client_key            = p_client_key;
 
     if (!http_download_with_auth(p_download_param, auth_type, p_http_auth, p_extra_header_item))
     {
@@ -191,7 +197,10 @@ http_download_latest_release_info(const bool flag_free_memory)
         GW_CFG_HTTP_AUTH_TYPE_NONE,
         NULL,
         NULL,
-        flag_free_memory);
+        flag_free_memory,
+        NULL,
+        NULL,
+        NULL);
 }
 
 http_resp_code_e
@@ -216,6 +225,10 @@ http_check(
     p_check_param->timeout_seconds         = timeout_seconds;
     p_check_param->flag_feed_task_watchdog = flag_feed_task_watchdog;
     p_check_param->flag_free_memory        = flag_free_memory;
+    p_check_param->p_server_cert           = NULL;
+    p_check_param->p_client_cert           = NULL;
+    p_check_param->p_client_key            = NULL;
+
     if (!http_check_with_auth(p_check_param, auth_type, p_http_auth, p_extra_header_item, &http_resp_code))
     {
         LOG_ERR("http_check failed for URL: %s", p_url);

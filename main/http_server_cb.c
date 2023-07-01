@@ -20,10 +20,9 @@
 #include "reset_task.h"
 #include "gw_cfg.h"
 #include "gw_cfg_json_parse.h"
-#include "time_units.h"
-#include "time_task.h"
-#include "event_mgr.h"
 #include "gw_status.h"
+#include "url_encode.h"
+#include "gw_cfg_storage.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -75,18 +74,61 @@ http_server_cb_deinit(void)
     }
 }
 
+HTTP_SERVER_CB_STATIC
+http_server_resp_t
+http_server_cb_on_delete_ssl_cert(const char* const p_uri_params)
+{
+    LOG_DBG("DELETE /ssl_cert %s", (NULL != p_uri_params) ? p_uri_params : "NULL");
+    str_buf_t filename_str_buf = http_server_get_from_params_with_decoding(p_uri_params, "file=");
+    if (NULL == filename_str_buf.buf)
+    {
+        LOG_ERR("HTTP delete_ssl_cert: can't find 'file' in params: %s", p_uri_params);
+        return http_server_resp_400();
+    }
+
+    if ((0 != strcmp(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_STAT_CLI_CERT, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_STAT_CLI_KEY, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_MQTT_CLI_CERT, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_MQTT_CLI_KEY, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_STAT_SRV_CERT, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_MQTT_SRV_CERT, filename_str_buf.buf))
+        && (0 != strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT, filename_str_buf.buf)))
+    {
+        LOG_ERR("HTTP delete_ssl_cert: Unknown file name: %s", filename_str_buf.buf);
+        str_buf_free_buf(&filename_str_buf);
+        return http_server_resp_400();
+    }
+
+    if (!gw_cfg_storage_delete_file(filename_str_buf.buf))
+    {
+        LOG_ERR("HTTP delete_ssl_cert: Failed to delete file: %s", filename_str_buf.buf);
+        str_buf_free_buf(&filename_str_buf);
+        return http_server_resp_500();
+    }
+
+    str_buf_free_buf(&filename_str_buf);
+    return http_server_resp_200_json("{}");
+}
+
 http_server_resp_t
 http_server_cb_on_delete(
-    const char* const               p_path,
+    const char* const               p_file_name,
     const char* const               p_uri_params,
     const bool                      flag_access_from_lan,
     const http_server_resp_t* const p_resp_auth)
 {
-    (void)p_path;
-    (void)p_uri_params;
     (void)flag_access_from_lan;
     (void)p_resp_auth;
-    LOG_WARN("DELETE /%s", p_path);
+    if (0 == strcmp(p_file_name, "ssl_cert"))
+    {
+        return http_server_cb_on_delete_ssl_cert(p_uri_params);
+    }
+    LOG_INFO("DELETE /%s, params=%s", p_file_name, (NULL != p_uri_params) ? p_uri_params : "");
     return http_server_resp_404();
 }
 
@@ -184,6 +226,19 @@ http_server_download_gw_cfg(const ruuvi_gw_cfg_remote_t* const p_remote, const b
     const TimeUnitsSeconds_t    timeout_seconds = 10;
     http_server_download_info_t download_info   = { 0 };
 
+    str_buf_t str_buf_server_cert_remote = str_buf_init_null();
+    str_buf_t str_buf_client_cert        = str_buf_init_null();
+    str_buf_t str_buf_client_key         = str_buf_init_null();
+    if (p_remote->use_ssl_client_cert)
+    {
+        str_buf_client_cert = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT);
+        str_buf_client_key  = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY);
+    }
+    if (p_remote->use_ssl_server_cert)
+    {
+        str_buf_server_cert_remote = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT);
+    }
+
     const char* const p_ext = strrchr(p_remote->url.buf, '.');
     if ((NULL != p_ext) && (0 == strcmp(".json", p_ext)))
     {
@@ -194,7 +249,10 @@ http_server_download_gw_cfg(const ruuvi_gw_cfg_remote_t* const p_remote, const b
             p_remote->auth_type,
             &p_remote->auth,
             &extra_header_item,
-            flag_free_memory);
+            flag_free_memory,
+            str_buf_server_cert_remote.buf,
+            str_buf_client_cert.buf,
+            str_buf_client_key.buf);
     }
     else
     {
@@ -221,6 +279,9 @@ http_server_download_gw_cfg(const ruuvi_gw_cfg_remote_t* const p_remote, const b
                 .p_json_buf     = NULL,
                 .json_buf_size  = 0,
             };
+            str_buf_free_buf(&str_buf_server_cert_remote);
+            str_buf_free_buf(&str_buf_client_cert);
+            str_buf_free_buf(&str_buf_client_key);
             return download_info;
         }
         LOG_INFO("Try to download gateway configuration from the remote server: %s", url.buf);
@@ -230,7 +291,10 @@ http_server_download_gw_cfg(const ruuvi_gw_cfg_remote_t* const p_remote, const b
             p_remote->auth_type,
             &p_remote->auth,
             &extra_header_item,
-            flag_free_memory);
+            flag_free_memory,
+            str_buf_server_cert_remote.buf,
+            str_buf_client_cert.buf,
+            str_buf_client_key.buf);
 
         str_buf_free_buf(&url);
 
@@ -247,8 +311,12 @@ http_server_download_gw_cfg(const ruuvi_gw_cfg_remote_t* const p_remote, const b
                     .p_json_buf     = NULL,
                     .json_buf_size  = 0,
                 };
+                str_buf_free_buf(&str_buf_server_cert_remote);
+                str_buf_free_buf(&str_buf_client_cert);
+                str_buf_free_buf(&str_buf_client_key);
                 return download_info;
             }
+
             LOG_INFO("Try to download gateway configuration from the remote server: %s", url.buf);
             download_info = http_download_json(
                 url.buf,
@@ -256,8 +324,14 @@ http_server_download_gw_cfg(const ruuvi_gw_cfg_remote_t* const p_remote, const b
                 p_remote->auth_type,
                 &p_remote->auth,
                 &extra_header_item,
-                flag_free_memory);
+                flag_free_memory,
+                str_buf_server_cert_remote.buf,
+                str_buf_client_cert.buf,
+                str_buf_client_key.buf);
 
+            str_buf_free_buf(&str_buf_server_cert_remote);
+            str_buf_free_buf(&str_buf_client_cert);
+            str_buf_free_buf(&str_buf_client_key);
             str_buf_free_buf(&url);
         }
     }
@@ -457,4 +531,49 @@ http_server_cb_gen_resp(const http_resp_code_e resp_code, const char* const p_fm
         return http_server_resp_500();
     }
     return http_server_resp_json_in_heap(HTTP_RESP_CODE_200, resp_buf.buf);
+}
+
+str_buf_t
+http_server_get_from_params(const char* const p_params, const char* const p_key)
+{
+    const size_t      key_len = strlen(p_key);
+    const char* const p_param = strstr(p_params, p_key);
+    if (NULL == p_param)
+    {
+        LOG_DBG("Can't find key '%s' in URL params", p_key);
+        return str_buf_init_null();
+    }
+    const char* const p_value = &p_param[key_len];
+    const char* const p_end   = strchr(p_value, '&');
+    const size_t      val_len = (NULL == p_end) ? strlen(p_value) : (size_t)(ptrdiff_t)(p_end - p_value);
+    LOG_DBG("HTTP params: %s%.*s", p_key, val_len, p_value);
+
+    const str_buf_t result = str_buf_printf_with_alloc("%.*s", (printf_int_t)val_len, p_value);
+    if (NULL == result.buf)
+    {
+        LOG_ERR("Can't allocate memory param %s%.*s", p_key, val_len, p_value);
+    }
+    return result;
+}
+
+str_buf_t
+http_server_get_from_params_with_decoding(const char* const p_params, const char* const p_key)
+{
+    str_buf_t val_encoded = http_server_get_from_params(p_params, p_key);
+    if (NULL == val_encoded.buf)
+    {
+        LOG_ERR("HTTP params: Can't find '%s'", p_key);
+        return str_buf_init_null();
+    }
+    LOG_DBG("HTTP params: key '%s': value (encoded): %s", p_key, val_encoded.buf);
+
+    const str_buf_t val_decoded = url_decode_with_alloc(val_encoded.buf);
+    str_buf_free_buf(&val_encoded);
+    if (NULL == val_decoded.buf)
+    {
+        LOG_ERR("HTTP params: key '%s': Can't decode value: %s", p_key, val_encoded.buf);
+        return str_buf_init_null();
+    }
+    LOG_DBG("HTTP params: key '%s': value (decoded): %s", p_key, val_decoded.buf);
+    return val_decoded;
 }

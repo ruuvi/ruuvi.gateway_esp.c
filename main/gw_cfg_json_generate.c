@@ -8,6 +8,7 @@
 #include "gw_cfg_json_generate.h"
 #include <string.h>
 #include "gw_cfg_default.h"
+#include "gw_cfg_storage.h"
 
 #if !defined(RUUVI_TESTS_HTTP_SERVER_CB)
 #define RUUVI_TESTS_HTTP_SERVER_CB 0
@@ -77,6 +78,107 @@ gw_cfg_json_add_items_device_info(cJSON* const p_json_root, const gw_cfg_device_
     if (!gw_cfg_json_add_string(p_json_root, "gw_mac", p_dev_info->nrf52_mac_addr.str_buf))
     {
         return false;
+    }
+    cJSON* p_storage = cJSON_AddObjectToObject(p_json_root, "storage");
+    if (NULL == p_storage)
+    {
+        LOG_ERR("Can't add json item: %s", "storage");
+        return false;
+    }
+    const bool is_storage_ready = gw_cfg_storage_check();
+    if (!gw_cfg_json_add_bool(p_storage, "storage_ready", is_storage_ready))
+    {
+        return false;
+    }
+    if (is_storage_ready)
+    {
+        if (!gw_cfg_json_add_bool(
+                p_storage,
+                GW_CFG_STORAGE_SSL_HTTP_CLI_CERT,
+                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT)))
+        {
+            return false;
+        }
+        if (!gw_cfg_json_add_bool(
+                p_storage,
+                GW_CFG_STORAGE_SSL_HTTP_CLI_KEY,
+                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY)))
+        {
+            return false;
+        }
+        if (!gw_cfg_json_add_bool(
+                p_storage,
+                GW_CFG_STORAGE_SSL_HTTP_SRV_CERT,
+                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT)))
+        {
+            return false;
+        }
+
+        if (!gw_cfg_json_add_bool(
+                p_storage,
+                GW_CFG_STORAGE_SSL_STAT_CLI_CERT,
+                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_STAT_CLI_CERT)))
+        {
+            return false;
+        }
+        if (!gw_cfg_json_add_bool(
+                p_storage,
+                GW_CFG_STORAGE_SSL_STAT_CLI_KEY,
+                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_STAT_CLI_KEY)))
+        {
+            return false;
+        }
+        if (!gw_cfg_json_add_bool(
+                p_storage,
+                GW_CFG_STORAGE_SSL_STAT_SRV_CERT,
+                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_STAT_SRV_CERT)))
+        {
+            return false;
+        }
+
+        if (!gw_cfg_json_add_bool(
+                p_storage,
+                GW_CFG_STORAGE_SSL_MQTT_CLI_CERT,
+                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_MQTT_CLI_CERT)))
+        {
+            return false;
+        }
+        if (!gw_cfg_json_add_bool(
+                p_storage,
+                GW_CFG_STORAGE_SSL_MQTT_CLI_KEY,
+                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_MQTT_CLI_KEY)))
+        {
+            return false;
+        }
+        if (!gw_cfg_json_add_bool(
+                p_storage,
+                GW_CFG_STORAGE_SSL_MQTT_SRV_CERT,
+                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_MQTT_SRV_CERT)))
+        {
+            return false;
+        }
+
+        if (!gw_cfg_json_add_bool(
+                p_storage,
+                GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT,
+                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT)))
+        {
+            return false;
+        }
+        if (!gw_cfg_json_add_bool(
+                p_storage,
+                GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY,
+                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY)))
+        {
+            return false;
+        }
+        if (!gw_cfg_json_add_bool(
+                p_storage,
+                GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT,
+                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT)))
+        {
+            return false;
+        }
     }
     return true;
 }
@@ -268,6 +370,14 @@ gw_cfg_json_add_items_remote(
             }
             break;
     }
+    if (!gw_cfg_json_add_bool(p_json_root, "remote_cfg_use_ssl_client_cert", p_cfg_remote->use_ssl_client_cert))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(p_json_root, "remote_cfg_use_ssl_server_cert", p_cfg_remote->use_ssl_server_cert))
+    {
+        return false;
+    }
     if (!gw_cfg_json_add_number(
             p_json_root,
             "remote_cfg_refresh_interval_minutes",
@@ -346,64 +456,78 @@ gw_cfg_json_add_items_http(
     {
         return false;
     }
-    if (!gw_cfg_json_add_string(p_json_root, "http_url", p_cfg_http->http_url.buf))
+    if (p_cfg_http->use_http)
     {
-        return false;
-    }
-    switch (p_cfg_http->data_format)
-    {
-        case GW_CFG_HTTP_DATA_FORMAT_RUUVI:
-            if (!gw_cfg_json_add_string(p_json_root, "http_data_format", GW_CFG_HTTP_DATA_FORMAT_STR_RUUVI))
-            {
-                return false;
-            }
-            break;
-    }
-    switch (p_cfg_http->auth_type)
-    {
-        case GW_CFG_HTTP_AUTH_TYPE_NONE:
-            if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_NONE))
-            {
-                return false;
-            }
-            break;
-        case GW_CFG_HTTP_AUTH_TYPE_BASIC:
-            if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_BASIC))
-            {
-                return false;
-            }
-            if (!gw_cfg_json_add_string(p_json_root, "http_user", p_cfg_http->auth.auth_basic.user.buf))
-            {
-                return false;
-            }
-            if ((!flag_hide_passwords)
-                && (!gw_cfg_json_add_string(p_json_root, "http_pass", p_cfg_http->auth.auth_basic.password.buf)))
-            {
-                return false;
-            }
-            break;
-        case GW_CFG_HTTP_AUTH_TYPE_BEARER:
-            if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_BEARER))
-            {
-                return false;
-            }
-            if ((!flag_hide_passwords)
-                && (!gw_cfg_json_add_string(p_json_root, "http_bearer_token", p_cfg_http->auth.auth_bearer.token.buf)))
-            {
-                return false;
-            }
-            break;
-        case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
-            if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_TOKEN))
-            {
-                return false;
-            }
-            if ((!flag_hide_passwords)
-                && (!gw_cfg_json_add_string(p_json_root, "http_api_key", p_cfg_http->auth.auth_token.token.buf)))
-            {
-                return false;
-            }
-            break;
+        if (!gw_cfg_json_add_bool(p_json_root, "http_use_ssl_client_cert", p_cfg_http->http_use_ssl_client_cert))
+        {
+            return false;
+        }
+        if (!gw_cfg_json_add_bool(p_json_root, "http_use_ssl_server_cert", p_cfg_http->http_use_ssl_server_cert))
+        {
+            return false;
+        }
+        if (!gw_cfg_json_add_string(p_json_root, "http_url", p_cfg_http->http_url.buf))
+        {
+            return false;
+        }
+        switch (p_cfg_http->data_format)
+        {
+            case GW_CFG_HTTP_DATA_FORMAT_RUUVI:
+                if (!gw_cfg_json_add_string(p_json_root, "http_data_format", GW_CFG_HTTP_DATA_FORMAT_STR_RUUVI))
+                {
+                    return false;
+                }
+                break;
+        }
+        switch (p_cfg_http->auth_type)
+        {
+            case GW_CFG_HTTP_AUTH_TYPE_NONE:
+                if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_NONE))
+                {
+                    return false;
+                }
+                break;
+            case GW_CFG_HTTP_AUTH_TYPE_BASIC:
+                if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_BASIC))
+                {
+                    return false;
+                }
+                if (!gw_cfg_json_add_string(p_json_root, "http_user", p_cfg_http->auth.auth_basic.user.buf))
+                {
+                    return false;
+                }
+                if ((!flag_hide_passwords)
+                    && (!gw_cfg_json_add_string(p_json_root, "http_pass", p_cfg_http->auth.auth_basic.password.buf)))
+                {
+                    return false;
+                }
+                break;
+            case GW_CFG_HTTP_AUTH_TYPE_BEARER:
+                if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_BEARER))
+                {
+                    return false;
+                }
+                if ((!flag_hide_passwords)
+                    && (!gw_cfg_json_add_string(
+                        p_json_root,
+                        "http_bearer_token",
+                        p_cfg_http->auth.auth_bearer.token.buf)))
+                {
+                    return false;
+                }
+                break;
+            case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
+                if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_TOKEN))
+                {
+                    return false;
+                }
+                if ((!flag_hide_passwords)
+                    && (!gw_cfg_json_add_string(p_json_root, "http_api_key", p_cfg_http->auth.auth_token.token.buf)))
+                {
+                    return false;
+                }
+                break;
+        }
     }
     return true;
 }
@@ -428,6 +552,20 @@ gw_cfg_json_add_items_http_stat(
     }
     if ((!flag_hide_passwords)
         && (!gw_cfg_json_add_string(p_json_root, "http_stat_pass", p_cfg_http_stat->http_stat_pass.buf)))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(
+            p_json_root,
+            "http_stat_use_ssl_client_cert",
+            p_cfg_http_stat->http_stat_use_ssl_client_cert))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(
+            p_json_root,
+            "http_stat_use_ssl_server_cert",
+            p_cfg_http_stat->http_stat_use_ssl_server_cert))
     {
         return false;
     }
@@ -476,6 +614,14 @@ gw_cfg_json_add_items_mqtt(
         return false;
     }
     if ((!flag_hide_passwords) && (!gw_cfg_json_add_string(p_json_root, "mqtt_pass", p_cfg_mqtt->mqtt_pass.buf)))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(p_json_root, "mqtt_use_ssl_client_cert", p_cfg_mqtt->use_ssl_client_cert))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(p_json_root, "mqtt_use_ssl_server_cert", p_cfg_mqtt->use_ssl_server_cert))
     {
         return false;
     }

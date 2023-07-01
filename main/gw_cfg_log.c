@@ -8,6 +8,7 @@
 #include "gw_cfg_log.h"
 #include "esp_netif.h"
 #include "wifi_manager_defs.h"
+#include "gw_cfg_storage.h"
 
 #if defined(RUUVI_TESTS_HTTP_SERVER_CB)
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -214,6 +215,62 @@ gw_cfg_log_device_info(const gw_cfg_device_info_t* const p_dev_info, const char*
     LOG_INFO("config: device_info: NRF52 fw ver: %s", p_dev_info->nrf52_fw_ver.buf);
     LOG_INFO("config: device_info: NRF52 MAC ADDR: %s", p_dev_info->nrf52_mac_addr.str_buf);
     LOG_INFO("config: device_info: NRF52 DEVICE ID: %s", p_dev_info->nrf52_device_id.str_buf);
+    const bool is_storage_ready = gw_cfg_storage_check();
+    LOG_INFO("config: device_info: storage_ready: %d", (printf_int_t)is_storage_ready);
+    if (is_storage_ready)
+    {
+        LOG_INFO(
+            "config: device_info: storage: %s: %d",
+            GW_CFG_STORAGE_SSL_HTTP_CLI_CERT,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT));
+        LOG_INFO(
+            "config: device_info: storage: %s: %d",
+            GW_CFG_STORAGE_SSL_HTTP_CLI_KEY,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY));
+        LOG_INFO(
+            "config: device_info: storage: %s: %d",
+            GW_CFG_STORAGE_SSL_HTTP_SRV_CERT,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT));
+
+        LOG_INFO(
+            "config: device_info: storage: %s: %d",
+            GW_CFG_STORAGE_SSL_STAT_CLI_CERT,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_STAT_CLI_CERT));
+        LOG_INFO(
+            "config: device_info: storage: %s: %d",
+            GW_CFG_STORAGE_SSL_STAT_CLI_KEY,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_STAT_CLI_KEY));
+        LOG_INFO(
+            "config: device_info: storage: %s: %d",
+            GW_CFG_STORAGE_SSL_STAT_SRV_CERT,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_STAT_SRV_CERT));
+
+        LOG_INFO(
+            "config: device_info: storage: %s: %d",
+            GW_CFG_STORAGE_SSL_MQTT_CLI_CERT,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_MQTT_CLI_CERT));
+        LOG_INFO(
+            "config: device_info: storage: %s: %d",
+            GW_CFG_STORAGE_SSL_MQTT_CLI_KEY,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_MQTT_CLI_KEY));
+        LOG_INFO(
+            "config: device_info: storage: %s: %d",
+            GW_CFG_STORAGE_SSL_MQTT_SRV_CERT,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_MQTT_SRV_CERT));
+
+        LOG_INFO(
+            "config: device_info: storage: %s: %d",
+            GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT));
+        LOG_INFO(
+            "config: device_info: storage: %s: %d",
+            GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY));
+        LOG_INFO(
+            "config: device_info: storage: %s: %d",
+            GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT,
+            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT));
+    }
 }
 
 void
@@ -268,6 +325,8 @@ gw_cfg_log_ruuvi_cfg_remote(const ruuvi_gw_cfg_remote_t* const p_remote)
 #endif
             break;
     }
+    LOG_INFO("config: remote cfg: use SSL client cert: %d", p_remote->use_ssl_client_cert);
+    LOG_INFO("config: remote cfg: use SSL server cert: %d", p_remote->use_ssl_server_cert);
     LOG_INFO("config: remote cfg: refresh_interval_minutes: %u", (printf_uint_t)p_remote->refresh_interval_minutes);
 }
 
@@ -316,6 +375,8 @@ gw_cfg_log_ruuvi_cfg_http(const ruuvi_gw_cfg_http_t* const p_http)
 #endif
                 break;
         }
+        LOG_INFO("config: http: use SSL client cert: %d", p_http->http_use_ssl_client_cert);
+        LOG_INFO("config: http: use SSL server cert: %d", p_http->http_use_ssl_server_cert);
     }
 }
 
@@ -330,6 +391,8 @@ gw_cfg_log_ruuvi_cfg_http_stat(const ruuvi_gw_cfg_http_stat_t* const p_http_stat
 #else
     LOG_INFO("config: http_stat pass: %s", "********");
 #endif
+    LOG_INFO("config: http_stat: use SSL client cert: %d", p_http_stat->http_stat_use_ssl_client_cert);
+    LOG_INFO("config: http_stat: use SSL server cert: %d", p_http_stat->http_stat_use_ssl_server_cert);
 }
 
 static void
@@ -348,6 +411,8 @@ gw_cfg_log_ruuvi_cfg_mqtt(const ruuvi_gw_cfg_mqtt_t* const p_mqtt)
 #else
     LOG_INFO("config: mqtt password: %s", "********");
 #endif
+    LOG_INFO("config: mqtt: use SSL client cert: %d", p_mqtt->use_ssl_client_cert);
+    LOG_INFO("config: mqtt: use SSL server cert: %d", p_mqtt->use_ssl_server_cert);
 }
 
 static void

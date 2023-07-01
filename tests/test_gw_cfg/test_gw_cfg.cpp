@@ -17,6 +17,7 @@
 #include "os_task.h"
 #include "lwip/ip4_addr.h"
 #include "event_mgr.h"
+#include "gw_cfg_storage.h"
 
 using namespace std;
 
@@ -136,6 +137,20 @@ public:
     MemAllocTrace m_mem_alloc_trace;
     uint32_t      m_malloc_cnt {};
     uint32_t      m_malloc_fail_on_cnt {};
+    bool          m_flag_storage_ready { false };
+    bool          m_flag_storage_http_cli_cert { false };
+    bool          m_flag_storage_http_cli_key { false };
+    bool          m_flag_storage_stat_cli_cert { false };
+    bool          m_flag_storage_stat_cli_key { false };
+    bool          m_flag_storage_mqtt_cli_cert { false };
+    bool          m_flag_storage_mqtt_cli_key { false };
+    bool          m_flag_storage_remote_cfg_cli_cert { false };
+    bool          m_flag_storage_remote_cfg_cli_key { false };
+
+    bool m_flag_storage_http_srv_cert { false };
+    bool m_flag_storage_stat_srv_cert { false };
+    bool m_flag_storage_mqtt_srv_cert { false };
+    bool m_flag_storage_remote_cfg_srv_cert { false };
 };
 
 TestGwCfg::TestGwCfg()
@@ -245,6 +260,67 @@ event_mgr_notify(const event_mgr_ev_e event)
 {
 }
 
+bool
+gw_cfg_storage_check(void)
+{
+    return g_pTestClass->m_flag_storage_ready;
+}
+
+bool
+gw_cfg_storage_check_file(const char* const p_file_name)
+{
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_cli_cert;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_cli_key;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_STAT_CLI_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_stat_cli_cert;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_STAT_CLI_KEY, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_stat_cli_key;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_MQTT_CLI_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_mqtt_cli_cert;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_MQTT_CLI_KEY, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_mqtt_cli_key;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_remote_cfg_cli_cert;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_remote_cfg_cli_key;
+    }
+
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_srv_cert;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_STAT_SRV_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_stat_srv_cert;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_MQTT_SRV_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_mqtt_srv_cert;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_remote_cfg_srv_cert;
+    }
+    return false;
+}
+
 } // extern "C"
 
 TestGwCfg::~TestGwCfg() = default;
@@ -274,6 +350,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage_ready: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
@@ -284,6 +361,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use remote cfg: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: URL: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http ruuvi: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 0"));
@@ -291,6 +370,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat user: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat pass: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use mqtt: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt disable retained messages: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
@@ -300,6 +381,257 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt client id: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt password: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt: use SSL server cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_default"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth user: Admin"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth API key: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth API key (RW): ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Auto update cycle: regular"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Auto update weekdays_bitmask: 0x7f"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Auto update interval: 00:00..24:00"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Auto update TZ: UTC+3"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: NTP: Use: yes"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: NTP: Use DHCP: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: NTP: Server1: time.google.com"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: NTP: Server2: time.cloudflare.com"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: NTP: Server3: time.nist.gov"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: NTP: Server4: pool.ntp.org"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use company id filter: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: company id: 0x0499"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan coded phy: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan 1mbit/phy: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan extended payload: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan channel 37: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan channel 38: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan filter: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: coordinates: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: SSID: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: password: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: ssid_len: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: channel: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: auth_mode: OPEN"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: ssid_hidden: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: max_connections: 4"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: beacon_interval: 100"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_settings: bandwidth: 20MHz"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_settings: IP: 10.10.0.1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_settings: GW: 10.10.0.1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_settings: Netmask: 255.255.255.0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: SSID:'', password:'********'"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: scan_method: Fast"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Use BSSID: false"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Channel: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Listen interval: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Sort method: by RSSI"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Fast scan: min RSSI: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Fast scan: weakest auth mode: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Capable: false"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Required: false"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Power save: NONE"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Use Static IP: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: Hostname: RuuviGatewayAABB"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: fw_ver: v1.10.0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: nrf52_fw_ver: v0.7.2"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestGwCfg, gw_cfg_print_to_log_default_and_gw_cfg_stroage_is_ready) // NOLINT
+{
+    esp_log_wrapper_clear();
+
+    this->m_flag_storage_ready               = true;
+    this->m_flag_storage_http_cli_cert       = true;
+    this->m_flag_storage_http_cli_key        = true;
+    this->m_flag_storage_stat_cli_cert       = false;
+    this->m_flag_storage_stat_cli_key        = false;
+    this->m_flag_storage_mqtt_cli_cert       = false;
+    this->m_flag_storage_mqtt_cli_key        = false;
+    this->m_flag_storage_remote_cfg_cli_cert = false;
+    this->m_flag_storage_remote_cfg_cli_key  = false;
+
+    this->m_flag_storage_http_srv_cert       = false;
+    this->m_flag_storage_stat_srv_cert       = false;
+    this->m_flag_storage_mqtt_srv_cert       = false;
+    this->m_flag_storage_remote_cfg_srv_cert = false;
+
+    const gw_cfg_t gw_cfg = get_gateway_config_default();
+    gw_cfg_log(&gw_cfg, "Gateway SETTINGS", true);
+
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS:"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: Hostname: RuuviGatewayAABB"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 fw ver: v1.10.0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 WiFi MAC ADDR: AA:BB:CC:DD:EE:11"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 Eth MAC ADDR: AA:BB:CC:DD:EE:22"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage_ready: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_cli_cert: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_cli_key: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_srv_cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: stat_cli_cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: stat_cli_key: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: stat_srv_cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: mqtt_cli_cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: mqtt_cli_key: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: mqtt_srv_cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: rcfg_cli_cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: rcfg_cli_key: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: rcfg_srv_cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: yes"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: netmask: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: GW: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: DNS1: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: DNS2: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use remote cfg: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: URL: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL server cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http ruuvi: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http_stat: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat user: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat pass: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat: use SSL server cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use mqtt: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt disable retained messages: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/AA:BB:CC:DD:EE:FF/"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt client id: AA:BB:CC:DD:EE:FF"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt password: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt: use SSL server cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_default"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth user: Admin"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth API key: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth API key (RW): ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Auto update cycle: regular"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Auto update weekdays_bitmask: 0x7f"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Auto update interval: 00:00..24:00"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Auto update TZ: UTC+3"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: NTP: Use: yes"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: NTP: Use DHCP: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: NTP: Server1: time.google.com"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: NTP: Server2: time.cloudflare.com"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: NTP: Server3: time.nist.gov"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: NTP: Server4: pool.ntp.org"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use company id filter: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: company id: 0x0499"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan coded phy: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan 1mbit/phy: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan extended payload: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan channel 37: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan channel 38: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan filter: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: coordinates: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: SSID: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: password: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: ssid_len: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: channel: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: auth_mode: OPEN"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: ssid_hidden: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: max_connections: 4"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: beacon_interval: 100"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_settings: bandwidth: 20MHz"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_settings: IP: 10.10.0.1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_settings: GW: 10.10.0.1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_settings: Netmask: 255.255.255.0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: SSID:'', password:'********'"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: scan_method: Fast"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Use BSSID: false"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Channel: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Listen interval: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Sort method: by RSSI"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Fast scan: min RSSI: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Fast scan: weakest auth mode: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Capable: false"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_config: Protected Management Frame: Required: false"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Power save: NONE"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_sta_settings: Use Static IP: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: Hostname: RuuviGatewayAABB"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: fw_ver: v1.10.0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: nrf52_fw_ver: v0.7.2"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestGwCfg, gw_cfg_print_to_log_default_with_http_custom) // NOLINT
+{
+    gw_cfg_t gw_cfg = get_gateway_config_default();
+
+    gw_cfg.ruuvi_cfg.http.use_http_ruuvi           = false;
+    gw_cfg.ruuvi_cfg.http.use_http                 = true;
+    gw_cfg.ruuvi_cfg.http.http_use_ssl_client_cert = true;
+    gw_cfg.ruuvi_cfg.http.http_use_ssl_server_cert = false;
+    snprintf(gw_cfg.ruuvi_cfg.http.http_url.buf, sizeof(gw_cfg.ruuvi_cfg.http.http_url.buf), "http://my_server1.com");
+    gw_cfg.ruuvi_cfg.http.data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI;
+    gw_cfg.ruuvi_cfg.http.auth_type   = GW_CFG_HTTP_AUTH_TYPE_NONE;
+
+    esp_log_wrapper_clear();
+
+    gw_cfg_log(&gw_cfg, "Gateway SETTINGS", true);
+
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS:"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: Hostname: RuuviGatewayAABB"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 fw ver: v1.10.0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 WiFi MAC ADDR: AA:BB:CC:DD:EE:11"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 Eth MAC ADDR: AA:BB:CC:DD:EE:22"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage_ready: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: yes"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: netmask: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: GW: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: DNS1: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: DNS2: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use remote cfg: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: URL: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL server cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http ruuvi: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http url: http://my_server1.com"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http data format: ruuvi"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http auth_type: none"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http: use SSL client cert: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http: use SSL server cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http_stat: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat user: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat pass: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat: use SSL server cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use mqtt: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt disable retained messages: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/AA:BB:CC:DD:EE:FF/"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt client id: AA:BB:CC:DD:EE:FF"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt password: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_default"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth user: Admin"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
@@ -376,6 +708,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_no) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage_ready: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
@@ -386,6 +719,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_no) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use remote cfg: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: URL: http://my_server1.com"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 10"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http ruuvi: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 0"));
@@ -393,6 +728,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_no) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat user: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat pass: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use mqtt: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt disable retained messages: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
@@ -402,6 +739,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_no) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt client id: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt password: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_default"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth user: Admin"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
@@ -486,6 +825,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_basic) // NOLI
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage_ready: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
@@ -498,6 +838,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_basic) // NOLI
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: basic"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth user: user1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth pass: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 20"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http ruuvi: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 0"));
@@ -505,6 +847,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_basic) // NOLI
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat user: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat pass: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use mqtt: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt disable retained messages: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
@@ -514,6 +858,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_basic) // NOLI
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt client id: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt password: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_default"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth user: Admin"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
@@ -594,6 +940,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_bearer) // NOL
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage_ready: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
@@ -605,6 +952,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_bearer) // NOL
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: URL: https://my_server1.com"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: bearer"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth bearer token: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 30"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http ruuvi: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 0"));
@@ -612,6 +961,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_bearer) // NOL
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat user: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat pass: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use mqtt: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt disable retained messages: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
@@ -621,6 +972,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_bearer) // NOL
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt client id: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt password: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_default"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth user: Admin"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
@@ -695,6 +1048,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_beta_tester_and_
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage_ready: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
@@ -705,6 +1059,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_beta_tester_and_
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use remote cfg: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: URL: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http ruuvi: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 0"));
@@ -712,6 +1068,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_beta_tester_and_
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat user: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat pass: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use mqtt: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt disable retained messages: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
@@ -721,6 +1079,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_beta_tester_and_
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt client id: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt password: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_default"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth user: Admin"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
@@ -794,6 +1154,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_manual) // NOLIN
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage_ready: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
@@ -804,6 +1165,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_manual) // NOLIN
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use remote cfg: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: URL: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http ruuvi: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 0"));
@@ -811,6 +1174,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_manual) // NOLIN
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat user: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat pass: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use mqtt: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt disable retained messages: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
@@ -820,6 +1185,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_manual) // NOLIN
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt client id: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt password: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_default"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth user: Admin"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
@@ -893,6 +1260,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_invalid) // NOLI
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage_ready: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
@@ -903,6 +1271,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_invalid) // NOLI
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use remote cfg: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: URL: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http ruuvi: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 0"));
@@ -910,6 +1280,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_invalid) // NOLI
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat user: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat pass: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use mqtt: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt disable retained messages: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
@@ -919,6 +1291,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_invalid) // NOLI
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt client id: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt password: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_default"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth user: Admin"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
@@ -998,6 +1372,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_ntp_changed) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage_ready: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
@@ -1008,6 +1383,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_ntp_changed) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use remote cfg: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: URL: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http ruuvi: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 0"));
@@ -1015,6 +1392,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_ntp_changed) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat user: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat pass: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use mqtt: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt disable retained messages: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
@@ -1024,6 +1403,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_ntp_changed) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt client id: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt password: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_default"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth user: Admin"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
@@ -1100,6 +1481,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_scan_filter_1) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage_ready: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
@@ -1110,6 +1492,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_scan_filter_1) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use remote cfg: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: URL: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http ruuvi: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 0"));
@@ -1117,6 +1501,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_scan_filter_1) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat user: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat pass: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use mqtt: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt disable retained messages: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
@@ -1126,6 +1512,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_scan_filter_1) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt client id: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt password: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_default"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth user: Admin"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
@@ -1205,6 +1593,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_scan_filter_2) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage_ready: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
@@ -1215,6 +1604,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_scan_filter_2) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use remote cfg: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: URL: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http ruuvi: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 0"));
@@ -1222,6 +1613,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_scan_filter_2) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat url: " RUUVI_GATEWAY_HTTP_STATUS_URL));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat user: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat pass: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http_stat: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use mqtt: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt disable retained messages: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
@@ -1231,6 +1624,8 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_scan_filter_2) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt client id: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt password: ********"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt: use SSL server cert: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth type: lan_auth_default"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth user: Admin"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: LAN auth pass: ********"));
