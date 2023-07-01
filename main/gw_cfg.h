@@ -116,6 +116,8 @@ typedef struct ruuvi_gw_cfg_mqtt_t
 {
     bool                          use_mqtt;
     bool                          mqtt_disable_retained_messages;
+    bool                          use_ssl_client_cert;
+    bool                          use_ssl_server_cert;
     ruuvi_gw_cfg_mqtt_transport_t mqtt_transport;
     ruuvi_gw_cfg_mqtt_server_t    mqtt_server;
     uint16_t                      mqtt_port;
@@ -188,6 +190,8 @@ typedef uint16_t gw_cfg_remote_refresh_interval_minutes_t;
 typedef struct ruuvi_gw_cfg_remote_t
 {
     bool                                     use_remote_cfg;
+    bool                                     use_ssl_client_cert;
+    bool                                     use_ssl_server_cert;
     ruuvi_gw_cfg_http_url_t                  url;
     gw_cfg_http_auth_type_e                  auth_type;
     ruuvi_gw_cfg_http_auth_t                 auth;
@@ -207,6 +211,8 @@ typedef struct ruuvi_gw_cfg_http_t
 {
     bool                      use_http_ruuvi;
     bool                      use_http;
+    bool                      http_use_ssl_client_cert;
+    bool                      http_use_ssl_server_cert;
     ruuvi_gw_cfg_http_url_t   http_url;
     gw_cfg_http_data_format_e data_format;
     gw_cfg_http_auth_type_e   auth_type;
@@ -216,6 +222,8 @@ typedef struct ruuvi_gw_cfg_http_t
 typedef struct ruuvi_gw_cfg_http_stat_t
 {
     bool                         use_http_stat;
+    bool                         http_stat_use_ssl_client_cert;
+    bool                         http_stat_use_ssl_server_cert;
     ruuvi_gw_cfg_http_url_t      http_stat_url;
     ruuvi_gw_cfg_http_user_t     http_stat_user;
     ruuvi_gw_cfg_http_password_t http_stat_pass;

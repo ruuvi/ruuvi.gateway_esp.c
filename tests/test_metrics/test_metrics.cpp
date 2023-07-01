@@ -355,6 +355,18 @@ crc32_le(uint32_t crc, uint8_t const* buf, uint32_t len)
     return 0xAABBCCDD;
 }
 
+bool
+gw_cfg_storage_check(void)
+{
+    return false;
+}
+
+bool
+gw_cfg_storage_check_file(const char* const p_file_name)
+{
+    return false;
+}
+
 } // extern "C"
 
 #define TEST_CHECK_LOG_RECORD(level_, msg_) ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("metrics", level_, msg_)

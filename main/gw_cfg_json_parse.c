@@ -288,6 +288,14 @@ gw_cfg_json_parse_remote(const cJSON* const p_json_root, ruuvi_gw_cfg_remote_t* 
                 break;
         }
     }
+    if (!gw_cfg_json_get_bool_val(p_json_root, "remote_cfg_use_ssl_client_cert", &p_gw_cfg_remote->use_ssl_client_cert))
+    {
+        LOG_WARN("Can't find key '%s' in config-json", "remote_cfg_use_ssl_client_cert");
+    }
+    if (!gw_cfg_json_get_bool_val(p_json_root, "remote_cfg_use_ssl_server_cert", &p_gw_cfg_remote->use_ssl_server_cert))
+    {
+        LOG_WARN("Can't find key '%s' in config-json", "remote_cfg_use_ssl_server_cert");
+    }
     if (!gw_cfg_json_get_uint16_val(
             p_json_root,
             "remote_cfg_refresh_interval_minutes",
@@ -421,6 +429,23 @@ gw_cfg_json_parse_http(const cJSON* const p_json_root, ruuvi_gw_cfg_http_t* cons
             p_gw_cfg_http->use_http_ruuvi = true;
             p_gw_cfg_http->use_http       = false;
         }
+        if (p_gw_cfg_http->use_http)
+        {
+            if (!gw_cfg_json_get_bool_val(
+                    p_json_root,
+                    "http_use_ssl_client_cert",
+                    &p_gw_cfg_http->http_use_ssl_client_cert))
+            {
+                LOG_WARN("Can't find key '%s' in config-json", "http_use_ssl_client_cert");
+            }
+            if (!gw_cfg_json_get_bool_val(
+                    p_json_root,
+                    "http_use_ssl_server_cert",
+                    &p_gw_cfg_http->http_use_ssl_server_cert))
+            {
+                LOG_WARN("Can't find key '%s' in config-json", "http_use_ssl_server_cert");
+            }
+        }
     }
 }
 
@@ -454,6 +479,23 @@ gw_cfg_json_parse_http_stat(const cJSON* const p_json_root, ruuvi_gw_cfg_http_st
             sizeof(p_gw_cfg_http_stat->http_stat_pass.buf)))
     {
         LOG_INFO("Can't find key '%s' in config-json, leave the previous value unchanged", "http_stat_pass");
+    }
+    if (p_gw_cfg_http_stat->use_http_stat)
+    {
+        if (!gw_cfg_json_get_bool_val(
+                p_json_root,
+                "http_stat_use_ssl_client_cert",
+                &p_gw_cfg_http_stat->http_stat_use_ssl_client_cert))
+        {
+            LOG_WARN("Can't find key '%s' in config-json", "http_stat_use_ssl_client_cert");
+        }
+        if (!gw_cfg_json_get_bool_val(
+                p_json_root,
+                "http_stat_use_ssl_server_cert",
+                &p_gw_cfg_http_stat->http_stat_use_ssl_server_cert))
+        {
+            LOG_WARN("Can't find key '%s' in config-json", "http_stat_use_ssl_server_cert");
+        }
     }
 }
 
@@ -550,6 +592,17 @@ gw_cfg_json_parse_mqtt(const cJSON* const p_json_root, ruuvi_gw_cfg_mqtt_t* cons
             sizeof(p_gw_cfg_mqtt->mqtt_pass.buf)))
     {
         LOG_INFO("Can't find key '%s' in config-json, leave the previous value unchanged", "mqtt_pass");
+    }
+    if (p_gw_cfg_mqtt->use_mqtt)
+    {
+        if (!gw_cfg_json_get_bool_val(p_json_root, "mqtt_use_ssl_client_cert", &p_gw_cfg_mqtt->use_ssl_client_cert))
+        {
+            LOG_WARN("Can't find key '%s' in config-json", "mqtt_use_ssl_client_cert");
+        }
+        if (!gw_cfg_json_get_bool_val(p_json_root, "mqtt_use_ssl_server_cert", &p_gw_cfg_mqtt->use_ssl_server_cert))
+        {
+            LOG_WARN("Can't find key '%s' in config-json", "mqtt_use_ssl_server_cert");
+        }
     }
 }
 

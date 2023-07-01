@@ -83,6 +83,12 @@ endif()
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(ruuvi_gateway_esp)
 
+add_custom_target(check_json_schemas
+        COMMAND ${CMAKE_COMMAND} -E echo "Running Json Schemas checks..."
+        COMMAND ${CMAKE_SOURCE_DIR}/schemas/check_schemas.sh
+        COMMENT "This target executes checks for Json Schemas."
+)
+
 target_compile_definitions(__idf_main PUBLIC
         RUUVI_ESP
         GW_GWUI_PARTITION="${GW_GWUI_PARTITION}"

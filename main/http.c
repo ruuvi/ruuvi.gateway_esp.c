@@ -30,6 +30,7 @@
 #include "esp_tls.h"
 #include "snprintf_with_esp_err_desc.h"
 #include "gw_cfg_default.h"
+#include "gw_cfg_storage.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -220,6 +221,9 @@ http_init_client_config(
     const ruuvi_gw_cfg_http_url_t* const      p_url,
     const ruuvi_gw_cfg_http_user_t* const     p_user,
     const ruuvi_gw_cfg_http_password_t* const p_password,
+    const char* const                         p_server_cert,
+    const char* const                         p_client_cert,
+    const char* const                         p_client_key,
     void* const                               p_user_data)
 {
     LOG_DBG("p_user_data=%p", p_user_data);
@@ -253,9 +257,9 @@ http_init_client_config(
         .auth_type = ('\0' != p_http_client_config->http_user.buf[0]) ? HTTP_AUTH_TYPE_BASIC : HTTP_AUTH_TYPE_NONE,
         .path      = NULL,
         .query     = NULL,
-        .cert_pem  = NULL,
-        .client_cert_pem             = NULL,
-        .client_key_pem              = NULL,
+        .cert_pem  = p_server_cert,
+        .client_cert_pem             = p_client_cert,
+        .client_key_pem              = p_client_key,
         .user_agent                  = NULL,
         .method                      = HTTP_METHOD_POST,
         .timeout_ms                  = 0,
@@ -455,6 +459,18 @@ http_send_async(http_async_info_t* const p_http_async_info)
     {
         LOG_ERR_ESP(err, "### HTTP POST to URL=%s: request failed", p_http_config->url);
         LOG_DBG("esp_http_client_cleanup");
+        if (NULL != p_http_async_info->http_client_config.esp_http_client_config.cert_pem)
+        {
+            os_free(p_http_async_info->http_client_config.esp_http_client_config.cert_pem);
+        }
+        if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem)
+        {
+            os_free(p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem);
+        }
+        if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_key_pem)
+        {
+            os_free(p_http_async_info->http_client_config.esp_http_client_config.client_key_pem);
+        }
         esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
         p_http_async_info->p_http_client_handle = NULL;
         return false;
@@ -499,7 +515,9 @@ http_send_advs_internal(
     const bool                       flag_use_timestamps,
     const bool                       flag_post_to_ruuvi,
     const ruuvi_gw_cfg_http_t* const p_cfg_http,
-    void* const                      p_user_data)
+    void* const                      p_user_data,
+    const bool                       use_ssl_client_cert,
+    const bool                       use_ssl_server_cert)
 {
     p_http_async_info->recipient = flag_post_to_ruuvi ? HTTP_POST_RECIPIENT_ADVS1 : HTTP_POST_RECIPIENT_ADVS2;
 
@@ -509,7 +527,29 @@ http_send_advs_internal(
         return false;
     }
 
-    LOG_DBG("http_init_client_config: URL=%s, auth_type=%d", p_cfg_http->http_url.buf, p_cfg_http->auth_type);
+#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
+    switch (p_cfg_http->auth_type)
+    {
+        case GW_CFG_HTTP_AUTH_TYPE_NONE:
+            LOG_DBG("http_init_client_config: URL=%s, auth_type=%s", p_cfg_http->http_url.buf, "None");
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_BASIC:
+            LOG_DBG("http_init_client_config: URL=%s, auth_type=%s", p_cfg_http->http_url.buf, "Basic");
+            LOG_DBG(
+                "http_init_client_config: user=%s, pass=%s",
+                p_cfg_http->auth.auth_basic.user.buf,
+                p_cfg_http->auth.auth_basic.password.buf);
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_BEARER:
+            LOG_DBG("http_init_client_config: URL=%s, auth_type=%s", p_cfg_http->http_url.buf, "Bearer");
+            LOG_DBG("http_init_client_config: Bearer token: %s", p_cfg_http->auth.auth_bearer.token.buf);
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
+            LOG_DBG("http_init_client_config: URL=%s, auth_type=%s", p_cfg_http->http_url.buf, "Token");
+            LOG_DBG("http_init_client_config: Token: %s", p_cfg_http->auth.auth_token.token.buf);
+            break;
+    }
+#endif
 
     const ruuvi_gw_cfg_http_user_t*     p_http_user = NULL;
     const ruuvi_gw_cfg_http_password_t* p_http_pass = NULL;
@@ -531,7 +571,28 @@ http_send_advs_internal(
         "%s",
         flag_post_to_ruuvi ? RUUVI_GATEWAY_HTTP_DEFAULT_URL : p_cfg_http->http_url.buf);
 
-    http_init_client_config(&p_http_async_info->http_client_config, p_http_url, p_http_user, p_http_pass, p_user_data);
+    str_buf_t str_buf_server_cert_http = str_buf_init_null();
+    str_buf_t str_buf_client_cert      = str_buf_init_null();
+    str_buf_t str_buf_client_key       = str_buf_init_null();
+    if (use_ssl_client_cert)
+    {
+        str_buf_client_cert = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT);
+        str_buf_client_key  = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY);
+    }
+    if (use_ssl_server_cert)
+    {
+        str_buf_server_cert_http = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT);
+    }
+
+    http_init_client_config(
+        &p_http_async_info->http_client_config,
+        p_http_url,
+        p_http_user,
+        p_http_pass,
+        str_buf_server_cert_http.buf,
+        str_buf_client_cert.buf,
+        str_buf_client_key.buf,
+        p_user_data);
 
     os_free(p_http_url);
 
@@ -580,6 +641,18 @@ http_send_advs_internal(
     if (!http_send_async(p_http_async_info))
     {
         LOG_DBG("esp_http_client_cleanup");
+        if (NULL != p_http_async_info->http_client_config.esp_http_client_config.cert_pem)
+        {
+            os_free(p_http_async_info->http_client_config.esp_http_client_config.cert_pem);
+        }
+        if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem)
+        {
+            os_free(p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem);
+        }
+        if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_key_pem)
+        {
+            os_free(p_http_async_info->http_client_config.esp_http_client_config.client_key_pem);
+        }
         esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
         p_http_async_info->p_http_client_handle = NULL;
         cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
@@ -608,6 +681,8 @@ http_send_advs(
     }
     p_http_async_info->p_task = xTaskGetCurrentTaskHandle();
 
+    const bool use_ssl_client_cert = (!flag_post_to_ruuvi) && p_cfg_http->http_use_ssl_client_cert;
+    const bool use_ssl_server_cert = (!flag_post_to_ruuvi) && p_cfg_http->http_use_ssl_server_cert;
     if (!http_send_advs_internal(
             p_http_async_info,
             p_reports,
@@ -615,7 +690,9 @@ http_send_advs(
             flag_use_timestamps,
             flag_post_to_ruuvi,
             p_cfg_http,
-            p_user_data))
+            p_user_data,
+            use_ssl_client_cert,
+            use_ssl_server_cert))
     {
         LOG_DBG("os_sema_signal: p_http_async_sema");
         os_sema_signal(p_http_async_info->p_http_async_sema);
@@ -632,7 +709,9 @@ http_check_post_advs_internal3(
     const gw_cfg_http_auth_type_e auth_type,
     const char* const             p_user,
     const char* const             p_pass,
-    const TimeUnitsSeconds_t      timeout_seconds)
+    const TimeUnitsSeconds_t      timeout_seconds,
+    const bool                    use_ssl_client_cert,
+    const bool                    use_ssl_server_cert)
 {
     if (strlen(p_url) >= sizeof(p_cfg_http->http_url.buf))
     {
@@ -694,7 +773,9 @@ http_check_post_advs_internal3(
             gw_cfg_get_ntp_use(),
             false,
             p_cfg_http,
-            &p_http_async_info->http_post_cb_info))
+            &p_http_async_info->http_post_cb_info,
+            use_ssl_client_cert,
+            use_ssl_server_cert))
     {
         LOG_ERR("http_send_advs failed");
         return http_server_resp_500();
@@ -730,6 +811,18 @@ http_check_post_advs_internal3(
     }
 
     LOG_DBG("esp_http_client_cleanup");
+    if (NULL != p_http_async_info->http_client_config.esp_http_client_config.cert_pem)
+    {
+        os_free(p_http_async_info->http_client_config.esp_http_client_config.cert_pem);
+    }
+    if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem)
+    {
+        os_free(p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem);
+    }
+    if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_key_pem)
+    {
+        os_free(p_http_async_info->http_client_config.esp_http_client_config.client_key_pem);
+    }
     esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
     p_http_async_info->p_http_client_handle = NULL;
     cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
@@ -744,7 +837,9 @@ http_check_post_advs_internal2(
     const gw_cfg_http_auth_type_e auth_type,
     const char* const             p_user,
     const char* const             p_pass,
-    const TimeUnitsSeconds_t      timeout_seconds)
+    const TimeUnitsSeconds_t      timeout_seconds,
+    const bool                    use_ssl_client_cert,
+    const bool                    use_ssl_server_cert)
 {
     ruuvi_gw_cfg_http_t* p_cfg_http = os_malloc(sizeof(*p_cfg_http));
     if (NULL == p_cfg_http)
@@ -760,7 +855,9 @@ http_check_post_advs_internal2(
         auth_type,
         p_user,
         p_pass,
-        timeout_seconds);
+        timeout_seconds,
+        use_ssl_client_cert,
+        use_ssl_server_cert);
 
     os_free(p_cfg_http);
 
@@ -773,7 +870,9 @@ http_check_post_advs(
     const gw_cfg_http_auth_type_e auth_type,
     const char* const             p_user,
     const char* const             p_pass,
-    const TimeUnitsSeconds_t      timeout_seconds)
+    const TimeUnitsSeconds_t      timeout_seconds,
+    const bool                    use_ssl_client_cert,
+    const bool                    use_ssl_server_cert)
 {
     http_async_info_t* const p_http_async_info = get_http_async_info();
     LOG_DBG("os_sema_wait_immediate: p_http_async_sema");
@@ -786,8 +885,15 @@ http_check_post_advs(
     }
     p_http_async_info->p_task = xTaskGetCurrentTaskHandle();
 
-    const http_server_resp_t resp
-        = http_check_post_advs_internal2(p_http_async_info, p_url, auth_type, p_user, p_pass, timeout_seconds);
+    const http_server_resp_t resp = http_check_post_advs_internal2(
+        p_http_async_info,
+        p_url,
+        auth_type,
+        p_user,
+        p_pass,
+        timeout_seconds,
+        use_ssl_client_cert,
+        use_ssl_server_cert);
 
     LOG_DBG("os_sema_signal: p_http_async_sema");
     os_sema_signal(p_http_async_info->p_http_async_sema);
@@ -801,7 +907,9 @@ http_send_statistics_internal(
     const http_json_statistics_info_t* const p_stat_info,
     const adv_report_table_t* const          p_reports,
     const ruuvi_gw_cfg_http_stat_t* const    p_cfg_http_stat,
-    void* const                              p_user_data)
+    void* const                              p_user_data,
+    const bool                               use_ssl_client_cert,
+    const bool                               use_ssl_server_cert)
 {
     p_http_async_info->recipient = HTTP_POST_RECIPIENT_STATS;
     p_http_async_info->cjson_str = cjson_wrap_str_null();
@@ -815,11 +923,27 @@ http_send_statistics_internal(
     p_http_async_info->http_client_config.http_user = p_cfg_http_stat->http_stat_user;
     p_http_async_info->http_client_config.http_pass = p_cfg_http_stat->http_stat_pass;
 
+    str_buf_t str_buf_server_cert_stat = str_buf_init_null();
+    str_buf_t str_buf_client_cert      = str_buf_init_null();
+    str_buf_t str_buf_client_key       = str_buf_init_null();
+    if (use_ssl_client_cert)
+    {
+        str_buf_client_cert = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_STAT_CLI_CERT);
+        str_buf_client_key  = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_STAT_CLI_KEY);
+    }
+    if (use_ssl_server_cert)
+    {
+        str_buf_server_cert_stat = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_STAT_SRV_CERT);
+    }
+
     http_init_client_config(
         &p_http_async_info->http_client_config,
         &p_cfg_http_stat->http_stat_url,
         &p_cfg_http_stat->http_stat_user,
         &p_cfg_http_stat->http_stat_pass,
+        str_buf_server_cert_stat.buf,
+        str_buf_client_cert.buf,
+        str_buf_client_key.buf,
         p_user_data);
 
     p_http_async_info->p_http_client_handle = esp_http_client_init(
@@ -836,6 +960,18 @@ http_send_statistics_internal(
     if (!http_send_async(p_http_async_info))
     {
         LOG_DBG("esp_http_client_cleanup");
+        if (NULL != p_http_async_info->http_client_config.esp_http_client_config.cert_pem)
+        {
+            os_free(p_http_async_info->http_client_config.esp_http_client_config.cert_pem);
+        }
+        if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem)
+        {
+            os_free(p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem);
+        }
+        if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_key_pem)
+        {
+            os_free(p_http_async_info->http_client_config.esp_http_client_config.client_key_pem);
+        }
         esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
         p_http_async_info->p_http_client_handle = NULL;
         cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
@@ -849,7 +985,9 @@ http_send_statistics(
     const http_json_statistics_info_t* const p_stat_info,
     const adv_report_table_t* const          p_reports,
     const ruuvi_gw_cfg_http_stat_t* const    p_cfg_http_stat,
-    void* const                              p_user_data)
+    void* const                              p_user_data,
+    const bool                               use_ssl_client_cert,
+    const bool                               use_ssl_server_cert)
 {
     http_async_info_t* p_http_async_info = get_http_async_info();
     LOG_DBG("os_sema_wait_immediate: p_http_async_sema");
@@ -862,7 +1000,14 @@ http_send_statistics(
     }
     p_http_async_info->p_task = xTaskGetCurrentTaskHandle();
 
-    if (!http_send_statistics_internal(p_http_async_info, p_stat_info, p_reports, p_cfg_http_stat, p_user_data))
+    if (!http_send_statistics_internal(
+            p_http_async_info,
+            p_stat_info,
+            p_reports,
+            p_cfg_http_stat,
+            p_user_data,
+            use_ssl_client_cert,
+            use_ssl_server_cert))
     {
         LOG_DBG("os_sema_signal: p_http_async_sema");
         os_sema_signal(p_http_async_info->p_http_async_sema);
@@ -878,7 +1023,9 @@ http_check_post_stat_internal3(
     const char* const               p_url,
     const char* const               p_user,
     const char* const               p_pass,
-    const TimeUnitsSeconds_t        timeout_seconds)
+    const TimeUnitsSeconds_t        timeout_seconds,
+    const bool                      use_ssl_client_cert,
+    const bool                      use_ssl_server_cert)
 {
 
     if ((strlen(p_url) >= sizeof(p_cfg_http_stat->http_stat_url.buf))
@@ -903,7 +1050,9 @@ http_check_post_stat_internal3(
             p_stat_info,
             NULL,
             p_cfg_http_stat,
-            &p_http_async_info->http_post_cb_info))
+            &p_http_async_info->http_post_cb_info,
+            use_ssl_client_cert,
+            use_ssl_server_cert))
     {
         os_free(p_stat_info);
         LOG_ERR("http_send_statistics failed");
@@ -941,6 +1090,18 @@ http_check_post_stat_internal3(
     }
 
     LOG_DBG("esp_http_client_cleanup");
+    if (NULL != p_http_async_info->http_client_config.esp_http_client_config.cert_pem)
+    {
+        os_free(p_http_async_info->http_client_config.esp_http_client_config.cert_pem);
+    }
+    if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem)
+    {
+        os_free(p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem);
+    }
+    if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_key_pem)
+    {
+        os_free(p_http_async_info->http_client_config.esp_http_client_config.client_key_pem);
+    }
     esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
     p_http_async_info->p_http_client_handle = NULL;
     cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
@@ -954,7 +1115,9 @@ http_check_post_stat_internal2(
     const char* const        p_url,
     const char* const        p_user,
     const char* const        p_pass,
-    const TimeUnitsSeconds_t timeout_seconds)
+    const TimeUnitsSeconds_t timeout_seconds,
+    const bool               use_ssl_client_cert,
+    const bool               use_ssl_server_cert)
 {
     ruuvi_gw_cfg_http_stat_t* p_cfg_http_stat = os_malloc(sizeof(*p_cfg_http_stat));
     if (NULL == p_cfg_http_stat)
@@ -963,8 +1126,15 @@ http_check_post_stat_internal2(
         return http_server_resp_500();
     }
 
-    const http_server_resp_t resp
-        = http_check_post_stat_internal3(p_http_async_info, p_cfg_http_stat, p_url, p_user, p_pass, timeout_seconds);
+    const http_server_resp_t resp = http_check_post_stat_internal3(
+        p_http_async_info,
+        p_cfg_http_stat,
+        p_url,
+        p_user,
+        p_pass,
+        timeout_seconds,
+        use_ssl_client_cert,
+        use_ssl_server_cert);
 
     os_free(p_cfg_http_stat);
 
@@ -976,7 +1146,9 @@ http_check_post_stat(
     const char* const        p_url,
     const char* const        p_user,
     const char* const        p_pass,
-    const TimeUnitsSeconds_t timeout_seconds)
+    const TimeUnitsSeconds_t timeout_seconds,
+    const bool               use_ssl_client_cert,
+    const bool               use_ssl_server_cert)
 {
     http_async_info_t* const p_http_async_info = get_http_async_info();
     LOG_DBG("os_sema_wait_immediate: p_http_async_sema");
@@ -994,7 +1166,9 @@ http_check_post_stat(
         p_url,
         p_user,
         p_pass,
-        timeout_seconds);
+        timeout_seconds,
+        use_ssl_client_cert,
+        use_ssl_server_cert);
 
     LOG_DBG("os_sema_signal: p_http_async_sema");
     os_sema_signal(p_http_async_info->p_http_async_sema);
@@ -1164,6 +1338,18 @@ http_async_poll(void)
     }
 
     LOG_DBG("esp_http_client_cleanup");
+    if (NULL != p_http_async_info->http_client_config.esp_http_client_config.cert_pem)
+    {
+        os_free(p_http_async_info->http_client_config.esp_http_client_config.cert_pem);
+    }
+    if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem)
+    {
+        os_free(p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem);
+    }
+    if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_key_pem)
+    {
+        os_free(p_http_async_info->http_client_config.esp_http_client_config.client_key_pem);
+    }
     esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
     p_http_async_info->p_http_client_handle = NULL;
 
@@ -1255,6 +1441,7 @@ http_download_event_handler(esp_http_client_event_t* p_evt)
                     (http_resp_code_e)esp_http_client_get_status_code(p_cb_info->http_handle),
                     p_cb_info->p_user_data))
             {
+                LOG_ERR("HTTP_EVENT_ON_DATA: cb_on_data failed");
                 return ESP_FAIL;
             }
             p_cb_info->offset += p_evt->data_len;
@@ -1414,7 +1601,10 @@ http_download_create_config(
     const esp_http_client_auth_type_t     http_client_auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
     http_event_handle_cb                  p_event_handler,
-    void* const                           p_cb_info)
+    void* const                           p_cb_info,
+    const char* const                     p_server_cert,
+    const char* const                     p_client_cert,
+    const char* const                     p_client_key)
 {
     esp_http_client_config_t* p_http_config = os_calloc(1, sizeof(*p_http_config));
     if (NULL == p_http_config)
@@ -1433,9 +1623,9 @@ http_download_create_config(
 
     p_http_config->path                        = NULL;
     p_http_config->query                       = NULL;
-    p_http_config->cert_pem                    = NULL;
-    p_http_config->client_cert_pem             = NULL;
-    p_http_config->client_key_pem              = NULL;
+    p_http_config->cert_pem                    = p_server_cert;
+    p_http_config->client_cert_pem             = p_client_cert;
+    p_http_config->client_key_pem              = p_client_key;
     p_http_config->user_agent                  = NULL;
     p_http_config->method                      = http_method;
     p_http_config->timeout_ms                  = (int)(timeout_seconds * TIME_UNITS_MS_PER_SECOND);
@@ -1507,7 +1697,10 @@ http_download_with_auth(
         http_client_auth_type,
         p_http_auth,
         &http_download_event_handler,
-        p_cb_info);
+        p_cb_info,
+        p_param->p_server_cert,
+        p_param->p_client_cert,
+        p_param->p_client_key);
     if (NULL == p_http_config)
     {
         LOG_ERR("Can't allocate memory for http_config");
@@ -1645,7 +1838,10 @@ http_check_with_auth(
         http_client_auth_type,
         p_http_auth,
         &http_check_event_handler,
-        p_cb_info);
+        p_cb_info,
+        p_param->p_server_cert,
+        p_param->p_client_cert,
+        p_param->p_client_key);
     if (NULL == p_http_config)
     {
         LOG_ERR("Can't allocate memory for http_config");
@@ -1789,6 +1985,18 @@ http_abort_any_req_during_processing(void)
         }
 
         LOG_DBG("esp_http_client_cleanup");
+        if (NULL != p_http_async_info->http_client_config.esp_http_client_config.cert_pem)
+        {
+            os_free(p_http_async_info->http_client_config.esp_http_client_config.cert_pem);
+        }
+        if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem)
+        {
+            os_free(p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem);
+        }
+        if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_key_pem)
+        {
+            os_free(p_http_async_info->http_client_config.esp_http_client_config.client_key_pem);
+        }
         esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
         p_http_async_info->p_http_client_handle = NULL;
         cjson_wrap_free_json_str(&p_http_async_info->cjson_str);

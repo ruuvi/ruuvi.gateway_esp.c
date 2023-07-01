@@ -147,6 +147,14 @@ ruuvi_gw_cfg_remote_cmp(const ruuvi_gw_cfg_remote_t* const p_remote1, const ruuv
     {
         return false;
     }
+    if (p_remote1->use_ssl_client_cert != p_remote2->use_ssl_client_cert)
+    {
+        return false;
+    }
+    if (p_remote1->use_ssl_server_cert != p_remote2->use_ssl_server_cert)
+    {
+        return false;
+    }
     return true;
 }
 
@@ -158,6 +166,14 @@ ruuvi_gw_cfg_http_cmp(const ruuvi_gw_cfg_http_t* const p_http1, const ruuvi_gw_c
         return false;
     }
     if (p_http1->use_http != p_http2->use_http)
+    {
+        return false;
+    }
+    if (p_http1->http_use_ssl_client_cert != p_http2->http_use_ssl_client_cert)
+    {
+        return false;
+    }
+    if (p_http1->http_use_ssl_server_cert != p_http2->http_use_ssl_server_cert)
     {
         return false;
     }
@@ -212,6 +228,14 @@ ruuvi_gw_cfg_http_stat_cmp(
     {
         return false;
     }
+    if (p_http_stat1->http_stat_use_ssl_client_cert != p_http_stat2->http_stat_use_ssl_client_cert)
+    {
+        return false;
+    }
+    if (p_http_stat1->http_stat_use_ssl_server_cert != p_http_stat2->http_stat_use_ssl_server_cert)
+    {
+        return false;
+    }
     if (0 != strcmp(p_http_stat1->http_stat_url.buf, p_http_stat2->http_stat_url.buf))
     {
         return false;
@@ -263,6 +287,14 @@ ruuvi_gw_cfg_mqtt_cmp(const ruuvi_gw_cfg_mqtt_t* const p_mqtt1, const ruuvi_gw_c
         return false;
     }
     if (0 != strcmp(p_mqtt1->mqtt_pass.buf, p_mqtt2->mqtt_pass.buf))
+    {
+        return false;
+    }
+    if (p_mqtt1->use_ssl_client_cert != p_mqtt2->use_ssl_client_cert)
+    {
+        return false;
+    }
+    if (p_mqtt1->use_ssl_server_cert != p_mqtt2->use_ssl_server_cert)
     {
         return false;
     }

@@ -16,6 +16,7 @@
 #include "os_task.h"
 #include "lwip/ip4_addr.h"
 #include "event_mgr.h"
+#include "gw_cfg_storage.h"
 
 using namespace std;
 
@@ -77,6 +78,21 @@ public:
     TestGwCfgBlob();
 
     ~TestGwCfgBlob() override;
+
+    bool m_flag_storage_ready { false };
+    bool m_flag_storage_http_cli_cert { false };
+    bool m_flag_storage_http_cli_key { false };
+    bool m_flag_storage_stat_cli_cert { false };
+    bool m_flag_storage_stat_cli_key { false };
+    bool m_flag_storage_mqtt_cli_cert { false };
+    bool m_flag_storage_mqtt_cli_key { false };
+    bool m_flag_storage_remote_cfg_cli_cert { false };
+    bool m_flag_storage_remote_cfg_cli_key { false };
+
+    bool m_flag_storage_http_srv_cert { false };
+    bool m_flag_storage_stat_srv_cert { false };
+    bool m_flag_storage_mqtt_srv_cert { false };
+    bool m_flag_storage_remote_cfg_srv_cert { false };
 };
 
 TestGwCfgBlob::TestGwCfgBlob()
@@ -151,6 +167,67 @@ wifi_manager_cb_save_wifi_config_sta(const wifiman_config_sta_t* const p_cfg_sta
 void
 event_mgr_notify(const event_mgr_ev_e event)
 {
+}
+
+bool
+gw_cfg_storage_check(void)
+{
+    return g_pTestClass->m_flag_storage_ready;
+}
+
+bool
+gw_cfg_storage_check_file(const char* const p_file_name)
+{
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_cli_cert;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_cli_key;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_STAT_CLI_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_stat_cli_cert;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_STAT_CLI_KEY, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_stat_cli_key;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_MQTT_CLI_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_mqtt_cli_cert;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_MQTT_CLI_KEY, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_mqtt_cli_key;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_remote_cfg_cli_cert;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_remote_cfg_cli_key;
+    }
+
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_srv_cert;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_STAT_SRV_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_stat_srv_cert;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_MQTT_SRV_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_mqtt_srv_cert;
+    }
+    if (0 == strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT, p_file_name))
+    {
+        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_remote_cfg_srv_cert;
+    }
+    return false;
 }
 
 } // extern "C"
