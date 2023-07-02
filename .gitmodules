@@ -28,3 +28,9 @@
 [submodule "tests/lwip/lwip"]
 	path = tests/lwip/lwip
 	url = https://github.com/ruuvi/lwip.git
+[submodule "libraries/embedded-i2c-sen5x"]
+	path = libraries/embedded-i2c-sen5x
+	url = https://github.com/Sensirion/embedded-i2c-sen5x.git
+[submodule "libraries/embedded-i2c-scd4x"]
+	path = libraries/embedded-i2c-scd4x
+	url = https://github.com/Sensirion/embedded-i2c-scd4x.git
