@@ -43,6 +43,7 @@
 #include "reset_info.h"
 #include "network_subsystem.h"
 #include "gw_cfg_storage.h"
+#include "i2c_task.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -548,6 +549,8 @@ main_task_init(void)
     main_task_subscribe_events();
 
     time_task_init();
+
+    i2c_task_init();
 
     const force_start_wifi_hotspot_e force_start_wifi_hotspot = settings_read_flag_force_start_wifi_hotspot();
 

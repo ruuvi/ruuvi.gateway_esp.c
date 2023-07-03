@@ -55,6 +55,8 @@ idf_component_register(
             http.h
             http_json.c
             http_json.h
+            i2c_task.c
+            i2c_task.h
             json_helper.c
             json_helper.h
             json_ruuvi.c
@@ -105,6 +107,11 @@ idf_component_register(
             ruuvi_gateway.h
             ruuvi_nvs.c
             ruuvi_nvs.h
+            sen5x_wrap.c
+            sen5x_wrap.h
+            scd4x_wrap.c
+            scd4x_wrap.h
+            sensirion_i2c_hal.c
             settings.c
             time_str.c
             time_str.h
@@ -112,6 +119,16 @@ idf_component_register(
             time_task.h
             url_encode.c
             url_encode.h
+            ../libraries/embedded-i2c-sen5x/sen5x_i2c.c
+            ../libraries/embedded-i2c-sen5x/sen5x_i2c.h
+            ../libraries/embedded-i2c-sen5x/sensirion_common.c
+            ../libraries/embedded-i2c-sen5x/sensirion_common.h
+            ../libraries/embedded-i2c-sen5x/sensirion_config.h
+            ../libraries/embedded-i2c-sen5x/sensirion_i2c.c
+            ../libraries/embedded-i2c-sen5x/sensirion_i2c.h
+            ../libraries/embedded-i2c-sen5x/sensirion_i2c_hal.h
+            ../libraries/embedded-i2c-scd4x/scd4x_i2c.c
+            ../libraries/embedded-i2c-scd4x/scd4x_i2c.h
         REQUIRES
             app_update
             mdns
@@ -131,6 +148,11 @@ idf_component_register(
 target_compile_options(${COMPONENT_LIB} PRIVATE
         -Wstack-usage=180
         -fstack-usage
+)
+
+target_include_directories(${COMPONENT_LIB} PRIVATE
+        ../libraries/embedded-i2c-sen5x
+        ../libraries/embedded-i2c-scd4x
 )
 
 # panic_print_char is used in the same module where it is implemented,
