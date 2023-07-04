@@ -6,12 +6,17 @@
  */
 
 #include "scd4x_wrap.h"
+#include <math.h>
 #include "scd4x_i2c.h"
 #include "sensirion_common.h"
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
 #define SCD4X_WRAP_NUM_RETRIES (3)
+
+#define SCD4X_SCALE_FACTOR_CO2         (1)
+#define SCD4X_SCALE_FACTOR_TEMPERATURE (1000)
+#define SCD4X_SCALE_FACTOR_HUMIDITY    (1000)
 
 static const char* TAG = "SCD4X";
 
@@ -137,14 +142,22 @@ scd4x_wrap_read_measurement(scd4x_wrap_measurement_t* const p_measurement)
     {
         const int16_t error = scd4x_read_measurement(
             &p_measurement->co2,
-            &p_measurement->temperature,
-            &p_measurement->humidity);
+            &p_measurement->temperature_m_deg_c,
+            &p_measurement->humidity_m_percent_rh);
         if (NO_ERROR == error)
         {
             flag_success = true;
             break;
         }
         LOG_ERR("%s[retry=%d]: err=%d", "scd4x_read_measurement", i, error);
+    }
+    if (flag_success)
+    {
+        LOG_DBG(
+            "CO2: %u, Temperature: %d m°C, Humidity: %d mRH",
+            p_measurement->co2,
+            p_measurement->temperature_m_deg_c,
+            p_measurement->humidity_m_percent_rh);
     }
     return flag_success;
 }
@@ -168,7 +181,7 @@ scd4x_wrap_check(void)
         return false;
     }
 
-    scd4x_wrap_serial_num_t serial_num = {0};
+    scd4x_wrap_serial_num_t serial_num = { 0 };
     if (!scd4x_wrap_get_serial_number(&serial_num))
     {
         LOG_ERR("%s failed", "scd4x_wrap_get_serial_number");
@@ -178,4 +191,37 @@ scd4x_wrap_check(void)
     LOG_INFO("SCD4X: serial: 0x%04x%04x%04x", serial_num.serial_0, serial_num.serial_1, serial_num.serial_2);
 
     return true;
+}
+
+re_float
+scd4x_wrap_conv_raw_to_float_co2(const scd4x_wrap_raw_co2_t raw_co2)
+{
+    const re_float result = (float)raw_co2 / SCD4X_SCALE_FACTOR_CO2;
+    if ((result < RE_6_CO2_MIN) || (result > RE_6_CO2_MAX))
+    {
+        return NAN;
+    }
+    return result;
+}
+
+re_float
+scd4x_wrap_conv_raw_to_float_temperature(const scd4x_wrap_raw_temperature_m_deg_c_t temperature_m_deg_c)
+{
+    const re_float result = (float)temperature_m_deg_c / SCD4X_SCALE_FACTOR_TEMPERATURE;
+    if ((result < RE_6_TEMPERATURE_MIN) || (result > RE_6_TEMPERATURE_MAX))
+    {
+        return NAN;
+    }
+    return result;
+}
+
+re_float
+scd4x_wrap_conv_raw_to_float_humidity(const scd4x_wrap_raw_humidity_m_percent_rh_t humidity_m_percent_rh)
+{
+    const re_float result = (float)humidity_m_percent_rh / SCD4X_SCALE_FACTOR_HUMIDITY;
+    if ((result < RE_6_HUMIDITY_MIN) || (result > RE_6_HUMIDITY_MAX))
+    {
+        return NAN;
+    }
+    return result;
 }

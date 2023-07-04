@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include "gw_cfg.h"
 #include "http_json.h"
+#include "ruuvi_endpoint_ca_uart.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,6 +23,9 @@ adv_post_init(void);
 
 bool
 adv_post_is_initialized(void);
+
+void
+adv_post_send_payload(const re_ca_uart_payload_t* const p_payload);
 
 void
 adv_post_set_default_period(const uint32_t period_ms);

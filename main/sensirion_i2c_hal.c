@@ -57,7 +57,9 @@ static const char* TAG = "i2c_hal";
  * @param bus_idx   Bus index to select
  * @returns         0 on success, an error code otherwise
  */
-int16_t sensirion_i2c_hal_select_bus(uint8_t bus_idx) {
+int16_t
+sensirion_i2c_hal_select_bus(uint8_t bus_idx)
+{
     /* TODO:IMPLEMENT or leave empty if all sensors are located on one single
      * bus
      */
@@ -68,13 +70,17 @@ int16_t sensirion_i2c_hal_select_bus(uint8_t bus_idx) {
  * Initialize all hard- and software components that are needed for the I2C
  * communication.
  */
-void sensirion_i2c_hal_init(void) {
+void
+sensirion_i2c_hal_init(void)
+{
 }
 
 /**
  * Release all resources initialized by sensirion_i2c_hal_init().
  */
-void sensirion_i2c_hal_free(void) {
+void
+sensirion_i2c_hal_free(void)
+{
 }
 
 #define SENSIRION_I2C_HAL_ERROR_NO_MEMORY (-1)
@@ -90,7 +96,9 @@ void sensirion_i2c_hal_free(void) {
  * @param count   number of bytes to read from I2C and store in the buffer
  * @returns 0 on success, error code otherwise
  */
-int8_t sensirion_i2c_hal_read(uint8_t address, uint8_t* data, uint16_t count) {
+int8_t
+sensirion_i2c_hal_read(uint8_t address, uint8_t* data, uint16_t count)
+{
     i2c_cmd_handle_t cmd_handle = i2c_cmd_link_create();
     if (NULL == cmd_handle)
     {
@@ -106,7 +114,7 @@ int8_t sensirion_i2c_hal_read(uint8_t address, uint8_t* data, uint16_t count) {
     }
 
     const bool ack_en = true;
-    err = i2c_master_write_byte(cmd_handle, (uint8_t)(address << 1U) | (uint8_t)I2C_MASTER_READ, ack_en);
+    err               = i2c_master_write_byte(cmd_handle, (uint8_t)(address << 1U) | (uint8_t)I2C_MASTER_READ, ack_en);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(err, "i2c_master_write failed");
@@ -114,7 +122,7 @@ int8_t sensirion_i2c_hal_read(uint8_t address, uint8_t* data, uint16_t count) {
         return SENSIRION_I2C_HAL_ERROR_NO_MEMORY;
     }
     const i2c_ack_type_t ack = I2C_MASTER_LAST_NACK;
-    err = i2c_master_read(cmd_handle, data, count, ack);
+    err                      = i2c_master_read(cmd_handle, data, count, ack);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(err, "i2c_master_read failed");
@@ -150,7 +158,9 @@ int8_t sensirion_i2c_hal_read(uint8_t address, uint8_t* data, uint16_t count) {
  * @param count   number of bytes to read from the buffer and send over I2C
  * @returns 0 on success, error code otherwise
  */
-int8_t sensirion_i2c_hal_write(uint8_t address, const uint8_t* data, uint16_t count) {
+int8_t
+sensirion_i2c_hal_write(uint8_t address, const uint8_t* data, uint16_t count)
+{
     i2c_cmd_handle_t cmd_handle = i2c_cmd_link_create();
     if (NULL == cmd_handle)
     {
@@ -165,7 +175,7 @@ int8_t sensirion_i2c_hal_write(uint8_t address, const uint8_t* data, uint16_t co
         return SENSIRION_I2C_HAL_ERROR_NO_MEMORY;
     }
     const bool ack_en = true;
-    err = i2c_master_write_byte(cmd_handle, (uint8_t)(address << 1U) | (uint8_t)I2C_MASTER_WRITE, ack_en);
+    err               = i2c_master_write_byte(cmd_handle, (uint8_t)(address << 1U) | (uint8_t)I2C_MASTER_WRITE, ack_en);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(err, "i2c_master_write failed");
@@ -205,7 +215,9 @@ int8_t sensirion_i2c_hal_write(uint8_t address, const uint8_t* data, uint16_t co
  *
  * @param useconds the sleep time in microseconds
  */
-void sensirion_i2c_hal_sleep_usec(uint32_t useconds) {
+void
+sensirion_i2c_hal_sleep_usec(uint32_t useconds)
+{
     uint32_t delay_ms = (useconds + TIME_UNITS_US_PER_MS - 1) / TIME_UNITS_US_PER_MS;
     if (delay_ms < 2)
     {

@@ -368,8 +368,8 @@ adv_post_check_if_mac_filtered_out(
     return flag_is_filtered_out;
 }
 
-static void
-adv_post_send_report(void* p_arg)
+void
+adv_post_send_payload(const re_ca_uart_payload_t* const p_payload)
 {
     if (!gw_cfg_is_initialized())
     {
@@ -389,7 +389,7 @@ adv_post_send_report(void* p_arg)
     const time_t timestamp = flag_ntp_use ? timestamp_if_synchronized : (time_t)metrics_received_advs_get();
 
     adv_report_t adv_report = { 0 };
-    if (!parse_adv_report_from_uart((re_ca_uart_payload_t*)p_arg, timestamp, &adv_report))
+    if (!parse_adv_report_from_uart(p_payload, timestamp, &adv_report))
     {
         LOG_WARN("Drop adv - parsing failed");
         adv_post_cfg_access_mutex_unlock(&p_cfg_cache);
@@ -432,6 +432,12 @@ adv_post_send_report(void* p_arg)
         }
     }
     adv_post_cfg_access_mutex_unlock(&p_cfg_cache);
+}
+
+static void
+adv_post_send_report(void* p_arg)
+{
+    adv_post_send_payload((const re_ca_uart_payload_t*)p_arg);
 }
 
 static void

@@ -6,12 +6,19 @@
  */
 
 #include "i2c_task.h"
+#include <string.h>
 #include <esp_task_wdt.h>
+#include "os_malloc.h"
 #include "os_signal.h"
 #include "os_timer_sig.h"
 #include "driver/i2c.h"
 #include "sen5x_wrap.h"
 #include "scd4x_wrap.h"
+#include "ruuvi_endpoint_6.h"
+#include "ruuvi_endpoint_ca_uart.h"
+#include "mac_addr.h"
+#include "gw_cfg.h"
+#include "adv_post.h"
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
@@ -27,6 +34,8 @@
 
 #define I2C_TASK_WATCHDOG_FEEDING_PERIOD_TICKS pdMS_TO_TICKS(1000)
 
+#define I2C_TASK_BITS_PER_BYTE (8U)
+
 typedef enum i2c_task_sig_e
 {
     I2C_TASK_SIG_POLL_SEN5X         = OS_SIGNAL_NUM_0,
@@ -37,18 +46,28 @@ typedef enum i2c_task_sig_e
 #define I2C_TASK_SIG_FIRST (I2C_TASK_SIG_POLL_SEN5X)
 #define I2C_TASK_SIG_LAST  (I2C_TASK_SIG_TASK_WATCHDOG_FEED)
 
+typedef struct i2c_task_t
+{
+    bool                           flag_sen5x_present;
+    bool                           flag_scd4x_present;
+    os_signal_t*                   p_signal;
+    os_signal_static_t             signal_mem;
+    os_timer_sig_one_shot_t*       p_timer_sig_poll_sen5x;
+    os_timer_sig_one_shot_static_t timer_sig_poll_sen5x_mem;
+    os_timer_sig_one_shot_t*       p_timer_sig_poll_scd4x;
+    os_timer_sig_one_shot_static_t timer_sig_poll_scd4x_mem;
+    os_timer_sig_periodic_t*       p_timer_sig_watchdog_feed;
+    os_timer_sig_periodic_static_t timer_sig_watchdog_feed_mem;
+    sen5x_wrap_measurement_t       measurement_sen5x;
+    scd4x_wrap_measurement_t       measurement_scd4x;
+    uint16_t                       measurement_count;
+} i2c_task_t;
+
 static const char* TAG = "I2C_TASK";
 
-static bool                           g_i2c_task_flag_sen5x_present = false;
-static bool                           g_i2c_task_flag_scd4x_present = false;
-static os_signal_t*                   g_p_i2c_task_sig;
-static os_signal_static_t             g_i2c_task_sig_mem;
-static os_timer_sig_one_shot_t*       g_p_i2c_task_timer_sig_poll_sen5x;
-static os_timer_sig_one_shot_static_t g_i2c_task_timer_sig_poll_sen5x_mem;
-static os_timer_sig_one_shot_t*       g_p_i2c_task_timer_sig_poll_scd4x;
-static os_timer_sig_one_shot_static_t g_i2c_task_timer_sig_poll_scd4x_mem;
-static os_timer_sig_periodic_t*       g_p_i2c_task_timer_sig_watchdog_feed;
-static os_timer_sig_periodic_static_t g_i2c_task_timer_sig_watchdog_feed_mem;
+static i2c_task_t* g_p_i2c_task;
+
+static const uint8_t g_i2c_task_ble_packet_prefix[RE_6_OFFSET_PAYLOAD] = { 0x02, 0x01, 0x04, 0x1B, 0xFF, 0x99, 0x04 };
 
 ATTR_PURE
 static os_signal_num_e
@@ -98,17 +117,16 @@ i2c_task_check_if_external_pull_up_exist(const uint32_t gpio_pin)
 static bool
 i2c_task_master_init(void)
 {
-    const int    i2c_master_port = I2C_TASK_I2C_NUM;
-    i2c_config_t conf            = {
-                   .mode             = I2C_MODE_MASTER,
-                   .sda_io_num       = I2C_TASK_I2C_SDA,
-                   .sda_pullup_en    = GPIO_PULLUP_ENABLE,
-                   .scl_io_num       = I2C_TASK_I2C_SCL,
-                   .scl_pullup_en    = GPIO_PULLUP_ENABLE,
-                   .master.clk_speed = I2C_MASTER_FREQ_HZ,
+    i2c_config_t conf = {
+        .mode             = I2C_MODE_MASTER,
+        .sda_io_num       = I2C_TASK_I2C_SDA,
+        .sda_pullup_en    = GPIO_PULLUP_ENABLE,
+        .scl_io_num       = I2C_TASK_I2C_SCL,
+        .scl_pullup_en    = GPIO_PULLUP_ENABLE,
+        .master.clk_speed = I2C_MASTER_FREQ_HZ,
     };
-    i2c_param_config(i2c_master_port, &conf);
-    const esp_err_t err = i2c_driver_install(i2c_master_port, conf.mode, 0, 0, 0);
+    i2c_param_config(I2C_TASK_I2C_NUM, &conf);
+    const esp_err_t err = i2c_driver_install(I2C_TASK_I2C_NUM, conf.mode, 0, 0, 0);
     if (0 != err)
     {
         LOG_ERR_ESP(err, "%s failed", "i2c_driver_install");
@@ -120,38 +138,38 @@ i2c_task_master_init(void)
 static void
 i2c_task_register_signals(void)
 {
-    os_signal_add(g_p_i2c_task_sig, i2c_task_conv_to_sig_num(I2C_TASK_SIG_POLL_SEN5X));
-    os_signal_add(g_p_i2c_task_sig, i2c_task_conv_to_sig_num(I2C_TASK_SIG_POLL_SCD4X));
-    os_signal_add(g_p_i2c_task_sig, i2c_task_conv_to_sig_num(I2C_TASK_SIG_TASK_WATCHDOG_FEED));
+    os_signal_add(g_p_i2c_task->p_signal, i2c_task_conv_to_sig_num(I2C_TASK_SIG_POLL_SEN5X));
+    os_signal_add(g_p_i2c_task->p_signal, i2c_task_conv_to_sig_num(I2C_TASK_SIG_POLL_SCD4X));
+    os_signal_add(g_p_i2c_task->p_signal, i2c_task_conv_to_sig_num(I2C_TASK_SIG_TASK_WATCHDOG_FEED));
 }
 
 static void
 i2c_task_create_timers(void)
 {
-    if (g_i2c_task_flag_sen5x_present)
+    if (g_p_i2c_task->flag_sen5x_present)
     {
-        g_p_i2c_task_timer_sig_poll_sen5x = os_timer_sig_one_shot_create_static(
-            &g_i2c_task_timer_sig_poll_sen5x_mem,
+        g_p_i2c_task->p_timer_sig_poll_sen5x = os_timer_sig_one_shot_create_static(
+            &g_p_i2c_task->timer_sig_poll_sen5x_mem,
             "i2c_task:sen5x",
-            g_p_i2c_task_sig,
+            g_p_i2c_task->p_signal,
             i2c_task_conv_to_sig_num(I2C_TASK_SIG_POLL_SEN5X),
             pdMS_TO_TICKS(I2C_TASK_SIG_POLL_SEN5X));
     }
 
-    if (g_i2c_task_flag_scd4x_present)
+    if (g_p_i2c_task->flag_scd4x_present)
     {
-        g_p_i2c_task_timer_sig_poll_scd4x = os_timer_sig_one_shot_create_static(
-            &g_i2c_task_timer_sig_poll_scd4x_mem,
+        g_p_i2c_task->p_timer_sig_poll_scd4x = os_timer_sig_one_shot_create_static(
+            &g_p_i2c_task->timer_sig_poll_scd4x_mem,
             "i2c_task:scd4x",
-            g_p_i2c_task_sig,
+            g_p_i2c_task->p_signal,
             i2c_task_conv_to_sig_num(I2C_TASK_SIG_POLL_SCD4X),
             pdMS_TO_TICKS(I2C_TASK_SCD4X_POLL_PERIOD_MS));
     }
 
-    g_p_i2c_task_timer_sig_watchdog_feed = os_timer_sig_periodic_create_static(
-        &g_i2c_task_timer_sig_watchdog_feed_mem,
+    g_p_i2c_task->p_timer_sig_watchdog_feed = os_timer_sig_periodic_create_static(
+        &g_p_i2c_task->timer_sig_watchdog_feed_mem,
         "i2c_task:wdog",
-        g_p_i2c_task_sig,
+        g_p_i2c_task->p_signal,
         i2c_task_conv_to_sig_num(I2C_TASK_SIG_TASK_WATCHDOG_FEED),
         I2C_TASK_WATCHDOG_FEEDING_PERIOD_TICKS);
 }
@@ -166,67 +184,101 @@ i2c_task_wdt_add_and_start(void)
         LOG_ERR_ESP(err, "%s failed", "esp_task_wdt_add");
     }
     LOG_INFO("TaskWatchdog: Start timer");
-    os_timer_sig_periodic_start(g_p_i2c_task_timer_sig_watchdog_feed);
+    os_timer_sig_periodic_start(g_p_i2c_task->p_timer_sig_watchdog_feed);
+}
+
+static void
+i2c_task_send_data(
+    const sen5x_wrap_measurement_t* const p_sen5x,
+    const scd4x_wrap_measurement_t* const p_scd4x,
+    uint16_t* const                       p_measurement_count)
+
+{
+    const mac_address_str_t* p_mac_addr_str = gw_cfg_get_nrf52_mac_addr();
+    mac_address_bin_t        mac_addr_bin   = { 0 };
+    mac_addr_from_str(p_mac_addr_str->str_buf, &mac_addr_bin);
+    uint64_t mac_addr = 0;
+    for (uint32_t i = 0; i < sizeof(mac_addr_bin.mac); ++i)
+    {
+        mac_addr <<= I2C_TASK_BITS_PER_BYTE;
+        mac_addr |= mac_addr_bin.mac[i];
+    }
+
+    re_6_data_t ep_data = {
+        .pm1p0_ppm         = sen5x_wrap_conv_raw_to_float_pm(p_sen5x->mass_concentration_pm1p0),
+        .pm2p5_ppm         = sen5x_wrap_conv_raw_to_float_pm(p_sen5x->mass_concentration_pm2p5),
+        .pm4p0_ppm         = sen5x_wrap_conv_raw_to_float_pm(p_sen5x->mass_concentration_pm4p0),
+        .pm10p0_ppm        = sen5x_wrap_conv_raw_to_float_pm(p_sen5x->mass_concentration_pm10p0),
+        .co2               = scd4x_wrap_conv_raw_to_float_co2(p_scd4x->co2),
+        .humidity_rh       = sen5x_wrap_conv_raw_to_float_humidity(p_sen5x->ambient_humidity),
+        .voc_index         = sen5x_wrap_conv_raw_to_float_voc_index(p_sen5x->voc_index),
+        .nox_index         = sen5x_wrap_conv_raw_to_float_nox_index(p_sen5x->nox_index),
+        .temperature_c     = sen5x_wrap_conv_raw_to_float_temperature(p_sen5x->ambient_temperature),
+        .measurement_count = *p_measurement_count,
+        .address           = mac_addr,
+    };
+
+    LOG_DBG(
+        "PM=%.1f,%.1f,%.1f,%.1f µg/m³, H=%.2f %%RH, T=%.3f °C, VOC=%.1f, NOX=%.1f, CO2=%.0f, cnt=%u",
+        ep_data.pm1p0_ppm,
+        ep_data.pm2p5_ppm,
+        ep_data.pm4p0_ppm,
+        ep_data.pm10p0_ppm,
+        ep_data.humidity_rh,
+        ep_data.temperature_c,
+        ep_data.voc_index,
+        ep_data.nox_index,
+        ep_data.co2,
+        (printf_uint_t)ep_data.measurement_count);
+
+    if (++*p_measurement_count == (UINT16_MAX - 1))
+    {
+        *p_measurement_count = 0;
+    }
+
+    uint8_t payload_buf[RE_6_DATA_LENGTH];
+    re_6_encode(payload_buf, &ep_data);
+
+    re_ca_uart_payload_t payload = {
+        .cmd = RE_CA_UART_ADV_RPRT,
+        .params = {
+            .adv = {
+                .mac = {0},
+                .adv = {0},
+                .adv_len = RE_6_OFFSET_PAYLOAD + sizeof(payload_buf),
+                .rssi_db = 0,
+            },
+        },
+    };
+    memcpy(&payload.params.adv.mac, mac_addr_bin.mac, sizeof(payload.params.adv.mac));
+    memcpy(&payload.params.adv.adv[0], g_i2c_task_ble_packet_prefix, sizeof(g_i2c_task_ble_packet_prefix));
+    memcpy(&payload.params.adv.adv[RE_6_OFFSET_PAYLOAD], payload_buf, sizeof(payload_buf));
+
+    adv_post_send_payload(&payload);
 }
 
 static void
 i2c_task_handle_sig_poll_sen5x(void)
 {
-    sen5x_wrap_measurement_t sen5x_measurement = { 0 };
-    if (!sen5x_wrap_read_measured_values(&sen5x_measurement))
+    sen5x_wrap_measurement_t measurement = { 0 };
+    if (!sen5x_wrap_read_measured_values(&measurement))
     {
-        os_timer_sig_one_shot_restart(g_p_i2c_task_timer_sig_poll_sen5x, pdMS_TO_TICKS(I2C_TASK_SEN5X_CHECK_PERIOD_MS));
+        os_timer_sig_one_shot_restart(
+            g_p_i2c_task->p_timer_sig_poll_sen5x,
+            pdMS_TO_TICKS(I2C_TASK_SEN5X_CHECK_PERIOD_MS));
         return;
     }
 
     os_timer_sig_one_shot_restart(
-        g_p_i2c_task_timer_sig_poll_sen5x,
+        g_p_i2c_task->p_timer_sig_poll_sen5x,
         pdMS_TO_TICKS(I2C_TASK_SEN5X_POLL_PERIOD_MS - I2C_TASK_SEN5X_CHECK_PERIOD_MS));
 
-    LOG_INFO(
-        "Mass concentration pm1p0: %.1f µg/m³",
-        sen5x_measurement.mass_concentration_pm1p0 / 10.0f);
-    LOG_INFO(
-        "Mass concentration pm2p5: %.1f µg/m³",
-        sen5x_measurement.mass_concentration_pm2p5 / 10.0f);
-    LOG_INFO(
-        "Mass concentration pm4p0: %.1f µg/m³",
-        sen5x_measurement.mass_concentration_pm4p0 / 10.0f);
-    LOG_INFO(
-        "Mass concentration pm10p0: %.1f µg/m³",
-        sen5x_measurement.mass_concentration_pm10p0 / 10.0f);
-    if (sen5x_measurement.ambient_humidity == 0x7fff)
-    {
-        LOG_INFO("Ambient humidity: n/a");
-    }
-    else
-    {
-        LOG_INFO("Ambient humidity: %.1f %%RH", sen5x_measurement.ambient_humidity / 100.0f);
-    }
-    if (sen5x_measurement.ambient_temperature == 0x7fff)
-    {
-        LOG_INFO("Ambient temperature: n/a");
-    }
-    else
-    {
-        LOG_INFO("Ambient temperature: %.1f °C", sen5x_measurement.ambient_temperature / 200.0f);
-    }
-    if (sen5x_measurement.voc_index == 0x7fff)
-    {
-        LOG_INFO("Voc index: n/a");
-    }
-    else
-    {
-        LOG_INFO("Voc index: %.1f", sen5x_measurement.voc_index / 10.0f);
-    }
-    if (sen5x_measurement.nox_index == 0x7fff)
-    {
-        LOG_INFO("Nox index: n/a");
-    }
-    else
-    {
-        LOG_INFO("Nox index: %.1f", sen5x_measurement.nox_index / 10.0f);
-    }
+    g_p_i2c_task->measurement_sen5x = measurement;
+
+    i2c_task_send_data(
+        &g_p_i2c_task->measurement_sen5x,
+        &g_p_i2c_task->measurement_scd4x,
+        &g_p_i2c_task->measurement_count);
 }
 
 static void
@@ -236,15 +288,21 @@ i2c_task_handle_sig_poll_scd4x(void)
     if (!scd4x_wrap_read_measurement(&measurement))
     {
         LOG_ERR("%s failed", "scd4x_wrap_read_measurement");
-        os_timer_sig_one_shot_restart(g_p_i2c_task_timer_sig_poll_scd4x, pdMS_TO_TICKS(I2C_TASK_SCD4X_CHECK_PERIOD_MS));
+        os_timer_sig_one_shot_restart(
+            g_p_i2c_task->p_timer_sig_poll_scd4x,
+            pdMS_TO_TICKS(I2C_TASK_SCD4X_CHECK_PERIOD_MS));
         return;
     }
     os_timer_sig_one_shot_restart(
-        g_p_i2c_task_timer_sig_poll_scd4x,
+        g_p_i2c_task->p_timer_sig_poll_scd4x,
         pdMS_TO_TICKS(I2C_TASK_SCD4X_POLL_PERIOD_MS - I2C_TASK_SCD4X_CHECK_PERIOD_MS));
-    LOG_INFO("SCD4X: CO2: %u", measurement.co2);
-    LOG_INFO("SCD4X: Temperature: %d m°C", measurement.temperature);
-    LOG_INFO("SCD4X: Humidity: %d mRH", measurement.humidity);
+
+    g_p_i2c_task->measurement_scd4x = measurement;
+
+    i2c_task_send_data(
+        &g_p_i2c_task->measurement_sen5x,
+        &g_p_i2c_task->measurement_scd4x,
+        &g_p_i2c_task->measurement_count);
 }
 
 static void
@@ -279,19 +337,19 @@ ATTR_NORETURN
 static void
 i2c_task(void)
 {
-    if (!os_signal_register_cur_thread(g_p_i2c_task_sig))
+    if (!os_signal_register_cur_thread(g_p_i2c_task->p_signal))
     {
         LOG_ERR("%s failed", "os_signal_register_cur_thread");
     }
 
     i2c_task_wdt_add_and_start();
-    if (g_i2c_task_flag_sen5x_present)
+    if (g_p_i2c_task->flag_sen5x_present)
     {
-        os_timer_sig_one_shot_start(g_p_i2c_task_timer_sig_poll_sen5x);
+        os_timer_sig_one_shot_start(g_p_i2c_task->p_timer_sig_poll_sen5x);
     }
-    if (g_i2c_task_flag_scd4x_present)
+    if (g_p_i2c_task->flag_scd4x_present)
     {
-        os_timer_sig_one_shot_start(g_p_i2c_task_timer_sig_poll_scd4x);
+        os_timer_sig_one_shot_start(g_p_i2c_task->p_timer_sig_poll_scd4x);
     }
 
     LOG_INFO("%s started", __func__);
@@ -299,7 +357,7 @@ i2c_task(void)
     for (;;)
     {
         os_signal_events_t sig_events = { 0 };
-        if (!os_signal_wait_with_timeout(g_p_i2c_task_sig, OS_DELTA_TICKS_INFINITE, &sig_events))
+        if (!os_signal_wait_with_timeout(g_p_i2c_task->p_signal, OS_DELTA_TICKS_INFINITE, &sig_events))
         {
             continue;
         }
@@ -325,39 +383,50 @@ i2c_task_init(void)
         return true;
     }
     LOG_INFO("External pull-up resistor detected on I2C SCL - start I2C polling");
-
     if (!i2c_task_master_init())
     {
         LOG_ERR("i2c_task_master_init failed");
         return false;
     }
-    g_i2c_task_flag_sen5x_present = sen5x_wrap_check();
-    g_i2c_task_flag_scd4x_present = scd4x_wrap_check();
-    if (g_i2c_task_flag_sen5x_present)
+
+    g_p_i2c_task = os_calloc(1, sizeof(*g_p_i2c_task));
+    if (NULL == g_p_i2c_task)
+    {
+        LOG_ERR("Can't allocate memory for i2c_task");
+        return false;
+    }
+
+    g_p_i2c_task->flag_sen5x_present = sen5x_wrap_check();
+    g_p_i2c_task->flag_scd4x_present = scd4x_wrap_check();
+    if (g_p_i2c_task->flag_sen5x_present)
     {
         if (!sen5x_wrap_start_measurement())
         {
             LOG_ERR("%s failed", "sen5x_wrap_start_measurement");
-            g_i2c_task_flag_sen5x_present = false;
+            g_p_i2c_task->flag_sen5x_present = false;
         }
     }
-    if (g_i2c_task_flag_scd4x_present)
+    if (g_p_i2c_task->flag_scd4x_present)
     {
         if (!scd4x_wrap_start_periodic_measurement())
         {
             LOG_ERR("%s failed", "scd4x_wrap_start_periodic_measurement");
-            g_i2c_task_flag_scd4x_present = false;
+            g_p_i2c_task->flag_scd4x_present = false;
         }
     }
 
-    if (!g_i2c_task_flag_sen5x_present && !g_i2c_task_flag_scd4x_present)
+    if (!g_p_i2c_task->flag_sen5x_present && !g_p_i2c_task->flag_scd4x_present)
     {
+        os_free(g_p_i2c_task);
+        g_p_i2c_task = NULL;
         return false;
     }
 
-    g_p_i2c_task_sig = os_signal_create_static(&g_i2c_task_sig_mem);
+    g_p_i2c_task->p_signal = os_signal_create_static(&g_p_i2c_task->signal_mem);
     i2c_task_register_signals();
     i2c_task_create_timers();
+
+    g_p_i2c_task->measurement_count = 0;
 
     const uint32_t           stack_size    = 1024U * 3U;
     const os_task_priority_t task_priority = 5;
@@ -366,7 +435,7 @@ i2c_task_init(void)
     {
         LOG_ERR("Can't create thread");
     }
-    while (!os_signal_is_any_thread_registered(g_p_i2c_task_sig))
+    while (!os_signal_is_any_thread_registered(g_p_i2c_task->p_signal))
     {
         vTaskDelay(1);
     }

@@ -10,6 +10,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "ruuvi_endpoint_6.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -59,6 +60,21 @@ sen5x_wrap_read_measured_values(sen5x_wrap_measurement_t* const p_measurement);
 
 bool
 sen5x_wrap_check(void);
+
+re_float
+sen5x_wrap_conv_raw_to_float_pm(const uint16_t raw_pm);
+
+re_float
+sen5x_wrap_conv_raw_to_float_humidity(const int16_t raw_humidity);
+
+re_float
+sen5x_wrap_conv_raw_to_float_temperature(const int16_t temperature);
+
+re_float
+sen5x_wrap_conv_raw_to_float_voc_index(const int16_t raw_voc_index);
+
+re_float
+sen5x_wrap_conv_raw_to_float_nox_index(const int16_t raw_nox_index);
 
 #ifdef __cplusplus
 }
