@@ -85,7 +85,7 @@ static const char* TAG = "I2C_TASK";
 
 static i2c_task_t* g_p_i2c_task;
 
-static const uint8_t g_i2c_task_ble_packet_prefix[RE_6_OFFSET_PAYLOAD] = { 0x02, 0x01, 0x04, 0x1B, 0xFF, 0x99, 0x04 };
+static const uint8_t g_i2c_task_ble_packet_prefix[RE_6_OFFSET_PAYLOAD] = { 0x02, 0x01, 0x06, 0x1B, 0xFF, 0x99, 0x04 };
 
 ATTR_PURE
 static os_signal_num_e
@@ -316,14 +316,14 @@ static void
 i2c_task_handle_sig_poll_sen5x(void)
 {
     sen5x_wrap_measurement_t measurement = {
-        .mass_concentration_pm1p0 = SEN5X_INVALID_RAW_VALUE_PM,
-        .mass_concentration_pm2p5 = SEN5X_INVALID_RAW_VALUE_PM,
-        .mass_concentration_pm4p0 = SEN5X_INVALID_RAW_VALUE_PM,
+        .mass_concentration_pm1p0  = SEN5X_INVALID_RAW_VALUE_PM,
+        .mass_concentration_pm2p5  = SEN5X_INVALID_RAW_VALUE_PM,
+        .mass_concentration_pm4p0  = SEN5X_INVALID_RAW_VALUE_PM,
         .mass_concentration_pm10p0 = SEN5X_INVALID_RAW_VALUE_PM,
-        .ambient_humidity = SEN5X_INVALID_RAW_VALUE_HUMIDITY,
-        .ambient_temperature = SEN5X_INVALID_RAW_VALUE_TEMPERATURE,
-        .voc_index = SEN5X_INVALID_RAW_VALUE_VOC,
-        .nox_index = SEN5X_INVALID_RAW_VALUE_NOX,
+        .ambient_humidity          = SEN5X_INVALID_RAW_VALUE_HUMIDITY,
+        .ambient_temperature       = SEN5X_INVALID_RAW_VALUE_TEMPERATURE,
+        .voc_index                 = SEN5X_INVALID_RAW_VALUE_VOC,
+        .nox_index                 = SEN5X_INVALID_RAW_VALUE_NOX,
     };
     if (!sen5x_wrap_read_measured_values(&measurement))
     {
@@ -332,39 +332,32 @@ i2c_task_handle_sig_poll_sen5x(void)
             os_timer_sig_one_shot_restart(
                 g_p_i2c_task->p_timer_sig_poll_sen5x,
                 pdMS_TO_TICKS(I2C_TASK_SEN5X_CHECK_PERIOD_MS));
+            return;
+        }
+        g_p_i2c_task->err_cnt_sen5x = I2C_TASK_SEN5X_CHECK_MAX_ERR_CNT;
+        if (sen5x_wrap_check())
+        {
+            if (!sen5x_wrap_start_measurement())
+            {
+                LOG_ERR("%s failed", "sen5x_wrap_start_measurement");
+            }
         }
         else
         {
-            g_p_i2c_task->err_cnt_sen5x = I2C_TASK_SEN5X_CHECK_MAX_ERR_CNT;
-            if (sen5x_wrap_check())
-            {
-                if (!sen5x_wrap_start_measurement())
-                {
-                    LOG_ERR("%s failed", "sen5x_wrap_start_measurement");
-                }
-            }
-            else
-            {
-                LOG_ERR("%s failed", "sen5x_wrap_check");
-            }
-            os_timer_sig_one_shot_restart(
-                g_p_i2c_task->p_timer_sig_poll_sen5x,
-                pdMS_TO_TICKS(I2C_TASK_SEN5X_POLL_PERIOD_MS * 2));
-
-            os_mutex_lock(g_p_i2c_task->p_mutex);
-            g_p_i2c_task->measurement_sen5x = measurement;
-            os_mutex_unlock(g_p_i2c_task->p_mutex);
-
-            i2c_task_send_data();
+            LOG_ERR("%s failed", "sen5x_wrap_check");
         }
-        return;
+        os_timer_sig_one_shot_restart(
+            g_p_i2c_task->p_timer_sig_poll_sen5x,
+            pdMS_TO_TICKS(I2C_TASK_SEN5X_POLL_PERIOD_MS * 2));
     }
+    else
+    {
+        g_p_i2c_task->err_cnt_sen5x = 0;
 
-    g_p_i2c_task->err_cnt_sen5x = 0;
-
-    os_timer_sig_one_shot_restart(
-        g_p_i2c_task->p_timer_sig_poll_sen5x,
-        pdMS_TO_TICKS(I2C_TASK_SEN5X_POLL_PERIOD_MS - I2C_TASK_SEN5X_CHECK_PERIOD_MS));
+        os_timer_sig_one_shot_restart(
+            g_p_i2c_task->p_timer_sig_poll_sen5x,
+            pdMS_TO_TICKS(I2C_TASK_SEN5X_POLL_PERIOD_MS - I2C_TASK_SEN5X_CHECK_PERIOD_MS));
+    }
 
     os_mutex_lock(g_p_i2c_task->p_mutex);
     g_p_i2c_task->measurement_sen5x = measurement;
@@ -377,8 +370,8 @@ static void
 i2c_task_handle_sig_poll_scd4x(void)
 {
     scd4x_wrap_measurement_t measurement = {
-        .co2 = SCD4X_INVALID_RAW_VALUE_CO2,
-        .temperature_m_deg_c = SCD4X_INVALID_RAW_VALUE_TEMPERATURE,
+        .co2                   = SCD4X_INVALID_RAW_VALUE_CO2,
+        .temperature_m_deg_c   = SCD4X_INVALID_RAW_VALUE_TEMPERATURE,
         .humidity_m_percent_rh = SCD4X_INVALID_RAW_VALUE_HUMIDITY,
     };
     if (!scd4x_wrap_read_measurement(&measurement))
@@ -389,39 +382,32 @@ i2c_task_handle_sig_poll_scd4x(void)
             os_timer_sig_one_shot_restart(
                 g_p_i2c_task->p_timer_sig_poll_scd4x,
                 pdMS_TO_TICKS(I2C_TASK_SCD4X_CHECK_PERIOD_MS));
+            return;
+        }
+        g_p_i2c_task->err_cnt_scd4x = I2C_TASK_SCD4X_CHECK_MAX_ERR_CNT;
+        if (scd4x_wrap_check())
+        {
+            if (!scd4x_wrap_start_periodic_measurement())
+            {
+                LOG_ERR("%s failed", "sen5x_wrap_start_measurement");
+            }
         }
         else
         {
-            g_p_i2c_task->err_cnt_scd4x = I2C_TASK_SCD4X_CHECK_MAX_ERR_CNT;
-            if (scd4x_wrap_check())
-            {
-                if (!scd4x_wrap_start_periodic_measurement())
-                {
-                    LOG_ERR("%s failed", "sen5x_wrap_start_measurement");
-                }
-            }
-            else
-            {
-                LOG_ERR("%s failed", "scd4x_wrap_check");
-            }
-            os_timer_sig_one_shot_restart(
-                g_p_i2c_task->p_timer_sig_poll_scd4x,
-                pdMS_TO_TICKS(I2C_TASK_SCD4X_POLL_PERIOD_MS * 2));
-
-            os_mutex_lock(g_p_i2c_task->p_mutex);
-            g_p_i2c_task->measurement_scd4x = measurement;
-            os_mutex_unlock(g_p_i2c_task->p_mutex);
-
-            i2c_task_send_data();
+            LOG_ERR("%s failed", "scd4x_wrap_check");
         }
-        return;
+        os_timer_sig_one_shot_restart(
+            g_p_i2c_task->p_timer_sig_poll_scd4x,
+            pdMS_TO_TICKS(I2C_TASK_SCD4X_POLL_PERIOD_MS * 2));
     }
+    else
+    {
+        g_p_i2c_task->err_cnt_scd4x = 0;
 
-    g_p_i2c_task->err_cnt_scd4x = 0;
-
-    os_timer_sig_one_shot_restart(
-        g_p_i2c_task->p_timer_sig_poll_scd4x,
-        pdMS_TO_TICKS(I2C_TASK_SCD4X_POLL_PERIOD_MS - I2C_TASK_SCD4X_CHECK_PERIOD_MS));
+        os_timer_sig_one_shot_restart(
+            g_p_i2c_task->p_timer_sig_poll_scd4x,
+            pdMS_TO_TICKS(I2C_TASK_SCD4X_POLL_PERIOD_MS - I2C_TASK_SCD4X_CHECK_PERIOD_MS));
+    }
 
     os_mutex_lock(g_p_i2c_task->p_mutex);
     g_p_i2c_task->measurement_scd4x = measurement;
@@ -465,18 +451,23 @@ i2c_task_handle_sig(const i2c_task_sig_e i2c_task_sig)
     switch (i2c_task_sig)
     {
         case I2C_TASK_SIG_POLL_SEN5X:
+            LOG_DBG("I2C_TASK_SIG_POLL_SEN5X");
             i2c_task_handle_sig_poll_sen5x();
             break;
         case I2C_TASK_SIG_POLL_SCD4X:
+            LOG_DBG("I2C_TASK_SIG_POLL_SCD4X");
             i2c_task_handle_sig_poll_scd4x();
             break;
         case I2C_TASK_SIG_SEND_BLE_DEVICE_NAME_START:
+            LOG_DBG("I2C_TASK_SIG_SEND_BLE_DEVICE_NAME_START");
             i2c_task_handle_sig_send_ble_device_name_start();
             break;
         case I2C_TASK_SIG_SEND_BLE_DEVICE_NAME_STOP:
+            LOG_DBG("I2C_TASK_SIG_SEND_BLE_DEVICE_NAME_STOP");
             i2c_task_handle_sig_send_ble_device_name_stop();
             break;
         case I2C_TASK_SIG_TASK_WATCHDOG_FEED:
+            LOG_DBG("I2C_TASK_SIG_TASK_WATCHDOG_FEED");
             i2c_task_handle_sig_task_watchdog_feed();
             break;
     }
@@ -546,7 +537,7 @@ i2c_task_init(void)
         return false;
     }
 
-    const mac_address_str_t* p_mac_addr_str = gw_cfg_get_nrf52_mac_addr();
+    const mac_address_str_t* p_mac_addr_str = gw_cfg_get_esp32_mac_addr_bluetooth();
     mac_addr_from_str(p_mac_addr_str->str_buf, &p_i2c_task->mac_addr_bin);
     p_i2c_task->mac_addr = 0;
     for (uint32_t i = 0; i < sizeof(p_i2c_task->mac_addr_bin.mac); ++i)
@@ -581,8 +572,8 @@ i2c_task_init(void)
     }
 
     p_i2c_task->measurement_count = 0;
-    p_i2c_task->err_cnt_sen5x = 0;
-    p_i2c_task->err_cnt_scd4x = 0;
+    p_i2c_task->err_cnt_sen5x     = 0;
+    p_i2c_task->err_cnt_scd4x     = 0;
 
     p_i2c_task->measurement_sen5x.mass_concentration_pm1p0  = SEN5X_INVALID_RAW_VALUE_PM;
     p_i2c_task->measurement_sen5x.mass_concentration_pm2p5  = SEN5X_INVALID_RAW_VALUE_PM;

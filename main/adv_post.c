@@ -265,15 +265,11 @@ adv_post_cfg_access_mutex_unlock(adv_post_cfg_cache_t** p_p_cfg_cache)
     os_mutex_unlock(g_p_adv_post_cfg_access_mutex);
 }
 
-static esp_err_t
+static bool
 adv_put_to_table(const adv_report_t* const p_adv)
 {
     metrics_received_advs_increment();
-    if (!adv_table_put(p_adv))
-    {
-        return ESP_ERR_NO_MEM;
-    }
-    return ESP_OK;
+    return adv_table_put(p_adv);
 }
 
 static bool
@@ -311,7 +307,7 @@ parse_adv_report_from_uart(const re_ca_uart_payload_t* const p_msg, const time_t
     p_adv->rssi            = p_report->rssi_db;
     p_adv->data_len        = p_report->adv_len;
     memcpy(p_adv->data_buf, p_report->adv, p_report->adv_len);
-    LOG_DUMP_INFO(p_report->adv, p_report->adv_len, "Got from nRF52 (RSSI=%d)", p_report->rssi_db);
+    LOG_DUMP_DBG(p_report->adv, p_report->adv_len, "Got from nRF52 (RSSI=%d)", p_report->rssi_db);
 
     return true;
 }
@@ -421,12 +417,12 @@ adv_post_send_payload(const re_ca_uart_payload_t* const p_payload)
         adv_report.data_buf[5],
         (printf_ulong_t)timestamp);
 
-    const esp_err_t ret = adv_put_to_table(&adv_report);
-    if (ESP_ERR_NO_MEM == ret)
+    const bool flag_updated = adv_put_to_table(&adv_report);
+    if (!flag_updated)
     {
-        LOG_WARN("Drop adv - table full");
+        LOG_DBG("Drop adv because the same data is already in the buffer");
     }
-    if (p_cfg_cache->flag_use_mqtt && gw_status_is_mqtt_connected())
+    if (flag_updated && p_cfg_cache->flag_use_mqtt && gw_status_is_mqtt_connected())
     {
         if (mqtt_publish_adv(&adv_report, flag_ntp_use, (flag_ntp_use ? time(NULL) : 0)))
         {
@@ -1022,7 +1018,6 @@ adv_post_handle_sig_relaying_mode_changed(adv_post_state_t* const p_adv_post_sta
 static void
 adv_post_handle_sig_send_ble_adv(void)
 {
-    LOG_INFO("Got ADV_POST_SIG_SEND_BLE_ADV");
     i2c_task_ble_adv_packet_t packet = { 0 };
     if (!i2c_task_get_ble_adv_packet(&packet))
     {
@@ -1042,6 +1037,7 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p
             flag_stop = true;
             break;
         case ADV_POST_SIG_SEND_BLE_ADV:
+            LOG_DBG("Got ADV_POST_SIG_SEND_BLE_ADV");
             adv_post_handle_sig_send_ble_adv();
             break;
         case ADV_POST_SIG_NETWORK_DISCONNECTED:

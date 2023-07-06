@@ -21,6 +21,8 @@ _Static_assert(sizeof(adv_report_t) == ADV_REPORT_EXPECTED_SIZE, "sizeof(adv_rep
 
 #define ADV_TABLE_HASH_SIZE (101)
 
+#define ADV_MANUFACTURER_ID_OFFSET (3U)
+
 typedef struct adv_reports_list_elem_t adv_reports_list_elem_t;
 
 typedef STAILQ_HEAD(adv_report_list_t, adv_reports_list_elem_t) adv_report_list_t;
@@ -146,6 +148,7 @@ adv_hash_table_remove(adv_reports_list_elem_t* p_elem)
 static bool
 adv_table_put_unsafe(const adv_report_t* const p_adv)
 {
+    bool flag_updated = false;
     // Check if we already have advertisement with this MAC
     adv_reports_list_elem_t* p_elem = adv_hash_table_search(&p_adv->tag_mac);
     if (NULL == p_elem)
@@ -157,36 +160,62 @@ adv_table_put_unsafe(const adv_report_t* const p_adv)
 
         p_elem->adv_report = *p_adv;
         adv_hash_table_add(p_elem);
+        flag_updated = true;
     }
     else
     {
-        adv_counter_t prev_counter         = p_elem->adv_report.samples_counter;
-        p_elem->adv_report                 = *p_adv; // Update data
-        p_elem->adv_report.samples_counter = prev_counter + 1;
-    }
-    if (!p_elem->is_in_retransmission_list1)
-    {
-        STAILQ_INSERT_TAIL(&g_adv_reports_retransmission_list1, p_elem, retransmission_list1);
-        p_elem->is_in_retransmission_list1 = true;
-    }
-    if (!p_elem->is_in_retransmission_list2)
-    {
-        STAILQ_INSERT_TAIL(&g_adv_reports_retransmission_list2, p_elem, retransmission_list2);
-        p_elem->is_in_retransmission_list2 = true;
-    }
-    TAILQ_REMOVE(&g_adv_reports_hist_list, p_elem, hist_list);
-    TAILQ_INSERT_HEAD(&g_adv_reports_hist_list, p_elem, hist_list);
+        bool flag_discard_data = false;
+        if ((-1 == p_elem->adv_report.rssi) && (-1 != p_adv->rssi))
+        {
+            // Discard AirQ data received via Bluetooth because we already have it.
+            flag_discard_data = true;
+        }
+        else if (
+            (p_elem->adv_report.data_len == p_adv->data_len) && (p_adv->data_len > ADV_MANUFACTURER_ID_OFFSET)
+            && (0 == memcmp(&p_elem->adv_report.data_buf, &p_adv->data_buf, p_adv->data_len)))
+        {
+            // Discard the data if it's equal to the previous value
+            flag_discard_data = true;
+        }
 
-    return true;
+        if (!flag_discard_data)
+        {
+            const adv_counter_t prev_counter   = p_elem->adv_report.samples_counter;
+            p_elem->adv_report                 = *p_adv; // Update data
+            p_elem->adv_report.samples_counter = prev_counter + 1;
+            flag_updated                       = true;
+        }
+        else
+        {
+            p_elem->adv_report.samples_counter += 1;
+        }
+    }
+    if (flag_updated)
+    {
+        if (!p_elem->is_in_retransmission_list1)
+        {
+            STAILQ_INSERT_TAIL(&g_adv_reports_retransmission_list1, p_elem, retransmission_list1);
+            p_elem->is_in_retransmission_list1 = true;
+        }
+        if (!p_elem->is_in_retransmission_list2)
+        {
+            STAILQ_INSERT_TAIL(&g_adv_reports_retransmission_list2, p_elem, retransmission_list2);
+            p_elem->is_in_retransmission_list2 = true;
+        }
+        TAILQ_REMOVE(&g_adv_reports_hist_list, p_elem, hist_list);
+        TAILQ_INSERT_HEAD(&g_adv_reports_hist_list, p_elem, hist_list);
+    }
+
+    return flag_updated;
 }
 
 bool
 adv_table_put(const adv_report_t* const p_adv)
 {
     os_mutex_lock(gp_adv_reports_mutex);
-    const bool res = adv_table_put_unsafe(p_adv);
+    const bool flag_updated = adv_table_put_unsafe(p_adv);
     os_mutex_unlock(gp_adv_reports_mutex);
-    return res;
+    return flag_updated;
 }
 
 static void

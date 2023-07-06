@@ -8,7 +8,7 @@
 #include <esp_bt.h>
 #include <services/gap/ble_svc_gap.h>
 #include "ble_adv.h"
-#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
+#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 #include "esp_nimble_hci.h"
 #include "nimble/nimble_port.h"
@@ -284,7 +284,7 @@ ble_adv_send(uint8_t buf[RE_CA_UART_ADV_BYTES])
     uint8_t* const p_data   = &buf[offset];
     const size_t   data_len = RE_CA_UART_ADV_BYTES - offset;
 
-    LOG_DUMP_WARN(p_data, data_len, "ble_adv_send");
+    LOG_DUMP_DBG(p_data, data_len, "ble_adv_send");
 
     struct ble_hs_adv_fields fields = { 0 };
 
