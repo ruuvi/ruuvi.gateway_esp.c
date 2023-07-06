@@ -212,6 +212,7 @@ gw_cfg_log_device_info(const gw_cfg_device_info_t* const p_dev_info, const char*
     LOG_INFO("config: device_info: ESP32 fw ver: %s", p_dev_info->esp32_fw_ver.buf);
     LOG_INFO("config: device_info: ESP32 WiFi MAC ADDR: %s", p_dev_info->esp32_mac_addr_wifi.str_buf);
     LOG_INFO("config: device_info: ESP32 Eth MAC ADDR: %s", p_dev_info->esp32_mac_addr_eth.str_buf);
+    LOG_INFO("config: device_info: ESP32 Bluetooth MAC ADDR: %s", p_dev_info->esp32_mac_addr_bt.str_buf);
     LOG_INFO("config: device_info: NRF52 fw ver: %s", p_dev_info->nrf52_fw_ver.buf);
     LOG_INFO("config: device_info: NRF52 MAC ADDR: %s", p_dev_info->nrf52_mac_addr.str_buf);
     LOG_INFO("config: device_info: NRF52 DEVICE ID: %s", p_dev_info->nrf52_device_id.str_buf);

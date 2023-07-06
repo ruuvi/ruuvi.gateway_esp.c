@@ -1187,6 +1187,13 @@ gw_cfg_get_esp32_mac_addr_eth(void)
     return &g_gw_cfg_p_device_info->esp32_mac_addr_eth;
 }
 
+const mac_address_str_t*
+gw_cfg_get_esp32_mac_addr_bluetooth(void)
+{
+    assert(NULL != g_gw_cfg_mutex);
+    return &g_gw_cfg_p_device_info->esp32_mac_addr_bt;
+}
+
 const wifiman_wifi_ssid_t*
 gw_cfg_get_wifi_ap_ssid(void)
 {

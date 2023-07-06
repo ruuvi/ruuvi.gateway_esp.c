@@ -59,6 +59,7 @@ typedef struct gw_cfg_device_info_t
     nrf52_device_id_str_t    nrf52_device_id;
     mac_address_str_t        esp32_mac_addr_wifi;
     mac_address_str_t        esp32_mac_addr_eth;
+    mac_address_str_t        esp32_mac_addr_bt;
 } gw_cfg_device_info_t;
 
 typedef struct ruuvi_gw_cfg_ip_addr_str_t
@@ -446,6 +447,9 @@ gw_cfg_get_esp32_mac_addr_wifi(void);
 
 const mac_address_str_t*
 gw_cfg_get_esp32_mac_addr_eth(void);
+
+const mac_address_str_t*
+gw_cfg_get_esp32_mac_addr_bluetooth(void);
 
 const wifiman_wifi_ssid_t*
 gw_cfg_get_wifi_ap_ssid(void);

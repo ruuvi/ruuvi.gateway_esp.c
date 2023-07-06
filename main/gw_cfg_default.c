@@ -194,6 +194,7 @@ gw_cfg_default_init(
     p_def_dev_info->nrf52_mac_addr             = mac_address_to_str(&p_init_param->nrf52_mac_addr);
     p_def_dev_info->esp32_mac_addr_wifi        = mac_address_to_str(&p_init_param->esp32_mac_addr_wifi);
     p_def_dev_info->esp32_mac_addr_eth         = mac_address_to_str(&p_init_param->esp32_mac_addr_eth);
+    p_def_dev_info->esp32_mac_addr_bt          = mac_address_to_str(&p_init_param->esp32_mac_addr_bt);
 
     if ((NULL != p_cb_gw_cfg_default_json_read) && p_cb_gw_cfg_default_json_read(&g_gw_cfg_default))
     {

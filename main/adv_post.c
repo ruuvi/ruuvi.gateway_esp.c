@@ -39,6 +39,8 @@
 #include "reset_reason.h"
 #include "runtime_stat.h"
 #include "hmac_sha256.h"
+#include "i2c_task.h"
+#include "ble_adv.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -56,26 +58,27 @@
 typedef enum adv_post_sig_e
 {
     ADV_POST_SIG_STOP                        = OS_SIGNAL_NUM_0,
-    ADV_POST_SIG_NETWORK_DISCONNECTED        = OS_SIGNAL_NUM_1,
-    ADV_POST_SIG_NETWORK_CONNECTED           = OS_SIGNAL_NUM_2,
-    ADV_POST_SIG_TIME_SYNCHRONIZED           = OS_SIGNAL_NUM_3,
-    ADV_POST_SIG_RETRANSMIT                  = OS_SIGNAL_NUM_4,
-    ADV_POST_SIG_RETRANSMIT2                 = OS_SIGNAL_NUM_5,
-    ADV_POST_SIG_ACTIVATE_SENDING_STATISTICS = OS_SIGNAL_NUM_6,
-    ADV_POST_SIG_SEND_STATISTICS             = OS_SIGNAL_NUM_7,
-    ADV_POST_SIG_DO_ASYNC_COMM               = OS_SIGNAL_NUM_8,
-    ADV_POST_SIG_RELAYING_MODE_CHANGED       = OS_SIGNAL_NUM_9,
-    ADV_POST_SIG_NETWORK_WATCHDOG            = OS_SIGNAL_NUM_10,
-    ADV_POST_SIG_TASK_WATCHDOG_FEED          = OS_SIGNAL_NUM_11,
-    ADV_POST_SIG_GW_CFG_READY                = OS_SIGNAL_NUM_12,
-    ADV_POST_SIG_GW_CFG_CHANGED_RUUVI        = OS_SIGNAL_NUM_13,
-    ADV_POST_SIG_BLE_SCAN_CHANGED            = OS_SIGNAL_NUM_14,
-    ADV_POST_SIG_ACTIVATE_CFG_MODE           = OS_SIGNAL_NUM_15,
-    ADV_POST_SIG_DEACTIVATE_CFG_MODE         = OS_SIGNAL_NUM_16,
-    ADV_POST_SIG_GREEN_LED_TURN_ON           = OS_SIGNAL_NUM_17,
-    ADV_POST_SIG_GREEN_LED_TURN_OFF          = OS_SIGNAL_NUM_18,
-    ADV_POST_SIG_GREEN_LED_UPDATE            = OS_SIGNAL_NUM_19,
-    ADV_POST_SIG_RECV_ADV_TIMEOUT            = OS_SIGNAL_NUM_20,
+    ADV_POST_SIG_SEND_BLE_ADV                = OS_SIGNAL_NUM_1,
+    ADV_POST_SIG_NETWORK_DISCONNECTED        = OS_SIGNAL_NUM_2,
+    ADV_POST_SIG_NETWORK_CONNECTED           = OS_SIGNAL_NUM_3,
+    ADV_POST_SIG_TIME_SYNCHRONIZED           = OS_SIGNAL_NUM_4,
+    ADV_POST_SIG_RETRANSMIT                  = OS_SIGNAL_NUM_5,
+    ADV_POST_SIG_RETRANSMIT2                 = OS_SIGNAL_NUM_6,
+    ADV_POST_SIG_ACTIVATE_SENDING_STATISTICS = OS_SIGNAL_NUM_7,
+    ADV_POST_SIG_SEND_STATISTICS             = OS_SIGNAL_NUM_8,
+    ADV_POST_SIG_DO_ASYNC_COMM               = OS_SIGNAL_NUM_9,
+    ADV_POST_SIG_RELAYING_MODE_CHANGED       = OS_SIGNAL_NUM_10,
+    ADV_POST_SIG_NETWORK_WATCHDOG            = OS_SIGNAL_NUM_11,
+    ADV_POST_SIG_TASK_WATCHDOG_FEED          = OS_SIGNAL_NUM_12,
+    ADV_POST_SIG_GW_CFG_READY                = OS_SIGNAL_NUM_13,
+    ADV_POST_SIG_GW_CFG_CHANGED_RUUVI        = OS_SIGNAL_NUM_14,
+    ADV_POST_SIG_BLE_SCAN_CHANGED            = OS_SIGNAL_NUM_15,
+    ADV_POST_SIG_ACTIVATE_CFG_MODE           = OS_SIGNAL_NUM_16,
+    ADV_POST_SIG_DEACTIVATE_CFG_MODE         = OS_SIGNAL_NUM_17,
+    ADV_POST_SIG_GREEN_LED_TURN_ON           = OS_SIGNAL_NUM_18,
+    ADV_POST_SIG_GREEN_LED_TURN_OFF          = OS_SIGNAL_NUM_19,
+    ADV_POST_SIG_GREEN_LED_UPDATE            = OS_SIGNAL_NUM_20,
+    ADV_POST_SIG_RECV_ADV_TIMEOUT            = OS_SIGNAL_NUM_21,
 } adv_post_sig_e;
 
 typedef struct adv_post_state_t
@@ -154,6 +157,8 @@ static os_mutex_static_t    g_adv_post_cfg_access_mutex_mem;
 static uint32_t                       g_adv_post_nonce;
 static os_signal_t*                   g_p_adv_post_sig;
 static os_signal_static_t             g_adv_post_sig_mem;
+static os_timer_sig_periodic_t*       g_p_adv_post_timer_sig_send_ble_adv;
+static os_timer_sig_periodic_static_t g_adv_post_timer_sig_send_ble_adv_mem;
 static os_timer_sig_one_shot_t*       g_p_adv_post_timer_sig_activate_sending_statistics;
 static os_timer_sig_one_shot_static_t g_p_adv_post_timer_sig_activate_sending_statistics_mem;
 static os_timer_sig_periodic_t*       g_p_adv_post_timer_sig_send_statistics;
@@ -306,6 +311,7 @@ parse_adv_report_from_uart(const re_ca_uart_payload_t* const p_msg, const time_t
     p_adv->rssi            = p_report->rssi_db;
     p_adv->data_len        = p_report->adv_len;
     memcpy(p_adv->data_buf, p_report->adv, p_report->adv_len);
+    LOG_DUMP_INFO(p_report->adv, p_report->adv_len, "Got from nRF52 (RSSI=%d)", p_report->rssi_db);
 
     return true;
 }
@@ -1013,6 +1019,18 @@ adv_post_handle_sig_relaying_mode_changed(adv_post_state_t* const p_adv_post_sta
     gw_status_clear_http_relaying_cmd();
 }
 
+static void
+adv_post_handle_sig_send_ble_adv(void)
+{
+    LOG_INFO("Got ADV_POST_SIG_SEND_BLE_ADV");
+    i2c_task_ble_adv_packet_t packet = { 0 };
+    if (!i2c_task_get_ble_adv_packet(&packet))
+    {
+        return;
+    }
+    ble_adv_send(packet.buf);
+}
+
 static bool
 adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p_adv_post_state)
 {
@@ -1022,6 +1040,9 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p
         case ADV_POST_SIG_STOP:
             LOG_INFO("Got ADV_POST_SIG_STOP");
             flag_stop = true;
+            break;
+        case ADV_POST_SIG_SEND_BLE_ADV:
+            adv_post_handle_sig_send_ble_adv();
             break;
         case ADV_POST_SIG_NETWORK_DISCONNECTED:
             LOG_INFO("Handle event: NETWORK_DISCONNECTED");
@@ -1156,6 +1177,7 @@ adv_post_task(void)
     LOG_INFO("%s started", __func__);
     os_timer_sig_periodic_start(g_p_adv_post_timer_sig_network_watchdog);
     os_timer_sig_one_shot_start(g_p_adv_post_timer_sig_recv_adv_timeout);
+    os_timer_sig_periodic_start(g_p_adv_post_timer_sig_send_ble_adv);
 
     adv_post_wdt_add_and_start();
 
@@ -1209,6 +1231,7 @@ static void
 adv_post_register_signals(void)
 {
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_STOP));
+    os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_SEND_BLE_ADV));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_NETWORK_DISCONNECTED));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_NETWORK_CONNECTED));
     os_signal_add(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_TIME_SYNCHRONIZED));
@@ -1326,6 +1349,13 @@ adv_post_create_timers(void)
         adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT2),
         pdMS_TO_TICKS(ADV_POST_DEFAULT_INTERVAL_SECONDS * TIME_UNITS_MS_PER_SECOND));
 
+    g_p_adv_post_timer_sig_send_ble_adv = os_timer_sig_periodic_create_static(
+        &g_adv_post_timer_sig_send_ble_adv_mem,
+        "adv_post_send_ble_adv",
+        g_p_adv_post_sig,
+        adv_post_conv_to_sig_num(ADV_POST_SIG_SEND_BLE_ADV),
+        pdMS_TO_TICKS(ADV_POST_SEND_BLE_ADV_PERIOD_MS));
+
     g_p_adv_post_timer_sig_activate_sending_statistics = os_timer_sig_one_shot_create_static(
         &g_p_adv_post_timer_sig_activate_sending_statistics_mem,
         "adv_post_act_send_stat",
@@ -1383,6 +1413,8 @@ adv_post_delete_timers(void)
     os_timer_sig_periodic_delete(&g_adv_post_timers[0].p_timer_sig);
     os_timer_sig_periodic_stop(g_adv_post_timers[1].p_timer_sig);
     os_timer_sig_periodic_delete(&g_adv_post_timers[1].p_timer_sig);
+    os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_send_ble_adv);
+    os_timer_sig_periodic_delete(&g_p_adv_post_timer_sig_send_ble_adv);
     os_timer_sig_one_shot_stop(g_p_adv_post_timer_sig_activate_sending_statistics);
     os_timer_sig_one_shot_delete(&g_p_adv_post_timer_sig_activate_sending_statistics);
     os_timer_sig_periodic_stop(g_p_adv_post_timer_sig_send_statistics);

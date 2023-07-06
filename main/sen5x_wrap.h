@@ -19,6 +19,12 @@ extern "C" {
 #define SEN5X_WRAP_SERIAL_NUMBER_SIZE (32U)
 #define SEN5X_WRAP_PRODUCT_NAME_SIZE  (32U)
 
+#define SEN5X_INVALID_RAW_VALUE_PM          (0xFFFFU)
+#define SEN5X_INVALID_RAW_VALUE_HUMIDITY    (0x7FFFU)
+#define SEN5X_INVALID_RAW_VALUE_TEMPERATURE (0x7FFFU)
+#define SEN5X_INVALID_RAW_VALUE_VOC         (0x7FFFU)
+#define SEN5X_INVALID_RAW_VALUE_NOX         (0x7FFFU)
+
 typedef struct sen5x_wrap_serial_number_t
 {
     uint8_t serial_number[SEN5X_WRAP_SERIAL_NUMBER_SIZE];

@@ -196,6 +196,10 @@ scd4x_wrap_check(void)
 re_float
 scd4x_wrap_conv_raw_to_float_co2(const scd4x_wrap_raw_co2_t raw_co2)
 {
+    if (SCD4X_INVALID_RAW_VALUE_CO2 == raw_co2)
+    {
+        return NAN;
+    }
     const re_float result = (float)raw_co2 / SCD4X_SCALE_FACTOR_CO2;
     if ((result < RE_6_CO2_MIN) || (result > RE_6_CO2_MAX))
     {
@@ -207,6 +211,10 @@ scd4x_wrap_conv_raw_to_float_co2(const scd4x_wrap_raw_co2_t raw_co2)
 re_float
 scd4x_wrap_conv_raw_to_float_temperature(const scd4x_wrap_raw_temperature_m_deg_c_t temperature_m_deg_c)
 {
+    if (SCD4X_INVALID_RAW_VALUE_TEMPERATURE == temperature_m_deg_c)
+    {
+        return NAN;
+    }
     const re_float result = (float)temperature_m_deg_c / SCD4X_SCALE_FACTOR_TEMPERATURE;
     if ((result < RE_6_TEMPERATURE_MIN) || (result > RE_6_TEMPERATURE_MAX))
     {
@@ -218,6 +226,10 @@ scd4x_wrap_conv_raw_to_float_temperature(const scd4x_wrap_raw_temperature_m_deg_
 re_float
 scd4x_wrap_conv_raw_to_float_humidity(const scd4x_wrap_raw_humidity_m_percent_rh_t humidity_m_percent_rh)
 {
+    if (SCD4X_INVALID_RAW_VALUE_HUMIDITY == humidity_m_percent_rh)
+    {
+        return NAN;
+    }
     const re_float result = (float)humidity_m_percent_rh / SCD4X_SCALE_FACTOR_HUMIDITY;
     if ((result < RE_6_HUMIDITY_MIN) || (result > RE_6_HUMIDITY_MAX))
     {

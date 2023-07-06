@@ -34,6 +34,7 @@ typedef struct gw_cfg_default_init_param_t
     mac_address_bin_t        nrf52_mac_addr;
     mac_address_bin_t        esp32_mac_addr_wifi;
     mac_address_bin_t        esp32_mac_addr_eth;
+    mac_address_bin_t        esp32_mac_addr_bt;
 } gw_cfg_default_init_param_t;
 
 bool

@@ -16,6 +16,10 @@
 extern "C" {
 #endif
 
+#define SCD4X_INVALID_RAW_VALUE_CO2         (0xFFFFU)
+#define SCD4X_INVALID_RAW_VALUE_TEMPERATURE (0x80000000U)
+#define SCD4X_INVALID_RAW_VALUE_HUMIDITY    (0x80000000U)
+
 typedef struct scd4x_wrap_serial_num_t
 {
     uint16_t serial_0;

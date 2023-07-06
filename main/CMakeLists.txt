@@ -6,6 +6,8 @@ idf_component_register(
             adv_post.h
             bin2hex.c
             bin2hex.h
+            ble_adv.c
+            ble_adv.h
             cjson_wrap.c
             cjson_wrap.h
             esp_ota_ops_patched.c
@@ -137,6 +139,7 @@ idf_component_register(
             esp_http_client
             json
             fatfs
+            bt
             esp32-wifi-manager
             ruuvi.boards.c
             ruuvi.comm_tester.c

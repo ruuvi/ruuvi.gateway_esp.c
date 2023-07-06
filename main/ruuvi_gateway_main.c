@@ -44,6 +44,7 @@
 #include "network_subsystem.h"
 #include "gw_cfg_storage.h"
 #include "i2c_task.h"
+#include "ble_adv.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -238,6 +239,7 @@ ruuvi_generate_init_params(
     p_init_params->nrf52_mac_addr      = nrf52_mac_addr;
     p_init_params->esp32_mac_addr_wifi = gateway_read_mac_addr(ESP_MAC_WIFI_STA);
     p_init_params->esp32_mac_addr_eth  = gateway_read_mac_addr(ESP_MAC_ETH);
+    p_init_params->esp32_mac_addr_bt   = gateway_read_mac_addr(ESP_MAC_BT);
     return p_init_params;
 }
 
@@ -562,6 +564,12 @@ main_task_init(void)
         return false;
     }
     gw_cfg_unlock_ro(&p_gw_cfg);
+
+    if (!ble_adv_init())
+    {
+        LOG_ERR("%s failed", "ble_adv_init");
+        return false;
+    }
 
     return true;
 }
