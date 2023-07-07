@@ -31,6 +31,8 @@ extern "C" {
 #define ADV_DATA_MAX_LEN (32)
 #define MAX_ADVS_TABLE   (GW_CFG_MAX_NUM_SENSORS)
 
+#define ADV_TABLE_RSSI_LOCAL_SENSOR (-1)
+
 typedef int8_t   wifi_rssi_t;
 typedef uint8_t  ble_data_len_t;
 typedef uint32_t adv_counter_t;
@@ -54,7 +56,7 @@ typedef struct adv_report_table_t
 } adv_report_table_t;
 
 void
-adv_table_init(void);
+adv_table_init(const mac_address_bin_t esp32_bluetooth_mac_addr);
 
 void
 adv_table_deinit(void);

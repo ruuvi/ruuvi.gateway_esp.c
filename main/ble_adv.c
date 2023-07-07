@@ -131,14 +131,20 @@ ble_adv_generate_device_name(char* const p_buf, const size_t buf_size)
 
     memset(p_buf, 0, buf_size);
 
-    (void)snprintf(
-        p_buf,
-        buf_size,
-        "%s %s",
-        BLE_ADV_DEVICE_INFO_MODEL_NUMBER,
-        (mac_addr_len > BLE_ADV_DEVICE_NAME_SUFFIX_LEN)
-            ? &p_mac_addr->str_buf[mac_addr_len - BLE_ADV_DEVICE_NAME_SUFFIX_LEN]
-            : p_mac_addr->str_buf);
+    if (mac_addr_len > BLE_ADV_DEVICE_NAME_SUFFIX_LEN)
+    {
+        (void)snprintf(
+            p_buf,
+            buf_size,
+            "%s %.2s%.2s",
+            BLE_ADV_DEVICE_INFO_MODEL_NUMBER,
+            &p_mac_addr->str_buf[mac_addr_len - BLE_ADV_DEVICE_NAME_SUFFIX_LEN],
+            &p_mac_addr->str_buf[mac_addr_len - BLE_ADV_DEVICE_NAME_SUFFIX_LEN + 3]);
+    }
+    else
+    {
+        (void)snprintf(p_buf, buf_size, "%s %.5s", BLE_ADV_DEVICE_INFO_MODEL_NUMBER, p_mac_addr->str_buf);
+    }
 }
 
 static int

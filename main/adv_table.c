@@ -11,6 +11,12 @@
 #include "os_mutex.h"
 #include "sys/queue.h"
 
+#if 0
+#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
+#include "log.h"
+static const char* TAG = "ADV_TABLE";
+#endif
+
 #if defined(__XTENSA__)
 #define ADV_REPORT_EXPECTED_SIZE (16U + 32U)
 #elif defined(__linux__) && defined(__x86_64__)
@@ -47,11 +53,14 @@ static adv_report_list_t       g_adv_hash_table[ADV_TABLE_HASH_SIZE];
 static adv_report_list_t       g_adv_reports_retransmission_list1;
 static adv_report_list_t       g_adv_reports_retransmission_list2;
 static adv_report_hist_list_t  g_adv_reports_hist_list;
+static mac_address_bin_t       g_adv_table_esp32_bluetooth_mac_addr;
 
 void
-adv_table_init(void)
+adv_table_init(const mac_address_bin_t esp32_bluetooth_mac_addr)
 {
     gp_adv_reports_mutex = os_mutex_create_static(&g_adv_reports_mutex_mem);
+
+    g_adv_table_esp32_bluetooth_mac_addr = esp32_bluetooth_mac_addr;
 
     for (uint32_t i = 0; i < (sizeof(g_adv_hash_table) / sizeof(g_adv_hash_table[0])); ++i)
     {
@@ -146,6 +155,34 @@ adv_hash_table_remove(adv_reports_list_elem_t* p_elem)
 }
 
 static bool
+adv_table_check_if_adv_must_be_discarded(const adv_report_t* const p_adv, const adv_report_t* const p_prev_adv)
+{
+    if ((ADV_TABLE_RSSI_LOCAL_SENSOR == p_prev_adv->rssi) && (ADV_TABLE_RSSI_LOCAL_SENSOR != p_adv->rssi))
+    {
+        // Discard data from local I2C sensors received via Bluetooth.
+        // Filtering by ESP32_BT_MAC is not sufficient if two Gateways relay the same data.
+        return true;
+    }
+    // TODO: It would be better to decode DF5/DF6, extract sensor's MAC addr from the packet
+    //       and compare it with g_adv_table_esp32_bluetooth_mac_addr
+    if ((ADV_TABLE_RSSI_LOCAL_SENSOR != p_adv->rssi)
+        && (0 == memcmp(p_adv->tag_mac.mac, g_adv_table_esp32_bluetooth_mac_addr.mac, MAC_ADDRESS_NUM_BYTES)))
+    {
+        // Discard data from local I2C sensors received via Bluetooth.
+        // Reject BLE packets which are sent by the ESP32 by checking against ESP32_BT_MAC address.
+        return true;
+    }
+    if ((p_prev_adv->data_len == p_adv->data_len)
+        && (0 == memcmp(&p_prev_adv->data_buf, &p_adv->data_buf, p_adv->data_len)))
+    {
+        // Discard the data if it's equal to the previous value (new measurement should have different measurement
+        // counter)
+        return true;
+    }
+    return false;
+}
+
+static bool
 adv_table_put_unsafe(const adv_report_t* const p_adv)
 {
     bool flag_updated = false;
@@ -164,21 +201,7 @@ adv_table_put_unsafe(const adv_report_t* const p_adv)
     }
     else
     {
-        bool flag_discard_data = false;
-        if ((-1 == p_elem->adv_report.rssi) && (-1 != p_adv->rssi))
-        {
-            // Discard AirQ data received via Bluetooth because we already have it.
-            flag_discard_data = true;
-        }
-        else if (
-            (p_elem->adv_report.data_len == p_adv->data_len) && (p_adv->data_len > ADV_MANUFACTURER_ID_OFFSET)
-            && (0 == memcmp(&p_elem->adv_report.data_buf, &p_adv->data_buf, p_adv->data_len)))
-        {
-            // Discard the data if it's equal to the previous value
-            flag_discard_data = true;
-        }
-
-        if (!flag_discard_data)
+        if (!adv_table_check_if_adv_must_be_discarded(p_adv, &p_elem->adv_report))
         {
             const adv_counter_t prev_counter   = p_elem->adv_report.samples_counter;
             p_elem->adv_report                 = *p_adv; // Update data

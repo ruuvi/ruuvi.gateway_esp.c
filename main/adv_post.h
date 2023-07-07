@@ -19,7 +19,7 @@ extern "C" {
 #endif
 
 void
-adv_post_init(void);
+adv_post_init(const mac_address_bin_t esp32_bluetooth_mac_addr);
 
 bool
 adv_post_is_initialized(void);

@@ -301,7 +301,7 @@ i2c_task_send_data(void)
                 .mac = {0},
                 .adv = {0},
                 .adv_len = adv_packet.len,
-                .rssi_db = -1,
+                .rssi_db = ADV_TABLE_RSSI_LOCAL_SENSOR,
             },
         },
     };

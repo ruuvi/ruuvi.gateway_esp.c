@@ -1428,7 +1428,7 @@ adv_post_delete_timers(void)
 }
 
 void
-adv_post_init(void)
+adv_post_init(const mac_address_bin_t esp32_bluetooth_mac_addr)
 {
     g_adv_post_green_led_state = false;
 
@@ -1438,7 +1438,7 @@ adv_post_init(void)
     adv_post_create_timers();
 
     g_adv_post_nonce = esp_random();
-    adv_table_init();
+    adv_table_init(esp32_bluetooth_mac_addr);
     api_callbacks_reg((void*)&adv_callback_func_tbl);
     const uint32_t           stack_size    = 1024U * 4U;
     const os_task_priority_t task_priority = 5;

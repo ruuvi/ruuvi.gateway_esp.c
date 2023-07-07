@@ -535,7 +535,7 @@ main_task_init(void)
         leds_notify_nrf52_ready();
     }
 
-    adv_post_init();
+    adv_post_init(gateway_read_mac_addr(ESP_MAC_BT));
     terminal_open(NULL, true, NRF52_COMM_TASK_PRIORITY);
     api_process(true);
     const nrf52_device_info_t nrf52_device_info = ruuvi_device_id_request_and_wait();
