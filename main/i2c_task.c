@@ -8,6 +8,7 @@
 #include "i2c_task.h"
 #include <string.h>
 #include <esp_task_wdt.h>
+#include <math.h>
 #include "os_malloc.h"
 #include "os_signal.h"
 #include "os_timer_sig.h"
@@ -21,6 +22,7 @@
 #include "gw_cfg.h"
 #include "adv_post.h"
 #include "ble_adv.h"
+#include "time_units.h"
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
@@ -37,6 +39,9 @@
 #define I2C_TASK_SCD4X_CHECK_MAX_ERR_CNT                (10U)
 #define I2C_TASK_SCD4X_SEND_BLE_DEVICE_NAME_PERIOD_MS   (3011U)
 #define I2C_TASK_SCD4X_SEND_BLE_DEVICE_NAME_DURATION_MS (100U)
+#define I2C_TASK_INITIAL_DELAY_MS                       (1000U)
+#define I2C_TASK_SEN5X_DELAY_BEFORE_VALID_SEC           (90U)
+#define I2C_TASK_SCD4X_DELAY_BEFORE_VALID_SEC           (90U)
 
 #define I2C_TASK_WATCHDOG_FEEDING_PERIOD_TICKS pdMS_TO_TICKS(1000)
 
@@ -58,6 +63,10 @@ typedef struct i2c_task_t
 {
     bool                           flag_sen5x_present;
     bool                           flag_scd4x_present;
+    bool                           flag_sen5x_initial_data_skip;
+    bool                           flag_scd4x_initial_data_skip;
+    TickType_t                     sen5x_measurement_started_at_tick;
+    TickType_t                     scd4x_measurement_started_at_tick;
     mac_address_bin_t              mac_addr_bin;
     uint64_t                       mac_addr;
     os_mutex_t                     p_mutex;
@@ -250,6 +259,48 @@ i2c_task_get_re6_data(void)
     return ep_data;
 }
 
+static bool
+i2c_task_is_all_measurements_invalid(const re_6_data_t* const p_ep_data)
+{
+    if (!isnan(p_ep_data->pm1p0_ppm))
+    {
+        return false;
+    }
+    if (!isnan(p_ep_data->pm2p5_ppm))
+    {
+        return false;
+    }
+    if (!isnan(p_ep_data->pm4p0_ppm))
+    {
+        return false;
+    }
+    if (!isnan(p_ep_data->pm10p0_ppm))
+    {
+        return false;
+    }
+    if (!isnan(p_ep_data->co2))
+    {
+        return false;
+    }
+    if (!isnan(p_ep_data->humidity_rh))
+    {
+        return false;
+    }
+    if (!isnan(p_ep_data->voc_index))
+    {
+        return false;
+    }
+    if (!isnan(p_ep_data->nox_index))
+    {
+        return false;
+    }
+    if (!isnan(p_ep_data->temperature_c))
+    {
+        return false;
+    }
+    return true;
+}
+
 bool
 i2c_task_get_ble_adv_packet(i2c_task_ble_adv_packet_t* const p_packet)
 {
@@ -273,6 +324,12 @@ i2c_task_get_ble_adv_packet(i2c_task_ble_adv_packet_t* const p_packet)
         ep_data.co2,
         (printf_uint_t)ep_data.measurement_count);
 
+    if (i2c_task_is_all_measurements_invalid(&ep_data))
+    {
+        LOG_DBG("All data in the packet are invalid - don't send it");
+        return false;
+    }
+
     uint8_t payload_buf[RE_6_DATA_LENGTH];
     re_6_encode(payload_buf, &ep_data);
 
@@ -287,11 +344,15 @@ static void
 i2c_task_send_data(void)
 {
     i2c_task_ble_adv_packet_t adv_packet = { 0 };
-    i2c_task_get_ble_adv_packet(&adv_packet);
 
     if (++g_p_i2c_task->measurement_count == (UINT16_MAX - 1))
     {
         g_p_i2c_task->measurement_count = 0;
+    }
+
+    if (!i2c_task_get_ble_adv_packet(&adv_packet))
+    {
+        return;
     }
 
     re_ca_uart_payload_t payload = {
@@ -310,6 +371,32 @@ i2c_task_send_data(void)
     memcpy(&payload.params.adv.adv[0], adv_packet.buf, adv_packet.len);
 
     adv_post_send_payload(&payload);
+}
+
+static bool
+i2c_task_sen5x_start_measurement(i2c_task_t* p_i2c_task)
+{
+    if (!sen5x_wrap_start_measurement())
+    {
+        LOG_ERR("%s failed", "sen5x_wrap_start_measurement");
+        return false;
+    }
+    p_i2c_task->flag_sen5x_initial_data_skip = true;
+    p_i2c_task->sen5x_measurement_started_at_tick = xTaskGetTickCount();
+    return true;
+}
+
+static bool
+i2c_task_scd4x_start_measurement(i2c_task_t* p_i2c_task)
+{
+    if (!scd4x_wrap_start_periodic_measurement())
+    {
+        LOG_ERR("%s failed", "scd4x_wrap_start_periodic_measurement");
+        return false;
+    }
+    p_i2c_task->flag_scd4x_initial_data_skip = true;
+    p_i2c_task->scd4x_measurement_started_at_tick = xTaskGetTickCount();
+    return true;
 }
 
 static void
@@ -337,9 +424,9 @@ i2c_task_handle_sig_poll_sen5x(void)
         g_p_i2c_task->err_cnt_sen5x = I2C_TASK_SEN5X_CHECK_MAX_ERR_CNT;
         if (sen5x_wrap_check())
         {
-            if (!sen5x_wrap_start_measurement())
+            if (!i2c_task_sen5x_start_measurement(g_p_i2c_task))
             {
-                LOG_ERR("%s failed", "sen5x_wrap_start_measurement");
+                LOG_ERR("%s failed", "i2c_task_sen5x_start_measurement");
             }
         }
         else
@@ -357,6 +444,26 @@ i2c_task_handle_sig_poll_sen5x(void)
         os_timer_sig_one_shot_restart(
             g_p_i2c_task->p_timer_sig_poll_sen5x,
             pdMS_TO_TICKS(I2C_TASK_SEN5X_POLL_PERIOD_MS - I2C_TASK_SEN5X_CHECK_PERIOD_MS));
+    }
+
+    if (g_p_i2c_task->flag_sen5x_initial_data_skip)
+    {
+        if ((xTaskGetTickCount() - g_p_i2c_task->sen5x_measurement_started_at_tick)
+            < pdMS_TO_TICKS(I2C_TASK_SEN5X_DELAY_BEFORE_VALID_SEC * TIME_UNITS_MS_PER_SECOND))
+        {
+            measurement.mass_concentration_pm1p0  = SEN5X_INVALID_RAW_VALUE_PM;
+            measurement.mass_concentration_pm2p5  = SEN5X_INVALID_RAW_VALUE_PM;
+            measurement.mass_concentration_pm4p0  = SEN5X_INVALID_RAW_VALUE_PM;
+            measurement.mass_concentration_pm10p0 = SEN5X_INVALID_RAW_VALUE_PM;
+            measurement.ambient_humidity          = SEN5X_INVALID_RAW_VALUE_HUMIDITY;
+            measurement.ambient_temperature       = SEN5X_INVALID_RAW_VALUE_TEMPERATURE;
+            measurement.voc_index                 = SEN5X_INVALID_RAW_VALUE_VOC;
+            measurement.nox_index                 = SEN5X_INVALID_RAW_VALUE_NOX;
+        }
+        else
+        {
+            g_p_i2c_task->flag_sen5x_initial_data_skip = false;
+        }
     }
 
     os_mutex_lock(g_p_i2c_task->p_mutex);
@@ -387,9 +494,9 @@ i2c_task_handle_sig_poll_scd4x(void)
         g_p_i2c_task->err_cnt_scd4x = I2C_TASK_SCD4X_CHECK_MAX_ERR_CNT;
         if (scd4x_wrap_check())
         {
-            if (!scd4x_wrap_start_periodic_measurement())
+            if (!i2c_task_scd4x_start_measurement(g_p_i2c_task))
             {
-                LOG_ERR("%s failed", "sen5x_wrap_start_measurement");
+                LOG_ERR("%s failed", "i2c_task_scd4x_start_measurement");
             }
         }
         else
@@ -407,6 +514,21 @@ i2c_task_handle_sig_poll_scd4x(void)
         os_timer_sig_one_shot_restart(
             g_p_i2c_task->p_timer_sig_poll_scd4x,
             pdMS_TO_TICKS(I2C_TASK_SCD4X_POLL_PERIOD_MS - I2C_TASK_SCD4X_CHECK_PERIOD_MS));
+    }
+
+    if (g_p_i2c_task->flag_scd4x_initial_data_skip)
+    {
+        if ((xTaskGetTickCount() - g_p_i2c_task->scd4x_measurement_started_at_tick)
+            < pdMS_TO_TICKS(I2C_TASK_SCD4X_DELAY_BEFORE_VALID_SEC * TIME_UNITS_MS_PER_SECOND))
+        {
+            measurement.co2                   = SCD4X_INVALID_RAW_VALUE_CO2;
+            measurement.temperature_m_deg_c   = SCD4X_INVALID_RAW_VALUE_TEMPERATURE;
+            measurement.humidity_m_percent_rh = SCD4X_INVALID_RAW_VALUE_HUMIDITY;
+        }
+        else
+        {
+            g_p_i2c_task->flag_scd4x_initial_data_skip = false;
+        }
     }
 
     os_mutex_lock(g_p_i2c_task->p_mutex);
@@ -546,21 +668,30 @@ i2c_task_init(void)
         p_i2c_task->mac_addr |= p_i2c_task->mac_addr_bin.mac[i];
     }
 
+    /*
+     * SCD4X Data Sheet:
+     * 3.1 Power-Up and Communication Start
+     * The sensor starts powering-up after reaching the power-up threshold voltage VDD,Min = 2.25 V.
+     * After reaching this threshold voltage, the sensor needs 1000 ms to enter the idle state.
+     * Once the idle state is entered it is ready to receive commands from the master.
+     */
+    vTaskDelay(pdMS_TO_TICKS(I2C_TASK_INITIAL_DELAY_MS));
+
     p_i2c_task->flag_sen5x_present = sen5x_wrap_check();
     p_i2c_task->flag_scd4x_present = scd4x_wrap_check();
     if (p_i2c_task->flag_sen5x_present)
     {
-        if (!sen5x_wrap_start_measurement())
+        if (!i2c_task_sen5x_start_measurement(p_i2c_task))
         {
-            LOG_ERR("%s failed", "sen5x_wrap_start_measurement");
+            LOG_ERR("%s failed", "i2c_task_sen5x_start_measurement");
             p_i2c_task->flag_sen5x_present = false;
         }
     }
     if (p_i2c_task->flag_scd4x_present)
     {
-        if (!scd4x_wrap_start_periodic_measurement())
+        if (!i2c_task_scd4x_start_measurement(p_i2c_task))
         {
-            LOG_ERR("%s failed", "scd4x_wrap_start_periodic_measurement");
+            LOG_ERR("%s failed", "i2c_task_scd4x_start_measurement");
             p_i2c_task->flag_scd4x_present = false;
         }
     }

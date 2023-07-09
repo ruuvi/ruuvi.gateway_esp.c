@@ -17,6 +17,7 @@
 #include "os_mutex.h"
 #include "os_signal.h"
 #include "os_timer_sig.h"
+#include "os_rw_lock.h"
 #include "cJSON.h"
 #include "http.h"
 #include "mqtt.h"
@@ -151,8 +152,7 @@ static adv_callbacks_fn_t adv_callback_func_tbl = {
 };
 
 static adv_post_cfg_cache_t g_adv_post_cfg_cache;
-static os_mutex_t           g_p_adv_post_cfg_access_mutex;
-static os_mutex_static_t    g_adv_post_cfg_access_mutex_mem;
+static os_rw_lock_t         g_p_adv_post_cfg_access_lock;
 
 static uint32_t                       g_adv_post_nonce;
 static os_signal_t*                   g_p_adv_post_sig;
@@ -233,14 +233,14 @@ u64_to_array(const uint64_t u64, uint8_t* const p_array, const uint8_t num_bytes
     }
 }
 
-static adv_post_cfg_cache_t*
-adv_post_cfg_access_mutex_try_lock(void)
+static const adv_post_cfg_cache_t*
+adv_post_cfg_access_try_lock_for_read(void)
 {
-    if (NULL == g_p_adv_post_cfg_access_mutex)
+    if (NULL == g_p_adv_post_cfg_access_lock.mutex_reader)
     {
-        g_p_adv_post_cfg_access_mutex = os_mutex_create_static(&g_adv_post_cfg_access_mutex_mem);
+        os_rw_lock_init(&g_p_adv_post_cfg_access_lock);
     }
-    if (!os_mutex_try_lock(g_p_adv_post_cfg_access_mutex))
+    if (!os_rw_lock_try_acquire_reader(&g_p_adv_post_cfg_access_lock))
     {
         return NULL;
     }
@@ -248,21 +248,28 @@ adv_post_cfg_access_mutex_try_lock(void)
 }
 
 static adv_post_cfg_cache_t*
-adv_post_cfg_access_mutex_lock(void)
+adv_post_cfg_access_lock_for_write(void)
 {
-    if (NULL == g_p_adv_post_cfg_access_mutex)
+    if (NULL == g_p_adv_post_cfg_access_lock.mutex_reader)
     {
-        g_p_adv_post_cfg_access_mutex = os_mutex_create_static(&g_adv_post_cfg_access_mutex_mem);
+        os_rw_lock_init(&g_p_adv_post_cfg_access_lock);
     }
-    os_mutex_lock(g_p_adv_post_cfg_access_mutex);
+    os_rw_lock_acquire_writer(&g_p_adv_post_cfg_access_lock);
     return &g_adv_post_cfg_cache;
 }
 
 static void
-adv_post_cfg_access_mutex_unlock(adv_post_cfg_cache_t** p_p_cfg_cache)
+adv_post_cfg_access_mutex_unlock_reader(const adv_post_cfg_cache_t** p_p_cfg_cache)
 {
     *p_p_cfg_cache = NULL;
-    os_mutex_unlock(g_p_adv_post_cfg_access_mutex);
+    os_rw_lock_release_reader(&g_p_adv_post_cfg_access_lock);
+}
+
+static void
+adv_post_cfg_access_mutex_unlock_writer(adv_post_cfg_cache_t** p_p_cfg_cache)
+{
+    *p_p_cfg_cache = NULL;
+    os_rw_lock_release_writer(&g_p_adv_post_cfg_access_lock);
 }
 
 static bool
@@ -379,7 +386,7 @@ adv_post_send_payload(const re_ca_uart_payload_t* const p_payload)
         return;
     }
 
-    adv_post_cfg_cache_t* p_cfg_cache = adv_post_cfg_access_mutex_try_lock();
+    const adv_post_cfg_cache_t* p_cfg_cache = adv_post_cfg_access_try_lock_for_read();
     if (NULL == p_cfg_cache)
     {
         LOG_WARN("Drop adv - gateway in the process of reconfiguration");
@@ -394,13 +401,13 @@ adv_post_send_payload(const re_ca_uart_payload_t* const p_payload)
     if (!parse_adv_report_from_uart(p_payload, timestamp, &adv_report))
     {
         LOG_WARN("Drop adv - parsing failed");
-        adv_post_cfg_access_mutex_unlock(&p_cfg_cache);
+        adv_post_cfg_access_mutex_unlock_reader(&p_cfg_cache);
         return;
     }
 
     if (adv_post_check_if_mac_filtered_out(p_cfg_cache, &adv_report.tag_mac))
     {
-        adv_post_cfg_access_mutex_unlock(&p_cfg_cache);
+        adv_post_cfg_access_mutex_unlock_reader(&p_cfg_cache);
         return;
     }
 
@@ -433,7 +440,7 @@ adv_post_send_payload(const re_ca_uart_payload_t* const p_payload)
             LOG_ERR("%s failed", "mqtt_publish_adv");
         }
     }
-    adv_post_cfg_access_mutex_unlock(&p_cfg_cache);
+    adv_post_cfg_access_mutex_unlock_reader(&p_cfg_cache);
 }
 
 static void
@@ -881,14 +888,14 @@ adv_post_restart_pending_retransmissions(const adv_post_state_t* const p_adv_pos
 static void
 adv_post_disable_ble_filtering(void)
 {
-    adv_post_cfg_cache_t* p_cfg_cache = adv_post_cfg_access_mutex_lock();
+    adv_post_cfg_cache_t* p_cfg_cache = adv_post_cfg_access_lock_for_write();
     if (NULL != p_cfg_cache->p_arr_of_scan_filter_mac)
     {
         p_cfg_cache->scan_filter_length = 0;
         os_free(p_cfg_cache->p_arr_of_scan_filter_mac);
         p_cfg_cache->p_arr_of_scan_filter_mac = NULL;
     }
-    adv_post_cfg_access_mutex_unlock(&p_cfg_cache);
+    adv_post_cfg_access_mutex_unlock_writer(&p_cfg_cache);
 
     LOG_INFO("Clear adv_table");
     adv_table_clear();
@@ -899,7 +906,7 @@ adv_post_on_gw_cfg_change(adv_post_state_t* const p_adv_post_state)
 {
     p_adv_post_state->flag_use_timestamps = gw_cfg_get_ntp_use();
 
-    adv_post_cfg_cache_t* p_cfg_cache = adv_post_cfg_access_mutex_lock();
+    adv_post_cfg_cache_t* p_cfg_cache = adv_post_cfg_access_lock_for_write();
 
     p_cfg_cache->flag_use_mqtt = gw_cfg_get_mqtt_use_mqtt();
     p_cfg_cache->flag_use_ntp  = p_adv_post_state->flag_use_timestamps;
@@ -980,7 +987,7 @@ adv_post_on_gw_cfg_change(adv_post_state_t* const p_adv_post_state)
         os_timer_sig_one_shot_stop(g_p_adv_post_timer_sig_activate_sending_statistics);
         p_adv_post_state->flag_need_to_send_statistics = false;
     }
-    adv_post_cfg_access_mutex_unlock(&p_cfg_cache);
+    adv_post_cfg_access_mutex_unlock_writer(&p_cfg_cache);
 
     LOG_INFO("Clear adv_table");
     adv_table_clear();
