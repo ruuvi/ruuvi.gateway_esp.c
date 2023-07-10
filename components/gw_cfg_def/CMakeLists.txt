@@ -1,7 +1,8 @@
 idf_component_register(PRIV_REQUIRES partition_table)
 
 set(GW_CFG_DEF_IMG ${CMAKE_BINARY_DIR}/gw_cfg_def.bin)
-set(NVS_PARTITION_GEN $ENV{IDF_PATH}/components/nvs_flash/nvs_partition_generator/nvs_partition_gen.py)
+#set(NVS_PARTITION_GEN $ENV{IDF_PATH}/components/nvs_flash/nvs_partition_generator/nvs_partition_gen.py)
+set(NVS_PARTITION_GEN ${CMAKE_SOURCE_DIR}/scripts/nvs_partition_gen.py)
 set(RUUVI_GW_CFG_DEFAULT ${CMAKE_SOURCE_DIR}/gw_cfg_default)
 
 ExternalProject_Add(gw_cfg_def_prj

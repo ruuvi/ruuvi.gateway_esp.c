@@ -1,0 +1,5 @@
+nvs_partition_generator.py was copied from esp-idf-v5.0.1/components/nvs_flash/nvs_partition_generator/nvs_partition_generator.py
+to fix an issue with long string values, see https://github.com/ruuvi/ruuvi.gateway_esp.c/issues/800
+
+TODO: After upgrading to a newer version of ESP-IDF, this script can be removed.
+
