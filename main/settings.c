@@ -81,8 +81,8 @@ settings_read_gw_cfg_json_from_nvs(nvs_handle handle)
     return p_cfg_json;
 }
 
-static bool
-settings_save_to_flash_cjson(const char* const p_json_str)
+static esp_err_t
+settings_save_to_flash_cjson_ret_err(const char* const p_json_str)
 {
     LOG_DBG("Save config to NVS: %s", (NULL != p_json_str) ? p_json_str : "");
 
@@ -90,7 +90,7 @@ settings_save_to_flash_cjson(const char* const p_json_str)
     if (!ruuvi_nvs_open(NVS_READWRITE, &handle))
     {
         LOG_ERR("Failed to open NVS for writing");
-        return false;
+        return ESP_FAIL;
     }
 
     char* p_gw_cfg_prev = settings_read_gw_cfg_json_from_nvs(handle);
@@ -106,7 +106,7 @@ settings_save_to_flash_cjson(const char* const p_json_str)
         {
             nvs_close(handle);
             LOG_INFO("### Save config to NVS: not needed (gw_cfg was not modified)");
-            return true;
+            return ESP_OK;
         }
     }
 
@@ -115,19 +115,39 @@ settings_save_to_flash_cjson(const char* const p_json_str)
     {
         LOG_ERR_ESP(err, "%s failed", "nvs_set_str");
         nvs_close(handle);
-        return false;
+        return err;
     }
     err = nvs_commit(handle);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(err, "%s failed", "nvs_commit");
         nvs_close(handle);
-        return false;
+        return err;
     }
     nvs_close(handle);
 
     LOG_INFO("### Save config to NVS: successfully updated");
 
+    return ESP_OK;
+}
+
+static bool
+settings_save_to_flash_cjson(const char* const p_json_str)
+{
+    esp_err_t err = settings_save_to_flash_cjson_ret_err(p_json_str);
+    if (ESP_ERR_NVS_NOT_ENOUGH_SPACE == err)
+    {
+        LOG_ERR("There is not enough space in the NVS, possibly due to an update of too old firmware");
+        LOG_WARN("Try to erase NVS and write configuration again");
+        ruuvi_nvs_deinit();
+        ruuvi_nvs_erase();
+        ruuvi_nvs_init();
+        err = settings_save_to_flash_cjson_ret_err(p_json_str);
+    }
+    if (ESP_OK != err)
+    {
+        return false;
+    }
     return true;
 }
 
