@@ -89,11 +89,16 @@ typedef struct http_async_info_t
     os_sema_static_t         http_async_sema_mem;
     http_client_config_t     http_client_config;
     esp_http_client_handle_t p_http_client_handle;
-    cjson_wrap_str_t         cjson_str;
-    hmac_sha256_t            hmac_sha256;
-    http_post_recipient_e    recipient;
-    os_task_handle_t         p_task;
-    http_post_cb_info_t      http_post_cb_info;
+    bool                     use_json_stream_gen;
+    union
+    {
+        cjson_wrap_str_t   cjson_str;
+        json_stream_gen_t* p_gen;
+    } select;
+    hmac_sha256_t         hmac_sha256;
+    http_post_recipient_e recipient;
+    os_task_handle_t      p_task;
+    http_post_cb_info_t   http_post_cb_info;
 } http_async_info_t;
 
 static const char TAG[] = "http";
@@ -432,18 +437,59 @@ http_wait_until_async_req_completed(
 }
 
 static bool
+cb_on_post_get_chunk(void* p_user_data, void** p_p_buf, size_t* p_len)
+{
+    json_stream_gen_t* p_gen   = p_user_data;
+    const char* const  p_chunk = json_stream_gen_get_next_chunk(p_gen);
+    if (NULL == p_chunk)
+    {
+        return false;
+    }
+    *p_p_buf = (void*)p_chunk;
+    *p_len   = strlen(p_chunk);
+    if (0 != *p_len)
+    {
+        LOG_INFO("HTTP POST DATA:\n%s", p_chunk);
+    }
+    return true;
+}
+
+static bool
 http_send_async(http_async_info_t* const p_http_async_info)
 {
     const esp_http_client_config_t* const p_http_config = &p_http_async_info->http_client_config.esp_http_client_config;
 
-    const char* const p_msg = p_http_async_info->cjson_str.p_str;
     LOG_INFO("### HTTP POST to URL=%s", p_http_config->url);
-    LOG_INFO("HTTP POST DATA:\n%s", p_msg);
 
-    esp_http_client_set_post_field(
-        p_http_async_info->p_http_client_handle,
-        p_msg,
-        (esp_http_client_len_t)strlen(p_msg));
+    if (p_http_async_info->use_json_stream_gen)
+    {
+        const json_stream_gen_size_t json_len = json_stream_gen_calc_size(p_http_async_info->select.p_gen);
+        const esp_err_t              err      = esp_http_client_set_cb_on_post_get_chunk(
+            p_http_async_info->p_http_client_handle,
+            (int)json_len,
+            &cb_on_post_get_chunk,
+            (void*)p_http_async_info->select.p_gen);
+        if (0 != err)
+        {
+            LOG_ERR_ESP(err, "%s failed", "esp_http_client_set_cb_on_post_get_chunk");
+            return false;
+        }
+    }
+    else
+    {
+        const char* const p_msg = p_http_async_info->select.cjson_str.p_str;
+        LOG_INFO("HTTP POST DATA:\n%s", p_msg);
+        const esp_err_t err = esp_http_client_set_post_field(
+            p_http_async_info->p_http_client_handle,
+            p_msg,
+            (esp_http_client_len_t)strlen(p_msg));
+        if (0 != err)
+        {
+            LOG_ERR_ESP(err, "%s failed", "esp_http_client_set_post_field");
+            return false;
+        }
+    }
+
     esp_http_client_set_header(p_http_async_info->p_http_client_handle, "Content-Type", "application/json");
 
     str_buf_t hmac_sha256_str = hmac_sha256_to_str_buf(&p_http_async_info->hmac_sha256);
@@ -478,33 +524,21 @@ http_send_async(http_async_info_t* const p_http_async_info)
     return true;
 }
 
-static bool
-http_send_advs_create_records_str(
-    const adv_report_table_t* const p_reports,
-    const bool                      flag_use_timestamps,
-    const uint32_t                  nonce,
-    cjson_wrap_str_t* const         p_cjson_str)
+static void
+http_async_info_free_data(http_async_info_t* const p_http_async_info)
 {
-    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
-
-    *p_cjson_str = cjson_wrap_str_null();
-
-    const bool flag_decode = false;
-    const bool res         = http_json_create_records_str(
-        p_reports,
-        (http_json_header_info_t) {
-                    .flag_use_timestamps = flag_use_timestamps,
-                    .timestamp           = time(NULL),
-                    .p_mac_addr          = gw_cfg_get_nrf52_mac_addr(),
-                    .p_coordinates_str   = p_gw_cfg->ruuvi_cfg.coordinates.buf,
-                    .flag_use_nonce      = true,
-                    .nonce               = nonce,
-        },
-        flag_decode,
-        p_cjson_str);
-
-    gw_cfg_unlock_ro(&p_gw_cfg);
-    return res;
+    if (p_http_async_info->use_json_stream_gen)
+    {
+        if (NULL != p_http_async_info->select.p_gen)
+        {
+            json_stream_gen_delete(&p_http_async_info->select.p_gen);
+        }
+    }
+    else
+    {
+        cjson_wrap_free_json_str(&p_http_async_info->select.cjson_str);
+        p_http_async_info->select.cjson_str = cjson_wrap_str_null();
+    }
 }
 
 bool
@@ -521,9 +555,24 @@ http_send_advs_internal(
 {
     p_http_async_info->recipient = flag_post_to_ruuvi ? HTTP_POST_RECIPIENT_ADVS1 : HTTP_POST_RECIPIENT_ADVS2;
 
-    if (!http_send_advs_create_records_str(p_reports, flag_use_timestamps, nonce, &p_http_async_info->cjson_str))
+    const bool flag_decode    = false;
+    const bool flag_use_nonce = true;
+
+    p_http_async_info->use_json_stream_gen = true;
+    const gw_cfg_t* p_gw_cfg               = gw_cfg_lock_ro();
+    p_http_async_info->select.p_gen        = http_json_create_stream_gen_advs(
+        p_reports,
+        flag_decode,
+        flag_use_timestamps,
+        time(NULL),
+        flag_use_nonce,
+        nonce,
+        gw_cfg_get_nrf52_mac_addr(),
+        &p_gw_cfg->ruuvi_cfg.coordinates);
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    if (NULL == p_http_async_info->select.p_gen)
     {
-        LOG_ERR("Not enough memory to generate json");
+        LOG_ERR("Not enough memory to create http_json_create_stream_gen_advs");
         return false;
     }
 
@@ -563,6 +612,7 @@ http_send_advs_internal(
     if (NULL == p_http_url)
     {
         LOG_ERR("Can't allocate memory");
+        http_async_info_free_data(p_http_async_info);
         return false;
     }
     (void)snprintf(
@@ -601,7 +651,7 @@ http_send_advs_internal(
     if (NULL == p_http_async_info->p_http_client_handle)
     {
         LOG_ERR("HTTP POST to URL=%s: Can't init http client", p_http_async_info->http_client_config.http_url.buf);
-        cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
+        http_async_info_free_data(p_http_async_info);
         return false;
     }
 
@@ -611,7 +661,7 @@ http_send_advs_internal(
         if (NULL == str_buf.buf)
         {
             LOG_ERR("Can't allocate memory for bearer token");
-            cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
+            http_async_info_free_data(p_http_async_info);
             return false;
         }
         esp_http_client_set_header(p_http_async_info->p_http_client_handle, "Authorization", str_buf.buf);
@@ -623,7 +673,7 @@ http_send_advs_internal(
         if (NULL == str_buf.buf)
         {
             LOG_ERR("Can't allocate memory for bearer token");
-            cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
+            http_async_info_free_data(p_http_async_info);
             return false;
         }
         esp_http_client_set_header(p_http_async_info->p_http_client_handle, "Authorization", str_buf.buf);
@@ -631,11 +681,15 @@ http_send_advs_internal(
     }
     if (flag_post_to_ruuvi)
     {
-        (void)hmac_sha256_calc_for_http_ruuvi(p_http_async_info->cjson_str.p_str, &p_http_async_info->hmac_sha256);
+        (void)hmac_sha256_calc_for_json_gen_http_ruuvi(
+            p_http_async_info->select.p_gen,
+            &p_http_async_info->hmac_sha256);
     }
     else
     {
-        (void)hmac_sha256_calc_for_http_custom(p_http_async_info->cjson_str.p_str, &p_http_async_info->hmac_sha256);
+        (void)hmac_sha256_calc_for_json_gen_http_custom(
+            p_http_async_info->select.p_gen,
+            &p_http_async_info->hmac_sha256);
     }
 
     if (!http_send_async(p_http_async_info))
@@ -655,7 +709,7 @@ http_send_advs_internal(
         }
         esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
         p_http_async_info->p_http_client_handle = NULL;
-        cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
+        http_async_info_free_data(p_http_async_info);
         return false;
     }
     return true;
@@ -825,7 +879,7 @@ http_check_post_advs_internal3(
     }
     esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
     p_http_async_info->p_http_client_handle = NULL;
-    cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
+    http_async_info_free_data(p_http_async_info);
 
     return resp;
 }
@@ -911,9 +965,10 @@ http_send_statistics_internal(
     const bool                               use_ssl_client_cert,
     const bool                               use_ssl_server_cert)
 {
-    p_http_async_info->recipient = HTTP_POST_RECIPIENT_STATS;
-    p_http_async_info->cjson_str = cjson_wrap_str_null();
-    if (!http_json_create_status_str(p_stat_info, p_reports, &p_http_async_info->cjson_str))
+    p_http_async_info->recipient           = HTTP_POST_RECIPIENT_STATS;
+    p_http_async_info->use_json_stream_gen = false;
+    p_http_async_info->select.cjson_str    = cjson_wrap_str_null();
+    if (!http_json_create_status_str(p_stat_info, p_reports, &p_http_async_info->select.cjson_str))
     {
         LOG_ERR("Not enough memory to generate status json");
         return false;
@@ -951,11 +1006,11 @@ http_send_statistics_internal(
     if (NULL == p_http_async_info->p_http_client_handle)
     {
         LOG_ERR("HTTP POST to URL=%s: Can't init http client", p_http_async_info->http_client_config.http_url.buf);
-        cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
+        cjson_wrap_free_json_str(&p_http_async_info->select.cjson_str);
         return false;
     }
 
-    (void)hmac_sha256_calc_for_stats(p_http_async_info->cjson_str.p_str, &p_http_async_info->hmac_sha256);
+    (void)hmac_sha256_calc_for_stats(p_http_async_info->select.cjson_str.p_str, &p_http_async_info->hmac_sha256);
 
     if (!http_send_async(p_http_async_info))
     {
@@ -974,7 +1029,7 @@ http_send_statistics_internal(
         }
         esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
         p_http_async_info->p_http_client_handle = NULL;
-        cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
+        cjson_wrap_free_json_str(&p_http_async_info->select.cjson_str);
         return false;
     }
     return true;
@@ -1104,7 +1159,7 @@ http_check_post_stat_internal3(
     }
     esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
     p_http_async_info->p_http_client_handle = NULL;
-    cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
+    cjson_wrap_free_json_str(&p_http_async_info->select.cjson_str);
 
     return resp;
 }
@@ -1353,8 +1408,7 @@ http_async_poll(void)
     esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
     p_http_async_info->p_http_client_handle = NULL;
 
-    cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
-    p_http_async_info->cjson_str = cjson_wrap_str_null();
+    http_async_info_free_data(p_http_async_info);
 
     if (flag_success && (HTTP_POST_RECIPIENT_STATS != p_http_async_info->recipient))
     {
@@ -1999,7 +2053,7 @@ http_abort_any_req_during_processing(void)
         }
         esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
         p_http_async_info->p_http_client_handle = NULL;
-        cjson_wrap_free_json_str(&p_http_async_info->cjson_str);
+        http_async_info_free_data(p_http_async_info);
     }
     LOG_DBG("os_sema_signal: p_http_async_sema");
     os_sema_signal(p_http_async_info->p_http_async_sema);

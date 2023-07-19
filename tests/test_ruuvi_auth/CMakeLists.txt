@@ -57,6 +57,7 @@ target_include_directories(${ProjectId} PUBLIC
         include
         ../../components/esp32-wifi-manager/src/include
         ../../components/esp32-wifi-manager/src
+        ${RUUVI_JSON_STREAM_GEN_INC}
 )
 
 target_compile_definitions(${ProjectId} PUBLIC

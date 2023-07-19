@@ -126,6 +126,8 @@ struct esp_http_client {
     int                         header_index;
     bool                        is_async;
     esp_transport_keep_alive_t  keep_alive_cfg;
+    esp_http_client_cb_on_post_get_chunk cb_on_post_get_chunk;
+    void* p_cb_on_post_get_chunk_user_data;
 };
 
 typedef struct esp_http_client esp_http_client_t;
@@ -1364,18 +1366,37 @@ static esp_err_t esp_http_client_send_post_data(esp_http_client_handle_t client)
         ESP_LOGE(TAG, "Invalid state");
         return ESP_ERR_INVALID_STATE;
     }
-    if (!(client->post_data && client->post_len)) {
+    if (0 == client->post_len) {
         goto success;
     }
 
-    int wret = esp_http_client_write(client, client->post_data + client->data_written_index, client->data_write_left);
-    if (wret < 0) {
-        return wret;
+    if (NULL != client->post_data) {
+        int wret = esp_http_client_write(client, client->post_data + client->data_written_index, client->data_write_left);
+        if (wret < 0) {
+            return wret;
+        }
+        client->data_write_left -= wret;
+        client->data_written_index += wret;
+    } else {
+        client->data_write_left = 0;
     }
-    client->data_write_left -= wret;
-    client->data_written_index += wret;
 
     if (client->data_write_left <= 0) {
+        if (client->cb_on_post_get_chunk) {
+            void* p_buf = NULL;
+            size_t len = 0;
+            if (!client->cb_on_post_get_chunk(client->p_cb_on_post_get_chunk_user_data, &p_buf, &len)) {
+                ESP_LOGE(TAG, "%s:%d %s: cb_on_post_get_chunk failed", __FILE__, __LINE__, __func__);
+                return -1;
+            }
+            if (0 != len) {
+                client->post_data = p_buf;
+                client->post_len = (int)len;
+                client->data_write_left = (int)len;
+                client->data_written_index = 0;
+                return ESP_ERR_HTTP_WRITE_DATA;
+            }
+        }
         goto success;
     } else {
         return ESP_ERR_HTTP_WRITE_DATA;
@@ -1435,7 +1456,7 @@ esp_err_t esp_http_client_set_post_field(esp_http_client_handle_t client, const 
     client->post_data = (char *)data;
     client->post_len = len;
     ESP_LOGD(TAG, "set post file length = %d", len);
-    if (client->post_data) {
+    if (client->post_data || client->cb_on_post_get_chunk) {
         char *value = NULL;
         if ((err = esp_http_client_get_header(client, "Content-Type", &value)) != ESP_OK) {
             return err;
@@ -1596,4 +1617,18 @@ esp_err_t esp_http_client_get_chunk_length(esp_http_client_handle_t client, int 
         return ESP_FAIL;
     }
     return ESP_OK;
+}
+
+esp_err_t esp_http_client_set_cb_on_post_get_chunk(
+    esp_http_client_handle_t             client,
+    int                                  content_len,
+    esp_http_client_cb_on_post_get_chunk cb_on_post_get_chunk,
+    void*                                p_user_data)
+{
+    if (client == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    client->cb_on_post_get_chunk = cb_on_post_get_chunk;
+    client->p_cb_on_post_get_chunk_user_data = p_user_data;
+    return esp_http_client_set_post_field(client, NULL, content_len);
 }

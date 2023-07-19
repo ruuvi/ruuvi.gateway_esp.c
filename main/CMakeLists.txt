@@ -126,6 +126,7 @@ idf_component_register(
             ruuvi.endpoints.c
             libSWD-esp32
             ruuvi.esp_wrappers.c
+            ruuvi.json_stream_gen.c
 )
 
 target_compile_options(${COMPONENT_LIB} PRIVATE

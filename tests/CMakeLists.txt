@@ -7,11 +7,17 @@ add_definitions(
         -D_GNU_SOURCE
 )
 
-set(RUUVI_ESP_WRAPPERS ${CMAKE_CURRENT_SOURCE_DIR}/../components/ruuvi.esp_wrappers.c)
+set(COMPONENTS ${CMAKE_CURRENT_SOURCE_DIR}/../components)
+
+set(RUUVI_ESP_WRAPPERS ${COMPONENTS}/ruuvi.esp_wrappers.c)
 set(RUUVI_ESP_WRAPPERS_INC ${RUUVI_ESP_WRAPPERS}/include)
 
 set(RUUVI_ESP_WRAPPERS_TESTS_COMMON ${RUUVI_ESP_WRAPPERS}/tests/common)
 set(RUUVI_ESP_WRAPPERS_TESTS_COMMON_INC ${RUUVI_ESP_WRAPPERS_TESTS_COMMON}/include)
+
+set(RUUVI_JSON_STREAM_GEN ${COMPONENTS}/ruuvi.json_stream_gen.c)
+set(RUUVI_JSON_STREAM_GEN_SRC ${RUUVI_JSON_STREAM_GEN}/src)
+set(RUUVI_JSON_STREAM_GEN_INC ${RUUVI_JSON_STREAM_GEN}/include)
 
 include_directories(
         ${RUUVI_ESP_WRAPPERS_INC}
@@ -19,8 +25,6 @@ include_directories(
 )
 
 set(RUUVI_GW_SRC ${CMAKE_CURRENT_SOURCE_DIR}/../main)
-
-set(COMPONENTS ${CMAKE_CURRENT_SOURCE_DIR}/../components)
 
 set(WIFI_MANAGER ${CMAKE_CURRENT_SOURCE_DIR}/../components/esp32-wifi-manager)
 set(WIFI_MANAGER_SRC ${WIFI_MANAGER}/src)

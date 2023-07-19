@@ -12,6 +12,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "str_buf.h"
+#include "json_stream_gen.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -61,6 +62,16 @@ bool
 hmac_sha256_calc_for_http_ruuvi(const char* const p_str, hmac_sha256_t* const p_hmac_sha256);
 
 /**
+ * @brief Compute HMAC_SHA256 for the message using the stored secret key for the Ruuvi target and return the result as
+ * a binary buffer.
+ * @param p_gen - ptr to json_stream_gen_t object which generates json
+ * @param[out] p_hmac_sha256 - ptr to output binary buffer
+ * @return true if successful, false - otherwise
+ */
+bool
+hmac_sha256_calc_for_json_gen_http_ruuvi(json_stream_gen_t* const p_gen, hmac_sha256_t* const p_hmac_sha256);
+
+/**
  * @brief Compute HMAC_SHA256 for the message using the stored secret key for the custom target and return the result as
  * a binary buffer.
  * @param p_str - ptr to the buffer with a message
@@ -69,6 +80,16 @@ hmac_sha256_calc_for_http_ruuvi(const char* const p_str, hmac_sha256_t* const p_
  */
 bool
 hmac_sha256_calc_for_http_custom(const char* const p_str, hmac_sha256_t* const p_hmac_sha256);
+
+/**
+ * @brief Compute HMAC_SHA256 for the message using the stored secret key for the custom target and return the result as
+ * a binary buffer.
+ * @param p_gen - ptr to json_stream_gen_t object which generates json
+ * @param[out] p_hmac_sha256 - ptr to output binary buffer
+ * @return true if successful, false - otherwise
+ */
+bool
+hmac_sha256_calc_for_json_gen_http_custom(json_stream_gen_t* const p_gen, hmac_sha256_t* const p_hmac_sha256);
 
 /**
  * @brief Compute HMAC_SHA256 for the message using the stored secret key for the stats and return the result as a

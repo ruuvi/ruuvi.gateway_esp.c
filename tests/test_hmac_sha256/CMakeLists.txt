@@ -9,6 +9,8 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/hmac_sha256.h
         ${RUUVI_ESP_WRAPPERS}/src/str_buf.c
         ${RUUVI_ESP_WRAPPERS}/include/str_buf.h
+        ${RUUVI_JSON_STREAM_GEN_SRC}/json_stream_gen.c
+        ${RUUVI_JSON_STREAM_GEN_INC}/json_stream_gen.h
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/md_wrap.c
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/md.c
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/md5.c
@@ -31,6 +33,7 @@ target_include_directories(${ProjectId} PUBLIC
         ${RUUVI_GW_SRC}
         ${CMAKE_CURRENT_SOURCE_DIR}
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/include
+        ${RUUVI_JSON_STREAM_GEN_INC}
 )
 
 target_compile_definitions(${ProjectId} PUBLIC

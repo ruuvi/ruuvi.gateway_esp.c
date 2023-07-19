@@ -576,6 +576,15 @@ esp_err_t esp_http_client_get_url(esp_http_client_handle_t client, char *url, co
  */
 esp_err_t esp_http_client_get_chunk_length(esp_http_client_handle_t client, int *len);
 
+
+typedef bool (*esp_http_client_cb_on_post_get_chunk)(void* p_user_data, void** p_p_buf, size_t* p_len);
+
+esp_err_t esp_http_client_set_cb_on_post_get_chunk(
+    esp_http_client_handle_t             client,
+    int                                  content_len,
+    esp_http_client_cb_on_post_get_chunk cb_on_post_get_chunk,
+    void*                                p_user_data);
+
 #ifdef __cplusplus
 }
 #endif

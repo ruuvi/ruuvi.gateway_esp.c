@@ -65,6 +65,7 @@ target_include_directories(${ProjectId} PUBLIC
         $ENV{IDF_PATH}/components/esp_common/include
         $ENV{IDF_PATH}/components/esp_event/include
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${RUUVI_JSON_STREAM_GEN_INC}
 )
 
 target_compile_definitions(${ProjectId} PUBLIC

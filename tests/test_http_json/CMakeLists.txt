@@ -11,6 +11,8 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/bin2hex.h
         ${RUUVI_GW_SRC}/cjson_wrap.c
         ${RUUVI_GW_SRC}/cjson_wrap.h
+        ${RUUVI_JSON_STREAM_GEN_SRC}/json_stream_gen.c
+        ${RUUVI_JSON_STREAM_GEN_INC}/json_stream_gen.h
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_5.c
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_5.h
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_6.c
@@ -43,6 +45,7 @@ target_include_directories(${ProjectId} PUBLIC
         $ENV{IDF_PATH}/components/esp_common/include
         $ENV{IDF_PATH}/components/esp_event/include
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${RUUVI_JSON_STREAM_GEN_INC}
 )
 
 target_compile_definitions(${ProjectId} PUBLIC

@@ -163,10 +163,10 @@ TestHttpJson::~TestHttpJson() = default;
 
 TEST_F(TestHttpJson, test_1) // NOLINT
 {
-    const time_t                 timestamp     = 1612358920;
-    const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char*                  p_coordinates = "170.112233,59.445566";
-    const std::array<uint8_t, 1> data          = { 0xAAU };
+    const time_t                     timestamp   = 1612358920;
+    const mac_address_str_t          gw_mac_addr = { .str_buf = "AA:CC:EE:00:11:22" };
+    const ruuvi_gw_cfg_coordinates_t coordinates = { .buf = "170.112233,59.445566" };
+    const std::array<uint8_t, 1>     data        = { 0xAAU };
 
     adv_report_table_t adv_table = { .num_of_advs = 1,
                                      .table       = { {
@@ -176,46 +176,66 @@ TEST_F(TestHttpJson, test_1) // NOLINT
                                                .data_len  = data.size(),
                                      } } };
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
-    ASSERT_TRUE(http_json_create_records_str(
+
+    const bool     flag_decode         = false;
+    const bool     flag_use_timestamps = true;
+    const bool     flag_use_nonce      = true;
+    const uint32_t nonce               = 12345678;
+
+    json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(
         &adv_table,
-        (http_json_header_info_t) {
-            .flag_use_timestamps = true,
-            .timestamp           = timestamp,
-            .p_mac_addr          = &gw_mac_addr,
-            .p_coordinates_str   = p_coordinates,
-            .flag_use_nonce      = true,
-            .nonce               = 12345678,
-        },
-        false,
-        &this->m_json_str));
+        flag_decode,
+        flag_use_timestamps,
+        timestamp,
+        flag_use_nonce,
+        nonce,
+        &gw_mac_addr,
+        &coordinates);
+    ASSERT_NE(nullptr, p_gen);
+
+    string json_str("");
+    while (true)
+    {
+        const char* p_chunk = json_stream_gen_get_next_chunk(p_gen);
+        if (nullptr == p_chunk)
+        {
+            ASSERT_FALSE(nullptr == p_chunk);
+        }
+
+        if ('\0' == p_chunk[0])
+        {
+            break;
+        }
+        json_str += string(p_chunk);
+    }
+
     ASSERT_EQ(
         string("{\n"
-               "\t\"data\":\t{\n"
-               "\t\t\"coordinates\":\t\"170.112233,59.445566\",\n"
-               "\t\t\"timestamp\":\t\"1612358920\",\n"
-               "\t\t\"nonce\":\t\"12345678\",\n"
-               "\t\t\"gw_mac\":\t\"AA:CC:EE:00:11:22\",\n"
-               "\t\t\"tags\":\t{\n"
-               "\t\t\t\"AA:BB:CC:01:02:03\":\t{\n"
-               "\t\t\t\t\"rssi\":\t-70,\n"
-               "\t\t\t\t\"timestamp\":\t\"1612358929\",\n"
-               "\t\t\t\t\"data\":\t\"AA\"\n"
-               "\t\t\t}\n"
-               "\t\t}\n"
-               "\t}\n"
+               "  \"data\": {\n"
+               "    \"coordinates\": \"170.112233,59.445566\",\n"
+               "    \"timestamp\": 1612358920,\n"
+               "    \"nonce\": 12345678,\n"
+               "    \"gw_mac\": \"AA:CC:EE:00:11:22\",\n"
+               "    \"tags\": {\n"
+               "      \"AA:BB:CC:01:02:03\": {\n"
+               "        \"rssi\": -70,\n"
+               "        \"timestamp\": 1612358929,\n"
+               "        \"data\": \"AA\"\n"
+               "      }\n"
+               "    }\n"
+               "  }\n"
                "}"),
-        string(this->m_json_str.p_str));
-    cjson_wrap_free_json_str(&this->m_json_str);
-    ASSERT_EQ(31, this->m_malloc_cnt);
+        json_str);
+    json_stream_gen_delete(&p_gen);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
 TEST_F(TestHttpJson, test_1_without_timestamp) // NOLINT
 {
-    const time_t                 timestamp     = 1612358920;
-    const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char*                  p_coordinates = "170.112233,59.445566";
-    const std::array<uint8_t, 1> data          = { 0xAAU };
+    const time_t                     timestamp   = 1612358920;
+    const mac_address_str_t          gw_mac_addr = { .str_buf = "AA:CC:EE:00:11:22" };
+    const ruuvi_gw_cfg_coordinates_t coordinates = { .buf = "170.112233,59.445566" };
+    const std::array<uint8_t, 1>     data        = { 0xAAU };
 
     adv_report_table_t adv_table = { .num_of_advs = 1,
                                      .table       = { {
@@ -225,46 +245,66 @@ TEST_F(TestHttpJson, test_1_without_timestamp) // NOLINT
                                                .data_len  = data.size(),
                                      } } };
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
-    ASSERT_TRUE(http_json_create_records_str(
+
+    const bool     flag_decode         = false;
+    const bool     flag_use_timestamps = false;
+    const bool     flag_use_nonce      = true;
+    const uint32_t nonce               = 12345678;
+
+    json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(
         &adv_table,
-        (http_json_header_info_t) {
-            .flag_use_timestamps = false,
-            .timestamp           = timestamp,
-            .p_mac_addr          = &gw_mac_addr,
-            .p_coordinates_str   = p_coordinates,
-            .flag_use_nonce      = true,
-            .nonce               = 12345678,
-        },
-        false,
-        &this->m_json_str));
+        flag_decode,
+        flag_use_timestamps,
+        timestamp,
+        flag_use_nonce,
+        nonce,
+        &gw_mac_addr,
+        &coordinates);
+    ASSERT_NE(nullptr, p_gen);
+
+    string json_str("");
+    while (true)
+    {
+        const char* p_chunk = json_stream_gen_get_next_chunk(p_gen);
+        if (nullptr == p_chunk)
+        {
+            ASSERT_FALSE(nullptr == p_chunk);
+        }
+
+        if ('\0' == p_chunk[0])
+        {
+            break;
+        }
+        json_str += string(p_chunk);
+    }
+
     ASSERT_EQ(
         string("{\n"
-               "\t\"data\":\t{\n"
-               "\t\t\"coordinates\":\t\"170.112233,59.445566\",\n"
-               "\t\t\"nonce\":\t\"12345678\",\n"
-               "\t\t\"gw_mac\":\t\"AA:CC:EE:00:11:22\",\n"
-               "\t\t\"tags\":\t{\n"
-               "\t\t\t\"AA:BB:CC:01:02:03\":\t{\n"
-               "\t\t\t\t\"rssi\":\t-70,\n"
-               "\t\t\t\t\"counter\":\t\"1011\",\n"
-               "\t\t\t\t\"data\":\t\"AA\"\n"
-               "\t\t\t}\n"
-               "\t\t}\n"
-               "\t}\n"
+               "  \"data\": {\n"
+               "    \"coordinates\": \"170.112233,59.445566\",\n"
+               "    \"nonce\": 12345678,\n"
+               "    \"gw_mac\": \"AA:CC:EE:00:11:22\",\n"
+               "    \"tags\": {\n"
+               "      \"AA:BB:CC:01:02:03\": {\n"
+               "        \"rssi\": -70,\n"
+               "        \"counter\": 1011,\n"
+               "        \"data\": \"AA\"\n"
+               "      }\n"
+               "    }\n"
+               "  }\n"
                "}"),
-        string(this->m_json_str.p_str));
-    cjson_wrap_free_json_str(&this->m_json_str);
-    ASSERT_EQ(27, this->m_malloc_cnt);
+        json_str);
+    json_stream_gen_delete(&p_gen);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
 TEST_F(TestHttpJson, test_2) // NOLINT
 {
-    const time_t                 timestamp     = 1612358920;
-    const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char*                  p_coordinates = "170.112233,59.445566";
-    const std::array<uint8_t, 1> data1         = { 0xAAU };
-    const std::array<uint8_t, 1> data2         = { 0xBBU };
+    const time_t                     timestamp   = 1612358920;
+    const mac_address_str_t          gw_mac_addr = { .str_buf = "AA:CC:EE:00:11:22" };
+    const ruuvi_gw_cfg_coordinates_t coordinates = { .buf = "170.112233,59.445566" };
+    const std::array<uint8_t, 1>     data1       = { 0xAAU };
+    const std::array<uint8_t, 1>     data2       = { 0xBBU };
 
     adv_report_table_t adv_table = { .num_of_advs = 2,
                                      .table       = {
@@ -283,103 +323,63 @@ TEST_F(TestHttpJson, test_2) // NOLINT
                                      } };
     memcpy(adv_table.table[0].data_buf, data1.data(), data1.size());
     memcpy(adv_table.table[1].data_buf, data2.data(), data2.size());
-    ASSERT_TRUE(http_json_create_records_str(
+
+    const bool     flag_decode         = false;
+    const bool     flag_use_timestamps = true;
+    const bool     flag_use_nonce      = true;
+    const uint32_t nonce               = 12345678;
+
+    json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(
         &adv_table,
-        (http_json_header_info_t) {
-            .flag_use_timestamps = true,
-            .timestamp           = timestamp,
-            .p_mac_addr          = &gw_mac_addr,
-            .p_coordinates_str   = p_coordinates,
-            .flag_use_nonce      = true,
-            .nonce               = 12345678,
-        },
-        false,
-        &this->m_json_str));
+        flag_decode,
+        flag_use_timestamps,
+        timestamp,
+        flag_use_nonce,
+        nonce,
+        &gw_mac_addr,
+        &coordinates);
+    ASSERT_NE(nullptr, p_gen);
+
+    string json_str("");
+    while (true)
+    {
+        const char* p_chunk = json_stream_gen_get_next_chunk(p_gen);
+        if (nullptr == p_chunk)
+        {
+            ASSERT_FALSE(nullptr == p_chunk);
+        }
+
+        if ('\0' == p_chunk[0])
+        {
+            break;
+        }
+        json_str += string(p_chunk);
+    }
+
     ASSERT_EQ(
         string("{\n"
-               "\t\"data\":\t{\n"
-               "\t\t\"coordinates\":\t\"170.112233,59.445566\",\n"
-               "\t\t\"timestamp\":\t\"1612358920\",\n"
-               "\t\t\"nonce\":\t\"12345678\",\n"
-               "\t\t\"gw_mac\":\t\"AA:CC:EE:00:11:22\",\n"
-               "\t\t\"tags\":\t{\n"
-               "\t\t\t\"AA:BB:CC:01:02:03\":\t{\n"
-               "\t\t\t\t\"rssi\":\t-70,\n"
-               "\t\t\t\t\"timestamp\":\t\"1612358929\",\n"
-               "\t\t\t\t\"data\":\t\"AA\"\n"
-               "\t\t\t},\n"
-               "\t\t\t\"AA:BB:CC:01:02:04\":\t{\n"
-               "\t\t\t\t\"rssi\":\t-71,\n"
-               "\t\t\t\t\"timestamp\":\t\"1612358930\",\n"
-               "\t\t\t\t\"data\":\t\"BB\"\n"
-               "\t\t\t}\n"
-               "\t\t}\n"
-               "\t}\n"
+               "  \"data\": {\n"
+               "    \"coordinates\": \"170.112233,59.445566\",\n"
+               "    \"timestamp\": 1612358920,\n"
+               "    \"nonce\": 12345678,\n"
+               "    \"gw_mac\": \"AA:CC:EE:00:11:22\",\n"
+               "    \"tags\": {\n"
+               "      \"AA:BB:CC:01:02:03\": {\n"
+               "        \"rssi\": -70,\n"
+               "        \"timestamp\": 1612358929,\n"
+               "        \"data\": \"AA\"\n"
+               "      },\n"
+               "      \"AA:BB:CC:01:02:04\": {\n"
+               "        \"rssi\": -71,\n"
+               "        \"timestamp\": 1612358930,\n"
+               "        \"data\": \"BB\"\n"
+               "      }\n"
+               "    }\n"
+               "  }\n"
                "}"),
-        string(this->m_json_str.p_str));
-    cjson_wrap_free_json_str(&this->m_json_str);
+        json_str);
+    json_stream_gen_delete(&p_gen);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestHttpJson, test_http_json_create_records_str_malloc_failed) // NOLINT
-{
-    const time_t                 timestamp     = 1612358920;
-    const mac_address_str_t      gw_mac_addr   = { .str_buf = "AA:CC:EE:00:11:22" };
-    const char*                  p_coordinates = "170.112233,59.445566";
-    const std::array<uint8_t, 1> data          = { 0xAAU };
-
-    adv_report_table_t adv_table = { .num_of_advs = 1,
-                                     .table       = { {
-                                               .timestamp = 1612358929,
-                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-                                               .rssi      = -70,
-                                               .data_len  = data.size(),
-                                     } } };
-    memcpy(adv_table.table[0].data_buf, data.data(), data.size());
-
-    const uint32_t num_allocations = 31;
-    for (uint32_t i = 1; i <= num_allocations; ++i)
-    {
-        this->m_malloc_fail_on_cnt = i;
-        this->m_malloc_cnt         = 0;
-        if (http_json_create_records_str(
-                &adv_table,
-                (http_json_header_info_t) {
-                    .flag_use_timestamps = true,
-                    .timestamp           = timestamp,
-                    .p_mac_addr          = &gw_mac_addr,
-                    .p_coordinates_str   = p_coordinates,
-                    .flag_use_nonce      = true,
-                    .nonce               = 12345678,
-                },
-                false,
-                &this->m_json_str))
-        {
-            ASSERT_FALSE(true);
-        }
-        ASSERT_EQ(nullptr, this->m_json_str.p_str);
-        ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
-    }
-
-    {
-        this->m_malloc_fail_on_cnt = num_allocations + 1;
-        this->m_malloc_cnt         = 0;
-        ASSERT_TRUE(http_json_create_records_str(
-            &adv_table,
-            (http_json_header_info_t) {
-                .flag_use_timestamps = true,
-                .timestamp           = timestamp,
-                .p_mac_addr          = &gw_mac_addr,
-                .p_coordinates_str   = p_coordinates,
-                .flag_use_nonce      = true,
-                .nonce               = 12345678,
-            },
-            false,
-            &this->m_json_str));
-        ASSERT_NE(nullptr, this->m_json_str.p_str);
-        cjson_wrap_free_json_str(&this->m_json_str);
-        ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
-    }
 }
 
 TEST_F(TestHttpJson, test_create_status_json_str_connection_wifi) // NOLINT

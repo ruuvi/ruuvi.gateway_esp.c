@@ -32,6 +32,7 @@ target_include_directories(${ProjectId} PUBLIC
         $ENV{IDF_PATH}/components/esp_wifi/include
         $ENV{IDF_PATH}/components/esp_common/include
         $ENV{IDF_PATH}/components/esp_event/include
+        ${RUUVI_JSON_STREAM_GEN_INC}
 )
 
 target_compile_definitions(${ProjectId} PUBLIC

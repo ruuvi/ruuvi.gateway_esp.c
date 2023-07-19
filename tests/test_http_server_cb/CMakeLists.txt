@@ -48,6 +48,8 @@ add_executable(${ProjectId}
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_6.h
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoints.c
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoints.h
+        ${RUUVI_JSON_STREAM_GEN_SRC}/json_stream_gen.c
+        ${RUUVI_JSON_STREAM_GEN_INC}/json_stream_gen.h
         ${RUUVI_ESP_WRAPPERS_INC}/log.h
         ${RUUVI_ESP_WRAPPERS_INC}/mac_addr.h
         ${RUUVI_ESP_WRAPPERS_INC}/os_mkgmtime.h
@@ -118,6 +120,7 @@ target_include_directories(${ProjectId} PUBLIC
         ../lwip/lwip/src/include
         ../lwip/lwip/contrib/ports/unix/lib
         ../lwip/lwip/contrib/ports/unix/port/include
+        ${RUUVI_JSON_STREAM_GEN_INC}
 )
 
 target_compile_definitions(${ProjectId} PUBLIC
