@@ -164,8 +164,8 @@ TestHttpJson::~TestHttpJson() = default;
 TEST_F(TestHttpJson, test_1) // NOLINT
 {
     const time_t                     timestamp   = 1612358920;
-    const mac_address_str_t          gw_mac_addr = { .str_buf = "AA:CC:EE:00:11:22" };
-    const ruuvi_gw_cfg_coordinates_t coordinates = { .buf = "170.112233,59.445566" };
+    const mac_address_str_t          gw_mac_addr = { "AA:CC:EE:00:11:22" };
+    const ruuvi_gw_cfg_coordinates_t coordinates = { "170.112233,59.445566" };
     const std::array<uint8_t, 1>     data        = { 0xAAU };
 
     adv_report_table_t adv_table = { .num_of_advs = 1,
@@ -233,8 +233,8 @@ TEST_F(TestHttpJson, test_1) // NOLINT
 TEST_F(TestHttpJson, test_1_without_timestamp) // NOLINT
 {
     const time_t                     timestamp   = 1612358920;
-    const mac_address_str_t          gw_mac_addr = { .str_buf = "AA:CC:EE:00:11:22" };
-    const ruuvi_gw_cfg_coordinates_t coordinates = { .buf = "170.112233,59.445566" };
+    const mac_address_str_t          gw_mac_addr = { "AA:CC:EE:00:11:22" };
+    const ruuvi_gw_cfg_coordinates_t coordinates = { "170.112233,59.445566" };
     const std::array<uint8_t, 1>     data        = { 0xAAU };
 
     adv_report_table_t adv_table = { .num_of_advs = 1,
@@ -301,8 +301,8 @@ TEST_F(TestHttpJson, test_1_without_timestamp) // NOLINT
 TEST_F(TestHttpJson, test_2) // NOLINT
 {
     const time_t                     timestamp   = 1612358920;
-    const mac_address_str_t          gw_mac_addr = { .str_buf = "AA:CC:EE:00:11:22" };
-    const ruuvi_gw_cfg_coordinates_t coordinates = { .buf = "170.112233,59.445566" };
+    const mac_address_str_t          gw_mac_addr = { "AA:CC:EE:00:11:22" };
+    const ruuvi_gw_cfg_coordinates_t coordinates = { "170.112233,59.445566" };
     const std::array<uint8_t, 1>     data1       = { 0xAAU };
     const std::array<uint8_t, 1>     data2       = { 0xBBU };
 
