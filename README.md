@@ -227,7 +227,7 @@ flash for 100ms every second.
 1. Create copy of "gw_cfg_default" folder, modify gw_cfg_default.json as you require.
 2. Execute command to generate binary gw_cfg_def.bin:
 ```shell
-python $IDF_PATH/components/nvs_flash/nvs_partition_generator/nvs_partition_gen.py generate gw_cfg_def_partition.csv gw_cfg_def.bin 0x40000
+python ./scripts/nvs_partition_gen.py generate gw_cfg_def_partition.csv gw_cfg_def.bin 0x40000
 ```
 
 ### Reproducible build
