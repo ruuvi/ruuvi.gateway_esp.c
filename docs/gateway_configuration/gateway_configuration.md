@@ -9,7 +9,7 @@ Firmware version information can be found at the bottom of each page:
 ![start_page](images/start_page.png)
 
 There are two version numbers:
-* Ruuvi Gateway firmware version (v1.13.0). [GitHub repo](https://github.com/ruuvi/ruuvi.gateway_esp.c)
+* Ruuvi Gateway firmware version (v1.14.0). [GitHub repo](https://github.com/ruuvi/ruuvi.gateway_esp.c)
 * Ruuvi Gateway nRF52 co-processor firmware version (v1.0.0) [GitHub repo](https://github.com/ruuvi/ruuvi.gateway_nrf.c)
 
 
@@ -177,6 +177,39 @@ Example of corresponding minimal gw_cfg.json:
 }
 ```
 
+It also supports client authentication via SSL by enabling the upload of a client certificate and 
+its associated private key, ensuring secure and verified client-server communication:
+
+![automatic_configuration_download_client_ssl_cert](images/automatic_configuration_download_client_ssl_cert.png)
+
+Example of corresponding minimal gw_cfg.json:
+```json
+{
+  "remote_cfg_use": true, 
+  "remote_cfg_url": "http://192.168.1.101:7000/", 
+  "remote_cfg_refresh_interval_minutes": 10,
+  "remote_cfg_auth_type": "none",
+  "remote_cfg_use_ssl_client_cert": true
+}
+```
+
+You can use a server SSL Certificate if you want to be independent of 
+public Certificate Authorities (CAs) or if you have deployed a self-signed certificate 
+on the HTTPS server, giving you greater control and customization over your security infrastructure:
+
+![automatic_configuration_download_server_ssl_cert](images/automatic_configuration_download_server_ssl_cert.png)
+
+Example of corresponding minimal gw_cfg.json:
+```json
+{
+  "remote_cfg_use": true, 
+  "remote_cfg_url": "http://192.168.1.101:7000/", 
+  "remote_cfg_refresh_interval_minutes": 10,
+  "remote_cfg_auth_type": "none",
+  "remote_cfg_use_ssl_server_cert": true
+}
+```
+
 ## LAN Access Settings
 
 You can restrict or allow access to your Ruuvi Gateway from the local network.
@@ -244,8 +277,14 @@ Examples:
   
 ## Custom HTTP(S) / MQTT(S) sever
 
-Ruuvi Gateway connects to the Ruuvi Cloud by default. However, you can configure it to use an HTTP
-or MQTT server to route data from your nearby sensors to a custom location instead.
+Ruuvi Gateway connects to the Ruuvi Cloud by default. However, you can configure it to use an 
+HTTP(S) or MQTT server to route data from your nearby sensors to a custom location instead.
+
+Ruuvi Gateway supports client authentication via SSL for HTTPS and MQTTS by enabling the upload 
+of a client certificate and its associated private key.
+
+Also, you can use a server SSL Certificate if you want to be independent of public Certificate 
+Authorities (CAs) or if you have deployed a self-signed certificate on the HTTPS/MQTTS server.
 
 ![cloud_options_advanced_settings](images/cloud_options_advanced_settings.png)
 
@@ -253,8 +292,8 @@ You can enable or disable sending data to Ruuvi Cloud:
 
 ![custom_server_ruuvi_cloud](images/custom_server_ruuvi_cloud.png)
 
-Or configure to send data to your own server via HTTP/HTTPS (sending to both Ruuvi Cloud and your
-own server is not supported yet):
+Or configure to send data to your own server via HTTP/HTTPS (you can configure sending to both 
+Ruuvi Cloud and your own server):
 
 ![custom_server_http](images/custom_server_http.png)
 
@@ -319,3 +358,12 @@ PHY extended payloads.
 
 **Use channel**. Each enabled BLE channel is scanned sequentially for a minimum of 7000 ms per
 channel, for a total of 21000 ms if all 3 channels are enabled. At least one channel must be active.
+
+It is possible to filter out the relayed Bluetooth sensors. 
+You can use whitelist mode if you only want to share data for specific sensors, 
+or blacklist mode if you want to share data from all sensors except the specified list.
+
+![bluetooth_filtering](images/bluetooth_filtering.png)
+
+If you don't see some sensors, try to press on **Refresh list**. If a sensor is offline, 
+you can add it manually by entering its MAC address and pressing on the **Add** button.
