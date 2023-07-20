@@ -173,7 +173,7 @@ http_json_generate_records_decode_format_5(cJSON* const p_json_tag, const uint8_
     {
         return false;
     }
-    if (!http_json_add_number_with_0_digits_after_point(p_json_tag, "pressure", data.pressure_pa + RE_5_PRES_MIN))
+    if (!http_json_add_number_with_0_digits_after_point(p_json_tag, "pressure", data.pressure_pa))
     {
         return false;
     }
