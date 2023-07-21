@@ -518,21 +518,30 @@ adv_post_retransmit_advs(
 static bool
 adv_post_do_retransmission(const bool flag_use_timestamps, const bool flag_post_to_ruuvi)
 {
-    static adv_report_table_t g_adv_reports_buf;
+    adv_report_table_t* p_adv_reports_buf = os_calloc(1, sizeof(*p_adv_reports_buf));
+    if (NULL == p_adv_reports_buf)
+    {
+        LOG_ERR("Can't allocate memory");
+        return false;
+    }
 
     // for thread safety copy the advertisements to a separate buffer for posting
     if (flag_post_to_ruuvi)
     {
-        adv_table_read_retransmission_list1_and_clear(&g_adv_reports_buf);
+        adv_table_read_retransmission_list1_and_clear(p_adv_reports_buf);
     }
     else
     {
-        adv_table_read_retransmission_list2_and_clear(&g_adv_reports_buf);
+        adv_table_read_retransmission_list2_and_clear(p_adv_reports_buf);
     }
 
-    adv_post_log(&g_adv_reports_buf, flag_use_timestamps);
+    adv_post_log(p_adv_reports_buf, flag_use_timestamps);
 
-    return adv_post_retransmit_advs(&g_adv_reports_buf, flag_use_timestamps, flag_post_to_ruuvi);
+    const bool res = adv_post_retransmit_advs(p_adv_reports_buf, flag_use_timestamps, flag_post_to_ruuvi);
+
+    os_free(p_adv_reports_buf);
+
+    return res;
 }
 
 http_json_statistics_info_t*

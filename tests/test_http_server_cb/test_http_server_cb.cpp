@@ -1686,36 +1686,54 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history) // NOLINT
 {
     const char* expected_resp
         = "{\n"
-          "\t\"data\":\t{\n"
-          "\t\t\"coordinates\":\t\"\",\n"
-          "\t\t\"timestamp\":\t\"1615660220\",\n"
-          "\t\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
-          "\t\t\"tags\":\t{\n\t\t\t\"AA:BB:CC:11:22:01\":\t{\n"
-          "\t\t\t\t\"rssi\":\t50,\n"
-          "\t\t\t\t\"timestamp\":\t\"1615660219\",\n"
-          "\t\t\t\t\"data\":\t\"2233\"\n"
-          "\t\t\t},\n"
-          "\t\t\t\"AA:BB:CC:11:22:02\":\t{\n"
-          "\t\t\t\t\"rssi\":\t51,\n"
-          "\t\t\t\t\"timestamp\":\t\"1615660209\",\n"
-          "\t\t\t\t\"data\":\t\"223344\"\n"
-          "\t\t\t}\n"
-          "\t\t}\n"
-          "\t}\n"
+          "  \"data\": {\n"
+          "    \"coordinates\": \"\",\n"
+          "    \"timestamp\": 1615660220,\n"
+          "    \"gw_mac\": \"11:22:33:44:55:66\",\n"
+          "    \"tags\": {\n"
+          "      \"AA:BB:CC:11:22:01\": {\n"
+          "        \"rssi\": 50,\n"
+          "        \"timestamp\": 1615660219,\n"
+          "        \"data\": \"2233\"\n"
+          "      },\n"
+          "      \"AA:BB:CC:11:22:02\": {\n"
+          "        \"rssi\": 51,\n"
+          "        \"timestamp\": 1615660209,\n"
+          "        \"data\": \"223344\"\n"
+          "      }\n"
+          "    }\n"
+          "  }\n"
           "}";
     const http_server_resp_t resp = http_server_cb_on_get("history", nullptr, false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_JSON_GENERATOR, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+
+    ASSERT_NE(nullptr, resp.select_location.json_generator.p_json_gen);
+    string json_str("");
+    while (true)
+    {
+        const char* p_chunk = json_stream_gen_get_next_chunk(resp.select_location.json_generator.p_json_gen);
+        if (nullptr == p_chunk)
+        {
+            ASSERT_FALSE(nullptr == p_chunk);
+        }
+
+        if ('\0' == p_chunk[0])
+        {
+            break;
+        }
+        json_str += string(p_chunk);
+    }
+    ASSERT_EQ(string(expected_resp), json_str);
+
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /history"));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("History on 60 seconds interval: ") + string(expected_resp));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Requested /history on 60 seconds interval"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1723,38 +1741,56 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_with_time_interval_20) //
 {
     const char* expected_resp
         = "{\n"
-          "\t\"data\":\t{\n"
-          "\t\t\"coordinates\":\t\"\",\n"
-          "\t\t\"timestamp\":\t\"1615660220\",\n"
-          "\t\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
-          "\t\t\"tags\":\t{\n\t\t\t\"AA:BB:CC:11:22:01\":\t{\n"
-          "\t\t\t\t\"rssi\":\t50,\n"
-          "\t\t\t\t\"timestamp\":\t\"1615660219\",\n"
-          "\t\t\t\t\"data\":\t\"2233\"\n"
-          "\t\t\t},\n"
-          "\t\t\t\"AA:BB:CC:11:22:02\":\t{\n"
-          "\t\t\t\t\"rssi\":\t51,\n"
-          "\t\t\t\t\"timestamp\":\t\"1615660209\",\n"
-          "\t\t\t\t\"data\":\t\"223344\"\n"
-          "\t\t\t}\n"
-          "\t\t}\n"
-          "\t}\n"
+          "  \"data\": {\n"
+          "    \"coordinates\": \"\",\n"
+          "    \"timestamp\": 1615660220,\n"
+          "    \"gw_mac\": \"11:22:33:44:55:66\",\n"
+          "    \"tags\": {\n"
+          "      \"AA:BB:CC:11:22:01\": {\n"
+          "        \"rssi\": 50,\n"
+          "        \"timestamp\": 1615660219,\n"
+          "        \"data\": \"2233\"\n"
+          "      },\n"
+          "      \"AA:BB:CC:11:22:02\": {\n"
+          "        \"rssi\": 51,\n"
+          "        \"timestamp\": 1615660209,\n"
+          "        \"data\": \"223344\"\n"
+          "      }\n"
+          "    }\n"
+          "  }\n"
           "}";
     const http_server_resp_t resp = http_server_cb_on_get("history", "time=20", false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_JSON_GENERATOR, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+
+    ASSERT_NE(nullptr, resp.select_location.json_generator.p_json_gen);
+    string json_str("");
+    while (true)
+    {
+        const char* p_chunk = json_stream_gen_get_next_chunk(resp.select_location.json_generator.p_json_gen);
+        if (nullptr == p_chunk)
+        {
+            ASSERT_FALSE(nullptr == p_chunk);
+        }
+
+        if ('\0' == p_chunk[0])
+        {
+            break;
+        }
+        json_str += string(p_chunk);
+    }
+    ASSERT_EQ(string(expected_resp), json_str);
+
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /history?time=20"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: time=20"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'decode=' in URL params"));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("History on 20 seconds interval: ") + string(expected_resp));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Requested /history on 20 seconds interval"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1767,35 +1803,53 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps) // NO
 
     const char* expected_resp
         = "{\n"
-          "\t\"data\":\t{\n"
-          "\t\t\"coordinates\":\t\"\",\n"
-          "\t\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
-          "\t\t\"tags\":\t{\n\t\t\t\"AA:BB:CC:11:22:01\":\t{\n"
-          "\t\t\t\t\"rssi\":\t50,\n"
-          "\t\t\t\t\"counter\":\t\"1615660219\",\n"
-          "\t\t\t\t\"data\":\t\"2233\"\n"
-          "\t\t\t},\n"
-          "\t\t\t\"AA:BB:CC:11:22:02\":\t{\n"
-          "\t\t\t\t\"rssi\":\t51,\n"
-          "\t\t\t\t\"counter\":\t\"1615660209\",\n"
-          "\t\t\t\t\"data\":\t\"223344\"\n"
-          "\t\t\t}\n"
-          "\t\t}\n"
-          "\t}\n"
+          "  \"data\": {\n"
+          "    \"coordinates\": \"\",\n"
+          "    \"gw_mac\": \"11:22:33:44:55:66\",\n"
+          "    \"tags\": {\n"
+          "      \"AA:BB:CC:11:22:01\": {\n"
+          "        \"rssi\": 50,\n"
+          "        \"counter\": 1615660219,\n"
+          "        \"data\": \"2233\"\n"
+          "      },\n"
+          "      \"AA:BB:CC:11:22:02\": {\n"
+          "        \"rssi\": 51,\n"
+          "        \"counter\": 1615660209,\n"
+          "        \"data\": \"223344\"\n"
+          "      }\n"
+          "    }\n"
+          "  }\n"
           "}";
     const http_server_resp_t resp = http_server_cb_on_get("history", nullptr, false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_JSON_GENERATOR, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+
+    ASSERT_NE(nullptr, resp.select_location.json_generator.p_json_gen);
+    string json_str("");
+    while (true)
+    {
+        const char* p_chunk = json_stream_gen_get_next_chunk(resp.select_location.json_generator.p_json_gen);
+        if (nullptr == p_chunk)
+        {
+            ASSERT_FALSE(nullptr == p_chunk);
+        }
+
+        if ('\0' == p_chunk[0])
+        {
+            break;
+        }
+        json_str += string(p_chunk);
+    }
+    ASSERT_EQ(string(expected_resp), json_str);
+
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /history"));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("History (without filtering): ") + string(expected_resp));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Requested /history (without filtering)"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1808,39 +1862,55 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps_with_f
 
     const char* expected_resp
         = "{\n"
-          "\t\"data\":\t{\n"
-          "\t\t\"coordinates\":\t\"\",\n"
-          "\t\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
-          "\t\t\"tags\":\t{\n\t\t\t\"AA:BB:CC:11:22:01\":\t{\n"
-          "\t\t\t\t\"rssi\":\t50,\n"
-          "\t\t\t\t\"counter\":\t\"1615660219\",\n"
-          "\t\t\t\t\"data\":\t\"2233\"\n"
-          "\t\t\t},\n"
-          "\t\t\t\"AA:BB:CC:11:22:02\":\t{\n"
-          "\t\t\t\t\"rssi\":\t51,\n"
-          "\t\t\t\t\"counter\":\t\"1615660209\",\n"
-          "\t\t\t\t\"data\":\t\"223344\"\n"
-          "\t\t\t}\n"
-          "\t\t}\n"
-          "\t}\n"
+          "  \"data\": {\n"
+          "    \"coordinates\": \"\",\n"
+          "    \"gw_mac\": \"11:22:33:44:55:66\",\n"
+          "    \"tags\": {\n"
+          "      \"AA:BB:CC:11:22:01\": {\n"
+          "        \"rssi\": 50,\n"
+          "        \"counter\": 1615660219,\n"
+          "        \"data\": \"2233\"\n"
+          "      },\n"
+          "      \"AA:BB:CC:11:22:02\": {\n"
+          "        \"rssi\": 51,\n"
+          "        \"counter\": 1615660209,\n"
+          "        \"data\": \"223344\"\n"
+          "      }\n"
+          "    }\n"
+          "  }\n"
           "}";
     const http_server_resp_t resp = http_server_cb_on_get("history", "counter=10", false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_JSON_GENERATOR, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+
+    ASSERT_NE(nullptr, resp.select_location.json_generator.p_json_gen);
+    string json_str("");
+    while (true)
+    {
+        const char* p_chunk = json_stream_gen_get_next_chunk(resp.select_location.json_generator.p_json_gen);
+        if (nullptr == p_chunk)
+        {
+            ASSERT_FALSE(nullptr == p_chunk);
+        }
+
+        if ('\0' == p_chunk[0])
+        {
+            break;
+        }
+        json_str += string(p_chunk);
+    }
+    ASSERT_EQ(string(expected_resp), json_str);
+
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /history?counter=10"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: counter=10"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'decode=' in URL params"));
-    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
-        ESP_LOG_INFO,
-        string("History starting from counter 10: ") + string(expected_resp));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Requested /history starting from counter 10"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 

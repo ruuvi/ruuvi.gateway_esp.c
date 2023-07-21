@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include "mbedtls/md.h"
 #include "os_malloc.h"
+#include "json_stream_gen.h"
 
 typedef struct hmac_sha256_key_t
 {
@@ -75,6 +76,66 @@ hmac_sha256_calc(const char* const p_str, const hmac_sha256_key_t* const p_key, 
     return true;
 }
 
+static bool
+hmac_sha256_calc_for_json_gen(
+    json_stream_gen_t* const       p_gen,
+    const hmac_sha256_key_t* const p_key,
+    hmac_sha256_t* const           p_hmac_sha256)
+{
+    const mbedtls_md_info_t* p_md_info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
+
+    if (NULL == p_md_info)
+    {
+        return MBEDTLS_ERR_MD_BAD_INPUT_DATA;
+    }
+
+    mbedtls_md_context_t ctx;
+    mbedtls_md_init(&ctx);
+
+    int ret = mbedtls_md_setup(&ctx, p_md_info, 1);
+    if (0 != ret)
+    {
+        goto cleanup;
+    }
+
+    ret = mbedtls_md_hmac_starts(&ctx, p_key->key, p_key->key_size);
+    if (0 != ret)
+    {
+        goto cleanup;
+    }
+
+    while (true)
+    {
+        const char* p_chunk = json_stream_gen_get_next_chunk(p_gen);
+        if (NULL == p_chunk)
+        {
+            ret = -1;
+            goto cleanup;
+        }
+        if ('\0' == *p_chunk)
+        {
+            break;
+        }
+        ret = mbedtls_md_hmac_update(&ctx, (const unsigned char*)p_chunk, strlen(p_chunk));
+        if (0 != ret)
+        {
+            goto cleanup;
+        }
+    }
+
+    ret = mbedtls_md_hmac_finish(&ctx, &p_hmac_sha256->buf[0]);
+    if (0 != ret)
+    {
+        goto cleanup;
+    }
+
+cleanup:
+    mbedtls_md_free(&ctx);
+    json_stream_gen_reset(p_gen);
+
+    return (0 == ret) ? true : false;
+}
+
 bool
 hmac_sha256_calc_for_http_ruuvi(const char* const p_str, hmac_sha256_t* const p_hmac_sha256)
 {
@@ -82,9 +143,21 @@ hmac_sha256_calc_for_http_ruuvi(const char* const p_str, hmac_sha256_t* const p_
 }
 
 bool
+hmac_sha256_calc_for_json_gen_http_ruuvi(json_stream_gen_t* const p_gen, hmac_sha256_t* const p_hmac_sha256)
+{
+    return hmac_sha256_calc_for_json_gen(p_gen, &g_hmac_sha256_key_ruuvi, p_hmac_sha256);
+}
+
+bool
 hmac_sha256_calc_for_http_custom(const char* const p_str, hmac_sha256_t* const p_hmac_sha256)
 {
     return hmac_sha256_calc(p_str, &g_hmac_sha256_key_custom, p_hmac_sha256);
+}
+
+bool
+hmac_sha256_calc_for_json_gen_http_custom(json_stream_gen_t* const p_gen, hmac_sha256_t* const p_hmac_sha256)
+{
+    return hmac_sha256_calc_for_json_gen(p_gen, &g_hmac_sha256_key_custom, p_hmac_sha256);
 }
 
 bool

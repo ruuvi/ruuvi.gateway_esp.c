@@ -28,3 +28,6 @@
 [submodule "tests/lwip/lwip"]
 	path = tests/lwip/lwip
 	url = https://github.com/ruuvi/lwip.git
+[submodule "components/ruuvi.json_stream_gen.c"]
+	path = components/ruuvi.json_stream_gen.c
+	url = https://github.com/ruuvi/ruuvi.json_stream_gen.c.git

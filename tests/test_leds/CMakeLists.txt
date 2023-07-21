@@ -39,6 +39,7 @@ target_include_directories(${ProjectId} PUBLIC
         $ENV{IDF_PATH}/components/lwip/include/apps
         ${CMAKE_CURRENT_SOURCE_DIR}
         ../../components/esp32-wifi-manager/src/include
+        ${RUUVI_JSON_STREAM_GEN_INC}
 )
 
 target_compile_definitions(${ProjectId} PUBLIC

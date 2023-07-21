@@ -18,7 +18,6 @@
 #include "flashfatfs.h"
 #include "ruuvi_gateway.h"
 #include "str_buf.h"
-#include "url_encode.h"
 #include "gw_status.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
@@ -300,46 +299,6 @@ http_server_get_decode_from_params(const char* const p_params)
 }
 
 HTTP_SERVER_CB_STATIC
-bool
-http_server_read_history(
-    cjson_wrap_str_t*    p_json_str,
-    const time_t         cur_time,
-    const bool           flag_use_timestamps,
-    const uint32_t       filter,
-    const bool           flag_use_filter,
-    const bool           flag_decode,
-    num_of_advs_t* const p_num_of_advs)
-{
-    adv_report_table_t* p_reports = os_malloc(sizeof(*p_reports));
-    if (NULL == p_reports)
-    {
-        return false;
-    }
-    adv_table_history_read(p_reports, cur_time, flag_use_timestamps, filter, flag_use_filter);
-    *p_num_of_advs = p_reports->num_of_advs;
-
-    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
-
-    const bool res = http_json_create_records_str(
-        p_reports,
-        (http_json_header_info_t) {
-            .flag_use_timestamps = flag_use_timestamps,
-            .timestamp           = cur_time,
-            .p_mac_addr          = gw_cfg_get_nrf52_mac_addr(),
-            .p_coordinates_str   = p_gw_cfg->ruuvi_cfg.coordinates.buf,
-            .flag_use_nonce      = false,
-            .nonce               = 0,
-        },
-        flag_decode,
-        p_json_str);
-
-    gw_cfg_unlock_ro(&p_gw_cfg);
-
-    os_free(p_reports);
-    return res;
-}
-
-HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_history(const char* const p_params)
 {
@@ -347,7 +306,8 @@ http_server_resp_history(const char* const p_params)
     const bool flag_time_is_synchronized = time_is_synchronized();
     uint32_t   filter                    = flag_use_timestamps ? HTTP_SERVER_DEFAULT_HISTORY_INTERVAL_SECONDS : 0;
     bool       flag_use_filter           = (flag_use_timestamps && flag_time_is_synchronized) ? true : false;
-    bool       flag_decode               = false;
+
+    bool flag_decode = false;
     if (NULL != p_params)
     {
         http_server_get_filter_from_params(
@@ -358,45 +318,55 @@ http_server_resp_history(const char* const p_params)
             &filter);
         flag_decode = http_server_get_decode_from_params(p_params);
     }
-    cjson_wrap_str_t json_str    = cjson_wrap_str_null();
-    const time_t     cur_time    = http_server_get_cur_time();
-    num_of_advs_t    num_of_advs = 0;
-    if (!http_server_read_history(
-            &json_str,
-            cur_time,
-            flag_use_timestamps,
-            filter,
-            flag_use_filter,
-            flag_decode,
-            &num_of_advs))
+
+    const time_t        cur_time  = http_server_get_cur_time();
+    adv_report_table_t* p_reports = os_calloc(1, sizeof(*p_reports));
+    if (NULL == p_reports)
     {
-        LOG_ERR("Not enough memory");
         return http_server_resp_503();
     }
+
+    adv_table_history_read(p_reports, cur_time, flag_use_timestamps, filter, flag_use_filter);
+
+    const bool         flag_use_nonce = false;
+    const uint32_t     nonce          = 0;
+    const gw_cfg_t*    p_gw_cfg       = gw_cfg_lock_ro();
+    json_stream_gen_t* p_gen          = http_json_create_stream_gen_advs(
+        p_reports,
+        flag_decode,
+        flag_use_timestamps,
+        http_server_get_cur_time(),
+        flag_use_nonce,
+        nonce,
+        gw_cfg_get_nrf52_mac_addr(),
+        &p_gw_cfg->ruuvi_cfg.coordinates);
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    os_free(p_reports);
+    if (NULL == p_gen)
+    {
+        return http_server_resp_503();
+    }
+
+    adv_post_last_successful_network_comm_timestamp_update();
+    main_task_on_get_history();
 
     if (flag_use_filter)
     {
         if (flag_use_timestamps)
         {
-            LOG_INFO("History on %u seconds interval: %s", (unsigned)filter, json_str.p_str);
+            LOG_INFO("Requested /history on %u seconds interval", (unsigned)filter);
         }
         else
         {
-            LOG_INFO("History starting from counter %u: %s", (unsigned)filter, json_str.p_str);
+            LOG_INFO("Requested /history starting from counter %u", (unsigned)filter);
         }
     }
     else
     {
-        LOG_INFO("History (without filtering): %s", json_str.p_str);
-    }
-    if (0 != num_of_advs)
-    {
-        adv_post_last_successful_network_comm_timestamp_update();
+        LOG_INFO("Requested /history (without filtering)");
     }
 
-    main_task_on_get_history();
-
-    return http_server_resp_200_json_in_heap(json_str.p_str);
+    return http_server_resp_200_json_generator(p_gen);
 }
 
 HTTP_SERVER_CB_STATIC
