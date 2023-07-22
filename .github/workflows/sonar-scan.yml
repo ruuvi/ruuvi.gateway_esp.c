@@ -63,7 +63,8 @@ jobs:
             ~/esp
             ~/.espressif
           key: esp-idf-${{ hashFiles('.github/workflows/sonar-scan.yml') }}
-          restore-keys: esp-idf-
+          restore-keys: |
+            esp-idf-${{ hashFiles('.github/workflows/sonar-scan.yml') }}
 
       - name: Download and install ESP-IDF v4.2.2
         if: steps.cache-esp-idf.outputs.cache-hit != 'true'

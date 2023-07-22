@@ -57,7 +57,8 @@ jobs:
             ~/esp
             ~/.espressif
           key: esp-idf-${{ hashFiles('.github/workflows/google-tests.yml') }}
-          restore-keys: esp-idf-
+          restore-keys: |
+            esp-idf-${{ hashFiles('.github/workflows/google-tests.yml') }}
 
       - name: Download and install ESP-IDF v4.2.2
         if: steps.cache-esp-idf.outputs.cache-hit != 'true'
