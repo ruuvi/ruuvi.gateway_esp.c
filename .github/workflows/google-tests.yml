@@ -57,14 +57,10 @@ jobs:
             ~/esp
             ~/.espressif
           key: esp-idf-${{ hashFiles('.github/workflows/google-tests.yml') }}
-          restore-keys: |
-            esp-idf-${{ hashFiles('.github/workflows/google-tests.yml') }}
 
       - name: Download and install ESP-IDF v4.2.2
         if: steps.cache-esp-idf.outputs.cache-hit != 'true'
         run: |
-          echo ======= hash: google-tests.yml: ${{ hashFiles('.github/workflows/google-tests.yml') }}
-          echo ======= hash: sonar-scan.yml: ${{ hashFiles('.github/workflows/sonar-scan.yml') }}
           mkdir ~/esp
           cd ~/esp
           git clone --recursive --branch v4.2.2 https://github.com/espressif/esp-idf.git
