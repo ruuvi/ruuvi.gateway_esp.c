@@ -25,9 +25,26 @@ jobs:
           sudo apt-get install -y cmake
           sudo apt-get install -y locales
           sudo locale-gen de_DE.UTF-8
+          sudo apt-get install -y gcc git wget make libncurses-dev flex bison gperf python3 python3-pip python3-setuptools python3-serial python3-click python3-cryptography python3-future python3-pyparsing python3-pyelftools cmake ninja-build ccache libffi-dev libssl-dev
+
+      - name: Install ESP-IDF v4.2.2
+        run: |
+          mkdir ~/esp
+          cd ~/esp
+          git clone --recursive --branch v4.2.2 https://github.com/espressif/esp-idf.git
+          cd esp-idf
+          ./install.sh
+
+      - name: Set up environment variables
+        run: |
+          echo "IDF_PATH=~/esp/esp-idf" >> $GITHUB_ENV
+          echo "::add-path::~/esp/esp-idf/tools"
 
       - name: Build
         run: |
+          . ~/esp/esp-idf/export.sh
+          printenv | grep IDF
+          idf.py version          
           cd tests
           mkdir cmake-build-unit-tests
           cd cmake-build-unit-tests
