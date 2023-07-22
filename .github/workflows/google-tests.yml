@@ -63,7 +63,7 @@ jobs:
         run: |
           source ${{ github.workspace }}/esp/esp-idf/export.sh
           printenv | grep IDF
-          idf.py version          
+          idf.py --version          
           cd tests
           mkdir cmake-build-unit-tests
           cd cmake-build-unit-tests

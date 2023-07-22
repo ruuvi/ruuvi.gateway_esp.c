@@ -69,7 +69,7 @@ jobs:
         run: |
           source ${{ github.workspace }}/esp/esp-idf/export.sh
           printenv | grep IDF
-          idf.py version          
+          idf.py --version          
           mkdir build
           cd build
           build-wrapper-linux-x86-64 --out-dir ../${{ env.BUILD_WRAPPER_OUT_DIR }} cmake -DCMAKE_BUILD_TYPE=Debug ..
