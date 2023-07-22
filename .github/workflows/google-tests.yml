@@ -62,30 +62,11 @@ jobs:
       - name: Download and install ESP-IDF v4.2.2
         if: steps.cache-esp-idf.outputs.cache-hit != 'true'
         run: |
-          echo ======== 1.a nproc=$(nproc) =========
-          pwd
-          ls -la ~
-          echo ======== 1.b =========
-          ls -la ${GITHUB_WORKSPACE}
           mkdir $HOME/esp
           cd $HOME/esp
           git clone --recursive --branch v4.2.2 https://github.com/espressif/esp-idf.git
-          echo ======== 1.c =========
-          pwd
-          ls -la
-          echo IDF_PATH: $IDF_PATH
-          echo ======== 1.d =========
-          ls -la $IDF_PATH
-          echo cd $IDF_PATH
           cd $IDF_PATH
-          pwd
-          ls -la
           ./install.sh --python `which python3.8`
-          echo ======== 2.a =========
-          pwd
-          ls -la ~
-          echo ======== 2.b =========
-          ls -la ${GITHUB_WORKSPACE}
 
       - name: Build
         run: |
