@@ -67,7 +67,7 @@ jobs:
 
       - name: Run build-wrapper
         run: |
-          . ~/esp/esp-idf/export.sh
+          source ${{ github.workspace }}/esp/esp-idf/export.sh
           printenv | grep IDF
           idf.py version          
           mkdir build

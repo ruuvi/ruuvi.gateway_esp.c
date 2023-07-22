@@ -61,7 +61,7 @@ jobs:
 
       - name: Build
         run: |
-          . ~/esp/esp-idf/export.sh
+          source ${{ github.workspace }}/esp/esp-idf/export.sh
           printenv | grep IDF
           idf.py version          
           cd tests
