@@ -53,30 +53,30 @@ jobs:
         uses: SonarSource/sonarcloud-github-c-cpp@v1
 
       - name: Set IDF_PATH
-        run: echo "IDF_PATH=~/esp/esp-idf" >> $GITHUB_ENV
+        run: echo "IDF_PATH=$HOME/esp/esp-idf" >> $GITHUB_ENV
 
       - name: Cache ESP-IDF and tools
         id: cache-esp-idf
         uses: actions/cache@v3
         with:
           path: |
-            ~/esp
-            ~/.espressif
+            $HOME/esp
+            $HOME/.espressif
           key: esp-idf-${{ hashFiles('.github/workflows/sonar-scan.yml') }}
           restore-keys: esp-idf-
 
       - name: Download and install ESP-IDF v4.2.2
         if: steps.cache-esp-idf.outputs.cache-hit != 'true'
         run: |
-          mkdir ~/esp
-          cd ~/esp
+          mkdir $HOME/esp
+          cd $HOME/esp
           git clone --recursive --branch v4.2.2 https://github.com/espressif/esp-idf.git
           cd $IDF_PATH
           ./install.sh --python `which python3.8`
 
       - name: Run build-wrapper
         run: |
-          source ~/esp/esp-idf/export.sh
+          source $HOME/esp/esp-idf/export.sh
           python --version
           which python
           pip install bincopy
