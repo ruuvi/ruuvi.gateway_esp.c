@@ -1,0 +1,37 @@
+# Clang-Format Linter
+
+name: Clang-Format Linter
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches: [ master ]
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "clang-format"
+  clang-format:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+
+      - name: Install Clang-Format 14
+        run: |
+          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+          sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-14 main"
+          sudo apt-get update
+          sudo apt-get install -y clang-format-14
+
+      - name: Run clang-format
+        run: scripts/clang_format_all.sh
+        
+      - name: Check formatting
+        run: git diff --exit-code --diff-filter=d --color
