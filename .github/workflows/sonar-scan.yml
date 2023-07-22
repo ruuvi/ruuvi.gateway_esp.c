@@ -22,6 +22,11 @@ jobs:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
           submodules: true
 
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -32,6 +37,7 @@ jobs:
 
       - name: Install ESP-IDF v4.2.2
         run: |
+          python --version
           mkdir ~/esp
           cd ~/esp
           git clone --recursive --branch v4.2.2 https://github.com/espressif/esp-idf.git

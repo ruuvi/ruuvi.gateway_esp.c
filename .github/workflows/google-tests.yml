@@ -20,6 +20,11 @@ jobs:
       - name: Checkout submodules
         run: git submodule update --init --recursive
 
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
       - name: Install dependencies
         run: |
           sudo apt-get install -y cmake
@@ -29,6 +34,7 @@ jobs:
 
       - name: Install ESP-IDF v4.2.2
         run: |
+          python --version
           mkdir ~/esp
           cd ~/esp
           git clone --recursive --branch v4.2.2 https://github.com/espressif/esp-idf.git
