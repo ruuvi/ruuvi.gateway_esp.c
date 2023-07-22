@@ -60,8 +60,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: |
-            $HOME/esp
-            $HOME/.espressif
+            ~/esp
+            ~/.espressif
           key: esp-idf-${{ hashFiles('.github/workflows/sonar-scan.yml') }}
           restore-keys: esp-idf-
 
