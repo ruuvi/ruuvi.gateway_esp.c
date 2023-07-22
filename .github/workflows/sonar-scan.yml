@@ -1,4 +1,4 @@
-name: SonarCloud Analysis with Google Test and gcovr
+name: SonarCloud Analysis
 
 on:
   push:
