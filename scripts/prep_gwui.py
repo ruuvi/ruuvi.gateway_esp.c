@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 
 # @file prep_gwui.py
 # @author TheSomeMan
