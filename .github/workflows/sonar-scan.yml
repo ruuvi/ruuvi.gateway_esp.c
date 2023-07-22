@@ -52,6 +52,9 @@ jobs:
       - name: Install sonar-scanner and build-wrapper
         uses: SonarSource/sonarcloud-github-c-cpp@v1
 
+      - name: Set IDF_PATH
+        run: echo "IDF_PATH=${{ github.workspace }}/esp/esp-idf" >> $GITHUB_ENV
+
       - name: Cache ESP-IDF and tools
         id: cache-esp-idf
         uses: actions/cache@v3
@@ -65,19 +68,11 @@ jobs:
       - name: Download and install ESP-IDF v4.2.2
         if: steps.cache-esp-idf.outputs.cache-hit != 'true'
         run: |
-          echo ======== 1 =========
-          ls -la ${GITHUB_WORKSPACE}
           mkdir ${GITHUB_WORKSPACE}/esp
           cd ${GITHUB_WORKSPACE}/esp
           git clone --recursive --branch v4.2.2 https://github.com/espressif/esp-idf.git
-          echo "IDF_PATH=${{ github.workspace }}/esp/esp-idf" >> $GITHUB_ENV
           cd $IDF_PATH
           ./install.sh --python `which python3.8`
-          cd ${GITHUB_WORKSPACE}
-          echo ======== 2 =========
-          ls -la ${GITHUB_WORKSPACE}
-
-#        run: echo "${{ github.workspace }}/esp/esp-idf/tools" >> $GITHUB_PATH
 
       - name: Run build-wrapper
         run: |

@@ -46,6 +46,9 @@ jobs:
           sudo locale-gen de_DE.UTF-8
           sudo apt-get install -y gcc git wget make libncurses-dev flex bison gperf python3 python3-pip python3-setuptools python3-serial python3-click python3-cryptography python3-future python3-pyparsing python3-pyelftools cmake ninja-build ccache libffi-dev libssl-dev
 
+      - name: Set IDF_PATH
+        run: echo "IDF_PATH=${{ github.workspace }}/esp/esp-idf" >> $GITHUB_ENV
+
       - name: Cache ESP-IDF and tools
         id: cache-esp-idf
         uses: actions/cache@v3
@@ -60,14 +63,11 @@ jobs:
         if: steps.cache-esp-idf.outputs.cache-hit != 'true'
         run: |
           echo ======== 1 =========
-          echo GITHUB_WORKSPACE: ${GITHUB_WORKSPACE}
-          echo github.workspace: ${{ github.workspace }}
           pwd
           ls -la ${GITHUB_WORKSPACE}
           mkdir ${GITHUB_WORKSPACE}/esp
           cd ${GITHUB_WORKSPACE}/esp
           git clone --recursive --branch v4.2.2 https://github.com/espressif/esp-idf.git
-          echo "IDF_PATH=${{ github.workspace }}/esp/esp-idf" >> $GITHUB_ENV
           pwd
           echo IDF_PATH: $IDF_PATH
           echo cd $IDF_PATH
@@ -75,11 +75,8 @@ jobs:
           pwd
           ls -la
           ./install.sh --python `which python3.8`
-          cd ${GITHUB_WORKSPACE}
           echo ======== 2 =========
           ls -la ${GITHUB_WORKSPACE}
-
-#          echo "${{ github.workspace }}/esp/esp-idf/tools" >> $GITHUB_PATH
 
       - name: Build
         run: |
