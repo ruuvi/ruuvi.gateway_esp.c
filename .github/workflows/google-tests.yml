@@ -70,8 +70,12 @@ jobs:
           mkdir ~/esp
           cd ~/esp
           git clone --recursive --branch v4.2.2 https://github.com/espressif/esp-idf.git
+          echo ======== 1.c =========
           pwd
+          ls -la
           echo IDF_PATH: $IDF_PATH
+          echo ======== 1.d =========
+          ls -la $IDF_PATH
           echo cd $IDF_PATH
           cd $IDF_PATH
           pwd
