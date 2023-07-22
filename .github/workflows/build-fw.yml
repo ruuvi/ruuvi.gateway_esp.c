@@ -71,7 +71,6 @@ jobs:
           cd build
           cmake .. -G Ninja
           ninja -j $(nproc)
-# Further, a workaround for the problem with absolute paths in binaries. After a second build all path become relative.
           touch ../CMakeLists.txt
           cmake .. -G Ninja
           ninja -j $(nproc)
