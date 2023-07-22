@@ -43,19 +43,21 @@ jobs:
           echo "alias python=python3.8" >> ~/.bashrc
           source ~/.bashrc          
 
-      - name: Install ESP-IDF v4.2.2
+      - name: Download and configure ESP-IDF v4.2.2
         run: |
           python --version
-          mkdir ~/esp
-          cd ~/esp
+          mkdir ${GITHUB_WORKSPACE}/esp
+          cd ${GITHUB_WORKSPACE}/esp
           git clone --recursive --branch v4.2.2 https://github.com/espressif/esp-idf.git
-          cd esp-idf
-          ./install.sh
+          echo "IDF_PATH=${{ github.workspace }}/esp/esp-idf" >> $GITHUB_ENV
 
-      - name: Set up environment variables
+      - name: Install ESP-IDF v4.2.2
         run: |
-          echo "IDF_PATH=~/esp/esp-idf" >> $GITHUB_ENV
-          echo "::add-path::~/esp/esp-idf/tools"
+          cd $IDF_PATH
+          ./install.sh --python `which python3.8`
+
+      - name: Add ESP-IDF tools to PATH
+        run: echo "${{ github.workspace }}/esp/esp-idf/tools" >> $GITHUB_PATH
 
       - name: Build
         run: |
