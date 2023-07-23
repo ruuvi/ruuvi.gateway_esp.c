@@ -112,7 +112,7 @@ idf_component_register(
             time_task.h
             url_encode.c
             url_encode.h
-        REQUIRES
+        PRIV_REQUIRES
             app_update
             mdns
             mqtt
@@ -120,6 +120,7 @@ idf_component_register(
             esp_http_client
             json
             fatfs
+            nvs_flash
             esp32-wifi-manager
             ruuvi.boards.c
             ruuvi.comm_tester.c
