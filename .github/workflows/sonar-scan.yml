@@ -83,8 +83,8 @@ jobs:
           idf.py --version          
           mkdir build
           cd build
-          build-wrapper-linux-x86-64 --out-dir ../${{ env.BUILD_WRAPPER_OUT_DIR }} cmake -DCMAKE_BUILD_TYPE=Debug ..
-          build-wrapper-linux-x86-64 --out-dir ../${{ env.BUILD_WRAPPER_OUT_DIR }} make -j $(nproc)
+          build-wrapper-linux-x86-64 --out-dir ../${{ env.BUILD_WRAPPER_OUT_DIR }} cmake -DCMAKE_BUILD_TYPE=Debug -G "Ninja" ..
+          build-wrapper-linux-x86-64 --out-dir ../${{ env.BUILD_WRAPPER_OUT_DIR }} ninja
           cd ..
 
       - name: Run test with coverage
@@ -92,8 +92,8 @@ jobs:
           cd tests
           mkdir build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="--coverage" ..
-          make -j $(nproc)
+          cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="--coverage" -G "Ninja" ..
+          ninja
           ctest
           cd ../..
           gcovr -r . --sonarqube -o coverage.xml

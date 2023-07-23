@@ -70,10 +70,10 @@ jobs:
           mkdir build
           cd build
           cmake .. -G Ninja
-          ninja -j $(nproc)
+          ninja
           touch ../CMakeLists.txt
           cmake .. -G Ninja
-          ninja -j $(nproc)
+          ninja
           cd ..
 
       - name: Upload artifact

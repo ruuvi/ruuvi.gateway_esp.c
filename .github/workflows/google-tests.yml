@@ -73,9 +73,9 @@ jobs:
           cd tests
           mkdir cmake-build-unit-tests
           cd cmake-build-unit-tests
-          cmake -G "Unix Makefiles" ..
-          make -j $(nproc)
-        
+          cmake -G "Ninja" ..
+          ninja
+
       - name: Run tests
         run: |
           cd tests/cmake-build-unit-tests
