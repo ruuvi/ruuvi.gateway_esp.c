@@ -1,0 +1,29 @@
+name: Clang-Format
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  clang-format:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+
+      - name: Install Clang-Format 14
+        run: |
+          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+          sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-14 main"
+          sudo apt-get update
+          sudo apt-get install -y clang-format-14
+
+      - name: Run clang-format
+        run: scripts/clang_format_all.sh
+        
+      - name: Check formatting
+        run: git diff --exit-code --diff-filter=d --color

@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 
 # @file ihex_to_segments.py
 # @author TheSomeMan
