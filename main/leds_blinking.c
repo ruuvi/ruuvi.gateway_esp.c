@@ -10,7 +10,7 @@
 #include <assert.h>
 #include <string.h>
 #include "os_task.h"
-#if RUUVI_TESTS_LEDS_BLINKING
+#if defined(RUUVI_TESTS_LEDS_BLINKING) && RUUVI_TESTS_LEDS_BLINKING
 #define LOG_LOCAL_DISABLED
 #define LOG_LOCAL_LEVEL LOG_LEVEL_NONE
 #else

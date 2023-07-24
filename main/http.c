@@ -437,7 +437,7 @@ http_wait_until_async_req_completed(
 }
 
 static bool
-cb_on_post_get_chunk(void* p_user_data, void** p_p_buf, size_t* p_len)
+cb_on_post_get_chunk(void* p_user_data, const void** p_p_buf, size_t* p_len)
 {
     json_stream_gen_t* p_gen   = p_user_data;
     const char* const  p_chunk = json_stream_gen_get_next_chunk(p_gen);
@@ -445,7 +445,7 @@ cb_on_post_get_chunk(void* p_user_data, void** p_p_buf, size_t* p_len)
     {
         return false;
     }
-    *p_p_buf = (void*)p_chunk;
+    *p_p_buf = p_chunk;
     *p_len   = strlen(p_chunk);
     if (0 != *p_len)
     {

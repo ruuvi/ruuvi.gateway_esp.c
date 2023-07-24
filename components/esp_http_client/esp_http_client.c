@@ -105,7 +105,7 @@ struct esp_http_client {
     esp_http_data_t                 *response;
     void                        *user_data;
     esp_http_auth_data_t        *auth_data;
-    char                        *post_data;
+    const char                  *post_data;
     char                        *location;
     char                        *auth_header;
     char                        *current_header_key;
@@ -1383,7 +1383,7 @@ static esp_err_t esp_http_client_send_post_data(esp_http_client_handle_t client)
 
     if (client->data_write_left <= 0) {
         if (client->cb_on_post_get_chunk) {
-            void* p_buf = NULL;
+            const void* p_buf = NULL;
             size_t len = 0;
             if (!client->cb_on_post_get_chunk(client->p_cb_on_post_get_chunk_user_data, &p_buf, &len)) {
                 ESP_LOGE(TAG, "%s:%d %s: cb_on_post_get_chunk failed", __FILE__, __LINE__, __func__);

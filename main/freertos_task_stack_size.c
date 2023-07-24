@@ -164,7 +164,7 @@ typedef struct tskTaskControlBlock
 
     /* See the comments above the definition of
     tskSTATIC_AND_DYNAMIC_ALLOCATION_POSSIBLE. */
-#if (tskSTATIC_AND_DYNAMIC_ALLOCATION_POSSIBLE != 0)
+#if defined(tskSTATIC_AND_DYNAMIC_ALLOCATION_POSSIBLE) && (tskSTATIC_AND_DYNAMIC_ALLOCATION_POSSIBLE != 0)
     uint8_t ucStaticallyAllocated; /*< Set to pdTRUE if the task is a statically allocated to ensure no attempt is made
                                       to free the memory. */
 #endif
