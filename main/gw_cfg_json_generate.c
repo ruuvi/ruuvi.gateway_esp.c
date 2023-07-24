@@ -65,7 +65,7 @@ gw_cfg_json_add_number(cJSON* const p_json_root, const char* const p_item_name, 
 }
 
 static bool
-gw_cfg_json_add_items_device_info_storage_files(cJSON* p_storage, const gw_cfg_device_info_t* const p_dev_info)
+gw_cfg_json_add_items_device_info_storage_files(cJSON* p_storage)
 {
     if (!gw_cfg_json_add_bool(
             p_storage,
@@ -185,10 +185,7 @@ gw_cfg_json_add_items_device_info(cJSON* const p_json_root, const gw_cfg_device_
     }
     if (is_storage_ready)
     {
-        if (!gw_cfg_json_add_items_device_info_storage_files(p_storage, p_dev_info))
-        {
-            return false;
-        }
+        return gw_cfg_json_add_items_device_info_storage_files(p_storage);
     }
     return true;
 }
@@ -572,10 +569,7 @@ gw_cfg_json_add_items_http(
     }
     if (p_cfg_http->use_http)
     {
-        if (!gw_cfg_json_add_items_http_custom_params(p_json_root, p_cfg_http, flag_hide_passwords))
-        {
-            return false;
-        }
+        return gw_cfg_json_add_items_http_custom_params(p_json_root, p_cfg_http, flag_hide_passwords);
     }
     return true;
 }

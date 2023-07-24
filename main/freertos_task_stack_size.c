@@ -174,7 +174,7 @@ typedef tskTCB TCB_t;
 static inline TCB_t*
 prvGetTCBFromHandle(TaskHandle_t pxHandle)
 {
-    return ((pxHandle) == NULL) ? (TCB_t*)xTaskGetCurrentTaskHandle() : (TCB_t*)(pxHandle);
+    return (NULL == pxHandle) ? (TCB_t*)xTaskGetCurrentTaskHandle() : (TCB_t*)pxHandle;
 }
 
 UBaseType_t

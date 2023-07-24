@@ -1627,18 +1627,22 @@ resume_relaying_and_wait(const bool flag_force_free_memory)
     }
 }
 
+typedef struct http_download_create_config_params_t
+{
+    const char* const                     p_url;
+    const TimeUnitsSeconds_t              timeout_seconds;
+    const esp_http_client_method_t        http_method;
+    const esp_http_client_auth_type_t     http_client_auth_type;
+    const ruuvi_gw_cfg_http_auth_t* const p_http_auth;
+    http_event_handle_cb const            p_event_handler;
+    void* const                           p_cb_info;
+    const char* const                     p_server_cert;
+    const char* const                     p_client_cert;
+    const char* const                     p_client_key;
+} http_download_create_config_params_t;
+
 static esp_http_client_config_t*
-http_download_create_config(
-    const char* const                     p_url,
-    const TimeUnitsSeconds_t              timeout_seconds,
-    const esp_http_client_method_t        http_method,
-    const esp_http_client_auth_type_t     http_client_auth_type,
-    const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
-    http_event_handle_cb                  p_event_handler,
-    void* const                           p_cb_info,
-    const char* const                     p_server_cert,
-    const char* const                     p_client_cert,
-    const char* const                     p_client_key)
+http_download_create_config(const http_download_create_config_params_t* const p_params)
 {
     esp_http_client_config_t* p_http_config = os_calloc(1, sizeof(*p_http_config));
     if (NULL == p_http_config)
@@ -1646,31 +1650,34 @@ http_download_create_config(
         LOG_ERR("Can't allocate memory for http_config");
         return false;
     }
-    p_http_config->url  = p_url;
+    p_http_config->url  = p_params->p_url;
     p_http_config->host = NULL;
     p_http_config->port = 0;
 
-    p_http_config->username = (HTTP_AUTH_TYPE_BASIC == http_client_auth_type) ? p_http_auth->auth_basic.user.buf : NULL;
-    p_http_config->password = (HTTP_AUTH_TYPE_BASIC == http_client_auth_type) ? p_http_auth->auth_basic.password.buf
-                                                                              : NULL;
-    p_http_config->auth_type = http_client_auth_type;
+    p_http_config->username  = (HTTP_AUTH_TYPE_BASIC == p_params->http_client_auth_type)
+                                   ? p_params->p_http_auth->auth_basic.user.buf
+                                   : NULL;
+    p_http_config->password  = (HTTP_AUTH_TYPE_BASIC == p_params->http_client_auth_type)
+                                   ? p_params->p_http_auth->auth_basic.password.buf
+                                   : NULL;
+    p_http_config->auth_type = p_params->http_client_auth_type;
 
     p_http_config->path                        = NULL;
     p_http_config->query                       = NULL;
-    p_http_config->cert_pem                    = p_server_cert;
-    p_http_config->client_cert_pem             = p_client_cert;
-    p_http_config->client_key_pem              = p_client_key;
+    p_http_config->cert_pem                    = p_params->p_server_cert;
+    p_http_config->client_cert_pem             = p_params->p_client_cert;
+    p_http_config->client_key_pem              = p_params->p_client_key;
     p_http_config->user_agent                  = NULL;
-    p_http_config->method                      = http_method;
-    p_http_config->timeout_ms                  = (int)(timeout_seconds * TIME_UNITS_MS_PER_SECOND);
+    p_http_config->method                      = p_params->http_method;
+    p_http_config->timeout_ms                  = (int)(p_params->timeout_seconds * TIME_UNITS_MS_PER_SECOND);
     p_http_config->disable_auto_redirect       = false;
     p_http_config->max_redirection_count       = 0;
     p_http_config->max_authorization_retries   = 0;
-    p_http_config->event_handler               = p_event_handler;
+    p_http_config->event_handler               = p_params->p_event_handler;
     p_http_config->transport_type              = HTTP_TRANSPORT_UNKNOWN;
     p_http_config->buffer_size                 = 2048;
     p_http_config->buffer_size_tx              = 1024;
-    p_http_config->user_data                   = p_cb_info;
+    p_http_config->user_data                   = p_params->p_cb_info;
     p_http_config->is_async                    = true;
     p_http_config->use_global_ca_store         = false;
     p_http_config->skip_cert_common_name_check = false;
@@ -1724,17 +1731,20 @@ http_download_with_auth(
     p_cb_info->offset                  = 0;
     p_cb_info->flag_feed_task_watchdog = p_param->flag_feed_task_watchdog;
 
-    esp_http_client_config_t* p_http_config = http_download_create_config(
-        p_param->p_url,
-        p_param->timeout_seconds,
-        HTTP_METHOD_GET,
-        http_client_auth_type,
-        p_http_auth,
-        &http_download_event_handler,
-        p_cb_info,
-        p_param->p_server_cert,
-        p_param->p_client_cert,
-        p_param->p_client_key);
+    const http_download_create_config_params_t params = {
+        .p_url                 = p_param->p_url,
+        .timeout_seconds       = p_param->timeout_seconds,
+        .http_method           = HTTP_METHOD_GET,
+        .http_client_auth_type = http_client_auth_type,
+        .p_http_auth           = p_http_auth,
+        .p_event_handler       = &http_download_event_handler,
+        .p_cb_info             = p_cb_info,
+        .p_server_cert         = p_param->p_server_cert,
+        .p_client_cert         = p_param->p_client_cert,
+        .p_client_key          = p_param->p_client_key,
+    };
+
+    esp_http_client_config_t* p_http_config = http_download_create_config(&params);
     if (NULL == p_http_config)
     {
         LOG_ERR("Can't allocate memory for http_config");
@@ -1861,21 +1871,23 @@ http_check_with_auth(
     p_cb_info->offset                  = 0;
     p_cb_info->flag_feed_task_watchdog = p_param->flag_feed_task_watchdog;
 
-    const esp_http_client_auth_type_t http_client_auth_type = (GW_CFG_HTTP_AUTH_TYPE_BASIC == auth_type)
-                                                                  ? HTTP_AUTH_TYPE_BASIC
-                                                                  : HTTP_AUTH_TYPE_NONE;
+    const esp_http_client_auth_type_t          http_client_auth_type = (GW_CFG_HTTP_AUTH_TYPE_BASIC == auth_type)
+                                                                           ? HTTP_AUTH_TYPE_BASIC
+                                                                           : HTTP_AUTH_TYPE_NONE;
+    const http_download_create_config_params_t params                = {
+                       .p_url                 = p_param->p_url,
+                       .timeout_seconds       = p_param->timeout_seconds,
+                       .http_method           = HTTP_METHOD_HEAD,
+                       .http_client_auth_type = http_client_auth_type,
+                       .p_http_auth           = p_http_auth,
+                       .p_event_handler       = &http_check_event_handler,
+                       .p_cb_info             = p_cb_info,
+                       .p_server_cert         = p_param->p_server_cert,
+                       .p_client_cert         = p_param->p_client_cert,
+                       .p_client_key          = p_param->p_client_key,
+    };
 
-    esp_http_client_config_t* p_http_config = http_download_create_config(
-        p_param->p_url,
-        p_param->timeout_seconds,
-        HTTP_METHOD_HEAD,
-        http_client_auth_type,
-        p_http_auth,
-        &http_check_event_handler,
-        p_cb_info,
-        p_param->p_server_cert,
-        p_param->p_client_cert,
-        p_param->p_client_key);
+    esp_http_client_config_t* p_http_config = http_download_create_config(&params);
     if (NULL == p_http_config)
     {
         LOG_ERR("Can't allocate memory for http_config");

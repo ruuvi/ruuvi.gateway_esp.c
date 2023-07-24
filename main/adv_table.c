@@ -277,7 +277,8 @@ adv_table_read_history_unsafe(
         }
         else
         {
-            if (flag_use_filter && ((int32_t)(p_elem->adv_report.timestamp - filter) <= 0))
+            const int32_t delta_sec = p_elem->adv_report.timestamp - filter;
+            if (flag_use_filter && (delta_sec <= 0))
             {
                 break;
             }
