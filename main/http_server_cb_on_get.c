@@ -704,25 +704,80 @@ http_server_on_get_check_mqtt(
 }
 
 HTTP_SERVER_CB_STATIC
+bool
+gw_cfg_remote_set_auth_basic(
+    ruuvi_gw_cfg_remote_t* const p_remote_cfg,
+    const char* const            p_user,
+    const char* const            p_pass)
+{
+    if (strlen(p_user) >= sizeof(p_remote_cfg->auth.auth_basic.user.buf))
+    {
+        LOG_ERR("remote_cfg username is too long: %s", p_user);
+        return false;
+    }
+    if (strlen(p_pass) >= sizeof(p_remote_cfg->auth.auth_basic.password.buf))
+    {
+        LOG_ERR("remote_cfg password is too long: %s", p_pass);
+        return false;
+    }
+    (void)
+        snprintf(p_remote_cfg->auth.auth_basic.user.buf, sizeof(p_remote_cfg->auth.auth_basic.user.buf), "%s", p_user);
+    (void)snprintf(
+        p_remote_cfg->auth.auth_basic.password.buf,
+        sizeof(p_remote_cfg->auth.auth_basic.password.buf),
+        "%s",
+        p_pass);
+    return true;
+}
+
+HTTP_SERVER_CB_STATIC
+bool
+gw_cfg_remote_set_auth_bearer(ruuvi_gw_cfg_remote_t* const p_remote_cfg, const char* const p_token)
+{
+    if (strlen(p_token) >= sizeof(p_remote_cfg->auth.auth_bearer.token.buf))
+    {
+        LOG_ERR("remote_cfg token is too long: %s", p_token);
+        return false;
+    }
+    (void)snprintf(
+        p_remote_cfg->auth.auth_bearer.token.buf,
+        sizeof(p_remote_cfg->auth.auth_bearer.token.buf),
+        "%s",
+        p_token);
+    return true;
+}
+
+HTTP_SERVER_CB_STATIC
+bool
+gw_cfg_remote_set_auth_token(ruuvi_gw_cfg_remote_t* const p_remote_cfg, const char* const p_token)
+{
+    if (strlen(p_token) >= sizeof(p_remote_cfg->auth.auth_token.token.buf))
+    {
+        LOG_ERR("remote_cfg token is too long: %s", p_token);
+        return false;
+    }
+    (void)snprintf(
+        p_remote_cfg->auth.auth_token.token.buf,
+        sizeof(p_remote_cfg->auth.auth_token.token.buf),
+        "%s",
+        p_token);
+    return true;
+}
+
+HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_on_get_check_remote_cfg(
-    const char* const p_url,
-    const char* const p_user,
-    const char* const p_pass,
-    const char* const p_params,
-    const bool        use_ssl_client_cert,
-    const bool        use_ssl_server_cert)
+    const char* const             p_url,
+    const gw_cfg_http_auth_type_e auth_type,
+    const char* const             p_user,
+    const char* const             p_pass,
+    const bool                    use_ssl_client_cert,
+    const bool                    use_ssl_server_cert)
 {
-    str_buf_t auth_type = http_server_get_from_params_with_decoding(p_params, "auth_type=");
-    if (NULL == auth_type.buf)
-    {
-        return http_server_resp_400();
-    }
     ruuvi_gw_cfg_remote_t* p_remote_cfg = os_calloc(1, sizeof(*p_remote_cfg));
     if (NULL == p_remote_cfg)
     {
         LOG_ERR("Can't allocate memory for remote_cfg");
-        str_buf_free_buf(&auth_type);
         return http_server_resp_500();
     }
     p_remote_cfg->use_remote_cfg           = true;
@@ -730,74 +785,25 @@ http_server_on_get_check_remote_cfg(
     p_remote_cfg->use_ssl_server_cert      = use_ssl_server_cert;
     p_remote_cfg->refresh_interval_minutes = 0;
     (void)snprintf(p_remote_cfg->url.buf, sizeof(p_remote_cfg->url.buf), "%s", p_url);
-    if (0 == strcmp(auth_type.buf, "none"))
+    p_remote_cfg->auth_type = auth_type;
+    bool res                = false;
+    switch (auth_type)
     {
-        p_remote_cfg->auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE;
+        case GW_CFG_HTTP_AUTH_TYPE_NONE:
+            res = true;
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_BASIC:
+            res = gw_cfg_remote_set_auth_basic(p_remote_cfg, p_user, p_pass);
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_BEARER:
+            res = gw_cfg_remote_set_auth_bearer(p_remote_cfg, p_pass);
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
+            res = gw_cfg_remote_set_auth_token(p_remote_cfg, p_pass);
+            break;
     }
-    else if (0 == strcmp(auth_type.buf, "basic"))
+    if (!res)
     {
-        if (strlen(p_user) >= sizeof(p_remote_cfg->auth.auth_basic.user.buf))
-        {
-            LOG_ERR("remote_cfg username is too long: %s", p_user);
-            str_buf_free_buf(&auth_type);
-            os_free(p_remote_cfg);
-            return http_server_resp_400();
-        }
-        if (strlen(p_pass) >= sizeof(p_remote_cfg->auth.auth_basic.password.buf))
-        {
-            LOG_ERR("remote_cfg password is too long: %s", p_pass);
-            str_buf_free_buf(&auth_type);
-            os_free(p_remote_cfg);
-            return http_server_resp_400();
-        }
-        p_remote_cfg->auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC;
-        (void)snprintf(
-            p_remote_cfg->auth.auth_basic.user.buf,
-            sizeof(p_remote_cfg->auth.auth_basic.user.buf),
-            "%s",
-            p_user);
-        (void)snprintf(
-            p_remote_cfg->auth.auth_basic.password.buf,
-            sizeof(p_remote_cfg->auth.auth_basic.password.buf),
-            "%s",
-            p_pass);
-    }
-    else if (0 == strcmp(auth_type.buf, "bearer"))
-    {
-        if (strlen(p_pass) >= sizeof(p_remote_cfg->auth.auth_bearer.token.buf))
-        {
-            LOG_ERR("remote_cfg token is too long: %s", p_pass);
-            str_buf_free_buf(&auth_type);
-            os_free(p_remote_cfg);
-            return http_server_resp_400();
-        }
-        p_remote_cfg->auth_type = GW_CFG_HTTP_AUTH_TYPE_BEARER;
-        (void)snprintf(
-            p_remote_cfg->auth.auth_bearer.token.buf,
-            sizeof(p_remote_cfg->auth.auth_bearer.token.buf),
-            "%s",
-            p_pass);
-    }
-    else if (0 == strcmp(auth_type.buf, "token"))
-    {
-        if (strlen(p_pass) >= sizeof(p_remote_cfg->auth.auth_token.token.buf))
-        {
-            LOG_ERR("remote_cfg token is too long: %s", p_pass);
-            str_buf_free_buf(&auth_type);
-            os_free(p_remote_cfg);
-            return http_server_resp_400();
-        }
-        p_remote_cfg->auth_type = GW_CFG_HTTP_AUTH_TYPE_TOKEN;
-        (void)snprintf(
-            p_remote_cfg->auth.auth_token.token.buf,
-            sizeof(p_remote_cfg->auth.auth_token.token.buf),
-            "%s",
-            p_pass);
-    }
-    else
-    {
-        LOG_ERR("Unknown remote_cfg auth_type: %s", auth_type.buf);
-        str_buf_free_buf(&auth_type);
         os_free(p_remote_cfg);
         return http_server_resp_400();
     }
@@ -811,7 +817,6 @@ http_server_on_get_check_remote_cfg(
         &p_gw_cfg_tmp,
         &err_msg);
     os_free(p_remote_cfg);
-    str_buf_free_buf(&auth_type);
     if (NULL != p_gw_cfg_tmp)
     {
         os_free(p_gw_cfg_tmp);
@@ -988,9 +993,9 @@ http_server_resp_validate_check_remote_cfg(
     os_free(p_saved_remote_cfg);
     const http_server_resp_t http_resp = http_server_on_get_check_remote_cfg(
         p_url->buf,
+        auth_type,
         p_user->buf,
         flag_use_saved_password ? p_saved_password : p_password->buf,
-        p_params,
         use_ssl_client_cert,
         use_ssl_server_cert);
     return http_resp;
