@@ -413,22 +413,18 @@ cb_json_stream_gen_advs(json_stream_gen_t* const p_gen, const void* const p_user
 
 json_stream_gen_t*
 http_json_create_stream_gen_advs(
-    const adv_report_table_t* const         p_reports,
-    const bool                              flag_decode,
-    const bool                              flag_use_timestamps,
-    const time_t                            cur_time,
-    const bool                              flag_use_nonce,
-    const uint32_t                          nonce,
-    const mac_address_str_t* const          p_mac_addr,
-    const ruuvi_gw_cfg_coordinates_t* const p_coordinates)
+    const adv_report_table_t* const                        p_reports,
+    const http_json_create_stream_gen_advs_params_t* const p_params)
 {
     const json_stream_gen_cfg_t cfg = {
         .max_chunk_size      = 768U,
         .flag_formatted_json = true,
-        .max_nesting_level   = 4,
+        .indentation_mark    = ' ',
         .indentation         = 2,
+        .max_nesting_level   = 4,
         .p_malloc            = &os_malloc,
         .p_free              = &os_free_internal,
+        .p_localeconv        = NULL,
     };
     http_json_stream_gen_advs_ctx_t* p_ctx = NULL;
     json_stream_gen_t* p_gen = json_stream_gen_create(&cfg, &cb_json_stream_gen_advs, sizeof(*p_ctx), (void**)&p_ctx);
@@ -437,13 +433,13 @@ http_json_create_stream_gen_advs(
         LOG_ERR("Not enough memory");
         return NULL;
     }
-    p_ctx->flag_decode         = flag_decode;
-    p_ctx->flag_use_timestamps = flag_use_timestamps;
-    p_ctx->flag_use_nonce      = flag_use_nonce;
-    p_ctx->timestamp           = cur_time;
-    p_ctx->nonce               = nonce;
-    p_ctx->gw_mac              = *p_mac_addr;
-    p_ctx->coordinates         = *p_coordinates;
+    p_ctx->flag_decode         = p_params->flag_decode;
+    p_ctx->flag_use_timestamps = p_params->flag_use_timestamps;
+    p_ctx->flag_use_nonce      = p_params->flag_use_nonce;
+    p_ctx->timestamp           = p_params->cur_time;
+    p_ctx->nonce               = p_params->nonce;
+    p_ctx->gw_mac              = *p_params->p_mac_addr;
+    p_ctx->coordinates         = *p_params->p_coordinates;
     memcpy(&p_ctx->reports, p_reports, sizeof(*p_reports));
     return p_gen;
 }

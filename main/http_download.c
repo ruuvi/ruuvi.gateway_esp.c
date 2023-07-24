@@ -212,10 +212,11 @@ http_check(
     const http_header_item_t* const       p_extra_header_item,
     const bool                            flag_free_memory)
 {
-    const TickType_t    download_started_at_tick = xTaskGetTickCount();
-    const bool          flag_feed_task_watchdog  = true;
-    http_resp_code_e    http_resp_code           = HTTP_RESP_CODE_200;
-    http_check_param_t* p_check_param            = os_calloc(1, sizeof(*p_check_param));
+    const TickType_t download_started_at_tick = xTaskGetTickCount();
+    const bool       flag_feed_task_watchdog  = true;
+    http_resp_code_e http_resp_code           = HTTP_RESP_CODE_200;
+
+    http_check_with_auth_param_t* p_check_param = os_calloc(1, sizeof(*p_check_param));
     if (NULL == p_check_param)
     {
         LOG_ERR("Can't allocate memory");

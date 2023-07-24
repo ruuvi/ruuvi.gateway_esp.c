@@ -251,7 +251,7 @@ http_server_cb_on_post_ssl_cert(const char* const p_body, const char* const p_ur
         return http_server_resp_400();
     }
     LOG_DBG("Content: %s", p_body);
-    const char* const g_list_of_allowed_files[] = {
+    const char* const g_list_of_allowed_files[12] = {
         GW_CFG_STORAGE_SSL_HTTP_CLI_CERT,       GW_CFG_STORAGE_SSL_HTTP_CLI_KEY,
         GW_CFG_STORAGE_SSL_STAT_CLI_CERT,       GW_CFG_STORAGE_SSL_STAT_CLI_KEY,
         GW_CFG_STORAGE_SSL_MQTT_CLI_CERT,       GW_CFG_STORAGE_SSL_MQTT_CLI_KEY,
@@ -260,7 +260,7 @@ http_server_cb_on_post_ssl_cert(const char* const p_body, const char* const p_ur
         GW_CFG_STORAGE_SSL_MQTT_SRV_CERT,       GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT,
     };
     bool is_known = false;
-    for (int32_t i = 0; i < sizeof(g_list_of_allowed_files) / sizeof(g_list_of_allowed_files[0]); ++i)
+    for (int32_t i = 0; i < (sizeof(g_list_of_allowed_files) / sizeof(g_list_of_allowed_files[0])); ++i)
     {
         if (0 == strcmp(filename_str_buf.buf, g_list_of_allowed_files[i]))
         {
@@ -288,7 +288,7 @@ http_server_cb_on_post_ssl_cert(const char* const p_body, const char* const p_ur
 
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
-http_server_cb_on_post_init_storage(const char* const p_body, const char* const p_uri_params)
+http_server_cb_on_post_init_storage(const char* const p_uri_params)
 {
     LOG_INFO("POST /init_storage, params=%s", (NULL != p_uri_params) ? p_uri_params : "NULL");
 
@@ -339,7 +339,7 @@ http_server_cb_on_post(
     }
     if (0 == strcmp(p_file_name, "init_storage"))
     {
-        return http_server_cb_on_post_init_storage(p_body, p_uri_params);
+        return http_server_cb_on_post_init_storage(p_uri_params);
     }
     LOG_WARN("POST /%s", p_file_name);
     return http_server_resp_404();

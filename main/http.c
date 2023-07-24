@@ -576,15 +576,17 @@ http_send_advs_internal(
 
     p_http_async_info->use_json_stream_gen = true;
     const gw_cfg_t* p_gw_cfg               = gw_cfg_lock_ro();
-    p_http_async_info->select.p_gen        = http_json_create_stream_gen_advs(
-        p_reports,
-        flag_decode,
-        flag_use_timestamps,
-        time(NULL),
-        flag_use_nonce,
-        nonce,
-        gw_cfg_get_nrf52_mac_addr(),
-        &p_gw_cfg->ruuvi_cfg.coordinates);
+
+    const http_json_create_stream_gen_advs_params_t params = {
+        .flag_decode         = flag_decode,
+        .flag_use_timestamps = flag_use_timestamps,
+        .cur_time            = time(NULL),
+        .flag_use_nonce      = flag_use_nonce,
+        .nonce               = nonce,
+        .p_mac_addr          = gw_cfg_get_nrf52_mac_addr(),
+        .p_coordinates       = &p_gw_cfg->ruuvi_cfg.coordinates,
+    };
+    p_http_async_info->select.p_gen = http_json_create_stream_gen_advs(p_reports, &params);
     gw_cfg_unlock_ro(&p_gw_cfg);
     if (NULL == p_http_async_info->select.p_gen)
     {
@@ -759,70 +761,86 @@ http_send_advs(
     return true;
 }
 
+static bool
+http_check_post_advs_prep_auth_basic(
+    ruuvi_gw_cfg_http_t* const p_cfg_http,
+    const char* const          p_user,
+    const char* const          p_pass)
+{
+    if ((strlen(p_user) >= sizeof(p_cfg_http->auth.auth_basic.user.buf))
+        || (strlen(p_pass) >= sizeof(p_cfg_http->auth.auth_basic.password.buf)))
+    {
+        return false;
+    }
+    (void)snprintf(p_cfg_http->auth.auth_basic.user.buf, sizeof(p_cfg_http->auth.auth_basic.user.buf), "%s", p_user);
+    (void)snprintf(
+        p_cfg_http->auth.auth_basic.password.buf,
+        sizeof(p_cfg_http->auth.auth_basic.password.buf),
+        "%s",
+        p_pass);
+    return true;
+}
+
+static bool
+http_check_post_advs_prep_auth_bearer(ruuvi_gw_cfg_http_t* const p_cfg_http, const char* const p_token)
+{
+    if ((strlen(p_token) >= sizeof(p_cfg_http->auth.auth_bearer.token.buf)))
+    {
+        return false;
+    }
+    (void)
+        snprintf(p_cfg_http->auth.auth_bearer.token.buf, sizeof(p_cfg_http->auth.auth_bearer.token.buf), "%s", p_token);
+    return true;
+}
+
+static bool
+http_check_post_advs_prep_auth_token(ruuvi_gw_cfg_http_t* const p_cfg_http, const char* const p_token)
+{
+    if ((strlen(p_token) >= sizeof(p_cfg_http->auth.auth_token.token.buf)))
+    {
+        return false;
+    }
+    (void)snprintf(p_cfg_http->auth.auth_token.token.buf, sizeof(p_cfg_http->auth.auth_token.token.buf), "%s", p_token);
+    return true;
+}
+
 static http_server_resp_t
 http_check_post_advs_internal3(
-    http_async_info_t* const      p_http_async_info,
-    ruuvi_gw_cfg_http_t* const    p_cfg_http,
-    const char* const             p_url,
-    const gw_cfg_http_auth_type_e auth_type,
-    const char* const             p_user,
-    const char* const             p_pass,
-    const TimeUnitsSeconds_t      timeout_seconds,
-    const bool                    use_ssl_client_cert,
-    const bool                    use_ssl_server_cert)
+    http_async_info_t* const         p_http_async_info,
+    ruuvi_gw_cfg_http_t* const       p_cfg_http,
+    const http_check_params_t* const p_params,
+    const TimeUnitsSeconds_t         timeout_seconds)
 {
-    if (strlen(p_url) >= sizeof(p_cfg_http->http_url.buf))
+    if (strlen(p_params->p_url) >= sizeof(p_cfg_http->http_url.buf))
     {
         return http_server_resp_err(HTTP_RESP_CODE_400);
     }
-    switch (auth_type)
+    switch (p_params->auth_type)
     {
         case GW_CFG_HTTP_AUTH_TYPE_NONE:
             break;
         case GW_CFG_HTTP_AUTH_TYPE_BASIC:
-            if ((strlen(p_user) >= sizeof(p_cfg_http->auth.auth_basic.user.buf))
-                || (strlen(p_pass) >= sizeof(p_cfg_http->auth.auth_basic.password.buf)))
+            if (!http_check_post_advs_prep_auth_basic(p_cfg_http, p_params->p_user, p_params->p_pass))
             {
                 return http_server_resp_err(HTTP_RESP_CODE_400);
             }
-            (void)snprintf(
-                p_cfg_http->auth.auth_basic.user.buf,
-                sizeof(p_cfg_http->auth.auth_basic.user.buf),
-                "%s",
-                p_user);
-            (void)snprintf(
-                p_cfg_http->auth.auth_basic.password.buf,
-                sizeof(p_cfg_http->auth.auth_basic.password.buf),
-                "%s",
-                p_pass);
-
             break;
         case GW_CFG_HTTP_AUTH_TYPE_BEARER:
-            if ((strlen(p_pass) >= sizeof(p_cfg_http->auth.auth_bearer.token.buf)))
+            if (!http_check_post_advs_prep_auth_bearer(p_cfg_http, p_params->p_pass))
             {
                 return http_server_resp_err(HTTP_RESP_CODE_400);
             }
-            (void)snprintf(
-                p_cfg_http->auth.auth_bearer.token.buf,
-                sizeof(p_cfg_http->auth.auth_bearer.token.buf),
-                "%s",
-                p_pass);
             break;
         case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
-            if ((strlen(p_pass) >= sizeof(p_cfg_http->auth.auth_token.token.buf)))
+            if (!http_check_post_advs_prep_auth_token(p_cfg_http, p_params->p_pass))
             {
                 return http_server_resp_err(HTTP_RESP_CODE_400);
             }
-            (void)snprintf(
-                p_cfg_http->auth.auth_token.token.buf,
-                sizeof(p_cfg_http->auth.auth_token.token.buf),
-                "%s",
-                p_pass);
             break;
     }
 
-    (void)snprintf(p_cfg_http->http_url.buf, sizeof(p_cfg_http->http_url), "%s", p_url);
-    p_cfg_http->auth_type = auth_type;
+    (void)snprintf(p_cfg_http->http_url.buf, sizeof(p_cfg_http->http_url), "%s", p_params->p_url);
+    p_cfg_http->auth_type = p_params->auth_type;
 
     if (!http_send_advs_internal(
             p_http_async_info,
@@ -832,8 +850,8 @@ http_check_post_advs_internal3(
             false,
             p_cfg_http,
             &p_http_async_info->http_post_cb_info,
-            use_ssl_client_cert,
-            use_ssl_server_cert))
+            p_params->use_ssl_client_cert,
+            p_params->use_ssl_server_cert))
     {
         LOG_ERR("http_send_advs failed");
         return http_server_resp_500();
@@ -878,14 +896,9 @@ http_check_post_advs_internal3(
 
 static http_server_resp_t
 http_check_post_advs_internal2(
-    http_async_info_t* const      p_http_async_info,
-    const char* const             p_url,
-    const gw_cfg_http_auth_type_e auth_type,
-    const char* const             p_user,
-    const char* const             p_pass,
-    const TimeUnitsSeconds_t      timeout_seconds,
-    const bool                    use_ssl_client_cert,
-    const bool                    use_ssl_server_cert)
+    http_async_info_t* const         p_http_async_info,
+    const http_check_params_t* const p_params,
+    const TimeUnitsSeconds_t         timeout_seconds)
 {
     ruuvi_gw_cfg_http_t* p_cfg_http = os_malloc(sizeof(*p_cfg_http));
     if (NULL == p_cfg_http)
@@ -897,13 +910,8 @@ http_check_post_advs_internal2(
     const http_server_resp_t resp = http_check_post_advs_internal3(
         p_http_async_info,
         p_cfg_http,
-        p_url,
-        auth_type,
-        p_user,
-        p_pass,
-        timeout_seconds,
-        use_ssl_client_cert,
-        use_ssl_server_cert);
+        p_params,
+        timeout_seconds);
 
     os_free(p_cfg_http);
 
@@ -911,14 +919,7 @@ http_check_post_advs_internal2(
 }
 
 http_server_resp_t
-http_check_post_advs(
-    const char* const             p_url,
-    const gw_cfg_http_auth_type_e auth_type,
-    const char* const             p_user,
-    const char* const             p_pass,
-    const TimeUnitsSeconds_t      timeout_seconds,
-    const bool                    use_ssl_client_cert,
-    const bool                    use_ssl_server_cert)
+http_check_post_advs(const http_check_params_t* const p_params, const TimeUnitsSeconds_t timeout_seconds)
 {
     http_async_info_t* const p_http_async_info = get_http_async_info();
     LOG_DBG("os_sema_wait_immediate: p_http_async_sema");
@@ -931,15 +932,7 @@ http_check_post_advs(
     }
     p_http_async_info->p_task = xTaskGetCurrentTaskHandle();
 
-    const http_server_resp_t resp = http_check_post_advs_internal2(
-        p_http_async_info,
-        p_url,
-        auth_type,
-        p_user,
-        p_pass,
-        timeout_seconds,
-        use_ssl_client_cert,
-        use_ssl_server_cert);
+    const http_server_resp_t resp = http_check_post_advs_internal2(p_http_async_info, p_params, timeout_seconds);
 
     LOG_DBG("os_sema_signal: p_http_async_sema");
     os_sema_signal(p_http_async_info->p_http_async_sema);
@@ -1065,25 +1058,38 @@ http_send_statistics(
 
 static http_server_resp_t
 http_check_post_stat_internal3(
-    http_async_info_t* const        p_http_async_info,
-    ruuvi_gw_cfg_http_stat_t* const p_cfg_http_stat,
-    const char* const               p_url,
-    const char* const               p_user,
-    const char* const               p_pass,
-    const TimeUnitsSeconds_t        timeout_seconds,
-    const bool                      use_ssl_client_cert,
-    const bool                      use_ssl_server_cert)
+    http_async_info_t* const         p_http_async_info,
+    ruuvi_gw_cfg_http_stat_t* const  p_cfg_http_stat,
+    const http_check_params_t* const p_params,
+    const TimeUnitsSeconds_t         timeout_seconds)
 {
 
-    if ((strlen(p_url) >= sizeof(p_cfg_http_stat->http_stat_url.buf))
-        || (strlen(p_user) >= sizeof(p_cfg_http_stat->http_stat_user.buf))
-        || (strlen(p_pass) >= sizeof(p_cfg_http_stat->http_stat_pass.buf)))
+    if ((strlen(p_params->p_url) >= sizeof(p_cfg_http_stat->http_stat_url.buf))
+        || ((NULL != p_params->p_user) && (strlen(p_params->p_user) >= sizeof(p_cfg_http_stat->http_stat_user.buf)))
+        || ((NULL != p_params->p_pass) && (strlen(p_params->p_pass) >= sizeof(p_cfg_http_stat->http_stat_pass.buf))))
     {
         return http_server_resp_err(HTTP_RESP_CODE_400);
     }
-    (void)snprintf(p_cfg_http_stat->http_stat_url.buf, sizeof(p_cfg_http_stat->http_stat_url), "%s", p_url);
-    (void)snprintf(p_cfg_http_stat->http_stat_user.buf, sizeof(p_cfg_http_stat->http_stat_user), "%s", p_user);
-    (void)snprintf(p_cfg_http_stat->http_stat_pass.buf, sizeof(p_cfg_http_stat->http_stat_pass), "%s", p_pass);
+    (void)snprintf(p_cfg_http_stat->http_stat_url.buf, sizeof(p_cfg_http_stat->http_stat_url), "%s", p_params->p_url);
+    ruuvi_gw_cfg_http_user_t* const     p_user = &p_cfg_http_stat->http_stat_user;
+    ruuvi_gw_cfg_http_password_t* const p_pass = &p_cfg_http_stat->http_stat_pass;
+    switch (p_params->auth_type)
+    {
+        case GW_CFG_HTTP_AUTH_TYPE_NONE:
+            p_user->buf[0] = '\0';
+            p_pass->buf[0] = '\0';
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_BASIC:
+            (void)snprintf(p_user->buf, sizeof(p_user->buf), "%s", (NULL != p_params->p_user) ? p_params->p_user : "");
+            (void)snprintf(p_pass->buf, sizeof(p_pass->buf), "%s", (NULL != p_params->p_pass) ? p_params->p_pass : "");
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_BEARER:
+            ATTR_FALLTHROUGH;
+        case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
+            p_user->buf[0] = '\0';
+            (void)snprintf(p_pass->buf, sizeof(p_pass->buf), "%s", (NULL != p_params->p_pass) ? p_params->p_pass : "");
+            break;
+    }
 
     const http_json_statistics_info_t* p_stat_info = adv_post_generate_statistics_info(NULL);
     if (NULL == p_stat_info)
@@ -1098,8 +1104,8 @@ http_check_post_stat_internal3(
             NULL,
             p_cfg_http_stat,
             &p_http_async_info->http_post_cb_info,
-            use_ssl_client_cert,
-            use_ssl_server_cert))
+            p_params->use_ssl_client_cert,
+            p_params->use_ssl_server_cert))
     {
         os_free(p_stat_info);
         LOG_ERR("http_send_statistics failed");
@@ -1158,13 +1164,9 @@ http_check_post_stat_internal3(
 
 static http_server_resp_t
 http_check_post_stat_internal2(
-    http_async_info_t* const p_http_async_info,
-    const char* const        p_url,
-    const char* const        p_user,
-    const char* const        p_pass,
-    const TimeUnitsSeconds_t timeout_seconds,
-    const bool               use_ssl_client_cert,
-    const bool               use_ssl_server_cert)
+    http_async_info_t* const         p_http_async_info,
+    const http_check_params_t* const p_params,
+    const TimeUnitsSeconds_t         timeout_seconds)
 {
     ruuvi_gw_cfg_http_stat_t* p_cfg_http_stat = os_malloc(sizeof(*p_cfg_http_stat));
     if (NULL == p_cfg_http_stat)
@@ -1176,12 +1178,8 @@ http_check_post_stat_internal2(
     const http_server_resp_t resp = http_check_post_stat_internal3(
         p_http_async_info,
         p_cfg_http_stat,
-        p_url,
-        p_user,
-        p_pass,
-        timeout_seconds,
-        use_ssl_client_cert,
-        use_ssl_server_cert);
+        p_params,
+        timeout_seconds);
 
     os_free(p_cfg_http_stat);
 
@@ -1189,13 +1187,7 @@ http_check_post_stat_internal2(
 }
 
 http_server_resp_t
-http_check_post_stat(
-    const char* const        p_url,
-    const char* const        p_user,
-    const char* const        p_pass,
-    const TimeUnitsSeconds_t timeout_seconds,
-    const bool               use_ssl_client_cert,
-    const bool               use_ssl_server_cert)
+http_check_post_stat(const http_check_params_t* const p_params, const TimeUnitsSeconds_t timeout_seconds)
 {
     http_async_info_t* const p_http_async_info = get_http_async_info();
     LOG_DBG("os_sema_wait_immediate: p_http_async_sema");
@@ -1208,14 +1200,7 @@ http_check_post_stat(
     }
     p_http_async_info->p_task = xTaskGetCurrentTaskHandle();
 
-    const http_server_resp_t resp = http_check_post_stat_internal2(
-        p_http_async_info,
-        p_url,
-        p_user,
-        p_pass,
-        timeout_seconds,
-        use_ssl_client_cert,
-        use_ssl_server_cert);
+    const http_server_resp_t resp = http_check_post_stat_internal2(p_http_async_info, p_params, timeout_seconds);
 
     LOG_DBG("os_sema_signal: p_http_async_sema");
     os_sema_signal(p_http_async_info->p_http_async_sema);
@@ -1669,7 +1654,8 @@ http_download_create_config(const http_download_create_config_params_t* const p_
     p_http_config->client_key_pem              = p_params->p_client_key;
     p_http_config->user_agent                  = NULL;
     p_http_config->method                      = p_params->http_method;
-    p_http_config->timeout_ms                  = (int)(p_params->timeout_seconds * TIME_UNITS_MS_PER_SECOND);
+    const int32_t timeout_ms                   = p_params->timeout_seconds * TIME_UNITS_MS_PER_SECOND;
+    p_http_config->timeout_ms                  = timeout_ms;
     p_http_config->disable_auto_redirect       = false;
     p_http_config->max_redirection_count       = 0;
     p_http_config->max_authorization_retries   = 0;
@@ -1839,11 +1825,11 @@ http_download_with_auth(
 
 bool
 http_check_with_auth(
-    const http_check_param_t* const       p_param,
-    const gw_cfg_http_auth_type_e         auth_type,
-    const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
-    const http_header_item_t* const       p_extra_header_item,
-    http_resp_code_e* const               p_http_resp_code)
+    const http_check_with_auth_param_t* const p_param,
+    const gw_cfg_http_auth_type_e             auth_type,
+    const ruuvi_gw_cfg_http_auth_t* const     p_http_auth,
+    const http_header_item_t* const           p_extra_header_item,
+    http_resp_code_e* const                   p_http_resp_code)
 {
     LOG_INFO("http_check: URL: %s", p_param->p_url);
 

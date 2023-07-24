@@ -52,7 +52,7 @@ typedef struct http_download_param_t
     const char*                p_client_key;
 } http_download_param_t;
 
-typedef struct http_check_param_t
+typedef struct http_check_with_auth_param_t
 {
     const char*        p_url;
     TimeUnitsSeconds_t timeout_seconds;
@@ -61,7 +61,17 @@ typedef struct http_check_param_t
     const char*        p_server_cert;
     const char*        p_client_cert;
     const char*        p_client_key;
-} http_check_param_t;
+} http_check_with_auth_param_t;
+
+typedef struct http_check_params_t
+{
+    const char* const             p_url;
+    const gw_cfg_http_auth_type_e auth_type;
+    const char* const             p_user;
+    const char* const             p_pass;
+    const bool                    use_ssl_client_cert;
+    const bool                    use_ssl_server_cert;
+} http_check_params_t;
 
 bool
 http_send_advs(
@@ -73,23 +83,10 @@ http_send_advs(
     void* const                      p_user_data);
 
 http_server_resp_t
-http_check_post_advs(
-    const char* const             p_url,
-    const gw_cfg_http_auth_type_e auth_type,
-    const char* const             p_user,
-    const char* const             p_pass,
-    const TimeUnitsSeconds_t      timeout_seconds,
-    const bool                    use_ssl_client_cert,
-    const bool                    use_ssl_server_cert);
+http_check_post_advs(const http_check_params_t* const p_params, const TimeUnitsSeconds_t timeout_seconds);
 
 http_server_resp_t
-http_check_post_stat(
-    const char* const        p_url,
-    const char* const        p_user,
-    const char* const        p_pass,
-    const TimeUnitsSeconds_t timeout_seconds,
-    const bool               use_ssl_client_cert,
-    const bool               use_ssl_server_cert);
+http_check_post_stat(const http_check_params_t* const p_params, const TimeUnitsSeconds_t timeout_seconds);
 
 http_server_resp_t
 http_check_mqtt(const ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg, const TimeUnitsSeconds_t timeout_seconds);
@@ -118,11 +115,11 @@ http_download_with_auth(
 
 bool
 http_check_with_auth(
-    const http_check_param_t* const       p_param,
-    const gw_cfg_http_auth_type_e         auth_type,
-    const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
-    const http_header_item_t* const       p_extra_header_item,
-    http_resp_code_e* const               p_http_resp_code);
+    const http_check_with_auth_param_t* const p_param,
+    const gw_cfg_http_auth_type_e             auth_type,
+    const ruuvi_gw_cfg_http_auth_t* const     p_http_auth,
+    const http_header_item_t* const           p_extra_header_item,
+    http_resp_code_e* const                   p_http_resp_code);
 
 void
 http_abort_any_req_during_processing(void);
