@@ -86,18 +86,7 @@ http_server_cb_on_delete_ssl_cert(const char* const p_uri_params)
         return http_server_resp_400();
     }
 
-    if ((0 != strcmp(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_STAT_CLI_CERT, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_STAT_CLI_KEY, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_MQTT_CLI_CERT, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_MQTT_CLI_KEY, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_STAT_SRV_CERT, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_MQTT_SRV_CERT, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT, filename_str_buf.buf)))
+    if (!gw_cfg_storage_is_known_filename(filename_str_buf.buf))
     {
         LOG_ERR("HTTP delete_ssl_cert: Unknown file name: %s", filename_str_buf.buf);
         str_buf_free_buf(&filename_str_buf);

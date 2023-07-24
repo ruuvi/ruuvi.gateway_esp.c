@@ -67,92 +67,13 @@ gw_cfg_json_add_number(cJSON* const p_json_root, const char* const p_item_name, 
 static bool
 gw_cfg_json_add_items_device_info_storage_files(cJSON* p_storage)
 {
-    if (!gw_cfg_json_add_bool(
-            p_storage,
-            GW_CFG_STORAGE_SSL_HTTP_CLI_CERT,
-            gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT)))
+    for (int32_t i = 0; i < GW_CFG_STORAGE_NUM_ALLOWED_FILES; ++i)
     {
-        return false;
-    }
-    if (!gw_cfg_json_add_bool(
-            p_storage,
-            GW_CFG_STORAGE_SSL_HTTP_CLI_KEY,
-            gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY)))
-    {
-        return false;
-    }
-    if (!gw_cfg_json_add_bool(
-            p_storage,
-            GW_CFG_STORAGE_SSL_HTTP_SRV_CERT,
-            gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT)))
-    {
-        return false;
-    }
-
-    if (!gw_cfg_json_add_bool(
-            p_storage,
-            GW_CFG_STORAGE_SSL_STAT_CLI_CERT,
-            gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_STAT_CLI_CERT)))
-    {
-        return false;
-    }
-    if (!gw_cfg_json_add_bool(
-            p_storage,
-            GW_CFG_STORAGE_SSL_STAT_CLI_KEY,
-            gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_STAT_CLI_KEY)))
-    {
-        return false;
-    }
-    if (!gw_cfg_json_add_bool(
-            p_storage,
-            GW_CFG_STORAGE_SSL_STAT_SRV_CERT,
-            gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_STAT_SRV_CERT)))
-    {
-        return false;
-    }
-
-    if (!gw_cfg_json_add_bool(
-            p_storage,
-            GW_CFG_STORAGE_SSL_MQTT_CLI_CERT,
-            gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_MQTT_CLI_CERT)))
-    {
-        return false;
-    }
-    if (!gw_cfg_json_add_bool(
-            p_storage,
-            GW_CFG_STORAGE_SSL_MQTT_CLI_KEY,
-            gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_MQTT_CLI_KEY)))
-    {
-        return false;
-    }
-    if (!gw_cfg_json_add_bool(
-            p_storage,
-            GW_CFG_STORAGE_SSL_MQTT_SRV_CERT,
-            gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_MQTT_SRV_CERT)))
-    {
-        return false;
-    }
-
-    if (!gw_cfg_json_add_bool(
-            p_storage,
-            GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT,
-            gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT)))
-    {
-        return false;
-    }
-    if (!gw_cfg_json_add_bool(
-            p_storage,
-            GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY,
-            gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY)))
-    {
-        return false;
-    }
-    if (!gw_cfg_json_add_bool(
-            p_storage,
-            GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT,
-            gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT)))
-    {
-        return false;
+        const char* const p_file_name = g_gw_cfg_storage_list_of_allowed_files[i];
+        if (!gw_cfg_json_add_bool(p_storage, p_file_name, gw_cfg_storage_check_file(p_file_name)))
+        {
+            return false;
+        }
     }
     return true;
 }

@@ -665,8 +665,8 @@ http_server_on_get_check_mqtt(
 
     if ((strlen(topic_prefix.buf) >= sizeof(p_mqtt_cfg->mqtt_prefix.buf))
         || (strlen(client_id.buf) >= sizeof(p_mqtt_cfg->mqtt_client_id.buf))
-        || ((NULL != p_params->p_user) && (strlen(p_params->p_user) >= sizeof(p_mqtt_cfg->mqtt_user.buf)))
-        || ((NULL != p_params->p_pass) && (strlen(p_params->p_pass) >= sizeof(p_mqtt_cfg->mqtt_pass.buf))))
+        || (strlen(p_params->p_user) >= sizeof(p_mqtt_cfg->mqtt_user.buf))
+        || (strlen(p_params->p_pass) >= sizeof(p_mqtt_cfg->mqtt_pass.buf)))
     {
         str_buf_free_buf(&client_id);
         str_buf_free_buf(&topic_prefix);
@@ -996,6 +996,52 @@ http_server_resp_validate_check_remote_cfg(const http_server_resp_validate_param
     return http_resp;
 }
 
+static bool
+http_server_resp_validate_check_file_prep_auth_basic(
+    const http_server_resp_validate_params_t* const p_params,
+    ruuvi_gw_cfg_http_auth_t* const                 p_http_auth)
+{
+    if (('\0' == p_params->p_user->buf[0]) || ('\0' == p_params->p_password->buf[0]))
+    {
+        LOG_ERR("Username or password is empty");
+        return false;
+    }
+    ruuvi_gw_cfg_http_auth_basic_t* const p_auth = &p_http_auth->auth_basic;
+    (void)snprintf(p_auth->user.buf, sizeof(p_auth->user.buf), "%s", p_params->p_user->buf);
+    (void)snprintf(p_auth->password.buf, sizeof(p_auth->password.buf), "%s", p_params->p_password->buf);
+    return true;
+}
+
+static bool
+http_server_resp_validate_check_file_prep_auth_bearer(
+    const http_server_resp_validate_params_t* const p_params,
+    ruuvi_gw_cfg_http_auth_t* const                 p_http_auth)
+{
+    if ('\0' == p_params->p_password->buf[0])
+    {
+        LOG_ERR("Token is empty");
+        return false;
+    }
+    ruuvi_gw_cfg_http_bearer_token_t* const p_bearer = &p_http_auth->auth_bearer.token;
+    (void)snprintf(p_bearer->buf, sizeof(p_bearer->buf), "%s", p_params->p_password->buf);
+    return true;
+}
+
+static bool
+http_server_resp_validate_check_file_prep_auth_token(
+    const http_server_resp_validate_params_t* const p_params,
+    ruuvi_gw_cfg_http_auth_t* const                 p_http_auth)
+{
+    if ('\0' == p_params->p_password->buf[0])
+    {
+        LOG_ERR("Token is empty");
+        return false;
+    }
+    ruuvi_gw_cfg_http_token_t* const p_token = &p_http_auth->auth_token.token;
+    (void)snprintf(p_token->buf, sizeof(p_token->buf), "%s", p_params->p_password->buf);
+    return true;
+}
+
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_validate_check_file(const http_server_resp_validate_params_t* const p_params)
@@ -1009,52 +1055,31 @@ http_server_resp_validate_check_file(const http_server_resp_validate_params_t* c
             LOG_ERR("Can't allocate memory for http_auth");
             return http_server_resp_500();
         }
-        if (GW_CFG_HTTP_AUTH_TYPE_BASIC == p_params->auth_type)
+        switch (p_params->auth_type)
         {
-            if (('\0' == p_params->p_user->buf[0]) || ('\0' == p_params->p_password->buf[0]))
-            {
-                LOG_ERR("Username or password is empty");
-                os_free(p_http_auth);
-                return http_server_resp_400();
-            }
-            (void)snprintf(
-                p_http_auth->auth_basic.user.buf,
-                sizeof(p_http_auth->auth_basic.user.buf),
-                "%s",
-                p_params->p_user->buf);
-            (void)snprintf(
-                p_http_auth->auth_basic.password.buf,
-                sizeof(p_http_auth->auth_basic.password.buf),
-                "%s",
-                p_params->p_password->buf);
-        }
-        else if (GW_CFG_HTTP_AUTH_TYPE_BEARER == p_params->auth_type)
-        {
-            if ('\0' == p_params->p_password->buf[0])
-            {
-                LOG_ERR("Token is empty");
-                os_free(p_http_auth);
-                return http_server_resp_400();
-            }
-            (void)snprintf(
-                p_http_auth->auth_bearer.token.buf,
-                sizeof(p_http_auth->auth_bearer.token.buf),
-                "%s",
-                p_params->p_password->buf);
-        }
-        else if (GW_CFG_HTTP_AUTH_TYPE_TOKEN == p_params->auth_type)
-        {
-            if ('\0' == p_params->p_password->buf[0])
-            {
-                LOG_ERR("Token is empty");
-                os_free(p_http_auth);
-                return http_server_resp_400();
-            }
-            (void)snprintf(
-                p_http_auth->auth_token.token.buf,
-                sizeof(p_http_auth->auth_token.token.buf),
-                "%s",
-                p_params->p_password->buf);
+            case GW_CFG_HTTP_AUTH_TYPE_NONE:
+                break;
+            case GW_CFG_HTTP_AUTH_TYPE_BASIC:
+                if (!http_server_resp_validate_check_file_prep_auth_basic(p_params, p_http_auth))
+                {
+                    os_free(p_http_auth);
+                    return http_server_resp_400();
+                }
+                break;
+            case GW_CFG_HTTP_AUTH_TYPE_BEARER:
+                if (!http_server_resp_validate_check_file_prep_auth_bearer(p_params, p_http_auth))
+                {
+                    os_free(p_http_auth);
+                    return http_server_resp_400();
+                }
+                break;
+            case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
+                if (!http_server_resp_validate_check_file_prep_auth_token(p_params, p_http_auth))
+                {
+                    os_free(p_http_auth);
+                    return http_server_resp_400();
+                }
+                break;
         }
     }
     const http_resp_code_e http_resp_code

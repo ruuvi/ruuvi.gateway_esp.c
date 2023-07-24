@@ -673,30 +673,38 @@ http_send_advs_internal(
         return false;
     }
 
-    if (!flag_post_to_ruuvi && (GW_CFG_HTTP_AUTH_TYPE_BEARER == p_cfg_http->auth_type))
+    if (!flag_post_to_ruuvi)
     {
-        str_buf_t str_buf = str_buf_printf_with_alloc("Bearer %s", p_cfg_http->auth.auth_bearer.token.buf);
-        if (NULL == str_buf.buf)
+        if (GW_CFG_HTTP_AUTH_TYPE_BEARER == p_cfg_http->auth_type)
         {
-            LOG_ERR("Can't allocate memory for bearer token");
-            http_async_info_free_data(p_http_async_info);
-            return false;
+            str_buf_t str_buf = str_buf_printf_with_alloc("Bearer %s", p_cfg_http->auth.auth_bearer.token.buf);
+            if (NULL == str_buf.buf)
+            {
+                LOG_ERR("Can't allocate memory for bearer token");
+                http_async_info_free_data(p_http_async_info);
+                return false;
+            }
+            esp_http_client_set_header(p_http_async_info->p_http_client_handle, "Authorization", str_buf.buf);
+            str_buf_free_buf(&str_buf);
         }
-        esp_http_client_set_header(p_http_async_info->p_http_client_handle, "Authorization", str_buf.buf);
-        str_buf_free_buf(&str_buf);
-    }
-    else if (!flag_post_to_ruuvi && (GW_CFG_HTTP_AUTH_TYPE_TOKEN == p_cfg_http->auth_type))
-    {
-        str_buf_t str_buf = str_buf_printf_with_alloc("Token %s", p_cfg_http->auth.auth_token.token.buf);
-        if (NULL == str_buf.buf)
+        else if (GW_CFG_HTTP_AUTH_TYPE_TOKEN == p_cfg_http->auth_type)
         {
-            LOG_ERR("Can't allocate memory for bearer token");
-            http_async_info_free_data(p_http_async_info);
-            return false;
+            str_buf_t str_buf = str_buf_printf_with_alloc("Token %s", p_cfg_http->auth.auth_token.token.buf);
+            if (NULL == str_buf.buf)
+            {
+                LOG_ERR("Can't allocate memory for bearer token");
+                http_async_info_free_data(p_http_async_info);
+                return false;
+            }
+            esp_http_client_set_header(p_http_async_info->p_http_client_handle, "Authorization", str_buf.buf);
+            str_buf_free_buf(&str_buf);
         }
-        esp_http_client_set_header(p_http_async_info->p_http_client_handle, "Authorization", str_buf.buf);
-        str_buf_free_buf(&str_buf);
+        else
+        {
+            // MISRA C:2012, 15.7 - All "if ... else if" constructs shall be terminated with an else statement
+        }
     }
+
     if (flag_post_to_ruuvi)
     {
         (void)hmac_sha256_calc_for_json_gen_http_ruuvi(
@@ -991,7 +999,7 @@ http_send_statistics_internal(
     if (NULL == p_http_async_info->p_http_client_handle)
     {
         LOG_ERR("HTTP POST to URL=%s: Can't init http client", p_http_async_info->http_client_config.http_url.buf);
-        cjson_wrap_free_json_str(&p_http_async_info->select.cjson_str);
+        http_async_info_free_data(p_http_async_info);
         return false;
     }
 
@@ -1000,21 +1008,9 @@ http_send_statistics_internal(
     if (!http_send_async(p_http_async_info))
     {
         LOG_DBG("esp_http_client_cleanup");
-        if (NULL != p_http_async_info->http_client_config.esp_http_client_config.cert_pem)
-        {
-            os_free(p_http_async_info->http_client_config.esp_http_client_config.cert_pem);
-        }
-        if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem)
-        {
-            os_free(p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem);
-        }
-        if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_key_pem)
-        {
-            os_free(p_http_async_info->http_client_config.esp_http_client_config.client_key_pem);
-        }
         esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
         p_http_async_info->p_http_client_handle = NULL;
-        cjson_wrap_free_json_str(&p_http_async_info->select.cjson_str);
+        http_async_info_free_data(p_http_async_info);
         return false;
     }
     return true;
@@ -1065,8 +1061,8 @@ http_check_post_stat_internal3(
 {
 
     if ((strlen(p_params->p_url) >= sizeof(p_cfg_http_stat->http_stat_url.buf))
-        || ((NULL != p_params->p_user) && (strlen(p_params->p_user) >= sizeof(p_cfg_http_stat->http_stat_user.buf)))
-        || ((NULL != p_params->p_pass) && (strlen(p_params->p_pass) >= sizeof(p_cfg_http_stat->http_stat_pass.buf))))
+        || (strlen(p_params->p_user) >= sizeof(p_cfg_http_stat->http_stat_user.buf))
+        || (strlen(p_params->p_pass) >= sizeof(p_cfg_http_stat->http_stat_pass.buf)))
     {
         return http_server_resp_err(HTTP_RESP_CODE_400);
     }
@@ -1143,21 +1139,9 @@ http_check_post_stat_internal3(
     }
 
     LOG_DBG("esp_http_client_cleanup");
-    if (NULL != p_http_async_info->http_client_config.esp_http_client_config.cert_pem)
-    {
-        os_free(p_http_async_info->http_client_config.esp_http_client_config.cert_pem);
-    }
-    if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem)
-    {
-        os_free(p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem);
-    }
-    if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_key_pem)
-    {
-        os_free(p_http_async_info->http_client_config.esp_http_client_config.client_key_pem);
-    }
     esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
     p_http_async_info->p_http_client_handle = NULL;
-    cjson_wrap_free_json_str(&p_http_async_info->select.cjson_str);
+    http_async_info_free_data(p_http_async_info);
 
     return resp;
 }
@@ -1295,6 +1279,85 @@ http_check_mqtt(const ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg, const TimeUnitsSeco
     return resp;
 }
 
+static void
+http_async_poll_handle_resp_ok(
+    http_async_info_t* const                 p_http_async_info,
+    const esp_http_client_http_status_code_t http_status)
+{
+    LOG_INFO(
+        "### HTTP POST to URL=%s: STATUS=%d",
+        p_http_async_info->http_client_config.esp_http_client_config.url,
+        http_status);
+    switch (p_http_async_info->recipient)
+    {
+        case HTTP_POST_RECIPIENT_STATS:
+            reset_info_clear_extra_info();
+            break;
+        case HTTP_POST_RECIPIENT_ADVS1:
+            ATTR_FALLTHROUGH;
+        case HTTP_POST_RECIPIENT_ADVS2:
+            adv_post_last_successful_network_comm_timestamp_update();
+            break;
+    }
+}
+
+static void
+http_async_poll_handle_resp_err(
+    http_async_info_t* const                 p_http_async_info,
+    const esp_http_client_http_status_code_t http_status)
+{
+    LOG_ERR(
+        "### HTTP POST to URL=%s: STATUS=%d",
+        p_http_async_info->http_client_config.esp_http_client_config.url,
+        http_status);
+    if (HTTP_RESP_CODE_429 == http_status)
+    {
+        switch (p_http_async_info->recipient)
+        {
+            case HTTP_POST_RECIPIENT_STATS:
+                break;
+            case HTTP_POST_RECIPIENT_ADVS1:
+            case HTTP_POST_RECIPIENT_ADVS2:
+                adv_post_last_successful_network_comm_timestamp_update();
+                break;
+        }
+    }
+}
+
+static void
+http_async_poll_do_actions_after_completion(http_async_info_t* const p_http_async_info, const bool flag_success)
+{
+    switch (p_http_async_info->recipient)
+    {
+        case HTTP_POST_RECIPIENT_STATS:
+            break;
+        case HTTP_POST_RECIPIENT_ADVS1:
+            if (flag_success)
+            {
+                leds_notify_http1_data_sent_successfully();
+                adv1_post_timer_restart_with_default_period();
+            }
+            else
+            {
+                leds_notify_http1_data_sent_fail();
+                adv1_post_timer_restart_with_increased_period();
+            }
+            break;
+        case HTTP_POST_RECIPIENT_ADVS2:
+            if (flag_success)
+            {
+                leds_notify_http2_data_sent_successfully();
+                adv2_post_timer_restart_with_default_period();
+            }
+            else
+            {
+                leds_notify_http2_data_sent_fail();
+                adv2_post_timer_restart_with_increased_period();
+            }
+            break;
+    }
+}
+
 bool
 http_async_poll(void)
 {
@@ -1325,40 +1388,12 @@ http_async_poll(void)
             p_http_async_info->p_http_client_handle);
         if (HTTP_RESP_CODE_200 == http_status)
         {
-            LOG_INFO(
-                "### HTTP POST to URL=%s: STATUS=%d",
-                p_http_async_info->http_client_config.esp_http_client_config.url,
-                http_status);
-            switch (p_http_async_info->recipient)
-            {
-                case HTTP_POST_RECIPIENT_STATS:
-                    reset_info_clear_extra_info();
-                    break;
-                case HTTP_POST_RECIPIENT_ADVS1:
-                case HTTP_POST_RECIPIENT_ADVS2:
-                    adv_post_last_successful_network_comm_timestamp_update();
-                    break;
-            }
+            http_async_poll_handle_resp_ok(p_http_async_info, http_status);
             flag_success = true;
         }
         else
         {
-            LOG_ERR(
-                "### HTTP POST to URL=%s: STATUS=%d",
-                p_http_async_info->http_client_config.esp_http_client_config.url,
-                http_status);
-            if (HTTP_RESP_CODE_429 == http_status)
-            {
-                switch (p_http_async_info->recipient)
-                {
-                    case HTTP_POST_RECIPIENT_STATS:
-                        break;
-                    case HTTP_POST_RECIPIENT_ADVS1:
-                    case HTTP_POST_RECIPIENT_ADVS2:
-                        adv_post_last_successful_network_comm_timestamp_update();
-                        break;
-                }
-            }
+            http_async_poll_handle_resp_err(p_http_async_info, http_status);
         }
     }
     else
@@ -1382,35 +1417,9 @@ http_async_poll(void)
             LOG_ERR("%s failed", "fw_update_mark_app_valid_cancel_rollback");
         }
     }
-    switch (p_http_async_info->recipient)
-    {
-        case HTTP_POST_RECIPIENT_STATS:
-            break;
-        case HTTP_POST_RECIPIENT_ADVS1:
-            if (flag_success)
-            {
-                leds_notify_http1_data_sent_successfully();
-                adv1_post_timer_restart_with_default_period();
-            }
-            else
-            {
-                leds_notify_http1_data_sent_fail();
-                adv1_post_timer_restart_with_increased_period();
-            }
-            break;
-        case HTTP_POST_RECIPIENT_ADVS2:
-            if (flag_success)
-            {
-                leds_notify_http2_data_sent_successfully();
-                adv2_post_timer_restart_with_default_period();
-            }
-            else
-            {
-                leds_notify_http2_data_sent_fail();
-                adv2_post_timer_restart_with_increased_period();
-            }
-            break;
-    }
+
+    http_async_poll_do_actions_after_completion(p_http_async_info, flag_success);
+
     LOG_DBG("os_sema_signal: p_http_async_sema");
     os_sema_signal(p_http_async_info->p_http_async_sema);
     return true;

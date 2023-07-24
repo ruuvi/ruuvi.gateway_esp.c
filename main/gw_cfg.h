@@ -168,13 +168,15 @@ typedef enum gw_cfg_http_auth_type_e
     GW_CFG_HTTP_AUTH_TYPE_TOKEN  = 3,
 } gw_cfg_http_auth_type_e;
 
+typedef struct ruuvi_gw_cfg_http_auth_basic_t
+{
+    ruuvi_gw_cfg_http_user_t     user;
+    ruuvi_gw_cfg_http_password_t password;
+} ruuvi_gw_cfg_http_auth_basic_t;
+
 typedef union ruuvi_gw_cfg_http_auth_t
 {
-    struct
-    {
-        ruuvi_gw_cfg_http_user_t     user;
-        ruuvi_gw_cfg_http_password_t password;
-    } auth_basic;
+    ruuvi_gw_cfg_http_auth_basic_t auth_basic;
     struct
     {
         ruuvi_gw_cfg_http_bearer_token_t token;

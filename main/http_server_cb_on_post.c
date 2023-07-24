@@ -251,24 +251,7 @@ http_server_cb_on_post_ssl_cert(const char* const p_body, const char* const p_ur
         return http_server_resp_400();
     }
     LOG_DBG("Content: %s", p_body);
-    const char* const g_list_of_allowed_files[12] = {
-        GW_CFG_STORAGE_SSL_HTTP_CLI_CERT,       GW_CFG_STORAGE_SSL_HTTP_CLI_KEY,
-        GW_CFG_STORAGE_SSL_STAT_CLI_CERT,       GW_CFG_STORAGE_SSL_STAT_CLI_KEY,
-        GW_CFG_STORAGE_SSL_MQTT_CLI_CERT,       GW_CFG_STORAGE_SSL_MQTT_CLI_KEY,
-        GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT, GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY,
-        GW_CFG_STORAGE_SSL_HTTP_SRV_CERT,       GW_CFG_STORAGE_SSL_STAT_SRV_CERT,
-        GW_CFG_STORAGE_SSL_MQTT_SRV_CERT,       GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT,
-    };
-    bool is_known = false;
-    for (int32_t i = 0; i < (sizeof(g_list_of_allowed_files) / sizeof(g_list_of_allowed_files[0])); ++i)
-    {
-        if (0 == strcmp(filename_str_buf.buf, g_list_of_allowed_files[i]))
-        {
-            is_known = true;
-            break;
-        }
-    }
-    if (!is_known)
+    if (!gw_cfg_storage_is_known_filename(filename_str_buf.buf))
     {
         LOG_ERR("HTTP post_ssl_cert: Unknown file name: %s", filename_str_buf.buf);
         str_buf_free_buf(&filename_str_buf);

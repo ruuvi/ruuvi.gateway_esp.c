@@ -839,18 +839,6 @@ adv_post_handle_sig_task_watchdog_feed(void)
 }
 
 static void
-adv_post_handle_sig_time_synchronized(adv_post_state_t* const p_adv_post_state)
-{
-    if (!p_adv_post_state->flag_primary_time_sync_is_done)
-    {
-        p_adv_post_state->flag_primary_time_sync_is_done = true;
-        LOG_INFO("Remove all accumulated data with zero timestamps");
-        LOG_INFO("Clear adv_table");
-        adv_table_clear();
-    }
-}
-
-static void
 adv_post_restart_pending_retransmissions(const adv_post_state_t* const p_adv_post_state)
 {
     if (p_adv_post_state->flag_need_to_send_advs1)
@@ -1016,6 +1004,112 @@ adv_post_handle_sig_relaying_mode_changed(adv_post_state_t* const p_adv_post_sta
     gw_status_clear_http_relaying_cmd();
 }
 
+static void
+adv_post_handle_sig_network_disconnected(adv_post_state_t* const p_adv_post_state)
+{
+    LOG_INFO("Handle event: NETWORK_DISCONNECTED");
+    p_adv_post_state->flag_network_connected = false;
+}
+
+static void
+adv_post_handle_sig_network_connected(adv_post_state_t* const p_adv_post_state)
+{
+    LOG_INFO("Handle event: NETWORK_CONNECTED");
+    p_adv_post_state->flag_network_connected = true;
+    adv_post_restart_pending_retransmissions(p_adv_post_state);
+}
+
+static void
+adv_post_handle_sig_time_synchronized(adv_post_state_t* const p_adv_post_state)
+{
+    if (!p_adv_post_state->flag_primary_time_sync_is_done)
+    {
+        p_adv_post_state->flag_primary_time_sync_is_done = true;
+        LOG_INFO("Remove all accumulated data with zero timestamps");
+        LOG_INFO("Clear adv_table");
+        adv_table_clear();
+    }
+    adv_post_restart_pending_retransmissions(p_adv_post_state);
+}
+
+static void
+adv_post_handle_sig_retransmit(adv_post_state_t* const p_adv_post_state)
+{
+    LOG_INFO("Got ADV_POST_SIG_RETRANSMIT");
+    if (p_adv_post_state->flag_relaying_enabled && gw_cfg_get_http_use_http_ruuvi())
+    {
+        p_adv_post_state->flag_need_to_send_advs1 = true;
+        os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DO_ASYNC_COMM));
+    }
+}
+
+static void
+adv_post_handle_sig_retransmit2(adv_post_state_t* const p_adv_post_state)
+{
+    LOG_INFO("Got ADV_POST_SIG_RETRANSMIT2");
+    if (p_adv_post_state->flag_relaying_enabled && gw_cfg_get_http_use_http())
+    {
+        p_adv_post_state->flag_need_to_send_advs2 = true;
+        os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DO_ASYNC_COMM));
+    }
+}
+
+static void
+adv_post_handle_sig_activate_sending_statistics(adv_post_state_t* const p_adv_post_state)
+{
+    LOG_INFO("Got ADV_POST_SIG_ACTIVATE_SENDING_STATISTICS");
+    p_adv_post_state->flag_need_to_send_statistics = true;
+    os_timer_sig_periodic_start(g_p_adv_post_timer_sig_send_statistics);
+    os_timer_sig_periodic_simulate(g_p_adv_post_timer_sig_send_statistics);
+}
+
+static void
+adv_post_handle_sig_send_statistics(adv_post_state_t* const p_adv_post_state)
+{
+    LOG_INFO("Got ADV_POST_SIG_SEND_STATISTICS");
+    if (p_adv_post_state->flag_relaying_enabled && gw_cfg_get_http_stat_use_http_stat())
+    {
+        p_adv_post_state->flag_need_to_send_statistics = true;
+        os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DO_ASYNC_COMM));
+    }
+}
+
+static void
+adv_post_handle_sig_gw_cfg_ready(adv_post_state_t* const p_adv_post_state)
+{
+    LOG_INFO("Got ADV_POST_SIG_GW_CFG_READY");
+    ruuvi_send_nrf_settings_from_gw_cfg();
+    if (gw_cfg_get_http_stat_use_http_stat())
+    {
+        os_timer_sig_one_shot_start(g_p_adv_post_timer_sig_activate_sending_statistics);
+    }
+    adv_post_on_gw_cfg_change(p_adv_post_state);
+    if (gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss() && (gw_cfg_get_http_use_http_ruuvi() || gw_cfg_get_http_use_http()))
+    {
+        http_server_mutex_activate();
+    }
+    else
+    {
+        http_server_mutex_deactivate();
+    }
+}
+
+static void
+adv_post_handle_sig_gw_cfg_changed_ruuvi(adv_post_state_t* const p_adv_post_state)
+{
+    LOG_INFO("Got ADV_POST_SIG_GW_CFG_CHANGED_RUUVI");
+    ruuvi_send_nrf_settings_from_gw_cfg();
+    adv_post_on_gw_cfg_change(p_adv_post_state);
+    if (gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss() && (gw_cfg_get_http_use_http_ruuvi() || gw_cfg_get_http_use_http()))
+    {
+        http_server_mutex_activate();
+    }
+    else
+    {
+        http_server_mutex_deactivate();
+    }
+}
+
 static bool
 adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p_adv_post_state)
 {
@@ -1027,47 +1121,25 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p
             flag_stop = true;
             break;
         case ADV_POST_SIG_NETWORK_DISCONNECTED:
-            LOG_INFO("Handle event: NETWORK_DISCONNECTED");
-            p_adv_post_state->flag_network_connected = false;
+            adv_post_handle_sig_network_disconnected(p_adv_post_state);
             break;
         case ADV_POST_SIG_NETWORK_CONNECTED:
-            LOG_INFO("Handle event: NETWORK_CONNECTED");
-            p_adv_post_state->flag_network_connected = true;
-            adv_post_restart_pending_retransmissions(p_adv_post_state);
+            adv_post_handle_sig_network_connected(p_adv_post_state);
             break;
         case ADV_POST_SIG_TIME_SYNCHRONIZED:
             adv_post_handle_sig_time_synchronized(p_adv_post_state);
-            adv_post_restart_pending_retransmissions(p_adv_post_state);
             break;
         case ADV_POST_SIG_RETRANSMIT:
-            LOG_INFO("Got ADV_POST_SIG_RETRANSMIT");
-            if (p_adv_post_state->flag_relaying_enabled && gw_cfg_get_http_use_http_ruuvi())
-            {
-                p_adv_post_state->flag_need_to_send_advs1 = true;
-                os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DO_ASYNC_COMM));
-            }
+            adv_post_handle_sig_retransmit(p_adv_post_state);
             break;
         case ADV_POST_SIG_RETRANSMIT2:
-            LOG_INFO("Got ADV_POST_SIG_RETRANSMIT2");
-            if (p_adv_post_state->flag_relaying_enabled && gw_cfg_get_http_use_http())
-            {
-                p_adv_post_state->flag_need_to_send_advs2 = true;
-                os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DO_ASYNC_COMM));
-            }
+            adv_post_handle_sig_retransmit2(p_adv_post_state);
             break;
         case ADV_POST_SIG_ACTIVATE_SENDING_STATISTICS:
-            LOG_INFO("Got ADV_POST_SIG_ACTIVATE_SENDING_STATISTICS");
-            p_adv_post_state->flag_need_to_send_statistics = true;
-            os_timer_sig_periodic_start(g_p_adv_post_timer_sig_send_statistics);
-            os_timer_sig_periodic_simulate(g_p_adv_post_timer_sig_send_statistics);
+            adv_post_handle_sig_activate_sending_statistics(p_adv_post_state);
             break;
         case ADV_POST_SIG_SEND_STATISTICS:
-            LOG_INFO("Got ADV_POST_SIG_SEND_STATISTICS");
-            if (p_adv_post_state->flag_relaying_enabled && gw_cfg_get_http_stat_use_http_stat())
-            {
-                p_adv_post_state->flag_need_to_send_statistics = true;
-                os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DO_ASYNC_COMM));
-            }
+            adv_post_handle_sig_send_statistics(p_adv_post_state);
             break;
         case ADV_POST_SIG_DO_ASYNC_COMM:
             adv_post_do_async_comm(p_adv_post_state);
@@ -1082,36 +1154,10 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p
             adv_post_handle_sig_task_watchdog_feed();
             break;
         case ADV_POST_SIG_GW_CFG_READY:
-            LOG_INFO("Got ADV_POST_SIG_GW_CFG_READY");
-            ruuvi_send_nrf_settings_from_gw_cfg();
-            if (gw_cfg_get_http_stat_use_http_stat())
-            {
-                os_timer_sig_one_shot_start(g_p_adv_post_timer_sig_activate_sending_statistics);
-            }
-            adv_post_on_gw_cfg_change(p_adv_post_state);
-            if (gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss()
-                && (gw_cfg_get_http_use_http_ruuvi() || gw_cfg_get_http_use_http()))
-            {
-                http_server_mutex_activate();
-            }
-            else
-            {
-                http_server_mutex_deactivate();
-            }
+            adv_post_handle_sig_gw_cfg_ready(p_adv_post_state);
             break;
         case ADV_POST_SIG_GW_CFG_CHANGED_RUUVI:
-            LOG_INFO("Got ADV_POST_SIG_GW_CFG_CHANGED_RUUVI");
-            ruuvi_send_nrf_settings_from_gw_cfg();
-            adv_post_on_gw_cfg_change(p_adv_post_state);
-            if (gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss()
-                && (gw_cfg_get_http_use_http_ruuvi() || gw_cfg_get_http_use_http()))
-            {
-                http_server_mutex_activate();
-            }
-            else
-            {
-                http_server_mutex_deactivate();
-            }
+            adv_post_handle_sig_gw_cfg_changed_ruuvi(p_adv_post_state);
             break;
         case ADV_POST_SIG_BLE_SCAN_CHANGED:
             LOG_INFO("Got ADV_POST_SIG_BLE_SCAN_CHANGED");

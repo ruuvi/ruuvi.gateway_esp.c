@@ -22,6 +22,8 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/cjson_wrap.h
         ${RUUVI_GW_SRC}/gw_cfg_ruuvi_json.c
         ${RUUVI_GW_SRC}/gw_cfg_ruuvi_json.h
+        ${RUUVI_GW_SRC}/gw_cfg_storage_files.c
+        ${RUUVI_GW_SRC}/gw_cfg_storage.h
         ${RUUVI_GW_SRC}/metrics.c
         ${RUUVI_GW_SRC}/metrics.h
         ${WIFI_MANAGER_SRC}/wifiman_config.c
