@@ -527,11 +527,27 @@ http_send_async(http_async_info_t* const p_http_async_info)
 static void
 http_async_info_free_data(http_async_info_t* const p_http_async_info)
 {
+    if (NULL != p_http_async_info->http_client_config.esp_http_client_config.cert_pem)
+    {
+        os_free(p_http_async_info->http_client_config.esp_http_client_config.cert_pem);
+        p_http_async_info->http_client_config.esp_http_client_config.cert_pem = NULL;
+    }
+    if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem)
+    {
+        os_free(p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem);
+        p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem = NULL;
+    }
+    if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_key_pem)
+    {
+        os_free(p_http_async_info->http_client_config.esp_http_client_config.client_key_pem);
+        p_http_async_info->http_client_config.esp_http_client_config.client_key_pem = NULL;
+    }
     if (p_http_async_info->use_json_stream_gen)
     {
         if (NULL != p_http_async_info->select.p_gen)
         {
             json_stream_gen_delete(&p_http_async_info->select.p_gen);
+            p_http_async_info->select.p_gen = NULL;
         }
     }
     else
@@ -695,18 +711,6 @@ http_send_advs_internal(
     if (!http_send_async(p_http_async_info))
     {
         LOG_DBG("esp_http_client_cleanup");
-        if (NULL != p_http_async_info->http_client_config.esp_http_client_config.cert_pem)
-        {
-            os_free(p_http_async_info->http_client_config.esp_http_client_config.cert_pem);
-        }
-        if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem)
-        {
-            os_free(p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem);
-        }
-        if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_key_pem)
-        {
-            os_free(p_http_async_info->http_client_config.esp_http_client_config.client_key_pem);
-        }
         esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
         p_http_async_info->p_http_client_handle = NULL;
         http_async_info_free_data(p_http_async_info);
@@ -865,18 +869,6 @@ http_check_post_advs_internal3(
     }
 
     LOG_DBG("esp_http_client_cleanup");
-    if (NULL != p_http_async_info->http_client_config.esp_http_client_config.cert_pem)
-    {
-        os_free(p_http_async_info->http_client_config.esp_http_client_config.cert_pem);
-    }
-    if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem)
-    {
-        os_free(p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem);
-    }
-    if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_key_pem)
-    {
-        os_free(p_http_async_info->http_client_config.esp_http_client_config.client_key_pem);
-    }
     esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
     p_http_async_info->p_http_client_handle = NULL;
     http_async_info_free_data(p_http_async_info);
@@ -1393,18 +1385,6 @@ http_async_poll(void)
     }
 
     LOG_DBG("esp_http_client_cleanup");
-    if (NULL != p_http_async_info->http_client_config.esp_http_client_config.cert_pem)
-    {
-        os_free(p_http_async_info->http_client_config.esp_http_client_config.cert_pem);
-    }
-    if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem)
-    {
-        os_free(p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem);
-    }
-    if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_key_pem)
-    {
-        os_free(p_http_async_info->http_client_config.esp_http_client_config.client_key_pem);
-    }
     esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
     p_http_async_info->p_http_client_handle = NULL;
 
@@ -2039,18 +2019,6 @@ http_abort_any_req_during_processing(void)
         }
 
         LOG_DBG("esp_http_client_cleanup");
-        if (NULL != p_http_async_info->http_client_config.esp_http_client_config.cert_pem)
-        {
-            os_free(p_http_async_info->http_client_config.esp_http_client_config.cert_pem);
-        }
-        if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem)
-        {
-            os_free(p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem);
-        }
-        if (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_key_pem)
-        {
-            os_free(p_http_async_info->http_client_config.esp_http_client_config.client_key_pem);
-        }
         esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
         p_http_async_info->p_http_client_handle = NULL;
         http_async_info_free_data(p_http_async_info);
