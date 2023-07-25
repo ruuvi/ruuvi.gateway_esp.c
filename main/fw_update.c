@@ -24,6 +24,9 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
+#define FW_UPDATE_TASK_STACK_SIZE ((7 * 1024) - 512)
+#define FW_UPDATE_TASK_PRIORITY   (1)
+
 #define GW_GWUI_PARTITION_2 GW_GWUI_PARTITION "_2"
 #define GW_NRF_PARTITION_2  GW_NRF_PARTITION "_2"
 
@@ -824,6 +827,50 @@ fw_update_do_actions(void)
     return true;
 }
 
+static const char*
+fw_update_get_reboot_reason_msg(const fw_updating_reason_e fw_updating_reason, const bool flag_fw_update_successful)
+{
+    if (!flag_fw_update_successful)
+    {
+        switch (fw_updating_reason)
+        {
+            case FW_UPDATE_REASON_NONE:
+                LOG_ERR("Firmware updating failed");
+                return "Restart the system after firmware update (failed)";
+            case FW_UPDATE_REASON_AUTO:
+                LOG_INFO("Firmware updating failed (auto-updating)");
+                return "Restart the system after firmware update (auto-updating failed)";
+            case FW_UPDATE_REASON_MANUAL_VIA_HOTSPOT:
+                LOG_INFO("Firmware updating failed (manual updating via WiFi hotspot)");
+                return "Restart the system after firmware update (manual updating via WiFi hotspot failed)";
+            case FW_UPDATE_REASON_MANUAL_VIA_LAN:
+                LOG_INFO("Firmware updating failed (manual updating via LAN)");
+                return "Restart the system after firmware update (manual updating via LAN failed)";
+        }
+        LOG_ERR("Firmware updating failed (reason is unknown)");
+        assert(0);
+        return "Restart the system after firmware update (failed, reason is unknown)";
+    }
+    switch (fw_updating_reason)
+    {
+        case FW_UPDATE_REASON_NONE:
+            LOG_INFO("Firmware updating completed successfully (unknown reason)");
+            return "Restart the system after firmware update (completed successfully)";
+        case FW_UPDATE_REASON_AUTO:
+            LOG_INFO("Firmware updating completed successfully (auto-updating)");
+            return "Restart the system after firmware update (auto-updating completed successfully)";
+        case FW_UPDATE_REASON_MANUAL_VIA_HOTSPOT:
+            LOG_INFO("Firmware updating completed successfully (manual updating via WiFi hotspot)");
+            return "Restart the system after firmware update (manual updating via WiFi hotspot completed successfully)";
+        case FW_UPDATE_REASON_MANUAL_VIA_LAN:
+            LOG_INFO("Firmware updating completed successfully (manual updating via LAN)");
+            return "Restart the system after firmware update (manual updating via LAN completed successfully)";
+    }
+    LOG_ERR("Firmware updating completed successfully (unknown reason)");
+    assert(0);
+    return "Restart the system after firmware update (completed successfully, unknown reason)";
+}
+
 static void
 fw_update_task(void)
 {
@@ -844,58 +891,30 @@ fw_update_task(void)
     }
     timer_cfg_mode_deactivation_stop();
 
-    const char* p_reboot_reason_msg = "";
-    if (!fw_update_do_actions())
+    const bool flag_fw_update_successful = fw_update_do_actions();
+
+    const char* const p_reboot_reason_msg = fw_update_get_reboot_reason_msg(
+        g_fw_updating_reason,
+        flag_fw_update_successful);
+
+    if (!flag_fw_update_successful)
     {
-        switch (g_fw_updating_reason)
-        {
-            case FW_UPDATE_REASON_NONE:
-                LOG_ERR("Firmware updating failed");
-                p_reboot_reason_msg = "Restart the system after firmware update (failed)";
-                break;
-            case FW_UPDATE_REASON_AUTO:
-                LOG_INFO("Firmware updating failed (auto-updating)");
-                p_reboot_reason_msg = "Restart the system after firmware update (auto-updating failed)";
-                break;
-            case FW_UPDATE_REASON_MANUAL_VIA_HOTSPOT:
-                LOG_INFO("Firmware updating failed (manual updating via WiFi hotspot)");
-                p_reboot_reason_msg
-                    = "Restart the system after firmware update (manual updating via WiFi hotspot failed)";
-                break;
-            case FW_UPDATE_REASON_MANUAL_VIA_LAN:
-                LOG_INFO("Firmware updating failed (manual updating via LAN)");
-                p_reboot_reason_msg = "Restart the system after firmware update (manual updating via LAN failed)";
-                break;
-        }
         g_fw_updating_reason = FW_UPDATE_REASON_NONE;
     }
     else
     {
         switch (g_fw_updating_reason)
         {
-            case FW_UPDATE_REASON_NONE:
-                LOG_INFO("Firmware updating completed successfully (unknown reason)");
-                p_reboot_reason_msg = "Restart the system after firmware update (completed successfully)";
-                break;
             case FW_UPDATE_REASON_AUTO:
-                LOG_INFO("Firmware updating completed successfully (auto-updating)");
-                p_reboot_reason_msg = "Restart the system after firmware update (auto-updating completed successfully)";
                 settings_write_flag_rebooting_after_auto_update(true);
                 break;
             case FW_UPDATE_REASON_MANUAL_VIA_HOTSPOT:
-                LOG_INFO("Firmware updating completed successfully (manual updating via WiFi hotspot)");
-                p_reboot_reason_msg
-                    = "Restart the system after firmware update (manual updating via WiFi hotspot completed "
-                      "successfully)";
                 if (wifi_manager_is_ap_sta_ip_assigned())
                 {
                     settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_ONCE);
                 }
                 break;
-            case FW_UPDATE_REASON_MANUAL_VIA_LAN:
-                LOG_INFO("Firmware updating completed successfully (manual updating via LAN)");
-                p_reboot_reason_msg
-                    = "Restart the system after firmware update (manual updating via LAN completed successfully)";
+            default:
                 break;
         }
         LOG_INFO("Wait 5 seconds before reboot");
@@ -939,9 +958,12 @@ fw_update_get_url(void)
 bool
 fw_update_run(const fw_updating_reason_e fw_updating_reason)
 {
-    const uint32_t stack_size_for_fw_update_task = 7 * 1024 - 512;
-    g_fw_updating_reason                         = fw_updating_reason;
-    if (!os_task_create_finite_without_param(&fw_update_task, "fw_update_task", stack_size_for_fw_update_task, 1))
+    g_fw_updating_reason = fw_updating_reason;
+    if (!os_task_create_finite_without_param(
+            &fw_update_task,
+            "fw_update_task",
+            FW_UPDATE_TASK_STACK_SIZE,
+            FW_UPDATE_TASK_PRIORITY))
     {
         LOG_ERR("Can't create thread");
         g_fw_updating_reason = FW_UPDATE_REASON_NONE;

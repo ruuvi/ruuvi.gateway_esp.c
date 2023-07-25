@@ -192,14 +192,14 @@ static adv_post_timer_t g_adv_post_timers[2] = {
         .default_interval_ms = ADV_POST_DEFAULT_INTERVAL_SECONDS * TIME_UNITS_MS_PER_SECOND,
         .cur_interval_ms     = 0,
         .p_timer_sig         = NULL,
-        .timer_sig_mem       = { 0 },
+        .timer_sig_mem       = {},
     },
     {
         .num                 = 2,
         .default_interval_ms = ADV_POST_DEFAULT_INTERVAL_SECONDS * TIME_UNITS_MS_PER_SECOND,
         .cur_interval_ms     = 0,
         .p_timer_sig         = NULL,
-        .timer_sig_mem       = { 0 },
+        .timer_sig_mem       = {},
     },
 };
 
