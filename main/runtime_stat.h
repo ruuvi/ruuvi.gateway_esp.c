@@ -15,13 +15,13 @@
 extern "C" {
 #endif
 
+typedef bool (*runtime_stat_cb_t)(const char* const p_task_name, const uint32_t min_free_stack_size, void* p_userdata);
+
 void
 log_runtime_statistics(void);
 
 bool
-runtime_stat_for_each_accumulated_info(
-    bool (*p_cb)(const char* const p_task_name, const uint32_t min_free_stack_size, void* p_userdata),
-    void* p_userdata);
+runtime_stat_for_each_accumulated_info(runtime_stat_cb_t p_cb, void* p_userdata);
 
 #ifdef __cplusplus
 }

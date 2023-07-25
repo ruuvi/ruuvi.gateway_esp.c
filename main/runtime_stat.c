@@ -88,9 +88,7 @@ runtime_stat_update_accumulated_info(const char* const p_task_name, const uint32
 }
 
 bool
-runtime_stat_for_each_accumulated_info(
-    bool (*p_cb)(const char* const p_task_name, const uint32_t min_free_stack_size, void* p_userdata),
-    void* p_userdata)
+runtime_stat_for_each_accumulated_info(runtime_stat_cb_t p_cb, void* p_userdata)
 {
     bool res = true;
     runtime_stat_lock_accumulated_info();
