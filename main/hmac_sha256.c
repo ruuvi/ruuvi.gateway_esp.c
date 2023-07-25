@@ -174,7 +174,7 @@ hmac_sha256_calc_for_stats(const char* const p_str, hmac_sha256_t* const p_hmac_
 str_buf_t
 hmac_sha256_to_str_buf(const hmac_sha256_t* const p_hmac_sha256)
 {
-    const size_t hmac_str_buf_size = HMAC_SHA256_SIZE * 2 + 1;
+    const size_t hmac_str_buf_size = (HMAC_SHA256_SIZE * 2) + 1;
     char* const  p_hmac_str_buf    = os_malloc(hmac_str_buf_size);
     if (NULL == p_hmac_str_buf)
     {

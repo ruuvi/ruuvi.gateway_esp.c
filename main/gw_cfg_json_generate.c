@@ -463,7 +463,7 @@ gw_cfg_json_add_items_http(
     const ruuvi_gw_cfg_http_t* const p_cfg_http,
     const bool                       flag_hide_passwords)
 {
-    if (p_cfg_http->use_http_ruuvi && !p_cfg_http->use_http)
+    if (p_cfg_http->use_http_ruuvi && (!p_cfg_http->use_http))
     {
         // 'use_http_ruuvi' was added in v1.14, so we need to patch configuration
         // to ensure compatibility between configuration versions when upgrading firmware to a new version

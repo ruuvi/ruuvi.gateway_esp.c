@@ -518,106 +518,89 @@ gw_cfg_json_parse_http_stat(const cJSON* const p_json_root, ruuvi_gw_cfg_http_st
 }
 
 static void
-gw_cfg_json_parse_mqtt(const cJSON* const p_json_root, ruuvi_gw_cfg_mqtt_t* const p_gw_cfg_mqtt)
+gw_cfg_json_parse_mqtt(const cJSON* const p_cjson, ruuvi_gw_cfg_mqtt_t* const p_mqtt)
 {
-    if (!gw_cfg_json_get_bool_val(p_json_root, "use_mqtt", &p_gw_cfg_mqtt->use_mqtt))
+    if (!gw_cfg_json_get_bool_val(p_cjson, "use_mqtt", &p_mqtt->use_mqtt))
     {
         LOG_WARN("Can't find key '%s' in config-json", "use_mqtt");
     }
-    if (!gw_cfg_json_get_bool_val(
-            p_json_root,
-            "mqtt_disable_retained_messages",
-            &p_gw_cfg_mqtt->mqtt_disable_retained_messages))
+    if (!gw_cfg_json_get_bool_val(p_cjson, "mqtt_disable_retained_messages", &p_mqtt->mqtt_disable_retained_messages))
     {
         LOG_WARN("Can't find key '%s' in config-json", "mqtt_disable_retained_messages");
     }
     if (!gw_cfg_json_copy_string_val(
-            p_json_root,
+            p_cjson,
             "mqtt_transport",
-            &p_gw_cfg_mqtt->mqtt_transport.buf[0],
-            sizeof(p_gw_cfg_mqtt->mqtt_transport.buf)))
+            &p_mqtt->mqtt_transport.buf[0],
+            sizeof(p_mqtt->mqtt_transport.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "mqtt_transport");
     }
     if (!gw_cfg_json_copy_string_val(
-            p_json_root,
+            p_cjson,
             "mqtt_server",
-            &p_gw_cfg_mqtt->mqtt_server.buf[0],
-            sizeof(p_gw_cfg_mqtt->mqtt_server.buf)))
+            &p_mqtt->mqtt_server.buf[0],
+            sizeof(p_mqtt->mqtt_server.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "mqtt_server");
     }
-    if (!gw_cfg_json_get_uint16_val(p_json_root, "mqtt_port", &p_gw_cfg_mqtt->mqtt_port))
+    if (!gw_cfg_json_get_uint16_val(p_cjson, "mqtt_port", &p_mqtt->mqtt_port))
     {
         LOG_WARN("Can't find key '%s' in config-json", "mqtt_port");
     }
     if (!gw_cfg_json_copy_string_val(
-            p_json_root,
+            p_cjson,
             "mqtt_prefix",
-            &p_gw_cfg_mqtt->mqtt_prefix.buf[0],
-            sizeof(p_gw_cfg_mqtt->mqtt_prefix.buf)))
+            &p_mqtt->mqtt_prefix.buf[0],
+            sizeof(p_mqtt->mqtt_prefix.buf)))
     {
         const ruuvi_gw_cfg_mqtt_t* const p_default_mqtt = gw_cfg_default_get_mqtt();
-        p_gw_cfg_mqtt->mqtt_prefix                      = p_default_mqtt->mqtt_prefix;
-        LOG_WARN(
-            "Can't find key '%s' in config-json, use default value: %s",
-            "mqtt_prefix",
-            p_gw_cfg_mqtt->mqtt_prefix.buf);
+        p_mqtt->mqtt_prefix                             = p_default_mqtt->mqtt_prefix;
+        LOG_WARN("Can't find key '%s' in config-json, use default value: %s", "mqtt_prefix", p_mqtt->mqtt_prefix.buf);
     }
-    if ('\0' == p_gw_cfg_mqtt->mqtt_prefix.buf[0])
+    if ('\0' == p_mqtt->mqtt_prefix.buf[0])
     {
         const ruuvi_gw_cfg_mqtt_t* const p_default_mqtt = gw_cfg_default_get_mqtt();
-        p_gw_cfg_mqtt->mqtt_prefix                      = p_default_mqtt->mqtt_prefix;
-        LOG_WARN(
-            "Key '%s' is empty in config-json, use default value: %s",
-            "mqtt_prefix",
-            p_gw_cfg_mqtt->mqtt_prefix.buf);
+        p_mqtt->mqtt_prefix                             = p_default_mqtt->mqtt_prefix;
+        LOG_WARN("Key '%s' is empty in config-json, use default value: %s", "mqtt_prefix", p_mqtt->mqtt_prefix.buf);
     }
     if (!gw_cfg_json_copy_string_val(
-            p_json_root,
+            p_cjson,
             "mqtt_client_id",
-            &p_gw_cfg_mqtt->mqtt_client_id.buf[0],
-            sizeof(p_gw_cfg_mqtt->mqtt_client_id.buf)))
+            &p_mqtt->mqtt_client_id.buf[0],
+            sizeof(p_mqtt->mqtt_client_id.buf)))
     {
         const ruuvi_gw_cfg_mqtt_t* const p_default_mqtt = gw_cfg_default_get_mqtt();
-        p_gw_cfg_mqtt->mqtt_client_id                   = p_default_mqtt->mqtt_client_id;
+        p_mqtt->mqtt_client_id                          = p_default_mqtt->mqtt_client_id;
         LOG_WARN(
             "Can't find key '%s' in config-json, use default value: %s",
             "mqtt_client_id",
-            p_gw_cfg_mqtt->mqtt_client_id.buf);
+            p_mqtt->mqtt_client_id.buf);
     }
-    if ('\0' == p_gw_cfg_mqtt->mqtt_client_id.buf[0])
+    if ('\0' == p_mqtt->mqtt_client_id.buf[0])
     {
         const ruuvi_gw_cfg_mqtt_t* const p_default_mqtt = gw_cfg_default_get_mqtt();
-        p_gw_cfg_mqtt->mqtt_client_id                   = p_default_mqtt->mqtt_client_id;
+        p_mqtt->mqtt_client_id                          = p_default_mqtt->mqtt_client_id;
         LOG_WARN(
             "Key '%s' is empty in config-json, use default value: %s",
             "mqtt_client_id",
-            p_gw_cfg_mqtt->mqtt_client_id.buf);
+            p_mqtt->mqtt_client_id.buf);
     }
-    if (!gw_cfg_json_copy_string_val(
-            p_json_root,
-            "mqtt_user",
-            &p_gw_cfg_mqtt->mqtt_user.buf[0],
-            sizeof(p_gw_cfg_mqtt->mqtt_user.buf)))
+    if (!gw_cfg_json_copy_string_val(p_cjson, "mqtt_user", &p_mqtt->mqtt_user.buf[0], sizeof(p_mqtt->mqtt_user.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "mqtt_user");
     }
-    if (!gw_cfg_json_copy_string_val(
-            p_json_root,
-            "mqtt_pass",
-            &p_gw_cfg_mqtt->mqtt_pass.buf[0],
-            sizeof(p_gw_cfg_mqtt->mqtt_pass.buf)))
+    if (!gw_cfg_json_copy_string_val(p_cjson, "mqtt_pass", &p_mqtt->mqtt_pass.buf[0], sizeof(p_mqtt->mqtt_pass.buf)))
     {
         LOG_INFO("Can't find key '%s' in config-json, leave the previous value unchanged", "mqtt_pass");
     }
-    if (p_gw_cfg_mqtt->use_mqtt)
+    if (p_mqtt->use_mqtt)
     {
-        if (!gw_cfg_json_get_bool_val(p_json_root, "mqtt_use_ssl_client_cert", &p_gw_cfg_mqtt->use_ssl_client_cert))
+        if (!gw_cfg_json_get_bool_val(p_cjson, "mqtt_use_ssl_client_cert", &p_mqtt->use_ssl_client_cert))
         {
             LOG_WARN("Can't find key '%s' in config-json", "mqtt_use_ssl_client_cert");
         }
-        if (!gw_cfg_json_get_bool_val(p_json_root, "mqtt_use_ssl_server_cert", &p_gw_cfg_mqtt->use_ssl_server_cert))
+        if (!gw_cfg_json_get_bool_val(p_cjson, "mqtt_use_ssl_server_cert", &p_mqtt->use_ssl_server_cert))
         {
             LOG_WARN("Can't find key '%s' in config-json", "mqtt_use_ssl_server_cert");
         }

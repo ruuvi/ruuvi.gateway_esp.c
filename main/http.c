@@ -620,7 +620,7 @@ http_send_advs_internal(
 
     const ruuvi_gw_cfg_http_user_t*     p_http_user = NULL;
     const ruuvi_gw_cfg_http_password_t* p_http_pass = NULL;
-    if (!flag_post_to_ruuvi && (GW_CFG_HTTP_AUTH_TYPE_BASIC == p_cfg_http->auth_type))
+    if ((!flag_post_to_ruuvi) && (GW_CFG_HTTP_AUTH_TYPE_BASIC == p_cfg_http->auth_type))
     {
         p_http_user = &p_cfg_http->auth.auth_basic.user;
         p_http_pass = &p_cfg_http->auth.auth_basic.password;
@@ -792,19 +792,19 @@ http_check_post_advs_prep_auth_basic(
 static bool
 http_check_post_advs_prep_auth_bearer(ruuvi_gw_cfg_http_t* const p_cfg_http, const char* const p_token)
 {
-    if ((strlen(p_token) >= sizeof(p_cfg_http->auth.auth_bearer.token.buf)))
+    if (strlen(p_token) >= sizeof(p_cfg_http->auth.auth_bearer.token.buf))
     {
         return false;
     }
-    (void)
-        snprintf(p_cfg_http->auth.auth_bearer.token.buf, sizeof(p_cfg_http->auth.auth_bearer.token.buf), "%s", p_token);
+    ruuvi_gw_cfg_http_bearer_token_t* const p_bearer_token = &p_cfg_http->auth.auth_bearer.token;
+    (void)snprintf(p_bearer_token->buf, sizeof(p_bearer_token->buf), "%s", p_token);
     return true;
 }
 
 static bool
 http_check_post_advs_prep_auth_token(ruuvi_gw_cfg_http_t* const p_cfg_http, const char* const p_token)
 {
-    if ((strlen(p_token) >= sizeof(p_cfg_http->auth.auth_token.token.buf)))
+    if (strlen(p_token) >= sizeof(p_cfg_http->auth.auth_token.token.buf))
     {
         return false;
     }
