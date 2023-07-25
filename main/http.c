@@ -39,6 +39,9 @@
 #warning Debug log level prints out the passwords as a "plaintext".
 #endif
 
+#define HTTP_BUFFER_SIZE    (2048)
+#define HTTP_BUFFER_SIZE_TX (1024)
+
 #define BASE_10 (10U)
 
 typedef int esp_http_client_len_t;
@@ -1336,6 +1339,36 @@ http_async_poll_handle_resp_err(
 }
 
 static void
+http_async_poll_do_actions_after_completion_advs1(http_async_info_t* const p_http_async_info, const bool flag_success)
+{
+    if (flag_success)
+    {
+        leds_notify_http1_data_sent_successfully();
+        adv1_post_timer_restart_with_default_period();
+    }
+    else
+    {
+        leds_notify_http1_data_sent_fail();
+        adv1_post_timer_restart_with_increased_period();
+    }
+}
+
+static void
+http_async_poll_do_actions_after_completion_advs2(http_async_info_t* const p_http_async_info, const bool flag_success)
+{
+    if (flag_success)
+    {
+        leds_notify_http2_data_sent_successfully();
+        adv2_post_timer_restart_with_default_period();
+    }
+    else
+    {
+        leds_notify_http2_data_sent_fail();
+        adv2_post_timer_restart_with_increased_period();
+    }
+}
+
+static void
 http_async_poll_do_actions_after_completion(http_async_info_t* const p_http_async_info, const bool flag_success)
 {
     switch (p_http_async_info->recipient)
@@ -1343,28 +1376,10 @@ http_async_poll_do_actions_after_completion(http_async_info_t* const p_http_asyn
         case HTTP_POST_RECIPIENT_STATS:
             break;
         case HTTP_POST_RECIPIENT_ADVS1:
-            if (flag_success)
-            {
-                leds_notify_http1_data_sent_successfully();
-                adv1_post_timer_restart_with_default_period();
-            }
-            else
-            {
-                leds_notify_http1_data_sent_fail();
-                adv1_post_timer_restart_with_increased_period();
-            }
+            http_async_poll_do_actions_after_completion_advs1(p_http_async_info, flag_success);
             break;
         case HTTP_POST_RECIPIENT_ADVS2:
-            if (flag_success)
-            {
-                leds_notify_http2_data_sent_successfully();
-                adv2_post_timer_restart_with_default_period();
-            }
-            else
-            {
-                leds_notify_http2_data_sent_fail();
-                adv2_post_timer_restart_with_increased_period();
-            }
+            http_async_poll_do_actions_after_completion_advs2(p_http_async_info, flag_success);
             break;
     }
 }
@@ -1681,8 +1696,8 @@ http_download_create_config(const http_download_create_config_params_t* const p_
     p_http_config->max_authorization_retries   = 0;
     p_http_config->event_handler               = p_params->p_event_handler;
     p_http_config->transport_type              = HTTP_TRANSPORT_UNKNOWN;
-    p_http_config->buffer_size                 = 2048;
-    p_http_config->buffer_size_tx              = 1024;
+    p_http_config->buffer_size                 = HTTP_BUFFER_SIZE;
+    p_http_config->buffer_size_tx              = HTTP_BUFFER_SIZE_TX;
     p_http_config->user_data                   = p_params->p_cb_info;
     p_http_config->is_async                    = true;
     p_http_config->use_global_ca_store         = false;
@@ -1877,20 +1892,21 @@ http_check_with_auth(
     p_cb_info->offset                  = 0;
     p_cb_info->flag_feed_task_watchdog = p_param->flag_feed_task_watchdog;
 
-    const esp_http_client_auth_type_t          http_client_auth_type = (GW_CFG_HTTP_AUTH_TYPE_BASIC == auth_type)
-                                                                           ? HTTP_AUTH_TYPE_BASIC
-                                                                           : HTTP_AUTH_TYPE_NONE;
-    const http_download_create_config_params_t params                = {
-                       .p_url                 = p_param->p_url,
-                       .timeout_seconds       = p_param->timeout_seconds,
-                       .http_method           = HTTP_METHOD_HEAD,
-                       .http_client_auth_type = http_client_auth_type,
-                       .p_http_auth           = p_http_auth,
-                       .p_event_handler       = &http_check_event_handler,
-                       .p_cb_info             = p_cb_info,
-                       .p_server_cert         = p_param->p_server_cert,
-                       .p_client_cert         = p_param->p_client_cert,
-                       .p_client_key          = p_param->p_client_key,
+    const esp_http_client_auth_type_t http_client_auth_type = (GW_CFG_HTTP_AUTH_TYPE_BASIC == auth_type)
+                                                                  ? HTTP_AUTH_TYPE_BASIC
+                                                                  : HTTP_AUTH_TYPE_NONE;
+
+    const http_download_create_config_params_t params = {
+        .p_url                 = p_param->p_url,
+        .timeout_seconds       = p_param->timeout_seconds,
+        .http_method           = HTTP_METHOD_HEAD,
+        .http_client_auth_type = http_client_auth_type,
+        .p_http_auth           = p_http_auth,
+        .p_event_handler       = &http_check_event_handler,
+        .p_cb_info             = p_cb_info,
+        .p_server_cert         = p_param->p_server_cert,
+        .p_client_cert         = p_param->p_client_cert,
+        .p_client_key          = p_param->p_client_key,
     };
 
     esp_http_client_config_t* p_http_config = http_download_create_config(&params);
