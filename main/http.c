@@ -220,30 +220,35 @@ http_post_event_handler(esp_http_client_event_t* p_evt)
     return ESP_OK;
 }
 
+typedef struct http_init_client_config_params_t
+{
+    const ruuvi_gw_cfg_http_url_t* const      p_url;
+    const ruuvi_gw_cfg_http_user_t* const     p_user;
+    const ruuvi_gw_cfg_http_password_t* const p_password;
+    const char* const                         p_server_cert;
+    const char* const                         p_client_cert;
+    const char* const                         p_client_key;
+} http_init_client_config_params_t;
+
 static void
 http_init_client_config(
-    http_client_config_t* const               p_http_client_config,
-    const ruuvi_gw_cfg_http_url_t* const      p_url,
-    const ruuvi_gw_cfg_http_user_t* const     p_user,
-    const ruuvi_gw_cfg_http_password_t* const p_password,
-    const char* const                         p_server_cert,
-    const char* const                         p_client_cert,
-    const char* const                         p_client_key,
-    void* const                               p_user_data)
+    http_client_config_t* const                   p_http_client_config,
+    const http_init_client_config_params_t* const p_params,
+    void* const                                   p_user_data)
 {
     LOG_DBG("p_user_data=%p", p_user_data);
-    p_http_client_config->http_url = *p_url;
-    if (NULL != p_user)
+    p_http_client_config->http_url = *p_params->p_url;
+    if (NULL != p_params->p_user)
     {
-        p_http_client_config->http_user = *p_user;
+        p_http_client_config->http_user = *p_params->p_user;
     }
     else
     {
         p_http_client_config->http_user.buf[0] = '\0';
     }
-    if (NULL != p_password)
+    if (NULL != p_params->p_password)
     {
-        p_http_client_config->http_pass = *p_password;
+        p_http_client_config->http_pass = *p_params->p_password;
     }
     else
     {
@@ -262,9 +267,9 @@ http_init_client_config(
         .auth_type = ('\0' != p_http_client_config->http_user.buf[0]) ? HTTP_AUTH_TYPE_BASIC : HTTP_AUTH_TYPE_NONE,
         .path      = NULL,
         .query     = NULL,
-        .cert_pem  = p_server_cert,
-        .client_cert_pem             = p_client_cert,
-        .client_key_pem              = p_client_key,
+        .cert_pem  = p_params->p_server_cert,
+        .client_cert_pem             = p_params->p_client_cert,
+        .client_key_pem              = p_params->p_client_key,
         .user_agent                  = NULL,
         .method                      = HTTP_METHOD_POST,
         .timeout_ms                  = 0,
@@ -557,19 +562,24 @@ http_async_info_free_data(http_async_info_t* const p_http_async_info)
     }
 }
 
-bool
-http_send_advs_internal(
-    http_async_info_t* const         p_http_async_info,
-    const adv_report_table_t* const  p_reports,
-    const uint32_t                   nonce,
-    const bool                       flag_use_timestamps,
-    const bool                       flag_post_to_ruuvi,
-    const ruuvi_gw_cfg_http_t* const p_cfg_http,
-    void* const                      p_user_data,
-    const bool                       use_ssl_client_cert,
-    const bool                       use_ssl_server_cert)
+typedef struct http_send_advs_internal_params_t
 {
-    p_http_async_info->recipient = flag_post_to_ruuvi ? HTTP_POST_RECIPIENT_ADVS1 : HTTP_POST_RECIPIENT_ADVS2;
+    const uint32_t nonce;
+    const bool     flag_use_timestamps;
+    const bool     flag_post_to_ruuvi;
+    const bool     use_ssl_client_cert;
+    const bool     use_ssl_server_cert;
+} http_send_advs_internal_params_t;
+
+static bool
+http_send_advs_internal(
+    http_async_info_t* const                      p_http_async_info,
+    const adv_report_table_t* const               p_reports,
+    const ruuvi_gw_cfg_http_t* const              p_cfg_http,
+    const http_send_advs_internal_params_t* const p_params,
+    void* const                                   p_user_data)
+{
+    p_http_async_info->recipient = p_params->flag_post_to_ruuvi ? HTTP_POST_RECIPIENT_ADVS1 : HTTP_POST_RECIPIENT_ADVS2;
 
     const bool flag_decode    = false;
     const bool flag_use_nonce = true;
@@ -579,10 +589,10 @@ http_send_advs_internal(
 
     const http_json_create_stream_gen_advs_params_t params = {
         .flag_decode         = flag_decode,
-        .flag_use_timestamps = flag_use_timestamps,
+        .flag_use_timestamps = p_params->flag_use_timestamps,
         .cur_time            = time(NULL),
         .flag_use_nonce      = flag_use_nonce,
-        .nonce               = nonce,
+        .nonce               = p_params->nonce,
         .p_mac_addr          = gw_cfg_get_nrf52_mac_addr(),
         .p_coordinates       = &p_gw_cfg->ruuvi_cfg.coordinates,
     };
@@ -620,7 +630,7 @@ http_send_advs_internal(
 
     const ruuvi_gw_cfg_http_user_t*     p_http_user = NULL;
     const ruuvi_gw_cfg_http_password_t* p_http_pass = NULL;
-    if ((!flag_post_to_ruuvi) && (GW_CFG_HTTP_AUTH_TYPE_BASIC == p_cfg_http->auth_type))
+    if ((!p_params->flag_post_to_ruuvi) && (GW_CFG_HTTP_AUTH_TYPE_BASIC == p_cfg_http->auth_type))
     {
         p_http_user = &p_cfg_http->auth.auth_basic.user;
         p_http_pass = &p_cfg_http->auth.auth_basic.password;
@@ -637,30 +647,31 @@ http_send_advs_internal(
         p_http_url->buf,
         sizeof(p_http_url->buf),
         "%s",
-        flag_post_to_ruuvi ? RUUVI_GATEWAY_HTTP_DEFAULT_URL : p_cfg_http->http_url.buf);
+        p_params->flag_post_to_ruuvi ? RUUVI_GATEWAY_HTTP_DEFAULT_URL : p_cfg_http->http_url.buf);
 
     str_buf_t str_buf_server_cert_http = str_buf_init_null();
     str_buf_t str_buf_client_cert      = str_buf_init_null();
     str_buf_t str_buf_client_key       = str_buf_init_null();
-    if (use_ssl_client_cert)
+    if (p_params->use_ssl_client_cert)
     {
         str_buf_client_cert = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT);
         str_buf_client_key  = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY);
     }
-    if (use_ssl_server_cert)
+    if (p_params->use_ssl_server_cert)
     {
         str_buf_server_cert_http = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT);
     }
 
-    http_init_client_config(
-        &p_http_async_info->http_client_config,
-        p_http_url,
-        p_http_user,
-        p_http_pass,
-        str_buf_server_cert_http.buf,
-        str_buf_client_cert.buf,
-        str_buf_client_key.buf,
-        p_user_data);
+    const http_init_client_config_params_t http_cli_cfg_params = {
+        .p_url         = p_http_url,
+        .p_user        = p_http_user,
+        .p_password    = p_http_pass,
+        .p_server_cert = str_buf_server_cert_http.buf,
+        .p_client_cert = str_buf_client_cert.buf,
+        .p_client_key  = str_buf_client_key.buf,
+    };
+
+    http_init_client_config(&p_http_async_info->http_client_config, &http_cli_cfg_params, p_user_data);
 
     os_free(p_http_url);
 
@@ -673,7 +684,7 @@ http_send_advs_internal(
         return false;
     }
 
-    if (!flag_post_to_ruuvi)
+    if (!p_params->flag_post_to_ruuvi)
     {
         if (GW_CFG_HTTP_AUTH_TYPE_BEARER == p_cfg_http->auth_type)
         {
@@ -705,7 +716,7 @@ http_send_advs_internal(
         }
     }
 
-    if (flag_post_to_ruuvi)
+    if (p_params->flag_post_to_ruuvi)
     {
         (void)hmac_sha256_calc_for_json_gen_http_ruuvi(
             p_http_async_info->select.p_gen,
@@ -751,16 +762,16 @@ http_send_advs(
 
     const bool use_ssl_client_cert = (!flag_post_to_ruuvi) && p_cfg_http->http_use_ssl_client_cert;
     const bool use_ssl_server_cert = (!flag_post_to_ruuvi) && p_cfg_http->http_use_ssl_server_cert;
-    if (!http_send_advs_internal(
-            p_http_async_info,
-            p_reports,
-            nonce,
-            flag_use_timestamps,
-            flag_post_to_ruuvi,
-            p_cfg_http,
-            p_user_data,
-            use_ssl_client_cert,
-            use_ssl_server_cert))
+
+    const http_send_advs_internal_params_t params = {
+        .nonce               = nonce,
+        .flag_use_timestamps = flag_use_timestamps,
+        .flag_post_to_ruuvi  = flag_post_to_ruuvi,
+        .use_ssl_client_cert = use_ssl_client_cert,
+        .use_ssl_server_cert = use_ssl_server_cert,
+    };
+
+    if (!http_send_advs_internal(p_http_async_info, p_reports, p_cfg_http, &params, p_user_data))
     {
         LOG_DBG("os_sema_signal: p_http_async_sema");
         os_sema_signal(p_http_async_info->p_http_async_sema);
@@ -850,16 +861,15 @@ http_check_post_advs_internal3(
     (void)snprintf(p_cfg_http->http_url.buf, sizeof(p_cfg_http->http_url), "%s", p_params->p_url);
     p_cfg_http->auth_type = p_params->auth_type;
 
-    if (!http_send_advs_internal(
-            p_http_async_info,
-            NULL,
-            esp_random(),
-            gw_cfg_get_ntp_use(),
-            false,
-            p_cfg_http,
-            &p_http_async_info->http_post_cb_info,
-            p_params->use_ssl_client_cert,
-            p_params->use_ssl_server_cert))
+    const http_send_advs_internal_params_t params = {
+        .nonce               = esp_random(),
+        .flag_use_timestamps = gw_cfg_get_ntp_use(),
+        .flag_post_to_ruuvi  = false,
+        .use_ssl_client_cert = p_params->use_ssl_client_cert,
+        .use_ssl_server_cert = p_params->use_ssl_server_cert,
+    };
+
+    if (!http_send_advs_internal(p_http_async_info, NULL, p_cfg_http, &params, &p_http_async_info->http_post_cb_info))
     {
         LOG_ERR("http_send_advs failed");
         return http_server_resp_500();
@@ -984,15 +994,16 @@ http_send_statistics_internal(
         str_buf_server_cert_stat = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_STAT_SRV_CERT);
     }
 
-    http_init_client_config(
-        &p_http_async_info->http_client_config,
-        &p_cfg_http_stat->http_stat_url,
-        &p_cfg_http_stat->http_stat_user,
-        &p_cfg_http_stat->http_stat_pass,
-        str_buf_server_cert_stat.buf,
-        str_buf_client_cert.buf,
-        str_buf_client_key.buf,
-        p_user_data);
+    const http_init_client_config_params_t http_cli_cfg_params = {
+        .p_url         = &p_cfg_http_stat->http_stat_url,
+        .p_user        = &p_cfg_http_stat->http_stat_user,
+        .p_password    = &p_cfg_http_stat->http_stat_pass,
+        .p_server_cert = str_buf_server_cert_stat.buf,
+        .p_client_cert = str_buf_client_cert.buf,
+        .p_client_key  = str_buf_client_key.buf,
+    };
+
+    http_init_client_config(&p_http_async_info->http_client_config, &http_cli_cfg_params, p_user_data);
 
     p_http_async_info->p_http_client_handle = esp_http_client_init(
         &p_http_async_info->http_client_config.esp_http_client_config);
