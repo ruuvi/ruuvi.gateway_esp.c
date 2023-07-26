@@ -287,12 +287,12 @@ http_server_get_decode_from_params(const char* const p_params)
     str_buf_t str_buf = http_server_get_from_params(p_params, "decode=");
     if (NULL == str_buf.buf)
     {
-        return false;
+        return true;
     }
-    bool flag_decode = false;
-    if (0 == strcmp("true", str_buf.buf))
+    bool flag_decode = true;
+    if (0 == strcmp("false", str_buf.buf))
     {
-        flag_decode = true;
+        flag_decode = false;
     }
     str_buf_free_buf(&str_buf);
     return flag_decode;
@@ -307,7 +307,7 @@ http_server_resp_history(const char* const p_params)
     uint32_t   filter                    = flag_use_timestamps ? HTTP_SERVER_DEFAULT_HISTORY_INTERVAL_SECONDS : 0;
     bool       flag_use_filter           = (flag_use_timestamps && flag_time_is_synchronized) ? true : false;
 
-    bool flag_decode = false;
+    bool flag_decode = true;
     if (NULL != p_params)
     {
         http_server_get_filter_from_params(
