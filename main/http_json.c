@@ -444,6 +444,13 @@ http_json_create_stream_gen_advs(
     p_ctx->nonce               = nonce;
     p_ctx->gw_mac              = *p_mac_addr;
     p_ctx->coordinates         = *p_coordinates;
-    memcpy(&p_ctx->reports, p_reports, sizeof(*p_reports));
+    if (NULL == p_reports)
+    {
+        p_ctx->reports.num_of_advs = 0;
+    }
+    else
+    {
+        memcpy(&p_ctx->reports, p_reports, sizeof(*p_reports));
+    }
     return p_gen;
 }
