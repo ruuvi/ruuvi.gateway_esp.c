@@ -1,0 +1,19 @@
+/**
+ * @file esp_tls_err.c
+ * @author TheSomeMan
+ * @date 2023-07-26
+ * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
+ */
+
+#include "esp_tls_err.h"
+#include "esp_tls.h"
+
+bool
+esp_tls_err_is_cannot_resolve_hostname(const esp_err_t err)
+{
+    if (ESP_ERR_ESP_TLS_CANNOT_RESOLVE_HOSTNAME == err)
+    {
+        return true;
+    }
+    return false;
+}

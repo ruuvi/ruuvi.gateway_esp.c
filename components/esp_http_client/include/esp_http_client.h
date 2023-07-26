@@ -242,7 +242,7 @@ esp_err_t esp_http_client_set_post_field(esp_http_client_handle_t client, const 
  *
  * @return     Size of post data
  */
-int esp_http_client_get_post_field(esp_http_client_handle_t client, char **data);
+int esp_http_client_get_post_field(esp_http_client_handle_t client, const char **data);
 
 /**
  * @brief      Set http request header, this function must be called after esp_http_client_init and before any

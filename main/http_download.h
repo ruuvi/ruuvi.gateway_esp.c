@@ -28,29 +28,53 @@ typedef struct http_server_download_info_t
     size_t           json_buf_size;
 } http_server_download_info_t;
 
-http_server_download_info_t
-http_download_json(
-    const char* const                     p_url,
-    const TimeUnitsSeconds_t              timeout_seconds,
+typedef bool (*http_download_cb_on_data_t)(
+    const uint8_t* const   p_buf,
+    const size_t           buf_size,
+    const size_t           offset,
+    const size_t           content_length,
+    const http_resp_code_e resp_code,
+    void*                  p_user_data);
+
+bool
+http_download_with_auth(
+    const http_download_param_t* const    p_param,
     const gw_cfg_http_auth_type_e         auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
     const http_header_item_t* const       p_extra_header_item,
-    const bool                            flag_free_memory,
-    const char* const                     p_server_cert,
-    const char* const                     p_client_cert,
-    const char* const                     p_client_key);
+    http_download_cb_on_data_t const      p_cb_on_data,
+    void* const                           p_user_data);
+
+bool
+http_check_with_auth(
+    const http_download_param_t* const    p_param,
+    const gw_cfg_http_auth_type_e         auth_type,
+    const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
+    const http_header_item_t* const       p_extra_header_item,
+    http_resp_code_e* const               p_http_resp_code);
+
+bool
+http_download(
+    const http_download_param_t* const p_param,
+    http_download_cb_on_data_t const   p_cb_on_data,
+    void* const                        p_user_data);
+
+http_server_download_info_t
+http_download_json(
+    const http_download_param_t* const    p_params,
+    const gw_cfg_http_auth_type_e         auth_type,
+    const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
+    const http_header_item_t* const       p_extra_header_item);
 
 http_server_download_info_t
 http_download_latest_release_info(const bool flag_free_memory);
 
 http_resp_code_e
 http_check(
-    const char* const                     p_url,
-    const TimeUnitsSeconds_t              timeout_seconds,
+    const http_download_param_t* const    p_param,
     const gw_cfg_http_auth_type_e         auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
-    const http_header_item_t* const       p_extra_header_item,
-    const bool                            flag_free_memory);
+    const http_header_item_t* const       p_extra_header_item);
 
 #ifdef __cplusplus
 }

@@ -7,8 +7,7 @@
 
 #include "fw_update.h"
 #include <string.h>
-#include "http.h"
-#include "esp_type_wrapper.h"
+#include "http_download.h"
 #include "cJSON.h"
 #include "cjson_wrap.h"
 #include "wifi_manager.h"
@@ -386,11 +385,9 @@ fw_update_data_partition(const esp_partition_t* const p_partition, const char* c
     }
     p_download_param->p_url                   = p_url;
     p_download_param->timeout_seconds         = HTTP_DOWNLOAD_FW_BINARIES_TIMEOUT_SECONDS;
-    p_download_param->p_cb_on_data            = &fw_update_data_partition_cb_on_recv_data;
-    p_download_param->p_user_data             = &fw_update_info;
     p_download_param->flag_feed_task_watchdog = flag_feed_task_watchdog;
     p_download_param->flag_free_memory        = true;
-    if (!http_download(p_download_param))
+    if (!http_download(p_download_param, &fw_update_data_partition_cb_on_recv_data, &fw_update_info))
     {
         LOG_ERR("Failed to update partition %s - failed to download %s", p_partition->label, p_url);
         os_free(p_download_param);
@@ -504,11 +501,9 @@ fw_update_ota_partition(
     }
     p_download_param->p_url                   = p_url;
     p_download_param->timeout_seconds         = HTTP_DOWNLOAD_FW_BINARIES_TIMEOUT_SECONDS;
-    p_download_param->p_cb_on_data            = &fw_update_ota_partition_cb_on_recv_data;
-    p_download_param->p_user_data             = &fw_update_info;
     p_download_param->flag_feed_task_watchdog = flag_feed_task_watchdog;
     p_download_param->flag_free_memory        = true;
-    if (!http_download(p_download_param))
+    if (!http_download(p_download_param, &fw_update_ota_partition_cb_on_recv_data, &fw_update_info))
     {
         LOG_ERR("Failed to update OTA-partition %s - failed to download %s", p_partition->label, p_url);
         os_free(p_download_param);

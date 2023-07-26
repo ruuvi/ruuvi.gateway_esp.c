@@ -31,25 +31,15 @@ typedef struct http_header_item_t
     const char* p_value;
 } http_header_item_t;
 
-typedef bool (*http_download_cb_on_data_t)(
-    const uint8_t* const   p_buf,
-    const size_t           buf_size,
-    const size_t           offset,
-    const size_t           content_length,
-    const http_resp_code_e resp_code,
-    void*                  p_user_data);
-
 typedef struct http_download_param_t
 {
-    const char*                p_url;
-    TimeUnitsSeconds_t         timeout_seconds;
-    http_download_cb_on_data_t p_cb_on_data;
-    void*                      p_user_data;
-    bool                       flag_feed_task_watchdog;
-    bool                       flag_free_memory;
-    const char*                p_server_cert;
-    const char*                p_client_cert;
-    const char*                p_client_key;
+    const char*        p_url;
+    TimeUnitsSeconds_t timeout_seconds;
+    bool               flag_feed_task_watchdog;
+    bool               flag_free_memory;
+    const char*        p_server_cert;
+    const char*        p_client_cert;
+    const char*        p_client_key;
 } http_download_param_t;
 
 typedef struct http_check_with_auth_param_t
@@ -103,26 +93,25 @@ http_send_statistics(
 bool
 http_async_poll(void);
 
-bool
-http_download(const http_download_param_t* const p_param);
-
-bool
-http_download_with_auth(
-    const http_download_param_t* const    p_param,
-    const gw_cfg_http_auth_type_e         auth_type,
-    const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
-    const http_header_item_t* const       p_extra_header_item);
-
-bool
-http_check_with_auth(
-    const http_check_with_auth_param_t* const p_param,
-    const gw_cfg_http_auth_type_e             auth_type,
-    const ruuvi_gw_cfg_http_auth_t* const     p_http_auth,
-    const http_header_item_t* const           p_extra_header_item,
-    http_resp_code_e* const                   p_http_resp_code);
-
 void
 http_abort_any_req_during_processing(void);
+
+void
+http_feed_task_watchdog_if_needed(const bool flag_feed_task_watchdog);
+
+typedef struct http_resp_cb_info_t
+{
+    uint32_t content_length;
+    uint32_t offset;
+    char*    p_buf;
+} http_resp_cb_info_t;
+
+http_server_resp_t
+http_wait_until_async_req_completed(
+    esp_http_client_handle_t   p_http_handle,
+    http_resp_cb_info_t* const p_cb_info,
+    const bool                 flag_feed_task_watchdog,
+    const TimeUnitsSeconds_t   timeout_seconds);
 
 #ifdef __cplusplus
 }

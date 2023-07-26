@@ -1082,8 +1082,16 @@ http_server_resp_validate_check_file(const http_server_resp_validate_params_t* c
                 break;
         }
     }
-    const http_resp_code_e http_resp_code
-        = http_check(p_params->p_url->buf, HTTP_DOWNLOAD_TIMEOUT_SECONDS, p_params->auth_type, p_http_auth, NULL, true);
+    const http_download_param_t params = {
+        .p_url                   = p_params->p_url->buf,
+        .timeout_seconds         = HTTP_DOWNLOAD_TIMEOUT_SECONDS,
+        .flag_feed_task_watchdog = true,
+        .flag_free_memory        = true,
+        .p_server_cert           = NULL,
+        .p_client_cert           = NULL,
+        .p_client_key            = NULL,
+    };
+    const http_resp_code_e http_resp_code = http_check(&params, p_params->auth_type, p_http_auth, NULL);
 
     if (NULL != p_http_auth)
     {

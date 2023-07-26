@@ -1471,7 +1471,7 @@ esp_err_t esp_http_client_set_post_field(esp_http_client_handle_t client, const 
     return err;
 }
 
-int esp_http_client_get_post_field(esp_http_client_handle_t client, char **data)
+int esp_http_client_get_post_field(esp_http_client_handle_t client, const char **data)
 {
     if (client->post_data) {
         *data = client->post_data;

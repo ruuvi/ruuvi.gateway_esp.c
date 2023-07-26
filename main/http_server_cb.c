@@ -232,16 +232,16 @@ http_server_download_gw_cfg(const ruuvi_gw_cfg_remote_t* const p_remote, const b
     if ((NULL != p_ext) && (0 == strcmp(".json", p_ext)))
     {
         LOG_INFO("Try to download gateway configuration from the remote server: %s", p_remote->url.buf);
-        download_info = http_download_json(
-            p_remote->url.buf,
-            timeout_seconds,
-            p_remote->auth_type,
-            &p_remote->auth,
-            &extra_header_item,
-            flag_free_memory,
-            str_buf_server_cert_remote.buf,
-            str_buf_client_cert.buf,
-            str_buf_client_key.buf);
+        const http_download_param_t params = {
+            .p_url                   = p_remote->url.buf,
+            .timeout_seconds         = timeout_seconds,
+            .flag_feed_task_watchdog = true,
+            .flag_free_memory        = flag_free_memory,
+            .p_server_cert           = str_buf_server_cert_remote.buf,
+            .p_client_cert           = str_buf_client_cert.buf,
+            .p_client_key            = str_buf_client_key.buf,
+        };
+        download_info = http_download_json(&params, p_remote->auth_type, &p_remote->auth, &extra_header_item);
     }
     else
     {
@@ -274,16 +274,18 @@ http_server_download_gw_cfg(const ruuvi_gw_cfg_remote_t* const p_remote, const b
             return download_info;
         }
         LOG_INFO("Try to download gateway configuration from the remote server: %s", url.buf);
-        download_info = http_download_json(
-            url.buf,
-            timeout_seconds,
-            p_remote->auth_type,
-            &p_remote->auth,
-            &extra_header_item,
-            flag_free_memory,
-            str_buf_server_cert_remote.buf,
-            str_buf_client_cert.buf,
-            str_buf_client_key.buf);
+        {
+            const http_download_param_t params = {
+                .p_url                   = url.buf,
+                .timeout_seconds         = timeout_seconds,
+                .flag_feed_task_watchdog = true,
+                .flag_free_memory        = flag_free_memory,
+                .p_server_cert           = str_buf_server_cert_remote.buf,
+                .p_client_cert           = str_buf_client_cert.buf,
+                .p_client_key            = str_buf_client_key.buf,
+            };
+            download_info = http_download_json(&params, p_remote->auth_type, &p_remote->auth, &extra_header_item);
+        }
 
         str_buf_free_buf(&url);
 
@@ -307,16 +309,16 @@ http_server_download_gw_cfg(const ruuvi_gw_cfg_remote_t* const p_remote, const b
             }
 
             LOG_INFO("Try to download gateway configuration from the remote server: %s", url.buf);
-            download_info = http_download_json(
-                url.buf,
-                timeout_seconds,
-                p_remote->auth_type,
-                &p_remote->auth,
-                &extra_header_item,
-                flag_free_memory,
-                str_buf_server_cert_remote.buf,
-                str_buf_client_cert.buf,
-                str_buf_client_key.buf);
+            const http_download_param_t params = {
+                .p_url                   = url.buf,
+                .timeout_seconds         = timeout_seconds,
+                .flag_feed_task_watchdog = true,
+                .flag_free_memory        = flag_free_memory,
+                .p_server_cert           = str_buf_server_cert_remote.buf,
+                .p_client_cert           = str_buf_client_cert.buf,
+                .p_client_key            = str_buf_client_key.buf,
+            };
+            download_info = http_download_json(&params, p_remote->auth_type, &p_remote->auth, &extra_header_item);
 
             str_buf_free_buf(&str_buf_server_cert_remote);
             str_buf_free_buf(&str_buf_client_cert);

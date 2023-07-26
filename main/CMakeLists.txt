@@ -11,6 +11,8 @@ idf_component_register(
             esp_ota_ops_patched.c
             esp_ota_ops_patched.h
             esp_err_to_name.c
+            esp_tls_err.c
+            esp_tls_err.h
             ethernet.c
             ethernet.h
             event_mgr.c

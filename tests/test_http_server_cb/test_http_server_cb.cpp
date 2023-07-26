@@ -83,20 +83,22 @@ esp_random(void)
 bool
 http_download_with_auth(
     const http_download_param_t* const    p_param,
-    const gw_cfg_http_auth_type_e         gw_cfg_http_auth_type,
+    const gw_cfg_http_auth_type_e         auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
-    const http_header_item_t* const       p_extra_header_item)
+    const http_header_item_t* const       p_extra_header_item,
+    http_download_cb_on_data_t const      p_cb_on_data,
+    void* const                           p_user_data)
 {
     return false;
 }
 
 bool
 http_check_with_auth(
-    const http_check_with_auth_param_t* const p_param,
-    const gw_cfg_http_auth_type_e             gw_cfg_http_auth_type,
-    const ruuvi_gw_cfg_http_auth_t* const     p_http_auth,
-    const http_header_item_t* const           p_extra_header_item,
-    http_resp_code_e* const                   p_http_resp_code)
+    const http_download_param_t* const    p_param,
+    const gw_cfg_http_auth_type_e         auth_type,
+    const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
+    const http_header_item_t* const       p_extra_header_item,
+    http_resp_code_e* const               p_http_resp_code)
 {
     return false;
 }
