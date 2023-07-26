@@ -1860,11 +1860,13 @@ http_check_with_auth(
     if ((GW_CFG_HTTP_AUTH_TYPE_NONE != auth_type) && (NULL == p_http_auth))
     {
         LOG_ERR("Auth type is not NONE, but p_http_auth is NULL");
+        *p_http_resp_code = HTTP_RESP_CODE_400;
         return false;
     }
     if (!gw_status_is_network_connected())
     {
         LOG_ERR("HTTP check failed - no network connection");
+        *p_http_resp_code = HTTP_RESP_CODE_503;
         return false;
     }
 
@@ -1872,6 +1874,7 @@ http_check_with_auth(
     if (NULL == p_cb_info)
     {
         LOG_ERR("Can't allocate memory");
+        *p_http_resp_code = HTTP_RESP_CODE_500;
         return false;
     }
     p_cb_info->cb_on_data              = NULL;
@@ -1900,6 +1903,7 @@ http_check_with_auth(
     {
         LOG_ERR("Can't allocate memory for http_config");
         os_free(p_cb_info);
+        *p_http_resp_code = HTTP_RESP_CODE_500;
         return false;
     }
     if (HTTP_AUTH_TYPE_BASIC == http_client_auth_type)
@@ -1916,6 +1920,7 @@ http_check_with_auth(
         os_free(p_http_config);
         os_free(p_cb_info);
         resume_relaying_and_wait(p_param->flag_free_memory);
+        *p_http_resp_code = HTTP_RESP_CODE_500;
         return false;
     }
 
@@ -1928,6 +1933,7 @@ http_check_with_auth(
             os_free(p_http_config);
             os_free(p_cb_info);
             resume_relaying_and_wait(p_param->flag_free_memory);
+            *p_http_resp_code = HTTP_RESP_CODE_500;
             return false;
         }
         LOG_INFO(
@@ -1946,6 +1952,7 @@ http_check_with_auth(
             os_free(p_http_config);
             os_free(p_cb_info);
             resume_relaying_and_wait(p_param->flag_free_memory);
+            *p_http_resp_code = HTTP_RESP_CODE_500;
             return false;
         }
         LOG_INFO(
@@ -1983,6 +1990,7 @@ http_check_with_auth(
         os_free(resp.select_location.memory.p_buf);
     }
 
+    *p_http_resp_code = resp.http_resp_code;
     if (HTTP_RESP_CODE_200 == resp.http_resp_code)
     {
         return true;
