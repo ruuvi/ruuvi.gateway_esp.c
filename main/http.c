@@ -539,6 +539,46 @@ http_async_info_free_data(http_async_info_t* const p_http_async_info)
     }
 }
 
+bool
+http_handle_add_authorization_if_needed(
+    esp_http_client_handle_t              http_handle,
+    const gw_cfg_http_auth_type_e         auth_type,
+    const ruuvi_gw_cfg_http_auth_t* const p_http_auth)
+{
+    str_buf_t str_buf = str_buf_init_null();
+    if (GW_CFG_HTTP_AUTH_TYPE_BEARER == auth_type)
+    {
+        str_buf = str_buf_printf_with_alloc("Bearer %s", p_http_auth->auth_bearer.token.buf);
+        if (NULL == str_buf.buf)
+        {
+            LOG_ERR("Can't allocate memory for bearer token");
+            return false;
+        }
+    }
+    else if (GW_CFG_HTTP_AUTH_TYPE_TOKEN == auth_type)
+    {
+        str_buf = str_buf_printf_with_alloc("Token %s", p_http_auth->auth_token.token.buf);
+        if (NULL == str_buf.buf)
+        {
+            return false;
+        }
+    }
+    else
+    {
+        // MISRA C:2012, 15.7 - All if...else if constructs shall be terminated with an else statement
+    }
+    if (NULL != str_buf.buf)
+    {
+        LOG_INFO(
+            "Add HTTP header: %s: %s",
+            "Authorization",
+            (LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG) ? str_buf.buf : "********");
+        esp_http_client_set_header(http_handle, "Authorization", str_buf.buf);
+        str_buf_free_buf(&str_buf);
+    }
+    return true;
+}
+
 typedef struct http_send_advs_internal_params_t
 {
     const uint32_t nonce;
@@ -663,33 +703,13 @@ http_send_advs_internal(
 
     if (!p_params->flag_post_to_ruuvi)
     {
-        if (GW_CFG_HTTP_AUTH_TYPE_BEARER == p_cfg_http->auth_type)
+        if (!http_handle_add_authorization_if_needed(
+                p_http_async_info->p_http_client_handle,
+                p_cfg_http->auth_type,
+                &p_cfg_http->auth))
         {
-            str_buf_t str_buf = str_buf_printf_with_alloc("Bearer %s", p_cfg_http->auth.auth_bearer.token.buf);
-            if (NULL == str_buf.buf)
-            {
-                LOG_ERR("Can't allocate memory for bearer token");
-                http_async_info_free_data(p_http_async_info);
-                return false;
-            }
-            esp_http_client_set_header(p_http_async_info->p_http_client_handle, "Authorization", str_buf.buf);
-            str_buf_free_buf(&str_buf);
-        }
-        else if (GW_CFG_HTTP_AUTH_TYPE_TOKEN == p_cfg_http->auth_type)
-        {
-            str_buf_t str_buf = str_buf_printf_with_alloc("Token %s", p_cfg_http->auth.auth_token.token.buf);
-            if (NULL == str_buf.buf)
-            {
-                LOG_ERR("Can't allocate memory for bearer token");
-                http_async_info_free_data(p_http_async_info);
-                return false;
-            }
-            esp_http_client_set_header(p_http_async_info->p_http_client_handle, "Authorization", str_buf.buf);
-            str_buf_free_buf(&str_buf);
-        }
-        else
-        {
-            // MISRA C:2012, 15.7 - All "if ... else if" constructs shall be terminated with an else statement
+            http_async_info_free_data(p_http_async_info);
+            return false;
         }
     }
 

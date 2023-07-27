@@ -113,6 +113,12 @@ http_wait_until_async_req_completed(
     const bool                 flag_feed_task_watchdog,
     const TimeUnitsSeconds_t   timeout_seconds);
 
+bool
+http_handle_add_authorization_if_needed(
+    esp_http_client_handle_t              http_handle,
+    const gw_cfg_http_auth_type_e         auth_type,
+    const ruuvi_gw_cfg_http_auth_t* const p_http_auth);
+
 #ifdef __cplusplus
 }
 #endif
