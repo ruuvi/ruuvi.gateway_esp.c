@@ -126,16 +126,20 @@ http_server_fw_update_check_file(const char* const p_file_name)
         LOG_ERR("Can't allocate memory");
         return http_server_resp_500();
     }
-    const http_download_param_t params = {
-        .p_url                   = url.buf,
-        .timeout_seconds         = HTTP_DOWNLOAD_TIMEOUT_SECONDS,
-        .flag_feed_task_watchdog = true,
-        .flag_free_memory        = true,
-        .p_server_cert           = NULL,
-        .p_client_cert           = NULL,
-        .p_client_key            = NULL,
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = url.buf,
+            .timeout_seconds         = HTTP_DOWNLOAD_TIMEOUT_SECONDS,
+            .flag_feed_task_watchdog = true,
+            .flag_free_memory        = true,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth = NULL,
     };
-    http_resp_code_e http_resp_code = http_check(&params, GW_CFG_HTTP_AUTH_TYPE_NONE, NULL, NULL);
+    http_resp_code_e http_resp_code = http_check(&params, NULL);
     str_buf_free_buf(&url);
     if (HTTP_RESP_CODE_200 != http_resp_code)
     {

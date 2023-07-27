@@ -298,16 +298,14 @@ http_download_create_config(
 
 bool
 http_download_with_auth(
-    const http_download_param_t* const    p_param,
-    const gw_cfg_http_auth_type_e         auth_type,
-    const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
-    const http_header_item_t* const       p_extra_header_item,
-    http_download_cb_on_data_t const      p_cb_on_data,
-    void* const                           p_user_data)
+    const http_download_param_with_auth_t* const p_param,
+    const http_header_item_t* const              p_extra_header_item,
+    http_download_cb_on_data_t const             p_cb_on_data,
+    void* const                                  p_user_data)
 {
-    LOG_INFO("http_download: URL: %s", p_param->p_url);
+    LOG_INFO("http_download: URL: %s", p_param->base.p_url);
 
-    if ((GW_CFG_HTTP_AUTH_TYPE_NONE != auth_type) && (NULL == p_http_auth))
+    if ((GW_CFG_HTTP_AUTH_TYPE_NONE != p_param->auth_type) && (NULL == p_param->p_http_auth))
     {
         LOG_ERR("Auth type is not NONE, but p_http_auth is NULL");
         return false;
@@ -319,11 +317,11 @@ http_download_with_auth(
     }
 
     const ruuvi_gw_cfg_http_auth_basic_t* p_auth_basic = NULL;
-    if (GW_CFG_HTTP_AUTH_TYPE_BASIC == auth_type)
+    if (GW_CFG_HTTP_AUTH_TYPE_BASIC == p_param->auth_type)
     {
-        LOG_INFO("http_download: Auth: Basic, Username: %s", p_http_auth->auth_basic.user.buf);
+        LOG_INFO("http_download: Auth: Basic, Username: %s", p_param->p_http_auth->auth_basic.user.buf);
         LOG_DBG("http_download: Auth: Basic, Password: %s", p_http_auth->auth_basic.password.buf);
-        p_auth_basic = &p_http_auth->auth_basic;
+        p_auth_basic = &p_param->p_http_auth->auth_basic;
     }
 
     http_download_cb_info_t* p_cb_info = os_calloc(1, sizeof(*p_cb_info));
@@ -337,10 +335,10 @@ http_download_with_auth(
     p_cb_info->http_handle             = NULL;
     p_cb_info->content_length          = 0;
     p_cb_info->offset                  = 0;
-    p_cb_info->flag_feed_task_watchdog = p_param->flag_feed_task_watchdog;
+    p_cb_info->flag_feed_task_watchdog = p_param->base.flag_feed_task_watchdog;
 
     esp_http_client_config_t* p_http_config = http_download_create_config(
-        p_param,
+        &p_param->base,
         HTTP_METHOD_GET,
         p_auth_basic,
         &http_download_event_handler,
@@ -353,7 +351,7 @@ http_download_with_auth(
     }
 
     LOG_DBG("suspend_relaying_and_wait");
-    suspend_relaying_and_wait(p_param->flag_free_memory);
+    suspend_relaying_and_wait(p_param->base.flag_free_memory);
     LOG_DBG("suspend_relaying_and_wait: finished");
 
     p_cb_info->http_handle = esp_http_client_init(p_http_config);
@@ -362,15 +360,15 @@ http_download_with_auth(
         LOG_ERR("Can't init http client");
         os_free(p_http_config);
         os_free(p_cb_info);
-        resume_relaying_and_wait(p_param->flag_free_memory);
+        resume_relaying_and_wait(p_param->base.flag_free_memory);
         return false;
     }
 
-    if (!http_handle_add_authorization_if_needed(p_cb_info->http_handle, auth_type, p_http_auth))
+    if (!http_handle_add_authorization_if_needed(p_cb_info->http_handle, p_param->auth_type, p_param->p_http_auth))
     {
         os_free(p_http_config);
         os_free(p_cb_info);
-        resume_relaying_and_wait(p_param->flag_free_memory);
+        resume_relaying_and_wait(p_param->base.flag_free_memory);
         return false;
     }
 
@@ -383,8 +381,8 @@ http_download_with_auth(
     LOG_DBG("http_download_by_handle");
     http_server_resp_t resp = http_download_by_handle(
         p_cb_info->http_handle,
-        p_param->flag_feed_task_watchdog,
-        p_param->timeout_seconds);
+        p_param->base.flag_feed_task_watchdog,
+        p_param->base.timeout_seconds);
 
     LOG_DBG("esp_http_client_cleanup");
     const esp_err_t err = esp_http_client_cleanup(p_cb_info->http_handle);
@@ -395,31 +393,25 @@ http_download_with_auth(
 
     os_free(p_http_config);
     os_free(p_cb_info);
-    resume_relaying_and_wait(p_param->flag_free_memory);
+    resume_relaying_and_wait(p_param->base.flag_free_memory);
 
     if ((HTTP_CONTENT_LOCATION_HEAP == resp.content_location) && (NULL != resp.select_location.memory.p_buf))
     {
         os_free(resp.select_location.memory.p_buf);
     }
 
-    if (HTTP_RESP_CODE_200 == resp.http_resp_code)
-    {
-        return true;
-    }
-    return false;
+    return (HTTP_RESP_CODE_200 == resp.http_resp_code) ? true : false;
 }
 
 bool
 http_check_with_auth(
-    const http_download_param_t* const    p_param,
-    const gw_cfg_http_auth_type_e         auth_type,
-    const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
-    const http_header_item_t* const       p_extra_header_item,
-    http_resp_code_e* const               p_http_resp_code)
+    const http_download_param_with_auth_t* const p_param,
+    const http_header_item_t* const              p_extra_header_item,
+    http_resp_code_e* const                      p_http_resp_code)
 {
-    LOG_INFO("http_check: URL: %s", p_param->p_url);
+    LOG_INFO("http_check: URL: %s", p_param->base.p_url);
 
-    if ((GW_CFG_HTTP_AUTH_TYPE_NONE != auth_type) && (NULL == p_http_auth))
+    if ((GW_CFG_HTTP_AUTH_TYPE_NONE != p_param->auth_type) && (NULL == p_param->p_http_auth))
     {
         LOG_ERR("Auth type is not NONE, but p_http_auth is NULL");
         *p_http_resp_code = HTTP_RESP_CODE_400;
@@ -444,19 +436,19 @@ http_check_with_auth(
     p_cb_info->http_handle             = NULL;
     p_cb_info->content_length          = 0;
     p_cb_info->offset                  = 0;
-    p_cb_info->flag_feed_task_watchdog = p_param->flag_feed_task_watchdog;
+    p_cb_info->flag_feed_task_watchdog = p_param->base.flag_feed_task_watchdog;
 
-    const esp_http_client_auth_type_t     http_client_auth_type = (GW_CFG_HTTP_AUTH_TYPE_BASIC == auth_type)
+    const esp_http_client_auth_type_t     http_client_auth_type = (GW_CFG_HTTP_AUTH_TYPE_BASIC == p_param->auth_type)
                                                                       ? HTTP_AUTH_TYPE_BASIC
                                                                       : HTTP_AUTH_TYPE_NONE;
     const ruuvi_gw_cfg_http_auth_basic_t* p_auth_basic          = NULL;
-    if (GW_CFG_HTTP_AUTH_TYPE_BASIC == auth_type)
+    if (GW_CFG_HTTP_AUTH_TYPE_BASIC == p_param->auth_type)
     {
-        p_auth_basic = &p_http_auth->auth_basic;
+        p_auth_basic = &p_param->p_http_auth->auth_basic;
     }
 
     esp_http_client_config_t* p_http_config = http_download_create_config(
-        p_param,
+        &p_param->base,
         HTTP_METHOD_HEAD,
         p_auth_basic,
         &http_check_event_handler,
@@ -470,10 +462,10 @@ http_check_with_auth(
     }
     if (HTTP_AUTH_TYPE_BASIC == http_client_auth_type)
     {
-        LOG_INFO("http_check: Auth: Basic, Username: %s", p_http_auth->auth_basic.user.buf);
+        LOG_INFO("http_check: Auth: Basic, Username: %s", p_param->p_http_auth->auth_basic.user.buf);
     }
 
-    suspend_relaying_and_wait(p_param->flag_free_memory);
+    suspend_relaying_and_wait(p_param->base.flag_free_memory);
 
     p_cb_info->http_handle = esp_http_client_init(p_http_config);
     if (NULL == p_cb_info->http_handle)
@@ -481,16 +473,16 @@ http_check_with_auth(
         LOG_ERR("Can't init http client");
         os_free(p_http_config);
         os_free(p_cb_info);
-        resume_relaying_and_wait(p_param->flag_free_memory);
+        resume_relaying_and_wait(p_param->base.flag_free_memory);
         *p_http_resp_code = HTTP_RESP_CODE_500;
         return false;
     }
 
-    if (!http_handle_add_authorization_if_needed(p_cb_info->http_handle, auth_type, p_http_auth))
+    if (!http_handle_add_authorization_if_needed(p_cb_info->http_handle, p_param->auth_type, p_param->p_http_auth))
     {
         os_free(p_http_config);
         os_free(p_cb_info);
-        resume_relaying_and_wait(p_param->flag_free_memory);
+        resume_relaying_and_wait(p_param->base.flag_free_memory);
         *p_http_resp_code = HTTP_RESP_CODE_500;
         return false;
     }
@@ -504,8 +496,8 @@ http_check_with_auth(
     LOG_DBG("http_check_by_handle");
     http_server_resp_t resp = http_download_by_handle(
         p_cb_info->http_handle,
-        p_param->flag_feed_task_watchdog,
-        p_param->timeout_seconds);
+        p_param->base.flag_feed_task_watchdog,
+        p_param->base.timeout_seconds);
 
     LOG_DBG("esp_http_client_cleanup");
     const esp_err_t err = esp_http_client_cleanup(p_cb_info->http_handle);
@@ -516,7 +508,7 @@ http_check_with_auth(
 
     os_free(p_http_config);
     os_free(p_cb_info);
-    resume_relaying_and_wait(p_param->flag_free_memory);
+    resume_relaying_and_wait(p_param->base.flag_free_memory);
 
     if ((HTTP_CONTENT_LOCATION_HEAP == resp.content_location) && (NULL != resp.select_location.memory.p_buf))
     {
@@ -531,11 +523,11 @@ http_check_with_auth(
 
 bool
 http_download(
-    const http_download_param_t* const p_param,
-    http_download_cb_on_data_t const   p_cb_on_data,
-    void* const                        p_user_data)
+    const http_download_param_with_auth_t* const p_param,
+    http_download_cb_on_data_t const             p_cb_on_data,
+    void* const                                  p_user_data)
 {
-    return http_download_with_auth(p_param, GW_CFG_HTTP_AUTH_TYPE_NONE, NULL, NULL, p_cb_on_data, p_user_data);
+    return http_download_with_auth(p_param, NULL, p_cb_on_data, p_user_data);
 }
 
 static bool
@@ -627,10 +619,8 @@ cb_on_http_download_json_data(
 
 http_server_download_info_t
 http_download_json(
-    const http_download_param_t* const    p_params,
-    const gw_cfg_http_auth_type_e         auth_type,
-    const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
-    const http_header_item_t* const       p_extra_header_item)
+    const http_download_param_with_auth_t* const p_params,
+    const http_header_item_t* const              p_extra_header_item)
 {
     http_server_download_info_t info = {
         .is_error       = false,
@@ -638,35 +628,12 @@ http_download_json(
         .p_json_buf     = NULL,
         .json_buf_size  = 0,
     };
-    const TickType_t       download_started_at_tick = xTaskGetTickCount();
-    http_download_param_t* p_download_param         = os_calloc(1, sizeof(*p_download_param));
-    if (NULL == p_download_param)
+    const TickType_t download_started_at_tick = xTaskGetTickCount();
+    if (!http_download_with_auth(p_params, p_extra_header_item, &cb_on_http_download_json_data, &info))
     {
-        LOG_ERR("Can't allocate memory");
-        info.is_error       = true;
-        info.http_resp_code = HTTP_RESP_CODE_500;
-        return info;
-    }
-    p_download_param->p_url                   = p_params->p_url;
-    p_download_param->timeout_seconds         = p_params->timeout_seconds;
-    p_download_param->flag_feed_task_watchdog = p_params->flag_feed_task_watchdog;
-    p_download_param->flag_free_memory        = p_params->flag_free_memory;
-    p_download_param->p_server_cert           = p_params->p_server_cert;
-    p_download_param->p_client_cert           = p_params->p_client_cert;
-    p_download_param->p_client_key            = p_params->p_client_key;
-
-    if (!http_download_with_auth(
-            p_download_param,
-            auth_type,
-            p_http_auth,
-            p_extra_header_item,
-            &cb_on_http_download_json_data,
-            &info))
-    {
-        LOG_ERR("http_download failed for URL: %s", p_params->p_url);
+        LOG_ERR("http_download failed for URL: %s", p_params->base.p_url);
         info.is_error = true;
     }
-    os_free(p_download_param);
     if (HTTP_RESP_CODE_200 != info.http_resp_code)
     {
         if (NULL == info.p_json_buf)
@@ -701,31 +668,31 @@ http_download_json(
 http_server_download_info_t
 http_download_latest_release_info(const bool flag_free_memory)
 {
-    const http_download_param_t params = {
-        .p_url                   = "https://api.github.com/repos/ruuvi/ruuvi.gateway_esp.c/releases/latest",
-        .timeout_seconds         = HTTP_DOWNLOAD_FW_RELEASE_INFO_TIMEOUT_SECONDS,
-        .flag_feed_task_watchdog = true,
-        .flag_free_memory        = flag_free_memory,
-        .p_server_cert           = NULL,
-        .p_client_cert           = NULL,
-        .p_client_key            = NULL,
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://api.github.com/repos/ruuvi/ruuvi.gateway_esp.c/releases/latest",
+            .timeout_seconds         = HTTP_DOWNLOAD_FW_RELEASE_INFO_TIMEOUT_SECONDS,
+            .flag_feed_task_watchdog = true,
+            .flag_free_memory        = flag_free_memory,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth = NULL,
     };
-    return http_download_json(&params, GW_CFG_HTTP_AUTH_TYPE_NONE, NULL, NULL);
+    return http_download_json(&params, NULL);
 }
 
 http_resp_code_e
-http_check(
-    const http_download_param_t* const    p_params,
-    const gw_cfg_http_auth_type_e         auth_type,
-    const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
-    const http_header_item_t* const       p_extra_header_item)
+http_check(const http_download_param_with_auth_t* const p_params, const http_header_item_t* const p_extra_header_item)
 {
     const TickType_t download_started_at_tick = xTaskGetTickCount();
     http_resp_code_e http_resp_code           = HTTP_RESP_CODE_200;
 
-    if (!http_check_with_auth(p_params, auth_type, p_http_auth, p_extra_header_item, &http_resp_code))
+    if (!http_check_with_auth(p_params, p_extra_header_item, &http_resp_code))
     {
-        LOG_ERR("http_check failed for URL: %s", p_params->p_url);
+        LOG_ERR("http_check failed for URL: %s", p_params->base.p_url);
     }
     const TickType_t download_completed_within_ticks = xTaskGetTickCount() - download_started_at_tick;
     LOG_INFO("%s: completed within %u ticks", __func__, (printf_uint_t)download_completed_within_ticks);

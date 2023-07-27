@@ -376,24 +376,24 @@ fw_update_data_partition(const esp_partition_t* const p_partition, const char* c
         return false;
     }
     LOG_INFO("fw_update_data_partition: Download and write partition data");
-    const bool             flag_feed_task_watchdog = false;
-    http_download_param_t* p_download_param        = os_calloc(1, sizeof(*p_download_param));
-    if (NULL == p_download_param)
-    {
-        LOG_ERR("Can't allocate memory");
-        return false;
-    }
-    p_download_param->p_url                   = p_url;
-    p_download_param->timeout_seconds         = HTTP_DOWNLOAD_FW_BINARIES_TIMEOUT_SECONDS;
-    p_download_param->flag_feed_task_watchdog = flag_feed_task_watchdog;
-    p_download_param->flag_free_memory        = true;
-    if (!http_download(p_download_param, &fw_update_data_partition_cb_on_recv_data, &fw_update_info))
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url = p_url,
+            .timeout_seconds = HTTP_DOWNLOAD_FW_BINARIES_TIMEOUT_SECONDS,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory = true,
+            .p_server_cert = NULL,
+            .p_client_cert = NULL,
+            .p_client_key = NULL,
+        },
+        .auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth = NULL,
+    };
+    if (!http_download(&params, &fw_update_data_partition_cb_on_recv_data, &fw_update_info))
     {
         LOG_ERR("Failed to update partition %s - failed to download %s", p_partition->label, p_url);
-        os_free(p_download_param);
         return false;
     }
-    os_free(p_download_param);
     if (fw_update_info.is_error)
     {
         LOG_ERR("Failed to update partition %s - some problem during writing", p_partition->label);
@@ -492,24 +492,24 @@ fw_update_ota_partition(
         .is_error    = false,
     };
 
-    const bool             flag_feed_task_watchdog = false;
-    http_download_param_t* p_download_param        = os_calloc(1, sizeof(*p_download_param));
-    if (NULL == p_download_param)
-    {
-        LOG_ERR("Can't allocate memory");
-        return false;
-    }
-    p_download_param->p_url                   = p_url;
-    p_download_param->timeout_seconds         = HTTP_DOWNLOAD_FW_BINARIES_TIMEOUT_SECONDS;
-    p_download_param->flag_feed_task_watchdog = flag_feed_task_watchdog;
-    p_download_param->flag_free_memory        = true;
-    if (!http_download(p_download_param, &fw_update_ota_partition_cb_on_recv_data, &fw_update_info))
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url = p_url,
+            .timeout_seconds = HTTP_DOWNLOAD_FW_BINARIES_TIMEOUT_SECONDS,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory = true,
+            .p_server_cert = NULL,
+            .p_client_cert = NULL,
+            .p_client_key = NULL,
+        },
+        .auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth = NULL,
+    };
+    if (!http_download(&params, &fw_update_ota_partition_cb_on_recv_data, &fw_update_info))
     {
         LOG_ERR("Failed to update OTA-partition %s - failed to download %s", p_partition->label, p_url);
-        os_free(p_download_param);
         return false;
     }
-    os_free(p_download_param);
     if (fw_update_info.is_error)
     {
         LOG_ERR("Failed to update OTA-partition %s - some problem during writing", p_partition->label);

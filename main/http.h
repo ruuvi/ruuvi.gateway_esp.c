@@ -42,16 +42,12 @@ typedef struct http_download_param_t
     const char*        p_client_key;
 } http_download_param_t;
 
-typedef struct http_check_with_auth_param_t
+typedef struct http_download_param_with_auth_t
 {
-    const char*        p_url;
-    TimeUnitsSeconds_t timeout_seconds;
-    bool               flag_feed_task_watchdog;
-    bool               flag_free_memory;
-    const char*        p_server_cert;
-    const char*        p_client_cert;
-    const char*        p_client_key;
-} http_check_with_auth_param_t;
+    const http_download_param_t           base;
+    const gw_cfg_http_auth_type_e         auth_type;
+    const ruuvi_gw_cfg_http_auth_t* const p_http_auth;
+} http_download_param_with_auth_t;
 
 typedef struct http_check_params_t
 {

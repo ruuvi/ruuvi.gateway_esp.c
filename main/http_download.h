@@ -38,43 +38,33 @@ typedef bool (*http_download_cb_on_data_t)(
 
 bool
 http_download_with_auth(
-    const http_download_param_t* const    p_param,
-    const gw_cfg_http_auth_type_e         auth_type,
-    const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
-    const http_header_item_t* const       p_extra_header_item,
-    http_download_cb_on_data_t const      p_cb_on_data,
-    void* const                           p_user_data);
+    const http_download_param_with_auth_t* const p_param,
+    const http_header_item_t* const              p_extra_header_item,
+    http_download_cb_on_data_t const             p_cb_on_data,
+    void* const                                  p_user_data);
 
 bool
 http_check_with_auth(
-    const http_download_param_t* const    p_param,
-    const gw_cfg_http_auth_type_e         auth_type,
-    const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
-    const http_header_item_t* const       p_extra_header_item,
-    http_resp_code_e* const               p_http_resp_code);
+    const http_download_param_with_auth_t* const p_param,
+    const http_header_item_t* const              p_extra_header_item,
+    http_resp_code_e* const                      p_http_resp_code);
 
 bool
 http_download(
-    const http_download_param_t* const p_param,
-    http_download_cb_on_data_t const   p_cb_on_data,
-    void* const                        p_user_data);
+    const http_download_param_with_auth_t* const p_param,
+    http_download_cb_on_data_t const             p_cb_on_data,
+    void* const                                  p_user_data);
 
 http_server_download_info_t
 http_download_json(
-    const http_download_param_t* const    p_params,
-    const gw_cfg_http_auth_type_e         auth_type,
-    const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
-    const http_header_item_t* const       p_extra_header_item);
+    const http_download_param_with_auth_t* const p_params,
+    const http_header_item_t* const              p_extra_header_item);
 
 http_server_download_info_t
 http_download_latest_release_info(const bool flag_free_memory);
 
 http_resp_code_e
-http_check(
-    const http_download_param_t* const    p_param,
-    const gw_cfg_http_auth_type_e         auth_type,
-    const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
-    const http_header_item_t* const       p_extra_header_item);
+http_check(const http_download_param_with_auth_t* const p_param, const http_header_item_t* const p_extra_header_item);
 
 #ifdef __cplusplus
 }
