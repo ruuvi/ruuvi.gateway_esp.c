@@ -249,12 +249,11 @@ http_download_by_handle(
 
 static esp_http_client_config_t*
 http_download_create_config(
-    const http_download_param_t* const    p_param,
-    const esp_http_client_method_t        http_method,
-    const esp_http_client_auth_type_t     http_client_auth_type,
-    const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
-    http_event_handle_cb const            p_event_handler,
-    void* const                           p_cb_info)
+    const http_download_param_t* const          p_param,
+    const esp_http_client_method_t              http_method,
+    const ruuvi_gw_cfg_http_auth_basic_t* const p_auth_basic,
+    http_event_handle_cb const                  p_event_handler,
+    void* const                                 p_cb_info)
 {
     esp_http_client_config_t* p_http_config = os_calloc(1, sizeof(*p_http_config));
     if (NULL == p_http_config)
@@ -266,10 +265,9 @@ http_download_create_config(
     p_http_config->host = NULL;
     p_http_config->port = 0;
 
-    p_http_config->username = (HTTP_AUTH_TYPE_BASIC == http_client_auth_type) ? p_http_auth->auth_basic.user.buf : NULL;
-    p_http_config->password = (HTTP_AUTH_TYPE_BASIC == http_client_auth_type) ? p_http_auth->auth_basic.password.buf
-                                                                              : NULL;
-    p_http_config->auth_type = http_client_auth_type;
+    p_http_config->username  = (NULL != p_auth_basic) ? p_auth_basic->user.buf : NULL;
+    p_http_config->password  = (NULL != p_auth_basic) ? p_auth_basic->password.buf : NULL;
+    p_http_config->auth_type = (NULL != p_auth_basic) ? HTTP_AUTH_TYPE_BASIC : HTTP_AUTH_TYPE_NONE;
 
     p_http_config->path                        = NULL;
     p_http_config->query                       = NULL;
@@ -320,14 +318,12 @@ http_download_with_auth(
         return false;
     }
 
-    const esp_http_client_auth_type_t http_client_auth_type = (GW_CFG_HTTP_AUTH_TYPE_BASIC == auth_type)
-                                                                  ? HTTP_AUTH_TYPE_BASIC
-                                                                  : HTTP_AUTH_TYPE_NONE;
-
-    if (HTTP_AUTH_TYPE_BASIC == http_client_auth_type)
+    const ruuvi_gw_cfg_http_auth_basic_t* p_auth_basic = NULL;
+    if (GW_CFG_HTTP_AUTH_TYPE_BASIC == auth_type)
     {
         LOG_INFO("http_download: Auth: Basic, Username: %s", p_http_auth->auth_basic.user.buf);
         LOG_DBG("http_download: Auth: Basic, Password: %s", p_http_auth->auth_basic.password.buf);
+        p_auth_basic = &p_http_auth->auth_basic;
     }
 
     http_download_cb_info_t* p_cb_info = os_calloc(1, sizeof(*p_cb_info));
@@ -346,8 +342,7 @@ http_download_with_auth(
     esp_http_client_config_t* p_http_config = http_download_create_config(
         p_param,
         HTTP_METHOD_GET,
-        http_client_auth_type,
-        p_http_auth,
+        p_auth_basic,
         &http_download_event_handler,
         p_cb_info);
     if (NULL == p_http_config)
@@ -451,15 +446,19 @@ http_check_with_auth(
     p_cb_info->offset                  = 0;
     p_cb_info->flag_feed_task_watchdog = p_param->flag_feed_task_watchdog;
 
-    const esp_http_client_auth_type_t http_client_auth_type = (GW_CFG_HTTP_AUTH_TYPE_BASIC == auth_type)
-                                                                  ? HTTP_AUTH_TYPE_BASIC
-                                                                  : HTTP_AUTH_TYPE_NONE;
+    const esp_http_client_auth_type_t     http_client_auth_type = (GW_CFG_HTTP_AUTH_TYPE_BASIC == auth_type)
+                                                                      ? HTTP_AUTH_TYPE_BASIC
+                                                                      : HTTP_AUTH_TYPE_NONE;
+    const ruuvi_gw_cfg_http_auth_basic_t* p_auth_basic          = NULL;
+    if (GW_CFG_HTTP_AUTH_TYPE_BASIC == auth_type)
+    {
+        p_auth_basic = &p_http_auth->auth_basic;
+    }
 
     esp_http_client_config_t* p_http_config = http_download_create_config(
         p_param,
         HTTP_METHOD_HEAD,
-        http_client_auth_type,
-        p_http_auth,
+        p_auth_basic,
         &http_check_event_handler,
         p_cb_info);
     if (NULL == p_http_config)
