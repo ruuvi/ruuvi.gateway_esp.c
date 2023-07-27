@@ -22,6 +22,8 @@ static const char TAG[] = "nrf52";
 #define RUUVI_GET_NRF52_ID_DELAY_MS    (1000U)
 #define RUUVI_GET_NRF52_ID_STEP_MS     (100U)
 
+#define BYTE_FF (0xFFU)
+
 static nrf52_device_info_t g_nrf52_device_info = { 0 };
 static volatile bool       g_ruuvi_device_id_flag_nrf52_id_received;
 static os_mutex_t          g_ruuvi_device_id_mutex;
@@ -100,7 +102,7 @@ ruuvi_device_id_request_and_wait(void)
         LOG_ERR("Failed to read nRF52 DEVICE ID");
         for (int32_t i = 0; i < sizeof(nrf52_device_info.nrf52_device_id.id); ++i)
         {
-            nrf52_device_info.nrf52_device_id.id[i] = 0xFFU;
+            nrf52_device_info.nrf52_device_id.id[i] = BYTE_FF;
         }
         nrf52_device_info.nrf52_mac_addr = settings_read_mac_addr();
     }

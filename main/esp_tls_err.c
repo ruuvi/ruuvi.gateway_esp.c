@@ -17,3 +17,13 @@ esp_tls_err_is_cannot_resolve_hostname(const esp_err_t err)
     }
     return false;
 }
+
+bool
+esp_tls_err_is_failed_connect_to_host(const esp_err_t err)
+{
+    if (ESP_ERR_ESP_TLS_FAILED_CONNECT_TO_HOST == err)
+    {
+        return true;
+    }
+    return false;
+}

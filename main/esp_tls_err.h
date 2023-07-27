@@ -18,6 +18,9 @@ extern "C" {
 bool
 esp_tls_err_is_cannot_resolve_hostname(const esp_err_t err);
 
+bool
+esp_tls_err_is_failed_connect_to_host(const esp_err_t err);
+
 #ifdef __cplusplus
 }
 #endif

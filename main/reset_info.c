@@ -270,6 +270,14 @@ reset_info_get_cnt(void)
     return p_info->reset_cnt;
 }
 
+/**
+ * @brief panic_print_char_override overrides panic_print_char from ESP-IDF/components/esp_system/panic.c
+ * @note GCC linker option "--defsym,panic_print_char=panic_print_char_override" is used for overriding, see
+ *  CMakeLists.txt panic_print_char is used in the same module where it is implemented, so, it's impossible to redefine
+ *  it with just "-Wl,--wrap=" option. Fortunately, there is a workaround described here:
+ *  https://stackoverflow.com/questions/13961774/ \
+ *  gnu-gcc-ld-wrapping-a-call-to-symbol-with-caller-and-callee-defined-in-the-sam
+ */
 void
 panic_print_char_override(const char c)
 {
@@ -277,12 +285,17 @@ panic_print_char_override(const char c)
     uint32_t                  sz           = 0;
     while (0 == uart_hal_get_txfifo_len(&s_panic_uart))
     {
+        // Wait while Tx FIFO buffer is busy
     }
     uart_hal_write_txfifo(&s_panic_uart, (const uint8_t*)&c, 1, &sz);
 
     str_buf_printf(&g_reset_info_data_panic_str_buf, "%c", c);
 }
 
+/**
+ * @brief __wrap_esp_panic_handler overrides esp_panic_handler from ESP-IDF/components/esp_system/panic.c
+ * @note GCC linker option "--wrap,esp_panic_handler" is used for overriding, see CMakeLists.txt
+ */
 void
 __wrap_esp_panic_handler(void* p_param)
 {
@@ -298,6 +311,10 @@ __wrap_esp_panic_handler(void* p_param)
     __real_esp_panic_handler(p_param); /* Call the former implementation */
 }
 
+/**
+ * @brief __wrap_panic_restart overrides panic_restart from ESP-IDF/components/esp_system/panic.c
+ * @note GCC linker option "--wrap,panic_restart" is used for overriding, see CMakeLists.txt
+ */
 void __attribute__((noreturn)) __wrap_panic_restart(void)
 {
     reset_info_t* const p_info = &g_reset_info;

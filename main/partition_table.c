@@ -35,10 +35,7 @@ partition_table_update_init_mutex(void)
 }
 
 static bool
-partition_table_erase_write(
-    const uint32_t       partition_table_address,
-    const size_t         partition_table_size,
-    const uint8_t* const p_buf)
+partition_table_erase_write(const uint32_t partition_table_address, const size_t partition_table_size)
 {
     esp_err_t err = spi_flash_erase_range(partition_table_address, SPI_FLASH_SEC_SIZE);
     if (ESP_OK != err)
@@ -76,7 +73,7 @@ partition_table_check_and_update_internal(
         bool flag_partition_table_updated = false;
         for (uint32_t i = 0; i < PARTITION_TABLE_UPDATE_MAX_NUM_RETRIES; ++i)
         {
-            if (partition_table_erase_write(partition_table_address, partition_table_size, p_buf))
+            if (partition_table_erase_write(partition_table_address, partition_table_size))
             {
                 flag_partition_table_updated = true;
                 break;
