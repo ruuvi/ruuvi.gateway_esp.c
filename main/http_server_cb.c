@@ -244,8 +244,9 @@ http_server_download_gw_cfg(const ruuvi_gw_cfg_remote_t* const p_remote, const b
             },
             .auth_type = p_remote->auth_type,
             .p_http_auth = &p_remote->auth,
+            .p_extra_header_item = &extra_header_item,
         };
-        download_info = http_download_json(&params, &extra_header_item);
+        download_info = http_download_json(&params);
     }
     else
     {
@@ -291,8 +292,9 @@ http_server_download_gw_cfg(const ruuvi_gw_cfg_remote_t* const p_remote, const b
                 },
                 .auth_type = p_remote->auth_type,
                 .p_http_auth = &p_remote->auth,
+                .p_extra_header_item = &extra_header_item,
             };
-            download_info = http_download_json(&params, &extra_header_item);
+            download_info = http_download_json(&params);
         }
 
         str_buf_free_buf(&url);
@@ -329,8 +331,9 @@ http_server_download_gw_cfg(const ruuvi_gw_cfg_remote_t* const p_remote, const b
                 },
                 .auth_type = p_remote->auth_type,
                 .p_http_auth = &p_remote->auth,
+                .p_extra_header_item = &extra_header_item,
             };
-            download_info = http_download_json(&params, &extra_header_item);
+            download_info = http_download_json(&params);
 
             str_buf_free_buf(&str_buf_server_cert_remote);
             str_buf_free_buf(&str_buf_client_cert);

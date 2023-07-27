@@ -299,7 +299,6 @@ http_download_create_config(
 bool
 http_download_with_auth(
     const http_download_param_with_auth_t* const p_param,
-    const http_header_item_t* const              p_extra_header_item,
     http_download_cb_on_data_t const             p_cb_on_data,
     void* const                                  p_user_data)
 {
@@ -372,10 +371,16 @@ http_download_with_auth(
         return false;
     }
 
-    if (NULL != p_extra_header_item)
+    if (NULL != p_param->p_extra_header_item)
     {
-        LOG_INFO("http_download: Add HTTP header: %s: %s", p_extra_header_item->p_key, p_extra_header_item->p_value);
-        esp_http_client_set_header(p_cb_info->http_handle, p_extra_header_item->p_key, p_extra_header_item->p_value);
+        LOG_INFO(
+            "http_download: Add HTTP header: %s: %s",
+            p_param->p_extra_header_item->p_key,
+            p_param->p_extra_header_item->p_value);
+        esp_http_client_set_header(
+            p_cb_info->http_handle,
+            p_param->p_extra_header_item->p_key,
+            p_param->p_extra_header_item->p_value);
     }
 
     LOG_DBG("http_download_by_handle");
@@ -404,10 +409,7 @@ http_download_with_auth(
 }
 
 bool
-http_check_with_auth(
-    const http_download_param_with_auth_t* const p_param,
-    const http_header_item_t* const              p_extra_header_item,
-    http_resp_code_e* const                      p_http_resp_code)
+http_check_with_auth(const http_download_param_with_auth_t* const p_param, http_resp_code_e* const p_http_resp_code)
 {
     LOG_INFO("http_check: URL: %s", p_param->base.p_url);
 
@@ -487,10 +489,16 @@ http_check_with_auth(
         return false;
     }
 
-    if (NULL != p_extra_header_item)
+    if (NULL != p_param->p_extra_header_item)
     {
-        LOG_INFO("http_check: Add HTTP header: %s: %s", p_extra_header_item->p_key, p_extra_header_item->p_value);
-        esp_http_client_set_header(p_cb_info->http_handle, p_extra_header_item->p_key, p_extra_header_item->p_value);
+        LOG_INFO(
+            "http_check: Add HTTP header: %s: %s",
+            p_param->p_extra_header_item->p_key,
+            p_param->p_extra_header_item->p_value);
+        esp_http_client_set_header(
+            p_cb_info->http_handle,
+            p_param->p_extra_header_item->p_key,
+            p_param->p_extra_header_item->p_value);
     }
 
     LOG_DBG("http_check_by_handle");
@@ -527,7 +535,7 @@ http_download(
     http_download_cb_on_data_t const             p_cb_on_data,
     void* const                                  p_user_data)
 {
-    return http_download_with_auth(p_param, NULL, p_cb_on_data, p_user_data);
+    return http_download_with_auth(p_param, p_cb_on_data, p_user_data);
 }
 
 static bool
@@ -618,9 +626,7 @@ cb_on_http_download_json_data(
 }
 
 http_server_download_info_t
-http_download_json(
-    const http_download_param_with_auth_t* const p_params,
-    const http_header_item_t* const              p_extra_header_item)
+http_download_json(const http_download_param_with_auth_t* const p_params)
 {
     http_server_download_info_t info = {
         .is_error       = false,
@@ -629,7 +635,7 @@ http_download_json(
         .json_buf_size  = 0,
     };
     const TickType_t download_started_at_tick = xTaskGetTickCount();
-    if (!http_download_with_auth(p_params, p_extra_header_item, &cb_on_http_download_json_data, &info))
+    if (!http_download_with_auth(p_params, &cb_on_http_download_json_data, &info))
     {
         LOG_ERR("http_download failed for URL: %s", p_params->base.p_url);
         info.is_error = true;
@@ -680,17 +686,18 @@ http_download_latest_release_info(const bool flag_free_memory)
         },
         .auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE,
         .p_http_auth = NULL,
+        .p_extra_header_item = NULL,
     };
-    return http_download_json(&params, NULL);
+    return http_download_json(&params);
 }
 
 http_resp_code_e
-http_check(const http_download_param_with_auth_t* const p_params, const http_header_item_t* const p_extra_header_item)
+http_check(const http_download_param_with_auth_t* const p_params)
 {
     const TickType_t download_started_at_tick = xTaskGetTickCount();
     http_resp_code_e http_resp_code           = HTTP_RESP_CODE_200;
 
-    if (!http_check_with_auth(p_params, p_extra_header_item, &http_resp_code))
+    if (!http_check_with_auth(p_params, &http_resp_code))
     {
         LOG_ERR("http_check failed for URL: %s", p_params->base.p_url);
     }

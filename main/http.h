@@ -47,6 +47,7 @@ typedef struct http_download_param_with_auth_t
     const http_download_param_t           base;
     const gw_cfg_http_auth_type_e         auth_type;
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth;
+    const http_header_item_t* const       p_extra_header_item;
 } http_download_param_with_auth_t;
 
 typedef struct http_check_params_t

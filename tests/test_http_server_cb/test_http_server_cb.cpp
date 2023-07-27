@@ -83,7 +83,6 @@ esp_random(void)
 bool
 http_download_with_auth(
     const http_download_param_with_auth_t* const p_param,
-    const http_header_item_t* const              p_extra_header_item,
     http_download_cb_on_data_t const             p_cb_on_data,
     void* const                                  p_user_data)
 {
@@ -91,10 +90,7 @@ http_download_with_auth(
 }
 
 bool
-http_check_with_auth(
-    const http_download_param_with_auth_t* const p_param,
-    const http_header_item_t* const              p_extra_header_item,
-    http_resp_code_e* const                      p_http_resp_code)
+http_check_with_auth(const http_download_param_with_auth_t* const p_param, http_resp_code_e* const p_http_resp_code)
 {
     return false;
 }

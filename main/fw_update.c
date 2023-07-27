@@ -388,6 +388,7 @@ fw_update_data_partition(const esp_partition_t* const p_partition, const char* c
         },
         .auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE,
         .p_http_auth = NULL,
+        .p_extra_header_item = NULL,
     };
     if (!http_download(&params, &fw_update_data_partition_cb_on_recv_data, &fw_update_info))
     {
@@ -504,6 +505,7 @@ fw_update_ota_partition(
         },
         .auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE,
         .p_http_auth = NULL,
+        .p_extra_header_item = NULL,
     };
     if (!http_download(&params, &fw_update_ota_partition_cb_on_recv_data, &fw_update_info))
     {

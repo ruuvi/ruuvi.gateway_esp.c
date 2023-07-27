@@ -138,8 +138,9 @@ http_server_fw_update_check_file(const char* const p_file_name)
         },
         .auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE,
         .p_http_auth = NULL,
+        .p_extra_header_item = NULL,
     };
-    http_resp_code_e http_resp_code = http_check(&params, NULL);
+    http_resp_code_e http_resp_code = http_check(&params);
     str_buf_free_buf(&url);
     if (HTTP_RESP_CODE_200 != http_resp_code)
     {

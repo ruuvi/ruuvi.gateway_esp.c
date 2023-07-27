@@ -1094,8 +1094,9 @@ http_server_resp_validate_check_file(const http_server_resp_validate_params_t* c
         },
         .auth_type = p_params->auth_type,
         .p_http_auth = p_http_auth,
+        .p_extra_header_item = NULL,
     };
-    const http_resp_code_e http_resp_code = http_check(&params, NULL);
+    const http_resp_code_e http_resp_code = http_check(&params);
 
     if (NULL != p_http_auth)
     {
