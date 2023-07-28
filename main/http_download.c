@@ -35,20 +35,13 @@ static const char TAG[] = "http_download";
 
 typedef struct http_download_cb_info_t
 {
-    http_download_cb_on_data_t cb_on_data;
-    void*                      p_user_data;
     esp_http_client_handle_t   http_handle;
     uint32_t                   content_length;
-    uint32_t                   offset;
     bool                       flag_feed_task_watchdog;
+    uint32_t                   offset;
+    http_download_cb_on_data_t cb_on_data;
+    void*                      p_user_data;
 } http_download_cb_info_t;
-
-typedef struct http_check_cb_info_t
-{
-    esp_http_client_handle_t http_handle;
-    uint32_t                 content_length;
-    bool                     flag_feed_task_watchdog;
-} http_check_cb_info_t;
 
 static void
 suspend_relaying_and_wait(const bool flag_force_free_memory)
@@ -115,16 +108,19 @@ http_download_event_handler(esp_http_client_event_t* p_evt)
             LOG_DBG("HTTP_EVENT_ON_DATA, len=%d", p_evt->data_len);
             LOG_DUMP_VERBOSE(p_evt->data, p_evt->data_len, "<--:");
             http_feed_task_watchdog_if_needed(p_cb_info->flag_feed_task_watchdog);
-            if (!p_cb_info->cb_on_data(
-                    p_evt->data,
-                    p_evt->data_len,
-                    p_cb_info->offset,
-                    p_cb_info->content_length,
-                    (http_resp_code_e)esp_http_client_get_status_code(p_cb_info->http_handle),
-                    p_cb_info->p_user_data))
+            if (NULL != p_cb_info->cb_on_data)
             {
-                LOG_ERR("HTTP_EVENT_ON_DATA: cb_on_data failed");
-                return ESP_FAIL;
+                if (!p_cb_info->cb_on_data(
+                        p_evt->data,
+                        p_evt->data_len,
+                        p_cb_info->offset,
+                        p_cb_info->content_length,
+                        (http_resp_code_e)esp_http_client_get_status_code(p_cb_info->http_handle),
+                        p_cb_info->p_user_data))
+                {
+                    LOG_ERR("HTTP_EVENT_ON_DATA: cb_on_data failed");
+                    return ESP_FAIL;
+                }
             }
             p_cb_info->offset += p_evt->data_len;
             break;
@@ -145,71 +141,19 @@ http_download_event_handler(esp_http_client_event_t* p_evt)
     return ESP_OK;
 }
 
-static esp_err_t
-http_check_event_handler(esp_http_client_event_t* p_evt)
-{
-    http_check_cb_info_t* const p_cb_info = p_evt->user_data;
-    switch (p_evt->event_id)
-    {
-        case HTTP_EVENT_ERROR:
-            LOG_ERR("HTTP_EVENT_ERROR");
-            http_feed_task_watchdog_if_needed(p_cb_info->flag_feed_task_watchdog);
-            break;
-
-        case HTTP_EVENT_ON_CONNECTED:
-            LOG_INFO("HTTP_EVENT_ON_CONNECTED");
-            http_feed_task_watchdog_if_needed(p_cb_info->flag_feed_task_watchdog);
-            break;
-
-        case HTTP_EVENT_HEADER_SENT:
-            LOG_INFO("HTTP_EVENT_HEADER_SENT");
-            http_feed_task_watchdog_if_needed(p_cb_info->flag_feed_task_watchdog);
-            break;
-
-        case HTTP_EVENT_ON_HEADER:
-            LOG_INFO("HTTP_EVENT_ON_HEADER, key=%s, value=%s", p_evt->header_key, p_evt->header_value);
-            http_feed_task_watchdog_if_needed(p_cb_info->flag_feed_task_watchdog);
-            if (0 == strcasecmp(p_evt->header_key, "Content-Length"))
-            {
-                p_cb_info->content_length = os_str_to_uint32_cptr(p_evt->header_value, NULL, BASE_10);
-            }
-            break;
-
-        case HTTP_EVENT_ON_DATA:
-            LOG_DBG("HTTP_EVENT_ON_DATA, len=%d", p_evt->data_len);
-            LOG_DUMP_VERBOSE(p_evt->data, p_evt->data_len, "<--:");
-            http_feed_task_watchdog_if_needed(p_cb_info->flag_feed_task_watchdog);
-            break;
-
-        case HTTP_EVENT_ON_FINISH:
-            LOG_INFO("HTTP_EVENT_ON_FINISH");
-            http_feed_task_watchdog_if_needed(p_cb_info->flag_feed_task_watchdog);
-            break;
-
-        case HTTP_EVENT_DISCONNECTED:
-            LOG_INFO("HTTP_EVENT_DISCONNECTED");
-            http_feed_task_watchdog_if_needed(p_cb_info->flag_feed_task_watchdog);
-            break;
-
-        default:
-            break;
-    }
-    return ESP_OK;
-}
-
 static http_server_resp_t
 http_download_by_handle(
-    esp_http_client_handle_t http_handle,
+    esp_http_client_handle_t p_http_handle,
     const bool               flag_feed_task_watchdog,
     const TimeUnitsSeconds_t timeout_seconds)
 {
-    esp_err_t err = esp_http_client_set_header(http_handle, "Accept", "text/html,application/octet-stream,*/*");
+    esp_err_t err = esp_http_client_set_header(p_http_handle, "Accept", "text/html,application/octet-stream,*/*");
     if (ESP_OK != err)
     {
         LOG_ERR("%s failed", "esp_http_client_set_header");
         return http_server_resp_500();
     }
-    err = esp_http_client_set_header(http_handle, "User-Agent", "RuuviGateway");
+    err = esp_http_client_set_header(p_http_handle, "User-Agent", "RuuviGateway");
     if (ESP_OK != err)
     {
         LOG_ERR("%s failed", "esp_http_client_set_header");
@@ -217,28 +161,28 @@ http_download_by_handle(
     }
 
     LOG_DBG("esp_http_client_perform");
-    err = esp_http_client_perform(http_handle);
+    err = esp_http_client_perform(p_http_handle);
     if (ESP_OK == err)
     {
         LOG_DBG(
             "HTTP GET Status = %d, content_length = %d",
-            esp_http_client_get_status_code(http_handle),
-            esp_http_client_get_content_length(http_handle));
-        return http_server_resp_err(esp_http_client_get_status_code(http_handle));
+            esp_http_client_get_status_code(p_http_handle),
+            esp_http_client_get_content_length(p_http_handle));
+        return http_server_resp_err(esp_http_client_get_status_code(p_http_handle));
     }
     if (ESP_ERR_HTTP_EAGAIN != err)
     {
         LOG_ERR_ESP(
             err,
-            "esp_http_client_perform failed, HTTP resp code %d (http_handle=%ld)",
-            (printf_int_t)esp_http_client_get_status_code(http_handle),
-            (printf_long_t)http_handle);
+            "esp_http_client_perform failed, HTTP resp code %d (p_http_handle=%ld)",
+            (printf_int_t)esp_http_client_get_status_code(p_http_handle),
+            (printf_long_t)p_http_handle);
         return http_server_resp_502();
     }
 
     LOG_DBG("http_wait_until_async_req_completed");
     http_server_resp_t resp = http_wait_until_async_req_completed(
-        http_handle,
+        p_http_handle,
         NULL,
         flag_feed_task_watchdog,
         timeout_seconds);
@@ -276,7 +220,7 @@ http_download_create_config(
     p_http_config->client_key_pem              = p_param->p_client_key;
     p_http_config->user_agent                  = NULL;
     p_http_config->method                      = http_method;
-    const int32_t timeout_ms                   = p_param->timeout_seconds * TIME_UNITS_MS_PER_SECOND;
+    const int32_t timeout_ms                   = (int32_t)p_param->timeout_seconds * (int32_t)TIME_UNITS_MS_PER_SECOND;
     p_http_config->timeout_ms                  = timeout_ms;
     p_http_config->disable_auto_redirect       = false;
     p_http_config->max_redirection_count       = 0;
@@ -296,30 +240,109 @@ http_download_create_config(
     return p_http_config;
 }
 
+static esp_http_client_handle_t
+http_client_init(const http_download_param_with_auth_t* const p_param, esp_http_client_config_t* const p_http_config)
+{
+    esp_http_client_handle_t p_http_handle = esp_http_client_init(p_http_config);
+    if (NULL == p_http_handle)
+    {
+        LOG_ERR("Can't init http client");
+        return NULL;
+    }
+
+    if (!http_handle_add_authorization_if_needed(p_http_handle, p_param->auth_type, p_param->p_http_auth))
+    {
+        esp_http_client_cleanup(p_http_handle);
+        return NULL;
+    }
+
+    if (NULL != p_param->p_extra_header_item)
+    {
+        LOG_INFO(
+            "http_check: Add HTTP header: %s: %s",
+            p_param->p_extra_header_item->p_key,
+            p_param->p_extra_header_item->p_value);
+        const esp_err_t err = esp_http_client_set_header(
+            p_http_handle,
+            p_param->p_extra_header_item->p_key,
+            p_param->p_extra_header_item->p_value);
+        if (ESP_OK != err)
+        {
+            LOG_ERR(
+                "esp_http_client_set_header failed: key=%s, val=%s",
+                p_param->p_extra_header_item->p_key,
+                p_param->p_extra_header_item->p_value);
+            esp_http_client_cleanup(p_http_handle);
+            return NULL;
+        }
+    }
+    return p_http_handle;
+}
+
+static const char*
+http_client_method_to_str(const esp_http_client_method_t http_method)
+{
+    static const char* const g_http_method_to_str[HTTP_METHOD_MAX] = {
+        [HTTP_METHOD_GET]         = "GET",
+        [HTTP_METHOD_POST]        = "POST",
+        [HTTP_METHOD_PUT]         = "PUT",
+        [HTTP_METHOD_PATCH]       = "PATCH",
+        [HTTP_METHOD_DELETE]      = "DELETE",
+        [HTTP_METHOD_HEAD]        = "HEAD",
+        [HTTP_METHOD_NOTIFY]      = "NOTIFY",
+        [HTTP_METHOD_SUBSCRIBE]   = "SUBSCRIBE",
+        [HTTP_METHOD_UNSUBSCRIBE] = "UNSUBSCRIBE",
+        [HTTP_METHOD_OPTIONS]     = "OPTIONS",
+        [HTTP_METHOD_COPY]        = "COPY",
+        [HTTP_METHOD_MOVE]        = "MOVE",
+        [HTTP_METHOD_LOCK]        = "LOCK",
+        [HTTP_METHOD_UNLOCK]      = "UNLOCK",
+        [HTTP_METHOD_PROPFIND]    = "PROPFIND",
+        [HTTP_METHOD_PROPPATCH]   = "PROPPATCH",
+        [HTTP_METHOD_MKCOL]       = "MKCOL",
+    };
+    if (http_method >= HTTP_METHOD_MAX)
+    {
+        return "UNK";
+    }
+    const char* const p_method_str = g_http_method_to_str[http_method];
+    if (NULL == p_method_str)
+    {
+        return "UNK";
+    }
+    return p_method_str;
+}
+
 bool
-http_download_with_auth(
+http_download_or_check(
+    const esp_http_client_method_t               http_method,
     const http_download_param_with_auth_t* const p_param,
     http_download_cb_on_data_t const             p_cb_on_data,
-    void* const                                  p_user_data)
+    void* const                                  p_user_data,
+    http_resp_code_e* const                      p_http_resp_code)
 {
-    LOG_INFO("http_download: URL: %s", p_param->base.p_url);
+    LOG_INFO("HTTP download/check: Method=%s, URL: '%s'", http_client_method_to_str(http_method), p_param->base.p_url);
 
     if ((GW_CFG_HTTP_AUTH_TYPE_NONE != p_param->auth_type) && (NULL == p_param->p_http_auth))
     {
-        LOG_ERR("Auth type is not NONE, but p_http_auth is NULL");
+        LOG_ERR("HTTP download/check: Auth type is not NONE, but p_http_auth is NULL");
+        *p_http_resp_code = HTTP_RESP_CODE_400;
         return false;
     }
     if (!gw_status_is_network_connected())
     {
-        LOG_ERR("HTTP download failed - no network connection");
+        LOG_ERR("HTTP download/check: No network connection");
+        *p_http_resp_code = HTTP_RESP_CODE_503;
         return false;
     }
 
     const ruuvi_gw_cfg_http_auth_basic_t* p_auth_basic = NULL;
     if (GW_CFG_HTTP_AUTH_TYPE_BASIC == p_param->auth_type)
     {
-        LOG_INFO("http_download: Auth: Basic, Username: %s", p_param->p_http_auth->auth_basic.user.buf);
-        LOG_DBG("http_download: Auth: Basic, Password: %s", p_http_auth->auth_basic.password.buf);
+        LOG_INFO("HTTP download/check: Auth: Basic, Username: %s", p_param->p_http_auth->auth_basic.user.buf);
+        LOG_INFO(
+            "HTTP download/check: Auth: Basic, Password: %s",
+            (LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG) ? p_param->p_http_auth->auth_basic.password.buf : "******");
         p_auth_basic = &p_param->p_http_auth->auth_basic;
     }
 
@@ -327,6 +350,7 @@ http_download_with_auth(
     if (NULL == p_cb_info)
     {
         LOG_ERR("Can't allocate memory");
+        *p_http_resp_code = HTTP_RESP_CODE_500;
         return false;
     }
     p_cb_info->cb_on_data              = p_cb_on_data;
@@ -338,7 +362,7 @@ http_download_with_auth(
 
     esp_http_client_config_t* p_http_config = http_download_create_config(
         &p_param->base,
-        HTTP_METHOD_GET,
+        http_method,
         p_auth_basic,
         &http_download_event_handler,
         p_cb_info);
@@ -346,6 +370,7 @@ http_download_with_auth(
     {
         LOG_ERR("Can't allocate memory for http_config");
         os_free(p_cb_info);
+        *p_http_resp_code = HTTP_RESP_CODE_500;
         return false;
     }
 
@@ -353,161 +378,23 @@ http_download_with_auth(
     suspend_relaying_and_wait(p_param->base.flag_free_memory);
     LOG_DBG("suspend_relaying_and_wait: finished");
 
-    p_cb_info->http_handle = esp_http_client_init(p_http_config);
+    p_cb_info->http_handle = http_client_init(p_param, p_http_config);
     if (NULL == p_cb_info->http_handle)
     {
-        LOG_ERR("Can't init http client");
         os_free(p_http_config);
         os_free(p_cb_info);
         resume_relaying_and_wait(p_param->base.flag_free_memory);
+        *p_http_resp_code = HTTP_RESP_CODE_500;
         return false;
     }
 
-    if (!http_handle_add_authorization_if_needed(p_cb_info->http_handle, p_param->auth_type, p_param->p_http_auth))
-    {
-        os_free(p_http_config);
-        os_free(p_cb_info);
-        resume_relaying_and_wait(p_param->base.flag_free_memory);
-        return false;
-    }
-
-    if (NULL != p_param->p_extra_header_item)
-    {
-        LOG_INFO(
-            "http_download: Add HTTP header: %s: %s",
-            p_param->p_extra_header_item->p_key,
-            p_param->p_extra_header_item->p_value);
-        esp_http_client_set_header(
-            p_cb_info->http_handle,
-            p_param->p_extra_header_item->p_key,
-            p_param->p_extra_header_item->p_value);
-    }
-
-    LOG_DBG("http_download_by_handle");
+    LOG_DBG("Call http_download_by_handle");
     http_server_resp_t resp = http_download_by_handle(
         p_cb_info->http_handle,
         p_param->base.flag_feed_task_watchdog,
         p_param->base.timeout_seconds);
 
-    LOG_DBG("esp_http_client_cleanup");
-    const esp_err_t err = esp_http_client_cleanup(p_cb_info->http_handle);
-    if (ESP_OK != err)
-    {
-        LOG_ERR_ESP(err, "esp_http_client_cleanup failed");
-    }
-
-    os_free(p_http_config);
-    os_free(p_cb_info);
-    resume_relaying_and_wait(p_param->base.flag_free_memory);
-
-    if ((HTTP_CONTENT_LOCATION_HEAP == resp.content_location) && (NULL != resp.select_location.memory.p_buf))
-    {
-        os_free(resp.select_location.memory.p_buf);
-    }
-
-    return (HTTP_RESP_CODE_200 == resp.http_resp_code) ? true : false;
-}
-
-bool
-http_check_with_auth(const http_download_param_with_auth_t* const p_param, http_resp_code_e* const p_http_resp_code)
-{
-    LOG_INFO("http_check: URL: %s", p_param->base.p_url);
-
-    if ((GW_CFG_HTTP_AUTH_TYPE_NONE != p_param->auth_type) && (NULL == p_param->p_http_auth))
-    {
-        LOG_ERR("Auth type is not NONE, but p_http_auth is NULL");
-        *p_http_resp_code = HTTP_RESP_CODE_400;
-        return false;
-    }
-    if (!gw_status_is_network_connected())
-    {
-        LOG_ERR("HTTP check failed - no network connection");
-        *p_http_resp_code = HTTP_RESP_CODE_503;
-        return false;
-    }
-
-    http_download_cb_info_t* p_cb_info = os_calloc(1, sizeof(*p_cb_info));
-    if (NULL == p_cb_info)
-    {
-        LOG_ERR("Can't allocate memory");
-        *p_http_resp_code = HTTP_RESP_CODE_500;
-        return false;
-    }
-    p_cb_info->cb_on_data              = NULL;
-    p_cb_info->p_user_data             = NULL;
-    p_cb_info->http_handle             = NULL;
-    p_cb_info->content_length          = 0;
-    p_cb_info->offset                  = 0;
-    p_cb_info->flag_feed_task_watchdog = p_param->base.flag_feed_task_watchdog;
-
-    const esp_http_client_auth_type_t     http_client_auth_type = (GW_CFG_HTTP_AUTH_TYPE_BASIC == p_param->auth_type)
-                                                                      ? HTTP_AUTH_TYPE_BASIC
-                                                                      : HTTP_AUTH_TYPE_NONE;
-    const ruuvi_gw_cfg_http_auth_basic_t* p_auth_basic          = NULL;
-    if (GW_CFG_HTTP_AUTH_TYPE_BASIC == p_param->auth_type)
-    {
-        p_auth_basic = &p_param->p_http_auth->auth_basic;
-    }
-
-    esp_http_client_config_t* p_http_config = http_download_create_config(
-        &p_param->base,
-        HTTP_METHOD_HEAD,
-        p_auth_basic,
-        &http_check_event_handler,
-        p_cb_info);
-    if (NULL == p_http_config)
-    {
-        LOG_ERR("Can't allocate memory for http_config");
-        os_free(p_cb_info);
-        *p_http_resp_code = HTTP_RESP_CODE_500;
-        return false;
-    }
-    if (HTTP_AUTH_TYPE_BASIC == http_client_auth_type)
-    {
-        LOG_INFO("http_check: Auth: Basic, Username: %s", p_param->p_http_auth->auth_basic.user.buf);
-    }
-
-    suspend_relaying_and_wait(p_param->base.flag_free_memory);
-
-    p_cb_info->http_handle = esp_http_client_init(p_http_config);
-    if (NULL == p_cb_info->http_handle)
-    {
-        LOG_ERR("Can't init http client");
-        os_free(p_http_config);
-        os_free(p_cb_info);
-        resume_relaying_and_wait(p_param->base.flag_free_memory);
-        *p_http_resp_code = HTTP_RESP_CODE_500;
-        return false;
-    }
-
-    if (!http_handle_add_authorization_if_needed(p_cb_info->http_handle, p_param->auth_type, p_param->p_http_auth))
-    {
-        os_free(p_http_config);
-        os_free(p_cb_info);
-        resume_relaying_and_wait(p_param->base.flag_free_memory);
-        *p_http_resp_code = HTTP_RESP_CODE_500;
-        return false;
-    }
-
-    if (NULL != p_param->p_extra_header_item)
-    {
-        LOG_INFO(
-            "http_check: Add HTTP header: %s: %s",
-            p_param->p_extra_header_item->p_key,
-            p_param->p_extra_header_item->p_value);
-        esp_http_client_set_header(
-            p_cb_info->http_handle,
-            p_param->p_extra_header_item->p_key,
-            p_param->p_extra_header_item->p_value);
-    }
-
-    LOG_DBG("http_check_by_handle");
-    http_server_resp_t resp = http_download_by_handle(
-        p_cb_info->http_handle,
-        p_param->base.flag_feed_task_watchdog,
-        p_param->base.timeout_seconds);
-
-    LOG_DBG("esp_http_client_cleanup");
+    LOG_DBG("Call esp_http_client_cleanup");
     const esp_err_t err = esp_http_client_cleanup(p_cb_info->http_handle);
     if (ESP_OK != err)
     {
@@ -525,6 +412,23 @@ http_check_with_auth(const http_download_param_with_auth_t* const p_param, http_
 
     *p_http_resp_code = resp.http_resp_code;
     return (HTTP_RESP_CODE_200 == resp.http_resp_code) ? true : false;
+}
+
+bool
+http_download_with_auth(
+    const http_download_param_with_auth_t* const p_param,
+    http_download_cb_on_data_t const             p_cb_on_data,
+    void* const                                  p_user_data)
+{
+    http_resp_code_e http_resp_code = HTTP_RESP_CODE_200;
+
+    return http_download_or_check(HTTP_METHOD_GET, p_param, p_cb_on_data, p_user_data, &http_resp_code);
+}
+
+bool
+http_check_with_auth(const http_download_param_with_auth_t* const p_param, http_resp_code_e* const p_http_resp_code)
+{
+    return http_download_or_check(HTTP_METHOD_HEAD, p_param, NULL, NULL, p_http_resp_code);
 }
 
 #endif
