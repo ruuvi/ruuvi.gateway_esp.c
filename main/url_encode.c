@@ -37,7 +37,7 @@ bool
 url_n_encode_to_str_buf(const char* const p_src, const size_t len, str_buf_t* const p_dst)
 {
     str_buf_printf(p_dst, "%s", "");
-    for (const char* p_cur = p_src; ('\0' != *p_cur) && ((ptrdiff_t)(p_cur - p_src) < len); ++p_cur)
+    for (const char* p_cur = p_src; ('\0' != *p_cur) && ((p_cur - p_src) < len); ++p_cur)
     {
         if (rfc3986_is_in_range(*p_cur))
         {
@@ -86,7 +86,7 @@ url_n_decode_to_str_buf(const char* const p_src, const size_t len, str_buf_t* co
 {
     str_buf_printf(p_dst, "%s", "");
     const char* p_cur = p_src;
-    while (('\0' != *p_cur) && ((ptrdiff_t)(p_cur - p_src) < len))
+    while (('\0' != *p_cur) && ((p_cur - p_src) < len))
     {
         if ('%' == *p_cur)
         {

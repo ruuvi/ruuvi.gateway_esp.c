@@ -241,7 +241,9 @@ http_download_create_config(
 }
 
 static esp_http_client_handle_t
-http_client_init(const http_download_param_with_auth_t* const p_param, esp_http_client_config_t* const p_http_config)
+http_client_init(
+    const http_download_param_with_auth_t* const p_param,
+    const esp_http_client_config_t* const        p_http_config)
 {
     esp_http_client_handle_t p_http_handle = esp_http_client_init(p_http_config);
     if (NULL == p_http_handle)
@@ -277,40 +279,6 @@ http_client_init(const http_download_param_with_auth_t* const p_param, esp_http_
         }
     }
     return p_http_handle;
-}
-
-static const char*
-http_client_method_to_str(const esp_http_client_method_t http_method)
-{
-    static const char* const g_http_method_to_str[HTTP_METHOD_MAX] = {
-        [HTTP_METHOD_GET]         = "GET",
-        [HTTP_METHOD_POST]        = "POST",
-        [HTTP_METHOD_PUT]         = "PUT",
-        [HTTP_METHOD_PATCH]       = "PATCH",
-        [HTTP_METHOD_DELETE]      = "DELETE",
-        [HTTP_METHOD_HEAD]        = "HEAD",
-        [HTTP_METHOD_NOTIFY]      = "NOTIFY",
-        [HTTP_METHOD_SUBSCRIBE]   = "SUBSCRIBE",
-        [HTTP_METHOD_UNSUBSCRIBE] = "UNSUBSCRIBE",
-        [HTTP_METHOD_OPTIONS]     = "OPTIONS",
-        [HTTP_METHOD_COPY]        = "COPY",
-        [HTTP_METHOD_MOVE]        = "MOVE",
-        [HTTP_METHOD_LOCK]        = "LOCK",
-        [HTTP_METHOD_UNLOCK]      = "UNLOCK",
-        [HTTP_METHOD_PROPFIND]    = "PROPFIND",
-        [HTTP_METHOD_PROPPATCH]   = "PROPPATCH",
-        [HTTP_METHOD_MKCOL]       = "MKCOL",
-    };
-    if (http_method >= HTTP_METHOD_MAX)
-    {
-        return "UNK";
-    }
-    const char* const p_method_str = g_http_method_to_str[http_method];
-    if (NULL == p_method_str)
-    {
-        return "UNK";
-    }
-    return p_method_str;
 }
 
 bool

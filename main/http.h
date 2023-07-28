@@ -116,6 +116,9 @@ http_handle_add_authorization_if_needed(
     const gw_cfg_http_auth_type_e         auth_type,
     const ruuvi_gw_cfg_http_auth_t* const p_http_auth);
 
+const char*
+http_client_method_to_str(const esp_http_client_method_t http_method);
+
 #ifdef __cplusplus
 }
 #endif

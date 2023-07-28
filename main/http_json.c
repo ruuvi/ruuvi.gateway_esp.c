@@ -45,8 +45,7 @@ http_json_generate_task_info(const char* const p_task_name, const uint32_t min_f
         return false;
     }
 
-    cJSON* const p_task_name_obj = cJSON_AddStringToObject(p_task_obj, "TASK_NAME", p_task_name);
-    if (NULL == p_task_name_obj)
+    if (NULL == cJSON_AddStringToObject(p_task_obj, "TASK_NAME", p_task_name))
     {
         cJSON_Delete(p_task_obj);
         return false;

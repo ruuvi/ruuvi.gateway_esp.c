@@ -89,7 +89,7 @@ ethernet_connection_ok_cb(const esp_netif_ip_info_t* p_ip_info)
 }
 
 void
-wifi_connection_ok_cb(void* p_param)
+wifi_connection_ok_cb(void* p_param) // NOSONAR
 {
     (void)p_param;
     LOG_INFO("Wifi connected");
@@ -173,7 +173,7 @@ cb_on_request_status_json(void)
 }
 
 void
-wifi_disconnect_cb(void* p_param)
+wifi_disconnect_cb(void* p_param) // NOSONAR
 {
     (void)p_param;
     LOG_WARN("Wifi disconnected");

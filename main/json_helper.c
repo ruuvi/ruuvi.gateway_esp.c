@@ -107,5 +107,6 @@ json_helper_get_by_key(const char* const p_json, const char* const p_key)
     {
         return str_buf_init_null();
     }
-    return str_buf_printf_with_alloc("%.*s", (printf_int_t)(p_end - p_begin), p_begin);
+    const printf_int_t len = p_end - p_begin;
+    return str_buf_printf_with_alloc("%.*s", len, p_begin);
 }

@@ -159,7 +159,7 @@ http_post_event_handler_on_data(const esp_http_client_event_t* const p_evt)
 }
 
 static esp_err_t
-http_post_event_handler(esp_http_client_event_t* p_evt)
+http_post_event_handler(esp_http_client_event_t* p_evt) // NOSONAR
 {
     switch (p_evt->event_id)
     {
@@ -448,7 +448,7 @@ http_send_async(http_async_info_t* const p_http_async_info)
         const json_stream_gen_size_t json_len = json_stream_gen_calc_size(p_http_async_info->select.p_gen);
         const esp_err_t              err      = esp_http_client_set_cb_on_post_get_chunk(
             p_http_async_info->p_http_client_handle,
-            (int)json_len,
+            json_len,
             &cb_on_post_get_chunk,
             (void*)p_http_async_info->select.p_gen);
         if (0 != err)
@@ -1289,7 +1289,7 @@ http_check_mqtt(const ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg, const TimeUnitsSeco
 
 static void
 http_async_poll_handle_resp_ok(
-    http_async_info_t* const                 p_http_async_info,
+    const http_async_info_t* const           p_http_async_info,
     const esp_http_client_http_status_code_t http_status)
 {
     LOG_INFO(
@@ -1311,7 +1311,7 @@ http_async_poll_handle_resp_ok(
 
 static void
 http_async_poll_handle_resp_err(
-    http_async_info_t* const                 p_http_async_info,
+    const http_async_info_t* const           p_http_async_info,
     const esp_http_client_http_status_code_t http_status)
 {
     LOG_ERR(
@@ -1363,7 +1363,7 @@ http_async_poll_do_actions_after_completion_advs2(const bool flag_success)
 }
 
 static void
-http_async_poll_do_actions_after_completion(http_async_info_t* const p_http_async_info, const bool flag_success)
+http_async_poll_do_actions_after_completion(const http_async_info_t* const p_http_async_info, const bool flag_success)
 {
     switch (p_http_async_info->recipient)
     {
@@ -1445,24 +1445,44 @@ http_async_poll(void)
     return true;
 }
 
-static const char*
-http_method_to_str(http_async_info_t* p_http_async_info)
+const char*
+http_client_method_to_str(const esp_http_client_method_t http_method)
 {
-    const esp_http_client_method_t method = p_http_async_info->http_client_config.esp_http_client_config.method;
-    switch (method)
+    static const char* const g_http_method_to_str[HTTP_METHOD_MAX] = {
+        [HTTP_METHOD_GET]         = "GET",
+        [HTTP_METHOD_POST]        = "POST",
+        [HTTP_METHOD_PUT]         = "PUT",
+        [HTTP_METHOD_PATCH]       = "PATCH",
+        [HTTP_METHOD_DELETE]      = "DELETE",
+        [HTTP_METHOD_HEAD]        = "HEAD",
+        [HTTP_METHOD_NOTIFY]      = "NOTIFY",
+        [HTTP_METHOD_SUBSCRIBE]   = "SUBSCRIBE",
+        [HTTP_METHOD_UNSUBSCRIBE] = "UNSUBSCRIBE",
+        [HTTP_METHOD_OPTIONS]     = "OPTIONS",
+        [HTTP_METHOD_COPY]        = "COPY",
+        [HTTP_METHOD_MOVE]        = "MOVE",
+        [HTTP_METHOD_LOCK]        = "LOCK",
+        [HTTP_METHOD_UNLOCK]      = "UNLOCK",
+        [HTTP_METHOD_PROPFIND]    = "PROPFIND",
+        [HTTP_METHOD_PROPPATCH]   = "PROPPATCH",
+        [HTTP_METHOD_MKCOL]       = "MKCOL",
+    };
+    if (http_method >= HTTP_METHOD_MAX)
     {
-        case HTTP_METHOD_GET:
-            return "GET";
-        case HTTP_METHOD_POST:
-            return "POST";
-        case HTTP_METHOD_DELETE:
-            return "DELETE";
-        case HTTP_METHOD_HEAD:
-            return "HEAD";
-        default:
-            break;
+        return "UNK";
     }
-    return "UNKNOWN";
+    const char* const p_method_str = g_http_method_to_str[http_method];
+    if (NULL == p_method_str)
+    {
+        return "UNK";
+    }
+    return p_method_str;
+}
+
+static const char*
+http_method_to_str(const http_async_info_t* const p_http_async_info)
+{
+    return http_client_method_to_str(p_http_async_info->http_client_config.esp_http_client_config.method);
 }
 
 void

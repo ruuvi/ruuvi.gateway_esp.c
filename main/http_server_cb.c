@@ -551,7 +551,7 @@ http_server_get_from_params(const char* const p_params, const char* const p_key)
     }
     const char* const p_value = &p_param[key_len];
     const char* const p_end   = strchr(p_value, '&');
-    const size_t      val_len = (NULL == p_end) ? strlen(p_value) : (size_t)(ptrdiff_t)(p_end - p_value);
+    const size_t      val_len = (NULL == p_end) ? strlen(p_value) : (size_t)(p_end - p_value);
     LOG_DBG("HTTP params: %s%.*s", p_key, val_len, p_value);
 
     const str_buf_t result = str_buf_printf_with_alloc("%.*s", (printf_int_t)val_len, p_value);

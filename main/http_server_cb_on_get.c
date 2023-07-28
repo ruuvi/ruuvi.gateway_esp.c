@@ -19,6 +19,7 @@
 #include "ruuvi_gateway.h"
 #include "str_buf.h"
 #include "gw_status.h"
+#include "os_str.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -34,6 +35,8 @@
 #define HTTP_SERVER_DEFAULT_HISTORY_INTERVAL_SECONDS (60U)
 
 #define MQTT_URL_PREFIX_LEN (20)
+
+#define BASE_10 (10)
 
 typedef double cjson_double_t;
 
@@ -454,7 +457,7 @@ http_server_get_validate_type_from_params(const char* const p_params)
     }
     const char* const p_value = &p_param[prefix_len];
     const char* const p_end   = strchr(p_value, '&');
-    const size_t      val_len = (NULL == p_end) ? strlen(p_value) : (size_t)(ptrdiff_t)(p_end - p_value);
+    const size_t      val_len = (NULL == p_end) ? strlen(p_value) : (size_t)(p_end - p_value);
     LOG_INFO("Found validate_type: %.*s", val_len, p_value);
     if (0 == strncmp(p_value, "check_post_advs", val_len))
     {
@@ -494,7 +497,7 @@ http_server_get_use_ssl_client_cert(const char* const p_params)
     }
     const char* const p_value = &p_param[prefix_len];
     const char* const p_end   = strchr(p_value, '&');
-    const size_t      val_len = (NULL == p_end) ? strlen(p_value) : (size_t)(ptrdiff_t)(p_end - p_value);
+    const size_t      val_len = (NULL == p_end) ? strlen(p_value) : (size_t)(p_end - p_value);
     LOG_INFO("Found use_ssl_client_cert: %.*s", val_len, p_value);
     if (0 == strncmp(p_value, "true", val_len))
     {
@@ -517,7 +520,7 @@ http_server_get_use_ssl_server_cert(const char* const p_params)
     }
     const char* const p_value = &p_param[prefix_len];
     const char* const p_end   = strchr(p_value, '&');
-    const size_t      val_len = (NULL == p_end) ? strlen(p_value) : (size_t)(ptrdiff_t)(p_end - p_value);
+    const size_t      val_len = (NULL == p_end) ? strlen(p_value) : (size_t)(p_end - p_value);
     LOG_INFO("Found use_ssl_server_cert: %.*s", val_len, p_value);
     if (0 == strncmp(p_value, "true", val_len))
     {
@@ -577,7 +580,7 @@ http_server_parse_mqtt_url(const char* const p_url, ruuvi_gw_cfg_mqtt_t* const p
         LOG_ERR("Can't find MQTT port separator in URL: %s", p_url);
         return false;
     }
-    const size_t server_len = (size_t)(ptrdiff_t)(p_port_separator - p_server);
+    const size_t server_len = (size_t)(p_port_separator - p_server);
     if (server_len >= sizeof(p_mqtt_cfg->mqtt_server.buf))
     {
         LOG_ERR("Server name in too long in MQTT URL: %s", p_url);
@@ -593,8 +596,8 @@ http_server_parse_mqtt_url(const char* const p_url, ruuvi_gw_cfg_mqtt_t* const p
 
     const char* const p_port = p_port_separator + 1;
 
-    char*         p_end     = NULL;
-    unsigned long mqtt_port = strtoul(p_port, &p_end, 10);
+    const char* p_end     = NULL;
+    uint32_t    mqtt_port = os_str_to_uint32_cptr(p_port, &p_end, BASE_10);
     if ('\0' != *p_end)
     {
         LOG_ERR("Incorrect MQTT port in URL: %s", p_url);
@@ -626,7 +629,7 @@ http_server_get_mqtt_disable_retained_messages(const char* const p_params)
     }
     const char* const p_value = &p_param[prefix_len];
     const char* const p_end   = strchr(p_value, '&');
-    const size_t      val_len = (NULL == p_end) ? strlen(p_value) : (size_t)(ptrdiff_t)(p_end - p_value);
+    const size_t      val_len = (NULL == p_end) ? strlen(p_value) : (size_t)(p_end - p_value);
     LOG_INFO("Found mqtt_disable_retained_messages: %.*s", val_len, p_value);
     if (0 == strncmp(p_value, "true", val_len))
     {

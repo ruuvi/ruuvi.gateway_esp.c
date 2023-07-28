@@ -104,15 +104,15 @@ flashfatfs_open(const flash_fat_fs_t* p_ffs, const char* file_path)
     if (NULL == tmp_path.buf)
     {
         LOG_ERR("Can't allocate memory");
-        return (file_descriptor_t)-1;
+        return FILE_DESCRIPTOR_INVALID;
     }
-    file_descriptor_t fd = open(tmp_path.buf, O_RDONLY);
-    if (fd < 0)
+    file_descriptor_t file_desc = open(tmp_path.buf, O_RDONLY);
+    if (file_desc < 0)
     {
         LOG_ERR("Can't open: %s", tmp_path.buf);
     }
     str_buf_free_buf(&tmp_path);
-    return fd;
+    return file_desc;
 }
 
 FILE*

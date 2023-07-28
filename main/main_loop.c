@@ -129,8 +129,9 @@ check_if_checking_for_fw_updates_allowed2(const ruuvi_gw_cfg_auto_update_t* cons
     LOG_INFO("Check for fw updates: Current day: %s", os_time_wday_name_mid(os_time_get_tm_wday(&tm_time)));
     for (os_time_wday_e wday = OS_TIME_WDAY_SUN; wday <= OS_TIME_WDAY_SAT; ++wday)
     {
-        const bool flag_active = (p_cfg_auto_update->auto_update_weekdays_bitmask & (1U << (uint32_t)wday)) ? true
-                                                                                                            : false;
+        const bool flag_active = (0 != (p_cfg_auto_update->auto_update_weekdays_bitmask & (1U << (uint32_t)wday)))
+                                     ? true
+                                     : false;
         LOG_INFO("Check for fw updates: %s - %s", os_time_wday_name_mid(wday), flag_active ? "Yes" : "No");
     }
 

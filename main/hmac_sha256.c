@@ -92,7 +92,7 @@ hmac_sha256_calc_for_json_gen(
     mbedtls_md_context_t ctx;
     mbedtls_md_init(&ctx);
 
-    int ret = mbedtls_md_setup(&ctx, p_md_info, 1);
+    int32_t ret = mbedtls_md_setup(&ctx, p_md_info, 1);
     if (0 != ret)
     {
         mbedtls_md_free(&ctx);

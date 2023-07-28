@@ -250,7 +250,7 @@ mqtt_get_error_code(mqtt_protected_data_t* const p_data, const esp_mqtt_error_co
     mqtt_error_e                         mqtt_error               = MQTT_ERROR_NONE;
     const esp_err_t                      esp_tls_last_esp_err     = p_error_handle->esp_tls_last_esp_err;
     const esp_mqtt_error_type_t          error_type               = p_error_handle->error_type;
-    const int                            esp_transport_sock_errno = p_error_handle->esp_transport_sock_errno;
+    const esp_err_t                      esp_transport_sock_errno = p_error_handle->esp_transport_sock_errno;
     const esp_mqtt_connect_return_code_t connect_return_code      = p_error_handle->connect_return_code;
     const char* const                    p_connect_ret_code_desc = mqtt_connect_return_code_to_str(connect_return_code);
     if (MQTT_ERROR_TYPE_TCP_TRANSPORT == error_type)
@@ -644,7 +644,7 @@ mqtt_app_stop(void)
             vTaskDelay(pdMS_TO_TICKS(500));
         }
         LOG_INFO("TaskWatchdog: Unregister current thread");
-        const bool flag_task_wdt_used = (esp_task_wdt_delete(xTaskGetCurrentTaskHandle()) == ESP_OK) ? true : false;
+        const bool flag_task_wdt_used = (ESP_OK == esp_task_wdt_delete(xTaskGetCurrentTaskHandle())) ? true : false;
 
         LOG_INFO("MQTT destroy");
 

@@ -149,7 +149,7 @@ event_mgr_subscribe_sig_static(
 }
 
 void
-event_mgr_unsubscribe_sig(const event_mgr_ev_e event, os_signal_t* const p_signal, const os_signal_num_e sig_num)
+event_mgr_unsubscribe_sig(const event_mgr_ev_e event, const os_signal_t* const p_signal, const os_signal_num_e sig_num)
 {
     assert((event > EVENT_MGR_EV_NONE) && (event < EVENT_MGR_EV_LAST));
 
@@ -182,7 +182,7 @@ event_mgr_unsubscribe_sig_static(event_mgr_ev_info_static_t* const p_ev_info_mem
 {
     assert((event > EVENT_MGR_EV_NONE) && (event < EVENT_MGR_EV_LAST));
 
-    event_mgr_ev_info_t* const p_ev_info = (event_mgr_ev_info_t*)p_ev_info_mem;
+    const event_mgr_ev_info_t* const p_ev_info = (event_mgr_ev_info_t*)p_ev_info_mem;
 
     event_mgr_t* const p_obj = &g_event_mgr;
     event_mgr_mutex_lock(p_obj);
