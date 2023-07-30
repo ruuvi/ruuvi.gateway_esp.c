@@ -589,6 +589,61 @@ typedef struct http_send_advs_internal_params_t
 } http_send_advs_internal_params_t;
 
 static bool
+http_init_client_config_for_http_target(
+    http_client_config_t* const                   p_http_client_config,
+    const ruuvi_gw_cfg_http_t* const              p_cfg_http,
+    const http_send_advs_internal_params_t* const p_params,
+    void* const                                   p_user_data)
+{
+    const ruuvi_gw_cfg_http_user_t*     p_http_user = NULL;
+    const ruuvi_gw_cfg_http_password_t* p_http_pass = NULL;
+    if ((!p_params->flag_post_to_ruuvi) && (GW_CFG_HTTP_AUTH_TYPE_BASIC == p_cfg_http->auth_type))
+    {
+        p_http_user = &p_cfg_http->auth.auth_basic.user;
+        p_http_pass = &p_cfg_http->auth.auth_basic.password;
+    }
+
+    ruuvi_gw_cfg_http_url_t* p_http_url = os_malloc(sizeof(*p_http_url));
+    if (NULL == p_http_url)
+    {
+        LOG_ERR("Can't allocate memory");
+        return false;
+    }
+    (void)snprintf(
+        p_http_url->buf,
+        sizeof(p_http_url->buf),
+        "%s",
+        p_params->flag_post_to_ruuvi ? RUUVI_GATEWAY_HTTP_DEFAULT_URL : p_cfg_http->http_url.buf);
+
+    str_buf_t str_buf_server_cert_http = str_buf_init_null();
+    str_buf_t str_buf_client_cert      = str_buf_init_null();
+    str_buf_t str_buf_client_key       = str_buf_init_null();
+    if (p_params->use_ssl_client_cert)
+    {
+        str_buf_client_cert = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT);
+        str_buf_client_key  = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY);
+    }
+    if (p_params->use_ssl_server_cert)
+    {
+        str_buf_server_cert_http = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT);
+    }
+    const http_init_client_config_params_t http_cli_cfg_params = {
+        .p_url         = p_http_url,
+        .p_user        = p_http_user,
+        .p_password    = p_http_pass,
+        .p_server_cert = str_buf_server_cert_http.buf,
+        .p_client_cert = str_buf_client_cert.buf,
+        .p_client_key  = str_buf_client_key.buf,
+    };
+
+    http_init_client_config(p_http_client_config, &http_cli_cfg_params, p_user_data);
+
+    os_free(p_http_url);
+
+    return true;
+}
+
+static bool
 http_send_advs_internal(
     http_async_info_t* const                      p_http_async_info,
     const adv_report_table_t* const               p_reports,
@@ -645,52 +700,15 @@ http_send_advs_internal(
     }
 #endif
 
-    const ruuvi_gw_cfg_http_user_t*     p_http_user = NULL;
-    const ruuvi_gw_cfg_http_password_t* p_http_pass = NULL;
-    if ((!p_params->flag_post_to_ruuvi) && (GW_CFG_HTTP_AUTH_TYPE_BASIC == p_cfg_http->auth_type))
+    if (!http_init_client_config_for_http_target(
+            &p_http_async_info->http_client_config,
+            p_cfg_http,
+            p_params,
+            p_user_data))
     {
-        p_http_user = &p_cfg_http->auth.auth_basic.user;
-        p_http_pass = &p_cfg_http->auth.auth_basic.password;
-    }
-
-    ruuvi_gw_cfg_http_url_t* p_http_url = os_malloc(sizeof(*p_http_url));
-    if (NULL == p_http_url)
-    {
-        LOG_ERR("Can't allocate memory");
         http_async_info_free_data(p_http_async_info);
         return false;
     }
-    (void)snprintf(
-        p_http_url->buf,
-        sizeof(p_http_url->buf),
-        "%s",
-        p_params->flag_post_to_ruuvi ? RUUVI_GATEWAY_HTTP_DEFAULT_URL : p_cfg_http->http_url.buf);
-
-    str_buf_t str_buf_server_cert_http = str_buf_init_null();
-    str_buf_t str_buf_client_cert      = str_buf_init_null();
-    str_buf_t str_buf_client_key       = str_buf_init_null();
-    if (p_params->use_ssl_client_cert)
-    {
-        str_buf_client_cert = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT);
-        str_buf_client_key  = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY);
-    }
-    if (p_params->use_ssl_server_cert)
-    {
-        str_buf_server_cert_http = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT);
-    }
-
-    const http_init_client_config_params_t http_cli_cfg_params = {
-        .p_url         = p_http_url,
-        .p_user        = p_http_user,
-        .p_password    = p_http_pass,
-        .p_server_cert = str_buf_server_cert_http.buf,
-        .p_client_cert = str_buf_client_cert.buf,
-        .p_client_key  = str_buf_client_key.buf,
-    };
-
-    http_init_client_config(&p_http_async_info->http_client_config, &http_cli_cfg_params, p_user_data);
-
-    os_free(p_http_url);
 
     p_http_async_info->p_http_client_handle = esp_http_client_init(
         &p_http_async_info->http_client_config.esp_http_client_config);
