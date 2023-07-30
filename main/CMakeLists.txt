@@ -33,6 +33,7 @@ idf_component_register(
             gw_cfg.h
             gw_cfg_blob.c
             gw_cfg_blob.h
+            gw_cfg_cmp.c
             gw_cfg_json_parse.c
             gw_cfg_json_parse.h
             gw_cfg_json_generate.c
