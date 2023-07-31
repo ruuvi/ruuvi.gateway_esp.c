@@ -46,6 +46,8 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/event_mgr.h
         ${RUUVI_GW_SRC}/url_encode.c
         ${RUUVI_GW_SRC}/url_encode.h
+        ${RUUVI_GW_SRC}/validate_url.c
+        ${RUUVI_GW_SRC}/validate_url.h
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_5.c
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_5.h
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_6.c

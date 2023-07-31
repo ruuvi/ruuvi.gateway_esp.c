@@ -119,6 +119,8 @@ idf_component_register(
             time_task.h
             url_encode.c
             url_encode.h
+            validate_url.c
+            validate_url.h
         PRIV_REQUIRES
             app_update
             mdns
