@@ -852,7 +852,9 @@ gw_cfg_json_parse_cjson_wifi_sta_config(const cJSON* const p_cjson, wifi_sta_con
 }
 
 static void
-gw_cfg_json_parse_cjson_wifi_sta_settings(const cJSON* const p_cjson, wifi_settings_sta_t* const p_sta_settings)
+gw_cfg_json_parse_cjson_wifi_sta_settings(
+    const cJSON* const         p_cjson,
+    wifi_settings_sta_t* const p_sta_settings) // NOSONAR
 {
     (void)p_cjson;
     (void)p_sta_settings;
@@ -885,7 +887,7 @@ gw_cfg_json_parse_cjson_wifi_ap_config(const cJSON* const p_cjson, wifi_ap_confi
 }
 
 static void
-gw_cfg_json_parse_cjson_wifi_ap_settings(const cJSON* const p_cjson, wifi_settings_ap_t* const p_ap_settings)
+gw_cfg_json_parse_cjson_wifi_ap_settings(const cJSON* const p_cjson, wifi_settings_ap_t* const p_ap_settings) // NOSONAR
 {
     (void)p_cjson;
     (void)p_ap_settings;
