@@ -507,7 +507,7 @@ adv_post_retransmit_advs(
         return false;
     }
     const bool res
-        = http_send_advs(p_reports, g_adv_post_nonce, flag_use_timestamps, flag_post_to_ruuvi, p_cfg_http, NULL);
+        = http_post_advs(p_reports, g_adv_post_nonce, flag_use_timestamps, flag_post_to_ruuvi, p_cfg_http, NULL);
     os_free(p_cfg_http);
     if (!res)
     {
@@ -599,7 +599,7 @@ adv_post_stat(const ruuvi_gw_cfg_http_stat_t* const p_cfg_http_stat, void* const
         return false;
     }
 
-    const bool res = http_send_statistics(
+    const bool res = http_post_stat(
         p_stat_info,
         p_reports,
         p_cfg_http_stat,

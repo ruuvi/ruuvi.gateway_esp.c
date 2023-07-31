@@ -36,6 +36,25 @@ typedef bool (*http_download_cb_on_data_t)(
     const http_resp_code_e resp_code,
     void*                  p_user_data);
 
+typedef struct http_download_param_t
+{
+    const char*        p_url;
+    TimeUnitsSeconds_t timeout_seconds;
+    bool               flag_feed_task_watchdog;
+    bool               flag_free_memory;
+    const char*        p_server_cert;
+    const char*        p_client_cert;
+    const char*        p_client_key;
+} http_download_param_t;
+
+typedef struct http_download_param_with_auth_t
+{
+    const http_download_param_t           base;
+    const gw_cfg_http_auth_type_e         auth_type;
+    const ruuvi_gw_cfg_http_auth_t* const p_http_auth;
+    const http_header_item_t* const       p_extra_header_item;
+} http_download_param_with_auth_t;
+
 bool
 http_download_with_auth(
     const http_download_param_with_auth_t* const p_param,

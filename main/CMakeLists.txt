@@ -57,8 +57,11 @@ idf_component_register(
             hmac_sha256.h
             http.c
             http.h
+            http_check_mqtt.c
             http_json.c
             http_json.h
+            http_post_advs.c
+            http_post_stat.c
             json_helper.c
             json_helper.h
             json_ruuvi.c
