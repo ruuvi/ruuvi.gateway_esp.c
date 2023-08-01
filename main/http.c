@@ -7,14 +7,11 @@
 
 #include "http.h"
 #include <string.h>
-#include <time.h>
 #include <esp_task_wdt.h>
-#include <esp_system.h>
 #include "cJSON.h"
 #include "cjson_wrap.h"
 #include "esp_http_client.h"
 #include "ruuvi_gateway.h"
-#include "http_json.h"
 #include "leds.h"
 #include "os_str.h"
 #include "hmac_sha256.h"
@@ -26,10 +23,8 @@
 #include "os_sema.h"
 #include "os_malloc.h"
 #include "http_server_resp.h"
-#include "http_server_cb.h"
 #include "snprintf_with_esp_err_desc.h"
 #include "gw_cfg_default.h"
-#include "gw_cfg_storage.h"
 #include "esp_tls_err.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
@@ -401,7 +396,8 @@ http_send_async(http_async_info_t* const p_http_async_info)
     if (p_http_async_info->use_json_stream_gen)
     {
         const json_stream_gen_size_t json_len = json_stream_gen_calc_size(p_http_async_info->select.p_gen);
-        const esp_err_t              err      = esp_http_client_set_cb_on_post_get_chunk(
+        LOG_INFO("HTTP POST DATA len=%u", (printf_int_t)json_len);
+        const esp_err_t err = esp_http_client_set_cb_on_post_get_chunk(
             p_http_async_info->p_http_client_handle,
             json_len,
             &cb_on_post_get_chunk,

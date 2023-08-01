@@ -576,7 +576,7 @@ adv_post_generate_statistics_info(const str_buf_t* const p_reset_info)
     return p_stat_info;
 }
 
-bool
+static bool
 adv_post_stat(const ruuvi_gw_cfg_http_stat_t* const p_cfg_http_stat, void* const p_user_data)
 {
     log_runtime_statistics();
