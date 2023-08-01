@@ -138,6 +138,7 @@ hmac_sha256_calc_for_json_gen(
         return false;
     }
 
+    json_stream_gen_reset(p_gen);
     return true;
 }
 
