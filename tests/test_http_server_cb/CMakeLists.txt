@@ -32,8 +32,6 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/http_server_cb_on_post.c
         ${RUUVI_GW_SRC}/http_json.c
         ${RUUVI_GW_SRC}/http_json.h
-        ${RUUVI_GW_SRC}/json_helper.c
-        ${RUUVI_GW_SRC}/json_helper.h
         ${RUUVI_GW_SRC}/json_ruuvi.c
         ${RUUVI_GW_SRC}/json_ruuvi.h
         ${RUUVI_GW_SRC}/metrics.h
