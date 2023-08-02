@@ -189,7 +189,7 @@ http_download_json(
 http_server_download_info_t
 http_download_latest_release_info(const bool flag_free_memory)
 {
-    const char* const p_url = "https://testnet.ruuvi.com/firmwareupdate";
+    const char* const p_url = "https://network.ruuvi.com/firmwareupdate";
     return http_download_json(
         p_url,
         HTTP_DOWNLOAD_FW_RELEASE_INFO_TIMEOUT_SECONDS,
