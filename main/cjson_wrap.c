@@ -100,6 +100,17 @@ json_wrap_copy_string_val(const cJSON* p_json_root, const char* p_attr_name, cha
     return true;
 }
 
+const char*
+json_wrap_get_string_val(const cJSON* p_json_root, const char* p_attr_name)
+{
+    cJSON* const p_json_attr = cJSON_GetObjectItem(p_json_root, p_attr_name);
+    if (NULL == p_json_attr)
+    {
+        return NULL;
+    }
+    return cJSON_GetStringValue(p_json_attr);
+}
+
 bool
 json_wrap_get_bool_val(const cJSON* p_json_root, const char* p_attr_name, bool* p_val)
 {

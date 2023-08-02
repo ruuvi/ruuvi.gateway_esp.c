@@ -11,7 +11,6 @@
 #include "freertos/task.h"
 #include "str_buf.h"
 #include "os_malloc.h"
-#include "json_helper.h"
 #include "time_str.h"
 #include "ruuvi_gateway.h"
 #include "http_server_cb.h"
@@ -190,7 +189,7 @@ http_download_json(
 http_server_download_info_t
 http_download_latest_release_info(const bool flag_free_memory)
 {
-    const char* const p_url = "https://api.github.com/repos/ruuvi/ruuvi.gateway_esp.c/releases/latest";
+    const char* const p_url = "https://network.ruuvi.com/firmwareupdate";
     return http_download_json(
         p_url,
         HTTP_DOWNLOAD_FW_RELEASE_INFO_TIMEOUT_SECONDS,

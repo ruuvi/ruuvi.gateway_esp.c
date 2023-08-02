@@ -58,6 +58,9 @@ cjson_wrap_free_json_str(cjson_wrap_str_t* p_json_str);
 bool
 json_wrap_copy_string_val(const cJSON* p_json_root, const char* p_attr_name, char* buf, const size_t buf_len);
 
+const char*
+json_wrap_get_string_val(const cJSON* p_json_root, const char* p_attr_name);
+
 bool
 json_wrap_get_bool_val(const cJSON* p_json_root, const char* p_attr_name, bool* p_val);
 

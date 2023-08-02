@@ -14,7 +14,6 @@
 #include "http_server.h"
 #include "http.h"
 #include "fw_update.h"
-#include "json_helper.h"
 #include "os_time.h"
 #include "time_str.h"
 #include "reset_task.h"
@@ -132,6 +131,67 @@ http_server_cb_on_delete(
     return http_server_resp_404();
 }
 
+static bool
+parse_release_info_json(const cJSON* const p_json_root)
+{
+    const cJSON* const p_json_latest = cJSON_GetObjectItem(p_json_root, "latest");
+    if (NULL == p_json_latest)
+    {
+        LOG_ERR("Can't find key '%s' in latest_release_info", "latest");
+        return false;
+    }
+    const char* p_latest_version = json_wrap_get_string_val(p_json_latest, "version");
+    const char* p_latest_url     = json_wrap_get_string_val(p_json_latest, "url");
+
+    const char*        p_beta_version = NULL;
+    const char*        p_beta_url     = NULL;
+    const cJSON* const p_json_beta    = cJSON_GetObjectItem(p_json_root, "beta");
+    if (NULL != p_json_beta)
+    {
+        p_beta_version = json_wrap_get_string_val(p_json_beta, "version");
+        p_beta_url     = json_wrap_get_string_val(p_json_beta, "url");
+    }
+    if ((NULL == p_beta_version) || (NULL == p_beta_url))
+    {
+        p_beta_version = p_latest_version;
+        p_beta_url     = p_latest_url;
+    }
+
+    const ruuvi_esp32_fw_ver_str_t* const p_esp32_fw_ver = gw_cfg_get_esp32_fw_ver();
+
+    switch (gw_cfg_get_auto_update_cycle())
+    {
+        case AUTO_UPDATE_CYCLE_TYPE_REGULAR:
+            if (0 != strcmp(p_esp32_fw_ver->buf, p_latest_version))
+            {
+                LOG_INFO(
+                    "github_latest_release.json: Update is required (current version: %s, latest version: %s)",
+                    p_esp32_fw_ver->buf,
+                    p_latest_version);
+
+                fw_update_set_url("%s", p_latest_url);
+                return true;
+            }
+            break;
+        case AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER:
+            if (0 != strcmp(p_esp32_fw_ver->buf, p_beta_version))
+            {
+                LOG_INFO(
+                    "github_latest_release.json: Update is required (current version: %s, beta/latest version: %s)",
+                    p_esp32_fw_ver->buf,
+                    p_beta_version);
+
+                fw_update_set_url("%s", p_beta_url);
+                return true;
+            }
+            break;
+        case AUTO_UPDATE_CYCLE_TYPE_MANUAL:
+            break;
+    }
+    LOG_INFO("github_latest_release.json: No update is required, the latest version is already installed");
+    return false;
+}
+
 static void
 http_server_cb_on_user_req_download_latest_release_info(void)
 {
@@ -147,57 +207,23 @@ http_server_cb_on_user_req_download_latest_release_info(void)
 
     main_task_schedule_next_check_for_fw_updates();
 
-    bool      flag_found_tag_name    = false;
-    time_t    unix_time_published_at = 0;
-    str_buf_t tag_name               = json_helper_get_by_key(latest_release_info.p_json_buf, "tag_name");
-    if (NULL != tag_name.buf)
-    {
-        LOG_INFO("github_latest_release.json: tag_name: %s", tag_name.buf);
-        const ruuvi_esp32_fw_ver_str_t* const p_esp32_fw_ver = gw_cfg_get_esp32_fw_ver();
-        if (0 == strcmp(p_esp32_fw_ver->buf, tag_name.buf))
-        {
-            LOG_INFO("github_latest_release.json: No update is required, the latest version is already installed");
-            os_free(latest_release_info.p_json_buf);
-            return;
-        }
-        LOG_INFO(
-            "github_latest_release.json: Update is required (current version: %s, latest version: %s)",
-            p_esp32_fw_ver->buf,
-            tag_name.buf);
-
-        fw_update_set_url("https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/%s", tag_name.buf);
-        flag_found_tag_name = true;
-        str_buf_free_buf(&tag_name);
-    }
-    str_buf_t published_at = json_helper_get_by_key(latest_release_info.p_json_buf, "published_at");
-    if (NULL != published_at.buf)
-    {
-        LOG_INFO("github_latest_release.json: published_at: %s", published_at.buf);
-        unix_time_published_at = time_str_conv_to_unix_time(published_at.buf);
-        str_buf_free_buf(&published_at);
-    }
+    cJSON* p_json_root = cJSON_Parse(latest_release_info.p_json_buf);
     os_free(latest_release_info.p_json_buf);
-
-    if ((!flag_found_tag_name) || (0 == unix_time_published_at))
+    if (NULL == p_json_root)
     {
-        LOG_WARN("github_latest_release.json: 'tag_name' or 'published_at' is not found");
+        LOG_ERR("Failed to parse latest_release_info: %s", latest_release_info.p_json_buf);
         return;
     }
 
-    if (AUTO_UPDATE_CYCLE_TYPE_REGULAR == gw_cfg_get_auto_update_cycle())
-    {
-        const time_t cur_unix_time = http_server_get_cur_time();
-        if ((cur_unix_time - unix_time_published_at) < FW_UPDATING_REGULAR_CYCLE_DELAY_SECONDS)
-        {
-            LOG_INFO(
-                "github_latest_release.json: postpone the update because less than 14 days have passed since the "
-                "update was published");
-            return;
-        }
-    }
+    const bool flag_update_ready = parse_release_info_json(p_json_root);
 
-    LOG_INFO("github_latest_release.json: Run firmware auto-updating from URL: %s", fw_update_get_url());
-    fw_update_run(true);
+    cJSON_Delete(p_json_root);
+
+    if (flag_update_ready)
+    {
+        LOG_INFO("github_latest_release.json: Run firmware auto-updating from URL: %s", fw_update_get_url());
+        fw_update_run(true);
+    }
 }
 
 static http_server_download_info_t
