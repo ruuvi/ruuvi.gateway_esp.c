@@ -28,9 +28,9 @@ find . -type f -name "*.gcno" -exec rm -f {} \;
 find . -type f -name '*.gcna' -exec rm -f {} \;
 find . -type f -name "*.gcov" -exec rm -f {} \;
 find . -type f -name 'gtestresults.xml' -exec rm -f {} \;
-rm -rf build
-mkdir -p build
-cd build
+rm -rf build-sonar
+mkdir -p build-sonar
+cd build-sonar
 which build-wrapper-linux-x86-64
 build-wrapper-linux-x86-64 --out-dir ./bw-output cmake -DCMAKE_BUILD_TYPE=Debug ..
 build-wrapper-linux-x86-64 --out-dir ./bw-output make -j $(nproc)
@@ -38,9 +38,9 @@ cd ..
 
 rm -f coverage.xml
 cd tests
-rm -rf build
-mkdir -p build
-cd build
+rm -rf build-sonar
+mkdir -p build-sonar
+cd build-sonar
 cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="--coverage" ..
 make -j $(nproc)
 ctest
@@ -50,15 +50,15 @@ gcovr -r . --sonarqube -o coverage.xml
 which sonar-scanner
 sonar-scanner --version
 sonar-scanner -X \
-  --define sonar.cfamily.build-wrapper-output="build/bw-output" \
+  --define sonar.cfamily.build-wrapper-output="build-sonar/bw-output" \
   --define sonar.coverageReportPaths=coverage.xml \
   --define sonar.host.url=https://sonarcloud.io \
   --define sonar.cfamily.threads=$(nproc)
 
 echo Final cleanup
 rm -f coverage.xml
-rm -rf build
-rm -rf tests/build
+rm -rf build-sonar
+rm -rf tests/build-sonar
 find . -type f -name "*.gcno" -exec rm -f {} \;
 find . -type f -name '*.gcna' -exec rm -f {} \;
 find . -type f -name "*.gcov" -exec rm -f {} \;

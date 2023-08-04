@@ -1,8 +1,10 @@
 *.orig
 
 /build
+/build-sonar
 /build-coverage
 /tests/build
+/tests/build-sonar
 /cmake-build-*
 /tests/cmake-build-*
 /sdkconfig.old
