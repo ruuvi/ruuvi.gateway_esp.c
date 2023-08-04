@@ -62,8 +62,6 @@ idf_component_register(
             http_json.h
             http_post_advs.c
             http_post_stat.c
-            json_helper.c
-            json_helper.h
             json_ruuvi.c
             json_ruuvi.h
             http_download.c

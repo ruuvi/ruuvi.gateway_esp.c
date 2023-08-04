@@ -14,15 +14,6 @@
 extern "C" {
 #endif
 
-/**
- * @brief Find a value by the key.
- * @param p_json - ptr to c-string containing json.
- * @param p_key - ptr to a key
- * @return str_buf_t containing the value corresponding to the key or STR_BUF_INIT_NULL if json parsing failed.
- */
-str_buf_t
-json_helper_get_by_key(const char* const p_json, const char* const p_key);
-
 #ifdef __cplusplus
 }
 #endif

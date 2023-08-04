@@ -60,7 +60,6 @@ add_subdirectory(test_bin2hex)
 add_subdirectory(test_cjson_wrap)
 add_subdirectory(test_event_mgr)
 add_subdirectory(test_flashfatfs)
-add_subdirectory(test_json_helper)
 add_subdirectory(test_json_ruuvi)
 add_subdirectory(test_gw_cfg)
 add_subdirectory(test_gw_cfg_blob)
@@ -106,11 +105,6 @@ add_test(NAME test_event_mgr
 add_test(NAME test_flashfatfs
         COMMAND ruuvi_gateway_esp-test-flashfatfs
         --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-flashfatfs>/gtestresults.xml
-)
-
-add_test(NAME test_json_helper
-        COMMAND ruuvi_gateway_esp-test-json_helper
-        --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-json_helper>/gtestresults.xml
 )
 
 add_test(NAME test_json_ruuvi

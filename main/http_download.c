@@ -12,7 +12,6 @@
 #include "freertos/task.h"
 #include "str_buf.h"
 #include "os_malloc.h"
-#include "json_helper.h"
 #include "time_str.h"
 #include "ruuvi_gateway.h"
 #include "http_server_cb.h"
@@ -548,7 +547,7 @@ http_download_latest_release_info(const bool flag_free_memory)
 {
     const http_download_param_with_auth_t params = {
         .base = {
-            .p_url                   = "https://api.github.com/repos/ruuvi/ruuvi.gateway_esp.c/releases/latest",
+            .p_url                   = "https://network.ruuvi.com/firmwareupdate",
             .timeout_seconds         = HTTP_DOWNLOAD_FW_RELEASE_INFO_TIMEOUT_SECONDS,
             .flag_feed_task_watchdog = true,
             .flag_free_memory        = flag_free_memory,
