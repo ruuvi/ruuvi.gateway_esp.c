@@ -61,15 +61,15 @@ http_server_resp_json_ruuvi(void)
 
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
-http_server_resp_json_github_latest_release(void)
+http_server_resp_json_firmware_update(void)
 {
-    const http_server_download_info_t info = http_download_latest_release_info(true);
+    const http_server_download_info_t info = http_download_firmware_update_info(true);
     if (info.is_error)
     {
         return http_server_resp_504();
     }
 
-    LOG_DBG("github_latest_release.json: %s", info.p_json_buf);
+    LOG_INFO("Firmware update info (json): %s", info.p_json_buf);
     return http_server_resp_200_json_in_heap(info.p_json_buf);
 }
 
@@ -201,7 +201,7 @@ http_server_resp_json(const char* p_file_name, const bool flag_access_from_lan)
     }
     if (0 == strcmp(p_file_name, "github_latest_release.json"))
     {
-        return http_server_resp_json_github_latest_release();
+        return http_server_resp_json_firmware_update();
     }
     if ((0 == strcmp(p_file_name, "info.json")) && (!flag_access_from_lan))
     {

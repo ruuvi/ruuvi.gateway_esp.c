@@ -74,7 +74,7 @@ http_server_download_info_t
 http_download_json(const http_download_param_with_auth_t* const p_params);
 
 http_server_download_info_t
-http_download_latest_release_info(const bool flag_free_memory);
+http_download_firmware_update_info(const bool flag_free_memory);
 
 http_resp_code_e
 http_check(const http_download_param_with_auth_t* const p_param);

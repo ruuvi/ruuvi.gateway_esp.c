@@ -940,10 +940,10 @@ ATTR_PRINTF(1, 2)
 void
 fw_update_set_url(const char* const p_url_fmt, ...)
 {
-    va_list ap;
-    va_start(ap, p_url_fmt);
-    vsnprintf(g_fw_update_cfg.url, sizeof(g_fw_update_cfg.url), p_url_fmt, ap);
-    va_end(ap);
+    va_list args;
+    va_start(args, p_url_fmt);
+    (void)vsnprintf(g_fw_update_cfg.url, sizeof(g_fw_update_cfg.url), p_url_fmt, args);
+    va_end(args);
 }
 
 const char*

@@ -121,12 +121,13 @@ http_server_cb_on_delete(
 }
 
 static bool
-parse_release_info_json(const cJSON* const p_json_root)
+parse_fw_update_info_json(const cJSON* const p_json_root, bool* const p_flag_use_beta_version)
 {
+    *p_flag_use_beta_version         = false;
     const cJSON* const p_json_latest = cJSON_GetObjectItem(p_json_root, "latest");
     if (NULL == p_json_latest)
     {
-        LOG_ERR("Can't find key '%s' in latest_release_info", "latest");
+        LOG_ERR("Can't find key '%s' in firmware_update info", "latest");
         return false;
     }
     const char* p_latest_version = json_wrap_get_string_val(p_json_latest, "version");
@@ -140,10 +141,15 @@ parse_release_info_json(const cJSON* const p_json_root)
         p_beta_version = json_wrap_get_string_val(p_json_beta, "version");
         p_beta_url     = json_wrap_get_string_val(p_json_beta, "url");
     }
+    bool flag_beta_version_exist = false;
     if ((NULL == p_beta_version) || (NULL == p_beta_url))
     {
         p_beta_version = p_latest_version;
         p_beta_url     = p_latest_url;
+    }
+    else
+    {
+        flag_beta_version_exist = true;
     }
 
     const ruuvi_esp32_fw_ver_str_t* const p_esp32_fw_ver = gw_cfg_get_esp32_fw_ver();
@@ -153,11 +159,6 @@ parse_release_info_json(const cJSON* const p_json_root)
         case AUTO_UPDATE_CYCLE_TYPE_REGULAR:
             if (0 != strcmp(p_esp32_fw_ver->buf, p_latest_version))
             {
-                LOG_INFO(
-                    "github_latest_release.json: Update is required (current version: %s, latest version: %s)",
-                    p_esp32_fw_ver->buf,
-                    p_latest_version);
-
                 fw_update_set_url("%s", p_latest_url);
                 return true;
             }
@@ -165,52 +166,60 @@ parse_release_info_json(const cJSON* const p_json_root)
         case AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER:
             if (0 != strcmp(p_esp32_fw_ver->buf, p_beta_version))
             {
-                LOG_INFO(
-                    "github_latest_release.json: Update is required (current version: %s, beta/latest version: %s)",
-                    p_esp32_fw_ver->buf,
-                    p_beta_version);
-
                 fw_update_set_url("%s", p_beta_url);
+                *p_flag_use_beta_version = flag_beta_version_exist;
                 return true;
             }
             break;
         case AUTO_UPDATE_CYCLE_TYPE_MANUAL:
             break;
     }
-    LOG_INFO("github_latest_release.json: No update is required, the latest version is already installed");
     return false;
 }
 
 static void
 http_server_cb_on_user_req_download_latest_release_info(void)
 {
-    LOG_INFO("Download latest release info");
-    http_server_download_info_t latest_release_info = http_download_latest_release_info(false);
-    if (latest_release_info.is_error)
+    LOG_INFO("Download firmware update info");
+    http_server_download_info_t fw_update_info = http_download_firmware_update_info(false);
+    if (fw_update_info.is_error)
     {
-        LOG_ERR("Failed to download latest firmware release info");
+        LOG_ERR("Failed to download firmware update info");
         main_task_schedule_retry_check_for_fw_updates();
         return;
     }
-    LOG_INFO("github_latest_release.json: %s", latest_release_info.p_json_buf);
+    LOG_INFO("firmware update info (json): %s", fw_update_info.p_json_buf);
 
     main_task_schedule_next_check_for_fw_updates();
 
-    cJSON* p_json_root = cJSON_Parse(latest_release_info.p_json_buf);
-    os_free(latest_release_info.p_json_buf);
+    cJSON* p_json_root = cJSON_Parse(fw_update_info.p_json_buf);
+    os_free(fw_update_info.p_json_buf);
     if (NULL == p_json_root)
     {
-        LOG_ERR("Failed to parse latest_release_info: %s", latest_release_info.p_json_buf);
+        LOG_ERR("Failed to parse fw_update_info: %s", fw_update_info.p_json_buf);
         return;
     }
 
-    const bool flag_update_ready = parse_release_info_json(p_json_root);
+    bool       flag_use_beta_version = false;
+    const bool flag_update_ready     = parse_fw_update_info_json(p_json_root, &flag_use_beta_version);
+    if (flag_update_ready)
+    {
+        LOG_INFO(
+            "Update is required (current version: %s, %s version: %s)",
+            gw_cfg_get_esp32_fw_ver()->buf,
+            flag_use_beta_version ? "beta" : "latest",
+            fw_update_get_url());
+    }
+    else
+    {
+        LOG_INFO("Firmware update: No update is required, the latest version is already installed");
+    }
 
     cJSON_Delete(p_json_root);
 
     if (flag_update_ready)
     {
-        LOG_INFO("github_latest_release.json: Run firmware auto-updating from URL: %s", fw_update_get_url());
+        LOG_INFO("Run firmware auto-updating from URL: %s", fw_update_get_url());
         fw_update_run(true);
     }
 }
