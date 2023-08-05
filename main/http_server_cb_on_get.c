@@ -211,7 +211,7 @@ http_server_resp_json(const char* p_file_name, const bool flag_access_from_lan)
     {
         return http_server_resp_json_ruuvi();
     }
-    if (0 == strcmp(p_file_name, "github_latest_release.json"))
+    if (0 == strcmp(p_file_name, "firmware_update.json"))
     {
         return http_server_resp_json_github_latest_release();
     }
