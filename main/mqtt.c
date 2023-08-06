@@ -20,7 +20,7 @@
 #include "esp_crt_bundle.h"
 #include "gw_status.h"
 #include "os_malloc.h"
-#include "esp_tls.h"
+#include "esp_tls_err.h"
 #include "snprintf_with_esp_err_desc.h"
 #include "gw_cfg_storage.h"
 
@@ -242,39 +242,34 @@ mqtt_connect_return_code_to_str(const esp_mqtt_connect_return_code_t connect_ret
     return "Unknown";
 }
 
-static void
-mqtt_event_handler_on_error(
-    mqtt_protected_data_t* const        p_mqtt_protected_data,
-    const esp_mqtt_error_codes_t* const p_error_handle)
+static mqtt_error_e
+mqtt_get_error_code(mqtt_protected_data_t* const p_data, const esp_mqtt_error_codes_t* const p_error_handle)
 {
-    p_mqtt_protected_data->err_msg[0] = '\0';
+    p_data->err_msg[0] = '\0';
 
     mqtt_error_e                         mqtt_error               = MQTT_ERROR_NONE;
     const esp_err_t                      esp_tls_last_esp_err     = p_error_handle->esp_tls_last_esp_err;
     const esp_mqtt_error_type_t          error_type               = p_error_handle->error_type;
-    const int                            esp_transport_sock_errno = p_error_handle->esp_transport_sock_errno;
+    const esp_err_t                      esp_transport_sock_errno = p_error_handle->esp_transport_sock_errno;
     const esp_mqtt_connect_return_code_t connect_return_code      = p_error_handle->connect_return_code;
     const char* const                    p_connect_ret_code_desc = mqtt_connect_return_code_to_str(connect_return_code);
     if (MQTT_ERROR_TYPE_TCP_TRANSPORT == error_type)
     {
-        if (ESP_ERR_ESP_TLS_CANNOT_RESOLVE_HOSTNAME == esp_tls_last_esp_err)
+        if (esp_tls_err_is_cannot_resolve_hostname(esp_tls_last_esp_err))
         {
             LOG_ERR("MQTT_EVENT_ERROR (MQTT_ERROR_TYPE_TCP_TRANSPORT): ESP_ERR_ESP_TLS_CANNOT_RESOLVE_HOSTNAME");
+            (void)snprintf(p_data->err_msg, sizeof(p_data->err_msg), "Failed to resolve hostname");
             mqtt_error = MQTT_ERROR_DNS;
-            (void)snprintf(
-                p_mqtt_protected_data->err_msg,
-                sizeof(p_mqtt_protected_data->err_msg),
-                "Failed to resolve hostname");
         }
-        else if (ESP_ERR_ESP_TLS_FAILED_CONNECT_TO_HOST == esp_tls_last_esp_err)
+        else if (esp_tls_err_is_failed_connect_to_host(esp_tls_last_esp_err))
         {
             LOG_ERR("MQTT_EVENT_ERROR (MQTT_ERROR_TYPE_TCP_TRANSPORT): ESP_ERR_ESP_TLS_FAILED_CONNECT_TO_HOST");
-            mqtt_error = MQTT_ERROR_CONNECT;
             (void)snprintf_with_esp_err_desc(
                 esp_transport_sock_errno,
-                p_mqtt_protected_data->err_msg,
-                sizeof(p_mqtt_protected_data->err_msg),
+                p_data->err_msg,
+                sizeof(p_data->err_msg),
                 "Failed to connect to host");
+            mqtt_error = MQTT_ERROR_CONNECT;
         }
         else
         {
@@ -286,8 +281,8 @@ mqtt_event_handler_on_error(
                     esp_tls_last_esp_err,
                     (NULL != err_desc.buf) ? err_desc.buf : "");
                 (void)snprintf(
-                    p_mqtt_protected_data->err_msg,
-                    sizeof(p_mqtt_protected_data->err_msg),
+                    p_data->err_msg,
+                    sizeof(p_data->err_msg),
                     "Error %d (%s)",
                     esp_tls_last_esp_err,
                     (NULL != err_desc.buf) ? err_desc.buf : "");
@@ -301,8 +296,8 @@ mqtt_event_handler_on_error(
                     esp_transport_sock_errno,
                     (NULL != err_desc.buf) ? err_desc.buf : "");
                 (void)snprintf(
-                    p_mqtt_protected_data->err_msg,
-                    sizeof(p_mqtt_protected_data->err_msg),
+                    p_data->err_msg,
+                    sizeof(p_data->err_msg),
                     "%s",
                     (NULL != err_desc.buf) ? err_desc.buf : "");
                 str_buf_free_buf(&err_desc);
@@ -310,7 +305,7 @@ mqtt_event_handler_on_error(
             else
             {
                 LOG_ERR("MQTT_EVENT_ERROR (MQTT_ERROR_TYPE_TCP_TRANSPORT): Unknown error");
-                (void)snprintf(p_mqtt_protected_data->err_msg, sizeof(p_mqtt_protected_data->err_msg), "Unknown error");
+                (void)snprintf(p_data->err_msg, sizeof(p_data->err_msg), "Unknown error");
             }
             mqtt_error = MQTT_ERROR_CONNECT;
         }
@@ -321,6 +316,7 @@ mqtt_event_handler_on_error(
             "MQTT_EVENT_ERROR (MQTT_ERROR_TYPE_CONNECTION_REFUSED): connect_return_code=%d (%s)",
             connect_return_code,
             p_connect_ret_code_desc);
+        (void)snprintf(p_data->err_msg, sizeof(p_data->err_msg), "Refusal to connect: %s", p_connect_ret_code_desc);
         if ((MQTT_CONNECTION_REFUSE_BAD_USERNAME == connect_return_code)
             || (MQTT_CONNECTION_REFUSE_NOT_AUTHORIZED == connect_return_code))
         {
@@ -330,11 +326,6 @@ mqtt_event_handler_on_error(
         {
             mqtt_error = MQTT_ERROR_CONNECT;
         }
-        (void)snprintf(
-            p_mqtt_protected_data->err_msg,
-            sizeof(p_mqtt_protected_data->err_msg),
-            "Refusal to connect: %s",
-            p_connect_ret_code_desc);
     }
     else
     {
@@ -346,13 +337,10 @@ mqtt_event_handler_on_error(
             p_connect_ret_code_desc,
             esp_transport_sock_errno,
             esp_tls_last_esp_err);
+        (void)snprintf(p_data->err_msg, sizeof(p_data->err_msg), "Failed to connect (Unknown error type)");
         mqtt_error = MQTT_ERROR_CONNECT;
-        (void)snprintf(
-            p_mqtt_protected_data->err_msg,
-            sizeof(p_mqtt_protected_data->err_msg),
-            "Failed to connect (Unknown error type)");
     }
-    gw_status_set_mqtt_error(mqtt_error);
+    return mqtt_error;
 }
 
 static esp_err_t
@@ -395,7 +383,7 @@ mqtt_event_handler(esp_mqtt_event_handle_t h_event)
             break;
 
         case MQTT_EVENT_ERROR:
-            mqtt_event_handler_on_error(p_mqtt_protected_data, h_event->error_handle);
+            gw_status_set_mqtt_error(mqtt_get_error_code(p_mqtt_protected_data, h_event->error_handle));
             break;
 
         case MQTT_EVENT_BEFORE_CONNECT:
@@ -436,30 +424,35 @@ mqtt_transport_name_to_code(const char* const p_mqtt_transport_name)
     return mqtt_transport;
 }
 
+typedef struct mqtt_client_config_params_t
+{
+    const mqtt_topic_buf_t* const p_mqtt_topic;
+    const char* const             p_lwt_message;
+    const char* const             p_cert_pem;
+    const char* const             p_client_cert_pem;
+    const char* const             p_client_key_pem;
+} mqtt_client_config_params_t;
+
 static void
 mqtt_generate_client_config(
-    esp_mqtt_client_config_t* const  p_cli_cfg,
-    const ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg,
-    const mqtt_topic_buf_t* const    p_mqtt_topic,
-    const char* const                p_lwt_message,
-    const char* const                p_cert_pem,
-    const char* const                p_client_cert_pem,
-    const char* const                p_client_key_pem,
-    void* const                      p_user_context)
+    esp_mqtt_client_config_t* const          p_cli_cfg,
+    const ruuvi_gw_cfg_mqtt_t* const         p_mqtt_cfg,
+    const mqtt_client_config_params_t* const p_cfg_params,
+    void* const                              p_user_context)
 {
-    p_cli_cfg->event_handle                = &mqtt_event_handler;
-    p_cli_cfg->event_loop_handle           = NULL;
-    p_cli_cfg->host                        = p_mqtt_cfg->mqtt_server.buf;
-    p_cli_cfg->uri                         = NULL;
-    p_cli_cfg->port                        = p_mqtt_cfg->mqtt_port;
-    p_cli_cfg->client_id                   = p_mqtt_cfg->mqtt_client_id.buf;
-    p_cli_cfg->username                    = p_mqtt_cfg->mqtt_user.buf;
-    p_cli_cfg->password                    = p_mqtt_cfg->mqtt_pass.buf;
-    p_cli_cfg->lwt_topic                   = p_mqtt_cfg->mqtt_disable_retained_messages ? NULL : p_mqtt_topic->buf;
-    p_cli_cfg->lwt_msg                     = p_mqtt_cfg->mqtt_disable_retained_messages ? NULL : p_lwt_message;
-    p_cli_cfg->lwt_qos                     = 1;
-    p_cli_cfg->lwt_retain                  = !p_mqtt_cfg->mqtt_disable_retained_messages;
-    p_cli_cfg->lwt_msg_len                 = 0;
+    p_cli_cfg->event_handle      = &mqtt_event_handler;
+    p_cli_cfg->event_loop_handle = NULL;
+    p_cli_cfg->host              = p_mqtt_cfg->mqtt_server.buf;
+    p_cli_cfg->uri               = NULL;
+    p_cli_cfg->port              = p_mqtt_cfg->mqtt_port;
+    p_cli_cfg->client_id         = p_mqtt_cfg->mqtt_client_id.buf;
+    p_cli_cfg->username          = p_mqtt_cfg->mqtt_user.buf;
+    p_cli_cfg->password          = p_mqtt_cfg->mqtt_pass.buf;
+    p_cli_cfg->lwt_topic         = p_mqtt_cfg->mqtt_disable_retained_messages ? NULL : p_cfg_params->p_mqtt_topic->buf;
+    p_cli_cfg->lwt_msg           = p_mqtt_cfg->mqtt_disable_retained_messages ? NULL : p_cfg_params->p_lwt_message;
+    p_cli_cfg->lwt_qos           = 1;
+    p_cli_cfg->lwt_retain        = !p_mqtt_cfg->mqtt_disable_retained_messages;
+    p_cli_cfg->lwt_msg_len       = 0;
     p_cli_cfg->disable_clean_session       = 0;
     p_cli_cfg->keepalive                   = 0;
     p_cli_cfg->disable_auto_reconnect      = false;
@@ -467,11 +460,11 @@ mqtt_generate_client_config(
     p_cli_cfg->task_prio                   = 0;
     p_cli_cfg->task_stack                  = MQTT_TASK_STACK_SIZE;
     p_cli_cfg->buffer_size                 = 0;
-    p_cli_cfg->cert_pem                    = p_cert_pem;
+    p_cli_cfg->cert_pem                    = p_cfg_params->p_cert_pem;
     p_cli_cfg->cert_len                    = 0;
-    p_cli_cfg->client_cert_pem             = p_client_cert_pem;
+    p_cli_cfg->client_cert_pem             = p_cfg_params->p_client_cert_pem;
     p_cli_cfg->client_cert_len             = 0;
-    p_cli_cfg->client_key_pem              = p_client_key_pem;
+    p_cli_cfg->client_key_pem              = p_cfg_params->p_client_key_pem;
     p_cli_cfg->client_key_len              = 0;
     p_cli_cfg->transport                   = mqtt_transport_name_to_code(p_mqtt_cfg->mqtt_transport.buf);
     p_cli_cfg->refresh_connection_after_ms = 0;
@@ -528,15 +521,15 @@ mqtt_create_client_config(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg
         p_mqtt_data->str_buf_client_cert.buf ? p_mqtt_data->str_buf_client_cert.buf : "NULL");
     LOG_DBG("client_key_mqtt: %s", p_mqtt_data->str_buf_client_key.buf ? p_mqtt_data->str_buf_client_key.buf : "NULL");
 
-    mqtt_generate_client_config(
-        p_cli_cfg,
-        p_mqtt_cfg,
-        p_mqtt_data->mqtt_disable_retained_messages ? NULL : &p_mqtt_data->mqtt_topic,
-        p_mqtt_data->mqtt_disable_retained_messages ? NULL : p_lwt_message,
-        p_mqtt_data->str_buf_server_cert_mqtt.buf,
-        p_mqtt_data->str_buf_client_cert.buf,
-        p_mqtt_data->str_buf_client_key.buf,
-        p_mqtt_data);
+    const mqtt_client_config_params_t cfg_params = {
+        .p_mqtt_topic      = p_mqtt_data->mqtt_disable_retained_messages ? NULL : &p_mqtt_data->mqtt_topic,
+        .p_lwt_message     = p_mqtt_data->mqtt_disable_retained_messages ? NULL : p_lwt_message,
+        .p_cert_pem        = p_mqtt_data->str_buf_server_cert_mqtt.buf,
+        .p_client_cert_pem = p_mqtt_data->str_buf_client_cert.buf,
+        .p_client_key_pem  = p_mqtt_data->str_buf_client_key.buf,
+    };
+
+    mqtt_generate_client_config(p_cli_cfg, p_mqtt_cfg, &cfg_params, p_mqtt_data);
 
     return p_cli_cfg;
 }
@@ -651,7 +644,7 @@ mqtt_app_stop(void)
             vTaskDelay(pdMS_TO_TICKS(500));
         }
         LOG_INFO("TaskWatchdog: Unregister current thread");
-        const bool flag_task_wdt_used = (esp_task_wdt_delete(xTaskGetCurrentTaskHandle()) == ESP_OK) ? true : false;
+        const bool flag_task_wdt_used = (ESP_OK == esp_task_wdt_delete(xTaskGetCurrentTaskHandle())) ? true : false;
 
         LOG_INFO("MQTT destroy");
 

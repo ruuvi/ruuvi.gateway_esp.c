@@ -76,8 +76,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#define prvGetTCBFromHandle(pxHandle) (((pxHandle) == NULL) ? (TCB_t*)xTaskGetCurrentTaskHandle() : (TCB_t*)(pxHandle))
-
 typedef enum
 {
     eNotWaitingNotification = 0,
@@ -164,7 +162,7 @@ typedef struct tskTaskControlBlock
 
     /* See the comments above the definition of
     tskSTATIC_AND_DYNAMIC_ALLOCATION_POSSIBLE. */
-#if (tskSTATIC_AND_DYNAMIC_ALLOCATION_POSSIBLE != 0)
+#if defined(tskSTATIC_AND_DYNAMIC_ALLOCATION_POSSIBLE) && (tskSTATIC_AND_DYNAMIC_ALLOCATION_POSSIBLE != 0)
     uint8_t ucStaticallyAllocated; /*< Set to pdTRUE if the task is a statically allocated to ensure no attempt is made
                                       to free the memory. */
 #endif
@@ -172,6 +170,12 @@ typedef struct tskTaskControlBlock
 } tskTCB;
 
 typedef tskTCB TCB_t;
+
+static inline TCB_t*
+prvGetTCBFromHandle(TaskHandle_t pxHandle)
+{
+    return (NULL == pxHandle) ? (TCB_t*)xTaskGetCurrentTaskHandle() : (TCB_t*)pxHandle;
+}
 
 UBaseType_t
 uxTaskGetStackSize(TaskHandle_t xTask)

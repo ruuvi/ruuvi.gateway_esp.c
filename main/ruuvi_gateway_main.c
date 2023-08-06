@@ -433,9 +433,8 @@ ruuvi_cb_on_change_cfg(const gw_cfg_t* const p_gw_cfg)
 }
 
 static bool
-main_task_init(void)
+main_task_initial_initialization(void)
 {
-    esp_log_level_set(TAG, ESP_LOG_INFO);
     reset_info_init();
     cjson_wrap_init();
     partition_table_update_init_mutex();
@@ -467,6 +466,20 @@ main_task_init(void)
     }
 
     gpio_init();
+
+    return true;
+}
+
+static bool
+main_task_init(void)
+{
+    esp_log_level_set(TAG, ESP_LOG_INFO);
+
+    if (!main_task_initial_initialization())
+    {
+        return false;
+    }
+
     const bool is_configure_button_pressed = (0 == gpio_get_level(RB_BUTTON_RESET_PIN)) ? true : false;
     nrf52fw_hw_reset_nrf52(true);
     leds_init(is_configure_button_pressed);
@@ -586,7 +599,7 @@ app_main(void)
         if (settings_read_flag_rebooting_after_auto_update())
         {
             // If rebooting after auto firmware update, fw_update_mark_app_valid_cancel_rollback should be called by
-            // http_send_advs or mqtt_event_handler after successful network communication with the server.
+            // http_post_advs or mqtt_event_handler after successful network communication with the server.
             settings_write_flag_rebooting_after_auto_update(false);
         }
         else

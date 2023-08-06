@@ -11,6 +11,8 @@ idf_component_register(
             esp_ota_ops_patched.c
             esp_ota_ops_patched.h
             esp_err_to_name.c
+            esp_tls_err.c
+            esp_tls_err.h
             ethernet.c
             ethernet.h
             event_mgr.c
@@ -31,6 +33,7 @@ idf_component_register(
             gw_cfg.h
             gw_cfg_blob.c
             gw_cfg_blob.h
+            gw_cfg_cmp.c
             gw_cfg_json_parse.c
             gw_cfg_json_parse.h
             gw_cfg_json_generate.c
@@ -45,6 +48,7 @@ idf_component_register(
             gw_cfg_default_json.h
             gw_cfg_storage.c
             gw_cfg_storage.h
+            gw_cfg_storage_files.c
             gw_status.c
             gw_status.h
             gw_mac.c
@@ -53,8 +57,11 @@ idf_component_register(
             hmac_sha256.h
             http.c
             http.h
+            http_check_mqtt.c
             http_json.c
             http_json.h
+            http_post_advs.c
+            http_post_stat.c
             json_ruuvi.c
             json_ruuvi.h
             http_download.c
@@ -110,6 +117,8 @@ idf_component_register(
             time_task.h
             url_encode.c
             url_encode.h
+            validate_url.c
+            validate_url.h
         PRIV_REQUIRES
             app_update
             mdns

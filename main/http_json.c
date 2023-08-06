@@ -45,8 +45,7 @@ http_json_generate_task_info(const char* const p_task_name, const uint32_t min_f
         return false;
     }
 
-    cJSON* const p_task_name_obj = cJSON_AddStringToObject(p_task_obj, "TASK_NAME", p_task_name);
-    if (NULL == p_task_name_obj)
+    if (NULL == cJSON_AddStringToObject(p_task_obj, "TASK_NAME", p_task_name))
     {
         cJSON_Delete(p_task_obj);
         return false;
@@ -235,11 +234,179 @@ http_json_create_status_str(
     return true;
 }
 
-static bool
+static JSON_STREAM_GEN_DECL_GENERATOR_SUB_FUNC(
+    cb_json_stream_gen_advs_decode_df5,
+    json_stream_gen_t* const  p_gen,
+    const adv_report_t* const p_adv)
+{
+    re_5_data_t       data          = { 0 };
+    const re_status_t decode_status = re_5_decode(p_adv->data_buf, &data);
+    if (RE_SUCCESS == decode_status)
+    {
+        JSON_STREAM_GEN_ADD_INT32(p_gen, "dataFormat", RE_5_DESTINATION);
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
+            p_gen,
+            "temperature",
+            data.temperature_c,
+            JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_3);
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
+            p_gen,
+            "humidity",
+            data.humidity_rh,
+            JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_4);
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
+            p_gen,
+            "pressure",
+            data.pressure_pa,
+            JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_0);
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
+            p_gen,
+            "accelX",
+            data.accelerationx_g,
+            JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_3);
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
+            p_gen,
+            "accelY",
+            data.accelerationy_g,
+            JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_3);
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
+            p_gen,
+            "accelZ",
+            data.accelerationz_g,
+            JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_3);
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
+            p_gen,
+            "movementCounter",
+            data.movement_count,
+            JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_0);
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
+            p_gen,
+            "voltage",
+            data.battery_v,
+            JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_3);
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
+            p_gen,
+            "txPower",
+            RE_5_TXPWR_MIN + (data.tx_power * 2),
+            JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_0);
+        JSON_STREAM_GEN_ADD_INT32(p_gen, "measurementSequenceNumber", data.measurement_count);
+        mac_address_bin_t tag_mac = { 0 };
+        for (uint32_t mac_idx = 0; mac_idx < MAC_ADDRESS_NUM_BYTES; ++mac_idx)
+        {
+            tag_mac.mac[mac_idx] = (data.address >> ((MAC_ADDRESS_NUM_BYTES - mac_idx - 1U) * NUM_BITS_PER_BYTE))
+                                   & BYTE_MASK;
+        }
+        const mac_address_str_t tag_mac_str = mac_address_to_str(&tag_mac);
+        JSON_STREAM_GEN_ADD_STRING(p_gen, "id", tag_mac_str.str_buf);
+    }
+    JSON_STREAM_GEN_END_GENERATOR_SUB_FUNC();
+}
+
+static JSON_STREAM_GEN_DECL_GENERATOR_SUB_FUNC(
+    cb_json_stream_gen_advs_decode_df6,
+    json_stream_gen_t* const  p_gen,
+    const adv_report_t* const p_adv)
+{
+    re_6_data_t       data          = { 0 };
+    const re_status_t decode_status = re_6_decode(p_adv->data_buf, &data);
+    if (RE_SUCCESS == decode_status)
+    {
+        JSON_STREAM_GEN_ADD_INT32(p_gen, "dataFormat", RE_6_DESTINATION);
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
+            p_gen,
+            "temperature",
+            data.temperature_c,
+            JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_1);
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
+            p_gen,
+            "humidity",
+            data.humidity_rh,
+            JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_1);
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
+            p_gen,
+            "PM1.0",
+            data.pm1p0_ppm,
+            JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_1);
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
+            p_gen,
+            "PM2.5",
+            data.pm2p5_ppm,
+            JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_1);
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
+            p_gen,
+            "PM4.0",
+            data.pm4p0_ppm,
+            JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_1);
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
+            p_gen,
+            "PM10.0",
+            data.pm10p0_ppm,
+            JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_1);
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(p_gen, "CO2", data.co2, JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_0);
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
+            p_gen,
+            "VOC",
+            data.voc_index,
+            JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_0);
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
+            p_gen,
+            "NOx",
+            data.nox_index,
+            JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_0);
+        JSON_STREAM_GEN_ADD_INT32(p_gen, "measurementSequenceNumber", data.measurement_count);
+        mac_address_bin_t tag_mac = { 0 };
+        for (uint32_t mac_idx = 0; mac_idx < MAC_ADDRESS_NUM_BYTES; ++mac_idx)
+        {
+            tag_mac.mac[mac_idx] = (data.address >> ((MAC_ADDRESS_NUM_BYTES - mac_idx - 1U) * NUM_BITS_PER_BYTE))
+                                   & BYTE_MASK;
+        }
+        const mac_address_str_t tag_mac_str = mac_address_to_str(&tag_mac);
+        JSON_STREAM_GEN_ADD_STRING(p_gen, "id", tag_mac_str.str_buf);
+    }
+    JSON_STREAM_GEN_END_GENERATOR_SUB_FUNC();
+}
+
+static JSON_STREAM_GEN_DECL_GENERATOR_SUB_FUNC(
+    cb_json_stream_gen_adv,
+    json_stream_gen_t* const                     p_gen,
+    const http_json_stream_gen_advs_ctx_t* const p_ctx,
+    const adv_report_t* const                    p_adv)
+{
+
+    const mac_address_str_t mac_str = mac_address_to_str(&p_adv->tag_mac);
+    JSON_STREAM_GEN_START_OBJECT(p_gen, mac_str.str_buf);
+    JSON_STREAM_GEN_ADD_INT32(p_gen, "rssi", p_adv->rssi);
+
+    if (p_ctx->flag_use_timestamps)
+    {
+        JSON_STREAM_GEN_ADD_UINT32(p_gen, "timestamp", p_adv->timestamp);
+    }
+    else
+    {
+        JSON_STREAM_GEN_ADD_UINT32(p_gen, "counter", p_adv->timestamp);
+    }
+    JSON_STREAM_GEN_ADD_HEX_BUF(p_gen, "data", p_adv->data_buf, p_adv->data_len);
+
+    if (p_ctx->flag_decode)
+    {
+        if (re_5_check_format(p_adv->data_buf))
+        {
+            JSON_STREAM_GEN_CALL_GENERATOR_SUB_FUNC(cb_json_stream_gen_advs_decode_df5, p_gen, p_adv);
+        }
+        if (re_6_check_format(p_adv->data_buf))
+        {
+            JSON_STREAM_GEN_CALL_GENERATOR_SUB_FUNC(cb_json_stream_gen_advs_decode_df6, p_gen, p_adv);
+        }
+    }
+    JSON_STREAM_GEN_END_OBJECT(p_gen);
+    JSON_STREAM_GEN_END_GENERATOR_SUB_FUNC();
+}
+
+static json_stream_gen_callback_result_t
 cb_json_stream_gen_advs(json_stream_gen_t* const p_gen, const void* const p_user_ctx)
 {
     const http_json_stream_gen_advs_ctx_t* const p_ctx = p_user_ctx;
-    JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC();
+    JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC(p_gen);
     JSON_STREAM_GEN_START_OBJECT(p_gen, "data");
     JSON_STREAM_GEN_ADD_STRING(p_gen, "coordinates", p_ctx->coordinates.buf);
     if (p_ctx->flag_use_timestamps)
@@ -256,154 +423,7 @@ cb_json_stream_gen_advs(json_stream_gen_t* const p_gen, const void* const p_user
 
     for (num_of_advs_t i = 0; i < p_ctx->reports.num_of_advs; ++i)
     {
-        const adv_report_t* const p_adv = &p_ctx->reports.table[i];
-
-        const mac_address_str_t mac_str = mac_address_to_str(&p_adv->tag_mac);
-        JSON_STREAM_GEN_START_OBJECT(p_gen, mac_str.str_buf);
-        JSON_STREAM_GEN_ADD_INT32(p_gen, "rssi", p_adv->rssi);
-
-        if (p_ctx->flag_use_timestamps)
-        {
-            JSON_STREAM_GEN_ADD_UINT32(p_gen, "timestamp", p_adv->timestamp);
-        }
-        else
-        {
-            JSON_STREAM_GEN_ADD_UINT32(p_gen, "counter", p_adv->timestamp);
-        }
-        JSON_STREAM_GEN_ADD_HEX_BUF(p_gen, "data", p_adv->data_buf, p_adv->data_len);
-
-        if (p_ctx->flag_decode)
-        {
-            if (re_5_check_format(p_adv->data_buf))
-            {
-                re_5_data_t       data          = { 0 };
-                const re_status_t decode_status = re_5_decode(p_adv->data_buf, &data);
-                if (RE_SUCCESS == decode_status)
-                {
-                    JSON_STREAM_GEN_ADD_INT32(p_gen, "dataFormat", RE_5_DESTINATION);
-                    JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
-                        p_gen,
-                        "temperature",
-                        data.temperature_c,
-                        JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_3);
-                    JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
-                        p_gen,
-                        "humidity",
-                        data.humidity_rh,
-                        JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_4);
-                    JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
-                        p_gen,
-                        "pressure",
-                        data.pressure_pa,
-                        JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_0);
-                    JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
-                        p_gen,
-                        "accelX",
-                        data.accelerationx_g,
-                        JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_3);
-                    JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
-                        p_gen,
-                        "accelY",
-                        data.accelerationy_g,
-                        JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_3);
-                    JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
-                        p_gen,
-                        "accelZ",
-                        data.accelerationz_g,
-                        JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_3);
-                    JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
-                        p_gen,
-                        "movementCounter",
-                        data.movement_count,
-                        JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_0);
-                    JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
-                        p_gen,
-                        "voltage",
-                        data.battery_v,
-                        JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_3);
-                    JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
-                        p_gen,
-                        "txPower",
-                        RE_5_TXPWR_MIN + (data.tx_power * 2),
-                        JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_0);
-                    JSON_STREAM_GEN_ADD_INT32(p_gen, "measurementSequenceNumber", data.measurement_count);
-                    mac_address_bin_t tag_mac = { 0 };
-                    for (uint32_t mac_idx = 0; mac_idx < MAC_ADDRESS_NUM_BYTES; ++mac_idx)
-                    {
-                        tag_mac.mac[mac_idx] = (data.address
-                                                >> ((MAC_ADDRESS_NUM_BYTES - mac_idx - 1U) * NUM_BITS_PER_BYTE))
-                                               & BYTE_MASK;
-                    }
-                    const mac_address_str_t tag_mac_str = mac_address_to_str(&tag_mac);
-                    JSON_STREAM_GEN_ADD_STRING(p_gen, "id", tag_mac_str.str_buf);
-                }
-            }
-            if (re_6_check_format(p_adv->data_buf))
-            {
-                re_6_data_t       data          = { 0 };
-                const re_status_t decode_status = re_6_decode(p_adv->data_buf, &data);
-                if (RE_SUCCESS == decode_status)
-                {
-                    JSON_STREAM_GEN_ADD_INT32(p_gen, "dataFormat", RE_6_DESTINATION);
-                    JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
-                        p_gen,
-                        "temperature",
-                        data.temperature_c,
-                        JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_1);
-                    JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
-                        p_gen,
-                        "humidity",
-                        data.humidity_rh,
-                        JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_1);
-                    JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
-                        p_gen,
-                        "PM1.0",
-                        data.pm1p0_ppm,
-                        JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_1);
-                    JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
-                        p_gen,
-                        "PM2.5",
-                        data.pm2p5_ppm,
-                        JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_1);
-                    JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
-                        p_gen,
-                        "PM4.0",
-                        data.pm4p0_ppm,
-                        JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_1);
-                    JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
-                        p_gen,
-                        "PM10.0",
-                        data.pm10p0_ppm,
-                        JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_1);
-                    JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
-                        p_gen,
-                        "CO2",
-                        data.co2,
-                        JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_0);
-                    JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
-                        p_gen,
-                        "VOC",
-                        data.voc_index,
-                        JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_0);
-                    JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
-                        p_gen,
-                        "NOx",
-                        data.nox_index,
-                        JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_0);
-                    JSON_STREAM_GEN_ADD_INT32(p_gen, "measurementSequenceNumber", data.measurement_count);
-                    mac_address_bin_t tag_mac = { 0 };
-                    for (uint32_t mac_idx = 0; mac_idx < MAC_ADDRESS_NUM_BYTES; ++mac_idx)
-                    {
-                        tag_mac.mac[mac_idx] = (data.address
-                                                >> ((MAC_ADDRESS_NUM_BYTES - mac_idx - 1U) * NUM_BITS_PER_BYTE))
-                                               & BYTE_MASK;
-                    }
-                    const mac_address_str_t tag_mac_str = mac_address_to_str(&tag_mac);
-                    JSON_STREAM_GEN_ADD_STRING(p_gen, "id", tag_mac_str.str_buf);
-                }
-            }
-        }
-        JSON_STREAM_GEN_END_OBJECT(p_gen);
+        JSON_STREAM_GEN_CALL_GENERATOR_SUB_FUNC(cb_json_stream_gen_adv, p_gen, p_ctx, &p_ctx->reports.table[i]);
     }
 
     JSON_STREAM_GEN_END_OBJECT(p_gen);
@@ -413,22 +433,18 @@ cb_json_stream_gen_advs(json_stream_gen_t* const p_gen, const void* const p_user
 
 json_stream_gen_t*
 http_json_create_stream_gen_advs(
-    const adv_report_table_t* const         p_reports,
-    const bool                              flag_decode,
-    const bool                              flag_use_timestamps,
-    const time_t                            cur_time,
-    const bool                              flag_use_nonce,
-    const uint32_t                          nonce,
-    const mac_address_str_t* const          p_mac_addr,
-    const ruuvi_gw_cfg_coordinates_t* const p_coordinates)
+    const adv_report_table_t* const                        p_reports,
+    const http_json_create_stream_gen_advs_params_t* const p_params)
 {
     const json_stream_gen_cfg_t cfg = {
         .max_chunk_size      = 768U,
         .flag_formatted_json = true,
-        .max_nesting_level   = 4,
+        .indentation_mark    = ' ',
         .indentation         = 2,
+        .max_nesting_level   = 4,
         .p_malloc            = &os_malloc,
         .p_free              = &os_free_internal,
+        .p_localeconv        = NULL,
     };
     http_json_stream_gen_advs_ctx_t* p_ctx = NULL;
     json_stream_gen_t* p_gen = json_stream_gen_create(&cfg, &cb_json_stream_gen_advs, sizeof(*p_ctx), (void**)&p_ctx);
@@ -437,13 +453,13 @@ http_json_create_stream_gen_advs(
         LOG_ERR("Not enough memory");
         return NULL;
     }
-    p_ctx->flag_decode         = flag_decode;
-    p_ctx->flag_use_timestamps = flag_use_timestamps;
-    p_ctx->flag_use_nonce      = flag_use_nonce;
-    p_ctx->timestamp           = cur_time;
-    p_ctx->nonce               = nonce;
-    p_ctx->gw_mac              = *p_mac_addr;
-    p_ctx->coordinates         = *p_coordinates;
+    p_ctx->flag_decode         = p_params->flag_decode;
+    p_ctx->flag_use_timestamps = p_params->flag_use_timestamps;
+    p_ctx->flag_use_nonce      = p_params->flag_use_nonce;
+    p_ctx->timestamp           = p_params->cur_time;
+    p_ctx->nonce               = p_params->nonce;
+    p_ctx->gw_mac              = *p_params->p_mac_addr;
+    p_ctx->coordinates         = *p_params->p_coordinates;
     if (NULL == p_reports)
     {
         p_ctx->reports.num_of_advs = 0;

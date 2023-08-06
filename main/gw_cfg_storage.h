@@ -11,6 +11,10 @@
 #include <stdbool.h>
 #include "str_buf.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define GW_CFG_STORAGE_MAX_FILE_NAME_LEN (15U)
 
 #define GW_CFG_STORAGE_GW_CFG_DEFAULT "gw_cfg_default"
@@ -104,12 +108,15 @@ _Static_assert(
     "sizeof(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT)");
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#define GW_CFG_STORAGE_NUM_ALLOWED_FILES (12U)
+
+extern const char* const g_gw_cfg_storage_list_of_allowed_files[GW_CFG_STORAGE_NUM_ALLOWED_FILES];
 
 bool
 gw_cfg_storage_check(void);
+
+bool
+gw_cfg_storage_is_known_filename(const char* const p_file_name);
 
 bool
 gw_cfg_storage_check_file(const char* const p_file_name);

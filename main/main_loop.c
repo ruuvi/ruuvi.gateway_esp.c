@@ -36,12 +36,15 @@ static const char TAG[] = "ruuvi_gateway";
 #define MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS          (10U)
 #define MAIN_TASK_DELAY_BEFORE_DEACTIVATING_CFG_MODE_SEC (60)
 #define MAIN_TASK_HOTSPOT_DEACTIVATION_SHORT_DELAY_SEC   (5)
-#define MAIN_TASK_CHECK_FOR_REMOTE_CFG_PERIOD_MS         (60U * TIME_UNITS_SECONDS_PER_MINUTE * TIME_UNITS_MS_PER_SECOND)
-#define MAIN_TASK_GET_HISTORY_TIMEOUT_MS                 (70U * TIME_UNITS_MS_PER_SECOND)
-#define MAIN_TASK_LOG_RUNTIME_STAT_PERIOD_MS             (30 * TIME_UNITS_MS_PER_SECOND)
-#define MAIN_TASK_WATCHDOG_FEED_PERIOD_MS                (1 * TIME_UNITS_MS_PER_SECOND)
+
+#define MAIN_TASK_CHECK_FOR_REMOTE_CFG_PERIOD_MS (60U * TIME_UNITS_SECONDS_PER_MINUTE * TIME_UNITS_MS_PER_SECOND)
+#define MAIN_TASK_GET_HISTORY_TIMEOUT_MS         (70U * TIME_UNITS_MS_PER_SECOND)
+#define MAIN_TASK_LOG_RUNTIME_STAT_PERIOD_MS     (30 * TIME_UNITS_MS_PER_SECOND)
+#define MAIN_TASK_WATCHDOG_FEED_PERIOD_MS        (1 * TIME_UNITS_MS_PER_SECOND)
 
 #define RUUVI_NUM_BYTES_IN_1KB (1024U)
+
+#define MAX_LOW_HEAP_MEM_CNT (3)
 
 typedef enum main_task_sig_e
 {
@@ -126,8 +129,9 @@ check_if_checking_for_fw_updates_allowed2(const ruuvi_gw_cfg_auto_update_t* cons
     LOG_INFO("Check for fw updates: Current day: %s", os_time_wday_name_mid(os_time_get_tm_wday(&tm_time)));
     for (os_time_wday_e wday = OS_TIME_WDAY_SUN; wday <= OS_TIME_WDAY_SAT; ++wday)
     {
-        const bool flag_active = (p_cfg_auto_update->auto_update_weekdays_bitmask & (1U << (uint32_t)wday)) ? true
-                                                                                                            : false;
+        const bool flag_active = (0 != (p_cfg_auto_update->auto_update_weekdays_bitmask & (1U << (uint32_t)wday)))
+                                     ? true
+                                     : false;
         LOG_INFO("Check for fw updates: %s - %s", os_time_wday_name_mid(wday), flag_active ? "Yes" : "No");
     }
 
@@ -199,7 +203,7 @@ main_task_handle_sig_log_heap_usage(void)
             // TODO: in ESP-IDF v4.x there is API heap_caps_register_failed_alloc_callback,
             //       which allows to catch 'no memory' event and reboot.
             g_heap_limit_cnt += 1;
-            if (g_heap_limit_cnt >= 3)
+            if (g_heap_limit_cnt >= MAX_LOW_HEAP_MEM_CNT)
             {
                 LOG_ERR(
                     "Only %uKiB of free memory left - probably due to a memory leak. Reboot the Gateway.",
@@ -212,7 +216,7 @@ main_task_handle_sig_log_heap_usage(void)
             g_heap_limit_cnt = 0;
         }
         g_heap_usage_stat_cnt      = 0;
-        g_heap_usage_min_free_heap = 0xFFFFFFFFU;
+        g_heap_usage_min_free_heap = UINT32_MAX;
     }
 }
 
@@ -365,7 +369,8 @@ start_mdns(void)
     {
         LOG_ERR_ESP(err, "mdns_instance_name_set failed");
     }
-    err = mdns_service_add(NULL, "_http", "_tcp", 80, NULL, 0);
+    const uint16_t http_port = 80U;
+    err                      = mdns_service_add(NULL, "_http", "_tcp", http_port, NULL, 0);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(err, "mdns_service_add failed");

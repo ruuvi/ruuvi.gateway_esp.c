@@ -30,6 +30,7 @@
 #include "event_mgr.h"
 #include "gw_cfg_storage.h"
 #include "partition_table.h"
+#include "http.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -81,21 +82,15 @@ esp_random(void)
 
 bool
 http_download_with_auth(
-    const http_download_param_t* const    p_param,
-    const gw_cfg_http_auth_type_e         gw_cfg_http_auth_type,
-    const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
-    const http_header_item_t* const       p_extra_header_item)
+    const http_download_param_with_auth_t* const p_param,
+    http_download_cb_on_data_t const             p_cb_on_data,
+    void* const                                  p_user_data)
 {
     return false;
 }
 
 bool
-http_check_with_auth(
-    const http_check_param_t* const       p_param,
-    const gw_cfg_http_auth_type_e         gw_cfg_http_auth_type,
-    const ruuvi_gw_cfg_http_auth_t* const p_http_auth,
-    const http_header_item_t* const       p_extra_header_item,
-    http_resp_code_e* const               p_http_resp_code)
+http_check_with_auth(const http_download_param_with_auth_t* const p_param, http_resp_code_e* const p_http_resp_code)
 {
     return false;
 }
@@ -220,14 +215,7 @@ gw_status_resume_http_relaying(void)
 }
 
 http_server_resp_t
-http_check_post_advs(
-    const char* const             p_url,
-    const gw_cfg_http_auth_type_e auth_type,
-    const char* const             p_user,
-    const char* const             p_pass,
-    const TimeUnitsSeconds_t      timeout_seconds,
-    const bool                    use_ssl_client_cert,
-    const bool                    use_ssl_server_cert)
+http_check_post_advs(const http_check_params_t* const p_params, const TimeUnitsSeconds_t timeout_seconds)
 {
     const http_server_resp_t resp = {
         .http_resp_code       = HTTP_RESP_CODE_500,
@@ -248,13 +236,7 @@ http_check_post_advs(
 }
 
 http_server_resp_t
-http_check_post_stat(
-    const char* const        p_url,
-    const char* const        p_user,
-    const char* const        p_pass,
-    const TimeUnitsSeconds_t timeout_seconds,
-    const bool               use_ssl_client_cert,
-    const bool               use_ssl_server_cert)
+http_check_post_stat(const http_check_params_t* const p_params, const TimeUnitsSeconds_t timeout_seconds)
 {
     const http_server_resp_t resp = {
         .http_resp_code       = HTTP_RESP_CODE_500,

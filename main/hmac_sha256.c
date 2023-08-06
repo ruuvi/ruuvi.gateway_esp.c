@@ -86,22 +86,26 @@ hmac_sha256_calc_for_json_gen(
 
     if (NULL == p_md_info)
     {
-        return MBEDTLS_ERR_MD_BAD_INPUT_DATA;
+        return false;
     }
 
     mbedtls_md_context_t ctx;
     mbedtls_md_init(&ctx);
 
-    int ret = mbedtls_md_setup(&ctx, p_md_info, 1);
+    int32_t ret = mbedtls_md_setup(&ctx, p_md_info, 1);
     if (0 != ret)
     {
-        goto cleanup;
+        mbedtls_md_free(&ctx);
+        json_stream_gen_reset(p_gen);
+        return false;
     }
 
     ret = mbedtls_md_hmac_starts(&ctx, p_key->key, p_key->key_size);
     if (0 != ret)
     {
-        goto cleanup;
+        mbedtls_md_free(&ctx);
+        json_stream_gen_reset(p_gen);
+        return false;
     }
 
     while (true)
@@ -109,8 +113,9 @@ hmac_sha256_calc_for_json_gen(
         const char* p_chunk = json_stream_gen_get_next_chunk(p_gen);
         if (NULL == p_chunk)
         {
-            ret = -1;
-            goto cleanup;
+            mbedtls_md_free(&ctx);
+            json_stream_gen_reset(p_gen);
+            return false;
         }
         if ('\0' == *p_chunk)
         {
@@ -119,21 +124,22 @@ hmac_sha256_calc_for_json_gen(
         ret = mbedtls_md_hmac_update(&ctx, (const unsigned char*)p_chunk, strlen(p_chunk));
         if (0 != ret)
         {
-            goto cleanup;
+            mbedtls_md_free(&ctx);
+            json_stream_gen_reset(p_gen);
+            return false;
         }
     }
 
     ret = mbedtls_md_hmac_finish(&ctx, &p_hmac_sha256->buf[0]);
     if (0 != ret)
     {
-        goto cleanup;
+        mbedtls_md_free(&ctx);
+        json_stream_gen_reset(p_gen);
+        return false;
     }
 
-cleanup:
-    mbedtls_md_free(&ctx);
     json_stream_gen_reset(p_gen);
-
-    return (0 == ret) ? true : false;
+    return true;
 }
 
 bool
@@ -169,7 +175,7 @@ hmac_sha256_calc_for_stats(const char* const p_str, hmac_sha256_t* const p_hmac_
 str_buf_t
 hmac_sha256_to_str_buf(const hmac_sha256_t* const p_hmac_sha256)
 {
-    const size_t hmac_str_buf_size = HMAC_SHA256_SIZE * 2 + 1;
+    const size_t hmac_str_buf_size = (HMAC_SHA256_SIZE * 2) + 1;
     char* const  p_hmac_str_buf    = os_malloc(hmac_str_buf_size);
     if (NULL == p_hmac_str_buf)
     {

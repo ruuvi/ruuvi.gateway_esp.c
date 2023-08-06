@@ -12,6 +12,7 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/cjson_wrap.h
         ${RUUVI_GW_SRC}/gw_cfg.c
         ${RUUVI_GW_SRC}/gw_cfg.h
+        ${RUUVI_GW_SRC}/gw_cfg_cmp.c
         ${RUUVI_GW_SRC}/gw_cfg_default.c
         ${RUUVI_GW_SRC}/gw_cfg_default.h
         ${RUUVI_GW_SRC}/gw_cfg_json_parse.c
@@ -22,8 +23,11 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/gw_cfg_log.h
         ${RUUVI_GW_SRC}/gw_cfg_ruuvi_json.c
         ${RUUVI_GW_SRC}/gw_cfg_ruuvi_json.h
+        ${RUUVI_GW_SRC}/gw_cfg_storage_files.c
+        ${RUUVI_GW_SRC}/gw_cfg_storage.h
         ${RUUVI_GW_SRC}/gw_mac.c
         ${RUUVI_GW_SRC}/gw_mac.h
+        ${RUUVI_GW_SRC}/http.h
         ${RUUVI_GW_SRC}/http_download.c
         ${RUUVI_GW_SRC}/http_download.h
         ${RUUVI_GW_SRC}/http_server_cb.c
@@ -40,6 +44,8 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/event_mgr.h
         ${RUUVI_GW_SRC}/url_encode.c
         ${RUUVI_GW_SRC}/url_encode.h
+        ${RUUVI_GW_SRC}/validate_url.c
+        ${RUUVI_GW_SRC}/validate_url.h
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_5.c
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_5.h
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_6.c
@@ -99,6 +105,7 @@ target_include_directories(${ProjectId} PUBLIC
         ${RUUVI_GW_SRC}
         include
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src
+        ${COMPONENTS}/esp_http_client/include
         $ENV{IDF_PATH}/components/json/cJSON
         $ENV{IDF_PATH}/components/esp_wifi/include
         $ENV{IDF_PATH}/components/tcpip_adapter/include
@@ -109,7 +116,6 @@ target_include_directories(${ProjectId} PUBLIC
         $ENV{IDF_PATH}/components/app_update/include
         $ENV{IDF_PATH}/components/spi_flash/include
         $ENV{IDF_PATH}/components/soc/include
-        $ENV{IDF_PATH}/components/esp_http_client/include
         $ENV{IDF_PATH}/components/nghttp/port/include
         ${CMAKE_CURRENT_SOURCE_DIR}
         ../../components/esp32-wifi-manager/src/include

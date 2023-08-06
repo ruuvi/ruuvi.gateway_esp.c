@@ -182,15 +182,17 @@ TEST_F(TestHttpJson, test_1) // NOLINT
     const bool     flag_use_nonce      = true;
     const uint32_t nonce               = 12345678;
 
-    json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(
-        &adv_table,
-        flag_decode,
-        flag_use_timestamps,
-        timestamp,
-        flag_use_nonce,
-        nonce,
-        &gw_mac_addr,
-        &coordinates);
+    const http_json_create_stream_gen_advs_params_t params = {
+        .flag_decode         = flag_decode,
+        .flag_use_timestamps = flag_use_timestamps,
+        .cur_time            = timestamp,
+        .flag_use_nonce      = flag_use_nonce,
+        .nonce               = nonce,
+        .p_mac_addr          = &gw_mac_addr,
+        .p_coordinates       = &coordinates,
+    };
+
+    json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(&adv_table, &params);
     ASSERT_NE(nullptr, p_gen);
 
     string json_str("");
@@ -251,15 +253,17 @@ TEST_F(TestHttpJson, test_1_without_timestamp) // NOLINT
     const bool     flag_use_nonce      = true;
     const uint32_t nonce               = 12345678;
 
-    json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(
-        &adv_table,
-        flag_decode,
-        flag_use_timestamps,
-        timestamp,
-        flag_use_nonce,
-        nonce,
-        &gw_mac_addr,
-        &coordinates);
+    const http_json_create_stream_gen_advs_params_t params = {
+        .flag_decode         = flag_decode,
+        .flag_use_timestamps = flag_use_timestamps,
+        .cur_time            = timestamp,
+        .flag_use_nonce      = flag_use_nonce,
+        .nonce               = nonce,
+        .p_mac_addr          = &gw_mac_addr,
+        .p_coordinates       = &coordinates,
+    };
+
+    json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(&adv_table, &params);
     ASSERT_NE(nullptr, p_gen);
 
     string json_str("");
@@ -329,15 +333,17 @@ TEST_F(TestHttpJson, test_2) // NOLINT
     const bool     flag_use_nonce      = true;
     const uint32_t nonce               = 12345678;
 
-    json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(
-        &adv_table,
-        flag_decode,
-        flag_use_timestamps,
-        timestamp,
-        flag_use_nonce,
-        nonce,
-        &gw_mac_addr,
-        &coordinates);
+    const http_json_create_stream_gen_advs_params_t params = {
+        .flag_decode         = flag_decode,
+        .flag_use_timestamps = flag_use_timestamps,
+        .cur_time            = timestamp,
+        .flag_use_nonce      = flag_use_nonce,
+        .nonce               = nonce,
+        .p_mac_addr          = &gw_mac_addr,
+        .p_coordinates       = &coordinates,
+    };
+
+    json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(&adv_table, &params);
     ASSERT_NE(nullptr, p_gen);
 
     string json_str("");

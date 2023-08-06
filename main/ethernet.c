@@ -31,6 +31,8 @@
 
 #define SW_RESET_TIMEOUT_MS 500
 
+#define ETHERNET_RX_TASK_STACK_SIZE (3072U)
+
 // Cloudfare public DNS
 const char* dns_fallback_server = "1.1.1.1";
 
@@ -303,7 +305,7 @@ ethernet_init(
     ethernet_update_ip();
 
     eth_mac_config_t mac_config   = ETH_MAC_DEFAULT_CONFIG();
-    mac_config.rx_task_stack_size = 3072U;
+    mac_config.rx_task_stack_size = ETHERNET_RX_TASK_STACK_SIZE;
     eth_phy_config_t phy_config   = ETH_PHY_DEFAULT_CONFIG();
 
     phy_config.phy_addr       = ETH_PHY_ADDR;

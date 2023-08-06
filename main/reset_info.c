@@ -106,13 +106,13 @@ static str_buf_t                    g_reset_info_data_panic_str_buf = STR_BUF_IN
     sizeof(g_reset_info.data.panic.msg));
 
 static uint32_t
-reset_info_calc_crc(reset_info_t* const p_info)
+reset_info_calc_crc(const reset_info_t* const p_info)
 {
     return esp_crc32_le(0, (const uint8_t*)p_info, offsetof(reset_info_t, crc));
 }
 
 static bool
-reset_info_is_valid(reset_info_t* const p_info)
+reset_info_is_valid(const reset_info_t* const p_info)
 {
     const uint32_t crc = reset_info_calc_crc(p_info);
     if (crc != p_info->crc)
@@ -251,8 +251,8 @@ reset_info_gen_str_buf(str_buf_t* const p_str_buf, const reset_info_t* const p_i
 str_buf_t
 reset_info_get(void)
 {
-    reset_info_t* const p_info  = &g_reset_info;
-    str_buf_t           str_buf = STR_BUF_INIT_NULL();
+    const reset_info_t* const p_info  = &g_reset_info;
+    str_buf_t                 str_buf = STR_BUF_INIT_NULL();
 
     reset_info_gen_str_buf(&str_buf, p_info);
     if (!str_buf_init_with_alloc(&str_buf))
@@ -266,10 +266,18 @@ reset_info_get(void)
 uint32_t
 reset_info_get_cnt(void)
 {
-    reset_info_t* const p_info = &g_reset_info;
+    const reset_info_t* const p_info = &g_reset_info;
     return p_info->reset_cnt;
 }
 
+/**
+ * @brief panic_print_char_override overrides panic_print_char from ESP-IDF/components/esp_system/panic.c
+ * @note GCC linker option "--defsym,panic_print_char=panic_print_char_override" is used for overriding, see
+ *  CMakeLists.txt panic_print_char is used in the same module where it is implemented, so, it's impossible to redefine
+ *  it with just "-Wl,--wrap=" option. Fortunately, there is a workaround described here:
+ *  https://stackoverflow.com/questions/13961774/ \
+ *  gnu-gcc-ld-wrapping-a-call-to-symbol-with-caller-and-callee-defined-in-the-sam
+ */
 void
 panic_print_char_override(const char c)
 {
@@ -277,14 +285,19 @@ panic_print_char_override(const char c)
     uint32_t                  sz           = 0;
     while (0 == uart_hal_get_txfifo_len(&s_panic_uart))
     {
+        // Wait while Tx FIFO buffer is busy
     }
     uart_hal_write_txfifo(&s_panic_uart, (const uint8_t*)&c, 1, &sz);
 
     str_buf_printf(&g_reset_info_data_panic_str_buf, "%c", c);
 }
 
+/**
+ * @brief __wrap_esp_panic_handler overrides esp_panic_handler from ESP-IDF/components/esp_system/panic.c
+ * @note GCC linker option "--wrap,esp_panic_handler" is used for overriding, see CMakeLists.txt
+ */
 void
-__wrap_esp_panic_handler(void* p_param)
+__wrap_esp_panic_handler(void* p_param) // NOSONAR
 {
 
     if (ESP_RST_UNKNOWN == esp_reset_reason_get_hint())
@@ -298,7 +311,11 @@ __wrap_esp_panic_handler(void* p_param)
     __real_esp_panic_handler(p_param); /* Call the former implementation */
 }
 
-void __attribute__((noreturn)) __wrap_panic_restart(void)
+/**
+ * @brief __wrap_panic_restart overrides panic_restart from ESP-IDF/components/esp_system/panic.c
+ * @note GCC linker option "--wrap,panic_restart" is used for overriding, see CMakeLists.txt
+ */
+void __attribute__((noreturn)) __wrap_panic_restart(void) // NOSONAR
 {
     reset_info_t* const p_info = &g_reset_info;
     p_info->crc                = esp_crc32_le(0, (const uint8_t*)p_info, offsetof(reset_info_t, crc));
@@ -350,7 +367,7 @@ esp_task_wdt_isr_user_handler(const char* const p_task_name)
  * Redefine esp_restart function to print a message before actually restarting
  */
 void
-__wrap_esp_restart(void)
+__wrap_esp_restart(void) // NOSONAR
 {
     /* Call the former implementation to actually restart the board */
     __real_esp_restart();

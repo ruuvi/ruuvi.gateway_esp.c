@@ -57,16 +57,21 @@ http_json_create_status_str(
     const adv_report_table_t* const          p_reports,
     cjson_wrap_str_t* const                  p_json_str);
 
+typedef struct http_json_create_stream_gen_advs_params_t
+{
+    const bool                              flag_decode;
+    const bool                              flag_use_timestamps;
+    const time_t                            cur_time;
+    const bool                              flag_use_nonce;
+    const uint32_t                          nonce;
+    const mac_address_str_t* const          p_mac_addr;
+    const ruuvi_gw_cfg_coordinates_t* const p_coordinates;
+} http_json_create_stream_gen_advs_params_t;
+
 json_stream_gen_t*
 http_json_create_stream_gen_advs(
-    const adv_report_table_t* const         p_reports,
-    const bool                              flag_decode,
-    const bool                              flag_use_timestamps,
-    const time_t                            cur_time,
-    const bool                              flag_use_nonce,
-    const uint32_t                          nonce,
-    const mac_address_str_t* const          p_mac_addr,
-    const ruuvi_gw_cfg_coordinates_t* const p_coordinates);
+    const adv_report_table_t* const                        p_reports,
+    const http_json_create_stream_gen_advs_params_t* const p_params);
 
 #ifdef __cplusplus
 }

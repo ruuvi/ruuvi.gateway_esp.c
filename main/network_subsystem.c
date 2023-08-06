@@ -89,7 +89,7 @@ ethernet_connection_ok_cb(const esp_netif_ip_info_t* p_ip_info)
 }
 
 void
-wifi_connection_ok_cb(void* p_param)
+wifi_connection_ok_cb(void* p_param) // NOSONAR
 {
     (void)p_param;
     LOG_INFO("Wifi connected");
@@ -173,7 +173,7 @@ cb_on_request_status_json(void)
 }
 
 void
-wifi_disconnect_cb(void* p_param)
+wifi_disconnect_cb(void* p_param) // NOSONAR
 {
     (void)p_param;
     LOG_WARN("Wifi disconnected");
@@ -208,6 +208,56 @@ configure_mbedtls_rng(const nrf52_device_id_str_t* const p_nrf52_device_id_str)
     }
 }
 
+static void
+network_subsystem_init_start_eth_if_needed(const bool is_wifi_sta_configured)
+{
+    if (gw_cfg_get_eth_use_eth() || (!is_wifi_sta_configured))
+    {
+        ethernet_start();
+        vTaskDelay(pdMS_TO_TICKS(100));
+        if (!gw_status_is_eth_link_up())
+        {
+            LOG_INFO("### Force start WiFi hotspot (there is no Ethernet connection)");
+            const bool flag_block_req_from_lan = true;
+            wifi_manager_start_ap(flag_block_req_from_lan);
+        }
+    }
+    else
+    {
+        LOG_INFO("Gateway already configured to use WiFi connection, so Ethernet is not needed");
+    }
+}
+
+static void
+network_subsystem_init_start_ap(
+    const force_start_wifi_hotspot_e force_start_wifi_hotspot,
+    const bool                       flag_gw_cfg_empty,
+    const bool                       flag_connect_sta)
+{
+    if (flag_gw_cfg_empty && (FORCE_START_WIFI_HOTSPOT_ONCE == force_start_wifi_hotspot))
+    {
+        gw_status_set_first_boot_after_cfg_erase();
+    }
+    else
+    {
+        gw_status_clear_first_boot_after_cfg_erase();
+        if (!flag_connect_sta)
+        {
+            LOG_INFO("Start Ethernet (gateway has not configured yet)");
+            ethernet_start();
+        }
+    }
+    if (flag_gw_cfg_empty)
+    {
+        LOG_INFO("Force start WiFi hotspot (gateway has not configured yet)");
+    }
+    else
+    {
+        LOG_INFO("Force start WiFi hotspot");
+    }
+    wifi_manager_start_ap(true);
+}
+
 bool
 network_subsystem_init(const force_start_wifi_hotspot_e force_start_wifi_hotspot, const gw_cfg_t* const p_gw_cfg)
 {
@@ -227,52 +277,19 @@ network_subsystem_init(const force_start_wifi_hotspot_e force_start_wifi_hotspot
     }
     ethernet_init(&ethernet_link_up_cb, &ethernet_link_down_cb, &ethernet_connection_ok_cb);
 
-    if (((!gw_cfg_is_empty()) || flag_connect_sta) && (FORCE_START_WIFI_HOTSPOT_DISABLED == force_start_wifi_hotspot))
+    const bool flag_gw_cfg_empty = gw_cfg_is_empty();
+
+    if (((!flag_gw_cfg_empty) || flag_connect_sta) && (FORCE_START_WIFI_HOTSPOT_DISABLED == force_start_wifi_hotspot))
     {
-        if (gw_cfg_get_eth_use_eth() || (!is_wifi_sta_configured))
-        {
-            ethernet_start();
-            vTaskDelay(pdMS_TO_TICKS(100));
-            if (!gw_status_is_eth_link_up())
-            {
-                LOG_INFO("### Force start WiFi hotspot (there is no Ethernet connection)");
-                const bool flag_block_req_from_lan = true;
-                wifi_manager_start_ap(flag_block_req_from_lan);
-            }
-        }
-        else
-        {
-            LOG_INFO("Gateway already configured to use WiFi connection, so Ethernet is not needed");
-        }
+        network_subsystem_init_start_eth_if_needed(is_wifi_sta_configured);
     }
     else
     {
-        if (gw_cfg_is_empty() && (FORCE_START_WIFI_HOTSPOT_ONCE == force_start_wifi_hotspot))
-        {
-            gw_status_set_first_boot_after_cfg_erase();
-        }
-        else
-        {
-            gw_status_clear_first_boot_after_cfg_erase();
-            if (!flag_connect_sta)
-            {
-                LOG_INFO("Start Ethernet (gateway has not configured yet)");
-                ethernet_start();
-            }
-        }
         if (FORCE_START_WIFI_HOTSPOT_ONCE == force_start_wifi_hotspot)
         {
             settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_DISABLED);
         }
-        if (gw_cfg_is_empty())
-        {
-            LOG_INFO("Force start WiFi hotspot (gateway has not configured yet)");
-        }
-        else
-        {
-            LOG_INFO("Force start WiFi hotspot");
-        }
-        wifi_manager_start_ap(true);
+        network_subsystem_init_start_ap(force_start_wifi_hotspot, flag_gw_cfg_empty, flag_connect_sta);
     }
     return true;
 }

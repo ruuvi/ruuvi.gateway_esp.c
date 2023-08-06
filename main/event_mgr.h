@@ -72,7 +72,7 @@ event_mgr_subscribe_sig_static(
     const os_signal_num_e             sig_num);
 
 void
-event_mgr_unsubscribe_sig(const event_mgr_ev_e event, os_signal_t* const p_signal, const os_signal_num_e sig_num);
+event_mgr_unsubscribe_sig(const event_mgr_ev_e event, const os_signal_t* const p_signal, const os_signal_num_e sig_num);
 
 void
 event_mgr_unsubscribe_sig_static(event_mgr_ev_info_static_t* const p_ev_info_mem, const event_mgr_ev_e event);

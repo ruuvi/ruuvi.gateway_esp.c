@@ -65,6 +65,20 @@ gw_cfg_json_add_number(cJSON* const p_json_root, const char* const p_item_name, 
 }
 
 static bool
+gw_cfg_json_add_items_device_info_storage_files(cJSON* p_storage)
+{
+    for (int32_t i = 0; i < GW_CFG_STORAGE_NUM_ALLOWED_FILES; ++i)
+    {
+        const char* const p_file_name = g_gw_cfg_storage_list_of_allowed_files[i];
+        if (!gw_cfg_json_add_bool(p_storage, p_file_name, gw_cfg_storage_check_file(p_file_name)))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool
 gw_cfg_json_add_items_device_info(cJSON* const p_json_root, const gw_cfg_device_info_t* const p_dev_info)
 {
     if (!gw_cfg_json_add_string(p_json_root, "fw_ver", p_dev_info->esp32_fw_ver.buf))
@@ -92,93 +106,7 @@ gw_cfg_json_add_items_device_info(cJSON* const p_json_root, const gw_cfg_device_
     }
     if (is_storage_ready)
     {
-        if (!gw_cfg_json_add_bool(
-                p_storage,
-                GW_CFG_STORAGE_SSL_HTTP_CLI_CERT,
-                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT)))
-        {
-            return false;
-        }
-        if (!gw_cfg_json_add_bool(
-                p_storage,
-                GW_CFG_STORAGE_SSL_HTTP_CLI_KEY,
-                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY)))
-        {
-            return false;
-        }
-        if (!gw_cfg_json_add_bool(
-                p_storage,
-                GW_CFG_STORAGE_SSL_HTTP_SRV_CERT,
-                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT)))
-        {
-            return false;
-        }
-
-        if (!gw_cfg_json_add_bool(
-                p_storage,
-                GW_CFG_STORAGE_SSL_STAT_CLI_CERT,
-                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_STAT_CLI_CERT)))
-        {
-            return false;
-        }
-        if (!gw_cfg_json_add_bool(
-                p_storage,
-                GW_CFG_STORAGE_SSL_STAT_CLI_KEY,
-                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_STAT_CLI_KEY)))
-        {
-            return false;
-        }
-        if (!gw_cfg_json_add_bool(
-                p_storage,
-                GW_CFG_STORAGE_SSL_STAT_SRV_CERT,
-                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_STAT_SRV_CERT)))
-        {
-            return false;
-        }
-
-        if (!gw_cfg_json_add_bool(
-                p_storage,
-                GW_CFG_STORAGE_SSL_MQTT_CLI_CERT,
-                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_MQTT_CLI_CERT)))
-        {
-            return false;
-        }
-        if (!gw_cfg_json_add_bool(
-                p_storage,
-                GW_CFG_STORAGE_SSL_MQTT_CLI_KEY,
-                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_MQTT_CLI_KEY)))
-        {
-            return false;
-        }
-        if (!gw_cfg_json_add_bool(
-                p_storage,
-                GW_CFG_STORAGE_SSL_MQTT_SRV_CERT,
-                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_MQTT_SRV_CERT)))
-        {
-            return false;
-        }
-
-        if (!gw_cfg_json_add_bool(
-                p_storage,
-                GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT,
-                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT)))
-        {
-            return false;
-        }
-        if (!gw_cfg_json_add_bool(
-                p_storage,
-                GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY,
-                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY)))
-        {
-            return false;
-        }
-        if (!gw_cfg_json_add_bool(
-                p_storage,
-                GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT,
-                gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT)))
-        {
-            return false;
-        }
+        return gw_cfg_json_add_items_device_info_storage_files(p_storage);
     }
     return true;
 }
@@ -389,11 +317,159 @@ gw_cfg_json_add_items_remote(
 }
 
 static bool
+gw_cfg_json_add_items_http_default(cJSON* const p_json_root)
+{
+    if (!gw_cfg_json_add_bool(p_json_root, "use_http_ruuvi", true))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(p_json_root, "use_http", true))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_string(p_json_root, "http_url", RUUVI_GATEWAY_HTTP_DEFAULT_URL))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_string(p_json_root, "http_data_format", GW_CFG_HTTP_DATA_FORMAT_STR_RUUVI))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_NONE))
+    {
+        return false;
+    }
+    return true;
+}
+
+static bool
+gw_cfg_json_add_items_http_custom_auth_basic(
+    cJSON* const                     p_json_root,
+    const ruuvi_gw_cfg_http_t* const p_cfg_http,
+    const bool                       flag_hide_passwords)
+{
+    if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_BASIC))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_string(p_json_root, "http_user", p_cfg_http->auth.auth_basic.user.buf))
+    {
+        return false;
+    }
+    if ((!flag_hide_passwords)
+        && (!gw_cfg_json_add_string(p_json_root, "http_pass", p_cfg_http->auth.auth_basic.password.buf)))
+    {
+        return false;
+    }
+    return true;
+}
+
+static bool
+gw_cfg_json_add_items_http_custom_auth_bearer(
+    cJSON* const                     p_json_root,
+    const ruuvi_gw_cfg_http_t* const p_cfg_http,
+    const bool                       flag_hide_passwords)
+{
+    if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_BEARER))
+    {
+        return false;
+    }
+    if ((!flag_hide_passwords)
+        && (!gw_cfg_json_add_string(p_json_root, "http_bearer_token", p_cfg_http->auth.auth_bearer.token.buf)))
+    {
+        return false;
+    }
+    return true;
+}
+
+static bool
+gw_cfg_json_add_items_http_custom_auth_token(
+    cJSON* const                     p_json_root,
+    const ruuvi_gw_cfg_http_t* const p_cfg_http,
+    const bool                       flag_hide_passwords)
+{
+    if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_TOKEN))
+    {
+        return false;
+    }
+    if ((!flag_hide_passwords)
+        && (!gw_cfg_json_add_string(p_json_root, "http_api_key", p_cfg_http->auth.auth_token.token.buf)))
+    {
+        return false;
+    }
+    return true;
+}
+
+static bool
+gw_cfg_json_add_items_http_custom_params(
+    cJSON* const                     p_json_root,
+    const ruuvi_gw_cfg_http_t* const p_cfg_http,
+    const bool                       flag_hide_passwords)
+{
+    if (!gw_cfg_json_add_bool(p_json_root, "http_use_ssl_client_cert", p_cfg_http->http_use_ssl_client_cert))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(p_json_root, "http_use_ssl_server_cert", p_cfg_http->http_use_ssl_server_cert))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_string(p_json_root, "http_url", p_cfg_http->http_url.buf))
+    {
+        return false;
+    }
+    switch (p_cfg_http->data_format)
+    {
+        case GW_CFG_HTTP_DATA_FORMAT_RUUVI:
+            if (!gw_cfg_json_add_string(p_json_root, "http_data_format", GW_CFG_HTTP_DATA_FORMAT_STR_RUUVI))
+            {
+                return false;
+            }
+            break;
+    }
+    switch (p_cfg_http->auth_type)
+    {
+        case GW_CFG_HTTP_AUTH_TYPE_NONE:
+            if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_NONE))
+            {
+                return false;
+            }
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_BASIC:
+            if (!gw_cfg_json_add_items_http_custom_auth_basic(p_json_root, p_cfg_http, flag_hide_passwords))
+            {
+                return false;
+            }
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_BEARER:
+            if (!gw_cfg_json_add_items_http_custom_auth_bearer(p_json_root, p_cfg_http, flag_hide_passwords))
+            {
+                return false;
+            }
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
+            if (!gw_cfg_json_add_items_http_custom_auth_token(p_json_root, p_cfg_http, flag_hide_passwords))
+            {
+                return false;
+            }
+            break;
+    }
+    return true;
+}
+
+static bool
 gw_cfg_json_add_items_http(
     cJSON* const                     p_json_root,
     const ruuvi_gw_cfg_http_t* const p_cfg_http,
     const bool                       flag_hide_passwords)
 {
+    if (p_cfg_http->use_http_ruuvi && (!p_cfg_http->use_http))
+    {
+        // 'use_http_ruuvi' was added in v1.14, so we need to patch configuration
+        // to ensure compatibility between configuration versions when upgrading firmware to a new version
+        // or rolling back to an old one
+        return gw_cfg_json_add_items_http_default(p_json_root);
+    }
     if (p_cfg_http->use_http && (GW_CFG_HTTP_DATA_FORMAT_RUUVI == p_cfg_http->data_format)
         && (GW_CFG_HTTP_AUTH_TYPE_NONE == p_cfg_http->auth_type)
         && (0 == strcmp(RUUVI_GATEWAY_HTTP_DEFAULT_URL, p_cfg_http->http_url.buf)))
@@ -401,133 +477,20 @@ gw_cfg_json_add_items_http(
         // 'use_http_ruuvi' was added in v1.14, so we need to patch configuration
         // to ensure compatibility between configuration versions when upgrading firmware to a new version
         // or rolling back to an old one
-        if (!gw_cfg_json_add_bool(p_json_root, "use_http_ruuvi", true))
-        {
-            return false;
-        }
-        if (!gw_cfg_json_add_bool(p_json_root, "use_http", true))
-        {
-            return false;
-        }
-        if (!gw_cfg_json_add_string(p_json_root, "http_url", RUUVI_GATEWAY_HTTP_DEFAULT_URL))
-        {
-            return false;
-        }
-        if (!gw_cfg_json_add_string(p_json_root, "http_data_format", GW_CFG_HTTP_DATA_FORMAT_STR_RUUVI))
-        {
-            return false;
-        }
-        if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_NONE))
-        {
-            return false;
-        }
-        return true;
+        return gw_cfg_json_add_items_http_default(p_json_root);
     }
 
     if (!gw_cfg_json_add_bool(p_json_root, "use_http_ruuvi", p_cfg_http->use_http_ruuvi))
     {
         return false;
     }
-    if (p_cfg_http->use_http_ruuvi && !p_cfg_http->use_http)
-    {
-        // 'use_http_ruuvi' was added in v1.14, so we need to patch configuration
-        // to ensure compatibility between configuration versions when upgrading firmware to a new version
-        // or rolling back to an old one
-        if (!gw_cfg_json_add_bool(p_json_root, "use_http", true))
-        {
-            return false;
-        }
-        if (!gw_cfg_json_add_string(p_json_root, "http_url", RUUVI_GATEWAY_HTTP_DEFAULT_URL))
-        {
-            return false;
-        }
-        if (!gw_cfg_json_add_string(p_json_root, "http_data_format", GW_CFG_HTTP_DATA_FORMAT_STR_RUUVI))
-        {
-            return false;
-        }
-        if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_NONE))
-        {
-            return false;
-        }
-        return true;
-    }
-
     if (!gw_cfg_json_add_bool(p_json_root, "use_http", p_cfg_http->use_http))
     {
         return false;
     }
     if (p_cfg_http->use_http)
     {
-        if (!gw_cfg_json_add_bool(p_json_root, "http_use_ssl_client_cert", p_cfg_http->http_use_ssl_client_cert))
-        {
-            return false;
-        }
-        if (!gw_cfg_json_add_bool(p_json_root, "http_use_ssl_server_cert", p_cfg_http->http_use_ssl_server_cert))
-        {
-            return false;
-        }
-        if (!gw_cfg_json_add_string(p_json_root, "http_url", p_cfg_http->http_url.buf))
-        {
-            return false;
-        }
-        switch (p_cfg_http->data_format)
-        {
-            case GW_CFG_HTTP_DATA_FORMAT_RUUVI:
-                if (!gw_cfg_json_add_string(p_json_root, "http_data_format", GW_CFG_HTTP_DATA_FORMAT_STR_RUUVI))
-                {
-                    return false;
-                }
-                break;
-        }
-        switch (p_cfg_http->auth_type)
-        {
-            case GW_CFG_HTTP_AUTH_TYPE_NONE:
-                if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_NONE))
-                {
-                    return false;
-                }
-                break;
-            case GW_CFG_HTTP_AUTH_TYPE_BASIC:
-                if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_BASIC))
-                {
-                    return false;
-                }
-                if (!gw_cfg_json_add_string(p_json_root, "http_user", p_cfg_http->auth.auth_basic.user.buf))
-                {
-                    return false;
-                }
-                if ((!flag_hide_passwords)
-                    && (!gw_cfg_json_add_string(p_json_root, "http_pass", p_cfg_http->auth.auth_basic.password.buf)))
-                {
-                    return false;
-                }
-                break;
-            case GW_CFG_HTTP_AUTH_TYPE_BEARER:
-                if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_BEARER))
-                {
-                    return false;
-                }
-                if ((!flag_hide_passwords)
-                    && (!gw_cfg_json_add_string(
-                        p_json_root,
-                        "http_bearer_token",
-                        p_cfg_http->auth.auth_bearer.token.buf)))
-                {
-                    return false;
-                }
-                break;
-            case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
-                if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_TOKEN))
-                {
-                    return false;
-                }
-                if ((!flag_hide_passwords)
-                    && (!gw_cfg_json_add_string(p_json_root, "http_api_key", p_cfg_http->auth.auth_token.token.buf)))
-                {
-                    return false;
-                }
-                break;
-        }
+        return gw_cfg_json_add_items_http_custom_params(p_json_root, p_cfg_http, flag_hide_passwords);
     }
     return true;
 }

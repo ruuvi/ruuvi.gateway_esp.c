@@ -78,6 +78,8 @@ typedef enum leds_task_sig_e
 #define LEDS_TASK_SIG_FIRST (LEDS_TASK_SIG_UPDATE)
 #define LEDS_TASK_SIG_LAST  (LEDS_TASK_SIG_TASK_WATCHDOG_FEED)
 
+typedef void (*leds_on_sig_handler_t)(void);
+
 static ledc_channel_config_t ledc_channel[1] = {
     {
         .gpio_num   = LEDC_HS_CH0_GPIO,
@@ -270,6 +272,10 @@ leds_task_handle_sig_update(void)
                 break;
         }
     }
+    if (leds_blinking_is_sequence_finished())
+    {
+        leds_blinking_set_new_sequence(leds_ctrl_get_new_blinking_sequence());
+    }
 }
 
 static void
@@ -438,112 +444,91 @@ leds_task_handle_sig_on_ev_recv_adv_timeout(void)
 }
 
 static void
+leds_task_handle_sig_on_ev_reboot(void)
+{
+    LOG_DBG("LEDS_TASK_SIG_ON_EV_REBOOT");
+    leds_ctrl_handle_event(LEDS_CTRL_EVENT_REBOOT);
+}
+
+static void
+leds_task_handle_sig_on_ev_nrf52_fw_check(void)
+{
+    LOG_DBG("LEDS_TASK_SIG_ON_EV_NRF52_FW_CHECK");
+    leds_ctrl_handle_event(LEDS_CTRL_EVENT_NRF52_FW_CHECK);
+}
+
+static void
+leds_task_handle_sig_on_ev_nrf52_fw_updating(void)
+{
+    LOG_DBG("LEDS_TASK_SIG_ON_EV_NRF52_FW_UPDATING");
+    leds_ctrl_handle_event(LEDS_CTRL_EVENT_NRF52_FW_UPDATING);
+}
+
+static void
+leds_task_handle_sig_on_ev_nrf52_ready(void)
+{
+    LOG_DBG("LEDS_TASK_SIG_ON_EV_NRF52_READY");
+    leds_ctrl_handle_event(LEDS_CTRL_EVENT_NRF52_READY);
+}
+
+static void
+leds_task_handle_sig_on_ev_nrf52_failure(void)
+{
+    LOG_DBG("LEDS_TASK_SIG_ON_EV_NRF52_FAILURE");
+    leds_ctrl_handle_event(LEDS_CTRL_EVENT_NRF52_FAILURE);
+}
+
+static void
+leds_task_handle_sig_on_ev_cfg_erased(void)
+{
+    LOG_DBG("LEDS_TASK_SIG_ON_EV_CFG_ERASED");
+    leds_ctrl_handle_event(LEDS_CTRL_EVENT_CFG_ERASED);
+}
+
+static void
 leds_task_handle_sig(const leds_task_sig_e leds_task_sig)
 {
-    switch (leds_task_sig)
+    static const leds_on_sig_handler_t g_sig_handlers[LEDS_TASK_SIG_LAST + 1] = {
+        [OS_SIGNAL_NUM_NONE]                               = NULL,
+        [LEDS_TASK_SIG_UPDATE]                             = &leds_task_handle_sig_update,
+        [LEDS_TASK_SIG_ON_EV_REBOOT]                       = &leds_task_handle_sig_on_ev_reboot,
+        [LEDS_TASK_SIG_ON_EV_NRF52_FW_CHECK]               = &leds_task_handle_sig_on_ev_nrf52_fw_check,
+        [LEDS_TASK_SIG_ON_EV_NRF52_FW_UPDATING]            = &leds_task_handle_sig_on_ev_nrf52_fw_updating,
+        [LEDS_TASK_SIG_ON_EV_NRF52_READY]                  = &leds_task_handle_sig_on_ev_nrf52_ready,
+        [LEDS_TASK_SIG_ON_EV_NRF52_FAILURE]                = &leds_task_handle_sig_on_ev_nrf52_failure,
+        [LEDS_TASK_SIG_ON_EV_CFG_READY]                    = &leds_task_handle_sig_on_ev_cfg_ready,
+        [LEDS_TASK_SIG_ON_EV_CFG_CHANGED_RUUVI]            = &leds_task_handle_sig_on_ev_cfg_changed_ruuvi,
+        [LEDS_TASK_SIG_ON_EV_CFG_ERASED]                   = &leds_task_handle_sig_on_ev_cfg_erased,
+        [LEDS_TASK_SIG_ON_EV_WIFI_AP_STARTED]              = &leds_task_handle_sig_on_ev_wifi_ap_started,
+        [LEDS_TASK_SIG_ON_EV_WIFI_AP_STOPPED]              = &leds_task_handle_sig_on_ev_wifi_ap_stopped,
+        [LEDS_TASK_SIG_ON_EV_NETWORK_CONNECTED]            = &leds_task_handle_sig_on_ev_network_connected,
+        [LEDS_TASK_SIG_ON_EV_NETWORK_DISCONNECTED]         = &leds_task_handle_sig_on_ev_network_disconnected,
+        [LEDS_TASK_SIG_ON_EV_MQTT1_CONNECTED]              = &leds_task_handle_sig_on_ev_mqtt1_connected,
+        [LEDS_TASK_SIG_ON_EV_MQTT1_DISCONNECTED]           = &leds_task_handle_sig_on_ev_mqtt1_disconnected,
+        [LEDS_TASK_SIG_ON_EV_HTTP1_DATA_SENT_SUCCESSFULLY] = &leds_task_handle_sig_on_ev_http1_data_sent_successfully,
+        [LEDS_TASK_SIG_ON_EV_HTTP1_DATA_SENT_FAIL]         = &leds_task_handle_sig_on_ev_http1_data_sent_fail,
+        [LEDS_TASK_SIG_ON_EV_HTTP2_DATA_SENT_SUCCESSFULLY] = &leds_task_handle_sig_on_ev_http2_data_sent_successfully,
+        [LEDS_TASK_SIG_ON_EV_HTTP2_DATA_SENT_FAIL]         = &leds_task_handle_sig_on_ev_http2_data_sent_fail,
+        [LEDS_TASK_SIG_ON_EV_HTTP_POLL_OK]                 = &leds_task_handle_sig_on_ev_http_poll_ok,
+        [LEDS_TASK_SIG_ON_EV_HTTP_POLL_TIMEOUT]            = &leds_task_handle_sig_on_ev_http_poll_timeout,
+        [LEDS_TASK_SIG_ON_EV_RECV_ADV]                     = &leds_task_handle_sig_on_ev_recv_adv,
+        [LEDS_TASK_SIG_ON_EV_RECV_ADV_TIMEOUT]             = &leds_task_handle_sig_on_ev_recv_adv_timeout,
+        [LEDS_TASK_SIG_TASK_WATCHDOG_FEED]                 = &leds_task_watchdog_feed,
+    };
+    if (leds_task_sig >= (sizeof(g_sig_handlers) / sizeof(g_sig_handlers[0])))
     {
-        case LEDS_TASK_SIG_UPDATE:
-            leds_task_handle_sig_update();
-            if (leds_blinking_is_sequence_finished())
-            {
-                leds_blinking_set_new_sequence(leds_ctrl_get_new_blinking_sequence());
-            }
-            break;
-
-        case LEDS_TASK_SIG_ON_EV_REBOOT:
-            LOG_DBG("LEDS_TASK_SIG_ON_EV_REBOOT");
-            leds_ctrl_handle_event(LEDS_CTRL_EVENT_REBOOT);
-            break;
-
-        case LEDS_TASK_SIG_ON_EV_NRF52_FW_CHECK:
-            LOG_DBG("LEDS_TASK_SIG_ON_EV_NRF52_FW_CHECK");
-            leds_ctrl_handle_event(LEDS_CTRL_EVENT_NRF52_FW_CHECK);
-            break;
-
-        case LEDS_TASK_SIG_ON_EV_NRF52_FW_UPDATING:
-            LOG_DBG("LEDS_TASK_SIG_ON_EV_NRF52_FW_UPDATING");
-            leds_ctrl_handle_event(LEDS_CTRL_EVENT_NRF52_FW_UPDATING);
-            break;
-
-        case LEDS_TASK_SIG_ON_EV_NRF52_READY:
-            LOG_DBG("LEDS_TASK_SIG_ON_EV_NRF52_READY");
-            leds_ctrl_handle_event(LEDS_CTRL_EVENT_NRF52_READY);
-            break;
-
-        case LEDS_TASK_SIG_ON_EV_NRF52_FAILURE:
-            LOG_DBG("LEDS_TASK_SIG_ON_EV_NRF52_FAILURE");
-            leds_ctrl_handle_event(LEDS_CTRL_EVENT_NRF52_FAILURE);
-            break;
-
-        case LEDS_TASK_SIG_ON_EV_CFG_READY:
-            leds_task_handle_sig_on_ev_cfg_ready();
-            break;
-
-        case LEDS_TASK_SIG_ON_EV_CFG_CHANGED_RUUVI:
-            leds_task_handle_sig_on_ev_cfg_changed_ruuvi();
-            break;
-
-        case LEDS_TASK_SIG_ON_EV_CFG_ERASED:
-            LOG_DBG("LEDS_TASK_SIG_ON_EV_CFG_ERASED");
-            leds_ctrl_handle_event(LEDS_CTRL_EVENT_CFG_ERASED);
-            break;
-
-        case LEDS_TASK_SIG_ON_EV_WIFI_AP_STARTED:
-            leds_task_handle_sig_on_ev_wifi_ap_started();
-            break;
-
-        case LEDS_TASK_SIG_ON_EV_WIFI_AP_STOPPED:
-            leds_task_handle_sig_on_ev_wifi_ap_stopped();
-            break;
-
-        case LEDS_TASK_SIG_ON_EV_NETWORK_CONNECTED:
-            leds_task_handle_sig_on_ev_network_connected();
-            break;
-        case LEDS_TASK_SIG_ON_EV_NETWORK_DISCONNECTED:
-            leds_task_handle_sig_on_ev_network_disconnected();
-            break;
-
-        case LEDS_TASK_SIG_ON_EV_MQTT1_CONNECTED:
-            leds_task_handle_sig_on_ev_mqtt1_connected();
-            break;
-        case LEDS_TASK_SIG_ON_EV_MQTT1_DISCONNECTED:
-            leds_task_handle_sig_on_ev_mqtt1_disconnected();
-            break;
-        case LEDS_TASK_SIG_ON_EV_HTTP1_DATA_SENT_SUCCESSFULLY:
-            leds_task_handle_sig_on_ev_http1_data_sent_successfully();
-            break;
-        case LEDS_TASK_SIG_ON_EV_HTTP1_DATA_SENT_FAIL:
-            leds_task_handle_sig_on_ev_http1_data_sent_fail();
-            break;
-        case LEDS_TASK_SIG_ON_EV_HTTP2_DATA_SENT_SUCCESSFULLY:
-            leds_task_handle_sig_on_ev_http2_data_sent_successfully();
-            break;
-        case LEDS_TASK_SIG_ON_EV_HTTP2_DATA_SENT_FAIL:
-            leds_task_handle_sig_on_ev_http2_data_sent_fail();
-            break;
-        case LEDS_TASK_SIG_ON_EV_HTTP_POLL_OK:
-            leds_task_handle_sig_on_ev_http_poll_ok();
-            break;
-        case LEDS_TASK_SIG_ON_EV_HTTP_POLL_TIMEOUT:
-            leds_task_handle_sig_on_ev_http_poll_timeout();
-            break;
-        case LEDS_TASK_SIG_ON_EV_RECV_ADV:
-            leds_task_handle_sig_on_ev_recv_adv();
-            break;
-        case LEDS_TASK_SIG_ON_EV_RECV_ADV_TIMEOUT:
-            leds_task_handle_sig_on_ev_recv_adv_timeout();
-            break;
-
-        case LEDS_TASK_SIG_TASK_WATCHDOG_FEED:
-            LOG_DBG("LEDS_TASK_SIG_TASK_WATCHDOG_FEED");
-            leds_task_watchdog_feed();
-            break;
-
-        default:
-            LOG_ERR("Unhanded sig: %d", (int)leds_task_sig);
-            assert(0);
-            break;
+        LOG_ERR("Unhanded sig: %d", (int)leds_task_sig);
+        assert(0);
+        return;
     }
+    const leds_on_sig_handler_t p_sig_handler = g_sig_handlers[leds_task_sig];
+    if (NULL == p_sig_handler)
+    {
+        LOG_ERR("Uninitialized sig handler: %d", (int)leds_task_sig);
+        assert(0);
+        return;
+    }
+    p_sig_handler();
 }
 
 static void

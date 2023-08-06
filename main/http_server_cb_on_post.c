@@ -117,6 +117,39 @@ http_server_cb_on_post_ble_scanning(const char* const p_body)
         flag_no_cache);
 }
 
+static http_server_resp_t
+http_server_fw_update_check_file(const char* const p_file_name)
+{
+    str_buf_t url = str_buf_printf_with_alloc("%s/%s", fw_update_get_url(), p_file_name);
+    if (NULL == url.buf)
+    {
+        LOG_ERR("Can't allocate memory");
+        return http_server_resp_500();
+    }
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = url.buf,
+            .timeout_seconds         = HTTP_DOWNLOAD_TIMEOUT_SECONDS,
+            .flag_feed_task_watchdog = true,
+            .flag_free_memory        = true,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_resp_code_e http_resp_code = http_check(&params);
+    str_buf_free_buf(&url);
+    if (HTTP_RESP_CODE_200 != http_resp_code)
+    {
+        LOG_ERR("Failed to download %s, HTTP error: %d", p_file_name, http_resp_code);
+        return http_server_cb_gen_resp(http_resp_code, "Failed to download %s", p_file_name);
+    }
+    return http_server_resp_200_json("{}");
+}
+
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_cb_on_post_fw_update(const char* p_body, const bool flag_access_from_lan)
@@ -135,50 +168,28 @@ http_server_cb_on_post_fw_update(const char* p_body, const bool flag_access_from
     const bool flag_wait_until_relaying_stopped = true;
     gw_status_suspend_relaying(flag_wait_until_relaying_stopped);
 
-    str_buf_t url = str_buf_printf_with_alloc("%s/%s", fw_update_get_url(), "ruuvi_gateway_esp.bin");
-    if (NULL == url.buf)
-    {
-        LOG_ERR("Can't allocate memory");
-        return http_server_resp_500();
-    }
-    http_resp_code_e http_resp_code
-        = http_check(url.buf, HTTP_DOWNLOAD_TIMEOUT_SECONDS, GW_CFG_HTTP_AUTH_TYPE_NONE, NULL, NULL, true);
-    str_buf_free_buf(&url);
-    if (HTTP_RESP_CODE_200 != http_resp_code)
+    http_server_resp_t resp = http_server_fw_update_check_file("ruuvi_gateway_esp.bin");
+    if (HTTP_RESP_CODE_200 != resp.http_resp_code)
     {
         LOG_ERR("Failed to download ruuvi_gateway_esp.bin");
         gw_status_resume_relaying(true);
-        return http_server_cb_gen_resp(http_resp_code, "Failed to download ruuvi_gateway_esp.bin");
+        return resp;
     }
 
-    url = str_buf_printf_with_alloc("%s/%s", fw_update_get_url(), "fatfs_gwui.bin");
-    if (NULL == url.buf)
-    {
-        LOG_ERR("Can't allocate memory");
-        return http_server_resp_500();
-    }
-    http_resp_code = http_check(url.buf, HTTP_DOWNLOAD_TIMEOUT_SECONDS, GW_CFG_HTTP_AUTH_TYPE_NONE, NULL, NULL, true);
-    str_buf_free_buf(&url);
-    if (HTTP_RESP_CODE_200 != http_resp_code)
+    resp = http_server_fw_update_check_file("fatfs_gwui.bin");
+    if (HTTP_RESP_CODE_200 != resp.http_resp_code)
     {
         LOG_ERR("Failed to download fatfs_gwui.bin");
         gw_status_resume_relaying(true);
-        return http_server_cb_gen_resp(http_resp_code, "Failed to download fatfs_gwui.bin");
+        return resp;
     }
 
-    url = str_buf_printf_with_alloc("%s/%s", fw_update_get_url(), "fatfs_nrf52.bin");
-    if (NULL == url.buf)
+    resp = http_server_fw_update_check_file("fatfs_nrf52.bin");
+    if (HTTP_RESP_CODE_200 != resp.http_resp_code)
     {
-        LOG_ERR("Can't allocate memory");
-        return http_server_resp_500();
-    }
-    http_resp_code = http_check(url.buf, HTTP_DOWNLOAD_TIMEOUT_SECONDS, GW_CFG_HTTP_AUTH_TYPE_NONE, NULL, NULL, true);
-    str_buf_free_buf(&url);
-    if (HTTP_RESP_CODE_200 != http_resp_code)
-    {
-        gw_status_resume_relaying(true);
         LOG_ERR("Failed to download fatfs_nrf52.bin");
-        return http_server_cb_gen_resp(http_resp_code, "Failed to download fatfs_nrf52.bin");
+        gw_status_resume_relaying(true);
+        return resp;
     }
 
     fw_update_set_extra_info_for_status_json_update_start();
@@ -251,19 +262,7 @@ http_server_cb_on_post_ssl_cert(const char* const p_body, const char* const p_ur
         return http_server_resp_400();
     }
     LOG_DBG("Content: %s", p_body);
-
-    if ((0 != strcmp(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_STAT_CLI_CERT, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_STAT_CLI_KEY, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_MQTT_CLI_CERT, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_MQTT_CLI_KEY, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_STAT_SRV_CERT, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_MQTT_SRV_CERT, filename_str_buf.buf))
-        && (0 != strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT, filename_str_buf.buf)))
+    if (!gw_cfg_storage_is_known_filename(filename_str_buf.buf))
     {
         LOG_ERR("HTTP post_ssl_cert: Unknown file name: %s", filename_str_buf.buf);
         str_buf_free_buf(&filename_str_buf);
@@ -283,7 +282,7 @@ http_server_cb_on_post_ssl_cert(const char* const p_body, const char* const p_ur
 
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
-http_server_cb_on_post_init_storage(const char* const p_body, const char* const p_uri_params)
+http_server_cb_on_post_init_storage(const char* const p_uri_params)
 {
     LOG_INFO("POST /init_storage, params=%s", (NULL != p_uri_params) ? p_uri_params : "NULL");
 
@@ -334,7 +333,7 @@ http_server_cb_on_post(
     }
     if (0 == strcmp(p_file_name, "init_storage"))
     {
-        return http_server_cb_on_post_init_storage(p_body, p_uri_params);
+        return http_server_cb_on_post_init_storage(p_uri_params);
     }
     LOG_WARN("POST /%s", p_file_name);
     return http_server_resp_404();

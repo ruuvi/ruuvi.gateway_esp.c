@@ -38,9 +38,6 @@ extern "C" {
 char*
 bin2hex_with_malloc(const uint8_t* const p_bin_buf, const size_t bin_buf_len);
 
-uint8_t*
-hex2bin_with_malloc(const char* const p_hex_str, size_t* const p_length);
-
 #if RUUVI_TESTS_BIN2HEX
 
 BIN2HEX_STATIC

@@ -122,6 +122,28 @@ gw_cfg_json_parse_device_info(const cJSON* const p_json_root, gw_cfg_device_info
         sizeof(p_gw_cfg_dev_info->nrf52_mac_addr.str_buf));
 }
 
+static void
+gw_cfg_json_parse_ip(
+    const cJSON* const                p_root,
+    const char* const                 p_attr_name,
+    ruuvi_gw_cfg_ip_addr_str_t* const p_ip_addr)
+{
+    if (!gw_cfg_json_copy_string_val(p_root, p_attr_name, &p_ip_addr->buf[0], sizeof(p_ip_addr->buf)))
+    {
+        LOG_WARN("Can't find key '%s' in config-json", p_attr_name);
+    }
+}
+
+static void
+gw_cfg_json_parse_eth_dhcp(const cJSON* const p_root, gw_cfg_eth_t* const p_gw_cfg_eth)
+{
+    gw_cfg_json_parse_ip(p_root, "eth_static_ip", &p_gw_cfg_eth->eth_static_ip);
+    gw_cfg_json_parse_ip(p_root, "eth_netmask", &p_gw_cfg_eth->eth_netmask);
+    gw_cfg_json_parse_ip(p_root, "eth_gw", &p_gw_cfg_eth->eth_gw);
+    gw_cfg_json_parse_ip(p_root, "eth_dns1", &p_gw_cfg_eth->eth_dns1);
+    gw_cfg_json_parse_ip(p_root, "eth_dns2", &p_gw_cfg_eth->eth_dns2);
+}
+
 void
 gw_cfg_json_parse_eth(const cJSON* const p_json_root, gw_cfg_eth_t* const p_gw_cfg_eth)
 {
@@ -137,46 +159,7 @@ gw_cfg_json_parse_eth(const cJSON* const p_json_root, gw_cfg_eth_t* const p_gw_c
         }
         if (!p_gw_cfg_eth->eth_dhcp)
         {
-            if (!gw_cfg_json_copy_string_val(
-                    p_json_root,
-                    "eth_static_ip",
-                    &p_gw_cfg_eth->eth_static_ip.buf[0],
-                    sizeof(p_gw_cfg_eth->eth_static_ip.buf)))
-            {
-                LOG_WARN("Can't find key '%s' in config-json", "eth_static_ip");
-            }
-            if (!gw_cfg_json_copy_string_val(
-                    p_json_root,
-                    "eth_netmask",
-                    &p_gw_cfg_eth->eth_netmask.buf[0],
-                    sizeof(p_gw_cfg_eth->eth_netmask.buf)))
-            {
-                LOG_WARN("Can't find key '%s' in config-json", "eth_netmask");
-            }
-            if (!gw_cfg_json_copy_string_val(
-                    p_json_root,
-                    "eth_gw",
-                    &p_gw_cfg_eth->eth_gw.buf[0],
-                    sizeof(p_gw_cfg_eth->eth_gw.buf)))
-            {
-                LOG_WARN("Can't find key '%s' in config-json", "eth_gw");
-            }
-            if (!gw_cfg_json_copy_string_val(
-                    p_json_root,
-                    "eth_dns1",
-                    &p_gw_cfg_eth->eth_dns1.buf[0],
-                    sizeof(p_gw_cfg_eth->eth_dns1.buf)))
-            {
-                LOG_WARN("Can't find key '%s' in config-json", "eth_dns1");
-            }
-            if (!gw_cfg_json_copy_string_val(
-                    p_json_root,
-                    "eth_dns2",
-                    &p_gw_cfg_eth->eth_dns2.buf[0],
-                    sizeof(p_gw_cfg_eth->eth_dns2.buf)))
-            {
-                LOG_WARN("Can't find key '%s' in config-json", "eth_dns2");
-            }
+            gw_cfg_json_parse_eth_dhcp(p_json_root, p_gw_cfg_eth);
         }
     }
 }
@@ -352,6 +335,66 @@ gw_cfg_json_parse_http_auth_type(const cJSON* const p_json_root)
 }
 
 static void
+gw_cfg_json_parse_http_auth_basic(const cJSON* const p_json_root, ruuvi_gw_cfg_http_t* const p_gw_cfg_http)
+{
+    if (!gw_cfg_json_copy_string_val(
+            p_json_root,
+            "http_user",
+            &p_gw_cfg_http->auth.auth_basic.user.buf[0],
+            sizeof(p_gw_cfg_http->auth.auth_basic.user.buf)))
+    {
+        LOG_WARN("Can't find key '%s' in config-json", "http_user");
+    }
+    if (!gw_cfg_json_copy_string_val(
+            p_json_root,
+            "http_pass",
+            &p_gw_cfg_http->auth.auth_basic.password.buf[0],
+            sizeof(p_gw_cfg_http->auth.auth_basic.password.buf)))
+    {
+        LOG_INFO("Can't find key '%s' in config-json, leave the previous value unchanged", "http_pass");
+    }
+}
+
+static void
+gw_cfg_json_parse_http_auth_bearer(const cJSON* const p_json_root, ruuvi_gw_cfg_http_t* const p_gw_cfg_http)
+{
+    if (!gw_cfg_json_copy_string_val(
+            p_json_root,
+            "http_bearer_token",
+            &p_gw_cfg_http->auth.auth_bearer.token.buf[0],
+            sizeof(p_gw_cfg_http->auth.auth_bearer.token.buf)))
+    {
+        LOG_WARN("Can't find key '%s' in config-json", "http_bearer_token");
+    }
+}
+
+static void
+gw_cfg_json_parse_http_auth_token(const cJSON* const p_json_root, ruuvi_gw_cfg_http_t* const p_gw_cfg_http)
+{
+    if (!gw_cfg_json_copy_string_val(
+            p_json_root,
+            "http_api_key",
+            &p_gw_cfg_http->auth.auth_token.token.buf[0],
+            sizeof(p_gw_cfg_http->auth.auth_token.token.buf)))
+    {
+        LOG_WARN("Can't find key '%s' in config-json", "http_api_key");
+    }
+}
+
+static void
+gw_cfg_json_parse_http_ssl_certs(const cJSON* const p_json_root, ruuvi_gw_cfg_http_t* const p_gw_cfg_http)
+{
+    if (!gw_cfg_json_get_bool_val(p_json_root, "http_use_ssl_client_cert", &p_gw_cfg_http->http_use_ssl_client_cert))
+    {
+        LOG_WARN("Can't find key '%s' in config-json", "http_use_ssl_client_cert");
+    }
+    if (!gw_cfg_json_get_bool_val(p_json_root, "http_use_ssl_server_cert", &p_gw_cfg_http->http_use_ssl_server_cert))
+    {
+        LOG_WARN("Can't find key '%s' in config-json", "http_use_ssl_server_cert");
+    }
+}
+
+static void
 gw_cfg_json_parse_http(const cJSON* const p_json_root, ruuvi_gw_cfg_http_t* const p_gw_cfg_http)
 {
     if (!gw_cfg_json_get_bool_val(p_json_root, "use_http_ruuvi", &p_gw_cfg_http->use_http_ruuvi))
@@ -381,42 +424,13 @@ gw_cfg_json_parse_http(const cJSON* const p_json_root, ruuvi_gw_cfg_http_t* cons
             case GW_CFG_HTTP_AUTH_TYPE_NONE:
                 break;
             case GW_CFG_HTTP_AUTH_TYPE_BASIC:
-                if (!gw_cfg_json_copy_string_val(
-                        p_json_root,
-                        "http_user",
-                        &p_gw_cfg_http->auth.auth_basic.user.buf[0],
-                        sizeof(p_gw_cfg_http->auth.auth_basic.user.buf)))
-                {
-                    LOG_WARN("Can't find key '%s' in config-json", "http_user");
-                }
-                if (!gw_cfg_json_copy_string_val(
-                        p_json_root,
-                        "http_pass",
-                        &p_gw_cfg_http->auth.auth_basic.password.buf[0],
-                        sizeof(p_gw_cfg_http->auth.auth_basic.password.buf)))
-                {
-                    LOG_INFO("Can't find key '%s' in config-json, leave the previous value unchanged", "http_pass");
-                }
+                gw_cfg_json_parse_http_auth_basic(p_json_root, p_gw_cfg_http);
                 break;
             case GW_CFG_HTTP_AUTH_TYPE_BEARER:
-                if (!gw_cfg_json_copy_string_val(
-                        p_json_root,
-                        "http_bearer_token",
-                        &p_gw_cfg_http->auth.auth_bearer.token.buf[0],
-                        sizeof(p_gw_cfg_http->auth.auth_bearer.token.buf)))
-                {
-                    LOG_WARN("Can't find key '%s' in config-json", "http_bearer_token");
-                }
+                gw_cfg_json_parse_http_auth_bearer(p_json_root, p_gw_cfg_http);
                 break;
             case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
-                if (!gw_cfg_json_copy_string_val(
-                        p_json_root,
-                        "http_api_key",
-                        &p_gw_cfg_http->auth.auth_token.token.buf[0],
-                        sizeof(p_gw_cfg_http->auth.auth_token.token.buf)))
-                {
-                    LOG_WARN("Can't find key '%s' in config-json", "http_api_key");
-                }
+                gw_cfg_json_parse_http_auth_token(p_json_root, p_gw_cfg_http);
                 break;
         }
         if ((GW_CFG_HTTP_DATA_FORMAT_RUUVI == p_gw_cfg_http->data_format)
@@ -431,20 +445,7 @@ gw_cfg_json_parse_http(const cJSON* const p_json_root, ruuvi_gw_cfg_http_t* cons
         }
         if (p_gw_cfg_http->use_http)
         {
-            if (!gw_cfg_json_get_bool_val(
-                    p_json_root,
-                    "http_use_ssl_client_cert",
-                    &p_gw_cfg_http->http_use_ssl_client_cert))
-            {
-                LOG_WARN("Can't find key '%s' in config-json", "http_use_ssl_client_cert");
-            }
-            if (!gw_cfg_json_get_bool_val(
-                    p_json_root,
-                    "http_use_ssl_server_cert",
-                    &p_gw_cfg_http->http_use_ssl_server_cert))
-            {
-                LOG_WARN("Can't find key '%s' in config-json", "http_use_ssl_server_cert");
-            }
+            gw_cfg_json_parse_http_ssl_certs(p_json_root, p_gw_cfg_http);
         }
     }
 }
@@ -500,106 +501,89 @@ gw_cfg_json_parse_http_stat(const cJSON* const p_json_root, ruuvi_gw_cfg_http_st
 }
 
 static void
-gw_cfg_json_parse_mqtt(const cJSON* const p_json_root, ruuvi_gw_cfg_mqtt_t* const p_gw_cfg_mqtt)
+gw_cfg_json_parse_mqtt(const cJSON* const p_cjson, ruuvi_gw_cfg_mqtt_t* const p_mqtt)
 {
-    if (!gw_cfg_json_get_bool_val(p_json_root, "use_mqtt", &p_gw_cfg_mqtt->use_mqtt))
+    if (!gw_cfg_json_get_bool_val(p_cjson, "use_mqtt", &p_mqtt->use_mqtt))
     {
         LOG_WARN("Can't find key '%s' in config-json", "use_mqtt");
     }
-    if (!gw_cfg_json_get_bool_val(
-            p_json_root,
-            "mqtt_disable_retained_messages",
-            &p_gw_cfg_mqtt->mqtt_disable_retained_messages))
+    if (!gw_cfg_json_get_bool_val(p_cjson, "mqtt_disable_retained_messages", &p_mqtt->mqtt_disable_retained_messages))
     {
         LOG_WARN("Can't find key '%s' in config-json", "mqtt_disable_retained_messages");
     }
     if (!gw_cfg_json_copy_string_val(
-            p_json_root,
+            p_cjson,
             "mqtt_transport",
-            &p_gw_cfg_mqtt->mqtt_transport.buf[0],
-            sizeof(p_gw_cfg_mqtt->mqtt_transport.buf)))
+            &p_mqtt->mqtt_transport.buf[0],
+            sizeof(p_mqtt->mqtt_transport.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "mqtt_transport");
     }
     if (!gw_cfg_json_copy_string_val(
-            p_json_root,
+            p_cjson,
             "mqtt_server",
-            &p_gw_cfg_mqtt->mqtt_server.buf[0],
-            sizeof(p_gw_cfg_mqtt->mqtt_server.buf)))
+            &p_mqtt->mqtt_server.buf[0],
+            sizeof(p_mqtt->mqtt_server.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "mqtt_server");
     }
-    if (!gw_cfg_json_get_uint16_val(p_json_root, "mqtt_port", &p_gw_cfg_mqtt->mqtt_port))
+    if (!gw_cfg_json_get_uint16_val(p_cjson, "mqtt_port", &p_mqtt->mqtt_port))
     {
         LOG_WARN("Can't find key '%s' in config-json", "mqtt_port");
     }
     if (!gw_cfg_json_copy_string_val(
-            p_json_root,
+            p_cjson,
             "mqtt_prefix",
-            &p_gw_cfg_mqtt->mqtt_prefix.buf[0],
-            sizeof(p_gw_cfg_mqtt->mqtt_prefix.buf)))
+            &p_mqtt->mqtt_prefix.buf[0],
+            sizeof(p_mqtt->mqtt_prefix.buf)))
     {
         const ruuvi_gw_cfg_mqtt_t* const p_default_mqtt = gw_cfg_default_get_mqtt();
-        p_gw_cfg_mqtt->mqtt_prefix                      = p_default_mqtt->mqtt_prefix;
-        LOG_WARN(
-            "Can't find key '%s' in config-json, use default value: %s",
-            "mqtt_prefix",
-            p_gw_cfg_mqtt->mqtt_prefix.buf);
+        p_mqtt->mqtt_prefix                             = p_default_mqtt->mqtt_prefix;
+        LOG_WARN("Can't find key '%s' in config-json, use default value: %s", "mqtt_prefix", p_mqtt->mqtt_prefix.buf);
     }
-    if ('\0' == p_gw_cfg_mqtt->mqtt_prefix.buf[0])
+    if ('\0' == p_mqtt->mqtt_prefix.buf[0])
     {
         const ruuvi_gw_cfg_mqtt_t* const p_default_mqtt = gw_cfg_default_get_mqtt();
-        p_gw_cfg_mqtt->mqtt_prefix                      = p_default_mqtt->mqtt_prefix;
-        LOG_WARN(
-            "Key '%s' is empty in config-json, use default value: %s",
-            "mqtt_prefix",
-            p_gw_cfg_mqtt->mqtt_prefix.buf);
+        p_mqtt->mqtt_prefix                             = p_default_mqtt->mqtt_prefix;
+        LOG_WARN("Key '%s' is empty in config-json, use default value: %s", "mqtt_prefix", p_mqtt->mqtt_prefix.buf);
     }
     if (!gw_cfg_json_copy_string_val(
-            p_json_root,
+            p_cjson,
             "mqtt_client_id",
-            &p_gw_cfg_mqtt->mqtt_client_id.buf[0],
-            sizeof(p_gw_cfg_mqtt->mqtt_client_id.buf)))
+            &p_mqtt->mqtt_client_id.buf[0],
+            sizeof(p_mqtt->mqtt_client_id.buf)))
     {
         const ruuvi_gw_cfg_mqtt_t* const p_default_mqtt = gw_cfg_default_get_mqtt();
-        p_gw_cfg_mqtt->mqtt_client_id                   = p_default_mqtt->mqtt_client_id;
+        p_mqtt->mqtt_client_id                          = p_default_mqtt->mqtt_client_id;
         LOG_WARN(
             "Can't find key '%s' in config-json, use default value: %s",
             "mqtt_client_id",
-            p_gw_cfg_mqtt->mqtt_client_id.buf);
+            p_mqtt->mqtt_client_id.buf);
     }
-    if ('\0' == p_gw_cfg_mqtt->mqtt_client_id.buf[0])
+    if ('\0' == p_mqtt->mqtt_client_id.buf[0])
     {
         const ruuvi_gw_cfg_mqtt_t* const p_default_mqtt = gw_cfg_default_get_mqtt();
-        p_gw_cfg_mqtt->mqtt_client_id                   = p_default_mqtt->mqtt_client_id;
+        p_mqtt->mqtt_client_id                          = p_default_mqtt->mqtt_client_id;
         LOG_WARN(
             "Key '%s' is empty in config-json, use default value: %s",
             "mqtt_client_id",
-            p_gw_cfg_mqtt->mqtt_client_id.buf);
+            p_mqtt->mqtt_client_id.buf);
     }
-    if (!gw_cfg_json_copy_string_val(
-            p_json_root,
-            "mqtt_user",
-            &p_gw_cfg_mqtt->mqtt_user.buf[0],
-            sizeof(p_gw_cfg_mqtt->mqtt_user.buf)))
+    if (!gw_cfg_json_copy_string_val(p_cjson, "mqtt_user", &p_mqtt->mqtt_user.buf[0], sizeof(p_mqtt->mqtt_user.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "mqtt_user");
     }
-    if (!gw_cfg_json_copy_string_val(
-            p_json_root,
-            "mqtt_pass",
-            &p_gw_cfg_mqtt->mqtt_pass.buf[0],
-            sizeof(p_gw_cfg_mqtt->mqtt_pass.buf)))
+    if (!gw_cfg_json_copy_string_val(p_cjson, "mqtt_pass", &p_mqtt->mqtt_pass.buf[0], sizeof(p_mqtt->mqtt_pass.buf)))
     {
         LOG_INFO("Can't find key '%s' in config-json, leave the previous value unchanged", "mqtt_pass");
     }
-    if (p_gw_cfg_mqtt->use_mqtt)
+    if (p_mqtt->use_mqtt)
     {
-        if (!gw_cfg_json_get_bool_val(p_json_root, "mqtt_use_ssl_client_cert", &p_gw_cfg_mqtt->use_ssl_client_cert))
+        if (!gw_cfg_json_get_bool_val(p_cjson, "mqtt_use_ssl_client_cert", &p_mqtt->use_ssl_client_cert))
         {
             LOG_WARN("Can't find key '%s' in config-json", "mqtt_use_ssl_client_cert");
         }
-        if (!gw_cfg_json_get_bool_val(p_json_root, "mqtt_use_ssl_server_cert", &p_gw_cfg_mqtt->use_ssl_server_cert))
+        if (!gw_cfg_json_get_bool_val(p_cjson, "mqtt_use_ssl_server_cert", &p_mqtt->use_ssl_server_cert))
         {
             LOG_WARN("Can't find key '%s' in config-json", "mqtt_use_ssl_server_cert");
         }
@@ -607,97 +591,91 @@ gw_cfg_json_parse_mqtt(const cJSON* const p_json_root, ruuvi_gw_cfg_mqtt_t* cons
 }
 
 static void
-gw_cfg_json_parse_lan_auth_user_password(
-    const cJSON* const             p_json_root,
-    ruuvi_gw_cfg_lan_auth_t* const p_gw_cfg_lan_auth)
+gw_cfg_json_parse_lan_auth_user_password(const cJSON* const p_cjson, ruuvi_gw_cfg_lan_auth_t* const p_cfg)
 {
     if (!gw_cfg_json_copy_string_val(
-            p_json_root,
+            p_cjson,
             "lan_auth_user",
-            &p_gw_cfg_lan_auth->lan_auth_user.buf[0],
-            sizeof(p_gw_cfg_lan_auth->lan_auth_user.buf)))
+            &p_cfg->lan_auth_user.buf[0],
+            sizeof(p_cfg->lan_auth_user.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "lan_auth_user");
     }
     if (!gw_cfg_json_copy_string_val(
-            p_json_root,
+            p_cjson,
             "lan_auth_pass",
-            &p_gw_cfg_lan_auth->lan_auth_pass.buf[0],
-            sizeof(p_gw_cfg_lan_auth->lan_auth_pass.buf)))
+            &p_cfg->lan_auth_pass.buf[0],
+            sizeof(p_cfg->lan_auth_pass.buf)))
     {
         LOG_INFO("Can't find key '%s' in config-json, leave the previous value unchanged", "lan_auth_pass");
     }
 }
 
 static void
-gw_cfg_json_parse_lan_auth(const cJSON* const p_json_root, ruuvi_gw_cfg_lan_auth_t* const p_gw_cfg_lan_auth)
+gw_cfg_json_parse_lan_auth(const cJSON* const p_cjson, ruuvi_gw_cfg_lan_auth_t* const p_cfg)
 {
     http_server_auth_type_str_t lan_auth_type_str = { 0 };
-    if (!gw_cfg_json_copy_string_val(
-            p_json_root,
-            "lan_auth_type",
-            lan_auth_type_str.buf,
-            sizeof(lan_auth_type_str.buf)))
+    if (!gw_cfg_json_copy_string_val(p_cjson, "lan_auth_type", lan_auth_type_str.buf, sizeof(lan_auth_type_str.buf)))
     {
         LOG_INFO("Can't find key '%s' in config-json, leave the previous value unchanged", "lan_auth_type");
     }
     else
     {
         const ruuvi_gw_cfg_lan_auth_t* const p_default_lan_auth = gw_cfg_default_get_lan_auth();
-        p_gw_cfg_lan_auth->lan_auth_type                        = http_server_auth_type_from_str(lan_auth_type_str.buf);
-        switch (p_gw_cfg_lan_auth->lan_auth_type)
+        p_cfg->lan_auth_type                                    = http_server_auth_type_from_str(lan_auth_type_str.buf);
+        switch (p_cfg->lan_auth_type)
         {
             case HTTP_SERVER_AUTH_TYPE_BASIC:
             case HTTP_SERVER_AUTH_TYPE_DIGEST:
             case HTTP_SERVER_AUTH_TYPE_RUUVI:
-                gw_cfg_json_parse_lan_auth_user_password(p_json_root, p_gw_cfg_lan_auth);
+                gw_cfg_json_parse_lan_auth_user_password(p_cjson, p_cfg);
                 break;
 
             case HTTP_SERVER_AUTH_TYPE_DEFAULT:
-                p_gw_cfg_lan_auth->lan_auth_user = p_default_lan_auth->lan_auth_user;
-                p_gw_cfg_lan_auth->lan_auth_pass = p_default_lan_auth->lan_auth_pass;
+                p_cfg->lan_auth_user = p_default_lan_auth->lan_auth_user;
+                p_cfg->lan_auth_pass = p_default_lan_auth->lan_auth_pass;
                 break;
 
             case HTTP_SERVER_AUTH_TYPE_ALLOW:
             case HTTP_SERVER_AUTH_TYPE_DENY:
             case HTTP_SERVER_AUTH_TYPE_BEARER:
-                p_gw_cfg_lan_auth->lan_auth_user.buf[0] = '\0';
-                p_gw_cfg_lan_auth->lan_auth_pass.buf[0] = '\0';
+                p_cfg->lan_auth_user.buf[0] = '\0';
+                p_cfg->lan_auth_pass.buf[0] = '\0';
                 break;
         }
-        if ((HTTP_SERVER_AUTH_TYPE_RUUVI == p_gw_cfg_lan_auth->lan_auth_type)
-            && (0 == strcmp(p_default_lan_auth->lan_auth_user.buf, p_gw_cfg_lan_auth->lan_auth_user.buf))
-            && (0 == strcmp(p_default_lan_auth->lan_auth_pass.buf, p_gw_cfg_lan_auth->lan_auth_pass.buf)))
+        if ((HTTP_SERVER_AUTH_TYPE_RUUVI == p_cfg->lan_auth_type)
+            && (0 == strcmp(p_default_lan_auth->lan_auth_user.buf, p_cfg->lan_auth_user.buf))
+            && (0 == strcmp(p_default_lan_auth->lan_auth_pass.buf, p_cfg->lan_auth_pass.buf)))
         {
-            p_gw_cfg_lan_auth->lan_auth_type = HTTP_SERVER_AUTH_TYPE_DEFAULT;
+            p_cfg->lan_auth_type = HTTP_SERVER_AUTH_TYPE_DEFAULT;
         }
     }
 
     if (!gw_cfg_json_copy_string_val(
-            p_json_root,
+            p_cjson,
             "lan_auth_api_key",
-            &p_gw_cfg_lan_auth->lan_auth_api_key.buf[0],
-            sizeof(p_gw_cfg_lan_auth->lan_auth_api_key)))
+            &p_cfg->lan_auth_api_key.buf[0],
+            sizeof(p_cfg->lan_auth_api_key)))
     {
         LOG_INFO("Can't find key '%s' in config-json, leave the previous value unchanged", "lan_auth_api_key");
     }
 
     if (!gw_cfg_json_copy_string_val(
-            p_json_root,
+            p_cjson,
             "lan_auth_api_key_rw",
-            &p_gw_cfg_lan_auth->lan_auth_api_key_rw.buf[0],
-            sizeof(p_gw_cfg_lan_auth->lan_auth_api_key_rw)))
+            &p_cfg->lan_auth_api_key_rw.buf[0],
+            sizeof(p_cfg->lan_auth_api_key_rw)))
     {
         LOG_INFO("Can't find key '%s' in config-json, leave the previous value unchanged", "lan_auth_api_key_rw");
     }
 }
 
 static void
-gw_cfg_json_parse_auto_update(const cJSON* const p_json_root, ruuvi_gw_cfg_auto_update_t* const p_gw_cfg_auto_update)
+gw_cfg_json_parse_auto_update(const cJSON* const p_cjson, ruuvi_gw_cfg_auto_update_t* const p_cfg)
 {
     char auto_update_cycle_str[AUTO_UPDATE_CYCLE_TYPE_STR_MAX_LEN];
     if (!gw_cfg_json_copy_string_val(
-            p_json_root,
+            p_cjson,
             "auto_update_cycle",
             &auto_update_cycle_str[0],
             sizeof(auto_update_cycle_str)))
@@ -708,105 +686,83 @@ gw_cfg_json_parse_auto_update(const cJSON* const p_json_root, ruuvi_gw_cfg_auto_
     {
         if (0 == strcmp(AUTO_UPDATE_CYCLE_TYPE_STR_REGULAR, auto_update_cycle_str))
         {
-            p_gw_cfg_auto_update->auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR;
+            p_cfg->auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR;
         }
         else if (0 == strcmp(AUTO_UPDATE_CYCLE_TYPE_STR_BETA_TESTER, auto_update_cycle_str))
         {
-            p_gw_cfg_auto_update->auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER;
+            p_cfg->auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER;
         }
         else if (0 == strcmp(AUTO_UPDATE_CYCLE_TYPE_STR_MANUAL, auto_update_cycle_str))
         {
-            p_gw_cfg_auto_update->auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_MANUAL;
+            p_cfg->auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_MANUAL;
         }
         else
         {
-            p_gw_cfg_auto_update->auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR;
+            p_cfg->auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR;
             LOG_WARN("Unknown auto_update_cycle='%s', use REGULAR", auto_update_cycle_str);
         }
     }
 
-    if (!gw_cfg_json_get_uint8_val(
-            p_json_root,
-            "auto_update_weekdays_bitmask",
-            &p_gw_cfg_auto_update->auto_update_weekdays_bitmask))
+    if (!gw_cfg_json_get_uint8_val(p_cjson, "auto_update_weekdays_bitmask", &p_cfg->auto_update_weekdays_bitmask))
     {
         LOG_WARN("Can't find key '%s' in config-json", "auto_update_weekdays_bitmask");
     }
-    if (!gw_cfg_json_get_uint8_val(
-            p_json_root,
-            "auto_update_interval_from",
-            &p_gw_cfg_auto_update->auto_update_interval_from))
+    if (!gw_cfg_json_get_uint8_val(p_cjson, "auto_update_interval_from", &p_cfg->auto_update_interval_from))
     {
         LOG_WARN("Can't find key '%s' in config-json", "auto_update_interval_from");
     }
-    if (!gw_cfg_json_get_uint8_val(
-            p_json_root,
-            "auto_update_interval_to",
-            &p_gw_cfg_auto_update->auto_update_interval_to))
+    if (!gw_cfg_json_get_uint8_val(p_cjson, "auto_update_interval_to", &p_cfg->auto_update_interval_to))
     {
         LOG_WARN("Can't find key '%s' in config-json", "auto_update_interval_to");
     }
-    if (!gw_cfg_json_get_int8_val(
-            p_json_root,
-            "auto_update_tz_offset_hours",
-            &p_gw_cfg_auto_update->auto_update_tz_offset_hours))
+    if (!gw_cfg_json_get_int8_val(p_cjson, "auto_update_tz_offset_hours", &p_cfg->auto_update_tz_offset_hours))
     {
         LOG_WARN("Can't find key '%s' in config-json", "auto_update_tz_offset_hours");
     }
 }
 
 static void
-gw_cfg_json_parse_ntp(const cJSON* const p_json_root, ruuvi_gw_cfg_ntp_t* const p_gw_cfg_ntp)
+gw_cfg_json_parse_ntp_server(
+    const cJSON* const                        p_cjson,
+    const char* const                         p_srv_name,
+    ruuvi_gw_cfg_ntp_server_addr_str_t* const p_addr)
 {
-    if (!gw_cfg_json_get_bool_val(p_json_root, "ntp_use", &p_gw_cfg_ntp->ntp_use))
+    if (!gw_cfg_json_copy_string_val(p_cjson, p_srv_name, &p_addr->buf[0], sizeof(p_addr->buf)))
+    {
+        LOG_WARN("Can't find key '%s' in config-json", p_srv_name);
+    }
+}
+
+static void
+gw_cfg_json_parse_ntp_servers(const cJSON* const p_cjson, ruuvi_gw_cfg_ntp_t* const p_ntp)
+{
+    gw_cfg_json_parse_ntp_server(p_cjson, "ntp_server1", &p_ntp->ntp_server1);
+    gw_cfg_json_parse_ntp_server(p_cjson, "ntp_server2", &p_ntp->ntp_server2);
+    gw_cfg_json_parse_ntp_server(p_cjson, "ntp_server3", &p_ntp->ntp_server3);
+    gw_cfg_json_parse_ntp_server(p_cjson, "ntp_server4", &p_ntp->ntp_server4);
+}
+
+static void
+gw_cfg_json_parse_ntp(const cJSON* const p_cjson, ruuvi_gw_cfg_ntp_t* const p_ntp)
+{
+    if (!gw_cfg_json_get_bool_val(p_cjson, "ntp_use", &p_ntp->ntp_use))
     {
         LOG_WARN("Can't find key '%s' in config-json", "ntp_use");
     }
-    if (p_gw_cfg_ntp->ntp_use)
+    if (p_ntp->ntp_use)
     {
-        if (!gw_cfg_json_get_bool_val(p_json_root, "ntp_use_dhcp", &p_gw_cfg_ntp->ntp_use_dhcp))
+        if (!gw_cfg_json_get_bool_val(p_cjson, "ntp_use_dhcp", &p_ntp->ntp_use_dhcp))
         {
             LOG_WARN("Can't find key '%s' in config-json", "ntp_use_dhcp");
         }
-        if (!p_gw_cfg_ntp->ntp_use_dhcp)
+        if (!p_ntp->ntp_use_dhcp)
         {
-            if (!gw_cfg_json_copy_string_val(
-                    p_json_root,
-                    "ntp_server1",
-                    &p_gw_cfg_ntp->ntp_server1.buf[0],
-                    sizeof(p_gw_cfg_ntp->ntp_server1.buf)))
-            {
-                LOG_WARN("Can't find key '%s' in config-json", "ntp_server1");
-            }
-            if (!gw_cfg_json_copy_string_val(
-                    p_json_root,
-                    "ntp_server2",
-                    &p_gw_cfg_ntp->ntp_server2.buf[0],
-                    sizeof(p_gw_cfg_ntp->ntp_server2.buf)))
-            {
-                LOG_WARN("Can't find key '%s' in config-json", "ntp_server2");
-            }
-            if (!gw_cfg_json_copy_string_val(
-                    p_json_root,
-                    "ntp_server3",
-                    &p_gw_cfg_ntp->ntp_server3.buf[0],
-                    sizeof(p_gw_cfg_ntp->ntp_server3.buf)))
-            {
-                LOG_WARN("Can't find key '%s' in config-json", "ntp_server3");
-            }
-            if (!gw_cfg_json_copy_string_val(
-                    p_json_root,
-                    "ntp_server4",
-                    &p_gw_cfg_ntp->ntp_server4.buf[0],
-                    sizeof(p_gw_cfg_ntp->ntp_server4.buf)))
-            {
-                LOG_WARN("Can't find key '%s' in config-json", "ntp_server4");
-            }
+            gw_cfg_json_parse_ntp_servers(p_cjson, p_ntp);
         }
     }
     else
     {
-        p_gw_cfg_ntp->ntp_use_dhcp = false;
+        p_ntp->ntp_use_dhcp = false;
     }
 }
 
@@ -853,16 +809,13 @@ gw_cfg_json_parse_scan(const cJSON* const p_json_root, ruuvi_gw_cfg_scan_t* cons
 }
 
 static void
-gw_cfg_json_parse_scan_filter(const cJSON* const p_json_root, ruuvi_gw_cfg_scan_filter_t* const p_gw_cfg_scan_filter)
+gw_cfg_json_parse_scan_filter(const cJSON* const p_cjson, ruuvi_gw_cfg_scan_filter_t* const p_gw_cfg_scan_filter)
 {
-    if (!gw_cfg_json_get_bool_val(
-            p_json_root,
-            "scan_filter_allow_listed",
-            &p_gw_cfg_scan_filter->scan_filter_allow_listed))
+    if (!gw_cfg_json_get_bool_val(p_cjson, "scan_filter_allow_listed", &p_gw_cfg_scan_filter->scan_filter_allow_listed))
     {
         LOG_WARN("Can't find key '%s' in config-json", "scan_filter_allow_listed");
     }
-    const cJSON* const p_json_scan_filter_list = cJSON_GetObjectItem(p_json_root, "scan_filter_list");
+    const cJSON* const p_json_scan_filter_list = cJSON_GetObjectItem(p_cjson, "scan_filter_list");
     if (NULL == p_json_scan_filter_list)
     {
         LOG_WARN("Can't find key '%s' in config-json", "scan_filter_list");
@@ -886,21 +839,13 @@ gw_cfg_json_parse_scan_filter(const cJSON* const p_json_root, ruuvi_gw_cfg_scan_
 }
 
 static void
-gw_cfg_json_parse_cjson_wifi_sta_config(const cJSON* const p_json_wifi_sta_cfg, wifi_sta_config_t* const p_wifi_sta_cfg)
+gw_cfg_json_parse_cjson_wifi_sta_config(const cJSON* const p_cjson, wifi_sta_config_t* const p_sta_cfg)
 {
-    if (!json_wrap_copy_string_val(
-            p_json_wifi_sta_cfg,
-            "ssid",
-            (char*)p_wifi_sta_cfg->ssid,
-            sizeof(p_wifi_sta_cfg->ssid)))
+    if (!json_wrap_copy_string_val(p_cjson, "ssid", (char*)p_sta_cfg->ssid, sizeof(p_sta_cfg->ssid)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "wifi_sta_config/ssid");
     }
-    if (!json_wrap_copy_string_val(
-            p_json_wifi_sta_cfg,
-            "password",
-            (char*)p_wifi_sta_cfg->password,
-            sizeof(p_wifi_sta_cfg->password)))
+    if (!json_wrap_copy_string_val(p_cjson, "password", (char*)p_sta_cfg->password, sizeof(p_sta_cfg->password)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "wifi_sta_config/password");
     }
@@ -908,56 +853,50 @@ gw_cfg_json_parse_cjson_wifi_sta_config(const cJSON* const p_json_wifi_sta_cfg, 
 
 static void
 gw_cfg_json_parse_cjson_wifi_sta_settings(
-    const cJSON* const         p_json_wifi_sta_cfg,
-    wifi_settings_sta_t* const p_wifi_sta_settings)
+    const cJSON* const         p_cjson,
+    wifi_settings_sta_t* const p_sta_settings) // NOSONAR
 {
-    (void)p_json_wifi_sta_cfg;
-    (void)p_wifi_sta_settings;
+    (void)p_cjson;
+    (void)p_sta_settings;
     // Storing wifi_sta_settings settings in json is not currently supported.
 
-    (void)p_wifi_sta_settings->sta_power_save;
-    (void)p_wifi_sta_settings->sta_static_ip;
-    (void)p_wifi_sta_settings->sta_static_ip_config;
+    (void)p_sta_settings->sta_power_save;
+    (void)p_sta_settings->sta_static_ip;
+    (void)p_sta_settings->sta_static_ip_config;
 }
 
 static void
-gw_cfg_json_parse_cjson_wifi_ap_config(const cJSON* const p_json_wifi_ap_cfg, wifi_ap_config_t* const p_wifi_ap_cfg)
+gw_cfg_json_parse_cjson_wifi_ap_config(const cJSON* const p_cjson, wifi_ap_config_t* const p_ap_cfg)
 {
-    if (!json_wrap_copy_string_val(
-            p_json_wifi_ap_cfg,
-            "password",
-            (char*)p_wifi_ap_cfg->password,
-            sizeof(p_wifi_ap_cfg->password)))
+    if (!json_wrap_copy_string_val(p_cjson, "password", (char*)p_ap_cfg->password, sizeof(p_ap_cfg->password)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "wifi_ap_config/password");
     }
-    if (!gw_cfg_json_get_uint8_val(p_json_wifi_ap_cfg, "channel", &p_wifi_ap_cfg->channel))
+    if (!gw_cfg_json_get_uint8_val(p_cjson, "channel", &p_ap_cfg->channel))
     {
         LOG_WARN("Can't find key '%s' in config-json", "wifi_ap_config/channel");
     }
-    if (0 == p_wifi_ap_cfg->channel)
+    if (0 == p_ap_cfg->channel)
     {
-        p_wifi_ap_cfg->channel = 1;
+        p_ap_cfg->channel = 1;
         LOG_WARN(
             "Key '%s' in config-json is zero, use default value: %d",
             "wifi_ap_config/channel",
-            (printf_int_t)p_wifi_ap_cfg->channel);
+            (printf_int_t)p_ap_cfg->channel);
     }
 }
 
 static void
-gw_cfg_json_parse_cjson_wifi_ap_settings(
-    const cJSON* const        p_json_wifi_ap_cfg,
-    wifi_settings_ap_t* const p_wifi_ap_settings)
+gw_cfg_json_parse_cjson_wifi_ap_settings(const cJSON* const p_cjson, wifi_settings_ap_t* const p_ap_settings) // NOSONAR
 {
-    (void)p_json_wifi_ap_cfg;
-    (void)p_wifi_ap_settings;
+    (void)p_cjson;
+    (void)p_ap_settings;
     // Storing wifi_settings_ap in json is not currently supported.
 
-    (void)p_wifi_ap_settings->ap_bandwidth;
-    (void)p_wifi_ap_settings->ap_ip;
-    (void)p_wifi_ap_settings->ap_gw;
-    (void)p_wifi_ap_settings->ap_netmask;
+    (void)p_ap_settings->ap_bandwidth;
+    (void)p_ap_settings->ap_ip;
+    (void)p_ap_settings->ap_gw;
+    (void)p_ap_settings->ap_netmask;
 }
 
 static void

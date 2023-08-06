@@ -213,7 +213,7 @@ nrf52fw_parse_segment_info_line(const char* p_version_line, nrf52fw_segment_t* p
         end += 1;
     }
     const char*  p_segment_file_name_end = end;
-    const size_t segment_file_name_len   = (size_t)(ptrdiff_t)(p_segment_file_name_end - p_segment_file_name_begin);
+    const size_t segment_file_name_len   = (size_t)(p_segment_file_name_end - p_segment_file_name_begin);
     if (segment_file_name_len >= sizeof(p_segment->file_name))
     {
         return false;
