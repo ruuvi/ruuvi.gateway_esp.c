@@ -8,6 +8,7 @@
 #include "adv_post.h"
 #include <string.h>
 #include <time.h>
+#include <esp_heap_trace.h>
 #include "freertos/FreeRTOS.h"
 #include "esp_task_wdt.h"
 #include "esp_err.h"
@@ -664,6 +665,20 @@ adv_post_do_async_comm_send_advs(adv_post_state_t* const p_adv_post_state, const
     {
         p_adv_post_state->flag_need_to_send_advs2 = false;
     }
+#if CONFIG_HEAP_TRACING_STANDALONE
+    {
+        static bool g_flag_tracing_started = false;
+        if (!g_flag_tracing_started)
+        {
+            g_flag_tracing_started = true;
+            if (ESP_OK != heap_trace_start(HEAP_TRACE_LEAKS))
+            {
+                LOG_ERR("heap_trace_start failed");
+            }
+        }
+    }
+#endif
+
     if (adv_post_do_retransmission(p_adv_post_state->flag_use_timestamps, flag_post_to_ruuvi))
     {
         p_adv_post_state->flag_async_comm_in_progress = true;
@@ -715,6 +730,29 @@ adv_post_do_async_comm(adv_post_state_t* const p_adv_post_state)
             p_adv_post_state->flag_async_comm_in_progress = false;
             LOG_DBG("http_server_mutex_unlock");
             http_server_mutex_unlock();
+
+#if defined(OS_MALLOC_TRACE) && OS_MALLOC_TRACE
+            os_malloc_trace_dump();
+#endif
+#if CONFIG_HEAP_TRACING_STANDALONE
+            static uint32_t g_malloc_trace_cnt = 0;
+            if (g_malloc_trace_cnt < 10)
+            {
+                g_malloc_trace_cnt += 1;
+                if (g_malloc_trace_cnt >= 10)
+                {
+                    heap_trace_stop();
+                    vTaskDelay(pdMS_TO_TICKS(1 * 1000));
+                    const size_t cnt = heap_trace_get_count();
+                    LOG_INFO("^^^^^^^^ HEAP TRACE CNT: %u", cnt);
+                    heap_trace_dump();
+                    while (1)
+                    {
+                        vTaskDelay(pdMS_TO_TICKS(1000));
+                    }
+                }
+            }
+#endif
         }
         else
         {

@@ -9,6 +9,7 @@
 #include <esp_task_wdt.h>
 #include <driver/gpio.h>
 #include <esp_system.h>
+#include <esp_heap_trace.h>
 #include "freertos/FreeRTOS.h"
 #include "lwip/sockets.h"
 #include "adv_post.h"
@@ -474,6 +475,17 @@ static bool
 main_task_init(void)
 {
     esp_log_level_set(TAG, ESP_LOG_INFO);
+
+#if CONFIG_HEAP_TRACING_STANDALONE
+    static heap_trace_record_t g_heap_records_buffer[200];
+    esp_err_t                  err = heap_trace_init_standalone(
+        g_heap_records_buffer,
+        sizeof(g_heap_records_buffer) / sizeof(*g_heap_records_buffer));
+    if (ESP_OK != err)
+    {
+        LOG_ERR("heap_trace_init_standalone failed");
+    }
+#endif
 
     if (!main_task_initial_initialization())
     {

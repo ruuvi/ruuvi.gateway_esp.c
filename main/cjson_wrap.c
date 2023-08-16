@@ -12,12 +12,26 @@
 #include "os_malloc.h"
 #include "esp_type_wrapper.h"
 
+ATTR_MALLOC
+ATTR_MALLOC_SIZE(1)
+static void*
+cjson_wrap_malloc(const size_t size)
+{
+    return os_malloc(size);
+}
+
+static void
+cjson_wrap_free(void* ptr)
+{
+    os_free(ptr);
+}
+
 void
 cjson_wrap_init(void)
 {
     cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
+        .malloc_fn = &cjson_wrap_malloc,
+        .free_fn   = &cjson_wrap_free,
     };
     cJSON_InitHooks(&hooks);
 }

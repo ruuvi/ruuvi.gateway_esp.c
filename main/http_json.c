@@ -431,6 +431,20 @@ cb_json_stream_gen_advs(json_stream_gen_t* const p_gen, const void* const p_user
     JSON_STREAM_GEN_END_GENERATOR_FUNC();
 }
 
+ATTR_MALLOC
+ATTR_MALLOC_SIZE(1)
+static void*
+http_json_wrap_malloc(const size_t size)
+{
+    return os_malloc(size);
+}
+
+static void
+http_json_wrap_free(void* ptr)
+{
+    os_free(ptr);
+}
+
 json_stream_gen_t*
 http_json_create_stream_gen_advs(
     const adv_report_table_t* const                        p_reports,
@@ -442,8 +456,8 @@ http_json_create_stream_gen_advs(
         .indentation_mark    = ' ',
         .indentation         = 2,
         .max_nesting_level   = 4,
-        .p_malloc            = &os_malloc,
-        .p_free              = &os_free_internal,
+        .p_malloc            = &http_json_wrap_malloc,
+        .p_free              = &http_json_wrap_free,
         .p_localeconv        = NULL,
     };
     http_json_stream_gen_advs_ctx_t* p_ctx = NULL;
