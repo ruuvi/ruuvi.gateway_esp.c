@@ -1080,7 +1080,7 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
 #endif
             case HTTP_STATE_REQ_COMPLETE_HEADER:
                 if ((err = esp_http_client_send_post_data(client)) != ESP_OK) {
-                    if (client->is_async && errno == EAGAIN) {
+                    if (client->is_async && ((err == ESP_ERR_HTTP_EAGAIN) || (errno == EAGAIN))) {
                         return ESP_ERR_HTTP_EAGAIN;
                     }
                     return err;
@@ -1394,7 +1394,8 @@ static esp_err_t esp_http_client_send_post_data(esp_http_client_handle_t client)
                 client->post_len = (int)len;
                 client->data_write_left = (int)len;
                 client->data_written_index = 0;
-                return ESP_ERR_HTTP_WRITE_DATA;
+                errno = EAGAIN;
+                return ESP_ERR_HTTP_EAGAIN;
             }
         }
         goto success;
