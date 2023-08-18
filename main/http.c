@@ -26,6 +26,7 @@
 #include "snprintf_with_esp_err_desc.h"
 #include "gw_cfg_default.h"
 #include "esp_tls_err.h"
+#include "reset_task.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -622,7 +623,7 @@ http_async_poll_do_actions_after_completion(const http_async_info_t* const p_htt
 }
 
 bool
-http_async_poll(void)
+http_async_poll(uint32_t* const p_malloc_fail_cnt)
 {
     http_async_info_t* p_http_async_info = http_get_async_info();
 
@@ -658,6 +659,7 @@ http_async_poll(void)
         {
             http_async_poll_handle_resp_err(p_http_async_info, http_status);
         }
+        *p_malloc_fail_cnt = 0;
     }
     else
     {
@@ -665,6 +667,20 @@ http_async_poll(void)
             err,
             "### HTTP POST to URL=%s: failed",
             p_http_async_info->http_client_config.esp_http_client_config.url);
+        // If there is not enough memory in the system, the HTTPS connection may fail
+        // with the error 32784 (ESP_ERR_MBEDTLS_SSL_HANDSHAKE_FAILED)
+        if (esp_tls_err_is_ssl_handshake_failed(err))
+        {
+            *p_malloc_fail_cnt += 1;
+            if (*p_malloc_fail_cnt >= RUUVI_MAX_LOW_HEAP_MEM_CNT)
+            {
+                gateway_restart("Low memory");
+            }
+        }
+        else
+        {
+            *p_malloc_fail_cnt = 0;
+        }
     }
 
     LOG_DBG("esp_http_client_cleanup");

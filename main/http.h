@@ -128,7 +128,7 @@ void
 http_async_info_free_data(http_async_info_t* const p_http_async_info);
 
 bool
-http_async_poll(void);
+http_async_poll(uint32_t* const p_malloc_fail_cnt);
 
 void
 http_abort_any_req_during_processing(void);

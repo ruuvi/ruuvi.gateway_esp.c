@@ -44,8 +44,6 @@ static const char TAG[] = "ruuvi_gateway";
 
 #define RUUVI_NUM_BYTES_IN_1KB (1024U)
 
-#define MAX_LOW_HEAP_MEM_CNT (3)
-
 typedef enum main_task_sig_e
 {
     MAIN_TASK_SIG_LOG_HEAP_USAGE                      = OS_SIGNAL_NUM_0,
@@ -203,7 +201,7 @@ main_task_handle_sig_log_heap_usage(void)
             // TODO: in ESP-IDF v4.x there is API heap_caps_register_failed_alloc_callback,
             //       which allows to catch 'no memory' event and reboot.
             g_heap_limit_cnt += 1;
-            if (g_heap_limit_cnt >= MAX_LOW_HEAP_MEM_CNT)
+            if (g_heap_limit_cnt >= RUUVI_MAX_LOW_HEAP_MEM_CNT)
             {
                 LOG_ERR(
                     "Only %uKiB of free memory left - probably due to a memory leak. Reboot the Gateway.",

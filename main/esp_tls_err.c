@@ -27,3 +27,13 @@ esp_tls_err_is_failed_connect_to_host(const esp_err_t err)
     }
     return false;
 }
+
+bool
+esp_tls_err_is_ssl_handshake_failed(const esp_err_t err)
+{
+    if (ESP_ERR_MBEDTLS_SSL_HANDSHAKE_FAILED == err)
+    {
+        return true;
+    }
+    return false;
+}
