@@ -203,6 +203,8 @@ static adv_post_timer_t g_adv_post_timers[2] = {
     },
 };
 
+static uint32_t g_adv_post_malloc_fail_cnt[2];
+
 ATTR_PURE
 static os_signal_num_e
 adv_post_conv_to_sig_num(const adv_post_sig_e sig)
@@ -710,11 +712,15 @@ adv_post_do_async_comm(adv_post_state_t* const p_adv_post_state)
     LOG_DBG("flag_async_comm_in_progress=%d", p_adv_post_state->flag_async_comm_in_progress);
     if (p_adv_post_state->flag_async_comm_in_progress)
     {
-        if (http_async_poll())
+        if (http_async_poll(
+                &g_adv_post_malloc_fail_cnt[ADV_POST_ACTION_POST_ADVS_TO_RUUVI == g_adv_post_action ? 0 : 1]))
         {
             p_adv_post_state->flag_async_comm_in_progress = false;
             LOG_DBG("http_server_mutex_unlock");
             http_server_mutex_unlock();
+
+            const uint32_t free_heap = esp_get_free_heap_size();
+            LOG_INFO("Cur free heap: %lu", (printf_ulong_t)free_heap);
         }
         else
         {

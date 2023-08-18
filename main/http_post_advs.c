@@ -15,6 +15,8 @@
 #include "adv_post.h"
 #include "gw_cfg_storage.h"
 #include "gw_cfg_default.h"
+#include "reset_task.h"
+#include "ruuvi_gateway.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -95,6 +97,8 @@ http_send_advs_internal(
     const http_send_advs_internal_params_t* const p_params,
     void* const                                   p_user_data)
 {
+    static uint32_t g_http_post_advs_malloc_fail_cnt = 0;
+
     p_http_async_info->recipient = p_params->flag_post_to_ruuvi ? HTTP_POST_RECIPIENT_ADVS1 : HTTP_POST_RECIPIENT_ADVS2;
 
     const bool flag_decode    = false;
@@ -117,8 +121,13 @@ http_send_advs_internal(
     if (NULL == p_http_async_info->select.p_gen)
     {
         LOG_ERR("Not enough memory to create http_json_create_stream_gen_advs");
+        if (++g_http_post_advs_malloc_fail_cnt > RUUVI_MAX_LOW_HEAP_MEM_CNT)
+        {
+            gateway_restart("Low memory");
+        }
         return false;
     }
+    g_http_post_advs_malloc_fail_cnt = 0;
 
 #if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
     switch (p_cfg_http->auth_type)
