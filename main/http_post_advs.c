@@ -121,7 +121,8 @@ http_send_advs_internal(
     if (NULL == p_http_async_info->select.p_gen)
     {
         LOG_ERR("Not enough memory to create http_json_create_stream_gen_advs");
-        if (++g_http_post_advs_malloc_fail_cnt > RUUVI_MAX_LOW_HEAP_MEM_CNT)
+        g_http_post_advs_malloc_fail_cnt += 1;
+        if (g_http_post_advs_malloc_fail_cnt > RUUVI_MAX_LOW_HEAP_MEM_CNT)
         {
             gateway_restart("Low memory");
         }
@@ -153,21 +154,17 @@ http_send_advs_internal(
     }
 #endif
 
-    if (!http_init_client_config_for_http_target(
-            &p_http_async_info->http_client_config,
-            p_cfg_http,
-            p_params,
-            p_user_data))
+    http_client_config_t* const p_http_cli_cfg = &p_http_async_info->http_client_config;
+    if (!http_init_client_config_for_http_target(p_http_cli_cfg, p_cfg_http, p_params, p_user_data))
     {
         http_async_info_free_data(p_http_async_info);
         return false;
     }
 
-    p_http_async_info->p_http_client_handle = esp_http_client_init(
-        &p_http_async_info->http_client_config.esp_http_client_config);
+    p_http_async_info->p_http_client_handle = esp_http_client_init(&p_http_cli_cfg->esp_http_client_config);
     if (NULL == p_http_async_info->p_http_client_handle)
     {
-        LOG_ERR("HTTP POST to URL=%s: Can't init http client", p_http_async_info->http_client_config.http_url.buf);
+        LOG_ERR("HTTP POST to URL=%s: Can't init http client", p_http_cli_cfg->http_url.buf);
         http_async_info_free_data(p_http_async_info);
         return false;
     }
