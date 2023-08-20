@@ -9,6 +9,7 @@
 #include <string.h>
 #include "gw_cfg_default.h"
 #include "gw_cfg_log.h"
+#include "cjson_wrap.h"
 
 #if !defined(RUUVI_TESTS_HTTP_SERVER_CB)
 #define RUUVI_TESTS_HTTP_SERVER_CB 0
@@ -63,7 +64,20 @@ gw_cfg_json_get_bool_val(const cJSON* p_json_root, const char* p_attr_name, bool
 
 GW_CFG_JSON_STATIC
 bool
-gw_cfg_json_get_uint16_val(const cJSON* p_json_root, const char* p_attr_name, uint16_t* p_val)
+gw_cfg_json_get_uint32_val(const cJSON* const p_json_root, const char* const p_attr_name, uint32_t* const p_val)
+{
+    if (!json_wrap_get_uint32_val(p_json_root, p_attr_name, p_val))
+    {
+        LOG_DBG("%s: not found or invalid", p_attr_name);
+        return false;
+    }
+    LOG_DBG("%s: %u", p_attr_name, (printf_uint_t)*p_val);
+    return true;
+}
+
+GW_CFG_JSON_STATIC
+bool
+gw_cfg_json_get_uint16_val(const cJSON* const p_json_root, const char* const p_attr_name, uint16_t* const p_val)
 {
     if (!json_wrap_get_uint16_val(p_json_root, p_attr_name, p_val))
     {
@@ -76,7 +90,7 @@ gw_cfg_json_get_uint16_val(const cJSON* p_json_root, const char* p_attr_name, ui
 
 GW_CFG_JSON_STATIC
 bool
-gw_cfg_json_get_uint8_val(const cJSON* p_json_root, const char* p_attr_name, uint8_t* p_val)
+gw_cfg_json_get_uint8_val(const cJSON* const p_json_root, const char* const p_attr_name, uint8_t* const p_val)
 {
     if (!json_wrap_get_uint8_val(p_json_root, p_attr_name, p_val))
     {
@@ -531,6 +545,11 @@ gw_cfg_json_parse_mqtt(const cJSON* const p_cjson, ruuvi_gw_cfg_mqtt_t* const p_
     {
         LOG_WARN("Can't find key '%s' in config-json", "mqtt_port");
     }
+    if (!gw_cfg_json_get_uint32_val(p_cjson, "mqtt_sending_interval", &p_mqtt->mqtt_sending_interval))
+    {
+        LOG_WARN("Can't find key '%s' in config-json", "mqtt_sending_interval");
+    }
+
     if (!gw_cfg_json_copy_string_val(
             p_cjson,
             "mqtt_prefix",

@@ -121,6 +121,7 @@ typedef struct ruuvi_gw_cfg_mqtt_t
     ruuvi_gw_cfg_mqtt_transport_t mqtt_transport;
     ruuvi_gw_cfg_mqtt_server_t    mqtt_server;
     uint16_t                      mqtt_port;
+    uint32_t                      mqtt_sending_interval;
     ruuvi_gw_cfg_mqtt_prefix_t    mqtt_prefix;
     ruuvi_gw_cfg_mqtt_client_id_t mqtt_client_id;
     ruuvi_gw_cfg_mqtt_user_t      mqtt_user;
@@ -391,6 +392,9 @@ gw_cfg_get_eth_use_dhcp(void);
 
 bool
 gw_cfg_get_mqtt_use_mqtt(void);
+
+uint32_t
+gw_cfg_get_mqtt_sending_interval(void);
 
 bool
 gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss(void);

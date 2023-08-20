@@ -205,6 +205,10 @@ ruuvi_gw_cfg_mqtt_cmp(const ruuvi_gw_cfg_mqtt_t* const p_mqtt1, const ruuvi_gw_c
     {
         return false;
     }
+    if (p_mqtt1->mqtt_sending_interval != p_mqtt2->mqtt_sending_interval)
+    {
+        return false;
+    }
     if (0 != strcmp(p_mqtt1->mqtt_prefix.buf, p_mqtt2->mqtt_prefix.buf))
     {
         return false;

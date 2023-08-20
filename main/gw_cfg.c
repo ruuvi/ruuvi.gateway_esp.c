@@ -531,6 +531,16 @@ gw_cfg_get_mqtt_use_mqtt(void)
     return use_mqtt;
 }
 
+uint32_t
+gw_cfg_get_mqtt_sending_interval(void)
+{
+    assert(NULL != g_gw_cfg_mutex);
+    const gw_cfg_t* p_gw_cfg              = gw_cfg_lock_ro();
+    const uint32_t  mqtt_sending_interval = p_gw_cfg->ruuvi_cfg.mqtt.mqtt_sending_interval;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    return mqtt_sending_interval;
+}
+
 bool
 gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss(void)
 {

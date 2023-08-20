@@ -119,7 +119,7 @@ TEST_F(TestAdvTable, test_1) // NOLINT
     const wifi_rssi_t rssi           = 50;
     DECL_ADV_REPORT(adv, mac_addr, base_timestamp, rssi, data, 0xAAU, 0xBBU);
 
-    ASSERT_TRUE(adv_table_put(&adv));
+    adv_table_put(&adv);
     {
         adv_report_table_t reports = {};
         adv_table_read_retransmission_list1_and_clear(&reports);
@@ -157,7 +157,7 @@ TEST_F(TestAdvTable, test_1_read_clear_add) // NOLINT
     const wifi_rssi_t rssi           = 50;
     DECL_ADV_REPORT(adv, mac_addr, base_timestamp, rssi, data, 0xAAU, 0xBBU);
 
-    ASSERT_TRUE(adv_table_put(&adv));
+    adv_table_put(&adv);
     {
         adv_report_table_t reports = {};
         adv_table_read_retransmission_list1_and_clear(&reports);
@@ -165,7 +165,7 @@ TEST_F(TestAdvTable, test_1_read_clear_add) // NOLINT
         CHECK_ADV_REPORT(adv, data, &reports.table[0]);
     }
 
-    ASSERT_TRUE(adv_table_put(&adv));
+    adv_table_put(&adv);
     {
         adv_report_table_t reports = {};
         adv_table_read_retransmission_list1_and_clear(&reports);
@@ -191,8 +191,8 @@ TEST_F(TestAdvTable, test_2) // NOLINT
     DECL_ADV_REPORT(adv1, mac_addr + 0, base_timestamp + 0, rssi + 0, data1, 0xA1U, 0xB1U);
     DECL_ADV_REPORT(adv2, mac_addr + 1, base_timestamp + 1, rssi + 1, data2, 0xA2U, 0xB2U, 0xC2);
 
-    ASSERT_TRUE(adv_table_put(&adv1));
-    ASSERT_TRUE(adv_table_put(&adv2));
+    adv_table_put(&adv1);
+    adv_table_put(&adv2);
 
     {
         adv_report_table_t reports = {};
@@ -234,8 +234,8 @@ TEST_F(TestAdvTable, test_2_filter_by_timestamp) // NOLINT
     DECL_ADV_REPORT(adv1, mac_addr + 0, base_timestamp + 0, rssi + 0, data1, 0xA1U, 0xB1U);
     DECL_ADV_REPORT(adv2, mac_addr + 1, base_timestamp + 5, rssi + 1, data2, 0xA2U, 0xB2U, 0xC2);
 
-    ASSERT_TRUE(adv_table_put(&adv1));
-    ASSERT_TRUE(adv_table_put(&adv2));
+    adv_table_put(&adv1);
+    adv_table_put(&adv2);
 
     {
         adv_report_table_t reports = {};
@@ -282,8 +282,8 @@ TEST_F(TestAdvTable, test_2_without_timestamps) // NOLINT
     DECL_ADV_REPORT(adv1, mac_addr + 0, base_counter + 1, rssi + 0, data1, 0xA1U, 0xB1U);
     DECL_ADV_REPORT(adv2, mac_addr + 1, base_counter + 2, rssi + 1, data2, 0xA2U, 0xB2U, 0xC2);
 
-    ASSERT_TRUE(adv_table_put(&adv1));
-    ASSERT_TRUE(adv_table_put(&adv2));
+    adv_table_put(&adv1);
+    adv_table_put(&adv2);
 
     {
         adv_report_table_t reports = {};
@@ -335,9 +335,9 @@ TEST_F(TestAdvTable, test_3_without_timestamps_counter_overflow) // NOLINT
     DECL_ADV_REPORT(adv2, mac_addr + 1, base_counter + 2, rssi + 1, data2, 0xA2U, 0xB2U, 0xC2);
     DECL_ADV_REPORT(adv3, mac_addr + 2, base_counter + 3, rssi + 2, data3, 0xA3U, 0xB3U, 0xC3);
 
-    ASSERT_TRUE(adv_table_put(&adv1));
-    ASSERT_TRUE(adv_table_put(&adv2));
-    ASSERT_TRUE(adv_table_put(&adv3));
+    adv_table_put(&adv1);
+    adv_table_put(&adv2);
+    adv_table_put(&adv3);
 
     {
         adv_report_table_t reports = {};
@@ -401,8 +401,8 @@ TEST_F(TestAdvTable, test_2_with_the_same_hash) // NOLINT
 
     ASSERT_EQ(adv_report_calc_hash(&adv1.tag_mac), adv_report_calc_hash(&adv2.tag_mac));
 
-    ASSERT_TRUE(adv_table_put(&adv1));
-    ASSERT_TRUE(adv_table_put(&adv2));
+    adv_table_put(&adv1);
+    adv_table_put(&adv2);
 
     {
         adv_report_table_t reports = {};
@@ -443,7 +443,7 @@ TEST_F(TestAdvTable, test_2_with_the_same_hash_with_clear) // NOLINT
     const wifi_rssi_t rssi           = 50;
     DECL_ADV_REPORT(adv1, mac_addr ^ 0x000000000000LLU, base_timestamp + 0, rssi + 0, data1, 0xA1U, 0xB1U);
 
-    ASSERT_TRUE(adv_table_put(&adv1));
+    adv_table_put(&adv1);
 
     {
         adv_report_table_t reports = {};
@@ -456,7 +456,7 @@ TEST_F(TestAdvTable, test_2_with_the_same_hash_with_clear) // NOLINT
 
     ASSERT_EQ(adv_report_calc_hash(&adv1.tag_mac), adv_report_calc_hash(&adv2.tag_mac));
 
-    ASSERT_TRUE(adv_table_put(&adv2));
+    adv_table_put(&adv2);
 
     {
         adv_report_table_t reports = {};
@@ -498,9 +498,9 @@ TEST_F(TestAdvTable, test_3_overwrite_1) // NOLINT
     DECL_ADV_REPORT(adv2, mac ^ 0x000000000001LLU, base_timestamp + 1, rssi + 1, data2, 0xA2U, 0xB2U, 0xC2);
     DECL_ADV_REPORT(adv3, mac ^ 0x000000000000LLU, base_timestamp + 2, rssi + 2, data3, 0xA3U, 0xB3U, 0xC3U, 0xD3U);
 
-    ASSERT_TRUE(adv_table_put(&adv1));
-    ASSERT_TRUE(adv_table_put(&adv2));
-    ASSERT_TRUE(adv_table_put(&adv3));
+    adv_table_put(&adv1);
+    adv_table_put(&adv2);
+    adv_table_put(&adv3);
 
     {
         adv_report_table_t reports = {};
@@ -551,9 +551,9 @@ TEST_F(TestAdvTable, test_3_overwrite_2) // NOLINT
     DECL_ADV_REPORT(adv2, mac ^ 0x000000000001LLU, base_timestamp + 1, rssi + 1, data2, 0xA2U, 0xB2U, 0xC2);
     DECL_ADV_REPORT(adv3, mac ^ 0x000000000001LLU, base_timestamp + 2, rssi + 2, data3, 0xA3U, 0xB3U, 0xC3U, 0xD3U);
 
-    ASSERT_TRUE(adv_table_put(&adv1));
-    ASSERT_TRUE(adv_table_put(&adv2));
-    ASSERT_TRUE(adv_table_put(&adv3));
+    adv_table_put(&adv1);
+    adv_table_put(&adv2);
+    adv_table_put(&adv3);
 
     {
         adv_report_table_t reports = {};
@@ -603,9 +603,9 @@ TEST_F(TestAdvTable, test_3_with_the_same_hash_overwrite_1) // NOLINT
     DECL_ADV_REPORT(adv2, mac ^ 0x000001000001LLU, base_timestamp + 1, rssi + 1, data2, 0xA2U, 0xB2U, 0xC2);
     DECL_ADV_REPORT(adv3, mac ^ 0x000000000000LLU, base_timestamp + 2, rssi + 2, data3, 0xA3U, 0xB3U, 0xC3U, 0xD3U);
 
-    ASSERT_TRUE(adv_table_put(&adv1));
-    ASSERT_TRUE(adv_table_put(&adv2));
-    ASSERT_TRUE(adv_table_put(&adv3));
+    adv_table_put(&adv1);
+    adv_table_put(&adv2);
+    adv_table_put(&adv3);
 
     {
         adv_report_table_t reports = {};
@@ -658,9 +658,9 @@ TEST_F(TestAdvTable, test_3_with_the_same_hash_overwrite_2) // NOLINT
 
     ASSERT_EQ(adv_report_calc_hash(&adv1.tag_mac), adv_report_calc_hash(&adv2.tag_mac));
 
-    ASSERT_TRUE(adv_table_put(&adv1));
-    ASSERT_TRUE(adv_table_put(&adv2));
-    ASSERT_TRUE(adv_table_put(&adv3));
+    adv_table_put(&adv1);
+    adv_table_put(&adv2);
+    adv_table_put(&adv3);
 
     {
         adv_report_table_t reports = {};

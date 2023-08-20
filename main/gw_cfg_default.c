@@ -70,6 +70,7 @@ static const gw_cfg_ruuvi_t g_gateway_config_default_ruuvi = {
             .mqtt_transport = {{ MQTT_TRANSPORT_TCP }},
             .mqtt_server = {{ "test.mosquitto.org" }},
             .mqtt_port = 1883,
+            .mqtt_sending_interval = 0,
             .mqtt_prefix = {{ "" }},
             .mqtt_client_id = {{ "" }},
             .mqtt_user = {{ "" }},

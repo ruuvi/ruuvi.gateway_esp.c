@@ -31,10 +31,12 @@ struct adv_reports_list_elem_t
     STAILQ_ENTRY(adv_reports_list_elem_t) hash_table_list;
     STAILQ_ENTRY(adv_reports_list_elem_t) retransmission_list1;
     STAILQ_ENTRY(adv_reports_list_elem_t) retransmission_list2;
+    STAILQ_ENTRY(adv_reports_list_elem_t) retransmission_list3;
     TAILQ_ENTRY(adv_reports_list_elem_t) hist_list;
     bool         is_in_hash_table;
     bool         is_in_retransmission_list1;
     bool         is_in_retransmission_list2;
+    bool         is_in_retransmission_list3;
     adv_report_t adv_report;
 };
 
@@ -44,6 +46,7 @@ static adv_reports_list_elem_t g_arr_of_adv_reports[MAX_ADVS_TABLE];
 static adv_report_list_t       g_adv_hash_table[ADV_TABLE_HASH_SIZE];
 static adv_report_list_t       g_adv_reports_retransmission_list1;
 static adv_report_list_t       g_adv_reports_retransmission_list2;
+static adv_report_list_t       g_adv_reports_retransmission_list3;
 static adv_report_hist_list_t  g_adv_reports_hist_list;
 
 void
@@ -57,6 +60,7 @@ adv_table_init(void)
     }
     STAILQ_INIT(&g_adv_reports_retransmission_list1);
     STAILQ_INIT(&g_adv_reports_retransmission_list2);
+    STAILQ_INIT(&g_adv_reports_retransmission_list3);
     TAILQ_INIT(&g_adv_reports_hist_list);
     for (uint32_t i = 0; i < (sizeof(g_arr_of_adv_reports) / sizeof(g_arr_of_adv_reports[0])); ++i)
     {
@@ -65,6 +69,7 @@ adv_table_init(void)
         p_elem->is_in_hash_table           = false;
         p_elem->is_in_retransmission_list1 = false;
         p_elem->is_in_retransmission_list2 = false;
+        p_elem->is_in_retransmission_list3 = false;
         p_elem->adv_report.timestamp       = 0;
         p_elem->adv_report.data_len        = 0; // mark adv_report as free in hist_list
         TAILQ_INSERT_TAIL(&g_adv_reports_hist_list, p_elem, hist_list);
@@ -143,7 +148,7 @@ adv_hash_table_remove(adv_reports_list_elem_t* p_elem)
     p_elem->is_in_hash_table = false;
 }
 
-static bool
+static void
 adv_table_put_unsafe(const adv_report_t* const p_adv)
 {
     // Check if we already have advertisement with this MAC
@@ -174,19 +179,21 @@ adv_table_put_unsafe(const adv_report_t* const p_adv)
         STAILQ_INSERT_TAIL(&g_adv_reports_retransmission_list2, p_elem, retransmission_list2);
         p_elem->is_in_retransmission_list2 = true;
     }
+    if (!p_elem->is_in_retransmission_list3)
+    {
+        STAILQ_INSERT_TAIL(&g_adv_reports_retransmission_list3, p_elem, retransmission_list3);
+        p_elem->is_in_retransmission_list3 = true;
+    }
     TAILQ_REMOVE(&g_adv_reports_hist_list, p_elem, hist_list);
     TAILQ_INSERT_HEAD(&g_adv_reports_hist_list, p_elem, hist_list);
-
-    return true;
 }
 
-bool
+void
 adv_table_put(const adv_report_t* const p_adv)
 {
     os_mutex_lock(gp_adv_reports_mutex);
-    const bool res = adv_table_put_unsafe(p_adv);
+    adv_table_put_unsafe(p_adv);
     os_mutex_unlock(gp_adv_reports_mutex);
-    return res;
 }
 
 static void
@@ -202,11 +209,12 @@ adv_table_read_retransmission_list1_and_clear_unsafe(adv_report_table_t* const p
         }
         STAILQ_REMOVE_HEAD(&g_adv_reports_retransmission_list1, retransmission_list1);
         p_elem->is_in_retransmission_list1 = false;
-        if (p_reports->num_of_advs < (sizeof(p_reports->table) / sizeof(p_reports->table[0])))
+        if (p_reports->num_of_advs >= (sizeof(p_reports->table) / sizeof(p_reports->table[0])))
         {
-            p_reports->table[p_reports->num_of_advs] = p_elem->adv_report;
-            p_reports->num_of_advs += 1;
+            break;
         }
+        p_reports->table[p_reports->num_of_advs] = p_elem->adv_report;
+        p_reports->num_of_advs += 1;
     }
 }
 
@@ -223,11 +231,34 @@ adv_table_read_retransmission_list2_and_clear_unsafe(adv_report_table_t* const p
         }
         STAILQ_REMOVE_HEAD(&g_adv_reports_retransmission_list2, retransmission_list2);
         p_elem->is_in_retransmission_list2 = false;
-        if (p_reports->num_of_advs < (sizeof(p_reports->table) / sizeof(p_reports->table[0])))
+        if (p_reports->num_of_advs >= (sizeof(p_reports->table) / sizeof(p_reports->table[0])))
         {
-            p_reports->table[p_reports->num_of_advs] = p_elem->adv_report;
-            p_reports->num_of_advs += 1;
+            break;
         }
+        p_reports->table[p_reports->num_of_advs] = p_elem->adv_report;
+        p_reports->num_of_advs += 1;
+    }
+}
+
+static void
+adv_table_read_retransmission_list3_and_clear_unsafe(adv_report_table_t* const p_reports)
+{
+    p_reports->num_of_advs = 0;
+    for (;;)
+    {
+        adv_reports_list_elem_t* p_elem = STAILQ_FIRST(&g_adv_reports_retransmission_list3);
+        if (NULL == p_elem)
+        {
+            break;
+        }
+        STAILQ_REMOVE_HEAD(&g_adv_reports_retransmission_list3, retransmission_list3);
+        p_elem->is_in_retransmission_list3 = false;
+        if (p_reports->num_of_advs >= (sizeof(p_reports->table) / sizeof(p_reports->table[0])))
+        {
+            break;
+        }
+        p_reports->table[p_reports->num_of_advs] = p_elem->adv_report;
+        p_reports->num_of_advs += 1;
     }
 }
 
@@ -245,6 +276,46 @@ adv_table_read_retransmission_list2_and_clear(adv_report_table_t* const p_report
     os_mutex_lock(gp_adv_reports_mutex);
     adv_table_read_retransmission_list2_and_clear_unsafe(p_reports);
     os_mutex_unlock(gp_adv_reports_mutex);
+}
+
+void
+adv_table_read_retransmission_list3_and_clear(adv_report_table_t* const p_reports)
+{
+    os_mutex_lock(gp_adv_reports_mutex);
+    adv_table_read_retransmission_list3_and_clear_unsafe(p_reports);
+    os_mutex_unlock(gp_adv_reports_mutex);
+}
+
+static bool
+adv_table_read_retransmission_list3_head_unsafe(adv_report_t* const p_adv_report)
+{
+    adv_reports_list_elem_t* p_elem = STAILQ_FIRST(&g_adv_reports_retransmission_list3);
+    if (NULL == p_elem)
+    {
+        return false;
+    }
+    STAILQ_REMOVE_HEAD(&g_adv_reports_retransmission_list3, retransmission_list3);
+    p_elem->is_in_retransmission_list3 = false;
+    *p_adv_report                      = p_elem->adv_report;
+    return true;
+}
+
+bool
+adv_table_read_retransmission_list3_head(adv_report_t* const p_adv_report)
+{
+    os_mutex_lock(gp_adv_reports_mutex);
+    const bool res = adv_table_read_retransmission_list3_head_unsafe(p_adv_report);
+    os_mutex_unlock(gp_adv_reports_mutex);
+    return res;
+}
+
+bool
+adv_table_read_retransmission_list3_is_empty(void)
+{
+    os_mutex_lock(gp_adv_reports_mutex);
+    const bool is_empty = (NULL == STAILQ_FIRST(&g_adv_reports_retransmission_list3)) ? true : false;
+    os_mutex_unlock(gp_adv_reports_mutex);
+    return is_empty;
 }
 
 static void
@@ -361,12 +432,28 @@ adv_retransmission_list2_clear_unsafe(void)
     }
 }
 
+static void
+adv_retransmission_list3_clear_unsafe(void)
+{
+    while (1)
+    {
+        adv_reports_list_elem_t* p_elem = STAILQ_FIRST(&g_adv_reports_retransmission_list3);
+        if (NULL == p_elem)
+        {
+            break;
+        }
+        STAILQ_REMOVE_HEAD(&g_adv_reports_retransmission_list3, retransmission_list3);
+        p_elem->is_in_retransmission_list3 = false;
+    }
+}
+
 void
 adv_table_clear(void)
 {
     os_mutex_lock(gp_adv_reports_mutex);
     adv_retransmission_list1_clear_unsafe();
     adv_retransmission_list2_clear_unsafe();
+    adv_retransmission_list3_clear_unsafe();
 
     adv_reports_list_elem_t* p_elem = NULL;
     TAILQ_FOREACH(p_elem, &g_adv_reports_hist_list, hist_list)

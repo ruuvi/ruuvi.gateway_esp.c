@@ -564,6 +564,10 @@ gw_cfg_json_add_items_mqtt(
     {
         return false;
     }
+    if (!gw_cfg_json_add_number(p_json_root, "mqtt_sending_interval", p_cfg_mqtt->mqtt_sending_interval))
+    {
+        return false;
+    }
     if (!gw_cfg_json_add_string(p_json_root, "mqtt_prefix", p_cfg_mqtt->mqtt_prefix.buf))
     {
         return false;

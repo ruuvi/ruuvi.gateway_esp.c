@@ -403,6 +403,7 @@ gw_cfg_log_ruuvi_cfg_mqtt(const ruuvi_gw_cfg_mqtt_t* const p_mqtt)
     LOG_INFO("config: mqtt transport: %s", p_mqtt->mqtt_transport.buf);
     LOG_INFO("config: mqtt server: %s", p_mqtt->mqtt_server.buf);
     LOG_INFO("config: mqtt port: %u", p_mqtt->mqtt_port);
+    LOG_INFO("config: mqtt sending interval: %lu", (printf_ulong_t)p_mqtt->mqtt_sending_interval);
     LOG_INFO("config: mqtt prefix: %s", p_mqtt->mqtt_prefix.buf);
     LOG_INFO("config: mqtt client id: %s", p_mqtt->mqtt_client_id.buf);
     LOG_INFO("config: mqtt user: %s", p_mqtt->mqtt_user.buf);

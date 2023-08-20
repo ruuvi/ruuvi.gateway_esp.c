@@ -377,6 +377,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt sending interval: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/AA:BB:CC:DD:EE:FF/"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt client id: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));
@@ -508,6 +509,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_and_gw_cfg_stroage_is_ready) // NO
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt sending interval: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/AA:BB:CC:DD:EE:FF/"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt client id: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));
@@ -626,6 +628,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_with_http_custom) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt sending interval: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/AA:BB:CC:DD:EE:FF/"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt client id: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));
@@ -735,6 +738,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_no) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt sending interval: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/AA:BB:CC:DD:EE:FF/"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt client id: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));
@@ -854,6 +858,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_basic) // NOLI
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt sending interval: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/AA:BB:CC:DD:EE:FF/"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt client id: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));
@@ -968,6 +973,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_bearer) // NOL
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt sending interval: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/AA:BB:CC:DD:EE:FF/"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt client id: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));
@@ -1075,6 +1081,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_beta_tester_and_
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt sending interval: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/AA:BB:CC:DD:EE:FF/"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt client id: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));
@@ -1181,6 +1188,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_manual) // NOLIN
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt sending interval: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/AA:BB:CC:DD:EE:FF/"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt client id: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));
@@ -1287,6 +1295,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_auto_update_cycle_invalid) // NOLI
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt sending interval: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/AA:BB:CC:DD:EE:FF/"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt client id: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));
@@ -1399,6 +1408,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_ntp_changed) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt sending interval: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/AA:BB:CC:DD:EE:FF/"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt client id: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));
@@ -1508,6 +1518,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_scan_filter_1) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt sending interval: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/AA:BB:CC:DD:EE:FF/"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt client id: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));
@@ -1620,6 +1631,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_scan_filter_2) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt sending interval: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/AA:BB:CC:DD:EE:FF/"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt client id: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));

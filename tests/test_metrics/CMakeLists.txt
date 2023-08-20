@@ -40,6 +40,8 @@ add_executable(${ProjectId}
         ${RUUVI_ESP_WRAPPERS}/include/os_malloc.h
         ${RUUVI_ESP_WRAPPERS}/src/mac_addr.c
         ${RUUVI_ESP_WRAPPERS}/include/mac_addr.h
+        ${RUUVI_ESP_WRAPPERS}/src/os_str.c
+        ${RUUVI_ESP_WRAPPERS}/include/os_str.h
         $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
         $ENV{IDF_PATH}/components/lwip/lwip/src/core/ipv4/ip4_addr.c
         $ENV{IDF_PATH}/components/lwip/lwip/src/core/def.c
