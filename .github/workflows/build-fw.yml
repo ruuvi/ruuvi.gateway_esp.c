@@ -3,6 +3,7 @@ name: Build Firmware
 on:
   push:
     branches: [ master ]
+    tags: [ '*' ]
   pull_request:
     branches: [ master ]
     types: [opened, synchronize, reopened]
