@@ -380,6 +380,7 @@ TEST_F(TestGwCfgDefault, test_1) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan filter: no"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: coordinates: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: fw_update: url: https://network.ruuvi.com/firmwareupdate"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: SSID: my_ssid1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: password: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: wifi_ap_config: ssid_len: 0"));

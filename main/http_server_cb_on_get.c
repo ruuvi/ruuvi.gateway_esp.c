@@ -63,9 +63,19 @@ HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_json_firmware_update(void)
 {
-    const http_server_download_info_t info = http_download_firmware_update_info(true);
+    str_buf_t                   fw_update_url = gw_cfg_get_fw_update_url();
+    http_server_download_info_t info          = http_download_firmware_update_info(fw_update_url.buf, true);
+    str_buf_free_buf(&fw_update_url);
     if (info.is_error)
     {
+        LOG_ERR(
+            "Failed to download firmware update info: http_resp_code=%u, message: %s",
+            info.http_resp_code,
+            NULL != info.p_json_buf ? info.p_json_buf : "<NULL>");
+        if (NULL != info.p_json_buf)
+        {
+            os_free(info.p_json_buf);
+        }
         return http_server_resp_504();
     }
 

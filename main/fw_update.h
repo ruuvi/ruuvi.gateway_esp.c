@@ -12,6 +12,7 @@
 #include "esp_ota_ops.h"
 #include "attribs.h"
 #include "fw_ver.h"
+#include "str_buf.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -58,6 +59,9 @@ fw_update_get_cur_version(void);
 
 bool
 json_fw_update_parse_http_body(const char* const p_body);
+
+str_buf_t
+json_fw_update_url_parse_http_body_get_url(const char* const p_body);
 
 bool
 fw_update_is_url_valid(void);

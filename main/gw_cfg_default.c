@@ -116,6 +116,9 @@ static const gw_cfg_ruuvi_t g_gateway_config_default_ruuvi = {
             .scan_filter_list = { },
         },
         .coordinates = {{ "" }},
+        .fw_update = {
+            .fw_update_url = { RUUVI_GATEWAY_FW_UPDATE_URL },
+        },
     };
 
 static gw_cfg_t g_gw_cfg_default;

@@ -515,6 +515,12 @@ gw_cfg_log_ruuvi_cfg_scan_filter(const ruuvi_gw_cfg_scan_filter_t* const p_scan_
     }
 }
 
+static void
+gw_cfg_log_ruuvi_cfg_fw_update(const ruuvi_gw_cfg_fw_update_t* const p_fw_update)
+{
+    LOG_INFO("config: fw_update: url: %s", p_fw_update->fw_update_url);
+}
+
 void
 gw_cfg_log_ruuvi_cfg(const gw_cfg_ruuvi_t* const p_gw_cfg_ruuvi, const char* const p_title)
 {
@@ -533,8 +539,8 @@ gw_cfg_log_ruuvi_cfg(const gw_cfg_ruuvi_t* const p_gw_cfg_ruuvi, const char* con
     gw_cfg_log_ruuvi_cfg_filter(&p_gw_cfg_ruuvi->filter);
     gw_cfg_log_ruuvi_cfg_scan(&p_gw_cfg_ruuvi->scan);
     gw_cfg_log_ruuvi_cfg_scan_filter(&p_gw_cfg_ruuvi->scan_filter);
-
     LOG_INFO("config: coordinates: %s", p_gw_cfg_ruuvi->coordinates.buf);
+    gw_cfg_log_ruuvi_cfg_fw_update(&p_gw_cfg_ruuvi->fw_update);
 }
 
 void

@@ -204,6 +204,23 @@ http_server_cb_on_post_fw_update(const char* p_body, const bool flag_access_from
 
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
+http_server_cb_on_post_fw_update_url(const char* p_body)
+{
+    LOG_DBG("POST /fw_update_url.json");
+
+    str_buf_t str_buf_url = json_fw_update_url_parse_http_body_get_url(p_body);
+    if (NULL == str_buf_url.buf)
+    {
+        return http_server_cb_gen_resp(HTTP_RESP_CODE_400, "Failed to parse HTTP body");
+    }
+    gw_cfg_update_fw_update_url(str_buf_url.buf);
+    str_buf_free_buf(&str_buf_url);
+
+    return http_server_cb_gen_resp(HTTP_RESP_CODE_200, "OK");
+}
+
+HTTP_SERVER_CB_STATIC
+http_server_resp_t
 http_server_cb_on_post_fw_update_reset(void)
 {
     LOG_DBG("POST /fw_update_reset");
@@ -322,6 +339,10 @@ http_server_cb_on_post(
     if (0 == strcmp(p_file_name, "fw_update.json"))
     {
         return http_server_cb_on_post_fw_update(p_body, flag_access_from_lan);
+    }
+    if (0 == strcmp(p_file_name, "fw_update_url.json"))
+    {
+        return http_server_cb_on_post_fw_update_url(p_body);
     }
     if (0 == strcmp(p_file_name, "gw_cfg_download"))
     {

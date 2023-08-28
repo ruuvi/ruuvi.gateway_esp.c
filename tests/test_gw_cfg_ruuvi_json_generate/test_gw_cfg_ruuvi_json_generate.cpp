@@ -419,7 +419,8 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -507,7 +508,8 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -597,7 +599,8 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -687,7 +690,8 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -779,7 +783,8 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -871,7 +876,8 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -959,7 +965,8 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_auto_updat
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1047,7 +1054,8 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_auto_updat
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1135,7 +1143,8 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_auto_updat
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1227,6 +1236,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_non_default) // NO
                 .scan_filter_list = {0},
             },
             .coordinates = { { 'q', 'w', 'e', '\0' } },
+            .fw_update = {
+                .fw_update_url = { "https://myserver1.com/fw_update_info.json" },
+            },
         },
         .eth_cfg = {
             true,
@@ -1318,7 +1330,8 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_non_default) // NO
                "\t\"scan_channel_39\":\tfalse,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"qwe\"\n"
+               "\t\"coordinates\":\t\"qwe\",\n"
+               "\t\"fw_update_url\":\t\"https://myserver1.com/fw_update_info.json\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -4539,7 +4552,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_malloc_failed_on_c
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 169;
+    this->m_malloc_fail_on_cnt = 172;
 
     ASSERT_FALSE(gw_cfg_ruuvi_json_generate(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);

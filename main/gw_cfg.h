@@ -309,6 +309,11 @@ typedef struct ruuvi_gw_cfg_coordinates_t
     char buf[GW_CFG_MAX_COORDINATES_STR_LEN];
 } ruuvi_gw_cfg_coordinates_t;
 
+typedef struct ruuvi_gw_cfg_fw_update_t
+{
+    char fw_update_url[GW_CFG_MAX_HTTP_URL_LEN];
+} ruuvi_gw_cfg_fw_update_t;
+
 typedef struct ruuvi_gw_cfg_t
 {
     ruuvi_gw_cfg_remote_t      remote;
@@ -322,6 +327,7 @@ typedef struct ruuvi_gw_cfg_t
     ruuvi_gw_cfg_scan_t        scan;
     ruuvi_gw_cfg_scan_filter_t scan_filter;
     ruuvi_gw_cfg_coordinates_t coordinates;
+    ruuvi_gw_cfg_fw_update_t   fw_update;
 } gw_cfg_ruuvi_t;
 
 typedef struct gw_cfg_t
@@ -365,6 +371,9 @@ gw_cfg_update_eth_cfg(const gw_cfg_eth_t* const p_gw_cfg_eth_new);
 
 void
 gw_cfg_update_ruuvi_cfg(const gw_cfg_ruuvi_t* const p_gw_cfg_ruuvi_new);
+
+void
+gw_cfg_update_fw_update_url(const char* const p_fw_update_url);
 
 void
 gw_cfg_update_wifi_ap_config(const wifiman_config_ap_t* const p_wifi_ap_cfg);
@@ -464,6 +473,9 @@ gw_cfg_auth_type_to_str(const ruuvi_gw_cfg_lan_auth_t* const p_lan_auth);
 
 wifiman_config_t
 gw_cfg_get_wifi_cfg(void);
+
+str_buf_t
+gw_cfg_get_fw_update_url(void);
 
 bool
 gw_cfg_ruuvi_cmp(const gw_cfg_ruuvi_t* const p_cfg_ruuvi1, const gw_cfg_ruuvi_t* const p_cfg_ruuvi2);

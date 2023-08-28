@@ -31,6 +31,7 @@
 #include "gw_cfg_storage.h"
 #include "partition_table.h"
 #include "http.h"
+#include "http_server_resp.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -80,13 +81,13 @@ esp_random(void)
     return 0;
 }
 
-bool
+http_server_resp_t
 http_download_with_auth(
     const http_download_param_with_auth_t* const p_param,
     http_download_cb_on_data_t const             p_cb_on_data,
     void* const                                  p_user_data)
 {
-    return false;
+    return http_server_resp_400();
 }
 
 bool
@@ -135,6 +136,12 @@ bool
 json_fw_update_parse_http_body(const char* const p_body)
 {
     return false;
+}
+
+str_buf_t
+json_fw_update_url_parse_http_body_get_url(const char* const p_body)
+{
+    return str_buf_init_null();
 }
 
 bool
@@ -899,7 +906,8 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
           "\t\"scan_channel_39\":\ttrue,\n"
           "\t\"scan_filter_allow_listed\":\tfalse,\n"
           "\t\"scan_filter_list\":\t[],\n"
-          "\t\"coordinates\":\t\"\"\n"
+          "\t\"coordinates\":\t\"\",\n"
+          "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
           "}";
     bool     flag_network_cfg = false;
     gw_cfg_t gw_cfg           = get_gateway_config_default();
@@ -937,7 +945,8 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
         "\"ntp_server2\":\"time2.server.com\","
         "\"ntp_server3\":\"time3.server.com\","
         "\"ntp_server4\":\"time4.server.com\","
-        "\"company_use_filtering\":true"
+        "\"company_use_filtering\":true,"
+        "\"fw_update_url\":\"https://network.ruuvi.com/firmwareupdate\""
         "}",
         &gw_cfg,
         &flag_network_cfg));
@@ -1120,7 +1129,8 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
           "\t\"scan_channel_39\":\ttrue,\n"
           "\t\"scan_filter_allow_listed\":\tfalse,\n"
           "\t\"scan_filter_list\":\t[],\n"
-          "\t\"coordinates\":\t\"\"\n"
+          "\t\"coordinates\":\t\"\",\n"
+          "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
           "}";
     bool     flag_network_cfg = false;
     gw_cfg_t gw_cfg           = get_gateway_config_default();
@@ -1160,7 +1170,8 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
             "\"ntp_server2\":\"time2.server.com\","
             "\"ntp_server3\":\"time3.server.com\","
             "\"ntp_server4\":\"time4.server.com\","
-            "\"company_use_filtering\":true"
+            "\"company_use_filtering\":true,"
+            "\"fw_update_url\":\"https://network.ruuvi.com/firmwareupdate\""
             "}",
             &gw_cfg,
             &flag_network_cfg));
@@ -1592,7 +1603,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
           "\t\"scan_channel_39\":\ttrue,\n"
           "\t\"scan_filter_allow_listed\":\tfalse,\n"
           "\t\"scan_filter_list\":\t[],\n"
-          "\t\"coordinates\":\t\"\"\n"
+          "\t\"coordinates\":\t\"\",\n"
+          "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
           "}";
     bool     flag_network_cfg = false;
     gw_cfg_t gw_cfg           = get_gateway_config_default();
@@ -1628,7 +1640,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
             "\"ntp_server2\":\"time2.server.com\","
             "\"ntp_server3\":\"time3.server.com\","
             "\"ntp_server4\":\"time4.server.com\","
-            "\"company_use_filtering\":true"
+            "\"company_use_filtering\":true,"
+            "\"fw_update_url\":\"https://network.ruuvi.com/firmwareupdate\""
             "}",
             &gw_cfg,
             &flag_network_cfg));
@@ -2084,6 +2097,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg_from_lan) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'scan_filter_list' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "coordinates: not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'coordinates' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "fw_update_url: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'fw_update_url' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use remote cfg: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: URL: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
@@ -2137,6 +2152,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg_from_lan) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan filter: no"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: coordinates: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_INFO,
+        string("config: fw_update: url: https://network.ruuvi.com/firmwareupdate"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -2281,6 +2299,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'scan_filter_list' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "coordinates: not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'coordinates' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "fw_update_url: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'fw_update_url' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use remote cfg: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: URL: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
@@ -2332,6 +2352,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan filter: no"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: coordinates: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_INFO,
+        string("config: fw_update: url: https://network.ruuvi.com/firmwareupdate"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -2638,6 +2661,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'scan_filter_list' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "coordinates: not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'coordinates' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "fw_update_url: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'fw_update_url' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use remote cfg: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: URL: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
@@ -2691,6 +2716,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan filter: no"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: coordinates: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_INFO,
+        string("config: fw_update: url: https://network.ruuvi.com/firmwareupdate"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -2849,6 +2877,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'scan_filter_list' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "coordinates: not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'coordinates' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "fw_update_url: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'fw_update_url' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use remote cfg: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: URL: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
@@ -2904,6 +2934,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan filter: no"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: coordinates: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_INFO,
+        string("config: fw_update: url: https://network.ruuvi.com/firmwareupdate"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -3049,6 +3082,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'scan_filter_list' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "coordinates: not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'coordinates' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "fw_update_url: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'fw_update_url' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use remote cfg: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: URL: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
@@ -3100,6 +3135,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan filter: no"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: coordinates: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_INFO,
+        string("config: fw_update: url: https://network.ruuvi.com/firmwareupdate"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -3246,6 +3284,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_wifi_ap_active) //
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'scan_filter_list' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "coordinates: not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'coordinates' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "fw_update_url: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'fw_update_url' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use remote cfg: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: URL: "));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
@@ -3297,6 +3337,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_wifi_ap_active) //
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: use scan filter: no"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: coordinates: "));
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_INFO,
+        string("config: fw_update: url: https://network.ruuvi.com/firmwareupdate"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 

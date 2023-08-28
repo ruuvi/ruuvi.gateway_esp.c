@@ -442,6 +442,27 @@ gw_cfg_update_ruuvi_cfg(const gw_cfg_ruuvi_t* const p_gw_cfg_ruuvi_new)
 }
 
 void
+gw_cfg_update_fw_update_url(const char* const p_fw_update_url)
+{
+    assert(NULL != g_gw_cfg_mutex);
+    os_mutex_recursive_lock(g_gw_cfg_mutex);
+    gw_cfg_t* const p_gw_cfg_dst = &g_gateway_config;
+
+    (void)snprintf(
+        p_gw_cfg_dst->ruuvi_cfg.fw_update.fw_update_url,
+        sizeof(p_gw_cfg_dst->ruuvi_cfg.fw_update.fw_update_url),
+        "%s",
+        p_fw_update_url);
+
+    if (NULL != g_p_gw_cfg_cb_on_change_cfg)
+    {
+        g_p_gw_cfg_cb_on_change_cfg(p_gw_cfg_dst);
+    }
+
+    os_mutex_recursive_unlock(g_gw_cfg_mutex);
+}
+
+void
 gw_cfg_update_wifi_ap_config(const wifiman_config_ap_t* const p_wifi_ap_cfg)
 {
     gw_cfg_set(NULL, NULL, p_wifi_ap_cfg, NULL);
@@ -793,4 +814,15 @@ gw_cfg_auth_type_to_str(const ruuvi_gw_cfg_lan_auth_t* const p_lan_auth)
         lan_auth_type = HTTP_SERVER_AUTH_TYPE_DEFAULT;
     }
     return http_server_auth_type_to_str(lan_auth_type);
+}
+
+str_buf_t
+gw_cfg_get_fw_update_url(void)
+{
+    assert(NULL != g_gw_cfg_mutex);
+    const gw_cfg_t*                       p_gw_cfg      = gw_cfg_lock_ro();
+    const ruuvi_gw_cfg_fw_update_t* const p_fw_update   = &p_gw_cfg->ruuvi_cfg.fw_update;
+    const str_buf_t                       fw_update_url = str_buf_printf_with_alloc("%s", p_fw_update->fw_update_url);
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    return fw_update_url;
 }
