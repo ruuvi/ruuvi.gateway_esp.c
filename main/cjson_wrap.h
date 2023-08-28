@@ -65,6 +65,9 @@ bool
 json_wrap_get_bool_val(const cJSON* p_json_root, const char* p_attr_name, bool* p_val);
 
 bool
+json_wrap_get_uint32_val(const cJSON* p_json_root, const char* p_attr_name, uint32_t* p_val);
+
+bool
 json_wrap_get_uint16_val(const cJSON* p_json_root, const char* p_attr_name, uint16_t* p_val);
 
 bool

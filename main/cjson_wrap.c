@@ -11,6 +11,10 @@
 #include <string.h>
 #include "os_malloc.h"
 #include "esp_type_wrapper.h"
+#include "os_str.h"
+
+#define BASE_10 (10)
+#define BASE_16 (16)
 
 void
 cjson_wrap_init(void)
@@ -124,6 +128,42 @@ json_wrap_get_bool_val(const cJSON* p_json_root, const char* p_attr_name, bool* 
         return false;
     }
     *p_val = cJSON_IsTrue(p_json_attr);
+    return true;
+}
+
+bool
+json_wrap_get_uint32_val(const cJSON* p_json_root, const char* p_attr_name, uint32_t* p_val)
+{
+    const cJSON* p_json_attr = cJSON_GetObjectItem(p_json_root, p_attr_name);
+    if (NULL == p_json_attr)
+    {
+        return false;
+    }
+    if ((bool)cJSON_IsNumber(p_json_attr))
+    {
+        if (!((p_json_attr->valueint >= 0) && (p_json_attr->valueint <= UINT32_MAX)))
+        {
+            return false;
+        }
+        *p_val = (uint16_t)p_json_attr->valueint;
+    }
+    else
+    {
+        os_str2num_base_t base           = BASE_10;
+        const char* const p_prefix_hex   = "0x";
+        const size_t      prefix_hex_len = strlen(p_prefix_hex);
+        if (0 == strncmp(p_json_attr->valuestring, p_prefix_hex, prefix_hex_len))
+        {
+            base = BASE_16;
+        }
+        const char*    p_end = NULL;
+        const uint32_t val   = os_str_to_uint32_cptr(p_json_attr->valuestring, &p_end, base);
+        if ('\0' != *p_end)
+        {
+            return false;
+        }
+        *p_val = val;
+    }
     return true;
 }
 

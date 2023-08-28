@@ -691,7 +691,7 @@ http_async_poll(uint32_t* const p_malloc_fail_cnt)
 
     if (flag_success && (HTTP_POST_RECIPIENT_STATS != p_http_async_info->recipient))
     {
-        if (!fw_update_mark_app_valid_cancel_rollback())
+        if (!fw_update_mark_app_valid_cancel_rollback()) // NOSONAR
         {
             LOG_ERR("%s failed", "fw_update_mark_app_valid_cancel_rollback");
         }

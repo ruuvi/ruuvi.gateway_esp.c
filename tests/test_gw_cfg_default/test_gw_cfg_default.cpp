@@ -348,6 +348,7 @@ TEST_F(TestGwCfgDefault, test_1) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt sending interval: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/AA:BB:CC:DD:EE:FF/"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt client id: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: mqtt user: "));

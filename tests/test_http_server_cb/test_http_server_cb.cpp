@@ -868,6 +868,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
           "\t\"mqtt_transport\":\t\"TCP\",\n"
           "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
           "\t\"mqtt_port\":\t1883,\n"
+          "\t\"mqtt_sending_interval\":\t0,\n"
           "\t\"mqtt_prefix\":\t\"ruuvi/30:AE:A4:02:84:A4\",\n"
           "\t\"mqtt_client_id\":\t\"30:AE:A4:02:84:A4\",\n"
           "\t\"mqtt_user\":\t\"\",\n"
@@ -912,6 +913,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
         "\"mqtt_disable_retained_messages\":false,"
         "\"mqtt_server\":\"test.mosquitto.org\","
         "\"mqtt_port\":1883,"
+        "\"mqtt_sending_interval\":0,"
         "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
         "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
         "\"mqtt_user\":\"\","
@@ -972,6 +974,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed_1) // NOLINT
             "\"mqtt_disable_retained_messages\":false,"
             "\"mqtt_server\":\"test.mosquitto.org\","
             "\"mqtt_port\":1883,"
+            "\t\"mqtt_sending_interval\":\t0,\n"
             "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
             "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
             "\"mqtt_user\":\"\","
@@ -1002,6 +1005,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed_2) // NOLINT
             "\"mqtt_disable_retained_messages\":false,"
             "\"mqtt_server\":\"test.mosquitto.org\","
             "\"mqtt_port\":1883,"
+            "\"mqtt_sending_interval\":0,"
             "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
             "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
             "\"mqtt_user\":\"\","
@@ -1085,6 +1089,7 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
           "\t\"mqtt_transport\":\t\"TCP\",\n"
           "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
           "\t\"mqtt_port\":\t1883,\n"
+          "\t\"mqtt_sending_interval\":\t0,\n"
           "\t\"mqtt_prefix\":\t\"ruuvi/30:AE:A4:02:84:A4\",\n"
           "\t\"mqtt_client_id\":\t\"30:AE:A4:02:84:A4\",\n"
           "\t\"mqtt_user\":\t\"\",\n"
@@ -1130,6 +1135,7 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
             "\"mqtt_disable_retained_messages\":false,"
             "\"mqtt_server\":\"test.mosquitto.org\","
             "\"mqtt_port\":1883,"
+            "\"mqtt_sending_interval\":0,"
             "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
             "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
             "\"mqtt_user\":\"\","
@@ -1555,6 +1561,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
           "\t\"mqtt_transport\":\t\"TCP\",\n"
           "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
           "\t\"mqtt_port\":\t1883,\n"
+          "\t\"mqtt_sending_interval\":\t0,\n"
           "\t\"mqtt_prefix\":\t\"ruuvi/30:AE:A4:02:84:A4\",\n"
           "\t\"mqtt_client_id\":\t\"30:AE:A4:02:84:A4\",\n"
           "\t\"mqtt_user\":\t\"\",\n"
@@ -1600,6 +1607,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
             "\"mqtt_disable_retained_messages\":false,"
             "\"mqtt_server\":\"test.mosquitto.org\","
             "\"mqtt_port\":1883,"
+            "\"mqtt_sending_interval\":0,"
             "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
             "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
             "\"mqtt_user\":\"\","
@@ -2004,6 +2012,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg_from_lan) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'mqtt_server' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: not found or invalid");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'mqtt_port' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'mqtt_sending_interval' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(
         ESP_LOG_WARN,
@@ -2095,6 +2105,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg_from_lan) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt sending interval: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/11:22:33:44:55:66/"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt client id: 11:22:33:44:55:66"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt user: "));
@@ -2163,6 +2174,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
                  "\"mqtt_transport\":\"TCP\","
                  "\"mqtt_server\":\"test.mosquitto.org\","
                  "\"mqtt_port\":1883,"
+                 "\"mqtt_sending_interval\":0,"
                  "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
                  "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
                  "\"mqtt_user\":\"\","
@@ -2206,6 +2218,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1883");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: ruuvi/30:AE:A4:02:84:A4");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_client_id: 30:AE:A4:02:84:A4");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_user: ");
@@ -2287,6 +2300,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt sending interval: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/30:AE:A4:02:84:A4"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt client id: 30:AE:A4:02:84:A4"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt user: "));
@@ -2333,6 +2347,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed1) // NOLINT
         "\"mqtt_disable_retained_messages\":false,"
         "\"mqtt_server\":\"test.mosquitto.org\","
         "\"mqtt_port\":1883,"
+        "\"mqtt_sending_interval\":0,"
         "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
         "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
         "\"mqtt_user\":\"\","
@@ -2382,6 +2397,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed2) // NOLINT
         "\"mqtt_disable_retained_messages\":false,"
         "\"mqtt_server\":\"test.mosquitto.org\","
         "\"mqtt_port\":1883,"
+        "\"mqtt_sending_interval\":0,"
         "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
         "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
         "\"mqtt_user\":\"\","
@@ -2431,6 +2447,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed3) // NOLINT
         "\"mqtt_disable_retained_messages\":false,"
         "\"mqtt_server\":\"test.mosquitto.org\","
         "\"mqtt_port\":1883,"
+        "\"mqtt_sending_interval\":0,"
         "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
         "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
         "\"mqtt_user\":\"\","
@@ -2515,6 +2532,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
         "\"mqtt_transport\":\"TCP\","
         "\"mqtt_server\":\"test.mosquitto.org\","
         "\"mqtt_port\":1883,"
+        "\"mqtt_sending_interval\":0,"
         "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
         "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
         "\"mqtt_user\":\"\","
@@ -2560,6 +2578,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1883");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: ruuvi/30:AE:A4:02:84:A4");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_client_id: 30:AE:A4:02:84:A4");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_user: ");
@@ -2638,6 +2657,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt sending interval: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/30:AE:A4:02:84:A4"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt client id: 30:AE:A4:02:84:A4"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt user: "));
@@ -2723,6 +2743,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
         "\"mqtt_transport\":\"TCP\","
         "\"mqtt_server\":\"test.mosquitto.org\","
         "\"mqtt_port\":1883,"
+        "\"mqtt_sending_interval\":0,"
         "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
         "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
         "\"mqtt_user\":\"\","
@@ -2772,6 +2793,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1883");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: ruuvi/30:AE:A4:02:84:A4");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_client_id: 30:AE:A4:02:84:A4");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_user: ");
@@ -2846,6 +2868,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt sending interval: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/30:AE:A4:02:84:A4"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt client id: 30:AE:A4:02:84:A4"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt user: "));
@@ -2917,6 +2940,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
                  "\"mqtt_transport\":\"TCP\","
                  "\"mqtt_server\":\"test.mosquitto.org\","
                  "\"mqtt_port\":1883,"
+                 "\"mqtt_sending_interval\":0,"
                  "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
                  "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
                  "\"mqtt_user\":\"\","
@@ -2962,6 +2986,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1883");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: ruuvi/30:AE:A4:02:84:A4");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_client_id: 30:AE:A4:02:84:A4");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_user: ");
@@ -3043,6 +3068,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt sending interval: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/30:AE:A4:02:84:A4"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt client id: 30:AE:A4:02:84:A4"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt user: "));
@@ -3111,6 +3137,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_wifi_ap_active) //
                  "\"mqtt_transport\":\"TCP\","
                  "\"mqtt_server\":\"test.mosquitto.org\","
                  "\"mqtt_port\":1883,"
+                 "\"mqtt_sending_interval\":0,"
                  "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
                  "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
                  "\"mqtt_user\":\"\","
@@ -3156,6 +3183,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_wifi_ap_active) //
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1883");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: ruuvi/30:AE:A4:02:84:A4");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_client_id: 30:AE:A4:02:84:A4");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_user: ");
@@ -3237,6 +3265,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_wifi_ap_active) //
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt transport: TCP"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt server: test.mosquitto.org"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt port: 1883"));
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt sending interval: 0"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt prefix: ruuvi/30:AE:A4:02:84:A4"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt client id: 30:AE:A4:02:84:A4"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, string("config: mqtt user: "));
@@ -3281,6 +3310,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_unknown_json) // NOLINT
         "\"mqtt_disable_retained_messages\":false,"
         "\"mqtt_server\":\"test.mosquitto.org\","
         "\"mqtt_port\":1883,"
+        "\"mqtt_sending_interval\":0,"
         "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
         "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
         "\"mqtt_user\":\"\","

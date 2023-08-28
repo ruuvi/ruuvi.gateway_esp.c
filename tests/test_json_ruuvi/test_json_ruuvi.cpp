@@ -481,6 +481,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
         "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
         "\t\"mqtt_port\":\t1234,\n"
+        "\t\"mqtt_sending_interval\":\t0,\n"
         "\t\"mqtt_user\":\t\"user123\",\n"
         "\t\"mqtt_pass\":\t\"pass123\",\n"
         "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
@@ -610,6 +611,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1234");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: prefix");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_client_id: AA:BB:CC:DD:EE:FF");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_user: user123");
@@ -681,6 +683,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords) // NOLINT
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
         "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
         "\t\"mqtt_port\":\t1234,\n"
+        "\t\"mqtt_sending_interval\":\t0,\n"
         "\t\"mqtt_user\":\t\"user123\",\n"
         "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
         "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
@@ -844,6 +847,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1234");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: prefix");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_client_id: AA:BB:CC:DD:EE:FF");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_user: user123");
@@ -925,6 +929,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords_and_remote_cfg_auth_cha
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
         "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
         "\t\"mqtt_port\":\t1234,\n"
+        "\t\"mqtt_sending_interval\":\t0,\n"
         "\t\"mqtt_user\":\t\"user123\",\n"
         "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
         "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
@@ -1079,6 +1084,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords_and_remote_cfg_auth_cha
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1234");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: prefix");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_client_id: AA:BB:CC:DD:EE:FF");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_user: user123");
@@ -1160,6 +1166,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_empty_prefix_and_client_id) // NOLIN
         "\t\"mqtt_prefix\":\t\"\",\n"
         "\t\"mqtt_client_id\":\t\"\",\n"
         "\t\"mqtt_port\":\t8883,\n"
+        "\t\"mqtt_sending_interval\":\t0,\n"
         "\t\"mqtt_user\":\t\"user123\",\n"
         "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
         "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
@@ -1276,6 +1283,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_empty_prefix_and_client_id) // NOLIN
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 8883");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: ");
     TEST_CHECK_LOG_RECORD_GW_CFG(
         ESP_LOG_WARN,
@@ -1352,6 +1360,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_no_prefix_and_client_id) // NOLINT
         "\t\"mqtt_transport\":\t\"TCP\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_port\":\t8883,\n"
+        "\t\"mqtt_sending_interval\":\t0,\n"
         "\t\"mqtt_user\":\t\"user123\",\n"
         "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
         "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
@@ -1468,6 +1477,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_no_prefix_and_client_id) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 8883");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(
         ESP_LOG_WARN,
@@ -1546,6 +1556,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
         "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
         "\t\"mqtt_port\":\t8883,\n"
+        "\t\"mqtt_sending_interval\":\t0,\n"
         "\t\"mqtt_user\":\t\"user123\",\n"
         "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
         "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
@@ -1662,6 +1673,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: SSL");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 8883");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: prefix");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_client_id: AA:BB:CC:DD:EE:FF");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_user: user123");
@@ -1734,6 +1746,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket) // NOLINT
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
         "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
         "\t\"mqtt_port\":\t8080,\n"
+        "\t\"mqtt_sending_interval\":\t0,\n"
         "\t\"mqtt_user\":\t\"user123\",\n"
         "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
         "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
@@ -1850,6 +1863,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: WS");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 8080");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: prefix");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_client_id: AA:BB:CC:DD:EE:FF");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_user: user123");
@@ -1922,6 +1936,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
         "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
         "\t\"mqtt_port\":\t8081,\n"
+        "\t\"mqtt_sending_interval\":\t0,\n"
         "\t\"mqtt_user\":\t\"user123\",\n"
         "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
         "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
@@ -2038,6 +2053,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: WSS");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 8081");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: prefix");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_client_id: AA:BB:CC:DD:EE:FF");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_user: user123");
@@ -2110,6 +2126,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_full_config) // NOLINT
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
         "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
         "\t\"mqtt_port\":\t1883,\n"
+        "\t\"mqtt_sending_interval\":\t0,\n"
         "\t\"mqtt_user\":\t\"user123\",\n"
         "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
         "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
@@ -2228,6 +2245,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_full_config) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1883");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: prefix");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_client_id: AA:BB:CC:DD:EE:FF");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_user: user123");
@@ -2295,6 +2313,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_min_config) // NOLINT
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
         "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
         "\t\"mqtt_port\":\t1883,\n"
+        "\t\"mqtt_sending_interval\":\t0,\n"
         "\t\"mqtt_user\":\t\"user123\",\n"
         "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
         "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
@@ -2408,6 +2427,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_min_config) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1883");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: prefix");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_client_id: AA:BB:CC:DD:EE:FF");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_user: user123");
@@ -2475,6 +2495,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_via_dhcp) // NOLINT
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
         "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
         "\t\"mqtt_port\":\t1883,\n"
+        "\t\"mqtt_sending_interval\":\t0,\n"
         "\t\"mqtt_user\":\t\"user123\",\n"
         "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
         "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
@@ -2589,6 +2610,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_via_dhcp) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1883");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: prefix");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_client_id: AA:BB:CC:DD:EE:FF");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_user: user123");
@@ -2657,6 +2679,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_custom) // NOLINT
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
         "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
         "\t\"mqtt_port\":\t1883,\n"
+        "\t\"mqtt_sending_interval\":\t0,\n"
         "\t\"mqtt_user\":\t\"user123\",\n"
         "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
         "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
@@ -2773,6 +2796,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_custom) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1883");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: prefix");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_client_id: AA:BB:CC:DD:EE:FF");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_user: user123");
@@ -2847,6 +2871,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_default) // NOLINT
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
         "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
         "\t\"mqtt_port\":\t1883,\n"
+        "\t\"mqtt_sending_interval\":\t0,\n"
         "\t\"mqtt_user\":\t\"user123\",\n"
         "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
         "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
@@ -2965,6 +2990,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_default) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1883");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: prefix");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_client_id: AA:BB:CC:DD:EE:FF");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_user: user123");
@@ -3045,6 +3071,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
         "\"mqtt_transport\":\"TCP\","
         "\"mqtt_server\":\"test.mosquitto.org\","
         "\"mqtt_port\":1883,"
+        "\t\"mqtt_sending_interval\":\t0,\n"
         "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
         "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
         "\"mqtt_user\":\"\","
@@ -3149,6 +3176,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1883");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_prefix: ruuvi/30:AE:A4:02:84:A4");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_client_id: 30:AE:A4:02:84:A4");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_user: ");
@@ -3208,6 +3236,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body_malloc_failed) // NOLINT
         "\"mqtt_transport\":\"TCP\","
         "\"mqtt_server\":\"test.mosquitto.org\","
         "\"mqtt_port\":1883,"
+        "\"mqtt_sending_interval\":0,"
         "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
         "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
         "\"mqtt_user\":\"\","

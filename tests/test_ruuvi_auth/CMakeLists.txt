@@ -19,6 +19,8 @@ add_executable(${ProjectId}
         ${RUUVI_ESP_WRAPPERS}/include/mac_addr.h
         ${RUUVI_ESP_WRAPPERS}/src/str_buf.c
         ${RUUVI_ESP_WRAPPERS}/include/str_buf.h
+        ${RUUVI_ESP_WRAPPERS}/src/os_str.c
+        ${RUUVI_ESP_WRAPPERS}/include/os_str.h
         ${WIFI_MANAGER_SRC}/http_server_auth.c
         ${WIFI_MANAGER_SRC}/http_server_auth.h
         ${WIFI_MANAGER_SRC}/http_server_auth_type.c

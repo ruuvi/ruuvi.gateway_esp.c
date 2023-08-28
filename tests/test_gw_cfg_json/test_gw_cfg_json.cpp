@@ -481,6 +481,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_for_ui_client) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -569,6 +570,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_default) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -643,6 +645,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_default_company_id_0x0500) // NOLINT
         "\t\"mqtt_transport\":\t\"TCP\",\n"
         "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
         "\t\"mqtt_port\":\t1883,\n"
+        "\t\"mqtt_sending_interval\":\t0,\n"
         "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
         "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
         "\t\"mqtt_user\":\t\"\",\n"
@@ -733,6 +736,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_disabled) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -825,6 +829,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_enabled) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -922,6 +927,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_disabled) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -1016,6 +1022,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_no) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -1117,6 +1124,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_basic) // NOL
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -1216,6 +1224,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_bearer) // NO
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -1307,6 +1316,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_disabled) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -1409,6 +1419,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_TCP) // NOLINT
                "\t\"mqtt_transport\":\t\"" MQTT_TRANSPORT_TCP "\",\n"
                "\t\"mqtt_server\":\t\"mqtt_server1.com\",\n"
                "\t\"mqtt_port\":\t1339,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"prefix1\",\n"
                "\t\"mqtt_client_id\":\t\"client123\",\n"
                "\t\"mqtt_user\":\t\"user1\",\n"
@@ -1511,6 +1522,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_TCP_disable_retained_mes
                "\t\"mqtt_transport\":\t\"" MQTT_TRANSPORT_TCP "\",\n"
                "\t\"mqtt_server\":\t\"mqtt_server1.com\",\n"
                "\t\"mqtt_port\":\t1339,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"prefix1\",\n"
                "\t\"mqtt_client_id\":\t\"client123\",\n"
                "\t\"mqtt_user\":\t\"user1\",\n"
@@ -1613,6 +1625,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_SSL) // NOLINT
                "\t\"mqtt_transport\":\t\"" MQTT_TRANSPORT_SSL "\",\n"
                "\t\"mqtt_server\":\t\"mqtt_server2.com\",\n"
                "\t\"mqtt_port\":\t1340,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"prefix2\",\n"
                "\t\"mqtt_client_id\":\t\"client124\",\n"
                "\t\"mqtt_user\":\t\"user2\",\n"
@@ -1715,6 +1728,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WS) // NOLINT
                "\t\"mqtt_transport\":\t\"" MQTT_TRANSPORT_WS "\",\n"
                "\t\"mqtt_server\":\t\"mqtt_server2.com\",\n"
                "\t\"mqtt_port\":\t1340,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"prefix2\",\n"
                "\t\"mqtt_client_id\":\t\"client124\",\n"
                "\t\"mqtt_user\":\t\"user2\",\n"
@@ -1817,6 +1831,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WSS) // NOLINT
                "\t\"mqtt_transport\":\t\"" MQTT_TRANSPORT_WSS "\",\n"
                "\t\"mqtt_server\":\t\"mqtt_server2.com\",\n"
                "\t\"mqtt_port\":\t1340,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"prefix2\",\n"
                "\t\"mqtt_client_id\":\t\"client124\",\n"
                "\t\"mqtt_user\":\t\"user2\",\n"
@@ -1919,6 +1934,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_custom_http_enabled) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -2007,6 +2023,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_disabled) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -2106,6 +2123,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_none) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -2215,6 +2233,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_basic) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -2319,6 +2338,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_bearer) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -2423,6 +2443,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_token) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -2521,6 +2542,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_equal_to_default) // NOL
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -2632,6 +2654,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_equal_to_default_auth_di
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -2722,6 +2745,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_disabled) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -2824,6 +2848,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_enabled) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -2913,6 +2938,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_default) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -3008,6 +3034,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -3110,6 +3137,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi_with_api_key) // NOLIN
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -3206,6 +3234,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_digest) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -3302,6 +3331,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_basic) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -3398,6 +3428,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_allow) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -3493,6 +3524,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_deny) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -3587,6 +3619,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_beta_tester) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -3681,6 +3714,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_manual) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -3771,6 +3805,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_unknown) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -3858,6 +3893,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_disabled) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -3950,6 +3986,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_enabled_via_dhcp) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -4051,6 +4088,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_custom) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -4143,6 +4181,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_enabled) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -4235,6 +4274,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_disabled) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -4333,6 +4373,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_default) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -4431,6 +4472,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_coded_phy_true) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -4529,6 +4571,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_1mbit_phy_false) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -4627,6 +4670,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_extended_payload_false) // NOLIN
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -4725,6 +4769,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_37_false) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -4823,6 +4868,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_38_false) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -4921,6 +4967,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_39_false) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -5020,6 +5067,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_filter1_not_allow_listed) // NOL
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -5120,6 +5168,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_filter2_allow_listed) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -5211,6 +5260,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_coordinates) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -5369,6 +5419,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_default) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -5608,6 +5659,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
                "\t\"mqtt_transport\":\t\"SSL\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1338,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"my_prefix\",\n"
                "\t\"mqtt_client_id\":\t\"my_client\",\n"
                "\t\"mqtt_user\":\t\"m_user1\",\n"
@@ -5848,6 +5900,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
                "\t\"mqtt_transport\":\t\"SSL\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1338,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"my_prefix\",\n"
                "\t\"mqtt_client_id\":\t\"my_client\",\n"
                "\t\"mqtt_user\":\t\"m_user1\",\n"
@@ -6088,6 +6141,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
                "\t\"mqtt_transport\":\t\"SSL\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1338,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"my_prefix\",\n"
                "\t\"mqtt_client_id\":\t\"my_client\",\n"
                "\t\"mqtt_user\":\t\"m_user1\",\n"
@@ -6168,6 +6222,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
           "\t\"mqtt_transport\":\t\"SSL\",\n"
           "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
           "\t\"mqtt_port\":\t1338,\n"
+          "\t\"mqtt_sending_interval\":\t0,\n"
           "\t\"mqtt_prefix\":\t\"my_prefix\",\n"
           "\t\"mqtt_client_id\":\t\"my_client\",\n"
           "\t\"mqtt_user\":\t\"m_user1\",\n"
@@ -6305,6 +6360,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
                "\t\"mqtt_transport\":\t\"SSL\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1338,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"my_prefix\",\n"
                "\t\"mqtt_client_id\":\t\"my_client\",\n"
                "\t\"mqtt_user\":\t\"m_user1\",\n"
@@ -6545,6 +6601,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
                "\t\"mqtt_transport\":\t\"SSL\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1338,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"my_prefix\",\n"
                "\t\"mqtt_client_id\":\t\"my_client\",\n"
                "\t\"mqtt_user\":\t\"m_user1\",\n"
@@ -6785,6 +6842,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
                "\t\"mqtt_transport\":\t\"SSL\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1338,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"my_prefix\",\n"
                "\t\"mqtt_client_id\":\t\"my_client\",\n"
                "\t\"mqtt_user\":\t\"m_user1\",\n"
@@ -7025,6 +7083,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_custom) // NOLINT
                "\t\"mqtt_transport\":\t\"SSL\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1338,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"my_prefix\",\n"
                "\t\"mqtt_client_id\":\t\"my_client\",\n"
                "\t\"mqtt_user\":\t\"m_user1\",\n"
@@ -7112,6 +7171,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -7188,6 +7248,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
           "\t\"mqtt_transport\":\t\"TCP\",\n"
           "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
           "\t\"mqtt_port\":\t1883,\n"
+          "\t\"mqtt_sending_interval\":\t0,\n"
           "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
           "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
           "\t\"mqtt_user\":\t\"\",\n"
@@ -7272,6 +7333,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -7362,6 +7424,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -7448,6 +7511,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -7600,6 +7664,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -7655,6 +7720,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'mqtt_transport' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'mqtt_server' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'mqtt_port' in config-json"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'mqtt_sending_interval' in config-json"));
     TEST_CHECK_LOG_RECORD(
         ESP_LOG_WARN,
         string("Can't find key 'mqtt_prefix' in config-json, use default value: ruuvi/AA:BB:CC:DD:EE:FF/"));
@@ -7817,6 +7883,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_string) // NOLINT
                "\t\"mqtt_transport\":\t\"TCP\",\n"
                "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
                "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
                "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
                "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
                "\t\"mqtt_user\":\t\"\",\n"
@@ -7896,6 +7963,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_malloc_failed) // NOLINT
           "\t\"mqtt_transport\":\t\"TCP\",\n"
           "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
           "\t\"mqtt_port\":\t1883,\n"
+          "\t\"mqtt_sending_interval\":\t0,\n"
           "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
           "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
           "\t\"mqtt_user\":\t\"\",\n"
@@ -7930,7 +7998,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_malloc_failed) // NOLINT
           "\t\"scan_filter_list\":\t[],\n"
           "\t\"coordinates\":\t\"\"\n"
           "}";
-    for (uint32_t i = 0; i < 160; ++i)
+    for (uint32_t i = 0; i < 162; ++i)
     {
         this->m_malloc_cnt         = 0;
         this->m_malloc_fail_on_cnt = i + 1;
@@ -7944,7 +8012,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_malloc_failed) // NOLINT
 
     {
         this->m_malloc_cnt         = 0;
-        this->m_malloc_fail_on_cnt = 161;
+        this->m_malloc_fail_on_cnt = 163;
         gw_cfg_t gw_cfg2           = get_gateway_config_default();
         ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, p_json_str, &gw_cfg2));
         ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
@@ -9642,7 +9710,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_port_2) // NOLI
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix) // NOLINT
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_mqtt_sending_interval) // NOLINT
 {
     const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -9656,12 +9724,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix) // NOLI
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_prefix"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_sending_interval"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix_2) // NOLINT
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_sending_interval_2) // NOLINT
 {
     const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -9675,12 +9743,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix_2) // NO
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_prefix"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_sending_interval"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix_3) // NOLINT
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix) // NOLINT
 {
     const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -9699,7 +9767,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix_3) // NO
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id) // NOLINT
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix_2) // NOLINT
 {
     const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -9713,12 +9781,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id) // N
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_client_id"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_prefix"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id_2) // NOLINT
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix_3) // NOLINT
 {
     const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -9732,12 +9800,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id_2) //
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_client_id"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_prefix"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id_3) // NOLINT
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id) // NOLINT
 {
     const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -9756,7 +9824,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id_3) //
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user) // NOLINT
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id_2) // NOLINT
 {
     const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -9770,12 +9838,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user) // NOLINT
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_user"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_client_id"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user_2) // NOLINT
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id_3) // NOLINT
 {
     const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -9789,12 +9857,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user_2) // NOLI
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_user"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_client_id"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user_3) // NOLINT
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user) // NOLINT
 {
     const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -9813,7 +9881,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user_3) // NOLI
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass) // NOLINT
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user_2) // NOLINT
 {
     const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -9827,12 +9895,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass) // NOLINT
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_pass"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass_2) // NOLINT
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user_3) // NOLINT
 {
     const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -9846,12 +9914,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass_2) // NOLI
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_pass"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_user"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass_3) // NOLINT
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass) // NOLINT
 {
     const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -9870,7 +9938,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass_3) // NOLI
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_use_ssl_client_cert) // NOLINT
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass_2) // NOLINT
 {
     const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -9881,6 +9949,44 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_use_ssl_client_
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 102;
+
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_pass"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass_3) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 103;
+
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_pass"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_use_ssl_client_cert) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 104;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9899,7 +10005,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_use_ssl_client_
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 103;
+    this->m_malloc_fail_on_cnt = 105;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9918,7 +10024,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_use_ssl_server_
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 104;
+    this->m_malloc_fail_on_cnt = 106;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9937,7 +10043,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_use_ssl_server_
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 105;
+    this->m_malloc_fail_on_cnt = 107;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9956,7 +10062,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_type) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 106;
+    this->m_malloc_fail_on_cnt = 108;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9975,7 +10081,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_type_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 107;
+    this->m_malloc_fail_on_cnt = 109;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -9994,7 +10100,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_type_3) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 108;
+    this->m_malloc_fail_on_cnt = 110;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10013,7 +10119,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_user) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 109;
+    this->m_malloc_fail_on_cnt = 111;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10032,7 +10138,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_user_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 110;
+    this->m_malloc_fail_on_cnt = 112;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10051,7 +10157,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_user_3) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 111;
+    this->m_malloc_fail_on_cnt = 113;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10070,7 +10176,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_pass) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 112;
+    this->m_malloc_fail_on_cnt = 114;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10089,7 +10195,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_pass_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 113;
+    this->m_malloc_fail_on_cnt = 115;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10108,7 +10214,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_pass_3) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 114;
+    this->m_malloc_fail_on_cnt = 116;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10127,7 +10233,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 115;
+    this->m_malloc_fail_on_cnt = 117;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10146,7 +10252,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_2) 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 116;
+    this->m_malloc_fail_on_cnt = 118;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10165,7 +10271,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_3) 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 117;
+    this->m_malloc_fail_on_cnt = 119;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10184,7 +10290,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_rw)
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 118;
+    this->m_malloc_fail_on_cnt = 120;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10203,7 +10309,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_rw_
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 119;
+    this->m_malloc_fail_on_cnt = 121;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10222,7 +10328,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_rw_
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 120;
+    this->m_malloc_fail_on_cnt = 122;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10241,7 +10347,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_cycle) /
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 121;
+    this->m_malloc_fail_on_cnt = 123;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10260,7 +10366,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_cycle_2)
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 122;
+    this->m_malloc_fail_on_cnt = 124;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10279,7 +10385,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_cycle_3)
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 123;
+    this->m_malloc_fail_on_cnt = 125;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10298,7 +10404,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_weekdays
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 124;
+    this->m_malloc_fail_on_cnt = 126;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10317,7 +10423,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_weekdays
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 125;
+    this->m_malloc_fail_on_cnt = 127;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10336,7 +10442,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 126;
+    this->m_malloc_fail_on_cnt = 128;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10355,7 +10461,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 127;
+    this->m_malloc_fail_on_cnt = 129;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10374,7 +10480,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 128;
+    this->m_malloc_fail_on_cnt = 130;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10393,7 +10499,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 129;
+    this->m_malloc_fail_on_cnt = 131;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10412,7 +10518,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_tz) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 130;
+    this->m_malloc_fail_on_cnt = 132;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10431,7 +10537,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_tz_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 131;
+    this->m_malloc_fail_on_cnt = 133;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10450,7 +10556,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 132;
+    this->m_malloc_fail_on_cnt = 134;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10469,7 +10575,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use_2) // NOLINT
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 133;
+    this->m_malloc_fail_on_cnt = 135;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10488,7 +10594,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use_dhcp) // NOL
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 134;
+    this->m_malloc_fail_on_cnt = 136;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10507,7 +10613,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use_dhcp_2) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 135;
+    this->m_malloc_fail_on_cnt = 137;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10526,7 +10632,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server1) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 136;
+    this->m_malloc_fail_on_cnt = 138;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10545,7 +10651,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server1_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 137;
+    this->m_malloc_fail_on_cnt = 139;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10564,7 +10670,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server1_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 138;
+    this->m_malloc_fail_on_cnt = 140;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10583,7 +10689,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server2) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 139;
+    this->m_malloc_fail_on_cnt = 141;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10602,7 +10708,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server2_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 140;
+    this->m_malloc_fail_on_cnt = 142;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10621,7 +10727,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server2_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 141;
+    this->m_malloc_fail_on_cnt = 143;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10640,7 +10746,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server3) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 142;
+    this->m_malloc_fail_on_cnt = 144;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10659,7 +10765,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server3_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 143;
+    this->m_malloc_fail_on_cnt = 145;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10678,7 +10784,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server3_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 144;
+    this->m_malloc_fail_on_cnt = 146;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10697,7 +10803,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server4) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 145;
+    this->m_malloc_fail_on_cnt = 147;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10716,7 +10822,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server4_1) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 146;
+    this->m_malloc_fail_on_cnt = 148;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10735,7 +10841,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server4_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 147;
+    this->m_malloc_fail_on_cnt = 149;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10754,7 +10860,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_company_id) // NOLIN
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 148;
+    this->m_malloc_fail_on_cnt = 150;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10773,7 +10879,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_company_id_2) // NOL
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 149;
+    this->m_malloc_fail_on_cnt = 151;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10792,7 +10898,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_filtering) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 150;
+    this->m_malloc_fail_on_cnt = 152;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10811,7 +10917,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_filtering_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 151;
+    this->m_malloc_fail_on_cnt = 153;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10830,7 +10936,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_coded_phy) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 152;
+    this->m_malloc_fail_on_cnt = 154;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10849,7 +10955,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_coded_phy_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 153;
+    this->m_malloc_fail_on_cnt = 155;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10868,7 +10974,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_1mbit_phy) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 154;
+    this->m_malloc_fail_on_cnt = 156;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10887,7 +10993,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_1mbit_phy_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 155;
+    this->m_malloc_fail_on_cnt = 157;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10906,7 +11012,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_extended_payload
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 156;
+    this->m_malloc_fail_on_cnt = 158;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10925,7 +11031,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_extended_payload
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 157;
+    this->m_malloc_fail_on_cnt = 159;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10944,7 +11050,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_37) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 158;
+    this->m_malloc_fail_on_cnt = 160;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10963,7 +11069,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_37_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 159;
+    this->m_malloc_fail_on_cnt = 161;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -10982,7 +11088,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_38) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 160;
+    this->m_malloc_fail_on_cnt = 162;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -11001,7 +11107,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_38_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 161;
+    this->m_malloc_fail_on_cnt = 163;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -11020,7 +11126,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_39) // N
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 162;
+    this->m_malloc_fail_on_cnt = 164;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -11039,7 +11145,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_39_2) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 163;
+    this->m_malloc_fail_on_cnt = 165;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -11058,7 +11164,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_scan_filter_allow_li
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 164;
+    this->m_malloc_fail_on_cnt = 166;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -11077,7 +11183,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_scan_filter_allow_li
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 165;
+    this->m_malloc_fail_on_cnt = 167;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -11096,7 +11202,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_scan_filter_list) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 166;
+    this->m_malloc_fail_on_cnt = 168;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -11115,7 +11221,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_scan_filter_list_2) 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 167;
+    this->m_malloc_fail_on_cnt = 169;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -11134,7 +11240,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 168;
+    this->m_malloc_fail_on_cnt = 170;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -11153,7 +11259,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 169;
+    this->m_malloc_fail_on_cnt = 171;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -11172,7 +11278,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 170;
+    this->m_malloc_fail_on_cnt = 172;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -11191,7 +11297,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_converting_to_json_s
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 171;
+    this->m_malloc_fail_on_cnt = 173;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
