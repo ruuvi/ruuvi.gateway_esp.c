@@ -22,7 +22,7 @@
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #else
-#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
+#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #endif
 #include "log.h"
 static const char TAG[] = "http_download";
