@@ -582,7 +582,6 @@ adv_post_generate_statistics_info(const str_buf_t* const p_reset_info)
     p_stat_info->reset_cnt    = reset_info_get_cnt();
     p_stat_info->p_reset_info = (NULL != p_reset_info) ? &p_reset_info->buf[0] : "";
 
-    // TODO: Do we need to use a separate nonce for stat?
     g_adv_post_nonce += 1;
 
     return p_stat_info;
