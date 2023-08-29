@@ -315,6 +315,14 @@ gw_cfg_json_parse_http_data_format(const cJSON* const p_json_root)
     {
         return GW_CFG_HTTP_DATA_FORMAT_RUUVI;
     }
+    if (0 == strcmp(GW_CFG_HTTP_DATA_FORMAT_STR_RUUVI_RAW_AND_DECODED, data_format_str))
+    {
+        return GW_CFG_HTTP_DATA_FORMAT_RUUVI_RAW_AND_DECODED;
+    }
+    if (0 == strcmp(GW_CFG_HTTP_DATA_FORMAT_STR_RUUVI_DECODED, data_format_str))
+    {
+        return GW_CFG_HTTP_DATA_FORMAT_RUUVI_DECODED;
+    }
     LOG_WARN("Unknown http_data_format='%s', use 'ruuvi'", data_format_str);
     return GW_CFG_HTTP_DATA_FORMAT_RUUVI;
 }

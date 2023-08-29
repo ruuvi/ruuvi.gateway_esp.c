@@ -24,6 +24,7 @@ static const char TAG[] = "http";
 
 typedef struct http_json_stream_gen_advs_ctx_t
 {
+    bool                       flag_raw_data;
     bool                       flag_decode;
     bool                       flag_use_timestamps;
     bool                       flag_use_nonce;
@@ -385,8 +386,10 @@ static JSON_STREAM_GEN_DECL_GENERATOR_SUB_FUNC(
     {
         JSON_STREAM_GEN_ADD_UINT32(p_gen, "counter", p_adv->timestamp);
     }
-    JSON_STREAM_GEN_ADD_HEX_BUF(p_gen, "data", p_adv->data_buf, p_adv->data_len);
-
+    if (p_ctx->flag_raw_data)
+    {
+        JSON_STREAM_GEN_ADD_HEX_BUF(p_gen, "data", p_adv->data_buf, p_adv->data_len);
+    }
     if (p_ctx->flag_decode)
     {
         if (re_5_check_format(p_adv->data_buf))
@@ -453,6 +456,7 @@ http_json_create_stream_gen_advs(
         LOG_ERR("Not enough memory");
         return NULL;
     }
+    p_ctx->flag_raw_data       = p_params->flag_raw_data;
     p_ctx->flag_decode         = p_params->flag_decode;
     p_ctx->flag_use_timestamps = p_params->flag_use_timestamps;
     p_ctx->flag_use_nonce      = p_params->flag_use_nonce;

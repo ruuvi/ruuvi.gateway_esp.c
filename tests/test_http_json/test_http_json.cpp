@@ -166,7 +166,10 @@ TEST_F(TestHttpJson, test_1) // NOLINT
     const time_t                     timestamp   = 1612358920;
     const mac_address_str_t          gw_mac_addr = { "AA:CC:EE:00:11:22" };
     const ruuvi_gw_cfg_coordinates_t coordinates = { "170.112233,59.445566" };
-    const std::array<uint8_t, 1>     data        = { 0xAAU };
+    const std::array<uint8_t, 31>    data        = {
+                  0x02U, 0x01U, 0x06U, 0x1BU, 0xFFU, 0x99U, 0x04U, 0x05U, 0x15U, 0x71U, 0x4DU, 0x9FU, 0xC5U, 0x6DU, 0xFFU, 0xF0U,
+                  0xFFU, 0xF8U, 0x03U, 0xE4U, 0xB5U, 0x16U, 0xE8U, 0x4DU, 0x7EU, 0xF4U, 0x1FU, 0x0CU, 0x28U, 0xCBU, 0xD6U,
+    };
 
     adv_report_table_t adv_table = { .num_of_advs = 1,
                                      .table       = { {
@@ -177,12 +180,14 @@ TEST_F(TestHttpJson, test_1) // NOLINT
                                      } } };
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
 
+    const bool     flag_raw_data       = true;
     const bool     flag_decode         = false;
     const bool     flag_use_timestamps = true;
     const bool     flag_use_nonce      = true;
     const uint32_t nonce               = 12345678;
 
     const http_json_create_stream_gen_advs_params_t params = {
+        .flag_raw_data       = flag_raw_data,
         .flag_decode         = flag_decode,
         .flag_use_timestamps = flag_use_timestamps,
         .cur_time            = timestamp,
@@ -222,7 +227,182 @@ TEST_F(TestHttpJson, test_1) // NOLINT
                "      \"AA:BB:CC:01:02:03\": {\n"
                "        \"rssi\": -70,\n"
                "        \"timestamp\": 1612358929,\n"
-               "        \"data\": \"AA\"\n"
+               "        \"data\": \"0201061BFF99040515714D9FC56DFFF0FFF803E4B516E84D7EF41F0C28CBD6\"\n"
+               "      }\n"
+               "    }\n"
+               "  }\n"
+               "}"),
+        json_str);
+    json_stream_gen_delete(&p_gen);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestHttpJson, test_1_with_raw_and_decoded) // NOLINT
+{
+    const time_t                     timestamp   = 1612358920;
+    const mac_address_str_t          gw_mac_addr = { "AA:CC:EE:00:11:22" };
+    const ruuvi_gw_cfg_coordinates_t coordinates = { "170.112233,59.445566" };
+    const std::array<uint8_t, 31>    data        = {
+                  0x02U, 0x01U, 0x06U, 0x1BU, 0xFFU, 0x99U, 0x04U, 0x05U, 0x15U, 0x71U, 0x4DU, 0x9FU, 0xC5U, 0x6DU, 0xFFU, 0xF0U,
+                  0xFFU, 0xF8U, 0x03U, 0xE4U, 0xB5U, 0x16U, 0xE8U, 0x4DU, 0x7EU, 0xF4U, 0x1FU, 0x0CU, 0x28U, 0xCBU, 0xD6U,
+    };
+
+    adv_report_table_t adv_table = { .num_of_advs = 1,
+                                     .table       = { {
+                                               .timestamp = 1612358929,
+                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                                               .rssi      = -70,
+                                               .data_len  = data.size(),
+                                     } } };
+    memcpy(adv_table.table[0].data_buf, data.data(), data.size());
+
+    const bool     flag_raw_data       = true;
+    const bool     flag_decode         = true;
+    const bool     flag_use_timestamps = true;
+    const bool     flag_use_nonce      = true;
+    const uint32_t nonce               = 12345678;
+
+    const http_json_create_stream_gen_advs_params_t params = {
+        .flag_raw_data       = flag_raw_data,
+        .flag_decode         = flag_decode,
+        .flag_use_timestamps = flag_use_timestamps,
+        .cur_time            = timestamp,
+        .flag_use_nonce      = flag_use_nonce,
+        .nonce               = nonce,
+        .p_mac_addr          = &gw_mac_addr,
+        .p_coordinates       = &coordinates,
+    };
+
+    json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(&adv_table, &params);
+    ASSERT_NE(nullptr, p_gen);
+
+    string json_str("");
+    while (true)
+    {
+        const char* p_chunk = json_stream_gen_get_next_chunk(p_gen);
+        if (nullptr == p_chunk)
+        {
+            ASSERT_FALSE(nullptr == p_chunk);
+        }
+
+        if ('\0' == p_chunk[0])
+        {
+            break;
+        }
+        json_str += string(p_chunk);
+    }
+
+    ASSERT_EQ(
+        string("{\n"
+               "  \"data\": {\n"
+               "    \"coordinates\": \"170.112233,59.445566\",\n"
+               "    \"timestamp\": 1612358920,\n"
+               "    \"nonce\": 12345678,\n"
+               "    \"gw_mac\": \"AA:CC:EE:00:11:22\",\n"
+               "    \"tags\": {\n"
+               "      \"AA:BB:CC:01:02:03\": {\n"
+               "        \"rssi\": -70,\n"
+               "        \"timestamp\": 1612358929,\n"
+               "        \"data\": \"0201061BFF99040515714D9FC56DFFF0FFF803E4B516E84D7EF41F0C28CBD6\",\n"
+               "        \"dataFormat\": 5,\n"
+               "        \"temperature\": 27.445,\n"
+               "        \"humidity\": 49.6775,\n"
+               "        \"pressure\": 100541,\n"
+               "        \"accelX\": -0.016,\n"
+               "        \"accelY\": -0.008,\n"
+               "        \"accelZ\": 0.996,\n"
+               "        \"movementCounter\": 232,\n"
+               "        \"voltage\": 3.048,\n"
+               "        \"txPower\": -32,\n"
+               "        \"measurementSequenceNumber\": 19838,\n"
+               "        \"id\": \"F4:1F:0C:28:CB:D6\"\n"
+               "      }\n"
+               "    }\n"
+               "  }\n"
+               "}"),
+        json_str);
+    json_stream_gen_delete(&p_gen);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestHttpJson, test_1_without_raw_and_with_decoded) // NOLINT
+{
+    const time_t                     timestamp   = 1612358920;
+    const mac_address_str_t          gw_mac_addr = { "AA:CC:EE:00:11:22" };
+    const ruuvi_gw_cfg_coordinates_t coordinates = { "170.112233,59.445566" };
+    const std::array<uint8_t, 31>    data        = {
+                  0x02U, 0x01U, 0x06U, 0x1BU, 0xFFU, 0x99U, 0x04U, 0x05U, 0x15U, 0x71U, 0x4DU, 0x9FU, 0xC5U, 0x6DU, 0xFFU, 0xF0U,
+                  0xFFU, 0xF8U, 0x03U, 0xE4U, 0xB5U, 0x16U, 0xE8U, 0x4DU, 0x7EU, 0xF4U, 0x1FU, 0x0CU, 0x28U, 0xCBU, 0xD6U,
+    };
+
+    adv_report_table_t adv_table = { .num_of_advs = 1,
+                                     .table       = { {
+                                               .timestamp = 1612358929,
+                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                                               .rssi      = -70,
+                                               .data_len  = data.size(),
+                                     } } };
+    memcpy(adv_table.table[0].data_buf, data.data(), data.size());
+
+    const bool     flag_raw_data       = false;
+    const bool     flag_decode         = true;
+    const bool     flag_use_timestamps = true;
+    const bool     flag_use_nonce      = true;
+    const uint32_t nonce               = 12345678;
+
+    const http_json_create_stream_gen_advs_params_t params = {
+        .flag_raw_data       = flag_raw_data,
+        .flag_decode         = flag_decode,
+        .flag_use_timestamps = flag_use_timestamps,
+        .cur_time            = timestamp,
+        .flag_use_nonce      = flag_use_nonce,
+        .nonce               = nonce,
+        .p_mac_addr          = &gw_mac_addr,
+        .p_coordinates       = &coordinates,
+    };
+
+    json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(&adv_table, &params);
+    ASSERT_NE(nullptr, p_gen);
+
+    string json_str("");
+    while (true)
+    {
+        const char* p_chunk = json_stream_gen_get_next_chunk(p_gen);
+        if (nullptr == p_chunk)
+        {
+            ASSERT_FALSE(nullptr == p_chunk);
+        }
+
+        if ('\0' == p_chunk[0])
+        {
+            break;
+        }
+        json_str += string(p_chunk);
+    }
+
+    ASSERT_EQ(
+        string("{\n"
+               "  \"data\": {\n"
+               "    \"coordinates\": \"170.112233,59.445566\",\n"
+               "    \"timestamp\": 1612358920,\n"
+               "    \"nonce\": 12345678,\n"
+               "    \"gw_mac\": \"AA:CC:EE:00:11:22\",\n"
+               "    \"tags\": {\n"
+               "      \"AA:BB:CC:01:02:03\": {\n"
+               "        \"rssi\": -70,\n"
+               "        \"timestamp\": 1612358929,\n"
+               "        \"dataFormat\": 5,\n"
+               "        \"temperature\": 27.445,\n"
+               "        \"humidity\": 49.6775,\n"
+               "        \"pressure\": 100541,\n"
+               "        \"accelX\": -0.016,\n"
+               "        \"accelY\": -0.008,\n"
+               "        \"accelZ\": 0.996,\n"
+               "        \"movementCounter\": 232,\n"
+               "        \"voltage\": 3.048,\n"
+               "        \"txPower\": -32,\n"
+               "        \"measurementSequenceNumber\": 19838,\n"
+               "        \"id\": \"F4:1F:0C:28:CB:D6\"\n"
                "      }\n"
                "    }\n"
                "  }\n"
@@ -248,12 +428,14 @@ TEST_F(TestHttpJson, test_1_without_timestamp) // NOLINT
                                      } } };
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
 
+    const bool     flag_raw_data       = true;
     const bool     flag_decode         = false;
     const bool     flag_use_timestamps = false;
     const bool     flag_use_nonce      = true;
     const uint32_t nonce               = 12345678;
 
     const http_json_create_stream_gen_advs_params_t params = {
+        .flag_raw_data       = flag_raw_data,
         .flag_decode         = flag_decode,
         .flag_use_timestamps = flag_use_timestamps,
         .cur_time            = timestamp,
@@ -328,12 +510,14 @@ TEST_F(TestHttpJson, test_2) // NOLINT
     memcpy(adv_table.table[0].data_buf, data1.data(), data1.size());
     memcpy(adv_table.table[1].data_buf, data2.data(), data2.size());
 
+    const bool     flag_raw_data       = true;
     const bool     flag_decode         = false;
     const bool     flag_use_timestamps = true;
     const bool     flag_use_nonce      = true;
     const uint32_t nonce               = 12345678;
 
     const http_json_create_stream_gen_advs_params_t params = {
+        .flag_raw_data       = flag_raw_data,
         .flag_decode         = flag_decode,
         .flag_use_timestamps = flag_use_timestamps,
         .cur_time            = timestamp,

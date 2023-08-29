@@ -101,13 +101,33 @@ http_send_advs_internal(
 
     p_http_async_info->recipient = p_params->flag_post_to_ruuvi ? HTTP_POST_RECIPIENT_ADVS1 : HTTP_POST_RECIPIENT_ADVS2;
 
-    const bool flag_decode    = false;
+    bool flag_raw_data = true;
+    bool flag_decode   = false;
+    if (!p_params->flag_post_to_ruuvi)
+    {
+        switch (p_cfg_http->data_format)
+        {
+            case GW_CFG_HTTP_DATA_FORMAT_RUUVI:
+                flag_raw_data = true;
+                flag_decode   = false;
+                break;
+            case GW_CFG_HTTP_DATA_FORMAT_RUUVI_RAW_AND_DECODED:
+                flag_raw_data = true;
+                flag_decode   = true;
+                break;
+            case GW_CFG_HTTP_DATA_FORMAT_RUUVI_DECODED:
+                flag_raw_data = false;
+                flag_decode   = true;
+                break;
+        }
+    }
     const bool flag_use_nonce = true;
 
     p_http_async_info->use_json_stream_gen = true;
     const gw_cfg_t* p_gw_cfg               = gw_cfg_lock_ro();
 
     const http_json_create_stream_gen_advs_params_t params = {
+        .flag_raw_data       = flag_raw_data,
         .flag_decode         = flag_decode,
         .flag_use_timestamps = p_params->flag_use_timestamps,
         .cur_time            = time(NULL),

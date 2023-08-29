@@ -2084,6 +2084,309 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_disabled) // NOLINT
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
 }
 
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_data_format_ruuvi) // NOLINT
+{
+    gw_cfg_t         gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    gw_cfg.ruuvi_cfg.http.use_http    = true;
+    gw_cfg.ruuvi_cfg.http.data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI;
+    snprintf(
+        gw_cfg.ruuvi_cfg.http.http_url.buf,
+        sizeof(gw_cfg.ruuvi_cfg.http.http_url.buf),
+        "https://my_url1.com/status");
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_NE(nullptr, json_str.p_str);
+    ASSERT_EQ(
+        string("{\n"
+               "\t\"wifi_sta_config\":\t{\n"
+               "\t\t\"ssid\":\t\"\",\n"
+               "\t\t\"password\":\t\"\"\n"
+               "\t},\n"
+               "\t\"wifi_ap_config\":\t{\n"
+               "\t\t\"password\":\t\"\",\n"
+               "\t\t\"channel\":\t1\n"
+               "\t},\n"
+               "\t\"use_eth\":\ttrue,\n"
+               "\t\"eth_dhcp\":\ttrue,\n"
+               "\t\"eth_static_ip\":\t\"\",\n"
+               "\t\"eth_netmask\":\t\"\",\n"
+               "\t\"eth_gw\":\t\"\",\n"
+               "\t\"eth_dns1\":\t\"\",\n"
+               "\t\"eth_dns2\":\t\"\",\n"
+               "\t\"remote_cfg_use\":\tfalse,\n"
+               "\t\"remote_cfg_url\":\t\"\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
+               "\t\"use_http\":\ttrue,\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_url\":\t\""
+               "https://my_url1.com/status"
+               "\",\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
+               "\t\"use_http_stat\":\ttrue,\n"
+               "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
+               "\t\"http_stat_user\":\t\"\",\n"
+               "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"use_mqtt\":\tfalse,\n"
+               "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
+               "\t\"mqtt_transport\":\t\"TCP\",\n"
+               "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+               "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
+               "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
+               "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"mqtt_user\":\t\"\",\n"
+               "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
+               "\t\"lan_auth_user\":\t\"Admin\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
+               "\t\"lan_auth_api_key_rw\":\t\"\",\n"
+               "\t\"auto_update_cycle\":\t\"regular\",\n"
+               "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+               "\t\"auto_update_interval_from\":\t0,\n"
+               "\t\"auto_update_interval_to\":\t24,\n"
+               "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"company_id\":\t1177,\n"
+               "\t\"company_use_filtering\":\ttrue,\n"
+               "\t\"scan_coded_phy\":\tfalse,\n"
+               "\t\"scan_1mbit_phy\":\ttrue,\n"
+               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_channel_37\":\ttrue,\n"
+               "\t\"scan_channel_38\":\ttrue,\n"
+               "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_filter_allow_listed\":\tfalse,\n"
+               "\t\"scan_filter_list\":\t[],\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
+               "}"),
+        string(json_str.p_str));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
+    cjson_wrap_free_json_str(&json_str);
+
+    ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_data_format_ruuvi_raw_and_decoded) // NOLINT
+{
+    gw_cfg_t         gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    gw_cfg.ruuvi_cfg.http.use_http    = true;
+    gw_cfg.ruuvi_cfg.http.data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI_RAW_AND_DECODED;
+    snprintf(
+        gw_cfg.ruuvi_cfg.http.http_url.buf,
+        sizeof(gw_cfg.ruuvi_cfg.http.http_url.buf),
+        "https://my_url1.com/status");
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_NE(nullptr, json_str.p_str);
+    ASSERT_EQ(
+        string("{\n"
+               "\t\"wifi_sta_config\":\t{\n"
+               "\t\t\"ssid\":\t\"\",\n"
+               "\t\t\"password\":\t\"\"\n"
+               "\t},\n"
+               "\t\"wifi_ap_config\":\t{\n"
+               "\t\t\"password\":\t\"\",\n"
+               "\t\t\"channel\":\t1\n"
+               "\t},\n"
+               "\t\"use_eth\":\ttrue,\n"
+               "\t\"eth_dhcp\":\ttrue,\n"
+               "\t\"eth_static_ip\":\t\"\",\n"
+               "\t\"eth_netmask\":\t\"\",\n"
+               "\t\"eth_gw\":\t\"\",\n"
+               "\t\"eth_dns1\":\t\"\",\n"
+               "\t\"eth_dns2\":\t\"\",\n"
+               "\t\"remote_cfg_use\":\tfalse,\n"
+               "\t\"remote_cfg_url\":\t\"\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
+               "\t\"use_http\":\ttrue,\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_url\":\t\""
+               "https://my_url1.com/status"
+               "\",\n"
+               "\t\"http_data_format\":\t\"ruuvi_raw_and_decoded\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
+               "\t\"use_http_stat\":\ttrue,\n"
+               "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
+               "\t\"http_stat_user\":\t\"\",\n"
+               "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"use_mqtt\":\tfalse,\n"
+               "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
+               "\t\"mqtt_transport\":\t\"TCP\",\n"
+               "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+               "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
+               "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
+               "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"mqtt_user\":\t\"\",\n"
+               "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
+               "\t\"lan_auth_user\":\t\"Admin\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
+               "\t\"lan_auth_api_key_rw\":\t\"\",\n"
+               "\t\"auto_update_cycle\":\t\"regular\",\n"
+               "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+               "\t\"auto_update_interval_from\":\t0,\n"
+               "\t\"auto_update_interval_to\":\t24,\n"
+               "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"company_id\":\t1177,\n"
+               "\t\"company_use_filtering\":\ttrue,\n"
+               "\t\"scan_coded_phy\":\tfalse,\n"
+               "\t\"scan_1mbit_phy\":\ttrue,\n"
+               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_channel_37\":\ttrue,\n"
+               "\t\"scan_channel_38\":\ttrue,\n"
+               "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_filter_allow_listed\":\tfalse,\n"
+               "\t\"scan_filter_list\":\t[],\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
+               "}"),
+        string(json_str.p_str));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
+    cjson_wrap_free_json_str(&json_str);
+
+    ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_data_format_ruuvi_decoded) // NOLINT
+{
+    gw_cfg_t         gw_cfg   = get_gateway_config_default();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    gw_cfg.ruuvi_cfg.http.use_http    = true;
+    gw_cfg.ruuvi_cfg.http.data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI_DECODED;
+    snprintf(
+        gw_cfg.ruuvi_cfg.http.http_url.buf,
+        sizeof(gw_cfg.ruuvi_cfg.http.http_url.buf),
+        "https://my_url1.com/status");
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_NE(nullptr, json_str.p_str);
+    ASSERT_EQ(
+        string("{\n"
+               "\t\"wifi_sta_config\":\t{\n"
+               "\t\t\"ssid\":\t\"\",\n"
+               "\t\t\"password\":\t\"\"\n"
+               "\t},\n"
+               "\t\"wifi_ap_config\":\t{\n"
+               "\t\t\"password\":\t\"\",\n"
+               "\t\t\"channel\":\t1\n"
+               "\t},\n"
+               "\t\"use_eth\":\ttrue,\n"
+               "\t\"eth_dhcp\":\ttrue,\n"
+               "\t\"eth_static_ip\":\t\"\",\n"
+               "\t\"eth_netmask\":\t\"\",\n"
+               "\t\"eth_gw\":\t\"\",\n"
+               "\t\"eth_dns1\":\t\"\",\n"
+               "\t\"eth_dns2\":\t\"\",\n"
+               "\t\"remote_cfg_use\":\tfalse,\n"
+               "\t\"remote_cfg_url\":\t\"\",\n"
+               "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+               "\t\"use_http_ruuvi\":\ttrue,\n"
+               "\t\"use_http\":\ttrue,\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_url\":\t\""
+               "https://my_url1.com/status"
+               "\",\n"
+               "\t\"http_data_format\":\t\"ruuvi_decoded\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
+               "\t\"use_http_stat\":\ttrue,\n"
+               "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
+               "\t\"http_stat_user\":\t\"\",\n"
+               "\t\"http_stat_pass\":\t\"\",\n"
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"use_mqtt\":\tfalse,\n"
+               "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
+               "\t\"mqtt_transport\":\t\"TCP\",\n"
+               "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+               "\t\"mqtt_port\":\t1883,\n"
+               "\t\"mqtt_sending_interval\":\t0,\n"
+               "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
+               "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+               "\t\"mqtt_user\":\t\"\",\n"
+               "\t\"mqtt_pass\":\t\"\",\n"
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
+               "\t\"lan_auth_user\":\t\"Admin\",\n"
+               "\t\"lan_auth_api_key\":\t\"\",\n"
+               "\t\"lan_auth_api_key_rw\":\t\"\",\n"
+               "\t\"auto_update_cycle\":\t\"regular\",\n"
+               "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+               "\t\"auto_update_interval_from\":\t0,\n"
+               "\t\"auto_update_interval_to\":\t24,\n"
+               "\t\"auto_update_tz_offset_hours\":\t3,\n"
+               "\t\"ntp_use\":\ttrue,\n"
+               "\t\"ntp_use_dhcp\":\tfalse,\n"
+               "\t\"ntp_server1\":\t\"time.google.com\",\n"
+               "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
+               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"company_id\":\t1177,\n"
+               "\t\"company_use_filtering\":\ttrue,\n"
+               "\t\"scan_coded_phy\":\tfalse,\n"
+               "\t\"scan_1mbit_phy\":\ttrue,\n"
+               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_channel_37\":\ttrue,\n"
+               "\t\"scan_channel_38\":\ttrue,\n"
+               "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_filter_allow_listed\":\tfalse,\n"
+               "\t\"scan_filter_list\":\t[],\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
+               "}"),
+        string(json_str.p_str));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
+    cjson_wrap_free_json_str(&json_str);
+
+    ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
+}
+
 TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_none) // NOLINT
 {
     gw_cfg_t         gw_cfg   = get_gateway_config_default();

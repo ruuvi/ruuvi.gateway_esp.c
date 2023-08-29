@@ -343,6 +343,12 @@ gw_cfg_log_ruuvi_cfg_http(const ruuvi_gw_cfg_http_t* const p_http)
             case GW_CFG_HTTP_DATA_FORMAT_RUUVI:
                 LOG_INFO("config: http data format: %s", "ruuvi");
                 break;
+            case GW_CFG_HTTP_DATA_FORMAT_RUUVI_RAW_AND_DECODED:
+                LOG_INFO("config: http data format: %s", "ruuvi_raw_and_decoded");
+                break;
+            case GW_CFG_HTTP_DATA_FORMAT_RUUVI_DECODED:
+                LOG_INFO("config: http data format: %s", "ruuvi_decoded");
+                break;
         }
         switch (p_http->auth_type)
         {
