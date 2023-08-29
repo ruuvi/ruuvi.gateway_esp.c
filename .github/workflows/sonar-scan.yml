@@ -25,13 +25,6 @@ jobs:
       - name: Checkout submodules
         run: git submodule update --init --recursive
 
-      - name: Set up JDK 17
-        id: setup-java
-        uses: actions/setup-java@v2
-        with:
-          java-version: '17'
-          distribution: 'adopt' # Use the AdoptOpenJDK distribution
-
       - name: Set up Python 3.8
         uses: actions/setup-python@v3
         with:
@@ -58,7 +51,7 @@ jobs:
           sudo locale-gen de_DE.UTF-8
 
       - name: Install sonar-scanner and build-wrapper
-        uses: SonarSource/sonarcloud-github-c-cpp@v1
+        uses: SonarSource/sonarcloud-github-c-cpp@v2
 
       - name: Set IDF_PATH
         run: echo "IDF_PATH=$HOME/esp/esp-idf" >> $GITHUB_ENV
@@ -110,7 +103,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          JAVA_HOME: ${{ steps.setup-java.outputs.java-path }}  # This points to the JDK set up by the previous step
         run: |
           sonar-scanner -X \
             --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}" \
