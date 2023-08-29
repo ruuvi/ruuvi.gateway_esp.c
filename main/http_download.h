@@ -55,7 +55,7 @@ typedef struct http_download_param_with_auth_t
     const http_header_item_t* const       p_extra_header_item;
 } http_download_param_with_auth_t;
 
-bool
+http_server_resp_t
 http_download_with_auth(
     const http_download_param_with_auth_t* const p_param,
     http_download_cb_on_data_t const             p_cb_on_data,
@@ -74,7 +74,7 @@ http_server_download_info_t
 http_download_json(const http_download_param_with_auth_t* const p_params);
 
 http_server_download_info_t
-http_download_firmware_update_info(const bool flag_free_memory);
+http_download_firmware_update_info(const char* const p_url, const bool flag_free_memory);
 
 http_resp_code_e
 http_check(const http_download_param_with_auth_t* const p_param);

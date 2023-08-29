@@ -808,6 +808,16 @@ gw_cfg_json_add_items_scan_filter(cJSON* const p_json_root, const ruuvi_gw_cfg_s
 }
 
 static bool
+gw_cfg_json_add_items_fw_update(cJSON* const p_json_root, const ruuvi_gw_cfg_fw_update_t* const p_cfg_fw_update)
+{
+    if (!gw_cfg_json_add_string(p_json_root, "fw_update_url", p_cfg_fw_update->fw_update_url))
+    {
+        return false;
+    }
+    return true;
+}
+
+static bool
 gw_cfg_json_add_items(
     cJSON* const          p_json_root,
     const gw_cfg_t* const p_cfg,
@@ -879,6 +889,10 @@ gw_cfg_json_add_items(
         return false;
     }
     if (!gw_cfg_json_add_string(p_json_root, "coordinates", p_cfg->ruuvi_cfg.coordinates.buf))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_items_fw_update(p_json_root, &p_cfg->ruuvi_cfg.fw_update))
     {
         return false;
     }

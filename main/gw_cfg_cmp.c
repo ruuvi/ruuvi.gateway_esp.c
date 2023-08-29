@@ -405,6 +405,18 @@ ruuvi_gw_cfg_coordinates_cmp(
     return true;
 }
 
+static bool
+ruuvi_gw_cfg_fw_update_cmp(
+    const ruuvi_gw_cfg_fw_update_t* const p_fw_update1,
+    const ruuvi_gw_cfg_fw_update_t* const p_fw_update2)
+{
+    if (0 != strcmp(p_fw_update1->fw_update_url, p_fw_update2->fw_update_url))
+    {
+        return false;
+    }
+    return true;
+}
+
 bool
 gw_cfg_ruuvi_cmp(const gw_cfg_ruuvi_t* const p_cfg_ruuvi1, const gw_cfg_ruuvi_t* const p_cfg_ruuvi2)
 {
@@ -449,6 +461,10 @@ gw_cfg_ruuvi_cmp(const gw_cfg_ruuvi_t* const p_cfg_ruuvi1, const gw_cfg_ruuvi_t*
         return false;
     }
     if (!ruuvi_gw_cfg_coordinates_cmp(&p_cfg_ruuvi1->coordinates, &p_cfg_ruuvi2->coordinates))
+    {
+        return false;
+    }
+    if (!ruuvi_gw_cfg_fw_update_cmp(&p_cfg_ruuvi1->fw_update, &p_cfg_ruuvi2->fw_update))
     {
         return false;
     }

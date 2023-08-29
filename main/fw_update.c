@@ -605,6 +605,28 @@ json_fw_update_parse_http_body(const char* const p_body)
     return ret;
 }
 
+str_buf_t
+json_fw_update_url_parse_http_body_get_url(const char* const p_body)
+{
+    cJSON* p_json_root = cJSON_Parse(p_body);
+    if (NULL == p_json_root)
+    {
+        LOG_ERR("Failed to parse json or no memory");
+        return str_buf_init_null();
+    }
+
+    const char* p_url = json_wrap_get_string_val(p_json_root, "url");
+    if (NULL == p_url)
+    {
+        cJSON_Delete(p_json_root);
+        return str_buf_init_null();
+    }
+    const str_buf_t str_buf = str_buf_printf_with_alloc("%s", p_url);
+    cJSON_Delete(p_json_root);
+
+    return str_buf;
+}
+
 static void
 fw_update_set_extra_info_for_status_json(
     const enum fw_update_stage_e fw_updating_stage,

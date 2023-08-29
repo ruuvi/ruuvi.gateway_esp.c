@@ -858,6 +858,19 @@ gw_cfg_json_parse_scan_filter(const cJSON* const p_cjson, ruuvi_gw_cfg_scan_filt
 }
 
 static void
+gw_cfg_json_parse_fw_update(const cJSON* const p_cjson, ruuvi_gw_cfg_fw_update_t* const p_gw_cfg_fw_update)
+{
+    if (!gw_cfg_json_copy_string_val(
+            p_cjson,
+            "fw_update_url",
+            p_gw_cfg_fw_update->fw_update_url,
+            sizeof(p_gw_cfg_fw_update->fw_update_url)))
+    {
+        LOG_WARN("Can't find key '%s' in config-json", "fw_update_url");
+    }
+}
+
+static void
 gw_cfg_json_parse_cjson_wifi_sta_config(const cJSON* const p_cjson, wifi_sta_config_t* const p_sta_cfg)
 {
     if (!json_wrap_copy_string_val(p_cjson, "ssid", (char*)p_sta_cfg->ssid, sizeof(p_sta_cfg->ssid)))
@@ -939,6 +952,7 @@ gw_cfg_json_parse_cjson_ruuvi_cfg(const cJSON* const p_json_root, gw_cfg_ruuvi_t
     {
         LOG_WARN("Can't find key '%s' in config-json", "coordinates");
     }
+    gw_cfg_json_parse_fw_update(p_json_root, &p_ruuvi_cfg->fw_update);
 }
 
 void

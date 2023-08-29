@@ -181,10 +181,19 @@ static void
 http_server_cb_on_user_req_download_latest_release_info(void)
 {
     LOG_INFO("Download firmware update info");
-    http_server_download_info_t fw_update_info = http_download_firmware_update_info(false);
+    str_buf_t                   fw_update_url  = gw_cfg_get_fw_update_url();
+    http_server_download_info_t fw_update_info = http_download_firmware_update_info(fw_update_url.buf, false);
+    str_buf_free_buf(&fw_update_url);
     if (fw_update_info.is_error)
     {
-        LOG_ERR("Failed to download firmware update info");
+        LOG_ERR(
+            "Failed to download firmware update info: http_resp_code=%u, message: %s",
+            fw_update_info.http_resp_code,
+            NULL != fw_update_info.p_json_buf ? fw_update_info.p_json_buf : "<NULL>");
+        if (NULL != fw_update_info.p_json_buf)
+        {
+            os_free(fw_update_info.p_json_buf);
+        }
         main_task_schedule_retry_check_for_fw_updates();
         return;
     }
@@ -327,7 +336,14 @@ http_server_download_gw_cfg_internal(const http_server_download_gw_cfg_params_t*
 
         if (download_info.is_error)
         {
-            LOG_WARN("Download gw_cfg: failed, http_resp_code=%u", (printf_uint_t)download_info.http_resp_code);
+            LOG_WARN(
+                "Download gw_cfg: failed, http_resp_code=%u: %s",
+                (printf_uint_t)download_info.http_resp_code,
+                NULL != download_info.p_json_buf ? download_info.p_json_buf : "<NULL>");
+            if (NULL != download_info.p_json_buf)
+            {
+                os_free(download_info.p_json_buf);
+            }
 
             download_info = http_server_download_gw_cfg_by_url(
                 p_params,
@@ -412,7 +428,14 @@ http_server_gw_cfg_download_and_parse(
 
     if (download_info.is_error)
     {
-        LOG_ERR("Download gw_cfg: failed, http_resp_code=%u", (printf_uint_t)download_info.http_resp_code);
+        LOG_ERR(
+            "Download gw_cfg: failed, http_resp_code=%u: %s",
+            (printf_uint_t)download_info.http_resp_code,
+            NULL != download_info.p_json_buf ? download_info.p_json_buf : "<NULL>");
+        if (NULL != download_info.p_json_buf)
+        {
+            os_free(download_info.p_json_buf);
+        }
         return download_info.http_resp_code;
     }
     LOG_INFO("Download gw_cfg: successfully completed");
@@ -562,12 +585,43 @@ http_server_cb_gen_resp(const http_resp_code_e resp_code, const char* const p_fm
         LOG_ERR("Can't allocate memory for response");
         return http_server_resp_500();
     }
-
-    const str_buf_t resp_buf = str_buf_printf_with_alloc(
-        "{\"status\": %u, \"message\": \"%s\"}",
-        (printf_uint_t)resp_code,
-        (NULL != msg.buf) ? msg.buf : "");
+    cJSON* p_json_root = cJSON_CreateObject();
+    if (NULL == p_json_root)
+    {
+        LOG_ERR("Can't create json object");
+        str_buf_free_buf(&msg);
+        return http_server_resp_500();
+    }
+    if (NULL == cJSON_AddNumberToObject(p_json_root, "status", resp_code))
+    {
+        LOG_ERR("Can't add json item: %s", "status");
+        str_buf_free_buf(&msg);
+        return http_server_resp_500();
+    }
+    if (NULL == cJSON_AddStringToObject(p_json_root, "message", (NULL != msg.buf) ? msg.buf : ""))
+    {
+        LOG_ERR("Can't add json item: %s", "message");
+        str_buf_free_buf(&msg);
+        return http_server_resp_500();
+    }
     str_buf_free_buf(&msg);
+    cjson_wrap_str_t json_str = cjson_wrap_print_and_delete(&p_json_root);
+    if (NULL == json_str.p_str)
+    {
+        LOG_ERR("Can't allocate memory for response");
+        return http_server_resp_500();
+    }
+    return http_server_resp_json_in_heap(HTTP_RESP_CODE_200, json_str.p_str);
+}
+
+ATTR_NONNULL(2)
+http_server_resp_t
+http_server_cb_gen_resp_json(const http_resp_code_e resp_code, const char* const p_json)
+{
+    const str_buf_t resp_buf = str_buf_printf_with_alloc(
+        "{\"status\": %u, \"json\": %s}",
+        (printf_uint_t)resp_code,
+        p_json);
     if (NULL == resp_buf.buf)
     {
         LOG_ERR("Can't allocate memory for response");

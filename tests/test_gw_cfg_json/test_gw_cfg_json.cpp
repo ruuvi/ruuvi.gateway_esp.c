@@ -512,7 +512,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_for_ui_client) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -602,7 +603,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_default) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -676,7 +678,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_default_company_id_0x0500) // NOLINT
         "\t\"scan_channel_39\":\ttrue,\n"
         "\t\"scan_filter_allow_listed\":\tfalse,\n"
         "\t\"scan_filter_list\":\t[],\n"
-        "\t\"coordinates\":\t\"\"\n"
+        "\t\"coordinates\":\t\"\",\n"
+        "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
         "}");
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
     json_str.p_str            = json_content.c_str();
@@ -768,7 +771,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_disabled) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -861,7 +865,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_enabled) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -959,7 +964,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_disabled) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1054,7 +1060,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_no) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1156,7 +1163,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_basic) // NOL
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1256,7 +1264,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_bearer) // NO
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1348,7 +1357,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_disabled) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1451,7 +1461,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_TCP) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1554,7 +1565,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_TCP_disable_retained_mes
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1657,7 +1669,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_SSL) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1760,7 +1773,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WS) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1863,7 +1877,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WSS) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1966,7 +1981,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_custom_http_enabled) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2055,7 +2071,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_disabled) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2155,7 +2172,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_none) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2265,7 +2283,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_basic) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2370,7 +2389,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_bearer) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2475,7 +2495,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_token) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2574,7 +2595,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_equal_to_default) // NOL
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2686,7 +2708,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_equal_to_default_auth_di
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2777,7 +2800,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_disabled) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2880,7 +2904,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_enabled) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2970,7 +2995,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_default) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -3067,7 +3093,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -3170,7 +3197,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi_with_api_key) // NOLIN
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -3267,7 +3295,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_digest) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -3364,7 +3393,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_basic) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -3460,7 +3490,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_allow) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -3556,7 +3587,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_deny) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -3651,7 +3683,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_beta_tester) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -3746,7 +3779,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_manual) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -3837,7 +3871,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_unknown) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -3925,7 +3960,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_disabled) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -4018,7 +4054,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_enabled_via_dhcp) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -4120,7 +4157,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_custom) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -4213,7 +4251,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_enabled) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -4306,7 +4345,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_disabled) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -4405,7 +4445,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_default) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -4504,7 +4545,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_coded_phy_true) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -4603,7 +4645,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_1mbit_phy_false) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -4702,7 +4745,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_extended_payload_false) // NOLIN
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -4801,7 +4845,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_37_false) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -4900,7 +4945,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_38_false) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -4999,7 +5045,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_39_false) // NOLINT
                "\t\"scan_channel_39\":\tfalse,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -5099,7 +5146,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_filter1_not_allow_listed) // NOL
                "\t\"scan_channel_39\":\tfalse,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[\"AA:BB:CC:DD:EE:FF\"],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -5200,7 +5248,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_filter2_allow_listed) // NOLINT
                "\t\"scan_channel_39\":\tfalse,\n"
                "\t\"scan_filter_allow_listed\":\ttrue,\n"
                "\t\"scan_filter_list\":\t[\"A0:B0:C0:D0:E0:F0\", \"A1:B1:C1:D1:E1:F1\"],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -5292,7 +5341,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_coordinates) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"123,456\"\n"
+               "\t\"coordinates\":\t\"123,456\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -5451,7 +5501,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_default) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -5543,6 +5594,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
                 .scan_filter_list = { 0 },
             },
             .coordinates = { "coordinates1" },
+            .fw_update = {
+                .fw_update_url = { "https://myserver1.com/fw_update_info.json" },
+            },
         },
         .eth_cfg = {
             true,
@@ -5621,6 +5675,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
     ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
     ASSERT_EQ(string("coordinates1"), gw_cfg2.ruuvi_cfg.coordinates.buf);
+    ASSERT_EQ(string("https://myserver1.com/fw_update_info.json"), gw_cfg2.ruuvi_cfg.fw_update.fw_update_url);
 
     ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg2, &json_str));
     ASSERT_EQ(
@@ -5692,7 +5747,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
                "\t\"scan_channel_39\":\tfalse,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"coordinates1\"\n"
+               "\t\"coordinates\":\t\"coordinates1\",\n"
+               "\t\"fw_update_url\":\t\"https://myserver1.com/fw_update_info.json\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -5784,6 +5840,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
                 .scan_filter_list = { 0 },
             },
             .coordinates = { "coordinates1" },
+            .fw_update = {
+                .fw_update_url = { "https://myserver1.com/fw_update_info.json" },
+            },
         },
         .eth_cfg = {
             true,
@@ -5862,6 +5921,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
     ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
     ASSERT_EQ(string("coordinates1"), gw_cfg2.ruuvi_cfg.coordinates.buf);
+    ASSERT_EQ(string("https://myserver1.com/fw_update_info.json"), gw_cfg2.ruuvi_cfg.fw_update.fw_update_url);
 
     ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg2, &json_str));
     ASSERT_EQ(
@@ -5933,7 +5993,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
                "\t\"scan_channel_39\":\tfalse,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"coordinates1\"\n"
+               "\t\"coordinates\":\t\"coordinates1\",\n"
+               "\t\"fw_update_url\":\t\"https://myserver1.com/fw_update_info.json\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -6025,6 +6086,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
                 .scan_filter_list = { 0 },
             },
             .coordinates = { "coordinates1" },
+            .fw_update = {
+                .fw_update_url = { "https://myserver1.com/fw_update_info.json" },
+            },
         },
         .eth_cfg = {
             true,
@@ -6103,6 +6167,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
     ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
     ASSERT_EQ(string("coordinates1"), gw_cfg2.ruuvi_cfg.coordinates.buf);
+    ASSERT_EQ(string("https://myserver1.com/fw_update_info.json"), gw_cfg2.ruuvi_cfg.fw_update.fw_update_url);
 
     ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg2, &json_str));
     ASSERT_EQ(
@@ -6174,7 +6239,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
                "\t\"scan_channel_39\":\tfalse,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"coordinates1\"\n"
+               "\t\"coordinates\":\t\"coordinates1\",\n"
+               "\t\"fw_update_url\":\t\"https://myserver1.com/fw_update_info.json\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -6255,7 +6321,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
           "\t\"scan_channel_39\":\tfalse,\n"
           "\t\"scan_filter_allow_listed\":\tfalse,\n"
           "\t\"scan_filter_list\":\t[],\n"
-          "\t\"coordinates\":\t\"coordinates1\"\n"
+          "\t\"coordinates\":\t\"coordinates1\",\n"
+          "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
           "}";
 
     gw_cfg_t gw_cfg2 = get_gateway_config_default();
@@ -6321,6 +6388,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
     ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
     ASSERT_EQ(string("coordinates1"), gw_cfg2.ruuvi_cfg.coordinates.buf);
+    ASSERT_EQ(string("https://network.ruuvi.com/firmwareupdate"), gw_cfg2.ruuvi_cfg.fw_update.fw_update_url);
 
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
     ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg2, &json_str));
@@ -6393,7 +6461,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
                "\t\"scan_channel_39\":\tfalse,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"coordinates1\"\n"
+               "\t\"coordinates\":\t\"coordinates1\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -6485,6 +6554,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
                 .scan_filter_list = { 0 },
             },
             .coordinates = { "coordinates1" },
+            .fw_update = {
+                .fw_update_url = { "https://myserver1.com/fw_update_info.json" },
+            },
         },
         .eth_cfg = {
             true,
@@ -6563,6 +6635,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
     ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
     ASSERT_EQ(string("coordinates1"), gw_cfg2.ruuvi_cfg.coordinates.buf);
+    ASSERT_EQ(string("https://myserver1.com/fw_update_info.json"), gw_cfg2.ruuvi_cfg.fw_update.fw_update_url);
 
     ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg2, &json_str));
     ASSERT_EQ(
@@ -6634,7 +6707,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
                "\t\"scan_channel_39\":\tfalse,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"coordinates1\"\n"
+               "\t\"coordinates\":\t\"coordinates1\",\n"
+               "\t\"fw_update_url\":\t\"https://myserver1.com/fw_update_info.json\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -6726,6 +6800,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
                 .scan_filter_list = { 0 },
             },
             .coordinates = { "coordinates1" },
+            .fw_update = {
+                .fw_update_url = { "https://myserver1.com/fw_update_info.json" },
+            },
         },
         .eth_cfg = {
             true,
@@ -6804,6 +6881,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
     ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
     ASSERT_EQ(string("coordinates1"), gw_cfg2.ruuvi_cfg.coordinates.buf);
+    ASSERT_EQ(string("https://myserver1.com/fw_update_info.json"), gw_cfg2.ruuvi_cfg.fw_update.fw_update_url);
 
     ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg2, &json_str));
     ASSERT_EQ(
@@ -6875,7 +6953,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
                "\t\"scan_channel_39\":\tfalse,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"coordinates1\"\n"
+               "\t\"coordinates\":\t\"coordinates1\",\n"
+               "\t\"fw_update_url\":\t\"https://myserver1.com/fw_update_info.json\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -6967,6 +7046,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_custom) // NOLINT
                 .scan_filter_list = { 0 },
             },
             .coordinates = { "coordinates1" },
+            .fw_update = {
+                .fw_update_url = { "https://myserver1.com/fw_update_info.json" },
+            },
         },
         .eth_cfg = {
             true,
@@ -7045,6 +7127,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_custom) // NOLINT
     ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
     ASSERT_EQ(string("coordinates1"), gw_cfg2.ruuvi_cfg.coordinates.buf);
+    ASSERT_EQ(string("https://myserver1.com/fw_update_info.json"), gw_cfg2.ruuvi_cfg.fw_update.fw_update_url);
 
     ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg2, &json_str));
     ASSERT_EQ(
@@ -7116,7 +7199,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_custom) // NOLINT
                "\t\"scan_channel_39\":\tfalse,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"coordinates1\"\n"
+               "\t\"coordinates\":\t\"coordinates1\",\n"
+               "\t\"fw_update_url\":\t\"https://myserver1.com/fw_update_info.json\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7204,7 +7288,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         json_str.p_str);
     cjson_wrap_free_json_str(&json_str);
@@ -7281,7 +7366,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
           "\t\"scan_channel_39\":\ttrue,\n"
           "\t\"scan_filter_allow_listed\":\tfalse,\n"
           "\t\"scan_filter_list\":\t[],\n"
-          "\t\"coordinates\":\t\"\"\n"
+          "\t\"coordinates\":\t\"\",\n"
+          "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
           "}";
 
     gw_cfg_t gw_cfg2 = get_gateway_config_default();
@@ -7365,7 +7451,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7457,7 +7544,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         json_str.p_str);
 
@@ -7544,7 +7632,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7696,7 +7785,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'remote_cfg_use' in config-json"));
@@ -7764,6 +7854,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'scan_filter_allow_listed' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'scan_filter_list' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'coordinates' in config-json"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'fw_update_url' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'use_eth' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'eth_dhcp' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'wifi_ap_config' in config-json"));
@@ -7915,7 +8006,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_string) // NOLINT
                "\t\"scan_channel_39\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
-               "\t\"coordinates\":\t\"\"\n"
+               "\t\"coordinates\":\t\"\",\n"
+               "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
                "}"),
         string(json_str.p_str));
     cjson_wrap_free_json_str(&json_str);
@@ -7996,9 +8088,10 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_malloc_failed) // NOLINT
           "\t\"scan_channel_39\":\ttrue,\n"
           "\t\"scan_filter_allow_listed\":\tfalse,\n"
           "\t\"scan_filter_list\":\t[],\n"
-          "\t\"coordinates\":\t\"\"\n"
+          "\t\"coordinates\":\t\"\",\n"
+          "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
           "}";
-    for (uint32_t i = 0; i < 162; ++i)
+    for (uint32_t i = 0; i < 165; ++i)
     {
         this->m_malloc_cnt         = 0;
         this->m_malloc_fail_on_cnt = i + 1;
@@ -8012,7 +8105,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_malloc_failed) // NOLINT
 
     {
         this->m_malloc_cnt         = 0;
-        this->m_malloc_fail_on_cnt = 163;
+        this->m_malloc_fail_on_cnt = 166;
         gw_cfg_t gw_cfg2           = get_gateway_config_default();
         ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, p_json_str, &gw_cfg2));
         ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
@@ -11287,7 +11380,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates_3) // NO
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_converting_to_json_string) // NOLINT
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_fw_update_url) // NOLINT
 {
     const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -11298,6 +11391,63 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_converting_to_json_s
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 173;
+
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: fw_update_url"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_fw_update_url_2) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 174;
+
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: fw_update_url"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_fw_update_url_3) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 175;
+
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: fw_update_url"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_converting_to_json_string) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 176;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);

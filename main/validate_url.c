@@ -31,6 +31,7 @@ typedef enum validate_url_type_e
     HTTP_VALIDATE_TYPE_POST_STAT,
     HTTP_VALIDATE_TYPE_CHECK_MQTT,
     HTTP_VALIDATE_TYPE_CHECK_REMOTE_CFG,
+    HTTP_VALIDATE_TYPE_CHECK_FW_UPDATE_URL,
     HTTP_VALIDATE_TYPE_CHECK_FILE,
 } validate_url_type_e;
 
@@ -142,6 +143,10 @@ validate_url_get_validate_type_from_params(const char* const p_params)
     if (0 == strncmp(p_value, "check_remote_cfg", val_len))
     {
         return HTTP_VALIDATE_TYPE_CHECK_REMOTE_CFG;
+    }
+    if (0 == strncmp(p_value, "check_fw_update_url", val_len))
+    {
+        return HTTP_VALIDATE_TYPE_CHECK_FW_UPDATE_URL;
     }
     if (0 == strncmp(p_value, "check_file", val_len))
     {
@@ -641,6 +646,42 @@ validate_url_check_remote_cfg(const validate_url_params_t* const p_params)
     return http_resp;
 }
 
+static http_server_resp_t
+validate_url_check_fw_update_url(const validate_url_params_t* const p_params)
+{
+    if (!validate_url_check_url(&p_params->url))
+    {
+        return http_server_cb_gen_resp(HTTP_RESP_CODE_400, "Incorrect URL: '%s'", p_params->url.buf);
+    }
+    http_server_download_info_t info = http_download_firmware_update_info(p_params->url.buf, true);
+    if (info.is_error)
+    {
+        LOG_ERR(
+            "Failed to download firmware update info: http_resp_code=%u, content: %s",
+            info.http_resp_code,
+            NULL != info.p_json_buf ? info.p_json_buf : "<NULL>");
+        if (NULL != info.p_json_buf)
+        {
+            const http_server_resp_t resp = http_server_cb_gen_resp(info.http_resp_code, "%s", info.p_json_buf);
+            os_free(info.p_json_buf);
+            return resp;
+        }
+        return http_server_cb_gen_resp(info.http_resp_code, "Server returned error");
+    }
+
+    LOG_INFO("Firmware update info (json): %s", info.p_json_buf);
+
+    http_server_resp_t http_resp = http_server_cb_gen_resp_json(
+        HTTP_RESP_CODE_200,
+        (NULL != info.p_json_buf) ? info.p_json_buf : "");
+    if (NULL != info.p_json_buf)
+    {
+        os_free(info.p_json_buf);
+    }
+
+    return http_resp;
+}
+
 static bool
 validate_url_check_file_prep_auth_basic(
     const validate_url_params_t* const p_params,
@@ -806,6 +847,8 @@ validate_url_internal(
             return validate_url_check_mqtt(p_params, p_url_params);
         case HTTP_VALIDATE_TYPE_CHECK_REMOTE_CFG:
             return validate_url_check_remote_cfg(p_params);
+        case HTTP_VALIDATE_TYPE_CHECK_FW_UPDATE_URL:
+            return validate_url_check_fw_update_url(p_params);
         case HTTP_VALIDATE_TYPE_CHECK_FILE:
             return validate_url_check_file(p_params);
     }

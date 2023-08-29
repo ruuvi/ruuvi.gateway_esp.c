@@ -187,6 +187,14 @@ http_download_by_handle(
         timeout_seconds);
     LOG_DBG("http_wait_until_async_req_completed: finished");
 
+    const bool flag_is_in_memory = (HTTP_CONTENT_LOCATION_FLASH_MEM == resp.content_location)
+                                   || (HTTP_CONTENT_LOCATION_STATIC_MEM == resp.content_location)
+                                   || (HTTP_CONTENT_LOCATION_HEAP == resp.content_location);
+    const char* p_json = (flag_is_in_memory && (NULL != resp.select_location.memory.p_buf))
+                             ? (const char*)resp.select_location.memory.p_buf
+                             : NULL;
+    LOG_DBG("Resp: resp_code=%d, content: %s", resp.http_resp_code, (NULL != p_json) ? p_json : "<NULL>");
+
     return resp;
 }
 
@@ -280,27 +288,24 @@ http_client_init(
     return p_http_handle;
 }
 
-bool
+static http_server_resp_t
 http_download_or_check(
     const esp_http_client_method_t               http_method,
     const http_download_param_with_auth_t* const p_param,
     http_download_cb_on_data_t const             p_cb_on_data,
-    void* const                                  p_user_data,
-    http_resp_code_e* const                      p_http_resp_code)
+    void* const                                  p_user_data)
 {
     LOG_INFO("HTTP download/check: Method=%s, URL: '%s'", http_client_method_to_str(http_method), p_param->base.p_url);
 
     if ((GW_CFG_HTTP_AUTH_TYPE_NONE != p_param->auth_type) && (NULL == p_param->p_http_auth))
     {
         LOG_ERR("HTTP download/check: Auth type is not NONE, but p_http_auth is NULL");
-        *p_http_resp_code = HTTP_RESP_CODE_400;
-        return false;
+        return http_server_resp_400();
     }
     if (!gw_status_is_network_connected())
     {
         LOG_ERR("HTTP download/check: No network connection");
-        *p_http_resp_code = HTTP_RESP_CODE_503;
-        return false;
+        return http_server_resp_503();
     }
 
     const ruuvi_gw_cfg_http_auth_basic_t* p_auth_basic = NULL;
@@ -317,8 +322,7 @@ http_download_or_check(
     if (NULL == p_cb_info)
     {
         LOG_ERR("Can't allocate memory");
-        *p_http_resp_code = HTTP_RESP_CODE_500;
-        return false;
+        return http_server_resp_500();
     }
     p_cb_info->cb_on_data              = p_cb_on_data;
     p_cb_info->p_user_data             = p_user_data;
@@ -337,8 +341,7 @@ http_download_or_check(
     {
         LOG_ERR("Can't allocate memory for http_config");
         os_free(p_cb_info);
-        *p_http_resp_code = HTTP_RESP_CODE_500;
-        return false;
+        return http_server_resp_500();
     }
 
     LOG_DBG("suspend_relaying_and_wait");
@@ -351,8 +354,7 @@ http_download_or_check(
         os_free(p_http_config);
         os_free(p_cb_info);
         resume_relaying_and_wait(p_param->base.flag_free_memory);
-        *p_http_resp_code = HTTP_RESP_CODE_500;
-        return false;
+        return http_server_resp_500();
     }
 
     LOG_DBG("Call http_download_by_handle");
@@ -360,6 +362,14 @@ http_download_or_check(
         p_cb_info->http_handle,
         p_param->base.flag_feed_task_watchdog,
         p_param->base.timeout_seconds);
+
+    const bool flag_is_in_memory = (HTTP_CONTENT_LOCATION_FLASH_MEM == resp.content_location)
+                                   || (HTTP_CONTENT_LOCATION_STATIC_MEM == resp.content_location)
+                                   || (HTTP_CONTENT_LOCATION_HEAP == resp.content_location);
+    const char* p_json = (flag_is_in_memory && (NULL != resp.select_location.memory.p_buf))
+                             ? (const char*)resp.select_location.memory.p_buf
+                             : NULL;
+    LOG_DBG("Resp: resp_code=%d, content: %s", resp.http_resp_code, (NULL != p_json) ? p_json : "<NULL>");
 
     LOG_DBG("Call esp_http_client_cleanup");
     const esp_err_t err = esp_http_client_cleanup(p_cb_info->http_handle);
@@ -372,30 +382,28 @@ http_download_or_check(
     os_free(p_cb_info);
     resume_relaying_and_wait(p_param->base.flag_free_memory);
 
-    if ((HTTP_CONTENT_LOCATION_HEAP == resp.content_location) && (NULL != resp.select_location.memory.p_buf))
-    {
-        os_free(resp.select_location.memory.p_buf);
-    }
-
-    *p_http_resp_code = resp.http_resp_code;
-    return (HTTP_RESP_CODE_200 == resp.http_resp_code) ? true : false;
+    return resp;
 }
 
-bool
+http_server_resp_t
 http_download_with_auth(
     const http_download_param_with_auth_t* const p_param,
     http_download_cb_on_data_t const             p_cb_on_data,
     void* const                                  p_user_data)
 {
-    http_resp_code_e http_resp_code = HTTP_RESP_CODE_200;
-
-    return http_download_or_check(HTTP_METHOD_GET, p_param, p_cb_on_data, p_user_data, &http_resp_code);
+    return http_download_or_check(HTTP_METHOD_GET, p_param, p_cb_on_data, p_user_data);
 }
 
 bool
 http_check_with_auth(const http_download_param_with_auth_t* const p_param, http_resp_code_e* const p_http_resp_code)
 {
-    return http_download_or_check(HTTP_METHOD_HEAD, p_param, NULL, NULL, p_http_resp_code);
+    http_server_resp_t resp = http_download_or_check(HTTP_METHOD_HEAD, p_param, NULL, NULL);
+    *p_http_resp_code       = resp.http_resp_code;
+    if ((HTTP_CONTENT_LOCATION_HEAP == resp.content_location) && (NULL != resp.select_location.memory.p_buf))
+    {
+        os_free(resp.select_location.memory.p_buf);
+    }
+    return (HTTP_RESP_CODE_200 == resp.http_resp_code) ? true : false;
 }
 
 #endif
@@ -406,7 +414,12 @@ http_download(
     http_download_cb_on_data_t const             p_cb_on_data,
     void* const                                  p_user_data)
 {
-    return http_download_with_auth(p_param, p_cb_on_data, p_user_data);
+    http_server_resp_t resp = http_download_with_auth(p_param, p_cb_on_data, p_user_data);
+    if ((HTTP_CONTENT_LOCATION_HEAP == resp.content_location) && (NULL != resp.select_location.memory.p_buf))
+    {
+        os_free(resp.select_location.memory.p_buf);
+    }
+    return (HTTP_RESP_CODE_200 == resp.http_resp_code) ? true : false;
 }
 
 static bool
@@ -432,17 +445,6 @@ cb_on_http_download_json_data(
         return true;
     }
     p_info->http_resp_code = http_resp_code;
-    if (HTTP_RESP_CODE_200 != http_resp_code)
-    {
-        LOG_ERR("Got HTTP error %d: %.*s", (printf_int_t)http_resp_code, (printf_int_t)buf_size, (const char*)p_buf);
-        p_info->is_error = true;
-        if (NULL != p_info->p_json_buf)
-        {
-            os_free(p_info->p_json_buf);
-            p_info->p_json_buf = NULL;
-        }
-        return false;
-    }
 
     if (NULL == p_info->p_json_buf)
     {
@@ -505,13 +507,44 @@ http_download_json(const http_download_param_with_auth_t* const p_params)
         .p_json_buf     = NULL,
         .json_buf_size  = 0,
     };
-    const TickType_t download_started_at_tick = xTaskGetTickCount();
-    if (!http_download_with_auth(p_params, &cb_on_http_download_json_data, &info))
+    const TickType_t   download_started_at_tick = xTaskGetTickCount();
+    http_server_resp_t resp = http_download_with_auth(p_params, &cb_on_http_download_json_data, &info);
+    if (HTTP_RESP_CODE_200 != resp.http_resp_code)
     {
-        LOG_ERR("http_download failed for URL: %s", p_params->base.p_url);
-        info.is_error = true;
+        info.is_error       = true;
+        info.http_resp_code = resp.http_resp_code;
+
+        const bool flag_is_in_memory = (HTTP_CONTENT_LOCATION_FLASH_MEM == resp.content_location)
+                                       || (HTTP_CONTENT_LOCATION_STATIC_MEM == resp.content_location)
+                                       || (HTTP_CONTENT_LOCATION_HEAP == resp.content_location);
+        const char* p_json = (flag_is_in_memory && (NULL != resp.select_location.memory.p_buf))
+                                 ? (const char*)resp.select_location.memory.p_buf
+                                 : NULL;
+        if (NULL != p_json)
+        {
+            if (NULL != info.p_json_buf)
+            {
+                os_free(info.p_json_buf);
+                info.p_json_buf = NULL;
+            }
+            LOG_ERR(
+                "http_download failed for URL: %s, resp_code=%d, content: %s",
+                p_params->base.p_url,
+                resp.http_resp_code,
+                p_json);
+            str_buf_t str_buf = str_buf_printf_with_alloc("%s", p_json);
+            info.p_json_buf   = str_buf.buf;
+        }
+        else
+        {
+            LOG_ERR(
+                "http_download failed for URL: %s, resp_code=%d, content: %s",
+                p_params->base.p_url,
+                resp.http_resp_code,
+                (NULL != info.p_json_buf) ? info.p_json_buf : "<NULL>");
+        }
     }
-    if (HTTP_RESP_CODE_200 != info.http_resp_code)
+    else if (HTTP_RESP_CODE_200 != info.http_resp_code)
     {
         if (NULL == info.p_json_buf)
         {
@@ -520,7 +553,6 @@ http_download_json(const http_download_param_with_auth_t* const p_params)
         else
         {
             LOG_ERR("http_download failed, HTTP resp code %d: %s", (printf_int_t)info.http_resp_code, info.p_json_buf);
-            os_free(info.p_json_buf);
         }
         info.is_error = true;
     }
@@ -543,11 +575,11 @@ http_download_json(const http_download_param_with_auth_t* const p_params)
 }
 
 http_server_download_info_t
-http_download_firmware_update_info(const bool flag_free_memory)
+http_download_firmware_update_info(const char* const p_url, const bool flag_free_memory)
 {
     const http_download_param_with_auth_t params = {
         .base = {
-            .p_url                   = "https://network.ruuvi.com/firmwareupdate",
+            .p_url                   = p_url,
             .timeout_seconds         = HTTP_DOWNLOAD_FW_RELEASE_INFO_TIMEOUT_SECONDS,
             .flag_feed_task_watchdog = true,
             .flag_free_memory        = flag_free_memory,
