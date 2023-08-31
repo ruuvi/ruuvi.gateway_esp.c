@@ -59,6 +59,7 @@ http_json_create_status_str(
 
 typedef struct http_json_create_stream_gen_advs_params_t
 {
+    const bool                              flag_raw_data;
     const bool                              flag_decode;
     const bool                              flag_use_timestamps;
     const time_t                            cur_time;

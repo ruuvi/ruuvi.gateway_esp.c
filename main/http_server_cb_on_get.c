@@ -331,6 +331,7 @@ http_server_resp_history(const char* const p_params)
     const gw_cfg_t* p_gw_cfg       = gw_cfg_lock_ro();
 
     const http_json_create_stream_gen_advs_params_t params = {
+        .flag_raw_data       = true,
         .flag_decode         = flag_decode,
         .flag_use_timestamps = flag_use_timestamps,
         .cur_time            = http_server_get_cur_time(),

@@ -426,6 +426,18 @@ gw_cfg_json_add_items_http_custom_params(
                 return false;
             }
             break;
+        case GW_CFG_HTTP_DATA_FORMAT_RUUVI_RAW_AND_DECODED:
+            if (!gw_cfg_json_add_string(p_json_root, "http_data_format", GW_CFG_HTTP_DATA_FORMAT_STR_RAW_AND_DECODED))
+            {
+                return false;
+            }
+            break;
+        case GW_CFG_HTTP_DATA_FORMAT_RUUVI_DECODED:
+            if (!gw_cfg_json_add_string(p_json_root, "http_data_format", GW_CFG_HTTP_DATA_FORMAT_STR_DECODED))
+            {
+                return false;
+            }
+            break;
     }
     switch (p_cfg_http->auth_type)
     {

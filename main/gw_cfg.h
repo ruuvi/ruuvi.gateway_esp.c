@@ -201,13 +201,17 @@ typedef struct ruuvi_gw_cfg_remote_t
     gw_cfg_remote_refresh_interval_minutes_t refresh_interval_minutes;
 } ruuvi_gw_cfg_remote_t;
 
-#define GW_CFG_HTTP_DATA_FORMAT_STR_SIZE 8
+#define GW_CFG_HTTP_DATA_FORMAT_STR_RUUVI           "ruuvi"
+#define GW_CFG_HTTP_DATA_FORMAT_STR_RAW_AND_DECODED "ruuvi_raw_and_decoded"
+#define GW_CFG_HTTP_DATA_FORMAT_STR_DECODED         "ruuvi_decoded"
 
-#define GW_CFG_HTTP_DATA_FORMAT_STR_RUUVI "ruuvi"
+#define GW_CFG_HTTP_DATA_FORMAT_STR_SIZE sizeof(GW_CFG_HTTP_DATA_FORMAT_STR_RAW_AND_DECODED)
 
 typedef enum gw_cfg_http_data_format_e
 {
     GW_CFG_HTTP_DATA_FORMAT_RUUVI = 0,
+    GW_CFG_HTTP_DATA_FORMAT_RUUVI_RAW_AND_DECODED,
+    GW_CFG_HTTP_DATA_FORMAT_RUUVI_DECODED,
 } gw_cfg_http_data_format_e;
 
 typedef struct ruuvi_gw_cfg_http_t
