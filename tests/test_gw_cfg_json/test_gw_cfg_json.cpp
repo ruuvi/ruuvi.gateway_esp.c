@@ -1897,6 +1897,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_custom_http_enabled) // NOLINT
 
     gw_cfg.ruuvi_cfg.http.use_http_ruuvi           = false;
     gw_cfg.ruuvi_cfg.http.use_http                 = true;
+    gw_cfg.ruuvi_cfg.http.http_period              = 15;
     gw_cfg.ruuvi_cfg.http.http_use_ssl_client_cert = false;
     gw_cfg.ruuvi_cfg.http.http_use_ssl_server_cert = true;
     snprintf(
@@ -1936,6 +1937,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_custom_http_enabled) // NOLINT
                "\t\"http_use_ssl_client_cert\":\tfalse,\n"
                "\t\"http_use_ssl_server_cert\":\ttrue,\n"
                "\t\"http_url\":\t\"https://my_url1.com/record\",\n"
+               "\t\"http_period\":\t15,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
@@ -2127,6 +2129,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_data_format_ruuvi) // NO
                "\t\"http_url\":\t\""
                "https://my_url1.com/status"
                "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
@@ -2228,6 +2231,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_data_format_ruuvi_raw_an
                "\t\"http_url\":\t\""
                "https://my_url1.com/status"
                "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi_raw_and_decoded\",\n"
                "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
@@ -2329,6 +2333,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_data_format_ruuvi_decode
                "\t\"http_url\":\t\""
                "https://my_url1.com/status"
                "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi_decoded\",\n"
                "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
@@ -2430,6 +2435,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_none) // NOLINT
                "\t\"http_url\":\t\""
                "https://my_url1.com/status"
                "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
@@ -2539,6 +2545,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_basic) // NOLINT
                "\t\"http_url\":\t\""
                "https://my_url1.com/status"
                "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"basic\",\n"
                "\t\"http_user\":\t\"user2\",\n"
@@ -2646,6 +2653,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_bearer) // NOLINT
                "\t\"http_url\":\t\""
                "https://my_url1.com/status"
                "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"bearer\",\n"
                "\t\"http_bearer_token\":\t\"token123\",\n"
@@ -2752,6 +2760,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_token) // NOLINT
                "\t\"http_url\":\t\""
                "https://my_url1.com/status"
                "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"token\",\n"
                "\t\"http_api_key\":\t\"token123\",\n"
@@ -2964,6 +2973,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_equal_to_default_auth_di
                "\t\"http_url\":\t\""
                "https://network.ruuvi.com/record"
                "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"basic\",\n"
                "\t\"http_user\":\t\"user2\",\n"
@@ -5665,7 +5675,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_default) // NOLINT
     ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_NE(nullptr, json_str.p_str);
     gw_cfg_t gw_cfg2 = get_gateway_config_default();
+
     ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
+
     cjson_wrap_free_json_str(&json_str);
 
     ASSERT_EQ(true, gw_cfg2.eth_cfg.use_eth);
@@ -5689,6 +5701,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_default) // NOLINT
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http);
     ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg2.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(10, gw_cfg2.ruuvi_cfg.http.http_period);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg2.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg2.ruuvi_cfg.http.auth_type);
 
@@ -7971,6 +7984,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http);
     ASSERT_EQ(string(RUUVI_GATEWAY_HTTP_DEFAULT_URL), gw_cfg2.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(10, gw_cfg2.ruuvi_cfg.http.http_period);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg2.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg2.ruuvi_cfg.http.auth_type);
 

@@ -604,6 +604,16 @@ gw_cfg_get_http_use_http(void)
     return use_http;
 }
 
+uint32_t
+gw_cfg_get_http_period(void)
+{
+    assert(NULL != g_gw_cfg_mutex);
+    const gw_cfg_t* p_gw_cfg    = gw_cfg_lock_ro();
+    const uint32_t  http_period = p_gw_cfg->ruuvi_cfg.http.http_period;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    return http_period;
+}
+
 ruuvi_gw_cfg_http_t*
 gw_cfg_get_http_copy(void)
 {

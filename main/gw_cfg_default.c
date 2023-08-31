@@ -45,6 +45,7 @@ static const gw_cfg_ruuvi_t g_gateway_config_default_ruuvi = {
             .http_use_ssl_client_cert = false,
             .http_use_ssl_server_cert = false,
             .http_url = { { RUUVI_GATEWAY_HTTP_DEFAULT_URL } },
+            .http_period = 10,
             .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
             .auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE,
             .auth = {

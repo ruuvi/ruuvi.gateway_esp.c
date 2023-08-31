@@ -221,6 +221,7 @@ typedef struct ruuvi_gw_cfg_http_t
     bool                      http_use_ssl_client_cert;
     bool                      http_use_ssl_server_cert;
     ruuvi_gw_cfg_http_url_t   http_url;
+    uint32_t                  http_period;
     gw_cfg_http_data_format_e data_format;
     gw_cfg_http_auth_type_e   auth_type;
     ruuvi_gw_cfg_http_auth_t  auth;
@@ -417,6 +418,9 @@ gw_cfg_get_http_use_http_ruuvi(void);
 
 bool
 gw_cfg_get_http_use_http(void);
+
+uint32_t
+gw_cfg_get_http_period(void);
 
 ruuvi_gw_cfg_http_t*
 gw_cfg_get_http_copy(void);

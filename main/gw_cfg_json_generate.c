@@ -418,6 +418,10 @@ gw_cfg_json_add_items_http_custom_params(
     {
         return false;
     }
+    if (!gw_cfg_json_add_number(p_json_root, "http_period", p_cfg_http->http_period))
+    {
+        return false;
+    }
     switch (p_cfg_http->data_format)
     {
         case GW_CFG_HTTP_DATA_FORMAT_RUUVI:

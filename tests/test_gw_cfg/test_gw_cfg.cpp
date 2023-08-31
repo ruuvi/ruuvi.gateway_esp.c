@@ -582,6 +582,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_with_http_custom) // NOLINT
     gw_cfg.ruuvi_cfg.http.http_use_ssl_client_cert = true;
     gw_cfg.ruuvi_cfg.http.http_use_ssl_server_cert = false;
     snprintf(gw_cfg.ruuvi_cfg.http.http_url.buf, sizeof(gw_cfg.ruuvi_cfg.http.http_url.buf), "http://my_server1.com");
+    gw_cfg.ruuvi_cfg.http.http_period = 15;
     gw_cfg.ruuvi_cfg.http.data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI;
     gw_cfg.ruuvi_cfg.http.auth_type   = GW_CFG_HTTP_AUTH_TYPE_NONE;
 
@@ -615,6 +616,7 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_with_http_custom) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http ruuvi: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http url: http://my_server1.com"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http period: 15"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http data format: ruuvi"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http auth_type: none"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http: use SSL client cert: 1"));
