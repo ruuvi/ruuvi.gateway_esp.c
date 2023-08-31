@@ -1167,6 +1167,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_non_default) // NO
                 .http_use_ssl_client_cert = false,
                 .http_use_ssl_server_cert = false,
                 .http_url = { "https://my_server1.com" },
+                .http_period = 15,
                 .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI_RAW_AND_DECODED,
                 .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
                 .auth = {
@@ -1286,6 +1287,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_non_default) // NO
                "\t\"http_use_ssl_client_cert\":\tfalse,\n"
                "\t\"http_use_ssl_server_cert\":\tfalse,\n"
                "\t\"http_url\":\t\"https://my_server1.com\",\n"
+               "\t\"http_period\":\t15,\n"
                "\t\"http_data_format\":\t\"ruuvi_raw_and_decoded\",\n"
                "\t\"http_auth\":\t\"basic\",\n"
                "\t\"http_user\":\t\"h_user1\",\n"

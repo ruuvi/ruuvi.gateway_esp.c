@@ -460,6 +460,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
         "\t\"use_http_ruuvi\":\tfalse,\n"
         "\t\"use_http\":\ttrue,\n"
         "\t\"http_url\":\t\"https://api.ruuvi.com:456/api\",\n"
+        "\t\"http_period\":\t15,\n"
         "\t\"http_use_ssl_client_cert\":\tfalse,\n"
         "\t\"http_use_ssl_server_cert\":\tfalse,\n"
         "\t\"http_data_format\":\t\"ruuvi\",\n"
@@ -548,6 +549,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.http.use_http);
     ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(15, gw_cfg.ruuvi_cfg.http.http_period);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_BASIC, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_EQ(string("user567"), gw_cfg.ruuvi_cfg.http.auth.auth_basic.user.buf);
@@ -598,6 +600,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_user: user567");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_pass: pass567");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: 15");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
@@ -751,6 +754,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_data_format_raw_and_decoded) // NOLI
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.http.use_http);
     ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(10, gw_cfg.ruuvi_cfg.http.http_period);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI_RAW_AND_DECODED, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_BASIC, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_EQ(string("user567"), gw_cfg.ruuvi_cfg.http.auth.auth_basic.user.buf);
@@ -801,6 +805,8 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_data_format_raw_and_decoded) // NOLI
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_user: user567");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_pass: pass567");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'http_period' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
@@ -868,6 +874,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_data_format_decoded) // NOLINT
         "\t\"http_url\":\t\"https://api.ruuvi.com:456/api\",\n"
         "\t\"http_use_ssl_client_cert\":\tfalse,\n"
         "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+        "\t\"http_period\":\t20,\n"
         "\t\"http_data_format\":\t\"ruuvi_decoded\",\n"
         "\t\"http_auth\":\t\"basic\",\n"
         "\t\"http_user\":\t\"user567\",\n"
@@ -954,6 +961,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_data_format_decoded) // NOLINT
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.http.use_http);
     ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(20, gw_cfg.ruuvi_cfg.http.http_period);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI_DECODED, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_BASIC, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_EQ(string("user567"), gw_cfg.ruuvi_cfg.http.auth.auth_basic.user.buf);
@@ -1004,6 +1012,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_data_format_decoded) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_user: user567");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_pass: pass567");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: 20");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
@@ -1070,6 +1079,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords) // NOLINT
         "\t\"use_http_ruuvi\":\tfalse,\n"
         "\t\"use_http\":\ttrue,\n"
         "\t\"http_url\":\t\"https://api.ruuvi.com:456/api\",\n"
+        "\t\"http_period\":\t20,\n"
         "\t\"http_data_format\":\t\"ruuvi\",\n"
         "\t\"http_auth\":\t\"basic\",\n"
         "\t\"http_user\":\t\"user567\",\n"
@@ -1180,6 +1190,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords) // NOLINT
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.http.use_http);
     ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(20, gw_cfg.ruuvi_cfg.http.http_period);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_BASIC, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_EQ(string("user567"), gw_cfg.ruuvi_cfg.http.auth.auth_basic.user.buf);
@@ -1237,6 +1248,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(
         ESP_LOG_INFO,
         "Can't find key 'http_pass' in config-json, leave the previous value unchanged");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: 20");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");

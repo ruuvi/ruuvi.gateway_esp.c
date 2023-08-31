@@ -467,6 +467,10 @@ gw_cfg_json_parse_http(const cJSON* const p_json_root, ruuvi_gw_cfg_http_t* cons
         }
         if (p_gw_cfg_http->use_http)
         {
+            if (!gw_cfg_json_get_uint32_val(p_json_root, "http_period", &p_gw_cfg_http->http_period))
+            {
+                LOG_WARN("Can't find key '%s' in config-json", "http_period");
+            }
             gw_cfg_json_parse_http_ssl_certs(p_json_root, p_gw_cfg_http);
         }
     }

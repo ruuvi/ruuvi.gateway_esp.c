@@ -1056,6 +1056,7 @@ adv_post_on_gw_cfg_change(adv_post_state_t* const p_adv_post_state)
     if (gw_cfg_get_http_use_http())
     {
         LOG_INFO("Start timer for advs2 retransmission");
+        g_adv_post_timers[1].default_interval_ms = gw_cfg_get_http_period() * TIME_UNITS_MS_PER_SECOND;
         adv2_post_timer_restart_with_short_period();
     }
     else

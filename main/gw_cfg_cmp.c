@@ -116,6 +116,10 @@ ruuvi_gw_cfg_http_cmp(const ruuvi_gw_cfg_http_t* const p_http1, const ruuvi_gw_c
     {
         return false;
     }
+    if (p_http1->http_period != p_http2->http_period)
+    {
+        return false;
+    }
     if (p_http1->data_format != p_http2->data_format)
     {
         return false;

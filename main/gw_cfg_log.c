@@ -338,6 +338,7 @@ gw_cfg_log_ruuvi_cfg_http(const ruuvi_gw_cfg_http_t* const p_http)
     if (p_http->use_http)
     {
         LOG_INFO("config: http url: %s", p_http->http_url.buf);
+        LOG_INFO("config: http period: %lu", (printf_ulong_t)p_http->http_period);
         switch (p_http->data_format)
         {
             case GW_CFG_HTTP_DATA_FORMAT_RUUVI:
