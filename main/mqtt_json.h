@@ -10,20 +10,21 @@
 
 #include <stdbool.h>
 #include "adv_table.h"
-#include "cjson_wrap.h"
+#include "str_buf.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-bool
+str_buf_t
 mqtt_create_json_str(
-    const adv_report_t* const      p_adv,
-    const bool                     flag_use_timestamps,
-    const time_t                   timestamp,
-    const mac_address_str_t* const p_mac_addr,
-    const char* const              p_coordinates_str,
-    cjson_wrap_str_t* const        p_json_str);
+    const adv_report_t* const       p_adv,
+    const bool                      flag_use_timestamps,
+    const time_t                    timestamp,
+    const mac_address_str_t* const  p_mac_addr,
+    const char* const               p_coordinates_str,
+    const gw_cfg_mqtt_data_format_e mqtt_data_format,
+    const json_stream_gen_size_t    max_chunk_size);
 
 #ifdef __cplusplus
 }

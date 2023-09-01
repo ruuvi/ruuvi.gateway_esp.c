@@ -7,13 +7,20 @@ add_executable(${ProjectId}
         test_mqtt_json.cpp
         ${RUUVI_GW_SRC}/mqtt_json.c
         ${RUUVI_GW_SRC}/mqtt_json.h
-        ${RUUVI_GW_SRC}/bin2hex.c
-        ${RUUVI_GW_SRC}/bin2hex.h
-        ${RUUVI_GW_SRC}/cjson_wrap.c
-        ${RUUVI_GW_SRC}/cjson_wrap.h
-        $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
-        $ENV{IDF_PATH}/components/json/cJSON/cJSON.c
-        $ENV{IDF_PATH}/components/json/cJSON/cJSON.h
+        ${RUUVI_GW_SRC}/adv_decode.c
+        ${RUUVI_GW_SRC}/adv_decode.h
+        ${RUUVI_JSON_STREAM_GEN_SRC}/json_stream_gen.c
+        ${RUUVI_JSON_STREAM_GEN_INC}/json_stream_gen.h
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_5.c
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_5.h
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_6.c
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_6.h
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoints.c
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoints.h
+        ${RUUVI_ESP_WRAPPERS}/src/str_buf.c
+        ${RUUVI_ESP_WRAPPERS_INC}/str_buf.h
+        ${RUUVI_ESP_WRAPPERS}/src/mac_addr.c
+        ${RUUVI_ESP_WRAPPERS_INC}/mac_addr.h
 )
 
 set_target_properties(${ProjectId} PROPERTIES
@@ -28,11 +35,11 @@ target_include_directories(${ProjectId} PUBLIC
         include
         ${WIFI_MANAGER_INC}
         ${CMAKE_CURRENT_SOURCE_DIR}
-        $ENV{IDF_PATH}/components/json/cJSON
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src
+        ${RUUVI_JSON_STREAM_GEN_INC}
         $ENV{IDF_PATH}/components/esp_wifi/include
         $ENV{IDF_PATH}/components/esp_common/include
         $ENV{IDF_PATH}/components/esp_event/include
-        ${RUUVI_JSON_STREAM_GEN_INC}
 )
 
 target_compile_definitions(${ProjectId} PUBLIC
@@ -56,7 +63,7 @@ target_link_libraries(${ProjectId}
         gtest
         gtest_main
         gcov
-        ruuvi_esp_wrappers
+#        ruuvi_esp_wrappers
         ruuvi_esp_wrappers-common_test_funcs
         --coverage
 )
