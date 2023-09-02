@@ -273,11 +273,11 @@ adv_post_cfg_access_mutex_unlock(adv_post_cfg_cache_t** p_p_cfg_cache)
     os_mutex_unlock(g_p_adv_post_cfg_access_mutex);
 }
 
-static void
+static bool
 adv_put_to_table(const adv_report_t* const p_adv)
 {
     metrics_received_advs_increment();
-    adv_table_put(p_adv);
+    return adv_table_put(p_adv);
 }
 
 static bool
@@ -423,9 +423,18 @@ adv_post_send_report(void* p_arg)
         adv_report.data_buf[5],
         (printf_ulong_t)timestamp);
 
-    adv_put_to_table(&adv_report);
-
-    event_mgr_notify(EVENT_MGR_EV_RECV_ADV);
+    if (!adv_put_to_table(&adv_report))
+    {
+        LOG_DBG(
+            "Drop adv because the same data is already in the buffer: MAC=%s, ID=0x%02x%02x",
+            mac_address_to_str(&adv_report.tag_mac).str_buf,
+            adv_report.data_buf[6],
+            adv_report.data_buf[5]);
+    }
+    else
+    {
+        event_mgr_notify(EVENT_MGR_EV_RECV_ADV);
+    }
 
     adv_post_cfg_access_mutex_unlock(&p_cfg_cache);
 }
