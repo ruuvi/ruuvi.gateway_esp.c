@@ -59,7 +59,7 @@ adv_table_init(void);
 void
 adv_table_deinit(void);
 
-void
+bool
 adv_table_put(const adv_report_t* const p_adv);
 
 void
