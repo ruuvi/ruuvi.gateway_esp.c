@@ -34,9 +34,6 @@ gw_cfg_json_parse(
     gw_cfg_t* const   p_gw_cfg);
 
 void
-gw_cfg_json_parse_eth(const cJSON* const p_json_root, gw_cfg_eth_t* const p_gw_cfg_eth);
-
-void
 gw_cfg_json_parse_cjson(
     const cJSON* const          p_json_root,
     const char* const           p_log_title,
@@ -70,40 +67,6 @@ gw_cfg_json_parse_cjson_wifi_sta(
     const cJSON* const          p_json_root,
     const char* const           p_log_title,
     wifiman_config_sta_t* const p_wifi_cfg_sta);
-
-void
-gw_cfg_json_parse_filter(const cJSON* const p_json_root, ruuvi_gw_cfg_filter_t* const p_gw_cfg_filter);
-
-void
-gw_cfg_json_parse_scan(const cJSON* const p_json_root, ruuvi_gw_cfg_scan_t* const p_gw_cfg_scan);
-
-#if RUUVI_TESTS_GW_CFG_JSON
-
-GW_CFG_JSON_STATIC
-bool
-gw_cfg_json_copy_string_val(
-    const cJSON* const p_json_root,
-    const char* const  p_attr_name,
-    char* const        p_buf,
-    const size_t       buf_len);
-
-GW_CFG_JSON_STATIC
-bool
-gw_cfg_json_get_bool_val(const cJSON* p_json_root, const char* p_attr_name, bool* p_val);
-
-GW_CFG_JSON_STATIC
-bool
-gw_cfg_json_get_uint16_val(const cJSON* p_json_root, const char* p_attr_name, uint16_t* p_val);
-
-GW_CFG_JSON_STATIC
-bool
-gw_cfg_json_get_uint8_val(const cJSON* p_json_root, const char* p_attr_name, uint8_t* p_val);
-
-GW_CFG_JSON_STATIC
-bool
-gw_cfg_json_get_int8_val(const cJSON* p_json_root, const char* p_attr_name, int8_t* p_val);
-
-#endif /* RUUVI_TESTS_GW_CFG_JSON */
 
 #ifdef __cplusplus
 }

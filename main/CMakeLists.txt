@@ -36,6 +36,36 @@ idf_component_register(
             gw_cfg_cmp.c
             gw_cfg_json_parse.c
             gw_cfg_json_parse.h
+            gw_cfg_json_parse_auto_update.c
+            gw_cfg_json_parse_auto_update.h
+            gw_cfg_json_parse_device_info.c
+            gw_cfg_json_parse_device_info.h
+            gw_cfg_json_parse_eth.c
+            gw_cfg_json_parse_eth.h
+            gw_cfg_json_parse_filter.c
+            gw_cfg_json_parse_filter.h
+            gw_cfg_json_parse_fw_update.c
+            gw_cfg_json_parse_fw_update.h
+            gw_cfg_json_parse_http.c
+            gw_cfg_json_parse_http.h
+            gw_cfg_json_parse_http_stat.c
+            gw_cfg_json_parse_http_stat.h
+            gw_cfg_json_parse_internal.c
+            gw_cfg_json_parse_internal.h
+            gw_cfg_json_parse_lan_auth.c
+            gw_cfg_json_parse_lan_auth.h
+            gw_cfg_json_parse_mqtt.c
+            gw_cfg_json_parse_mqtt.h
+            gw_cfg_json_parse_ntp.c
+            gw_cfg_json_parse_ntp.h
+            gw_cfg_json_parse_remote.c
+            gw_cfg_json_parse_remote.h
+            gw_cfg_json_parse_scan.c
+            gw_cfg_json_parse_scan.h
+            gw_cfg_json_parse_scan_filter.c
+            gw_cfg_json_parse_scan_filter.h
+            gw_cfg_json_parse_wifi.c
+            gw_cfg_json_parse_wifi.h
             gw_cfg_json_generate.c
             gw_cfg_json_generate.h
             gw_cfg_log.c

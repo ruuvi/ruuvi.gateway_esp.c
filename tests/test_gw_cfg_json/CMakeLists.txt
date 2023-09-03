@@ -15,6 +15,36 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/gw_cfg_default.h
         ${RUUVI_GW_SRC}/gw_cfg_json_parse.c
         ${RUUVI_GW_SRC}/gw_cfg_json_parse.h
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_auto_update.c
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_auto_update.h
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_device_info.c
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_device_info.h
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_eth.c
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_eth.h
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_filter.c
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_filter.h
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_fw_update.c
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_fw_update.h
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_http.c
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_http.h
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_http_stat.c
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_http_stat.h
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_internal.c
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_internal.h
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_lan_auth.c
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_lan_auth.h
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_mqtt.c
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_mqtt.h
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_ntp.c
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_ntp.h
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_remote.c
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_remote.h
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_scan.c
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_scan.h
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_scan_filter.c
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_scan_filter.h
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_wifi.c
+        ${RUUVI_GW_SRC}/gw_cfg_json_parse_wifi.h
         ${RUUVI_GW_SRC}/gw_cfg_json_generate.c
         ${RUUVI_GW_SRC}/gw_cfg_json_generate.h
         ${RUUVI_GW_SRC}/gw_cfg_storage_files.c
