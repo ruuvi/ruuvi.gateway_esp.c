@@ -1004,23 +1004,10 @@ adv_post_disable_ble_filtering(void)
 }
 
 static void
-adv_post_on_gw_cfg_change(adv_post_state_t* const p_adv_post_state)
+adv_post_on_gw_cfg_change_handle_scan_filter(
+    adv_post_cfg_cache_t* const             p_cfg_cache,
+    const ruuvi_gw_cfg_scan_filter_t* const p_scan_filter)
 {
-    p_adv_post_state->flag_use_timestamps = gw_cfg_get_ntp_use();
-
-    adv_post_cfg_cache_t* p_cfg_cache = adv_post_cfg_access_mutex_lock();
-
-    p_cfg_cache->flag_use_ntp = p_adv_post_state->flag_use_timestamps;
-    if (NULL != p_cfg_cache->p_arr_of_scan_filter_mac)
-    {
-        p_cfg_cache->scan_filter_length = 0;
-        os_free(p_cfg_cache->p_arr_of_scan_filter_mac);
-        p_cfg_cache->p_arr_of_scan_filter_mac = NULL;
-    }
-
-    const gw_cfg_t*                         p_gw_cfg      = gw_cfg_lock_ro();
-    const ruuvi_gw_cfg_scan_filter_t* const p_scan_filter = &p_gw_cfg->ruuvi_cfg.scan_filter;
-
     p_cfg_cache->scan_filter_allow_listed = p_scan_filter->scan_filter_allow_listed;
 
     if (0 != p_scan_filter->scan_filter_length)
@@ -1048,6 +1035,25 @@ adv_post_on_gw_cfg_change(adv_post_state_t* const p_adv_post_state)
     {
         p_cfg_cache->scan_filter_length = 0;
     }
+}
+
+static void
+adv_post_on_gw_cfg_change(adv_post_state_t* const p_adv_post_state)
+{
+    p_adv_post_state->flag_use_timestamps = gw_cfg_get_ntp_use();
+
+    adv_post_cfg_cache_t* p_cfg_cache = adv_post_cfg_access_mutex_lock();
+
+    p_cfg_cache->flag_use_ntp = p_adv_post_state->flag_use_timestamps;
+    if (NULL != p_cfg_cache->p_arr_of_scan_filter_mac)
+    {
+        p_cfg_cache->scan_filter_length = 0;
+        os_free(p_cfg_cache->p_arr_of_scan_filter_mac);
+        p_cfg_cache->p_arr_of_scan_filter_mac = NULL;
+    }
+
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
+    adv_post_on_gw_cfg_change_handle_scan_filter(p_cfg_cache, &p_gw_cfg->ruuvi_cfg.scan_filter);
 
     gw_cfg_unlock_ro(&p_gw_cfg);
 
