@@ -1,9 +1,11 @@
 idf_component_register(
         SRCS
+            adv_decode.c
+            adv_decode.h
             adv_post.c
+            adv_post.h
             adv_table.c
             adv_table.h
-            adv_post.h
             bin2hex.c
             bin2hex.h
             cjson_wrap.c

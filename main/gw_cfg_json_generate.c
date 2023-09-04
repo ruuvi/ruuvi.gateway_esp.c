@@ -572,6 +572,27 @@ gw_cfg_json_add_items_mqtt(
     {
         return false;
     }
+    switch (p_cfg_mqtt->mqtt_data_format)
+    {
+        case GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW:
+            if (!gw_cfg_json_add_string(p_json_root, "mqtt_data_format", GW_CFG_MQTT_DATA_FORMAT_STR_RUUVI_RAW))
+            {
+                return false;
+            }
+            break;
+        case GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW_AND_DECODED:
+            if (!gw_cfg_json_add_string(p_json_root, "mqtt_data_format", GW_CFG_MQTT_DATA_FORMAT_STR_RAW_AND_DECODED))
+            {
+                return false;
+            }
+            break;
+        case GW_CFG_MQTT_DATA_FORMAT_RUUVI_DECODED:
+            if (!gw_cfg_json_add_string(p_json_root, "mqtt_data_format", GW_CFG_MQTT_DATA_FORMAT_STR_DECODED))
+            {
+                return false;
+            }
+            break;
+    }
     if (!gw_cfg_json_add_string(p_json_root, "mqtt_server", p_cfg_mqtt->mqtt_server.buf))
     {
         return false;

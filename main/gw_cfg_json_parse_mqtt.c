@@ -6,6 +6,7 @@
  */
 
 #include "gw_cfg_json_parse_mqtt.h"
+#include <string.h>
 #include "gw_cfg_json_parse_internal.h"
 #include "gw_cfg_default.h"
 
@@ -30,6 +31,31 @@
 
 static const char TAG[] = "gw_cfg";
 
+static gw_cfg_mqtt_data_format_e
+gw_cfg_json_parse_mqtt_data_format(const cJSON* const p_json_root)
+{
+    char data_format_str[GW_CFG_MQTT_DATA_FORMAT_STR_SIZE];
+    if (!gw_cfg_json_copy_string_val(p_json_root, "mqtt_data_format", &data_format_str[0], sizeof(data_format_str)))
+    {
+        LOG_WARN("Can't find key '%s' in config-json", "mqtt_data_format");
+        return GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW;
+    }
+    if (0 == strcmp(GW_CFG_MQTT_DATA_FORMAT_STR_RUUVI_RAW, data_format_str))
+    {
+        return GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW;
+    }
+    if (0 == strcmp(GW_CFG_MQTT_DATA_FORMAT_STR_RAW_AND_DECODED, data_format_str))
+    {
+        return GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW_AND_DECODED;
+    }
+    if (0 == strcmp(GW_CFG_MQTT_DATA_FORMAT_STR_DECODED, data_format_str))
+    {
+        return GW_CFG_MQTT_DATA_FORMAT_RUUVI_DECODED;
+    }
+    LOG_WARN("Unknown mqtt_data_format='%s', use 'ruuvi'", data_format_str);
+    return GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW;
+}
+
 void
 gw_cfg_json_parse_mqtt(const cJSON* const p_cjson, ruuvi_gw_cfg_mqtt_t* const p_mqtt)
 {
@@ -49,6 +75,7 @@ gw_cfg_json_parse_mqtt(const cJSON* const p_cjson, ruuvi_gw_cfg_mqtt_t* const p_
     {
         LOG_WARN("Can't find key '%s' in config-json", "mqtt_transport");
     }
+    p_mqtt->mqtt_data_format = gw_cfg_json_parse_mqtt_data_format(p_cjson);
     if (!gw_cfg_json_copy_string_val(
             p_cjson,
             "mqtt_server",

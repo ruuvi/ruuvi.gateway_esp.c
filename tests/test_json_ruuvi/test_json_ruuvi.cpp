@@ -478,6 +478,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
         "\t\"use_mqtt\":\ttrue,\n"
         "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"TCP\",\n"
+        "\t\"mqtt_data_format\":\t\"ruuvi_raw\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
         "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
@@ -537,6 +538,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW, gw_cfg.ruuvi_cfg.mqtt.mqtt_data_format);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
     ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
@@ -612,6 +614,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_data_format: ruuvi_raw");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1234");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
@@ -683,6 +686,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_data_format_raw_and_decoded) // NOLI
         "\t\"use_mqtt\":\ttrue,\n"
         "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"TCP\",\n"
+        "\t\"mqtt_data_format\":\t\"ruuvi_raw\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
         "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
@@ -742,6 +746,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_data_format_raw_and_decoded) // NOLI
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW, gw_cfg.ruuvi_cfg.mqtt.mqtt_data_format);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
     ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
@@ -818,6 +823,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_data_format_raw_and_decoded) // NOLI
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_data_format: ruuvi_raw");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1234");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
@@ -890,6 +896,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_data_format_decoded) // NOLINT
         "\t\"use_mqtt\":\ttrue,\n"
         "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"TCP\",\n"
+        "\t\"mqtt_data_format\":\t\"ruuvi_raw\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
         "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
@@ -949,6 +956,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_data_format_decoded) // NOLINT
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW, gw_cfg.ruuvi_cfg.mqtt.mqtt_data_format);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
     ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
@@ -1024,6 +1032,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_data_format_decoded) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_data_format: ruuvi_raw");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1234");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
@@ -1095,6 +1104,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords) // NOLINT
         "\t\"use_mqtt\":\ttrue,\n"
         "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"TCP\",\n"
+        "\t\"mqtt_data_format\":\t\"ruuvi_raw\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
         "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
@@ -1178,6 +1188,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords) // NOLINT
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW, gw_cfg.ruuvi_cfg.mqtt.mqtt_data_format);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
     ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
@@ -1263,6 +1274,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_data_format: ruuvi_raw");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1234");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
@@ -1343,6 +1355,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords_and_remote_cfg_auth_cha
         "\t\"use_mqtt\":\ttrue,\n"
         "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"TCP\",\n"
+        "\t\"mqtt_data_format\":\t\"ruuvi_raw\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
         "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
@@ -1426,6 +1439,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords_and_remote_cfg_auth_cha
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW, gw_cfg.ruuvi_cfg.mqtt.mqtt_data_format);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
     ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
@@ -1500,6 +1514,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords_and_remote_cfg_auth_cha
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_data_format: ruuvi_raw");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1234");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
@@ -1580,6 +1595,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_empty_prefix_and_client_id) // NOLIN
         "\t\"use_mqtt\":\ttrue,\n"
         "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"TCP\",\n"
+        "\t\"mqtt_data_format\":\t\"ruuvi_raw\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_prefix\":\t\"\",\n"
         "\t\"mqtt_client_id\":\t\"\",\n"
@@ -1636,6 +1652,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_empty_prefix_and_client_id) // NOLIN
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW, gw_cfg.ruuvi_cfg.mqtt.mqtt_data_format);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("ruuvi/AA:BB:CC:DD:EE:FF/"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
     ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
@@ -1699,6 +1716,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_empty_prefix_and_client_id) // NOLIN
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_data_format: ruuvi_raw");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 8883");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
@@ -1776,6 +1794,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_no_prefix_and_client_id) // NOLINT
         "\t\"use_mqtt\":\ttrue,\n"
         "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"TCP\",\n"
+        "\t\"mqtt_data_format\":\t\"ruuvi_raw\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_port\":\t8883,\n"
         "\t\"mqtt_sending_interval\":\t0,\n"
@@ -1830,6 +1849,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_no_prefix_and_client_id) // NOLINT
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW, gw_cfg.ruuvi_cfg.mqtt.mqtt_data_format);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("ruuvi/AA:BB:CC:DD:EE:FF/"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
     ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
@@ -1893,6 +1913,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_no_prefix_and_client_id) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_data_format: ruuvi_raw");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 8883");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
@@ -1943,7 +1964,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_no_prefix_and_client_id) // NOLINT
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
-TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
+TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl_raw_and_decoded) // NOLINT
 {
     const string http_body = string(
         "{\n"
@@ -1970,6 +1991,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
         "\t\"use_mqtt\":\ttrue,\n"
         "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"SSL\",\n"
+        "\t\"mqtt_data_format\":\t\"ruuvi_raw_and_decoded\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
         "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
@@ -2026,6 +2048,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("SSL"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW_AND_DECODED, gw_cfg.ruuvi_cfg.mqtt.mqtt_data_format);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
     ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
@@ -2089,6 +2112,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: SSL");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_data_format: ruuvi_raw_and_decoded");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 8883");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
@@ -2133,7 +2157,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl) // NOLINT
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
-TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket) // NOLINT
+TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket_decoded) // NOLINT
 {
     const string http_body = string(
         "{\n"
@@ -2160,6 +2184,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket) // NOLINT
         "\t\"use_mqtt\":\ttrue,\n"
         "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"WS\",\n"
+        "\t\"mqtt_data_format\":\t\"ruuvi_decoded\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
         "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
@@ -2216,6 +2241,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket) // NOLINT
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("WS"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(GW_CFG_MQTT_DATA_FORMAT_RUUVI_DECODED, gw_cfg.ruuvi_cfg.mqtt.mqtt_data_format);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
     ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
@@ -2279,6 +2305,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: WS");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_data_format: ruuvi_decoded");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 8080");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
@@ -2350,6 +2377,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
         "\t\"use_mqtt\":\ttrue,\n"
         "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"WSS\",\n"
+        "\t\"mqtt_data_format\":\t\"ruuvi_raw\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
         "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
@@ -2406,6 +2434,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("WSS"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW, gw_cfg.ruuvi_cfg.mqtt.mqtt_data_format);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
     ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
@@ -2469,6 +2498,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: WSS");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_data_format: ruuvi_raw");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 8081");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
@@ -2540,6 +2570,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_full_config) // NOLINT
         "\t\"use_mqtt\":\ttrue,\n"
         "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"TCP\",\n"
+        "\t\"mqtt_data_format\":\t\"ruuvi_raw\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
         "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
@@ -2598,6 +2629,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_full_config) // NOLINT
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW, gw_cfg.ruuvi_cfg.mqtt.mqtt_data_format);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
     ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
@@ -2661,6 +2693,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_full_config) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_data_format: ruuvi_raw");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1883");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
@@ -2727,6 +2760,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_min_config) // NOLINT
         "\t\"use_mqtt\":\ttrue,\n"
         "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"TCP\",\n"
+        "\t\"mqtt_data_format\":\t\"ruuvi_raw\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
         "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
@@ -2780,6 +2814,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_min_config) // NOLINT
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW, gw_cfg.ruuvi_cfg.mqtt.mqtt_data_format);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
     ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
@@ -2843,6 +2878,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_min_config) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_data_format: ruuvi_raw");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1883");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
@@ -2909,6 +2945,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_via_dhcp) // NOLINT
         "\t\"use_mqtt\":\ttrue,\n"
         "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"TCP\",\n"
+        "\t\"mqtt_data_format\":\t\"ruuvi_raw\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
         "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
@@ -2963,6 +3000,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_via_dhcp) // NOLINT
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW, gw_cfg.ruuvi_cfg.mqtt.mqtt_data_format);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
     ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
@@ -3026,6 +3064,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_via_dhcp) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_data_format: ruuvi_raw");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1883");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
@@ -3093,6 +3132,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_custom) // NOLINT
         "\t\"use_mqtt\":\ttrue,\n"
         "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"TCP\",\n"
+        "\t\"mqtt_data_format\":\t\"ruuvi_raw\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
         "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
@@ -3149,6 +3189,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_custom) // NOLINT
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW, gw_cfg.ruuvi_cfg.mqtt.mqtt_data_format);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
     ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
@@ -3212,6 +3253,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_custom) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_data_format: ruuvi_raw");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1883");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
@@ -3285,6 +3327,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_default) // NOLINT
         "\t\"use_mqtt\":\ttrue,\n"
         "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
         "\t\"mqtt_transport\":\t\"TCP\",\n"
+        "\t\"mqtt_data_format\":\t\"ruuvi_raw\",\n"
         "\t\"mqtt_server\":\t\"mqtt.server.org\",\n"
         "\t\"mqtt_prefix\":\t\"prefix\",\n"
         "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
@@ -3343,6 +3386,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_default) // NOLINT
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.mqtt.use_mqtt);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.mqtt.mqtt_disable_retained_messages);
     ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW, gw_cfg.ruuvi_cfg.mqtt.mqtt_data_format);
     ASSERT_EQ(string("mqtt.server.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("prefix"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
     ASSERT_EQ(string("AA:BB:CC:DD:EE:FF"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
@@ -3406,6 +3450,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_default) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_data_format: ruuvi_raw");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: mqtt.server.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1883");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");
@@ -3487,6 +3532,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
         "\"use_mqtt\":true,"
         "\"mqtt_disable_retained_messages\":false,"
         "\"mqtt_transport\":\"TCP\","
+        "\"mqtt_data_format\":\"ruuvi_raw\","
         "\"mqtt_server\":\"test.mosquitto.org\","
         "\"mqtt_port\":1883,"
         "\t\"mqtt_sending_interval\":\t0,\n"
@@ -3535,6 +3581,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     ASSERT_EQ(0, gw_cfg.ruuvi_cfg.remote.refresh_interval_minutes);
 
     ASSERT_EQ(string("TCP"), gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf);
+    ASSERT_EQ(GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW, gw_cfg.ruuvi_cfg.mqtt.mqtt_data_format);
     ASSERT_EQ(string("test.mosquitto.org"), gw_cfg.ruuvi_cfg.mqtt.mqtt_server.buf);
     ASSERT_EQ(string("ruuvi/30:AE:A4:02:84:A4"), gw_cfg.ruuvi_cfg.mqtt.mqtt_prefix.buf);
     ASSERT_EQ(string("30:AE:A4:02:84:A4"), gw_cfg.ruuvi_cfg.mqtt.mqtt_client_id.buf);
@@ -3592,6 +3639,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_mqtt: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_disable_retained_messages: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_transport: TCP");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_data_format: ruuvi_raw");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_server: test.mosquitto.org");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_port: 1883");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "mqtt_sending_interval: 0");

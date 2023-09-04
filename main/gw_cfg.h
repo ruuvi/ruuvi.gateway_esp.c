@@ -87,6 +87,19 @@ typedef struct ruuvi_gw_cfg_mqtt_transport_t
     char buf[GW_CFG_MAX_MQTT_TRANSPORT_LEN];
 } ruuvi_gw_cfg_mqtt_transport_t;
 
+#define GW_CFG_MQTT_DATA_FORMAT_STR_RUUVI_RAW       "ruuvi_raw"
+#define GW_CFG_MQTT_DATA_FORMAT_STR_RAW_AND_DECODED "ruuvi_raw_and_decoded"
+#define GW_CFG_MQTT_DATA_FORMAT_STR_DECODED         "ruuvi_decoded"
+
+#define GW_CFG_MQTT_DATA_FORMAT_STR_SIZE sizeof(GW_CFG_MQTT_DATA_FORMAT_STR_RAW_AND_DECODED)
+
+typedef enum gw_cfg_mqtt_data_format_e
+{
+    GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW = 0,
+    GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW_AND_DECODED,
+    GW_CFG_MQTT_DATA_FORMAT_RUUVI_DECODED,
+} gw_cfg_mqtt_data_format_e;
+
 typedef struct ruuvi_gw_cfg_mqtt_server_t
 {
     char buf[GW_CFG_MAX_MQTT_SERVER_LEN];
@@ -119,6 +132,7 @@ typedef struct ruuvi_gw_cfg_mqtt_t
     bool                          use_ssl_client_cert;
     bool                          use_ssl_server_cert;
     ruuvi_gw_cfg_mqtt_transport_t mqtt_transport;
+    gw_cfg_mqtt_data_format_e     mqtt_data_format;
     ruuvi_gw_cfg_mqtt_server_t    mqtt_server;
     uint16_t                      mqtt_port;
     uint32_t                      mqtt_sending_interval;
