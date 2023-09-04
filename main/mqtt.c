@@ -111,17 +111,18 @@ mqtt_create_full_topic(
 bool
 mqtt_publish_adv(const adv_report_t* const p_adv, const bool flag_use_timestamps, const time_t timestamp)
 {
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-    const gw_cfg_t*  p_gw_cfg = gw_cfg_lock_ro();
-    const bool       res      = mqtt_create_json_str(
+    const gw_cfg_t*              p_gw_cfg       = gw_cfg_lock_ro();
+    const json_stream_gen_size_t max_chunk_size = 1024U;
+    str_buf_t                    str_buf_json   = mqtt_create_json_str(
         p_adv,
         flag_use_timestamps,
         timestamp,
         gw_cfg_get_nrf52_mac_addr(),
         p_gw_cfg->ruuvi_cfg.coordinates.buf,
-        &json_str);
+        p_gw_cfg->ruuvi_cfg.mqtt.mqtt_data_format,
+        max_chunk_size);
     gw_cfg_unlock_ro(&p_gw_cfg);
-    if (!res)
+    if (NULL == str_buf_json.buf)
     {
         LOG_ERR("%s failed", "mqtt_create_json_str");
         return false;
@@ -134,12 +135,12 @@ mqtt_publish_adv(const adv_report_t* const p_adv, const bool flag_use_timestamps
     {
         LOG_ERR("Can't send advs - MQTT was stopped");
         mqtt_mutex_unlock(&p_mqtt_data);
-        cjson_wrap_free_json_str(&json_str);
+        str_buf_free_buf(&str_buf_json);
         return false;
     }
     mqtt_create_full_topic(&p_mqtt_data->mqtt_topic, p_mqtt_data->mqtt_prefix.buf, tag_mac_str.str_buf);
 
-    LOG_DBG("publish: topic: %s, data: %s", p_mqtt_data->mqtt_topic.buf, json_str.p_str);
+    LOG_DBG("publish: topic: %s, data: %s", p_mqtt_data->mqtt_topic.buf, str_buf_json.buf);
     const int32_t mqtt_len              = 0;
     const int32_t mqtt_qos              = 1;
     const int32_t mqtt_flag_retain      = 0;
@@ -148,7 +149,7 @@ mqtt_publish_adv(const adv_report_t* const p_adv, const bool flag_use_timestamps
     if (esp_mqtt_client_publish(
             p_mqtt_data->p_mqtt_client,
             p_mqtt_data->mqtt_topic.buf,
-            json_str.p_str,
+            str_buf_json.buf,
             mqtt_len,
             mqtt_qos,
             mqtt_flag_retain)
@@ -158,7 +159,7 @@ mqtt_publish_adv(const adv_report_t* const p_adv, const bool flag_use_timestamps
     }
     mqtt_mutex_unlock(&p_mqtt_data);
 
-    cjson_wrap_free_json_str(&json_str);
+    str_buf_free_buf(&str_buf_json);
     return is_publish_successful;
 }
 

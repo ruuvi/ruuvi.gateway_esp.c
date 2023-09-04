@@ -342,13 +342,13 @@ gw_cfg_log_ruuvi_cfg_http(const ruuvi_gw_cfg_http_t* const p_http)
         switch (p_http->data_format)
         {
             case GW_CFG_HTTP_DATA_FORMAT_RUUVI:
-                LOG_INFO("config: http data format: %s", "ruuvi");
+                LOG_INFO("config: http data format: %s", GW_CFG_HTTP_DATA_FORMAT_STR_RUUVI);
                 break;
             case GW_CFG_HTTP_DATA_FORMAT_RUUVI_RAW_AND_DECODED:
-                LOG_INFO("config: http data format: %s", "ruuvi_raw_and_decoded");
+                LOG_INFO("config: http data format: %s", GW_CFG_HTTP_DATA_FORMAT_STR_RAW_AND_DECODED);
                 break;
             case GW_CFG_HTTP_DATA_FORMAT_RUUVI_DECODED:
-                LOG_INFO("config: http data format: %s", "ruuvi_decoded");
+                LOG_INFO("config: http data format: %s", GW_CFG_HTTP_DATA_FORMAT_STR_DECODED);
                 break;
         }
         switch (p_http->auth_type)
@@ -408,6 +408,18 @@ gw_cfg_log_ruuvi_cfg_mqtt(const ruuvi_gw_cfg_mqtt_t* const p_mqtt)
     LOG_INFO("config: use mqtt: %d", p_mqtt->use_mqtt);
     LOG_INFO("config: mqtt disable retained messages: %d", p_mqtt->mqtt_disable_retained_messages);
     LOG_INFO("config: mqtt transport: %s", p_mqtt->mqtt_transport.buf);
+    switch (p_mqtt->mqtt_data_format)
+    {
+        case GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW:
+            LOG_INFO("config: mqtt data format: %s", GW_CFG_MQTT_DATA_FORMAT_STR_RUUVI_RAW);
+            break;
+        case GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW_AND_DECODED:
+            LOG_INFO("config: mqtt data format: %s", GW_CFG_MQTT_DATA_FORMAT_STR_RAW_AND_DECODED);
+            break;
+        case GW_CFG_MQTT_DATA_FORMAT_RUUVI_DECODED:
+            LOG_INFO("config: mqtt data format: %s", GW_CFG_MQTT_DATA_FORMAT_STR_DECODED);
+            break;
+    }
     LOG_INFO("config: mqtt server: %s", p_mqtt->mqtt_server.buf);
     LOG_INFO("config: mqtt port: %u", p_mqtt->mqtt_port);
     LOG_INFO("config: mqtt sending interval: %lu", (printf_ulong_t)p_mqtt->mqtt_sending_interval);

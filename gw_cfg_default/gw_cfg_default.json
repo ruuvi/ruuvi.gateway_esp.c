@@ -40,6 +40,7 @@
   "use_mqtt": false,
   "mqtt_disable_retained_messages": false,
   "mqtt_transport": "TCP",
+  "mqtt_data_format": "ruuvi_raw",
   "mqtt_server": "test.mosquitto.org",
   "mqtt_port": 1883,
   "mqtt_prefix": "",
