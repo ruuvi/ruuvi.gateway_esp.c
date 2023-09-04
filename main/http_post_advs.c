@@ -89,6 +89,34 @@ http_init_client_config_for_http_target(
     return true;
 }
 
+#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
+static void
+http_send_advs_log_auth_type(const ruuvi_gw_cfg_http_t* const p_cfg_http)
+{
+    switch (p_cfg_http->auth_type)
+    {
+        case GW_CFG_HTTP_AUTH_TYPE_NONE:
+            LOG_DBG("http_init_client_config: URL=%s, auth_type=%s", p_cfg_http->http_url.buf, "None");
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_BASIC:
+            LOG_DBG("http_init_client_config: URL=%s, auth_type=%s", p_cfg_http->http_url.buf, "Basic");
+            LOG_DBG(
+                "http_init_client_config: user=%s, pass=%s",
+                p_cfg_http->auth.auth_basic.user.buf,
+                p_cfg_http->auth.auth_basic.password.buf);
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_BEARER:
+            LOG_DBG("http_init_client_config: URL=%s, auth_type=%s", p_cfg_http->http_url.buf, "Bearer");
+            LOG_DBG("http_init_client_config: Bearer token: %s", p_cfg_http->auth.auth_bearer.token.buf);
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
+            LOG_DBG("http_init_client_config: URL=%s, auth_type=%s", p_cfg_http->http_url.buf, "Token");
+            LOG_DBG("http_init_client_config: Token: %s", p_cfg_http->auth.auth_token.token.buf);
+            break;
+    }
+}
+#endif
+
 static bool
 http_send_advs_internal(
     http_async_info_t* const                      p_http_async_info,
@@ -121,7 +149,6 @@ http_send_advs_internal(
                 break;
         }
     }
-    const bool flag_use_nonce = true;
 
     p_http_async_info->use_json_stream_gen = true;
     const gw_cfg_t* p_gw_cfg               = gw_cfg_lock_ro();
@@ -131,7 +158,7 @@ http_send_advs_internal(
         .flag_decode         = flag_decode,
         .flag_use_timestamps = p_params->flag_use_timestamps,
         .cur_time            = time(NULL),
-        .flag_use_nonce      = flag_use_nonce,
+        .flag_use_nonce      = true,
         .nonce               = p_params->nonce,
         .p_mac_addr          = gw_cfg_get_nrf52_mac_addr(),
         .p_coordinates       = &p_gw_cfg->ruuvi_cfg.coordinates,
@@ -151,27 +178,7 @@ http_send_advs_internal(
     g_http_post_advs_malloc_fail_cnt = 0;
 
 #if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
-    switch (p_cfg_http->auth_type)
-    {
-        case GW_CFG_HTTP_AUTH_TYPE_NONE:
-            LOG_DBG("http_init_client_config: URL=%s, auth_type=%s", p_cfg_http->http_url.buf, "None");
-            break;
-        case GW_CFG_HTTP_AUTH_TYPE_BASIC:
-            LOG_DBG("http_init_client_config: URL=%s, auth_type=%s", p_cfg_http->http_url.buf, "Basic");
-            LOG_DBG(
-                "http_init_client_config: user=%s, pass=%s",
-                p_cfg_http->auth.auth_basic.user.buf,
-                p_cfg_http->auth.auth_basic.password.buf);
-            break;
-        case GW_CFG_HTTP_AUTH_TYPE_BEARER:
-            LOG_DBG("http_init_client_config: URL=%s, auth_type=%s", p_cfg_http->http_url.buf, "Bearer");
-            LOG_DBG("http_init_client_config: Bearer token: %s", p_cfg_http->auth.auth_bearer.token.buf);
-            break;
-        case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
-            LOG_DBG("http_init_client_config: URL=%s, auth_type=%s", p_cfg_http->http_url.buf, "Token");
-            LOG_DBG("http_init_client_config: Token: %s", p_cfg_http->auth.auth_token.token.buf);
-            break;
-    }
+    http_send_advs_log_auth_type(p_cfg_http);
 #endif
 
     http_client_config_t* const p_http_cli_cfg = &p_http_async_info->http_client_config;
