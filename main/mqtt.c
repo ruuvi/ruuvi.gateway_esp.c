@@ -35,7 +35,7 @@
 
 #define MQTT_NETWORK_TIMEOUT_MS (10U * 1000U)
 
-#define MQTT_TASK_STACK_SIZE (4352U)
+#define MQTT_TASK_STACK_SIZE (6 * 1024)
 
 typedef int mqtt_message_id_t;
 
