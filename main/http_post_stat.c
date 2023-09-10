@@ -14,6 +14,7 @@
 #include "http_server_resp.h"
 #include "adv_post.h"
 #include "gw_cfg_storage.h"
+#include "adv_post_statistics.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -162,7 +163,7 @@ http_check_post_stat_internal3(
             break;
     }
 
-    const http_json_statistics_info_t* p_stat_info = adv_post_generate_statistics_info(NULL);
+    const http_json_statistics_info_t* p_stat_info = adv_post_statistics_info_generate(NULL);
     if (NULL == p_stat_info)
     {
         LOG_ERR("Can't allocate memory");

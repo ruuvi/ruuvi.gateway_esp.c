@@ -27,6 +27,7 @@
 #include "gw_cfg_default.h"
 #include "esp_tls_err.h"
 #include "reset_task.h"
+#include "network_timeout.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -548,7 +549,7 @@ http_async_poll_handle_resp_ok(
         case HTTP_POST_RECIPIENT_ADVS1:
             ATTR_FALLTHROUGH;
         case HTTP_POST_RECIPIENT_ADVS2:
-            adv_post_last_successful_network_comm_timestamp_update();
+            network_timeout_update_timestamp();
             break;
     }
 }
@@ -570,7 +571,7 @@ http_async_poll_handle_resp_err(
                 break;
             case HTTP_POST_RECIPIENT_ADVS1:
             case HTTP_POST_RECIPIENT_ADVS2:
-                adv_post_last_successful_network_comm_timestamp_update();
+                network_timeout_update_timestamp();
                 break;
         }
     }

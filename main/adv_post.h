@@ -45,25 +45,19 @@ void
 adv2_post_timer_restart_with_increased_period(void);
 
 void
-adv2_post_timer_restart_with_short_period(void);
-
-void
-adv_post_send_sig_ble_scan_changed(void);
-
-void
-adv_post_send_sig_activate_cfg_mode(void);
-
-void
-adv_post_send_sig_deactivate_cfg_mode(void);
+adv2_post_timer_restart_with_short_period(const uint32_t default_interval_ms);
 
 void
 adv_post_stop(void);
 
 void
-adv_post_last_successful_network_comm_timestamp_update(void);
+adv_post_signal_send_ble_scan_changed(void);
 
-http_json_statistics_info_t*
-adv_post_generate_statistics_info(const str_buf_t* const p_reset_info);
+void
+adv_post_signal_send_activate_cfg_mode(void);
+
+void
+adv_post_signal_send_deactivate_cfg_mode(void);
 
 #ifdef __cplusplus
 }

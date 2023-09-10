@@ -171,7 +171,7 @@ main_task_schedule_retry_check_for_fw_updates(void)
 }
 
 void
-adv_post_last_successful_network_comm_timestamp_update(void)
+network_timeout_update_timestamp(void)
 {
 }
 
@@ -316,7 +316,7 @@ ruuvi_send_nrf_settings(void)
 }
 
 void
-adv_post_send_sig_ble_scan_changed(void)
+adv_post_signal_send_ble_scan_changed(void)
 {
 }
 
