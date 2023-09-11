@@ -1684,7 +1684,7 @@ adv_post_init(void)
     g_adv_post_nonce = esp_random();
     adv_table_init();
     api_callbacks_reg((void*)&adv_callback_func_tbl);
-    const uint32_t           stack_size    = 1024U * 4U;
+    const uint32_t           stack_size    = (1024U * 4U) + 512U;
     const os_task_priority_t task_priority = 5;
     if (!os_task_create_finite_without_param(&adv_post_task, "adv_post_task", stack_size, task_priority))
     {
