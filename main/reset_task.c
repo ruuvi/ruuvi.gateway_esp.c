@@ -17,6 +17,7 @@
 #include "event_mgr.h"
 #include "reset_info.h"
 #include "runtime_stat.h"
+#include "wifi_manager.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -37,6 +38,7 @@ typedef enum reset_task_sig_e
 
 #define RESET_TASK_TIMEOUT_AFTER_PRESSING_CONFIGURE_BUTTON (5)
 #define RESET_TASK_TIMEOUT_AFTER_COMMAND                   (3)
+#define RESET_TASK_DELAY_BEFORE_REBOOT_MS                  (500)
 
 static const char* TAG = "reset_task";
 
@@ -295,6 +297,8 @@ gateway_restart(const char* const p_msg)
     reset_info_set_sw(p_msg);
     LOG_INFO("%s", p_msg);
     assert(NULL != g_p_reset_task_handle);
+    wifi_manager_stop();
+    vTaskDelay(pdMS_TO_TICKS(RESET_TASK_DELAY_BEFORE_REBOOT_MS));
     event_mgr_notify(EVENT_MGR_EV_REBOOT);
 
     if (os_task_get_cur_task_handle() != g_p_reset_task_handle)
