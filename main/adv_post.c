@@ -649,13 +649,27 @@ adv_post_do_async_comm_send_advs(adv_post_state_t* const p_adv_post_state, const
     if (!p_adv_post_state->flag_network_connected)
     {
         LOG_WARN("Can't send advs, no network connection");
-        leds_notify_http1_data_sent_fail();
+        if (flag_post_to_ruuvi)
+        {
+            leds_notify_http1_data_sent_fail();
+        }
+        else
+        {
+            leds_notify_http2_data_sent_fail();
+        }
         return false;
     }
     if (p_adv_post_state->flag_use_timestamps && (!time_is_synchronized()))
     {
         LOG_WARN("Can't send advs, the time is not yet synchronized");
-        leds_notify_http1_data_sent_fail();
+        if (flag_post_to_ruuvi)
+        {
+            leds_notify_http1_data_sent_fail();
+        }
+        else
+        {
+            leds_notify_http2_data_sent_fail();
+        }
         return false;
     }
     if (flag_post_to_ruuvi)
