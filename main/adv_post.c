@@ -648,7 +648,7 @@ adv_post_do_async_comm_send_advs(adv_post_state_t* const p_adv_post_state, const
 {
     if (!p_adv_post_state->flag_network_connected)
     {
-        LOG_WARN("Can't send advs, no network connection");
+        LOG_DBG("Can't send advs, no network connection");
         if (flag_post_to_ruuvi)
         {
             leds_notify_http1_data_sent_fail();
@@ -661,7 +661,7 @@ adv_post_do_async_comm_send_advs(adv_post_state_t* const p_adv_post_state, const
     }
     if (p_adv_post_state->flag_use_timestamps && (!time_is_synchronized()))
     {
-        LOG_WARN("Can't send advs, the time is not yet synchronized");
+        LOG_DBG("Can't send advs, the time is not yet synchronized");
         if (flag_post_to_ruuvi)
         {
             leds_notify_http1_data_sent_fail();
@@ -693,7 +693,7 @@ adv_post_do_async_comm_send_statistics(adv_post_state_t* const p_adv_post_state)
 {
     if (!gw_cfg_get_http_stat_use_http_stat())
     {
-        LOG_INFO("Can't send statistics, it was disabled in gw_cfg");
+        LOG_WARN("Can't send statistics, it was disabled in gw_cfg");
         p_adv_post_state->flag_need_to_send_statistics = false;
         return false;
     }
