@@ -9,7 +9,12 @@
 #include "os_timer_sig.h"
 #include "adv_post_signals.h"
 #include "adv_post_internal.h"
+#if defined(RUUVI_TESTS) && RUUVI_TESTS
+#define LOG_LOCAL_DISABLED 1
+#define LOG_LOCAL_LEVEL    LOG_LEVEL_NONE
+#else
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
+#endif
 #include "log.h"
 #include "ruuvi_gateway.h"
 #include "time_units.h"
@@ -83,7 +88,7 @@ static const timer_sig_periodic_desc_t g_adv_post_periodic_timer_sig[ADV_POST_PE
         .period_ticks = pdMS_TO_TICKS(ADV_POST_STATISTICS_INTERVAL_SECONDS) * TIME_UNITS_MS_PER_SECOND,
     },
     [ADV_POST_PERIODIC_TIMER_SIG_NETWORK_WATCHDOG] = {
-        .p_timer_name = "adv_post_watchdog",
+        .p_timer_name = "adv_post:netwdog",
         .sig = ADV_POST_SIG_NETWORK_WATCHDOG,
         .period_ticks = pdMS_TO_TICKS(RUUVI_NETWORK_WATCHDOG_PERIOD_SECONDS * TIME_UNITS_MS_PER_SECOND),
     },
@@ -134,7 +139,8 @@ adv_post_create_timers(void)
     for (uint32_t i = 0; i < ADV_POST_PERIODIC_TIMER_SIG_NUM; ++i)
     {
         const timer_sig_periodic_desc_t* const p_timer_sig_desc = &g_adv_post_periodic_timer_sig[i];
-        g_p_adv_post_periodic_timer_sig[i]                      = os_timer_sig_periodic_create_static(
+
+        g_p_adv_post_periodic_timer_sig[i] = os_timer_sig_periodic_create_static(
             &g_adv_post_periodic_timer_sig_mem[i],
             p_timer_sig_desc->p_timer_name,
             adv_post_signals_get(),
@@ -144,7 +150,8 @@ adv_post_create_timers(void)
     for (uint32_t i = 0; i < ADV_POST_ONE_SHOT_TIMER_SIG_NUM; ++i)
     {
         const timer_sig_one_shot_desc_t* const p_timer_sig_desc = &g_adv_post_one_shot_timer_sig[i];
-        g_p_adv_post_one_shot_timer_sig[i]                      = os_timer_sig_one_shot_create_static(
+
+        g_p_adv_post_one_shot_timer_sig[i] = os_timer_sig_one_shot_create_static(
             &g_adv_post_one_shot_timer_sig_mem[i],
             p_timer_sig_desc->p_timer_name,
             adv_post_signals_get(),
@@ -172,12 +179,6 @@ os_timer_sig_periodic_t*
 adv_post_timers_get_timer_sig_green_led_update(void)
 {
     return g_p_adv_post_periodic_timer_sig[ADV_POST_PERIODIC_TIMER_SIG_GREEN_LED_UPDATE];
-}
-
-void
-adv_post_timers_recv_adv_timeout_relaunch(void)
-{
-    os_timer_sig_one_shot_relaunch(g_p_adv_post_one_shot_timer_sig[ADV_POST_ONE_SHOT_TIMER_SIG_RECV_ADV_TIMEOUT]);
 }
 
 void
@@ -319,6 +320,12 @@ adv_post_timers_start_timer_sig_recv_adv_timeout(void)
     os_timer_sig_one_shot_t* const p_timer_sig
         = g_p_adv_post_one_shot_timer_sig[ADV_POST_ONE_SHOT_TIMER_SIG_RECV_ADV_TIMEOUT];
     os_timer_sig_one_shot_start(p_timer_sig);
+}
+
+void
+adv_post_timers_relaunch_timer_sig_recv_adv_timeout(void)
+{
+    os_timer_sig_one_shot_relaunch(g_p_adv_post_one_shot_timer_sig[ADV_POST_ONE_SHOT_TIMER_SIG_RECV_ADV_TIMEOUT]);
 }
 
 static void

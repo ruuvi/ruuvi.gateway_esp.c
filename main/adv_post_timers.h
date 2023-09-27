@@ -24,9 +24,6 @@ os_timer_sig_periodic_t*
 adv_post_timers_get_timer_sig_green_led_update(void);
 
 void
-adv_post_timers_recv_adv_timeout_relaunch(void);
-
-void
 adv_post_timers_relaunch_timer_sig_retransmit_to_http_ruuvi(const bool flag_simulate_immediately);
 
 void
@@ -78,10 +75,31 @@ void
 adv_post_timers_start_timer_sig_recv_adv_timeout(void);
 
 void
+adv_post_timers_relaunch_timer_sig_recv_adv_timeout(void);
+
+void
 adv_post_timers_set_default_period_for_http_ruuvi(const uint32_t period_ms);
 
 void
 adv_post_timers_set_default_period_for_http_custom(const uint32_t period_ms);
+
+void
+adv1_post_timer_restart_with_default_period(void);
+
+void
+adv1_post_timer_restart_with_increased_period(void);
+
+void
+adv1_post_timer_restart_with_short_period(void);
+
+void
+adv2_post_timer_restart_with_default_period(void);
+
+void
+adv2_post_timer_restart_with_increased_period(void);
+
+void
+adv2_post_timer_restart_with_short_period(const uint32_t default_interval_ms);
 
 #ifdef __cplusplus
 }

@@ -15,7 +15,10 @@ typedef struct event_mgr_ev_to_sig_t
     adv_post_sig_e sig;
 } event_mgr_ev_to_sig_t;
 
-#define ADV_POST_EVENTS_SIZE (11U)
+enum
+{
+    ADV_POST_EVENTS_SIZE = 11U,
+};
 
 static const event_mgr_ev_to_sig_t g_adv_post_ev_to_sig[ADV_POST_EVENTS_SIZE] = {
     { EVENT_MGR_EV_RECV_ADV, ADV_POST_SIG_ON_RECV_ADV },

@@ -9,7 +9,12 @@
 #include "os_timer_sig.h"
 #include "adv_post_internal.h"
 #include "api.h"
+#if defined(RUUVI_TESTS) && RUUVI_TESTS
+#define LOG_LOCAL_DISABLED 1
+#define LOG_LOCAL_LEVEL    LOG_LEVEL_NONE
+#else
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
+#endif
 #include "log.h"
 #include "adv_post_timers.h"
 static const char* TAG = "ADV_POST_TASK";

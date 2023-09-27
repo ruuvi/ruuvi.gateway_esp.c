@@ -181,7 +181,7 @@ adv_post_send_report(void* p_arg)
         return;
     }
 
-    adv_post_cfg_cache_t* p_cfg_cache = adv_post_cfg_access_mutex_try_lock();
+    adv_post_cfg_cache_t* p_cfg_cache = adv_post_cfg_cache_mutex_try_lock();
     if (NULL == p_cfg_cache)
     {
         LOG_WARN("Drop adv - gateway in the process of reconfiguration");
@@ -196,17 +196,17 @@ adv_post_send_report(void* p_arg)
     if (!parse_adv_report_from_uart((re_ca_uart_payload_t*)p_arg, timestamp, &adv_report))
     {
         LOG_WARN("Drop adv - parsing failed");
-        adv_post_cfg_access_mutex_unlock(&p_cfg_cache);
+        adv_post_cfg_cache_mutex_unlock(&p_cfg_cache);
         return;
     }
 
     if (adv_post_check_if_mac_filtered_out(p_cfg_cache, &adv_report.tag_mac))
     {
-        adv_post_cfg_access_mutex_unlock(&p_cfg_cache);
+        adv_post_cfg_cache_mutex_unlock(&p_cfg_cache);
         return;
     }
 
-    adv_post_timers_recv_adv_timeout_relaunch();
+    adv_post_timers_relaunch_timer_sig_recv_adv_timeout();
 
     LOG_DUMP_VERBOSE(
         adv_report.data_buf,
@@ -230,7 +230,7 @@ adv_post_send_report(void* p_arg)
         event_mgr_notify(EVENT_MGR_EV_RECV_ADV);
     }
 
-    adv_post_cfg_access_mutex_unlock(&p_cfg_cache);
+    adv_post_cfg_cache_mutex_unlock(&p_cfg_cache);
 }
 
 static void

@@ -26,7 +26,12 @@
 #include "adv_post_green_led.h"
 #include "adv_post_timers.h"
 #include "adv_post_cfg_cache.h"
+#if defined(RUUVI_TESTS) && RUUVI_TESTS
+#define LOG_LOCAL_DISABLED 1
+#define LOG_LOCAL_LEVEL    LOG_LEVEL_NONE
+#else
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
+#endif
 #include "log.h"
 static const char* TAG = "ADV_POST_TASK";
 
@@ -296,7 +301,7 @@ adv_post_on_gw_cfg_change(adv_post_state_t* const p_adv_post_state)
 {
     p_adv_post_state->flag_use_timestamps = gw_cfg_get_ntp_use();
 
-    adv_post_cfg_cache_t* p_cfg_cache = adv_post_cfg_access_mutex_lock();
+    adv_post_cfg_cache_t* p_cfg_cache = adv_post_cfg_cache_mutex_lock();
 
     p_cfg_cache->flag_use_ntp = p_adv_post_state->flag_use_timestamps;
     if (NULL != p_cfg_cache->p_arr_of_scan_filter_mac)
@@ -358,7 +363,7 @@ adv_post_on_gw_cfg_change(adv_post_state_t* const p_adv_post_state)
         adv_post_timers_stop_timer_sig_activate_sending_statistics();
         p_adv_post_state->flag_need_to_send_statistics = false;
     }
-    adv_post_cfg_access_mutex_unlock(&p_cfg_cache);
+    adv_post_cfg_cache_mutex_unlock(&p_cfg_cache);
 
     LOG_INFO("Clear adv_table");
     adv_table_clear();
@@ -412,14 +417,14 @@ static void
 adv_post_handle_sig_activate_cfg_mode(ATTR_UNUSED adv_post_state_t* const p_adv_post_state) // NOSONAR
 {
     LOG_INFO("Got ADV_POST_SIG_ACTIVATE_CFG_MODE");
-    adv_post_cfg_cache_t* p_cfg_cache = adv_post_cfg_access_mutex_lock();
+    adv_post_cfg_cache_t* p_cfg_cache = adv_post_cfg_cache_mutex_lock();
     if (NULL != p_cfg_cache->p_arr_of_scan_filter_mac)
     {
         p_cfg_cache->scan_filter_length = 0;
         os_free(p_cfg_cache->p_arr_of_scan_filter_mac);
         p_cfg_cache->p_arr_of_scan_filter_mac = NULL;
     }
-    adv_post_cfg_access_mutex_unlock(&p_cfg_cache);
+    adv_post_cfg_cache_mutex_unlock(&p_cfg_cache);
 
     LOG_INFO("Clear adv_table");
     adv_table_clear();

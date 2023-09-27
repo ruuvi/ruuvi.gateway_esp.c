@@ -24,14 +24,20 @@ typedef struct adv_post_cfg_cache_t
     mac_address_bin_t* p_arr_of_scan_filter_mac;
 } adv_post_cfg_cache_t;
 
-adv_post_cfg_cache_t*
-adv_post_cfg_access_mutex_try_lock(void);
-
-adv_post_cfg_cache_t*
-adv_post_cfg_access_mutex_lock(void);
+void
+adv_post_cfg_cache_init(void);
 
 void
-adv_post_cfg_access_mutex_unlock(adv_post_cfg_cache_t** p_p_cfg_cache);
+adv_post_cfg_cache_deinit(void);
+
+adv_post_cfg_cache_t*
+adv_post_cfg_cache_mutex_try_lock(void);
+
+adv_post_cfg_cache_t*
+adv_post_cfg_cache_mutex_lock(void);
+
+void
+adv_post_cfg_cache_mutex_unlock(adv_post_cfg_cache_t** p_p_cfg_cache);
 
 #ifdef __cplusplus
 }

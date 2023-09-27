@@ -18,7 +18,12 @@
 #include "http.h"
 #include "reset_task.h"
 #include "ruuvi_gateway.h"
+#if defined(RUUVI_TESTS) && RUUVI_TESTS
+#define LOG_LOCAL_DISABLED 1
+#define LOG_LOCAL_LEVEL    LOG_LEVEL_NONE
+#else
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
+#endif
 #include "log.h"
 static const char* TAG = "ADV_POST_TASK";
 
@@ -47,13 +52,13 @@ adv_post_statistics_info_generate(const str_buf_t* const p_reset_info)
     p_stat_info->nrf_status             = gw_status_get_nrf_status();
     p_stat_info->is_connected_to_wifi   = wifi_manager_is_connected_to_wifi();
     p_stat_info->network_disconnect_cnt = g_network_disconnect_cnt;
-    (void)sniprintf(
+    (void)snprintf(
         p_stat_info->reset_reason.buf,
         sizeof(p_stat_info->reset_reason.buf),
         "%s",
         reset_reason_to_str(esp_reset_reason()));
     p_stat_info->reset_cnt    = reset_info_get_cnt();
-    p_stat_info->p_reset_info = (NULL != p_reset_info) ? &p_reset_info->buf[0] : "";
+    p_stat_info->p_reset_info = ((NULL != p_reset_info) && (NULL != p_reset_info->buf)) ? &p_reset_info->buf[0] : "";
 
     g_adv_post_stat_nonce += 1;
 
@@ -73,7 +78,13 @@ adv_post_stat(const ruuvi_gw_cfg_http_stat_t* const p_cfg_http_stat, void* const
     }
     adv_table_statistics_read(p_reports);
 
-    str_buf_t                          reset_info  = reset_info_get();
+    str_buf_t reset_info = reset_info_get();
+    if (NULL == reset_info.buf)
+    {
+        LOG_ERR("Can't allocate memory");
+        os_free(p_reports);
+        return false;
+    }
     const http_json_statistics_info_t* p_stat_info = adv_post_statistics_info_generate(&reset_info);
     if (NULL == p_stat_info)
     {

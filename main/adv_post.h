@@ -24,30 +24,6 @@ bool
 adv_post_is_initialized(void);
 
 void
-adv_post_set_default_period(const uint32_t period_ms);
-
-bool
-adv_post_set_hmac_sha256_key(const char* const p_key_str);
-
-void
-adv1_post_timer_restart_with_default_period(void);
-
-void
-adv1_post_timer_restart_with_increased_period(void);
-
-void
-adv1_post_timer_restart_with_short_period(void);
-
-void
-adv2_post_timer_restart_with_default_period(void);
-
-void
-adv2_post_timer_restart_with_increased_period(void);
-
-void
-adv2_post_timer_restart_with_short_period(const uint32_t default_interval_ms);
-
-void
 adv_post_stop(void);
 
 void

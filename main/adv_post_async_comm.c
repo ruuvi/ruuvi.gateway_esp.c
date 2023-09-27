@@ -6,6 +6,7 @@
  */
 
 #include "adv_post_async_comm.h"
+#include <esp_system.h>
 #include "os_malloc.h"
 #include "os_timer_sig.h"
 #include "time_task.h"
@@ -19,7 +20,12 @@
 #include "adv_post_statistics.h"
 #include "adv_post_timers.h"
 #include "adv_post_signals.h"
+#if defined(RUUVI_TESTS) && RUUVI_TESTS
+#define LOG_LOCAL_DISABLED 1
+#define LOG_LOCAL_LEVEL    LOG_LEVEL_NONE
+#else
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
+#endif
 #include "log.h"
 static const char* TAG = "ADV_POST_TASK";
 
@@ -44,7 +50,15 @@ static uint32_t g_adv_post_malloc_fail_cnt[2];
 void
 adv_post_async_comm_init(void)
 {
-    g_adv_post_nonce = esp_random();
+    g_adv_post_nonce                  = esp_random();
+    g_adv_post_action                 = ADV_POST_ACTION_NONE;
+    g_p_adv_post_reports_mqtt         = NULL;
+    g_adv_post_reports_mqtt_idx       = 0;
+    g_adv_post_reports_mqtt_timestamp = 0;
+    for (uint32_t i = 0; i < OS_ARRAY_SIZE(g_adv_post_malloc_fail_cnt); ++i)
+    {
+        g_adv_post_malloc_fail_cnt[i] = 0;
+    }
 }
 
 static void
@@ -266,11 +280,13 @@ adv_post_do_async_comm_start_sending_periodic_mqtt(adv_post_state_t* const p_adv
     if (!p_adv_post_state->flag_network_connected)
     {
         LOG_WARN("Can't send advs via MQTT, no network connection");
+        p_adv_post_state->flag_need_to_send_mqtt_periodic = false;
         return;
     }
     if (!gw_status_is_mqtt_connected())
     {
         LOG_WARN("Can't send advs via MQTT, MQTT is not connected");
+        p_adv_post_state->flag_need_to_send_mqtt_periodic = false;
         return;
     }
     if (p_adv_post_state->flag_use_timestamps && (!time_is_synchronized()))
@@ -283,6 +299,7 @@ adv_post_do_async_comm_start_sending_periodic_mqtt(adv_post_state_t* const p_adv
     if (!adv_post_do_retransmission(p_adv_post_state->flag_use_timestamps, ADV_POST_ACTION_POST_ADVS_TO_MQTT))
     {
         g_adv_post_action = ADV_POST_ACTION_NONE;
+        main_task_send_sig_restart_services();
         return;
     }
 
@@ -301,6 +318,9 @@ adv_post_do_async_comm_in_progress_mqtt(void)
     if (!mqtt_publish_adv(p_adv_report, gw_cfg_get_ntp_use(), g_adv_post_reports_mqtt_timestamp))
     {
         LOG_ERR("%s failed", "mqtt_publish_adv");
+        os_free(g_p_adv_post_reports_mqtt);
+        g_p_adv_post_reports_mqtt   = NULL;
+        g_adv_post_reports_mqtt_idx = 0;
         return true;
     }
 

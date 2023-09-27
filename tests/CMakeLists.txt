@@ -55,6 +55,12 @@ include_directories(
         "lwip/lwip/contrib/ports/unix/port/include"
 )
 
+add_subdirectory(test_adv_post_cfg_cache)
+add_subdirectory(test_adv_post_events)
+add_subdirectory(test_adv_post_green_led)
+add_subdirectory(test_adv_post_timers)
+add_subdirectory(test_adv_post_statistics)
+add_subdirectory(test_adv_post_async_comm)
 add_subdirectory(test_adv_table)
 add_subdirectory(test_bin2hex)
 add_subdirectory(test_cjson_wrap)
@@ -85,6 +91,36 @@ add_subdirectory(test_url_encode)
 add_test(NAME test_adv_table
         COMMAND ruuvi_gateway_esp-test-adv_table
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-adv_table>/gtestresults.xml
+)
+
+add_test(NAME test_adv_post_cfg_cache
+        COMMAND ruuvi_gateway_esp-test-adv_post_cfg_cache
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-adv_post_cfg_cache>/gtestresults.xml
+)
+
+add_test(NAME test_adv_post_events
+        COMMAND ruuvi_gateway_esp-test-adv_post_events
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-adv_post_events>/gtestresults.xml
+)
+
+add_test(NAME test_adv_post_green_led
+        COMMAND ruuvi_gateway_esp-test-adv_post_green_led
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-adv_post_green_led>/gtestresults.xml
+)
+
+add_test(NAME test_adv_post_timers
+        COMMAND ruuvi_gateway_esp-test-adv_post_timers
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-adv_post_timers>/gtestresults.xml
+)
+
+add_test(NAME test_adv_post_statistics
+        COMMAND ruuvi_gateway_esp-test-adv_post_statistics
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-adv_post_statistics>/gtestresults.xml
+)
+
+add_test(NAME test_adv_post_async_comm
+        COMMAND ruuvi_gateway_esp-test-adv_post_async_comm
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-adv_post_async_comm>/gtestresults.xml
 )
 
 add_test(NAME test_bin2hex
