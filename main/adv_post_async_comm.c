@@ -169,12 +169,12 @@ adv_post_do_async_comm_send_advs1(adv_post_state_t* const p_adv_post_state)
 {
     if (!p_adv_post_state->flag_network_connected)
     {
-        LOG_WARN("Can't send advs1, no network connection");
+        LOG_DBG("Can't send advs1, no network connection");
         return;
     }
     if (p_adv_post_state->flag_use_timestamps && (!time_is_synchronized()))
     {
-        LOG_WARN("Can't send advs1, the time is not yet synchronized");
+        LOG_DBG("Can't send advs1, the time is not yet synchronized");
         return;
     }
     LOG_DBG("http_server_mutex_try_lock");
@@ -202,12 +202,12 @@ adv_post_do_async_comm_send_advs2(adv_post_state_t* const p_adv_post_state)
 {
     if (!p_adv_post_state->flag_network_connected)
     {
-        LOG_WARN("Can't send advs2, no network connection");
+        LOG_DBG("Can't send advs2, no network connection");
         return;
     }
     if (p_adv_post_state->flag_use_timestamps && (!time_is_synchronized()))
     {
-        LOG_WARN("Can't send advs2, the time is not yet synchronized");
+        LOG_DBG("Can't send advs2, the time is not yet synchronized");
         return;
     }
     LOG_DBG("http_server_mutex_try_lock");
@@ -235,7 +235,7 @@ adv_post_do_async_comm_send_statistics(adv_post_state_t* const p_adv_post_state)
 {
     if (!gw_cfg_get_http_stat_use_http_stat())
     {
-        LOG_INFO("Can't send statistics, it was disabled in gw_cfg");
+        LOG_WARN("Can't send statistics, it was disabled in gw_cfg");
         p_adv_post_state->flag_need_to_send_statistics = false;
         return;
     }
@@ -273,25 +273,25 @@ adv_post_do_async_comm_start_sending_periodic_mqtt(adv_post_state_t* const p_adv
 {
     if (!gw_cfg_get_mqtt_use_mqtt())
     {
-        LOG_INFO("Can't send advs via MQTT, it was disabled in gw_cfg");
+        LOG_DBG("Can't send advs via MQTT, it was disabled in gw_cfg");
         p_adv_post_state->flag_need_to_send_mqtt_periodic = false;
         return;
     }
     if (!p_adv_post_state->flag_network_connected)
     {
-        LOG_WARN("Can't send advs via MQTT, no network connection");
+        LOG_DBG("Can't send advs via MQTT, no network connection");
         p_adv_post_state->flag_need_to_send_mqtt_periodic = false;
         return;
     }
     if (!gw_status_is_mqtt_connected())
     {
-        LOG_WARN("Can't send advs via MQTT, MQTT is not connected");
+        LOG_DBG("Can't send advs via MQTT, MQTT is not connected");
         p_adv_post_state->flag_need_to_send_mqtt_periodic = false;
         return;
     }
     if (p_adv_post_state->flag_use_timestamps && (!time_is_synchronized()))
     {
-        LOG_WARN("Can't send advs via MQTT, the time is not yet synchronized");
+        LOG_DBG("Can't send advs via MQTT, the time is not yet synchronized");
         return;
     }
     g_adv_post_action = ADV_POST_ACTION_POST_ADVS_TO_MQTT;
