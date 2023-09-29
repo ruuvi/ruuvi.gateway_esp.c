@@ -104,7 +104,7 @@ http_server_cb_on_post_ble_scanning(const char* const p_body)
     ruuvi_send_nrf_settings(&scan, &filter);
     cJSON_Delete(p_json_root);
 
-    adv_post_send_sig_ble_scan_changed();
+    adv_post_signal_send_ble_scan_changed();
 
     const bool flag_no_cache = true;
     return http_server_resp_data_in_flash(

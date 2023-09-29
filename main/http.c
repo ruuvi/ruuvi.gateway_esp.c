@@ -16,9 +16,10 @@
 #include "os_str.h"
 #include "hmac_sha256.h"
 #include "adv_post.h"
+#include "adv_post_timers.h"
+#include "adv_post_async_comm.h"
 #include "fw_update.h"
 #include "str_buf.h"
-#include "gw_status.h"
 #include "reset_info.h"
 #include "os_sema.h"
 #include "os_malloc.h"
@@ -27,6 +28,7 @@
 #include "gw_cfg_default.h"
 #include "esp_tls_err.h"
 #include "reset_task.h"
+#include "network_timeout.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -548,7 +550,7 @@ http_async_poll_handle_resp_ok(
         case HTTP_POST_RECIPIENT_ADVS1:
             ATTR_FALLTHROUGH;
         case HTTP_POST_RECIPIENT_ADVS2:
-            adv_post_last_successful_network_comm_timestamp_update();
+            network_timeout_update_timestamp();
             break;
     }
 }
@@ -570,7 +572,7 @@ http_async_poll_handle_resp_err(
                 break;
             case HTTP_POST_RECIPIENT_ADVS1:
             case HTTP_POST_RECIPIENT_ADVS2:
-                adv_post_last_successful_network_comm_timestamp_update();
+                network_timeout_update_timestamp();
                 break;
         }
     }

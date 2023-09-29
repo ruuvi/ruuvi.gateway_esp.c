@@ -549,9 +549,10 @@ leds_cb_on_enter_state_after_reboot(void)
 {
     LOG_DBG("on_enter_state_after_reboot");
     LOG_DBG("Start SIG_UPDATE timer with period %ums", LEDS_TASK_UPDATE_PERIOD_JUST_AFTER_REBOOT_MS);
-    os_timer_sig_periodic_restart(
+    os_timer_sig_periodic_restart_with_period(
         g_p_leds_timer_sig_update,
-        pdMS_TO_TICKS(LEDS_TASK_UPDATE_PERIOD_JUST_AFTER_REBOOT_MS));
+        pdMS_TO_TICKS(LEDS_TASK_UPDATE_PERIOD_JUST_AFTER_REBOOT_MS),
+        false);
 }
 
 static void
@@ -559,7 +560,10 @@ leds_cb_on_exit_state_after_reboot(void)
 {
     LOG_DBG("on_exit_state_after_reboot");
     LOG_DBG("Switch SIG_UPDATE timer to period %ums", LEDS_TASK_UPDATE_PERIOD_MS);
-    os_timer_sig_periodic_restart(g_p_leds_timer_sig_update, pdMS_TO_TICKS(LEDS_TASK_UPDATE_PERIOD_MS));
+    os_timer_sig_periodic_restart_with_period(
+        g_p_leds_timer_sig_update,
+        pdMS_TO_TICKS(LEDS_TASK_UPDATE_PERIOD_MS),
+        false);
 }
 
 static void

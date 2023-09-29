@@ -20,6 +20,7 @@
 #include "str_buf.h"
 #include "gw_status.h"
 #include "validate_url.h"
+#include "network_timeout.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -348,7 +349,7 @@ http_server_resp_history(const char* const p_params)
         return http_server_resp_503();
     }
 
-    adv_post_last_successful_network_comm_timestamp_update();
+    network_timeout_update_timestamp();
     main_task_on_get_history();
 
     if (flag_use_filter)

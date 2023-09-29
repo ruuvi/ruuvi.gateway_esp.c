@@ -242,7 +242,7 @@ main_task_handle_sig_schedule_next_check_for_fw_updates(void)
         "ticks)",
         (printf_ulong_t)RUUVI_CHECK_FOR_FW_UPDATES_DELAY_AFTER_SUCCESS_SECONDS,
         (printf_ulong_t)delay_ticks);
-    os_timer_sig_one_shot_restart(g_p_timer_sig_check_for_fw_updates, delay_ticks);
+    os_timer_sig_one_shot_restart_with_period(g_p_timer_sig_check_for_fw_updates, delay_ticks, false);
 }
 
 static void
@@ -254,7 +254,7 @@ main_task_handle_sig_schedule_retry_check_for_fw_updates(void)
         "Schedule a recheck for fw updates after %lu seconds (%lu ticks)",
         (printf_ulong_t)RUUVI_CHECK_FOR_FW_UPDATES_DELAY_BEFORE_RETRY_SECONDS,
         (printf_ulong_t)delay_ticks);
-    os_timer_sig_one_shot_restart(g_p_timer_sig_check_for_fw_updates, delay_ticks);
+    os_timer_sig_one_shot_restart_with_period(g_p_timer_sig_check_for_fw_updates, delay_ticks, false);
 }
 
 static void
@@ -283,7 +283,7 @@ main_task_handle_sig_activate_cfg_mode(void)
     const bool flag_wait_until_relaying_stopped = false;
     gw_status_suspend_relaying(flag_wait_until_relaying_stopped);
 
-    adv_post_send_sig_activate_cfg_mode();
+    adv_post_signal_send_activate_cfg_mode();
 
     timer_cfg_mode_deactivation_start();
 }
@@ -331,7 +331,7 @@ main_task_handle_sig_deactivate_cfg_mode(void)
 
     main_task_send_sig_restart_services();
 
-    adv_post_send_sig_deactivate_cfg_mode();
+    adv_post_signal_send_deactivate_cfg_mode();
 
     const bool flag_wait_until_relaying_resumed = false;
     gw_status_resume_relaying(flag_wait_until_relaying_resumed);
@@ -608,10 +608,11 @@ main_task_configure_periodic_remote_cfg_check(void)
             LOG_INFO(
                 "Reading of the configuration from the remote server is active, period: %u minutes",
                 (printf_uint_t)remote_cfg_refresh_interval_minutes);
-            os_timer_sig_periodic_restart(
+            os_timer_sig_periodic_restart_with_period(
                 g_p_timer_sig_check_for_remote_cfg,
                 pdMS_TO_TICKS(
-                    remote_cfg_refresh_interval_minutes * TIME_UNITS_SECONDS_PER_MINUTE * TIME_UNITS_MS_PER_SECOND));
+                    remote_cfg_refresh_interval_minutes * TIME_UNITS_SECONDS_PER_MINUTE * TIME_UNITS_MS_PER_SECOND),
+                false);
         }
         else
         {
@@ -864,7 +865,7 @@ void
 main_task_timer_sig_check_for_fw_updates_restart(const os_delta_ticks_t delay_ticks)
 {
     LOG_INFO("### Start timer: Check for firmware updates");
-    os_timer_sig_one_shot_restart(g_p_timer_sig_check_for_fw_updates, delay_ticks);
+    os_timer_sig_one_shot_restart_with_period(g_p_timer_sig_check_for_fw_updates, delay_ticks, false);
 }
 
 void
@@ -881,9 +882,10 @@ timer_cfg_mode_deactivation_start(void)
         "### Start timer for deactivation of configuration mode after timeout (%u seconds)",
         MAIN_TASK_DELAY_BEFORE_DEACTIVATING_CFG_MODE_SEC);
     os_timer_sig_one_shot_stop(g_p_timer_sig_deactivate_cfg_mode);
-    os_timer_sig_one_shot_restart(
+    os_timer_sig_one_shot_restart_with_period(
         g_p_timer_sig_deactivate_cfg_mode,
-        pdMS_TO_TICKS(MAIN_TASK_DELAY_BEFORE_DEACTIVATING_CFG_MODE_SEC * TIME_UNITS_MS_PER_SECOND));
+        pdMS_TO_TICKS(MAIN_TASK_DELAY_BEFORE_DEACTIVATING_CFG_MODE_SEC * TIME_UNITS_MS_PER_SECOND),
+        false);
 }
 
 void
@@ -906,9 +908,10 @@ timer_cfg_mode_deactivation_start_with_short_delay(void)
         "### Start timer for deactivation of configuration mode after timeout (%u seconds)",
         MAIN_TASK_HOTSPOT_DEACTIVATION_SHORT_DELAY_SEC);
     os_timer_sig_one_shot_stop(g_p_timer_sig_deactivate_cfg_mode);
-    os_timer_sig_one_shot_restart(
+    os_timer_sig_one_shot_restart_with_period(
         g_p_timer_sig_deactivate_cfg_mode,
-        pdMS_TO_TICKS(MAIN_TASK_HOTSPOT_DEACTIVATION_SHORT_DELAY_SEC * TIME_UNITS_MS_PER_SECOND));
+        pdMS_TO_TICKS(MAIN_TASK_HOTSPOT_DEACTIVATION_SHORT_DELAY_SEC * TIME_UNITS_MS_PER_SECOND),
+        false);
 }
 
 void
