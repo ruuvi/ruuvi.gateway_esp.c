@@ -136,12 +136,12 @@ adv_post_handle_sig_recv_adv(ATTR_UNUSED adv_post_state_t* const p_adv_post_stat
     LOG_DBG("Got ADV_POST_SIG_RECV_ADV");
     if (gw_cfg_get_mqtt_use_mqtt() && (0 == gw_cfg_get_mqtt_sending_interval()) && gw_status_is_mqtt_connected())
     {
-        const bool   flag_ntp_use              = gw_cfg_get_ntp_use();
-        const time_t timestamp_if_synchronized = time_is_synchronized() ? time(NULL) : 0;
-        const time_t timestamp  = flag_ntp_use ? timestamp_if_synchronized : (time_t)metrics_received_advs_get();
         adv_report_t adv_report = { 0 };
         if (adv_table_read_retransmission_list3_head(&adv_report))
         {
+            const bool   flag_ntp_use              = gw_cfg_get_ntp_use();
+            const time_t timestamp_if_synchronized = time_is_synchronized() ? time(NULL) : 0;
+            const time_t timestamp = flag_ntp_use ? timestamp_if_synchronized : (time_t)metrics_received_advs_get();
             if (mqtt_publish_adv(&adv_report, flag_ntp_use, timestamp))
             {
                 network_timeout_update_timestamp();
@@ -262,7 +262,7 @@ adv_post_handle_sig_task_watchdog_feed(ATTR_UNUSED adv_post_state_t* const p_adv
     }
 }
 
-static void
+static bool
 adv_post_on_gw_cfg_change_handle_scan_filter(
     adv_post_cfg_cache_t* const             p_cfg_cache,
     const ruuvi_gw_cfg_scan_filter_t* const p_scan_filter)
@@ -277,6 +277,8 @@ adv_post_on_gw_cfg_change_handle_scan_filter(
         if (NULL == p_cfg_cache->p_arr_of_scan_filter_mac)
         {
             LOG_ERR("Can't allocate memory for scan_filter");
+            p_cfg_cache->scan_filter_length = 0;
+            return false;
         }
     }
     if (NULL != p_cfg_cache->p_arr_of_scan_filter_mac)
@@ -294,6 +296,7 @@ adv_post_on_gw_cfg_change_handle_scan_filter(
     {
         p_cfg_cache->scan_filter_length = 0;
     }
+    return true;
 }
 
 static void
@@ -312,9 +315,13 @@ adv_post_on_gw_cfg_change(adv_post_state_t* const p_adv_post_state)
     }
 
     const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
-    adv_post_on_gw_cfg_change_handle_scan_filter(p_cfg_cache, &p_gw_cfg->ruuvi_cfg.scan_filter);
-
+    const bool      res = adv_post_on_gw_cfg_change_handle_scan_filter(p_cfg_cache, &p_gw_cfg->ruuvi_cfg.scan_filter);
     gw_cfg_unlock_ro(&p_gw_cfg);
+    if (!res)
+    {
+        gateway_restart("Low memory on gw_cfg_change");
+        return;
+    }
 
     if (gw_cfg_get_http_use_http_ruuvi())
     {

@@ -28,7 +28,7 @@ adv_post_green_led_init(void)
 }
 
 void
-adv_post_on_green_led_update(const adv_post_green_len_cmd_e cmd)
+adv_post_on_green_led_update(const adv_post_green_led_cmd_e cmd)
 {
     switch (cmd)
     {

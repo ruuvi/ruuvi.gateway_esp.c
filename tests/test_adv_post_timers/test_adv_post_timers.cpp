@@ -477,12 +477,27 @@ TEST_F(TestAdvPostTimers, test_adv_post_timer_http_ruuvi_reconfiguration) // NOL
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(5 * 1000, timerData.period_ticks);
 
+    adv1_post_timer_restart_with_short_period();
+    ASSERT_TRUE(timerData.is_active);
+    ASSERT_FALSE(timerData.flag_timer_triggered);
+    ASSERT_EQ(5 * 1000, timerData.period_ticks);
+
+    adv1_post_timer_restart_with_increased_period();
+    ASSERT_TRUE(timerData.is_active);
+    ASSERT_FALSE(timerData.flag_timer_triggered);
+    ASSERT_EQ(67 * 1000, timerData.period_ticks);
+
     adv1_post_timer_restart_with_increased_period();
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(67 * 1000, timerData.period_ticks);
 
     adv1_post_timer_restart_with_default_period();
+    ASSERT_TRUE(timerData.is_active);
+    ASSERT_FALSE(timerData.flag_timer_triggered);
+    ASSERT_EQ(10 * 1000, timerData.period_ticks);
+
+    adv_post_timers_set_default_period_for_http_ruuvi(60 * 1000);
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(10 * 1000, timerData.period_ticks);
@@ -520,7 +535,22 @@ TEST_F(TestAdvPostTimers, test_adv_post_timer_http_custom_reconfiguration) // NO
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(67 * 1000, timerData.period_ticks);
 
+    adv2_post_timer_restart_with_increased_period();
+    ASSERT_TRUE(timerData.is_active);
+    ASSERT_FALSE(timerData.flag_timer_triggered);
+    ASSERT_EQ(67 * 1000, timerData.period_ticks);
+
     adv2_post_timer_restart_with_default_period();
+    ASSERT_TRUE(timerData.is_active);
+    ASSERT_FALSE(timerData.flag_timer_triggered);
+    ASSERT_EQ(25 * 1000, timerData.period_ticks);
+
+    adv2_post_timer_restart_with_default_period();
+    ASSERT_TRUE(timerData.is_active);
+    ASSERT_FALSE(timerData.flag_timer_triggered);
+    ASSERT_EQ(25 * 1000, timerData.period_ticks);
+
+    adv_post_timers_set_default_period_for_http_custom(60 * 1000);
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(25 * 1000, timerData.period_ticks);

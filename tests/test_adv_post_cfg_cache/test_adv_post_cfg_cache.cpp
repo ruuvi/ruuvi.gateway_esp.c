@@ -110,6 +110,9 @@ os_mutex_unlock(os_mutex_t const h_mutex)
 
 TEST_F(TestAdvPostCfgCache, test_uninitialized_try_lock_successful) // NOLINT
 {
+    adv_post_cfg_cache_init();
+    adv_post_cfg_cache_init();
+
     adv_post_cfg_cache_t* p_cfg_cache = adv_post_cfg_cache_mutex_try_lock();
     ASSERT_NE(nullptr, p_cfg_cache);
     ASSERT_TRUE(g_pTestClass->m_is_mutex_busy);

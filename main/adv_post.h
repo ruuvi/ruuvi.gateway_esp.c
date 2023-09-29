@@ -20,12 +20,6 @@ extern "C" {
 void
 adv_post_init(void);
 
-bool
-adv_post_is_initialized(void);
-
-void
-adv_post_stop(void);
-
 void
 adv_post_signal_send_ble_scan_changed(void);
 

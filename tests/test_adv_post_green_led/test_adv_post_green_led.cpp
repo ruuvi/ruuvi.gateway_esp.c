@@ -115,4 +115,7 @@ TEST_F(TestAdvPostGreenLed, test_1) // NOLINT
     this->m_led_ctrl_time_interval_ms = -1;
     adv_post_on_green_led_update(ADV_POST_GREEN_LED_CMD_UPDATE);
     ASSERT_EQ(0, this->m_led_ctrl_time_interval_ms);
+
+    adv_post_on_green_led_update((adv_post_green_led_cmd_e)-1);
+    ASSERT_EQ(0, this->m_led_ctrl_time_interval_ms);
 }

@@ -25,7 +25,6 @@
 #include "gw_cfg.h"
 #include "adv_post_signals.h"
 #include "adv_post_timers.h"
-#include "adv_post_events.h"
 #include "adv_post_task.h"
 #include "adv_post_cfg_cache.h"
 #include "adv_post_green_led.h"
@@ -246,13 +245,10 @@ void
 adv_post_init(void)
 {
     adv_post_green_led_init();
-    adv_post_signals_init();
-    adv_post_subscribe_events();
-    adv_post_create_timers();
     adv_post_async_comm_init();
     adv_post_statistics_init();
     adv_table_init();
-    api_callbacks_reg((void*)&adv_callback_func_tbl);
+
     const uint32_t           stack_size    = (1024U * 4U) + 512U;
     const os_task_priority_t task_priority = 5;
     if (!os_task_create_finite_without_param(&adv_post_task, "adv_post_task", stack_size, task_priority))
@@ -263,17 +259,6 @@ adv_post_init(void)
     {
         vTaskDelay(1);
     }
-}
 
-bool
-adv_post_is_initialized(void)
-{
-    return adv_post_signals_is_thread_registered();
-}
-
-void
-adv_post_stop(void)
-{
-    LOG_INFO("adv_post_stop");
-    adv_post_signals_send_sig(ADV_POST_SIG_STOP);
+    api_callbacks_reg((void*)&adv_callback_func_tbl);
 }

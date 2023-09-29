@@ -8,12 +8,20 @@
 #ifndef RUUVI_GATEWAY_ESP_ADV_POST_TASK_H
 #define RUUVI_GATEWAY_ESP_ADV_POST_TASK_H
 
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 void
 adv_post_task(void);
+
+bool
+adv_post_task_is_initialized(void);
+
+void
+adv_post_task_stop(void);
 
 #ifdef __cplusplus
 }

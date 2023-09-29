@@ -12,18 +12,18 @@
 extern "C" {
 #endif
 
-typedef enum adv_post_green_len_cmd_e
+typedef enum adv_post_green_led_cmd_e
 {
     ADV_POST_GREEN_LED_CMD_UPDATE = 0,
     ADV_POST_GREEN_LED_CMD_OFF    = 1,
     ADV_POST_GREEN_LED_CMD_ON     = 2,
-} adv_post_green_len_cmd_e;
+} adv_post_green_led_cmd_e;
 
 void
 adv_post_green_led_init(void);
 
 void
-adv_post_on_green_led_update(const adv_post_green_len_cmd_e cmd);
+adv_post_on_green_led_update(const adv_post_green_led_cmd_e cmd);
 
 #ifdef __cplusplus
 }

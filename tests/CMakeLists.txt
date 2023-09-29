@@ -61,6 +61,8 @@ add_subdirectory(test_adv_post_green_led)
 add_subdirectory(test_adv_post_timers)
 add_subdirectory(test_adv_post_statistics)
 add_subdirectory(test_adv_post_async_comm)
+add_subdirectory(test_adv_post_task)
+add_subdirectory(test_adv_post_signals)
 add_subdirectory(test_adv_table)
 add_subdirectory(test_bin2hex)
 add_subdirectory(test_cjson_wrap)
@@ -121,6 +123,16 @@ add_test(NAME test_adv_post_statistics
 add_test(NAME test_adv_post_async_comm
         COMMAND ruuvi_gateway_esp-test-adv_post_async_comm
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-adv_post_async_comm>/gtestresults.xml
+)
+
+add_test(NAME test_adv_post_task
+        COMMAND ruuvi_gateway_esp-test-adv_post_task
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-adv_post_task>/gtestresults.xml
+)
+
+add_test(NAME test_adv_post_signals
+        COMMAND ruuvi_gateway_esp-test-adv_post_signals
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-adv_post_signals>/gtestresults.xml
 )
 
 add_test(NAME test_bin2hex

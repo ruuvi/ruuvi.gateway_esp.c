@@ -327,6 +327,56 @@ TEST_F(TestAdvPostStatistics, test_adv_post_statistics_info_generate) // NOLINT
         os_free(p_stat_info);
         ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
     }
+    {
+        g_uptime_counter             = 20123;
+        this->m_nrf_status           = false;
+        this->m_is_connected_to_wifi = true;
+        g_network_disconnect_cnt     = 257;
+        this->m_reset_info_cnt       = 85;
+        this->m_esp_reset_reason     = ESP_RST_PANIC;
+
+        str_buf_t reset_info = str_buf_init_null();
+
+        http_json_statistics_info_t* p_stat_info = adv_post_statistics_info_generate(&reset_info);
+        ASSERT_NE(nullptr, p_stat_info);
+        ASSERT_EQ(string("11:22:33:44:55:66"), string(p_stat_info->nrf52_mac_addr.str_buf));
+        ASSERT_EQ(string("v1.14.0"), string(p_stat_info->esp_fw.buf));
+        ASSERT_EQ(string("v1.1.0"), string(p_stat_info->nrf_fw.buf));
+        ASSERT_EQ(20123, p_stat_info->uptime);
+        ASSERT_EQ(0xAA001122 + 2, p_stat_info->nonce);
+        ASSERT_FALSE(p_stat_info->nrf_status);
+        ASSERT_TRUE(p_stat_info->is_connected_to_wifi);
+        ASSERT_EQ(257, p_stat_info->network_disconnect_cnt);
+        ASSERT_EQ(string("PANIC"), string(p_stat_info->reset_reason.buf));
+        ASSERT_EQ(85, p_stat_info->reset_cnt);
+        ASSERT_EQ(string(""), string(p_stat_info->p_reset_info));
+        os_free(p_stat_info);
+        ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+    }
+    {
+        g_uptime_counter             = 20123;
+        this->m_nrf_status           = false;
+        this->m_is_connected_to_wifi = true;
+        g_network_disconnect_cnt     = 257;
+        this->m_reset_info_cnt       = 85;
+        this->m_esp_reset_reason     = ESP_RST_PANIC;
+
+        http_json_statistics_info_t* p_stat_info = adv_post_statistics_info_generate(nullptr);
+        ASSERT_NE(nullptr, p_stat_info);
+        ASSERT_EQ(string("11:22:33:44:55:66"), string(p_stat_info->nrf52_mac_addr.str_buf));
+        ASSERT_EQ(string("v1.14.0"), string(p_stat_info->esp_fw.buf));
+        ASSERT_EQ(string("v1.1.0"), string(p_stat_info->nrf_fw.buf));
+        ASSERT_EQ(20123, p_stat_info->uptime);
+        ASSERT_EQ(0xAA001122 + 3, p_stat_info->nonce);
+        ASSERT_FALSE(p_stat_info->nrf_status);
+        ASSERT_TRUE(p_stat_info->is_connected_to_wifi);
+        ASSERT_EQ(257, p_stat_info->network_disconnect_cnt);
+        ASSERT_EQ(string("PANIC"), string(p_stat_info->reset_reason.buf));
+        ASSERT_EQ(85, p_stat_info->reset_cnt);
+        ASSERT_EQ(string(""), string(p_stat_info->p_reset_info));
+        os_free(p_stat_info);
+        ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+    }
 }
 
 TEST_F(TestAdvPostStatistics, adv_post_statistics_do_send) // NOLINT

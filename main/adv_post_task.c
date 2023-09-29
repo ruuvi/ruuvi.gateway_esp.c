@@ -6,15 +6,21 @@
  */
 
 #include "adv_post_task.h"
+#include <stdbool.h>
 #include <esp_task_wdt.h>
 #include "os_signal.h"
 #include "adv_post_internal.h"
 #include "adv_post_signals.h"
 #include "adv_post_events.h"
 #include "adv_post_timers.h"
-#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
-#include "log.h"
 #include "http.h"
+#if defined(RUUVI_TESTS) && RUUVI_TESTS
+#define LOG_LOCAL_DISABLED 1
+#define LOG_LOCAL_LEVEL    LOG_LEVEL_NONE
+#else
+#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
+#endif
+#include "log.h"
 static const char* TAG = "ADV_POST_TASK";
 
 static void
@@ -35,9 +41,16 @@ adv_post_task(void)
 {
     esp_log_level_set(TAG, LOG_LOCAL_LEVEL);
 
+    adv_post_signals_init();
+    adv_post_subscribe_events();
+    adv_post_create_timers();
+
     if (!os_signal_register_cur_thread(adv_post_signals_get()))
     {
         LOG_ERR("%s failed", "os_signal_register_cur_thread");
+        adv_post_delete_timers();
+        adv_post_unsubscribe_events();
+        adv_post_signals_deinit();
         return;
     }
 
@@ -60,7 +73,7 @@ adv_post_task(void)
         .flag_stop                       = false,
     };
 
-    for (;;)
+    while (!adv_post_state.flag_stop)
     {
         os_signal_events_t sig_events = { 0 };
         if (!os_signal_wait_with_timeout(adv_post_signals_get(), OS_DELTA_TICKS_INFINITE, &sig_events))
@@ -86,10 +99,23 @@ adv_post_task(void)
     LOG_INFO("TaskWatchdog: Unregister current thread");
     esp_task_wdt_delete(xTaskGetCurrentTaskHandle());
 
-    adv_post_unsubscribe_events();
     adv_post_delete_timers();
+    adv_post_unsubscribe_events();
 
     http_abort_any_req_during_processing();
 
     adv_post_signals_deinit();
+}
+
+bool
+adv_post_task_is_initialized(void)
+{
+    return adv_post_signals_is_thread_registered();
+}
+
+void
+adv_post_task_stop(void)
+{
+    LOG_INFO("adv_post_task_stop");
+    adv_post_signals_send_sig(ADV_POST_SIG_STOP);
 }
