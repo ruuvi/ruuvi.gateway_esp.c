@@ -400,13 +400,13 @@ esp_get_free_heap_size(void)
 }
 
 void
-adv_post_timers_set_default_period_for_http_ruuvi(const uint32_t period_ms)
+adv1_post_timer_set_default_period_by_server_resp(const uint32_t period_ms)
 {
     g_pTestClass->m_default_period_for_http_ruuvi = period_ms;
 }
 
 void
-adv_post_timers_set_default_period_for_http_custom(const uint32_t period_ms)
+adv2_post_timer_set_default_period_by_server_resp(const uint32_t period_ms)
 {
     g_pTestClass->m_default_period_for_http_custom = period_ms;
 }

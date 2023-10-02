@@ -23,6 +23,8 @@ struct TimerData
     os_signal_t*     p_signal;
     os_signal_num_e  sig_num;
     os_delta_ticks_t period_ticks;
+    TickType_t       timestamp_when_timer_was_triggered;
+    TickType_t       timestamp_next_fire;
     bool             is_active;
     bool             flag_timer_triggered;
 };
@@ -153,8 +155,9 @@ os_timer_sig_periodic_start(os_timer_sig_periodic_t* const p_obj)
     auto& timerMap = g_pTestClass->m_timerMapPeriodic;
     auto  iter     = timerMap.find(reinterpret_cast<os_timer_sig_periodic_static_t*>(p_obj));
     assert(iter != timerMap.end());
-    TimerData& timerData = iter->second;
-    timerData.is_active  = true;
+    TimerData& timerData          = iter->second;
+    timerData.timestamp_next_fire = xTaskGetTickCount() + timerData.period_ticks;
+    timerData.is_active           = true;
 }
 
 void
@@ -163,8 +166,9 @@ os_timer_sig_one_shot_start(os_timer_sig_one_shot_t* const p_obj)
     auto& timerMap = g_pTestClass->m_timerMapOneShot;
     auto  iter     = timerMap.find(reinterpret_cast<os_timer_sig_one_shot_static_t*>(p_obj));
     assert(iter != timerMap.end());
-    TimerData& timerData = iter->second;
-    timerData.is_active  = true;
+    TimerData& timerData          = iter->second;
+    timerData.timestamp_next_fire = xTaskGetTickCount() + timerData.period_ticks;
+    timerData.is_active           = true;
 }
 
 void
@@ -213,38 +217,58 @@ os_timer_sig_periodic_relaunch(os_timer_sig_periodic_t* const p_obj, bool flag_r
     auto& timerMap = g_pTestClass->m_timerMapPeriodic;
     auto  iter     = timerMap.find(reinterpret_cast<os_timer_sig_periodic_static_t*>(p_obj));
     assert(iter != timerMap.end());
-    TimerData& timerData = iter->second;
-    timerData.is_active  = true;
+    TimerData&       timerData = iter->second;
+    const TickType_t cur_tick  = xTaskGetTickCount();
+    if (flag_restart_from_current_moment)
+    {
+        timerData.timestamp_next_fire                = cur_tick + timerData.period_ticks;
+        timerData.timestamp_when_timer_was_triggered = cur_tick;
+    }
+    else
+    {
+        const os_delta_ticks_t ticks_elapsed = cur_tick - timerData.timestamp_when_timer_was_triggered;
+        if (ticks_elapsed >= timerData.period_ticks)
+        {
+            timerData.timestamp_next_fire                = cur_tick + timerData.period_ticks;
+            timerData.timestamp_when_timer_was_triggered = cur_tick;
+            timerData.flag_timer_triggered               = true;
+        }
+        else
+        {
+            timerData.timestamp_next_fire = timerData.timestamp_when_timer_was_triggered + timerData.period_ticks;
+        }
+    }
+    timerData.is_active = true;
 }
 
 void
-os_timer_sig_one_shot_relaunch(os_timer_sig_one_shot_t* const p_obj)
+os_timer_sig_one_shot_relaunch(os_timer_sig_one_shot_t* const p_obj, const bool flag_restart_from_current_moment)
 {
     auto& timerMap = g_pTestClass->m_timerMapOneShot;
     auto  iter     = timerMap.find(reinterpret_cast<os_timer_sig_one_shot_static_t*>(p_obj));
     assert(iter != timerMap.end());
-    TimerData& timerData = iter->second;
-    timerData.is_active  = true;
-}
-
-void
-os_timer_sig_periodic_simulate(os_timer_sig_periodic_t* const p_obj)
-{
-    auto& timerMap = g_pTestClass->m_timerMapPeriodic;
-    auto  iter     = timerMap.find(reinterpret_cast<os_timer_sig_periodic_static_t*>(p_obj));
-    assert(iter != timerMap.end());
-    TimerData& timerData           = iter->second;
-    timerData.flag_timer_triggered = true;
-}
-
-void
-os_timer_sig_one_shot_simulate(os_timer_sig_one_shot_t* const p_obj)
-{
-    auto& timerMap = g_pTestClass->m_timerMapOneShot;
-    auto  iter     = timerMap.find(reinterpret_cast<os_timer_sig_one_shot_static_t*>(p_obj));
-    assert(iter != timerMap.end());
-    TimerData& timerData           = iter->second;
-    timerData.flag_timer_triggered = true;
+    TimerData&       timerData = iter->second;
+    const TickType_t cur_tick  = xTaskGetTickCount();
+    if (flag_restart_from_current_moment)
+    {
+        timerData.timestamp_next_fire = cur_tick + timerData.period_ticks;
+        timerData.is_active           = true;
+    }
+    else
+    {
+        const os_delta_ticks_t ticks_elapsed = cur_tick - timerData.timestamp_when_timer_was_triggered;
+        if (ticks_elapsed >= timerData.period_ticks)
+        {
+            timerData.timestamp_when_timer_was_triggered = cur_tick;
+            timerData.flag_timer_triggered               = true;
+            timerData.is_active                          = false;
+        }
+        else
+        {
+            timerData.timestamp_next_fire = timerData.timestamp_when_timer_was_triggered + timerData.period_ticks;
+            timerData.is_active           = true;
+        }
+    }
 }
 
 void
@@ -261,20 +285,6 @@ os_timer_sig_periodic_restart_with_period(
     timerData.is_active    = true;
 }
 
-void
-os_timer_sig_one_shot_restart_with_period(
-    os_timer_sig_one_shot_t* const p_obj,
-    const os_delta_ticks_t         delay_ticks,
-    const bool                     flag_reset_active_timer)
-{
-    auto& timerMap = g_pTestClass->m_timerMapOneShot;
-    auto  iter     = timerMap.find(reinterpret_cast<os_timer_sig_one_shot_static_t*>(p_obj));
-    assert(iter != timerMap.end());
-    TimerData& timerData   = iter->second;
-    timerData.period_ticks = delay_ticks;
-    timerData.is_active    = true;
-}
-
 os_delta_ticks_t
 os_timer_sig_periodic_get_period(os_timer_sig_periodic_t* const p_obj)
 {
@@ -285,14 +295,14 @@ os_timer_sig_periodic_get_period(os_timer_sig_periodic_t* const p_obj)
     return timerData.period_ticks;
 }
 
-os_delta_ticks_t
-os_timer_sig_one_shot_get_period(os_timer_sig_one_shot_t* const p_obj)
+void
+os_timer_sig_periodic_set_period(os_timer_sig_periodic_t* const p_obj, const os_delta_ticks_t delay_ticks)
 {
-    auto& timerMap = g_pTestClass->m_timerMapOneShot;
-    auto  iter     = timerMap.find(reinterpret_cast<os_timer_sig_one_shot_static_t*>(p_obj));
+    auto& timerMap = g_pTestClass->m_timerMapPeriodic;
+    auto  iter     = timerMap.find(reinterpret_cast<os_timer_sig_periodic_static_t*>(p_obj));
     assert(iter != timerMap.end());
-    TimerData& timerData = iter->second;
-    return timerData.period_ticks;
+    TimerData& timerData   = iter->second;
+    timerData.period_ticks = delay_ticks;
 }
 
 TickType_t
@@ -306,12 +316,21 @@ os_timer_sig_periodic_update_timestamp_when_timer_was_triggered(
     os_timer_sig_periodic_t* const p_obj,
     const TickType_t               timestamp)
 {
+    auto& timerMap = g_pTestClass->m_timerMapPeriodic;
+    auto  iter     = timerMap.find(reinterpret_cast<os_timer_sig_periodic_static_t*>(p_obj));
+    assert(iter != timerMap.end());
+    TimerData& timerData                         = iter->second;
+    timerData.timestamp_when_timer_was_triggered = timestamp;
 }
 
 bool
 os_timer_sig_periodic_is_active(os_timer_sig_periodic_t* const p_obj)
 {
-    return true;
+    auto& timerMap = g_pTestClass->m_timerMapPeriodic;
+    auto  iter     = timerMap.find(reinterpret_cast<os_timer_sig_periodic_static_t*>(p_obj));
+    assert(iter != timerMap.end());
+    TimerData& timerData = iter->second;
+    return timerData.is_active;
 }
 
 } // extern "C"
@@ -351,7 +370,7 @@ TEST_F(TestAdvPostTimers, test_adv_post_timer_http_ruuvi) // NOLINT
 
     timerData.flag_timer_triggered = false;
 
-    adv_post_timers_stop_timer_sig_retransmit_to_http_ruuvi();
+    adv1_post_timer_stop();
     ASSERT_FALSE(timerData.is_active);
 }
 
@@ -370,7 +389,7 @@ TEST_F(TestAdvPostTimers, test_adv_post_timer_http_custom) // NOLINT
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(10 * 1000, timerData.period_ticks);
 
-    adv_post_timers_stop_timer_sig_retransmit_to_http_custom();
+    adv2_post_timer_stop();
     ASSERT_FALSE(timerData.is_active);
 }
 
@@ -391,6 +410,8 @@ TEST_F(TestAdvPostTimers, test_timer_mqtt) // NOLINT
 TEST_F(TestAdvPostTimers, test_timer_sig_send_statistics) // NOLINT
 {
     TimerData& timerData = this->findTimerSigPeriodicByName("adv_post_send_stat");
+
+    adv_post_timers_postpone_sending_statistics();
 
     adv_post_timers_relaunch_timer_sig_send_statistics();
     ASSERT_TRUE(timerData.is_active);
@@ -473,37 +494,50 @@ TEST_F(TestAdvPostTimers, test_adv_post_timer_http_ruuvi_reconfiguration) // NOL
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(10 * 1000, timerData.period_ticks);
 
-    adv1_post_timer_restart_with_increased_period();
+    adv_post_timers_relaunch_timer_sig_retransmit_to_http_ruuvi();
+    ASSERT_TRUE(timerData.is_active);
+    ASSERT_FALSE(timerData.flag_timer_triggered);
+    ASSERT_EQ(10 * 1000, timerData.period_ticks);
+
+    adv1_post_timer_relaunch_with_increased_period();
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(67 * 1000, timerData.period_ticks);
 
-    adv1_post_timer_restart_with_increased_period();
+    adv1_post_timer_stop();
+    ASSERT_FALSE(timerData.is_active);
+
+    adv1_post_timer_relaunch_with_increased_period();
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(67 * 1000, timerData.period_ticks);
 
-    adv1_post_timer_restart_with_default_period();
+    adv1_post_timer_relaunch_with_increased_period();
+    ASSERT_TRUE(timerData.is_active);
+    ASSERT_FALSE(timerData.flag_timer_triggered);
+    ASSERT_EQ(67 * 1000, timerData.period_ticks);
+
+    adv1_post_timer_relaunch_with_default_period();
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(10 * 1000, timerData.period_ticks);
 
-    adv_post_timers_set_default_period_for_http_ruuvi(60 * 1000);
+    adv1_post_timer_set_default_period_by_server_resp(60 * 1000);
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(10 * 1000, timerData.period_ticks);
 
-    adv_post_timers_set_default_period_for_http_ruuvi(60 * 1000);
+    adv1_post_timer_set_default_period_by_server_resp(60 * 1000);
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(10 * 1000, timerData.period_ticks);
 
-    adv1_post_timer_restart_with_default_period();
+    adv1_post_timer_relaunch_with_default_period();
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(60 * 1000, timerData.period_ticks);
 
-    adv_post_timers_stop_timer_sig_retransmit_to_http_ruuvi();
+    adv1_post_timer_stop();
     ASSERT_FALSE(timerData.is_active);
 }
 
@@ -516,43 +550,56 @@ TEST_F(TestAdvPostTimers, test_adv_post_timer_http_custom_reconfiguration) // NO
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(10 * 1000, timerData.period_ticks);
 
-    adv2_post_timer_restart_with_increased_period();
+    adv_post_timers_relaunch_timer_sig_retransmit_to_http_custom();
+    ASSERT_TRUE(timerData.is_active);
+    ASSERT_FALSE(timerData.flag_timer_triggered);
+    ASSERT_EQ(10 * 1000, timerData.period_ticks);
+
+    adv2_post_timer_relaunch_with_increased_period();
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(67 * 1000, timerData.period_ticks);
 
-    adv2_post_timer_restart_with_increased_period();
+    adv2_post_timer_stop();
+    ASSERT_FALSE(timerData.is_active);
+
+    adv2_post_timer_relaunch_with_increased_period();
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(67 * 1000, timerData.period_ticks);
 
-    adv2_post_timers_set_default_period(25 * 1000);
+    adv2_post_timer_relaunch_with_increased_period();
+    ASSERT_TRUE(timerData.is_active);
+    ASSERT_FALSE(timerData.flag_timer_triggered);
+    ASSERT_EQ(67 * 1000, timerData.period_ticks);
 
-    adv2_post_timer_restart_with_default_period();
+    adv2_post_timer_set_default_period(25 * 1000);
+
+    adv2_post_timer_relaunch_with_default_period();
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(25 * 1000, timerData.period_ticks);
 
-    adv2_post_timer_restart_with_default_period();
+    adv2_post_timer_relaunch_with_default_period();
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(25 * 1000, timerData.period_ticks);
 
-    adv_post_timers_set_default_period_for_http_custom(60 * 1000);
+    adv2_post_timer_set_default_period_by_server_resp(60 * 1000);
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(25 * 1000, timerData.period_ticks);
 
-    adv_post_timers_set_default_period_for_http_custom(60 * 1000);
+    adv2_post_timer_set_default_period_by_server_resp(60 * 1000);
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(25 * 1000, timerData.period_ticks);
 
-    adv2_post_timer_restart_with_default_period();
+    adv2_post_timer_relaunch_with_default_period();
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(60 * 1000, timerData.period_ticks);
 
-    adv_post_timers_stop_timer_sig_retransmit_to_http_custom();
+    adv2_post_timer_stop();
     ASSERT_FALSE(timerData.is_active);
 }

@@ -185,15 +185,6 @@ adv_post_timers_relaunch_timer_sig_retransmit_to_http_ruuvi(void)
 }
 
 void
-adv_post_timers_stop_timer_sig_retransmit_to_http_ruuvi(void)
-{
-    os_timer_sig_periodic_t* const p_timer_sig
-        = g_p_adv_post_periodic_timer_sig[ADV_POST_PERIODIC_TIMER_SIG_RETRANSMIT];
-    LOG_DBG("%s", __func__);
-    os_timer_sig_periodic_stop(p_timer_sig);
-}
-
-void
 adv_post_timers_relaunch_timer_sig_retransmit_to_http_custom(void)
 {
     os_timer_sig_periodic_t* const p_timer_sig
@@ -203,7 +194,16 @@ adv_post_timers_relaunch_timer_sig_retransmit_to_http_custom(void)
 }
 
 void
-adv_post_timers_stop_timer_sig_retransmit_to_http_custom(void)
+adv1_post_timer_stop(void)
+{
+    os_timer_sig_periodic_t* const p_timer_sig
+        = g_p_adv_post_periodic_timer_sig[ADV_POST_PERIODIC_TIMER_SIG_RETRANSMIT];
+    LOG_DBG("%s", __func__);
+    os_timer_sig_periodic_stop(p_timer_sig);
+}
+
+void
+adv2_post_timer_stop(void)
 {
     os_timer_sig_periodic_t* const p_timer_sig
         = g_p_adv_post_periodic_timer_sig[ADV_POST_PERIODIC_TIMER_SIG_RETRANSMIT2];
@@ -294,79 +294,80 @@ adv_post_timers_start_timer_sig_recv_adv_timeout(void)
 void
 adv_post_timers_relaunch_timer_sig_recv_adv_timeout(void)
 {
-    os_timer_sig_one_shot_relaunch(g_p_adv_post_one_shot_timer_sig[ADV_POST_ONE_SHOT_TIMER_SIG_RECV_ADV_TIMEOUT]);
+    os_timer_sig_one_shot_relaunch(g_p_adv_post_one_shot_timer_sig[ADV_POST_ONE_SHOT_TIMER_SIG_RECV_ADV_TIMEOUT], true);
 }
 
 static void
-adv_post_timer_restart_with_period(
+adv_post_timer_relaunch_with_period(
     const uint32_t                 advs_num,
     os_timer_sig_periodic_t* const p_timer_sig,
     const uint32_t                 period_ms)
 {
     LOG_DBG("%s: period_ms=%d", __func__, period_ms);
     const os_delta_ticks_t period_ticks = pdMS_TO_TICKS(period_ms);
-    if (!os_timer_sig_periodic_is_active(p_timer_sig)
+    if ((!os_timer_sig_periodic_is_active(p_timer_sig))
         || (os_timer_sig_periodic_get_period(p_timer_sig) != period_ticks))
     {
         LOG_INFO("advs%u: restart timer with period %u ms", (printf_uint_t)advs_num, (printf_uint_t)period_ms);
-        os_timer_sig_periodic_restart_with_period(p_timer_sig, period_ticks, false);
+        os_timer_sig_periodic_set_period(p_timer_sig, period_ticks);
+        os_timer_sig_periodic_relaunch(p_timer_sig, false);
     }
 }
 
 void
-adv1_post_timer_restart_with_default_period(void)
+adv1_post_timer_relaunch_with_default_period(void)
 {
     const adv_post_timer_t* const p_adv_post_timer = &g_adv_post_timers[0];
     LOG_DBG("%s: interval_ms=%d", __func__, p_adv_post_timer->default_interval_ms);
-    adv_post_timer_restart_with_period(
+    adv_post_timer_relaunch_with_period(
         p_adv_post_timer->num,
         g_p_adv_post_periodic_timer_sig[ADV_POST_PERIODIC_TIMER_SIG_RETRANSMIT],
         p_adv_post_timer->default_interval_ms);
 }
 
 void
-adv1_post_timer_restart_with_increased_period(void)
+adv1_post_timer_relaunch_with_increased_period(void)
 {
     const adv_post_timer_t* const p_adv_post_timer = &g_adv_post_timers[0];
     LOG_DBG("%s: interval_ms=%d", __func__, ADV_POST_DELAY_BEFORE_RETRYING_POST_AFTER_ERROR_MS);
-    adv_post_timer_restart_with_period(
+    adv_post_timer_relaunch_with_period(
         p_adv_post_timer->num,
         g_p_adv_post_periodic_timer_sig[ADV_POST_PERIODIC_TIMER_SIG_RETRANSMIT],
         ADV_POST_DELAY_BEFORE_RETRYING_POST_AFTER_ERROR_MS);
 }
 
 void
-adv2_post_timer_restart_with_default_period(void)
+adv2_post_timer_relaunch_with_default_period(void)
 {
     const adv_post_timer_t* const p_adv_post_timer = &g_adv_post_timers[1];
     LOG_DBG("%s: interval_ms=%d", __func__, p_adv_post_timer->default_interval_ms);
-    adv_post_timer_restart_with_period(
+    adv_post_timer_relaunch_with_period(
         p_adv_post_timer->num,
         g_p_adv_post_periodic_timer_sig[ADV_POST_PERIODIC_TIMER_SIG_RETRANSMIT2],
         p_adv_post_timer->default_interval_ms);
 }
 
 void
-adv2_post_timer_restart_with_increased_period(void)
+adv2_post_timer_relaunch_with_increased_period(void)
 {
     const adv_post_timer_t* const p_adv_post_timer = &g_adv_post_timers[1];
     LOG_DBG("%s: interval_ms=%d", __func__, ADV_POST_DELAY_BEFORE_RETRYING_POST_AFTER_ERROR_MS);
-    adv_post_timer_restart_with_period(
+    adv_post_timer_relaunch_with_period(
         p_adv_post_timer->num,
         g_p_adv_post_periodic_timer_sig[ADV_POST_PERIODIC_TIMER_SIG_RETRANSMIT2],
         ADV_POST_DELAY_BEFORE_RETRYING_POST_AFTER_ERROR_MS);
 }
 
 void
-adv2_post_timers_set_default_period(const uint32_t period_ms)
+adv2_post_timer_set_default_period(const uint32_t period_ms)
 {
     LOG_DBG("%s", __func__);
     adv_post_timer_t* const p_adv_post_timer = &g_adv_post_timers[1];
     p_adv_post_timer->default_interval_ms    = period_ms;
 }
 
-void
-adv_post_timers_set_default_period_for_http(adv_post_timer_t* const p_adv_post_timer, const uint32_t period_ms)
+static void
+adv_post_timer_set_default_period_by_server_resp(adv_post_timer_t* const p_adv_post_timer, const uint32_t period_ms)
 {
     LOG_DBG("%s", __func__);
     if (period_ms != p_adv_post_timer->default_interval_ms)
@@ -381,15 +382,15 @@ adv_post_timers_set_default_period_for_http(adv_post_timer_t* const p_adv_post_t
 }
 
 void
-adv_post_timers_set_default_period_for_http_ruuvi(const uint32_t period_ms)
+adv1_post_timer_set_default_period_by_server_resp(const uint32_t period_ms)
 {
     LOG_DBG("%s", __func__);
-    adv_post_timers_set_default_period_for_http(&g_adv_post_timers[0], period_ms);
+    adv_post_timer_set_default_period_by_server_resp(&g_adv_post_timers[0], period_ms);
 }
 
 void
-adv_post_timers_set_default_period_for_http_custom(const uint32_t period_ms)
+adv2_post_timer_set_default_period_by_server_resp(const uint32_t period_ms)
 {
     LOG_DBG("%s", __func__);
-    adv_post_timers_set_default_period_for_http(&g_adv_post_timers[1], period_ms);
+    adv_post_timer_set_default_period_by_server_resp(&g_adv_post_timers[1], period_ms);
 }

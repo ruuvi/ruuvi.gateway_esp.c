@@ -552,33 +552,33 @@ adv_post_cfg_cache_mutex_unlock(adv_post_cfg_cache_t** p_p_cfg_cache)
 }
 
 void
-adv1_post_timer_restart_with_default_period(void)
+adv1_post_timer_relaunch_with_default_period(void)
 {
     g_pTestClass->m_events_history.push_back(
         { .event_type = EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD });
 }
 
 void
-adv2_post_timer_restart_with_default_period(void)
+adv2_post_timer_relaunch_with_default_period(void)
 {
     g_pTestClass->m_events_history.push_back(
         { .event_type = EVENT_HISTORY_ADV2_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD });
 }
 
 void
-adv2_post_timers_set_default_period(const uint32_t period_ms)
+adv2_post_timer_set_default_period(const uint32_t period_ms)
 {
     g_pTestClass->m_events_history.push_back({ .event_type = EVENT_HISTORY_ADV2_POST_TIMERS_SET_DEFAULT_PERIOD });
 }
 
 void
-adv_post_timers_stop_timer_sig_retransmit_to_http_ruuvi(void)
+adv1_post_timer_stop(void)
 {
     g_pTestClass->m_events_history.push_back({ .event_type = EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_RUUVI });
 }
 
 void
-adv_post_timers_stop_timer_sig_retransmit_to_http_custom(void)
+adv2_post_timer_stop(void)
 {
     g_pTestClass->m_events_history.push_back({ .event_type = EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM });
 }
@@ -942,8 +942,12 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_time_synchronized) // NOLINT
         .flag_use_timestamps             = true,
         .flag_stop                       = false,
     };
+
+    m_gw_cfg.ruuvi_cfg.http_stat.use_http_stat = false;
+
     ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_TIME_SYNCHRONIZED, &adv_post_state));
     ASSERT_FALSE(adv_post_state.flag_stop);
+    ASSERT_TRUE(adv_post_state.flag_primary_time_sync_is_done);
 
     ASSERT_EQ(1, this->m_events_history.size());
     ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[0].event_type);
@@ -951,6 +955,15 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_time_synchronized) // NOLINT
     this->m_events_history.clear();
     ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_TIME_SYNCHRONIZED, &adv_post_state));
     ASSERT_EQ(0, this->m_events_history.size());
+
+    this->m_events_history.clear();
+    adv_post_state.flag_primary_time_sync_is_done = false;
+    m_gw_cfg.ruuvi_cfg.http_stat.use_http_stat    = true;
+    ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_TIME_SYNCHRONIZED, &adv_post_state));
+    ASSERT_TRUE(adv_post_state.flag_primary_time_sync_is_done);
+    ASSERT_EQ(2, this->m_events_history.size());
+    ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[0].event_type);
+    ASSERT_EQ(EVENT_HISTORY_ADV_POST_TIMERS_POSTPONE_SENDING_STATISTICS, this->m_events_history[1].event_type);
 
     this->m_events_history.clear();
     adv_post_state.flag_need_to_send_advs1 = 1;

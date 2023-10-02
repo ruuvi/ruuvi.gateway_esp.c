@@ -27,13 +27,13 @@ void
 adv_post_timers_relaunch_timer_sig_retransmit_to_http_ruuvi(void);
 
 void
-adv_post_timers_stop_timer_sig_retransmit_to_http_ruuvi(void);
+adv1_post_timer_stop(void);
 
 void
 adv_post_timers_relaunch_timer_sig_retransmit_to_http_custom(void);
 
 void
-adv_post_timers_stop_timer_sig_retransmit_to_http_custom(void);
+adv2_post_timer_stop(void);
 
 void
 adv_post_timers_restart_timer_sig_mqtt(const os_delta_ticks_t delay_ticks);
@@ -69,25 +69,25 @@ void
 adv_post_timers_relaunch_timer_sig_recv_adv_timeout(void);
 
 void
-adv_post_timers_set_default_period_for_http_ruuvi(const uint32_t period_ms);
+adv1_post_timer_set_default_period_by_server_resp(const uint32_t period_ms);
 
 void
-adv_post_timers_set_default_period_for_http_custom(const uint32_t period_ms);
+adv2_post_timer_set_default_period_by_server_resp(const uint32_t period_ms);
 
 void
-adv1_post_timer_restart_with_default_period(void);
+adv1_post_timer_relaunch_with_default_period(void);
 
 void
-adv1_post_timer_restart_with_increased_period(void);
+adv1_post_timer_relaunch_with_increased_period(void);
 
 void
-adv2_post_timer_restart_with_default_period(void);
+adv2_post_timer_relaunch_with_default_period(void);
 
 void
-adv2_post_timer_restart_with_increased_period(void);
+adv2_post_timer_relaunch_with_increased_period(void);
 
 void
-adv2_post_timers_set_default_period(const uint32_t period_ms);
+adv2_post_timer_set_default_period(const uint32_t period_ms);
 
 #ifdef __cplusplus
 }
