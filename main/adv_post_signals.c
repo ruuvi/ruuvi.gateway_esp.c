@@ -78,20 +78,21 @@ adv_post_signals_is_thread_registered(void)
 static void
 adv_post_restart_pending_retransmissions(const adv_post_state_t* const p_adv_post_state)
 {
+    LOG_DBG("%s", __func__);
     if (p_adv_post_state->flag_need_to_send_advs1)
     {
         LOG_INFO("Force pending advs1 retransmission");
-        adv_post_timers_relaunch_timer_sig_retransmit_to_http_ruuvi(true);
+        adv_post_timers_relaunch_timer_sig_retransmit_to_http_ruuvi();
     }
     if (p_adv_post_state->flag_need_to_send_advs2)
     {
         LOG_INFO("Force pending advs2 retransmission");
-        adv_post_timers_relaunch_timer_sig_retransmit_to_http_custom(true);
+        adv_post_timers_relaunch_timer_sig_retransmit_to_http_custom();
     }
     if (p_adv_post_state->flag_need_to_send_statistics)
     {
         LOG_INFO("Force pending statistics retransmission");
-        adv_post_timers_relaunch_timer_sig_send_statistics(true);
+        adv_post_timers_relaunch_timer_sig_send_statistics();
     }
 }
 
@@ -126,6 +127,10 @@ adv_post_handle_sig_time_synchronized(adv_post_state_t* const p_adv_post_state)
         LOG_INFO("Remove all accumulated data with zero timestamps");
         LOG_INFO("Clear adv_table");
         adv_table_clear();
+        if (gw_cfg_get_http_stat_use_http_stat())
+        {
+            adv_post_timers_postpone_sending_statistics();
+        }
     }
     adv_post_restart_pending_retransmissions(p_adv_post_state);
 }
@@ -189,14 +194,6 @@ adv_post_handle_sig_retransmit_mqtt(adv_post_state_t* const p_adv_post_state)
         p_adv_post_state->flag_need_to_send_mqtt_periodic = true;
         os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DO_ASYNC_COMM));
     }
-}
-
-static void
-adv_post_handle_sig_activate_sending_statistics(adv_post_state_t* const p_adv_post_state)
-{
-    LOG_INFO("Got ADV_POST_SIG_ACTIVATE_SENDING_STATISTICS");
-    p_adv_post_state->flag_need_to_send_statistics = true;
-    adv_post_timers_relaunch_timer_sig_send_statistics(true);
 }
 
 static void
@@ -326,7 +323,7 @@ adv_post_on_gw_cfg_change(adv_post_state_t* const p_adv_post_state)
     if (gw_cfg_get_http_use_http_ruuvi())
     {
         LOG_INFO("Start timer for advs1 retransmission");
-        adv1_post_timer_restart_with_short_period();
+        adv1_post_timer_restart_with_default_period();
     }
     else
     {
@@ -337,7 +334,8 @@ adv_post_on_gw_cfg_change(adv_post_state_t* const p_adv_post_state)
     if (gw_cfg_get_http_use_http())
     {
         LOG_INFO("Start timer for advs2 retransmission");
-        adv2_post_timer_restart_with_short_period(gw_cfg_get_http_period() * TIME_UNITS_MS_PER_SECOND);
+        adv2_post_timers_set_default_period(gw_cfg_get_http_period() * TIME_UNITS_MS_PER_SECOND);
+        adv2_post_timer_restart_with_default_period();
     }
     else
     {
@@ -358,16 +356,13 @@ adv_post_on_gw_cfg_change(adv_post_state_t* const p_adv_post_state)
     }
     if (gw_cfg_get_http_stat_use_http_stat())
     {
-        LOG_INFO("Start timer to send statistics");
-        adv_post_timers_start_timer_sig_send_statistics();
-        adv_post_timers_restart_timer_sig_activate_sending_statistics(
-            pdMS_TO_TICKS(ADV_POST_DELAY_AFTER_CONFIGURATION_CHANGED_MS));
+        LOG_INFO("Relaunch timer to send statistics");
+        adv_post_timers_relaunch_timer_sig_send_statistics();
     }
     else
     {
         LOG_INFO("Stop timer to send statistics");
         adv_post_timers_stop_timer_sig_send_statistics();
-        adv_post_timers_stop_timer_sig_activate_sending_statistics();
         p_adv_post_state->flag_need_to_send_statistics = false;
     }
     adv_post_cfg_cache_mutex_unlock(&p_cfg_cache);
@@ -383,7 +378,7 @@ adv_post_handle_sig_gw_cfg_ready(adv_post_state_t* const p_adv_post_state)
     ruuvi_send_nrf_settings_from_gw_cfg();
     if (gw_cfg_get_http_stat_use_http_stat())
     {
-        adv_post_timers_start_timer_sig_activate_sending_statistics();
+        adv_post_timers_postpone_sending_statistics();
     }
     adv_post_on_gw_cfg_change(p_adv_post_state);
     if (gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss() && (gw_cfg_get_http_use_http_ruuvi() || gw_cfg_get_http_use_http()))
@@ -473,30 +468,29 @@ bool
 adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p_adv_post_state)
 {
     static const adv_post_sig_handler_t g_adv_post_sig_handlers[ADV_POST_SIG_LAST + 1] = {
-        [OS_SIGNAL_NUM_NONE]                       = NULL,
-        [ADV_POST_SIG_STOP]                        = &adv_post_handle_sig_stop,
-        [ADV_POST_SIG_NETWORK_DISCONNECTED]        = &adv_post_handle_sig_network_disconnected,
-        [ADV_POST_SIG_NETWORK_CONNECTED]           = &adv_post_handle_sig_network_connected,
-        [ADV_POST_SIG_TIME_SYNCHRONIZED]           = &adv_post_handle_sig_time_synchronized,
-        [ADV_POST_SIG_ON_RECV_ADV]                 = &adv_post_handle_sig_recv_adv,
-        [ADV_POST_SIG_RETRANSMIT]                  = &adv_post_handle_sig_retransmit,
-        [ADV_POST_SIG_RETRANSMIT2]                 = &adv_post_handle_sig_retransmit2,
-        [ADV_POST_SIG_RETRANSMIT_MQTT]             = &adv_post_handle_sig_retransmit_mqtt,
-        [ADV_POST_SIG_ACTIVATE_SENDING_STATISTICS] = &adv_post_handle_sig_activate_sending_statistics,
-        [ADV_POST_SIG_SEND_STATISTICS]             = &adv_post_handle_sig_send_statistics,
-        [ADV_POST_SIG_DO_ASYNC_COMM]               = &adv_post_do_async_comm,
-        [ADV_POST_SIG_RELAYING_MODE_CHANGED]       = &adv_post_handle_sig_relaying_mode_changed,
-        [ADV_POST_SIG_NETWORK_WATCHDOG]            = &adv_post_handle_sig_network_watchdog,
-        [ADV_POST_SIG_TASK_WATCHDOG_FEED]          = &adv_post_handle_sig_task_watchdog_feed,
-        [ADV_POST_SIG_GW_CFG_READY]                = &adv_post_handle_sig_gw_cfg_ready,
-        [ADV_POST_SIG_GW_CFG_CHANGED_RUUVI]        = &adv_post_handle_sig_gw_cfg_changed_ruuvi,
-        [ADV_POST_SIG_BLE_SCAN_CHANGED]            = &adv_post_handle_sig_ble_scan_changed,
-        [ADV_POST_SIG_ACTIVATE_CFG_MODE]           = &adv_post_handle_sig_activate_cfg_mode,
-        [ADV_POST_SIG_DEACTIVATE_CFG_MODE]         = &adv_post_handle_sig_deactivate_cfg_mode,
-        [ADV_POST_SIG_GREEN_LED_TURN_ON]           = &adv_post_handle_sig_green_led_turn_on,
-        [ADV_POST_SIG_GREEN_LED_TURN_OFF]          = &adv_post_handle_sig_green_led_turn_off,
-        [ADV_POST_SIG_GREEN_LED_UPDATE]            = &adv_post_handle_sig_green_led_update,
-        [ADV_POST_SIG_RECV_ADV_TIMEOUT]            = &adv_post_handle_sig_recv_adv_timeout,
+        [OS_SIGNAL_NUM_NONE]                 = NULL,
+        [ADV_POST_SIG_STOP]                  = &adv_post_handle_sig_stop,
+        [ADV_POST_SIG_NETWORK_DISCONNECTED]  = &adv_post_handle_sig_network_disconnected,
+        [ADV_POST_SIG_NETWORK_CONNECTED]     = &adv_post_handle_sig_network_connected,
+        [ADV_POST_SIG_TIME_SYNCHRONIZED]     = &adv_post_handle_sig_time_synchronized,
+        [ADV_POST_SIG_ON_RECV_ADV]           = &adv_post_handle_sig_recv_adv,
+        [ADV_POST_SIG_RETRANSMIT]            = &adv_post_handle_sig_retransmit,
+        [ADV_POST_SIG_RETRANSMIT2]           = &adv_post_handle_sig_retransmit2,
+        [ADV_POST_SIG_RETRANSMIT_MQTT]       = &adv_post_handle_sig_retransmit_mqtt,
+        [ADV_POST_SIG_SEND_STATISTICS]       = &adv_post_handle_sig_send_statistics,
+        [ADV_POST_SIG_DO_ASYNC_COMM]         = &adv_post_do_async_comm,
+        [ADV_POST_SIG_RELAYING_MODE_CHANGED] = &adv_post_handle_sig_relaying_mode_changed,
+        [ADV_POST_SIG_NETWORK_WATCHDOG]      = &adv_post_handle_sig_network_watchdog,
+        [ADV_POST_SIG_TASK_WATCHDOG_FEED]    = &adv_post_handle_sig_task_watchdog_feed,
+        [ADV_POST_SIG_GW_CFG_READY]          = &adv_post_handle_sig_gw_cfg_ready,
+        [ADV_POST_SIG_GW_CFG_CHANGED_RUUVI]  = &adv_post_handle_sig_gw_cfg_changed_ruuvi,
+        [ADV_POST_SIG_BLE_SCAN_CHANGED]      = &adv_post_handle_sig_ble_scan_changed,
+        [ADV_POST_SIG_ACTIVATE_CFG_MODE]     = &adv_post_handle_sig_activate_cfg_mode,
+        [ADV_POST_SIG_DEACTIVATE_CFG_MODE]   = &adv_post_handle_sig_deactivate_cfg_mode,
+        [ADV_POST_SIG_GREEN_LED_TURN_ON]     = &adv_post_handle_sig_green_led_turn_on,
+        [ADV_POST_SIG_GREEN_LED_TURN_OFF]    = &adv_post_handle_sig_green_led_turn_off,
+        [ADV_POST_SIG_GREEN_LED_UPDATE]      = &adv_post_handle_sig_green_led_update,
+        [ADV_POST_SIG_RECV_ADV_TIMEOUT]      = &adv_post_handle_sig_recv_adv_timeout,
     };
 
     assert(adv_post_sig < OS_ARRAY_SIZE(g_adv_post_sig_handlers));

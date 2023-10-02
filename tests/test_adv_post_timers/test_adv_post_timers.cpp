@@ -208,7 +208,7 @@ os_timer_sig_one_shot_delete(os_timer_sig_one_shot_t** const pp_obj)
 }
 
 void
-os_timer_sig_periodic_relaunch(os_timer_sig_periodic_t* const p_obj)
+os_timer_sig_periodic_relaunch(os_timer_sig_periodic_t* const p_obj, bool flag_restart_from_current_moment)
 {
     auto& timerMap = g_pTestClass->m_timerMapPeriodic;
     auto  iter     = timerMap.find(reinterpret_cast<os_timer_sig_periodic_static_t*>(p_obj));
@@ -295,6 +295,25 @@ os_timer_sig_one_shot_get_period(os_timer_sig_one_shot_t* const p_obj)
     return timerData.period_ticks;
 }
 
+TickType_t
+xTaskGetTickCount(void)
+{
+    return 0;
+}
+
+void
+os_timer_sig_periodic_update_timestamp_when_timer_was_triggered(
+    os_timer_sig_periodic_t* const p_obj,
+    const TickType_t               timestamp)
+{
+}
+
+bool
+os_timer_sig_periodic_is_active(os_timer_sig_periodic_t* const p_obj)
+{
+    return true;
+}
+
 } // extern "C"
 
 /*** Unit-Tests
@@ -303,7 +322,7 @@ os_timer_sig_one_shot_get_period(os_timer_sig_one_shot_t* const p_obj)
 TEST_F(TestAdvPostTimers, test_1) // NOLINT
 {
     ASSERT_EQ(7, this->m_timerMapPeriodic.size());
-    ASSERT_EQ(3, this->m_timerMapOneShot.size());
+    ASSERT_EQ(2, this->m_timerMapOneShot.size());
 
     os_timer_sig_periodic_t* p_timer_sig_greed_led_update = adv_post_timers_get_timer_sig_green_led_update();
     ASSERT_NE(nullptr, p_timer_sig_greed_led_update);
@@ -320,14 +339,14 @@ TEST_F(TestAdvPostTimers, test_adv_post_timer_http_ruuvi) // NOLINT
 {
     TimerData& timerData = this->findTimerSigPeriodicByName("adv_post_retransmit");
     ASSERT_FALSE(timerData.is_active);
-    adv_post_timers_relaunch_timer_sig_retransmit_to_http_ruuvi(false);
+    adv_post_timers_relaunch_timer_sig_retransmit_to_http_ruuvi();
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(10 * 1000, timerData.period_ticks);
 
-    adv_post_timers_relaunch_timer_sig_retransmit_to_http_ruuvi(true);
+    adv_post_timers_relaunch_timer_sig_retransmit_to_http_ruuvi();
     ASSERT_TRUE(timerData.is_active);
-    ASSERT_TRUE(timerData.flag_timer_triggered);
+    ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(10 * 1000, timerData.period_ticks);
 
     timerData.flag_timer_triggered = false;
@@ -341,14 +360,14 @@ TEST_F(TestAdvPostTimers, test_adv_post_timer_http_custom) // NOLINT
     TimerData& timerData = this->findTimerSigPeriodicByName("adv_post_retransmit2");
 
     ASSERT_FALSE(timerData.is_active);
-    adv_post_timers_relaunch_timer_sig_retransmit_to_http_custom(false);
+    adv_post_timers_relaunch_timer_sig_retransmit_to_http_custom();
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(10 * 1000, timerData.period_ticks);
 
-    adv_post_timers_relaunch_timer_sig_retransmit_to_http_custom(true);
+    adv_post_timers_relaunch_timer_sig_retransmit_to_http_custom();
     ASSERT_TRUE(timerData.is_active);
-    ASSERT_TRUE(timerData.flag_timer_triggered);
+    ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(10 * 1000, timerData.period_ticks);
 
     adv_post_timers_stop_timer_sig_retransmit_to_http_custom();
@@ -373,7 +392,7 @@ TEST_F(TestAdvPostTimers, test_timer_sig_send_statistics) // NOLINT
 {
     TimerData& timerData = this->findTimerSigPeriodicByName("adv_post_send_stat");
 
-    adv_post_timers_start_timer_sig_send_statistics();
+    adv_post_timers_relaunch_timer_sig_send_statistics();
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(60 * 60 * 1000, timerData.period_ticks);
@@ -382,35 +401,17 @@ TEST_F(TestAdvPostTimers, test_timer_sig_send_statistics) // NOLINT
     ASSERT_FALSE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
 
-    adv_post_timers_relaunch_timer_sig_send_statistics(false);
+    adv_post_timers_relaunch_timer_sig_send_statistics();
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(60 * 60 * 1000, timerData.period_ticks);
 
-    adv_post_timers_relaunch_timer_sig_send_statistics(true);
+    adv_post_timers_relaunch_timer_sig_send_statistics();
     ASSERT_TRUE(timerData.is_active);
-    ASSERT_TRUE(timerData.flag_timer_triggered);
+    ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(60 * 60 * 1000, timerData.period_ticks);
 
     adv_post_timers_stop_timer_sig_send_statistics();
-    ASSERT_FALSE(timerData.is_active);
-}
-
-TEST_F(TestAdvPostTimers, test_timer_activate_sending_statistics) // NOLINT
-{
-    TimerData& timerData = this->findTimerSigOneShotByName("adv_post_act_send_stat");
-
-    adv_post_timers_start_timer_sig_activate_sending_statistics();
-    ASSERT_TRUE(timerData.is_active);
-    ASSERT_FALSE(timerData.flag_timer_triggered);
-    ASSERT_EQ(60000, timerData.period_ticks);
-
-    adv_post_timers_restart_timer_sig_activate_sending_statistics(5000);
-    ASSERT_TRUE(timerData.is_active);
-    ASSERT_FALSE(timerData.flag_timer_triggered);
-    ASSERT_EQ(5000, timerData.period_ticks);
-
-    adv_post_timers_stop_timer_sig_activate_sending_statistics();
     ASSERT_FALSE(timerData.is_active);
 }
 
@@ -467,20 +468,10 @@ TEST_F(TestAdvPostTimers, test_adv_post_timer_http_ruuvi_reconfiguration) // NOL
 {
     TimerData& timerData = this->findTimerSigPeriodicByName("adv_post_retransmit");
     ASSERT_FALSE(timerData.is_active);
-    adv_post_timers_relaunch_timer_sig_retransmit_to_http_ruuvi(false);
+    adv_post_timers_relaunch_timer_sig_retransmit_to_http_ruuvi();
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(10 * 1000, timerData.period_ticks);
-
-    adv1_post_timer_restart_with_short_period();
-    ASSERT_TRUE(timerData.is_active);
-    ASSERT_FALSE(timerData.flag_timer_triggered);
-    ASSERT_EQ(5 * 1000, timerData.period_ticks);
-
-    adv1_post_timer_restart_with_short_period();
-    ASSERT_TRUE(timerData.is_active);
-    ASSERT_FALSE(timerData.flag_timer_triggered);
-    ASSERT_EQ(5 * 1000, timerData.period_ticks);
 
     adv1_post_timer_restart_with_increased_period();
     ASSERT_TRUE(timerData.is_active);
@@ -520,16 +511,11 @@ TEST_F(TestAdvPostTimers, test_adv_post_timer_http_custom_reconfiguration) // NO
 {
     TimerData& timerData = this->findTimerSigPeriodicByName("adv_post_retransmit2");
     ASSERT_FALSE(timerData.is_active);
-    adv_post_timers_relaunch_timer_sig_retransmit_to_http_custom(false);
+    adv_post_timers_relaunch_timer_sig_retransmit_to_http_custom();
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(10 * 1000, timerData.period_ticks);
 
-    adv2_post_timer_restart_with_short_period(25 * 1000);
-    ASSERT_TRUE(timerData.is_active);
-    ASSERT_FALSE(timerData.flag_timer_triggered);
-    ASSERT_EQ(5 * 1000, timerData.period_ticks);
-
     adv2_post_timer_restart_with_increased_period();
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
@@ -539,6 +525,8 @@ TEST_F(TestAdvPostTimers, test_adv_post_timer_http_custom_reconfiguration) // NO
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(67 * 1000, timerData.period_ticks);
+
+    adv2_post_timers_set_default_period(25 * 1000);
 
     adv2_post_timer_restart_with_default_period();
     ASSERT_TRUE(timerData.is_active);

@@ -24,13 +24,13 @@ os_timer_sig_periodic_t*
 adv_post_timers_get_timer_sig_green_led_update(void);
 
 void
-adv_post_timers_relaunch_timer_sig_retransmit_to_http_ruuvi(const bool flag_simulate_immediately);
+adv_post_timers_relaunch_timer_sig_retransmit_to_http_ruuvi(void);
 
 void
 adv_post_timers_stop_timer_sig_retransmit_to_http_ruuvi(void);
 
 void
-adv_post_timers_relaunch_timer_sig_retransmit_to_http_custom(const bool flag_simulate_immediately);
+adv_post_timers_relaunch_timer_sig_retransmit_to_http_custom(void);
 
 void
 adv_post_timers_stop_timer_sig_retransmit_to_http_custom(void);
@@ -42,22 +42,13 @@ void
 adv_post_timers_stop_timer_sig_mqtt(void);
 
 void
-adv_post_timers_start_timer_sig_send_statistics(void);
-
-void
 adv_post_timers_stop_timer_sig_send_statistics(void);
 
 void
-adv_post_timers_relaunch_timer_sig_send_statistics(const bool flag_simulate_immediately);
+adv_post_timers_relaunch_timer_sig_send_statistics(void);
 
 void
-adv_post_timers_start_timer_sig_activate_sending_statistics(void);
-
-void
-adv_post_timers_stop_timer_sig_activate_sending_statistics(void);
-
-void
-adv_post_timers_restart_timer_sig_activate_sending_statistics(const os_delta_ticks_t delay_ticks);
+adv_post_timers_postpone_sending_statistics(void);
 
 void
 adv_post_timers_start_timer_sig_do_async_comm(void);
@@ -90,16 +81,13 @@ void
 adv1_post_timer_restart_with_increased_period(void);
 
 void
-adv1_post_timer_restart_with_short_period(void);
-
-void
 adv2_post_timer_restart_with_default_period(void);
 
 void
 adv2_post_timer_restart_with_increased_period(void);
 
 void
-adv2_post_timer_restart_with_short_period(const uint32_t default_interval_ms);
+adv2_post_timers_set_default_period(const uint32_t period_ms);
 
 #ifdef __cplusplus
 }
