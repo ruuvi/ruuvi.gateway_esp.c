@@ -415,10 +415,10 @@ adv_post_set_default_period(const uint32_t period_ms)
         case ADV_POST_ACTION_NONE:
             break;
         case ADV_POST_ACTION_POST_ADVS_TO_RUUVI:
-            adv_post_timers_set_default_period_for_http_ruuvi(period_ms);
+            adv1_post_timer_set_default_period_by_server_resp(period_ms);
             break;
         case ADV_POST_ACTION_POST_ADVS_TO_CUSTOM:
-            adv_post_timers_set_default_period_for_http_custom(period_ms);
+            adv2_post_timer_set_default_period_by_server_resp(period_ms);
             break;
         case ADV_POST_ACTION_POST_STATS:
             ATTR_FALLTHROUGH;

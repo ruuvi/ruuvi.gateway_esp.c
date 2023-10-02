@@ -584,12 +584,12 @@ http_async_poll_do_actions_after_completion_advs1(const bool flag_success)
     if (flag_success)
     {
         leds_notify_http1_data_sent_successfully();
-        adv1_post_timer_restart_with_default_period();
+        adv1_post_timer_relaunch_with_default_period();
     }
     else
     {
         leds_notify_http1_data_sent_fail();
-        adv1_post_timer_restart_with_increased_period();
+        adv1_post_timer_relaunch_with_increased_period();
     }
 }
 
@@ -599,12 +599,12 @@ http_async_poll_do_actions_after_completion_advs2(const bool flag_success)
     if (flag_success)
     {
         leds_notify_http2_data_sent_successfully();
-        adv2_post_timer_restart_with_default_period();
+        adv2_post_timer_relaunch_with_default_period();
     }
     else
     {
         leds_notify_http2_data_sent_fail();
-        adv2_post_timer_restart_with_increased_period();
+        adv2_post_timer_relaunch_with_increased_period();
     }
 }
 

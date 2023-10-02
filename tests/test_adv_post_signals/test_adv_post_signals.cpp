@@ -48,21 +48,19 @@ enum event_type_e
     EVENT_HISTORY_GATEWAY_RESTART,
     EVENT_HISTORY_ESP_TASK_WDT_RESET,
     EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG,
-    EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_SHORT_PERIOD,
-    EVENT_HISTORY_ADV2_POST_TIMER_RESTART_WITH_SHORT_PERIOD,
+    EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD,
+    EVENT_HISTORY_ADV2_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD,
+    EVENT_HISTORY_ADV2_POST_TIMERS_SET_DEFAULT_PERIOD,
     EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_RUUVI,
     EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM,
     EVENT_HISTORY_RESTART_TIMER_SIG_MQTT,
     EVENT_HISTORY_STOP_TIMER_SIG_MQTT,
-    EVENT_HISTORY_START_TIMER_SIG_SEND_STATISTICS,
     EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS,
-    EVENT_HISTORY_START_TIMER_SIG_ACTIVATE_SENDING_STATISTICS,
-    EVENT_HISTORY_STOP_TIMER_SIG_ACTIVATE_SENDING_STATISTICS,
-    EVENT_HISTORY_RESTART_TIMER_SIG_ACTIVATE_SENDING_STATISTICS,
     EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK,
     EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK,
     EVENT_HISTORY_ADV_POST_ON_GREEN_LED_UPDATE,
     EVENT_HISTORY_EVENT_MGR_NOTIFY,
+    EVENT_HISTORY_ADV_POST_TIMERS_POSTPONE_SENDING_STATISTICS,
 };
 
 typedef struct event_info_t
@@ -78,10 +76,6 @@ typedef struct event_info_t
         {
             os_signal_num_e sig_num;
         } os_signal_send;
-        struct
-        {
-            bool simulate_immediately;
-        } relaunch_timer;
         struct
         {
             adv_post_green_led_cmd_e cmd;
@@ -325,27 +319,23 @@ wifiman_default_config_set(const wifiman_config_t* const p_wifi_cfg)
 }
 
 void
-adv_post_timers_relaunch_timer_sig_retransmit_to_http_ruuvi(const bool flag_simulate_immediately)
+adv_post_timers_relaunch_timer_sig_retransmit_to_http_ruuvi(void)
 {
     g_pTestClass->m_events_history.push_back(
-        { .event_type     = EVENT_HISTORY_RELAUNCH_TIMER_SIG_RETRANSMIT_TO_HTTP_RUUVI,
-          .relaunch_timer = { .simulate_immediately = flag_simulate_immediately } });
+        { .event_type = EVENT_HISTORY_RELAUNCH_TIMER_SIG_RETRANSMIT_TO_HTTP_RUUVI });
 }
 
 void
-adv_post_timers_relaunch_timer_sig_retransmit_to_http_custom(const bool flag_simulate_immediately)
+adv_post_timers_relaunch_timer_sig_retransmit_to_http_custom(void)
 {
     g_pTestClass->m_events_history.push_back(
-        { .event_type     = EVENT_HISTORY_RELAUNCH_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM,
-          .relaunch_timer = { .simulate_immediately = flag_simulate_immediately } });
+        { .event_type = EVENT_HISTORY_RELAUNCH_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM });
 }
 
 void
-adv_post_timers_relaunch_timer_sig_send_statistics(const bool flag_simulate_immediately)
+adv_post_timers_relaunch_timer_sig_send_statistics(void)
 {
-    g_pTestClass->m_events_history.push_back(
-        { .event_type     = EVENT_HISTORY_RELAUNCH_TIMER_SIG_SEND_STATISTICS,
-          .relaunch_timer = { .simulate_immediately = flag_simulate_immediately } });
+    g_pTestClass->m_events_history.push_back({ .event_type = EVENT_HISTORY_RELAUNCH_TIMER_SIG_SEND_STATISTICS });
 }
 
 void
@@ -562,25 +552,33 @@ adv_post_cfg_cache_mutex_unlock(adv_post_cfg_cache_t** p_p_cfg_cache)
 }
 
 void
-adv1_post_timer_restart_with_short_period(void)
+adv1_post_timer_relaunch_with_default_period(void)
 {
-    g_pTestClass->m_events_history.push_back({ .event_type = EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_SHORT_PERIOD });
+    g_pTestClass->m_events_history.push_back(
+        { .event_type = EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD });
 }
 
 void
-adv2_post_timer_restart_with_short_period(const uint32_t default_interval_ms)
+adv2_post_timer_relaunch_with_default_period(void)
 {
-    g_pTestClass->m_events_history.push_back({ .event_type = EVENT_HISTORY_ADV2_POST_TIMER_RESTART_WITH_SHORT_PERIOD });
+    g_pTestClass->m_events_history.push_back(
+        { .event_type = EVENT_HISTORY_ADV2_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD });
 }
 
 void
-adv_post_timers_stop_timer_sig_retransmit_to_http_ruuvi(void)
+adv2_post_timer_set_default_period(const uint32_t period_ms)
+{
+    g_pTestClass->m_events_history.push_back({ .event_type = EVENT_HISTORY_ADV2_POST_TIMERS_SET_DEFAULT_PERIOD });
+}
+
+void
+adv1_post_timer_stop(void)
 {
     g_pTestClass->m_events_history.push_back({ .event_type = EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_RUUVI });
 }
 
 void
-adv_post_timers_stop_timer_sig_retransmit_to_http_custom(void)
+adv2_post_timer_stop(void)
 {
     g_pTestClass->m_events_history.push_back({ .event_type = EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM });
 }
@@ -598,36 +596,9 @@ adv_post_timers_stop_timer_sig_mqtt(void)
 }
 
 void
-adv_post_timers_start_timer_sig_send_statistics(void)
-{
-    g_pTestClass->m_events_history.push_back({ .event_type = EVENT_HISTORY_START_TIMER_SIG_SEND_STATISTICS });
-}
-
-void
 adv_post_timers_stop_timer_sig_send_statistics(void)
 {
     g_pTestClass->m_events_history.push_back({ .event_type = EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS });
-}
-
-void
-adv_post_timers_start_timer_sig_activate_sending_statistics(void)
-{
-    g_pTestClass->m_events_history.push_back(
-        { .event_type = EVENT_HISTORY_START_TIMER_SIG_ACTIVATE_SENDING_STATISTICS });
-}
-
-void
-adv_post_timers_stop_timer_sig_activate_sending_statistics(void)
-{
-    g_pTestClass->m_events_history.push_back(
-        { .event_type = EVENT_HISTORY_STOP_TIMER_SIG_ACTIVATE_SENDING_STATISTICS });
-}
-
-void
-adv_post_timers_restart_timer_sig_activate_sending_statistics(const os_delta_ticks_t delay_ticks)
-{
-    g_pTestClass->m_events_history.push_back(
-        { .event_type = EVENT_HISTORY_RESTART_TIMER_SIG_ACTIVATE_SENDING_STATISTICS });
 }
 
 void
@@ -654,6 +625,13 @@ void
 adv_post_do_async_comm(adv_post_state_t* const p_adv_post_state)
 {
     g_pTestClass->m_events_history.push_back({ .event_type = EVENT_HISTORY_DO_ASYNC_COMM });
+}
+
+void
+adv_post_timers_postpone_sending_statistics(void)
+{
+    g_pTestClass->m_events_history.push_back(
+        { .event_type = EVENT_HISTORY_ADV_POST_TIMERS_POSTPONE_SENDING_STATISTICS });
 }
 
 } // extern "C"
@@ -685,8 +663,6 @@ TEST_F(TestAdvPostSignals, test_adv_post_signals_init_deinit) // NOLINT
           .os_signal_add = { .sig_num = adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT2) } },
         { .event_type    = EVENT_HISTORY_OS_SIGNAL_ADD,
           .os_signal_add = { .sig_num = adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT_MQTT) } },
-        { .event_type    = EVENT_HISTORY_OS_SIGNAL_ADD,
-          .os_signal_add = { .sig_num = adv_post_conv_to_sig_num(ADV_POST_SIG_ACTIVATE_SENDING_STATISTICS) } },
         { .event_type    = EVENT_HISTORY_OS_SIGNAL_ADD,
           .os_signal_add = { .sig_num = adv_post_conv_to_sig_num(ADV_POST_SIG_SEND_STATISTICS) } },
         { .event_type    = EVENT_HISTORY_OS_SIGNAL_ADD,
@@ -760,21 +736,20 @@ TEST_F(TestAdvPostSignals, test_adv_post_conv_to_sig_num) // NOLINT
     ASSERT_EQ(OS_SIGNAL_NUM_5, adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT));
     ASSERT_EQ(OS_SIGNAL_NUM_6, adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT2));
     ASSERT_EQ(OS_SIGNAL_NUM_7, adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT_MQTT));
-    ASSERT_EQ(OS_SIGNAL_NUM_8, adv_post_conv_to_sig_num(ADV_POST_SIG_ACTIVATE_SENDING_STATISTICS));
-    ASSERT_EQ(OS_SIGNAL_NUM_9, adv_post_conv_to_sig_num(ADV_POST_SIG_SEND_STATISTICS));
-    ASSERT_EQ(OS_SIGNAL_NUM_10, adv_post_conv_to_sig_num(ADV_POST_SIG_DO_ASYNC_COMM));
-    ASSERT_EQ(OS_SIGNAL_NUM_11, adv_post_conv_to_sig_num(ADV_POST_SIG_RELAYING_MODE_CHANGED));
-    ASSERT_EQ(OS_SIGNAL_NUM_12, adv_post_conv_to_sig_num(ADV_POST_SIG_NETWORK_WATCHDOG));
-    ASSERT_EQ(OS_SIGNAL_NUM_13, adv_post_conv_to_sig_num(ADV_POST_SIG_TASK_WATCHDOG_FEED));
-    ASSERT_EQ(OS_SIGNAL_NUM_14, adv_post_conv_to_sig_num(ADV_POST_SIG_GW_CFG_READY));
-    ASSERT_EQ(OS_SIGNAL_NUM_15, adv_post_conv_to_sig_num(ADV_POST_SIG_GW_CFG_CHANGED_RUUVI));
-    ASSERT_EQ(OS_SIGNAL_NUM_16, adv_post_conv_to_sig_num(ADV_POST_SIG_BLE_SCAN_CHANGED));
-    ASSERT_EQ(OS_SIGNAL_NUM_17, adv_post_conv_to_sig_num(ADV_POST_SIG_ACTIVATE_CFG_MODE));
-    ASSERT_EQ(OS_SIGNAL_NUM_18, adv_post_conv_to_sig_num(ADV_POST_SIG_DEACTIVATE_CFG_MODE));
-    ASSERT_EQ(OS_SIGNAL_NUM_19, adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_TURN_ON));
-    ASSERT_EQ(OS_SIGNAL_NUM_20, adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_TURN_OFF));
-    ASSERT_EQ(OS_SIGNAL_NUM_21, adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_UPDATE));
-    ASSERT_EQ(OS_SIGNAL_NUM_22, adv_post_conv_to_sig_num(ADV_POST_SIG_RECV_ADV_TIMEOUT));
+    ASSERT_EQ(OS_SIGNAL_NUM_8, adv_post_conv_to_sig_num(ADV_POST_SIG_SEND_STATISTICS));
+    ASSERT_EQ(OS_SIGNAL_NUM_9, adv_post_conv_to_sig_num(ADV_POST_SIG_DO_ASYNC_COMM));
+    ASSERT_EQ(OS_SIGNAL_NUM_10, adv_post_conv_to_sig_num(ADV_POST_SIG_RELAYING_MODE_CHANGED));
+    ASSERT_EQ(OS_SIGNAL_NUM_11, adv_post_conv_to_sig_num(ADV_POST_SIG_NETWORK_WATCHDOG));
+    ASSERT_EQ(OS_SIGNAL_NUM_12, adv_post_conv_to_sig_num(ADV_POST_SIG_TASK_WATCHDOG_FEED));
+    ASSERT_EQ(OS_SIGNAL_NUM_13, adv_post_conv_to_sig_num(ADV_POST_SIG_GW_CFG_READY));
+    ASSERT_EQ(OS_SIGNAL_NUM_14, adv_post_conv_to_sig_num(ADV_POST_SIG_GW_CFG_CHANGED_RUUVI));
+    ASSERT_EQ(OS_SIGNAL_NUM_15, adv_post_conv_to_sig_num(ADV_POST_SIG_BLE_SCAN_CHANGED));
+    ASSERT_EQ(OS_SIGNAL_NUM_16, adv_post_conv_to_sig_num(ADV_POST_SIG_ACTIVATE_CFG_MODE));
+    ASSERT_EQ(OS_SIGNAL_NUM_17, adv_post_conv_to_sig_num(ADV_POST_SIG_DEACTIVATE_CFG_MODE));
+    ASSERT_EQ(OS_SIGNAL_NUM_18, adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_TURN_ON));
+    ASSERT_EQ(OS_SIGNAL_NUM_19, adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_TURN_OFF));
+    ASSERT_EQ(OS_SIGNAL_NUM_20, adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_UPDATE));
+    ASSERT_EQ(OS_SIGNAL_NUM_21, adv_post_conv_to_sig_num(ADV_POST_SIG_RECV_ADV_TIMEOUT));
 
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -789,21 +764,20 @@ TEST_F(TestAdvPostSignals, test_adv_post_conv_from_sig_num) // NOLINT
     ASSERT_EQ(ADV_POST_SIG_RETRANSMIT, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_5));
     ASSERT_EQ(ADV_POST_SIG_RETRANSMIT2, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_6));
     ASSERT_EQ(ADV_POST_SIG_RETRANSMIT_MQTT, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_7));
-    ASSERT_EQ(ADV_POST_SIG_ACTIVATE_SENDING_STATISTICS, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_8));
-    ASSERT_EQ(ADV_POST_SIG_SEND_STATISTICS, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_9));
-    ASSERT_EQ(ADV_POST_SIG_DO_ASYNC_COMM, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_10));
-    ASSERT_EQ(ADV_POST_SIG_RELAYING_MODE_CHANGED, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_11));
-    ASSERT_EQ(ADV_POST_SIG_NETWORK_WATCHDOG, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_12));
-    ASSERT_EQ(ADV_POST_SIG_TASK_WATCHDOG_FEED, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_13));
-    ASSERT_EQ(ADV_POST_SIG_GW_CFG_READY, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_14));
-    ASSERT_EQ(ADV_POST_SIG_GW_CFG_CHANGED_RUUVI, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_15));
-    ASSERT_EQ(ADV_POST_SIG_BLE_SCAN_CHANGED, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_16));
-    ASSERT_EQ(ADV_POST_SIG_ACTIVATE_CFG_MODE, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_17));
-    ASSERT_EQ(ADV_POST_SIG_DEACTIVATE_CFG_MODE, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_18));
-    ASSERT_EQ(ADV_POST_SIG_GREEN_LED_TURN_ON, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_19));
-    ASSERT_EQ(ADV_POST_SIG_GREEN_LED_TURN_OFF, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_20));
-    ASSERT_EQ(ADV_POST_SIG_GREEN_LED_UPDATE, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_21));
-    ASSERT_EQ(ADV_POST_SIG_RECV_ADV_TIMEOUT, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_22));
+    ASSERT_EQ(ADV_POST_SIG_SEND_STATISTICS, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_8));
+    ASSERT_EQ(ADV_POST_SIG_DO_ASYNC_COMM, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_9));
+    ASSERT_EQ(ADV_POST_SIG_RELAYING_MODE_CHANGED, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_10));
+    ASSERT_EQ(ADV_POST_SIG_NETWORK_WATCHDOG, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_11));
+    ASSERT_EQ(ADV_POST_SIG_TASK_WATCHDOG_FEED, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_12));
+    ASSERT_EQ(ADV_POST_SIG_GW_CFG_READY, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_13));
+    ASSERT_EQ(ADV_POST_SIG_GW_CFG_CHANGED_RUUVI, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_14));
+    ASSERT_EQ(ADV_POST_SIG_BLE_SCAN_CHANGED, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_15));
+    ASSERT_EQ(ADV_POST_SIG_ACTIVATE_CFG_MODE, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_16));
+    ASSERT_EQ(ADV_POST_SIG_DEACTIVATE_CFG_MODE, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_17));
+    ASSERT_EQ(ADV_POST_SIG_GREEN_LED_TURN_ON, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_18));
+    ASSERT_EQ(ADV_POST_SIG_GREEN_LED_TURN_OFF, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_19));
+    ASSERT_EQ(ADV_POST_SIG_GREEN_LED_UPDATE, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_20));
+    ASSERT_EQ(ADV_POST_SIG_RECV_ADV_TIMEOUT, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_21));
 
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -937,29 +911,13 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_network_connected_with_pendi
     ASSERT_TRUE(adv_post_state.flag_network_connected);
 
     const std::vector<event_info_t> expected_history = {
-        { .event_type     = EVENT_HISTORY_RELAUNCH_TIMER_SIG_RETRANSMIT_TO_HTTP_RUUVI,
-          .relaunch_timer = { .simulate_immediately = true } },
-        { .event_type     = EVENT_HISTORY_RELAUNCH_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM,
-          .relaunch_timer = { .simulate_immediately = true } },
-        { .event_type     = EVENT_HISTORY_RELAUNCH_TIMER_SIG_SEND_STATISTICS,
-          .relaunch_timer = { .simulate_immediately = true } },
+        { .event_type = EVENT_HISTORY_RELAUNCH_TIMER_SIG_RETRANSMIT_TO_HTTP_RUUVI },
+        { .event_type = EVENT_HISTORY_RELAUNCH_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM },
+        { .event_type = EVENT_HISTORY_RELAUNCH_TIMER_SIG_SEND_STATISTICS },
     };
     for (uint32_t i = 0; i < expected_history.size(); ++i)
     {
         ASSERT_EQ(expected_history[i].event_type, this->m_events_history[i].event_type) << "Failed on cycle: " << i;
-        switch (expected_history[i].event_type)
-        {
-            case EVENT_HISTORY_RELAUNCH_TIMER_SIG_RETRANSMIT_TO_HTTP_RUUVI:
-            case EVENT_HISTORY_RELAUNCH_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM:
-            case EVENT_HISTORY_RELAUNCH_TIMER_SIG_SEND_STATISTICS:
-                ASSERT_EQ(
-                    expected_history[i].relaunch_timer.simulate_immediately,
-                    this->m_events_history[i].relaunch_timer.simulate_immediately)
-                    << "Failed on cycle: " << i;
-                break;
-            default:
-                break;
-        }
     }
     ASSERT_EQ(expected_history.size(), this->m_events_history.size())
         << "Expected: " << expected_history.size() << " events, but got: " << this->m_events_history.size();
@@ -984,8 +942,12 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_time_synchronized) // NOLINT
         .flag_use_timestamps             = true,
         .flag_stop                       = false,
     };
+
+    m_gw_cfg.ruuvi_cfg.http_stat.use_http_stat = false;
+
     ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_TIME_SYNCHRONIZED, &adv_post_state));
     ASSERT_FALSE(adv_post_state.flag_stop);
+    ASSERT_TRUE(adv_post_state.flag_primary_time_sync_is_done);
 
     ASSERT_EQ(1, this->m_events_history.size());
     ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[0].event_type);
@@ -995,11 +957,19 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_time_synchronized) // NOLINT
     ASSERT_EQ(0, this->m_events_history.size());
 
     this->m_events_history.clear();
+    adv_post_state.flag_primary_time_sync_is_done = false;
+    m_gw_cfg.ruuvi_cfg.http_stat.use_http_stat    = true;
+    ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_TIME_SYNCHRONIZED, &adv_post_state));
+    ASSERT_TRUE(adv_post_state.flag_primary_time_sync_is_done);
+    ASSERT_EQ(2, this->m_events_history.size());
+    ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[0].event_type);
+    ASSERT_EQ(EVENT_HISTORY_ADV_POST_TIMERS_POSTPONE_SENDING_STATISTICS, this->m_events_history[1].event_type);
+
+    this->m_events_history.clear();
     adv_post_state.flag_need_to_send_advs1 = 1;
     ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_TIME_SYNCHRONIZED, &adv_post_state));
     ASSERT_EQ(1, this->m_events_history.size());
     ASSERT_EQ(EVENT_HISTORY_RELAUNCH_TIMER_SIG_RETRANSMIT_TO_HTTP_RUUVI, this->m_events_history[0].event_type);
-    ASSERT_EQ(true, this->m_events_history[0].relaunch_timer.simulate_immediately);
     adv_post_state.flag_need_to_send_advs1 = 0;
 
     this->m_events_history.clear();
@@ -1007,7 +977,6 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_time_synchronized) // NOLINT
     ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_TIME_SYNCHRONIZED, &adv_post_state));
     ASSERT_EQ(1, this->m_events_history.size());
     ASSERT_EQ(EVENT_HISTORY_RELAUNCH_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM, this->m_events_history[0].event_type);
-    ASSERT_EQ(true, this->m_events_history[0].relaunch_timer.simulate_immediately);
     adv_post_state.flag_need_to_send_advs2 = 0;
 
     this->m_events_history.clear();
@@ -1015,7 +984,6 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_time_synchronized) // NOLINT
     ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_TIME_SYNCHRONIZED, &adv_post_state));
     ASSERT_EQ(1, this->m_events_history.size());
     ASSERT_EQ(EVENT_HISTORY_RELAUNCH_TIMER_SIG_SEND_STATISTICS, this->m_events_history[0].event_type);
-    ASSERT_EQ(true, this->m_events_history[0].relaunch_timer.simulate_immediately);
     adv_post_state.flag_need_to_send_statistics = 0;
 
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
@@ -1318,34 +1286,6 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_retransmit_mqtt) // NOLINT
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_activate_sending_statistics) // NOLINT
-{
-    adv_post_signals_init();
-    this->m_events_history.clear();
-
-    adv_post_state_t adv_post_state = {
-        .flag_primary_time_sync_is_done  = true,
-        .flag_network_connected          = true,
-        .flag_async_comm_in_progress     = false,
-        .flag_need_to_send_advs1         = false,
-        .flag_need_to_send_advs2         = false,
-        .flag_need_to_send_statistics    = false,
-        .flag_need_to_send_mqtt_periodic = false,
-        .flag_relaying_enabled           = true,
-        .flag_use_timestamps             = true,
-        .flag_stop                       = false,
-    };
-
-    ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_ACTIVATE_SENDING_STATISTICS, &adv_post_state));
-    ASSERT_FALSE(adv_post_state.flag_stop);
-    ASSERT_TRUE(adv_post_state.flag_need_to_send_statistics);
-    ASSERT_EQ(1, this->m_events_history.size());
-    ASSERT_EQ(EVENT_HISTORY_RELAUNCH_TIMER_SIG_SEND_STATISTICS, this->m_events_history[0].event_type);
-    ASSERT_EQ(true, this->m_events_history[0].relaunch_timer.simulate_immediately);
-
-    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
-}
-
 TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_send_statistics) // NOLINT
 {
     adv_post_signals_init();
@@ -1626,18 +1566,16 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_gw_cfg_ready) // NOLINT
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
-        ASSERT_EQ(11, this->m_events_history.size());
+        ASSERT_EQ(10, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
-        ASSERT_EQ(EVENT_HISTORY_START_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[1].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[2].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[3].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[3].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM, this->m_events_history[4].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_START_TIMER_SIG_SEND_STATISTICS, this->m_events_history[6].event_type);
-        ASSERT_EQ(EVENT_HISTORY_RESTART_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[7].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[8].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[9].event_type);
-        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[10].event_type);
+        ASSERT_EQ(EVENT_HISTORY_RELAUNCH_TIMER_SIG_SEND_STATISTICS, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
+        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[9].event_type);
         this->m_events_history.clear();
     }
 
@@ -1655,17 +1593,16 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_gw_cfg_ready) // NOLINT
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
-        ASSERT_EQ(10, this->m_events_history.size());
+        ASSERT_EQ(9, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[2].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM, this->m_events_history[3].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
-        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[9].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[7].event_type);
+        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[8].event_type);
         this->m_events_history.clear();
     }
     {
@@ -1687,17 +1624,16 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_gw_cfg_ready) // NOLINT
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
-        ASSERT_EQ(10, this->m_events_history.size());
+        ASSERT_EQ(9, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_RUUVI, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM, this->m_events_history[3].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
-        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[9].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[7].event_type);
+        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[8].event_type);
         this->m_events_history.clear();
     }
     {
@@ -1719,17 +1655,16 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_gw_cfg_ready) // NOLINT
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
-        ASSERT_EQ(10, this->m_events_history.size());
+        ASSERT_EQ(9, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[2].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM, this->m_events_history[3].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
-        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_ACTIVATE, this->m_events_history[9].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[7].event_type);
+        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_ACTIVATE, this->m_events_history[8].event_type);
         this->m_events_history.clear();
     }
     {
@@ -1755,10 +1690,10 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_gw_cfg_ready) // NOLINT
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_RUUVI, this->m_events_history[2].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[3].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMERS_SET_DEFAULT_PERIOD, this->m_events_history[3].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[4].event_type);
+        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[5].event_type);
+        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[6].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
         ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_ACTIVATE, this->m_events_history[9].event_type);
@@ -1786,11 +1721,11 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_gw_cfg_ready) // NOLINT
         ASSERT_EQ(10, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[2].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[3].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[2].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMERS_SET_DEFAULT_PERIOD, this->m_events_history[3].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[4].event_type);
+        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[5].event_type);
+        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[6].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
         ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_ACTIVATE, this->m_events_history[9].event_type);
@@ -1818,11 +1753,11 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_gw_cfg_ready) // NOLINT
         ASSERT_EQ(10, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[2].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[3].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[2].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMERS_SET_DEFAULT_PERIOD, this->m_events_history[3].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[4].event_type);
+        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[5].event_type);
+        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[6].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
         ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[9].event_type);
@@ -1850,11 +1785,11 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_gw_cfg_ready) // NOLINT
         ASSERT_EQ(10, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[2].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[3].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[2].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMERS_SET_DEFAULT_PERIOD, this->m_events_history[3].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[4].event_type);
+        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[5].event_type);
+        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[6].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
         ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[9].event_type);
@@ -1896,17 +1831,16 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_gw_cfg_changed_ruuvi) // NOL
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
-        ASSERT_EQ(10, this->m_events_history.size());
+        ASSERT_EQ(9, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[2].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM, this->m_events_history[3].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
-        ASSERT_EQ(EVENT_HISTORY_START_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_RESTART_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
-        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[9].event_type);
+        ASSERT_EQ(EVENT_HISTORY_RELAUNCH_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[7].event_type);
+        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[8].event_type);
         this->m_events_history.clear();
     }
 
@@ -1924,17 +1858,16 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_gw_cfg_changed_ruuvi) // NOL
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
-        ASSERT_EQ(10, this->m_events_history.size());
+        ASSERT_EQ(9, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_RUUVI, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM, this->m_events_history[3].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
-        ASSERT_EQ(EVENT_HISTORY_START_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_RESTART_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
-        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[9].event_type);
+        ASSERT_EQ(EVENT_HISTORY_RELAUNCH_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[7].event_type);
+        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[8].event_type);
         this->m_events_history.clear();
     }
 
@@ -1956,10 +1889,10 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_gw_cfg_changed_ruuvi) // NOL
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_RUUVI, this->m_events_history[2].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[3].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
-        ASSERT_EQ(EVENT_HISTORY_START_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_RESTART_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMERS_SET_DEFAULT_PERIOD, this->m_events_history[3].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[4].event_type);
+        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[5].event_type);
+        ASSERT_EQ(EVENT_HISTORY_RELAUNCH_TIMER_SIG_SEND_STATISTICS, this->m_events_history[6].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
         ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[9].event_type);
@@ -1980,17 +1913,16 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_gw_cfg_changed_ruuvi) // NOL
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
-        ASSERT_EQ(10, this->m_events_history.size());
+        ASSERT_EQ(9, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[2].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM, this->m_events_history[3].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
-        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[9].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[7].event_type);
+        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[8].event_type);
         this->m_events_history.clear();
     }
     {
@@ -2012,17 +1944,16 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_gw_cfg_changed_ruuvi) // NOL
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
-        ASSERT_EQ(10, this->m_events_history.size());
+        ASSERT_EQ(9, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_RUUVI, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM, this->m_events_history[3].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
-        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[9].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[7].event_type);
+        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[8].event_type);
         this->m_events_history.clear();
     }
     {
@@ -2044,17 +1975,16 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_gw_cfg_changed_ruuvi) // NOL
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
-        ASSERT_EQ(10, this->m_events_history.size());
+        ASSERT_EQ(9, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[2].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM, this->m_events_history[3].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
-        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_ACTIVATE, this->m_events_history[9].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[7].event_type);
+        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_ACTIVATE, this->m_events_history[8].event_type);
         this->m_events_history.clear();
     }
     {
@@ -2080,10 +2010,10 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_gw_cfg_changed_ruuvi) // NOL
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_RUUVI, this->m_events_history[2].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[3].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMERS_SET_DEFAULT_PERIOD, this->m_events_history[3].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[4].event_type);
+        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[5].event_type);
+        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[6].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
         ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_ACTIVATE, this->m_events_history[9].event_type);
@@ -2111,11 +2041,11 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_gw_cfg_changed_ruuvi) // NOL
         ASSERT_EQ(10, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[2].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[3].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[2].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMERS_SET_DEFAULT_PERIOD, this->m_events_history[3].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[4].event_type);
+        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[5].event_type);
+        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[6].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
         ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_ACTIVATE, this->m_events_history[9].event_type);
@@ -2143,11 +2073,11 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_gw_cfg_changed_ruuvi) // NOL
         ASSERT_EQ(10, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[2].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[3].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[2].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMERS_SET_DEFAULT_PERIOD, this->m_events_history[3].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[4].event_type);
+        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[5].event_type);
+        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[6].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
         ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[9].event_type);
@@ -2175,11 +2105,11 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_gw_cfg_changed_ruuvi) // NOL
         ASSERT_EQ(10, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[2].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[3].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[2].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMERS_SET_DEFAULT_PERIOD, this->m_events_history[3].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV2_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[4].event_type);
+        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[5].event_type);
+        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[6].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
         ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[9].event_type);
@@ -2204,17 +2134,16 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_gw_cfg_changed_ruuvi) // NOL
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
-        ASSERT_EQ(10, this->m_events_history.size());
+        ASSERT_EQ(9, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[2].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM, this->m_events_history[3].event_type);
         ASSERT_EQ(EVENT_HISTORY_RESTART_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
-        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_ACTIVATE, this->m_events_history[9].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[7].event_type);
+        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_ACTIVATE, this->m_events_history[8].event_type);
         this->m_events_history.clear();
     }
 
@@ -2236,17 +2165,16 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_gw_cfg_changed_ruuvi) // NOL
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
-        ASSERT_EQ(10, this->m_events_history.size());
+        ASSERT_EQ(9, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[2].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM, this->m_events_history[3].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
-        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[9].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[7].event_type);
+        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[8].event_type);
         ASSERT_EQ(2, this->m_adv_post_cfg_cache.scan_filter_length);
         ASSERT_EQ(false, this->m_adv_post_cfg_cache.scan_filter_allow_listed);
         ASSERT_EQ(
@@ -2273,17 +2201,16 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_gw_cfg_changed_ruuvi) // NOL
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
-        ASSERT_EQ(10, this->m_events_history.size());
+        ASSERT_EQ(9, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[2].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM, this->m_events_history[3].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
-        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[9].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[7].event_type);
+        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[8].event_type);
         ASSERT_EQ(1, this->m_adv_post_cfg_cache.scan_filter_length);
         ASSERT_EQ(true, this->m_adv_post_cfg_cache.scan_filter_allow_listed);
         ASSERT_EQ(
@@ -2309,17 +2236,16 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_gw_cfg_changed_ruuvi) // NOL
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
-        ASSERT_EQ(10, this->m_events_history.size());
+        ASSERT_EQ(9, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[2].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM, this->m_events_history[3].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
-        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[9].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[7].event_type);
+        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[8].event_type);
         ASSERT_EQ(0, this->m_adv_post_cfg_cache.scan_filter_length);
         ASSERT_EQ(true, this->m_adv_post_cfg_cache.scan_filter_allow_listed);
         ASSERT_EQ(nullptr, this->m_adv_post_cfg_cache.p_arr_of_scan_filter_mac);
@@ -2431,17 +2357,16 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_activate_cfg_mode) // NOLINT
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
-        ASSERT_EQ(10, this->m_events_history.size());
+        ASSERT_EQ(9, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[2].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM, this->m_events_history[3].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
-        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[9].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[7].event_type);
+        ASSERT_EQ(EVENT_HISTORY_HTTP_SERVER_MUTEX_DEACTIVATE, this->m_events_history[8].event_type);
         ASSERT_EQ(2, this->m_adv_post_cfg_cache.scan_filter_length);
         ASSERT_EQ(false, this->m_adv_post_cfg_cache.scan_filter_allow_listed);
         ASSERT_EQ(
@@ -2496,16 +2421,15 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_deactivate_cfg_mode) // NOLI
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
-        ASSERT_EQ(9, this->m_events_history.size());
+        ASSERT_EQ(8, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[2].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM, this->m_events_history[3].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
-        ASSERT_EQ(EVENT_HISTORY_START_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_RESTART_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
+        ASSERT_EQ(EVENT_HISTORY_RELAUNCH_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[7].event_type);
         this->m_events_history.clear();
     }
 
@@ -2523,16 +2447,15 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_deactivate_cfg_mode) // NOLI
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
-        ASSERT_EQ(9, this->m_events_history.size());
+        ASSERT_EQ(8, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[2].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM, this->m_events_history[3].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[7].event_type);
         this->m_events_history.clear();
     }
     {
@@ -2554,16 +2477,15 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_deactivate_cfg_mode) // NOLI
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
-        ASSERT_EQ(9, this->m_events_history.size());
+        ASSERT_EQ(8, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[2].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM, this->m_events_history[3].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[7].event_type);
         this->m_events_history.clear();
     }
 
@@ -2585,16 +2507,15 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_deactivate_cfg_mode) // NOLI
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
-        ASSERT_EQ(9, this->m_events_history.size());
+        ASSERT_EQ(8, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[2].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM, this->m_events_history[3].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[7].event_type);
         ASSERT_EQ(2, this->m_adv_post_cfg_cache.scan_filter_length);
         ASSERT_EQ(false, this->m_adv_post_cfg_cache.scan_filter_allow_listed);
         ASSERT_EQ(
@@ -2621,16 +2542,15 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_deactivate_cfg_mode) // NOLI
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
-        ASSERT_EQ(9, this->m_events_history.size());
+        ASSERT_EQ(8, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[2].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM, this->m_events_history[3].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[7].event_type);
         ASSERT_EQ(1, this->m_adv_post_cfg_cache.scan_filter_length);
         ASSERT_EQ(true, this->m_adv_post_cfg_cache.scan_filter_allow_listed);
         ASSERT_EQ(
@@ -2656,16 +2576,15 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_deactivate_cfg_mode) // NOLI
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
-        ASSERT_EQ(9, this->m_events_history.size());
+        ASSERT_EQ(8, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_SHORT_PERIOD, this->m_events_history[2].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_RETRANSMIT_TO_HTTP_CUSTOM, this->m_events_history[3].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_MQTT, this->m_events_history[4].event_type);
         ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_SEND_STATISTICS, this->m_events_history[5].event_type);
-        ASSERT_EQ(EVENT_HISTORY_STOP_TIMER_SIG_ACTIVATE_SENDING_STATISTICS, this->m_events_history[6].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[7].event_type);
-        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[8].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[6].event_type);
+        ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[7].event_type);
         ASSERT_EQ(0, this->m_adv_post_cfg_cache.scan_filter_length);
         ASSERT_EQ(true, this->m_adv_post_cfg_cache.scan_filter_allow_listed);
         ASSERT_EQ(nullptr, this->m_adv_post_cfg_cache.p_arr_of_scan_filter_mac);
