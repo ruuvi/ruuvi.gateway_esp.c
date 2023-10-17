@@ -58,7 +58,7 @@ gw_cfg_is_initialized(void)
 {
     if (NULL != g_gw_cfg_mutex)
     {
-        return true;
+        return g_gw_cfg_ready;
     }
     return false;
 }
@@ -419,10 +419,13 @@ gw_cfg_set(
         // then update_status can show that updating is not needed, but it is required.
         g_p_gw_cfg_cb_on_change_cfg(g_gw_cfg_is_empty ? NULL : p_gw_cfg_dst);
     }
-    if ((NULL != g_p_gw_cfg_cb_on_change_cfg) && (!g_gw_cfg_ready))
+    if (!g_gw_cfg_ready)
     {
         g_gw_cfg_ready = true;
-        event_mgr_notify(EVENT_MGR_EV_GW_CFG_READY);
+        if (NULL != g_p_gw_cfg_cb_on_change_cfg)
+        {
+            event_mgr_notify(EVENT_MGR_EV_GW_CFG_READY);
+        }
     }
 
     os_mutex_recursive_unlock(g_gw_cfg_mutex);
