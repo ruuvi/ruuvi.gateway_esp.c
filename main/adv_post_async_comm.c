@@ -64,35 +64,25 @@ adv_post_async_comm_init(void)
 static void
 adv_post_log(const adv_report_table_t* p_reports, const bool flag_use_timestamps, const char* const p_target_name)
 {
+    (void)flag_use_timestamps;
     LOG_INFO("Advertisements in table for target=%s: (num=%u)", p_target_name, (printf_uint_t)p_reports->num_of_advs);
+#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
     for (num_of_advs_t i = 0; i < p_reports->num_of_advs; ++i)
     {
         const adv_report_t* p_adv = &p_reports->table[i];
 
         const mac_address_str_t mac_str = mac_address_to_str(&p_adv->tag_mac);
-        if (flag_use_timestamps)
-        {
-            LOG_DUMP_DBG(
-                p_adv->data_buf,
-                p_adv->data_len,
-                "i: %d, tag: %s, rssi: %d, timestamp: %ld",
-                i,
-                mac_str.str_buf,
-                p_adv->rssi,
-                p_adv->timestamp);
-        }
-        else
-        {
-            LOG_DUMP_DBG(
-                p_adv->data_buf,
-                p_adv->data_len,
-                "i: %d, tag: %s, rssi: %d, counter: %ld",
-                i,
-                mac_str.str_buf,
-                p_adv->rssi,
-                p_adv->timestamp);
-        }
+        LOG_DUMP_DBG(
+            p_adv->data_buf,
+            p_adv->data_len,
+            "i: %d, tag: %s, rssi: %d, %s: %ld",
+            i,
+            mac_str.str_buf,
+            p_adv->rssi,
+            flag_use_timestamps ? "timestamp" : "counter",
+            p_adv->timestamp);
     }
+#endif
 }
 
 static bool
