@@ -72,7 +72,7 @@ adv_post_log(const adv_report_table_t* p_reports, const bool flag_use_timestamps
         const mac_address_str_t mac_str = mac_address_to_str(&p_adv->tag_mac);
         if (flag_use_timestamps)
         {
-            LOG_DUMP_INFO(
+            LOG_DUMP_DBG(
                 p_adv->data_buf,
                 p_adv->data_len,
                 "i: %d, tag: %s, rssi: %d, timestamp: %ld",
@@ -83,7 +83,7 @@ adv_post_log(const adv_report_table_t* p_reports, const bool flag_use_timestamps
         }
         else
         {
-            LOG_DUMP_INFO(
+            LOG_DUMP_DBG(
                 p_adv->data_buf,
                 p_adv->data_len,
                 "i: %d, tag: %s, rssi: %d, counter: %ld",
