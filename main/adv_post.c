@@ -176,14 +176,14 @@ adv_post_send_report(void* p_arg)
 {
     if (!gw_cfg_is_initialized())
     {
-        LOG_WARN("Drop adv - gw_cfg is not ready yet");
+        LOG_DBG("Drop adv - gw_cfg is not ready yet");
         return;
     }
 
     adv_post_cfg_cache_t* p_cfg_cache = adv_post_cfg_cache_mutex_try_lock();
     if (NULL == p_cfg_cache)
     {
-        LOG_WARN("Drop adv - gateway in the process of reconfiguration");
+        LOG_DBG("Drop adv - gateway in the process of reconfiguration");
         return;
     }
 
