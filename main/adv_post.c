@@ -249,7 +249,7 @@ adv_post_init(void)
     adv_post_statistics_init();
     adv_table_init();
 
-    const uint32_t           stack_size    = (1024U * 4U) + 512U;
+    const uint32_t           stack_size    = (1024U * 6U);
     const os_task_priority_t task_priority = 5;
     if (!os_task_create_finite_without_param(&adv_post_task, "adv_post_task", stack_size, task_priority))
     {
