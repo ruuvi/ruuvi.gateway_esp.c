@@ -1008,11 +1008,16 @@ static bool is_valid_mqtt_msg(esp_mqtt_client_handle_t client, int msg_type, int
     return false;
 }
 
-static void mqtt_enqueue_oversized(esp_mqtt_client_handle_t client, uint8_t *remaining_data, int remaining_len)
+static bool mqtt_enqueue_oversized(esp_mqtt_client_handle_t client, uint8_t *remaining_data, int remaining_len)
 {
     ESP_LOGD(TAG, "mqtt_enqueue_oversized id: %d, type=%d successful",
              client->mqtt_state.pending_msg_id, client->mqtt_state.pending_msg_type);
     //lock mutex
+
+    if((outbox_get_size(client->outbox) + client->mqtt_state.outbound_message->length + remaining_len) > OUTBOX_MAX_SIZE) {
+        return false;
+    }
+
     outbox_message_t msg = { 0 };
     msg.data = client->mqtt_state.outbound_message->data;
     msg.len =  client->mqtt_state.outbound_message->length;
@@ -1025,14 +1030,19 @@ static void mqtt_enqueue_oversized(esp_mqtt_client_handle_t client, uint8_t *rem
     outbox_enqueue(client->outbox, &msg, platform_tick_get_ms());
 
     //unlock
+    return true;
 }
 
-static void mqtt_enqueue(esp_mqtt_client_handle_t client)
+static bool mqtt_enqueue(esp_mqtt_client_handle_t client)
 {
     ESP_LOGD(TAG, "mqtt_enqueue id: %d, type=%d successful",
              client->mqtt_state.pending_msg_id, client->mqtt_state.pending_msg_type);
     //lock mutex
     if (client->mqtt_state.pending_msg_count > 0) {
+        if((outbox_get_size(client->outbox) + client->mqtt_state.outbound_message->length) > OUTBOX_MAX_SIZE) {
+            return false;
+        }
+
         outbox_message_t msg = { 0 };
         msg.data = client->mqtt_state.outbound_message->data;
         msg.len =  client->mqtt_state.outbound_message->length;
@@ -1043,6 +1053,7 @@ static void mqtt_enqueue(esp_mqtt_client_handle_t client)
         outbox_enqueue(client->outbox, &msg, platform_tick_get_ms());
     }
     //unlock
+    return true;
 }
 
 
@@ -1723,10 +1734,16 @@ static inline int mqtt_client_enqueue_priv(esp_mqtt_client_handle_t client, cons
         client->mqtt_state.pending_msg_count ++;
         // by default store as QUEUED (not transmitted yet) only for messages which would fit outbound buffer
         if (client->mqtt_state.mqtt_connection.message.fragmented_msg_total_length == 0) {
-            mqtt_enqueue(client);
+            if (!mqtt_enqueue(client)) {
+                ESP_LOGE(TAG, "[%s/%d] Failed to enqueue, outbox max size reached, msg_id=%d",
+                         pcTaskGetTaskName(NULL), uxTaskPriorityGet(NULL), pending_msg_id);
+            }
         } else {
             int first_fragment = client->mqtt_state.outbound_message->length - client->mqtt_state.outbound_message->fragmented_msg_data_offset;
-            mqtt_enqueue_oversized(client, ((uint8_t *)data) + first_fragment, len - first_fragment);
+            if (!mqtt_enqueue_oversized(client, ((uint8_t *)data) + first_fragment, len - first_fragment)) {
+                ESP_LOGE(TAG, "[%s/%d] Failed to enqueue oversized, outbox max size reached, msg_id=%d",
+                         pcTaskGetTaskName(NULL), uxTaskPriorityGet(NULL), pending_msg_id);
+            }
             client->mqtt_state.outbound_message->fragmented_msg_total_length = 0;
         }
     }
