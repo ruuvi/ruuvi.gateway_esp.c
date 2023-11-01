@@ -32,7 +32,7 @@
 #warning Debug log level prints out the passwords as a "plaintext".
 #endif
 
-#define MQTT_QOS 1
+#define MQTT_QOS 0
 
 #define TOPIC_LEN 512
 
@@ -182,7 +182,6 @@ mqtt_publish_adv(const adv_report_t* const p_adv, const bool flag_use_timestamps
 
     LOG_DBG("publish msg with len=%u: topic: %s, data: %s", msg_len, p_mqtt_data->mqtt_topic.buf, str_buf_json.buf);
     const int32_t mqtt_len              = 0;
-    const int32_t mqtt_qos              = 1;
     const int32_t mqtt_flag_retain      = 0;
     bool          is_publish_successful = false;
 
@@ -191,7 +190,7 @@ mqtt_publish_adv(const adv_report_t* const p_adv, const bool flag_use_timestamps
             p_mqtt_data->mqtt_topic.buf,
             str_buf_json.buf,
             mqtt_len,
-            mqtt_qos,
+            MQTT_QOS,
             mqtt_flag_retain)
         >= 0)
     {
@@ -211,7 +210,6 @@ mqtt_publish_connect(void)
     mqtt_protected_data_t* p_mqtt_data = mqtt_mutex_lock();
     mqtt_create_full_topic(&p_mqtt_data->mqtt_topic, p_mqtt_data->mqtt_prefix.buf, "gw_status");
     LOG_INFO("esp_mqtt_client_publish: topic:'%s', message:'%s'", p_mqtt_data->mqtt_topic.buf, p_message);
-    const int32_t mqtt_qos         = 1;
     const int32_t mqtt_flag_retain = !p_mqtt_data->mqtt_disable_retained_messages;
 
     const mqtt_message_id_t message_id = esp_mqtt_client_publish(
@@ -219,7 +217,7 @@ mqtt_publish_connect(void)
         p_mqtt_data->mqtt_topic.buf,
         p_message,
         (esp_mqtt_client_data_len_t)strlen(p_message),
-        mqtt_qos,
+        MQTT_QOS,
         mqtt_flag_retain);
 
     mqtt_mutex_unlock(&p_mqtt_data);
@@ -241,7 +239,6 @@ mqtt_publish_state_offline(mqtt_protected_data_t* const p_mqtt_data)
 
     mqtt_create_full_topic(&p_mqtt_data->mqtt_topic, p_mqtt_data->mqtt_prefix.buf, "gw_status");
     LOG_INFO("esp_mqtt_client_publish: topic:'%s', message:'%s'", p_mqtt_data->mqtt_topic.buf, p_message);
-    const int32_t mqtt_qos         = 1;
     const int32_t mqtt_flag_retain = !p_mqtt_data->mqtt_disable_retained_messages;
 
     const mqtt_message_id_t message_id = esp_mqtt_client_publish(
@@ -249,7 +246,7 @@ mqtt_publish_state_offline(mqtt_protected_data_t* const p_mqtt_data)
         p_mqtt_data->mqtt_topic.buf,
         p_message,
         (esp_mqtt_client_data_len_t)strlen(p_message),
-        mqtt_qos,
+        MQTT_QOS,
         mqtt_flag_retain);
 
     if (-1 == message_id)
