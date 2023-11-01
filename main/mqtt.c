@@ -23,6 +23,7 @@
 #include "esp_tls_err.h"
 #include "snprintf_with_esp_err_desc.h"
 #include "gw_cfg_storage.h"
+#include "event_mgr.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -30,6 +31,8 @@
 #if (LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG)
 #warning Debug log level prints out the passwords as a "plaintext".
 #endif
+
+#define MQTT_QOS 1
 
 #define TOPIC_LEN 512
 
@@ -121,11 +124,26 @@ mqtt_create_full_topic(
 }
 
 bool
+mqtt_is_buffer_available_for_publish(void)
+{
+    if (0 == MQTT_QOS)
+    {
+        return true;
+    }
+    mqtt_protected_data_t* p_mqtt_data = mqtt_mutex_lock();
+    const int32_t          outbox_size = esp_mqtt_client_get_outbox_size(p_mqtt_data->p_mqtt_client);
+    const bool is_ready = (outbox_size < (CONFIG_MQTT_OUTBOX_MAX_SIZE - CONFIG_MQTT_BUFFER_SIZE)) ? true : false;
+    mqtt_mutex_unlock(&p_mqtt_data);
+    return is_ready;
+}
+
+bool
 mqtt_publish_adv(const adv_report_t* const p_adv, const bool flag_use_timestamps, const time_t timestamp)
 {
     const gw_cfg_t*              p_gw_cfg       = gw_cfg_lock_ro();
     const json_stream_gen_size_t max_chunk_size = 1024U;
-    str_buf_t                    str_buf_json   = mqtt_create_json_str(
+
+    str_buf_t str_buf_json = mqtt_create_json_str(
         p_adv,
         flag_use_timestamps,
         timestamp,
@@ -134,9 +152,10 @@ mqtt_publish_adv(const adv_report_t* const p_adv, const bool flag_use_timestamps
         p_gw_cfg->ruuvi_cfg.mqtt.mqtt_data_format,
         max_chunk_size);
     gw_cfg_unlock_ro(&p_gw_cfg);
+
     if (NULL == str_buf_json.buf)
     {
-        LOG_ERR("%s failed", "mqtt_create_json_str");
+        LOG_ERR("Failed to create MQTT message JSON string, insufficient buffer size (%u bytes)", max_chunk_size);
         return false;
     }
 
@@ -152,7 +171,16 @@ mqtt_publish_adv(const adv_report_t* const p_adv, const bool flag_use_timestamps
     }
     mqtt_create_full_topic(&p_mqtt_data->mqtt_topic, p_mqtt_data->mqtt_prefix.buf, tag_mac_str.str_buf);
 
-    LOG_DBG("publish: topic: %s, data: %s", p_mqtt_data->mqtt_topic.buf, str_buf_json.buf);
+    const size_t msg_len = strlen(p_mqtt_data->mqtt_topic.buf) + 2U + 2U + strlen(str_buf_json.buf) + 2U;
+    if (msg_len > CONFIG_MQTT_BUFFER_SIZE)
+    {
+        LOG_ERR("MQTT message len is %u bytes which is bigger than buffer size %u", msg_len, CONFIG_MQTT_BUFFER_SIZE);
+        mqtt_mutex_unlock(&p_mqtt_data);
+        str_buf_free_buf(&str_buf_json);
+        return false;
+    }
+
+    LOG_DBG("publish msg with len=%u: topic: %s, data: %s", msg_len, p_mqtt_data->mqtt_topic.buf, str_buf_json.buf);
     const int32_t mqtt_len              = 0;
     const int32_t mqtt_qos              = 1;
     const int32_t mqtt_flag_retain      = 0;

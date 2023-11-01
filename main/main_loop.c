@@ -53,17 +53,16 @@ typedef enum main_task_sig_e
     MAIN_TASK_SIG_ACTIVATE_CFG_MODE                   = OS_SIGNAL_NUM_4,
     MAIN_TASK_SIG_DEACTIVATE_CFG_MODE                 = OS_SIGNAL_NUM_5,
     MAIN_TASK_SIG_TASK_RESTART_SERVICES               = OS_SIGNAL_NUM_6,
-    MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT                = OS_SIGNAL_NUM_7,
-    MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG                = OS_SIGNAL_NUM_8,
-    MAIN_TASK_SIG_NETWORK_CONNECTED                   = OS_SIGNAL_NUM_9,
-    MAIN_TASK_SIG_NETWORK_DISCONNECTED                = OS_SIGNAL_NUM_10,
-    MAIN_TASK_SIG_RECONNECT_NETWORK                   = OS_SIGNAL_NUM_11,
-    MAIN_TASK_SIG_SET_DEFAULT_CONFIG                  = OS_SIGNAL_NUM_12,
-    MAIN_TASK_SIG_ON_GET_HISTORY                      = OS_SIGNAL_NUM_13,
-    MAIN_TASK_SIG_ON_GET_HISTORY_TIMEOUT              = OS_SIGNAL_NUM_14,
-    MAIN_TASK_SIG_RELAYING_MODE_CHANGED               = OS_SIGNAL_NUM_15,
-    MAIN_TASK_SIG_LOG_RUNTIME_STAT                    = OS_SIGNAL_NUM_16,
-    MAIN_TASK_SIG_TASK_WATCHDOG_FEED                  = OS_SIGNAL_NUM_17,
+    MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG                = OS_SIGNAL_NUM_7,
+    MAIN_TASK_SIG_NETWORK_CONNECTED                   = OS_SIGNAL_NUM_8,
+    MAIN_TASK_SIG_NETWORK_DISCONNECTED                = OS_SIGNAL_NUM_9,
+    MAIN_TASK_SIG_RECONNECT_NETWORK                   = OS_SIGNAL_NUM_10,
+    MAIN_TASK_SIG_SET_DEFAULT_CONFIG                  = OS_SIGNAL_NUM_11,
+    MAIN_TASK_SIG_ON_GET_HISTORY                      = OS_SIGNAL_NUM_12,
+    MAIN_TASK_SIG_ON_GET_HISTORY_TIMEOUT              = OS_SIGNAL_NUM_13,
+    MAIN_TASK_SIG_RELAYING_MODE_CHANGED               = OS_SIGNAL_NUM_14,
+    MAIN_TASK_SIG_LOG_RUNTIME_STAT                    = OS_SIGNAL_NUM_15,
+    MAIN_TASK_SIG_TASK_WATCHDOG_FEED                  = OS_SIGNAL_NUM_16,
 } main_task_sig_e;
 
 #define MAIN_TASK_SIG_FIRST (MAIN_TASK_SIG_LOG_HEAP_USAGE)
@@ -542,9 +541,6 @@ main_task_handle_sig(const main_task_sig_e main_task_sig)
         case MAIN_TASK_SIG_TASK_RESTART_SERVICES:
             main_task_handle_sig_restart_services();
             break;
-        case MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT:
-            mqtt_publish_connect();
-            break;
         case MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG:
             main_task_handle_sig_check_for_remote_cfg();
             break;
@@ -690,7 +686,6 @@ main_task_init_signals(void)
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_ACTIVATE_CFG_MODE));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_DEACTIVATE_CFG_MODE));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_TASK_RESTART_SERVICES));
-    os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_CHECK_FOR_REMOTE_CFG));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_NETWORK_CONNECTED));
     os_signal_add(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_NETWORK_DISCONNECTED));
@@ -847,12 +842,6 @@ void
 main_task_send_sig_set_default_config(void)
 {
     os_signal_send(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_SET_DEFAULT_CONFIG));
-}
-
-void
-main_task_send_sig_mqtt_publish_connect(void)
-{
-    os_signal_send(g_p_signal_main_task, main_task_conv_to_sig_num(MAIN_TASK_SIG_MQTT_PUBLISH_CONNECT));
 }
 
 void

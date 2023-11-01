@@ -12,6 +12,7 @@
 #include "freertos/FreeRTOS.h"
 #include "lwip/sockets.h"
 #include "adv_post.h"
+#include "adv_mqtt.h"
 #include "api.h"
 #include "cJSON.h"
 #include "os_task.h"
@@ -545,6 +546,7 @@ main_task_init(void)
         leds_notify_nrf52_ready();
     }
 
+    adv_mqtt_init();
     adv_post_init();
     terminal_open(NULL, true, NRF52_COMM_TASK_PRIORITY);
     api_process(true);
