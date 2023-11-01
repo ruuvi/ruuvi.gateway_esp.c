@@ -416,9 +416,9 @@ adv_post_handle_sig_ble_scan_changed(ATTR_UNUSED adv_post_state_t* const p_adv_p
 }
 
 static void
-adv_post_handle_sig_activate_cfg_mode(ATTR_UNUSED adv_post_state_t* const p_adv_post_state) // NOSONAR
+adv_post_handle_sig_cfg_mode_activated(ATTR_UNUSED adv_post_state_t* const p_adv_post_state) // NOSONAR
 {
-    LOG_INFO("Got ADV_POST_SIG_ACTIVATE_CFG_MODE");
+    LOG_INFO("Got ADV_POST_SIG_CFG_MODE_ACTIVATED");
     adv_post_cfg_cache_t* p_cfg_cache = adv_post_cfg_cache_mutex_lock();
     if (NULL != p_cfg_cache->p_arr_of_scan_filter_mac)
     {
@@ -433,9 +433,9 @@ adv_post_handle_sig_activate_cfg_mode(ATTR_UNUSED adv_post_state_t* const p_adv_
 }
 
 static void
-adv_post_handle_sig_deactivate_cfg_mode(adv_post_state_t* const p_adv_post_state)
+adv_post_handle_sig_cfg_mode_deactivated(adv_post_state_t* const p_adv_post_state)
 {
-    LOG_INFO("Got ADV_POST_SIG_DEACTIVATE_CFG_MODE");
+    LOG_INFO("Got ADV_POST_SIG_CFG_MODE_DEACTIVATED");
     ruuvi_send_nrf_settings_from_gw_cfg();
     adv_post_on_gw_cfg_change(p_adv_post_state);
 }
@@ -485,8 +485,8 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p
         [ADV_POST_SIG_GW_CFG_READY]          = &adv_post_handle_sig_gw_cfg_ready,
         [ADV_POST_SIG_GW_CFG_CHANGED_RUUVI]  = &adv_post_handle_sig_gw_cfg_changed_ruuvi,
         [ADV_POST_SIG_BLE_SCAN_CHANGED]      = &adv_post_handle_sig_ble_scan_changed,
-        [ADV_POST_SIG_ACTIVATE_CFG_MODE]     = &adv_post_handle_sig_activate_cfg_mode,
-        [ADV_POST_SIG_DEACTIVATE_CFG_MODE]   = &adv_post_handle_sig_deactivate_cfg_mode,
+        [ADV_POST_SIG_CFG_MODE_ACTIVATED]    = &adv_post_handle_sig_cfg_mode_activated,
+        [ADV_POST_SIG_CFG_MODE_DEACTIVATED]  = &adv_post_handle_sig_cfg_mode_deactivated,
         [ADV_POST_SIG_GREEN_LED_TURN_ON]     = &adv_post_handle_sig_green_led_turn_on,
         [ADV_POST_SIG_GREEN_LED_TURN_OFF]    = &adv_post_handle_sig_green_led_turn_off,
         [ADV_POST_SIG_GREEN_LED_UPDATE]      = &adv_post_handle_sig_green_led_update,
@@ -517,22 +517,4 @@ adv_post_signals_deinit(void)
 {
     os_signal_unregister_cur_thread(g_p_adv_post_sig);
     os_signal_delete(&g_p_adv_post_sig);
-}
-
-void
-adv_post_signal_send_ble_scan_changed(void)
-{
-    os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_BLE_SCAN_CHANGED));
-}
-
-void
-adv_post_signal_send_activate_cfg_mode(void)
-{
-    os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_ACTIVATE_CFG_MODE));
-}
-
-void
-adv_post_signal_send_deactivate_cfg_mode(void)
-{
-    os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DEACTIVATE_CFG_MODE));
 }

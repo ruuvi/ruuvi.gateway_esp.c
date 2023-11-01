@@ -283,7 +283,7 @@ main_task_handle_sig_activate_cfg_mode(void)
     const bool flag_wait_until_relaying_stopped = false;
     gw_status_suspend_relaying(flag_wait_until_relaying_stopped);
 
-    adv_post_signal_send_activate_cfg_mode();
+    event_mgr_notify(EVENT_MGR_EV_CFG_MODE_ACTIVATED);
 
     timer_cfg_mode_deactivation_start();
 }
@@ -331,7 +331,7 @@ main_task_handle_sig_deactivate_cfg_mode(void)
 
     main_task_send_sig_restart_services();
 
-    adv_post_signal_send_deactivate_cfg_mode();
+    event_mgr_notify(EVENT_MGR_EV_CFG_MODE_DEACTIVATED);
 
     const bool flag_wait_until_relaying_resumed = false;
     gw_status_resume_relaying(flag_wait_until_relaying_resumed);

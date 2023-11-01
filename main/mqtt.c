@@ -365,7 +365,7 @@ mqtt_event_handler(esp_mqtt_event_handle_t h_event)
         case MQTT_EVENT_CONNECTED:
             LOG_INFO("MQTT_EVENT_CONNECTED");
             gw_status_set_mqtt_connected();
-            main_task_send_sig_mqtt_publish_connect();
+            event_mgr_notify(EVENT_MGR_EV_MQTT_CONNECTED);
             leds_notify_mqtt1_connected();
             if (!fw_update_mark_app_valid_cancel_rollback())
             {
