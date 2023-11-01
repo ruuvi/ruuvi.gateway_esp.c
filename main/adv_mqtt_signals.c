@@ -211,7 +211,7 @@ adv_mqtt_handle_sig(const adv_mqtt_sig_e adv_mqtt_sig, adv_mqtt_state_t* const p
 }
 
 void
-adv_mqtt_signals_init(void) g
+adv_mqtt_signals_init(void)
 {
     g_p_adv_mqtt_sig = os_signal_create_static(&g_adv_mqtt_sig_mem);
     for (uint32_t i = ADV_MQTT_SIG_FIRST; i <= ADV_MQTT_SIG_LAST; ++i)
