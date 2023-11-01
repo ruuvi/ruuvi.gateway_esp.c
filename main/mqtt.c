@@ -33,7 +33,19 @@
 
 #define TOPIC_LEN 512
 
-#define MQTT_NETWORK_TIMEOUT_MS (10U * 1000U)
+/**
+ * @brief Represents the MQTT network timeout duration in milliseconds.
+ *
+ * @note The function `mqtt_write_data`, which is invoked from `esp_mqtt_client_publish`,
+ *       can block the executing thread for an amount of time up to this timeout value.
+ *       Therefore, to avoid triggering the task watchdog, it is essential that this timeout value is set
+ *       to be less than the task watchdog timeout.
+ */
+#define MQTT_NETWORK_TIMEOUT_MS (9U * 1000U)
+
+_Static_assert(
+    MQTT_NETWORK_TIMEOUT_MS <= ((CONFIG_ESP_TASK_WDT_TIMEOUT_S - 1) * TIME_UNITS_MS_PER_SECOND),
+    "MQTT_NETWORK_TIMEOUT > CONFIG_ESP_TASK_WDT_TIMEOUT");
 
 #define MQTT_TASK_STACK_SIZE (6U * 1024U)
 
