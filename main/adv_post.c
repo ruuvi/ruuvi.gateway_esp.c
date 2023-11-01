@@ -54,6 +54,22 @@ static adv_callbacks_fn_t adv_callback_func_tbl = {
     .AdvGetAllCallback = adv_post_send_get_all,
 };
 
+static uint32_t g_adv_post_advs_cnt;
+
+static void
+adv_post_advs_cnt_inc(void)
+{
+    g_adv_post_advs_cnt += 1;
+}
+
+uint32_t
+adv_post_advs_cnt_get_and_clear(void)
+{
+    const uint32_t cnt  = g_adv_post_advs_cnt;
+    g_adv_post_advs_cnt = 0;
+    return cnt;
+}
+
 /** @brief serialise up to U64 into given buffer, MSB first. */
 static inline void
 u64_to_array(const uint64_t u64, uint8_t* const p_array, const uint8_t num_bytes)
@@ -174,6 +190,7 @@ adv_post_check_if_mac_filtered_out(
 static void
 adv_post_send_report(void* p_arg)
 {
+    adv_post_advs_cnt_inc();
     if (!gw_cfg_is_initialized())
     {
         LOG_DBG("Drop adv - gw_cfg is not ready yet");

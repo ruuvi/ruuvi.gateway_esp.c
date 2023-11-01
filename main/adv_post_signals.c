@@ -221,6 +221,7 @@ static void
 adv_post_handle_sig_task_watchdog_feed(ATTR_UNUSED adv_post_state_t* const p_adv_post_state) // NOSONAR
 {
     LOG_DBG("Feed watchdog");
+    LOG_INFO("Advs cnt: %lu", (printf_ulong_t)adv_post_advs_cnt_get_and_clear());
     const esp_err_t err = esp_task_wdt_reset();
     if (ESP_OK != err)
     {
