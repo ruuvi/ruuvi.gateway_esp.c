@@ -9,6 +9,8 @@
 #include "os_timer_sig.h"
 #include "adv_post_signals.h"
 #include "adv_post_internal.h"
+#include "ruuvi_gateway.h"
+#include "time_units.h"
 #if defined(RUUVI_TESTS) && RUUVI_TESTS
 #define LOG_LOCAL_DISABLED 1
 #define LOG_LOCAL_LEVEL    LOG_LEVEL_NONE
@@ -16,8 +18,6 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #endif
 #include "log.h"
-#include "ruuvi_gateway.h"
-#include "time_units.h"
 static const char* TAG = "ADV_POST_TASK";
 
 typedef struct adv_post_timer_t
@@ -111,7 +111,7 @@ static const timer_sig_one_shot_desc_t g_adv_post_one_shot_timer_sig[ADV_POST_ON
     },
     [ADV_POST_ONE_SHOT_TIMER_SIG_RECV_ADV_TIMEOUT] = {
         .p_timer_name = "adv_post:timeout",
-        .sig = ADV_POST_SIG_GREEN_LED_UPDATE,
+        .sig = ADV_POST_SIG_RECV_ADV_TIMEOUT,
         .period_ticks = ADV_POST_TASK_RECV_ADV_TIMEOUT_TICKS,
     },
 };
