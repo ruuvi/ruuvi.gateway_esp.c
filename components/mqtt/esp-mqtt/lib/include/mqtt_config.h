@@ -93,5 +93,10 @@
 #define MQTT_ENABLE_WSS             CONFIG_MQTT_TRANSPORT_WEBSOCKET_SECURE
 
 
+#ifdef  CONFIG_MQTT_OUTBOX_MAX_SIZE
+#define OUTBOX_MAX_SIZE             CONFIG_MQTT_OUTBOX_MAX_SIZE
+#else
 #define OUTBOX_MAX_SIZE             (4*1024)
+#endif
+
 #endif

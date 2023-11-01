@@ -2,6 +2,19 @@ idf_component_register(
     SRCS
         adv_decode.c
         adv_decode.h
+        adv_mqtt.c
+        adv_mqtt.h
+        adv_mqtt_cfg_cache.c
+        adv_mqtt_cfg_cache.h
+        adv_mqtt_events.c
+        adv_mqtt_events.h
+        adv_mqtt_internal.h
+        adv_mqtt_signals.c
+        adv_mqtt_signals.h
+        adv_mqtt_task.c
+        adv_mqtt_task.h
+        adv_mqtt_timers.c
+        adv_mqtt_timers.h
         adv_post.c
         adv_post.h
         adv_post_async_comm.c

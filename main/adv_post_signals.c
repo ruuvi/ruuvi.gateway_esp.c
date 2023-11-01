@@ -12,10 +12,7 @@
 #include "event_mgr.h"
 #include "adv_table.h"
 #include "gw_status.h"
-#include "time_task.h"
-#include "metrics.h"
 #include "ruuvi_gateway.h"
-#include "mqtt.h"
 #include "http.h"
 #include "leds.h"
 #include "reset_task.h"
@@ -136,34 +133,6 @@ adv_post_handle_sig_time_synchronized(adv_post_state_t* const p_adv_post_state)
 }
 
 static void
-adv_post_handle_sig_recv_adv(ATTR_UNUSED adv_post_state_t* const p_adv_post_state) // NOSONAR
-{
-    LOG_DBG("Got ADV_POST_SIG_RECV_ADV");
-    if (gw_cfg_get_mqtt_use_mqtt() && (0 == gw_cfg_get_mqtt_sending_interval()) && gw_status_is_mqtt_connected())
-    {
-        adv_report_t adv_report = { 0 };
-        if (adv_table_read_retransmission_list3_head(&adv_report))
-        {
-            const bool   flag_ntp_use              = gw_cfg_get_ntp_use();
-            const time_t timestamp_if_synchronized = time_is_synchronized() ? time(NULL) : 0;
-            const time_t timestamp = flag_ntp_use ? timestamp_if_synchronized : (time_t)metrics_received_advs_get();
-            if (mqtt_publish_adv(&adv_report, flag_ntp_use, timestamp))
-            {
-                network_timeout_update_timestamp();
-            }
-            else
-            {
-                LOG_ERR("%s failed", "mqtt_publish_adv");
-            }
-        }
-        if (!adv_table_read_retransmission_list3_is_empty())
-        {
-            os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_ON_RECV_ADV));
-        }
-    }
-}
-
-static void
 adv_post_handle_sig_retransmit(adv_post_state_t* const p_adv_post_state)
 {
     LOG_INFO("Got ADV_POST_SIG_RETRANSMIT");
@@ -252,6 +221,7 @@ static void
 adv_post_handle_sig_task_watchdog_feed(ATTR_UNUSED adv_post_state_t* const p_adv_post_state) // NOSONAR
 {
     LOG_DBG("Feed watchdog");
+    LOG_INFO("Advs cnt: %lu", (printf_ulong_t)adv_post_advs_cnt_get_and_clear());
     const esp_err_t err = esp_task_wdt_reset();
     if (ESP_OK != err)
     {
@@ -416,9 +386,9 @@ adv_post_handle_sig_ble_scan_changed(ATTR_UNUSED adv_post_state_t* const p_adv_p
 }
 
 static void
-adv_post_handle_sig_activate_cfg_mode(ATTR_UNUSED adv_post_state_t* const p_adv_post_state) // NOSONAR
+adv_post_handle_sig_cfg_mode_activated(ATTR_UNUSED adv_post_state_t* const p_adv_post_state) // NOSONAR
 {
-    LOG_INFO("Got ADV_POST_SIG_ACTIVATE_CFG_MODE");
+    LOG_INFO("Got ADV_POST_SIG_CFG_MODE_ACTIVATED");
     adv_post_cfg_cache_t* p_cfg_cache = adv_post_cfg_cache_mutex_lock();
     if (NULL != p_cfg_cache->p_arr_of_scan_filter_mac)
     {
@@ -433,9 +403,9 @@ adv_post_handle_sig_activate_cfg_mode(ATTR_UNUSED adv_post_state_t* const p_adv_
 }
 
 static void
-adv_post_handle_sig_deactivate_cfg_mode(adv_post_state_t* const p_adv_post_state)
+adv_post_handle_sig_cfg_mode_deactivated(adv_post_state_t* const p_adv_post_state)
 {
-    LOG_INFO("Got ADV_POST_SIG_DEACTIVATE_CFG_MODE");
+    LOG_INFO("Got ADV_POST_SIG_CFG_MODE_DEACTIVATED");
     ruuvi_send_nrf_settings_from_gw_cfg();
     adv_post_on_gw_cfg_change(p_adv_post_state);
 }
@@ -473,7 +443,6 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p
         [ADV_POST_SIG_NETWORK_DISCONNECTED]  = &adv_post_handle_sig_network_disconnected,
         [ADV_POST_SIG_NETWORK_CONNECTED]     = &adv_post_handle_sig_network_connected,
         [ADV_POST_SIG_TIME_SYNCHRONIZED]     = &adv_post_handle_sig_time_synchronized,
-        [ADV_POST_SIG_ON_RECV_ADV]           = &adv_post_handle_sig_recv_adv,
         [ADV_POST_SIG_RETRANSMIT]            = &adv_post_handle_sig_retransmit,
         [ADV_POST_SIG_RETRANSMIT2]           = &adv_post_handle_sig_retransmit2,
         [ADV_POST_SIG_RETRANSMIT_MQTT]       = &adv_post_handle_sig_retransmit_mqtt,
@@ -485,8 +454,8 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p
         [ADV_POST_SIG_GW_CFG_READY]          = &adv_post_handle_sig_gw_cfg_ready,
         [ADV_POST_SIG_GW_CFG_CHANGED_RUUVI]  = &adv_post_handle_sig_gw_cfg_changed_ruuvi,
         [ADV_POST_SIG_BLE_SCAN_CHANGED]      = &adv_post_handle_sig_ble_scan_changed,
-        [ADV_POST_SIG_ACTIVATE_CFG_MODE]     = &adv_post_handle_sig_activate_cfg_mode,
-        [ADV_POST_SIG_DEACTIVATE_CFG_MODE]   = &adv_post_handle_sig_deactivate_cfg_mode,
+        [ADV_POST_SIG_CFG_MODE_ACTIVATED]    = &adv_post_handle_sig_cfg_mode_activated,
+        [ADV_POST_SIG_CFG_MODE_DEACTIVATED]  = &adv_post_handle_sig_cfg_mode_deactivated,
         [ADV_POST_SIG_GREEN_LED_TURN_ON]     = &adv_post_handle_sig_green_led_turn_on,
         [ADV_POST_SIG_GREEN_LED_TURN_OFF]    = &adv_post_handle_sig_green_led_turn_off,
         [ADV_POST_SIG_GREEN_LED_UPDATE]      = &adv_post_handle_sig_green_led_update,
@@ -517,22 +486,4 @@ adv_post_signals_deinit(void)
 {
     os_signal_unregister_cur_thread(g_p_adv_post_sig);
     os_signal_delete(&g_p_adv_post_sig);
-}
-
-void
-adv_post_signal_send_ble_scan_changed(void)
-{
-    os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_BLE_SCAN_CHANGED));
-}
-
-void
-adv_post_signal_send_activate_cfg_mode(void)
-{
-    os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_ACTIVATE_CFG_MODE));
-}
-
-void
-adv_post_signal_send_deactivate_cfg_mode(void)
-{
-    os_signal_send(g_p_adv_post_sig, adv_post_conv_to_sig_num(ADV_POST_SIG_DEACTIVATE_CFG_MODE));
 }

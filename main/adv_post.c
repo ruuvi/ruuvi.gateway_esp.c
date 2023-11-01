@@ -54,6 +54,22 @@ static adv_callbacks_fn_t adv_callback_func_tbl = {
     .AdvGetAllCallback = adv_post_send_get_all,
 };
 
+static uint32_t g_adv_post_advs_cnt;
+
+static void
+adv_post_advs_cnt_inc(void)
+{
+    g_adv_post_advs_cnt += 1;
+}
+
+uint32_t
+adv_post_advs_cnt_get_and_clear(void)
+{
+    const uint32_t cnt  = g_adv_post_advs_cnt;
+    g_adv_post_advs_cnt = 0;
+    return cnt;
+}
+
 /** @brief serialise up to U64 into given buffer, MSB first. */
 static inline void
 u64_to_array(const uint64_t u64, uint8_t* const p_array, const uint8_t num_bytes)
@@ -174,6 +190,7 @@ adv_post_check_if_mac_filtered_out(
 static void
 adv_post_send_report(void* p_arg)
 {
+    adv_post_advs_cnt_inc();
     if (!gw_cfg_is_initialized())
     {
         LOG_DBG("Drop adv - gw_cfg is not ready yet");
@@ -188,7 +205,8 @@ adv_post_send_report(void* p_arg)
     }
 
     const bool   flag_ntp_use              = p_cfg_cache->flag_use_ntp;
-    const time_t timestamp_if_synchronized = time_is_synchronized() ? time(NULL) : 0;
+    const bool   flag_time_is_synchronized = time_is_synchronized();
+    const time_t timestamp_if_synchronized = flag_time_is_synchronized ? time(NULL) : 0;
     const time_t timestamp = flag_ntp_use ? timestamp_if_synchronized : (time_t)metrics_received_advs_get();
 
     adv_report_t adv_report = { 0 };
@@ -201,6 +219,7 @@ adv_post_send_report(void* p_arg)
 
     if (adv_post_check_if_mac_filtered_out(p_cfg_cache, &adv_report.tag_mac))
     {
+        LOG_DBG("Drop adv - MAC is filtered out");
         adv_post_cfg_cache_mutex_unlock(&p_cfg_cache);
         return;
     }
@@ -210,11 +229,19 @@ adv_post_send_report(void* p_arg)
     LOG_DUMP_VERBOSE(
         adv_report.data_buf,
         adv_report.data_len,
-        "Recv Adv: MAC=%s, ID=0x%02x%02x, time=%lu",
+        "Recv Adv: MAC=%s, ID=0x%02x%02x, time=%lu, RSSI=%d",
         mac_address_to_str(&adv_report.tag_mac).str_buf,
         adv_report.data_buf[6],
         adv_report.data_buf[5],
-        (printf_ulong_t)timestamp);
+        (printf_ulong_t)timestamp,
+        adv_report.rssi);
+
+    if (flag_ntp_use && (!flag_time_is_synchronized))
+    {
+        LOG_DBG("Drop adv - time has not yet synchronized");
+        adv_post_cfg_cache_mutex_unlock(&p_cfg_cache);
+        return;
+    }
 
     if (!adv_put_to_table(&adv_report))
     {

@@ -45,7 +45,7 @@ static const char* TAG = "LEDS";
 #define LEDS_TASK_UPDATE_PERIOD_MS                   (100U)
 #define LEDS_TASK_WATCHDOG_PERIOD_MS                 (1000U)
 
-#define LEDS_TASK_PRIORITY (6)
+#define LEDS_TASK_PRIORITY (8)
 
 typedef enum leds_task_sig_e
 {

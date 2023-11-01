@@ -12,6 +12,7 @@
 #include "freertos/FreeRTOS.h"
 #include "lwip/sockets.h"
 #include "adv_post.h"
+#include "adv_mqtt.h"
 #include "api.h"
 #include "cJSON.h"
 #include "os_task.h"
@@ -56,7 +57,7 @@ static const char TAG[] = "ruuvi_gateway";
 #define MAC_ADDRESS_IDX_OF_LAST_BYTE        (MAC_ADDRESS_NUM_BYTES - 1U)
 #define MAC_ADDRESS_IDX_OF_PENULTIMATE_BYTE (MAC_ADDRESS_NUM_BYTES - 2U)
 
-#define NRF52_COMM_TASK_PRIORITY (7)
+#define NRF52_COMM_TASK_PRIORITY (9)
 
 #define RUUVI_GATEWAY_DELAY_AFTER_NRF52_UPDATING_SECONDS (5)
 
@@ -545,6 +546,7 @@ main_task_init(void)
         leds_notify_nrf52_ready();
     }
 
+    adv_mqtt_init();
     adv_post_init();
     terminal_open(NULL, true, NRF52_COMM_TASK_PRIORITY);
     api_process(true);

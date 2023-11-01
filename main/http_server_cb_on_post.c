@@ -21,6 +21,7 @@
 #include "gw_cfg_json_parse_scan.h"
 #include "adv_post.h"
 #include "reset_task.h"
+#include "event_mgr.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -104,7 +105,7 @@ http_server_cb_on_post_ble_scanning(const char* const p_body)
     ruuvi_send_nrf_settings(&scan, &filter);
     cJSON_Delete(p_json_root);
 
-    adv_post_signal_send_ble_scan_changed();
+    event_mgr_notify(EVENT_MGR_EV_CFG_BLE_SCAN_CHANGED);
 
     const bool flag_no_cache = true;
     return http_server_resp_data_in_flash(

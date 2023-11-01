@@ -29,6 +29,9 @@ bool
 mqtt_app_is_working(void);
 
 bool
+mqtt_is_buffer_available_for_publish(void);
+
+bool
 mqtt_publish_adv(const adv_report_t* const p_adv, const bool flag_use_timestamps, const time_t timestamp);
 
 void

@@ -98,6 +98,7 @@ target_compile_definitions(__idf_main PUBLIC
 )
 
 target_compile_definitions(__idf_esp_netif PUBLIC "-DLWIP_DHCP_GET_NTP_SRV=1")
+target_compile_definitions(__idf_mqtt PUBLIC "-DCONFIG_MQTT_OUTBOX_MAX_SIZE=4096" "-DCONFIG_MQTT_BUFFER_SIZE=1024" "-DCONFIG_MQTT_TASK_PRIORITY=7")
 
 target_include_directories(__idf_lwip BEFORE PUBLIC ./include)
 

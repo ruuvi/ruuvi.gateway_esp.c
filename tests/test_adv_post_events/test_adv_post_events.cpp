@@ -109,18 +109,20 @@ adv_post_signals_get(void)
 TEST_F(TestAdvPostEvents, test_1) // NOLINT
 {
     adv_post_subscribe_events();
-    ASSERT_EQ(this->m_subscribedEvents.size(), 11);
-    EXPECT_EQ(this->m_subscribedEvents[0].event, EVENT_MGR_EV_RECV_ADV);
-    EXPECT_EQ(this->m_subscribedEvents[1].event, EVENT_MGR_EV_WIFI_DISCONNECTED);
-    EXPECT_EQ(this->m_subscribedEvents[2].event, EVENT_MGR_EV_ETH_DISCONNECTED);
-    EXPECT_EQ(this->m_subscribedEvents[3].event, EVENT_MGR_EV_WIFI_CONNECTED);
-    EXPECT_EQ(this->m_subscribedEvents[4].event, EVENT_MGR_EV_ETH_CONNECTED);
-    EXPECT_EQ(this->m_subscribedEvents[5].event, EVENT_MGR_EV_TIME_SYNCHRONIZED);
-    EXPECT_EQ(this->m_subscribedEvents[6].event, EVENT_MGR_EV_GW_CFG_READY);
-    EXPECT_EQ(this->m_subscribedEvents[7].event, EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI);
-    EXPECT_EQ(this->m_subscribedEvents[8].event, EVENT_MGR_EV_RELAYING_MODE_CHANGED);
-    EXPECT_EQ(this->m_subscribedEvents[9].event, EVENT_MGR_EV_GREEN_LED_TURN_ON);
-    EXPECT_EQ(this->m_subscribedEvents[10].event, EVENT_MGR_EV_GREEN_LED_TURN_OFF);
+    ASSERT_EQ(this->m_subscribedEvents.size(), 13);
+    EXPECT_EQ(this->m_subscribedEvents[0].event, EVENT_MGR_EV_WIFI_DISCONNECTED);
+    EXPECT_EQ(this->m_subscribedEvents[1].event, EVENT_MGR_EV_ETH_DISCONNECTED);
+    EXPECT_EQ(this->m_subscribedEvents[2].event, EVENT_MGR_EV_WIFI_CONNECTED);
+    EXPECT_EQ(this->m_subscribedEvents[3].event, EVENT_MGR_EV_ETH_CONNECTED);
+    EXPECT_EQ(this->m_subscribedEvents[4].event, EVENT_MGR_EV_TIME_SYNCHRONIZED);
+    EXPECT_EQ(this->m_subscribedEvents[5].event, EVENT_MGR_EV_GW_CFG_READY);
+    EXPECT_EQ(this->m_subscribedEvents[6].event, EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI);
+    EXPECT_EQ(this->m_subscribedEvents[7].event, EVENT_MGR_EV_RELAYING_MODE_CHANGED);
+    EXPECT_EQ(this->m_subscribedEvents[8].event, EVENT_MGR_EV_GREEN_LED_TURN_ON);
+    EXPECT_EQ(this->m_subscribedEvents[9].event, EVENT_MGR_EV_GREEN_LED_TURN_OFF);
+    EXPECT_EQ(this->m_subscribedEvents[10].event, EVENT_MGR_EV_CFG_MODE_ACTIVATED);
+    EXPECT_EQ(this->m_subscribedEvents[11].event, EVENT_MGR_EV_CFG_MODE_DEACTIVATED);
+    EXPECT_EQ(this->m_subscribedEvents[12].event, EVENT_MGR_EV_CFG_BLE_SCAN_CHANGED);
 
     adv_post_unsubscribe_events();
     ASSERT_EQ(this->m_subscribedEvents.size(), 0);

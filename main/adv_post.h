@@ -20,14 +20,8 @@ extern "C" {
 void
 adv_post_init(void);
 
-void
-adv_post_signal_send_ble_scan_changed(void);
-
-void
-adv_post_signal_send_activate_cfg_mode(void);
-
-void
-adv_post_signal_send_deactivate_cfg_mode(void);
+uint32_t
+adv_post_advs_cnt_get_and_clear(void);
 
 #ifdef __cplusplus
 }

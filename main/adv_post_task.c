@@ -93,6 +93,9 @@ adv_post_task(void)
                 break;
             }
         }
+#if !defined(RUUVI_TESTS) || !RUUVI_TESTS
+        vTaskDelay(1);
+#endif
     }
     LOG_INFO("Stop task adv_post");
 
