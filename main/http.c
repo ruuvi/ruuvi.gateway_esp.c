@@ -384,7 +384,8 @@ cb_on_post_get_chunk(void* p_user_data, const void** p_p_buf, size_t* p_len)
     *p_len   = strlen(p_chunk);
     if (0 != *p_len)
     {
-        LOG_INFO("HTTP POST DATA:\n%s", p_chunk);
+        // Don't print logs on INFO level because it's called from the HTTP event handler
+        LOG_DBG("HTTP POST DATA:\n%s", p_chunk);
     }
     return true;
 }
@@ -399,7 +400,23 @@ http_send_async(http_async_info_t* const p_http_async_info)
     if (p_http_async_info->use_json_stream_gen)
     {
         const json_stream_gen_size_t json_len = json_stream_gen_calc_size(p_http_async_info->select.p_gen);
-        LOG_INFO("HTTP POST DATA len=%u", (printf_int_t)json_len);
+        LOG_INFO("HTTP POST DATA len=%u:", (printf_int_t)json_len);
+        while (true)
+        {
+            const char* const p_chunk = json_stream_gen_get_next_chunk(p_http_async_info->select.p_gen);
+            if (NULL == p_chunk)
+            {
+                break;
+            }
+            if ('\0' == *p_chunk)
+            {
+                break;
+            }
+            LOG_INFO("HTTP POST DATA:\n%s", p_chunk);
+            vTaskDelay(pdMS_TO_TICKS(5));
+        }
+        json_stream_gen_reset(p_http_async_info->select.p_gen);
+
         const esp_err_t err = esp_http_client_set_cb_on_post_get_chunk(
             p_http_async_info->p_http_client_handle,
             json_len,

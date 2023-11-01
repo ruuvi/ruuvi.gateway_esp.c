@@ -11,6 +11,14 @@
 #include "os_mutex_recursive.h"
 #include "event_mgr.h"
 #include "os_malloc.h"
+#if defined(RUUVI_TESTS) && RUUVI_TESTS
+#define LOG_LOCAL_DISABLED 1
+#define LOG_LOCAL_LEVEL    LOG_LEVEL_NONE
+#else
+#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
+#endif
+#include "log.h"
+static const char* TAG = "GW_CFG";
 
 _Static_assert(sizeof(GW_CFG_HTTP_AUTH_TYPE_STR_NO) <= GW_CFG_HTTP_AUTH_TYPE_STR_SIZE, "");
 _Static_assert(sizeof(GW_CFG_HTTP_AUTH_TYPE_STR_NONE) <= GW_CFG_HTTP_AUTH_TYPE_STR_SIZE, "");
@@ -301,15 +309,18 @@ gw_cfg_set_ruuvi(
     {
         if (g_gw_cfg_ready)
         {
+            LOG_INFO("event_mgr_notify: EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI");
             event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI);
             if (p_gw_cfg_ruuvi_dst->ntp.ntp_use != p_gw_cfg_ruuvi->ntp.ntp_use)
             {
+                LOG_INFO("event_mgr_notify: EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI_NTP_USE");
                 event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI_NTP_USE);
             }
             else if (
                 p_gw_cfg_ruuvi->ntp.ntp_use
                 && (p_gw_cfg_ruuvi_dst->ntp.ntp_use_dhcp != p_gw_cfg_ruuvi->ntp.ntp_use_dhcp))
             {
+                LOG_INFO("event_mgr_notify: EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI_NTP_USE_DHCP");
                 event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI_NTP_USE_DHCP);
             }
             else

@@ -188,7 +188,8 @@ adv_post_send_report(void* p_arg)
     }
 
     const bool   flag_ntp_use              = p_cfg_cache->flag_use_ntp;
-    const time_t timestamp_if_synchronized = time_is_synchronized() ? time(NULL) : 0;
+    const bool   flag_time_is_synchronized = time_is_synchronized();
+    const time_t timestamp_if_synchronized = flag_time_is_synchronized ? time(NULL) : 0;
     const time_t timestamp = flag_ntp_use ? timestamp_if_synchronized : (time_t)metrics_received_advs_get();
 
     adv_report_t adv_report = { 0 };
@@ -201,6 +202,7 @@ adv_post_send_report(void* p_arg)
 
     if (adv_post_check_if_mac_filtered_out(p_cfg_cache, &adv_report.tag_mac))
     {
+        LOG_DBG("Drop adv - MAC is filtered out");
         adv_post_cfg_cache_mutex_unlock(&p_cfg_cache);
         return;
     }
@@ -210,11 +212,12 @@ adv_post_send_report(void* p_arg)
     LOG_DUMP_VERBOSE(
         adv_report.data_buf,
         adv_report.data_len,
-        "Recv Adv: MAC=%s, ID=0x%02x%02x, time=%lu",
+        "Recv Adv: MAC=%s, ID=0x%02x%02x, time=%lu, RSSI=%d",
         mac_address_to_str(&adv_report.tag_mac).str_buf,
         adv_report.data_buf[6],
         adv_report.data_buf[5],
-        (printf_ulong_t)timestamp);
+        (printf_ulong_t)timestamp,
+        adv_report.rssi);
 
     if (!adv_put_to_table(&adv_report))
     {
