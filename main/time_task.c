@@ -175,10 +175,14 @@ time_task_on_cfg_changed(void)
     if ((flag_prev_ntp_use != g_time_task_ntp_use) || (flag_prev_ntp_use_dhcp != g_time_task_ntp_use_dhcp))
     {
         main_task_send_sig_reconnect_network();
+        // time_task_sntp_start will be called by handler of EVENT_MGR_EV_WIFI_CONNECTED or EVENT_MGR_EV_ETH_CONNECTED
     }
-    if (g_time_task_ntp_use)
+    else
     {
-        time_task_sntp_start();
+        if (g_time_task_ntp_use)
+        {
+            time_task_sntp_start();
+        }
     }
 }
 
