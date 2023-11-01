@@ -364,68 +364,100 @@ gw_cfg_unlock_ro(const gw_cfg_t** const p_p_gw_cfg)
 bool
 gw_cfg_get_ntp_use(void)
 {
-    return g_pTestClass->m_gw_cfg.ruuvi_cfg.ntp.ntp_use;
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
+    const bool      ntp_use  = p_gw_cfg->ruuvi_cfg.ntp.ntp_use;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+
+    return ntp_use;
 }
 
 bool
 gw_cfg_get_http_use_http_ruuvi(void)
 {
-    return g_pTestClass->m_gw_cfg.ruuvi_cfg.http.use_http_ruuvi;
+    const gw_cfg_t* p_gw_cfg       = gw_cfg_lock_ro();
+    const bool      use_http_ruuvi = p_gw_cfg->ruuvi_cfg.http.use_http_ruuvi;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+
+    return use_http_ruuvi;
 }
 
 bool
 gw_cfg_get_http_use_http(void)
 {
-    return g_pTestClass->m_gw_cfg.ruuvi_cfg.http.use_http;
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
+    const bool      use_http = p_gw_cfg->ruuvi_cfg.http.use_http;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+
+    return use_http;
 }
 
 uint32_t
 gw_cfg_get_http_period(void)
 {
-    return g_pTestClass->m_gw_cfg.ruuvi_cfg.http.http_period;
+    const gw_cfg_t* p_gw_cfg    = gw_cfg_lock_ro();
+    const uint32_t  http_period = p_gw_cfg->ruuvi_cfg.http.http_period;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+
+    return http_period;
 }
 
 bool
 gw_cfg_get_http_stat_use_http_stat(void)
 {
-    return g_pTestClass->m_gw_cfg.ruuvi_cfg.http_stat.use_http_stat;
+    const gw_cfg_t* p_gw_cfg      = gw_cfg_lock_ro();
+    const bool      use_http_stat = p_gw_cfg->ruuvi_cfg.http_stat.use_http_stat;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+
+    return use_http_stat;
 }
 
 bool
 gw_cfg_get_mqtt_use_mqtt(void)
 {
-    return g_pTestClass->m_gw_cfg.ruuvi_cfg.mqtt.use_mqtt;
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
+    const bool      use_mqtt = p_gw_cfg->ruuvi_cfg.mqtt.use_mqtt;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+
+    return use_mqtt;
 }
 
 uint32_t
 gw_cfg_get_mqtt_sending_interval(void)
 {
-    return g_pTestClass->m_gw_cfg.ruuvi_cfg.mqtt.mqtt_sending_interval;
+    const gw_cfg_t* p_gw_cfg              = gw_cfg_lock_ro();
+    const uint32_t  mqtt_sending_interval = p_gw_cfg->ruuvi_cfg.mqtt.mqtt_sending_interval;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+
+    return mqtt_sending_interval;
 }
 
 bool
 gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss(void)
 {
-    if (!g_pTestClass->m_gw_cfg.ruuvi_cfg.mqtt.use_mqtt)
+    bool            res      = false;
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
+
+    if (p_gw_cfg->ruuvi_cfg.mqtt.use_mqtt)
     {
-        return false;
+        if (0 == strcmp(MQTT_TRANSPORT_SSL, p_gw_cfg->ruuvi_cfg.mqtt.mqtt_transport.buf))
+        {
+            res = true;
+        }
+        else if (0 == strcmp(MQTT_TRANSPORT_WSS, p_gw_cfg->ruuvi_cfg.mqtt.mqtt_transport.buf))
+        {
+            res = true;
+        }
     }
-    if (0 == strcmp(MQTT_TRANSPORT_SSL, g_pTestClass->m_gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf))
-    {
-        return true;
-    }
-    if (0 == strcmp(MQTT_TRANSPORT_WSS, g_pTestClass->m_gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf))
-    {
-        return true;
-    }
-    return false;
+
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    return res;
 }
 
-bool
-gw_status_is_mqtt_connected(void)
-{
-    return g_pTestClass->m_gw_status_is_mqtt_connected;
-}
+// bool
+// gw_status_is_mqtt_connected(void)
+//{
+//     return g_pTestClass->m_gw_status_is_mqtt_connected;
+// }
 
 bool
 gw_status_is_relaying_via_http_enabled(void)
@@ -656,8 +688,6 @@ TEST_F(TestAdvPostSignals, test_adv_post_signals_init_deinit) // NOLINT
         { .event_type    = EVENT_HISTORY_OS_SIGNAL_ADD,
           .os_signal_add = { .sig_num = adv_post_conv_to_sig_num(ADV_POST_SIG_TIME_SYNCHRONIZED) } },
         { .event_type    = EVENT_HISTORY_OS_SIGNAL_ADD,
-          .os_signal_add = { .sig_num = adv_post_conv_to_sig_num(ADV_POST_SIG_ON_RECV_ADV) } },
-        { .event_type    = EVENT_HISTORY_OS_SIGNAL_ADD,
           .os_signal_add = { .sig_num = adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT) } },
         { .event_type    = EVENT_HISTORY_OS_SIGNAL_ADD,
           .os_signal_add = { .sig_num = adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT2) } },
@@ -680,9 +710,9 @@ TEST_F(TestAdvPostSignals, test_adv_post_signals_init_deinit) // NOLINT
         { .event_type    = EVENT_HISTORY_OS_SIGNAL_ADD,
           .os_signal_add = { .sig_num = adv_post_conv_to_sig_num(ADV_POST_SIG_BLE_SCAN_CHANGED) } },
         { .event_type    = EVENT_HISTORY_OS_SIGNAL_ADD,
-          .os_signal_add = { .sig_num = adv_post_conv_to_sig_num(ADV_POST_SIG_ACTIVATE_CFG_MODE) } },
+          .os_signal_add = { .sig_num = adv_post_conv_to_sig_num(ADV_POST_SIG_CFG_MODE_ACTIVATED) } },
         { .event_type    = EVENT_HISTORY_OS_SIGNAL_ADD,
-          .os_signal_add = { .sig_num = adv_post_conv_to_sig_num(ADV_POST_SIG_DEACTIVATE_CFG_MODE) } },
+          .os_signal_add = { .sig_num = adv_post_conv_to_sig_num(ADV_POST_SIG_CFG_MODE_DEACTIVATED) } },
         { .event_type    = EVENT_HISTORY_OS_SIGNAL_ADD,
           .os_signal_add = { .sig_num = adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_TURN_ON) } },
         { .event_type    = EVENT_HISTORY_OS_SIGNAL_ADD,
@@ -732,24 +762,23 @@ TEST_F(TestAdvPostSignals, test_adv_post_conv_to_sig_num) // NOLINT
     ASSERT_EQ(OS_SIGNAL_NUM_1, adv_post_conv_to_sig_num(ADV_POST_SIG_NETWORK_DISCONNECTED));
     ASSERT_EQ(OS_SIGNAL_NUM_2, adv_post_conv_to_sig_num(ADV_POST_SIG_NETWORK_CONNECTED));
     ASSERT_EQ(OS_SIGNAL_NUM_3, adv_post_conv_to_sig_num(ADV_POST_SIG_TIME_SYNCHRONIZED));
-    ASSERT_EQ(OS_SIGNAL_NUM_4, adv_post_conv_to_sig_num(ADV_POST_SIG_ON_RECV_ADV));
-    ASSERT_EQ(OS_SIGNAL_NUM_5, adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT));
-    ASSERT_EQ(OS_SIGNAL_NUM_6, adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT2));
-    ASSERT_EQ(OS_SIGNAL_NUM_7, adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT_MQTT));
-    ASSERT_EQ(OS_SIGNAL_NUM_8, adv_post_conv_to_sig_num(ADV_POST_SIG_SEND_STATISTICS));
-    ASSERT_EQ(OS_SIGNAL_NUM_9, adv_post_conv_to_sig_num(ADV_POST_SIG_DO_ASYNC_COMM));
-    ASSERT_EQ(OS_SIGNAL_NUM_10, adv_post_conv_to_sig_num(ADV_POST_SIG_RELAYING_MODE_CHANGED));
-    ASSERT_EQ(OS_SIGNAL_NUM_11, adv_post_conv_to_sig_num(ADV_POST_SIG_NETWORK_WATCHDOG));
-    ASSERT_EQ(OS_SIGNAL_NUM_12, adv_post_conv_to_sig_num(ADV_POST_SIG_TASK_WATCHDOG_FEED));
-    ASSERT_EQ(OS_SIGNAL_NUM_13, adv_post_conv_to_sig_num(ADV_POST_SIG_GW_CFG_READY));
-    ASSERT_EQ(OS_SIGNAL_NUM_14, adv_post_conv_to_sig_num(ADV_POST_SIG_GW_CFG_CHANGED_RUUVI));
-    ASSERT_EQ(OS_SIGNAL_NUM_15, adv_post_conv_to_sig_num(ADV_POST_SIG_BLE_SCAN_CHANGED));
-    ASSERT_EQ(OS_SIGNAL_NUM_16, adv_post_conv_to_sig_num(ADV_POST_SIG_ACTIVATE_CFG_MODE));
-    ASSERT_EQ(OS_SIGNAL_NUM_17, adv_post_conv_to_sig_num(ADV_POST_SIG_DEACTIVATE_CFG_MODE));
-    ASSERT_EQ(OS_SIGNAL_NUM_18, adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_TURN_ON));
-    ASSERT_EQ(OS_SIGNAL_NUM_19, adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_TURN_OFF));
-    ASSERT_EQ(OS_SIGNAL_NUM_20, adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_UPDATE));
-    ASSERT_EQ(OS_SIGNAL_NUM_21, adv_post_conv_to_sig_num(ADV_POST_SIG_RECV_ADV_TIMEOUT));
+    ASSERT_EQ(OS_SIGNAL_NUM_4, adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT));
+    ASSERT_EQ(OS_SIGNAL_NUM_5, adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT2));
+    ASSERT_EQ(OS_SIGNAL_NUM_6, adv_post_conv_to_sig_num(ADV_POST_SIG_RETRANSMIT_MQTT));
+    ASSERT_EQ(OS_SIGNAL_NUM_7, adv_post_conv_to_sig_num(ADV_POST_SIG_SEND_STATISTICS));
+    ASSERT_EQ(OS_SIGNAL_NUM_8, adv_post_conv_to_sig_num(ADV_POST_SIG_DO_ASYNC_COMM));
+    ASSERT_EQ(OS_SIGNAL_NUM_9, adv_post_conv_to_sig_num(ADV_POST_SIG_RELAYING_MODE_CHANGED));
+    ASSERT_EQ(OS_SIGNAL_NUM_10, adv_post_conv_to_sig_num(ADV_POST_SIG_NETWORK_WATCHDOG));
+    ASSERT_EQ(OS_SIGNAL_NUM_11, adv_post_conv_to_sig_num(ADV_POST_SIG_TASK_WATCHDOG_FEED));
+    ASSERT_EQ(OS_SIGNAL_NUM_12, adv_post_conv_to_sig_num(ADV_POST_SIG_GW_CFG_READY));
+    ASSERT_EQ(OS_SIGNAL_NUM_13, adv_post_conv_to_sig_num(ADV_POST_SIG_GW_CFG_CHANGED_RUUVI));
+    ASSERT_EQ(OS_SIGNAL_NUM_14, adv_post_conv_to_sig_num(ADV_POST_SIG_BLE_SCAN_CHANGED));
+    ASSERT_EQ(OS_SIGNAL_NUM_15, adv_post_conv_to_sig_num(ADV_POST_SIG_CFG_MODE_ACTIVATED));
+    ASSERT_EQ(OS_SIGNAL_NUM_16, adv_post_conv_to_sig_num(ADV_POST_SIG_CFG_MODE_DEACTIVATED));
+    ASSERT_EQ(OS_SIGNAL_NUM_17, adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_TURN_ON));
+    ASSERT_EQ(OS_SIGNAL_NUM_18, adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_TURN_OFF));
+    ASSERT_EQ(OS_SIGNAL_NUM_19, adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_UPDATE));
+    ASSERT_EQ(OS_SIGNAL_NUM_20, adv_post_conv_to_sig_num(ADV_POST_SIG_RECV_ADV_TIMEOUT));
 
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -760,24 +789,23 @@ TEST_F(TestAdvPostSignals, test_adv_post_conv_from_sig_num) // NOLINT
     ASSERT_EQ(ADV_POST_SIG_NETWORK_DISCONNECTED, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_1));
     ASSERT_EQ(ADV_POST_SIG_NETWORK_CONNECTED, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_2));
     ASSERT_EQ(ADV_POST_SIG_TIME_SYNCHRONIZED, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_3));
-    ASSERT_EQ(ADV_POST_SIG_ON_RECV_ADV, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_4));
-    ASSERT_EQ(ADV_POST_SIG_RETRANSMIT, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_5));
-    ASSERT_EQ(ADV_POST_SIG_RETRANSMIT2, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_6));
-    ASSERT_EQ(ADV_POST_SIG_RETRANSMIT_MQTT, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_7));
-    ASSERT_EQ(ADV_POST_SIG_SEND_STATISTICS, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_8));
-    ASSERT_EQ(ADV_POST_SIG_DO_ASYNC_COMM, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_9));
-    ASSERT_EQ(ADV_POST_SIG_RELAYING_MODE_CHANGED, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_10));
-    ASSERT_EQ(ADV_POST_SIG_NETWORK_WATCHDOG, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_11));
-    ASSERT_EQ(ADV_POST_SIG_TASK_WATCHDOG_FEED, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_12));
-    ASSERT_EQ(ADV_POST_SIG_GW_CFG_READY, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_13));
-    ASSERT_EQ(ADV_POST_SIG_GW_CFG_CHANGED_RUUVI, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_14));
-    ASSERT_EQ(ADV_POST_SIG_BLE_SCAN_CHANGED, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_15));
-    ASSERT_EQ(ADV_POST_SIG_ACTIVATE_CFG_MODE, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_16));
-    ASSERT_EQ(ADV_POST_SIG_DEACTIVATE_CFG_MODE, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_17));
-    ASSERT_EQ(ADV_POST_SIG_GREEN_LED_TURN_ON, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_18));
-    ASSERT_EQ(ADV_POST_SIG_GREEN_LED_TURN_OFF, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_19));
-    ASSERT_EQ(ADV_POST_SIG_GREEN_LED_UPDATE, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_20));
-    ASSERT_EQ(ADV_POST_SIG_RECV_ADV_TIMEOUT, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_21));
+    ASSERT_EQ(ADV_POST_SIG_RETRANSMIT, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_4));
+    ASSERT_EQ(ADV_POST_SIG_RETRANSMIT2, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_5));
+    ASSERT_EQ(ADV_POST_SIG_RETRANSMIT_MQTT, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_6));
+    ASSERT_EQ(ADV_POST_SIG_SEND_STATISTICS, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_7));
+    ASSERT_EQ(ADV_POST_SIG_DO_ASYNC_COMM, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_8));
+    ASSERT_EQ(ADV_POST_SIG_RELAYING_MODE_CHANGED, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_9));
+    ASSERT_EQ(ADV_POST_SIG_NETWORK_WATCHDOG, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_10));
+    ASSERT_EQ(ADV_POST_SIG_TASK_WATCHDOG_FEED, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_11));
+    ASSERT_EQ(ADV_POST_SIG_GW_CFG_READY, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_12));
+    ASSERT_EQ(ADV_POST_SIG_GW_CFG_CHANGED_RUUVI, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_13));
+    ASSERT_EQ(ADV_POST_SIG_BLE_SCAN_CHANGED, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_14));
+    ASSERT_EQ(ADV_POST_SIG_CFG_MODE_ACTIVATED, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_15));
+    ASSERT_EQ(ADV_POST_SIG_CFG_MODE_DEACTIVATED, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_16));
+    ASSERT_EQ(ADV_POST_SIG_GREEN_LED_TURN_ON, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_17));
+    ASSERT_EQ(ADV_POST_SIG_GREEN_LED_TURN_OFF, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_18));
+    ASSERT_EQ(ADV_POST_SIG_GREEN_LED_UPDATE, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_19));
+    ASSERT_EQ(ADV_POST_SIG_RECV_ADV_TIMEOUT, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_20));
 
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -985,150 +1013,6 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_time_synchronized) // NOLINT
     ASSERT_EQ(1, this->m_events_history.size());
     ASSERT_EQ(EVENT_HISTORY_RELAUNCH_TIMER_SIG_SEND_STATISTICS, this->m_events_history[0].event_type);
     adv_post_state.flag_need_to_send_statistics = 0;
-
-    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_on_recv_adv) // NOLINT
-{
-    adv_post_signals_init();
-    this->m_events_history.clear();
-
-    adv_post_state_t adv_post_state = {
-        .flag_primary_time_sync_is_done  = false,
-        .flag_network_connected          = false,
-        .flag_async_comm_in_progress     = false,
-        .flag_need_to_send_advs1         = false,
-        .flag_need_to_send_advs2         = false,
-        .flag_need_to_send_statistics    = false,
-        .flag_need_to_send_mqtt_periodic = false,
-        .flag_relaying_enabled           = true,
-        .flag_use_timestamps             = true,
-        .flag_stop                       = false,
-    };
-    this->m_gw_cfg.ruuvi_cfg.mqtt.use_mqtt              = false;
-    this->m_gw_cfg.ruuvi_cfg.mqtt.mqtt_sending_interval = 10;
-    this->m_gw_status_is_mqtt_connected                 = false;
-    ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_ON_RECV_ADV, &adv_post_state));
-    ASSERT_FALSE(adv_post_state.flag_stop);
-    ASSERT_EQ(0, this->m_events_history.size());
-
-    this->m_gw_cfg.ruuvi_cfg.mqtt.use_mqtt              = true;
-    this->m_gw_cfg.ruuvi_cfg.mqtt.mqtt_sending_interval = 10;
-    this->m_gw_status_is_mqtt_connected                 = false;
-    ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_ON_RECV_ADV, &adv_post_state));
-    ASSERT_EQ(0, this->m_events_history.size());
-
-    this->m_gw_cfg.ruuvi_cfg.mqtt.use_mqtt              = false;
-    this->m_gw_cfg.ruuvi_cfg.mqtt.mqtt_sending_interval = 0;
-    this->m_gw_status_is_mqtt_connected                 = false;
-    ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_ON_RECV_ADV, &adv_post_state));
-    ASSERT_EQ(0, this->m_events_history.size());
-
-    this->m_gw_cfg.ruuvi_cfg.mqtt.use_mqtt              = true;
-    this->m_gw_cfg.ruuvi_cfg.mqtt.mqtt_sending_interval = 0;
-    this->m_gw_status_is_mqtt_connected                 = false;
-    ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_ON_RECV_ADV, &adv_post_state));
-    ASSERT_EQ(0, this->m_events_history.size());
-
-    //
-
-    this->m_gw_cfg.ruuvi_cfg.mqtt.use_mqtt              = false;
-    this->m_gw_cfg.ruuvi_cfg.mqtt.mqtt_sending_interval = 10;
-    this->m_gw_status_is_mqtt_connected                 = true;
-    ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_ON_RECV_ADV, &adv_post_state));
-    ASSERT_EQ(0, this->m_events_history.size());
-
-    this->m_gw_cfg.ruuvi_cfg.mqtt.use_mqtt              = true;
-    this->m_gw_cfg.ruuvi_cfg.mqtt.mqtt_sending_interval = 10;
-    this->m_gw_status_is_mqtt_connected                 = true;
-    ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_ON_RECV_ADV, &adv_post_state));
-    ASSERT_EQ(0, this->m_events_history.size());
-
-    this->m_gw_cfg.ruuvi_cfg.mqtt.use_mqtt              = false;
-    this->m_gw_cfg.ruuvi_cfg.mqtt.mqtt_sending_interval = 0;
-    this->m_gw_status_is_mqtt_connected                 = true;
-    ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_ON_RECV_ADV, &adv_post_state));
-    ASSERT_EQ(0, this->m_events_history.size());
-
-    {
-        this->adv_table_read_retransmission_list3_head_res     = false;
-        this->adv_table_read_retransmission_list3_is_empty_res = true;
-
-        this->m_gw_cfg.ruuvi_cfg.mqtt.use_mqtt              = true;
-        this->m_gw_cfg.ruuvi_cfg.mqtt.mqtt_sending_interval = 0;
-        this->m_gw_status_is_mqtt_connected                 = true;
-        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_ON_RECV_ADV, &adv_post_state));
-        ASSERT_EQ(0, this->m_events_history.size());
-    }
-
-    {
-        this->adv_table_read_retransmission_list3_head_res     = true;
-        this->adv_table_read_retransmission_list3_is_empty_res = true;
-        this->m_gw_cfg.ruuvi_cfg.ntp.ntp_use                   = true;
-        this->m_time_is_synchronized                           = true;
-        this->m_metrics_received_advs                          = 123;
-
-        this->m_gw_cfg.ruuvi_cfg.mqtt.use_mqtt              = true;
-        this->m_gw_cfg.ruuvi_cfg.mqtt.mqtt_sending_interval = 0;
-        this->m_gw_status_is_mqtt_connected                 = true;
-        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_ON_RECV_ADV, &adv_post_state));
-        ASSERT_EQ(1, this->m_events_history.size());
-        ASSERT_EQ(EVENT_HISTORY_NETWORK_TIMEOUT_UPDATE_TIMESTAMP, this->m_events_history[0].event_type);
-        this->m_events_history.clear();
-    }
-
-    this->mqtt_publish_adv_res = false;
-    {
-        this->adv_table_read_retransmission_list3_head_res     = true;
-        this->adv_table_read_retransmission_list3_is_empty_res = true;
-        this->m_gw_cfg.ruuvi_cfg.ntp.ntp_use                   = true;
-        this->m_time_is_synchronized                           = true;
-        this->m_metrics_received_advs                          = 123;
-
-        this->m_gw_cfg.ruuvi_cfg.mqtt.use_mqtt              = true;
-        this->m_gw_cfg.ruuvi_cfg.mqtt.mqtt_sending_interval = 0;
-        this->m_gw_status_is_mqtt_connected                 = true;
-        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_ON_RECV_ADV, &adv_post_state));
-        ASSERT_EQ(0, this->m_events_history.size());
-        this->m_events_history.clear();
-    }
-
-    this->mqtt_publish_adv_res = true;
-
-    {
-        this->adv_table_read_retransmission_list3_head_res     = true;
-        this->adv_table_read_retransmission_list3_is_empty_res = true;
-        this->m_gw_cfg.ruuvi_cfg.ntp.ntp_use                   = false;
-        this->m_time_is_synchronized                           = false;
-        this->m_metrics_received_advs                          = 124;
-
-        this->m_gw_cfg.ruuvi_cfg.mqtt.use_mqtt              = true;
-        this->m_gw_cfg.ruuvi_cfg.mqtt.mqtt_sending_interval = 0;
-        this->m_gw_status_is_mqtt_connected                 = true;
-        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_ON_RECV_ADV, &adv_post_state));
-        ASSERT_EQ(1, this->m_events_history.size());
-        ASSERT_EQ(EVENT_HISTORY_NETWORK_TIMEOUT_UPDATE_TIMESTAMP, this->m_events_history[0].event_type);
-        this->m_events_history.clear();
-    }
-
-    {
-        this->adv_table_read_retransmission_list3_head_res     = true;
-        this->adv_table_read_retransmission_list3_is_empty_res = false;
-        this->m_gw_cfg.ruuvi_cfg.ntp.ntp_use                   = true;
-        this->m_time_is_synchronized                           = true;
-        this->m_metrics_received_advs                          = 123;
-
-        this->m_gw_cfg.ruuvi_cfg.mqtt.use_mqtt              = true;
-        this->m_gw_cfg.ruuvi_cfg.mqtt.mqtt_sending_interval = 0;
-        this->m_gw_status_is_mqtt_connected                 = true;
-        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_ON_RECV_ADV, &adv_post_state));
-        ASSERT_EQ(2, this->m_events_history.size());
-        ASSERT_EQ(EVENT_HISTORY_NETWORK_TIMEOUT_UPDATE_TIMESTAMP, this->m_events_history[0].event_type);
-        ASSERT_EQ(EVENT_HISTORY_OS_SIGNAL_SEND, this->m_events_history[1].event_type);
-        ASSERT_EQ(adv_post_conv_to_sig_num(ADV_POST_SIG_ON_RECV_ADV), this->m_events_history[1].os_signal_send.sig_num);
-        this->m_events_history.clear();
-    }
 
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -2331,7 +2215,7 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_activate_cfg_mode) // NOLINT
     };
 
     {
-        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_ACTIVATE_CFG_MODE, &adv_post_state));
+        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_CFG_MODE_ACTIVATED, &adv_post_state));
         ASSERT_FALSE(adv_post_state.flag_stop);
         ASSERT_EQ(3, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[0].event_type);
@@ -2378,7 +2262,7 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_activate_cfg_mode) // NOLINT
         this->m_events_history.clear();
     }
     {
-        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_ACTIVATE_CFG_MODE, &adv_post_state));
+        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_CFG_MODE_ACTIVATED, &adv_post_state));
         ASSERT_FALSE(adv_post_state.flag_stop);
         ASSERT_EQ(3, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[0].event_type);
@@ -2415,7 +2299,7 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_deactivate_cfg_mode) // NOLI
         this->m_gw_cfg.ruuvi_cfg.http.use_http              = false;
         this->m_gw_cfg.ruuvi_cfg.mqtt.mqtt_sending_interval = 0;
         this->m_gw_cfg.ruuvi_cfg.mqtt.use_mqtt              = false;
-        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_DEACTIVATE_CFG_MODE, &adv_post_state));
+        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_CFG_MODE_DEACTIVATED, &adv_post_state));
         ASSERT_FALSE(adv_post_state.flag_stop);
         ASSERT_TRUE(adv_post_state.flag_use_timestamps);
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);
@@ -2441,7 +2325,7 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_deactivate_cfg_mode) // NOLI
         this->m_gw_cfg.ruuvi_cfg.http.use_http              = false;
         this->m_gw_cfg.ruuvi_cfg.mqtt.mqtt_sending_interval = 0;
         this->m_gw_cfg.ruuvi_cfg.mqtt.use_mqtt              = false;
-        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_DEACTIVATE_CFG_MODE, &adv_post_state));
+        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_CFG_MODE_DEACTIVATED, &adv_post_state));
         ASSERT_FALSE(adv_post_state.flag_stop);
         ASSERT_TRUE(adv_post_state.flag_use_timestamps);
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);
@@ -2471,7 +2355,7 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_deactivate_cfg_mode) // NOLI
             sizeof(this->m_gw_cfg.ruuvi_cfg.mqtt.mqtt_transport.buf),
             "%s",
             MQTT_TRANSPORT_SSL);
-        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_DEACTIVATE_CFG_MODE, &adv_post_state));
+        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_CFG_MODE_DEACTIVATED, &adv_post_state));
         ASSERT_FALSE(adv_post_state.flag_stop);
         ASSERT_TRUE(adv_post_state.flag_use_timestamps);
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);
@@ -2501,7 +2385,7 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_deactivate_cfg_mode) // NOLI
         this->m_gw_cfg.ruuvi_cfg.http.use_http                        = false;
         this->m_gw_cfg.ruuvi_cfg.mqtt.mqtt_sending_interval           = 0;
         this->m_gw_cfg.ruuvi_cfg.mqtt.use_mqtt                        = false;
-        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_DEACTIVATE_CFG_MODE, &adv_post_state));
+        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_CFG_MODE_DEACTIVATED, &adv_post_state));
         ASSERT_FALSE(adv_post_state.flag_stop);
         ASSERT_TRUE(adv_post_state.flag_use_timestamps);
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);
@@ -2536,7 +2420,7 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_deactivate_cfg_mode) // NOLI
         this->m_gw_cfg.ruuvi_cfg.http.use_http                        = false;
         this->m_gw_cfg.ruuvi_cfg.mqtt.mqtt_sending_interval           = 0;
         this->m_gw_cfg.ruuvi_cfg.mqtt.use_mqtt                        = false;
-        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_DEACTIVATE_CFG_MODE, &adv_post_state));
+        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_CFG_MODE_DEACTIVATED, &adv_post_state));
         ASSERT_FALSE(adv_post_state.flag_stop);
         ASSERT_TRUE(adv_post_state.flag_use_timestamps);
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);
@@ -2570,7 +2454,7 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_deactivate_cfg_mode) // NOLI
         this->m_gw_cfg.ruuvi_cfg.http.use_http                        = false;
         this->m_gw_cfg.ruuvi_cfg.mqtt.mqtt_sending_interval           = 0;
         this->m_gw_cfg.ruuvi_cfg.mqtt.use_mqtt                        = false;
-        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_DEACTIVATE_CFG_MODE, &adv_post_state));
+        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_CFG_MODE_DEACTIVATED, &adv_post_state));
         ASSERT_FALSE(adv_post_state.flag_stop);
         ASSERT_TRUE(adv_post_state.flag_use_timestamps);
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);
@@ -2603,7 +2487,7 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_deactivate_cfg_mode) // NOLI
         this->m_gw_cfg.ruuvi_cfg.http.use_http                        = false;
         this->m_gw_cfg.ruuvi_cfg.mqtt.mqtt_sending_interval           = 0;
         this->m_gw_cfg.ruuvi_cfg.mqtt.use_mqtt                        = false;
-        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_DEACTIVATE_CFG_MODE, &adv_post_state));
+        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_CFG_MODE_DEACTIVATED, &adv_post_state));
         ASSERT_FALSE(adv_post_state.flag_stop);
         ASSERT_TRUE(adv_post_state.flag_use_timestamps);
         ASSERT_TRUE(this->m_adv_post_cfg_cache.flag_use_ntp);

@@ -55,6 +55,11 @@ include_directories(
         "lwip/lwip/contrib/ports/unix/port/include"
 )
 
+add_subdirectory(test_adv_mqtt_cfg_cache)
+add_subdirectory(test_adv_mqtt_events)
+add_subdirectory(test_adv_mqtt_timers)
+add_subdirectory(test_adv_mqtt_task)
+add_subdirectory(test_adv_mqtt_signals)
 add_subdirectory(test_adv_post_cfg_cache)
 add_subdirectory(test_adv_post_events)
 add_subdirectory(test_adv_post_green_led)
@@ -93,6 +98,31 @@ add_subdirectory(test_url_encode)
 add_test(NAME test_adv_table
         COMMAND ruuvi_gateway_esp-test-adv_table
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-adv_table>/gtestresults.xml
+)
+
+add_test(NAME test_adv_mqtt_cfg_cache
+        COMMAND ruuvi_gateway_esp-test-adv_mqtt_cfg_cache
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-adv_mqtt_cfg_cache>/gtestresults.xml
+)
+
+add_test(NAME test_adv_mqtt_events
+        COMMAND ruuvi_gateway_esp-test-adv_mqtt_events
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-adv_mqtt_events>/gtestresults.xml
+)
+
+add_test(NAME test_adv_mqtt_timers
+        COMMAND ruuvi_gateway_esp-test-adv_mqtt_timers
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-adv_mqtt_timers>/gtestresults.xml
+)
+
+add_test(NAME test_adv_mqtt_task
+        COMMAND ruuvi_gateway_esp-test-adv_mqtt_task
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-adv_mqtt_task>/gtestresults.xml
+)
+
+add_test(NAME test_adv_mqtt_signals
+        COMMAND ruuvi_gateway_esp-test-adv_mqtt_signals
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-adv_mqtt_signals>/gtestresults.xml
 )
 
 add_test(NAME test_adv_post_cfg_cache
