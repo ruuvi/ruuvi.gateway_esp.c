@@ -15,8 +15,6 @@
 #else
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #endif
-#include "log.h"
-static const char* TAG = "ADV_MQTT_TASK";
 
 typedef struct timer_sig_periodic_desc_t
 {
@@ -69,7 +67,6 @@ static const timer_sig_one_shot_desc_t g_adv_mqtt_one_shot_timer_sig[ADV_MQTT_ON
 void
 adv_mqtt_create_timers(void)
 {
-    LOG_DBG("adv_mqtt_create_timers");
     for (uint32_t i = 0; i < ADV_MQTT_PERIODIC_TIMER_SIG_NUM; ++i)
     {
         const timer_sig_periodic_desc_t* const p_timer_sig_desc = &g_adv_mqtt_periodic_timer_sig[i];
