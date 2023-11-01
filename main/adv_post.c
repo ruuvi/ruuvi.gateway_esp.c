@@ -236,7 +236,7 @@ adv_post_send_report(void* p_arg)
         (printf_ulong_t)timestamp,
         adv_report.rssi);
 
-    if (flag_ntp_use && !flag_time_is_synchronized)
+    if (flag_ntp_use && (!flag_time_is_synchronized))
     {
         LOG_DBG("Drop adv - time has not yet synchronized");
         adv_post_cfg_cache_mutex_unlock(&p_cfg_cache);

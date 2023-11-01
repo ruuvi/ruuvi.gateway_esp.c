@@ -81,7 +81,7 @@ adv_mqtt_handle_sig_recv_adv(ATTR_UNUSED adv_mqtt_state_t* const p_adv_mqtt_stat
 {
     LOG_DBG("Got ADV_MQTT_SIG_RECV_ADV");
 
-    if (!gw_status_is_mqtt_connected() || !gw_status_is_relaying_via_mqtt_enabled())
+    if ((!gw_status_is_mqtt_connected()) || (!gw_status_is_relaying_via_mqtt_enabled()))
     {
         return;
     }
@@ -167,13 +167,13 @@ adv_mqtt_handle_sig_gw_cfg_changed_ruuvi(adv_mqtt_state_t* const p_adv_mqtt_stat
 }
 
 static void
-adv_mqtt_handle_sig_relaying_mode_changed(adv_mqtt_state_t* const p_adv_mqtt_state)
+adv_mqtt_handle_sig_relaying_mode_changed(ATTR_UNUSED adv_mqtt_state_t* const p_adv_mqtt_state)
 {
     LOG_INFO("Got ADV_MQTT_SIG_RELAYING_MODE_CHANGED");
 }
 
 static void
-adv_mqtt_handle_sig_cfg_mode_activated(adv_mqtt_state_t* const p_adv_mqtt_state)
+adv_mqtt_handle_sig_cfg_mode_activated(ATTR_UNUSED adv_mqtt_state_t* const p_adv_mqtt_state)
 {
     LOG_INFO("Got ADV_MQTT_SIG_CFG_MODE_ACTIVATED");
 }

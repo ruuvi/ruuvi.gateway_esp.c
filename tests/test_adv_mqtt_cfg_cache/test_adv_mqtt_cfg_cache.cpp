@@ -130,6 +130,7 @@ TEST_F(TestAdvMqttCfgCache, test_uninitialized_lock) // NOLINT
 TEST_F(TestAdvMqttCfgCache, test_initialized_lock) // NOLINT
 {
     adv_mqtt_cfg_cache_init();
+    adv_mqtt_cfg_cache_init(); // reinitialization test
 
     adv_mqtt_cfg_cache_t* p_cfg_cache = adv_mqtt_cfg_cache_mutex_lock();
     ASSERT_NE(nullptr, p_cfg_cache);

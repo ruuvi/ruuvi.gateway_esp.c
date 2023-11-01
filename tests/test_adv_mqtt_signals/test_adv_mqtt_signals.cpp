@@ -1042,6 +1042,17 @@ TEST_F(TestAdvMqttSignals, test_adv_mqtt_handle_sig_on_recv_adv) // NOLINT
 
     this->m_adv_mqtt_cfg_cache.flag_use_ntp = true;
 
+    this->adv_table_read_retransmission_list3_head_res = false;
+
+    ASSERT_FALSE(adv_mqtt_handle_sig(ADV_MQTT_SIG_ON_RECV_ADV, &adv_mqtt_state));
+    ASSERT_FALSE(adv_mqtt_state.flag_stop);
+    ASSERT_EQ(2, this->m_events_history.size());
+    ASSERT_EQ(EVENT_HISTORY_ADV_MQTT_CFG_CACHE_MUTEX_LOCK, this->m_events_history[0].event_type);
+    ASSERT_EQ(EVENT_HISTORY_ADV_MQTT_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[3].event_type);
+    this->m_events_history.clear();
+
+    this->adv_table_read_retransmission_list3_head_res = true;
+
     this->mqtt_publish_adv_res = false;
 
     ASSERT_FALSE(adv_mqtt_handle_sig(ADV_MQTT_SIG_ON_RECV_ADV, &adv_mqtt_state));
