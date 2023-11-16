@@ -565,17 +565,17 @@
     "ntp_server3": {
       "title": "Address of NTP server 3 (used only if 'ntp_use_dhcp' is false).",
       "type": "string",
-      "default": "time.nist.gov",
+      "default": "pool.ntp.org",
       "examples": [
-        "time.nist.gov"
+        "pool.ntp.org"
       ]
     },
     "ntp_server4": {
       "title": "Address of NTP server 4 (used only if 'ntp_use_dhcp' is false).",
       "type": "string",
-      "default": "pool.ntp.org",
+      "default": "time.ruuvi.com",
       "examples": [
-        "pool.ntp.org"
+        "time.ruuvi.com"
       ]
     },
     "company_use_filtering": {
@@ -699,8 +699,8 @@
       "ntp_use_dhcp": false,
       "ntp_server1": "time.google.com",
       "ntp_server2": "time.cloudflare.com",
-      "ntp_server3": "time.nist.gov",
-      "ntp_server4": "pool.ntp.org",
+      "ntp_server3": "pool.ntp.org",
+      "ntp_server4": "time.ruuvi.com",
       "company_use_filtering": true,
       "company_id": 1177,
       "scan_coded_phy": false,

@@ -502,8 +502,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_for_ui_client) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -594,8 +594,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_default) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -670,8 +670,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_default_company_id_0x0500) // NOLINT
         "\t\"ntp_use_dhcp\":\tfalse,\n"
         "\t\"ntp_server1\":\t\"time.google.com\",\n"
         "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-        "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-        "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+        "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+        "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
         "\t\"company_id\":\t\"0x0500\",\n"
         "\t\"company_use_filtering\":\ttrue,\n"
         "\t\"scan_coded_phy\":\tfalse,\n"
@@ -764,8 +764,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_disabled) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -859,8 +859,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_enabled) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -959,8 +959,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_disabled) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -1056,8 +1056,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_no) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -1160,8 +1160,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_basic) // NOL
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -1262,8 +1262,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_bearer) // NO
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -1356,8 +1356,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_disabled) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -1462,8 +1462,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_TCP_raw) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -1567,8 +1567,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_TCP_disable_retained_mes
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -1673,8 +1673,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_SSL_raw_and_decoded) // 
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -1779,8 +1779,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WS_decoded) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -1884,8 +1884,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WSS) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -1991,8 +1991,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_custom_http_enabled) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -2082,8 +2082,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_disabled) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -2185,8 +2185,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_data_format_ruuvi) // NO
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -2288,8 +2288,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_data_format_ruuvi_raw_an
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -2391,8 +2391,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_data_format_ruuvi_decode
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -2494,8 +2494,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_none) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -2607,8 +2607,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_basic) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -2715,8 +2715,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_bearer) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -2823,8 +2823,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_token) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -2924,8 +2924,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_equal_to_default) // NOL
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -3039,8 +3039,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_equal_to_default_auth_di
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -3132,8 +3132,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_disabled) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -3237,8 +3237,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_enabled) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -3329,8 +3329,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_default) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -3428,8 +3428,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -3533,8 +3533,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi_with_api_key) // NOLIN
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -3632,8 +3632,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_digest) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -3731,8 +3731,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_basic) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -3829,8 +3829,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_allow) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -3927,8 +3927,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_deny) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -4024,8 +4024,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_beta_tester) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -4121,8 +4121,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_manual) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -4214,8 +4214,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_unknown) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -4304,8 +4304,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_disabled) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -4399,8 +4399,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_enabled_via_dhcp) // NOLINT
                "\t\"ntp_use_dhcp\":\ttrue,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -4598,8 +4598,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_enabled) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1234,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -4693,8 +4693,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_disabled) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1235,\n"
                "\t\"company_use_filtering\":\tfalse,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -4794,8 +4794,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_default) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -4895,8 +4895,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_coded_phy_true) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\ttrue,\n"
@@ -4996,8 +4996,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_1mbit_phy_false) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -5097,8 +5097,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_extended_payload_false) // NOLIN
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -5198,8 +5198,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_37_false) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -5299,8 +5299,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_38_false) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -5400,8 +5400,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_39_false) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -5502,8 +5502,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_filter1_not_allow_listed) // NOL
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -5605,8 +5605,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_filter2_allow_listed) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -5699,8 +5699,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_coordinates) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -5783,8 +5783,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_default) // NOLINT
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time.google.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server1.buf));
     ASSERT_EQ(string("time.cloudflare.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server2.buf));
-    ASSERT_EQ(string("time.nist.gov"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
-    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
+    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string("time.ruuvi.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
 
     ASSERT_EQ(RUUVI_COMPANY_ID, gw_cfg2.ruuvi_cfg.filter.company_id);
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.filter.company_use_filtering);
@@ -5863,8 +5863,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_default) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -5947,8 +5947,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
                 .ntp_use_dhcp = false,
                 .ntp_server1 = { "time.google.com", },
                 .ntp_server2 = { "time.cloudflare.com", },
-                .ntp_server3 = { "time.nist.gov", },
-                .ntp_server4 = { "pool.ntp.org", },
+                .ntp_server3 = { "pool.ntp.org", },
+                .ntp_server4 = { "time.ruuvi.com", },
             },
             .filter = {
                 .company_id = RUUVI_COMPANY_ID + 1,
@@ -6033,8 +6033,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time.google.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server1.buf));
     ASSERT_EQ(string("time.cloudflare.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server2.buf));
-    ASSERT_EQ(string("time.nist.gov"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
-    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
+    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string("time.ruuvi.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
 
     ASSERT_EQ(RUUVI_COMPANY_ID + 1, gw_cfg2.ruuvi_cfg.filter.company_id);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.filter.company_use_filtering);
@@ -6110,8 +6110,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1178,\n"
                "\t\"company_use_filtering\":\tfalse,\n"
                "\t\"scan_coded_phy\":\ttrue,\n"
@@ -6194,8 +6194,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
                 .ntp_use_dhcp = false,
                 .ntp_server1 = { "time.google.com", },
                 .ntp_server2 = { "time.cloudflare.com", },
-                .ntp_server3 = { "time.nist.gov", },
-                .ntp_server4 = { "pool.ntp.org", },
+                .ntp_server3 = { "pool.ntp.org", },
+                .ntp_server4 = { "time.ruuvi.com", },
             },
             .filter = {
                 .company_id = RUUVI_COMPANY_ID + 1,
@@ -6280,8 +6280,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time.google.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server1.buf));
     ASSERT_EQ(string("time.cloudflare.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server2.buf));
-    ASSERT_EQ(string("time.nist.gov"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
-    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
+    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string("time.ruuvi.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
 
     ASSERT_EQ(RUUVI_COMPANY_ID + 1, gw_cfg2.ruuvi_cfg.filter.company_id);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.filter.company_use_filtering);
@@ -6357,8 +6357,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1178,\n"
                "\t\"company_use_filtering\":\tfalse,\n"
                "\t\"scan_coded_phy\":\ttrue,\n"
@@ -6441,8 +6441,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
                 .ntp_use_dhcp = false,
                 .ntp_server1 = { "time.google.com", },
                 .ntp_server2 = { "time.cloudflare.com", },
-                .ntp_server3 = { "time.nist.gov", },
-                .ntp_server4 = { "pool.ntp.org", },
+                .ntp_server3 = { "pool.ntp.org", },
+                .ntp_server4 = { "time.ruuvi.com", },
             },
             .filter = {
                 .company_id = RUUVI_COMPANY_ID + 1,
@@ -6527,8 +6527,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time.google.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server1.buf));
     ASSERT_EQ(string("time.cloudflare.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server2.buf));
-    ASSERT_EQ(string("time.nist.gov"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
-    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
+    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string("time.ruuvi.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
 
     ASSERT_EQ(RUUVI_COMPANY_ID + 1, gw_cfg2.ruuvi_cfg.filter.company_id);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.filter.company_use_filtering);
@@ -6604,8 +6604,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1178,\n"
                "\t\"company_use_filtering\":\tfalse,\n"
                "\t\"scan_coded_phy\":\ttrue,\n"
@@ -6687,8 +6687,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
           "\t\"ntp_use_dhcp\":\tfalse,\n"
           "\t\"ntp_server1\":\t\"time.google.com\",\n"
           "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-          "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-          "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+          "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+          "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
           "\t\"company_id\":\t1178,\n"
           "\t\"company_use_filtering\":\tfalse,\n"
           "\t\"scan_coded_phy\":\ttrue,\n"
@@ -6750,8 +6750,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time.google.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server1.buf));
     ASSERT_EQ(string("time.cloudflare.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server2.buf));
-    ASSERT_EQ(string("time.nist.gov"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
-    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
+    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string("time.ruuvi.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
 
     ASSERT_EQ(RUUVI_COMPANY_ID + 1, gw_cfg2.ruuvi_cfg.filter.company_id);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.filter.company_use_filtering);
@@ -6828,8 +6828,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1178,\n"
                "\t\"company_use_filtering\":\tfalse,\n"
                "\t\"scan_coded_phy\":\ttrue,\n"
@@ -6998,8 +6998,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time.google.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server1.buf));
     ASSERT_EQ(string("time.cloudflare.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server2.buf));
-    ASSERT_EQ(string("time.nist.gov"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
-    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
+    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string("time.ruuvi.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
 
     ASSERT_EQ(RUUVI_COMPANY_ID, gw_cfg2.ruuvi_cfg.filter.company_id);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.filter.company_use_filtering);
@@ -7075,8 +7075,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\tfalse,\n"
                "\t\"scan_coded_phy\":\ttrue,\n"
@@ -7245,8 +7245,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time.google.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server1.buf));
     ASSERT_EQ(string("time.cloudflare.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server2.buf));
-    ASSERT_EQ(string("time.nist.gov"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
-    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
+    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string("time.ruuvi.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
 
     ASSERT_EQ(RUUVI_COMPANY_ID, gw_cfg2.ruuvi_cfg.filter.company_id);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.filter.company_use_filtering);
@@ -7322,8 +7322,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
                "\t\"ntp_use_dhcp\":\ttrue,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\tfalse,\n"
                "\t\"scan_coded_phy\":\ttrue,\n"
@@ -7659,8 +7659,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -7738,8 +7738,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
           "\t\"ntp_use_dhcp\":\tfalse,\n"
           "\t\"ntp_server1\":\t\"time.google.com\",\n"
           "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-          "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-          "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+          "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+          "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
           "\t\"company_id\":\t1177,\n"
           "\t\"company_use_filtering\":\ttrue,\n"
           "\t\"scan_coded_phy\":\tfalse,\n"
@@ -7824,8 +7824,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -7918,8 +7918,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -8007,8 +8007,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -8080,8 +8080,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time.google.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server1.buf));
     ASSERT_EQ(string("time.cloudflare.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server2.buf));
-    ASSERT_EQ(string("time.nist.gov"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
-    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
+    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string("time.ruuvi.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
 
     ASSERT_EQ(RUUVI_COMPANY_ID, gw_cfg2.ruuvi_cfg.filter.company_id);
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.filter.company_use_filtering);
@@ -8162,8 +8162,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -8303,8 +8303,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_string) // NOLINT
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time.google.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server1.buf));
     ASSERT_EQ(string("time.cloudflare.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server2.buf));
-    ASSERT_EQ(string("time.nist.gov"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
-    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
+    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string("time.ruuvi.com"), string(gw_cfg2.ruuvi_cfg.ntp.ntp_server4.buf));
 
     ASSERT_EQ(RUUVI_COMPANY_ID, gw_cfg2.ruuvi_cfg.filter.company_id);
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.filter.company_use_filtering);
@@ -8385,8 +8385,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_string) // NOLINT
                "\t\"ntp_use_dhcp\":\tfalse,\n"
                "\t\"ntp_server1\":\t\"time.google.com\",\n"
                "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-               "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-               "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+               "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
                "\t\"company_id\":\t1177,\n"
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
@@ -8468,8 +8468,8 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_malloc_failed) // NOLINT
           "\t\"ntp_use_dhcp\":\tfalse,\n"
           "\t\"ntp_server1\":\t\"time.google.com\",\n"
           "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-          "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-          "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+          "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+          "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
           "\t\"company_id\":\t1177,\n"
           "\t\"company_use_filtering\":\ttrue,\n"
           "\t\"scan_coded_phy\":\tfalse,\n"
