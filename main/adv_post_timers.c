@@ -11,6 +11,7 @@
 #include "adv_post_internal.h"
 #include "ruuvi_gateway.h"
 #include "time_units.h"
+#include "network_timeout.h"
 #if defined(RUUVI_TESTS) && RUUVI_TESTS
 #define LOG_LOCAL_DISABLED 1
 #define LOG_LOCAL_LEVEL    LOG_LEVEL_NONE
@@ -278,9 +279,18 @@ adv_post_timers_start_timer_sig_watchdog_feed(void)
 void
 adv_post_timers_start_timer_sig_network_watchdog(void)
 {
+    network_timeout_update_timestamp();
     os_timer_sig_periodic_t* const p_timer_sig
         = g_p_adv_post_periodic_timer_sig[ADV_POST_PERIODIC_TIMER_SIG_NETWORK_WATCHDOG];
     os_timer_sig_periodic_start(p_timer_sig);
+}
+
+void
+adv_post_timers_stop_timer_sig_network_watchdog(void)
+{
+    os_timer_sig_periodic_t* const p_timer_sig
+        = g_p_adv_post_periodic_timer_sig[ADV_POST_PERIODIC_TIMER_SIG_NETWORK_WATCHDOG];
+    os_timer_sig_periodic_stop(p_timer_sig);
 }
 
 void
