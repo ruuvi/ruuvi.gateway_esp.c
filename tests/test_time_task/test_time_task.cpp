@@ -529,8 +529,8 @@ TEST_F(TestTimeTask, test_all) // NOLINT
     TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "### Configure SNTP to not use DHCP");
     TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "Add time server 0: time.google.com");
     TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "Add time server 1: time.cloudflare.com");
-    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "Add time server 2: time.nist.gov");
-    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "Add time server 3: pool.ntp.org");
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "Add time server 2: pool.ntp.org");
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "Add time server 3: time.ruuvi.com");
     TEST_CHECK_LOG_RECORD_OS_TASK(
         ESP_LOG_INFO,
         CMD_HANDLER_TASK_NAME,
@@ -613,14 +613,14 @@ TEST_F(TestTimeTask, test_all) // NOLINT
             ASSERT_EQ(TestEventType_SNTP_SetServerName, p_base_ev->eventType);
             auto* p_ev = reinterpret_cast<TestEventSntpSetServerName*>(p_base_ev);
             ASSERT_EQ(2, p_ev->idx);
-            ASSERT_EQ(string("time.nist.gov"), p_ev->server);
+            ASSERT_EQ(string("pool.ntp.org"), p_ev->server);
         }
         {
             auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_SNTP_SetServerName, p_base_ev->eventType);
             auto* p_ev = reinterpret_cast<TestEventSntpSetServerName*>(p_base_ev);
             ASSERT_EQ(3, p_ev->idx);
-            ASSERT_EQ(string("pool.ntp.org"), p_ev->server);
+            ASSERT_EQ(string("time.ruuvi.com"), p_ev->server);
         }
         ASSERT_EQ(exp_num_events, idx);
     }

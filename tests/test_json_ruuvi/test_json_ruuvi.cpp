@@ -2663,8 +2663,8 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_full_config) // NOLINT
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time.google.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf));
     ASSERT_EQ(string("time.cloudflare.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server2.buf));
-    ASSERT_EQ(string("time.nist.gov"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf));
-    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf));
+    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string("time.ruuvi.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf));
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.filter.company_use_filtering);
     ASSERT_EQ(888, gw_cfg.ruuvi_cfg.filter.company_id);
     ASSERT_EQ(string("coord:123,456"), gw_cfg.ruuvi_cfg.coordinates.buf);
@@ -2848,8 +2848,8 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_min_config) // NOLINT
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time.google.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf));
     ASSERT_EQ(string("time.cloudflare.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server2.buf));
-    ASSERT_EQ(string("time.nist.gov"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf));
-    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf));
+    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string("time.ruuvi.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf));
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.filter.company_use_filtering);
     ASSERT_EQ(888, gw_cfg.ruuvi_cfg.filter.company_id);
     ASSERT_EQ(string("coord:123,456"), gw_cfg.ruuvi_cfg.coordinates.buf);
@@ -3034,8 +3034,8 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_via_dhcp) // NOLINT
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time.google.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf));
     ASSERT_EQ(string("time.cloudflare.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server2.buf));
-    ASSERT_EQ(string("time.nist.gov"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf));
-    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf));
+    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string("time.ruuvi.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf));
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.filter.company_use_filtering);
     ASSERT_EQ(888, gw_cfg.ruuvi_cfg.filter.company_id);
     ASSERT_EQ(string("coord:123,456"), gw_cfg.ruuvi_cfg.coordinates.buf);
@@ -3223,8 +3223,8 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_custom) // NOLINT
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time1.server.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf));
     ASSERT_EQ(string("time2.server.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server2.buf));
-    ASSERT_EQ(string("time.nist.gov"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf));
-    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf));
+    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string("time.ruuvi.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf));
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.filter.company_use_filtering);
     ASSERT_EQ(888, gw_cfg.ruuvi_cfg.filter.company_id);
     ASSERT_EQ(string("coord:123,456"), gw_cfg.ruuvi_cfg.coordinates.buf);
@@ -3353,8 +3353,8 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_default) // NOLINT
         "\t\"ntp_use_dhcp\":\tfalse,\n"
         "\t\"ntp_server1\":\t\"time.google.com\",\n"
         "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
-        "\t\"ntp_server3\":\t\"time.nist.gov\",\n"
-        "\t\"ntp_server4\":\t\"pool.ntp.org\",\n"
+        "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+        "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
 
         "\t\"company_use_filtering\":\ttrue,\n"
         "\t\"company_id\":\t888,\n"
@@ -3420,8 +3420,8 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_default) // NOLINT
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.ntp.ntp_use_dhcp);
     ASSERT_EQ(string("time.google.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server1.buf));
     ASSERT_EQ(string("time.cloudflare.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server2.buf));
-    ASSERT_EQ(string("time.nist.gov"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf));
-    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf));
+    ASSERT_EQ(string("pool.ntp.org"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server3.buf));
+    ASSERT_EQ(string("time.ruuvi.com"), string(gw_cfg.ruuvi_cfg.ntp.ntp_server4.buf));
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.filter.company_use_filtering);
     ASSERT_EQ(888, gw_cfg.ruuvi_cfg.filter.company_id);
     ASSERT_EQ(string("coord:123,456"), gw_cfg.ruuvi_cfg.coordinates.buf);
@@ -3477,8 +3477,8 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_default) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_use_dhcp: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server1: time.google.com");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server2: time.cloudflare.com");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server3: time.nist.gov");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server4: pool.ntp.org");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server3: pool.ntp.org");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server4: time.ruuvi.com");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_id: 888");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_use_filtering: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_coded_phy: 1");

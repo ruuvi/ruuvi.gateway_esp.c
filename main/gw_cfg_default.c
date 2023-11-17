@@ -97,8 +97,8 @@ static const gw_cfg_ruuvi_t g_gateway_config_default_ruuvi = {
             .ntp_use_dhcp = false,
             .ntp_server1 = { "time.google.com" },
             .ntp_server2 = { "time.cloudflare.com" },
-            .ntp_server3 = { "time.nist.gov" },
-            .ntp_server4 = { "pool.ntp.org" },
+            .ntp_server3 = { "pool.ntp.org" },
+            .ntp_server4 = { "time.ruuvi.com" },
         },
         .filter = {
             .company_id = RUUVI_COMPANY_ID,
