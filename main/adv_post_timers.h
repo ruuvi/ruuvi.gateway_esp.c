@@ -63,6 +63,9 @@ void
 adv_post_timers_start_timer_sig_network_watchdog(void);
 
 void
+adv_post_timers_stop_timer_sig_network_watchdog(void);
+
+void
 adv_post_timers_start_timer_sig_recv_adv_timeout(void);
 
 void
