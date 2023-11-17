@@ -333,6 +333,11 @@ os_timer_sig_periodic_is_active(os_timer_sig_periodic_t* const p_obj)
     return timerData.is_active;
 }
 
+void
+network_timeout_update_timestamp(void)
+{
+}
+
 } // extern "C"
 
 /*** Unit-Tests
