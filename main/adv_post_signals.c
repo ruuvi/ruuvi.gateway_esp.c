@@ -389,6 +389,8 @@ static void
 adv_post_handle_sig_cfg_mode_activated(ATTR_UNUSED adv_post_state_t* const p_adv_post_state) // NOSONAR
 {
     LOG_INFO("Got ADV_POST_SIG_CFG_MODE_ACTIVATED");
+    LOG_INFO("Stop network watchdog timer");
+    adv_post_timers_stop_timer_sig_network_watchdog();
     adv_post_cfg_cache_t* p_cfg_cache = adv_post_cfg_cache_mutex_lock();
     if (NULL != p_cfg_cache->p_arr_of_scan_filter_mac)
     {
@@ -406,6 +408,8 @@ static void
 adv_post_handle_sig_cfg_mode_deactivated(adv_post_state_t* const p_adv_post_state)
 {
     LOG_INFO("Got ADV_POST_SIG_CFG_MODE_DEACTIVATED");
+    LOG_INFO("Start network watchdog timer");
+    adv_post_timers_start_timer_sig_network_watchdog();
     ruuvi_send_nrf_settings_from_gw_cfg();
     adv_post_on_gw_cfg_change(p_adv_post_state);
 }
