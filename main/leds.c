@@ -37,7 +37,7 @@ static const char* TAG = "LEDS";
 #define LEDC_HS_CH0_CHANNEL LEDC_CHANNEL_0
 
 #define LEDC_FREQ_PWM_HZ    (5000)
-#define LEDC_TEST_DUTY_OFF  (1023 - 0 /* 0% */)
+#define LEDC_TEST_DUTY_OFF  (1024 /* 0% */)
 #define LEDC_TEST_DUTY_ON   (1023 - 256 /* 256 / 1024 = 25% */)
 #define LEDC_TEST_FADE_TIME (25)
 
