@@ -221,30 +221,6 @@ http_init_client_config(
     };
 }
 
-static void
-escape_message_from_server(const char* const p_json, str_buf_t* const p_str_buf)
-{
-    for (const char* p_cur = p_json; '\0' != *p_cur; ++p_cur)
-    {
-        if ('"' == *p_cur)
-        {
-            str_buf_printf(p_str_buf, "\\%c", *p_cur);
-        }
-        else if ('\r' == *p_cur)
-        {
-            str_buf_printf(p_str_buf, "\\r");
-        }
-        else if ('\n' == *p_cur)
-        {
-            str_buf_printf(p_str_buf, "\\n");
-        }
-        else
-        {
-            str_buf_printf(p_str_buf, "%c", *p_cur);
-        }
-    }
-}
-
 static http_server_resp_t
 http_wait_until_async_req_completed_handle_http_resp(
     esp_http_client_handle_t   p_http_handle,
@@ -275,25 +251,12 @@ http_wait_until_async_req_completed_handle_http_resp(
     }
     LOG_DBG("HTTP response: %.*s", p_cb_info->offset, p_cb_info->p_buf);
 
-    str_buf_t str_buf = STR_BUF_INIT_NULL();
-    escape_message_from_server(p_cb_info->p_buf, &str_buf);
-    if (str_buf_init_with_alloc(&str_buf))
-    {
-        escape_message_from_server(p_cb_info->p_buf, &str_buf);
-    }
-    os_free(p_cb_info->p_buf);
-    p_cb_info->p_buf = NULL;
-
-    if (NULL == str_buf.buf)
-    {
-        LOG_ERR("Can't allocate memory for escapes message from the server");
-        return http_server_resp_500();
-    }
     const str_buf_t http_resp_buf = str_buf_printf_with_alloc(
         "HTTP response status: %u, Message from the server: %s",
         http_resp_code,
-        str_buf.buf);
-    str_buf_free_buf(&str_buf);
+        p_cb_info->p_buf);
+    os_free(p_cb_info->p_buf);
+    p_cb_info->p_buf = NULL;
 
     if (NULL == http_resp_buf.buf)
     {
