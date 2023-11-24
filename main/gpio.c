@@ -13,6 +13,7 @@
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
+#include "gw_status.h"
 
 #define CONFIG_WIFI_RESET_BUTTON_GPIO (RB_BUTTON_RESET_PIN)
 
@@ -31,7 +32,8 @@ gpio_configure_button_handler_isr(void* p_arg)
         if (!g_gpio_is_configure_button_pressed)
         {
             g_gpio_is_configure_button_pressed = true;
-            reset_task_notify_configure_button_pressed();
+            gw_status_set_configure_button_pressed();
+            reset_task_notify_configure_button_event();
         }
     }
     else
@@ -39,7 +41,8 @@ gpio_configure_button_handler_isr(void* p_arg)
         if (g_gpio_is_configure_button_pressed)
         {
             g_gpio_is_configure_button_pressed = false;
-            reset_task_notify_configure_button_released();
+            gw_status_clear_configure_button_pressed();
+            reset_task_notify_configure_button_event();
         }
     }
 }

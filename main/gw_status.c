@@ -31,6 +31,7 @@
 #define GW_STATUS_MQTT_ERROR_CONNECT         (3U << 8U)
 #define GW_STATUS_FIRST_BOOT_AFTER_CFG_ERASE (1U << 10U)
 #define GW_STATUS_CFG_MODE                   (1U << 11U)
+#define GW_STATUS_CONFIGURE_BUTTON_PRESSED   (1U << 12U)
 
 #define TIMEOUT_WAITING_UNTIL_RELAYING_STOPPED_SECONDS (15)
 
@@ -521,6 +522,28 @@ bool
 gw_status_get_cfg_mode(void)
 {
     if (0 != (xEventGroupGetBits(g_p_ev_grp_status_bits) & GW_STATUS_CFG_MODE))
+    {
+        return true;
+    }
+    return false;
+}
+
+void
+gw_status_set_configure_button_pressed(void)
+{
+    xEventGroupSetBits(g_p_ev_grp_status_bits, GW_STATUS_CONFIGURE_BUTTON_PRESSED);
+}
+
+void
+gw_status_clear_configure_button_pressed(void)
+{
+    xEventGroupClearBits(g_p_ev_grp_status_bits, GW_STATUS_CONFIGURE_BUTTON_PRESSED);
+}
+
+bool
+gw_status_get_configure_button_pressed(void)
+{
+    if (0 != (xEventGroupGetBits(g_p_ev_grp_status_bits) & GW_STATUS_CONFIGURE_BUTTON_PRESSED))
     {
         return true;
     }
