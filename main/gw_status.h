@@ -130,6 +130,15 @@ gw_status_clear_cfg_mode(void);
 bool
 gw_status_get_cfg_mode(void);
 
+void
+gw_status_set_configure_button_pressed(void);
+
+void
+gw_status_clear_configure_button_pressed(void);
+
+bool
+gw_status_get_configure_button_pressed(void);
+
 #ifdef __cplusplus
 }
 #endif
