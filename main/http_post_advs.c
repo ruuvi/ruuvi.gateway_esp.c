@@ -278,6 +278,10 @@ http_check_post_advs_prep_auth_basic(
     const char* const          p_user,
     const char* const          p_pass)
 {
+    if ((NULL == p_user) || (NULL == p_pass))
+    {
+        return false;
+    }
     if ((strlen(p_user) >= sizeof(p_cfg_http->auth.auth_basic.user.buf))
         || (strlen(p_pass) >= sizeof(p_cfg_http->auth.auth_basic.password.buf)))
     {
@@ -295,6 +299,10 @@ http_check_post_advs_prep_auth_basic(
 static bool
 http_check_post_advs_prep_auth_bearer(ruuvi_gw_cfg_http_t* const p_cfg_http, const char* const p_token)
 {
+    if (NULL == p_token)
+    {
+        return false;
+    }
     if (strlen(p_token) >= sizeof(p_cfg_http->auth.auth_bearer.token.buf))
     {
         return false;
@@ -307,6 +315,10 @@ http_check_post_advs_prep_auth_bearer(ruuvi_gw_cfg_http_t* const p_cfg_http, con
 static bool
 http_check_post_advs_prep_auth_token(ruuvi_gw_cfg_http_t* const p_cfg_http, const char* const p_token)
 {
+    if (NULL == p_token)
+    {
+        return false;
+    }
     if (strlen(p_token) >= sizeof(p_cfg_http->auth.auth_token.token.buf))
     {
         return false;
@@ -322,6 +334,10 @@ http_check_post_advs_internal3(
     const http_check_params_t* const p_params,
     const TimeUnitsSeconds_t         timeout_seconds)
 {
+    if (NULL == p_params->p_url)
+    {
+        return http_server_resp_err(HTTP_RESP_CODE_400);
+    }
     if (strlen(p_params->p_url) >= sizeof(p_cfg_http->http_url.buf))
     {
         return http_server_resp_err(HTTP_RESP_CODE_400);

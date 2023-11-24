@@ -128,6 +128,34 @@ http_post_stat(
     return true;
 }
 
+static bool
+http_post_stat_check_user(const char* const p_user)
+{
+    if (NULL == p_user)
+    {
+        return false;
+    }
+    if (strlen(p_user) >= GW_CFG_MAX_HTTP_USER_LEN)
+    {
+        return false;
+    }
+    return true;
+}
+
+static bool
+http_post_stat_check_pass(const char* const p_pass)
+{
+    if (NULL == p_pass)
+    {
+        return false;
+    }
+    if (strlen(p_pass) >= GW_CFG_MAX_HTTP_PASS_LEN)
+    {
+        return false;
+    }
+    return true;
+}
+
 static http_server_resp_t
 http_check_post_stat_internal3(
     http_async_info_t* const         p_http_async_info,
@@ -135,10 +163,11 @@ http_check_post_stat_internal3(
     const http_check_params_t* const p_params,
     const TimeUnitsSeconds_t         timeout_seconds)
 {
-
-    if ((strlen(p_params->p_url) >= sizeof(p_cfg_http_stat->http_stat_url.buf))
-        || (strlen(p_params->p_user) >= sizeof(p_cfg_http_stat->http_stat_user.buf))
-        || (strlen(p_params->p_pass) >= sizeof(p_cfg_http_stat->http_stat_pass.buf)))
+    if (NULL == p_params->p_url)
+    {
+        return http_server_resp_err(HTTP_RESP_CODE_400);
+    }
+    if (strlen(p_params->p_url) >= sizeof(p_cfg_http_stat->http_stat_url.buf))
     {
         return http_server_resp_err(HTTP_RESP_CODE_400);
     }
@@ -152,14 +181,22 @@ http_check_post_stat_internal3(
             p_pass->buf[0] = '\0';
             break;
         case GW_CFG_HTTP_AUTH_TYPE_BASIC:
-            (void)snprintf(p_user->buf, sizeof(p_user->buf), "%s", (NULL != p_params->p_user) ? p_params->p_user : "");
-            (void)snprintf(p_pass->buf, sizeof(p_pass->buf), "%s", (NULL != p_params->p_pass) ? p_params->p_pass : "");
+            if ((!http_post_stat_check_user(p_params->p_user)) || (!http_post_stat_check_pass(p_params->p_pass)))
+            {
+                return http_server_resp_err(HTTP_RESP_CODE_400);
+            }
+            (void)snprintf(p_user->buf, sizeof(p_user->buf), "%s", p_params->p_user);
+            (void)snprintf(p_pass->buf, sizeof(p_pass->buf), "%s", p_params->p_pass);
             break;
         case GW_CFG_HTTP_AUTH_TYPE_BEARER:
             ATTR_FALLTHROUGH;
         case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
             p_user->buf[0] = '\0';
-            (void)snprintf(p_pass->buf, sizeof(p_pass->buf), "%s", (NULL != p_params->p_pass) ? p_params->p_pass : "");
+            if (!http_post_stat_check_pass(p_params->p_pass))
+            {
+                return http_server_resp_err(HTTP_RESP_CODE_400);
+            }
+            (void)snprintf(p_pass->buf, sizeof(p_pass->buf), "%s", p_params->p_pass);
             break;
     }
 
