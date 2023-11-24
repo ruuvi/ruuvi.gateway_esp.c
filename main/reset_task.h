@@ -26,10 +26,7 @@ void
 reset_task_reboot_after_timeout(void);
 
 void
-reset_task_notify_configure_button_pressed(void);
-
-void
-reset_task_notify_configure_button_released(void);
+reset_task_notify_configure_button_event(void);
 
 void
 gateway_restart(const char* const p_msg);

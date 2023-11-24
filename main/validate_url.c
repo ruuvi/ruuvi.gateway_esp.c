@@ -220,6 +220,23 @@ validate_url_check_url(const str_buf_t* const p_url)
     return true;
 }
 
+static const char*
+validate_url_auth_type_to_str(const gw_cfg_http_auth_type_e auth_type)
+{
+    switch (auth_type)
+    {
+        case GW_CFG_HTTP_AUTH_TYPE_NONE:
+            return GW_CFG_HTTP_AUTH_TYPE_STR_NONE;
+        case GW_CFG_HTTP_AUTH_TYPE_BASIC:
+            return GW_CFG_HTTP_AUTH_TYPE_STR_BASIC;
+        case GW_CFG_HTTP_AUTH_TYPE_BEARER:
+            return GW_CFG_HTTP_AUTH_TYPE_STR_BEARER;
+        case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
+            return GW_CFG_HTTP_AUTH_TYPE_STR_TOKEN;
+    }
+    return "UNKNOWN";
+}
+
 static http_server_resp_t
 validate_url_post_advs(const validate_url_params_t* const p_params)
 {
@@ -242,6 +259,14 @@ validate_url_post_advs(const validate_url_params_t* const p_params)
         .use_ssl_client_cert = p_params->use_ssl_client_cert,
         .use_ssl_server_cert = p_params->use_ssl_server_cert,
     };
+    LOG_INFO("Validate URL (POST advs): %s", params.p_url);
+    LOG_INFO("Validate URL (POST advs): auth_type=%s", validate_url_auth_type_to_str(params.auth_type));
+    LOG_INFO("Validate URL (POST advs): user=%s", (NULL != params.p_user) ? params.p_user : "NULL");
+    LOG_INFO("Validate URL (POST advs): use_saved_password=%d", p_params->flag_use_saved_password);
+    LOG_DBG("Validate URL (POST advs): saved_password=%s", saved_password.buf);
+    LOG_DBG("Validate URL (POST advs): password=%s", (NULL != params.p_pass) ? params.p_pass : "NULL");
+    LOG_INFO("Validate URL (POST advs): use_ssl_client_cert=%d", p_params->use_ssl_client_cert);
+    LOG_INFO("Validate URL (POST advs): use_ssl_server_cert=%d", p_params->use_ssl_server_cert);
     const http_server_resp_t http_resp = http_check_post_advs(&params, HTTP_DOWNLOAD_TIMEOUT_SECONDS);
     str_buf_free_buf(&saved_password);
     return http_resp;
@@ -271,6 +296,14 @@ validate_url_post_stat(const validate_url_params_t* const p_params)
         .use_ssl_client_cert = p_params->use_ssl_client_cert,
         .use_ssl_server_cert = p_params->use_ssl_server_cert,
     };
+    LOG_INFO("Validate URL (POST stat): %s", params.p_url);
+    LOG_INFO("Validate URL (POST stat): auth_type=%s", validate_url_auth_type_to_str(params.auth_type));
+    LOG_INFO("Validate URL (POST stat): user=%s", (NULL != params.p_user) ? params.p_user : "NULL");
+    LOG_INFO("Validate URL (POST stat): use_saved_password=%d", p_params->flag_use_saved_password);
+    LOG_DBG("Validate URL (POST stat): saved_password=%s", saved_password.buf);
+    LOG_DBG("Validate URL (POST stat): password=%s", (NULL != params.p_pass) ? params.p_pass : "NULL");
+    LOG_INFO("Validate URL (POST stat): use_ssl_client_cert=%d", p_params->use_ssl_client_cert);
+    LOG_INFO("Validate URL (POST stat): use_ssl_server_cert=%d", p_params->use_ssl_server_cert);
 
     const http_server_resp_t http_resp = http_check_post_stat(&params, HTTP_DOWNLOAD_TIMEOUT_SECONDS);
     str_buf_free_buf(&saved_password);
@@ -390,6 +423,12 @@ validate_url_on_get_check_mqtt(
     const char* const                p_url_params,
     const TimeUnitsSeconds_t         timeout_seconds)
 {
+    if ((GW_CFG_HTTP_AUTH_TYPE_NONE != p_params->auth_type)
+        && ((NULL == p_params->p_user) || (NULL == p_params->p_pass)))
+    {
+        return http_server_resp_400();
+    }
+
     str_buf_t topic_prefix = http_server_get_from_params_with_decoding(p_url_params, "mqtt_topic_prefix=");
     if (NULL == topic_prefix.buf)
     {
@@ -477,6 +516,14 @@ validate_url_check_mqtt(const validate_url_params_t* const p_params, const char*
         .use_ssl_client_cert = p_params->use_ssl_client_cert,
         .use_ssl_server_cert = p_params->use_ssl_server_cert,
     };
+    LOG_INFO("Validate URL (MQTT): %s", params.p_url);
+    LOG_INFO("Validate URL (MQTT): auth_type=%s", validate_url_auth_type_to_str(params.auth_type));
+    LOG_INFO("Validate URL (MQTT): user=%s", (NULL != params.p_user) ? params.p_user : "NULL");
+    LOG_INFO("Validate URL (MQTT): use_saved_password=%d", p_params->flag_use_saved_password);
+    LOG_DBG("Validate URL (MQTT): saved_password=%s", saved_password.buf);
+    LOG_DBG("Validate URL (MQTT): password=%s", (NULL != params.p_pass) ? params.p_pass : "NULL");
+    LOG_INFO("Validate URL (MQTT): use_ssl_client_cert=%d", p_params->use_ssl_client_cert);
+    LOG_INFO("Validate URL (MQTT): use_ssl_server_cert=%d", p_params->use_ssl_server_cert);
     const http_server_resp_t http_resp = validate_url_on_get_check_mqtt(
         &params,
         p_url_params,
@@ -491,6 +538,16 @@ gw_cfg_remote_set_auth_basic(
     const char* const            p_user,
     const char* const            p_pass)
 {
+    if (NULL == p_user)
+    {
+        LOG_ERR("remote_cfg username is NULL");
+        return false;
+    }
+    if (NULL == p_pass)
+    {
+        LOG_ERR("remote_cfg password is NULL");
+        return false;
+    }
     if (strlen(p_user) >= sizeof(p_remote_cfg->auth.auth_basic.user.buf))
     {
         LOG_ERR("remote_cfg username is too long: %s", p_user);
@@ -514,6 +571,11 @@ gw_cfg_remote_set_auth_basic(
 static bool
 gw_cfg_remote_set_auth_bearer(ruuvi_gw_cfg_remote_t* const p_remote_cfg, const char* const p_token)
 {
+    if (NULL == p_token)
+    {
+        LOG_ERR("remote_cfg token is NULL");
+        return false;
+    }
     if (strlen(p_token) >= sizeof(p_remote_cfg->auth.auth_bearer.token.buf))
     {
         LOG_ERR("remote_cfg token is too long: %s", p_token);
@@ -530,6 +592,11 @@ gw_cfg_remote_set_auth_bearer(ruuvi_gw_cfg_remote_t* const p_remote_cfg, const c
 static bool
 gw_cfg_remote_set_auth_token(ruuvi_gw_cfg_remote_t* const p_remote_cfg, const char* const p_token)
 {
+    if (NULL == p_token)
+    {
+        LOG_ERR("remote_cfg token is NULL");
+        return false;
+    }
     if (strlen(p_token) >= sizeof(p_remote_cfg->auth.auth_token.token.buf))
     {
         LOG_ERR("remote_cfg token is too long: %s", p_token);
@@ -642,6 +709,14 @@ validate_url_check_remote_cfg(const validate_url_params_t* const p_params)
         .use_ssl_client_cert = p_params->use_ssl_client_cert,
         .use_ssl_server_cert = p_params->use_ssl_server_cert,
     };
+    LOG_INFO("Validate URL (GET remote_cfg): %s", params.p_url);
+    LOG_INFO("Validate URL (GET remote_cfg): auth_type=%s", validate_url_auth_type_to_str(params.auth_type));
+    LOG_INFO("Validate URL (GET remote_cfg): user=%s", (NULL != params.p_user) ? params.p_user : "NULL");
+    LOG_INFO("Validate URL (GET remote_cfg): use_saved_password=%d", p_params->flag_use_saved_password);
+    LOG_DBG("Validate URL (GET remote_cfg): saved_password=%s", p_saved_password);
+    LOG_DBG("Validate URL (GET remote_cfg): password=%s", (NULL != params.p_pass) ? params.p_pass : "NULL");
+    LOG_INFO("Validate URL (GET remote_cfg): use_ssl_client_cert=%d", p_params->use_ssl_client_cert);
+    LOG_INFO("Validate URL (GET remote_cfg): use_ssl_server_cert=%d", p_params->use_ssl_server_cert);
     const http_server_resp_t http_resp = validate_url_on_get_check_remote_cfg(&params);
     return http_resp;
 }
@@ -687,9 +762,24 @@ validate_url_check_file_prep_auth_basic(
     const validate_url_params_t* const p_params,
     ruuvi_gw_cfg_http_auth_t* const    p_http_auth)
 {
-    if (('\0' == p_params->user.buf[0]) || ('\0' == p_params->password.buf[0]))
+    if (NULL == p_params->user.buf)
     {
-        LOG_ERR("Username or password is empty");
+        LOG_ERR("Username is NULL");
+        return false;
+    }
+    if (NULL == p_params->password.buf)
+    {
+        LOG_ERR("Password is NULL");
+        return false;
+    }
+    if ('\0' == p_params->user.buf[0])
+    {
+        LOG_ERR("Username is empty");
+        return false;
+    }
+    if ('\0' == p_params->password.buf[0])
+    {
+        LOG_ERR("Password is empty");
         return false;
     }
     ruuvi_gw_cfg_http_auth_basic_t* const p_auth = &p_http_auth->auth_basic;
@@ -703,6 +793,11 @@ validate_url_check_file_prep_auth_bearer(
     const validate_url_params_t* const p_params,
     ruuvi_gw_cfg_http_auth_t* const    p_http_auth)
 {
+    if (NULL == p_params->password.buf)
+    {
+        LOG_ERR("Token is NULL");
+        return false;
+    }
     if ('\0' == p_params->password.buf[0])
     {
         LOG_ERR("Token is empty");
@@ -718,6 +813,11 @@ validate_url_check_file_prep_auth_token(
     const validate_url_params_t* const p_params,
     ruuvi_gw_cfg_http_auth_t* const    p_http_auth)
 {
+    if (NULL == p_params->password.buf)
+    {
+        LOG_ERR("Token is NULL");
+        return false;
+    }
     if ('\0' == p_params->password.buf[0])
     {
         LOG_ERR("Token is empty");
@@ -781,6 +881,23 @@ validate_url_check_file(const validate_url_params_t* const p_params)
         .p_http_auth = p_http_auth,
         .p_extra_header_item = NULL,
     };
+    LOG_INFO("Validate URL (GET file): %s", params.base.p_url);
+    LOG_INFO("Validate URL (GET file): auth_type=%s", validate_url_auth_type_to_str(params.auth_type));
+    switch (params.auth_type)
+    {
+        case GW_CFG_HTTP_AUTH_TYPE_NONE:
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_BASIC:
+            LOG_INFO("Validate URL (GET file): user=%s", params.p_http_auth->auth_basic.user.buf);
+            LOG_DBG("Validate URL (GET file): password=%s", params.p_http_auth->auth_basic.password.buf);
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_BEARER:
+            LOG_DBG("Validate URL (GET file): bearer token=%s", params.p_http_auth->auth_bearer.token.buf);
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
+            LOG_DBG("Validate URL (GET file): token=%s", params.p_http_auth->auth_token.token.buf);
+            break;
+    }
     const http_resp_code_e http_resp_code = http_check(&params);
 
     if (NULL != p_http_auth)
