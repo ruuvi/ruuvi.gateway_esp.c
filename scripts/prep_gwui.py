@@ -44,7 +44,8 @@ def main():
                     print('%s -> %s' % (src_file, dst_file))
                     with gzip.GzipFile(filename=dst_file, mode='wb', mtime=timestamp) as f_out:
                         shutil.copyfileobj(f_in, f_out)
-            elif file_ext == '.ico' or file_ext == '.woff' or file_ext == '.woff2':
+            elif (file_ext == '.ico' or file_ext == '.woff' or file_ext == '.woff2' or file_ext == '.png' or
+                  file_ext == '.svg' or file_ext == '.jpg' or file_ext == '.jpeg' or file_ext == '.gif'):
                 src_file = os.path.join(root, file)
                 dst_file = os.path.join(target_dir, file)
                 print('%s -> %s' % (src_file, dst_file))

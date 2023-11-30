@@ -496,6 +496,9 @@ gw_cfg_auth_type_to_str(const ruuvi_gw_cfg_lan_auth_t* const p_lan_auth);
 wifiman_config_t
 gw_cfg_get_wifi_cfg(void);
 
+bool
+gw_cfg_is_wifi_sta_configured(void);
+
 str_buf_t
 gw_cfg_get_fw_update_url(void);
 

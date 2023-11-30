@@ -62,11 +62,6 @@ ethernet_connection_ok_cb(const esp_netif_ip_info_t* p_ip_info)
         LOG_INFO(
             "### The Ethernet cable was connected, but Gateway has not configured yet - set default configuration");
         main_task_send_sig_set_default_config();
-        if (wifi_manager_is_ap_active())
-        {
-            LOG_INFO("### Force stop Wi-Fi AP after connecting Ethernet cable");
-            wifi_manager_stop_ap();
-        }
     }
     const struct dhcp* p_dhcp  = NULL;
     esp_ip4_addr_t     dhcp_ip = { 0 };
@@ -92,15 +87,27 @@ void
 wifi_connection_ok_cb(void* p_param) // NOSONAR
 {
     (void)p_param;
-    LOG_INFO("Wifi connected");
+    LOG_INFO("### Wi-Fi connected");
     gw_status_set_wifi_connected();
     event_mgr_notify(EVENT_MGR_EV_WIFI_CONNECTED);
+
+    if (gw_status_is_waiting_auto_cfg_by_wps())
+    {
+        LOG_INFO("### Wi-Fi is configured by WPS - use default configuration");
+        if (wifi_manager_is_ap_active())
+        {
+            LOG_INFO("### Force stop Wi-Fi AP after configuring by WPS");
+            wifi_manager_stop_ap();
+        }
+        LOG_INFO("### Send signal to deactivate configuration mode after configuring by WPS");
+        main_task_send_sig_deactivate_cfg_mode();
+    }
 }
 
 static void
 cb_on_connect_eth_cmd(void)
 {
-    LOG_INFO("callback: on_connect_eth_cmd");
+    LOG_INFO("%s: ### Start Ethernet", __func__);
     ethernet_start();
 }
 
@@ -110,6 +117,7 @@ cb_on_disconnect_eth_cmd(void)
     LOG_INFO("callback: on_disconnect_eth_cmd");
     wifi_manager_update_network_connection_info(UPDATE_USER_DISCONNECT, NULL, NULL, NULL);
     ethernet_stop();
+    main_task_stop_timer_activation_ethernet_after_timeout();
 }
 
 static void
@@ -117,6 +125,20 @@ cb_on_disconnect_sta_cmd(void)
 {
     LOG_INFO("callback: on_disconnect_sta_cmd");
     gw_status_clear_wifi_connected();
+}
+
+static void
+cb_on_wps_started(void)
+{
+    LOG_INFO("### callback: on_wps_started");
+    event_mgr_notify(EVENT_MGR_EV_WPS_ACTIVATED);
+}
+
+static void
+cb_on_wps_stopped(void)
+{
+    LOG_INFO("### callback: on_wps_stopped");
+    event_mgr_notify(EVENT_MGR_EV_WPS_DEACTIVATED);
 }
 
 static void
@@ -139,13 +161,14 @@ cb_on_ap_sta_connected(void)
     LOG_INFO("### callback: on_ap_sta_connected");
     event_mgr_notify(EVENT_MGR_EV_WIFI_AP_STA_CONNECTED);
     ethernet_stop();
+    main_task_stop_timer_activation_ethernet_after_timeout();
+    gw_status_clear_waiting_auto_cfg_by_wps();
 }
 
 static void
 cb_on_ap_sta_ip_assigned(void)
 {
     LOG_INFO("callback: on_ap_sta_ip_assigned");
-    timer_cfg_mode_deactivation_start();
 }
 
 static void
@@ -153,7 +176,6 @@ cb_on_ap_sta_disconnected(void)
 {
     LOG_INFO("### callback: on_ap_sta_disconnected");
     event_mgr_notify(EVENT_MGR_EV_WIFI_AP_STA_DISCONNECTED);
-    timer_cfg_mode_deactivation_start();
 }
 
 static void
@@ -208,88 +230,130 @@ configure_mbedtls_rng(const nrf52_device_id_str_t* const p_nrf52_device_id_str)
     }
 }
 
-static void
-network_subsystem_init_start_eth_if_needed(const bool is_wifi_sta_configured)
+bool
+network_subsystem_init(const force_start_wifi_hotspot_e force_start_wifi_hotspot, const gw_cfg_t* const p_gw_cfg)
 {
-    if (gw_cfg_get_eth_use_eth() || (!is_wifi_sta_configured))
-    {
-        ethernet_start();
-        vTaskDelay(pdMS_TO_TICKS(100));
-        if (!gw_status_is_eth_link_up())
-        {
-            LOG_INFO("### Force start WiFi hotspot (there is no Ethernet connection)");
-            const bool flag_block_req_from_lan = true;
-            wifi_manager_start_ap(flag_block_req_from_lan);
-        }
-    }
-    else
-    {
-        LOG_INFO("Gateway already configured to use WiFi connection, so Ethernet is not needed");
-    }
-}
+    const bool                         flag_gw_cfg_empty     = gw_cfg_is_empty();
+    const wifiman_config_t* const      p_wifi_cfg            = &p_gw_cfg->wifi_cfg;
+    const nrf52_device_id_str_t* const p_nrf52_device_id_str = gw_cfg_get_nrf52_device_id();
+    configure_mbedtls_rng(p_nrf52_device_id_str);
 
-static void
-network_subsystem_init_start_ap(
-    const force_start_wifi_hotspot_e force_start_wifi_hotspot,
-    const bool                       flag_gw_cfg_empty,
-    const bool                       flag_connect_sta)
-{
-    if (flag_gw_cfg_empty && (FORCE_START_WIFI_HOTSPOT_ONCE == force_start_wifi_hotspot))
+    LOG_INFO("%s: flag gw_cfg_empty:              %d", __func__, flag_gw_cfg_empty);
+    LOG_INFO("%s: flag gw_cfg: use_eth:           %d", __func__, gw_cfg_get_eth_use_eth());
+    LOG_INFO("%s: Wi-Fi Sta SSID:                 \"%s\"", __func__, p_wifi_cfg->sta.wifi_config_sta.ssid);
+    const bool is_wifi_sta_configured = ('\0' != p_wifi_cfg->sta.wifi_config_sta.ssid[0]) ? true : false;
+    LOG_INFO("%s: is_wifi_sta_configured:         %d", __func__, is_wifi_sta_configured);
+
+    const bool flag_connect_sta = (!gw_cfg_get_eth_use_eth())
+                                  && (FORCE_START_WIFI_HOTSPOT_DISABLED == force_start_wifi_hotspot)
+                                  && is_wifi_sta_configured;
+    LOG_INFO("%s: flag connect_sta:               %d", __func__, flag_connect_sta);
+    LOG_INFO("%s: flag force_start_wifi_hotspot:  %d", __func__, force_start_wifi_hotspot);
+
+    if (FORCE_START_WIFI_HOTSPOT_ONCE == force_start_wifi_hotspot)
     {
+        settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_DISABLED);
+    }
+    if (flag_gw_cfg_empty && (FORCE_START_WIFI_HOTSPOT_DISABLED != force_start_wifi_hotspot))
+    {
+        LOG_INFO("%s: Set GW_STATUS: first_boot_after_cfg_erase", __func__);
         gw_status_set_first_boot_after_cfg_erase();
     }
     else
     {
         gw_status_clear_first_boot_after_cfg_erase();
-        if (!flag_connect_sta)
-        {
-            LOG_INFO("Start Ethernet (gateway has not configured yet)");
-            ethernet_start();
-        }
     }
-    if (flag_gw_cfg_empty)
+
+    bool flag_start_ethernet = false;
+    bool flag_start_wifi_ap  = false;
+    if (FORCE_START_WIFI_HOTSPOT_DISABLED == force_start_wifi_hotspot)
     {
-        LOG_INFO("Force start WiFi hotspot (gateway has not configured yet)");
+        if (gw_cfg_get_eth_use_eth())
+        {
+            LOG_INFO("%s: Gateway is configured to use Ethernet", __func__);
+            flag_start_ethernet = true;
+        }
+        else if (!is_wifi_sta_configured)
+        {
+            LOG_INFO(
+                "%s: Gateway is not configured to use Ethernet and WiFi is not configured, so enable Ethernet",
+                __func__);
+            flag_start_ethernet = true;
+        }
+        else
+        {
+            LOG_INFO("%s: Gateway is configured to use WiFi connection, so Ethernet is not needed", __func__);
+        }
     }
     else
     {
-        LOG_INFO("Force start WiFi hotspot");
+        LOG_INFO("%s: Wi-Fi hotspot is forced to start", __func__);
+        flag_start_wifi_ap = true;
     }
-    wifi_manager_start_ap(true);
-}
+    if ((!flag_start_wifi_ap) && flag_gw_cfg_empty)
+    {
+        LOG_INFO("%s: gw_cfg is empty, so need to start Wi-Fi hotspot", __func__);
+        flag_start_wifi_ap = true;
+    }
 
-bool
-network_subsystem_init(const force_start_wifi_hotspot_e force_start_wifi_hotspot, const gw_cfg_t* const p_gw_cfg)
-{
-    const wifiman_config_t* const      p_wifi_cfg            = &p_gw_cfg->wifi_cfg;
-    const nrf52_device_id_str_t* const p_nrf52_device_id_str = gw_cfg_get_nrf52_device_id();
-    configure_mbedtls_rng(p_nrf52_device_id_str);
-
-    const bool is_wifi_sta_configured = ('\0' != p_wifi_cfg->sta.wifi_config_sta.ssid[0]) ? true : false;
-
-    const bool flag_connect_sta = (!gw_cfg_get_eth_use_eth())
-                                  && (FORCE_START_WIFI_HOTSPOT_DISABLED == force_start_wifi_hotspot)
-                                  && is_wifi_sta_configured;
+    LOG_INFO("### %s: Init Wi-Fi subsystem (flag_connect_sta=%d)", __func__, flag_connect_sta);
     if (!wifi_init(flag_connect_sta, p_wifi_cfg, fw_update_get_current_fatfs_gwui_partition_name()))
     {
         LOG_ERR("%s failed", "wifi_init");
         return false;
     }
+    LOG_INFO("%s: ### Init Ethernet subsystem", __func__);
     ethernet_init(&ethernet_link_up_cb, &ethernet_link_down_cb, &ethernet_connection_ok_cb);
 
-    const bool flag_gw_cfg_empty = gw_cfg_is_empty();
-
-    if (((!flag_gw_cfg_empty) || flag_connect_sta) && (FORCE_START_WIFI_HOTSPOT_DISABLED == force_start_wifi_hotspot))
+    if (flag_start_ethernet)
     {
-        network_subsystem_init_start_eth_if_needed(is_wifi_sta_configured);
+        LOG_INFO("%s: ### Start Ethernet", __func__);
+        ethernet_start();
+        vTaskDelay(pdMS_TO_TICKS(100));
+        if (!gw_status_is_eth_link_up())
+        {
+            LOG_INFO("%s: ### Ethernet cable is not connected", __func__);
+            if (flag_gw_cfg_empty)
+            {
+                LOG_INFO(
+                    "%s: ### There is no Ethernet connection and Gateway has not configured, "
+                    "so need to start Wi-Fi hotspot",
+                    __func__);
+                flag_start_wifi_ap = true;
+            }
+        }
     }
     else
     {
-        if (FORCE_START_WIFI_HOTSPOT_ONCE == force_start_wifi_hotspot)
+        if (gw_status_get_first_boot_after_cfg_erase())
         {
-            settings_write_flag_force_start_wifi_hotspot(FORCE_START_WIFI_HOTSPOT_DISABLED);
+            LOG_INFO(
+                "%s: ### Start Ethernet after %u seconds on first boot after erasing configuration",
+                __func__,
+                RUUVI_DELAY_BEFORE_ETHERNET_ACTIVATION_ON_FIRST_BOOT_SEC);
+            main_task_start_timer_activation_ethernet_after_timeout();
         }
-        network_subsystem_init_start_ap(force_start_wifi_hotspot, flag_gw_cfg_empty, flag_connect_sta);
+        else
+        {
+            LOG_INFO("%s: ### Do not start Ethernet", __func__);
+        }
+    }
+
+    if (flag_start_wifi_ap)
+    {
+        LOG_INFO("%s: ### Start Wi-Fi AP", __func__);
+        start_wifi_ap();
+        timer_cfg_mode_deactivation_start_with_delay(RUUVI_CFG_MODE_DEACTIVATION_LONG_DELAY_SEC);
+    }
+    else
+    {
+        LOG_INFO("%s: ### Do not start Wi-Fi AP", __func__);
+    }
+    if (gw_cfg_is_empty())
+    {
+        LOG_INFO("%s: ### Enable Wi-Fi WPS (gw_cfg is empty)", __func__);
+        gw_status_set_waiting_auto_cfg_by_wps();
+        wifi_manager_enable_wps();
     }
     return true;
 }
@@ -429,6 +493,8 @@ wifi_init(
         .cb_on_connect_eth_cmd     = &cb_on_connect_eth_cmd,
         .cb_on_disconnect_eth_cmd  = &cb_on_disconnect_eth_cmd,
         .cb_on_disconnect_sta_cmd  = &cb_on_disconnect_sta_cmd,
+        .cb_on_wps_started         = &cb_on_wps_started,
+        .cb_on_wps_stopped         = &cb_on_wps_stopped,
         .cb_on_ap_started          = &cb_on_ap_started,
         .cb_on_ap_stopped          = &cb_on_ap_stopped,
         .cb_on_ap_sta_connected    = &cb_on_ap_sta_connected,

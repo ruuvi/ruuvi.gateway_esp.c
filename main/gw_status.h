@@ -139,6 +139,15 @@ gw_status_clear_configure_button_pressed(void);
 bool
 gw_status_get_configure_button_pressed(void);
 
+void
+gw_status_set_waiting_auto_cfg_by_wps(void);
+
+void
+gw_status_clear_waiting_auto_cfg_by_wps(void);
+
+bool
+gw_status_is_waiting_auto_cfg_by_wps(void);
+
 #ifdef __cplusplus
 }
 #endif

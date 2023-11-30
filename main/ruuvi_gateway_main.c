@@ -346,8 +346,7 @@ cb_before_nrf52_fw_updating(void)
         LOG_ERR("%s failed", "wifi_init");
         return;
     }
-    const bool flag_block_req_from_lan = true;
-    wifi_manager_start_ap(flag_block_req_from_lan);
+    start_wifi_ap();
 }
 
 void
@@ -430,6 +429,10 @@ ruuvi_cb_on_change_cfg(const gw_cfg_t* const p_gw_cfg)
             &p_lan_auth->lan_auth_api_key_rw))
     {
         LOG_ERR("%s failed", "http_server_set_auth");
+    }
+    if (gw_status_is_waiting_auto_cfg_by_wps())
+    {
+        main_task_send_sig_deactivate_cfg_mode();
     }
 }
 

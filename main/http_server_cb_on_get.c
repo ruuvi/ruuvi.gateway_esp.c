@@ -55,7 +55,9 @@ http_server_resp_json_ruuvi(void)
 
     LOG_INFO("ruuvi.json: %s", json_str.p_str);
 
+    LOG_INFO("Activate cfg_mode");
     main_task_send_sig_activate_cfg_mode();
+    timer_cfg_mode_deactivation_start();
 
     return http_server_resp_200_json_in_heap(json_str.p_str);
 }
