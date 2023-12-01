@@ -230,23 +230,74 @@ configure_mbedtls_rng(const nrf52_device_id_str_t* const p_nrf52_device_id_str)
     }
 }
 
+static bool
+network_subsystem_check_if_ethernet_needs_to_be_started(
+    const force_start_wifi_hotspot_e force_start_wifi_hotspot,
+    const bool                       flag_gw_cfg_use_eth,
+    const bool                       is_wifi_sta_configured)
+{
+    bool flag_start_ethernet = false;
+    if (FORCE_START_WIFI_HOTSPOT_DISABLED == force_start_wifi_hotspot)
+    {
+        if (flag_gw_cfg_use_eth)
+        {
+            LOG_INFO("Gateway is configured to use Ethernet");
+            flag_start_ethernet = true;
+        }
+        else if (!is_wifi_sta_configured)
+        {
+            LOG_INFO("Gateway is not configured to use Ethernet and WiFi is not configured, so enable Ethernet");
+            flag_start_ethernet = true;
+        }
+        else
+        {
+            LOG_INFO("Gateway is configured to use WiFi connection, so Ethernet is not needed");
+        }
+    }
+    return flag_start_ethernet;
+}
+
+static bool
+network_subsystem_check_if_wifi_ap_needs_to_be_started(
+    const force_start_wifi_hotspot_e force_start_wifi_hotspot,
+    const bool                       flag_gw_cfg_empty)
+{
+    bool flag_start_wifi_ap = false;
+    if (FORCE_START_WIFI_HOTSPOT_DISABLED != force_start_wifi_hotspot)
+    {
+        LOG_INFO("%s: Wi-Fi hotspot is forced to start", __func__);
+        flag_start_wifi_ap = true;
+    }
+    else
+    {
+        if (flag_gw_cfg_empty)
+        {
+            LOG_INFO("%s: gw_cfg is empty, so need to start Wi-Fi hotspot", __func__);
+            flag_start_wifi_ap = true;
+        }
+    }
+    return flag_start_wifi_ap;
+}
+
 bool
 network_subsystem_init(const force_start_wifi_hotspot_e force_start_wifi_hotspot, const gw_cfg_t* const p_gw_cfg)
 {
-    const bool                         flag_gw_cfg_empty     = gw_cfg_is_empty();
-    const wifiman_config_t* const      p_wifi_cfg            = &p_gw_cfg->wifi_cfg;
+    const bool flag_gw_cfg_empty      = gw_cfg_is_empty();
+    const bool flag_gw_cfg_use_eth    = gw_cfg_get_eth_use_eth();
+    const bool is_wifi_sta_configured = gw_cfg_is_wifi_sta_configured();
+    const bool flag_connect_sta       = (!flag_gw_cfg_use_eth)
+                                  && (FORCE_START_WIFI_HOTSPOT_DISABLED == force_start_wifi_hotspot)
+                                  && is_wifi_sta_configured;
+
+    const wifiman_config_t* const p_wifi_cfg = &p_gw_cfg->wifi_cfg;
+
     const nrf52_device_id_str_t* const p_nrf52_device_id_str = gw_cfg_get_nrf52_device_id();
     configure_mbedtls_rng(p_nrf52_device_id_str);
 
     LOG_INFO("%s: flag gw_cfg_empty:              %d", __func__, flag_gw_cfg_empty);
-    LOG_INFO("%s: flag gw_cfg: use_eth:           %d", __func__, gw_cfg_get_eth_use_eth());
+    LOG_INFO("%s: flag gw_cfg: use_eth:           %d", __func__, flag_gw_cfg_use_eth);
     LOG_INFO("%s: Wi-Fi Sta SSID:                 \"%s\"", __func__, p_wifi_cfg->sta.wifi_config_sta.ssid);
-    const bool is_wifi_sta_configured = ('\0' != p_wifi_cfg->sta.wifi_config_sta.ssid[0]) ? true : false;
     LOG_INFO("%s: is_wifi_sta_configured:         %d", __func__, is_wifi_sta_configured);
-
-    const bool flag_connect_sta = (!gw_cfg_get_eth_use_eth())
-                                  && (FORCE_START_WIFI_HOTSPOT_DISABLED == force_start_wifi_hotspot)
-                                  && is_wifi_sta_configured;
     LOG_INFO("%s: flag connect_sta:               %d", __func__, flag_connect_sta);
     LOG_INFO("%s: flag force_start_wifi_hotspot:  %d", __func__, force_start_wifi_hotspot);
 
@@ -264,37 +315,14 @@ network_subsystem_init(const force_start_wifi_hotspot_e force_start_wifi_hotspot
         gw_status_clear_first_boot_after_cfg_erase();
     }
 
-    bool flag_start_ethernet = false;
-    bool flag_start_wifi_ap  = false;
-    if (FORCE_START_WIFI_HOTSPOT_DISABLED == force_start_wifi_hotspot)
-    {
-        if (gw_cfg_get_eth_use_eth())
-        {
-            LOG_INFO("%s: Gateway is configured to use Ethernet", __func__);
-            flag_start_ethernet = true;
-        }
-        else if (!is_wifi_sta_configured)
-        {
-            LOG_INFO(
-                "%s: Gateway is not configured to use Ethernet and WiFi is not configured, so enable Ethernet",
-                __func__);
-            flag_start_ethernet = true;
-        }
-        else
-        {
-            LOG_INFO("%s: Gateway is configured to use WiFi connection, so Ethernet is not needed", __func__);
-        }
-    }
-    else
-    {
-        LOG_INFO("%s: Wi-Fi hotspot is forced to start", __func__);
-        flag_start_wifi_ap = true;
-    }
-    if ((!flag_start_wifi_ap) && flag_gw_cfg_empty)
-    {
-        LOG_INFO("%s: gw_cfg is empty, so need to start Wi-Fi hotspot", __func__);
-        flag_start_wifi_ap = true;
-    }
+    const bool flag_start_ethernet = network_subsystem_check_if_ethernet_needs_to_be_started(
+        force_start_wifi_hotspot,
+        flag_gw_cfg_use_eth,
+        is_wifi_sta_configured);
+
+    bool flag_start_wifi_ap = network_subsystem_check_if_wifi_ap_needs_to_be_started(
+        force_start_wifi_hotspot,
+        flag_gw_cfg_empty);
 
     LOG_INFO("### %s: Init Wi-Fi subsystem (flag_connect_sta=%d)", __func__, flag_connect_sta);
     if (!wifi_init(flag_connect_sta, p_wifi_cfg, fw_update_get_current_fatfs_gwui_partition_name()))
