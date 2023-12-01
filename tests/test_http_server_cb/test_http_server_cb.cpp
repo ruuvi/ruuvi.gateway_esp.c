@@ -1,5 +1,5 @@
 /**
- * @file test_bin2hex.cpp
+ * @file test_http_server_cb.cpp
  * @author TheSomeMan
  * @date 2020-08-27
  * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
@@ -32,6 +32,7 @@
 #include "partition_table.h"
 #include "http.h"
 #include "http_server_resp.h"
+#include "ruuvi_gateway.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -306,22 +307,17 @@ main_task_send_sig_activate_cfg_mode(void)
 }
 
 void
-main_task_send_sig_deactivate_cfg_cmode(void)
+ruuvi_send_nrf_settings(const ruuvi_gw_cfg_scan_t* const p_scan, const ruuvi_gw_cfg_filter_t* const p_filter)
 {
 }
 
 void
-ruuvi_send_nrf_settings(void)
+timer_cfg_mode_deactivation_start(void)
 {
 }
 
 void
-adv_post_signal_send_ble_scan_changed(void)
-{
-}
-
-void
-timer_cfg_mode_deactivation_start_with_short_delay(void)
+timer_cfg_mode_deactivation_start_with_delay(const TimeUnitsSeconds_t delay_sec)
 {
 }
 
@@ -967,6 +963,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Activate cfg_mode"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1193,6 +1190,7 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
     ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Activate cfg_mode"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
@@ -1665,6 +1663,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /ruuvi.json"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Activate cfg_mode"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
