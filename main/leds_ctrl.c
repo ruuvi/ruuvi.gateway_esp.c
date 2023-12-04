@@ -17,20 +17,6 @@
 static const char* TAG = "leds_ctrl";
 #endif
 
-typedef enum leds_ctrl_state_e
-{
-    LEDS_CTRL_STATE_INITIAL,
-    LEDS_CTRL_STATE_AFTER_REBOOT,      // Blinking RED "R-" with period 50ms
-    LEDS_CTRL_STATE_CHECKING_NRF52_FW, // Turn off RED
-    LEDS_CTRL_STATE_FLASHING_NRF52_FW, // Blinking RED "R---------"
-    LEDS_CTRL_STATE_NRF52_FAILURE,     // Solid RED
-    LEDS_CTRL_STATE_CFG_ERASING,       // Turn off RED
-    LEDS_CTRL_STATE_CFG_ERASED,        // Blinking RED "RR--"
-    LEDS_CTRL_STATE_WAITING_CFG_READY, // GREEN LED is ON and it is controlled by nRF52
-    LEDS_CTRL_STATE_SUBSTATE,          // Depends on sub-state
-    LEDS_CTRL_STATE_BEFORE_REBOOT,     // Turn off RED and GREEN
-} leds_ctrl_state_e;
-
 typedef struct leds_ctrl_state_t
 {
     os_task_handle_t      task_handle;
@@ -44,6 +30,14 @@ static leds_ctrl_state_t g_leds_ctrl_state;
 
 static void
 leds_ctrl_do_actions(void);
+
+#if defined(RUUVI_TESTS_LEDS) && RUUVI_TESTS_LEDS
+leds_ctrl_state_e
+leds_ctrl_get_state(void)
+{
+    return g_leds_ctrl_state.leds_sm_state;
+}
+#endif
 
 void
 leds_ctrl_init(const bool flag_configure_button_pressed, const leds_ctrl_callbacks_t callbacks)

@@ -3,12 +3,15 @@
 
 typedef enum TestEventType_Tag
 {
+    TestEventType_GreenLedTurnOn,
+    TestEventType_GreenLedTurnOff,
     TestEventType_LedcTimerConfig,
     TestEventType_LedcChannelConfig,
     TestEventType_LedcSetFadeWithTime,
     TestEventType_LedcFadeStart,
     TestEventType_LedcFadeFuncInstall,
     TestEventType_LedcStop,
+    TestEventType_TaskWdtReset,
 } TestEventType_e;
 
 /*** Test-Events classes implementation
@@ -21,6 +24,24 @@ public:
 
     explicit TestEvent(const TestEventType_e eventType)
         : eventType(eventType)
+    {
+    }
+};
+
+class TestEventGreenLedTurnOn : public TestEvent
+{
+public:
+    explicit TestEventGreenLedTurnOn()
+        : TestEvent(TestEventType_GreenLedTurnOn)
+    {
+    }
+};
+
+class TestEventGreenLedTurnOff : public TestEvent
+{
+public:
+    explicit TestEventGreenLedTurnOff()
+        : TestEvent(TestEventType_GreenLedTurnOff)
     {
     }
 };
@@ -131,6 +152,15 @@ public:
         , speed_mode(speed_mode)
         , channel(channel)
         , idle_level(idle_level)
+    {
+    }
+};
+
+class TestEventTaskWdtReset : public TestEvent
+{
+public:
+    explicit TestEventTaskWdtReset()
+        : TestEvent(TestEventType_TaskWdtReset)
     {
     }
 };

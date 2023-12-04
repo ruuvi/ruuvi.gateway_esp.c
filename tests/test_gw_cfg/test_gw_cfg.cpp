@@ -1832,3 +1832,19 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_fw_update_url) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: nrf52_fw_ver: v0.7.2"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
+
+TEST_F(TestGwCfg, test_gw_cfg_is_wifi_sta_configured) // NOLINT
+{
+    ASSERT_FALSE(gw_cfg_is_wifi_sta_configured());
+    ASSERT_TRUE(gw_cfg_get_eth_use_eth());
+
+    wifiman_config_sta_t gw_cfg_wifi_sta = { 0 };
+    const gw_cfg_t*      p_gw_cfg        = gw_cfg_lock_ro();
+    gw_cfg_wifi_sta                      = p_gw_cfg->wifi_cfg.sta;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    snprintf((char*)gw_cfg_wifi_sta.wifi_config_sta.ssid, sizeof(gw_cfg_wifi_sta.wifi_config_sta.ssid), "my_ssid");
+    gw_cfg_update_wifi_sta_config(&gw_cfg_wifi_sta);
+
+    ASSERT_TRUE(gw_cfg_is_wifi_sta_configured());
+    ASSERT_FALSE(gw_cfg_get_eth_use_eth());
+}

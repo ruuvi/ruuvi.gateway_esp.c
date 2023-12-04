@@ -18,12 +18,14 @@
 #endif
 #include "log.h"
 
-#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
-static const char* TAG = "leds_blinking";
+#if defined(RUUVI_TESTS) && RUUVI_TESTS
+#define STATIC
+#else
+#define STATIC static
 #endif
 
-static leds_blinking_mode_t g_leds_blinking_mode;
-static int32_t              g_leds_blinking_sequence_idx;
+STATIC leds_blinking_mode_t g_leds_blinking_mode;
+STATIC int32_t              g_leds_blinking_sequence_idx;
 static os_task_handle_t     g_leds_blinking_task_handle;
 
 static const char TAG[] = "LEDS";
