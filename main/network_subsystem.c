@@ -162,7 +162,12 @@ cb_on_ap_sta_connected(void)
     event_mgr_notify(EVENT_MGR_EV_WIFI_AP_STA_CONNECTED);
     ethernet_stop();
     main_task_stop_timer_activation_ethernet_after_timeout();
-    gw_status_clear_waiting_auto_cfg_by_wps();
+    if (gw_status_is_waiting_auto_cfg_by_wps())
+    {
+        LOG_INFO("### Disable WPS");
+        wifi_manager_disable_wps();
+        gw_status_clear_waiting_auto_cfg_by_wps();
+    }
 }
 
 static void

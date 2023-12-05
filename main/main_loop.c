@@ -293,6 +293,12 @@ main_task_handle_sig_activate_cfg_mode(void)
     if (gw_status_get_cfg_mode())
     {
         LOG_INFO("Configuration mode is already active");
+        if (gw_status_is_waiting_auto_cfg_by_wps())
+        {
+            LOG_INFO("### ACTIVATE_CFG_MODE: Disable WPS");
+            wifi_manager_disable_wps();
+            gw_status_clear_waiting_auto_cfg_by_wps();
+        }
         return;
     }
 
