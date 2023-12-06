@@ -232,12 +232,12 @@ adv_post_do_async_comm_send_statistics(adv_post_state_t* const p_adv_post_state)
     }
     if (!p_adv_post_state->flag_network_connected)
     {
-        LOG_WARN("Can't send statistics, no network connection");
+        LOG_DBG("Can't send statistics, no network connection");
         return;
     }
     if (p_adv_post_state->flag_use_timestamps && (!time_is_synchronized()))
     {
-        LOG_WARN("Can't send statistics, the time is not yet synchronized");
+        LOG_DBG("Can't send statistics, the time is not yet synchronized");
         return;
     }
     LOG_DBG("http_server_mutex_try_lock");
@@ -327,7 +327,7 @@ adv_post_do_async_comm_in_progress_mqtt(void)
 }
 
 static bool
-adv_post_do_async_comm_in_progress(void)
+adv_post_do_async_comm_in_progress(adv_post_state_t* const p_adv_post_state)
 {
     if (ADV_POST_ACTION_POST_ADVS_TO_MQTT != g_adv_post_action)
     {
@@ -337,6 +337,20 @@ adv_post_do_async_comm_in_progress(void)
             LOG_DBG("os_timer_sig_one_shot_start: g_p_adv_post_timer_sig_do_async_comm");
             adv_post_timers_start_timer_sig_do_async_comm();
             return false;
+        }
+        switch (g_adv_post_action)
+        {
+            case ADV_POST_ACTION_POST_ADVS_TO_RUUVI:
+                p_adv_post_state->flag_need_to_send_advs1 = false;
+                break;
+            case ADV_POST_ACTION_POST_ADVS_TO_CUSTOM:
+                p_adv_post_state->flag_need_to_send_advs2 = false;
+                break;
+            case ADV_POST_ACTION_POST_STATS:
+                p_adv_post_state->flag_need_to_send_statistics = false;
+                break;
+            default:
+                break;
         }
         LOG_DBG("http_server_mutex_unlock");
         http_server_mutex_unlock();
@@ -362,7 +376,7 @@ adv_post_do_async_comm(adv_post_state_t* const p_adv_post_state)
     LOG_DBG("flag_async_comm_in_progress=%d", p_adv_post_state->flag_async_comm_in_progress);
     if (p_adv_post_state->flag_async_comm_in_progress)
     {
-        if (!adv_post_do_async_comm_in_progress())
+        if (!adv_post_do_async_comm_in_progress(p_adv_post_state))
         {
             return;
         }
