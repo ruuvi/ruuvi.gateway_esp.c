@@ -1,5 +1,6 @@
 #include "TQueue.hpp"
 #include <cstdio>
+#include <chrono>
 #include "driver/ledc.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
@@ -12,6 +13,7 @@
 #include <semaphore.h>
 #include "esp_log_wrapper.hpp"
 #include "event_mgr.h"
+#include "leds_ctrl.h"
 
 #define LEDC_TEST_DUTY_OFF  (1023 - 0 /* 0% */)
 #define LEDC_TEST_DUTY_ON   (1023 - 256 /* 256 / 1024 = 25% */)
@@ -23,7 +25,17 @@ typedef enum MainTaskCmd_Tag
 {
     MainTaskCmd_Exit,
     MainTaskCmd_LedsInit,
+    MainTaskCmd_leds_notify_nrf52_fw_check,
+    MainTaskCmd_leds_notify_nrf52_ready,
+    MainTaskCmd_leds_notify_cfg_ready,
+    MainTaskCmd_leds_notify_cfg_changed_ruuvi,
+    MainTaskCmd_leds_notify_wifi_connected,
+    MainTaskCmd_leds_notify_http1_data_sent_successfully,
+    MainTaskCmd_leds_notify_http1_data_sent_fail,
 } MainTaskCmd_e;
+
+static os_signal_num_e g_event_to_sig_num[EVENT_MGR_EV_LAST];
+static os_signal_t*    g_p_signal;
 
 /*** Google-test class implementation
  * *********************************************************************************/
@@ -69,6 +81,9 @@ public:
     TestLeds();
 
     ~TestLeds() override;
+
+    bool
+    waitEvent(const std::chrono::duration<double, std::milli> timeout);
 };
 
 static TestLeds* g_pTestLeds;
@@ -82,6 +97,27 @@ TestLeds::TestLeds()
 TestLeds::~TestLeds()
 {
     g_pTestLeds = nullptr;
+}
+
+bool
+TestLeds::waitEvent(const std::chrono::duration<double, std::milli> timeout)
+{
+    const auto initialTestEventsSize = testEvents.size();
+    const auto start                 = std::chrono::steady_clock::now();
+    while (std::chrono::steady_clock::now() - start < timeout)
+    {
+        if (testEvents.size() > initialTestEventsSize)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    if (testEvents.size() > initialTestEventsSize)
+    {
+        return true;
+    }
+    return false;
 }
 
 #ifdef __cplusplus
@@ -193,6 +229,7 @@ gpio_switch_ctrl_deactivate(void)
 esp_err_t
 esp_task_wdt_reset()
 {
+    g_pTestLeds->testEvents.push_back(new TestEventTaskWdtReset());
     return ESP_OK;
 }
 
@@ -205,6 +242,20 @@ esp_task_wdt_add(TaskHandle_t handle)
 void
 event_mgr_notify(const event_mgr_ev_e event)
 {
+    if (EVENT_MGR_EV_GREEN_LED_TURN_ON == event)
+    {
+        g_pTestLeds->testEvents.push_back(new TestEventGreenLedTurnOn());
+        return;
+    }
+    if (EVENT_MGR_EV_GREEN_LED_TURN_OFF == event)
+    {
+        g_pTestLeds->testEvents.push_back(new TestEventGreenLedTurnOff());
+        return;
+    }
+    if (OS_SIGNAL_NUM_NONE != g_event_to_sig_num[event])
+    {
+        os_signal_send(g_p_signal, g_event_to_sig_num[event]);
+    }
 }
 
 bool
@@ -216,7 +267,7 @@ gw_cfg_get_http_use_http_ruuvi(void)
 bool
 gw_cfg_get_http_use_http(void)
 {
-    return true;
+    return false;
 }
 
 bool
@@ -237,6 +288,8 @@ event_mgr_subscribe_sig_static(
     os_signal_t* const                p_signal,
     const os_signal_num_e             sig_num)
 {
+    g_p_signal                = p_signal;
+    g_event_to_sig_num[event] = sig_num;
 }
 
 #ifdef __cplusplus
@@ -262,6 +315,27 @@ cmdHandlerTask(void* parameters)
                 break;
             case MainTaskCmd_LedsInit:
                 leds_init(false);
+                break;
+            case MainTaskCmd_leds_notify_nrf52_fw_check:
+                leds_notify_nrf52_fw_check();
+                break;
+            case MainTaskCmd_leds_notify_nrf52_ready:
+                leds_notify_nrf52_ready();
+                break;
+            case MainTaskCmd_leds_notify_cfg_ready:
+                event_mgr_notify(EVENT_MGR_EV_GW_CFG_READY);
+                break;
+            case MainTaskCmd_leds_notify_cfg_changed_ruuvi:
+                event_mgr_notify(EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI);
+                break;
+            case MainTaskCmd_leds_notify_wifi_connected:
+                event_mgr_notify(EVENT_MGR_EV_WIFI_CONNECTED);
+                break;
+            case MainTaskCmd_leds_notify_http1_data_sent_successfully:
+                leds_notify_http1_data_sent_successfully();
+                break;
+            case MainTaskCmd_leds_notify_http1_data_sent_fail:
+                leds_notify_http1_data_sent_fail();
                 break;
             default:
                 printf("Error: Unknown cmd %d\n", (int)cmd);
@@ -304,12 +378,31 @@ msleep(uint32_t msec)
     } while (res && errno == EINTR);
 }
 
+#define TEST_LEDC_SET_FADE_AND_START(target_duty_, pEv, idx) \
+    { \
+        auto* pEv = reinterpret_cast<TestEventLedcSetFadeWithTime*>(testEvents[idx++]); \
+        ASSERT_EQ(TestEventType_LedcSetFadeWithTime, pEv->eventType); \
+        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode); \
+        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel); \
+        ASSERT_EQ(target_duty_, pEv->target_duty); \
+        ASSERT_EQ(25, pEv->max_fade_time_ms); \
+    } \
+    { \
+        auto* pEv = reinterpret_cast<TestEventLedcFadeStart*>(testEvents[idx++]); \
+        ASSERT_EQ(TestEventType_LedcFadeStart, pEv->eventType); \
+        ASSERT_EQ(LEDC_HIGH_SPEED_MODE, pEv->speed_mode); \
+        ASSERT_EQ(LEDC_CHANNEL_0, pEv->channel); \
+        ASSERT_EQ(LEDC_FADE_WAIT_DONE, pEv->fade_mode); \
+    }
+
 /*** Unit-Tests
  * *******************************************************************************************************/
 
 TEST_F(TestLeds, test_all) // NOLINT
 {
     cmdQueue.push_and_wait(MainTaskCmd_LedsInit);
+
+    ASSERT_EQ(LEDS_CTRL_STATE_AFTER_REBOOT, leds_ctrl_get_state());
 
     int idx = 0;
     ASSERT_EQ(idx + 4, testEvents.size());
@@ -343,4 +436,74 @@ TEST_F(TestLeds, test_all) // NOLINT
         ASSERT_EQ(0, pEv->channel);
     }
     ASSERT_EQ(idx, testEvents.size());
+
+    ASSERT_EQ(LEDS_CTRL_STATE_AFTER_REBOOT, leds_ctrl_get_state());
+    cmdQueue.push_and_wait(MainTaskCmd_leds_notify_nrf52_fw_check);
+    msleep(20);
+    ASSERT_EQ(LEDS_CTRL_STATE_CHECKING_NRF52_FW, leds_ctrl_get_state());
+    ASSERT_EQ(idx, testEvents.size());
+
+    cmdQueue.push_and_wait(MainTaskCmd_leds_notify_nrf52_ready);
+    ASSERT_EQ(LEDS_CTRL_STATE_WAITING_CFG_READY, leds_ctrl_get_state());
+    ASSERT_EQ(idx, testEvents.size());
+
+    cmdQueue.push_and_wait(MainTaskCmd_leds_notify_cfg_ready);
+    ASSERT_EQ(LEDS_CTRL_STATE_SUBSTATE, leds_ctrl_get_state());
+    ASSERT_EQ(idx, testEvents.size());
+
+    cmdQueue.push_and_wait(MainTaskCmd_leds_notify_cfg_changed_ruuvi);
+    ASSERT_EQ(LEDS_CTRL_STATE_SUBSTATE, leds_ctrl_get_state());
+    ASSERT_EQ(idx, testEvents.size());
+
+    ASSERT_EQ(string(LEDS_BLINKING_AFTER_REBOOT), string(g_leds_blinking_mode.p_sequence));
+    ASSERT_EQ(0, g_leds_blinking_sequence_idx);
+
+    for (int i = 0; i < 4; ++i)
+    {
+        ASSERT_TRUE(waitEvent(std::chrono::milliseconds(150)));
+        ASSERT_EQ(idx + 2, testEvents.size());
+        TEST_LEDC_SET_FADE_AND_START(767, pEv, idx);
+        ASSERT_EQ(LEDS_CTRL_STATE_SUBSTATE, leds_ctrl_get_state());
+
+        ASSERT_TRUE(waitEvent(std::chrono::milliseconds(150)));
+        ASSERT_EQ(idx + 2, testEvents.size());
+        TEST_LEDC_SET_FADE_AND_START(1024, pEv, idx);
+        ASSERT_EQ(LEDS_CTRL_STATE_SUBSTATE, leds_ctrl_get_state());
+    }
+
+    ASSERT_EQ(0, g_leds_blinking_sequence_idx);
+
+    cmdQueue.push_and_wait(MainTaskCmd_leds_notify_wifi_connected);
+    ASSERT_EQ(LEDS_CTRL_STATE_SUBSTATE, leds_ctrl_get_state());
+    ASSERT_EQ(idx, testEvents.size());
+    ASSERT_EQ(string(LEDS_BLINKING_MODE_CONNECTED_TO_ALL_TARGETS), string(g_leds_blinking_mode.p_sequence));
+
+    ASSERT_TRUE(waitEvent(std::chrono::milliseconds(150)));
+    ASSERT_EQ(idx + 1, testEvents.size());
+    {
+        auto* pEv = reinterpret_cast<TestEventGreenLedTurnOn*>(testEvents[idx++]);
+        ASSERT_EQ(TestEventType_GreenLedTurnOn, pEv->eventType);
+    }
+    ASSERT_EQ(LEDS_CTRL_STATE_SUBSTATE, leds_ctrl_get_state());
+
+    ASSERT_TRUE(waitEvent(std::chrono::milliseconds(500)));
+    ASSERT_EQ(idx + 1, testEvents.size());
+    {
+        auto* pEv = reinterpret_cast<TestEventGreenLedTurnOn*>(testEvents[idx++]);
+        ASSERT_EQ(TestEventType_TaskWdtReset, pEv->eventType);
+    }
+    ASSERT_EQ(LEDS_CTRL_STATE_SUBSTATE, leds_ctrl_get_state());
+
+    cmdQueue.push_and_wait(MainTaskCmd_leds_notify_http1_data_sent_fail);
+    ASSERT_EQ(LEDS_CTRL_STATE_SUBSTATE, leds_ctrl_get_state());
+    ASSERT_EQ(idx, testEvents.size());
+    ASSERT_TRUE(waitEvent(std::chrono::milliseconds(200)));
+    ASSERT_EQ(idx + 3, testEvents.size());
+    {
+        auto* pEv = reinterpret_cast<TestEventGreenLedTurnOff*>(testEvents[idx++]);
+        ASSERT_EQ(TestEventType_GreenLedTurnOff, pEv->eventType);
+    }
+    TEST_LEDC_SET_FADE_AND_START(767, pEv, idx);
+    ASSERT_EQ(idx, testEvents.size());
+    ASSERT_EQ(string(LEDS_BLINKING_MODE_NOT_CONNECTED_TO_ANY_TARGET), string(g_leds_blinking_mode.p_sequence));
 }

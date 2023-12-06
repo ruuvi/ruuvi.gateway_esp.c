@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include "settings.h"
 #include "os_wrapper_types.h"
+#include "time_units.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,14 +32,18 @@ extern "C" {
 #define HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO (HTTP_SERVER_USER_REQ_CODE_1)
 #define HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_GW_CFG              (HTTP_SERVER_USER_REQ_CODE_2)
 
-#define FW_UPDATING_REGULAR_CYCLE_DELAY_SECONDS (14U * 24U * 60U * 60U)
-
 #define RUUVI_CHECK_FOR_FW_UPDATES_DELAY_AFTER_REBOOT_SECONDS  (40U * 60U)
 #define RUUVI_CHECK_FOR_FW_UPDATES_DELAY_AFTER_SUCCESS_SECONDS (12U * 60U * 60U)
 #define RUUVI_CHECK_FOR_FW_UPDATES_DELAY_BEFORE_RETRY_SECONDS  (40U * 60U)
 
 #define RUUVI_NETWORK_WATCHDOG_TIMEOUT_SECONDS (60U * 60U)
 #define RUUVI_NETWORK_WATCHDOG_PERIOD_SECONDS  (1U)
+
+#define RUUVI_CFG_MODE_DEACTIVATION_DEFAULT_DELAY_SEC (60)
+#define RUUVI_CFG_MODE_DEACTIVATION_SHORT_DELAY_SEC   (5)
+#define RUUVI_CFG_MODE_DEACTIVATION_LONG_DELAY_SEC    (60 * 60)
+
+#define RUUVI_DELAY_BEFORE_ETHERNET_ACTIVATION_ON_FIRST_BOOT_SEC (60)
 
 extern volatile uint32_t g_network_disconnect_cnt;
 
@@ -49,6 +54,9 @@ void
 ruuvi_send_nrf_settings_from_gw_cfg(void);
 
 void
+timer_cfg_mode_deactivation_start_with_delay(const TimeUnitsSeconds_t delay_sec);
+
+void
 timer_cfg_mode_deactivation_start(void);
 
 void
@@ -56,9 +64,6 @@ timer_cfg_mode_deactivation_stop(void);
 
 bool
 timer_cfg_mode_deactivation_is_active(void);
-
-void
-timer_cfg_mode_deactivation_start_with_short_delay(void);
 
 void
 main_task_stop_timer_check_for_remote_cfg(void);
@@ -76,6 +81,9 @@ void
 main_task_send_sig_activate_cfg_mode(void);
 
 void
+main_task_send_sig_deactivate_cfg_mode(void);
+
+void
 main_task_send_sig_reconnect_network(void);
 
 void
@@ -89,6 +97,12 @@ main_task_timer_sig_check_for_fw_updates_restart(const os_delta_ticks_t delay_ti
 
 void
 main_task_timer_sig_check_for_fw_updates_stop(void);
+
+void
+main_task_start_timer_activation_ethernet_after_timeout(void);
+
+void
+main_task_stop_timer_activation_ethernet_after_timeout(void);
 
 void
 main_task_on_get_history(void);
@@ -123,6 +137,12 @@ http_server_mutex_try_lock(void);
 
 void
 http_server_mutex_unlock(void);
+
+void
+start_wifi_ap(void);
+
+void
+start_wifi_ap_without_blocking_req_from_lan(void);
 
 #ifdef __cplusplus
 }

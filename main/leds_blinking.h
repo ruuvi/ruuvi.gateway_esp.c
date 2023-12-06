@@ -15,6 +15,11 @@
 extern "C" {
 #endif
 
+#if defined(RUUVI_TESTS) && RUUVI_TESTS
+extern leds_blinking_mode_t g_leds_blinking_mode;
+extern int32_t              g_leds_blinking_sequence_idx;
+#endif
+
 void
 leds_blinking_init(const leds_blinking_mode_t blinking_mode);
 

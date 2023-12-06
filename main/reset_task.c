@@ -94,32 +94,6 @@ reset_task_watchdog_feed(void)
 }
 
 static void
-activate_wifi_hotspot(void)
-{
-    if (gw_cfg_get_eth_use_eth())
-    {
-        LOG_INFO("Disconnect from Ethernet");
-        wifi_manager_disconnect_eth();
-        ethernet_stop();
-    }
-    else
-    {
-        LOG_INFO("Disconnect from WiFi");
-        wifi_manager_disconnect_wifi();
-    }
-    if (!wifi_manager_is_ap_active())
-    {
-        LOG_INFO("WiFi AP is not active - start WiFi AP");
-        const bool flag_block_req_from_lan = true;
-        wifi_manager_start_ap(flag_block_req_from_lan);
-    }
-    else
-    {
-        LOG_INFO("WiFi AP is already active");
-    }
-}
-
-static void
 reset_task_handle_sig_configure_button_event(void)
 {
     if (gw_status_get_configure_button_pressed())
@@ -134,7 +108,49 @@ reset_task_handle_sig_configure_button_event(void)
     {
         LOG_INFO("The CONFIGURE button has been released");
         os_timer_sig_one_shot_stop(g_p_timer_sig_reset_by_configure_button);
-        activate_wifi_hotspot();
+
+        if (gw_cfg_get_eth_use_eth())
+        {
+            LOG_INFO("CONFIGURE button: Disconnect from Ethernet");
+            wifi_manager_disconnect_eth();
+        }
+        else
+        {
+            if (gw_cfg_is_wifi_sta_configured() || wifi_manager_is_connected_to_wifi())
+            {
+                LOG_INFO("CONFIGURE button: Disconnect from WiFi");
+                wifi_manager_disconnect_wifi();
+            }
+        }
+
+        if (!wifi_manager_is_ap_active())
+        {
+            LOG_INFO("CONFIGURE button: WiFi AP is not active - start WiFi AP");
+            start_wifi_ap();
+            timer_cfg_mode_deactivation_start();
+        }
+#if 0
+        else
+        {
+            LOG_INFO("CONFIGURE button: WiFi AP is already active");
+            if (gw_cfg_is_empty())
+            {
+                LOG_INFO("CONFIGURE button: The configuration is empty - enable Wi-Fi WPS");
+
+                LOG_INFO("CONFIGURE button: Stop Wi-Fi AP");
+                wifi_manager_stop_ap();
+
+                gw_status_set_waiting_auto_cfg_by_wps();
+
+                LOG_INFO("CONFIGURE button: Enable Wi-Fi WPS");
+                wifi_manager_enable_wps();
+            }
+            else
+            {
+                LOG_INFO("CONFIGURE button: The configuration is not empty - do not enable Wi-Fi WPS");
+            }
+        }
+#endif
     }
 }
 

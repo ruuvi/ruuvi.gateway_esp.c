@@ -230,10 +230,10 @@ add_test(NAME test_http_server_cb
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-http_server_cb>/gtestresults.xml
 )
 
-#add_test(NAME test_leds
-#        COMMAND ruuvi_gateway_esp-test-leds
-#            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-leds>/gtestresults.xml
-#)
+add_test(NAME test_leds
+        COMMAND ruuvi_gateway_esp-test-leds
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-leds>/gtestresults.xml
+)
 
 add_test(NAME test_leds_blinking
         COMMAND ruuvi_gateway_esp-test-leds_blinking

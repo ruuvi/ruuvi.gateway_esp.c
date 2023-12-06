@@ -17,6 +17,7 @@ typedef struct leds_ctrl2_state_t
 {
     leds_ctrl_params_t params;
     bool               flag_wifi_ap_active;
+    bool               flag_wps_active;
     bool               flag_network_connected;
     bool               flag_http_conn_status[LEDS_CTRL_MAX_NUM_HTTP_CONN];
     bool               flag_mqtt_conn_status[LEDS_CTRL_MAX_NUM_MQTT_CONN];
@@ -36,6 +37,7 @@ leds_ctrl2_init(void)
         .http_targets_bitmask = 0,
     };
     p_state->flag_wifi_ap_active    = false;
+    p_state->flag_wps_active        = false;
     p_state->flag_network_connected = true;
     p_state->flag_recv_adv_status   = true;
     for (int32_t i = 0; i < LEDS_CTRL_MAX_NUM_HTTP_CONN; ++i)
@@ -146,6 +148,12 @@ leds_ctrl2_on_event(leds_ctrl2_state_t* const p_state, const leds_ctrl2_event_e 
         case LEDS_CTRL2_EVENT_WIFI_AP_STOPPED:
             p_state->flag_wifi_ap_active = false;
             break;
+        case LEDS_CTRL2_EVENT_WPS_ACTIVATED:
+            p_state->flag_wps_active = true;
+            break;
+        case LEDS_CTRL2_EVENT_WPS_DEACTIVATED:
+            p_state->flag_wps_active = false;
+            break;
         case LEDS_CTRL2_EVENT_NETWORK_CONNECTED:
             p_state->flag_network_connected = true;
             break;
@@ -216,8 +224,10 @@ leds_ctrl2_get_new_blinking_sequence(void)
     const leds_ctrl2_state_t* const p_state = &g_leds_ctrl2;
 
     LOG_DBG(
-        "Get new blinking sequence in state: ap_active=%d, network=%d, http1=%d, http2=%d, mqtt=%d, poll=%d",
+        "Get new blinking sequence in state: ap_active=%d, wps_active=%d, network=%d, http1=%d, http2=%d, mqtt=%d, "
+        "poll=%d",
         p_state->flag_wifi_ap_active,
+        p_state->flag_wps_active,
         p_state->flag_network_connected,
         p_state->flag_http_conn_status[0],
         p_state->flag_http_conn_status[1],
@@ -226,8 +236,13 @@ leds_ctrl2_get_new_blinking_sequence(void)
 
     if (p_state->flag_wifi_ap_active)
     {
+        if (p_state->flag_wps_active)
+        {
+            return (leds_blinking_mode_t) { .p_sequence = LEDS_BLINKING_MODE_WIFI_HOTSPOT_ACTIVE_AND_WPS };
+        }
         return (leds_blinking_mode_t) { .p_sequence = LEDS_BLINKING_MODE_WIFI_HOTSPOT_ACTIVE };
     }
+
     if (!p_state->flag_network_connected)
     {
         return (leds_blinking_mode_t) { .p_sequence = LEDS_BLINKING_MODE_NETWORK_PROBLEM };

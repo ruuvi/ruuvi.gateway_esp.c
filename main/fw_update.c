@@ -903,9 +903,15 @@ fw_update_task(void)
 
     if (!wifi_manager_is_ap_active())
     {
-        LOG_INFO("WiFi AP is not active - start WiFi AP");
-        const bool flag_block_req_from_lan = (FW_UPDATE_REASON_MANUAL_VIA_LAN == g_fw_updating_reason) ? false : true;
-        wifi_manager_start_ap(flag_block_req_from_lan);
+        LOG_INFO("WiFi AP is not active - start WiFi AP (without timeout)");
+        if (FW_UPDATE_REASON_MANUAL_VIA_LAN == g_fw_updating_reason)
+        {
+            start_wifi_ap_without_blocking_req_from_lan();
+        }
+        else
+        {
+            start_wifi_ap();
+        }
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
     timer_cfg_mode_deactivation_stop();

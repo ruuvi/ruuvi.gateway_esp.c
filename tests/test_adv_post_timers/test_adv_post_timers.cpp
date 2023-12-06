@@ -472,6 +472,8 @@ TEST_F(TestAdvPostTimers, test_timer_network_watchdog) // NOLINT
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(1000, timerData.period_ticks);
+    adv_post_timers_stop_timer_sig_network_watchdog();
+    ASSERT_FALSE(timerData.is_active);
 }
 
 TEST_F(TestAdvPostTimers, test_adv_post_timer_recv_adv_timeout) // NOLINT

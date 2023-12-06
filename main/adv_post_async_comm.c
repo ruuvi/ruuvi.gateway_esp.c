@@ -352,6 +352,7 @@ adv_post_do_async_comm_in_progress(adv_post_state_t* const p_adv_post_state)
             default:
                 break;
         }
+
         LOG_DBG("http_server_mutex_unlock");
         http_server_mutex_unlock();
 

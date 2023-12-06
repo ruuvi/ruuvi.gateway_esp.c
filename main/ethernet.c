@@ -422,7 +422,7 @@ ethernet_stop(void)
     {
         return;
     }
-    LOG_INFO("Ethernet stop");
+    LOG_INFO("### Ethernet stop");
     gw_status_clear_eth_connected();
     esp_err_t err_code = esp_eth_stop(g_eth_handle);
     if (ESP_OK != err_code)

@@ -419,6 +419,7 @@ gw_cfg_set(
     }
     if (NULL != p_gw_cfg_wifi_sta)
     {
+        p_gw_cfg_dst->eth_cfg.use_eth = false;
         gw_cfg_set_wifi_sta(p_gw_cfg_wifi_sta, &p_gw_cfg_dst->wifi_cfg.sta, &update_status.flag_wifi_sta_cfg_modified);
     }
 
@@ -770,6 +771,16 @@ gw_cfg_get_wifi_cfg(void)
     const wifiman_config_t wifi_cfg = p_gw_cfg->wifi_cfg;
     gw_cfg_unlock_ro(&p_gw_cfg);
     return wifi_cfg;
+}
+
+bool
+gw_cfg_is_wifi_sta_configured(void)
+{
+    assert(NULL != g_gw_cfg_mutex);
+    const gw_cfg_t* p_gw_cfg           = gw_cfg_lock_ro();
+    const bool      is_wifi_configured = ('\0' != p_gw_cfg->wifi_cfg.sta.wifi_config_sta.ssid[0]) ? true : false;
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    return is_wifi_configured;
 }
 
 const ruuvi_esp32_fw_ver_str_t*

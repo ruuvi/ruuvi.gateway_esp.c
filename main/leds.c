@@ -60,19 +60,21 @@ typedef enum leds_task_sig_e
     LEDS_TASK_SIG_ON_EV_CFG_ERASED                   = OS_SIGNAL_NUM_8,
     LEDS_TASK_SIG_ON_EV_WIFI_AP_STARTED              = OS_SIGNAL_NUM_9,
     LEDS_TASK_SIG_ON_EV_WIFI_AP_STOPPED              = OS_SIGNAL_NUM_10,
-    LEDS_TASK_SIG_ON_EV_NETWORK_CONNECTED            = OS_SIGNAL_NUM_11,
-    LEDS_TASK_SIG_ON_EV_NETWORK_DISCONNECTED         = OS_SIGNAL_NUM_12,
-    LEDS_TASK_SIG_ON_EV_MQTT1_CONNECTED              = OS_SIGNAL_NUM_13,
-    LEDS_TASK_SIG_ON_EV_MQTT1_DISCONNECTED           = OS_SIGNAL_NUM_14,
-    LEDS_TASK_SIG_ON_EV_HTTP1_DATA_SENT_SUCCESSFULLY = OS_SIGNAL_NUM_15,
-    LEDS_TASK_SIG_ON_EV_HTTP1_DATA_SENT_FAIL         = OS_SIGNAL_NUM_16,
-    LEDS_TASK_SIG_ON_EV_HTTP2_DATA_SENT_SUCCESSFULLY = OS_SIGNAL_NUM_17,
-    LEDS_TASK_SIG_ON_EV_HTTP2_DATA_SENT_FAIL         = OS_SIGNAL_NUM_18,
-    LEDS_TASK_SIG_ON_EV_HTTP_POLL_OK                 = OS_SIGNAL_NUM_19,
-    LEDS_TASK_SIG_ON_EV_HTTP_POLL_TIMEOUT            = OS_SIGNAL_NUM_20,
-    LEDS_TASK_SIG_ON_EV_RECV_ADV                     = OS_SIGNAL_NUM_21,
-    LEDS_TASK_SIG_ON_EV_RECV_ADV_TIMEOUT             = OS_SIGNAL_NUM_22,
-    LEDS_TASK_SIG_TASK_WATCHDOG_FEED                 = OS_SIGNAL_NUM_23,
+    LEDS_TASK_SIG_ON_EV_WPS_ACTIVATED                = OS_SIGNAL_NUM_11,
+    LEDS_TASK_SIG_ON_EV_WPS_DEACTIVATED              = OS_SIGNAL_NUM_12,
+    LEDS_TASK_SIG_ON_EV_NETWORK_CONNECTED            = OS_SIGNAL_NUM_13,
+    LEDS_TASK_SIG_ON_EV_NETWORK_DISCONNECTED         = OS_SIGNAL_NUM_14,
+    LEDS_TASK_SIG_ON_EV_MQTT1_CONNECTED              = OS_SIGNAL_NUM_15,
+    LEDS_TASK_SIG_ON_EV_MQTT1_DISCONNECTED           = OS_SIGNAL_NUM_16,
+    LEDS_TASK_SIG_ON_EV_HTTP1_DATA_SENT_SUCCESSFULLY = OS_SIGNAL_NUM_17,
+    LEDS_TASK_SIG_ON_EV_HTTP1_DATA_SENT_FAIL         = OS_SIGNAL_NUM_18,
+    LEDS_TASK_SIG_ON_EV_HTTP2_DATA_SENT_SUCCESSFULLY = OS_SIGNAL_NUM_19,
+    LEDS_TASK_SIG_ON_EV_HTTP2_DATA_SENT_FAIL         = OS_SIGNAL_NUM_20,
+    LEDS_TASK_SIG_ON_EV_HTTP_POLL_OK                 = OS_SIGNAL_NUM_21,
+    LEDS_TASK_SIG_ON_EV_HTTP_POLL_TIMEOUT            = OS_SIGNAL_NUM_22,
+    LEDS_TASK_SIG_ON_EV_RECV_ADV                     = OS_SIGNAL_NUM_23,
+    LEDS_TASK_SIG_ON_EV_RECV_ADV_TIMEOUT             = OS_SIGNAL_NUM_24,
+    LEDS_TASK_SIG_TASK_WATCHDOG_FEED                 = OS_SIGNAL_NUM_25,
 } leds_task_sig_e;
 
 #define LEDS_TASK_SIG_FIRST (LEDS_TASK_SIG_UPDATE)
@@ -104,6 +106,8 @@ static event_mgr_ev_info_static_t g_leds_ev_info_mem_on_gw_cfg_ready;
 static event_mgr_ev_info_static_t g_leds_ev_info_mem_on_gw_cfg_changed_ruuvi;
 static event_mgr_ev_info_static_t g_leds_ev_info_mem_on_wifi_ap_started;
 static event_mgr_ev_info_static_t g_leds_ev_info_mem_on_wifi_ap_stopped;
+static event_mgr_ev_info_static_t g_leds_ev_info_mem_on_wps_activated;
+static event_mgr_ev_info_static_t g_leds_ev_info_mem_on_wps_deactivated;
 static event_mgr_ev_info_static_t g_leds_ev_info_mem_on_reboot;
 static event_mgr_ev_info_static_t g_leds_ev_info_mem_on_wifi_connected;
 static event_mgr_ev_info_static_t g_leds_ev_info_mem_on_wifi_disconnected;
@@ -281,7 +285,7 @@ leds_task_handle_sig_update(void)
 static void
 leds_task_handle_sig_on_ev_cfg_ready(void)
 {
-    LOG_DBG("LEDS_TASK_SIG_ON_EV_CFG_READY");
+    LOG_INFO("LEDS_TASK_SIG_ON_EV_CFG_READY");
     const uint32_t flag_use_http_0 = gw_cfg_get_http_use_http_ruuvi() ? 1 : 0;
     const uint32_t flag_use_http_1 = gw_cfg_get_http_use_http() ? 1 : 0;
     leds_ctrl_configure_sub_machine((leds_ctrl_params_t) {
@@ -294,7 +298,7 @@ leds_task_handle_sig_on_ev_cfg_ready(void)
 static void
 leds_task_handle_sig_on_ev_cfg_changed_ruuvi(void)
 {
-    LOG_DBG("LEDS_TASK_SIG_ON_EV_CFG_CHANGED_RUUVI");
+    LOG_INFO("LEDS_TASK_SIG_ON_EV_CFG_CHANGED_RUUVI");
     const uint32_t flag_use_http_0 = gw_cfg_get_http_use_http_ruuvi() ? 1 : 0;
     const uint32_t flag_use_http_1 = gw_cfg_get_http_use_http() ? 1 : 0;
     leds_ctrl_configure_sub_machine((leds_ctrl_params_t) {
@@ -306,8 +310,9 @@ leds_task_handle_sig_on_ev_cfg_changed_ruuvi(void)
 static void
 leds_task_handle_sig_on_ev_wifi_ap_started(void)
 {
-    LOG_DBG("LEDS_TASK_SIG_ON_EV_WIFI_AP_STARTED");
-    if (leds_ctrl_is_in_substate())
+    const bool flag_is_in_substate = leds_ctrl_is_in_substate();
+    LOG_INFO("LEDS_TASK_SIG_ON_EV_WIFI_AP_STARTED (ready=%d)", flag_is_in_substate);
+    if (flag_is_in_substate)
     {
         leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_WIFI_AP_STARTED);
     }
@@ -316,18 +321,42 @@ leds_task_handle_sig_on_ev_wifi_ap_started(void)
 static void
 leds_task_handle_sig_on_ev_wifi_ap_stopped(void)
 {
-    LOG_DBG("LEDS_TASK_SIG_ON_EV_WIFI_AP_STOPPED");
-    if (leds_ctrl_is_in_substate())
+    const bool flag_is_in_substate = leds_ctrl_is_in_substate();
+    LOG_INFO("LEDS_TASK_SIG_ON_EV_WIFI_AP_STOPPED (ready=%d)", flag_is_in_substate);
+    if (flag_is_in_substate)
     {
         leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_WIFI_AP_STOPPED);
     }
 }
 
 static void
+leds_task_handle_sig_on_ev_wps_activated(void)
+{
+    const bool flag_is_in_substate = leds_ctrl_is_in_substate();
+    LOG_INFO("LEDS_TASK_SIG_ON_EV_WPS_ACTIVATED (ready=%d)", flag_is_in_substate);
+    if (flag_is_in_substate)
+    {
+        leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_WPS_ACTIVATED);
+    }
+}
+
+static void
+leds_task_handle_sig_on_ev_wps_deactivated(void)
+{
+    const bool flag_is_in_substate = leds_ctrl_is_in_substate();
+    LOG_INFO("LEDS_TASK_SIG_ON_EV_WPS_DEACTIVATED (ready=%d)", flag_is_in_substate);
+    if (flag_is_in_substate)
+    {
+        leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_WPS_DEACTIVATED);
+    }
+}
+
+static void
 leds_task_handle_sig_on_ev_network_connected(void)
 {
-    LOG_DBG("LEDS_TASK_SIG_ON_EV_NETWORK_CONNECTED");
-    if (leds_ctrl_is_in_substate())
+    const bool flag_is_in_substate = leds_ctrl_is_in_substate();
+    LOG_INFO("LEDS_TASK_SIG_ON_EV_NETWORK_CONNECTED (ready=%d)", flag_is_in_substate);
+    if (flag_is_in_substate)
     {
         leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_NETWORK_CONNECTED);
     }
@@ -336,8 +365,9 @@ leds_task_handle_sig_on_ev_network_connected(void)
 static void
 leds_task_handle_sig_on_ev_network_disconnected(void)
 {
-    LOG_DBG("LEDS_TASK_SIG_ON_EV_NETWORK_DISCONNECTED");
-    if (leds_ctrl_is_in_substate())
+    const bool flag_is_in_substate = leds_ctrl_is_in_substate();
+    LOG_INFO("LEDS_TASK_SIG_ON_EV_NETWORK_DISCONNECTED (ready=%d)", flag_is_in_substate);
+    if (flag_is_in_substate)
     {
         leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_NETWORK_DISCONNECTED);
     }
@@ -346,8 +376,9 @@ leds_task_handle_sig_on_ev_network_disconnected(void)
 static void
 leds_task_handle_sig_on_ev_mqtt1_connected(void)
 {
-    LOG_DBG("LEDS_TASK_SIG_ON_EV_MQTT1_CONNECTED");
-    if (leds_ctrl_is_in_substate())
+    const bool flag_is_in_substate = leds_ctrl_is_in_substate();
+    LOG_INFO("LEDS_TASK_SIG_ON_EV_MQTT1_CONNECTED (ready=%d)", flag_is_in_substate);
+    if (flag_is_in_substate)
     {
         leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_MQTT1_CONNECTED);
     }
@@ -356,8 +387,9 @@ leds_task_handle_sig_on_ev_mqtt1_connected(void)
 static void
 leds_task_handle_sig_on_ev_mqtt1_disconnected(void)
 {
-    LOG_DBG("LEDS_TASK_SIG_ON_EV_MQTT1_DISCONNECTED");
-    if (leds_ctrl_is_in_substate())
+    const bool flag_is_in_substate = leds_ctrl_is_in_substate();
+    LOG_INFO("LEDS_TASK_SIG_ON_EV_MQTT1_DISCONNECTED (ready=%d)", flag_is_in_substate);
+    if (flag_is_in_substate)
     {
         leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_MQTT1_DISCONNECTED);
     }
@@ -366,8 +398,9 @@ leds_task_handle_sig_on_ev_mqtt1_disconnected(void)
 static void
 leds_task_handle_sig_on_ev_http1_data_sent_successfully(void)
 {
-    LOG_DBG("LEDS_TASK_SIG_ON_EV_HTTP1_DATA_SENT_SUCCESSFULLY");
-    if (leds_ctrl_is_in_substate())
+    const bool flag_is_in_substate = leds_ctrl_is_in_substate();
+    LOG_INFO("LEDS_TASK_SIG_ON_EV_HTTP1_DATA_SENT_SUCCESSFULLY (ready=%d)", flag_is_in_substate);
+    if (flag_is_in_substate)
     {
         leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_HTTP1_DATA_SENT_SUCCESSFULLY);
     }
@@ -376,8 +409,9 @@ leds_task_handle_sig_on_ev_http1_data_sent_successfully(void)
 static void
 leds_task_handle_sig_on_ev_http1_data_sent_fail(void)
 {
-    LOG_DBG("LEDS_TASK_SIG_ON_EV_HTTP1_DATA_SENT_FAIL");
-    if (leds_ctrl_is_in_substate())
+    const bool flag_is_in_substate = leds_ctrl_is_in_substate();
+    LOG_WARN("LEDS_TASK_SIG_ON_EV_HTTP1_DATA_SENT_FAIL (ready=%d)", flag_is_in_substate);
+    if (flag_is_in_substate)
     {
         leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_HTTP1_DATA_SENT_FAIL);
     }
@@ -386,8 +420,9 @@ leds_task_handle_sig_on_ev_http1_data_sent_fail(void)
 static void
 leds_task_handle_sig_on_ev_http2_data_sent_successfully(void)
 {
-    LOG_DBG("LEDS_TASK_SIG_ON_EV_HTTP2_DATA_SENT_SUCCESSFULLY");
-    if (leds_ctrl_is_in_substate())
+    const bool flag_is_in_substate = leds_ctrl_is_in_substate();
+    LOG_INFO("LEDS_TASK_SIG_ON_EV_HTTP2_DATA_SENT_SUCCESSFULLY (ready=%d)", flag_is_in_substate);
+    if (flag_is_in_substate)
     {
         leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_HTTP2_DATA_SENT_SUCCESSFULLY);
     }
@@ -396,8 +431,9 @@ leds_task_handle_sig_on_ev_http2_data_sent_successfully(void)
 static void
 leds_task_handle_sig_on_ev_http2_data_sent_fail(void)
 {
-    LOG_DBG("LEDS_TASK_SIG_ON_EV_HTTP2_DATA_SENT_FAIL");
-    if (leds_ctrl_is_in_substate())
+    const bool flag_is_in_substate = leds_ctrl_is_in_substate();
+    LOG_WARN("LEDS_TASK_SIG_ON_EV_HTTP2_DATA_SENT_FAIL (ready=%d)", flag_is_in_substate);
+    if (flag_is_in_substate)
     {
         leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_HTTP2_DATA_SENT_FAIL);
     }
@@ -406,8 +442,9 @@ leds_task_handle_sig_on_ev_http2_data_sent_fail(void)
 static void
 leds_task_handle_sig_on_ev_http_poll_ok(void)
 {
-    LOG_INFO("LEDS_TASK_SIG_ON_EV_HTTP_POLL_OK");
-    if (leds_ctrl_is_in_substate())
+    const bool flag_is_in_substate = leds_ctrl_is_in_substate();
+    LOG_INFO("LEDS_TASK_SIG_ON_EV_HTTP_POLL_OK (ready=%d)", flag_is_in_substate);
+    if (flag_is_in_substate)
     {
         leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_HTTP_POLL_OK);
     }
@@ -416,8 +453,9 @@ leds_task_handle_sig_on_ev_http_poll_ok(void)
 static void
 leds_task_handle_sig_on_ev_http_poll_timeout(void)
 {
-    LOG_INFO("LEDS_TASK_SIG_ON_EV_HTTP_POLL_TIMEOUT");
-    if (leds_ctrl_is_in_substate())
+    const bool flag_is_in_substate = leds_ctrl_is_in_substate();
+    LOG_INFO("LEDS_TASK_SIG_ON_EV_HTTP_POLL_TIMEOUT (ready=%d)", flag_is_in_substate);
+    if (flag_is_in_substate)
     {
         leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_HTTP_POLL_TIMEOUT);
     }
@@ -426,8 +464,9 @@ leds_task_handle_sig_on_ev_http_poll_timeout(void)
 static void
 leds_task_handle_sig_on_ev_recv_adv(void)
 {
-    LOG_DBG("LEDS_TASK_SIG_ON_EV_RECV_ADV");
-    if (leds_ctrl_is_in_substate())
+    const bool flag_is_in_substate = leds_ctrl_is_in_substate();
+    LOG_DBG("LEDS_TASK_SIG_ON_EV_RECV_ADV (ready=%d)", flag_is_in_substate);
+    if (flag_is_in_substate)
     {
         leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_RECV_ADV);
     }
@@ -436,8 +475,9 @@ leds_task_handle_sig_on_ev_recv_adv(void)
 static void
 leds_task_handle_sig_on_ev_recv_adv_timeout(void)
 {
-    LOG_WARN("LEDS_TASK_SIG_ON_EV_RECV_ADV_TIMEOUT");
-    if (leds_ctrl_is_in_substate())
+    const bool flag_is_in_substate = leds_ctrl_is_in_substate();
+    LOG_WARN("LEDS_TASK_SIG_ON_EV_RECV_ADV_TIMEOUT (ready=%d)", flag_is_in_substate);
+    if (flag_is_in_substate)
     {
         leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_RECV_ADV_TIMEOUT);
     }
@@ -446,35 +486,35 @@ leds_task_handle_sig_on_ev_recv_adv_timeout(void)
 static void
 leds_task_handle_sig_on_ev_reboot(void)
 {
-    LOG_DBG("LEDS_TASK_SIG_ON_EV_REBOOT");
+    LOG_INFO("LEDS_TASK_SIG_ON_EV_REBOOT");
     leds_ctrl_handle_event(LEDS_CTRL_EVENT_REBOOT);
 }
 
 static void
 leds_task_handle_sig_on_ev_nrf52_fw_check(void)
 {
-    LOG_DBG("LEDS_TASK_SIG_ON_EV_NRF52_FW_CHECK");
+    LOG_INFO("LEDS_TASK_SIG_ON_EV_NRF52_FW_CHECK");
     leds_ctrl_handle_event(LEDS_CTRL_EVENT_NRF52_FW_CHECK);
 }
 
 static void
 leds_task_handle_sig_on_ev_nrf52_fw_updating(void)
 {
-    LOG_DBG("LEDS_TASK_SIG_ON_EV_NRF52_FW_UPDATING");
+    LOG_INFO("LEDS_TASK_SIG_ON_EV_NRF52_FW_UPDATING");
     leds_ctrl_handle_event(LEDS_CTRL_EVENT_NRF52_FW_UPDATING);
 }
 
 static void
 leds_task_handle_sig_on_ev_nrf52_ready(void)
 {
-    LOG_DBG("LEDS_TASK_SIG_ON_EV_NRF52_READY");
+    LOG_INFO("LEDS_TASK_SIG_ON_EV_NRF52_READY");
     leds_ctrl_handle_event(LEDS_CTRL_EVENT_NRF52_READY);
 }
 
 static void
 leds_task_handle_sig_on_ev_nrf52_failure(void)
 {
-    LOG_DBG("LEDS_TASK_SIG_ON_EV_NRF52_FAILURE");
+    LOG_WARN("LEDS_TASK_SIG_ON_EV_NRF52_FAILURE");
     leds_ctrl_handle_event(LEDS_CTRL_EVENT_NRF52_FAILURE);
 }
 
@@ -501,6 +541,8 @@ leds_task_handle_sig(const leds_task_sig_e leds_task_sig)
         [LEDS_TASK_SIG_ON_EV_CFG_ERASED]                   = &leds_task_handle_sig_on_ev_cfg_erased,
         [LEDS_TASK_SIG_ON_EV_WIFI_AP_STARTED]              = &leds_task_handle_sig_on_ev_wifi_ap_started,
         [LEDS_TASK_SIG_ON_EV_WIFI_AP_STOPPED]              = &leds_task_handle_sig_on_ev_wifi_ap_stopped,
+        [LEDS_TASK_SIG_ON_EV_WPS_ACTIVATED]                = &leds_task_handle_sig_on_ev_wps_activated,
+        [LEDS_TASK_SIG_ON_EV_WPS_DEACTIVATED]              = &leds_task_handle_sig_on_ev_wps_deactivated,
         [LEDS_TASK_SIG_ON_EV_NETWORK_CONNECTED]            = &leds_task_handle_sig_on_ev_network_connected,
         [LEDS_TASK_SIG_ON_EV_NETWORK_DISCONNECTED]         = &leds_task_handle_sig_on_ev_network_disconnected,
         [LEDS_TASK_SIG_ON_EV_MQTT1_CONNECTED]              = &leds_task_handle_sig_on_ev_mqtt1_connected,
@@ -629,6 +671,8 @@ leds_register_signals(void)
     os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_CFG_ERASED));
     os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_WIFI_AP_STARTED));
     os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_WIFI_AP_STOPPED));
+    os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_WPS_ACTIVATED));
+    os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_WPS_DEACTIVATED));
     os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_NETWORK_CONNECTED));
     os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_NETWORK_DISCONNECTED));
     os_signal_add(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_MQTT1_CONNECTED));
@@ -667,6 +711,16 @@ leds_subscribe_events(void)
         EVENT_MGR_EV_WIFI_AP_STOPPED,
         g_p_leds_signal,
         leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_WIFI_AP_STOPPED));
+    event_mgr_subscribe_sig_static(
+        &g_leds_ev_info_mem_on_wps_activated,
+        EVENT_MGR_EV_WPS_ACTIVATED,
+        g_p_leds_signal,
+        leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_WPS_ACTIVATED));
+    event_mgr_subscribe_sig_static(
+        &g_leds_ev_info_mem_on_wps_deactivated,
+        EVENT_MGR_EV_WPS_DEACTIVATED,
+        g_p_leds_signal,
+        leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_WPS_DEACTIVATED));
     event_mgr_subscribe_sig_static(
         &g_leds_ev_info_mem_on_reboot,
         EVENT_MGR_EV_REBOOT,
