@@ -242,10 +242,6 @@ leds_ctrl2_get_new_blinking_sequence(void)
         }
         return (leds_blinking_mode_t) { .p_sequence = LEDS_BLINKING_MODE_WIFI_HOTSPOT_ACTIVE };
     }
-    if (p_state->flag_wps_active)
-    {
-        return (leds_blinking_mode_t) { .p_sequence = LEDS_BLINKING_MODE_WPS_ACTIVE };
-    }
 
     if (!p_state->flag_network_connected)
     {
