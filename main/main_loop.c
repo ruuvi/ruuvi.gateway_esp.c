@@ -386,9 +386,9 @@ main_task_handle_sig_deactivate_cfg_mode(void)
     else
     {
         LOG_INFO("DEACTIVATE_CFG_MODE: Connect to Wi-Fi");
-        if (wifi_manager_is_connected_to_wifi())
+        if (wifi_manager_is_sta_active())
         {
-            LOG_INFO("DEACTIVATE_CFG_MODE: Wi-Fi is already connected");
+            LOG_INFO("DEACTIVATE_CFG_MODE: Wi-Fi STA is already active");
         }
         else
         {
@@ -516,7 +516,7 @@ main_task_handle_sig_network_reconnect(void)
     }
     else
     {
-        if (wifi_manager_is_connected_to_wifi())
+        if (wifi_manager_is_sta_active())
         {
             wifi_manager_disconnect_wifi();
             wifi_manager_connect_async();

@@ -116,7 +116,7 @@ reset_task_handle_sig_configure_button_event(void)
         }
         else
         {
-            if (gw_cfg_is_wifi_sta_configured() || wifi_manager_is_connected_to_wifi())
+            if (gw_cfg_is_wifi_sta_configured() || wifi_manager_is_sta_active())
             {
                 LOG_INFO("CONFIGURE button: Disconnect from WiFi");
                 wifi_manager_disconnect_wifi();
