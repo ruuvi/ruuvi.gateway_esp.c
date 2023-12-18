@@ -432,6 +432,13 @@ http_server_gw_cfg_download_and_parse(
             "Download gw_cfg: failed, http_resp_code=%u: %s",
             (printf_uint_t)download_info.http_resp_code,
             NULL != download_info.p_json_buf ? download_info.p_json_buf : "<NULL>");
+        if (NULL != p_err_msg)
+        {
+            *p_err_msg = str_buf_printf_with_alloc(
+                "Download of gw_cfg failed, HTTP error code %u, message: %s",
+                (printf_uint_t)download_info.http_resp_code,
+                NULL != download_info.p_json_buf ? download_info.p_json_buf : "<NULL>");
+        }
         if (NULL != download_info.p_json_buf)
         {
             os_free(download_info.p_json_buf);
