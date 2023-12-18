@@ -1846,5 +1846,5 @@ TEST_F(TestGwCfg, test_gw_cfg_is_wifi_sta_configured) // NOLINT
     gw_cfg_update_wifi_sta_config(&gw_cfg_wifi_sta);
 
     ASSERT_TRUE(gw_cfg_is_wifi_sta_configured());
-    ASSERT_FALSE(gw_cfg_get_eth_use_eth());
+    ASSERT_TRUE(gw_cfg_get_eth_use_eth());
 }

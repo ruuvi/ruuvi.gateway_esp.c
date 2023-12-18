@@ -415,6 +415,9 @@ gw_cfg_get_remote_cfg_copy(void);
 bool
 gw_cfg_get_eth_use_eth(void);
 
+void
+gw_cfg_set_eth_use_eth(const bool flag_use_eth);
+
 bool
 gw_cfg_get_eth_use_dhcp(void);
 
