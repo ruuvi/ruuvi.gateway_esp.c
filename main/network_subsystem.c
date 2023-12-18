@@ -186,6 +186,11 @@ cb_on_ap_sta_disconnected(void)
 static void
 cb_save_wifi_config(const wifiman_config_sta_t* const p_wifi_cfg_sta)
 {
+    if ('\0' != p_wifi_cfg_sta->wifi_config_sta.ssid[0])
+    {
+        // When Wi-Fi credentials got from WPS, then disable Ethernet.
+        gw_cfg_set_eth_use_eth(false);
+    }
     gw_cfg_update_wifi_sta_config(p_wifi_cfg_sta);
 }
 
@@ -346,6 +351,8 @@ network_subsystem_init(const force_start_wifi_hotspot_e force_start_wifi_hotspot
         if (!gw_status_is_eth_link_up())
         {
             LOG_INFO("%s: ### Ethernet cable is not connected", __func__);
+            gw_status_clear_eth_connected();
+            event_mgr_notify(EVENT_MGR_EV_ETH_DISCONNECTED);
             if (flag_gw_cfg_empty)
             {
                 LOG_INFO(

@@ -419,7 +419,6 @@ gw_cfg_set(
     }
     if (NULL != p_gw_cfg_wifi_sta)
     {
-        p_gw_cfg_dst->eth_cfg.use_eth = false;
         gw_cfg_set_wifi_sta(p_gw_cfg_wifi_sta, &p_gw_cfg_dst->wifi_cfg.sta, &update_status.flag_wifi_sta_cfg_modified);
     }
 
@@ -545,6 +544,16 @@ gw_cfg_get_eth_use_eth(void)
     const bool      use_eth  = p_gw_cfg->eth_cfg.use_eth;
     gw_cfg_unlock_ro(&p_gw_cfg);
     return use_eth;
+}
+
+void
+gw_cfg_set_eth_use_eth(const bool flag_use_eth)
+{
+    assert(NULL != g_gw_cfg_mutex);
+    os_mutex_recursive_lock(g_gw_cfg_mutex);
+    gw_cfg_t* const p_gw_cfg  = &g_gateway_config;
+    p_gw_cfg->eth_cfg.use_eth = flag_use_eth;
+    os_mutex_recursive_unlock(g_gw_cfg_mutex);
 }
 
 bool
