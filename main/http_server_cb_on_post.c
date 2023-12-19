@@ -117,14 +117,14 @@ http_server_cb_on_post_ble_scanning(const char* const p_body)
         flag_no_cache);
 }
 
-static http_server_resp_t
+static http_resp_code_e
 http_server_fw_update_check_file(const char* const p_file_name)
 {
     str_buf_t url = str_buf_printf_with_alloc("%s/%s", fw_update_get_url(), p_file_name);
     if (NULL == url.buf)
     {
         LOG_ERR("Can't allocate memory");
-        return http_server_resp_500();
+        return HTTP_RESP_CODE_500;
     }
     const http_download_param_with_auth_t params = {
         .base = {
@@ -140,14 +140,9 @@ http_server_fw_update_check_file(const char* const p_file_name)
         .p_http_auth = NULL,
         .p_extra_header_item = NULL,
     };
-    http_resp_code_e http_resp_code = http_check(&params);
+    const http_resp_code_e http_resp_code = http_check(&params);
     str_buf_free_buf(&url);
-    if (HTTP_RESP_CODE_200 != http_resp_code)
-    {
-        LOG_ERR("Failed to download %s, HTTP error: %d", p_file_name, http_resp_code);
-        return http_server_cb_gen_resp(http_resp_code, "Failed to download %s", p_file_name);
-    }
-    return http_server_resp_200_json("{}");
+    return http_resp_code;
 }
 
 HTTP_SERVER_CB_STATIC
@@ -168,28 +163,28 @@ http_server_cb_on_post_fw_update(const char* p_body, const bool flag_access_from
     const bool flag_wait_until_relaying_stopped = true;
     gw_status_suspend_relaying(flag_wait_until_relaying_stopped);
 
-    http_server_resp_t resp = http_server_fw_update_check_file("ruuvi_gateway_esp.bin");
-    if (HTTP_RESP_CODE_200 != resp.http_resp_code)
+    http_resp_code_e http_resp_code = http_server_fw_update_check_file("ruuvi_gateway_esp.bin");
+    if (HTTP_RESP_CODE_200 != http_resp_code)
     {
-        LOG_ERR("Failed to download ruuvi_gateway_esp.bin");
+        LOG_ERR("Failed to download %s, HTTP error: %d", "ruuvi_gateway_esp.bin", http_resp_code);
         gw_status_resume_relaying(true);
-        return resp;
+        return http_server_cb_gen_resp(http_resp_code, "Failed to download %s", "ruuvi_gateway_esp.bin");
     }
 
-    resp = http_server_fw_update_check_file("fatfs_gwui.bin");
-    if (HTTP_RESP_CODE_200 != resp.http_resp_code)
+    http_resp_code = http_server_fw_update_check_file("fatfs_gwui.bin");
+    if (HTTP_RESP_CODE_200 != http_resp_code)
     {
-        LOG_ERR("Failed to download fatfs_gwui.bin");
+        LOG_ERR("Failed to download %s, HTTP error: %d", "fatfs_gwui.bin", http_resp_code);
         gw_status_resume_relaying(true);
-        return resp;
+        return http_server_cb_gen_resp(http_resp_code, "Failed to download %s", "fatfs_gwui.bin");
     }
 
-    resp = http_server_fw_update_check_file("fatfs_nrf52.bin");
-    if (HTTP_RESP_CODE_200 != resp.http_resp_code)
+    http_resp_code = http_server_fw_update_check_file("fatfs_nrf52.bin");
+    if (HTTP_RESP_CODE_200 != http_resp_code)
     {
-        LOG_ERR("Failed to download fatfs_nrf52.bin");
+        LOG_ERR("Failed to download %s, HTTP error: %d", "fatfs_nrf52.bin", http_resp_code);
         gw_status_resume_relaying(true);
-        return resp;
+        return http_server_cb_gen_resp(http_resp_code, "Failed to download %s", "fatfs_nrf52.bin");
     }
 
     fw_update_set_extra_info_for_status_json_update_start();
