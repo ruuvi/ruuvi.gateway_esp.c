@@ -423,15 +423,16 @@ adv_post_handle_sig_cfg_mode_deactivated(adv_post_state_t* const p_adv_post_stat
 }
 
 static void
-adv_post_handle_sig_green_led_turn_on(ATTR_UNUSED adv_post_state_t* const p_adv_post_state) // NOSONAR
+adv_post_handle_sig_green_led_state_changed(ATTR_UNUSED adv_post_state_t* const p_adv_post_state) // NOSONAR
 {
-    adv_post_on_green_led_update(ADV_POST_GREEN_LED_CMD_ON);
-}
-
-static void
-adv_post_handle_sig_green_led_turn_off(ATTR_UNUSED adv_post_state_t* const p_adv_post_state) // NOSONAR
-{
-    adv_post_on_green_led_update(ADV_POST_GREEN_LED_CMD_OFF);
+    if (leds_get_green_led_state())
+    {
+        adv_post_on_green_led_update(ADV_POST_GREEN_LED_CMD_ON);
+    }
+    else
+    {
+        adv_post_on_green_led_update(ADV_POST_GREEN_LED_CMD_OFF);
+    }
 }
 
 static void
@@ -450,28 +451,27 @@ bool
 adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p_adv_post_state)
 {
     static const adv_post_sig_handler_t g_adv_post_sig_handlers[ADV_POST_SIG_LAST + 1] = {
-        [OS_SIGNAL_NUM_NONE]                 = NULL,
-        [ADV_POST_SIG_STOP]                  = &adv_post_handle_sig_stop,
-        [ADV_POST_SIG_NETWORK_DISCONNECTED]  = &adv_post_handle_sig_network_disconnected,
-        [ADV_POST_SIG_NETWORK_CONNECTED]     = &adv_post_handle_sig_network_connected,
-        [ADV_POST_SIG_TIME_SYNCHRONIZED]     = &adv_post_handle_sig_time_synchronized,
-        [ADV_POST_SIG_RETRANSMIT]            = &adv_post_handle_sig_retransmit,
-        [ADV_POST_SIG_RETRANSMIT2]           = &adv_post_handle_sig_retransmit2,
-        [ADV_POST_SIG_RETRANSMIT_MQTT]       = &adv_post_handle_sig_retransmit_mqtt,
-        [ADV_POST_SIG_SEND_STATISTICS]       = &adv_post_handle_sig_send_statistics,
-        [ADV_POST_SIG_DO_ASYNC_COMM]         = &adv_post_do_async_comm,
-        [ADV_POST_SIG_RELAYING_MODE_CHANGED] = &adv_post_handle_sig_relaying_mode_changed,
-        [ADV_POST_SIG_NETWORK_WATCHDOG]      = &adv_post_handle_sig_network_watchdog,
-        [ADV_POST_SIG_TASK_WATCHDOG_FEED]    = &adv_post_handle_sig_task_watchdog_feed,
-        [ADV_POST_SIG_GW_CFG_READY]          = &adv_post_handle_sig_gw_cfg_ready,
-        [ADV_POST_SIG_GW_CFG_CHANGED_RUUVI]  = &adv_post_handle_sig_gw_cfg_changed_ruuvi,
-        [ADV_POST_SIG_BLE_SCAN_CHANGED]      = &adv_post_handle_sig_ble_scan_changed,
-        [ADV_POST_SIG_CFG_MODE_ACTIVATED]    = &adv_post_handle_sig_cfg_mode_activated,
-        [ADV_POST_SIG_CFG_MODE_DEACTIVATED]  = &adv_post_handle_sig_cfg_mode_deactivated,
-        [ADV_POST_SIG_GREEN_LED_TURN_ON]     = &adv_post_handle_sig_green_led_turn_on,
-        [ADV_POST_SIG_GREEN_LED_TURN_OFF]    = &adv_post_handle_sig_green_led_turn_off,
-        [ADV_POST_SIG_GREEN_LED_UPDATE]      = &adv_post_handle_sig_green_led_update,
-        [ADV_POST_SIG_RECV_ADV_TIMEOUT]      = &adv_post_handle_sig_recv_adv_timeout,
+        [OS_SIGNAL_NUM_NONE]                   = NULL,
+        [ADV_POST_SIG_STOP]                    = &adv_post_handle_sig_stop,
+        [ADV_POST_SIG_NETWORK_DISCONNECTED]    = &adv_post_handle_sig_network_disconnected,
+        [ADV_POST_SIG_NETWORK_CONNECTED]       = &adv_post_handle_sig_network_connected,
+        [ADV_POST_SIG_TIME_SYNCHRONIZED]       = &adv_post_handle_sig_time_synchronized,
+        [ADV_POST_SIG_RETRANSMIT]              = &adv_post_handle_sig_retransmit,
+        [ADV_POST_SIG_RETRANSMIT2]             = &adv_post_handle_sig_retransmit2,
+        [ADV_POST_SIG_RETRANSMIT_MQTT]         = &adv_post_handle_sig_retransmit_mqtt,
+        [ADV_POST_SIG_SEND_STATISTICS]         = &adv_post_handle_sig_send_statistics,
+        [ADV_POST_SIG_DO_ASYNC_COMM]           = &adv_post_do_async_comm,
+        [ADV_POST_SIG_RELAYING_MODE_CHANGED]   = &adv_post_handle_sig_relaying_mode_changed,
+        [ADV_POST_SIG_NETWORK_WATCHDOG]        = &adv_post_handle_sig_network_watchdog,
+        [ADV_POST_SIG_TASK_WATCHDOG_FEED]      = &adv_post_handle_sig_task_watchdog_feed,
+        [ADV_POST_SIG_GW_CFG_READY]            = &adv_post_handle_sig_gw_cfg_ready,
+        [ADV_POST_SIG_GW_CFG_CHANGED_RUUVI]    = &adv_post_handle_sig_gw_cfg_changed_ruuvi,
+        [ADV_POST_SIG_BLE_SCAN_CHANGED]        = &adv_post_handle_sig_ble_scan_changed,
+        [ADV_POST_SIG_CFG_MODE_ACTIVATED]      = &adv_post_handle_sig_cfg_mode_activated,
+        [ADV_POST_SIG_CFG_MODE_DEACTIVATED]    = &adv_post_handle_sig_cfg_mode_deactivated,
+        [ADV_POST_SIG_GREEN_LED_STATE_CHANGED] = &adv_post_handle_sig_green_led_state_changed,
+        [ADV_POST_SIG_GREEN_LED_UPDATE]        = &adv_post_handle_sig_green_led_update,
+        [ADV_POST_SIG_RECV_ADV_TIMEOUT]        = &adv_post_handle_sig_recv_adv_timeout,
     };
 
     assert(adv_post_sig < OS_ARRAY_SIZE(g_adv_post_sig_handlers));

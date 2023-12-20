@@ -67,6 +67,9 @@ leds_notify_http_poll_ok(void);
 void
 leds_notify_http_poll_timeout(void);
 
+bool
+leds_get_green_led_state(void);
+
 #if RUUVI_TESTS_LEDS
 
 LEDS_STATIC

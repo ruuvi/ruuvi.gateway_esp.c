@@ -101,6 +101,9 @@ static os_timer_sig_periodic_static_t g_leds_timer_sig_update_mem;
 static os_timer_sig_periodic_t*       g_p_leds_timer_sig_watchdog_feed;
 static os_timer_sig_periodic_static_t g_leds_timer_sig_watchdog_feed_mem;
 static leds_color_e                   g_leds_state;
+static bool                           g_green_led_state;
+static os_mutex_t                     g_green_led_state_mutex;
+static os_mutex_static_t              g_green_led_state_mutex_mem;
 
 static event_mgr_ev_info_static_t g_leds_ev_info_mem_on_gw_cfg_ready;
 static event_mgr_ev_info_static_t g_leds_ev_info_mem_on_gw_cfg_changed_ruuvi;
@@ -142,6 +145,24 @@ leds_task_watchdog_feed(void)
 }
 
 static void
+leds_set_green_led_state(const bool is_green_led_on)
+{
+    os_mutex_lock(g_green_led_state_mutex);
+    g_green_led_state = is_green_led_on;
+    os_mutex_unlock(g_green_led_state_mutex);
+    event_mgr_notify(EVENT_MGR_EV_GREEN_LED_STATE_CHANGED);
+}
+
+bool
+leds_get_green_led_state(void)
+{
+    os_mutex_lock(g_green_led_state_mutex);
+    const bool is_green_led_on = g_green_led_state;
+    os_mutex_unlock(g_green_led_state_mutex);
+    return is_green_led_on;
+}
+
+static void
 leds_turn_on_red(void)
 {
     LOG_DBG("R_LED: ON");
@@ -171,14 +192,14 @@ static void
 leds_turn_on_green(void)
 {
     LOG_DBG("G_LED: ON");
-    event_mgr_notify(EVENT_MGR_EV_GREEN_LED_TURN_ON);
+    leds_set_green_led_state(true);
 }
 
 static void
 leds_turn_off_green(void)
 {
     LOG_DBG("G_LED: OFF");
-    event_mgr_notify(EVENT_MGR_EV_GREEN_LED_TURN_OFF);
+    leds_set_green_led_state(false);
 }
 
 const char*
@@ -783,6 +804,9 @@ leds_init(const bool flag_configure_button_pressed)
     LOG_INFO("%s", __func__);
 
     g_leds_state = LEDS_COLOR_OFF;
+
+    g_green_led_state       = false;
+    g_green_led_state_mutex = os_mutex_create_static(&g_green_led_state_mutex_mem);
 
     g_p_leds_signal = os_signal_create_static(&g_leds_signal_mem);
     leds_register_signals();
