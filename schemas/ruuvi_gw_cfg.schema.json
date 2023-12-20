@@ -281,6 +281,15 @@
         "http://my_server123.com:8080/record"
       ]
     },
+    "http_period": {
+      "title": "Period of sending data via HTTP(S)",
+      "type": "integer",
+      "default": 10,
+      "examples": [
+        10,
+        60
+      ]
+    },
     "http_user": {
       "title": "Username for HTTP basic authentication for the server",
       "type": "string",
@@ -368,6 +377,18 @@
         "SSL",
         "WS",
         "WSS"
+      ]
+    },
+    "mqtt_data_format": {
+      "title": "Data format used for MQTT transmission",
+      "description": "ruuvi_raw - raw data only, ruuvi_raw_and_decoded - raw and decoded data, ruuvi_decoded - decoded data only",
+      "type": "string",
+      "pattern": "^(ruuvi_raw|ruuvi_raw_and_decoded|ruuvi_decoded)$",
+      "default": "ruuvi_raw",
+      "examples": [
+        "ruuvi_raw",
+        "ruuvi_raw_and_decoded",
+        "ruuvi_decoded"
       ]
     },
     "mqtt_server": {
@@ -645,6 +666,14 @@
       "examples": [
         ""
       ]
+    },
+    "fw_update_url": {
+      "title": "URL of firmware update server",
+      "type": "string",
+      "default": "https://network.ruuvi.com/firmwareupdate",
+      "examples": [
+        "https://network.ruuvi.com/firmwareupdate"
+      ]
     }
   },
   "examples": [
@@ -672,6 +701,7 @@
       "remote_cfg_refresh_interval_minutes": 0,
       "use_http": true,
       "http_url": "https://network.ruuvi.com/record",
+      "http_period": 10,
       "http_user": "",
       "http_pass": "",
       "use_http_stat": true,
@@ -681,6 +711,7 @@
       "use_mqtt": false,
       "mqtt_disable_retained_messages": false,
       "mqtt_transport": "TCP",
+      "mqtt_data_format": "ruuvi_raw",
       "mqtt_server": "test.mosquitto.org",
       "mqtt_port": 1883,
       "mqtt_prefix": "",
@@ -709,8 +740,8 @@
       "scan_channel_37": true,
       "scan_channel_38": true,
       "scan_channel_39": true,
-      "coordinates": ""
+      "coordinates": "",
+      "fw_update_url": "https://network.ruuvi.com/firmwareupdate"
     }
   ]
 }
-

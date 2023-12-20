@@ -24,7 +24,7 @@
   </p>
   <ul>
    <li>
-    Ruuvi Gateway firmware version (v1.13.0).
+    Ruuvi Gateway firmware version (v1.15.0).
     <a href="https://github.com/ruuvi/ruuvi.gateway_esp.c">
      GitHub repo
     </a>
@@ -152,17 +152,57 @@
    (recommended).
   </p>
   <p>
-   Alternatively, you can choose your own location for updates by checking **Specify a URL that
+   Alternatively you can configure your own update server, which should return a JSON file containing
   </p>
   <p>
-   contains required firmware update binaries
+   the version number and URL from where the firmware binaries can be downloaded, see example:
+  </p>
+  <p>
+   ```json
+  </p>
+  <p>
+   {
+  </p>
+  <p>
+   "latest": {
+  </p>
+  <pre><code>"version":"v1.15.0",
+</code></pre>
+  <pre><code>"url":"https://fwupdate.ruuvi.com/v1.15.0",
+</code></pre>
+  <pre><code>"created_at":"2023-12-12T12:00:00Z"
+</code></pre>
+  <p>
+   }
+  </p>
+  <p>
+   }
+  </p>
+  <p>
+   ```
+  </p>
+  <p>
+   This option is available under
+   <strong>
+    Advanced
+   </strong>
+   :
+  </p>
+  <p>
+   <img alt="software_update_advanced_options1" src="images/software_update_advanced_options1.png"/>
+  </p>
+  <p>
+   Or, you can choose your own location for the firmware binaries by checking **Don't use the software
+  </p>
+  <p>
+   update provided by Ruuvi but download binary files from URL address instead
    <strong>
     under
    </strong>
-   Advanced**.
+   Advanced**:
   </p>
   <p>
-   <img alt="software_update_advanced_options" src="images/software_update_advanced_options.png"/>
+   <img alt="software_update_advanced_options" src="images/software_update_advanced_options2.png"/>
   </p>
   <p>
    If you want to use a previous release version, you can provide a link
@@ -174,11 +214,17 @@
    </code>
   </p>
   <p>
+   or to the Ruuvi update server
+   <code>
+    https://fwupdate.ruuvi.com/&lt;VERSION_TAG&gt;
+   </code>
+  </p>
+  <p>
    where you need to replace
    <strong>
     &lt;VERSION_TAG&gt;
    </strong>
-   with the version number you need.
+   with the version number you need, for example "v1.15.0".
   </p>
   <p>
    For example:
@@ -234,7 +280,7 @@
   <p>
    You can also skip this step by pressing
    <em>
-    Continue without updating
+    Continue without update
    </em>
    .
   </p>
@@ -520,6 +566,95 @@
   <p>
    ```
   </p>
+  <p>
+   It also supports client authentication via SSL by enabling the upload of a client certificate and
+  </p>
+  <p>
+   its associated private key, ensuring secure and verified client-server communication:
+  </p>
+  <p>
+   <img alt="automatic_configuration_download_client_ssl_cert" src="images/automatic_configuration_download_client_ssl_cert.png"/>
+  </p>
+  <p>
+   Example of corresponding minimal gw_cfg.json:
+  </p>
+  <p>
+   ```json
+  </p>
+  <p>
+   {
+  </p>
+  <p>
+   "remote_cfg_use": true,
+  </p>
+  <p>
+   "remote_cfg_url": "
+   <a href="http://192.168.1.101:7000/">
+    http://192.168.1.101:7000/
+   </a>
+   ",
+  </p>
+  <p>
+   "remote_cfg_refresh_interval_minutes": 10,
+  </p>
+  <p>
+   "remote_cfg_auth_type": "none",
+  </p>
+  <p>
+   "remote_cfg_use_ssl_client_cert": true
+  </p>
+  <p>
+   }
+  </p>
+  <p>
+   ```
+  </p>
+  <p>
+   You can use a server SSL Certificate if you want to be independent of
+  </p>
+  <p>
+   public Certificate Authorities (CAs) or if you have deployed a self-signed certificate
+  </p>
+  <p>
+   on the HTTPS server, giving you greater control and customization over your security infrastructure:
+  </p>
+  <p>
+   <img alt="automatic_configuration_download_server_ssl_cert" src="images/automatic_configuration_download_server_ssl_cert.png"/>
+  </p>
+  <p>
+   Example of corresponding minimal gw_cfg.json:
+  </p>
+  <p>
+   ```json
+  </p>
+  <p>
+   {
+  </p>
+  <p>
+   "remote_cfg_use": true,
+  </p>
+  <p>
+   "remote_cfg_url": "
+   <a href="http://192.168.1.101:7000/">
+    http://192.168.1.101:7000/
+   </a>
+   ",
+  </p>
+  <p>
+   "remote_cfg_refresh_interval_minutes": 10,
+  </p>
+  <p>
+   "remote_cfg_auth_type": "none",
+  </p>
+  <p>
+   "remote_cfg_use_ssl_server_cert": true
+  </p>
+  <p>
+   }
+  </p>
+  <p>
+   ```
+  </p>
   <h2>
    LAN Access Settings
   </h2>
@@ -551,7 +686,11 @@
    , select **Protected with a
   </p>
   <p>
-   custom password**:
+   custom password
+   <strong>
+    (under
+   </strong>
+   Advanced settings**):
   </p>
   <p>
    <img alt="access_settings_custom_password" src="images/access_settings_custom_password.png"/>
@@ -694,10 +833,22 @@
    Custom HTTP(S) / MQTT(S) sever
   </h2>
   <p>
-   Ruuvi Gateway connects to the Ruuvi Cloud by default. However, you can configure it to use an HTTP
+   Ruuvi Gateway connects to the Ruuvi Cloud by default. However, you can configure it to use an
   </p>
   <p>
-   or MQTT server to route data from your nearby sensors to a custom location instead.
+   HTTP(S) or MQTT server to route data from your nearby sensors to a custom location instead.
+  </p>
+  <p>
+   Ruuvi Gateway supports client authentication via SSL for HTTPS and MQTTS by enabling the upload
+  </p>
+  <p>
+   of a client certificate and its associated private key.
+  </p>
+  <p>
+   Also, you can use a server SSL Certificate if you want to be independent of public Certificate
+  </p>
+  <p>
+   Authorities (CAs) or if you have deployed a self-signed certificate on the HTTPS/MQTTS server.
   </p>
   <p>
    <img alt="cloud_options_advanced_settings" src="images/cloud_options_advanced_settings.png"/>
@@ -709,19 +860,82 @@
    <img alt="custom_server_ruuvi_cloud" src="images/custom_server_ruuvi_cloud.png"/>
   </p>
   <p>
-   Or configure to send data to your own server via HTTP/HTTPS (sending to both Ruuvi Cloud and your
+   Or configure to send data to your own server via HTTP/HTTPS (you can configure sending to both
   </p>
   <p>
-   own server is not supported yet):
+   Ruuvi Cloud and your own server):
   </p>
   <p>
    <img alt="custom_server_http" src="images/custom_server_http.png"/>
+  </p>
+  <p>
+   You can choose the data format for sending to your own server:
+  </p>
+  <ul>
+   <li>
+    Raw data without decoding (default)
+   </li>
+  </ul>
+  <ul>
+   <li>
+    Raw data and decoded data
+   </li>
+  </ul>
+  <ul>
+   <li>
+    Decoded data only
+   </li>
+  </ul>
+  <p>
+   <strong>
+    Note
+   </strong>
+   : Decoding is supported only for Ruuvi sensors.
+  </p>
+  <p>
+   It is possible to set initial sending interval for HTTP(S) server (in seconds).
+  </p>
+  <p>
+   But this value can be overridden by the server by sending "X-Ruuvi-Gateway-Rate"
+  </p>
+  <p>
+   in the HTTP response header.
   </p>
   <p>
    Also, you can enable relaying data to MQTT server:
   </p>
   <p>
    <img alt="custom_server_mqtt" src="images/custom_server_mqtt.png"/>
+  </p>
+  <p>
+   You can choose the data format for sending to your own server:
+  </p>
+  <ul>
+   <li>
+    Raw data without decoding (default)
+   </li>
+  </ul>
+  <ul>
+   <li>
+    Raw data and decoded data
+   </li>
+  </ul>
+  <ul>
+   <li>
+    Decoded data only
+   </li>
+  </ul>
+  <p>
+   <strong>
+    Note
+   </strong>
+   : Decoding is supported only for Ruuvi sensors.
+  </p>
+  <p>
+   In case the data flow from the sensors is too large, you can set the period with which the data
+  </p>
+  <p>
+   will be sent over MQTT by defining sending interval.
   </p>
   <p>
    In the Statistics section, you can configure the sending of statistics to Ruuvi Cloud or your own
@@ -823,30 +1037,38 @@
   </p>
   <p>
    <strong>
-    Scan extended payloads
-   </strong>
-   . Both Coded PHY and 1 Mbps PHY may have a primary advertisement that
-  </p>
-  <p>
-   tells that there is going to be extended data on a secondary channel. If "Use extended payload" is
-  </p>
-  <p>
-   enabled, the secondary payload will be scanned.
-  </p>
-  <p>
-   Coded PHY supports only Coded extended payload, 1 Mbps PHY supports scanning at 2 Mbps and 1 Mbps
-  </p>
-  <p>
-   PHY extended payloads.
-  </p>
-  <p>
-   <strong>
     Use channel
    </strong>
    . Each enabled BLE channel is scanned sequentially for a minimum of 7000 ms per
   </p>
   <p>
    channel, for a total of 21000 ms if all 3 channels are enabled. At least one channel must be active.
+  </p>
+  <p>
+   It is possible to filter out the relayed Bluetooth sensors.
+  </p>
+  <p>
+   You can use whitelist mode if you only want to share data for specific sensors,
+  </p>
+  <p>
+   or blacklist mode if you want to share data from all sensors except the specified list.
+  </p>
+  <p>
+   <img alt="bluetooth_filtering" src="images/bluetooth_filtering.png"/>
+  </p>
+  <p>
+   If you don't see some sensors, try to press on
+   <strong>
+    Refresh list
+   </strong>
+   . If a sensor is offline,
+  </p>
+  <p>
+   you can add it manually by entering its MAC address and pressing on the
+   <strong>
+    Add
+   </strong>
+   button.
   </p>
  </body>
 </html>

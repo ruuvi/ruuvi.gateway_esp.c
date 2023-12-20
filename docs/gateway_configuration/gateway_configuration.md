@@ -9,7 +9,7 @@ Firmware version information can be found at the bottom of each page:
 ![start_page](images/start_page.png)
 
 There are two version numbers:
-* Ruuvi Gateway firmware version (v1.14.0). [GitHub repo](https://github.com/ruuvi/ruuvi.gateway_esp.c)
+* Ruuvi Gateway firmware version (v1.15.0). [GitHub repo](https://github.com/ruuvi/ruuvi.gateway_esp.c)
 * Ruuvi Gateway nRF52 co-processor firmware version (v1.0.0) [GitHub repo](https://github.com/ruuvi/ruuvi.gateway_nrf.c)
 
 
@@ -50,14 +50,31 @@ during the configuration process.
 If an update is available, you will be offered to install it from the default location 
 (recommended).
 
-Alternatively, you can choose your own location for updates by checking **Specify a URL that 
-contains required firmware update binaries** under **Advanced**.
+Alternatively you can configure your own update server, which should return a JSON file containing 
+the version number and URL from where the firmware binaries can be downloaded, see example:
+```json
+{
+  "latest": {
+    "version":"v1.15.0",
+    "url":"https://fwupdate.ruuvi.com/v1.15.0",
+    "created_at":"2023-12-12T12:00:00Z"
+  }
+}
+```
 
-![software_update_advanced_options](images/software_update_advanced_options.png)
+This option is available under **Advanced**:
+
+![software_update_advanced_options1](images/software_update_advanced_options1.png)
+
+Or, you can choose your own location for the firmware binaries by checking **Don't use the software 
+update provided by Ruuvi but download binary files from URL address instead** under **Advanced**:
+
+![software_update_advanced_options](images/software_update_advanced_options2.png)
 
 If you want to use a previous release version, you can provide a link 
 to GitHub `https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/<VERSION_TAG>` 
-where you need to replace **<VERSION_TAG>** with the version number you need.
+or to the Ruuvi update server `https://fwupdate.ruuvi.com/<VERSION_TAG>`
+where you need to replace **<VERSION_TAG>** with the version number you need, for example "v1.15.0".
 
 For example: `https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.13.0`
 
@@ -76,7 +93,7 @@ It's important to make sure that your Ruuvi Gateway remains powered during this 
 
 ![software_update_progress](images/software_update_progress.png)
 
-You can also skip this step by pressing *Continue without updating*.
+You can also skip this step by pressing *Continue without update*.
 
 ![software_update](images/software_update.png)
 
@@ -220,7 +237,7 @@ is printed on the bottom of the Ruuvi Gateway):
 ![access_settings_default](images/access_settings_default.png)
 
 If you want to configure a custom **Username** and **password**, select **Protected with a 
-custom password**:
+custom password** (under **Advanced settings**):
 
 ![access_settings_custom_password](images/access_settings_custom_password.png)
 
@@ -297,9 +314,30 @@ Ruuvi Cloud and your own server):
 
 ![custom_server_http](images/custom_server_http.png)
 
+You can choose the data format for sending to your own server:
+* Raw data without decoding (default)
+* Raw data and decoded data
+* Decoded data only
+
+**Note**: Decoding is supported only for Ruuvi sensors.
+
+It is possible to set initial sending interval for HTTP(S) server (in seconds).
+But this value can be overridden by the server by sending "X-Ruuvi-Gateway-Rate" 
+in the HTTP response header.
+
 Also, you can enable relaying data to MQTT server:
 
 ![custom_server_mqtt](images/custom_server_mqtt.png)
+
+You can choose the data format for sending to your own server:
+* Raw data without decoding (default)
+* Raw data and decoded data
+* Decoded data only
+ 
+**Note**: Decoding is supported only for Ruuvi sensors.
+
+In case the data flow from the sensors is too large, you can set the period with which the data
+will be sent over MQTT by defining sending interval.
 
 In the Statistics section, you can configure the sending of statistics to Ruuvi Cloud or your own
 server, or disable the sending of statistics:
@@ -348,13 +386,6 @@ If you want to relay data from more than just Ruuvi sensors, you need to select 
 and the ability to use extended payload (BLE extended advertising):
 
 ![bluetooth_scanning_all](images/bluetooth_scanning_all.png)
-
-**Scan extended payloads**. Both Coded PHY and 1 Mbps PHY may have a primary advertisement that
-tells that there is going to be extended data on a secondary channel. If "Use extended payload" is
-enabled, the secondary payload will be scanned.
-
-Coded PHY supports only Coded extended payload, 1 Mbps PHY supports scanning at 2 Mbps and 1 Mbps
-PHY extended payloads.
 
 **Use channel**. Each enabled BLE channel is scanned sequentially for a minimum of 7000 ms per
 channel, for a total of 21000 ms if all 3 channels are enabled. At least one channel must be active.
