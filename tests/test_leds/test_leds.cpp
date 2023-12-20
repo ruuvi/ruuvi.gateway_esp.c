@@ -242,14 +242,9 @@ esp_task_wdt_add(TaskHandle_t handle)
 void
 event_mgr_notify(const event_mgr_ev_e event)
 {
-    if (EVENT_MGR_EV_GREEN_LED_TURN_ON == event)
+    if (EVENT_MGR_EV_GREEN_LED_STATE_CHANGED == event)
     {
-        g_pTestLeds->testEvents.push_back(new TestEventGreenLedTurnOn());
-        return;
-    }
-    if (EVENT_MGR_EV_GREEN_LED_TURN_OFF == event)
-    {
-        g_pTestLeds->testEvents.push_back(new TestEventGreenLedTurnOff());
+        g_pTestLeds->testEvents.push_back(new TestEventGreenLedStateChanged());
         return;
     }
     if (OS_SIGNAL_NUM_NONE != g_event_to_sig_num[event])
@@ -481,15 +476,15 @@ TEST_F(TestLeds, test_all) // NOLINT
     ASSERT_TRUE(waitEvent(std::chrono::milliseconds(150)));
     ASSERT_EQ(idx + 1, testEvents.size());
     {
-        auto* pEv = reinterpret_cast<TestEventGreenLedTurnOn*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_GreenLedTurnOn, pEv->eventType);
+        auto* pEv = reinterpret_cast<TestEventGreenLedStateChanged*>(testEvents[idx++]);
+        ASSERT_EQ(TestEventType_GreenLedStateChanged, pEv->eventType);
     }
     ASSERT_EQ(LEDS_CTRL_STATE_SUBSTATE, leds_ctrl_get_state());
 
     ASSERT_TRUE(waitEvent(std::chrono::milliseconds(500)));
     ASSERT_EQ(idx + 1, testEvents.size());
     {
-        auto* pEv = reinterpret_cast<TestEventGreenLedTurnOn*>(testEvents[idx++]);
+        auto* pEv = reinterpret_cast<TestEventGreenLedStateChanged*>(testEvents[idx++]);
         ASSERT_EQ(TestEventType_TaskWdtReset, pEv->eventType);
     }
     ASSERT_EQ(LEDS_CTRL_STATE_SUBSTATE, leds_ctrl_get_state());
@@ -500,8 +495,8 @@ TEST_F(TestLeds, test_all) // NOLINT
     ASSERT_TRUE(waitEvent(std::chrono::milliseconds(200)));
     ASSERT_EQ(idx + 3, testEvents.size());
     {
-        auto* pEv = reinterpret_cast<TestEventGreenLedTurnOff*>(testEvents[idx++]);
-        ASSERT_EQ(TestEventType_GreenLedTurnOff, pEv->eventType);
+        auto* pEv = reinterpret_cast<TestEventGreenLedStateChanged*>(testEvents[idx++]);
+        ASSERT_EQ(TestEventType_GreenLedStateChanged, pEv->eventType);
     }
     TEST_LEDC_SET_FADE_AND_START(767, pEv, idx);
     ASSERT_EQ(idx, testEvents.size());

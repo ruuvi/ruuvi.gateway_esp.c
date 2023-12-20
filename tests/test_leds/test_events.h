@@ -3,8 +3,7 @@
 
 typedef enum TestEventType_Tag
 {
-    TestEventType_GreenLedTurnOn,
-    TestEventType_GreenLedTurnOff,
+    TestEventType_GreenLedStateChanged,
     TestEventType_LedcTimerConfig,
     TestEventType_LedcChannelConfig,
     TestEventType_LedcSetFadeWithTime,
@@ -28,20 +27,11 @@ public:
     }
 };
 
-class TestEventGreenLedTurnOn : public TestEvent
+class TestEventGreenLedStateChanged : public TestEvent
 {
 public:
-    explicit TestEventGreenLedTurnOn()
-        : TestEvent(TestEventType_GreenLedTurnOn)
-    {
-    }
-};
-
-class TestEventGreenLedTurnOff : public TestEvent
-{
-public:
-    explicit TestEventGreenLedTurnOff()
-        : TestEvent(TestEventType_GreenLedTurnOff)
+    explicit TestEventGreenLedStateChanged()
+        : TestEvent(TestEventType_GreenLedStateChanged)
     {
     }
 };

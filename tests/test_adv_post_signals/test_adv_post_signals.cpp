@@ -170,6 +170,7 @@ protected:
             "%s",
             MQTT_TRANSPORT_TCP);
 
+        this->m_green_led_state                                = false;
         this->m_gw_status_is_mqtt_connected                    = false;
         this->m_gw_status_is_relaying_via_http_enabled         = true;
         this->m_time_is_synchronized                           = true;
@@ -205,6 +206,7 @@ public:
     bool m_gw_status_is_mqtt_connected { false };
     bool m_gw_status_is_relaying_via_http_enabled { true };
 
+    bool                      m_green_led_state { false };
     bool                      m_time_is_synchronized { true };
     uint64_t                  m_metrics_received_advs { 0 };
     bool                      adv_table_read_retransmission_list3_head_res { true };
@@ -681,6 +683,12 @@ adv_post_timers_stop_timer_sig_network_watchdog(void)
     g_pTestClass->m_events_history.push_back({ .event_type = EVENT_HISTORY_NETWORK_WATCHDOG_TIMER_STOP });
 }
 
+bool
+leds_get_green_led_state(void)
+{
+    return g_pTestClass->m_green_led_state;
+}
+
 } // extern "C"
 
 /*** Unit-Tests
@@ -729,9 +737,7 @@ TEST_F(TestAdvPostSignals, test_adv_post_signals_init_deinit) // NOLINT
         { .event_type    = EVENT_HISTORY_OS_SIGNAL_ADD,
           .os_signal_add = { .sig_num = adv_post_conv_to_sig_num(ADV_POST_SIG_CFG_MODE_DEACTIVATED) } },
         { .event_type    = EVENT_HISTORY_OS_SIGNAL_ADD,
-          .os_signal_add = { .sig_num = adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_TURN_ON) } },
-        { .event_type    = EVENT_HISTORY_OS_SIGNAL_ADD,
-          .os_signal_add = { .sig_num = adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_TURN_OFF) } },
+          .os_signal_add = { .sig_num = adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_STATE_CHANGED) } },
         { .event_type    = EVENT_HISTORY_OS_SIGNAL_ADD,
           .os_signal_add = { .sig_num = adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_UPDATE) } },
         { .event_type    = EVENT_HISTORY_OS_SIGNAL_ADD,
@@ -790,10 +796,9 @@ TEST_F(TestAdvPostSignals, test_adv_post_conv_to_sig_num) // NOLINT
     ASSERT_EQ(OS_SIGNAL_NUM_14, adv_post_conv_to_sig_num(ADV_POST_SIG_BLE_SCAN_CHANGED));
     ASSERT_EQ(OS_SIGNAL_NUM_15, adv_post_conv_to_sig_num(ADV_POST_SIG_CFG_MODE_ACTIVATED));
     ASSERT_EQ(OS_SIGNAL_NUM_16, adv_post_conv_to_sig_num(ADV_POST_SIG_CFG_MODE_DEACTIVATED));
-    ASSERT_EQ(OS_SIGNAL_NUM_17, adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_TURN_ON));
-    ASSERT_EQ(OS_SIGNAL_NUM_18, adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_TURN_OFF));
-    ASSERT_EQ(OS_SIGNAL_NUM_19, adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_UPDATE));
-    ASSERT_EQ(OS_SIGNAL_NUM_20, adv_post_conv_to_sig_num(ADV_POST_SIG_RECV_ADV_TIMEOUT));
+    ASSERT_EQ(OS_SIGNAL_NUM_17, adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_STATE_CHANGED));
+    ASSERT_EQ(OS_SIGNAL_NUM_18, adv_post_conv_to_sig_num(ADV_POST_SIG_GREEN_LED_UPDATE));
+    ASSERT_EQ(OS_SIGNAL_NUM_19, adv_post_conv_to_sig_num(ADV_POST_SIG_RECV_ADV_TIMEOUT));
 
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -817,10 +822,9 @@ TEST_F(TestAdvPostSignals, test_adv_post_conv_from_sig_num) // NOLINT
     ASSERT_EQ(ADV_POST_SIG_BLE_SCAN_CHANGED, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_14));
     ASSERT_EQ(ADV_POST_SIG_CFG_MODE_ACTIVATED, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_15));
     ASSERT_EQ(ADV_POST_SIG_CFG_MODE_DEACTIVATED, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_16));
-    ASSERT_EQ(ADV_POST_SIG_GREEN_LED_TURN_ON, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_17));
-    ASSERT_EQ(ADV_POST_SIG_GREEN_LED_TURN_OFF, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_18));
-    ASSERT_EQ(ADV_POST_SIG_GREEN_LED_UPDATE, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_19));
-    ASSERT_EQ(ADV_POST_SIG_RECV_ADV_TIMEOUT, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_20));
+    ASSERT_EQ(ADV_POST_SIG_GREEN_LED_STATE_CHANGED, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_17));
+    ASSERT_EQ(ADV_POST_SIG_GREEN_LED_UPDATE, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_18));
+    ASSERT_EQ(ADV_POST_SIG_RECV_ADV_TIMEOUT, adv_post_conv_from_sig_num(OS_SIGNAL_NUM_19));
 
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -2577,7 +2581,8 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_green_led_turn_on) // NOLINT
     };
 
     {
-        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_GREEN_LED_TURN_ON, &adv_post_state));
+        this->m_green_led_state = true;
+        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_GREEN_LED_STATE_CHANGED, &adv_post_state));
         ASSERT_FALSE(adv_post_state.flag_stop);
         ASSERT_EQ(1, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_ON_GREEN_LED_UPDATE, this->m_events_history[0].event_type);
@@ -2606,7 +2611,8 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_green_led_turn_off) // NOLIN
     };
 
     {
-        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_GREEN_LED_TURN_OFF, &adv_post_state));
+        this->m_green_led_state = false;
+        ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_GREEN_LED_STATE_CHANGED, &adv_post_state));
         ASSERT_FALSE(adv_post_state.flag_stop);
         ASSERT_EQ(1, this->m_events_history.size());
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_ON_GREEN_LED_UPDATE, this->m_events_history[0].event_type);
