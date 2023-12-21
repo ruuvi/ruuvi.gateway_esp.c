@@ -129,28 +129,6 @@ reset_task_handle_sig_configure_button_event(void)
             start_wifi_ap();
             timer_cfg_mode_deactivation_start();
         }
-#if 0
-        else
-        {
-            LOG_INFO("CONFIGURE button: WiFi AP is already active");
-            if (gw_cfg_is_empty())
-            {
-                LOG_INFO("CONFIGURE button: The configuration is empty - enable Wi-Fi WPS");
-
-                LOG_INFO("CONFIGURE button: Stop Wi-Fi AP");
-                wifi_manager_stop_ap();
-
-                gw_status_set_waiting_auto_cfg_by_wps();
-
-                LOG_INFO("CONFIGURE button: Enable Wi-Fi WPS");
-                wifi_manager_enable_wps();
-            }
-            else
-            {
-                LOG_INFO("CONFIGURE button: The configuration is not empty - do not enable Wi-Fi WPS");
-            }
-        }
-#endif
     }
 }
 
