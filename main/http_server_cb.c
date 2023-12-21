@@ -528,13 +528,13 @@ http_server_gw_cfg_download_and_update(
         &p_gw_cfg_tmp,
         p_err_msg);
     os_free(p_remote_cfg);
-    if (HTTP_RESP_CODE_200 != resp_code)
-    {
-        return resp_code;
-    }
     if (NULL != p_err_msg)
     {
         str_buf_free_buf(p_err_msg);
+    }
+    if (HTTP_RESP_CODE_200 != resp_code)
+    {
+        return resp_code;
     }
 
     const gw_cfg_update_status_t update_status = gw_cfg_update(p_gw_cfg_tmp);
