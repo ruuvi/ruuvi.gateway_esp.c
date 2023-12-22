@@ -72,7 +72,14 @@ http_server_cb_on_post_ruuvi(const char* p_body, const bool flag_access_from_lan
     else
     {
         gw_cfg_update_ruuvi_cfg(&p_gw_cfg_tmp->ruuvi_cfg);
-        timer_cfg_mode_deactivation_start_with_delay(RUUVI_CFG_MODE_DEACTIVATION_SHORT_DELAY_SEC);
+        if (p_gw_cfg_tmp->ruuvi_cfg.remote.use_remote_cfg)
+        {
+            timer_cfg_mode_deactivation_start();
+        }
+        else
+        {
+            timer_cfg_mode_deactivation_start_with_delay(RUUVI_CFG_MODE_DEACTIVATION_SHORT_DELAY_SEC);
+        }
     }
     os_free(p_gw_cfg_tmp);
 
