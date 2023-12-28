@@ -30,6 +30,8 @@ static const char TAG[] = "http_download";
 #define HTTP_BUFFER_SIZE    (2048)
 #define HTTP_BUFFER_SIZE_TX (1024)
 
+#define HTTP_MIN_DOMAIN_NAME_LEN (3U)
+
 #define BASE_10 (10U)
 
 typedef struct http_download_cb_info_t
@@ -49,7 +51,7 @@ http_download_is_url_valid(const char* const p_url)
     if (0 == strncmp(p_url, url_http_prefix, strlen(url_http_prefix)))
     {
         const char* p_host = &p_url[strlen(url_http_prefix)];
-        if (strlen(p_host) < 3)
+        if (strlen(p_host) < HTTP_MIN_DOMAIN_NAME_LEN)
         {
             return false;
         }
@@ -63,7 +65,7 @@ http_download_is_url_valid(const char* const p_url)
     if (0 == strncmp(p_url, url_https_prefix, strlen(url_https_prefix)))
     {
         const char* p_host = &p_url[strlen(url_https_prefix)];
-        if (strlen(p_host) < 3)
+        if (strlen(p_host) < HTTP_MIN_DOMAIN_NAME_LEN)
         {
             return false;
         }
