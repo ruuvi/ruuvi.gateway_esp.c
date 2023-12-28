@@ -42,32 +42,38 @@ typedef struct http_download_cb_info_t
     void*                      p_user_data;
 } http_download_cb_info_t;
 
-static void
-suspend_relaying_and_wait(const bool flag_force_free_memory)
+bool
+http_download_is_url_valid(const char* const p_url)
 {
-    const bool flag_wait_until_relaying_stopped = true;
-    if (flag_force_free_memory || gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss())
+    const char url_http_prefix[] = "http://";
+    if (0 == strncmp(p_url, url_http_prefix, strlen(url_http_prefix)))
     {
-        gw_status_suspend_relaying(flag_wait_until_relaying_stopped);
+        const char* p_host = &p_url[strlen(url_http_prefix)];
+        if (strlen(p_host) < 3)
+        {
+            return false;
+        }
+        if (NULL == strchr(p_host, '.'))
+        {
+            return false;
+        }
+        return true;
     }
-    else
+    const char url_https_prefix[] = "https://";
+    if (0 == strncmp(p_url, url_https_prefix, strlen(url_https_prefix)))
     {
-        gw_status_suspend_http_relaying(flag_wait_until_relaying_stopped);
+        const char* p_host = &p_url[strlen(url_https_prefix)];
+        if (strlen(p_host) < 3)
+        {
+            return false;
+        }
+        if (NULL == strchr(p_host, '.'))
+        {
+            return false;
+        }
+        return true;
     }
-}
-
-static void
-resume_relaying_and_wait(const bool flag_force_free_memory)
-{
-    const bool flag_wait_until_relaying_resumed = true;
-    if (flag_force_free_memory || gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss())
-    {
-        gw_status_resume_relaying(flag_wait_until_relaying_resumed);
-    }
-    else
-    {
-        gw_status_resume_http_relaying(flag_wait_until_relaying_resumed);
-    }
+    return false;
 }
 
 #if (!RUUVI_TESTS_HTTP_SERVER_CB)
@@ -299,6 +305,12 @@ http_download_or_check(
 {
     LOG_INFO("HTTP download/check: Method=%s, URL: '%s'", http_client_method_to_str(http_method), p_param->base.p_url);
 
+    if (!http_download_is_url_valid(p_param->base.p_url))
+    {
+        LOG_ERR("HTTP download/check: Invalid URL: '%s'", p_param->base.p_url);
+        return http_server_resp_400();
+    }
+
     if ((GW_CFG_HTTP_AUTH_TYPE_NONE != p_param->auth_type) && (NULL == p_param->p_http_auth))
     {
         LOG_ERR("HTTP download/check: Auth type is not NONE, but p_http_auth is NULL");
@@ -346,8 +358,9 @@ http_download_or_check(
         return http_server_resp_500();
     }
 
-    LOG_DBG("suspend_relaying_and_wait");
-    suspend_relaying_and_wait(p_param->base.flag_free_memory);
+    LOG_DBG("suspend_http_relaying and wait");
+    const bool flag_wait_relaying_completed = true;
+    gw_status_suspend_http_relaying(flag_wait_relaying_completed);
     LOG_DBG("suspend_relaying_and_wait: finished");
 
     p_cb_info->http_handle = http_client_init(p_param, p_http_config);
@@ -355,7 +368,9 @@ http_download_or_check(
     {
         os_free(p_http_config);
         os_free(p_cb_info);
-        resume_relaying_and_wait(p_param->base.flag_free_memory);
+        LOG_DBG("resume_http_relaying and wait");
+        gw_status_resume_http_relaying(flag_wait_relaying_completed);
+        LOG_DBG("resume_http_relaying: finished");
         return http_server_resp_500();
     }
 
@@ -384,7 +399,9 @@ http_download_or_check(
 
     os_free(p_http_config);
     os_free(p_cb_info);
-    resume_relaying_and_wait(p_param->base.flag_free_memory);
+    LOG_DBG("resume_http_relaying and wait");
+    gw_status_resume_http_relaying(flag_wait_relaying_completed);
+    LOG_DBG("resume_http_relaying: finished");
 
     return resp;
 }

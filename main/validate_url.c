@@ -722,6 +722,55 @@ validate_url_check_remote_cfg(const validate_url_params_t* const p_params)
 }
 
 static http_server_resp_t
+validate_url_check_fw_update_url_step3(const cJSON* const p_json_root, const char* const p_json_buf)
+{
+    bool flag_use_beta_version = false;
+
+    const char* const p_binaries_url = parse_fw_update_info_json(p_json_root, &flag_use_beta_version);
+    if (NULL == p_binaries_url)
+    {
+        LOG_ERR("Failed to parse fw_update_info: %s", p_json_buf);
+        return http_server_cb_gen_resp(HTTP_RESP_CODE_502, "Server returned incorrect json: could not get latest/url");
+    }
+
+    const char*            p_err_file_name = NULL;
+    const http_resp_code_e http_resp_code  = http_server_check_fw_update_binary_files(p_binaries_url, &p_err_file_name);
+    if (HTTP_RESP_CODE_200 != http_resp_code)
+    {
+        LOG_ERR(
+            "Failed to download firmware update: http_resp_code=%u, failed to download file: %s",
+            http_resp_code,
+            p_err_file_name);
+        return http_server_cb_gen_resp(http_resp_code, "Failed to download %s", p_err_file_name);
+    }
+    return http_server_cb_gen_resp_json(HTTP_RESP_CODE_200, p_json_buf);
+}
+
+static http_server_resp_t
+validate_url_check_fw_update_url_step2(const http_server_download_info_t* const p_info)
+{
+    LOG_INFO("Firmware update info (json): %s", p_info->p_json_buf);
+    if (NULL == p_info->p_json_buf)
+    {
+        LOG_ERR("Failed to download firmware update info: Can't allocate memory for json");
+        return http_server_cb_gen_resp(HTTP_RESP_CODE_500, "Can't allocate memory for json");
+    }
+
+    cJSON* p_json_root = cJSON_Parse(p_info->p_json_buf);
+    if (NULL == p_json_root)
+    {
+        LOG_ERR("Failed to parse fw_update_info: %s", p_info->p_json_buf);
+        return http_server_cb_gen_resp(HTTP_RESP_CODE_502, "Server returned incorrect json: could not parse json");
+    }
+
+    const http_server_resp_t http_resp = validate_url_check_fw_update_url_step3(p_json_root, p_info->p_json_buf);
+
+    cJSON_free(p_json_root);
+
+    return http_resp;
+}
+
+static http_server_resp_t
 validate_url_check_fw_update_url(const validate_url_params_t* const p_params)
 {
     if (!validate_url_check_url(&p_params->url))
@@ -744,15 +793,9 @@ validate_url_check_fw_update_url(const validate_url_params_t* const p_params)
         return http_server_cb_gen_resp(info.http_resp_code, "Server returned error");
     }
 
-    LOG_INFO("Firmware update info (json): %s", info.p_json_buf);
+    const http_server_resp_t http_resp = validate_url_check_fw_update_url_step2(&info);
 
-    http_server_resp_t http_resp = http_server_cb_gen_resp_json(
-        HTTP_RESP_CODE_200,
-        (NULL != info.p_json_buf) ? info.p_json_buf : "");
-    if (NULL != info.p_json_buf)
-    {
-        os_free(info.p_json_buf);
-    }
+    os_free(info.p_json_buf);
 
     return http_resp;
 }

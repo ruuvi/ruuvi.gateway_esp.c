@@ -64,14 +64,14 @@ str_buf_t
 json_fw_update_url_parse_http_body_get_url(const char* const p_body);
 
 bool
-fw_update_is_url_valid(void);
+fw_update_binaries_is_url_valid(void);
 
 ATTR_PRINTF(1, 2)
 void
-fw_update_set_url(const char* const p_url_fmt, ...);
+fw_update_set_binaries_url(const char* const p_url_fmt, ...);
 
 const char*
-fw_update_get_url(void);
+fw_update_get_binaries_url(void);
 
 bool
 fw_update_run(const fw_updating_reason_e fw_updating_reason);

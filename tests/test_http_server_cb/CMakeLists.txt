@@ -90,10 +90,13 @@ add_executable(${ProjectId}
         ${RUUVI_ESP_WRAPPERS_INC}/mac_addr.h
         ${RUUVI_ESP_WRAPPERS_INC}/os_mkgmtime.h
         ${RUUVI_ESP_WRAPPERS_INC}/os_str.h
+        ${RUUVI_ESP_WRAPPERS_INC}/snprintf_with_esp_err_desc.h
         ${RUUVI_ESP_WRAPPERS_INC}/str_buf.h
+        ${RUUVI_ESP_WRAPPERS_INC}/wrap_esp_err_to_name_r.h
         ${RUUVI_ESP_WRAPPERS}/src/mac_addr.c
         ${RUUVI_ESP_WRAPPERS}/src/os_mkgmtime.c
         ${RUUVI_ESP_WRAPPERS}/src/os_str.c
+        ${RUUVI_ESP_WRAPPERS}/src/snprintf_with_esp_err_desc.c
         ${RUUVI_ESP_WRAPPERS}/src/str_buf.c
         ${WIFI_MANAGER_SRC}/http_server_auth.c
         ${WIFI_MANAGER_SRC}/http_server_auth.h

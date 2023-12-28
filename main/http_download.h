@@ -79,6 +79,9 @@ http_download_firmware_update_info(const char* const p_url, const bool flag_free
 http_resp_code_e
 http_check(const http_download_param_with_auth_t* const p_param);
 
+bool
+http_download_is_url_valid(const char* const p_url);
+
 #ifdef __cplusplus
 }
 #endif

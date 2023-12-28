@@ -96,6 +96,12 @@ http_server_get_from_params_with_decoding(const char* const p_params, const char
 str_buf_t
 http_server_get_from_params(const char* const p_params, const char* const p_key);
 
+http_resp_code_e
+http_server_check_fw_update_binary_files(const char* const p_fw_binaries_url, const char** p_p_err_file_name);
+
+const char*
+parse_fw_update_info_json(const cJSON* const p_json_root, bool* const p_flag_use_beta_version);
+
 #if RUUVI_TESTS_HTTP_SERVER_CB
 
 time_t

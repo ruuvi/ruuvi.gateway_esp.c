@@ -139,6 +139,12 @@ json_fw_update_parse_http_body(const char* const p_body)
     return false;
 }
 
+bool
+fw_update_binaries_is_url_valid(void)
+{
+    return true;
+}
+
 str_buf_t
 json_fw_update_url_parse_http_body_get_url(const char* const p_body)
 {
@@ -355,6 +361,13 @@ bool
 partition_table_check_and_update(void)
 {
     return true;
+}
+
+const char*
+wrap_esp_err_to_name_r(const esp_err_t code, char* const p_buf, const size_t buf_len)
+{
+    (void)snprintf(p_buf, buf_len, "Error 0x%x(%d)", code, code);
+    return p_buf;
 }
 
 } // extern "C"
@@ -763,7 +776,7 @@ flashfatfs_open(const flash_fat_fs_t* p_ffs, const char* file_path)
 }
 
 void
-fw_update_set_url(const char* const p_url_fmt, ...)
+fw_update_set_binaries_url(const char* const p_url_fmt, ...)
 {
     va_list ap;
     va_start(ap, p_url_fmt);
@@ -772,9 +785,15 @@ fw_update_set_url(const char* const p_url_fmt, ...)
 }
 
 const char*
-fw_update_get_url(void)
+fw_update_get_binaries_url(void)
 {
     return g_pTestClass->fw_update_url.data();
+}
+
+esp_err_t
+esp_task_wdt_reset(void)
+{
+    return ESP_OK;
 }
 
 } // extern "C"
