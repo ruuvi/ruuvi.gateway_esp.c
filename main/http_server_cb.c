@@ -7,6 +7,7 @@
 
 #include "http_server_cb.h"
 #include <string.h>
+#include <esp_task_wdt.h>
 #include "ruuvi_gateway.h"
 #include "wifi_manager.h"
 #include "flashfatfs.h"
@@ -120,7 +121,7 @@ http_server_cb_on_delete(
     return http_server_resp_404();
 }
 
-static bool
+const char*
 parse_fw_update_info_json(const cJSON* const p_json_root, bool* const p_flag_use_beta_version)
 {
     *p_flag_use_beta_version         = false;
@@ -128,10 +129,36 @@ parse_fw_update_info_json(const cJSON* const p_json_root, bool* const p_flag_use
     if (NULL == p_json_latest)
     {
         LOG_ERR("Can't find key '%s' in firmware_update info", "latest");
-        return false;
+        return NULL;
     }
     const char* p_latest_version = json_wrap_get_string_val(p_json_latest, "version");
     const char* p_latest_url     = json_wrap_get_string_val(p_json_latest, "url");
+
+    if (NULL == p_latest_version)
+    {
+        LOG_ERR("Can't find key '%s' in firmware_update info", "latest/version");
+        return NULL;
+    }
+    if (NULL == p_latest_url)
+    {
+        LOG_ERR("Can't find key '%s' in firmware_update info", "latest/url");
+        return NULL;
+    }
+    if ('\0' == p_latest_version[0])
+    {
+        LOG_ERR("Firmware_update info 'latest/version' is empty");
+        return NULL;
+    }
+    if ('\0' == p_latest_url[0])
+    {
+        LOG_ERR("Firmware_update info 'latest/url' is empty");
+        return NULL;
+    }
+    if (!http_download_is_url_valid(p_latest_url))
+    {
+        LOG_ERR("Firmware_update info 'latest/url' is invalid: %s", p_latest_url);
+        return NULL;
+    }
 
     const char*        p_beta_version = NULL;
     const char*        p_beta_url     = NULL;
@@ -142,7 +169,8 @@ parse_fw_update_info_json(const cJSON* const p_json_root, bool* const p_flag_use
         p_beta_url     = json_wrap_get_string_val(p_json_beta, "url");
     }
     bool flag_beta_version_exist = false;
-    if ((NULL == p_beta_version) || (NULL == p_beta_url))
+    if ((NULL == p_beta_version) || (NULL == p_beta_url) || ('\0' == p_beta_version[0]) || ('\0' == p_beta_url[0])
+        || (!http_download_is_url_valid(p_beta_url)))
     {
         p_beta_version = p_latest_version;
         p_beta_url     = p_latest_url;
@@ -159,22 +187,20 @@ parse_fw_update_info_json(const cJSON* const p_json_root, bool* const p_flag_use
         case AUTO_UPDATE_CYCLE_TYPE_REGULAR:
             if (0 != strcmp(p_esp32_fw_ver->buf, p_latest_version))
             {
-                fw_update_set_url("%s", p_latest_url);
-                return true;
+                return p_latest_url;
             }
             break;
         case AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER:
             if (0 != strcmp(p_esp32_fw_ver->buf, p_beta_version))
             {
-                fw_update_set_url("%s", p_beta_url);
                 *p_flag_use_beta_version = flag_beta_version_exist;
-                return true;
+                return p_beta_url;
             }
             break;
         case AUTO_UPDATE_CYCLE_TYPE_MANUAL:
             break;
     }
-    return false;
+    return NULL;
 }
 
 static void
@@ -197,7 +223,7 @@ http_server_cb_on_user_req_download_latest_release_info(void)
         main_task_schedule_retry_check_for_fw_updates();
         return;
     }
-    LOG_INFO("firmware update info (json): %s", fw_update_info.p_json_buf);
+    LOG_INFO("Firmware update info (json): %s", fw_update_info.p_json_buf);
 
     main_task_schedule_next_check_for_fw_updates();
 
@@ -209,27 +235,39 @@ http_server_cb_on_user_req_download_latest_release_info(void)
         return;
     }
 
-    bool       flag_use_beta_version = false;
-    const bool flag_update_ready     = parse_fw_update_info_json(p_json_root, &flag_use_beta_version);
-    if (flag_update_ready)
+    bool flag_update_ready     = false;
+    bool flag_use_beta_version = false;
+
+    const char* const p_binaries_url = parse_fw_update_info_json(p_json_root, &flag_use_beta_version);
+    if (NULL != p_binaries_url)
     {
+        fw_update_set_binaries_url("%s", p_binaries_url);
         LOG_INFO(
             "Update is required (current version: %s, %s version: %s)",
             gw_cfg_get_esp32_fw_ver()->buf,
             flag_use_beta_version ? "beta" : "latest",
-            fw_update_get_url());
+            p_binaries_url);
+        const http_resp_code_e http_resp_code = http_server_check_fw_update_binary_files(p_binaries_url, NULL);
+        if (HTTP_RESP_CODE_200 != http_resp_code)
+        {
+            LOG_ERR("Failed to check firmware update binary files: http_resp_code=%u", http_resp_code);
+        }
+        else
+        {
+            flag_update_ready = true;
+        }
     }
     else
     {
         LOG_INFO("Firmware update: No update is required, the latest version is already installed");
     }
 
-    cJSON_Delete(p_json_root);
+    cJSON_Delete(p_json_root); // p_binaries_url is invalid after this line
 
     if (flag_update_ready)
     {
-        LOG_INFO("Run firmware auto-updating from URL: %s", fw_update_get_url());
-        fw_update_run(true);
+        LOG_INFO("Run firmware auto-updating from URL: %s", fw_update_get_binaries_url());
+        fw_update_run(FW_UPDATE_REASON_AUTO);
     }
 }
 
@@ -680,4 +718,63 @@ http_server_get_from_params_with_decoding(const char* const p_params, const char
     }
     LOG_DBG("HTTP params: key '%s': value (decoded): %s", p_key, val_decoded.buf);
     return val_decoded;
+}
+
+static http_resp_code_e
+http_server_fw_update_check_file(const char* const p_fw_binaries_url, const char* const p_file_name)
+{
+    str_buf_t url = str_buf_printf_with_alloc("%s/%s", p_fw_binaries_url, p_file_name);
+    if (NULL == url.buf)
+    {
+        LOG_ERR("Can't allocate memory");
+        return HTTP_RESP_CODE_500;
+    }
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = url.buf,
+            .timeout_seconds         = HTTP_DOWNLOAD_TIMEOUT_SECONDS,
+            .flag_feed_task_watchdog = true,
+            .flag_free_memory        = true,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth = NULL,
+        .p_extra_header_item = NULL,
+    };
+    const http_resp_code_e http_resp_code = http_check(&params);
+    str_buf_free_buf(&url);
+    return http_resp_code;
+}
+
+http_resp_code_e
+http_server_check_fw_update_binary_files(const char* const p_fw_binaries_url, const char** p_p_err_file_name)
+{
+    const char* arr_of_file_names[] = {
+        "ruuvi_gateway_esp.bin",
+        "fatfs_gwui.bin",
+        "fatfs_nrf52.bin",
+    };
+    for (size_t i = 0; i < OS_ARRAY_SIZE(arr_of_file_names); ++i)
+    {
+        const char* const      p_file_name    = arr_of_file_names[i];
+        const http_resp_code_e http_resp_code = http_server_fw_update_check_file(p_fw_binaries_url, p_file_name);
+        if (HTTP_RESP_CODE_200 != http_resp_code)
+        {
+            LOG_ERR("Failed to download %s, HTTP error: %d", p_file_name, http_resp_code);
+            if (NULL != p_p_err_file_name)
+            {
+                *p_p_err_file_name = p_file_name;
+            }
+            return http_resp_code;
+        }
+        LOG_DBG("Feed watchdog");
+        const esp_err_t err = esp_task_wdt_reset();
+        if (ESP_OK != err)
+        {
+            LOG_ERR_ESP(err, "%s failed", "esp_task_wdt_reset");
+        }
+    }
+    return HTTP_RESP_CODE_200;
 }

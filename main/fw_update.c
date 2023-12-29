@@ -38,7 +38,7 @@
 
 typedef struct fw_update_config_t
 {
-    char url[FW_UPDATE_URL_MAX_LEN + 1];
+    char binaries_url[FW_UPDATE_URL_MAX_LEN + 1];
 } fw_update_config_t;
 
 typedef struct fw_update_data_partition_info_t
@@ -578,14 +578,14 @@ json_fw_update_copy_string_val(
 static bool
 json_fw_update_parse(const cJSON* const p_json_root, fw_update_config_t* const p_cfg)
 {
-    if (!json_fw_update_copy_string_val(p_json_root, "url", p_cfg->url, sizeof(p_cfg->url), true))
+    if (!json_fw_update_copy_string_val(p_json_root, "url", p_cfg->binaries_url, sizeof(p_cfg->binaries_url), true))
     {
         return false;
     }
-    const size_t len = strlen(p_cfg->url);
-    if ('/' == p_cfg->url[len - 1])
+    const size_t len = strlen(p_cfg->binaries_url);
+    if ('/' == p_cfg->binaries_url[len - 1])
     {
-        p_cfg->url[len - 1] = '\0';
+        p_cfg->binaries_url[len - 1] = '\0';
     }
     return true;
 }
@@ -726,7 +726,7 @@ static bool
 fw_update_ruuvi_gateway_esp_bin(void)
 {
     LOG_INFO("fw_update_ota");
-    str_buf_t url = str_buf_printf_with_alloc("%s/%s", g_fw_update_cfg.url, "ruuvi_gateway_esp.bin");
+    str_buf_t url = str_buf_printf_with_alloc("%s/%s", g_fw_update_cfg.binaries_url, "ruuvi_gateway_esp.bin");
     if (NULL == url.buf)
     {
         LOG_ERR("Can't allocate memory");
@@ -746,7 +746,7 @@ static bool
 fw_update_fatfs_gwui_bin(void)
 {
     LOG_INFO("fw_update_fatfs_gwui");
-    str_buf_t url = str_buf_printf_with_alloc("%s/%s", g_fw_update_cfg.url, "fatfs_gwui.bin");
+    str_buf_t url = str_buf_printf_with_alloc("%s/%s", g_fw_update_cfg.binaries_url, "fatfs_gwui.bin");
     if (NULL == url.buf)
     {
         LOG_ERR("Can't allocate memory");
@@ -766,7 +766,7 @@ static bool
 fw_update_fatfs_nrf52_bin(void)
 {
     LOG_INFO("fw_update_fatfs_nrf52");
-    str_buf_t url = str_buf_printf_with_alloc("%s/%s", g_fw_update_cfg.url, "fatfs_nrf52.bin");
+    str_buf_t url = str_buf_printf_with_alloc("%s/%s", g_fw_update_cfg.binaries_url, "fatfs_nrf52.bin");
     if (NULL == url.buf)
     {
         LOG_ERR("Can't allocate memory");
@@ -893,7 +893,7 @@ fw_update_get_reboot_reason_msg(const fw_updating_reason_e fw_updating_reason, c
 static void
 fw_update_task(void)
 {
-    LOG_INFO("Firmware updating started, URL: %s", g_fw_update_cfg.url);
+    LOG_INFO("Firmware updating started, URL: %s", g_fw_update_cfg.binaries_url);
 
     leds_notify_nrf52_fw_updating();
     main_task_stop_timer_check_for_remote_cfg();
@@ -949,35 +949,25 @@ fw_update_task(void)
 }
 
 bool
-fw_update_is_url_valid(void)
+fw_update_binaries_is_url_valid(void)
 {
-    const char url_http_prefix[] = "http://";
-    if (0 == strncmp(g_fw_update_cfg.url, url_http_prefix, strlen(url_http_prefix)))
-    {
-        return true;
-    }
-    const char url_https_prefix[] = "https://";
-    if (0 == strncmp(g_fw_update_cfg.url, url_https_prefix, strlen(url_https_prefix)))
-    {
-        return true;
-    }
-    return false;
+    return http_download_is_url_valid(g_fw_update_cfg.binaries_url);
 }
 
 ATTR_PRINTF(1, 2)
 void
-fw_update_set_url(const char* const p_url_fmt, ...)
+fw_update_set_binaries_url(const char* const p_url_fmt, ...)
 {
     va_list args;
     va_start(args, p_url_fmt);
-    (void)vsnprintf(g_fw_update_cfg.url, sizeof(g_fw_update_cfg.url), p_url_fmt, args);
+    (void)vsnprintf(g_fw_update_cfg.binaries_url, sizeof(g_fw_update_cfg.binaries_url), p_url_fmt, args);
     va_end(args);
 }
 
 const char*
-fw_update_get_url(void)
+fw_update_get_binaries_url(void)
 {
-    return g_fw_update_cfg.url;
+    return g_fw_update_cfg.binaries_url;
 }
 
 bool

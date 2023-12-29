@@ -82,21 +82,6 @@ esp_random(void)
     return 0;
 }
 
-http_server_resp_t
-http_download_with_auth(
-    const http_download_param_with_auth_t* const p_param,
-    http_download_cb_on_data_t const             p_cb_on_data,
-    void* const                                  p_user_data)
-{
-    return http_server_resp_400();
-}
-
-bool
-http_check_with_auth(const http_download_param_with_auth_t* const p_param, http_resp_code_e* const p_http_resp_code)
-{
-    return false;
-}
-
 bool
 http_server_decrypt_by_params(
     const char* const p_encrypted_val,
@@ -128,37 +113,21 @@ fw_update_set_extra_info_for_status_json_update_reset(void)
 }
 
 bool
-fw_update_is_url_valid(void)
-{
-    return true;
-}
-
-bool
 json_fw_update_parse_http_body(const char* const p_body)
 {
     return false;
+}
+
+bool
+fw_update_binaries_is_url_valid(void)
+{
+    return true;
 }
 
 str_buf_t
 json_fw_update_url_parse_http_body_get_url(const char* const p_body)
 {
     return str_buf_init_null();
-}
-
-bool
-fw_update_run(const fw_updating_reason_e fw_updating_reason)
-{
-    return true;
-}
-
-void
-adv_post_disable_retransmission(void)
-{
-}
-
-void
-adv_post_enable_retransmission(void)
-{
 }
 
 void
@@ -357,6 +326,13 @@ partition_table_check_and_update(void)
     return true;
 }
 
+const char*
+wrap_esp_err_to_name_r(const esp_err_t code, char* const p_buf, const size_t buf_len)
+{
+    (void)snprintf(p_buf, buf_len, "Error 0x%x(%d)", code, code);
+    return p_buf;
+}
+
 } // extern "C"
 
 class MemAllocTrace
@@ -455,6 +431,11 @@ protected:
         gw_cfg_init(&settings_save_to_flash);
         esp_log_wrapper_clear();
         this->m_malloc_cnt = 0;
+        this->fw_update_url.fill(0);
+        this->m_http_check_with_auth_num_of_urls = 0;
+        this->m_http_check_with_auth_arr_of_urls = nullptr;
+        this->m_firmware_update_resp             = str_buf_init_null();
+        this->m_fw_updating_reason               = FW_UPDATE_REASON_NONE;
     }
 
     void
@@ -486,6 +467,10 @@ public:
     vector<FileInfo>      m_files;
     file_descriptor_t     m_fd;
     std::array<char, 128> fw_update_url;
+    str_buf_t             m_firmware_update_resp;
+    const char**          m_http_check_with_auth_arr_of_urls;
+    size_t                m_http_check_with_auth_num_of_urls;
+    fw_updating_reason_e  m_fw_updating_reason;
 };
 
 TestHttpServerCb::TestHttpServerCb()
@@ -763,7 +748,7 @@ flashfatfs_open(const flash_fat_fs_t* p_ffs, const char* file_path)
 }
 
 void
-fw_update_set_url(const char* const p_url_fmt, ...)
+fw_update_set_binaries_url(const char* const p_url_fmt, ...)
 {
     va_list ap;
     va_start(ap, p_url_fmt);
@@ -772,9 +757,57 @@ fw_update_set_url(const char* const p_url_fmt, ...)
 }
 
 const char*
-fw_update_get_url(void)
+fw_update_get_binaries_url(void)
 {
     return g_pTestClass->fw_update_url.data();
+}
+
+esp_err_t
+esp_task_wdt_reset(void)
+{
+    return ESP_OK;
+}
+
+http_server_resp_t
+http_download_with_auth(
+    const http_download_param_with_auth_t* const p_param,
+    http_download_cb_on_data_t const             p_cb_on_data,
+    void* const                                  p_user_data)
+{
+    if (0 == strcmp(p_param->base.p_url, "https://network.ruuvi.com/firmwareupdate"))
+    {
+        p_cb_on_data(
+            (const uint8_t*)g_pTestClass->m_firmware_update_resp.buf,
+            strlen(g_pTestClass->m_firmware_update_resp.buf),
+            0,
+            0,
+            HTTP_RESP_CODE_200,
+            p_user_data);
+        return http_server_resp_200_json_in_heap(g_pTestClass->m_firmware_update_resp.buf);
+    }
+    return http_server_resp_400();
+}
+
+bool
+http_check_with_auth(const http_download_param_with_auth_t* const p_param, http_resp_code_e* const p_http_resp_code)
+{
+    for (size_t i = 0; i < g_pTestClass->m_http_check_with_auth_num_of_urls; ++i)
+    {
+        if (0 == strcmp(p_param->base.p_url, g_pTestClass->m_http_check_with_auth_arr_of_urls[i]))
+        {
+            *p_http_resp_code = HTTP_RESP_CODE_200;
+            return true;
+        }
+    }
+    *p_http_resp_code = HTTP_RESP_CODE_404;
+    return false;
+}
+
+bool
+fw_update_run(const fw_updating_reason_e fw_updating_reason)
+{
+    g_pTestClass->m_fw_updating_reason = fw_updating_reason;
+    return true;
 }
 
 } // extern "C"
@@ -783,6 +816,9 @@ TestHttpServerCb::~TestHttpServerCb() = default;
 
 #define TEST_CHECK_LOG_RECORD_HTTP_SERVER(level_, msg_) \
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("http_server", level_, msg_)
+
+#define TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(level_, msg_) \
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("http_download", level_, msg_)
 
 #define TEST_CHECK_LOG_RECORD_GW_CFG(level_, msg_) ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("gw_cfg", level_, msg_)
 
@@ -3425,4 +3461,1592 @@ TEST_F(TestHttpServerCb, http_server_cb_on_delete) // NOLINT
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("DELETE /unknown.json, params="));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, test_http_download_is_url_valid) // NOLINT
+{
+    ASSERT_FALSE(http_download_is_url_valid(""));
+    ASSERT_FALSE(http_download_is_url_valid("abc.com"));
+    ASSERT_FALSE(http_download_is_url_valid("http://ab"));
+    ASSERT_FALSE(http_download_is_url_valid("http://abc"));
+    ASSERT_FALSE(http_download_is_url_valid("https://ab"));
+    ASSERT_FALSE(http_download_is_url_valid("https://abc"));
+    ASSERT_TRUE(http_download_is_url_valid("http://a.c"));
+    ASSERT_TRUE(http_download_is_url_valid("https://a.c"));
+    ASSERT_TRUE(http_download_is_url_valid("http://a.c:80"));
+    ASSERT_TRUE(http_download_is_url_valid("https://a.c:443"));
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__good_json) // NOLINT
+{
+    const char* const p_firmwareUpdateJson
+        = "{"
+          "  \"latest\": {"
+          "    \"version\": \"v1.14.3\","
+          "    \"url\": \"https://fwupdate.ruuvi.com/v1.14.3\","
+          "    \"created_at\": \"2023-10-06T11:26:07Z\""
+          "  }"
+          "}";
+    this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+    const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
+    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
+    this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
+
+    const char* const expected_json
+        = "{\"status\": 200, \"json\": {  \"latest\": {    \"version\": \"v1.14.3\",    \"url\": "
+          "\"https://fwupdate.ruuvi.com/v1.14.3\",    \"created_at\": \"2023-10-06T11:26:07Z\"  }}}";
+
+    const char* const p_uri_params
+        = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
+
+    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(strlen(expected_json), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("http_server_cb_on_get "
+               "/validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/"
+               "firmwareupdate&auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (encoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (decoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: url=https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (encoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (decoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'user=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'user='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'encrypted_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'encrypted_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'use_saved_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'use_saved_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find key: use_saved_password="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_client_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_server_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("Got URL from params: https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Found validate_type: check_fw_update_url"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_INFO,
+        string("cb_on_http_download_json_data: buf_size=") + std::to_string(strlen(p_firmwareUpdateJson)));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_download_json: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_INFO,
+        string("Firmware update info (json): ") + string(p_firmwareUpdateJson));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_check: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Feed watchdog"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_check: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Feed watchdog"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_check: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Feed watchdog"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__good_json_with_beta) // NOLINT
+{
+    const char* const p_firmwareUpdateJson
+        = "{"
+          "  \"latest\": {"
+          "    \"version\": \"v1.14.3\","
+          "    \"url\": \"https://fwupdate.ruuvi.com/v1.14.3\","
+          "    \"created_at\": \"2023-10-06T11:26:07Z\""
+          "  },"
+          "  \"beta\": {"
+          "    \"version\": \"v1.14.2\","
+          "    \"url\": \"https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.2\","
+          "    \"created_at\": \"2023-09-19T11:16:48Z\""
+          "  }"
+          "}";
+    this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+    const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
+    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
+    this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
+
+    const char* const expected_json
+        = "{\"status\": 200, \"json\": {  \"latest\": {    \"version\": \"v1.14.3\",    \"url\": "
+          "\"https://fwupdate.ruuvi.com/v1.14.3\",    \"created_at\": \"2023-10-06T11:26:07Z\"  },  \"beta\": {    "
+          "\"version\": \"v1.14.2\",    \"url\": "
+          "\"https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.2\",    \"created_at\": "
+          "\"2023-09-19T11:16:48Z\"  }}}";
+
+    const char* const p_uri_params
+        = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
+
+    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(strlen(expected_json), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("http_server_cb_on_get "
+               "/validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/"
+               "firmwareupdate&auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (encoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (decoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: url=https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (encoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (decoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'user=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'user='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'encrypted_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'encrypted_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'use_saved_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'use_saved_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find key: use_saved_password="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_client_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_server_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("Got URL from params: https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Found validate_type: check_fw_update_url"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_INFO,
+        string("cb_on_http_download_json_data: buf_size=") + std::to_string(strlen(p_firmwareUpdateJson)));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_download_json: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_INFO,
+        string("Firmware update info (json): ") + string(p_firmwareUpdateJson));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_check: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Feed watchdog"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_check: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Feed watchdog"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_check: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Feed watchdog"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__good_json_missing_files) // NOLINT
+{
+    const char* const p_firmwareUpdateJson
+        = "{"
+          "  \"latest\": {"
+          "    \"version\": \"v1.14.3\","
+          "    \"url\": \"https://fwupdate.ruuvi.com/v1.14.3\","
+          "    \"created_at\": \"2023-10-06T11:26:07Z\""
+          "  }"
+          "}";
+    this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+    this->m_http_check_with_auth_arr_of_urls = nullptr;
+    this->m_http_check_with_auth_num_of_urls = 0;
+
+    const char* const expected_json
+        = "{\n\t\"status\":\t404,\n\t\"message\":\t\"Failed to download ruuvi_gateway_esp.bin\"\n}";
+
+    const char* const p_uri_params
+        = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
+
+    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(strlen(expected_json), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("http_server_cb_on_get "
+               "/validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/"
+               "firmwareupdate&auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (encoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (decoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: url=https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (encoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (decoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'user=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'user='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'encrypted_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'encrypted_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'use_saved_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'use_saved_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find key: use_saved_password="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_client_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_server_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("Got URL from params: https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Found validate_type: check_fw_update_url"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_INFO,
+        string("cb_on_http_download_json_data: buf_size=") + std::to_string(strlen(p_firmwareUpdateJson)));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_download_json: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_INFO,
+        string("Firmware update info (json): ") + string(p_firmwareUpdateJson));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_ERROR,
+        string("http_check failed for URL: https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_check: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("Failed to download ruuvi_gateway_esp.bin, HTTP error: 404"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string(
+            "Failed to download firmware update: http_resp_code=404, failed to download file: ruuvi_gateway_esp.bin"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__empty_json) // NOLINT
+{
+    const char* const p_firmwareUpdateJson
+        = "{"
+          "  \"latest\": {"
+          "    \"version\": \"\","
+          "    \"url\": \"\","
+          "    \"created_at\": \"\""
+          "  }"
+          "}";
+    this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+    this->m_http_check_with_auth_arr_of_urls = nullptr;
+    this->m_http_check_with_auth_num_of_urls = 0;
+
+    const char* const expected_json
+        = "{\n\t\"status\":\t502,\n\t\"message\":\t\"Server returned incorrect json: could not get latest/url\"\n}";
+
+    const char* const p_uri_params
+        = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
+
+    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(strlen(expected_json), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("http_server_cb_on_get "
+               "/validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/"
+               "firmwareupdate&auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (encoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (decoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: url=https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (encoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (decoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'user=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'user='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'encrypted_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'encrypted_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'use_saved_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'use_saved_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find key: use_saved_password="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_client_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_server_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("Got URL from params: https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Found validate_type: check_fw_update_url"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_INFO,
+        string("cb_on_http_download_json_data: buf_size=") + std::to_string(strlen(p_firmwareUpdateJson)));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_download_json: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_INFO,
+        string("Firmware update info (json): ") + string(p_firmwareUpdateJson));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Firmware_update info 'latest/version' is empty"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("Failed to parse fw_update_info: ") + string(p_firmwareUpdateJson));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__invalid_json) // NOLINT
+{
+    const char* const p_firmwareUpdateJson
+        = "{"
+          "  \"latest\": {"
+          "    \"version\": \"v1.14.3\","
+          "    \"url\": \"https://fwupdate.ruuvi.com/v1.14.3\","
+          "    \"created_at\": \"2023-10-06T11:26:07Z\""
+          "  }";
+    this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+    this->m_http_check_with_auth_arr_of_urls = nullptr;
+    this->m_http_check_with_auth_num_of_urls = 0;
+
+    const char* const expected_json
+        = "{\n\t\"status\":\t502,\n\t\"message\":\t\"Server returned incorrect json: could not parse json\"\n}";
+
+    const char* const p_uri_params
+        = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
+
+    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(strlen(expected_json), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("http_server_cb_on_get "
+               "/validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/"
+               "firmwareupdate&auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (encoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (decoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: url=https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (encoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (decoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'user=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'user='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'encrypted_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'encrypted_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'use_saved_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'use_saved_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find key: use_saved_password="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_client_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_server_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("Got URL from params: https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Found validate_type: check_fw_update_url"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_INFO,
+        string("cb_on_http_download_json_data: buf_size=") + std::to_string(strlen(p_firmwareUpdateJson)));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_download_json: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_INFO,
+        string("Firmware update info (json): ") + string(p_firmwareUpdateJson));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("Failed to parse fw_update_info: ") + string(p_firmwareUpdateJson));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__empty_version) // NOLINT
+{
+    const char* const p_firmwareUpdateJson
+        = "{"
+          "  \"latest\": {"
+          "    \"version\": \"\","
+          "    \"url\": \"https://fwupdate.ruuvi.com/v1.14.3\","
+          "    \"created_at\": \"2023-10-06T11:26:07Z\""
+          "  }"
+          "}";
+    this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+    this->m_http_check_with_auth_arr_of_urls = nullptr;
+    this->m_http_check_with_auth_num_of_urls = 0;
+
+    const char* const expected_json
+        = "{\n\t\"status\":\t502,\n\t\"message\":\t\"Server returned incorrect json: could not get latest/url\"\n}";
+
+    const char* const p_uri_params
+        = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
+
+    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(strlen(expected_json), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("http_server_cb_on_get "
+               "/validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/"
+               "firmwareupdate&auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (encoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (decoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: url=https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (encoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (decoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'user=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'user='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'encrypted_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'encrypted_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'use_saved_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'use_saved_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find key: use_saved_password="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_client_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_server_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("Got URL from params: https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Found validate_type: check_fw_update_url"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_INFO,
+        string("cb_on_http_download_json_data: buf_size=") + std::to_string(strlen(p_firmwareUpdateJson)));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_download_json: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_INFO,
+        string("Firmware update info (json): ") + string(p_firmwareUpdateJson));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Firmware_update info 'latest/version' is empty"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("Failed to parse fw_update_info: ") + string(p_firmwareUpdateJson));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__no_version) // NOLINT
+{
+    const char* const p_firmwareUpdateJson
+        = "{"
+          "  \"latest\": {"
+          "    \"url\": \"https://fwupdate.ruuvi.com/v1.14.3\","
+          "    \"created_at\": \"2023-10-06T11:26:07Z\""
+          "  }"
+          "}";
+    this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+    this->m_http_check_with_auth_arr_of_urls = nullptr;
+    this->m_http_check_with_auth_num_of_urls = 0;
+
+    const char* const expected_json
+        = "{\n\t\"status\":\t502,\n\t\"message\":\t\"Server returned incorrect json: could not get latest/url\"\n}";
+
+    const char* const p_uri_params
+        = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
+
+    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(strlen(expected_json), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("http_server_cb_on_get "
+               "/validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/"
+               "firmwareupdate&auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (encoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (decoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: url=https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (encoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (decoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'user=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'user='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'encrypted_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'encrypted_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'use_saved_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'use_saved_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find key: use_saved_password="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_client_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_server_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("Got URL from params: https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Found validate_type: check_fw_update_url"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_INFO,
+        string("cb_on_http_download_json_data: buf_size=") + std::to_string(strlen(p_firmwareUpdateJson)));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_download_json: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_INFO,
+        string("Firmware update info (json): ") + string(p_firmwareUpdateJson));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find key 'latest/version' in firmware_update info"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("Failed to parse fw_update_info: ") + string(p_firmwareUpdateJson));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__empty_url) // NOLINT
+{
+    const char* const p_firmwareUpdateJson
+        = "{"
+          "  \"latest\": {"
+          "    \"version\": \"v1.14.3\","
+          "    \"url\": \"\","
+          "    \"created_at\": \"2023-10-06T11:26:07Z\""
+          "  }"
+          "}";
+    this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+    this->m_http_check_with_auth_arr_of_urls = nullptr;
+    this->m_http_check_with_auth_num_of_urls = 0;
+
+    const char* const expected_json
+        = "{\n\t\"status\":\t502,\n\t\"message\":\t\"Server returned incorrect json: could not get latest/url\"\n}";
+
+    const char* const p_uri_params
+        = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
+
+    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(strlen(expected_json), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("http_server_cb_on_get "
+               "/validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/"
+               "firmwareupdate&auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (encoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (decoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: url=https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (encoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (decoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'user=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'user='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'encrypted_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'encrypted_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'use_saved_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'use_saved_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find key: use_saved_password="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_client_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_server_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("Got URL from params: https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Found validate_type: check_fw_update_url"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_INFO,
+        string("cb_on_http_download_json_data: buf_size=") + std::to_string(strlen(p_firmwareUpdateJson)));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_download_json: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_INFO,
+        string("Firmware update info (json): ") + string(p_firmwareUpdateJson));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Firmware_update info 'latest/url' is empty"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("Failed to parse fw_update_info: ") + string(p_firmwareUpdateJson));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__no_url) // NOLINT
+{
+    const char* const p_firmwareUpdateJson
+        = "{"
+          "  \"latest\": {"
+          "    \"version\": \"v1.14.3\","
+          "    \"created_at\": \"2023-10-06T11:26:07Z\""
+          "  }"
+          "}";
+    this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+    this->m_http_check_with_auth_arr_of_urls = nullptr;
+    this->m_http_check_with_auth_num_of_urls = 0;
+
+    const char* const expected_json
+        = "{\n\t\"status\":\t502,\n\t\"message\":\t\"Server returned incorrect json: could not get latest/url\"\n}";
+
+    const char* const p_uri_params
+        = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
+
+    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(strlen(expected_json), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("http_server_cb_on_get "
+               "/validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/"
+               "firmwareupdate&auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (encoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (decoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: url=https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (encoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (decoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'user=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'user='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'encrypted_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'encrypted_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'use_saved_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'use_saved_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find key: use_saved_password="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_client_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_server_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("Got URL from params: https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Found validate_type: check_fw_update_url"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_INFO,
+        string("cb_on_http_download_json_data: buf_size=") + std::to_string(strlen(p_firmwareUpdateJson)));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_download_json: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_INFO,
+        string("Firmware update info (json): ") + string(p_firmwareUpdateJson));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find key 'latest/url' in firmware_update info"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("Failed to parse fw_update_info: ") + string(p_firmwareUpdateJson));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__invalid_url) // NOLINT
+{
+    const char* const p_firmwareUpdateJson
+        = "{"
+          "  \"latest\": {"
+          "    \"version\": \"v1.14.3\","
+          "    \"url\": \"qqq://abc.com\","
+          "    \"created_at\": \"2023-10-06T11:26:07Z\""
+          "  }"
+          "}";
+    this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+    this->m_http_check_with_auth_arr_of_urls = nullptr;
+    this->m_http_check_with_auth_num_of_urls = 0;
+
+    const char* const expected_json
+        = "{\n\t\"status\":\t502,\n\t\"message\":\t\"Server returned incorrect json: could not get latest/url\"\n}";
+
+    const char* const p_uri_params
+        = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
+
+    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(strlen(expected_json), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("http_server_cb_on_get "
+               "/validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/"
+               "firmwareupdate&auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (encoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (decoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: url=https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (encoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (decoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'user=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'user='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'encrypted_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'encrypted_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'use_saved_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'use_saved_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find key: use_saved_password="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_client_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_server_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("Got URL from params: https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Found validate_type: check_fw_update_url"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_INFO,
+        string("cb_on_http_download_json_data: buf_size=") + std::to_string(strlen(p_firmwareUpdateJson)));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_download_json: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_INFO,
+        string("Firmware update info (json): ") + string(p_firmwareUpdateJson));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("Firmware_update info 'latest/url' is invalid: qqq://abc.com"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("Failed to parse fw_update_info: ") + string(p_firmwareUpdateJson));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__no_latest) // NOLINT
+{
+    const char* const p_firmwareUpdateJson
+        = "{"
+          "}";
+    this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+    this->m_http_check_with_auth_arr_of_urls = nullptr;
+    this->m_http_check_with_auth_num_of_urls = 0;
+
+    const char* const expected_json
+        = "{\n\t\"status\":\t502,\n\t\"message\":\t\"Server returned incorrect json: could not get latest/url\"\n}";
+
+    const char* const p_uri_params
+        = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
+
+    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(strlen(expected_json), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("http_server_cb_on_get "
+               "/validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/"
+               "firmwareupdate&auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (encoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (decoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: url=https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (encoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (decoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'user=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'user='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'encrypted_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'encrypted_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'use_saved_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'use_saved_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find key: use_saved_password="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_client_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_server_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("Got URL from params: https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Found validate_type: check_fw_update_url"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_INFO,
+        string("cb_on_http_download_json_data: buf_size=") + std::to_string(strlen(p_firmwareUpdateJson)));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_download_json: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_INFO,
+        string("Firmware update info (json): ") + string(p_firmwareUpdateJson));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find key 'latest' in firmware_update info"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("Failed to parse fw_update_info: ") + string(p_firmwareUpdateJson));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__empty_resp) // NOLINT
+{
+    const char* const p_firmwareUpdateJson   = "";
+    this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+    this->m_http_check_with_auth_arr_of_urls = nullptr;
+    this->m_http_check_with_auth_num_of_urls = 0;
+
+    const char* const expected_json
+        = "{\n\t\"status\":\t502,\n\t\"message\":\t\"Server returned incorrect json: could not parse json\"\n}";
+
+    const char* const p_uri_params
+        = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
+
+    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(strlen(expected_json), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("http_server_cb_on_get "
+               "/validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/"
+               "firmwareupdate&auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (encoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (decoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: url=https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (encoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (decoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'user=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'user='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'encrypted_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'encrypted_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'use_saved_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'use_saved_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find key: use_saved_password="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_client_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_server_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("Got URL from params: https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Found validate_type: check_fw_update_url"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_INFO,
+        string("cb_on_http_download_json_data: buf_size=") + std::to_string(strlen(p_firmwareUpdateJson)));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_download_json: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_INFO,
+        string("Firmware update info (json): ") + string(p_firmwareUpdateJson));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("Failed to parse fw_update_info: ") + string(p_firmwareUpdateJson));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__json_with_beta_empty_version) // NOLINT
+{
+    const char* const p_firmwareUpdateJson
+        = "{"
+          "  \"latest\": {"
+          "    \"version\": \"v1.14.3\","
+          "    \"url\": \"https://fwupdate.ruuvi.com/v1.14.3\","
+          "    \"created_at\": \"2023-10-06T11:26:07Z\""
+          "  },"
+          "  \"beta\": {"
+          "    \"version\": \"\","
+          "    \"url\": \"https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.2\","
+          "    \"created_at\": \"2023-09-19T11:16:48Z\""
+          "  }"
+          "}";
+    this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+    const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
+    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
+    this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
+
+    const char* const expected_json
+        = "{\"status\": 200, \"json\": {  \"latest\": {    \"version\": \"v1.14.3\",    \"url\": "
+          "\"https://fwupdate.ruuvi.com/v1.14.3\",    \"created_at\": \"2023-10-06T11:26:07Z\"  },  \"beta\": {    "
+          "\"version\": \"\",    \"url\": "
+          "\"https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.2\",    \"created_at\": "
+          "\"2023-09-19T11:16:48Z\"  }}}";
+
+    const char* const p_uri_params
+        = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
+
+    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(strlen(expected_json), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("http_server_cb_on_get "
+               "/validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/"
+               "firmwareupdate&auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (encoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (decoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: url=https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (encoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (decoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'user=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'user='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'encrypted_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'encrypted_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'use_saved_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'use_saved_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find key: use_saved_password="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_client_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_server_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("Got URL from params: https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Found validate_type: check_fw_update_url"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_INFO,
+        string("cb_on_http_download_json_data: buf_size=") + std::to_string(strlen(p_firmwareUpdateJson)));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_download_json: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_INFO,
+        string("Firmware update info (json): ") + string(p_firmwareUpdateJson));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_check: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Feed watchdog"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_check: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Feed watchdog"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_check: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Feed watchdog"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__json_with_beta_no_version) // NOLINT
+{
+    const char* const p_firmwareUpdateJson
+        = "{"
+          "  \"latest\": {"
+          "    \"version\": \"v1.14.3\","
+          "    \"url\": \"https://fwupdate.ruuvi.com/v1.14.3\","
+          "    \"created_at\": \"2023-10-06T11:26:07Z\""
+          "  },"
+          "  \"beta\": {"
+          "    \"url\": \"https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.2\","
+          "    \"created_at\": \"2023-09-19T11:16:48Z\""
+          "  }"
+          "}";
+    this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+    const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
+    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
+    this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
+
+    const char* const expected_json
+        = "{\"status\": 200, \"json\": {  \"latest\": {    \"version\": \"v1.14.3\",    \"url\": "
+          "\"https://fwupdate.ruuvi.com/v1.14.3\",    \"created_at\": \"2023-10-06T11:26:07Z\"  },  \"beta\": {    "
+          "\"url\": \"https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.2\",    \"created_at\": "
+          "\"2023-09-19T11:16:48Z\"  }}}";
+
+    const char* const p_uri_params
+        = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
+
+    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(strlen(expected_json), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("http_server_cb_on_get "
+               "/validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/"
+               "firmwareupdate&auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (encoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (decoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: url=https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (encoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (decoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'user=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'user='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'encrypted_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'encrypted_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'use_saved_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'use_saved_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find key: use_saved_password="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_client_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_server_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("Got URL from params: https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Found validate_type: check_fw_update_url"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_INFO,
+        string("cb_on_http_download_json_data: buf_size=") + std::to_string(strlen(p_firmwareUpdateJson)));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_download_json: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_INFO,
+        string("Firmware update info (json): ") + string(p_firmwareUpdateJson));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_check: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Feed watchdog"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_check: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Feed watchdog"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_check: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Feed watchdog"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__json_with_beta_empty_url) // NOLINT
+{
+    const char* const p_firmwareUpdateJson
+        = "{"
+          "  \"latest\": {"
+          "    \"version\": \"v1.14.3\","
+          "    \"url\": \"https://fwupdate.ruuvi.com/v1.14.3\","
+          "    \"created_at\": \"2023-10-06T11:26:07Z\""
+          "  },"
+          "  \"beta\": {"
+          "    \"version\": \"v1.14.2\","
+          "    \"url\": \"\","
+          "    \"created_at\": \"2023-09-19T11:16:48Z\""
+          "  }"
+          "}";
+    this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+    const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
+    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
+    this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
+
+    const char* const expected_json
+        = "{\"status\": 200, \"json\": {  \"latest\": {    \"version\": \"v1.14.3\",    \"url\": "
+          "\"https://fwupdate.ruuvi.com/v1.14.3\",    \"created_at\": \"2023-10-06T11:26:07Z\"  },  \"beta\": {    "
+          "\"version\": \"v1.14.2\",    \"url\": \"\",    \"created_at\": "
+          "\"2023-09-19T11:16:48Z\"  }}}";
+
+    const char* const p_uri_params
+        = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
+
+    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(strlen(expected_json), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("http_server_cb_on_get "
+               "/validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/"
+               "firmwareupdate&auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (encoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (decoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: url=https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (encoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (decoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'user=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'user='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'encrypted_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'encrypted_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'use_saved_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'use_saved_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find key: use_saved_password="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_client_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_server_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("Got URL from params: https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Found validate_type: check_fw_update_url"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_INFO,
+        string("cb_on_http_download_json_data: buf_size=") + std::to_string(strlen(p_firmwareUpdateJson)));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_download_json: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_INFO,
+        string("Firmware update info (json): ") + string(p_firmwareUpdateJson));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_check: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Feed watchdog"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_check: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Feed watchdog"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_check: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Feed watchdog"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__json_with_beta_invalid_url) // NOLINT
+{
+    const char* const p_firmwareUpdateJson
+        = "{"
+          "  \"latest\": {"
+          "    \"version\": \"v1.14.3\","
+          "    \"url\": \"https://fwupdate.ruuvi.com/v1.14.3\","
+          "    \"created_at\": \"2023-10-06T11:26:07Z\""
+          "  },"
+          "  \"beta\": {"
+          "    \"version\": \"v1.14.2\","
+          "    \"url\": \"qqq://abc.com\","
+          "    \"created_at\": \"2023-09-19T11:16:48Z\""
+          "  }"
+          "}";
+    this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+    const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
+    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
+    this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
+
+    const char* const expected_json
+        = "{\"status\": 200, \"json\": {  \"latest\": {    \"version\": \"v1.14.3\",    \"url\": "
+          "\"https://fwupdate.ruuvi.com/v1.14.3\",    \"created_at\": \"2023-10-06T11:26:07Z\"  },  \"beta\": {    "
+          "\"version\": \"v1.14.2\",    \"url\": \"qqq://abc.com\",    \"created_at\": "
+          "\"2023-09-19T11:16:48Z\"  }}}";
+
+    const char* const p_uri_params
+        = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
+
+    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(strlen(expected_json), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("http_server_cb_on_get "
+               "/validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/"
+               "firmwareupdate&auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (encoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (decoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: url=https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (encoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (decoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'user=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'user='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'encrypted_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'encrypted_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'use_saved_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'use_saved_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find key: use_saved_password="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_client_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_server_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("Got URL from params: https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Found validate_type: check_fw_update_url"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_INFO,
+        string("cb_on_http_download_json_data: buf_size=") + std::to_string(strlen(p_firmwareUpdateJson)));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_download_json: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_INFO,
+        string("Firmware update info (json): ") + string(p_firmwareUpdateJson));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_check: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Feed watchdog"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_check: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Feed watchdog"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_check: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Feed watchdog"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__json_with_beta_no_url) // NOLINT
+{
+    const char* const p_firmwareUpdateJson
+        = "{"
+          "  \"latest\": {"
+          "    \"version\": \"v1.14.3\","
+          "    \"url\": \"https://fwupdate.ruuvi.com/v1.14.3\","
+          "    \"created_at\": \"2023-10-06T11:26:07Z\""
+          "  },"
+          "  \"beta\": {"
+          "    \"version\": \"v1.14.2\","
+          "    \"created_at\": \"2023-09-19T11:16:48Z\""
+          "  }"
+          "}";
+    this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+    const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
+    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
+    this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
+
+    const char* const expected_json
+        = "{\"status\": 200, \"json\": {  \"latest\": {    \"version\": \"v1.14.3\",    \"url\": "
+          "\"https://fwupdate.ruuvi.com/v1.14.3\",    \"created_at\": \"2023-10-06T11:26:07Z\"  },  \"beta\": {    "
+          "\"version\": \"v1.14.2\",    \"created_at\": \"2023-09-19T11:16:48Z\"  }}}";
+
+    const char* const p_uri_params
+        = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
+
+    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(strlen(expected_json), resp.content_len);
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("http_server_cb_on_get "
+               "/validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/"
+               "firmwareupdate&auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: auth_type=none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (encoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("HTTP params: key 'auth_type=': value (decoded): none"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: url=https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (encoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("HTTP params: key 'url=': value (decoded): https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'user=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'user='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'encrypted_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'encrypted_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'use_saved_password=' in URL params"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("HTTP params: Can't find 'use_saved_password='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find key: use_saved_password="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_client_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find prefix 'use_ssl_server_cert='"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("Got URL from params: https://network.ruuvi.com/firmwareupdate"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Found validate_type: check_fw_update_url"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_INFO,
+        string("cb_on_http_download_json_data: buf_size=") + std::to_string(strlen(p_firmwareUpdateJson)));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_download_json: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_INFO,
+        string("Firmware update info (json): ") + string(p_firmwareUpdateJson));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_check: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Feed watchdog"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_check: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Feed watchdog"));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_check: completed within 0 ticks"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Feed watchdog"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__latest_and_beta) // NOLINT
+{
+    {
+        gw_cfg_t gw_cfg = { 0 };
+        gw_cfg_default_get(&gw_cfg);
+        gw_cfg.ruuvi_cfg.auto_update.auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR;
+        gw_cfg_update(&gw_cfg);
+        esp_log_wrapper_clear();
+    }
+
+    const char* const p_firmwareUpdateJson
+        = "{"
+          "  \"latest\": {"
+          "    \"version\": \"v1.14.3\","
+          "    \"url\": \"https://fwupdate.ruuvi.com/v1.14.3\","
+          "    \"created_at\": \"2023-10-06T11:26:07Z\""
+          "  },"
+          "  \"beta\": {"
+          "    \"version\": \"v1.14.2\","
+          "    \"url\": \"https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.2\","
+          "    \"created_at\": \"2023-09-19T11:16:48Z\""
+          "  }"
+          "}";
+    this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+    const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
+    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
+    this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
+
+    http_server_cb_on_user_req(HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO);
+
+    ASSERT_EQ(FW_UPDATE_REASON_AUTO, this->m_fw_updating_reason);
+    ASSERT_EQ(string("https://fwupdate.ruuvi.com/v1.14.3"), fw_update_get_binaries_url());
+
+    ASSERT_EQ(
+        "I http_server: Download firmware update info\n"
+        "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
+        "I http_download: http_download_json: completed within 0 ticks\n"
+        "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
+        "I http_server: Update is required (current version: v1.3.3, latest version: https://fwupdate.ruuvi.com/v1.14.3)\n"
+        "I http_download: http_check: completed within 0 ticks\n"
+        "D http_server: Feed watchdog\n"
+        "I http_download: http_check: completed within 0 ticks\n"
+        "D http_server: Feed watchdog\n"
+        "I http_download: http_check: completed within 0 ticks\n"
+        "D http_server: Feed watchdog\n"
+        "I http_server: Run firmware auto-updating from URL: https://fwupdate.ruuvi.com/v1.14.3\n",
+        esp_log_wrapper_get_logs());
+}
+
+TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_beta__latest_and_beta) // NOLINT
+{
+    {
+        gw_cfg_t gw_cfg = { 0 };
+        gw_cfg_default_get(&gw_cfg);
+        gw_cfg.ruuvi_cfg.auto_update.auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER;
+        gw_cfg_update(&gw_cfg);
+        esp_log_wrapper_clear();
+    }
+
+    const char* const p_firmwareUpdateJson
+        = "{"
+          "  \"latest\": {"
+          "    \"version\": \"v1.14.3\","
+          "    \"url\": \"https://fwupdate.ruuvi.com/v1.14.3\","
+          "    \"created_at\": \"2023-10-06T11:26:07Z\""
+          "  },"
+          "  \"beta\": {"
+          "    \"version\": \"v1.14.2\","
+          "    \"url\": \"https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.2\","
+          "    \"created_at\": \"2023-09-19T11:16:48Z\""
+          "  }"
+          "}";
+    this->m_firmware_update_resp  = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+    const char* arr_of_binaries[] = {
+        "https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.2/ruuvi_gateway_esp.bin",
+        "https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.2/fatfs_gwui.bin",
+        "https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.2/fatfs_nrf52.bin"
+    };
+    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
+    this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
+
+    http_server_cb_on_user_req(HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO);
+
+    ASSERT_EQ(FW_UPDATE_REASON_AUTO, this->m_fw_updating_reason);
+    ASSERT_EQ(
+        string("https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.2"),
+        fw_update_get_binaries_url());
+
+    ASSERT_EQ(
+            "I http_server: Download firmware update info\n"
+            "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
+            "I http_download: http_download_json: completed within 0 ticks\n"
+            "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
+            "I http_server: Update is required (current version: v1.3.3, beta version: https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.2)\n"
+            "I http_download: http_check: completed within 0 ticks\n"
+            "D http_server: Feed watchdog\n"
+            "I http_download: http_check: completed within 0 ticks\n"
+            "D http_server: Feed watchdog\n"
+            "I http_download: http_check: completed within 0 ticks\n"
+            "D http_server: Feed watchdog\n"
+            "I http_server: Run firmware auto-updating from URL: https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.2\n",
+            esp_log_wrapper_get_logs());
+}
+
+TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_beta__latest) // NOLINT
+{
+    {
+        gw_cfg_t gw_cfg = { 0 };
+        gw_cfg_default_get(&gw_cfg);
+        gw_cfg.ruuvi_cfg.auto_update.auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER;
+        gw_cfg_update(&gw_cfg);
+        esp_log_wrapper_clear();
+    }
+
+    const char* const p_firmwareUpdateJson
+        = "{"
+          "  \"latest\": {"
+          "    \"version\": \"v1.14.3\","
+          "    \"url\": \"https://fwupdate.ruuvi.com/v1.14.3\","
+          "    \"created_at\": \"2023-10-06T11:26:07Z\""
+          "  }"
+          "}";
+    this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+    const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
+    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
+    this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
+
+    http_server_cb_on_user_req(HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO);
+
+    ASSERT_EQ(FW_UPDATE_REASON_AUTO, this->m_fw_updating_reason);
+    ASSERT_EQ(string("https://fwupdate.ruuvi.com/v1.14.3"), fw_update_get_binaries_url());
+
+    ASSERT_EQ(
+            "I http_server: Download firmware update info\n"
+            "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
+            "I http_download: http_download_json: completed within 0 ticks\n"
+            "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
+            "I http_server: Update is required (current version: v1.3.3, latest version: https://fwupdate.ruuvi.com/v1.14.3)\n"
+            "I http_download: http_check: completed within 0 ticks\n"
+            "D http_server: Feed watchdog\n"
+            "I http_download: http_check: completed within 0 ticks\n"
+            "D http_server: Feed watchdog\n"
+            "I http_download: http_check: completed within 0 ticks\n"
+            "D http_server: Feed watchdog\n"
+            "I http_server: Run firmware auto-updating from URL: https://fwupdate.ruuvi.com/v1.14.3\n",
+            esp_log_wrapper_get_logs());
+}
+
+TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__no_update_needed) // NOLINT
+{
+    {
+        gw_cfg_t gw_cfg = { 0 };
+        gw_cfg_default_get(&gw_cfg);
+        gw_cfg.ruuvi_cfg.auto_update.auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR;
+        gw_cfg_update(&gw_cfg);
+        esp_log_wrapper_clear();
+    }
+
+    const char* const p_firmwareUpdateJson
+        = "{"
+          "  \"latest\": {"
+          "    \"version\": \"v1.3.3\","
+          "    \"url\": \"https://fwupdate.ruuvi.com/v1.3.3\","
+          "    \"created_at\": \"2023-10-06T11:26:07Z\""
+          "  }"
+          "}";
+    this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+    const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.3.3/ruuvi_gateway_esp.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.3.3/fatfs_gwui.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.3.3/fatfs_nrf52.bin" };
+    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
+    this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
+
+    http_server_cb_on_user_req(HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO);
+
+    ASSERT_EQ(FW_UPDATE_REASON_NONE, this->m_fw_updating_reason);
+
+    ASSERT_EQ(
+            "I http_server: Download firmware update info\n"
+            "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
+            "I http_download: http_download_json: completed within 0 ticks\n"
+            "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
+            "I http_server: Firmware update: No update is required, the latest version is already installed\n",
+            esp_log_wrapper_get_logs());
+}
+
+TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__empty_version) // NOLINT
+{
+    {
+        gw_cfg_t gw_cfg = { 0 };
+        gw_cfg_default_get(&gw_cfg);
+        gw_cfg.ruuvi_cfg.auto_update.auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR;
+        gw_cfg_update(&gw_cfg);
+        esp_log_wrapper_clear();
+    }
+
+    const char* const p_firmwareUpdateJson
+        = "{"
+          "  \"latest\": {"
+          "    \"version\": \"\","
+          "    \"url\": \"\","
+          "    \"created_at\": \"\""
+          "  }"
+          "}";
+    this->m_firmware_update_resp = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+
+    http_server_cb_on_user_req(HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO);
+
+    ASSERT_EQ(FW_UPDATE_REASON_NONE, this->m_fw_updating_reason);
+
+    ASSERT_EQ(
+            "I http_server: Download firmware update info\n"
+            "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
+            "I http_download: http_download_json: completed within 0 ticks\n"
+            "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
+            "E http_server: Firmware_update info 'latest/version' is empty\n"
+            "I http_server: Firmware update: No update is required, the latest version is already installed\n",
+            esp_log_wrapper_get_logs());
 }
