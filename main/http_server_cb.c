@@ -223,7 +223,7 @@ http_server_cb_on_user_req_download_latest_release_info(void)
         main_task_schedule_retry_check_for_fw_updates();
         return;
     }
-    LOG_INFO("firmware update info (json): %s", fw_update_info.p_json_buf);
+    LOG_INFO("Firmware update info (json): %s", fw_update_info.p_json_buf);
 
     main_task_schedule_next_check_for_fw_updates();
 
@@ -267,7 +267,7 @@ http_server_cb_on_user_req_download_latest_release_info(void)
     if (flag_update_ready)
     {
         LOG_INFO("Run firmware auto-updating from URL: %s", fw_update_get_binaries_url());
-        fw_update_run(true);
+        fw_update_run(FW_UPDATE_REASON_AUTO);
     }
 }
 

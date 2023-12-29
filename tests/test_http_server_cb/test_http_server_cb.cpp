@@ -130,12 +130,6 @@ json_fw_update_url_parse_http_body_get_url(const char* const p_body)
     return str_buf_init_null();
 }
 
-bool
-fw_update_run(const fw_updating_reason_e fw_updating_reason)
-{
-    return true;
-}
-
 void
 main_task_schedule_next_check_for_fw_updates(void)
 {
@@ -437,6 +431,11 @@ protected:
         gw_cfg_init(&settings_save_to_flash);
         esp_log_wrapper_clear();
         this->m_malloc_cnt = 0;
+        this->fw_update_url.fill(0);
+        this->m_http_check_with_auth_num_of_urls = 0;
+        this->m_http_check_with_auth_arr_of_urls = nullptr;
+        this->m_firmware_update_resp             = str_buf_init_null();
+        this->m_fw_updating_reason               = FW_UPDATE_REASON_NONE;
     }
 
     void
@@ -471,6 +470,7 @@ public:
     str_buf_t             m_firmware_update_resp;
     const char**          m_http_check_with_auth_arr_of_urls;
     size_t                m_http_check_with_auth_num_of_urls;
+    fw_updating_reason_e  m_fw_updating_reason;
 };
 
 TestHttpServerCb::TestHttpServerCb()
@@ -801,6 +801,13 @@ http_check_with_auth(const http_download_param_with_auth_t* const p_param, http_
     }
     *p_http_resp_code = HTTP_RESP_CODE_404;
     return false;
+}
+
+bool
+fw_update_run(const fw_updating_reason_e fw_updating_reason)
+{
+    g_pTestClass->m_fw_updating_reason = fw_updating_reason;
+    return true;
 }
 
 } // extern "C"
@@ -4818,4 +4825,228 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_check: completed within 0 ticks"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Feed watchdog"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__latest_and_beta) // NOLINT
+{
+    {
+        gw_cfg_t gw_cfg = { 0 };
+        gw_cfg_default_get(&gw_cfg);
+        gw_cfg.ruuvi_cfg.auto_update.auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR;
+        gw_cfg_update(&gw_cfg);
+        esp_log_wrapper_clear();
+    }
+
+    const char* const p_firmwareUpdateJson
+        = "{"
+          "  \"latest\": {"
+          "    \"version\": \"v1.14.3\","
+          "    \"url\": \"https://fwupdate.ruuvi.com/v1.14.3\","
+          "    \"created_at\": \"2023-10-06T11:26:07Z\""
+          "  },"
+          "  \"beta\": {"
+          "    \"version\": \"v1.14.2\","
+          "    \"url\": \"https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.2\","
+          "    \"created_at\": \"2023-09-19T11:16:48Z\""
+          "  }"
+          "}";
+    this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+    const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
+    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
+    this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
+
+    http_server_cb_on_user_req(HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO);
+
+    ASSERT_EQ(FW_UPDATE_REASON_AUTO, this->m_fw_updating_reason);
+    ASSERT_EQ(string("https://fwupdate.ruuvi.com/v1.14.3"), fw_update_get_binaries_url());
+
+    ASSERT_EQ(
+        "I http_server: Download firmware update info\n"
+        "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
+        "I http_download: http_download_json: completed within 0 ticks\n"
+        "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
+        "I http_server: Update is required (current version: v1.3.3, latest version: https://fwupdate.ruuvi.com/v1.14.3)\n"
+        "I http_download: http_check: completed within 0 ticks\n"
+        "D http_server: Feed watchdog\n"
+        "I http_download: http_check: completed within 0 ticks\n"
+        "D http_server: Feed watchdog\n"
+        "I http_download: http_check: completed within 0 ticks\n"
+        "D http_server: Feed watchdog\n"
+        "I http_server: Run firmware auto-updating from URL: https://fwupdate.ruuvi.com/v1.14.3\n",
+        esp_log_wrapper_get_logs());
+}
+
+TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_beta__latest_and_beta) // NOLINT
+{
+    {
+        gw_cfg_t gw_cfg = { 0 };
+        gw_cfg_default_get(&gw_cfg);
+        gw_cfg.ruuvi_cfg.auto_update.auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER;
+        gw_cfg_update(&gw_cfg);
+        esp_log_wrapper_clear();
+    }
+
+    const char* const p_firmwareUpdateJson
+        = "{"
+          "  \"latest\": {"
+          "    \"version\": \"v1.14.3\","
+          "    \"url\": \"https://fwupdate.ruuvi.com/v1.14.3\","
+          "    \"created_at\": \"2023-10-06T11:26:07Z\""
+          "  },"
+          "  \"beta\": {"
+          "    \"version\": \"v1.14.2\","
+          "    \"url\": \"https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.2\","
+          "    \"created_at\": \"2023-09-19T11:16:48Z\""
+          "  }"
+          "}";
+    this->m_firmware_update_resp  = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+    const char* arr_of_binaries[] = {
+        "https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.2/ruuvi_gateway_esp.bin",
+        "https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.2/fatfs_gwui.bin",
+        "https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.2/fatfs_nrf52.bin"
+    };
+    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
+    this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
+
+    http_server_cb_on_user_req(HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO);
+
+    ASSERT_EQ(FW_UPDATE_REASON_AUTO, this->m_fw_updating_reason);
+    ASSERT_EQ(
+        string("https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.2"),
+        fw_update_get_binaries_url());
+
+    ASSERT_EQ(
+            "I http_server: Download firmware update info\n"
+            "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
+            "I http_download: http_download_json: completed within 0 ticks\n"
+            "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
+            "I http_server: Update is required (current version: v1.3.3, beta version: https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.2)\n"
+            "I http_download: http_check: completed within 0 ticks\n"
+            "D http_server: Feed watchdog\n"
+            "I http_download: http_check: completed within 0 ticks\n"
+            "D http_server: Feed watchdog\n"
+            "I http_download: http_check: completed within 0 ticks\n"
+            "D http_server: Feed watchdog\n"
+            "I http_server: Run firmware auto-updating from URL: https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.2\n",
+            esp_log_wrapper_get_logs());
+}
+
+TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_beta__latest) // NOLINT
+{
+    {
+        gw_cfg_t gw_cfg = { 0 };
+        gw_cfg_default_get(&gw_cfg);
+        gw_cfg.ruuvi_cfg.auto_update.auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER;
+        gw_cfg_update(&gw_cfg);
+        esp_log_wrapper_clear();
+    }
+
+    const char* const p_firmwareUpdateJson
+        = "{"
+          "  \"latest\": {"
+          "    \"version\": \"v1.14.3\","
+          "    \"url\": \"https://fwupdate.ruuvi.com/v1.14.3\","
+          "    \"created_at\": \"2023-10-06T11:26:07Z\""
+          "  }"
+          "}";
+    this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+    const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
+    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
+    this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
+
+    http_server_cb_on_user_req(HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO);
+
+    ASSERT_EQ(FW_UPDATE_REASON_AUTO, this->m_fw_updating_reason);
+    ASSERT_EQ(string("https://fwupdate.ruuvi.com/v1.14.3"), fw_update_get_binaries_url());
+
+    ASSERT_EQ(
+            "I http_server: Download firmware update info\n"
+            "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
+            "I http_download: http_download_json: completed within 0 ticks\n"
+            "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
+            "I http_server: Update is required (current version: v1.3.3, latest version: https://fwupdate.ruuvi.com/v1.14.3)\n"
+            "I http_download: http_check: completed within 0 ticks\n"
+            "D http_server: Feed watchdog\n"
+            "I http_download: http_check: completed within 0 ticks\n"
+            "D http_server: Feed watchdog\n"
+            "I http_download: http_check: completed within 0 ticks\n"
+            "D http_server: Feed watchdog\n"
+            "I http_server: Run firmware auto-updating from URL: https://fwupdate.ruuvi.com/v1.14.3\n",
+            esp_log_wrapper_get_logs());
+}
+
+TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__no_update_needed) // NOLINT
+{
+    {
+        gw_cfg_t gw_cfg = { 0 };
+        gw_cfg_default_get(&gw_cfg);
+        gw_cfg.ruuvi_cfg.auto_update.auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR;
+        gw_cfg_update(&gw_cfg);
+        esp_log_wrapper_clear();
+    }
+
+    const char* const p_firmwareUpdateJson
+        = "{"
+          "  \"latest\": {"
+          "    \"version\": \"v1.3.3\","
+          "    \"url\": \"https://fwupdate.ruuvi.com/v1.3.3\","
+          "    \"created_at\": \"2023-10-06T11:26:07Z\""
+          "  }"
+          "}";
+    this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+    const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.3.3/ruuvi_gateway_esp.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.3.3/fatfs_gwui.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.3.3/fatfs_nrf52.bin" };
+    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
+    this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
+
+    http_server_cb_on_user_req(HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO);
+
+    ASSERT_EQ(FW_UPDATE_REASON_NONE, this->m_fw_updating_reason);
+
+    ASSERT_EQ(
+            "I http_server: Download firmware update info\n"
+            "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
+            "I http_download: http_download_json: completed within 0 ticks\n"
+            "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
+            "I http_server: Firmware update: No update is required, the latest version is already installed\n",
+            esp_log_wrapper_get_logs());
+}
+
+TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__empty_version) // NOLINT
+{
+    {
+        gw_cfg_t gw_cfg = { 0 };
+        gw_cfg_default_get(&gw_cfg);
+        gw_cfg.ruuvi_cfg.auto_update.auto_update_cycle = AUTO_UPDATE_CYCLE_TYPE_REGULAR;
+        gw_cfg_update(&gw_cfg);
+        esp_log_wrapper_clear();
+    }
+
+    const char* const p_firmwareUpdateJson
+        = "{"
+          "  \"latest\": {"
+          "    \"version\": \"\","
+          "    \"url\": \"\","
+          "    \"created_at\": \"\""
+          "  }"
+          "}";
+    this->m_firmware_update_resp = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
+
+    http_server_cb_on_user_req(HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO);
+
+    ASSERT_EQ(FW_UPDATE_REASON_NONE, this->m_fw_updating_reason);
+
+    ASSERT_EQ(
+            "I http_server: Download firmware update info\n"
+            "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
+            "I http_download: http_download_json: completed within 0 ticks\n"
+            "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
+            "E http_server: Firmware_update info 'latest/version' is empty\n"
+            "I http_server: Firmware update: No update is required, the latest version is already installed\n",
+            esp_log_wrapper_get_logs());
 }
