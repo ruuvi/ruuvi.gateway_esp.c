@@ -1,13 +1,7 @@
 #!/usr/bin/env perl
 #
 # Copyright The Mbed TLS Contributors
-# SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
-#
-# This file is provided under the Apache License 2.0, or the
-# GNU General Public License v2.0 or later.
-#
-# **********
-# Apache License 2.0:
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License.
@@ -20,27 +14,6 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# **********
-#
-# **********
-# GNU General Public License v2.0 or later:
-#
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-#
-# **********
 
 use strict;
 
@@ -66,19 +39,19 @@ if( @ARGV ) {
 
 my $feature_format_file = $data_dir.'/version_features.fmt';
 
-my @sections = ( "System support", "mbed TLS modules",
-                 "mbed TLS feature support" );
+my @sections = ( "System support", "Mbed TLS modules",
+                 "Mbed TLS feature support" );
 
 my $line_separator = $/;
 undef $/;
 
-open(FORMAT_FILE, "$feature_format_file") or die "Opening feature format file '$feature_format_file': $!";
+open(FORMAT_FILE, '<:crlf', "$feature_format_file") or die "Opening feature format file '$feature_format_file': $!";
 my $feature_format = <FORMAT_FILE>;
 close(FORMAT_FILE);
 
 $/ = $line_separator;
 
-open(CONFIG_H, "$include_dir/config.h") || die("Failure when opening config.h: $!");
+open(CONFIG_H, '<:crlf', "$include_dir/mbedtls_config.h") || die("Failure when opening mbedtls_config.h: $!");
 
 my $feature_defines = "";
 my $in_section = 0;
@@ -93,11 +66,14 @@ while (my $line = <CONFIG_H>)
             $in_section = 0;
             next;
         }
-
-        my ($define) = $line =~ /#define (\w+)/;
-        $feature_defines .= "#if defined(${define})\n";
-        $feature_defines .= "    \"${define}\",\n";
-        $feature_defines .= "#endif /* ${define} */\n";
+        # Strip leading MBEDTLS_ to save binary size
+        my ($mbedtls_prefix, $define) = $line =~ /#define (MBEDTLS_)?(\w+)/;
+        if (!$mbedtls_prefix) {
+            die "Feature does not start with 'MBEDTLS_': $line\n";
+        }
+        $feature_defines .= "#if defined(MBEDTLS_${define})\n";
+        $feature_defines .= "    \"${define}\", //no-check-names\n";
+        $feature_defines .= "#endif /* MBEDTLS_${define} */\n";
     }
 
     if (!$in_section) {

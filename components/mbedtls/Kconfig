@@ -20,7 +20,7 @@ menu "mbedTLS"
             allow sufficient free internal memory then alternate mode can be
             selected.
 
-            (*) In case of ESP32-S2, hardware allows encryption of external
+            (*) In case of ESP32-S2/ESP32-S3, hardware allows encryption of external
             SPIRAM contents provided hardware flash encryption feature is enabled.
             In that case, using external SPIRAM allocation strategy is also safe choice
             from security perspective.
@@ -101,6 +101,8 @@ menu "mbedTLS"
         bool "Using dynamic TX/RX buffer"
         default n
         select MBEDTLS_ASYMMETRIC_CONTENT_LEN
+        # Dynamic buffer feature is not supported with DTLS
+        depends on !IDF_TARGET_LINUX && !MBEDTLS_SSL_PROTO_DTLS && !MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH
         help
             Using dynamic TX/RX buffer. After enabling this option, mbedTLS will
             allocate TX buffer when need to send data and then free it if all data
@@ -111,13 +113,6 @@ menu "mbedTLS"
             RX buffer with the default value of "MBEDTLS_SSL_OUT_CONTENT_LEN" or
             "MBEDTLS_SSL_IN_CONTENT_LEN", so to save more heap, users can set
             the options to be an appropriate value.
-
-    config MBEDTLS_DYNAMIC_FREE_PEER_CERT
-        bool "Free SSL peer certificate after its usage"
-        default n
-        depends on MBEDTLS_DYNAMIC_BUFFER
-        help
-            Free peer certificate after its usage in handshake process.
 
     config MBEDTLS_DYNAMIC_FREE_CONFIG_DATA
         bool "Free private key and DHM data after its usage"
@@ -132,14 +127,14 @@ menu "mbedTLS"
             certificate and private key to ssl config object again.
 
     config MBEDTLS_DYNAMIC_FREE_CA_CERT
-        bool "Free SSL ca certificate after its usage"
+        bool "Free SSL CA certificate after its usage"
         default y
         depends on MBEDTLS_DYNAMIC_FREE_CONFIG_DATA
         help
-            Free ca certificate after its usage in the handshake process.
+            Free CA certificate after its usage in the handshake process.
             This option will decrease the heap footprint for the TLS handshake, but may lead to a problem:
             If the respective ssl object needs to perform the TLS handshake again,
-            the ca certificate should once again be registered to the ssl object.
+            the CA certificate should once again be registered to the ssl object.
 
     config MBEDTLS_DEBUG
         bool "Enable mbedTLS debugging"
@@ -176,6 +171,142 @@ menu "mbedTLS"
         default 3 if MBEDTLS_DEBUG_LEVEL_DEBUG
         default 4 if MBEDTLS_DEBUG_LEVEL_VERBOSE
 
+    menu "mbedTLS v3.x related"
+        # NOTE: MBEDTLS_DYNAMIC_BUFFER feature is not supported with TLS 1.3 yet. Ref: IDF-4762
+        config MBEDTLS_SSL_PROTO_TLS1_3
+            bool "Support TLS 1.3 protocol"
+            depends on MBEDTLS_TLS_ENABLED && MBEDTLS_SSL_KEEP_PEER_CERTIFICATE && !MBEDTLS_DYNAMIC_BUFFER
+            select MBEDTLS_HKDF_C
+            default n
+
+        menu "TLS 1.3 related configurations"
+            depends on MBEDTLS_SSL_PROTO_TLS1_3
+
+            config MBEDTLS_SSL_TLS1_3_COMPATIBILITY_MODE
+                bool "TLS 1.3 middlebox compatibility mode"
+                default y
+
+            config MBEDTLS_SSL_TLS1_3_KEXM_PSK
+                bool "TLS 1.3 PSK key exchange mode"
+                default y
+
+            config MBEDTLS_SSL_TLS1_3_KEXM_EPHEMERAL
+                bool "TLS 1.3 ephemeral key exchange mode"
+                default y
+
+            config MBEDTLS_SSL_TLS1_3_KEXM_PSK_EPHEMERAL
+                bool "TLS 1.3 PSK ephemeral key exchange mode"
+                default y
+
+        endmenu
+
+        config MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH
+            bool "Variable SSL buffer length"
+            default n
+            help
+                This enables the SSL buffer to be resized automatically
+                based on the negotiated maximum fragment length in each direction.
+
+        config MBEDTLS_ECDH_LEGACY_CONTEXT
+            bool "Use a backward compatible ECDH context (Experimental)"
+            default n
+            depends on MBEDTLS_ECDH_C && MBEDTLS_ECP_RESTARTABLE
+            help
+                Use the legacy ECDH context format.
+                Define this option only if you enable MBEDTLS_ECP_RESTARTABLE or if you
+                want to access ECDH context fields directly.
+
+        config MBEDTLS_X509_TRUSTED_CERT_CALLBACK
+            bool "Enable trusted certificate callbacks"
+            default n
+            help
+                Enables users to configure the set of trusted certificates
+                through a callback instead of a linked list.
+
+                See mbedTLS documentation for required API and more details.
+
+        config MBEDTLS_SSL_CONTEXT_SERIALIZATION
+            bool "Enable serialization of the TLS context structures"
+            default n
+            depends on MBEDTLS_GCM_C || MBEDTLS_CCM_C || MBEDTLS_CHACHAPOLY_C
+            help
+                Enable serialization of the TLS context structures
+                This is a local optimization in handling a single, potentially long-lived connection.
+
+                See mbedTLS documentation for required API and more details.
+                Disabling this option will save some code size.
+
+        config MBEDTLS_SSL_KEEP_PEER_CERTIFICATE
+            bool "Keep peer certificate after handshake completion"
+            default y
+            depends on !MBEDTLS_DYNAMIC_FREE_PEER_CERT
+            help
+                Keep the peer's certificate after completion of the handshake.
+                Disabling this option will save about 4kB of heap and some code size.
+
+                See mbedTLS documentation for required API and more details.
+
+        config MBEDTLS_PKCS7_C
+            bool "Enable PKCS #7"
+            default y
+            depends on MBEDTLS_X509_CRL_PARSE_C
+            help
+                Enable PKCS #7 core for using PKCS #7-formatted signatures.
+
+        menu "DTLS-based configurations"
+            depends on MBEDTLS_SSL_PROTO_DTLS
+
+            config MBEDTLS_SSL_DTLS_CONNECTION_ID
+                bool "Support for the DTLS Connection ID extension"
+                default n
+                help
+                    Enable support for the DTLS Connection ID extension which allows to
+                    identify DTLS connections across changes in the underlying transport.
+
+            config MBEDTLS_SSL_CID_IN_LEN_MAX
+                int "Maximum length of CIDs used for incoming DTLS messages"
+                default 32
+                range 0 32
+                depends on MBEDTLS_SSL_DTLS_CONNECTION_ID
+                help
+                    Maximum length of CIDs used for incoming DTLS messages
+
+            config MBEDTLS_SSL_CID_OUT_LEN_MAX
+                int "Maximum length of CIDs used for outgoing DTLS messages"
+                default 32
+                range 0 32
+                depends on MBEDTLS_SSL_DTLS_CONNECTION_ID
+                help
+                    Maximum length of CIDs used for outgoing DTLS messages
+
+            config MBEDTLS_SSL_CID_PADDING_GRANULARITY
+                int "Record plaintext padding (for DTLS 1.2)"
+                default 16
+                range 0 32
+                depends on MBEDTLS_SSL_DTLS_CONNECTION_ID
+                help
+                    Controls the use of record plaintext padding when
+                    using the Connection ID extension in DTLS 1.2.
+
+                    The padding will always be chosen so that the length of the
+                    padded plaintext is a multiple of the value of this option.
+
+                    Notes:
+                        A value of 1 means that no padding will be used for outgoing records.
+                        On systems lacking division instructions, a power of two should be preferred.
+
+            config MBEDTLS_SSL_DTLS_SRTP
+                bool "Enable support for negotiation of DTLS-SRTP (RFC 5764)"
+                default n
+                help
+                    Enable support for negotiation of DTLS-SRTP (RFC 5764) through the use_srtp extension.
+
+                    See mbedTLS documentation for required API and more details.
+                    Disabling this option will save some code size.
+
+        endmenu
+
+    endmenu
 
     menu "Certificate Bundle"
 
@@ -216,14 +347,18 @@ menu "mbedTLS"
             help
                 Name of the custom certificate directory or file. This path is evaluated
                 relative to the project root directory.
+
+        config MBEDTLS_CERTIFICATE_BUNDLE_MAX_CERTS
+            int "Maximum no of certificates allowed in certificate bundle"
+            default 200
+            depends on MBEDTLS_CERTIFICATE_BUNDLE
+
     endmenu
-
-
-
-
 
     config MBEDTLS_ECP_RESTARTABLE
         bool "Enable mbedTLS ecp restartable"
+        select MBEDTLS_ECDH_LEGACY_CONTEXT
+        depends on MBEDTLS_ECP_C
         default n
         help
             Enable "non-blocking" ECC operations that can return early and be resumed.
@@ -231,6 +366,7 @@ menu "mbedTLS"
     config MBEDTLS_CMAC_C
         bool "Enable CMAC mode for block ciphers"
         default n
+        depends on MBEDTLS_AES_C || MBEDTLS_DES_C
         help
             Enable the CMAC (Cipher-based Message Authentication Code) mode for
             block ciphers.
@@ -238,7 +374,7 @@ menu "mbedTLS"
     config MBEDTLS_HARDWARE_AES
         bool "Enable hardware AES acceleration"
         default y
-        depends on !SPIRAM_CACHE_WORKAROUND_STRATEGY_DUPLDST
+        depends on !SPIRAM_CACHE_WORKAROUND_STRATEGY_DUPLDST && SOC_AES_SUPPORTED
         help
             Enable hardware accelerated AES encryption & decryption.
 
@@ -247,7 +383,7 @@ menu "mbedTLS"
 
     config MBEDTLS_AES_USE_INTERRUPT
         bool "Use interrupt for long AES operations"
-        depends on IDF_TARGET_ESP32S2 && MBEDTLS_HARDWARE_AES
+        depends on !IDF_TARGET_ESP32 && MBEDTLS_HARDWARE_AES
         default y
         help
             Use an interrupt to coordinate long AES operations.
@@ -257,7 +393,7 @@ menu "mbedTLS"
 
     config MBEDTLS_HARDWARE_GCM
         bool "Enable partially hardware accelerated GCM"
-        depends on IDF_TARGET_ESP32S2 && MBEDTLS_HARDWARE_AES
+        depends on SOC_AES_SUPPORT_GCM && MBEDTLS_HARDWARE_AES
         default y
         help
             Enable partially hardware accelerated GCM. GHASH calculation is still done
@@ -270,19 +406,29 @@ menu "mbedTLS"
     config MBEDTLS_HARDWARE_MPI
         bool "Enable hardware MPI (bignum) acceleration"
         default y
-        depends on !SPIRAM_CACHE_WORKAROUND_STRATEGY_DUPLDST
+        depends on !SPIRAM_CACHE_WORKAROUND_STRATEGY_DUPLDST && SOC_MPI_SUPPORTED
         help
             Enable hardware accelerated multiple precision integer operations.
 
             Hardware accelerated multiplication, modulo multiplication,
-            and modular exponentiation for up to 4096 bit results.
+            and modular exponentiation for up to SOC_RSA_MAX_BIT_LEN bit results.
 
             These operations are used by RSA.
+
+    config MBEDTLS_MPI_USE_INTERRUPT
+        bool "Use interrupt for MPI exp-mod operations"
+        depends on !IDF_TARGET_ESP32 && MBEDTLS_HARDWARE_MPI
+        default y
+        help
+            Use an interrupt to coordinate long MPI operations.
+
+            This allows other code to run on the CPU while an MPI operation is pending.
+            Otherwise the CPU busy-waits.
 
     config MBEDTLS_HARDWARE_SHA
         bool "Enable hardware SHA acceleration"
         default y
-        depends on !SPIRAM_CACHE_WORKAROUND_STRATEGY_DUPLDST
+        depends on !SPIRAM_CACHE_WORKAROUND_STRATEGY_DUPLDST && SOC_SHA_SUPPORTED
         help
             Enable hardware accelerated SHA1, SHA256, SHA384 & SHA512 in mbedTLS.
 
@@ -294,6 +440,51 @@ menu "mbedTLS"
 
             SHA hardware acceleration is faster than software in some situations but
             slower in others. You should benchmark to find the best setting for you.
+
+    config MBEDTLS_HARDWARE_ECC
+        bool "Enable hardware ECC acceleration"
+        default y
+        depends on SOC_ECC_SUPPORTED
+        help
+            Enable hardware accelerated ECC point multiplication and point verification for points
+            on curve SECP192R1 and SECP256R1 in mbedTLS
+
+    config MBEDTLS_ECC_OTHER_CURVES_SOFT_FALLBACK
+        bool "Fallback to software implementation for curves not supported in hardware"
+        depends on MBEDTLS_HARDWARE_ECC
+        default y
+        help
+            Fallback to software implementation of ECC point multiplication and point verification
+            for curves not supported in hardware.
+
+    config MBEDTLS_ROM_MD5
+        bool "Use MD5 implementation in ROM"
+        default y
+        help
+            Use ROM MD5 in mbedTLS.
+
+    config MBEDTLS_HARDWARE_ECDSA_SIGN
+        bool "Enable ECDSA signing using on-chip ECDSA peripheral"
+        default n
+        depends on SOC_ECDSA_SUPPORTED
+        help
+            Enable hardware accelerated ECDSA peripheral to sign data
+            on curve SECP192R1 and SECP256R1 in mbedTLS.
+
+            Note that for signing, the private key has to be burnt in an efuse key block
+            with key purpose set to ECDSA_KEY.
+            If no key is burnt, it will report an error
+
+            The key should be burnt in little endian format. espefuse.py utility handles it internally
+            but care needs to be taken while burning using esp_efuse APIs
+
+    config MBEDTLS_HARDWARE_ECDSA_VERIFY
+        bool "Enable ECDSA signature verification using on-chip ECDSA peripheral"
+        default y
+        depends on SOC_ECDSA_SUPPORTED
+        help
+            Enable hardware accelerated ECDSA peripheral to verify signature
+            on curve SECP192R1 and SECP256R1 in mbedTLS.
 
     config MBEDTLS_ATCA_HW_ECDSA_SIGN
         bool "Enable hardware ECDSA sign acceleration when using ATECC608A"
@@ -310,24 +501,57 @@ menu "mbedTLS"
             when using ATECC608A cryptoauth chip (integrated with ESP32-WROOM-32SE)
 
     config MBEDTLS_HAVE_TIME
-        bool "Enable mbedtls time"
-        depends on !ESP32_TIME_SYSCALL_USE_NONE
+        bool "Enable mbedtls time support"
+        depends on !ESP_TIME_FUNCS_USE_NONE
         default y
         help
-            System has time.h and time().
-            The time does not need to be correct, only time differences are used.
+            Enable use of time.h functions (time() and gmtime()) by mbedTLS.
+
+            This option doesn't require the system time to be correct, but enables
+            functionality that requires relative timekeeping - for example periodic
+            expiry of TLS session tickets or session cache entries.
+
+            Disabling this option will save some firmware size, particularly if
+            the rest of the firmware doesn't call any standard timekeeeping
+            functions.
+
+    config MBEDTLS_PLATFORM_TIME_ALT
+        bool "Enable mbedtls time support: platform-specific"
+        depends on MBEDTLS_HAVE_TIME
+        default n
+        help
+            Enabling this config will provide users with a function
+            "mbedtls_platform_set_time()" that allows to set an alternative
+            time function pointer.
 
     config MBEDTLS_HAVE_TIME_DATE
         bool "Enable mbedtls certificate expiry check"
         depends on MBEDTLS_HAVE_TIME
         default n
         help
-            System has time.h and time(), gmtime() and the clock is correct.
-            The time needs to be correct (not necesarily very accurate, but at least
-            the date should be correct). This is used to verify the validity period of
-            X.509 certificates.
+            Enables X.509 certificate expiry checks in mbedTLS.
 
-            It is suggested that you should get the real time by "SNTP".
+            If this option is disabled (default) then X.509 certificate
+            "valid from" and "valid to" timestamp fields are ignored.
+
+            If this option is enabled, these fields are compared with the
+            current system date and time. The time is retrieved using the
+            standard time() and gmtime() functions. If the certificate is not
+            valid for the current system time then verification will fail with
+            code MBEDTLS_X509_BADCERT_FUTURE or MBEDTLS_X509_BADCERT_EXPIRED.
+
+            Enabling this option requires adding functionality in the firmware
+            to set the system clock to a valid timestamp before using TLS. The
+            recommended way to do this is via ESP-IDF's SNTP functionality, but
+            any method can be used.
+
+            In the case where only a small number of certificates are trusted by
+            the device, please carefully consider the tradeoffs of enabling this
+            option. There may be undesired consequences, for example if all
+            trusted certificates expire while the device is offline and a TLS
+            connection is required to update. Or if an issue with the SNTP
+            server means that the system time is invalid for an extended period
+            after a reset.
 
     config MBEDTLS_ECDSA_DETERMINISTIC
         bool "Enable deterministic ECDSA"
@@ -395,7 +619,7 @@ menu "mbedTLS"
 
         config MBEDTLS_KEY_EXCHANGE_DHE_PSK
             bool "Enable DHE-PSK based ciphersuite modes"
-            depends on MBEDTLS_PSK_MODES
+            depends on MBEDTLS_PSK_MODES && MBEDTLS_DHM_C
             default y
             help
                 Enable to support Diffie-Hellman PSK (pre-shared-key) TLS authentication modes.
@@ -423,6 +647,7 @@ menu "mbedTLS"
         config MBEDTLS_KEY_EXCHANGE_DHE_RSA
             bool "Enable DHE-RSA based ciphersuite modes"
             default y
+            depends on MBEDTLS_DHM_C
             help
                 Enable to support ciphersuites with prefix TLS-DHE-RSA-WITH-
 
@@ -484,35 +709,23 @@ menu "mbedTLS"
             If you don't need renegotiation, disabling it will save code size and
             reduce the possibility of abuse/vulnerability.
 
-    config MBEDTLS_SSL_PROTO_SSL3
-        bool "Legacy SSL 3.0 support"
-        depends on MBEDTLS_TLS_ENABLED
-        default n
-        help
-            Support the legacy SSL 3.0 protocol. Most servers will speak a newer
-            TLS protocol these days.
-
-    config MBEDTLS_SSL_PROTO_TLS1
-        bool "Support TLS 1.0 protocol"
-        depends on MBEDTLS_TLS_ENABLED
-        default y
-
-    config MBEDTLS_SSL_PROTO_TLS1_1
-        bool "Support TLS 1.1 protocol"
-        depends on MBEDTLS_TLS_ENABLED
-        default y
-
     config MBEDTLS_SSL_PROTO_TLS1_2
         bool "Support TLS 1.2 protocol"
         depends on MBEDTLS_TLS_ENABLED
         default y
 
+    config MBEDTLS_SSL_PROTO_GMTSSL1_1
+        bool "Support GM/T SSL 1.1 protocol"
+        depends on MBEDTLS_TLS_ENABLED
+        default n
+        help
+            Provisions for GM/T SSL 1.1 support
+
     config MBEDTLS_SSL_PROTO_DTLS
         bool "Support DTLS protocol (all versions)"
         default n
-        depends on MBEDTLS_SSL_PROTO_TLS1_1 || MBEDTLS_SSL_PROTO_TLS1_2
+        depends on MBEDTLS_SSL_PROTO_TLS1_2
         help
-            Requires TLS 1.1 to be enabled for DTLS 1.0
             Requires TLS 1.2 to be enabled for DTLS 1.2
 
     config MBEDTLS_SSL_ALPN
@@ -533,7 +746,7 @@ menu "mbedTLS"
     config MBEDTLS_SERVER_SSL_SESSION_TICKETS
         bool "TLS: Server Support for RFC 5077 SSL session tickets"
         default y
-        depends on MBEDTLS_TLS_ENABLED
+        depends on MBEDTLS_TLS_ENABLED && (MBEDTLS_GCM_C || MBEDTLS_CCM_C || MBEDTLS_CHACHAPOLY_C)
         help
             Server support for RFC 5077 session tickets. See mbedTLS documentation for more details.
             Disabling this option will save some code size.
@@ -556,23 +769,6 @@ menu "mbedTLS"
 
                 3DES is vulnerable to the Sweet32 attack and should only be enabled
                 if absolutely necessary.
-
-        choice MBEDTLS_RC4_MODE
-            prompt "RC4 Stream Cipher (legacy, insecure)"
-            default MBEDTLS_RC4_DISABLED
-            help
-                    ARCFOUR (RC4) stream cipher can be disabled entirely, enabled but not
-                    added to default ciphersuites, or enabled completely.
-
-                    Please consider the security implications before enabling RC4.
-
-                config MBEDTLS_RC4_DISABLED
-                    bool "Disabled"
-                config MBEDTLS_RC4_ENABLED_NO_DEFAULT
-                    bool "Enabled, not in default ciphersuites"
-                config MBEDTLS_RC4_ENABLED
-                    bool "Enabled"
-        endchoice
 
         config MBEDTLS_BLOWFISH_C
             bool "Blowfish block cipher (read help)"
@@ -608,6 +804,13 @@ menu "mbedTLS"
                     Enable Galois/Counter Mode for AES and/or Camellia ciphers.
 
                     This option is generally faster than CCM.
+
+        config MBEDTLS_NIST_KW_C
+            bool "NIST key wrapping (KW) and KW padding (KWP)"
+            default n
+            depends on MBEDTLS_AES_C
+            help
+                    Enable NIST key wrapping and key wrapping padding.
 
     endmenu # Symmetric Ciphers
 
@@ -654,6 +857,16 @@ menu "mbedTLS"
     menuconfig MBEDTLS_ECP_C
         bool  "Elliptic Curve Ciphers"
         default y
+
+    config MBEDTLS_DHM_C
+        bool "Diffie-Hellman-Merkle key exchange (DHM)"
+        default n
+        help
+            Enable DHM. Needed to use DHE-xxx TLS ciphersuites.
+
+            Note that the security of Diffie-Hellman key exchanges depends on
+            a suitable prime being used for the exchange. Please see detailed
+            warning text about this in file `mbedtls/dhm.h` file.
 
     config MBEDTLS_ECDH_C
         bool "Elliptic Curve Diffie-Hellman (ECDH)"
@@ -769,6 +982,16 @@ menu "mbedTLS"
 
             Disabling this option saves some code size.
 
+    config MBEDTLS_ECP_FIXED_POINT_OPTIM
+        bool "Enable fixed-point multiplication optimisations"
+        depends on MBEDTLS_ECP_C
+        default y
+        help
+            This configuration option enables optimizations to speedup (about 3 ~ 4 times) the ECP
+            fixed point multiplication using pre-computed tables in the flash memory.
+            Disabling this configuration option saves flash footprint (about 29KB if all Elliptic Curve selected)
+            in the application binary.
+
             # end of Elliptic Curve options
 
     config MBEDTLS_POLY1305_C
@@ -818,16 +1041,15 @@ menu "mbedTLS"
         help
             Enable the pthread wrapper layer for the threading layer.
 
-    menuconfig MBEDTLS_SECURITY_RISKS
-        bool "Show configurations with potential security risks"
-        default n
-
-    config MBEDTLS_ALLOW_UNSUPPORTED_CRITICAL_EXT
-        bool "X.509 CRT parsing with unsupported critical extensions"
-        depends on MBEDTLS_SECURITY_RISKS
+    config MBEDTLS_LARGE_KEY_SOFTWARE_MPI
+        bool "Fallback to software implementation for larger MPI values"
+        depends on MBEDTLS_HARDWARE_MPI
+        default y if SOC_RSA_MAX_BIT_LEN <= 3072 # HW max 3072 bits
         default n
         help
-            Allow the X.509 certificate parser to load certificates
-            with unsupported critical extensions
+            Fallback to software implementation for RSA key lengths
+            larger than SOC_RSA_MAX_BIT_LEN. If this is not active
+            then the ESP will be unable to process keys greater
+            than SOC_RSA_MAX_BIT_LEN.
 
 endmenu  # mbedTLS

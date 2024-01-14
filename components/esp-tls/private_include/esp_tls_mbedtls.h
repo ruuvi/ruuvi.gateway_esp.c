@@ -1,19 +1,12 @@
-// Copyright 2019 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2019-2021 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #pragma once
 #include "esp_tls.h"
+#include "esp_tls_private.h"
 
 /**
  * Internal Callback API for mbedtls_ssl_read
@@ -55,6 +48,19 @@ ssize_t esp_mbedtls_get_bytes_avail(esp_tls_t *tls);
  */
 esp_err_t esp_create_mbedtls_handle(const char *hostname, size_t hostlen, const void *cfg, esp_tls_t *tls);
 
+/**
+ * mbedTLS function for Initializing socket wrappers
+ */
+static inline void esp_mbedtls_net_init(esp_tls_t *tls)
+{
+    mbedtls_net_init(&tls->server_fd);
+}
+
+/**
+ * Return ssl context for mbedTLS stack
+ */
+void *esp_mbedtls_get_ssl_context(esp_tls_t *tls);
+
 #ifdef CONFIG_ESP_TLS_SERVER
 /**
  * Internal Callback for set_server_config
@@ -76,12 +82,40 @@ int esp_mbedtls_server_session_create(esp_tls_cfg_server_t *cfg, int sockfd, esp
  * /note :- The function can only be used with mbedtls ssl library
  */
 void esp_mbedtls_server_session_delete(esp_tls_t *tls);
+
+#ifdef CONFIG_ESP_TLS_SERVER_SESSION_TICKETS
+/**
+ * Internal function to setup server side session ticket context
+ *
+ * /note :- The function can only be used with mbedtls ssl library
+ */
+esp_err_t esp_mbedtls_server_session_ticket_ctx_init(esp_tls_server_session_ticket_ctx_t *cfg);
+
+/**
+ * Internal function to free server side session ticket context
+ *
+ * /note :- The function can only be used with mbedtls ssl library
+ */
+void esp_mbedtls_server_session_ticket_ctx_free(esp_tls_server_session_ticket_ctx_t *cfg);
+#endif
 #endif
 
 /**
  * Internal Callback for set_client_config_function
  */
 esp_err_t set_client_config(const char *hostname, size_t hostlen, esp_tls_cfg_t *cfg, esp_tls_t *tls);
+
+#ifdef CONFIG_ESP_TLS_CLIENT_SESSION_TICKETS
+/**
+ * Internal Callback for mbedtls_get_client_session
+ */
+esp_tls_client_session_t *esp_mbedtls_get_client_session(esp_tls_t *tls);
+
+/**
+ * Internal Callback for mbedtls_free_client_session
+ */
+void esp_mbedtls_free_client_session(esp_tls_client_session_t *client_session);
+#endif
 
 /**
  * Internal Callback for mbedtls_init_global_ca_store

@@ -23,15 +23,53 @@
 #ifndef _SHA1_ALT_H_
 #define _SHA1_ALT_H_
 
+#if defined(MBEDTLS_SHA1_ALT)
+
+#include "hal/sha_types.h"
+#include "soc/soc_caps.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#if defined(MBEDTLS_SHA1_ALT)
+#if SOC_SHA_SUPPORT_PARALLEL_ENG
 
-#if CONFIG_IDF_TARGET_ESP32S2
+typedef enum {
+    ESP_MBEDTLS_SHA1_UNUSED, /* first block hasn't been processed yet */
+    ESP_MBEDTLS_SHA1_HARDWARE, /* using hardware SHA engine */
+    ESP_MBEDTLS_SHA1_SOFTWARE, /* using software SHA */
+} esp_mbedtls_sha1_mode;
 
-#include "esp32s2/sha.h"
+/**
+ * \brief          SHA-1 context structure
+ */
+typedef struct {
+    uint32_t total[2];          /*!< number of bytes processed  */
+    uint32_t state[5];          /*!< intermediate digest state  */
+    unsigned char buffer[64];   /*!< data block being processed */
+    esp_mbedtls_sha1_mode mode;
+} mbedtls_sha1_context;
+
+/**
+ * \brief          Set the SHA-1 mode for a mbedtls_sha1_context.
+ *
+ * \param ctx      The SHA-1 context structure.
+ * \param mode     The SHA-1 mode to be set. It can be one of the following:
+ *                  - ESP_MBEDTLS_SHA1_UNUSED: Indicates that the first block hasn't been processed yet.
+ *                  - ESP_MBEDTLS_SHA1_HARDWARE: Specifies the use of hardware SHA engine for SHA-1 calculations.
+ *                  - ESP_MBEDTLS_SHA1_SOFTWARE: Specifies the use of software-based SHA-1 calculations.
+ *
+ * \return         None.
+ */
+static inline void esp_mbedtls_set_sha1_mode(mbedtls_sha1_context *ctx, esp_mbedtls_sha1_mode mode)
+{
+    if (ctx) {
+        ctx->mode = mode;
+    }
+}
+
+#elif SOC_SHA_SUPPORT_DMA || SOC_SHA_SUPPORT_RESUME
+
 typedef enum {
     ESP_SHA1_STATE_INIT,
     ESP_SHA1_STATE_IN_PROCESS
@@ -49,28 +87,7 @@ typedef struct {
     esp_sha1_state sha_state;
 } mbedtls_sha1_context;
 
-#endif //CONFIG_IDF_TARGET_ESP32S2
-
-#if CONFIG_IDF_TARGET_ESP32
-
-typedef enum {
-    ESP_MBEDTLS_SHA1_UNUSED, /* first block hasn't been processed yet */
-    ESP_MBEDTLS_SHA1_HARDWARE, /* using hardware SHA engine */
-    ESP_MBEDTLS_SHA1_SOFTWARE, /* using software SHA */
-} esp_mbedtls_sha1_mode;
-
-/**
- * \brief          SHA-1 context structure
- */
-typedef struct {
-    uint32_t total[2];          /*!< number of bytes processed  */
-    uint32_t state[5];          /*!< intermediate digest state  */
-    unsigned char buffer[64];   /*!< data block being processed */
-    esp_mbedtls_sha1_mode mode;
-}
-mbedtls_sha1_context;
-
-#endif //CONFIG_IDF_TARGET_ESP32
+#endif
 
 #endif
 
@@ -79,4 +96,3 @@ mbedtls_sha1_context;
 #endif
 
 #endif
-

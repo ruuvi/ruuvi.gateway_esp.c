@@ -1,28 +1,16 @@
-/**
- * \brief  Multi-precision integer library, ESP-IDF hardware accelerated parts
+/*
+ * Multi-precision integer library
+ * ESP32 hardware accelerated parts based on mbedTLS implementation
  *
- *  based on mbedTLS implementation
+ * SPDX-FileCopyrightText: The Mbed TLS Contributors
  *
- *  Copyright (C) 2006-2015, ARM Limited, All Rights Reserved
- *  Additions Copyright (C) 2016-2020, Espressif Systems (Shanghai) PTE Ltd
- *  SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: Apache-2.0
  *
- *  Licensed under the Apache License, Version 2.0 (the "License"); you may
- *  not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *  http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- *
+ * SPDX-FileContributor: 2016-2022 Espressif Systems (Shanghai) CO LTD
  */
-
 #include "soc/hwcrypto_periph.h"
-#include "driver/periph_ctrl.h"
+#include "soc/dport_reg.h"
+#include "esp_private/periph_ctrl.h"
 #include <mbedtls/bignum.h>
 #include "bignum_impl.h"
 #include <sys/param.h>
@@ -63,26 +51,56 @@ void esp_mpi_disable_hardware_hw_op( void )
 }
 
 
+void esp_mpi_interrupt_enable( bool enable )
+{
+    DPORT_REG_WRITE(RSA_INTERRUPT_REG, enable);
+}
+
+void esp_mpi_interrupt_clear( void )
+{
+    DPORT_REG_WRITE(RSA_CLEAR_INTERRUPT_REG, 1);
+}
+
 /* Copy mbedTLS MPI bignum 'mpi' to hardware memory block at 'mem_base'.
 
    If hw_words is higher than the number of words in the bignum then
    these additional words will be zeroed in the memory buffer.
 
 */
+
+/* Please see detailed note inside the function body below.
+ * Relevant: IDF-6029
+             https://github.com/espressif/esp-idf/issues/8710
+             https://github.com/espressif/esp-idf/issues/10403
+ */
 static inline void mpi_to_mem_block(uint32_t mem_base, const mbedtls_mpi *mpi, size_t hw_words)
 {
-    uint32_t *pbase = (uint32_t *)mem_base;
-    uint32_t copy_words = MIN(hw_words, mpi->n);
+    uint32_t copy_words = MIN(hw_words, mpi->MBEDTLS_PRIVATE(n));
 
     /* Copy MPI data to memory block registers */
-    for (int i = 0; i < copy_words; i++) {
-        pbase[i] = mpi->p[i];
+    for (uint32_t i = 0; i < copy_words; i++) {
+        DPORT_REG_WRITE(mem_base + i * 4, mpi->MBEDTLS_PRIVATE(p[i]));
     }
 
     /* Zero any remaining memory block data */
-    for (int i = copy_words; i < hw_words; i++) {
-        pbase[i] = 0;
+    for (uint32_t i = copy_words; i < hw_words; i++) {
+        DPORT_REG_WRITE(mem_base + i * 4, 0);
     }
+
+#if _INTERNAL_DEBUG_PURPOSE
+    /*
+     * With Xtensa GCC 11.2.0 (from ESP-IDF v5.x), it was observed that above zero initialization
+     * loop gets optimized to `memset` call from the ROM library. This was causing an issue that
+     * specific write (store) operation to the MPI peripheral block was getting lost erroneously.
+     * Following data re-verify loop could catch it during runtime.
+     *
+     * As a workaround, we are using DPORT_WRITE_REG (volatile writes) wrappers to write to
+     * the MPI peripheral.
+     *
+     */
+
+    //for (uint32_t i = copy_words; i < hw_words; i++) { assert(pbase[i] == 0); }
+#endif
 }
 
 /* Read mbedTLS MPI bignum back from hardware memory block.
@@ -92,17 +110,17 @@ static inline void mpi_to_mem_block(uint32_t mem_base, const mbedtls_mpi *mpi, s
    Bignum 'x' should already be grown to at least num_words by caller (can be done while
    calculation is in progress, to save some cycles)
 */
-static inline void mem_block_to_mpi(mbedtls_mpi *x, uint32_t mem_base, int num_words)
+static inline void mem_block_to_mpi(mbedtls_mpi *x, uint32_t mem_base, size_t num_words)
 {
-    assert(x->n >= num_words);
+    assert(x->MBEDTLS_PRIVATE(n) >= num_words);
 
     /* Copy data from memory block registers */
-    esp_dport_access_read_buffer(x->p, mem_base, num_words);
+    esp_dport_access_read_buffer(x->MBEDTLS_PRIVATE(p), mem_base, num_words);
 
     /* Zero any remaining limbs in the bignum, if the buffer is bigger
        than num_words */
-    for (size_t i = num_words; i < x->n; i++) {
-        x->p[i] = 0;
+    for (size_t i = num_words; i < x->MBEDTLS_PRIVATE(n); i++) {
+        x->MBEDTLS_PRIVATE(p[i]) = 0;
     }
 }
 
@@ -204,7 +222,7 @@ int esp_mont_hw_op(mbedtls_mpi *Z, const mbedtls_mpi *X, const mbedtls_mpi *Y, c
     mpi_to_mem_block(RSA_MEM_RB_BLOCK_BASE, Y, hw_words);
 
     start_op(RSA_MULT_START_REG);
-    Z->s = 1; // The sign of Z will be = M->s (but M->s is always 1)
+    Z->MBEDTLS_PRIVATE(s) = 1; // The sign of Z will be = M->s (but M->s is always 1)
     MBEDTLS_MPI_CHK( mbedtls_mpi_grow(Z, hw_words) );
 
     wait_op_complete();
@@ -245,7 +263,7 @@ void esp_mpi_mult_mpi_failover_mod_mult_hw_op(const mbedtls_mpi *X, const mbedtl
     size_t hw_words = num_words;
 
     /* M = 2^num_words - 1, so block is entirely FF */
-    for (int i = 0; i < hw_words; i++) {
+    for (size_t i = 0; i < hw_words; i++) {
         DPORT_REG_WRITE(RSA_MEM_M_BLOCK_BASE + i * 4, UINT32_MAX);
     }
     /* Mprime = 1 */
@@ -261,7 +279,7 @@ void esp_mpi_mult_mpi_failover_mod_mult_hw_op(const mbedtls_mpi *X, const mbedtl
     DPORT_REG_WRITE(RSA_MEM_RB_BLOCK_BASE, 1);
 
     /* Zero out rest of the Rinv words */
-    for (int i = 1; i < hw_words; i++) {
+    for (size_t i = 1; i < hw_words; i++) {
         DPORT_REG_WRITE(RSA_MEM_RB_BLOCK_BASE + i * 4, 0);
     }
 

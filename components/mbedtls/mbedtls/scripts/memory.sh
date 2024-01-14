@@ -7,13 +7,7 @@
 # since for memory we want debug information.
 #
 # Copyright The Mbed TLS Contributors
-# SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
-#
-# This file is provided under the Apache License 2.0, or the
-# GNU General Public License v2.0 or later.
-#
-# **********
-# Apache License 2.0:
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License.
@@ -26,31 +20,10 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# **********
-#
-# **********
-# GNU General Public License v2.0 or later:
-#
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-#
-# **********
 
 set -eu
 
-CONFIG_H='include/mbedtls/config.h'
+CONFIG_H='include/mbedtls/mbedtls_config.h'
 
 CLIENT='mini_client'
 
@@ -73,7 +46,7 @@ if [ $( uname ) != Linux ]; then
 fi
 
 if git status | grep -F $CONFIG_H >/dev/null 2>&1; then
-    echo "config.h not clean" >&2
+    echo "mbedtls_config.h not clean" >&2
     exit 1
 fi
 
@@ -88,10 +61,10 @@ do_config()
     echo ""
     echo "config-$NAME:"
     cp configs/config-$NAME.h $CONFIG_H
-    scripts/config.pl unset MBEDTLS_SSL_SRV_C
+    scripts/config.py unset MBEDTLS_SSL_SRV_C
 
     for FLAG in $UNSET_LIST; do
-        scripts/config.pl unset $FLAG
+        scripts/config.py unset $FLAG
     done
 
     grep -F SSL_MAX_CONTENT_LEN $CONFIG_H || echo 'SSL_MAX_CONTENT_LEN=16384'
@@ -156,7 +129,7 @@ do_config   "ccm-psk-tls1_2" \
             "psk=000102030405060708090A0B0C0D0E0F"
 
 do_config   "suite-b" \
-            "MBEDTLS_BASE64_C MBEDTLS_PEM_PARSE_C MBEDTLS_CERTS_C" \
+            "MBEDTLS_BASE64_C MBEDTLS_PEM_PARSE_C" \
             ""
 
 # cleanup

@@ -8,28 +8,17 @@
 # The bundle will have the format: number of certificates; crt 1 subject name length; crt 1 public key length;
 # crt 1 subject name; crt 1 public key; crt 2...
 #
-# Copyright 2018-2019 Espressif Systems (Shanghai) PTE LTD
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http:#www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-FileCopyrightText: 2018-2022 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
 
 from __future__ import with_statement
 
-import os
-import sys
-import struct
 import argparse
 import csv
+import os
 import re
+import struct
+import sys
 from io import open
 
 try:
@@ -80,22 +69,22 @@ class CertificateBundle:
     def add_from_file(self, file_path):
         try:
             if file_path.endswith('.pem'):
-                status("Parsing certificates from %s" % file_path)
+                status('Parsing certificates from %s' % file_path)
                 with open(file_path, 'r', encoding='utf-8') as f:
                     crt_str = f.read()
                     self.add_from_pem(crt_str)
                     return True
 
             elif file_path.endswith('.der'):
-                status("Parsing certificates from %s" % file_path)
+                status('Parsing certificates from %s' % file_path)
                 with open(file_path, 'rb') as f:
                     crt_str = f.read()
                     self.add_from_der(crt_str)
                     return True
 
         except ValueError:
-            critical("Invalid certificate in %s" % file_path)
-            raise InputError("Invalid certificate")
+            critical('Invalid certificate in %s' % file_path)
+            raise InputError('Invalid certificate')
 
         return False
 
@@ -118,14 +107,14 @@ class CertificateBundle:
             if start is True:
                 crt += strg
 
-        if(count == 0):
-            raise InputError("No certificate found")
+        if count == 0:
+            raise InputError('No certificate found')
 
-        status("Successfully added %d certificates" % count)
+        status('Successfully added %d certificates' % count)
 
     def add_from_der(self, crt_str):
         self.certificates.append(x509.load_der_x509_certificate(crt_str, default_backend()))
-        status("Successfully added 1 certificate")
+        status('Successfully added 1 certificate')
 
     def create_bundle(self):
         # Sort certificates in order to do binary search when looking up certificates
@@ -162,7 +151,7 @@ class CertificateBundle:
             for row in csv_reader:
                 filter_set.add(row[1])
 
-        status("Parsing certificates from %s" % crts_path)
+        status('Parsing certificates from %s' % crts_path)
         crt_str = []
         with open(crts_path, 'r', encoding='utf-8') as f:
             crt_str = f.read()
@@ -202,14 +191,14 @@ def main():
 
     for path in args.input:
         if os.path.isfile(path):
-            if os.path.basename(path) == "cacrt_all.pem" and args.filter:
+            if os.path.basename(path) == 'cacrt_all.pem' and args.filter:
                 bundle.add_with_filter(path, args.filter)
             else:
                 bundle.add_from_file(path)
         elif os.path.isdir(path):
             bundle.add_from_path(path)
         else:
-            raise InputError("Invalid --input=%s, is neither file nor folder" % args.input)
+            raise InputError('Invalid --input=%s, is neither file nor folder' % args.input)
 
     status('Successfully added %d certificates in total' % len(bundle.certificates))
 
