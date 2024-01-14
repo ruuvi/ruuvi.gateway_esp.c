@@ -27,6 +27,7 @@
 #include "mbedtls/private_access.h"
 
 #include "mbedtls/build_info.h"
+#include "mbedtls/compat-2.x.h"
 
 #include <stddef.h>
 #include <stdint.h>

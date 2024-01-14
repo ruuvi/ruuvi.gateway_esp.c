@@ -352,6 +352,7 @@
  *
  * Uncomment this macro to enable restartable ECC computations.
  */
+#define CONFIG_MBEDTLS_ECP_RESTARTABLE 1
 #ifdef CONFIG_MBEDTLS_ECP_RESTARTABLE
 #define MBEDTLS_ECP_RESTARTABLE
 #endif
@@ -382,6 +383,7 @@
  *       library may modify the way the ECDH context layout is configured
  *       and may modify the layout of the new context type.
  */
+#define CONFIG_MBEDTLS_ECDH_LEGACY_CONTEXT 1
 #ifdef CONFIG_MBEDTLS_ECDH_LEGACY_CONTEXT
 #define MBEDTLS_ECDH_LEGACY_CONTEXT
 #endif
@@ -2998,6 +3000,6 @@
 
 /* This flag makes sure that we are not using
  * any functino that is deprecated by mbedtls */
-#define MBEDTLS_DEPRECATED_REMOVED
+//#define MBEDTLS_DEPRECATED_REMOVED
 
 #endif /* ESP_CONFIG_H */

@@ -3757,7 +3757,7 @@ static int ssl_session_load(mbedtls_ssl_session *session,
 
 #if defined(MBEDTLS_SSL_PROTO_TLS1_3)
         case MBEDTLS_SSL_VERSION_TLS1_3:
-            return ssl_tls13_session_load(session, p, remaining_len);
+            return ssl_tls13_session_load(session, (unsigned char *)p, remaining_len);
 #endif /* MBEDTLS_SSL_PROTO_TLS1_3 */
 
         default:

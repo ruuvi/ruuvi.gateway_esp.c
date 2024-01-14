@@ -24,6 +24,7 @@
 #define MBEDTLS_LIBRARY_COMMON_H
 
 #include "mbedtls/build_info.h"
+#include "mbedtls/mbedtls_config.h"
 #include "alignment.h"
 
 #include <assert.h>

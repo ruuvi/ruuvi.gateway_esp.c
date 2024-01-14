@@ -575,7 +575,13 @@ static int ssl_tls13_parse_pre_shared_key_ext(
 
         ret = ssl_tls13_offered_psks_check_identity_match(
             ssl, identity, identity_len, obfuscated_ticket_age,
-            &psk_type, &session);
+            &psk_type,
+#if defined(MBEDTLS_SSL_SESSION_TICKETS)
+            &session
+#else
+            NULL
+#endif
+            );
         if (ret != SSL_TLS1_3_OFFERED_PSK_MATCH) {
             continue;
         }
@@ -2716,6 +2722,7 @@ static int ssl_tls13_handshake_wrapup(mbedtls_ssl_context *ssl)
     return 0;
 }
 
+#if defined(MBEDTLS_SSL_SESSION_TICKETS)
 /*
  * Handler for MBEDTLS_SSL_TLS1_3_NEW_SESSION_TICKET
  */
@@ -2745,7 +2752,6 @@ static int ssl_tls13_write_new_session_ticket_coordinate(mbedtls_ssl_context *ss
     return SSL_NEW_SESSION_TICKET_WRITE;
 }
 
-#if defined(MBEDTLS_SSL_SESSION_TICKETS)
 MBEDTLS_CHECK_RETURN_CRITICAL
 static int ssl_tls13_prepare_new_session_ticket(mbedtls_ssl_context *ssl,
                                                 unsigned char *ticket_nonce,

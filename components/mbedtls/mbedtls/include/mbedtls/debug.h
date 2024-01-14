@@ -23,6 +23,7 @@
 #define MBEDTLS_DEBUG_H
 
 #include "mbedtls/build_info.h"
+#include "mbedtls/mbedtls_config.h"
 
 #include "mbedtls/ssl.h"
 

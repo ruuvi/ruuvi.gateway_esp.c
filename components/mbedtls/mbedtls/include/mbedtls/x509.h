@@ -24,6 +24,7 @@
 #include "mbedtls/private_access.h"
 
 #include "mbedtls/build_info.h"
+#include "mbedtls/platform_time.h"
 
 #include "mbedtls/asn1.h"
 #include "mbedtls/pk.h"

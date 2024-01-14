@@ -3546,7 +3546,7 @@
  *
  * Module:  library/timing.c
  */
-#define MBEDTLS_TIMING_C
+//#define MBEDTLS_TIMING_C
 
 /**
  * \def MBEDTLS_VERSION_C
