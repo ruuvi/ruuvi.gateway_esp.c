@@ -2,10 +2,10 @@ idf_build_get_property(idf_target IDF_TARGET)
 idf_build_get_property(python PYTHON)
 
 if(NOT ${IDF_TARGET} STREQUAL "linux")
-set(priv_requires soc esp_hw_support)
+set(priv_requires soc)
 
 if(NOT BOOTLOADER_BUILD)
-    list(APPEND priv_requires esp_pm)
+    list(APPEND priv_requires)
 endif()
 endif()
 
