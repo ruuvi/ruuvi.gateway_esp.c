@@ -15,6 +15,8 @@ set(EXTRA_COMPONENT_DIRS
         ${CMAKE_SOURCE_DIR}/components/ruuvi.comm_tester.c/components
 )
 
+set(EXCLUDE_COMPONENTS "nghttp2" "openssl" "libsodium" "coap" "protocomm" "freemodbus")
+
 include(ExternalProject)
 
 ExternalProject_Add(mkfatfs
