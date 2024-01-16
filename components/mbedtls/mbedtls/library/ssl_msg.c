@@ -5727,8 +5727,12 @@ int mbedtls_ssl_read(mbedtls_ssl_context *ssl, unsigned char *buf, size_t len)
         ret = mbedtls_ssl_handshake(ssl);
         if (ret != MBEDTLS_ERR_SSL_WAITING_SERVER_HELLO_RENEGO &&
             ret != 0) {
-            MBEDTLS_SSL_DEBUG_RET(1, "mbedtls_ssl_handshake", ret);
-            return ret;
+            if (ret == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET) {
+                MBEDTLS_SSL_DEBUG_MSG(1, ("mbedtls_ssl_handshake: received new session ticket - ignore it"));
+            } else {
+                MBEDTLS_SSL_DEBUG_RET(1, "mbedtls_ssl_handshake", ret);
+                return ret;
+            }
         }
     }
 
