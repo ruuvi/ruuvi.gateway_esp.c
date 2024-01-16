@@ -1,16 +1,8 @@
-// Copyright 2015-2018 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2015-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #ifndef _ESP_TRANSPORT_SSL_H_
 #define _ESP_TRANSPORT_SSL_H_
@@ -53,13 +45,21 @@ void esp_transport_ssl_set_cert_data(esp_transport_handle_t t, const char *data,
 void esp_transport_ssl_set_cert_data_der(esp_transport_handle_t t, const char *data, int len);
 
 /**
+ * @brief      Enable the use of certification bundle for server verfication for
+ *             an SSL connection.
+ *             It must be first enabled in menuconfig.
+ *
+ * @param      t    ssl transport
+ * @param[in]  crt_bundle_attach    Function pointer to esp_crt_bundle_attach
+ */
+void esp_transport_ssl_crt_bundle_attach(esp_transport_handle_t t, esp_err_t ((*crt_bundle_attach)(void *conf)));
+
+/**
  * @brief      Enable global CA store for SSL connection
  *
  * @param      t    ssl transport
  */
 void esp_transport_ssl_enable_global_ca_store(esp_transport_handle_t t);
-
-void esp_transport_ssl_crt_bundle_attach(esp_transport_handle_t t, esp_err_t (*crt_bundle_attach)(void *conf));
 
 /**
  * @brief      Set SSL client certificate data for mutual authentication (as PEM format).
@@ -135,6 +135,17 @@ void esp_transport_ssl_set_alpn_protocol(esp_transport_handle_t t, const char **
 void esp_transport_ssl_skip_common_name_check(esp_transport_handle_t t);
 
 /**
+ * @brief      Set the server certificate's common name field
+ *
+ * @note
+ *             If non-NULL, server certificate CN must match this name,
+ *             If NULL, server certificate CN must match hostname.
+ * @param      t             ssl transport
+ *             common_name   A string containing the common name to be set
+ */
+void esp_transport_ssl_set_common_name(esp_transport_handle_t t, const char *common_name);
+
+/**
  * @brief      Set the ssl context to use secure element (atecc608a) for client(device) private key and certificate
  *
  * @note       Recommended to be used with ESP32-WROOM-32SE (which has inbuilt ATECC608A a.k.a Secure Element)
@@ -143,14 +154,12 @@ void esp_transport_ssl_skip_common_name_check(esp_transport_handle_t t);
  */
 void esp_transport_ssl_use_secure_element(esp_transport_handle_t t);
 
-
 /**
  * @brief      Set the ds_data handle in ssl context.(used for the digital signature operation)
  *
  * @param      t        ssl transport
  *             ds_data  the handle for ds data params
  */
-
 void esp_transport_ssl_set_ds_data(esp_transport_handle_t t, void *ds_data);
 
 /**
@@ -174,6 +183,15 @@ void esp_transport_ssl_set_psk_key_hint(esp_transport_handle_t t, const psk_hint
  * @param[in]  keep_alive_cfg  The handle for keep-alive configuration
  */
 void esp_transport_ssl_set_keep_alive(esp_transport_handle_t t, esp_transport_keep_alive_t *keep_alive_cfg);
+
+/**
+ * @brief      Set name of interface that socket can be binded on
+ *             So the data can transport on this interface
+ *
+ * @param[in]  t        The transport handle
+ * @param[in]  if_name  The interface name
+ */
+void esp_transport_ssl_set_interface_name(esp_transport_handle_t t, struct ifreq *if_name);
 
 #ifdef __cplusplus
 }
