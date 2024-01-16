@@ -18,7 +18,6 @@
 #include "esp_tls_error_capture_internal.h"
 #include <errno.h>
 #include "esp_log.h"
-#include "esp_check.h"
 
 #ifdef CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
 #include "esp_crt_bundle.h"

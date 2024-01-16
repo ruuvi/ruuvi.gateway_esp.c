@@ -9,7 +9,7 @@ if(CONFIG_ESP_TLS_USING_WOLFSSL)
         "esp_tls_wolfssl.c")
 endif()
 
-set(priv_req ruuvi.esp_wrappers.c)
+set(priv_req nghttp ruuvi.esp_wrappers.c)
 if(NOT ${IDF_TARGET} STREQUAL "linux")
     list(APPEND priv_req lwip)
 endif()
