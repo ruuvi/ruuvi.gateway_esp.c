@@ -432,6 +432,9 @@ struct wpa_freq_range_list {
 };
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+#ifndef TEST_FAIL
+#define TEST_FAIL() 0
+#endif
 
 void wpa_bin_clear_free(void *bin, size_t len);
 int int_array_len(const int *a);
@@ -460,5 +463,6 @@ void * __hide_aliasing_typecast(void *foo);
 #endif /* CONFIG_VALGRIND */
 
 #define IANA_SECP256R1 19
-
+#define IANA_SECP384R1 20
+#define IANA_SECP521R1 21
 #endif /* COMMON_H */

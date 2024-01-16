@@ -29,7 +29,7 @@
 #include "crypto/crypto.h"
 
 #include "utils/ext_password.h"
-#include "tls/tls.h"
+#include "crypto/tls.h"
 #include "eap_peer/eap_i.h"
 #include "eap_peer/eap_config.h"
 #include "eap_peer/eap.h"
@@ -41,6 +41,10 @@
 
 #include "supplicant_opt.h"
 
+#ifdef CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
+bool g_wpa_default_cert_bundle;
+int (*esp_crt_bundle_attach_fn)(void *conf);
+#endif
 
 void eap_peer_config_deinit(struct eap_sm *sm);
 void eap_peer_blob_deinit(struct eap_sm *sm);

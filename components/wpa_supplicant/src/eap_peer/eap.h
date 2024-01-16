@@ -39,6 +39,9 @@ int g_wpa_password_len;
 u8 *g_wpa_new_password;
 int g_wpa_new_password_len;
 
+extern bool g_wpa_default_cert_bundle;
+extern int (*esp_crt_bundle_attach_fn)(void *conf);
+
 const u8 * eap_get_eapKeyData(struct eap_sm *sm, size_t *len);
 void eap_deinit_prev_method(struct eap_sm *sm, const char *txt);
 struct wpabuf * eap_sm_build_nak(struct eap_sm *sm, EapType type, u8 id);

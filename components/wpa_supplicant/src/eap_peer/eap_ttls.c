@@ -11,7 +11,7 @@
 #ifdef EAP_TTLS
 #include "utils/common.h"
 #include "crypto/sha1.h"
-#include "tls/tls.h"
+#include "crypto/tls.h"
 #include "eap_peer/eap.h"
 #include "eap_peer/eap_ttls.h"
 #include "eap_peer/mschapv2.h"

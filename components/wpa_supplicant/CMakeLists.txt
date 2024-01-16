@@ -11,6 +11,7 @@ set(srcs "port/os_xtensa.c"
     "src/crypto/sha256-kdf.c"
     "src/crypto/aes-cbc.c"
     "src/crypto/aes-ccm.c"
+    "src/crypto/aes-gcm.c"
     "src/crypto/aes-internal-dec.c"
     "src/crypto/aes-internal-enc.c"
     "src/crypto/aes-internal.c"
@@ -18,16 +19,15 @@ set(srcs "port/os_xtensa.c"
     "src/crypto/aes-unwrap.c"
     "src/crypto/aes-wrap.c"
     "src/crypto/aes-omac1.c"
-    "src/crypto/bignum.c"
     "src/crypto/ccmp.c"
-    "src/crypto/crypto_mbedtls.c"
-    "src/crypto/crypto_mbedtls-bignum.c"
-    "src/crypto/crypto_mbedtls-ec.c"
+#    "esp_supplicant/src/crypto/crypto_mbedtls.c"
+    "esp_supplicant/src/crypto/crypto_mbedtls-bignum.c"
+    "esp_supplicant/src/crypto/crypto_mbedtls-ec.c"
     "src/crypto/crypto_ops.c"
     "src/crypto/crypto_internal-cipher.c"
     "src/crypto/crypto_internal-modexp.c"
     "src/crypto/crypto_internal-rsa.c"
-    "src/crypto/crypto_mbedtls-rsa.c"
+    "esp_supplicant/src/crypto/crypto_mbedtls-rsa.c"
     "src/crypto/crypto_internal.c"
     "src/crypto/des-internal.c"
     "src/crypto/dh_group5.c"
@@ -46,6 +46,11 @@ set(srcs "port/os_xtensa.c"
     "src/crypto/sha256-tlsprf.c"
     "src/crypto/sha384-tlsprf.c"
     "src/crypto/sha256-prf.c"
+    "src/crypto/sha1-prf.c"
+    "src/crypto/sha384-prf.c"
+    "src/crypto/md4-internal.c"
+    "src/crypto/sha1-tprf.c"
+    "src/crypto/tls_internal.c"
     "src/eap_peer/chap.c"
     "src/eap_peer/eap.c"
     "src/eap_peer/eap_common.c"
@@ -82,9 +87,9 @@ set(srcs "port/os_xtensa.c"
     "src/wps/wps_registrar.c"
     "src/wps/wps_validate.c")
 
-if(CONFIG_WPA_MBEDTLS_CRYPTO)
-    set(tls_src "src/crypto/tls_mbedtls.c")
-else()
+#if(CONFIG_WPA_MBEDTLS_CRYPTO)
+#    set(tls_src "esp_supplicant/src/crypto/tls_mbedtls.c")
+#else()
     set(tls_src
     "src/tls/asn1.c"
     "src/tls/bignum.c"
@@ -92,8 +97,8 @@ else()
     "src/tls/pkcs5.c"
     "src/tls/pkcs8.c"
     "src/tls/rsa.c"
-    "src/tls/tls_internal.c"
     "src/tls/tlsv1_client.c"
+    "src/tls/tlsv1_client_ocsp.c"
     "src/tls/tlsv1_client_read.c"
     "src/tls/tlsv1_client_write.c"
     "src/tls/tlsv1_common.c"
@@ -104,11 +109,11 @@ else()
     "src/tls/tlsv1_server_write.c"
     "src/tls/x509v3.c"
     )
-endif()
+#endif()
 
 idf_component_register(SRCS "${srcs}" "${tls_src}"
                     INCLUDE_DIRS include port/include include/esp_supplicant
-                    PRIV_INCLUDE_DIRS src
+                    PRIV_INCLUDE_DIRS src src/utils esp_supplicant/src src/crypto
                     PRIV_REQUIRES mbedtls esp_timer)
 
 target_compile_options(${COMPONENT_LIB} PRIVATE -Wno-strict-aliasing)
@@ -135,6 +140,11 @@ target_compile_definitions(${COMPONENT_LIB} PRIVATE
 
 if(CONFIG_ESP32_WIFI_ENABLE_WPA3_SAE)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE CONFIG_WPA3_SAE)
+endif()
+if(CONFIG_ESP_WIFI_MBEDTLS_CRYPTO)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE CONFIG_CRYPTO_MBEDTLS)
+else()
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE CONFIG_CRYPTO_INTERNAL)
 endif()
 
 set_property(TARGET ${COMPONENT_LIB} APPEND PROPERTY LINK_INTERFACE_MULTIPLICITY 3)

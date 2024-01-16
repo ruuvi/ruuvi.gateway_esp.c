@@ -11,6 +11,8 @@
 #include "common.h"
 #include "bignum.h"
 
+#define CONFIG_INTERNAL_LIBTOMMATH
+
 #ifdef CONFIG_INTERNAL_LIBTOMMATH
 #include "libtommath.h"
 #else /* CONFIG_INTERNAL_LIBTOMMATH */

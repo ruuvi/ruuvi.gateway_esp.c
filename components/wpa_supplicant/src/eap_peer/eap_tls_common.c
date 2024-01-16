@@ -10,7 +10,7 @@
 
 #include "utils/common.h"
 #include "crypto/sha1.h"
-#include "tls/tls.h"
+#include "crypto/tls.h"
 #include "eap_peer/eap_i.h"
 #include "eap_peer/eap_tls_common.h"
 #include "eap_peer/eap_config.h"
@@ -79,6 +79,16 @@ static void eap_tls_params_from_conf1(struct tls_connection_params *params,
 		params->flags |= TLS_CONN_DISABLE_TIME_CHECKS;
 	else
 		params->flags &= (~TLS_CONN_DISABLE_TIME_CHECKS);
+
+	if (config->flags & TLS_CONN_SUITEB)
+		params->flags |= TLS_CONN_SUITEB;
+	else
+		params->flags &= (~TLS_CONN_SUITEB);
+
+	if (config->flags & TLS_CONN_USE_DEFAULT_CERT_BUNDLE)
+		params->flags |= TLS_CONN_USE_DEFAULT_CERT_BUNDLE;
+	else
+		params->flags &= (~TLS_CONN_USE_DEFAULT_CERT_BUNDLE);
 }
 
 static int eap_tls_params_from_conf(struct eap_sm *sm,
@@ -102,6 +112,10 @@ static int eap_tls_params_from_conf(struct eap_sm *sm,
 
 	wpa_printf(MSG_DEBUG, "TLS: using phase1 config options");
 	eap_tls_params_from_conf1(params, config);
+    if (data->eap_type == EAP_TYPE_FAST) {
+        wpa_printf(MSG_DEBUG, "EAP-TYPE == EAP-FAST #####################################");
+        params->flags |= TLS_CONN_EAP_FAST;
+    }
 
 	/*
 	 * Use blob data, if available. Otherwise, leave reference to external
@@ -254,7 +268,7 @@ u8 * eap_peer_tls_derive_key(struct eap_sm *sm, struct eap_ssl_data *data,
 	if (out == NULL)
 		return NULL;
 
-	if (tls_connection_export_key(data->ssl_ctx, data->conn, label, out,
+	if (tls_connection_export_key(data->ssl_ctx, data->conn, label, 0, 0, out,
 				len)) {
 		os_free(out);
 		return NULL;
@@ -523,7 +537,7 @@ static int eap_tls_process_output(struct eap_ssl_data *data, EapType eap_type,
 	if (*out_data == NULL) {
 	    printf("[Debug] out_data is null, return \n");
 		return -1;
-    } 
+    }
 
 	flags = wpabuf_put(*out_data, 1);
 	*flags = peap_version;
@@ -655,13 +669,13 @@ int eap_peer_tls_process_helper(struct eap_sm *sm, struct eap_ssl_data *data,
  */
 struct wpabuf * eap_peer_tls_build_ack(u8 id, EapType eap_type,
 				       int peap_version)
-{	
+{
 	struct wpabuf *resp;
 
 	resp = eap_tls_msg_alloc(eap_type, 1, EAP_CODE_RESPONSE, id);
 	if (resp == NULL)
 		return NULL;
-	wpa_printf(MSG_DEBUG, "SSL: Building ACK (type=%d id=%d ver=%d) \n",
+	wpa_printf(MSG_DEBUG, "SSL: Building ACK (type=%d id=%d ver=%d)",
 		   (int) eap_type, id, peap_version);
 	wpabuf_put_u8(resp, peap_version); /* Flags */
 	return resp;
@@ -981,7 +995,7 @@ get_defaults:
 	if (methods == NULL)
 		methods = eap_get_phase2_types(config, &num_methods);
 	if (methods == NULL) {
-		wpa_printf(MSG_ERROR, "TLS: No Phase EAP methods available\n");
+		wpa_printf(MSG_ERROR, "TLS: No Phase EAP methods available");
 		return -1;
 	}
 	wpa_hexdump(MSG_DEBUG, "TLS: Phase2 EAP types",
@@ -1011,7 +1025,7 @@ int eap_peer_tls_phase2_nak(struct eap_method_type *types, size_t num_types,
 	size_t i;
 
 	/* TODO: add support for expanded Nak */
-	wpa_printf(MSG_DEBUG, "TLS: Phase Request: Nak type=%d\n", *pos);
+	wpa_printf(MSG_DEBUG, "TLS: Phase Request: Nak type=%d", *pos);
 	wpa_hexdump(MSG_DEBUG, "TLS: Allowed Phase2 EAP types",
 		    (u8 *) types, num_types * sizeof(struct eap_method_type));
 	*resp = eap_msg_alloc(EAP_VENDOR_IETF, EAP_TYPE_NAK, num_types,

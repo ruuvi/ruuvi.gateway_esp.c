@@ -228,7 +228,10 @@ size_t printf_decode(u8 *buf, size_t maxlen, const char *str)
 	return len;
 }
 
-
+void * __hide_aliasing_typecast(void *foo)
+{
+	return foo;
+}
 
 char * wpa_config_parse_string(const char *value, size_t *len)
 {

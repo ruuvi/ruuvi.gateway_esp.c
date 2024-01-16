@@ -14,7 +14,7 @@
 #include "utils/common.h"
 #include "crypto/random.h"
 #include "crypto/ms_funcs.h"
-#include "tls/tls.h"
+#include "crypto/tls.h"
 #include "eap_peer/eap_i.h"
 #include "eap_peer/eap_defs.h"
 #include "eap_peer/eap_tls_common.h"

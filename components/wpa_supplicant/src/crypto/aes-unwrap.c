@@ -28,9 +28,9 @@
  * limitations under the License.
  */
 
-#include "utils/includes.h"
+#include "includes.h"
 
-#include "utils/common.h"
+#include "common.h"
 #ifdef USE_MBEDTLS_CRYPTO
 #include "mbedtls/aes.h"
 #else /* USE_MBEDTLS_CRYPTO */
