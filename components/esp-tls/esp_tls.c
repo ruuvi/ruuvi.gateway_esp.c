@@ -423,6 +423,12 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
         ESP_LOGE(TAG, "empty esp_tls parameter");
         return -1;
     }
+    psa_status_t status = psa_crypto_init();
+    if (status != PSA_SUCCESS) {
+        ESP_LOGE(TAG, "psa_crypto_init failed, ret=0x%x", (unsigned int)status);
+        return -1;
+    }
+
     esp_err_t esp_ret;
     /* These states are used to keep a tab on connection progress in case of non-blocking connect,
     and in case of blocking connect these cases will get executed one after the other */
