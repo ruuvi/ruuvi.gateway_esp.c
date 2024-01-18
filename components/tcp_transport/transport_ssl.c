@@ -40,6 +40,121 @@ typedef struct transport_esp_tls {
     int                      sockfd;
 } transport_esp_tls_t;
 
+typedef struct saved_session_info_t {
+    transport_esp_tls_t *locked_by_ssl;
+    esp_tls_client_session_t* p_saved_session;
+} saved_session_info_t;
+
+#define ESP_TLS_MAX_NUM_SAVED_SESSIONS (2)
+
+static saved_session_info_t g_saved_sessions[ESP_TLS_MAX_NUM_SAVED_SESSIONS];
+static int32_t g_saved_session_last_used_idx;
+static SemaphoreHandle_t g_saved_sessions_sema;
+static StaticSemaphore_t g_saved_sessions_sema_mem;
+
+static void
+saved_sessions_sema_init(void) {
+    if (NULL == g_saved_sessions_sema) {
+        g_saved_sessions_sema = xSemaphoreCreateMutexStatic(&g_saved_sessions_sema_mem);
+    }
+}
+
+static esp_tls_client_session_t*
+get_saved_session_info_for_host(transport_esp_tls_t* const ssl, const char* const hostname) {
+    saved_sessions_sema_init();
+    esp_tls_client_session_t* p_saved_session = NULL;
+    xSemaphoreTake(g_saved_sessions_sema, portMAX_DELAY);
+    for (int i = 0; i < ESP_TLS_MAX_NUM_SAVED_SESSIONS; ++i) {
+        saved_session_info_t* const p_info = &g_saved_sessions[i];
+        if ((NULL != p_info->p_saved_session)
+            && (0 == strcmp(p_info->p_saved_session->saved_session.hostname, hostname)))
+        {
+            p_info->locked_by_ssl = ssl;
+            p_saved_session = p_info->p_saved_session;
+            break;
+        }
+    }
+    xSemaphoreGive(g_saved_sessions_sema);
+    return p_saved_session;
+}
+
+static void
+unlock_saved_session(transport_esp_tls_t* const ssl) {
+    saved_sessions_sema_init();
+    ESP_LOGD(TAG, "Unlock TLS saved session for ssl=%p", ssl);
+    xSemaphoreTake(g_saved_sessions_sema, portMAX_DELAY);
+    for (int i = 0; i < ESP_TLS_MAX_NUM_SAVED_SESSIONS; ++i) {
+        saved_session_info_t* const p_info = &g_saved_sessions[i];
+        if (ssl == p_info->locked_by_ssl)
+        {
+            p_info->locked_by_ssl = NULL;
+            break;
+        }
+    }
+    xSemaphoreGive(g_saved_sessions_sema);
+}
+
+static void save_new_session_ticket(transport_esp_tls_t *ssl)
+{
+    esp_tls_client_session_t* const p_session = esp_tls_get_client_session(ssl->tls);
+    if (NULL == p_session) {
+        ESP_LOGE(TAG, "Can't allocate memory for new session ticket");
+        return;
+    }
+
+    saved_sessions_sema_init();
+    xSemaphoreTake(g_saved_sessions_sema, portMAX_DELAY);
+    int found_idx = -1;
+    for (int i = 0; i < ESP_TLS_MAX_NUM_SAVED_SESSIONS; ++i) {
+        saved_session_info_t* const p_info = &g_saved_sessions[i];
+        if (NULL != p_info->locked_by_ssl) {
+            continue;
+        }
+        if (NULL == p_info->p_saved_session) {
+            continue;
+        }
+        if (0 == strcmp(p_info->p_saved_session->saved_session.hostname, p_session->saved_session.hostname)) {
+            found_idx = i;
+            break;
+        }
+    }
+    if (found_idx >= 0) {
+        ESP_LOGI(TAG, "Got new TLS session ticket for host: %s, replace existing one", p_session->saved_session.hostname);
+        esp_tls_free_client_session(g_saved_sessions[found_idx].p_saved_session);
+        g_saved_sessions[found_idx].p_saved_session = p_session;
+    } else {
+        g_saved_session_last_used_idx += 1;
+        g_saved_session_last_used_idx %= ESP_TLS_MAX_NUM_SAVED_SESSIONS;
+        if (NULL == g_saved_sessions[g_saved_session_last_used_idx].locked_by_ssl) {
+            found_idx = g_saved_session_last_used_idx;
+        } else {
+            g_saved_session_last_used_idx += 1;
+            g_saved_session_last_used_idx %= ESP_TLS_MAX_NUM_SAVED_SESSIONS;
+            if (NULL == g_saved_sessions[g_saved_session_last_used_idx].locked_by_ssl)
+            {
+                found_idx = g_saved_session_last_used_idx;
+            }
+        }
+        if (found_idx >= 0) {
+            ESP_LOGI(
+                TAG,
+                "Got new TLS session ticket for host: %s, save it at slot idx=%d",
+                p_session->saved_session.hostname,
+                g_saved_session_last_used_idx);
+            if (NULL != g_saved_sessions[found_idx].p_saved_session) {
+                esp_tls_free_client_session(g_saved_sessions[found_idx].p_saved_session);
+            }
+            g_saved_sessions[found_idx].p_saved_session = p_session;
+        } else {
+            ESP_LOGE(
+                TAG,
+                "Got new TLS session ticket for host: %s, but there are no free slots",
+                p_session->saved_session.hostname);
+        }
+    }
+    xSemaphoreGive(g_saved_sessions_sema);
+}
+
 /**
  * @brief      Destroys esp-tls transport used in the foundation transport
  *
@@ -62,6 +177,12 @@ static int esp_tls_connect_async(esp_transport_handle_t t, const char *host, int
         ssl->cfg.timeout_ms = timeout_ms;
         ssl->cfg.is_plain_tcp = is_plain_tcp;
         ssl->cfg.non_block = true;
+        ssl->cfg.client_session = get_saved_session_info_for_host(ssl, host);
+        if (NULL != ssl->cfg.client_session) {
+            ESP_LOGI(TAG, "Reuse saved TLS session ticket for host: %s", host);
+        } else {
+            ESP_LOGI(TAG, "There is no saved TLS session ticket for host: %s", host);
+        }
         ssl->ssl_initialized = true;
         ssl->tls = esp_tls_init();
         if (!ssl->tls) {
@@ -87,7 +208,13 @@ static int esp_tls_connect_async(esp_transport_handle_t t, const char *host, int
 
 static inline int ssl_connect_async(esp_transport_handle_t t, const char *host, int port, int timeout_ms)
 {
-    return esp_tls_connect_async(t, host, port, timeout_ms, false);
+    const int ret = esp_tls_connect_async(t, host, port, timeout_ms, false);
+    if (0 != ret) {
+        // Unlock saved session if connection failed or successful handshake
+        transport_esp_tls_t *ssl = ssl_get_context_data(t);
+        unlock_saved_session(ssl);
+    }
+    return ret;
 }
 
 static inline int tcp_connect_async(esp_transport_handle_t t, const char *host, int port, int timeout_ms)
@@ -110,11 +237,13 @@ static int ssl_connect(esp_transport_handle_t t, const char *host, int port, int
     }
     if (esp_tls_conn_new_sync(host, strlen(host), port, &ssl->cfg, ssl->tls) <= 0) {
         ESP_LOGE(TAG, "Failed to open a new connection");
+        unlock_saved_session(ssl);
         esp_tls_error_handle_t esp_tls_error_handle;
         esp_tls_get_error_handle(ssl->tls, &esp_tls_error_handle);
         esp_transport_set_errors(t, esp_tls_error_handle);
         goto exit_failure;
     }
+    unlock_saved_session(ssl);
 
     if (esp_tls_get_conn_sockfd(ssl->tls, &ssl->sockfd) != ESP_OK) {
         ESP_LOGE(TAG, "Error in obtaining socket fd for the session");
@@ -254,9 +383,15 @@ static int ssl_read(esp_transport_handle_t t, char *buffer, int len, int timeout
 
     int ret = esp_tls_conn_read(ssl->tls, (unsigned char *)buffer, len);
     if (ret < 0) {
-        if (ret == ESP_TLS_ERR_SSL_WANT_READ || ret == ESP_TLS_ERR_SSL_TIMEOUT) {
+        if (ret == ESP_TLS_ERR_SSL_WANT_READ || ret == ESP_TLS_ERR_SSL_TIMEOUT)
+        {
             ESP_LOGW(TAG, "esp_tls_conn_read error - no data available (ret=-0x%x, errno=%s)", -ret, strerror(errno));
             ret = ERR_TCP_TRANSPORT_CONNECTION_TIMEOUT;
+        } else if (ret == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET) {
+            ret = ERR_TCP_TRANSPORT_CONNECTION_TIMEOUT;
+            ESP_LOGI(TAG, "Cur free heap: %u", (unsigned)esp_get_free_heap_size());
+            save_new_session_ticket(ssl);
+            ESP_LOGI(TAG, "Cur free heap: %u", (unsigned)esp_get_free_heap_size());
         } else {
             ESP_LOGE(TAG, "esp_tls_conn_read error, ret=-0x%x, errno=%s", -ret, strerror(errno));
         }
