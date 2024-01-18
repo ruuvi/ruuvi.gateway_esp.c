@@ -1738,9 +1738,10 @@ int mbedtls_ssl_set_session(mbedtls_ssl_context *ssl, const mbedtls_ssl_session 
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
-    if (ssl->handshake->resume == 1) {
-        return MBEDTLS_ERR_SSL_FEATURE_UNAVAILABLE;
-    }
+    // Disable following check because 'esp-tls' calls this function when the flag 'resume' is already set.
+//    if (ssl->handshake->resume == 1) {
+//        return MBEDTLS_ERR_SSL_FEATURE_UNAVAILABLE;
+//    }
 
 #if defined(MBEDTLS_SSL_PROTO_TLS1_3)
     if (session->tls_version == MBEDTLS_SSL_VERSION_TLS1_3) {
