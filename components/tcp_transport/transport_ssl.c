@@ -71,8 +71,12 @@ get_saved_session_info_for_host(transport_esp_tls_t* const ssl, const char* cons
         {
             p_info->locked_by_ssl = ssl;
             p_saved_session = p_info->p_saved_session;
+            ESP_LOGI(TAG, "Get TLS saved session for ssl=%p, hostname=%s: found at idx=%d", ssl, hostname, i);
             break;
         }
+    }
+    if (NULL == p_saved_session) {
+        ESP_LOGI(TAG, "Get TLS saved session for ssl=%p, hostname=%s: not found", ssl, hostname);
     }
     xSemaphoreGive(g_saved_sessions_sema);
     return p_saved_session;
@@ -81,12 +85,13 @@ get_saved_session_info_for_host(transport_esp_tls_t* const ssl, const char* cons
 static void
 unlock_saved_session(transport_esp_tls_t* const ssl) {
     saved_sessions_sema_init();
-    ESP_LOGD(TAG, "Unlock TLS saved session for ssl=%p", ssl);
+    ESP_LOGI(TAG, "Unlock TLS saved session for ssl=%p", ssl);
     xSemaphoreTake(g_saved_sessions_sema, portMAX_DELAY);
     for (int i = 0; i < ESP_TLS_MAX_NUM_SAVED_SESSIONS; ++i) {
         saved_session_info_t* const p_info = &g_saved_sessions[i];
         if (ssl == p_info->locked_by_ssl)
         {
+            ESP_LOGI(TAG, "Unlock TLS saved session for ssl=%p: hostname=%s", ssl, p_info->p_saved_session->saved_session.hostname);
             p_info->locked_by_ssl = NULL;
             break;
         }
@@ -119,7 +124,11 @@ static void save_new_session_ticket(transport_esp_tls_t *ssl)
         }
     }
     if (found_idx >= 0) {
-        ESP_LOGI(TAG, "Got new TLS session ticket for host: %s, replace existing one", p_session->saved_session.hostname);
+        ESP_LOGI(
+            TAG,
+            "Got new TLS session ticket for host: %s, replace existing one (slot %d)",
+            p_session->saved_session.hostname,
+            found_idx);
         esp_tls_free_client_session(g_saved_sessions[found_idx].p_saved_session);
         g_saved_sessions[found_idx].p_saved_session = p_session;
     } else {
@@ -236,7 +245,8 @@ static int ssl_connect(esp_transport_handle_t t, const char *host, int port, int
         return -1;
     }
     if (esp_tls_conn_new_sync(host, strlen(host), port, &ssl->cfg, ssl->tls) <= 0) {
-        ESP_LOGE(TAG, "Failed to open a new connection");
+        ESP_LOGE(TAG, "Failed to open a new connection for host: %s", host);
+        ESP_LOGW(TAG, "Cur free heap: %u", (unsigned)esp_get_free_heap_size());
         unlock_saved_session(ssl);
         esp_tls_error_handle_t esp_tls_error_handle;
         esp_tls_get_error_handle(ssl->tls, &esp_tls_error_handle);
