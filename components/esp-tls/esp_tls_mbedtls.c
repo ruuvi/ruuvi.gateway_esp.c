@@ -192,6 +192,8 @@ int esp_mbedtls_handshake(esp_tls_t *tls, const esp_tls_cfg_t *cfg)
     if (ret == 0) {
         tls->conn_state = ESP_TLS_DONE;
 
+        ESP_LOGI(TAG, "SSL handshake success, TLS version: %s", mbedtls_ssl_get_version(&tls->ssl));
+
 #ifdef CONFIG_ESP_TLS_USE_DS_PERIPHERAL
         esp_ds_release_ds_lock();
 #endif
@@ -217,7 +219,6 @@ int esp_mbedtls_handshake(esp_tls_t *tls, const esp_tls_cfg_t *cfg)
 
 ssize_t esp_mbedtls_read(esp_tls_t *tls, char *data, size_t datalen)
 {
-
     ssize_t ret = mbedtls_ssl_read(&tls->ssl, (unsigned char *)data, datalen);
     if (ret < 0) {
         if (ret == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
@@ -225,8 +226,12 @@ ssize_t esp_mbedtls_read(esp_tls_t *tls, char *data, size_t datalen)
         }
         if (ret != ESP_TLS_ERR_SSL_WANT_READ  && ret != ESP_TLS_ERR_SSL_WANT_WRITE) {
             ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_MBEDTLS, -ret);
-            ESP_LOGE(TAG, "read error :-0x%04zX:", -ret);
-            mbedtls_print_error_msg(ret);
+            if (ret == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET) {
+                ESP_LOGW(TAG, "esp_mbedtls_read: RECEIVED_NEW_SESSION_TICKET");
+            } else {
+                ESP_LOGE(TAG, "read error :-0x%04zX:", -ret);
+                mbedtls_print_error_msg(ret);
+            }
         }
     }
     return ret;
