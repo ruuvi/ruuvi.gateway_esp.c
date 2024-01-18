@@ -23,6 +23,7 @@
 #include "mbedtls/entropy.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/error.h"
+#include "mbedtls/timing.h"
 #ifdef CONFIG_ESP_TLS_SERVER_SESSION_TICKETS
 #include "mbedtls/ssl_ticket.h"
 #endif
@@ -87,4 +88,7 @@ struct esp_tls {
 
     esp_tls_error_handle_t error_handle;                                        /*!< handle to error descriptor */
 
+#ifdef CONFIG_ESP_TLS_USING_MBEDTLS
+    mbedtls_timing_delay_context timer;
+#endif
 };

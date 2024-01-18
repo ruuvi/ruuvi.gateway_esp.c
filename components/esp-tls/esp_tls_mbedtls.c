@@ -124,6 +124,7 @@ esp_err_t esp_create_mbedtls_handle(const char *hostname, size_t hostlen, const 
         goto exit;
     }
     mbedtls_ssl_set_bio(&tls->ssl, &tls->server_fd, mbedtls_net_send, mbedtls_net_recv, NULL);
+    mbedtls_ssl_set_timer_cb(&tls->ssl, &tls->timer, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
 
     return ESP_OK;
 
@@ -647,6 +648,7 @@ esp_err_t set_client_config(const char *hostname, size_t hostlen, esp_tls_cfg_t 
         ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_MBEDTLS, -ret);
         return ESP_ERR_MBEDTLS_SSL_CONFIG_DEFAULTS_FAILED;
     }
+    mbedtls_ssl_conf_read_timeout(&tls->conf, cfg->timeout_ms);
 
 #ifdef CONFIG_MBEDTLS_SSL_RENEGOTIATION
     mbedtls_ssl_conf_renegotiation(&tls->conf, MBEDTLS_SSL_RENEGOTIATION_ENABLED);
