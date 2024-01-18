@@ -148,11 +148,10 @@ d##3 = TD0(s##3) ^ TD1(s##2) ^ TD2(s##1) ^ TD3(s##0) ^ rk[4 * i + 3]
 }
 
 
-int aes_decrypt(void *ctx, const u8 *crypt, u8 *plain)
+void aes_decrypt(void *ctx, const u8 *crypt, u8 *plain)
 {
 	u32 *rk = ctx;
 	rijndaelDecrypt(ctx, rk[AES_PRIV_NR_POS], crypt, plain);
-	return 0;
 }
 
 
