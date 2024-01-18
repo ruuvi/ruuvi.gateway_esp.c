@@ -478,6 +478,8 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
                     ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_SYSTEM, errno);
                     ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, ESP_ERR_ESP_TLS_SOCKET_SETOPT_FAILED);
                     tls->conn_state = ESP_TLS_FAIL;
+                    close(tls->sockfd);
+                    tls->sockfd = -1;
                     return -1;
                 }
             }
@@ -488,6 +490,8 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
             ESP_LOGE(TAG, "create_ssl_handle failed");
             ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, esp_ret);
             tls->conn_state = ESP_TLS_FAIL;
+            close(tls->sockfd);
+            tls->sockfd = -1;
             return -1;
         }
         tls->read = _esp_tls_read;
