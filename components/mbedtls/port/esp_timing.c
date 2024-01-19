@@ -20,11 +20,13 @@
 #if !defined(MBEDTLS_ESP_TIMING_C)
 
 #include <sys/time.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include "mbedtls/timing.h"
 
 struct _hr_time
 {
-    struct timeval start;
+    TickType_t tick_start;
 };
 
 unsigned long mbedtls_timing_get_timer( struct mbedtls_timing_hr_time *val, int reset )
@@ -33,16 +35,13 @@ unsigned long mbedtls_timing_get_timer( struct mbedtls_timing_hr_time *val, int 
 
     if( reset )
     {
-        gettimeofday( &t->start, NULL );
+        t->tick_start = xTaskGetTickCount();
         return( 0 );
     }
     else
     {
-        unsigned long delta;
-        struct timeval now;
-        gettimeofday( &now, NULL );
-        delta = ( now.tv_sec  - t->start.tv_sec  ) * 1000ul
-              + ( now.tv_usec - t->start.tv_usec ) / 1000;
+        const TickType_t tick_now = xTaskGetTickCount();
+        const unsigned long delta = pdTICKS_TO_MS( tick_now - t->tick_start );
         return( delta );
     }
 }
