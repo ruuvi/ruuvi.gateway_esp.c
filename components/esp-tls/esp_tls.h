@@ -32,10 +32,12 @@ extern "C" {
  */
 typedef enum esp_tls_conn_state {
     ESP_TLS_INIT = 0,
+    ESP_TLS_CONNECT,
     ESP_TLS_CONNECTING,
     ESP_TLS_HANDSHAKE,
     ESP_TLS_FAIL,
     ESP_TLS_DONE,
+    ESP_TLS_HOSTNAME_RESOLVING,
 } esp_tls_conn_state_t;
 
 typedef enum esp_tls_role {

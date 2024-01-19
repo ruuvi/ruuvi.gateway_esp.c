@@ -92,4 +92,11 @@ struct esp_tls {
     mbedtls_timing_delay_context timer;
 #endif
     TickType_t timer_start;
+    char* hostname;
+    ip_addr_t remote_ip;
+    StaticSemaphore_t dns_mutex_mem;
+    SemaphoreHandle_t dns_mutex;
+    ip_addr_t dns_cb_remote_ip;
+    bool dns_cb_status;
+    bool dns_cb_ready;
 };

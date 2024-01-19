@@ -18,6 +18,7 @@
 #include "esp_tls_private.h"
 #include "esp_tls_error_capture_internal.h"
 #include <errno.h>
+#include "lwip/dns.h"
 
 #if CONFIG_IDF_TARGET_LINUX
 #include <arpa/inet.h>
@@ -46,6 +47,7 @@ static const char *TAG = "esp-tls";
 #include "esp_tls_wolfssl.h"
 #endif
 
+#define LOG_LOCAL_LEVEL 3
 #ifdef ESP_PLATFORM
 #include <esp_log.h>
 #else
@@ -148,6 +150,14 @@ int esp_tls_conn_destroy(esp_tls_t *tls)
             ret = close(tls->sockfd);
         }
         esp_tls_internal_event_tracker_destroy(tls->error_handle);
+        if (tls->dns_mutex) {
+            vSemaphoreDelete(tls->dns_mutex);
+            tls->dns_mutex = NULL;
+        }
+        if (tls->hostname) {
+            free(tls->hostname);
+            tls->hostname = NULL;
+        }
         free(tls);
         return ret;
     }
@@ -165,83 +175,12 @@ esp_tls_t *esp_tls_init(void)
         free(tls);
         return NULL;
     }
+    tls->dns_mutex = xSemaphoreCreateMutexStatic(&tls->dns_mutex_mem);
+    tls->dns_cb_status = false;
+    tls->dns_cb_ready = false;
     _esp_tls_net_init(tls);
     tls->sockfd = -1;
     return tls;
-}
-
-static esp_err_t esp_tls_hostname_to_fd(const char *host, size_t hostlen, int port, esp_tls_addr_family_t addr_family, struct sockaddr_storage *address, int* fd)
-{
-    struct addrinfo *address_info;
-    struct addrinfo hints;
-    memset(&hints, 0, sizeof(hints));
-
-    switch (addr_family) {
-        case ESP_TLS_AF_INET:
-            hints.ai_family = AF_INET;
-            break;
-        case ESP_TLS_AF_INET6:
-            hints.ai_family = AF_INET6;
-            break;
-        default:
-            hints.ai_family = AF_UNSPEC;
-            break;
-    }
-
-    hints.ai_socktype = SOCK_STREAM;
-
-    char *use_host = strndup(host, hostlen);
-    if (!use_host) {
-        return ESP_ERR_NO_MEM;
-    }
-
-    ESP_LOGD(TAG, "host:%s: strlen %lu", use_host, (unsigned long)hostlen);
-    int res = getaddrinfo(use_host, NULL, &hints, &address_info);
-    if (res != 0 || address_info == NULL) {
-        ESP_LOGE(TAG, "couldn't get hostname for :%s: "
-                      "getaddrinfo() returns %d, addrinfo=%p", use_host, res, address_info);
-        free(use_host);
-        return ESP_ERR_ESP_TLS_CANNOT_RESOLVE_HOSTNAME;
-    }
-    free(use_host);
-    *fd = socket(address_info->ai_family, address_info->ai_socktype, address_info->ai_protocol);
-    if (*fd < 0) {
-        ESP_LOGE(TAG, "Failed to create socket (family %d socktype %d protocol %d)", address_info->ai_family, address_info->ai_socktype, address_info->ai_protocol);
-        freeaddrinfo(address_info);
-        return ESP_ERR_ESP_TLS_CANNOT_CREATE_SOCKET;
-    }
-
-#if IPV4_ENABLED
-    if (address_info->ai_family == AF_INET) {
-        struct sockaddr_in *p = (struct sockaddr_in *)address_info->ai_addr;
-        p->sin_port = htons(port);
-        ESP_LOGD(TAG, "[sock=%d] Resolved IPv4 address: %s", *fd, ipaddr_ntoa((const ip_addr_t*)&p->sin_addr.s_addr));
-        memcpy(address, p, sizeof(struct sockaddr ));
-    }
-#endif
-
-#if IPV4_ENABLED && IPV6_ENABLED
-    else
-#endif
-
-#if IPV6_ENABLED
-    if (address_info->ai_family == AF_INET6) {
-        struct sockaddr_in6 *p = (struct sockaddr_in6 *)address_info->ai_addr;
-        p->sin6_port = htons(port);
-        p->sin6_family = AF_INET6;
-        ESP_LOGD(TAG, "[sock=%d] Resolved IPv6 address: %s", *fd, ip6addr_ntoa((const ip6_addr_t*)&p->sin6_addr));
-        memcpy(address, p, sizeof(struct sockaddr_in6 ));
-    }
-#endif
-    else {
-        ESP_LOGE(TAG, "Unsupported protocol family %d", address_info->ai_family);
-        close(*fd);
-        freeaddrinfo(address_info);
-        return ESP_ERR_ESP_TLS_UNSUPPORTED_PROTOCOL_FAMILY;
-    }
-
-    freeaddrinfo(address_info);
-    return ESP_OK;
 }
 
 static void ms_to_timeval(int timeout_ms, struct timeval *tv)
@@ -327,46 +266,55 @@ static esp_err_t esp_tls_set_socket_non_blocking(int fd, bool non_blocking)
     return ESP_OK;
 }
 
-static inline esp_err_t tcp_connect(const char *host, int hostlen, int port, const esp_tls_cfg_t *cfg, esp_tls_error_handle_t error_handle, int *sockfd)
+static inline esp_err_t tcp_connect(const ip_addr_t* const p_remote_ip, int port, const esp_tls_cfg_t *cfg,
+            esp_tls_error_handle_t error_handle, int *sockfd)
 {
-    struct sockaddr_storage address;
-    int fd;
+    struct sockaddr_in sa4 = { 0 };
+    inet_addr_from_ip4addr(&sa4.sin_addr, ip_2_ip4(p_remote_ip));
+    sa4.sin_family = AF_INET;
+    sa4.sin_len = sizeof(struct sockaddr_in);
+    sa4.sin_port = lwip_htons((u16_t)port);
 
-    esp_tls_addr_family_t addr_family = (cfg != NULL) ? cfg->addr_family : ESP_TLS_AF_UNSPEC;
-    esp_err_t ret = esp_tls_hostname_to_fd(host, hostlen, port, addr_family, &address, &fd);
-    if (ret != ESP_OK) {
+    esp_err_t ret = ESP_OK;
+
+#if CONFIG_LWIP_IPV4
+    int fd = socket(AF_INET, SOCK_STREAM, AF_UNSPEC);
+    if (fd < 0) {
+        ESP_LOGE(TAG, "Failed to create socket");
         ESP_INT_EVENT_TRACKER_CAPTURE(error_handle, ESP_TLS_ERR_TYPE_SYSTEM, errno);
-        return ret;
+        ret = ESP_ERR_ESP_TLS_CANNOT_CREATE_SOCKET;
+        goto err_exit;
     }
+#else
+#error not supported
+#endif
 
     // Set timeout options, keep-alive options and bind device options if configured
     ret = esp_tls_set_socket_options(fd, cfg);
     if (ret != ESP_OK) {
-        goto err;
+        goto err_close_socket;
     }
 
     // Set to non block before connecting to better control connection timeout
     ret = esp_tls_set_socket_non_blocking(fd, true);
     if (ret != ESP_OK) {
-        goto err;
+        goto err_close_socket;
     }
 
-    ret = ESP_ERR_ESP_TLS_FAILED_CONNECT_TO_HOST;
-    ESP_LOGD(TAG, "[sock=%d] Connecting to server. HOST: %s, Port: %d", fd, host, port);
-    if (connect(fd, (struct sockaddr *)&address, sizeof(struct sockaddr)) < 0) {
-        if (errno == EINPROGRESS) {
-            fd_set fdset;
+    ret = connect(fd, (struct sockaddr*)&sa4, sa4.sin_len);
+    if (ret < 0) {
+        if (errno != EINPROGRESS) {
+            ESP_LOGE(TAG, "Failed to connect to host, err %d (%s)", errno, strerror(errno));
+            ESP_INT_EVENT_TRACKER_CAPTURE(error_handle, ESP_TLS_ERR_TYPE_SYSTEM, errno);
+            ret = ESP_ERR_ESP_TLS_FAILED_CONNECT_TO_HOST;
+            goto err_close_socket;
+        }
+        if (!(cfg && cfg->non_block)) {
             struct timeval tv = { .tv_usec = 0, .tv_sec = ESP_TLS_DEFAULT_CONN_TIMEOUT }; // Default connection timeout is 10 s
-
-            if (cfg && cfg->non_block) {
-                // Non-blocking mode -> just return successfully at this stage
-                *sockfd = fd;
-                return ESP_OK;
-            }
-
             if ( cfg && cfg->timeout_ms > 0 ) {
                 ms_to_timeval(cfg->timeout_ms, &tv);
             }
+            fd_set fdset;
             FD_ZERO(&fdset);
             FD_SET(fd, &fdset);
 
@@ -374,47 +322,68 @@ static inline esp_err_t tcp_connect(const char *host, int hostlen, int port, con
             if (res < 0) {
                 ESP_LOGE(TAG, "[sock=%d] select() error: %s", fd, strerror(errno));
                 ESP_INT_EVENT_TRACKER_CAPTURE(error_handle, ESP_TLS_ERR_TYPE_SYSTEM, errno);
-                goto err;
-            }
-            else if (res == 0) {
+                goto err_close_socket;
+            } else if (res == 0) {
                 ESP_LOGE(TAG, "[sock=%d] select() timeout", fd);
                 ret = ESP_ERR_ESP_TLS_CONNECTION_TIMEOUT;
-                goto err;
+                goto err_close_socket;
             } else {
-                int sockerr;
+                int sockerr = 0;
                 socklen_t len = (socklen_t)sizeof(int);
 
                 if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (void*)(&sockerr), &len) < 0) {
                     ESP_LOGE(TAG, "[sock=%d] getsockopt() error: %s", fd, strerror(errno));
                     ret = ESP_ERR_ESP_TLS_SOCKET_SETOPT_FAILED;
-                    goto err;
-                }
-                else if (sockerr) {
+                    goto err_close_socket;
+                } else if (sockerr) {
                     ESP_INT_EVENT_TRACKER_CAPTURE(error_handle, ESP_TLS_ERR_TYPE_SYSTEM, sockerr);
                     ESP_LOGE(TAG, "[sock=%d] delayed connect error: %s", fd, strerror(sockerr));
-                    goto err;
+                    goto err_close_socket;
                 }
             }
-        } else {
-            ESP_LOGE(TAG, "[sock=%d] connect() error: %s", fd, strerror(errno));
-            goto err;
         }
     }
 
-    if (cfg && cfg->non_block == false) {
+    if (cfg && !cfg->non_block) {
         // reset back to blocking mode (unless non_block configured)
         ret = esp_tls_set_socket_non_blocking(fd, false);
         if (ret != ESP_OK) {
-            goto err;
+            goto err_close_socket;
         }
     }
 
     *sockfd = fd;
     return ESP_OK;
 
-err:
+err_close_socket:
     close(fd);
+err_exit:
     return ret;
+}
+
+static void
+esp_tls_low_level_conn_callback_dns_found(const char *hostname, const ip_addr_t *ipaddr, void *arg)
+{
+    esp_tls_t * const tls = arg;
+    LWIP_UNUSED_ARG(hostname);
+
+    ESP_LOGD(TAG, "callback_dns_found (tls=0x%p): hostname=%p, ipaddr=%p", tls, hostname, ipaddr);
+    ESP_LOGD(TAG, "tls->dns_mutex=%p", tls->dns_mutex);
+    ESP_LOGD(TAG, "callback_dns_found (tls=0x%p): hostname=%s, ipaddr=0x%08x", tls, hostname ? hostname : "<NULL>", ipaddr ? ipaddr->u_addr.ip4.addr : 0);
+
+    if (ipaddr != NULL) {
+        xSemaphoreTake(tls->dns_mutex, portMAX_DELAY);
+        tls->dns_cb_remote_ip = *ipaddr;
+        tls->dns_cb_status = true;
+        tls->dns_cb_ready = true;
+        xSemaphoreGive(tls->dns_mutex);
+    } else {
+        xSemaphoreTake(tls->dns_mutex, portMAX_DELAY);
+        tls->dns_cb_remote_ip = (ip_addr_t){0};
+        tls->dns_cb_status = false;
+        tls->dns_cb_ready = true;
+        xSemaphoreGive(tls->dns_mutex);
+    }
 }
 
 static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, const esp_tls_cfg_t *cfg, esp_tls_t *tls)
@@ -434,12 +403,52 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
     and in case of blocking connect these cases will get executed one after the other */
     switch (tls->conn_state) {
     case ESP_TLS_INIT:
+    {
         tls->sockfd = -1;
+        tls->hostname = strndup(hostname, hostlen);
+        if (NULL == tls->hostname) {
+            ESP_LOGE(TAG, "Can't allocate memory for hostname: %.*s", hostlen, hostname);
+            return ESP_ERR_NO_MEM;
+        }
         if (cfg != NULL && cfg->is_plain_tcp == false) {
             _esp_tls_net_init(tls);
             tls->is_tls = true;
         }
-        if ((esp_ret = tcp_connect(hostname, hostlen, port, cfg, tls->error_handle, &tls->sockfd)) != ESP_OK) {
+        err_t err = dns_gethostbyname(
+            tls->hostname,
+            &tls->remote_ip,
+            &esp_tls_low_level_conn_callback_dns_found,
+            tls);
+        if (err == ERR_INPROGRESS) {
+            /* DNS request sent, wait for esp_tls_low_level_conn_callback_dns_found being called */
+            ESP_LOGD(TAG, "dns_gethostbyname got ERR_INPROGRESS");
+            tls->conn_state = ESP_TLS_HOSTNAME_RESOLVING;
+            return 0; // Connection has not yet established
+        }
+        if (err != ERR_OK) {
+            ESP_LOGE(TAG, "Failed to resolve hostname '%s', error %d", tls->hostname, err);
+            free(tls->hostname);
+            tls->hostname = NULL;
+            return -1;
+        }
+        char remote_ip4_str[IP4ADDR_STRLEN_MAX];
+        ip4addr_ntoa_r(&tls->remote_ip.u_addr.ip4, remote_ip4_str, sizeof(remote_ip4_str));
+        ESP_LOGI(TAG, "[%s] hostname '%s' resolved to %s", pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", tls->hostname, remote_ip4_str);
+        free(tls->hostname);
+        tls->hostname = NULL;
+
+        tls->conn_state = ESP_TLS_CONNECT;
+#if defined(__GNUC__) && (__GNUC__ >= 7)
+        __attribute__((fallthrough));
+#endif
+    }
+    /* falls through */
+    case ESP_TLS_CONNECT:
+    {
+        char remote_ip4_str[IP4ADDR_STRLEN_MAX];
+        ip4addr_ntoa_r(&tls->remote_ip.u_addr.ip4, remote_ip4_str, sizeof(remote_ip4_str));
+        ESP_LOGD(TAG, "Connect to IP: %s", remote_ip4_str);
+        if ((esp_ret = tcp_connect(&tls->remote_ip, port, cfg, tls->error_handle, &tls->sockfd)) != ESP_OK) {
             ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, esp_ret);
             return -1;
         }
@@ -457,6 +466,7 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
 #if defined(__GNUC__) && (__GNUC__ >= 7)
         __attribute__((fallthrough));
 #endif
+    }
     /* falls through */
     case ESP_TLS_CONNECTING:
         if (cfg && cfg->non_block)
@@ -548,11 +558,51 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
     case ESP_TLS_FAIL:
         ESP_LOGE(TAG, "failed to open a new connection");;
         break;
+    case ESP_TLS_HOSTNAME_RESOLVING:
+    {
+        ESP_LOGD(TAG, "ESP_TLS_HOSTNAME_RESOLVING");
+        xSemaphoreTake(tls->dns_mutex, portMAX_DELAY);
+        if (tls->dns_cb_ready) {
+            tls->dns_cb_ready = false;
+            tls->remote_ip = tls->dns_cb_remote_ip;
+            tls->conn_state = tls->dns_cb_status ? ESP_TLS_CONNECT : ESP_TLS_FAIL;
+            if (tls->dns_cb_status) {
+                char remote_ip4_str[IP4ADDR_STRLEN_MAX];
+                ip4addr_ntoa_r(&tls->remote_ip.u_addr.ip4, remote_ip4_str, sizeof(remote_ip4_str));
+                ESP_LOGI(TAG, "[%s] hostname '%s' resolved to %s", pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", tls->hostname, remote_ip4_str);
+            } else {
+                ESP_LOGE(TAG, "[%s] hostname '%s' resolving failed", pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", tls->hostname);
+            }
+            free(tls->hostname);
+            tls->hostname = NULL;
+        }
+        xSemaphoreGive(tls->dns_mutex);
+        return 0;
+    }
     default:
         ESP_LOGE(TAG, "invalid esp-tls state");
         break;
     }
     return -1;
+}
+
+static esp_err_t resolve_dns(const char *host, struct sockaddr_in *ip)
+{
+    const struct addrinfo hints = {
+        .ai_family = AF_INET,
+        .ai_socktype = SOCK_STREAM,
+    };
+    struct addrinfo *res = NULL;
+
+    int err = getaddrinfo(host, NULL, &hints, &res);
+    if (err != 0 || res == NULL) {
+        ESP_LOGE(TAG, "DNS lookup failed err=%d res=%p", err, res);
+        return (err != 0) ? err : ESP_FAIL;
+    }
+    ip->sin_family = AF_INET;
+    memcpy(&ip->sin_addr, &((struct sockaddr_in *)(res->ai_addr))->sin_addr, sizeof(ip->sin_addr));
+    freeaddrinfo(res);
+    return ESP_OK;
 }
 
 /**
@@ -563,7 +613,30 @@ esp_err_t esp_tls_plain_tcp_connect(const char *host, int hostlen, int port, con
     if (sockfd == NULL || error_handle == NULL) {
         return ESP_ERR_INVALID_ARG;
     }
-    return tcp_connect(host, hostlen, port, cfg, error_handle, sockfd);
+    ESP_LOGD(TAG, "esp_tls_plain_tcp_connect: %.*s:%d, timeout=%d ms, non_block=%d", hostlen, host, port, cfg ? cfg->timeout_ms : 0, cfg ? cfg->non_block : 0);
+    char* hostname = strndup(host, hostlen);
+    if (NULL == hostname) {
+        ESP_LOGE(TAG, "Can't allocate memory for hostname: %.*s", hostlen, host);
+        return ESP_ERR_NO_MEM;
+    }
+    struct sockaddr_in remote_ip;
+    bzero(&remote_ip, sizeof(struct sockaddr_in));
+    if (inet_pton(AF_INET, host, &remote_ip.sin_addr) != 1) {
+        esp_err_t res = resolve_dns(host, &remote_ip);
+        if (ESP_OK != res) {
+            free(hostname);
+            hostname = NULL;
+            return res;
+        }
+    }
+    char remote_ip4_str[IP4ADDR_STRLEN_MAX];
+    ip4addr_ntoa_r((const ip4_addr_t*)&remote_ip.sin_addr.s_addr, remote_ip4_str, sizeof(remote_ip4_str));
+    ESP_LOGD(TAG, "Connecting to server %s. IP: %s, Port: %d", hostname, remote_ip4_str, port);
+    free(hostname);
+    hostname = NULL;
+    ip_addr_t remote_ip_addr;
+    ip4addr_ntoa_r(&remote_ip_addr.u_addr.ip4, remote_ip4_str, sizeof(remote_ip4_str));
+    return tcp_connect(&remote_ip_addr, port, cfg, error_handle, sockfd);
 }
 
 int esp_tls_conn_new_sync(const char *hostname, int hostlen, int port, const esp_tls_cfg_t *cfg, esp_tls_t *tls)
