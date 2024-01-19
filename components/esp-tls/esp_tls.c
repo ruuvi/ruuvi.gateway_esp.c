@@ -641,9 +641,7 @@ esp_err_t esp_tls_plain_tcp_connect(const char *host, int hostlen, int port, con
 
 int esp_tls_conn_new_sync(const char *hostname, int hostlen, int port, const esp_tls_cfg_t *cfg, esp_tls_t *tls)
 {
-    struct timeval time = {};
-    gettimeofday(&time, NULL);
-    uint32_t start_time_ms = (time.tv_sec * 1000) + (time.tv_usec / 1000);
+    const TickType_t start_time_tick = xTaskGetTickCount();
     while (1) {
         int ret = esp_tls_low_level_conn(hostname, hostlen, port, cfg, tls);
         if (ret == 1) {
@@ -652,14 +650,14 @@ int esp_tls_conn_new_sync(const char *hostname, int hostlen, int port, const esp
             ESP_LOGE(TAG, "Failed to open new connection");
             return -1;
         } else if (ret == 0 && cfg->timeout_ms >= 0) {
-            gettimeofday(&time, NULL);
-            uint32_t current_time_ms = (time.tv_sec * 1000) + (time.tv_usec / 1000);
-            uint32_t elapsed_time_ms = current_time_ms - start_time_ms;
-            if (elapsed_time_ms >= cfg->timeout_ms) {
-                ESP_LOGW(TAG, "Failed to open new connection in specified timeout");
+            const TickType_t current_time_tick = xTaskGetTickCount();
+            const uint32_t elapsed_time_ticks = current_time_tick - start_time_tick;
+            if (elapsed_time_ticks >= pdMS_TO_TICKS(cfg->timeout_ms)) {
+                ESP_LOGW(TAG, "Failed to open new connection in specified timeout (%u ms)", cfg->timeout_ms);
                 ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, ESP_ERR_ESP_TLS_CONNECTION_TIMEOUT);
                 return 0;
             }
+            vTaskDelay(pdMS_TO_TICKS(50));
         }
     }
     return 0;
