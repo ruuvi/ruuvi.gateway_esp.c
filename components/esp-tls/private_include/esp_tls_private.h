@@ -32,6 +32,12 @@
 #include "wolfssl/ssl.h"
 #endif
 
+typedef struct esp_tls_async_dns_req_info_t {
+    bool flag_busy;
+    SemaphoreHandle_t p_dns_mutex;
+    esp_tls_t *tls;
+} esp_tls_async_dns_req_info_t;
+
 struct esp_tls {
 #ifdef CONFIG_ESP_TLS_USING_MBEDTLS
     mbedtls_ssl_context ssl;                                                    /*!< TLS/SSL context */
@@ -94,9 +100,9 @@ struct esp_tls {
     TickType_t timer_start;
     char* hostname;
     ip_addr_t remote_ip;
-    StaticSemaphore_t dns_mutex_mem;
     SemaphoreHandle_t dns_mutex;
     ip_addr_t dns_cb_remote_ip;
     bool dns_cb_status;
     bool dns_cb_ready;
+    esp_tls_async_dns_req_info_t* p_async_dns_req_info;
 };

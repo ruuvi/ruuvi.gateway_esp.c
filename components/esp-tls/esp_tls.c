@@ -3,7 +3,6 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -106,6 +105,19 @@ static const char *TAG = "esp-tls";
 
 #define ESP_TLS_DEFAULT_CONN_TIMEOUT  (10)  /*!< Default connection timeout in seconds */
 
+static esp_tls_async_dns_req_info_t g_esp_tls_dns_req[DNS_TABLE_SIZE];
+
+static esp_tls_async_dns_req_info_t* esp_tls_find_free_dns_req_info(void)
+{
+    for (uint32_t i = 0; i < sizeof(g_esp_tls_dns_req) / sizeof(*g_esp_tls_dns_req); ++i) {
+        esp_tls_async_dns_req_info_t* const p_info = &g_esp_tls_dns_req[i];
+        if (!p_info->flag_busy) {
+            return p_info;
+        }
+    }
+    return NULL;
+}
+
 static esp_err_t create_ssl_handle(const char *hostname, size_t hostlen, const void *cfg, esp_tls_t *tls)
 {
     return _esp_create_ssl_handle(hostname, hostlen, cfg, tls);
@@ -144,16 +156,41 @@ ssize_t esp_tls_conn_write(esp_tls_t *tls, const void  *data, size_t datalen)
 int esp_tls_conn_destroy(esp_tls_t *tls)
 {
     if (tls != NULL) {
+        ESP_LOGI(
+            TAG,
+            "[%s] %s: tls=%p",
+            pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???",
+            __func__,
+            tls);
+
+        SemaphoreHandle_t p_dns_mutex = tls->dns_mutex;
+        if (p_dns_mutex) {
+            xSemaphoreTake(p_dns_mutex, portMAX_DELAY);
+            tls->dns_mutex = NULL;
+
+            if (ESP_TLS_HOSTNAME_RESOLVING == tls->conn_state) {
+                // Unfortunately, LWIP doesn't allow to overwrite previous requests,
+                // otherwise we could call dns_gethostbyname with NULL as callback ptr to undo the callback call.
+                ESP_LOGW(
+                    TAG,
+                    "[%s] %s: conn_state is ESP_TLS_HOSTNAME_RESOLVING, abort hostname resolving",
+                    pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???",
+                    __func__);
+                tls->p_async_dns_req_info->tls = NULL;
+                xSemaphoreGive(p_dns_mutex);
+            } else {
+                tls->p_async_dns_req_info = NULL;
+                xSemaphoreGive(p_dns_mutex);
+                vSemaphoreDelete(p_dns_mutex);
+            }
+        }
+
         int ret = 0;
         _esp_tls_conn_delete(tls);
         if (tls->sockfd >= 0) {
             ret = close(tls->sockfd);
         }
         esp_tls_internal_event_tracker_destroy(tls->error_handle);
-        if (tls->dns_mutex) {
-            vSemaphoreDelete(tls->dns_mutex);
-            tls->dns_mutex = NULL;
-        }
         if (tls->hostname) {
             free(tls->hostname);
             tls->hostname = NULL;
@@ -161,6 +198,7 @@ int esp_tls_conn_destroy(esp_tls_t *tls)
         free(tls);
         return ret;
     }
+    ESP_LOGW(TAG, "[%s] %s: tls=%p", pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", __func__, tls);
     return -1; // invalid argument
 }
 
@@ -175,7 +213,13 @@ esp_tls_t *esp_tls_init(void)
         free(tls);
         return NULL;
     }
-    tls->dns_mutex = xSemaphoreCreateMutexStatic(&tls->dns_mutex_mem);
+    tls->dns_mutex = xSemaphoreCreateMutex();
+    ESP_LOGI(
+        TAG,
+        "[%s] %s: tls=%p",
+        pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???",
+        __func__,
+        tls);
     tls->dns_cb_status = false;
     tls->dns_cb_ready = false;
     _esp_tls_net_init(tls);
@@ -364,26 +408,61 @@ err_exit:
 static void
 esp_tls_low_level_conn_callback_dns_found(const char *hostname, const ip_addr_t *ipaddr, void *arg)
 {
-    esp_tls_t * const tls = arg;
+    esp_tls_async_dns_req_info_t * const p_req_info = arg;
     LWIP_UNUSED_ARG(hostname);
 
-    ESP_LOGD(TAG, "callback_dns_found (tls=0x%p): hostname=%p, ipaddr=%p", tls, hostname, ipaddr);
-    ESP_LOGD(TAG, "tls->dns_mutex=%p", tls->dns_mutex);
-    ESP_LOGD(TAG, "callback_dns_found (tls=0x%p): hostname=%s, ipaddr=0x%08x", tls, hostname ? hostname : "<NULL>", ipaddr ? ipaddr->u_addr.ip4.addr : 0);
+    if (NULL == p_req_info)
+    {
+        ESP_LOGE(TAG, "[%s] %s: arg is NULL", pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", __func__);
+        return;
+    }
+
+    ESP_LOGD(TAG, "callback_dns_found (tls=0x%p): hostname=%p, ipaddr=%p", p_req_info->tls, hostname, ipaddr);
+    ESP_LOGD(TAG, "tls->dns_mutex=%p", p_req_info->tls->dns_mutex);
+    ESP_LOGD(
+        TAG,
+        "callback_dns_found (tls=0x%p): hostname=%s, ipaddr=0x%08x",
+        p_req_info->tls,
+        hostname ? hostname : "<NULL>",
+        ipaddr ? ipaddr->u_addr.ip4.addr : 0);
+
+    xSemaphoreTake(p_req_info->p_dns_mutex, portMAX_DELAY);
+    p_req_info->flag_busy = false;
+    if (NULL == p_req_info->tls)
+    {
+        // tls object was already destroyed by esp_tls_conn_destroy
+        ESP_LOGW(
+            TAG,
+            "[%s] %s: callback is called for the tls object which was already destroyed",
+            pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???",
+            __func__);
+        xSemaphoreGive(p_req_info->p_dns_mutex);
+        vSemaphoreDelete(p_req_info->p_dns_mutex);
+        p_req_info->p_dns_mutex = NULL;
+        return;
+    }
 
     if (ipaddr != NULL) {
-        xSemaphoreTake(tls->dns_mutex, portMAX_DELAY);
-        tls->dns_cb_remote_ip = *ipaddr;
-        tls->dns_cb_status = true;
-        tls->dns_cb_ready = true;
-        xSemaphoreGive(tls->dns_mutex);
+        ESP_LOGI(
+            TAG,
+            "[%s] %s: resolved successfully",
+            pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???",
+            __func__);
+        p_req_info->tls->dns_cb_remote_ip = *ipaddr;
+        p_req_info->tls->dns_cb_status = true;
     } else {
-        xSemaphoreTake(tls->dns_mutex, portMAX_DELAY);
-        tls->dns_cb_remote_ip = (ip_addr_t){0};
-        tls->dns_cb_status = false;
-        tls->dns_cb_ready = true;
-        xSemaphoreGive(tls->dns_mutex);
+        ESP_LOGE(
+            TAG,
+            "[%s] %s: resolved unsuccessfully, tls=%p, p_dns_mutex=%p",
+            pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???",
+            __func__,
+            p_req_info->tls,
+            p_req_info->p_dns_mutex);
+        p_req_info->tls->dns_cb_remote_ip = (ip_addr_t){0};
+        p_req_info->tls->dns_cb_status = false;
     }
+    p_req_info->tls->dns_cb_ready = true;
+    xSemaphoreGive(p_req_info->p_dns_mutex);
 }
 
 static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, const esp_tls_cfg_t *cfg, esp_tls_t *tls)
@@ -404,6 +483,20 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
     switch (tls->conn_state) {
     case ESP_TLS_INIT:
     {
+        xSemaphoreTake(tls->dns_mutex, portMAX_DELAY);
+        esp_tls_async_dns_req_info_t* const p_dns_req_info = esp_tls_find_free_dns_req_info();
+        if (NULL == p_dns_req_info)
+        {
+            xSemaphoreGive(tls->dns_mutex);
+            ESP_LOGE(TAG, "Failed to resolve hostname '%s', there is no free slot for DNS query", hostname);
+            return -1;
+        }
+        p_dns_req_info->tls = tls;
+        p_dns_req_info->p_dns_mutex = tls->dns_mutex;
+        p_dns_req_info->flag_busy = true;
+        tls->p_async_dns_req_info = p_dns_req_info;
+        xSemaphoreGive(tls->dns_mutex);
+
         tls->sockfd = -1;
         tls->hostname = strndup(hostname, hostlen);
         if (NULL == tls->hostname) {
@@ -417,14 +510,21 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
         err_t err = dns_gethostbyname(
             tls->hostname,
             &tls->remote_ip,
-            &esp_tls_low_level_conn_callback_dns_found,
-            tls);
+            &esp_tls_low_level_conn_callback_dns_found, // This callback can be called after the connection is closed,
+                                                        // at the moment when the tls object has already been destroyed,
+                                                        // so we can't pass pointer to the tls object as an argument.
+                                                        // Instead, we can pass a pointer to statically allocated memory.
+            p_dns_req_info);
         if (err == ERR_INPROGRESS) {
             /* DNS request sent, wait for esp_tls_low_level_conn_callback_dns_found being called */
             ESP_LOGD(TAG, "dns_gethostbyname got ERR_INPROGRESS");
             tls->conn_state = ESP_TLS_HOSTNAME_RESOLVING;
             return 0; // Connection has not yet established
         }
+        p_dns_req_info->flag_busy = false;
+        p_dns_req_info->tls = NULL;
+        p_dns_req_info->p_dns_mutex = NULL;
+
         if (err != ERR_OK) {
             ESP_LOGE(TAG, "Failed to resolve hostname '%s', error %d", tls->hostname, err);
             free(tls->hostname);
@@ -653,7 +753,11 @@ int esp_tls_conn_new_sync(const char *hostname, int hostlen, int port, const esp
             const TickType_t current_time_tick = xTaskGetTickCount();
             const uint32_t elapsed_time_ticks = current_time_tick - start_time_tick;
             if (elapsed_time_ticks >= pdMS_TO_TICKS(cfg->timeout_ms)) {
-                ESP_LOGW(TAG, "Failed to open new connection in specified timeout (%u ms)", cfg->timeout_ms);
+                ESP_LOGW(
+                    TAG,
+                    "[%s] Failed to open new connection in specified timeout (%u ms)",
+                    pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???",
+                    cfg->timeout_ms);
                 ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, ESP_ERR_ESP_TLS_CONNECTION_TIMEOUT);
                 return 0;
             }

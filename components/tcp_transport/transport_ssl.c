@@ -458,6 +458,19 @@ static int base_close(esp_transport_handle_t t)
     int ret = -1;
     transport_esp_tls_t *ssl = ssl_get_context_data(t);
     if (ssl && ssl->ssl_initialized) {
+        if (NULL == ssl->tls)
+        {
+            ESP_LOGW(TAG, "[%s] %s: tls=NULL", pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", __func__);
+        }
+        else
+        {
+            ESP_LOGI(
+                TAG,
+                "[%s] %s: tls=%p",
+                pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???",
+                __func__,
+                ssl->tls);
+        }
         ret = esp_tls_conn_destroy(ssl->tls);
         ssl->tls = NULL;
         ssl->conn_state = TRANS_SSL_INIT;

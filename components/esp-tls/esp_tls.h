@@ -10,6 +10,8 @@
 #include "esp_err.h"
 #include "esp_tls_errors.h"
 #include "sdkconfig.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #ifdef CONFIG_ESP_TLS_USING_MBEDTLS
 #include "mbedtls/ssl.h"
 #ifdef CONFIG_ESP_TLS_SERVER_SESSION_TICKETS
