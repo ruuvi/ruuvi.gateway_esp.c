@@ -179,7 +179,7 @@ static int ws_connect(esp_transport_handle_t t, const char *host, int port, int 
     // Size of base64 coded string is equal '((input_size * 4) / 3) + (input_size / 96) + 6' including Z-term
     unsigned char client_key[28] = {0};
 
-    const char *user_agent_ptr = (ws->user_agent) ? (ws->user_agent) : "ESP32 Websocket Client";
+    const char *user_agent_ptr = (ws->user_agent) ? (ws->user_agent) : "Ruuvi Gateway Websocket Client";
 #ifdef CONFIG_WS_DYNAMIC_BUFFER
     if (!ws->buffer) {
         ws->buffer = malloc(WS_BUFFER_SIZE);
