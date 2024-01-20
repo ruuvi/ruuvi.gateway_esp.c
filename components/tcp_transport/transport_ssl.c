@@ -16,6 +16,7 @@
 #include "esp_transport.h"
 #include "esp_transport_ssl.h"
 #include "esp_transport_internal.h"
+#include "snprintf_with_esp_err_desc.h"
 
 #define INVALID_SOCKET (-1)
 
@@ -326,9 +327,10 @@ static int base_poll_read(esp_transport_handle_t t, int timeout_ms)
         uint32_t optlen = sizeof(sock_errno);
         getsockopt(ssl->sockfd, SOL_SOCKET, SO_ERROR, &sock_errno, &optlen);
         esp_transport_capture_errno(t, sock_errno);
-        esp_transport_err_desc_t err_desc;
+        str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(sock_errno);
         ESP_LOGE(TAG, "poll_read select error %d, errno = %s, fd = %d",
-                 sock_errno, esp_transport_get_err_desc(sock_errno, &err_desc), ssl->sockfd);
+                 sock_errno, (NULL != err_desc.buf) ? err_desc.buf : "", ssl->sockfd);
+        str_buf_free_buf(&err_desc);
         ret = -1;
     } else if (ret == 0) {
         ESP_LOGV(TAG, "poll_read: select - Timeout before any socket was ready!");
@@ -353,9 +355,10 @@ static int base_poll_write(esp_transport_handle_t t, int timeout_ms)
         uint32_t optlen = sizeof(sock_errno);
         getsockopt(ssl->sockfd, SOL_SOCKET, SO_ERROR, &sock_errno, &optlen);
         esp_transport_capture_errno(t, sock_errno);
-        esp_transport_err_desc_t err_desc;
+        str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(sock_errno);
         ESP_LOGE(TAG, "poll_write select error %d, errno = %s, fd = %d",
-                 sock_errno, esp_transport_get_err_desc(sock_errno, &err_desc), ssl->sockfd);
+                 sock_errno, (NULL != err_desc.buf) ? err_desc.buf : "", ssl->sockfd);
+        str_buf_free_buf(&err_desc);
         ret = -1;
     } else if (ret == 0) {
         ESP_LOGD(TAG, "poll_write: select - Timeout before any socket was ready!");
@@ -369,15 +372,19 @@ static int ssl_write(esp_transport_handle_t t, const char *buffer, int len, int 
     transport_esp_tls_t *ssl = ssl_get_context_data(t);
 
     if ((poll = esp_transport_poll_write(t, timeout_ms)) <= 0) {
-        esp_transport_err_desc_t err_desc;
+        str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(errno);
         ESP_LOGW(TAG, "Poll timeout or error, errno=%d (%s), fd=%d, timeout_ms=%d",
-                 errno, esp_transport_get_err_desc(errno, &err_desc), ssl->sockfd, timeout_ms);
+                 errno,
+                 (NULL != err_desc.buf) ? err_desc.buf : "",
+                 ssl->sockfd, timeout_ms);
+        str_buf_free_buf(&err_desc);
         return poll;
     }
     int ret = esp_tls_conn_write(ssl->tls, (const unsigned char *) buffer, len);
     if (ret < 0) {
-        esp_transport_err_desc_t err_desc;
-        ESP_LOGD(TAG, "esp_tls_conn_write error, errno=%d (%s)", errno, esp_transport_get_err_desc(errno, &err_desc));
+        str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(errno);
+        ESP_LOGD(TAG, "esp_tls_conn_write error, errno=%d (%s)", errno, (NULL != err_desc.buf) ? err_desc.buf : "");
+        str_buf_free_buf(&err_desc);
         esp_tls_error_handle_t esp_tls_error_handle;
         if (esp_tls_get_error_handle(ssl->tls, &esp_tls_error_handle) == ESP_OK) {
             esp_transport_set_errors(t, esp_tls_error_handle);
@@ -394,15 +401,17 @@ static int tcp_write(esp_transport_handle_t t, const char *buffer, int len, int 
     transport_esp_tls_t *ssl = ssl_get_context_data(t);
 
     if ((poll = esp_transport_poll_write(t, timeout_ms)) <= 0) {
-        esp_transport_err_desc_t err_desc;
+        str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(errno);
         ESP_LOGW(TAG, "Poll timeout or error, errno=%d (%s), fd=%d, timeout_ms=%d",
-                 errno, esp_transport_get_err_desc(errno, &err_desc), ssl->sockfd, timeout_ms);
+                 errno, (NULL != err_desc.buf) ? err_desc.buf : "", ssl->sockfd, timeout_ms);
+        str_buf_free_buf(&err_desc);
         return poll;
     }
     int ret = send(ssl->sockfd, (const unsigned char *) buffer, len, 0);
     if (ret < 0) {
-        esp_transport_err_desc_t err_desc;
-        ESP_LOGE(TAG, "tcp_write error, errno=%d (%s)", errno, esp_transport_get_err_desc(errno, &err_desc));
+        str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(errno);
+        ESP_LOGE(TAG, "tcp_write error, errno=%d (%s)", errno, (NULL != err_desc.buf) ? err_desc.buf : "");
+        str_buf_free_buf(&err_desc);
         esp_transport_capture_errno(t, errno);
     }
     return ret;
@@ -423,9 +432,10 @@ static int ssl_read(esp_transport_handle_t t, char *buffer, int len, int timeout
     int ret = esp_tls_conn_read(ssl->tls, (unsigned char *)buffer, len);
     if (ret < 0) {
         if (ret == ESP_TLS_ERR_SSL_WANT_READ || ret == ESP_TLS_ERR_SSL_TIMEOUT) {
-            esp_transport_err_desc_t err_desc;
+            str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(ret);
             ESP_LOGW(TAG, "esp_tls_conn_read error - no data available (ret=-0x%x, errno=%s)", -ret,
-                     esp_transport_get_err_desc(errno, &err_desc));
+                     (NULL != err_desc.buf) ? err_desc.buf : "");
+            str_buf_free_buf(&err_desc);
             ret = ERR_TCP_TRANSPORT_CONNECTION_TIMEOUT;
         } else if (ret == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET) {
             ret = ERR_TCP_TRANSPORT_CONNECTION_TIMEOUT;
@@ -433,9 +443,10 @@ static int ssl_read(esp_transport_handle_t t, char *buffer, int len, int timeout
             save_new_session_ticket(ssl);
             ESP_LOGI(TAG, "Cur free heap: %u", (unsigned)esp_get_free_heap_size());
         } else {
-            esp_transport_err_desc_t err_desc;
+            str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(ret);
             ESP_LOGE(TAG, "esp_tls_conn_read error, ret=-0x%x, errno=%s", -ret,
-                     esp_transport_get_err_desc(errno, &err_desc));
+                     (NULL != err_desc.buf) ? err_desc.buf : "");
+            str_buf_free_buf(&err_desc);
         }
 
         esp_tls_error_handle_t esp_tls_error_handle;
@@ -468,8 +479,9 @@ static int tcp_read(esp_transport_handle_t t, char *buffer, int len, int timeout
 
     int ret = recv(ssl->sockfd, (unsigned char *)buffer, len, 0);
     if (ret < 0) {
-        esp_transport_err_desc_t err_desc;
-        ESP_LOGE(TAG, "tcp_read error, errno=%d (%s)", errno, esp_transport_get_err_desc(errno, &err_desc));
+        str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(errno);
+        ESP_LOGE(TAG, "tcp_read error, errno=%d (%s)", errno, (NULL != err_desc.buf) ? err_desc.buf : "");
+        str_buf_free_buf(&err_desc);
         esp_transport_capture_errno(t, errno);
         if (errno == EAGAIN) {
             ret = ERR_TCP_TRANSPORT_CONNECTION_TIMEOUT;

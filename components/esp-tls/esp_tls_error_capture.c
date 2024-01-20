@@ -87,9 +87,3 @@ esp_err_t esp_tls_get_and_clear_error_type(esp_tls_error_handle_t h, esp_tls_err
     }
     return ESP_ERR_INVALID_ARG;
 }
-
-const char* esp_tls_get_err_desc(const int err, esp_tls_err_desc_t* const p_err_desc)
-{
-    esp_err_to_name_r(err, p_err_desc->buf, sizeof(p_err_desc->buf));
-    return p_err_desc->buf;
-}

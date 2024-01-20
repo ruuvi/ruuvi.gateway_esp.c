@@ -335,9 +335,3 @@ esp_err_t esp_transport_translate_error(enum esp_tcp_transport_err_t error)
 
     return err;
 }
-
-const char* esp_transport_get_err_desc(const int err, esp_transport_err_desc_t* const p_err_desc)
-{
-    esp_err_to_name_r(err, p_err_desc->buf, sizeof(p_err_desc->buf));
-    return p_err_desc->buf;
-}

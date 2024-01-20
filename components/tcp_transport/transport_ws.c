@@ -19,6 +19,7 @@
 #include "errno.h"
 #include "esp_tls_crypto.h"
 #include <arpa/inet.h>
+#include "snprintf_with_esp_err_desc.h"
 
 static const char *TAG = "transport_ws";
 
@@ -928,9 +929,10 @@ int esp_transport_ws_poll_connection_closed(esp_transport_handle_t t, int timeou
             int sock_errno = 0;
             uint32_t optlen = sizeof(sock_errno);
             getsockopt(sock, SOL_SOCKET, SO_ERROR, &sock_errno, &optlen);
-            esp_transport_err_desc_t err_desc;
+            str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(sock_errno);
             ESP_LOGD(TAG, "esp_transport_ws_poll_connection_closed select error %d (%s), fd = %d",
-                     sock_errno, esp_transport_get_err_desc(sock_errno, &err_desc), sock);
+                     sock_errno, (NULL != err_desc.buf) ? err_desc.buf : "", sock);
+            str_buf_free_buf(&err_desc);
             if (sock_errno == ENOTCONN || sock_errno == ECONNRESET || sock_errno == ECONNABORTED) {
                 // the three err codes above might be caused by connection termination by RTS flag
                 // which we still assume as expected closing sequence of ws-transport connection

@@ -18,6 +18,7 @@
 #include "esp_tls_error_capture_internal.h"
 #include <errno.h>
 #include "esp_log.h"
+#include "snprintf_with_esp_err_desc.h"
 
 #ifdef CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
 #include "esp_crt_bundle.h"
@@ -201,8 +202,9 @@ int esp_mbedtls_handshake(esp_tls_t *tls, const esp_tls_cfg_t *cfg)
         return 1;
     } else {
         if (ret != ESP_TLS_ERR_SSL_WANT_READ && ret != ESP_TLS_ERR_SSL_WANT_WRITE) {
-            esp_tls_err_desc_t err_desc;
-            ESP_LOGE(TAG, "mbedtls_ssl_handshake returned -0x%x (%s)", -ret, esp_tls_get_err_desc(ret, &err_desc));
+            str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(ret);
+            ESP_LOGE(TAG, "mbedtls_ssl_handshake returned -0x%x (%s)", -ret, (NULL != err_desc.buf) ? err_desc.buf : "");
+            str_buf_free_buf(&err_desc);
             mbedtls_print_error_msg(ret);
             ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_MBEDTLS, -ret);
             ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, ESP_ERR_MBEDTLS_SSL_HANDSHAKE_FAILED);

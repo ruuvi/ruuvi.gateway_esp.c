@@ -58,14 +58,6 @@ struct esp_transport_item_t {
     STAILQ_ENTRY(esp_transport_item_t) next;
 };
 
-typedef struct esp_transport_err_desc_t
-{
-#define ERR_DESC_SIZE 80
-    char buf[ERR_DESC_SIZE];
-} esp_transport_err_desc_t;
-
-const char* esp_transport_get_err_desc(const int err, esp_transport_err_desc_t* const p_err_desc);
-
 /**
  * @brief      Utility macro to be used for NULL ptr check after malloc
  *
