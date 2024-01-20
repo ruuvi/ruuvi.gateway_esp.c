@@ -928,7 +928,9 @@ int esp_transport_ws_poll_connection_closed(esp_transport_handle_t t, int timeou
             int sock_errno = 0;
             uint32_t optlen = sizeof(sock_errno);
             getsockopt(sock, SOL_SOCKET, SO_ERROR, &sock_errno, &optlen);
-            ESP_LOGD(TAG, "esp_transport_ws_poll_connection_closed select error %d, errno = %s, fd = %d", sock_errno, strerror(sock_errno), sock);
+            esp_transport_err_desc_t err_desc;
+            ESP_LOGD(TAG, "esp_transport_ws_poll_connection_closed select error %d (%s), fd = %d",
+                     sock_errno, esp_transport_get_err_desc(sock_errno, &err_desc), sock);
             if (sock_errno == ENOTCONN || sock_errno == ECONNRESET || sock_errno == ECONNABORTED) {
                 // the three err codes above might be caused by connection termination by RTS flag
                 // which we still assume as expected closing sequence of ws-transport connection

@@ -15,6 +15,14 @@
 extern "C" {
 #endif
 
+typedef struct esp_tls_err_desc_t
+{
+#define ERR_DESC_SIZE 80
+    char buf[ERR_DESC_SIZE];
+} esp_tls_err_desc_t;
+
+const char* esp_tls_get_err_desc(const int err, esp_tls_err_desc_t* const p_err_desc);
+
 /**
  * Error tracker logging macro to enable mapping tracking errors internally
  * or using an external/global implementation
