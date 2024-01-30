@@ -903,7 +903,7 @@ static int esp_http_client_get_data(esp_http_client_handle_t client)
     ESP_LOGD(TAG, "data_process=%d, content_length=%d", client->response->data_process, client->response->content_length);
 
     int rlen = esp_transport_read(client->transport, res_buffer->data, client->buffer_size_rx, client->timeout_ms);
-    if (rlen >= 0) {
+    if (rlen > 0) {
         http_parser_execute(client->parser, client->parser_settings, res_buffer->data, rlen);
     }
     return rlen;
