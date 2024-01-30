@@ -342,12 +342,15 @@ adv_post_do_async_comm_in_progress(adv_post_state_t* const p_adv_post_state)
         {
             case ADV_POST_ACTION_POST_ADVS_TO_RUUVI:
                 p_adv_post_state->flag_need_to_send_advs1 = false;
+                g_adv_post_action                         = ADV_POST_ACTION_NONE;
                 break;
             case ADV_POST_ACTION_POST_ADVS_TO_CUSTOM:
                 p_adv_post_state->flag_need_to_send_advs2 = false;
+                g_adv_post_action                         = ADV_POST_ACTION_NONE;
                 break;
             case ADV_POST_ACTION_POST_STATS:
                 p_adv_post_state->flag_need_to_send_statistics = false;
+                g_adv_post_action                              = ADV_POST_ACTION_NONE;
                 break;
             default:
                 break;
@@ -453,4 +456,17 @@ adv_post_set_hmac_sha256_key(const char* const p_key_str)
             break;
     }
     return false;
+}
+
+void
+adv_post_set_adv_post_http_action(const bool flag_post_to_ruuvi)
+{
+    if (flag_post_to_ruuvi)
+    {
+        g_adv_post_action = ADV_POST_ACTION_POST_ADVS_TO_RUUVI;
+    }
+    else
+    {
+        g_adv_post_action = ADV_POST_ACTION_POST_ADVS_TO_CUSTOM;
+    }
 }

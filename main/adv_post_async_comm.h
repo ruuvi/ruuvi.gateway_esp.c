@@ -27,6 +27,9 @@ adv_post_set_default_period(const uint32_t period_ms);
 bool
 adv_post_set_hmac_sha256_key(const char* const p_key_str);
 
+void
+adv_post_set_adv_post_http_action(const bool flag_post_to_ruuvi);
+
 #ifdef __cplusplus
 }
 #endif
