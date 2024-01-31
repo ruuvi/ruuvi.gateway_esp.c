@@ -482,6 +482,7 @@ TEST_F(TestAdvPostAsyncComm, test_regular_sequence) // NOLINT
     ASSERT_EQ(0, this->m_mqtt_publish_adv_call_cnt);
     ASSERT_TRUE(this->m_adv_post_timers_start_timer_sig_do_async_comm);
     this->m_adv_post_timers_start_timer_sig_do_async_comm = false;
+    ASSERT_EQ(ADV_POST_ACTION_POST_ADVS_TO_RUUVI, adv_post_get_adv_post_action());
 
     this->m_hmac_sha256_set_key_for_http_ruuvi_res = true;
     ASSERT_TRUE(adv_post_set_hmac_sha256_key("key_str123"));
@@ -499,6 +500,7 @@ TEST_F(TestAdvPostAsyncComm, test_regular_sequence) // NOLINT
     ASSERT_EQ(0, this->m_adv_post_statistics_do_send_call_cnt);
     ASSERT_EQ(0, this->m_mqtt_publish_adv_call_cnt);
     this->m_http_async_poll_res = false;
+    ASSERT_EQ(ADV_POST_ACTION_NONE, adv_post_get_adv_post_action());
 
     adv_post_state.flag_need_to_send_advs1          = false;
     adv_post_state.flag_need_to_send_advs2          = true;
@@ -653,6 +655,15 @@ TEST_F(TestAdvPostAsyncComm, test_regular_sequence) // NOLINT
         }
     }
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestAdvPostAsyncComm, test_adv_post_set_adv_post_http_action) // NOLINT
+{
+    ASSERT_EQ(ADV_POST_ACTION_NONE, adv_post_get_adv_post_action());
+    adv_post_set_adv_post_http_action(true);
+    ASSERT_EQ(ADV_POST_ACTION_POST_ADVS_TO_RUUVI, adv_post_get_adv_post_action());
+    adv_post_set_adv_post_http_action(false);
+    ASSERT_EQ(ADV_POST_ACTION_POST_ADVS_TO_CUSTOM, adv_post_get_adv_post_action());
 }
 
 TEST_F(TestAdvPostAsyncComm, test_no_timestamps) // NOLINT
