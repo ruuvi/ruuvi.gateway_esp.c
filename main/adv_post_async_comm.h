@@ -15,6 +15,15 @@
 extern "C" {
 #endif
 
+typedef enum adv_post_action_e
+{
+    ADV_POST_ACTION_NONE = 0,
+    ADV_POST_ACTION_POST_ADVS_TO_RUUVI,
+    ADV_POST_ACTION_POST_ADVS_TO_CUSTOM,
+    ADV_POST_ACTION_POST_STATS,
+    ADV_POST_ACTION_POST_ADVS_TO_MQTT,
+} adv_post_action_e;
+
 void
 adv_post_async_comm_init(void);
 
@@ -26,6 +35,12 @@ adv_post_set_default_period(const uint32_t period_ms);
 
 bool
 adv_post_set_hmac_sha256_key(const char* const p_key_str);
+
+void
+adv_post_set_adv_post_http_action(const bool flag_post_to_ruuvi);
+
+adv_post_action_e
+adv_post_get_adv_post_action(void);
 
 #ifdef __cplusplus
 }

@@ -29,15 +29,6 @@
 #include "log.h"
 static const char* TAG = "ADV_POST_TASK";
 
-typedef enum adv_post_action_e
-{
-    ADV_POST_ACTION_NONE = 0,
-    ADV_POST_ACTION_POST_ADVS_TO_RUUVI,
-    ADV_POST_ACTION_POST_ADVS_TO_CUSTOM,
-    ADV_POST_ACTION_POST_STATS,
-    ADV_POST_ACTION_POST_ADVS_TO_MQTT,
-} adv_post_action_e;
-
 static uint32_t          g_adv_post_nonce;
 static adv_post_action_e g_adv_post_action = ADV_POST_ACTION_NONE;
 
@@ -342,12 +333,15 @@ adv_post_do_async_comm_in_progress(adv_post_state_t* const p_adv_post_state)
         {
             case ADV_POST_ACTION_POST_ADVS_TO_RUUVI:
                 p_adv_post_state->flag_need_to_send_advs1 = false;
+                g_adv_post_action                         = ADV_POST_ACTION_NONE;
                 break;
             case ADV_POST_ACTION_POST_ADVS_TO_CUSTOM:
                 p_adv_post_state->flag_need_to_send_advs2 = false;
+                g_adv_post_action                         = ADV_POST_ACTION_NONE;
                 break;
             case ADV_POST_ACTION_POST_STATS:
                 p_adv_post_state->flag_need_to_send_statistics = false;
+                g_adv_post_action                              = ADV_POST_ACTION_NONE;
                 break;
             default:
                 break;
@@ -453,4 +447,23 @@ adv_post_set_hmac_sha256_key(const char* const p_key_str)
             break;
     }
     return false;
+}
+
+void
+adv_post_set_adv_post_http_action(const bool flag_post_to_ruuvi)
+{
+    if (flag_post_to_ruuvi)
+    {
+        g_adv_post_action = ADV_POST_ACTION_POST_ADVS_TO_RUUVI;
+    }
+    else
+    {
+        g_adv_post_action = ADV_POST_ACTION_POST_ADVS_TO_CUSTOM;
+    }
+}
+
+adv_post_action_e
+adv_post_get_adv_post_action(void)
+{
+    return g_adv_post_action;
 }

@@ -17,6 +17,7 @@
 #include "gw_cfg_default.h"
 #include "reset_task.h"
 #include "ruuvi_gateway.h"
+#include "adv_post_async_comm.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -220,6 +221,8 @@ http_send_advs_internal(
             p_http_async_info->select.p_gen,
             &p_http_async_info->hmac_sha256);
     }
+
+    adv_post_set_adv_post_http_action(p_params->flag_post_to_ruuvi);
 
     if (!http_send_async(p_http_async_info))
     {
