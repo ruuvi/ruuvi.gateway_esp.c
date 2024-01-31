@@ -182,6 +182,7 @@ main_task_handle_sig_log_heap_usage(void)
 {
     static uint32_t g_heap_usage_stat_cnt      = 0;
     static uint32_t g_heap_usage_min_free_heap = 0xFFFFFFFFU;
+    static uint32_t g_heap_usage_max_free_heap = 0;
     static uint32_t g_heap_limit_cnt           = 0;
 
     const uint32_t free_heap = esp_get_free_heap_size();
@@ -194,14 +195,19 @@ main_task_handle_sig_log_heap_usage(void)
         {
             g_heap_usage_min_free_heap = free_heap;
         }
+        if (free_heap > g_heap_usage_max_free_heap)
+        {
+            g_heap_usage_max_free_heap = free_heap;
+        }
     }
     else
     {
-        LOG_INFO("free heap: %lu", (printf_ulong_t)g_heap_usage_min_free_heap);
-        if (g_heap_usage_min_free_heap < (RUUVI_FREE_HEAP_LIM_KIB * RUUVI_NUM_BYTES_IN_1KB))
+        LOG_INFO(
+            "free heap: %lu .. %lu",
+            (printf_ulong_t)g_heap_usage_min_free_heap,
+            (printf_ulong_t)g_heap_usage_max_free_heap);
+        if (g_heap_usage_max_free_heap < (RUUVI_FREE_HEAP_LIM_KIB * RUUVI_NUM_BYTES_IN_1KB))
         {
-            // TODO: in ESP-IDF v4.x there is API heap_caps_register_failed_alloc_callback,
-            //       which allows to catch 'no memory' event and reboot.
             g_heap_limit_cnt += 1;
             if (g_heap_limit_cnt >= RUUVI_MAX_LOW_HEAP_MEM_CNT)
             {
@@ -217,6 +223,7 @@ main_task_handle_sig_log_heap_usage(void)
         }
         g_heap_usage_stat_cnt      = 0;
         g_heap_usage_min_free_heap = UINT32_MAX;
+        g_heap_usage_max_free_heap = 0;
     }
 }
 
