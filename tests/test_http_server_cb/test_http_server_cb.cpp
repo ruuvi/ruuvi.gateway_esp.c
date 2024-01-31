@@ -194,22 +194,51 @@ gw_status_resume_http_relaying(void)
 http_server_resp_t
 http_check_post_advs(const http_check_params_t* const p_params, const TimeUnitsSeconds_t timeout_seconds)
 {
-    const http_server_resp_t resp = {
-        .http_resp_code       = HTTP_RESP_CODE_500,
-        .content_location     = HTTP_CONTENT_LOCATION_NO_CONTENT,
-        .flag_no_cache        = true,
-        .flag_add_header_date = true,
-        .content_type         = HTTP_CONENT_TYPE_TEXT_HTML,
-        .p_content_type_param = NULL,
-        .content_len          = 0,
-        .content_encoding     = HTTP_CONENT_ENCODING_NONE,
-        .select_location = {
-            .memory = {
-                .p_buf = NULL,
+    if ((0 == strcmp(p_params->p_url, "https://myserver.com/")) && (GW_CFG_HTTP_AUTH_TYPE_NONE == p_params->auth_type))
+    {
+        static const char resp_content[]
+            = "{\n"
+              "\t\"status\":\t200,\n"
+              "\t\"message\":\t\"{}\"\n"
+              "}";
+        const char* p_resp = strdup(resp_content);
+        assert(NULL != p_resp);
+        const http_server_resp_t resp = {
+            .http_resp_code       = HTTP_RESP_CODE_200,
+            .content_location     = HTTP_CONTENT_LOCATION_HEAP,
+            .flag_no_cache        = true,
+            .flag_add_header_date = true,
+            .content_type         = HTTP_CONENT_TYPE_APPLICATION_JSON,
+            .p_content_type_param = NULL,
+            .content_len          = strlen(p_resp),
+            .content_encoding     = HTTP_CONENT_ENCODING_NONE,
+            .select_location = {
+                .memory = {
+                    .p_buf = (const uint8_t*)p_resp,
+                },
             },
-        },
-    };
-    return resp;
+        };
+        return resp;
+    }
+    else
+    {
+        const http_server_resp_t resp = {
+            .http_resp_code       = HTTP_RESP_CODE_500,
+            .content_location     = HTTP_CONTENT_LOCATION_NO_CONTENT,
+            .flag_no_cache        = true,
+            .flag_add_header_date = true,
+            .content_type         = HTTP_CONENT_TYPE_TEXT_HTML,
+            .p_content_type_param = NULL,
+            .content_len          = 0,
+            .content_encoding     = HTTP_CONENT_ENCODING_NONE,
+            .select_location = {
+                .memory = {
+                    .p_buf = NULL,
+                },
+            },
+        };
+        return resp;
+    }
 }
 
 http_server_resp_t
@@ -4825,6 +4854,57 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, string("http_check: completed within 0 ticks"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Feed watchdog"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_post_advs__custom_http) // NOLINT
+{
+    const char* const expected_json = "{\n\t\"status\":\t200,\n\t\"message\":\t\"{}\"\n}";
+
+    const char* const p_uri_params
+        = "validate_type=check_post_advs&url=https://myserver.com/"
+          "&auth_type=none&use_ssl_client_cert=false&use_ssl_server_cert=false";
+
+    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+
+    ASSERT_EQ(
+        "D http_server: http_server_cb_on_get "
+        "/validate_url?validate_type=check_post_advs&url=https://myserver.com/"
+        "&auth_type=none&use_ssl_client_cert=false&use_ssl_server_cert=false\n"
+        "D http_server: HTTP params: auth_type=none\n"
+        "D http_server: HTTP params: key 'auth_type=': value (encoded): none\n"
+        "D http_server: HTTP params: key 'auth_type=': value (decoded): none\n"
+        "D http_server: HTTP params: url=https://myserver.com/\n"
+        "D http_server: HTTP params: key 'url=': value (encoded): https://myserver.com/\n"
+        "D http_server: HTTP params: key 'url=': value (decoded): https://myserver.com/\n"
+        "D http_server: Can't find key 'user=' in URL params\n"
+        "E http_server: HTTP params: Can't find 'user='\n"
+        "D http_server: Can't find key 'encrypted_password=' in URL params\n"
+        "E http_server: HTTP params: Can't find 'encrypted_password='\n"
+        "D http_server: Can't find key 'use_saved_password=' in URL params\n"
+        "E http_server: HTTP params: Can't find 'use_saved_password='\n"
+        "E http_server: Can't find key: use_saved_password=\n"
+        "I http_server: Found use_ssl_client_cert: false\n"
+        "I http_server: Found use_ssl_server_cert: false\n"
+        "D http_server: Got URL from params: https://myserver.com/\n"
+        "I http_server: Found validate_type: check_post_advs\n"
+        "I http_server: Validate URL (POST advs): https://myserver.com/\n"
+        "I http_server: Validate URL (POST advs): auth_type=none\n"
+        "I http_server: Validate URL (POST advs): user=NULL\n"
+        "I http_server: Validate URL (POST advs): use_saved_password=0\n"
+        "D http_server: Validate URL (POST advs): saved_password=\n"
+        "D http_server: Validate URL (POST advs): password=NULL\n"
+        "I http_server: Validate URL (POST advs): use_ssl_client_cert=0\n"
+        "I http_server: Validate URL (POST advs): use_ssl_server_cert=0\n",
+        esp_log_wrapper_get_logs());
 }
 
 TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__latest_and_beta) // NOLINT
