@@ -1,16 +1,8 @@
-// Copyright 2020 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2020-2021 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include "esp_tls_crypto.h"
 #include "esp_log.h"
@@ -33,7 +25,7 @@ static int esp_crypto_sha1_mbedtls( const unsigned char *input,
                                     size_t ilen,
                                     unsigned char output[20])
 {
-    int ret = mbedtls_sha1_ret(input, ilen, output);
+    int ret = mbedtls_sha1(input, ilen, output);
     if (ret != 0) {
         ESP_LOGE(TAG, "Error in calculating sha1 sum , Returned 0x%02X", ret);
     }
@@ -64,7 +56,7 @@ static int esp_crypto_base64_encode_woflSSL(unsigned char *dst, size_t dlen, siz
         const unsigned char *src, size_t slen)
 {
     *olen = dlen;
-    return Base64_Encode((const byte *) src, (word32) slen, (byte *) dst, (word32 *) olen);
+    return Base64_Encode_NoNl((const byte *) src, (word32) slen, (byte *) dst, (word32 *) olen);
 }
 
 #else

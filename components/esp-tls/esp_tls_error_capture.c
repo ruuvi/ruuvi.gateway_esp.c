@@ -1,21 +1,19 @@
-// Copyright 2020 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2020-2021 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include "esp_tls.h"
 #include "esp_tls_error_capture_internal.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #define LOG_LOCAL_LEVEL 3
 #include "esp_log.h"
+
+#if CONFIG_IDF_TARGET_LINUX
+#include "esp_linux_helper.h"
+#endif
 
 static const char* TAG = "esp_tls_error";
 
@@ -29,7 +27,11 @@ void esp_tls_internal_event_tracker_capture(esp_tls_error_handle_t h, uint32_t t
     if (h) {
         esp_tls_error_storage_t * storage = __containerof(h, esp_tls_error_storage_t, parent);
 
-        ESP_LOGD(TAG, "[%s] %s: type=%d, code=%d", pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", __func__, type, code);
+        ESP_LOGD(TAG, "[%s] %s: type=%d, code=%d",
+                 pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???",
+                 __func__,
+                 type,
+                 code);
 
         if (type == ESP_TLS_ERR_TYPE_ESP) {
             storage->parent.last_error = code;

@@ -1,19 +1,12 @@
-// Copyright 2019 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2019-2021 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #pragma once
 #include "esp_tls.h"
+#include "esp_tls_private.h"
 
 /**
  * Internal Callback for creating ssl handle for wolfssl
@@ -70,6 +63,18 @@ void esp_wolfssl_free_global_ca_store(void);
  * Callback function for Initializing the global ca store for TLS?SSL using wolfssl
  */
 esp_err_t esp_wolfssl_init_global_ca_store(void);
+
+/**
+ *  Return ssl context for wolfSSL stack
+ */
+void *esp_wolfssl_get_ssl_context(esp_tls_t *tls);
+
+/**
+ * wolfSSL function for Initializing socket wrappers (no-operation for wolfSSL)
+ */
+static inline void esp_wolfssl_net_init(esp_tls_t *tls)
+{
+}
 
 #ifdef CONFIG_ESP_TLS_SERVER
 
