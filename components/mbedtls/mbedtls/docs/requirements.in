@@ -4,3 +4,4 @@ sphinx-rtd-theme
 certifi>=2023.7.22
 requests>=2.31.0
 Pygments>=2.15.0
+urllib3>=1.26.18

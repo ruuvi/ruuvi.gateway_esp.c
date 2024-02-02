@@ -75,8 +75,10 @@ sphinxcontrib-qthelp==1.0.3
     # via sphinx
 sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
-urllib3==1.26.15
-    # via requests
+urllib3==2.2.0
+    # via
+    #   -r requirements.in
+    #   requests
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
