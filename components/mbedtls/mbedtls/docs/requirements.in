@@ -2,3 +2,4 @@ breathe
 readthedocs-cli
 sphinx-rtd-theme
 certifi>=2023.7.22
+requests>=2.31.0
