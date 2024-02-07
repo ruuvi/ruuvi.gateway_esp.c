@@ -13,11 +13,32 @@
 #include "sys/queue.h"
 #include "esp_log.h"
 #include "esp_tls.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define ESP_TRANSPORT_LOGE(fmt, ...) \
+    ESP_LOGE(TAG, "[%s] " fmt, pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", ##__VA_ARGS__)
+
+#define ESP_TRANSPORT_LOGE_FUNC(fmt, ...) \
+    ESP_LOGE(TAG, "[%s] %s: " fmt, pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", __func__, ##__VA_ARGS__)
+
+#define ESP_TRANSPORT_LOGE_LINE(fmt, ...) \
+    ESP_LOGE(TAG, "[%s] %s:%d: " fmt, pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", __FILE__, __LINE__, ##__VA_ARGS__)
+
+#define ESP_TRANSPORT_LOGW_FUNC(fmt, ...) \
+    ESP_LOGW(TAG, "[%s] %s: " fmt, pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", __func__, ##__VA_ARGS__)
+
+#define ESP_TRANSPORT_LOGI(fmt, ...) \
+    ESP_LOGI(TAG, "[%s] " fmt, pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", ##__VA_ARGS__)
+
+#define ESP_TRANSPORT_LOGI_FUNC(fmt, ...) \
+    ESP_LOGI(TAG, "[%s] %s: " fmt, pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", __func__, ##__VA_ARGS__)
+
 
 typedef int (*get_socket_func)(esp_transport_handle_t t);
 
