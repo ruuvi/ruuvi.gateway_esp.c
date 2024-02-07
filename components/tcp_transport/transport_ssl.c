@@ -292,12 +292,7 @@ static int tcp_connect(esp_transport_handle_t t, const char *host, int port, int
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "%s: failed to resolve hostname '%s': %d", __func__, host, err);
         err_handle->last_error = err;
-        esp_tls_last_error_t last_err = {
-            .last_error = ESP_ERR_ESP_TLS_CANNOT_RESOLVE_HOSTNAME,
-            .esp_tls_error_code = 0,
-            .esp_tls_flags = 0,
-        };
-        esp_transport_set_errors(t, &last_err);
+        esp_transport_capture_errno(t, err);
         ssl->sockfd = INVALID_SOCKET;
         return -1;
     }
