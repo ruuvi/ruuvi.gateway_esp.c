@@ -208,10 +208,10 @@ http_check_post_advs(const http_check_params_t* const p_params, const TimeUnitsS
             .content_location     = HTTP_CONTENT_LOCATION_HEAP,
             .flag_no_cache        = true,
             .flag_add_header_date = true,
-            .content_type         = HTTP_CONENT_TYPE_APPLICATION_JSON,
+            .content_type         = HTTP_CONTENT_TYPE_APPLICATION_JSON,
             .p_content_type_param = NULL,
             .content_len          = strlen(p_resp),
-            .content_encoding     = HTTP_CONENT_ENCODING_NONE,
+            .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
             .select_location = {
                 .memory = {
                     .p_buf = (const uint8_t*)p_resp,
@@ -227,10 +227,10 @@ http_check_post_advs(const http_check_params_t* const p_params, const TimeUnitsS
             .content_location     = HTTP_CONTENT_LOCATION_NO_CONTENT,
             .flag_no_cache        = true,
             .flag_add_header_date = true,
-            .content_type         = HTTP_CONENT_TYPE_TEXT_HTML,
+            .content_type         = HTTP_CONTENT_TYPE_TEXT_HTML,
             .p_content_type_param = NULL,
             .content_len          = 0,
-            .content_encoding     = HTTP_CONENT_ENCODING_NONE,
+            .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
             .select_location = {
                 .memory = {
                     .p_buf = NULL,
@@ -249,10 +249,10 @@ http_check_post_stat(const http_check_params_t* const p_params, const TimeUnitsS
         .content_location     = HTTP_CONTENT_LOCATION_NO_CONTENT,
         .flag_no_cache        = true,
         .flag_add_header_date = true,
-        .content_type         = HTTP_CONENT_TYPE_TEXT_HTML,
+        .content_type         = HTTP_CONTENT_TYPE_TEXT_HTML,
         .p_content_type_param = NULL,
         .content_len          = 0,
-        .content_encoding     = HTTP_CONENT_ENCODING_NONE,
+        .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
         .select_location = {
             .memory = {
                 .p_buf = NULL,
@@ -270,10 +270,10 @@ http_check_mqtt(const ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg, const TimeUnitsSeco
         .content_location     = HTTP_CONTENT_LOCATION_NO_CONTENT,
         .flag_no_cache        = true,
         .flag_add_header_date = true,
-        .content_type         = HTTP_CONENT_TYPE_TEXT_HTML,
+        .content_type         = HTTP_CONTENT_TYPE_TEXT_HTML,
         .p_content_type_param = NULL,
         .content_len          = 0,
-        .content_encoding     = HTTP_CONENT_ENCODING_NONE,
+        .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
         .select_location = {
             .memory = {
                 .p_buf = NULL,
@@ -1021,11 +1021,11 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Activate cfg_mode"));
@@ -1106,10 +1106,10 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed_2) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_503, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_ERROR, string("Can't add json item: fw_ver"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1248,11 +1248,11 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Activate cfg_mode"));
@@ -1266,10 +1266,10 @@ TEST_F(TestHttpServerCb, resp_json_unknown) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_404, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_WARN, string("Request to unknown json: unknown.json"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1283,11 +1283,11 @@ TEST_F(TestHttpServerCb, resp_metrics_ok) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_PLAIN, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_PLAIN, resp.content_type);
     ASSERT_NE(nullptr, resp.p_content_type_param);
     ASSERT_EQ(string("version=0.0.4"), string(resp.p_content_type_param));
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("metrics: ") + string(expected_resp));
@@ -1302,10 +1302,10 @@ TEST_F(TestHttpServerCb, resp_metrics_malloc_failed) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_503, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Not enough memory"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1313,14 +1313,14 @@ TEST_F(TestHttpServerCb, resp_metrics_malloc_failed) // NOLINT
 
 TEST_F(TestHttpServerCb, http_get_content_type_by_ext) // NOLINT
 {
-    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, http_get_content_type_by_ext(".html"));
-    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_CSS, http_get_content_type_by_ext(".css"));
-    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_CSS, http_get_content_type_by_ext(".scss"));
-    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_JAVASCRIPT, http_get_content_type_by_ext(".js"));
-    ASSERT_EQ(HTTP_CONENT_TYPE_IMAGE_PNG, http_get_content_type_by_ext(".png"));
-    ASSERT_EQ(HTTP_CONENT_TYPE_IMAGE_SVG_XML, http_get_content_type_by_ext(".svg"));
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_OCTET_STREAM, http_get_content_type_by_ext(".ttf"));
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_OCTET_STREAM, http_get_content_type_by_ext(".unk"));
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, http_get_content_type_by_ext(".html"));
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_CSS, http_get_content_type_by_ext(".css"));
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_CSS, http_get_content_type_by_ext(".scss"));
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_JAVASCRIPT, http_get_content_type_by_ext(".js"));
+    ASSERT_EQ(HTTP_CONTENT_TYPE_IMAGE_PNG, http_get_content_type_by_ext(".png"));
+    ASSERT_EQ(HTTP_CONTENT_TYPE_IMAGE_SVG_XML, http_get_content_type_by_ext(".svg"));
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_OCTET_STREAM, http_get_content_type_by_ext(".ttf"));
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_OCTET_STREAM, http_get_content_type_by_ext(".unk"));
 }
 
 TEST_F(TestHttpServerCb, resp_file_index_html_fail_partition_not_ready) // NOLINT
@@ -1335,10 +1335,10 @@ TEST_F(TestHttpServerCb, resp_file_index_html_fail_partition_not_ready) // NOLIN
     ASSERT_EQ(HTTP_RESP_CODE_503, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Try to find file: index.html");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "GWUI partition is not ready");
@@ -1359,10 +1359,10 @@ TEST_F(TestHttpServerCb, resp_file_index_html_fail_file_name_too_long) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_503, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: ") + string(file_name));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
@@ -1384,10 +1384,10 @@ TEST_F(TestHttpServerCb, resp_file_index_html) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(fd, resp.select_location.fatfs.fd);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Try to find file: index.html");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File index.html was opened successfully, fd=1");
@@ -1407,10 +1407,10 @@ TEST_F(TestHttpServerCb, resp_file_index_html_gzipped) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_GZIP, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_GZIP, resp.content_encoding);
     ASSERT_EQ(fd, resp.select_location.fatfs.fd);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: index.html"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File index.html.gz was opened successfully, fd=2");
@@ -1430,10 +1430,10 @@ TEST_F(TestHttpServerCb, resp_file_app_js_gzipped) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_JAVASCRIPT, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_JAVASCRIPT, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_GZIP, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_GZIP, resp.content_encoding);
     ASSERT_EQ(fd, resp.select_location.fatfs.fd);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: app.js"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File app.js.gz was opened successfully, fd=1");
@@ -1453,10 +1453,10 @@ TEST_F(TestHttpServerCb, resp_file_app_css_gzipped) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_CSS, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_CSS, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_GZIP, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_GZIP, resp.content_encoding);
     ASSERT_EQ(fd, resp.select_location.fatfs.fd);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: style.css"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File style.css.gz was opened successfully, fd=1");
@@ -1476,10 +1476,10 @@ TEST_F(TestHttpServerCb, resp_file_binary_without_extension) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_OCTET_STREAM, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_OCTET_STREAM, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(fd, resp.select_location.fatfs.fd);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: binary"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File binary was opened successfully, fd=1");
@@ -1494,10 +1494,10 @@ TEST_F(TestHttpServerCb, resp_file_unknown_html) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_404, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: unknown.html"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find file: unknown.html"));
@@ -1517,10 +1517,10 @@ TEST_F(TestHttpServerCb, resp_file_index_html_failed_on_open) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_503, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Try to find file: index.html");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't open file: index.html"));
@@ -1536,10 +1536,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_default) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_404, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(0, resp.select_location.fatfs.fd);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: ruuvi.html"));
@@ -1560,10 +1560,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_index_html) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_GZIP, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_GZIP, resp.content_encoding);
     ASSERT_EQ(fd, resp.select_location.fatfs.fd);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /index.html"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: index.html"));
@@ -1584,10 +1584,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_app_js) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_JAVASCRIPT, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_JAVASCRIPT, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_GZIP, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_GZIP, resp.content_encoding);
     ASSERT_EQ(fd, resp.select_location.fatfs.fd);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /app.js"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: app.js"));
@@ -1720,11 +1720,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /ruuvi.json"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
@@ -1740,11 +1740,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_PLAIN, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_PLAIN, resp.content_type);
     ASSERT_NE(nullptr, resp.p_content_type_param);
     ASSERT_EQ(string("version=0.0.4"), string(resp.p_content_type_param));
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /metrics"));
@@ -1779,9 +1779,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_JSON_GENERATOR, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
 
     ASSERT_NE(nullptr, resp.select_location.json_generator.p_json_gen);
     string json_str("");
@@ -1834,10 +1834,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_with_time_interval_20) //
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_JSON_GENERATOR, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
 
     ASSERT_NE(nullptr, resp.select_location.json_generator.p_json_gen);
     string json_str("");
@@ -1895,10 +1895,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps) // NO
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_JSON_GENERATOR, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
 
     ASSERT_NE(nullptr, resp.select_location.json_generator.p_json_gen);
     string json_str("");
@@ -1954,10 +1954,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps_with_f
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_JSON_GENERATOR, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
 
     ASSERT_NE(nullptr, resp.select_location.json_generator.p_json_gen);
     string json_str("");
@@ -2003,10 +2003,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FLASH_MEM, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
@@ -2042,10 +2042,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg_from_lan) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FLASH_MEM, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=1"));
@@ -2280,10 +2280,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FLASH_MEM, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
@@ -2471,10 +2471,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed1) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_503, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Failed to allocate memory for gw_cfg"));
@@ -2521,10 +2521,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed2) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_503, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Failed to parse json or no memory"));
@@ -2571,10 +2571,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed3) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_503, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Failed to parse json or no memory"));
@@ -2647,10 +2647,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FLASH_MEM, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /ruuvi.json, params="));
@@ -2870,10 +2870,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FLASH_MEM, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /ruuvi.json, params="));
@@ -3070,10 +3070,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FLASH_MEM, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /ruuvi.json, params="));
@@ -3275,10 +3275,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_wifi_ap_active) //
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_FLASH_MEM, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /ruuvi.json, params="));
@@ -3466,10 +3466,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_unknown_json) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_404, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /unknown.json, params="));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_WARN, string("POST /unknown.json"));
@@ -3483,10 +3483,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_delete) // NOLINT
     ASSERT_EQ(HTTP_RESP_CODE_404, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("DELETE /unknown.json, params="));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -3535,11 +3535,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -3624,11 +3624,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -3701,11 +3701,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -3783,11 +3783,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -3857,11 +3857,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -3931,11 +3931,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -4005,11 +4005,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -4080,11 +4080,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -4154,11 +4154,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -4229,11 +4229,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -4301,11 +4301,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -4369,11 +4369,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -4455,11 +4455,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -4542,11 +4542,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -4630,11 +4630,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -4718,11 +4718,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -4804,11 +4804,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -4869,10 +4869,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_post_advs__cus
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
-    ASSERT_EQ(HTTP_CONENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
-    ASSERT_EQ(HTTP_CONENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
 
     ASSERT_EQ(

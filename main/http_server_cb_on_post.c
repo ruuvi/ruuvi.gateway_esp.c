@@ -85,10 +85,10 @@ http_server_cb_on_post_ruuvi(const char* p_body, const bool flag_access_from_lan
 
     const bool flag_no_cache = true;
     return http_server_resp_data_in_flash(
-        HTTP_CONENT_TYPE_APPLICATION_JSON,
+        HTTP_CONTENT_TYPE_APPLICATION_JSON,
         NULL,
         strlen(g_empty_json),
-        HTTP_CONENT_ENCODING_NONE,
+        HTTP_CONTENT_ENCODING_NONE,
         (const uint8_t*)g_empty_json,
         flag_no_cache);
 }
@@ -116,10 +116,10 @@ http_server_cb_on_post_ble_scanning(const char* const p_body)
 
     const bool flag_no_cache = true;
     return http_server_resp_data_in_flash(
-        HTTP_CONENT_TYPE_APPLICATION_JSON,
+        HTTP_CONTENT_TYPE_APPLICATION_JSON,
         NULL,
         strlen(g_empty_json),
-        HTTP_CONENT_ENCODING_NONE,
+        HTTP_CONTENT_ENCODING_NONE,
         (const uint8_t*)g_empty_json,
         flag_no_cache);
 }
@@ -187,10 +187,10 @@ http_server_cb_on_post_fw_update_reset(void)
     fw_update_set_extra_info_for_status_json_update_reset();
     const bool flag_no_cache = true;
     return http_server_resp_data_in_flash(
-        HTTP_CONENT_TYPE_APPLICATION_JSON,
+        HTTP_CONTENT_TYPE_APPLICATION_JSON,
         NULL,
         strlen(g_empty_json),
-        HTTP_CONENT_ENCODING_NONE,
+        HTTP_CONTENT_ENCODING_NONE,
         (const uint8_t*)g_empty_json,
         flag_no_cache);
 }
