@@ -163,6 +163,25 @@ static void save_new_session_ticket(transport_esp_tls_t *ssl)
     xSemaphoreGive(g_saved_sessions_sema);
 }
 
+void esp_transport_ssl_clear_saved_session_tickets(void)
+{
+    saved_sessions_sema_init();
+    xSemaphoreTake(g_saved_sessions_sema, portMAX_DELAY);
+    for (int i = 0; i < ESP_TLS_MAX_NUM_SAVED_SESSIONS; ++i) {
+        saved_session_info_t* const p_info = &g_saved_sessions[i];
+        if (NULL != p_info->locked_by_ssl) {
+            continue;
+        }
+        if (NULL == p_info->p_saved_session) {
+            continue;
+        }
+        ESP_TRANSPORT_LOGI("[%s] Clear TLS session ticket (slot %d)", p_info->p_saved_session->saved_session.hostname, i);
+        esp_tls_free_client_session(p_info->p_saved_session);
+        p_info->p_saved_session = NULL;
+    }
+    xSemaphoreGive(g_saved_sessions_sema);
+}
+
 /**
  * @brief      Destroys esp-tls transport used in the foundation transport
  *
