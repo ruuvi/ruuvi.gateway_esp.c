@@ -594,6 +594,16 @@ esp_err_t esp_tls_set_global_ca_store(const unsigned char *cacert_pem_buf, const
 void esp_tls_free_global_ca_store(void);
 
 /**
+ * @brief      Returns the hostname.
+ *
+ * @param[in]   tls          handle to esp_tls context
+ *
+ *
+ * @return     - pointer to string with the hostname.
+ */
+const char* esp_tls_get_hostname(const esp_tls_t * const tls);
+
+/**
  * @brief      Returns last error in esp_tls with detailed mbedtls related error codes.
  *             The error information is cleared internally upon return
  *
