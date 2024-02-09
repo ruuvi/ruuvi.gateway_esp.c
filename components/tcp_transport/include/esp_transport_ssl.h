@@ -193,6 +193,11 @@ void esp_transport_ssl_set_keep_alive(esp_transport_handle_t t, esp_transport_ke
  */
 void esp_transport_ssl_set_interface_name(esp_transport_handle_t t, struct ifreq *if_name);
 
+/**
+ * @brief      Clear all saved TLS session tickets.
+ */
+void esp_transport_ssl_clear_saved_session_tickets(void);
+
 #ifdef __cplusplus
 }
 #endif

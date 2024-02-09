@@ -21,6 +21,7 @@
 #include "gw_status.h"
 #include "validate_url.h"
 #include "network_timeout.h"
+#include "esp_transport_ssl.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -498,6 +499,8 @@ http_server_cb_on_get(
     }
     if (0 == strcmp(p_path, "validate_url"))
     {
+        LOG_INFO("%s: Clear all saved TLS session tickets", __func__);
+        esp_transport_ssl_clear_saved_session_tickets();
         return validate_url(p_uri_params);
     }
     const char* p_file_path = ('\0' == p_path[0]) ? "ruuvi.html" : p_path;
