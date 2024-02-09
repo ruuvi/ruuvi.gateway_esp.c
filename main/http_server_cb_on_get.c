@@ -239,10 +239,10 @@ http_server_resp_metrics(void)
     const bool flag_add_header_date = true;
     LOG_INFO("metrics: %s", p_metrics);
     return http_server_resp_200_data_in_heap(
-        HTTP_CONENT_TYPE_TEXT_PLAIN,
+        HTTP_CONTENT_TYPE_TEXT_PLAIN,
         "version=0.0.4",
         strlen(p_metrics),
-        HTTP_CONENT_ENCODING_NONE,
+        HTTP_CONTENT_ENCODING_NONE,
         (const uint8_t*)p_metrics,
         flag_no_cache,
         flag_add_header_date);
@@ -380,29 +380,29 @@ http_get_content_type_by_ext(const char* p_file_ext)
 {
     if (0 == strcmp(p_file_ext, ".html"))
     {
-        return HTTP_CONENT_TYPE_TEXT_HTML;
+        return HTTP_CONTENT_TYPE_TEXT_HTML;
     }
     if ((0 == strcmp(p_file_ext, ".css")) || (0 == strcmp(p_file_ext, ".scss")))
     {
-        return HTTP_CONENT_TYPE_TEXT_CSS;
+        return HTTP_CONTENT_TYPE_TEXT_CSS;
     }
     if (0 == strcmp(p_file_ext, ".js"))
     {
-        return HTTP_CONENT_TYPE_TEXT_JAVASCRIPT;
+        return HTTP_CONTENT_TYPE_TEXT_JAVASCRIPT;
     }
     if (0 == strcmp(p_file_ext, ".png"))
     {
-        return HTTP_CONENT_TYPE_IMAGE_PNG;
+        return HTTP_CONTENT_TYPE_IMAGE_PNG;
     }
     if (0 == strcmp(p_file_ext, ".svg"))
     {
-        return HTTP_CONENT_TYPE_IMAGE_SVG_XML;
+        return HTTP_CONTENT_TYPE_IMAGE_SVG_XML;
     }
     if (0 == strcmp(p_file_ext, ".ttf"))
     {
-        return HTTP_CONENT_TYPE_APPLICATION_OCTET_STREAM;
+        return HTTP_CONTENT_TYPE_APPLICATION_OCTET_STREAM;
     }
-    return HTTP_CONENT_TYPE_APPLICATION_OCTET_STREAM;
+    return HTTP_CONTENT_TYPE_APPLICATION_OCTET_STREAM;
 }
 
 HTTP_SERVER_CB_STATIC
@@ -451,7 +451,8 @@ http_server_resp_file(const char* file_path, const http_resp_code_e http_resp_co
         }
     }
     const http_content_type_e     content_type     = http_get_content_type_by_ext(p_file_ext);
-    const http_content_encoding_e content_encoding = is_gzipped ? HTTP_CONENT_ENCODING_GZIP : HTTP_CONENT_ENCODING_NONE;
+    const http_content_encoding_e content_encoding = is_gzipped ? HTTP_CONTENT_ENCODING_GZIP
+                                                                : HTTP_CONTENT_ENCODING_NONE;
 
     const file_descriptor_t file_desc = flashfatfs_open(p_ffs, tmp_file_path);
     if (file_desc < 0)
