@@ -11,12 +11,12 @@ else()
     set(srcs "${ESP_COMMON}/src/brownout.c"
              "${ESP_COMMON}/src/esp_err.c"
              "${ESP_COMMON}/src/dbg_stubs.c"
-             "${ESP_COMMON}/src/esp_err_to_name.c"
              "${ESP_COMMON}/src/freertos_hooks.c"
              "${ESP_COMMON}/src/mac_addr.c"
              "${ESP_COMMON}/src/pm_locks.c"
              "${ESP_COMMON}/src/stack_check.c"
              "src/task_wdt.c"
+             "src/esp_err_to_name.c"
              "${ESP_COMMON}/src/int_wdt.c")
 
     # Note: esp_ipc added as a public requirement to keep compatibility as to be located here.
