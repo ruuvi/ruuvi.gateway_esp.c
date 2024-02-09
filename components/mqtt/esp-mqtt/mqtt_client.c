@@ -15,6 +15,7 @@
 #include <errno.h>
 #include <string.h>
 #include "snprintf_with_esp_err_desc.h"
+#include "str_buf.h"
 
 #include "mqtt_supported_features.h"
 
@@ -1079,7 +1080,9 @@ static int mqtt_message_receive(esp_mqtt_client_handle_t client, int read_poll_t
          */
         read_len = esp_transport_read(t, (char *)buf, 1, read_poll_timeout_ms);
         if (read_len < 0) {
-            ESP_LOGE(TAG, "%s: transport_read() error: errno=%d", __func__, errno);
+            str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(read_len);
+            ESP_LOGE(TAG, "%s: transport_read() error: err=%d (%s)", __func__, read_len, err_desc.buf ? err_desc.buf : "");
+            str_buf_free_buf(&err_desc);
             goto err;
         }
         if (read_len == 0) {
@@ -1110,7 +1113,9 @@ static int mqtt_message_receive(esp_mqtt_client_handle_t client, int read_poll_t
              */
             read_len = esp_transport_read(t, (char *)buf, 1, read_poll_timeout_ms);
             if (read_len < 0) {
-                ESP_LOGE(TAG, "%s: transport_read() error: errno=%d", __func__, errno);
+                str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(read_len);
+                ESP_LOGE(TAG, "%s: transport_read() error: err=%d (%s)", __func__, read_len, err_desc.buf ? err_desc.buf : "");
+                str_buf_free_buf(&err_desc);
                 goto err;
             }
             if (read_len == 0) {
@@ -1136,7 +1141,9 @@ static int mqtt_message_receive(esp_mqtt_client_handle_t client, int read_poll_t
                 read_len = esp_transport_read(t, (char *)buf, client->mqtt_state.in_buffer_read_len - fixed_header_len + 2, read_poll_timeout_ms);
                 ESP_LOGD(TAG, "%s: read_len=%d", __func__, read_len);
                 if (read_len < 0) {
-                    ESP_LOGE(TAG, "%s: transport_read() error: errno=%d", __func__, errno);
+                    str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(read_len);
+                    ESP_LOGE(TAG, "%s: transport_read() error: err=%d (%s)", __func__, read_len, err_desc.buf ? err_desc.buf : "");
+                    str_buf_free_buf(&err_desc);
                     goto err;
                 } else if (read_len == 0) {
                     ESP_LOGD(TAG, "%s: transport_read(): no data or EOF", __func__);
@@ -1171,7 +1178,9 @@ static int mqtt_message_receive(esp_mqtt_client_handle_t client, int read_poll_t
         read_len = esp_transport_read(t, (char *)buf, total_len - client->mqtt_state.in_buffer_read_len, read_poll_timeout_ms);
         ESP_LOGD(TAG, "%s: read_len=%d", __func__, read_len);
         if (read_len < 0) {
-            ESP_LOGE(TAG, "%s: transport_read() error: errno=%d", __func__, errno);
+            str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(read_len);
+            ESP_LOGE(TAG, "%s: transport_read() error: err=%d (%s)", __func__, read_len, err_desc.buf ? err_desc.buf : "");
+            str_buf_free_buf(&err_desc);
             goto err;
         }
         if (read_len == 0) {

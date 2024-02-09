@@ -22,6 +22,7 @@
 #include "adv_post.h"
 #include "reset_task.h"
 #include "event_mgr.h"
+#include "esp_transport_ssl.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -290,6 +291,8 @@ http_server_cb_on_post(
     }
     if (0 == strcmp(p_file_name, "ruuvi.json"))
     {
+        LOG_INFO("%s: Clear all saved TLS session tickets", __func__);
+        esp_transport_ssl_clear_saved_session_tickets();
         return http_server_cb_on_post_ruuvi(p_body, flag_access_from_lan);
     }
     if (0 == strcmp(p_file_name, "bluetooth_scanning.json"))
