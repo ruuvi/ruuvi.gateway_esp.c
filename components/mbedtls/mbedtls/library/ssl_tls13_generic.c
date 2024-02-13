@@ -1394,7 +1394,7 @@ int mbedtls_ssl_tls13_write_change_cipher_spec(mbedtls_ssl_context *ssl)
     /* Write CCS message */
     MBEDTLS_SSL_PROC_CHK(ssl_tls13_write_change_cipher_spec_body(
                              ssl, ssl->out_msg,
-                             ssl->out_msg + MBEDTLS_SSL_OUT_CONTENT_LEN,
+                             ssl->out_msg + ssl->conf->ssl_out_content_len,
                              &ssl->out_msglen));
 
     ssl->out_msgtype = MBEDTLS_SSL_MSG_CHANGE_CIPHER_SPEC;

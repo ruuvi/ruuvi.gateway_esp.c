@@ -1609,6 +1609,9 @@ struct mbedtls_ssl_config {
 #if defined(MBEDTLS_KEY_EXCHANGE_CERT_REQ_ALLOWED_ENABLED)
     const mbedtls_x509_crt *MBEDTLS_PRIVATE(dn_hints);/*!< acceptable client cert issuers    */
 #endif
+
+    uint32_t MBEDTLS_PRIVATE(ssl_in_content_len);
+    uint32_t MBEDTLS_PRIVATE(ssl_out_content_len);
 };
 
 struct mbedtls_ssl_context {

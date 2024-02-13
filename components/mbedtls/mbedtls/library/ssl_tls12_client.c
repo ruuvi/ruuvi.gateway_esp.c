@@ -1931,7 +1931,7 @@ static int ssl_write_encrypted_pms(mbedtls_ssl_context *ssl,
     unsigned char *p = ssl->handshake->premaster + pms_offset;
     mbedtls_pk_context *peer_pk;
 
-    if (offset + len_bytes > MBEDTLS_SSL_OUT_CONTENT_LEN) {
+    if (offset + len_bytes > ssl->conf->ssl_out_content_len) {
         MBEDTLS_SSL_DEBUG_MSG(1, ("buffer too small for encrypted pms"));
         return MBEDTLS_ERR_SSL_BUFFER_TOO_SMALL;
     }
@@ -1975,7 +1975,7 @@ static int ssl_write_encrypted_pms(mbedtls_ssl_context *ssl,
     if ((ret = mbedtls_pk_encrypt(peer_pk,
                                   p, ssl->handshake->pmslen,
                                   ssl->out_msg + offset + len_bytes, olen,
-                                  MBEDTLS_SSL_OUT_CONTENT_LEN - offset - len_bytes,
+                                  ssl->conf->ssl_out_content_len - offset - len_bytes,
                                   ssl->conf->f_rng, ssl->conf->p_rng)) != 0) {
         MBEDTLS_SSL_DEBUG_RET(1, "mbedtls_rsa_pkcs1_encrypt", ret);
         return ret;
@@ -2809,7 +2809,7 @@ static int ssl_write_client_key_exchange(mbedtls_ssl_context *ssl)
          * The export format is an ECPoint structure as expected by TLS,
          * but we just need to add a length byte before that. */
         unsigned char *own_pubkey = ssl->out_msg + header_len + 1;
-        unsigned char *end = ssl->out_msg + MBEDTLS_SSL_OUT_CONTENT_LEN;
+        unsigned char *end = ssl->out_msg + ssl->conf->ssl_out_content_len;
         size_t own_pubkey_max_len = (size_t) (end - own_pubkey);
         size_t own_pubkey_len;
 
@@ -2933,7 +2933,7 @@ ecdh_calc_secret:
         header_len = 4;
 
         if (header_len + content_len_size + ssl->conf->psk_identity_len
-            > MBEDTLS_SSL_OUT_CONTENT_LEN) {
+            > ssl->conf->ssl_out_content_len) {
             MBEDTLS_SSL_DEBUG_MSG(1,
                                   ("psk identity too long or SSL buffer too short"));
             return MBEDTLS_ERR_SSL_BUFFER_TOO_SMALL;
@@ -2981,7 +2981,7 @@ ecdh_calc_secret:
          * The export format is an ECPoint structure as expected by TLS,
          * but we just need to add a length byte before that. */
         unsigned char *own_pubkey = p + 1;
-        unsigned char *end = ssl->out_msg + MBEDTLS_SSL_OUT_CONTENT_LEN;
+        unsigned char *end = ssl->out_msg + ssl->conf->ssl_out_content_len;
         size_t own_pubkey_max_len = (size_t) (end - own_pubkey);
         size_t own_pubkey_len = 0;
 
@@ -3049,7 +3049,7 @@ ecdh_calc_secret:
         header_len = 4;
         content_len = ssl->conf->psk_identity_len;
 
-        if (header_len + 2 + content_len > MBEDTLS_SSL_OUT_CONTENT_LEN) {
+        if (header_len + 2 + content_len > ssl->conf->ssl_out_content_len) {
             MBEDTLS_SSL_DEBUG_MSG(1,
                                   ("psk identity too long or SSL buffer too short"));
             return MBEDTLS_ERR_SSL_BUFFER_TOO_SMALL;
@@ -3084,7 +3084,7 @@ ecdh_calc_secret:
             content_len = mbedtls_dhm_get_len(&ssl->handshake->dhm_ctx);
 
             if (header_len + 2 + content_len >
-                MBEDTLS_SSL_OUT_CONTENT_LEN) {
+                ssl->conf->ssl_out_content_len) {
                 MBEDTLS_SSL_DEBUG_MSG(1,
                                       ("psk identity or DHM size too long or SSL buffer too short"));
                 return MBEDTLS_ERR_SSL_BUFFER_TOO_SMALL;
@@ -3130,7 +3130,7 @@ ecdh_calc_secret:
             ret = mbedtls_ecdh_make_public(&ssl->handshake->ecdh_ctx,
                                            &content_len,
                                            &ssl->out_msg[header_len],
-                                           MBEDTLS_SSL_OUT_CONTENT_LEN - header_len,
+                                           ssl->conf->ssl_out_content_len - header_len,
                                            ssl->conf->f_rng, ssl->conf->p_rng);
             if (ret != 0) {
                 MBEDTLS_SSL_DEBUG_RET(1, "mbedtls_ecdh_make_public", ret);
@@ -3172,7 +3172,7 @@ ecdh_calc_secret:
 
 #if defined(MBEDTLS_USE_PSA_CRYPTO)
         unsigned char *out_p = ssl->out_msg + header_len;
-        unsigned char *end_p = ssl->out_msg + MBEDTLS_SSL_OUT_CONTENT_LEN -
+        unsigned char *end_p = ssl->out_msg + ssl->conf->ssl_out_content_len -
                                header_len;
         ret = mbedtls_psa_ecjpake_write_round(&ssl->handshake->psa_pake_ctx,
                                               out_p, end_p - out_p, &content_len,
@@ -3186,7 +3186,7 @@ ecdh_calc_secret:
 #else
         ret = mbedtls_ecjpake_write_round_two(&ssl->handshake->ecjpake_ctx,
                                               ssl->out_msg + header_len,
-                                              MBEDTLS_SSL_OUT_CONTENT_LEN - header_len,
+                                              ssl->conf->ssl_out_content_len - header_len,
                                               &content_len,
                                               ssl->conf->f_rng, ssl->conf->p_rng);
         if (ret != 0) {
