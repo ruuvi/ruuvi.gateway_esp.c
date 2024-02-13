@@ -135,6 +135,8 @@ typedef struct {
     int                         keep_alive_idle;     /*!< Keep-alive idle time. Default is 5 (second) */
     int                         keep_alive_interval; /*!< Keep-alive interval time. Default is 5 (second) */
     int                         keep_alive_count;    /*!< Keep-alive packet retry send count. Default is 3 counts */
+    size_t                      ssl_in_content_len;   /*!< Maximum incoming fragment length for the TLS connection */
+    size_t                      ssl_out_content_len;  /*!< Maximum outgoing fragment length for the TLS connection */
 } esp_http_client_config_t;
 
 /**

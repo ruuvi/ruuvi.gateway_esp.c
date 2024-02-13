@@ -436,7 +436,7 @@ static int ssl_get_remaining_payload_in_datagram(mbedtls_ssl_context const *ssl)
 {
     int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
     size_t remaining, expansion;
-    size_t max_len = MBEDTLS_SSL_OUT_CONTENT_LEN;
+    size_t max_len = ssl->conf->ssl_out_content_len;
 
 #if defined(MBEDTLS_SSL_MAX_FRAGMENT_LENGTH)
     const size_t mfl = mbedtls_ssl_get_output_max_frag_len(ssl);
@@ -971,11 +971,11 @@ int mbedtls_ssl_encrypt_buf(mbedtls_ssl_context *ssl,
     MBEDTLS_SSL_DEBUG_BUF(4, "before encrypt: output payload",
                           data, rec->data_len);
 
-    if (rec->data_len > MBEDTLS_SSL_OUT_CONTENT_LEN) {
+    if (rec->data_len > ssl->conf->ssl_out_content_len) {
         MBEDTLS_SSL_DEBUG_MSG(1, ("Record content %" MBEDTLS_PRINTF_SIZET
                                   " too large, maximum %" MBEDTLS_PRINTF_SIZET,
                                   rec->data_len,
-                                  (size_t) MBEDTLS_SSL_OUT_CONTENT_LEN));
+                                  (size_t) ssl->conf->ssl_out_content_len));
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -2759,7 +2759,7 @@ int mbedtls_ssl_start_handshake_msg(mbedtls_ssl_context *ssl, unsigned hs_type,
      *    ...
      */
     *buf = ssl->out_msg + 4;
-    *buf_len = MBEDTLS_SSL_OUT_CONTENT_LEN - 4;
+    *buf_len = ssl->conf->ssl_out_content_len - 4;
 
     ssl->out_msgtype = MBEDTLS_SSL_MSG_HANDSHAKE;
     ssl->out_msg[0]  = hs_type;
@@ -2834,12 +2834,12 @@ int mbedtls_ssl_write_handshake_msg_ext(mbedtls_ssl_context *ssl,
      *
      * Note: We deliberately do not check for the MTU or MFL here.
      */
-    if (ssl->out_msglen > MBEDTLS_SSL_OUT_CONTENT_LEN) {
+    if (ssl->out_msglen > ssl->conf->ssl_out_content_len) {
         MBEDTLS_SSL_DEBUG_MSG(1, ("Record too large: "
                                   "size %" MBEDTLS_PRINTF_SIZET
                                   ", maximum %" MBEDTLS_PRINTF_SIZET,
                                   ssl->out_msglen,
-                                  (size_t) MBEDTLS_SSL_OUT_CONTENT_LEN));
+                                  (size_t) ssl->conf->ssl_out_content_len));
         return MBEDTLS_ERR_SSL_INTERNAL_ERROR;
     }
 
@@ -2861,12 +2861,12 @@ int mbedtls_ssl_write_handshake_msg_ext(mbedtls_ssl_context *ssl,
 #if defined(MBEDTLS_SSL_PROTO_DTLS)
         if (ssl->conf->transport == MBEDTLS_SSL_TRANSPORT_DATAGRAM) {
             /* Make room for the additional DTLS fields */
-            if (MBEDTLS_SSL_OUT_CONTENT_LEN - ssl->out_msglen < 8) {
+            if (ssl->conf->ssl_out_content_len - ssl->out_msglen < 8) {
                 MBEDTLS_SSL_DEBUG_MSG(1, ("DTLS handshake message too large: "
                                           "size %" MBEDTLS_PRINTF_SIZET ", maximum %"
                                           MBEDTLS_PRINTF_SIZET,
                                           hs_len,
-                                          (size_t) (MBEDTLS_SSL_OUT_CONTENT_LEN - 12)));
+                                          (size_t) (ssl->conf->ssl_out_content_len - 12)));
                 return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
             }
 
@@ -3665,7 +3665,7 @@ static int ssl_handle_possible_reconnect(mbedtls_ssl_context *ssl)
         ssl,
         ssl->cli_id, ssl->cli_id_len,
         ssl->in_buf, ssl->in_left,
-        ssl->out_buf, MBEDTLS_SSL_OUT_CONTENT_LEN, &len);
+        ssl->out_buf, ssl->conf->ssl_out_content_len, &len);
 
     MBEDTLS_SSL_DEBUG_RET(2, "mbedtls_ssl_check_dtls_clihlo_cookie", ret);
 
@@ -4102,8 +4102,10 @@ static int ssl_prepare_record_content(mbedtls_ssl_context *ssl,
 
     /* Check actual (decrypted) record content length against
      * configured maximum. */
-    if (rec->data_len > MBEDTLS_SSL_IN_CONTENT_LEN) {
-        MBEDTLS_SSL_DEBUG_MSG(1, ("bad message length"));
+    if (rec->data_len > ssl->conf->ssl_in_content_len) {
+        MBEDTLS_SSL_DEBUG_MSG(1, ("bad message length %u > %u",
+                                  (unsigned) rec->data_len,
+                                  (unsigned) ssl->conf->ssl_in_content_len));
         return MBEDTLS_ERR_SSL_INVALID_RECORD;
     }
 
@@ -4281,7 +4283,7 @@ static int ssl_load_buffered_message(mbedtls_ssl_context *ssl)
 
         /* Double-check that we haven't accidentally buffered
          * a message that doesn't fit into the input buffer. */
-        if (msg_len + 12 > MBEDTLS_SSL_IN_CONTENT_LEN) {
+        if (msg_len + 12 > ssl->conf->ssl_in_content_len) {
             MBEDTLS_SSL_DEBUG_MSG(1, ("should never happen"));
             return MBEDTLS_ERR_SSL_INTERNAL_ERROR;
         }
@@ -4415,7 +4417,7 @@ static int ssl_buffer_message(mbedtls_ssl_context *ssl)
                  * This is an implementation-specific limitation
                  * and not one from the standard, hence it is not
                  * checked in ssl_check_hs_header(). */
-                if (msg_len + 12 > MBEDTLS_SSL_IN_CONTENT_LEN) {
+                if (msg_len + 12 > ssl->conf->ssl_in_content_len) {
                     /* Ignore message */
                     goto exit;
                 }

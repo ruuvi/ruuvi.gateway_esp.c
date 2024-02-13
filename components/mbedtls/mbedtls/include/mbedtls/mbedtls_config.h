@@ -1557,7 +1557,7 @@
  *
  * Uncomment to enable the Connection ID extension.
  */
-#define MBEDTLS_SSL_DTLS_CONNECTION_ID
+//#define MBEDTLS_SSL_DTLS_CONNECTION_ID
 
 
 /**
@@ -1883,7 +1883,7 @@
  *
  * Comment this macro to disable support for DTLS
  */
-#define MBEDTLS_SSL_PROTO_DTLS
+//#define MBEDTLS_SSL_PROTO_DTLS
 
 /**
  * \def MBEDTLS_SSL_ALPN
@@ -1907,7 +1907,7 @@
  *
  * Comment this to disable anti-replay in DTLS.
  */
-#define MBEDTLS_SSL_DTLS_ANTI_REPLAY
+//#define MBEDTLS_SSL_DTLS_ANTI_REPLAY
 
 /**
  * \def MBEDTLS_SSL_DTLS_HELLO_VERIFY
@@ -1925,7 +1925,7 @@
  *
  * Comment this to disable support for HelloVerifyRequest.
  */
-#define MBEDTLS_SSL_DTLS_HELLO_VERIFY
+//#define MBEDTLS_SSL_DTLS_HELLO_VERIFY
 
 /**
  * \def MBEDTLS_SSL_DTLS_SRTP
@@ -1972,7 +1972,7 @@
  *
  * Comment this to disable support for clients reusing the source port.
  */
-#define MBEDTLS_SSL_DTLS_CLIENT_PORT_REUSE
+//#define MBEDTLS_SSL_DTLS_CLIENT_PORT_REUSE
 
 /**
  * \def MBEDTLS_SSL_SESSION_TICKETS

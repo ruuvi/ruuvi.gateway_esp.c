@@ -92,6 +92,8 @@ typedef struct http_init_client_config_params_t
     const char* const                         p_server_cert;
     const char* const                         p_client_cert;
     const char* const                         p_client_key;
+    const size_t                              ssl_in_content_len;
+    const size_t                              ssl_out_content_len;
 } http_init_client_config_params_t;
 
 bool

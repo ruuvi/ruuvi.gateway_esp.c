@@ -218,6 +218,8 @@ http_init_client_config(
         .keep_alive_idle             = 0,
         .keep_alive_interval         = 0,
         .keep_alive_count            = 0,
+        .ssl_in_content_len          = p_params->ssl_in_content_len,
+        .ssl_out_content_len         = p_params->ssl_out_content_len,
     };
 }
 

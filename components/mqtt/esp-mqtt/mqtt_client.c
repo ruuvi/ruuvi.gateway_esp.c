@@ -92,6 +92,8 @@ typedef struct {
     bool skip_cert_common_name_check;
     bool use_secure_element;
     void *ds_data;
+    size_t ssl_in_content_len;
+    size_t ssl_out_content_len;
 } mqtt_config_storage_t;
 
 typedef enum {
@@ -204,6 +206,10 @@ static esp_err_t esp_mqtt_set_cert_key_data(esp_transport_handle_t ssl, enum esp
 static esp_err_t esp_mqtt_set_ssl_transport_properties(esp_transport_list_handle_t transport_list, mqtt_config_storage_t *cfg)
 {
     esp_transport_handle_t ssl = esp_transport_list_get_transport(transport_list, "mqtts");
+
+    ESP_LOGD(TAG, "%s: esp_transport_ssl_set_buffer_size: ssl_in_content_len=%u, ssl_out_content_len=%u",
+             __func__, (unsigned)cfg->ssl_in_content_len, (unsigned)cfg->ssl_out_content_len);
+    esp_transport_ssl_set_buffer_size(ssl, cfg->ssl_in_content_len, cfg->ssl_out_content_len);
 
     if (NULL != cfg->cacert_buf) {
         ESP_LOGI(TAG, "Set custom SSL certificate for the server");
@@ -541,6 +547,16 @@ esp_err_t esp_mqtt_set_config(esp_mqtt_client_handle_t client, const esp_mqtt_cl
             goto _mqtt_set_config_failed;
         }
     }
+
+    if (config->ssl_in_content_len) {
+        ESP_LOGD(TAG, "%s: Configure ssl_in_content_len=%u", __func__, config->ssl_in_content_len);
+        client->config->ssl_in_content_len = config->ssl_in_content_len;
+    }
+    if (config->ssl_out_content_len) {
+        ESP_LOGD(TAG, "%s: Configure ssl_out_content_len=%u", __func__, config->ssl_out_content_len);
+        client->config->ssl_out_content_len = config->ssl_out_content_len;
+    }
+
     esp_mqtt_check_cfg_conflict(client->config, config);
 
     MQTT_API_UNLOCK(client);

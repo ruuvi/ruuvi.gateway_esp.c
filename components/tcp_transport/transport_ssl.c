@@ -686,6 +686,15 @@ void esp_transport_ssl_set_interface_name(esp_transport_handle_t t, struct ifreq
     ssl->cfg.if_name = if_name;
 }
 
+void esp_transport_ssl_set_buffer_size(esp_transport_handle_t t, const size_t ssl_in_content_len, const size_t ssl_out_content_len)
+{
+    GET_SSL_FROM_TRANSPORT_OR_RETURN(ssl, t);
+    ssl->cfg.ssl_in_content_len = (0 != ssl_in_content_len) ? ssl_in_content_len : CONFIG_MBEDTLS_SSL_IN_CONTENT_LEN;
+    ssl->cfg.ssl_out_content_len = (0 != ssl_out_content_len) ? ssl_out_content_len : CONFIG_MBEDTLS_SSL_OUT_CONTENT_LEN;
+    ESP_TRANSPORT_LOGI("[%s] Configure size of TLS I/O buffers: in_content_len=%u, out_content_len=%u",
+                       esp_tls_get_hostname(ssl->tls), (unsigned)ssl->cfg.ssl_in_content_len, (unsigned)ssl->cfg.ssl_out_content_len);
+}
+
 static transport_esp_tls_t *esp_transport_esp_tls_create(void)
 {
     transport_esp_tls_t *transport_esp_tls = calloc(1, sizeof(transport_esp_tls_t));
