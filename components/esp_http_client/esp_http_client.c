@@ -625,6 +625,7 @@ esp_http_client_handle_t esp_http_client_init(const esp_http_client_config_t *co
     if (config->keep_alive_enable == true) {
         esp_transport_ssl_set_keep_alive(ssl, &client->keep_alive_cfg);
     }
+    esp_transport_ssl_set_buffer_size(ssl, config->ssl_in_content_len, config->ssl_out_content_len);
 #endif
 
     if (_set_config(client, config) != ESP_OK) {
