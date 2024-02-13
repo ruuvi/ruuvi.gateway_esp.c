@@ -75,12 +75,14 @@ http_init_client_config_for_http_target(
         str_buf_server_cert_http = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT);
     }
     const http_init_client_config_params_t http_cli_cfg_params = {
-        .p_url         = p_http_url,
-        .p_user        = p_http_user,
-        .p_password    = p_http_pass,
-        .p_server_cert = str_buf_server_cert_http.buf,
-        .p_client_cert = str_buf_client_cert.buf,
-        .p_client_key  = str_buf_client_key.buf,
+        .p_url               = p_http_url,
+        .p_user              = p_http_user,
+        .p_password          = p_http_pass,
+        .p_server_cert       = str_buf_server_cert_http.buf,
+        .p_client_cert       = str_buf_client_cert.buf,
+        .p_client_key        = str_buf_client_key.buf,
+        .ssl_in_content_len  = RUUVI_POST_ADVS_TLS_IN_CONTENT_LEN,
+        .ssl_out_content_len = RUUVI_POST_ADVS_TLS_OUT_CONTENT_LEN,
     };
 
     http_init_client_config(p_http_client_config, &http_cli_cfg_params, p_user_data);

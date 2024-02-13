@@ -254,6 +254,8 @@ http_download_create_config(
     p_http_config->keep_alive_idle             = 0;
     p_http_config->keep_alive_interval         = 0;
     p_http_config->keep_alive_count            = 0;
+    p_http_config->ssl_in_content_len          = CONFIG_MBEDTLS_SSL_IN_CONTENT_LEN;
+    p_http_config->ssl_out_content_len         = CONFIG_MBEDTLS_SSL_OUT_CONTENT_LEN;
     return p_http_config;
 }
 

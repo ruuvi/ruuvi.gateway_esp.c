@@ -15,6 +15,7 @@
 #include "adv_post.h"
 #include "gw_cfg_storage.h"
 #include "adv_post_statistics.h"
+#include "ruuvi_gateway.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -60,12 +61,14 @@ http_send_statistics_internal(
     }
 
     const http_init_client_config_params_t http_cli_cfg_params = {
-        .p_url         = &p_cfg_http_stat->http_stat_url,
-        .p_user        = &p_cfg_http_stat->http_stat_user,
-        .p_password    = &p_cfg_http_stat->http_stat_pass,
-        .p_server_cert = str_buf_server_cert_stat.buf,
-        .p_client_cert = str_buf_client_cert.buf,
-        .p_client_key  = str_buf_client_key.buf,
+        .p_url               = &p_cfg_http_stat->http_stat_url,
+        .p_user              = &p_cfg_http_stat->http_stat_user,
+        .p_password          = &p_cfg_http_stat->http_stat_pass,
+        .p_server_cert       = str_buf_server_cert_stat.buf,
+        .p_client_cert       = str_buf_client_cert.buf,
+        .p_client_key        = str_buf_client_key.buf,
+        .ssl_in_content_len  = RUUVI_POST_STAT_TLS_IN_CONTENT_LEN,
+        .ssl_out_content_len = RUUVI_POST_STAT_TLS_OUT_CONTENT_LEN,
     };
 
     http_init_client_config(&p_http_async_info->http_client_config, &http_cli_cfg_params, p_user_data);
