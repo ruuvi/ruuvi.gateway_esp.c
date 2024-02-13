@@ -339,6 +339,8 @@ static void handle_buffer_resizing(mbedtls_ssl_context *ssl, int downsizing,
                                    size_t in_buf_new_len,
                                    size_t out_buf_new_len)
 {
+    MBEDTLS_SSL_DEBUG_MSG(2, ("%s: in_buf_new_len=%u, out_buf_new_len=%u",
+             __func__, (unsigned) in_buf_new_len, (unsigned) out_buf_new_len));
     int modified = 0;
     size_t written_in = 0, iv_offset_in = 0, len_offset_in = 0;
     size_t written_out = 0, iv_offset_out = 0, len_offset_out = 0;
@@ -1399,6 +1401,7 @@ int mbedtls_ssl_setup(mbedtls_ssl_context *ssl,
     ssl->out_buf = NULL;
 
 #if defined(MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
+    MBEDTLS_SSL_DEBUG_MSG(2, ("%s: in_buf_len=%u", __func__, (unsigned)in_buf_len));
     ssl->in_buf_len = in_buf_len;
 #endif
     ssl->in_buf = mbedtls_calloc(1, in_buf_len);
@@ -1409,6 +1412,7 @@ int mbedtls_ssl_setup(mbedtls_ssl_context *ssl,
     }
 
 #if defined(MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
+    MBEDTLS_SSL_DEBUG_MSG(2, ("%s: out_buf_len=%u", __func__, (unsigned)out_buf_len));
     ssl->out_buf_len = out_buf_len;
 #endif
     ssl->out_buf = mbedtls_calloc(1, out_buf_len);

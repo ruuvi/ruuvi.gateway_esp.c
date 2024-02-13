@@ -39,6 +39,12 @@ static esp_err_t esp_set_atecc608a_pki_context(esp_tls_t *tls, const void *pki);
 static esp_err_t esp_mbedtls_init_pk_ctx_for_ds(const void *pki);
 #endif /* CONFIG_ESP_TLS_USE_DS_PERIPHERAL */
 
+#define ESP_TLS_LOGI(fmt, ...) \
+    ESP_LOGI(TAG, "[%s]: " fmt, pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", ##__VA_ARGS__)
+
+#define ESP_TLS_LOGI_FUNC(fmt, ...) \
+    ESP_LOGI(TAG, "[%s] %s: " fmt, pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", __func__, ##__VA_ARGS__)
+
 static const char *TAG = "esp-tls-mbedtls";
 static mbedtls_x509_crt *global_cacert = NULL;
 
@@ -194,7 +200,7 @@ int esp_mbedtls_handshake(esp_tls_t *tls, const esp_tls_cfg_t *cfg)
     if (ret == 0) {
         tls->conn_state = ESP_TLS_DONE;
 
-        ESP_LOGI(TAG, "SSL handshake success, TLS version: %s", mbedtls_ssl_get_version(&tls->ssl));
+        ESP_TLS_LOGI("[%s] SSL handshake success, TLS version: %s", esp_tls_get_hostname(tls), mbedtls_ssl_get_version(&tls->ssl));
 
 #ifdef CONFIG_ESP_TLS_USE_DS_PERIPHERAL
         esp_ds_release_ds_lock();
@@ -653,7 +659,8 @@ esp_err_t set_client_config(const char *hostname, size_t hostlen, esp_tls_cfg_t 
     }
     mbedtls_ssl_conf_read_timeout(&tls->conf, cfg->timeout_ms);
 
-    ESP_LOGW(TAG, "%s: Configure ssl_in_content_len=%u, ssl_out_content_len=%u", __func__, cfg->ssl_in_content_len, cfg->ssl_out_content_len);
+    ESP_TLS_LOGI("[%.*s] Configure size of TLS I/O buffers: in_content_len=%u, out_content_len=%u",
+                 hostlen, hostname, cfg->ssl_in_content_len, cfg->ssl_out_content_len);
     tls->conf.ssl_in_content_len = cfg->ssl_in_content_len;
     tls->conf.ssl_out_content_len = cfg->ssl_out_content_len;
 
