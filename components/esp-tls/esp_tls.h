@@ -197,6 +197,9 @@ typedef struct esp_tls_cfg {
 #endif /* CONFIG_ESP_TLS_CLIENT_SESSION_TICKETS */
 
     esp_tls_addr_family_t addr_family;      /*!< The address family to use when connecting to a host. */
+
+    size_t ssl_in_content_len;             /*!< Maximum incoming fragment length in bytes (default MBEDTLS_SSL_IN_CONTENT_LEN) */
+    size_t ssl_out_content_len;            /*!< Maximum outgoing fragment length in bytes (default MBEDTLS_SSL_OUT_CONTENT_LEN) */
 } esp_tls_cfg_t;
 
 #ifdef CONFIG_ESP_TLS_SERVER

@@ -246,11 +246,11 @@ ssize_t esp_mbedtls_write(esp_tls_t *tls, const char *data, size_t datalen)
     size_t written = 0;
     size_t write_len = datalen;
     while (written < datalen) {
-        if (write_len > MBEDTLS_SSL_OUT_CONTENT_LEN) {
-            write_len = MBEDTLS_SSL_OUT_CONTENT_LEN;
+        if (write_len > tls->conf.ssl_out_content_len) {
+            write_len = tls->conf.ssl_out_content_len;
         }
-        if (datalen > MBEDTLS_SSL_OUT_CONTENT_LEN) {
-            ESP_LOGD(TAG, "Fragmenting data of excessive size :%zu, offset: %zu, size %zu", datalen, written, write_len);
+        if (datalen > tls->conf.ssl_out_content_len) {
+            ESP_LOGE(TAG, "Fragmenting data of excessive size :%zu, offset: %zu, size %zu", datalen, written, write_len);
         }
         ssize_t ret = mbedtls_ssl_write(&tls->ssl, (unsigned char*) data + written, write_len);
         if (ret <= 0) {
@@ -652,6 +652,10 @@ esp_err_t set_client_config(const char *hostname, size_t hostlen, esp_tls_cfg_t 
         return ESP_ERR_MBEDTLS_SSL_CONFIG_DEFAULTS_FAILED;
     }
     mbedtls_ssl_conf_read_timeout(&tls->conf, cfg->timeout_ms);
+
+    ESP_LOGW(TAG, "%s: Configure ssl_in_content_len=%u, ssl_out_content_len=%u", __func__, cfg->ssl_in_content_len, cfg->ssl_out_content_len);
+    tls->conf.ssl_in_content_len = cfg->ssl_in_content_len;
+    tls->conf.ssl_out_content_len = cfg->ssl_out_content_len;
 
 #ifdef CONFIG_MBEDTLS_SSL_RENEGOTIATION
     mbedtls_ssl_conf_renegotiation(&tls->conf, MBEDTLS_SSL_RENEGOTIATION_ENABLED);
