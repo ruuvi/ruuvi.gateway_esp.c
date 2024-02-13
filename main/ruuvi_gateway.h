@@ -51,6 +51,9 @@ extern "C" {
 #define RUUVI_POST_STAT_TLS_IN_CONTENT_LEN  (8192)
 #define RUUVI_POST_STAT_TLS_OUT_CONTENT_LEN (4096)
 
+#define RUUVI_MQTT_TLS_IN_CONTENT_LEN  (8192)
+#define RUUVI_MQTT_TLS_OUT_CONTENT_LEN (4096)
+
 extern volatile uint32_t g_network_disconnect_cnt;
 
 void

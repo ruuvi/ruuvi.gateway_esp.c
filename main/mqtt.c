@@ -521,6 +521,8 @@ mqtt_generate_client_config(
     p_cli_cfg->network_timeout_ms          = MQTT_NETWORK_TIMEOUT_MS;
     p_cli_cfg->disable_keepalive           = false;
     p_cli_cfg->path                        = NULL;
+    p_cli_cfg->ssl_in_content_len          = RUUVI_MQTT_TLS_IN_CONTENT_LEN;
+    p_cli_cfg->ssl_out_content_len         = RUUVI_MQTT_TLS_OUT_CONTENT_LEN;
 }
 
 static esp_mqtt_client_config_t*
