@@ -45,7 +45,6 @@ typedef struct transport_esp_tls {
 #define ESP_TLS_MAX_NUM_SAVED_SESSIONS (2)
 
 static esp_tls_client_session_t* g_saved_sessions[ESP_TLS_MAX_NUM_SAVED_SESSIONS];
-static int32_t g_saved_session_last_used_idx;
 static SemaphoreHandle_t g_saved_sessions_sema;
 static StaticSemaphore_t g_saved_sessions_sema_mem;
 
