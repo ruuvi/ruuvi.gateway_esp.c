@@ -85,6 +85,7 @@ unlock_saved_session(transport_esp_tls_t* const ssl) {
     xSemaphoreTake(g_saved_sessions_sema, portMAX_DELAY);
     if (NULL != ssl->cfg.client_session)
     {
+        ESP_TRANSPORT_LOGI("[%s] Free TLS saved session for ssl=%p", esp_tls_get_hostname(ssl->tls), ssl);
         esp_tls_free_client_session(ssl->cfg.client_session);
         ssl->cfg.client_session = NULL;
     }
@@ -101,7 +102,15 @@ static void save_new_session_ticket(transport_esp_tls_t *ssl)
 
     saved_sessions_sema_init();
     xSemaphoreTake(g_saved_sessions_sema, portMAX_DELAY);
-    g_saved_sessions[1] = g_saved_sessions[0];
+    if (NULL != g_saved_sessions[ESP_TLS_MAX_NUM_SAVED_SESSIONS - 1]) {
+        ESP_TRANSPORT_LOGI("[%s] Free TLS saved session for ssl=%p",
+                           g_saved_sessions[ESP_TLS_MAX_NUM_SAVED_SESSIONS - 1]->saved_session.hostname, ssl);
+        esp_tls_free_client_session(g_saved_sessions[ESP_TLS_MAX_NUM_SAVED_SESSIONS - 1]);
+        g_saved_sessions[ESP_TLS_MAX_NUM_SAVED_SESSIONS - 1] = NULL;
+    }
+    for (int i = ESP_TLS_MAX_NUM_SAVED_SESSIONS - 1; i > 0; --i) {
+        g_saved_sessions[i] = g_saved_sessions[i - 1];
+    }
     g_saved_sessions[0] = p_session;
     ESP_TRANSPORT_LOGI("[%s] New TLS session ticket saved", p_session->saved_session.hostname );
 
