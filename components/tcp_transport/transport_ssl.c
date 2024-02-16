@@ -45,6 +45,7 @@ typedef struct transport_esp_tls {
 #define ESP_TLS_MAX_NUM_SAVED_SESSIONS (2)
 
 static esp_tls_client_session_t* g_saved_sessions[ESP_TLS_MAX_NUM_SAVED_SESSIONS];
+static int32_t g_saved_session_last_used_idx;
 static SemaphoreHandle_t g_saved_sessions_sema;
 static StaticSemaphore_t g_saved_sessions_sema_mem;
 
@@ -55,11 +56,30 @@ saved_sessions_sema_init(void) {
     }
 }
 
+static void
+log_saved_session_tickets(void) {
+    ESP_TRANSPORT_LOGD("LOG: List of saved TLS session tickets");
+    int32_t last_used_idx = g_saved_session_last_used_idx;
+    for (int i = 0; i < ESP_TLS_MAX_NUM_SAVED_SESSIONS; ++i) {
+        last_used_idx += 1;
+        last_used_idx %= ESP_TLS_MAX_NUM_SAVED_SESSIONS;
+        const esp_tls_client_session_t* const p_saved_session = g_saved_sessions[last_used_idx];
+        if (NULL == p_saved_session) {
+            ESP_TRANSPORT_LOGD("LOG: TLS session ticket[%d]: NULL", last_used_idx);
+        } else {
+            ESP_TRANSPORT_LOGD("LOG: TLS session ticket[%d]: %s",
+                               last_used_idx, g_saved_sessions[last_used_idx]->saved_session.hostname);
+        }
+    }
+}
+
 static esp_tls_client_session_t*
 get_saved_session_info_for_host(transport_esp_tls_t* const ssl, const char* const hostname) {
     saved_sessions_sema_init();
     esp_tls_client_session_t* p_found_saved_session = NULL;
     xSemaphoreTake(g_saved_sessions_sema, portMAX_DELAY);
+    ESP_TRANSPORT_LOGD_FUNC("hostname=%s", hostname);
+    log_saved_session_tickets();
     for (int i = 0; i < ESP_TLS_MAX_NUM_SAVED_SESSIONS; ++i) {
         esp_tls_client_session_t* const p_saved_session = g_saved_sessions[i];
         if ((NULL != p_saved_session)
@@ -85,11 +105,12 @@ unlock_saved_session(transport_esp_tls_t* const ssl) {
     xSemaphoreTake(g_saved_sessions_sema, portMAX_DELAY);
     if (NULL != ssl->cfg.client_session)
     {
-        ESP_TRANSPORT_LOGI("[%s] Free TLS saved session for ssl=%p",
-                           ssl->cfg.client_session->saved_session.hostname, ssl);
+        ESP_TRANSPORT_LOGI("Free TLS saved session for ssl=%p, session=%p: %s",
+                           ssl, ssl->cfg.client_session, ssl->cfg.client_session->saved_session.hostname);
         esp_tls_free_client_session(ssl->cfg.client_session);
         ssl->cfg.client_session = NULL;
     }
+    log_saved_session_tickets();
     xSemaphoreGive(g_saved_sessions_sema);
 }
 
@@ -103,6 +124,10 @@ static void save_new_session_ticket(transport_esp_tls_t *ssl)
 
     saved_sessions_sema_init();
     xSemaphoreTake(g_saved_sessions_sema, portMAX_DELAY);
+
+    ESP_TRANSPORT_LOGD_FUNC("[%s] Got new TLS session ticket, session=%p", p_session->saved_session.hostname, p_session);
+    log_saved_session_tickets();
+
     int found_idx = -1;
     for (int i = 0; i < ESP_TLS_MAX_NUM_SAVED_SESSIONS; ++i) {
         const esp_tls_client_session_t* const p_saved_session = g_saved_sessions[i];
@@ -119,27 +144,41 @@ static void save_new_session_ticket(transport_esp_tls_t *ssl)
             "[%s] Got new TLS session ticket, replace existing one (slot %d)",
             p_session->saved_session.hostname,
             found_idx);
+        ESP_TRANSPORT_LOGI("Free TLS saved session for ssl=%p, session=%p: %s",
+                           ssl, g_saved_sessions[found_idx], g_saved_sessions[found_idx]->saved_session.hostname);
         esp_tls_free_client_session(g_saved_sessions[found_idx]);
         g_saved_sessions[found_idx] = p_session;
     } else {
-        if (NULL != g_saved_sessions[ESP_TLS_MAX_NUM_SAVED_SESSIONS - 1]) {
-            ESP_TRANSPORT_LOGI("[%s] Free TLS saved session ticket for ssl=%p (slot %d)",
-                               g_saved_sessions[ESP_TLS_MAX_NUM_SAVED_SESSIONS - 1]->saved_session.hostname,
-                               ssl,
-                               ESP_TLS_MAX_NUM_SAVED_SESSIONS - 1);
-            esp_tls_free_client_session(g_saved_sessions[ESP_TLS_MAX_NUM_SAVED_SESSIONS - 1]);
-            g_saved_sessions[ESP_TLS_MAX_NUM_SAVED_SESSIONS - 1] = NULL;
-        }
-        for (int i = ESP_TLS_MAX_NUM_SAVED_SESSIONS - 1; i > 0; --i) {
-            g_saved_sessions[i] = g_saved_sessions[i - 1];
-            if (NULL != g_saved_sessions[i - 1]) {
-                ESP_TRANSPORT_LOGI("Move TLS session ticket for host %s from slot %d to %d",
-                                   g_saved_sessions[i - 1]->saved_session.hostname, i - 1, i);
+        for (int i = 0; i < ESP_TLS_MAX_NUM_SAVED_SESSIONS; ++i) {
+            g_saved_session_last_used_idx += 1;
+            g_saved_session_last_used_idx %= ESP_TLS_MAX_NUM_SAVED_SESSIONS;
+            const esp_tls_client_session_t* const p_saved_session = g_saved_sessions[g_saved_session_last_used_idx];
+            if (NULL == p_saved_session) {
+                found_idx = g_saved_session_last_used_idx;
+                break;
             }
         }
-        g_saved_sessions[0] = p_session;
-        ESP_TRANSPORT_LOGI("[%s] Save new TLS session ticket (slot %d)", p_session->saved_session.hostname, 0);
+        if (found_idx >= 0) {
+            ESP_TRANSPORT_LOGI(
+                "[%s] Got new TLS session ticket, save it to an empty slot (slot %d)",
+                p_session->saved_session.hostname,
+                found_idx);
+            g_saved_sessions[found_idx] = p_session;
+        } else {
+            g_saved_session_last_used_idx += 1;
+            g_saved_session_last_used_idx %= ESP_TLS_MAX_NUM_SAVED_SESSIONS;
+
+            ESP_TRANSPORT_LOGI("Free TLS saved session for ssl=%p, session=%p: %s",
+                               ssl, g_saved_sessions[g_saved_session_last_used_idx],
+                               g_saved_sessions[g_saved_session_last_used_idx]->saved_session.hostname);
+            esp_tls_free_client_session(g_saved_sessions[g_saved_session_last_used_idx]);
+            g_saved_sessions[g_saved_session_last_used_idx] = p_session;
+            ESP_TRANSPORT_LOGI("[%s] Save new TLS session ticket (slot %d)",
+                               p_session->saved_session.hostname, g_saved_session_last_used_idx);
+        }
     }
+
+    log_saved_session_tickets();
 
     xSemaphoreGive(g_saved_sessions_sema);
 }
@@ -148,15 +187,21 @@ void esp_transport_ssl_clear_saved_session_tickets(void)
 {
     saved_sessions_sema_init();
     xSemaphoreTake(g_saved_sessions_sema, portMAX_DELAY);
+
+    ESP_TRANSPORT_LOGD_FUNC("Clear all saved session tickets");
+    log_saved_session_tickets();
+
     for (int i = 0; i < ESP_TLS_MAX_NUM_SAVED_SESSIONS; ++i) {
         esp_tls_client_session_t* const p_saved_session = g_saved_sessions[i];
         if (NULL == p_saved_session) {
             continue;
         }
         ESP_TRANSPORT_LOGI("[%s] Clear TLS session ticket (slot %d)", p_saved_session->saved_session.hostname, i);
+        ESP_TRANSPORT_LOGI("Free TLS saved session, session=%p: %s", p_saved_session, p_saved_session->saved_session.hostname);
         esp_tls_free_client_session(p_saved_session);
         g_saved_sessions[i] = NULL;
     }
+    log_saved_session_tickets();
     xSemaphoreGive(g_saved_sessions_sema);
 }
 
@@ -179,14 +224,17 @@ static int esp_tls_connect_async(esp_transport_handle_t t, const char *host, int
 {
     transport_esp_tls_t *ssl = ssl_get_context_data(t);
     if (ssl->conn_state == TRANS_SSL_INIT) {
+        ESP_TRANSPORT_LOGD_FUNC("TRANS_SSL_INIT[%s:%d] timeout=%d ms, is_plain_tcp=%d", host, port, timeout_ms, is_plain_tcp);
         ssl->cfg.timeout_ms = timeout_ms;
         ssl->cfg.is_plain_tcp = is_plain_tcp;
         ssl->cfg.non_block = true;
-        ssl->cfg.client_session = get_saved_session_info_for_host(ssl, host);
-        if (NULL != ssl->cfg.client_session) {
-            ESP_TRANSPORT_LOGI("[%s] Reuse saved TLS session ticket for host", host);
-        } else {
-            ESP_TRANSPORT_LOGI("[%s] There is no saved TLS session ticket for host", host);
+        if (!is_plain_tcp) {
+            ssl->cfg.client_session = get_saved_session_info_for_host(ssl, host);
+            if (NULL != ssl->cfg.client_session) {
+                ESP_TRANSPORT_LOGI("[%s] Reuse saved TLS session ticket for host", host);
+            } else {
+                ESP_TRANSPORT_LOGI("[%s] There is no saved TLS session ticket for host", host);
+            }
         }
         ssl->ssl_initialized = true;
         ssl->tls = esp_tls_init();
@@ -198,6 +246,7 @@ static int esp_tls_connect_async(esp_transport_handle_t t, const char *host, int
         ssl->sockfd = INVALID_SOCKET;
     }
     if (ssl->conn_state == TRANS_SSL_CONNECTING) {
+        ESP_TRANSPORT_LOGD_FUNC("TRANS_SSL_CONNECTING[%s:%d]", host, port);
         ESP_LOGD(TAG, "%s: esp_tls_conn_new_async", __func__);
         int progress = esp_tls_conn_new_async(host, strlen(host), port, &ssl->cfg, ssl->tls);
         if (progress >= 0) {
@@ -207,8 +256,13 @@ static int esp_tls_connect_async(esp_transport_handle_t t, const char *host, int
                 esp_tls_conn_destroy(ssl->tls);
                 return -1;
             }
+            if (0 == progress) {
+                ESP_TRANSPORT_LOGD_FUNC("TRANS_SSL_CONNECTING[%s:%d] esp_tls_conn_new_async: In progress", host, port);
+            } else {
+                ESP_TRANSPORT_LOGD_FUNC("TRANS_SSL_CONNECTING[%s:%d] esp_tls_conn_new_async: Connected", host, port);
+            }
         } else {
-            ESP_LOGD(TAG, "%s: esp_tls_conn_new_async failed", __func__);
+            ESP_TRANSPORT_LOGE_FUNC("[%s:%d] esp_tls_conn_new_async: Failed, res=%d", host, port, progress);
             ESP_LOGD(TAG, "%s: esp_transport_set_errors", __func__);
             esp_tls_error_handle_t esp_tls_error_handle;
             esp_tls_get_error_handle(ssl->tls, &esp_tls_error_handle);
@@ -279,6 +333,8 @@ static int tcp_connect(esp_transport_handle_t t, const char *host, int port, int
     transport_esp_tls_t *ssl = ssl_get_context_data(t);
     esp_tls_last_error_t *err_handle = esp_transport_get_error_handle(t);
 
+    ESP_TRANSPORT_LOGI_FUNC("[%s:%d] Connect to host with timeout %d ms", host, port, timeout_ms);
+
     ssl->cfg.timeout_ms = timeout_ms;
     esp_err_t err = esp_tls_plain_tcp_connect(host, strlen(host), port, &ssl->cfg, err_handle, &ssl->sockfd);
     if (err != ESP_OK) {
@@ -327,6 +383,7 @@ static int base_poll_read(esp_transport_handle_t t, int timeout_ms)
                  esp_tls_get_hostname(ssl->tls),
                  sock_errno, (NULL != err_desc.buf) ? err_desc.buf : "", ssl->sockfd);
         str_buf_free_buf(&err_desc);
+        errno = sock_errno;
         ret = -1;
     } else if (ret == 0) {
         ESP_LOGV(TAG, "poll_read: select - Timeout before any socket was ready!");
@@ -422,9 +479,13 @@ static int ssl_read(esp_transport_handle_t t, char *buffer, int len, int timeout
 
     int poll = esp_transport_poll_read(t, timeout_ms);
     if (poll == -1) {
+        ESP_TRANSPORT_LOGE_FUNC("[%s] esp_transport_poll_read: ERR_TCP_TRANSPORT_CONNECTION_FAILED",
+                                esp_tls_get_hostname(ssl->tls));
         return ERR_TCP_TRANSPORT_CONNECTION_FAILED;
     }
     if (poll == 0) {
+        ESP_TRANSPORT_LOGD_FUNC("[%s] esp_transport_poll_read: ERR_TCP_TRANSPORT_CONNECTION_TIMEOUT",
+                                esp_tls_get_hostname(ssl->tls));
         return ERR_TCP_TRANSPORT_CONNECTION_TIMEOUT;
     }
 
@@ -470,9 +531,13 @@ static int tcp_read(esp_transport_handle_t t, char *buffer, int len, int timeout
 
     int poll = esp_transport_poll_read(t, timeout_ms);
     if (poll == -1) {
+        ESP_TRANSPORT_LOGE_FUNC("[%s] esp_transport_poll_read: ERR_TCP_TRANSPORT_CONNECTION_FAILED",
+                                esp_tls_get_hostname(ssl->tls));
         return ERR_TCP_TRANSPORT_CONNECTION_FAILED;
     }
     if (poll == 0) {
+        ESP_TRANSPORT_LOGE_FUNC("[%s] esp_transport_poll_read: ERR_TCP_TRANSPORT_CONNECTION_TIMEOUT",
+                                esp_tls_get_hostname(ssl->tls));
         return ERR_TCP_TRANSPORT_CONNECTION_TIMEOUT;
     }
 
@@ -502,7 +567,9 @@ static int base_close(esp_transport_handle_t t)
 {
     int ret = -1;
     transport_esp_tls_t *ssl = ssl_get_context_data(t);
+    ESP_LOGD(TAG, "%s: ssl=%p", __func__, ssl);
     if (ssl && ssl->ssl_initialized) {
+        ESP_LOGD(TAG, "%s: tls=%p, host=%s", __func__, ssl->tls, esp_tls_get_hostname(ssl->tls));
         if (NULL == ssl->tls)
         {
             ESP_TRANSPORT_LOGW_FUNC("[%s] tls=NULL", esp_tls_get_hostname(ssl->tls));
@@ -518,8 +585,14 @@ static int base_close(esp_transport_handle_t t)
         ssl->ssl_initialized = false;
         ssl->sockfd = INVALID_SOCKET;
     } else if (ssl && ssl->sockfd >= 0) {
+        ESP_LOGD(TAG, "%s: tls=%p, host=%s, ssl->sockfd=%d", __func__, ssl->tls, esp_tls_get_hostname(ssl->tls), ssl->sockfd);
+        ESP_LOGD(TAG, "%s: Close socket %d", __func__, ssl->sockfd);
         ret = close(ssl->sockfd);
         ssl->sockfd = INVALID_SOCKET;
+    }
+    else {
+        ESP_LOGD(TAG, "%s: tls=%p, host=%s", __func__, ssl->tls, esp_tls_get_hostname(ssl->tls));
+        ESP_LOGD(TAG, "%s: ssl->sockfd=%d", __func__, ssl->sockfd);
     }
     return ret;
 }
