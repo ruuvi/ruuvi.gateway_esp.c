@@ -175,7 +175,7 @@ ssize_t esp_tls_conn_write(esp_tls_t *tls, const void  *data, size_t datalen)
 int esp_tls_conn_destroy(esp_tls_t *tls)
 {
     if (tls != NULL) {
-        ESP_TLS_LOGI_FUNC("[%s] tls=%p", esp_tls_get_hostname(tls), tls);
+        ESP_TLS_LOGI_FUNC("[%s] tls=%p, sockfd=%d", esp_tls_get_hostname(tls), tls, tls->sockfd);
 
         SemaphoreHandle_t p_dns_mutex = tls->dns_mutex;
         if (p_dns_mutex) {
@@ -199,7 +199,9 @@ int esp_tls_conn_destroy(esp_tls_t *tls)
         int ret = 0;
         _esp_tls_conn_delete(tls);
         if (tls->sockfd >= 0) {
+            ESP_LOGI(TAG, "%s: Close socket %d", __func__, tls->sockfd);
             ret = close(tls->sockfd);
+            tls->sockfd = -1;
         }
         esp_tls_internal_event_tracker_destroy(tls->error_handle);
         if (tls->hostname) {
@@ -338,7 +340,10 @@ static esp_err_t esp_tls_tcp_connect(const ip_addr_t* const p_remote_ip, int por
 #if CONFIG_LWIP_IPV4
     int fd = socket(AF_INET, SOCK_STREAM, AF_UNSPEC);
     if (fd < 0) {
-        ESP_TLS_LOGE_FUNC("[%s:%d] Failed to create socket, err %d", remote_ip_str, port, errno);
+        str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(errno);
+        ESP_TLS_LOGE_FUNC("[%s:%d] Failed to create socket, err %d (%s)",
+                          remote_ip_str, port, errno, err_desc.buf ? err_desc.buf : "");
+        str_buf_free_buf(&err_desc);
         ESP_INT_EVENT_TRACKER_CAPTURE(error_handle, ESP_TLS_ERR_TYPE_SYSTEM, errno);
         ret = ESP_ERR_ESP_TLS_CANNOT_CREATE_SOCKET;
         goto err_exit;
@@ -346,6 +351,7 @@ static esp_err_t esp_tls_tcp_connect(const ip_addr_t* const p_remote_ip, int por
 #else
 #error not supported
 #endif
+    ESP_LOGI(TAG, "%s: Open socket %d", __func__, fd);
 
     // Set timeout options, keep-alive options and bind device options if configured
     ret = esp_tls_set_socket_options(fd, cfg);
