@@ -647,10 +647,14 @@ validate_url_on_get_check_remote_cfg(const http_check_params_t* const p_params)
         return http_server_resp_400();
     }
 
-    const bool             flag_free_memory = true;
-    gw_cfg_t*              p_gw_cfg_tmp     = NULL;
-    str_buf_t              err_msg          = str_buf_init_null();
-    const http_resp_code_e http_resp_code   = http_server_gw_cfg_download_and_parse(
+    const bool flag_free_memory = true;
+    gw_cfg_t*  p_gw_cfg_tmp     = NULL;
+    str_buf_t  err_msg          = str_buf_init_null();
+
+    const bool flag_wait_until_relaying_stopped = true;
+    gw_status_suspend_http_relaying(flag_wait_until_relaying_stopped);
+
+    const http_resp_code_e http_resp_code = http_server_gw_cfg_download_and_parse(
         p_remote_cfg,
         flag_free_memory,
         &p_gw_cfg_tmp,
@@ -668,6 +672,10 @@ validate_url_on_get_check_remote_cfg(const http_check_params_t* const p_params)
     {
         str_buf_free_buf(&err_msg);
     }
+
+    const bool flag_wait_until_relaying_resumed = true;
+    gw_status_resume_http_relaying(flag_wait_until_relaying_resumed);
+
     return resp;
 }
 
