@@ -101,7 +101,8 @@ get_saved_session_info_for_host(transport_esp_tls_t* const ssl, const char* cons
 static void
 unlock_saved_session(transport_esp_tls_t* const ssl) {
     saved_sessions_sema_init();
-    ESP_TRANSPORT_LOGI("[%s] Unlock TLS saved session for ssl=%p", esp_tls_get_hostname(ssl->tls), ssl);
+    ESP_TRANSPORT_LOGI("[%s] Unlock TLS saved session for ssl=%p, session=%p",
+                       esp_tls_get_hostname(ssl->tls), ssl, ssl->cfg.client_session);
     xSemaphoreTake(g_saved_sessions_sema, portMAX_DELAY);
     if (NULL != ssl->cfg.client_session)
     {
