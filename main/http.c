@@ -377,7 +377,14 @@ http_send_async(http_async_info_t* const p_http_async_info)
             {
                 break;
             }
-            LOG_INFO("HTTP POST DATA:\n%s", p_chunk);
+            if (json_len < 4 * 1024)
+            {
+                LOG_INFO("HTTP POST DATA:\n%s", p_chunk);
+            }
+            else
+            {
+                LOG_DBG("HTTP POST DATA:\n%s", p_chunk);
+            }
             vTaskDelay(pdMS_TO_TICKS(5));
         }
         json_stream_gen_reset(p_http_async_info->select.p_gen);
