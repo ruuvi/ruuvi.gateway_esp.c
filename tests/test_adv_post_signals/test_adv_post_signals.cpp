@@ -1317,9 +1317,8 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_relaying_mode_changed) // NO
         ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_RELAYING_MODE_CHANGED, &adv_post_state));
         ASSERT_FALSE(adv_post_state.flag_stop);
         ASSERT_FALSE(adv_post_state.flag_relaying_enabled);
-        ASSERT_EQ(2, this->m_events_history.size());
-        ASSERT_EQ(EVENT_HISTORY_LEDS_NOTIFY_HTTP1_DATA_SENT_FAIL, this->m_events_history[0].event_type);
-        ASSERT_EQ(EVENT_HISTORY_GW_STATUS_CLEAR_HTTP_RELAYING_CMD, this->m_events_history[1].event_type);
+        ASSERT_EQ(1, this->m_events_history.size());
+        ASSERT_EQ(EVENT_HISTORY_GW_STATUS_CLEAR_HTTP_RELAYING_CMD, this->m_events_history[0].event_type);
         this->m_events_history.clear();
     }
     {
@@ -1342,9 +1341,8 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_relaying_mode_changed) // NO
         ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_RELAYING_MODE_CHANGED, &adv_post_state));
         ASSERT_FALSE(adv_post_state.flag_stop);
         ASSERT_FALSE(adv_post_state.flag_relaying_enabled);
-        ASSERT_EQ(2, this->m_events_history.size());
-        ASSERT_EQ(EVENT_HISTORY_LEDS_NOTIFY_HTTP2_DATA_SENT_FAIL, this->m_events_history[0].event_type);
-        ASSERT_EQ(EVENT_HISTORY_GW_STATUS_CLEAR_HTTP_RELAYING_CMD, this->m_events_history[1].event_type);
+        ASSERT_EQ(1, this->m_events_history.size());
+        ASSERT_EQ(EVENT_HISTORY_GW_STATUS_CLEAR_HTTP_RELAYING_CMD, this->m_events_history[0].event_type);
         this->m_events_history.clear();
     }
     {

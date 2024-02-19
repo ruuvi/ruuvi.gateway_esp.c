@@ -442,27 +442,7 @@ http_server_gw_cfg_download_and_parse(
     gw_cfg_t**                         p_p_gw_cfg_tmp,
     str_buf_t* const                   p_err_msg)
 {
-    const bool flag_wait_until_relaying_stopped = true;
-    if (flag_free_memory || gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss())
-    {
-        gw_status_suspend_relaying(flag_wait_until_relaying_stopped);
-    }
-    else
-    {
-        gw_status_suspend_http_relaying(flag_wait_until_relaying_stopped);
-    }
-
     http_server_download_info_t download_info = http_server_download_gw_cfg(p_remote_cfg, flag_free_memory);
-
-    const bool flag_wait_until_relaying_resumed = true;
-    if (flag_free_memory || gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss())
-    {
-        gw_status_resume_relaying(flag_wait_until_relaying_resumed);
-    }
-    else
-    {
-        gw_status_resume_http_relaying(flag_wait_until_relaying_resumed);
-    }
 
     if (download_info.is_error)
     {
@@ -560,6 +540,10 @@ http_server_gw_cfg_download_and_update(
     {
         return HTTP_RESP_CODE_502;
     }
+
+    const bool flag_wait_until_relaying_stopped = true;
+    gw_status_suspend_http_relaying(flag_wait_until_relaying_stopped);
+
     const http_resp_code_e resp_code = http_server_gw_cfg_download_and_parse(
         p_remote_cfg,
         flag_free_memory,
@@ -572,6 +556,8 @@ http_server_gw_cfg_download_and_update(
     }
     if (HTTP_RESP_CODE_200 != resp_code)
     {
+        const bool flag_wait_until_relaying_resumed = true;
+        gw_status_resume_http_relaying(flag_wait_until_relaying_resumed);
         return resp_code;
     }
 
@@ -596,6 +582,10 @@ http_server_gw_cfg_download_and_update(
         LOG_INFO("Gateway SETTINGS (from remote server) are the same as the current ones");
     }
     os_free(p_gw_cfg_tmp);
+
+    const bool flag_wait_until_relaying_resumed = true;
+    gw_status_resume_http_relaying(flag_wait_until_relaying_resumed);
+
     return HTTP_RESP_CODE_200;
 }
 
