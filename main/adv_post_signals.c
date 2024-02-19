@@ -191,17 +191,6 @@ adv_post_handle_sig_relaying_mode_changed(adv_post_state_t* const p_adv_post_sta
         LOG_DBG("http_server_mutex_unlock");
         http_server_mutex_unlock();
     }
-    if (!p_adv_post_state->flag_relaying_enabled)
-    {
-        if (gw_cfg_get_http_use_http_ruuvi())
-        {
-            leds_notify_http1_data_sent_fail();
-        }
-        if (gw_cfg_get_http_use_http())
-        {
-            leds_notify_http2_data_sent_fail();
-        }
-    }
     gw_status_clear_http_relaying_cmd();
 }
 

@@ -40,6 +40,8 @@ static const char TAG[] = "http";
 
 #define BASE_10 (10U)
 
+#define HTTP_POST_MAX_LEN_TO_PRINT_LOG (4U * 1024U)
+
 typedef int esp_http_client_len_t;
 typedef int esp_http_client_http_status_code_t;
 
@@ -355,6 +357,47 @@ cb_on_post_get_chunk(void* p_user_data, const void** p_p_buf, size_t* p_len)
     return true;
 }
 
+static bool
+http_send_async_from_json_stream_gen(http_async_info_t* const p_http_async_info)
+{
+    const json_stream_gen_size_t json_len = json_stream_gen_calc_size(p_http_async_info->select.p_gen);
+    LOG_INFO("HTTP POST DATA len=%u:", (printf_int_t)json_len);
+    while (true)
+    {
+        const char* const p_chunk = json_stream_gen_get_next_chunk(p_http_async_info->select.p_gen);
+        if (NULL == p_chunk)
+        {
+            break;
+        }
+        if ('\0' == *p_chunk)
+        {
+            break;
+        }
+        if (json_len < HTTP_POST_MAX_LEN_TO_PRINT_LOG)
+        {
+            LOG_INFO("HTTP POST DATA:\n%s", p_chunk);
+        }
+        else
+        {
+            LOG_DBG("HTTP POST DATA:\n%s", p_chunk);
+        }
+        vTaskDelay(pdMS_TO_TICKS(5)); // A delay to avoid triggering watchdog
+    }
+    json_stream_gen_reset(p_http_async_info->select.p_gen);
+
+    const esp_err_t err = esp_http_client_set_cb_on_post_get_chunk(
+        p_http_async_info->p_http_client_handle,
+        json_len,
+        &cb_on_post_get_chunk,
+        (void*)p_http_async_info->select.p_gen);
+    if (0 != err)
+    {
+        LOG_ERR_ESP(err, "%s failed", "esp_http_client_set_cb_on_post_get_chunk");
+        return false;
+    }
+    return true;
+}
+
 bool
 http_send_async(http_async_info_t* const p_http_async_info)
 {
@@ -364,32 +407,8 @@ http_send_async(http_async_info_t* const p_http_async_info)
 
     if (p_http_async_info->use_json_stream_gen)
     {
-        const json_stream_gen_size_t json_len = json_stream_gen_calc_size(p_http_async_info->select.p_gen);
-        LOG_INFO("HTTP POST DATA len=%u:", (printf_int_t)json_len);
-        while (true)
+        if (!http_send_async_from_json_stream_gen(p_http_async_info))
         {
-            const char* const p_chunk = json_stream_gen_get_next_chunk(p_http_async_info->select.p_gen);
-            if (NULL == p_chunk)
-            {
-                break;
-            }
-            if ('\0' == *p_chunk)
-            {
-                break;
-            }
-            LOG_INFO("HTTP POST DATA:\n%s", p_chunk);
-            vTaskDelay(pdMS_TO_TICKS(5));
-        }
-        json_stream_gen_reset(p_http_async_info->select.p_gen);
-
-        const esp_err_t err = esp_http_client_set_cb_on_post_get_chunk(
-            p_http_async_info->p_http_client_handle,
-            json_len,
-            &cb_on_post_get_chunk,
-            (void*)p_http_async_info->select.p_gen);
-        if (0 != err)
-        {
-            LOG_ERR_ESP(err, "%s failed", "esp_http_client_set_cb_on_post_get_chunk");
             return false;
         }
     }
