@@ -39,6 +39,12 @@ extern "C" {
 #define ESP_TRANSPORT_LOGI_FUNC(fmt, ...) \
     ESP_LOGI(TAG, "[%s] %s: " fmt, pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", __func__, ##__VA_ARGS__)
 
+#define ESP_TRANSPORT_LOGD(fmt, ...) \
+    ESP_LOGD(TAG, "[%s] " fmt, pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", ##__VA_ARGS__)
+
+#define ESP_TRANSPORT_LOGD_FUNC(fmt, ...) \
+    ESP_LOGD(TAG, "[%s] %s: " fmt, pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", __func__, ##__VA_ARGS__)
+
 
 typedef int (*get_socket_func)(esp_transport_handle_t t);
 
