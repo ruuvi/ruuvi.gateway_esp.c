@@ -830,8 +830,8 @@ esp_err_t esp_tls_plain_tcp_connect(const char *host, int hostlen, int port, con
     ESP_LOGD(TAG, "Connecting to server %s. IP: %s, Port: %d", hostname, remote_ip4_str, port);
     free(hostname);
     hostname = NULL;
-    ip_addr_t remote_ip_addr;
-    ip4addr_ntoa_r(&remote_ip_addr.u_addr.ip4, remote_ip4_str, sizeof(remote_ip4_str));
+    ip_addr_t remote_ip_addr = { 0 };
+    ip4addr_aton(remote_ip4_str, &remote_ip_addr.u_addr.ip4);
     return esp_tls_tcp_connect(&remote_ip_addr, port, cfg, error_handle, sockfd);
 }
 
