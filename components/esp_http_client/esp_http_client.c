@@ -700,6 +700,7 @@ esp_http_client_handle_t esp_http_client_init(const esp_http_client_config_t *co
     client->parser->data = client;
     client->event.client = client;
 
+    ESP_LOGD(TAG, "%s: Set client->state: %s", __func__, "HTTP_STATE_INIT");
     client->state = HTTP_STATE_INIT;
     return client;
 error:
@@ -893,6 +894,8 @@ esp_err_t esp_http_client_set_method(esp_http_client_handle_t client, esp_http_c
 static int esp_http_client_get_data(esp_http_client_handle_t client)
 {
     if (client->state < HTTP_STATE_RES_COMPLETE_HEADER) {
+        ESP_LOGE(TAG, "%s: client->state(%d) < HTTP_STATE_RES_COMPLETE_HEADER(%d)",
+                 __func__, client->state, HTTP_STATE_RES_COMPLETE_HEADER);
         return ESP_FAIL;
     }
 
@@ -997,6 +1000,7 @@ int esp_http_client_read(esp_http_client_handle_t client, char *buffer, int len)
 esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
 {
     esp_err_t err;
+    ESP_LOGD(TAG, "%s: client->state=%d", __func__, client->state);
     do {
         if (client->process_again) {
             esp_http_client_prepare(client);
@@ -1007,13 +1011,25 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
            then the esp_http_client_perform() API will return ESP_ERR_HTTP_EAGAIN error. The user may call
            esp_http_client_perform API again, and for this reason, we maintain the states */
             case HTTP_STATE_INIT:
-                if ((err = esp_http_client_connect(client)) != ESP_OK) {
-                    if (client->is_async && err == ESP_ERR_HTTP_CONNECTING) {
-                        client->state = HTTP_STATE_CONNECTING;
-                        return ESP_ERR_HTTP_EAGAIN;
-                    }
+                if ((err = esp_http_client_prepare(client)) != ESP_OK) {
+                    ESP_LOGE(TAG, "Failed to initialize request data");
+                    esp_http_client_close(client);
                     return err;
                 }
+                ESP_LOGD(TAG, "Begin connect to: %s://%s:%d", client->connection_info.scheme, client->connection_info.host, client->connection_info.port);
+                client->transport = esp_transport_list_get_transport(client->transport_list, client->connection_info.scheme);
+                ESP_LOGD(TAG, "%s: client->transport=%p", __func__, client->transport);
+                if (client->transport == NULL) {
+                    ESP_LOGE(TAG, "No transport found");
+#ifndef CONFIG_ESP_HTTP_CLIENT_ENABLE_HTTPS
+                    if (strcasecmp(client->connection_info.scheme, "https") == 0) {
+                        ESP_LOGE(TAG, "Please enable HTTPS at menuconfig to allow requesting via https");
+                    }
+#endif
+                    return ESP_ERR_HTTP_INVALID_TRANSPORT;
+                }
+
+                ESP_LOGD(TAG, "%s: Set client->state: %s", __func__, "HTTP_STATE_CONNECTING");
                 client->state = HTTP_STATE_CONNECTING;
                 /* falls through */
 #if defined(__GNUC__) && (__GNUC__ >= 7)
@@ -1024,6 +1040,7 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                     ESP_LOGD(TAG, "%s: esp_transport_connect_async", __func__);
                     int ret = esp_transport_connect_async(client->transport, client->connection_info.host,
                                                           client->connection_info.port, client->timeout_ms);
+                    ESP_LOGD(TAG, "%s: esp_transport_connect_async: res=%d", __func__, ret);
                     if (ret == ASYNC_TRANS_CONNECT_FAIL) {
                         ESP_LOGE(TAG, "Connection failed");
                         esp_tls_error_handle_t err_handle = esp_transport_get_error_handle(client->transport);
@@ -1064,8 +1081,17 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                         ESP_LOGD(TAG, "Connection not yet established");
                         return ESP_ERR_HTTP_EAGAIN;
                     }
+                } else {
+                    ESP_LOGD(TAG, "%s: esp_transport_connect", __func__);
+                    if (esp_transport_connect(client->transport, client->connection_info.host, client->connection_info.port, client->timeout_ms) < 0) {
+                        ESP_LOGE(TAG, "Connection failed, sock < 0");
+                        return ESP_ERR_HTTP_CONNECT;
+                    }
+                    ESP_LOGD(TAG, "%s: esp_transport_connect: connected", __func__);
                 }
+                ESP_LOGD(TAG, "%s: Set client->state: %s", __func__, "HTTP_STATE_CONNECTED");
                 client->state = HTTP_STATE_CONNECTED;
+                http_dispatch_event(client, HTTP_EVENT_ON_CONNECTED, NULL, 0);
                 /* falls through */
 #if defined(__GNUC__) && (__GNUC__ >= 7)
                 __attribute__((fallthrough));
@@ -1138,6 +1164,7 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                     esp_http_client_close(client);
                 } else {
                     if (client->state > HTTP_STATE_CONNECTED) {
+                        ESP_LOGD(TAG, "%s: Set client->state: %s", __func__, "HTTP_STATE_CONNECTED");
                         client->state = HTTP_STATE_CONNECTED;
                         client->first_line_prepared = false;
                     }
@@ -1246,6 +1273,7 @@ static esp_err_t esp_http_client_connect(esp_http_client_handle_t client)
                 return ESP_ERR_HTTP_CONNECTING;
             }
         }
+        ESP_LOGD(TAG, "%s: Set client->state: %s", __func__, "HTTP_STATE_CONNECTED");
         client->state = HTTP_STATE_CONNECTED;
         http_dispatch_event(client, HTTP_EVENT_ON_CONNECTED, NULL, 0);
     }
