@@ -414,6 +414,7 @@ static int base_poll_write(esp_transport_handle_t t, int timeout_ms)
                  esp_tls_get_hostname(ssl->tls),
                  sock_errno, (NULL != err_desc.buf) ? err_desc.buf : "", ssl->sockfd);
         str_buf_free_buf(&err_desc);
+        errno = sock_errno;
         ret = -1;
     } else if (ret == 0) {
         ESP_LOGD(TAG, "poll_write: select - Timeout before any socket was ready!");
