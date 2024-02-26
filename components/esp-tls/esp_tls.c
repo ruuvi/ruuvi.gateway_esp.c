@@ -586,12 +586,6 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
             ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, esp_ret);
             return -1;
         }
-        if (tls->is_tls == false) {
-            tls->read = tcp_read;
-            tls->write = tcp_write;
-            ESP_LOGD(TAG, "non-tls connection established");
-            return 1;
-        }
         if (cfg && cfg->non_block) {
             tls->timer_start = xTaskGetTickCount();
             ESP_LOGD(TAG, "%s: ESP_TLS_INIT: start timer: %u", __func__, tls->timer_start);
@@ -664,6 +658,12 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
             }
         }
         /* By now, the connection has been established */
+        if (tls->is_tls == false) {
+            tls->conn_state = ESP_TLS_DONE;
+            tls->read = tcp_read;
+            tls->write = tcp_write;
+            return 1;
+        }
         esp_ret = create_ssl_handle(hostname, hostlen, cfg, tls);
         if (esp_ret != ESP_OK) {
             ESP_TLS_LOGE_FUNC("[%s] create_ssl_handle failed", esp_tls_get_hostname(tls));
