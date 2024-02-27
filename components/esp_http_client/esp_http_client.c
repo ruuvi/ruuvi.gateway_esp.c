@@ -909,6 +909,7 @@ static int esp_http_client_get_data(esp_http_client_handle_t client)
     ESP_LOGD(TAG, "data_process=%d, content_length=%d", client->response->data_process, client->response->content_length);
 
     int rlen = esp_transport_read(client->transport, res_buffer->data, client->buffer_size_rx, client->timeout_ms);
+    ESP_LOGD(TAG, "esp_transport_read: rlen=%d", rlen);
     if (rlen > 0) {
         http_parser_execute(client->parser, client->parser_settings, res_buffer->data, rlen);
     }
@@ -1000,7 +1001,7 @@ int esp_http_client_read(esp_http_client_handle_t client, char *buffer, int len)
 esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
 {
     esp_err_t err;
-    ESP_LOGD(TAG, "%s: client->state=%d", __func__, client->state);
+    ESP_LOGD(TAG, "%s: client->state=%d, is_async=%d", __func__, client->state, client->is_async);
     do {
         if (client->process_again) {
             esp_http_client_prepare(client);
@@ -1099,8 +1100,10 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
             case HTTP_STATE_CONNECTED:
                 if ((err = esp_http_client_request_send(client, client->post_len)) != ESP_OK) {
                     if (client->is_async && errno == EAGAIN) {
+                        ESP_LOGD(TAG, "%s: HTTP_STATE_CONNECTED: esp_http_client_request_send: ESP_ERR_HTTP_EAGAIN", __func__);
                         return ESP_ERR_HTTP_EAGAIN;
                     }
+                    ESP_LOGE(TAG, "%s: HTTP_STATE_CONNECTED: esp_http_client_request_send: err %d", __func__, err);
                     return err;
                 }
                 /* falls through */
@@ -1108,10 +1111,13 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                 __attribute__((fallthrough));
 #endif
             case HTTP_STATE_REQ_COMPLETE_HEADER:
+                ESP_LOGD(TAG, "%s: HTTP_STATE_REQ_COMPLETE_HEADER: esp_http_client_send_post_data", __func__);
                 if ((err = esp_http_client_send_post_data(client)) != ESP_OK) {
                     if (client->is_async && ((err == ESP_ERR_HTTP_EAGAIN) || (errno == EAGAIN))) {
+                        ESP_LOGD(TAG, "%s: HTTP_STATE_REQ_COMPLETE_HEADER: esp_http_client_send_post_data: ESP_ERR_HTTP_EAGAIN", __func__);
                         return ESP_ERR_HTTP_EAGAIN;
                     }
+                    ESP_LOGE(TAG, "%s: HTTP_STATE_REQ_COMPLETE_HEADER: esp_http_client_send_post_data: err %d", __func__, err);
                     return err;
                 }
                 /* falls through */
@@ -1119,10 +1125,13 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                 __attribute__((fallthrough));
 #endif
             case HTTP_STATE_REQ_COMPLETE_DATA:
-                if (esp_http_client_fetch_headers(client) < 0) {
+                ESP_LOGD(TAG, "%s: HTTP_STATE_REQ_COMPLETE_DATA: esp_http_client_fetch_headers", __func__);
+                if ((err = esp_http_client_fetch_headers(client)) < 0) {
                     if (client->is_async && errno == EAGAIN) {
+                        ESP_LOGD(TAG, "%s: HTTP_STATE_REQ_COMPLETE_DATA: esp_http_client_fetch_headers: ESP_ERR_HTTP_EAGAIN", __func__);
                         return ESP_ERR_HTTP_EAGAIN;
                     }
+                    ESP_LOGE(TAG, "%s: HTTP_STATE_REQ_COMPLETE_DATA: esp_http_client_fetch_headers: err %d", __func__, err);
                     return ESP_ERR_HTTP_FETCH_HEADER;
                 }
                 /* falls through */
@@ -1131,12 +1140,13 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
 #endif
             case HTTP_STATE_RES_COMPLETE_HEADER:
                 if ((err = esp_http_check_response(client)) != ESP_OK) {
-                    ESP_LOGE(TAG, "Error response");
+                    ESP_LOGE(TAG, "%s: Error response, err %d", __func__, err);
                     return err;
                 }
                 while (client->response->is_chunked && !client->is_chunk_complete) {
                     if (esp_http_client_get_data(client) <= 0) {
                         if (client->is_async && errno == EAGAIN) {
+                            ESP_LOGD(TAG, "%s: HTTP_STATE_RES_COMPLETE_HEADER: esp_http_client_get_data: ESP_ERR_HTTP_EAGAIN", __func__);
                             return ESP_ERR_HTTP_EAGAIN;
                         }
                         ESP_LOGD(TAG, "Read finish or server requests close");
@@ -1150,6 +1160,7 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                                 (esp_http_client_get_status_code(client) == 200)) {
                                 break;
                             }
+                            ESP_LOGD(TAG, "%s: HTTP_STATE_RES_COMPLETE_HEADER: esp_http_client_get_data: ESP_ERR_HTTP_EAGAIN", __func__);
                             return ESP_ERR_HTTP_EAGAIN;
                         }
                         ESP_LOGD(TAG, "Read finish or server requests close");
@@ -1188,7 +1199,9 @@ int esp_http_client_fetch_headers(esp_http_client_handle_t client)
     client->response->status_code = -1;
 
     while (client->state < HTTP_STATE_RES_COMPLETE_HEADER) {
+        ESP_LOGD(TAG, "%s: esp_transport_read", __func__);
         buffer->len = esp_transport_read(client->transport, buffer->data, client->buffer_size_rx, client->timeout_ms);
+        ESP_LOGD(TAG, "%s: esp_transport_read, len=%d", __func__, buffer->len);
         if (buffer->len <= 0) {
             return ESP_FAIL;
         }
@@ -1231,12 +1244,13 @@ static esp_err_t esp_http_client_connect(esp_http_client_handle_t client)
             return ESP_ERR_HTTP_INVALID_TRANSPORT;
         }
         if (!client->is_async) {
+            ESP_LOGD(TAG, "%s: esp_transport_connect", __func__);
             if (esp_transport_connect(client->transport, client->connection_info.host, client->connection_info.port, client->timeout_ms) < 0) {
                 ESP_LOGE(TAG, "Connection failed, sock < 0");
                 return ESP_ERR_HTTP_CONNECT;
             }
         } else {
-            ESP_LOGD(TAG, "esp_transport_connect_async");
+            ESP_LOGD(TAG, "%s: esp_transport_connect_async", __func__);
             int ret = esp_transport_connect_async(client->transport, client->connection_info.host, client->connection_info.port, client->timeout_ms);
             if (ret == ASYNC_TRANS_CONNECT_FAIL) {
                 int esp_tls_code = 0;
@@ -1402,7 +1416,9 @@ static esp_err_t esp_http_client_send_post_data(esp_http_client_handle_t client)
     }
 
     if (NULL != client->post_data) {
+        ESP_LOGD(TAG, "%s: post_data: esp_http_client_write", __func__);
         int wret = esp_http_client_write(client, client->post_data + client->data_written_index, client->data_write_left);
+        ESP_LOGD(TAG, "%s: post_data: esp_http_client_write, wret=%d", __func__, wret);
         if (wret < 0) {
             return wret;
         }
@@ -1416,26 +1432,31 @@ static esp_err_t esp_http_client_send_post_data(esp_http_client_handle_t client)
         if (client->cb_on_post_get_chunk) {
             const void* p_buf = NULL;
             size_t len = 0;
+            ESP_LOGD(TAG, "%s: cb_on_post_get_chunk", __func__);
             if (!client->cb_on_post_get_chunk(client->p_cb_on_post_get_chunk_user_data, &p_buf, &len)) {
                 ESP_LOGE(TAG, "%s:%d %s: cb_on_post_get_chunk failed", __FILE__, __LINE__, __func__);
                 return -1;
             }
+            ESP_LOGD(TAG, "%s: cb_on_post_get_chunk: len=%d", __func__, len);
             if (0 != len) {
                 client->post_data = p_buf;
                 client->post_len = (int)len;
                 client->data_write_left = (int)len;
                 client->data_written_index = 0;
                 errno = EAGAIN;
+                ESP_LOGD(TAG, "%s: return ESP_ERR_HTTP_EAGAIN", __func__);
                 return ESP_ERR_HTTP_EAGAIN;
             }
         }
         goto success;
     } else {
+        ESP_LOGD(TAG, "%s: return ESP_ERR_HTTP_WRITE_DATA", __func__);
         return ESP_ERR_HTTP_WRITE_DATA;
     }
 
 success:
     client->state = HTTP_STATE_REQ_COMPLETE_DATA;
+    ESP_LOGD(TAG, "%s: return ESP_OK", __func__);
     return ESP_OK;
 }
 
@@ -1454,21 +1475,25 @@ esp_err_t esp_http_client_open(esp_http_client_handle_t client, int write_len)
 
 int esp_http_client_write(esp_http_client_handle_t client, const char *buffer, int len)
 {
+    ESP_LOGD(TAG, "%s: len=%d", __func__, len);
     if (client->state < HTTP_STATE_CONNECTED) {
         return ESP_FAIL;
     }
 
     int wlen = 0, widx = 0;
     while (len > 0) {
+        ESP_LOGD(TAG, "%s: esp_transport_write: len=%d", __func__, len);
         wlen = esp_transport_write(client->transport, buffer + widx, len, client->timeout_ms);
         /* client->async_block is initialised in case of non-blocking IO, and in this case we return how
            much ever data was written by the esp_transport_write() API. */
         if (client->is_async || wlen <= 0) {
+            ESP_LOGD(TAG, "%s: esp_transport_write: wlen=%d", __func__, wlen);
             return wlen;
         }
         widx += wlen;
         len -= wlen;
     }
+    ESP_LOGD(TAG, "%s: esp_transport_write: widx=%d", __func__, widx);
     return widx;
 }
 

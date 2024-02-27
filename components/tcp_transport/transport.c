@@ -120,8 +120,10 @@ esp_err_t esp_transport_destroy(esp_transport_handle_t t)
 int esp_transport_connect(esp_transport_handle_t t, const char *host, int port, int timeout_ms)
 {
     int ret = -1;
+    ESP_LOGD(TAG, "%s: t->_connect", __func__);
     if (t && t->_connect) {
-        return t->_connect(t, host, port, timeout_ms);
+        ret = t->_connect(t, host, port, timeout_ms);
+        ESP_LOGD(TAG, "%s: t->_connect: ret=%d", __func__, ret);
     }
     return ret;
 }
@@ -129,6 +131,7 @@ int esp_transport_connect(esp_transport_handle_t t, const char *host, int port, 
 int esp_transport_connect_async(esp_transport_handle_t t, const char *host, int port, int timeout_ms)
 {
     int ret = -1;
+    ESP_LOGD(TAG, "%s: t->_connect_async", __func__);
     if (t && t->_connect_async) {
         ret = t->_connect_async(t, host, port, timeout_ms);
         ESP_LOGD(TAG, "%s: t->_connect_async: ret=%d", __func__, ret);

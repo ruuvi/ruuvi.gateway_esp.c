@@ -1415,7 +1415,13 @@ static void esp_mqtt_task(void *pv)
                 client->run = false;
             }
 #if MQTT_ENABLE_SSL
-            esp_mqtt_set_ssl_transport_properties(client->transport_list, client->config);
+            bool is_ssl_scheme = false;
+            if (client->config->scheme) {
+                is_ssl_scheme = (strcasecmp(client->config->scheme, "mqtts") == 0) || (strcasecmp(client->config->scheme, "wss") == 0);
+            }
+            if (is_ssl_scheme) {
+                esp_mqtt_set_ssl_transport_properties(client->transport_list, client->config);
+            }
 #endif
 
             if (esp_transport_connect(client->transport,

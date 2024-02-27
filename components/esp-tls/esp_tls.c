@@ -73,6 +73,12 @@ static const char *TAG = "esp-tls";
 #define ESP_TLS_LOGI_FUNC(fmt, ...) \
     ESP_LOGI(TAG, "[%s] %s: " fmt, pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", __func__, ##__VA_ARGS__)
 
+#define ESP_TLS_LOGD(fmt, ...) \
+    ESP_LOGD(TAG, "[%s] " fmt, pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", ##__VA_ARGS__)
+
+#define ESP_TLS_LOGD_FUNC(fmt, ...) \
+    ESP_LOGD(TAG, "[%s] %s: " fmt, pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", __func__, ##__VA_ARGS__)
+
 #ifdef CONFIG_ESP_TLS_USING_MBEDTLS
 #define _esp_create_ssl_handle              esp_create_mbedtls_handle
 #define _esp_tls_handshake                  esp_mbedtls_handshake
@@ -175,7 +181,7 @@ ssize_t esp_tls_conn_write(esp_tls_t *tls, const void  *data, size_t datalen)
 int esp_tls_conn_destroy(esp_tls_t *tls)
 {
     if (tls != NULL) {
-        ESP_TLS_LOGI_FUNC("[%s] tls=%p, sockfd=%d", esp_tls_get_hostname(tls), tls, tls->sockfd);
+        ESP_TLS_LOGD_FUNC("[sock=%d][%s] tls=%p", tls->sockfd, esp_tls_get_hostname(tls), tls);
 
         SemaphoreHandle_t p_dns_mutex = tls->dns_mutex;
         if (p_dns_mutex) {
@@ -185,8 +191,8 @@ int esp_tls_conn_destroy(esp_tls_t *tls)
             if (ESP_TLS_HOSTNAME_RESOLVING == tls->conn_state) {
                 // Unfortunately, LWIP doesn't allow to overwrite previous requests,
                 // otherwise we could call dns_gethostbyname with NULL as callback ptr to undo the callback call.
-                ESP_TLS_LOGW_FUNC("[%s] conn_state is ESP_TLS_HOSTNAME_RESOLVING, abort hostname resolving",
-                        esp_tls_get_hostname(tls));
+                ESP_TLS_LOGW_FUNC("[sock=%d][%s] conn_state is ESP_TLS_HOSTNAME_RESOLVING, abort hostname resolving",
+                                  tls->sockfd, esp_tls_get_hostname(tls));
                 tls->p_async_dns_req_info->tls = NULL;
                 xSemaphoreGive(p_dns_mutex);
             } else {
@@ -199,12 +205,13 @@ int esp_tls_conn_destroy(esp_tls_t *tls)
         int ret = 0;
         _esp_tls_conn_delete(tls);
         if (tls->sockfd >= 0) {
-            ESP_LOGI(TAG, "%s: Close socket %d", __func__, tls->sockfd);
+            ESP_TLS_LOGI_FUNC("[sock=%d][%s] Close socket", tls->sockfd, esp_tls_get_hostname(tls));
             ret = close(tls->sockfd);
             tls->sockfd = -1;
         }
         esp_tls_internal_event_tracker_destroy(tls->error_handle);
         if (tls->hostname) {
+            ESP_TLS_LOGD_FUNC("Free memory for hostname: %s", tls->hostname);
             free(tls->hostname);
             tls->hostname = NULL;
         }
@@ -351,7 +358,7 @@ static esp_err_t esp_tls_tcp_connect(const ip_addr_t* const p_remote_ip, int por
 #else
 #error not supported
 #endif
-    ESP_LOGI(TAG, "%s: Open socket %d", __func__, fd);
+    ESP_TLS_LOGI_FUNC("Open socket %d for %s:%d", fd, remote_ip_str, port);
 
     // Set timeout options, keep-alive options and bind device options if configured
     ret = esp_tls_set_socket_options(fd, cfg);
@@ -512,6 +519,7 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
     switch (tls->conn_state) {
     case ESP_TLS_INIT:
     {
+        ESP_TLS_LOGD_FUNC("ESP_TLS_INIT: %.*s, is_plain_tcp=%d", hostlen, hostname, (int)(!(cfg && !cfg->is_plain_tcp)));
         xSemaphoreTake(tls->dns_mutex, portMAX_DELAY);
         esp_tls_async_dns_req_info_t* const p_dns_req_info = esp_tls_find_free_dns_req_info();
         if (NULL == p_dns_req_info)
@@ -564,8 +572,6 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
         char remote_ip4_str[IP4ADDR_STRLEN_MAX];
         ip4addr_ntoa_r(&tls->remote_ip.u_addr.ip4, remote_ip4_str, sizeof(remote_ip4_str));
         ESP_TLS_LOGI("Hostname '%s' resolved to %s", tls->hostname, remote_ip4_str);
-        free(tls->hostname);
-        tls->hostname = NULL;
 
         tls->conn_state = ESP_TLS_CONNECT;
 #if defined(__GNUC__) && (__GNUC__ >= 7)
@@ -575,9 +581,10 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
     /* falls through */
     case ESP_TLS_CONNECT:
     {
+        ESP_TLS_LOGD_FUNC("[%s] ESP_TLS_CONNECT", esp_tls_get_hostname(tls));
         char remote_ip4_str[IP4ADDR_STRLEN_MAX];
         ip4addr_ntoa_r(&tls->remote_ip.u_addr.ip4, remote_ip4_str, sizeof(remote_ip4_str));
-        ESP_LOGD(TAG, "Connect to IP: %s", remote_ip4_str);
+        ESP_TLS_LOGD_FUNC("[%s] Connect to IP: %s", esp_tls_get_hostname(tls), remote_ip4_str);
         if ((esp_ret = esp_tls_tcp_connect(&tls->remote_ip, port, cfg, tls->error_handle, &tls->sockfd)) != ESP_OK) {
             str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(esp_ret);
             ESP_TLS_LOGE_FUNC("[%s] esp_tcp_connect failed, err=%d (%s)",
@@ -586,15 +593,9 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
             ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, esp_ret);
             return -1;
         }
-        if (tls->is_tls == false) {
-            tls->read = tcp_read;
-            tls->write = tcp_write;
-            ESP_LOGD(TAG, "non-tls connection established");
-            return 1;
-        }
         if (cfg && cfg->non_block) {
             tls->timer_start = xTaskGetTickCount();
-            ESP_LOGD(TAG, "%s: ESP_TLS_INIT: start timer: %u", __func__, tls->timer_start);
+            ESP_TLS_LOGD_FUNC("[sock=%d][%s] ESP_TLS_INIT: start timer: %u", tls->sockfd, esp_tls_get_hostname(tls), tls->timer_start);
         }
         tls->conn_state = ESP_TLS_CONNECTING;
 #if defined(__GNUC__) && (__GNUC__ >= 7)
@@ -603,9 +604,10 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
     }
     /* falls through */
     case ESP_TLS_CONNECTING:
+        ESP_TLS_LOGD_FUNC("[sock=%d][%s] ESP_TLS_CONNECTING: non_block=%d", tls->sockfd, esp_tls_get_hostname(tls), cfg->non_block);
         if (cfg && cfg->non_block)
         {
-            ESP_LOGD(TAG, "connecting...");
+            ESP_TLS_LOGD_FUNC("[sock=%d][%s] connecting...", tls->sockfd, esp_tls_get_hostname(tls));
             struct timeval tv = { .tv_sec = 0, .tv_usec = 0 };
 
             FD_ZERO(&tls->rset);
@@ -615,18 +617,20 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
             /* In case of non-blocking I/O, we use the select() API to check whether
                connection has been established or not*/
             if (select(tls->sockfd + 1, &tls->rset, &tls->wset, NULL, &tv) < 0) {
-                ESP_LOGD(TAG, "Non blocking connecting failed");
+                ESP_TLS_LOGE_FUNC("[sock=%d][%s] Non blocking connecting failed", tls->sockfd, esp_tls_get_hostname(tls));
                 tls->conn_state = ESP_TLS_FAIL;
                 close(tls->sockfd);
                 tls->sockfd = -1;
                 return -1;
             }
+            ESP_TLS_LOGD_FUNC("[sock=%d][%s] select: rset=%d, wset=%d",
+                              tls->sockfd, esp_tls_get_hostname(tls), (int)(FD_ISSET(tls->sockfd, &tls->rset)), (int)(FD_ISSET(tls->sockfd, &tls->wset)));
             if (FD_ISSET(tls->sockfd, &tls->rset) || FD_ISSET(tls->sockfd, &tls->wset)) {
                 int error = 0;
                 socklen_t len = sizeof(error);
                 /* pending error check */
                 if (getsockopt(tls->sockfd, SOL_SOCKET, SO_ERROR, &error, &len) < 0) {
-                    ESP_LOGD(TAG, "Non blocking connect failed");
+                    ESP_TLS_LOGE_FUNC("[sock=%d][%s] Non blocking connect failed", tls->sockfd, esp_tls_get_hostname(tls));
                     ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_SYSTEM, errno);
                     ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, ESP_ERR_ESP_TLS_SOCKET_SETOPT_FAILED);
                     tls->conn_state = ESP_TLS_FAIL;
@@ -636,8 +640,8 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
                 }
                 if (0 != error) {
                     str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(error);
-                    ESP_TLS_LOGE_FUNC("[%s] Non blocking connect failed: error=%d (%s)",
-                             esp_tls_get_hostname(tls), error, (NULL != err_desc.buf) ? err_desc.buf : "");
+                    ESP_TLS_LOGE_FUNC("[sock=%d][%s] Non blocking connect failed: error=%d (%s)",
+                                      tls->sockfd, esp_tls_get_hostname(tls), error, (NULL != err_desc.buf) ? err_desc.buf : "");
                     str_buf_free_buf(&err_desc);
                     ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_SYSTEM, error);
                     ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, error);
@@ -649,10 +653,10 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
             } else {
                 const TickType_t now = xTaskGetTickCount();
                 const uint32_t delta_ticks = now - tls->timer_start;
-                ESP_LOGD(TAG, "%s: ESP_TLS_CONNECTING: timer delta_ticks: %u", __func__, delta_ticks);
+                ESP_TLS_LOGD_FUNC("[sock=%d][%s] ESP_TLS_CONNECTING: timer delta_ticks: %u", tls->sockfd, esp_tls_get_hostname(tls), delta_ticks);
                 if (delta_ticks > pdMS_TO_TICKS(cfg->timeout_ms))
                 {
-                    ESP_TLS_LOGE_FUNC("[%s] connection timeout", esp_tls_get_hostname(tls));
+                    ESP_TLS_LOGE_FUNC("[sock=%d][%s] connection timeout", tls->sockfd, esp_tls_get_hostname(tls));
                     ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_SYSTEM, ESP_ERR_TIMEOUT);
                     ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, ESP_ERR_TIMEOUT);
                     tls->conn_state = ESP_TLS_FAIL;
@@ -664,9 +668,16 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
             }
         }
         /* By now, the connection has been established */
+        if (tls->is_tls == false) {
+            tls->conn_state = ESP_TLS_DONE;
+            tls->read = tcp_read;
+            tls->write = tcp_write;
+            ESP_TLS_LOGD_FUNC("[sock=%d][%s] non-tls connection established", tls->sockfd, esp_tls_get_hostname(tls));
+            return 1;
+        }
         esp_ret = create_ssl_handle(hostname, hostlen, cfg, tls);
         if (esp_ret != ESP_OK) {
-            ESP_TLS_LOGE_FUNC("[%s] create_ssl_handle failed", esp_tls_get_hostname(tls));
+            ESP_TLS_LOGE_FUNC("[sock=%d][%s] create_ssl_handle failed", tls->sockfd, esp_tls_get_hostname(tls));
             ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, esp_ret);
             tls->conn_state = ESP_TLS_FAIL;
             close(tls->sockfd);
@@ -676,9 +687,9 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
         tls->read = _esp_tls_read;
         tls->write = _esp_tls_write;
         tls->conn_state = ESP_TLS_HANDSHAKE;
-        if (cfg->non_block) {
+        if (cfg && cfg->non_block) {
             tls->timer_start = xTaskGetTickCount();
-            ESP_LOGD(TAG, "%s: ESP_TLS_CONNECTING: start timer: %u", __func__, tls->timer_start);
+            ESP_TLS_LOGD_FUNC("[sock=%d][%s] ESP_TLS_CONNECTING: start timer: %u", tls->sockfd, esp_tls_get_hostname(tls), tls->timer_start);
         }
 #if defined(__GNUC__) && (__GNUC__ >= 7)
         __attribute__((fallthrough));
@@ -686,15 +697,15 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
     /* falls through */
     case ESP_TLS_HANDSHAKE:
     {
-        ESP_LOGD(TAG, "handshake in progress...");
+        ESP_TLS_LOGD_FUNC("[sock=%d][%s] handshake in progress...", tls->sockfd, esp_tls_get_hostname(tls));
         const int res = esp_tls_handshake(tls, cfg);
         if (res == 0) {
             const TickType_t now = xTaskGetTickCount();
             const uint32_t delta_ticks = now - tls->timer_start;
-            ESP_LOGD(TAG, "%s: ESP_TLS_HANDSHAKE: timer delta_ticks: %u", __func__, delta_ticks);
+            ESP_TLS_LOGD_FUNC("[sock=%d][%s] ESP_TLS_HANDSHAKE: timer delta_ticks: %u", tls->sockfd, esp_tls_get_hostname(tls), delta_ticks);
             if (delta_ticks > pdMS_TO_TICKS(cfg->timeout_ms))
             {
-                ESP_TLS_LOGE_FUNC("[%s] connection timeout", esp_tls_get_hostname(tls));
+                ESP_TLS_LOGE_FUNC("[sock=%d][%s] connection timeout", tls->sockfd, esp_tls_get_hostname(tls));
                 tls->conn_state = ESP_TLS_FAIL;
                 // after create_ssl_handle we don't need to close the socket manually
                 return -1;
@@ -704,11 +715,11 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
         return res;
     }
     case ESP_TLS_FAIL:
-        ESP_TLS_LOGE_FUNC("[%s] failed to open a new connection", esp_tls_get_hostname(tls));
+        ESP_TLS_LOGE_FUNC("[sock=%d][%s] failed to open a new connection", tls->sockfd, esp_tls_get_hostname(tls));
         break;
     case ESP_TLS_HOSTNAME_RESOLVING:
     {
-        ESP_LOGD(TAG, "%s: ESP_TLS_HOSTNAME_RESOLVING", __func__);
+        ESP_TLS_LOGD_FUNC("[%s] ESP_TLS_HOSTNAME_RESOLVING", esp_tls_get_hostname(tls));
         xSemaphoreTake(tls->dns_mutex, portMAX_DELAY);
         if (tls->dns_cb_ready) {
             tls->dns_cb_ready = false;
@@ -720,16 +731,11 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
                 tls->conn_state = ESP_TLS_CONNECT;
             } else {
                 ESP_TLS_LOGE_FUNC("[%s] hostname resolving failed", esp_tls_get_hostname(tls));
-                ESP_LOGD(TAG, "[%s] %s: tls->error_handle=%p",
-                         pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???",
-                         __func__,
-                         tls->error_handle);
+                ESP_TLS_LOGD_FUNC("[%s] tls->error_handle=%p", esp_tls_get_hostname(tls), tls->error_handle);
                 ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP,
                                               ESP_ERR_ESP_TLS_CANNOT_RESOLVE_HOSTNAME);
                 tls->conn_state = ESP_TLS_FAIL;
             }
-            free(tls->hostname);
-            tls->hostname = NULL;
         }
         xSemaphoreGive(tls->dns_mutex);
         if (ESP_TLS_FAIL == tls->conn_state) {
@@ -830,8 +836,8 @@ esp_err_t esp_tls_plain_tcp_connect(const char *host, int hostlen, int port, con
     ESP_LOGD(TAG, "Connecting to server %s. IP: %s, Port: %d", hostname, remote_ip4_str, port);
     free(hostname);
     hostname = NULL;
-    ip_addr_t remote_ip_addr;
-    ip4addr_ntoa_r(&remote_ip_addr.u_addr.ip4, remote_ip4_str, sizeof(remote_ip4_str));
+    ip_addr_t remote_ip_addr = { 0 };
+    ip4addr_aton(remote_ip4_str, &remote_ip_addr.u_addr.ip4);
     return esp_tls_tcp_connect(&remote_ip_addr, port, cfg, error_handle, sockfd);
 }
 
@@ -867,9 +873,9 @@ int esp_tls_conn_new_sync(const char *hostname, int hostlen, int port, const esp
  */
 int esp_tls_conn_new_async(const char *hostname, int hostlen, int port, const esp_tls_cfg_t *cfg, esp_tls_t *tls)
 {
-    ESP_LOGD(TAG, "%s: esp_tls_low_level_conn", __func__);
+    ESP_TLS_LOGD_FUNC("[sock=%d][%s] esp_tls_low_level_conn", tls->sockfd, esp_tls_get_hostname(tls));
     const int ret = esp_tls_low_level_conn(hostname, hostlen, port, cfg, tls);
-    ESP_LOGD(TAG, "%s: esp_tls_low_level_conn, ret=%d", __func__, ret);
+    ESP_TLS_LOGD_FUNC("[sock=%d][%s] esp_tls_low_level_conn, ret=%d", tls->sockfd, esp_tls_get_hostname(tls), ret);
     return ret;
 }
 
