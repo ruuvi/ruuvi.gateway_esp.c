@@ -1,0 +1,1586 @@
+integration_tests:
+  - test_set:  Tests after initial flashing firmware
+    test_set_id: TST-001
+    description:
+    tests:
+      - test_id: AA001
+        title: Test Ethernet autoconfiguration after initial flashing firmware
+        description:
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+        steps:
+          - action: Erase flash and write firmware.
+            detail: |
+              ```shell
+              python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+              ```
+            checks:
+              - "Check that the gateway is immediately connected to Ethernet by LED: 'G'."
+      - test_id: AA002
+        title: Test Wi-Fi hotspot activation after initial flashing firmware
+        description:
+        setup:
+          - setup_step: Disconnect Ethernet cable.
+        steps:
+          - action: Erase flash and write firmware.
+            detail: |
+              ```shell
+              python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+              ```
+            checks:
+              - "Check that Wi-Fi hotspot is activated and WPS is active. LED: 'RRRRRRRRGRGGGGGGGGGG'."
+              - "Use mobile phone to check that the hotspot 'Configure Ruuvi Gateway XXXX' is visible."
+  - test_set:  Test nRF52 firmware update
+    test_set_id: TST-002
+    description:
+    tests:
+      - test_id: AB001
+        title: Test nRF52 firmware update
+        description:
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+          - setup_step: Erase flash and write firmware v1.9.2.
+            detail: |
+              ```shell
+              python3 ruuvi_gw_flash.py v1.9.2 --erase_flash
+              ```
+        steps:
+          - action: Wait about 5 minutes until the flashing of v1.9.2 is completed.
+            checks:
+              - "LED: 'G'."
+          - action: Write firmware v1.15.0.
+            detail: |
+              ```shell
+              python3 ruuvi_gw_flash.py v1.15.0
+              ```
+            checks:
+              - "Check that nRF52 flashing is started, LED: 'R---------'."
+              - "Wait about 5 minutes until the flashing is completed, LED: 'G'."
+  - test_set:  Tests after erasing configuration
+    test_set_id: TST-003
+    description:
+    tests:
+      - test_id: AC001
+        title: Test configuration erase
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+        steps:
+          - action: Press CONFIGURE button for 10 seconds.
+            checks:
+              - "LED: 'RR--RR--'."
+          - action: Release CONFIGURE button and wait for 10 seconds.
+            checks:
+              - "Check that Wi-Fi hotspot is activated and WPS is active. LED: 'RRRRRRRRGRGGGGGGGGGG'."
+              - "Use mobile phone to check that the hotspot 'Configure Ruuvi Gateway XXXX' is visible."
+      - test_id: AC002
+        title: Test Wi-Fi hotspot is active for 1 minute after erasing configuration when Ethernet is connected
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+        steps:
+          - action: Erase configuration
+            detail: "Press CONFIGURE button for 10 seconds, wait until LED 'RR--RR--', then release the button."
+          - action: Wait 45 seconds after reboot.
+            checks:
+              - "LED: 'RRRRRRRRGRGGGGGGGGGG'."
+              - "Use mobile phone to check that the hotspot 'Configure Ruuvi Gateway XXXX' is visible."
+          - action: Wait 1 minute and 15 seconds after reboot.
+            checks:
+              - "Check that the gateway is connected to the Ethernet, LED: 'G'."
+              - "Use mobile phone to check that the hotspot 'Configure Ruuvi Gateway XXXX' is not visible."
+      - test_id: AC003
+        title: Test immediate Ethernet autoconfiguration after erasing configuration and rebooting
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+        steps:
+          - action: Erase configuration
+            detail: "Press CONFIGURE button for 10 seconds, wait until LED 'RR--RR--', then release the button."
+          - action: Power off and on the gateway, wait 20 seconds.
+            checks:
+              - "Check that the gateway is connected to the Ethernet, LED: 'G'."
+      - test_id: AC004
+        title: Test Wi-Fi WPS and check that WPS is active more than 3 minutes after erasing configuration
+        setup:
+          - setup_step: Disconnect Ethernet cable.
+        steps:
+          - action: Erase configuration
+            detail: "Press CONFIGURE button for 10 seconds, wait until LED 'RR--RR--', then release the button."
+            checks:
+              - "LED: 'RRRRRRRRGRGGGGGGGGGG'."
+          - action: Wait 3 minutes
+            checks:
+              - "Check that Wi-Fi hotspot is active. LED: 'RRRRRRRRGRGGGGGGGGGG'."
+          - action: Press WPS button on your router.
+            checks:
+              - "Check that the gateway is connected to the Wi-Fi, LED: 'G'."
+      - test_id: AC005
+        title: Test Wi-Fi hotspot deactivation after 1 hour
+        setup:
+          - setup_step: Disconnect Ethernet cable.
+        steps:
+          - action: Erase configuration
+            detail: "Press CONFIGURE button for 10 seconds, wait until LED 'RR--RR--', then release the button."
+            checks:
+              - "LED: 'RRRRRRRRGRGGGGGGGGGG'."
+          - action: Wait 1 hour
+            checks:
+              - "Check that Wi-Fi hotspot is deactivated. LED: 'R-R-R-R-R-'"
+
+  - test_set:  Gateway configuration tests with Wi-Fi hotspot
+    test_set_id: TST-004
+    description:
+    tests:
+      - test_id: AD001
+        title: Test connecting to the configuration hotspot via Wi-Fi and check automatic hotspot deactivation
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+        steps:
+          - action: Erase configuration
+            detail: Press CONFIGURE button for 10 seconds, release the button, wait 10 seconds.
+            checks:
+              - "LED: 'RRRRRRRRGRGGGGGGGGGG'"
+          - action: Use your mobile phone to connect to the hotspot 'Configure Ruuvi Gateway XXXX'.
+            detail: If the configuration hotspot is not opened automatically, the open a browser and go to http://10.10.0.1/
+            checks:
+              - "LED: 'RRRRRRRRRRGGGGGGGGGG'"
+          - action: Wait 1 minute
+            checks:
+              - "Check that Wi-Fi hotspot is active and the browser is still open."
+              - "LED: 'RRRRRRRRRRGGGGGGGGGG'"
+          - action: Lock the phone and wait 1 minute
+            checks:
+              - "LED: 'R-R-R-R-R-' (no network connection)"
+          - action: Wait 15 seconds
+            checks:
+              - "LED: 'G' (automatically connected to Ethernet)"
+      - test_id: AD002
+        title: Test configuring the gateway using Wi-Fi hotspot to connect the gateway to Ethernet in DHCP mode
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+        steps:
+          - action: Erase configuration
+            detail: Press CONFIGURE button for 10 seconds, release the button, wait 10 seconds.
+            checks:
+              - "LED: 'RRRRRRRRGRGGGGGGGGGG'"
+          - action: Use your mobile phone to connect to the hotspot 'Configure Ruuvi Gateway XXXX'.
+            detail: If the configuration hotspot is not opened automatically, the open a browser and go to http://10.10.0.1/
+            checks:
+              - "LED: 'RRRRRRRRRRGGGGGGGGGG'"
+          - action: Configure connection to Ethernet in DHCP mode.
+            steps:
+              - "Page **Setup Wizard**: Click **Let's get started**."
+              - "Page **Internet Connection**: Select **Ethernet**, click **Next**."
+              - "Page **IP address settings**: Select **Let your DHCP server assign an IP address automatically (default)**, click **Next**."
+              - "Wait until the popup message **Please connect Ethernet cable now if not already connected** is disappeared."
+            checks:
+              - "Check that the Ethernet connection has been successfully established."
+          - action: Continue the configuration process.
+            steps:
+              - "Page **Software Update**: Click **Continue and skip update** or **Next**."
+              - "Page **Automatic Configuration Download**: Click **Next**."
+              - "Page **Automatic Updated**: Click **Next**."
+              - "Page **Remote Access Settings**: Click **Next**."
+              - "Page **Cloud Options**: Click **Next**."
+              - "Page **Finish**: Remember **Ruuvi Gateway's IP address** (it will be used on the next test)"
+            checks:
+              - "Page **Finished!** must be opened."
+              - "Message **Ruuvi Gateway is now functioning** must be displayed."
+              - "Message: **Connected to**: Network: Ethernet"
+              - "LED: 'G'"
+          - action: Check network connection with the gateway IP address.
+            detail: |
+              ```shell
+              ping <gateway IP address>
+              ```
+            checks:
+              - "Check that the gateway is answering to ping requests."
+          - action: Check network connection with the gateway's hostname.
+            detail: |
+              ```shell
+              ping ruuvigateway<XXXX>.local
+              ```
+            checks:
+              - "Check that the gateway is answering to ping requests."
+          - action: Use a browser to open the gateway's hostname ruuvigateway<XXXX>.local.
+            checks:
+              - "Check that the gateway's configuration wizard is opened in the browser."
+      - test_id: AD003
+        title: Test failed attempt to configure the gateway to use Ethernet in DHCP mode
+        setup:
+          - setup_step: Disconnect Ethernet cable.
+        steps:
+          - action: Erase configuration
+            detail: Press CONFIGURE button for 10 seconds, release the button, wait 10 seconds.
+            checks:
+              - "LED: 'RRRRRRRRGRGGGGGGGGGG'"
+          - action: Use your mobile phone to connect to the hotspot 'Configure Ruuvi Gateway XXXX'.
+            detail: If the configuration hotspot is not opened automatically, the open a browser and go to http://10.10.0.1/
+            checks:
+              - "LED: 'RRRRRRRRRRGGGGGGGGGG'"
+          - action: Configure connection to Ethernet in DHCP mode.
+            steps:
+              - "Page **Setup Wizard**: Click **Let's get started**."
+              - "Page **Internet Connection**: Select **Ethernet**, click **Next**."
+              - "Page **IP address settings**: Select **Let your DHCP server assign an IP address automatically (default)**, click **Next**."
+              - "Wait until the popup message **Please connect Ethernet cable now if not already connected** is disappeared."
+            checks:
+              - "Error message should be displayed '**Ethernet cable is not connected or there is some other problem with the connection**'."
+      - test_id: AD004
+        title: Test configuring the gateway using Wi-Fi hotspot to connect the gateway to Ethernet in manual mode
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+        steps:
+          - action: Erase configuration
+            detail: Press CONFIGURE button for 10 seconds, release the button, wait 10 seconds.
+            checks:
+              - "LED: 'RRRRRRRRGRGGGGGGGGGG'"
+          - action: Use your mobile phone to connect to the hotspot 'Configure Ruuvi Gateway XXXX'.
+            detail: If the configuration hotspot is not opened automatically, the open a browser and go to http://10.10.0.1/
+            checks:
+              - "LED: 'RRRRRRRRRRGGGGGGGGGG'"
+          - action: Configure connection to Ethernet in DHCP mode.
+            steps:
+              - "Page **Setup Wizard**: Click **Let's get started**."
+              - "Page **Internet Connection**: Select **Ethernet**, click **Next**."
+              - "Page **IP address settings**: Unselect **Let your DHCP server assign an IP address automatically (default)**."
+              - "Page **IP address settings**: **Static IP address**: Enter any available IP address from your local network."
+              - "Page **IP address settings**: **Subnet mask**: 255.255.255.0."
+              - "Page **IP address settings**: **Default Gateway**: Enter IP address of your router."
+              - "Page **IP address settings**: **Primary DNS IP address**: Enter IP address of your router."
+              - "Click **Next**"
+              - "Wait until the popup message **Please connect Ethernet cable now if not already connected** is disappeared."
+            checks:
+              - "Check that the Ethernet connection has been successfully established."
+          - action: Continue the configuration process.
+            steps:
+              - "Page **Software Update**: Click **Continue and skip update** or **Next**."
+              - "Page **Automatic Configuration Download**: Click **Next**."
+              - "Page **Automatic Updated**: Click **Next**."
+              - "Page **Remote Access Settings**: Click **Next**."
+              - "Page **Cloud Options**: Click **Next**."
+              - "Page **Finish**: Remember **Ruuvi Gateway's IP address** (it will be used on the next test)"
+            checks:
+              - "Page **Finished!** must be opened."
+              - "Message **Ruuvi Gateway is now functioning** must be displayed."
+              - "Message: **Connected to**: Network: Ethernet"
+              - "LED: 'G'"
+          - action: Check network connection with the gateway IP address.
+            detail: |
+              ```shell
+              ping <gateway IP address>
+              ```
+            checks:
+              - "Check that the gateway is answering to ping requests."
+          - action: Check network connection with the gateway's hostname.
+            detail: |
+              ```shell
+              ping ruuvigateway<XXXX>.local
+              ```
+            checks:
+              - "Check that the gateway is answering to ping requests."
+          - action: Use a browser to open the gateway's hostname ruuvigateway<XXXX>.local.
+            checks:
+              - "Check that the gateway's configuration wizard is opened in the browser."
+      - test_id: AD005
+        title: Test configuring the gateway using Wi-Fi hotspot to connect the gateway to Wi-Fi using WPS
+        setup:
+          - setup_step: Disconnect Ethernet cable.
+        steps:
+          - action: Erase configuration
+            detail: Press CONFIGURE button for 10 seconds, release the button, wait 10 seconds.
+            checks:
+              - "LED: 'RRRRRRRRGRGGGGGGGGGG'"
+          - action: Use your mobile phone to connect to the hotspot 'Configure Ruuvi Gateway XXXX'.
+            detail: If the configuration hotspot is not opened automatically, the open a browser and go to http://10.10.0.1/
+            checks:
+              - "LED: 'RRRRRRRRRRGGGGGGGGGG'"
+          - action: Configure connection to Wi-Fi using WPS.
+            steps:
+              - "Page **Setup Wizard**: Click **Let's get started**."
+              - "Page **Internet Connection**: Select **Wi-Fi**, click **Next**."
+              - "Page **Wi-Fi Network**: Enable checkbox **Use WPS to connect to Wi-Fi network**."
+              - "Click **Next**"
+            checks:
+              - "Popup message should be displayed '**Please start WPS (Wi-Fi Protected Setup) on your router by pressing on the WPS button**'."
+              - "LED: 'RRRRRRRRGRGGGGGGGGGG'"
+          - action: Press WPS button on your router and wait about 15 seconds.
+            checks:
+              - "Check that the popup message is disappeared"
+              - "Check that the Wi-Fi connection has been successfully established."
+          - action: Continue the configuration process.
+            steps:
+              - "Page **Software Update**: Click **Continue and skip update** or **Next**."
+              - "Page **Automatic Configuration Download**: Click **Next**."
+              - "Page **Automatic Updated**: Click **Next**."
+              - "Page **Remote Access Settings**: Click **Next**."
+              - "Page **Cloud Options**: Click **Next**."
+            checks:
+              - "Page **Finished!** must be opened."
+              - "Message **Ruuvi Gateway is now functioning** must be displayed."
+              - "Message: **Connected to**: Network: Wi-Fi SSID"
+              - "LED: 'G'"
+          - action: Check network connection with the gateway IP address.
+            detail: |
+              ```shell
+              ping <gateway IP address>
+              ```
+            checks:
+              - "Check that the gateway is answering to ping requests."
+          - action: Check network connection with the gateway's hostname.
+            detail: |
+              ```shell
+              ping ruuvigateway<XXXX>.local
+              ```
+            checks:
+              - "Check that the gateway is answering to ping requests."
+          - action: Use a browser to open the gateway's hostname ruuvigateway<XXXX>.local.
+            checks:
+              - "Check that the gateway's configuration wizard is opened in the browser."
+      - test_id: AD006
+        title: Test configuring the gateway using Wi-Fi hotspot to connect the gateway to Wi-Fi using WPS - timeout
+        setup:
+          - setup_step: Disconnect Ethernet cable.
+        steps:
+          - action: Erase configuration
+            detail: Press CONFIGURE button for 10 seconds, release the button, wait 10 seconds.
+            checks:
+              - "LED: 'RRRRRRRRGRGGGGGGGGGG'"
+          - action: Use your mobile phone to connect to the hotspot 'Configure Ruuvi Gateway XXXX'.
+            detail: If the configuration hotspot is not opened automatically, the open a browser and go to http://10.10.0.1/
+            checks:
+              - "LED: 'RRRRRRRRRRGGGGGGGGGG'"
+          - action: Configure connection to Wi-Fi using WPS.
+            steps:
+              - "Page **Setup Wizard**: Click **Let's get started**."
+              - "Page **Internet Connection**: Select **Wi-Fi**, click **Next**."
+              - "Page **Wi-Fi Network**: Enable checkbox **Use WPS to connect to Wi-Fi network**."
+              - "Click **Next**"
+            checks:
+              - "Popup message should be displayed '**Please start WPS (Wi-Fi Protected Setup) on your router by pressing on the WPS button**'."
+              - "LED: 'RRRRRRRRGRGGGGGGGGGG'"
+          - action: Wait 1 minute.
+            checks:
+              - "Popup message should continue to be displayed '**Please start WPS (Wi-Fi Protected Setup) on your router by pressing on the WPS button**'."
+              - "LED: 'RRRRRRRRGRGGGGGGGGGG'"
+          - action: Click on the **Cancel** button.
+            checks:
+              - "Page **Wi-Fi Network** must be opened."
+      - test_id: AD007
+        title: Test configuring the gateway using Wi-Fi hotspot to connect the gateway to Wi-Fi by choosing from the list of available networks
+        setup:
+          - setup_step: Disconnect Ethernet cable.
+        steps:
+          - action: Erase configuration
+            detail: Press CONFIGURE button for 10 seconds, release the button, wait 10 seconds.
+            checks:
+              - "LED: 'RRRRRRRRGRGGGGGGGGGG'"
+          - action: Use your mobile phone to connect to the hotspot 'Configure Ruuvi Gateway XXXX'.
+            detail: If the configuration hotspot is not opened automatically, the open a browser and go to http://10.10.0.1/
+            checks:
+              - "LED: 'RRRRRRRRRRGGGGGGGGGG'"
+          - action: Configure connection to Wi-Fi from the list of available networks.
+            steps:
+              - "Page **Setup Wizard**: Click **Let's get started**."
+              - "Page **Internet Connection**: Select **Wi-Fi**, click **Next**."
+              - "Page **Wi-Fi Network**: Select Wi-Fi SSID from the list of available networks, enter password."
+              - "Click **Next**"
+              - Wait about 15 seconds until the Wi-Fi connection is established.
+            checks:
+              - "LED: 'RRRRRRRRRRGGGGGGGGGG'"
+              - "Check that the Wi-Fi connection has been successfully established."
+          - action: Continue the configuration process.
+            steps:
+              - "Page **Software Update**: Click **Continue and skip update** or **Next**."
+              - "Page **Automatic Configuration Download**: Click **Next**."
+              - "Page **Automatic Updated**: Click **Next**."
+              - "Page **Remote Access Settings**: Click **Next**."
+              - "Page **Cloud Options**: Click **Next**."
+            checks:
+              - "Page **Finished!** must be opened."
+              - "Message **Ruuvi Gateway is now functioning** must be displayed."
+              - "Message: **Connected to**: Network: Wi-Fi SSID"
+              - "LED: 'G'"
+          - action: Check network connection with the gateway IP address.
+            detail: |
+              ```shell
+              ping <gateway IP address>
+              ```
+            checks:
+              - "Check that the gateway is answering to ping requests."
+          - action: Check network connection with the gateway's hostname.
+            detail: |
+              ```shell
+              ping ruuvigateway<XXXX>.local
+              ```
+            checks:
+              - "Check that the gateway is answering to ping requests."
+          - action: Use a browser to open the gateway's hostname ruuvigateway<XXXX>.local.
+            checks:
+              - "Check that the gateway's configuration wizard is opened in the browser."
+      - test_id: AD008
+        title: Test configuring the gateway using Wi-Fi hotspot to connect the gateway to Wi-Fi by choosing from the list of available networks - wrong password
+        setup:
+          - setup_step: Disconnect Ethernet cable.
+        steps:
+          - action: Erase configuration
+            detail: Press CONFIGURE button for 10 seconds, release the button, wait 10 seconds.
+            checks:
+              - "LED: 'RRRRRRRRGRGGGGGGGGGG'"
+          - action: Use your mobile phone to connect to the hotspot 'Configure Ruuvi Gateway XXXX'.
+            detail: If the configuration hotspot is not opened automatically, the open a browser and go to http://10.10.0.1/
+            checks:
+              - "LED: 'RRRRRRRRRRGGGGGGGGGG'"
+          - action: Configure connection to Wi-Fi from the list of available networks and enter wrong password.
+            steps:
+              - "Page **Setup Wizard**: Click **Let's get started**."
+              - "Page **Internet Connection**: Select **Wi-Fi**, click **Next**."
+              - "Page **Wi-Fi Network**: Select Wi-Fi SSID from the list of available networks."
+              - "Page **Wi-Fi Network**: Enter wrong password."
+              - "Click **Next**"
+            checks:
+              - "LED: 'RRRRRRRRRRGGGGGGGGGG'"
+              - "Check that the error message is displayed: '**Failed to connect. Please try again.**'."
+          - action: Enter correct password.
+            steps:
+              - "Page **Wi-Fi Network**: Enter correct password."
+              - "Click **Next**"
+              - Wait about 15 seconds until the Wi-Fi connection is established.
+            checks:
+              - "LED: 'RRRRRRRRRRGGGGGGGGGG'"
+              - "Check that the Wi-Fi connection has been successfully established."
+          - action: Continue the configuration process.
+            steps:
+              - "Page **Software Update**: Click **Continue and skip update** or **Next**."
+              - "Page **Automatic Configuration Download**: Click **Next**."
+              - "Page **Automatic Updated**: Click **Next**."
+              - "Page **Remote Access Settings**: Click **Next**."
+              - "Page **Cloud Options**: Click **Next**."
+            checks:
+              - "Page **Finished!** must be opened."
+              - "Message **Ruuvi Gateway is now functioning** must be displayed."
+              - "Message: **Connected to**: Network: Wi-Fi SSID"
+              - "LED: 'G'"
+          - action: Check network connection with the gateway IP address.
+            detail: |
+              ```shell
+              ping <gateway IP address>
+              ```
+            checks:
+              - "Check that the gateway is answering to ping requests."
+          - action: Check network connection with the gateway's hostname.
+            detail: |
+              ```shell
+              ping ruuvigateway<XXXX>.local
+              ```
+            checks:
+              - "Check that the gateway is answering to ping requests."
+          - action: Use a browser to open the gateway's hostname ruuvigateway<XXXX>.local.
+            checks:
+              - "Check that the gateway's configuration wizard is opened in the browser."
+      - test_id: AD009
+        title: Test configuring the gateway using Wi-Fi hotspot to connect the gateway to Wi-Fi by manually entering SSID and password
+        setup:
+          - setup_step: Disconnect Ethernet cable.
+        steps:
+          - action: Erase configuration
+            detail: Press CONFIGURE button for 10 seconds, release the button, wait 10 seconds.
+            checks:
+              - "LED: 'RRRRRRRRGRGGGGGGGGGG'"
+          - action: Use your mobile phone to connect to the hotspot 'Configure Ruuvi Gateway XXXX'.
+            detail: If the configuration hotspot is not opened automatically, the open a browser and go to http://10.10.0.1/
+            checks:
+              - "LED: 'RRRRRRRRRRGGGGGGGGGG'"
+          - action: Configure connection to Wi-Fi from the list of available networks.
+            steps:
+              - "Page **Setup Wizard**: Click **Let's get started**."
+              - "Page **Internet Connection**: Select **Wi-Fi**, click **Next**."
+              - "Page **Wi-Fi Network**: Open '**Advanced settings**'."
+              - "Page **Wi-Fi Network**: Enable checkbox '**Connect manually**'."
+              - "Page **Wi-Fi Network**: Enter '**SSID (network name)**' and '**Password**'."
+              - "Click **Next**"
+              - Wait about 15 seconds until the Wi-Fi connection is established.
+            checks:
+              - "LED: 'RRRRRRRRRRGGGGGGGGGG'"
+              - "Check that the Wi-Fi connection has been successfully established."
+          - action: Continue the configuration process.
+            steps:
+              - "Page **Software Update**: Click **Continue and skip update** or **Next**."
+              - "Page **Automatic Configuration Download**: Click **Next**."
+              - "Page **Automatic Updated**: Click **Next**."
+              - "Page **Remote Access Settings**: Click **Next**."
+              - "Page **Cloud Options**: Click **Next**."
+            checks:
+              - "Page **Finished!** must be opened."
+              - "Message **Ruuvi Gateway is now functioning** must be displayed."
+              - "Message: **Connected to**: Network: Wi-Fi SSID"
+              - "LED: 'G'"
+          - action: Check network connection with the gateway IP address.
+            detail: |
+              ```shell
+              ping <gateway IP address>
+              ```
+            checks:
+              - "Check that the gateway is answering to ping requests."
+          - action: Check network connection with the gateway's hostname.
+            detail: |
+              ```shell
+              ping ruuvigateway<XXXX>.local
+              ```
+            checks:
+              - "Check that the gateway is answering to ping requests."
+          - action: Use a browser to open the gateway's hostname ruuvigateway<XXXX>.local.
+            checks:
+              - "Check that the gateway's configuration wizard is opened in the browser."
+      - test_id: AD010
+        title: Test activating Wi-Fi hotspot by the CONFIGURE button
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+        steps:
+          - action: Erase configuration
+            detail: Press CONFIGURE button for 10 seconds, release the button, wait 10 seconds.
+            checks:
+              - "LED: 'RRRRRRRRGRGGGGGGGGGG'"
+          - action: Wait 1 minute or power off/on the gateway to automatically configure the gateway to use Ethernet.
+            checks:
+              - "LED: 'G'"
+          - action: Press CONFIGURE button.
+            checks:
+              - "LED: 'RRRRRRRRRRGGGGGGGGGG'"
+              - "Use your mobile phone to check that the hotspot 'Configure Ruuvi Gateway XXXX' is visible."
+          - action: Wait 1 minute.
+            checks:
+              - "LED: 'G'"
+          - action: Check network connection with the gateway's hostname.
+            detail: |
+              ```shell
+              ping ruuvigateway<XXXX>.local
+              ```
+            checks:
+              - "Check that the gateway is answering to ping requests."
+          - action: Use a browser to open the gateway's hostname ruuvigateway<XXXX>.local.
+            checks:
+              - "Check that the gateway's configuration wizard is opened in the browser."
+  - test_set:  Remote access settings tests
+    test_set_id: TST-005
+    description:
+    tests:
+      - test_id: AE001
+        title: Test default access settings
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+        steps:
+          - action: Erase configuration
+            detail: Press CONFIGURE button for 10 seconds, release the button, wait 10 seconds.
+            checks:
+              - "LED: 'RRRRRRRRGRGGGGGGGGGG'"
+          - action: Turn off/on the gateway to activate autoconfiguration using Ethernet.
+            checks:
+              - "LED: 'G'"
+          - action: Use a browser to open the gateway's hostname ruuvigateway<XXXX>.local.
+            checks:
+              - "Check that the '**Login to Settings Page**' page is opened in the browser."
+          - action: Use wrong password to log in.
+            checks:
+              - "Check that the error message '**Wrong username or password.**' is displayed."
+          - action: Use default credentials to log in (use Device ID (XX:XX:XX:XX:XX:XX:XX:XX) as the password).
+            checks:
+              - "Check that the '**Setup Wizard**' page is opened in the browser."
+          - action: Power off/on the gateway, refresh the browser.
+            checks:
+              - "Check that the '**Login to Settings Page**' page is opened in the browser."
+          - action: Use default credentials to log in (use Device ID (XX:XX:XX:XX:XX:XX:XX:XX) as the password).
+            checks:
+              - "Check that the '**Setup Wizard**' page is opened in the browser."
+          - action: Check access to "/history" with curl
+            detail: |
+              ```shell
+              curl -v http://ruuvigateway<XXXX>.local/history
+              ```
+            checks:
+              - "Check that the response is 'HTTP/1.0 302 Found'."
+          - action: Try HTTP GET "/ruuvi.json" with curl
+            detail: |
+              ```shell
+              curl -v http://ruuvigateway<XXXX>.local/ruuvi.json
+              ```
+            checks:
+              - "Check that the response is 'HTTP/1.0 302 Found'."
+          - action: Try HTTP POST "/ruuvi.json" with curl
+            detail: |
+              ```shell
+              curl -v -X POST http://ruuvigateway<XXXX>.local/ruuvi.json -d '{}'
+              ```
+            checks:
+              - "Check that the response is 'HTTP/1.0 401 Unauthorized'."
+      - test_id: AE002
+        title: Test access with a custom username/password
+        setup:
+          - setup_step: Continue previous test.
+        steps:
+          - action: Configure **Remote Access Settings**
+            steps:
+              - "Page **Setup Wizard**: Click **Let's get started**."
+              - "Page **Internet Connection**: click **Skip**."
+              - "Page **Software Update**: Click **Continue and skip update** or **Next**."
+              - "Page **Automatic Configuration Download**: Click **Next**."
+              - "Page **Automatic Updated**: Click **Next**."
+              - "Page **Remote Access Settings**: Click **Advanced Settings**."
+              - "Page **Remote Access Settings**: Select **Protected with a custom password (safe with a strong password)**."
+              - "Page **Remote Access Settings**: Enter **Username**: user123"
+              - "Page **Remote Access Settings**: Enter **Password**: pass1234"
+              - "Page **Remote Access Settings**: Click **Next**."
+              - "Page **Cloud Options**: Click **Next**."
+            checks:
+              - "Page **Finished!** must be opened."
+              - "LED: 'G'"
+          - action: Refresh browser page with Configuration Wizard.
+            checks:
+              - "Check that the '**Login to Settings Page**' page is opened in the browser."
+              - "Check that the '**Username**' and '**Password**' fields are displayed."
+          - action: Enter username/password.
+            steps:
+              - "Enter **Username**: user123"
+              - "Enter **Password**: pass1234"
+              - "Click **Login**."
+            checks:
+              - "Check that the '**Setup Wizard**' page is opened in the browser."
+          - action: Check access to "/history" with curl
+            detail: |
+              ```shell
+              curl -v http://ruuvigateway<XXXX>.local/history
+              ```
+            checks:
+              - "Check that the response is 'HTTP/1.0 302 Found'."
+          - action: Try HTTP GET "/ruuvi.json" with curl
+            detail: |
+              ```shell
+              curl -v http://ruuvigateway<XXXX>.local/ruuvi.json
+              ```
+            checks:
+              - "Check that the response is 'HTTP/1.0 302 Found'."
+          - action: Try HTTP POST "/ruuvi.json" with curl
+            detail: |
+              ```shell
+              curl -v -X POST http://ruuvigateway<XXXX>.local/ruuvi.json -d '{}'
+              ```
+            checks:
+              - "Check that the response is 'HTTP/1.0 401 Unauthorized'."
+      - test_id: AE003
+        title: Test access without a password
+        setup:
+          - setup_step: Continue previous test.
+        steps:
+          - action: Configure **Remote Access Settings**
+            steps:
+              - "Page **Setup Wizard**: Click **Let's get started**."
+              - "Page **Internet Connection**: click **Skip**."
+              - "Page **Software Update**: Click **Continue and skip update** or **Next**."
+              - "Page **Automatic Configuration Download**: Click **Next**."
+              - "Page **Automatic Updated**: Click **Next**."
+              - "Page **Remote Access Settings**: Click **Advanced Settings**."
+              - "Page **Remote Access Settings**: Select **Remote configurable without a password (unsafe, not recommended)**."
+              - "Page **Remote Access Settings**: Click **Next**."
+              - "Page **Cloud Options**: Click **Next**."
+            checks:
+              - "Page **Finished!** must be opened."
+              - "LED: 'G'"
+          - action: Refresh browser page with Configuration Wizard.
+            checks:
+              - "Check that the '**Setup Wizard**' page is opened in the browser."
+          - action: Check access to "/history" with curl
+            detail: |
+              ```shell
+              curl -v http://ruuvigateway<XXXX>.local/history
+              ```
+            checks:
+              - "Check that the response is 'HTTP/1.0 200 OK'."
+          - action: Try HTTP GET "/ruuvi.json" with curl
+            detail: |
+              ```shell
+              curl -v http://ruuvigateway<XXXX>.local/ruuvi.json
+              ```
+            checks:
+              - "Check that the response is 'HTTP/1.0 200 OK'."
+          - action: Try HTTP POST "/ruuvi.json" with curl
+            detail: |
+              ```shell
+              curl -v -X POST http://ruuvigateway<XXXX>.local/ruuvi.json -d '{}'
+              ```
+            checks:
+              - "Check that the response is 'HTTP/1.0 200 OK'."
+      - test_id: AE004
+        title: Test disabled remote access
+        setup:
+          - setup_step: Continue previous test.
+        steps:
+          - action: Configure **Remote Access Settings**
+            steps:
+              - "Page **Setup Wizard**: Click **Let's get started**."
+              - "Page **Internet Connection**: click **Skip**."
+              - "Page **Software Update**: Click **Continue and skip update** or **Next**."
+              - "Page **Automatic Configuration Download**: Click **Next**."
+              - "Page **Automatic Updated**: Click **Next**."
+              - "Page **Remote Access Settings**: Click **Advanced Settings**."
+              - "Page **Remote Access Settings**: Select **Not configurable via remote connection (extremely safe)**."
+              - "Page **Remote Access Settings**: Click **Next**."
+              - "Page **Cloud Options**: Click **Next**."
+            checks:
+              - "Page **Finished!** must be opened."
+              - "LED: 'G'"
+          - action: Refresh browser page with Configuration Wizard.
+            checks:
+              - "Check that the '**Login to Settings Page**' page is opened in the browser."
+              - "Check that no '**Username**' or '**Password**' fields are displayed."
+          - action: Check access to "/history" with curl
+            detail: |
+              ```shell
+              curl -v http://ruuvigateway<XXXX>.local/history
+              ```
+            checks:
+              - "Check that the response is 'HTTP/1.0 403 Forbidden'."
+          - action: Try HTTP GET "/ruuvi.json" with curl
+            detail: |
+              ```shell
+              curl -v http://ruuvigateway<XXXX>.local/ruuvi.json
+              ```
+            checks:
+              - "Check that the response is 'HTTP/1.0 403 Forbidden'."
+          - action: Try HTTP POST "/ruuvi.json" with curl
+            detail: |
+              ```shell
+              curl -v -X POST http://ruuvigateway<XXXX>.local/ruuvi.json -d '{}'
+              ```
+            checks:
+              - "Check that the response is 'HTTP/1.0 403 Forbidden'."
+      - test_id: AE005
+        title: Test disabled remote access
+        setup:
+          - setup_step: Continue previous test.
+        steps:
+          - action: Enable Wi-Fi hotspot by pressing on the CONFIGURE button.
+            checks:
+              - "LED: 'RRRRRRRRRRGGGGGGGGGG'"
+          - action: Use your mobile phone to connect to the hotspot 'Configure Ruuvi Gateway XXXX'.
+            detail: If the configuration hotspot is not opened automatically, the open a browser and go to http://10.10.0.1
+            checks:
+              - "LED: 'RRRRRRRRRRGGGGGGGGGG'"
+          - action: Configure default **Remote Access Settings**
+            steps:
+              - "Page **Setup Wizard**: Click **Let's get started**."
+              - "Page **Internet Connection**: click **Next**."
+              - "Page **IP address settings**: click **Next**."
+              - "Page **Software Update**: Click **Continue and skip update** or **Next**."
+              - "Page **Automatic Configuration Download**: Click **Next**."
+              - "Page **Automatic Updated**: Click **Next**."
+              - "Page **Remote Access Settings**: Select **Password protected with the default password (default, safe)**."
+              - "Page **Remote Access Settings**: Click **Next**."
+              - "Page **Cloud Options**: Click **Next**."
+            checks:
+              - "Page **Finished!** must be opened."
+              - "LED: 'G'"
+          - action: Use a browser to open the gateway's hostname ruuvigateway<XXXX>.local.
+            checks:
+              - "Check that the '**Login to Settings Page**' page is opened in the browser."
+          - action: Use default credentials to log in (use Device ID (XX:XX:XX:XX:XX:XX:XX:XX) as the password).
+            checks:
+              - "Check that the '**Setup Wizard**' page is opened in the browser."
+          - action: Configure default **Remote Access Settings** with bearer tokens
+            steps:
+              - "Page **Setup Wizard**: Click **Let's get started**."
+              - "Page **Internet Connection**: click **Skip**."
+              - "Page **Software Update**: Click **Continue and skip update** or **Next**."
+              - "Page **Automatic Configuration Download**: Click **Next**."
+              - "Page **Automatic Updated**: Click **Next**."
+              - "Page **Remote Access Settings**: Select **Password protected with the default password (default, safe)**."
+              - "Page **Remote Access Settings**: Click **Advanced settings**."
+              - "Page **Remote Access Settings**: Enable checkbox **Enable read-only access to '/history' using API key**."
+              - "Page **Remote Access Settings**: Enter **API key (bearer token)**: Uj+4tj24unVekco/lTLTRyxUfv1J8M6U+sbNsKTWRr0="
+              - "Page **Remote Access Settings**: Enable checkbox **Enable full (read/write) access to the Ruuvi Gateway router using API key**."
+              - "Page **Remote Access Settings**: Enter **API key (bearer token)**: 1SDrQH1FkH+pON0GsSjt2gYeMSP02uYqfuu7LWdaBvY="
+              - "Page **Remote Access Settings**: Click **Next**."
+              - "Page **Cloud Options**: Click **Next**."
+            checks:
+              - "Page **Finished!** must be opened."
+              - "LED: 'G'"
+          - action: Check access to "/history" with curl without API key
+            detail: |
+              ```shell
+              curl -v http://ruuvigateway<XXXX>.local/history
+              ```
+            checks:
+              - "Check that the response is 'HTTP/1.0 302 Found'."
+          - action: Check access to "/history" with curl with the read-only API key
+            detail: |
+              ```shell
+              curl -v http://ruuvigateway<XXXX>.local/history -H "Authorization: Bearer Uj+4tj24unVekco/lTLTRyxUfv1J8M6U+sbNsKTWRr0="
+              ```
+            checks:
+              - "Check that the response is 'HTTP/1.0 200 OK'."
+          - action: Check access to "/history" with curl with the read-write API key
+            detail: |
+              ```shell
+              curl -v http://ruuvigateway<XXXX>.local/history -H "Authorization: Bearer 1SDrQH1FkH+pON0GsSjt2gYeMSP02uYqfuu7LWdaBvY="
+              ```
+            checks:
+              - "Check that the response is 'HTTP/1.0 200 OK'."
+          - action: Try HTTP GET "/ruuvi.json" with curl without API key
+            detail: |
+              ```shell
+              curl -v http://ruuvigateway<XXXX>.local/ruuvi.json
+              ```
+            checks:
+              - "Check that the response is 'HTTP/1.0 302 Found'."
+          - action: Try HTTP GET "/ruuvi.json" with curl with the read-only API key
+            detail: |
+              ```shell
+              curl -v http://ruuvigateway<XXXX>.local/ruuvi.json -H "Authorization: Bearer Uj+4tj24unVekco/lTLTRyxUfv1J8M6U+sbNsKTWRr0="
+              ```
+            checks:
+              - "Check that the response is 'HTTP/1.0 200 OK'."
+          - action: Try HTTP GET "/ruuvi.json" with curl with the read-write API key
+            detail: |
+              ```shell
+              curl -v http://ruuvigateway<XXXX>.local/ruuvi.json -H "Authorization: Bearer 1SDrQH1FkH+pON0GsSjt2gYeMSP02uYqfuu7LWdaBvY="
+              ```
+            checks:
+              - "Check that the response is 'HTTP/1.0 200 OK'."
+          - action: Try HTTP POST "/ruuvi.json" with curl without API key
+            detail: |
+              ```shell
+              curl -v -X POST http://ruuvigateway<XXXX>.local/ruuvi.json -d '{}'
+              ```
+            checks:
+              - "Check that the response is 'HTTP/1.0 401 Unauthorized'."
+          - action: Try HTTP POST "/ruuvi.json" with curl with the read-only API key
+            detail: |
+              ```shell
+              curl -v -X POST http://ruuvigateway<XXXX>.local/ruuvi.json -d '{}' -H "Authorization: Bearer Uj+4tj24unVekco/lTLTRyxUfv1J8M6U+sbNsKTWRr0="
+              ```
+            checks:
+              - "Check that the response is 'HTTP/1.0 401 Unauthorized'."
+          - action: Try HTTP POST "/ruuvi.json" with curl with the read-write API key
+            detail: |
+              ```shell
+              curl -v -X POST http://ruuvigateway<XXXX>.local/ruuvi.json -d '{}' -H "Authorization: Bearer 1SDrQH1FkH+pON0GsSjt2gYeMSP02uYqfuu7LWdaBvY="
+              ```
+            checks:
+              - "Check that the response is 'HTTP/1.0 200 OK'."
+  - test_set:  Software update tests
+    test_set_id: TST-006
+    description:
+    tests:
+      - test_id: AF001
+        title: Test installing firmware version v1.14.3 from the manually entered URL pointed to Ruuvi server
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+        steps:
+          - action: Erase flash and write firmware.
+            detail: |
+              ```shell
+              python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+              ```
+            checks:
+              - "LED: 'G'"
+          - action: Use a browser to open the gateway's hostname ruuvigateway<XXXX>.local.
+            checks:
+              - "Check that the '**Login to Settings Page**' page is opened in the browser."
+          - action: Use default credentials to log in (use Device ID (XX:XX:XX:XX:XX:XX:XX:XX) as the password).
+            checks:
+              - "Check that the '**Setup Wizard**' page is opened in the browser."
+          - action: Update firmware on **Software Update** page
+            steps:
+              - "Page **Setup Wizard**: Click **Let's get started**."
+              - "Page **Internet Connection**: click **Skip**."
+              - "Page **Software Update**: Click **Advanced Settings**."
+              - "Page **Software Update**: Enable checkbox **Don't use the software update provided by Ruuvi but download binary files from URL address instead.**."
+              - "Page **Software Update**: Enter URL: https://fwupdate.ruuvi.com/v1.14.3"
+              - "Page **Software Update**: Click **Update**."
+              - "Wait until updating is finished."
+            checks:
+              - "Page **Finished!**: message '**All good! Update was successful.**' must be displayed."
+              - "LED: 'G'"
+          - action: Check firmware version in UI - refresh the page in the browser.
+            checks:
+              - "Check that the firmware version at the bottom of the page is v1.14.3."
+      - test_id: AF002
+        title: Test installing firmware version v1.14.2 from the manually entered URL pointed to GitHub
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+        steps:
+          - action: Erase flash and write firmware.
+            detail: |
+              ```shell
+              python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+              ```
+            checks:
+              - "LED: 'G'"
+          - action: Use a browser to open the gateway's hostname ruuvigateway<XXXX>.local.
+            checks:
+              - "Check that the '**Login to Settings Page**' page is opened in the browser."
+          - action: Use default credentials to log in (use Device ID (XX:XX:XX:XX:XX:XX:XX:XX) as the password).
+            checks:
+              - "Check that the '**Setup Wizard**' page is opened in the browser."
+          - action: Update firmware on **Software Update** page
+            steps:
+              - "Page **Setup Wizard**: Click **Let's get started**."
+              - "Page **Internet Connection**: click **Skip**."
+              - "Page **Software Update**: Click **Advanced Settings**."
+              - "Page **Software Update**: Enable checkbox **Don't use the software update provided by Ruuvi but download binary files from URL address instead.**."
+              - "Page **Software Update**: Enter URL: https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.2"
+              - "Page **Software Update**: Click **Update**."
+              - "Wait until updating is finished."
+            checks:
+              - "Page **Finished!**: message '**All good! Update was successful.**' must be displayed."
+              - "LED: 'G'"
+          - action: Check firmware version in UI - refresh the page in the browser.
+            checks:
+              - "Check that the firmware version at the bottom of the page is v1.14.2."
+      - test_id: AF003
+        title: Test installing firmware from the manually entered URL pointed to Jenkins server
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+        steps:
+          - action: Erase flash and write firmware.
+            detail: |
+              ```shell
+              python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+              ```
+            checks:
+              - "LED: 'G'"
+          - action: Use a browser to open the gateway's hostname ruuvigateway<XXXX>.local.
+            checks:
+              - "Check that the '**Login to Settings Page**' page is opened in the browser."
+          - action: Use default credentials to log in (use Device ID (XX:XX:XX:XX:XX:XX:XX:XX) as the password).
+            checks:
+              - "Check that the '**Setup Wizard**' page is opened in the browser."
+          - action: Update firmware on **Software Update** page
+            steps:
+              - "Page **Setup Wizard**: Click **Let's get started**."
+              - "Page **Internet Connection**: click **Skip**."
+              - "Page **Software Update**: Click **Advanced Settings**."
+              - "Page **Software Update**: Enable checkbox **Don't use the software update provided by Ruuvi but download binary files from URL address instead.**."
+              - "Page **Software Update**: Enter URL: https://jenkins.ruuvi.com/job/ruuvi_gateway_esp-PR/1275/artifact/build/"
+              - "Page **Software Update**: Click **Update**."
+              - "Wait until updating is finished."
+            checks:
+              - "Page **Finished!**: message '**All good! Update was successful.**' must be displayed."
+              - "LED: 'G'"
+          - action: Check firmware version in UI - refresh the page in the browser.
+            checks:
+              - "Check that the firmware version at the bottom of the page is v1.14.1-86-g70f9ebc."
+      - test_id: AF003
+        title: Test installing firmware from the manually entered URL pointed to local server
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+          - setup_step: Configure mDNS on your computer, set host-name to 'my-https-server', set domain-name to 'local'.
+          - setup_step: Run a local HTTP server.
+            detail: |
+              ```shell
+              python3 ./ruuvi.gwui.html/scripts/http_server_auth.py --port 8000
+              ```
+        steps:
+          - action: Erase flash and write firmware.
+            detail: |
+              ```shell
+              python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+              ```
+            checks:
+              - "LED: 'G'"
+          - action: Use a browser to open the gateway's hostname ruuvigateway<XXXX>.local.
+            checks:
+              - "Check that the '**Login to Settings Page**' page is opened in the browser."
+          - action: Use default credentials to log in (use Device ID (XX:XX:XX:XX:XX:XX:XX:XX) as the password).
+            checks:
+              - "Check that the '**Setup Wizard**' page is opened in the browser."
+          - action: Update firmware on **Software Update** page
+            steps:
+              - "Page **Setup Wizard**: Click **Let's get started**."
+              - "Page **Internet Connection**: click **Skip**."
+              - "Page **Software Update**: Click **Advanced Settings**."
+              - "Page **Software Update**: Enable checkbox **Don't use the software update provided by Ruuvi but download binary files from URL address instead.**."
+              - "Page **Software Update**: Enter URL: http://my-https-server.local:8000/.releases/v1.14.3/"
+              - "Page **Software Update**: Click **Update**."
+              - "Wait until updating is finished."
+            checks:
+              - "Page **Finished!**: message '**All good! Update was successful.**' must be displayed."
+              - "LED: 'G'"
+          - action: Check firmware version in UI - refresh the page in the browser.
+            checks:
+              - "Check that the firmware version at the bottom of the page is v1.14.3."
+      - test_id: AF004
+        title: Test updating firmware to the latest release
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+          - setup_step: Configure mDNS on your computer, set host-name to 'my-https-server', set domain-name to 'local'.
+          - setup_step: Run a local HTTP server.
+            detail: |
+              ```shell
+              python3 ./ruuvi.gwui.html/scripts/http_server_auth.py --port 8000
+              ```
+        steps:
+          - action: Erase flash and write firmware.
+            detail: |
+              ```shell
+              python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+              ```
+            checks:
+              - "LED: 'G'"
+          - action: Use a browser to open the gateway's hostname ruuvigateway<XXXX>.local.
+            checks:
+              - "Check that the '**Login to Settings Page**' page is opened in the browser."
+          - action: Use default credentials to log in (use Device ID (XX:XX:XX:XX:XX:XX:XX:XX) as the password).
+            checks:
+              - "Check that the '**Setup Wizard**' page is opened in the browser."
+          - action: Configure firmware update server on **Software Update** page
+            steps:
+              - "Page **Setup Wizard**: Click **Let's get started**."
+              - "Page **Internet Connection**: click **Skip**."
+              - "Page **Software Update**: Click **Advanced Settings**."
+              - "Page **Software Update**: Enter URL for **Server for automatic firmware updates**: http://my-https-server.local:8000/firmwareupdate"
+              - "Page **Software Update**: Click **Check**."
+              - "Page **Software Update**: Click **Save**."
+            checks:
+              - "Check that there is no errors during checking and saving the URL."
+          - action: Update firmware on **Software Update** page
+            steps:
+              - "Refresh the page in the browser."
+              - "Page **Setup Wizard**: Click **Let's get started**."
+              - "Page **Internet Connection**: click **Skip**."
+            checks:
+              - "On page **Software Update**: Check displayed 'Current firmware version': v1.15.0"
+              - "On page **Software Update**: Check displayed 'Latest available firmware version': v1.14.3"
+              - "On page **Software Update**: Message '**An update is available! Press UPDATE to start the firmware update.**' must be displayed."
+              - "On page **Software Update**: Check that the button **UPDATE** is active."
+          - action: Update firmware to v1.14.3.
+            steps:
+              - "Page **Software Update**: Click **Update**."
+              - "Wait until updating is finished."
+            checks:
+              - "Page **Finished!**: message '**All good! Update was successful.**' must be displayed."
+              - "LED: 'G'"
+          - action: Check firmware version in UI - refresh the page in the browser.
+            checks:
+              - "Check that the firmware version at the bottom of the page is v1.14.3."
+      - test_id: AF005
+        title: Test auto updating firmware to the latest release v1.14.3
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+          - setup_step: Configure mDNS on your computer, set host-name to 'my-https-server', set domain-name to 'local'.
+          - setup_step: Run a local HTTP server.
+            detail: |
+              ```shell
+              python3 ./ruuvi.gwui.html/scripts/http_server_auth.py --port 8000
+              ```
+        steps:
+          - action: Erase flash and write firmware.
+            detail: |
+              ```shell
+              python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+              ```
+            checks:
+              - "LED: 'G'"
+          - action: Use a browser to open the gateway's hostname ruuvigateway<XXXX>.local.
+            checks:
+              - "Check that the '**Login to Settings Page**' page is opened in the browser."
+          - action: Use default credentials to log in (use Device ID (XX:XX:XX:XX:XX:XX:XX:XX) as the password).
+            checks:
+              - "Check that the '**Setup Wizard**' page is opened in the browser."
+          - action: Configure firmware update server on **Software Update** page
+            steps:
+              - "Page **Setup Wizard**: Click **Let's get started**."
+              - "Page **Internet Connection**: click **Skip**."
+              - "Page **Software Update**: Click **Advanced Settings**."
+              - "Page **Software Update**: Enter URL for **Server for automatic firmware updates**: http://my-https-server.local:8000/firmwareupdate"
+              - "Page **Software Update**: Click **Check**."
+              - "Page **Software Update**: Click **Save**."
+              - "Close browser"
+            checks:
+              - "Check that there is no errors during checking and saving the URL."
+          - action: Power off/on the gateway.
+            checks:
+              - "LED: 'G'"
+          - action: Wait 45 minutes.
+            checks:
+              - "LED: 'G'"
+          - action: Refresh the page in the browser
+            checks:
+              - "Check that the firmware version at the bottom of the page is v1.14.3."
+      - test_id: AF006
+        title: Test auto updating firmware to the latest beta version v1.14.2
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+          - setup_step: Configure mDNS on your computer, set host-name to 'my-https-server', set domain-name to 'local'.
+          - setup_step: Run a local HTTP server.
+            detail: |
+              ```shell
+              python3 ./ruuvi.gwui.html/scripts/http_server_auth.py --port 8000
+              ```
+        steps:
+          - action: Erase flash and write firmware.
+            detail: |
+              ```shell
+              python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+              ```
+            checks:
+              - "LED: 'G'"
+          - action: Use a browser to open the gateway's hostname ruuvigateway<XXXX>.local.
+            checks:
+              - "Check that the '**Login to Settings Page**' page is opened in the browser."
+          - action: Use default credentials to log in (use Device ID (XX:XX:XX:XX:XX:XX:XX:XX) as the password).
+            checks:
+              - "Check that the '**Setup Wizard**' page is opened in the browser."
+          - action: Configure firmware update server on **Software Update** page
+            steps:
+              - "Page **Setup Wizard**: Click **Let's get started**."
+              - "Page **Internet Connection**: click **Skip**."
+              - "Page **Software Update**: Click **Advanced Settings**."
+              - "Page **Software Update**: Enter URL for **Server for automatic firmware updates**: http://my-https-server.local:8000/firmwareupdate_beta"
+              - "Page **Software Update**: Click **Check**."
+              - "Page **Software Update**: Click **Save**."
+              - "Page **Software Update**: Click **Continue and skip update** or **Next**."
+            checks:
+              - "Check that there is no errors during checking and saving the URL."
+          - action: Configure firmware updating for beta testers on **Automatic Updates** page
+            steps:
+              - "Page **Automatic Configuration Download**: Click **Next**."
+              - "Page **Automatic Updates**: Click **Advanced Settings**."
+              - "Page **Automatic Updates**: Select **Auto update (for beta testers, accept all updates)**."
+              - "Page **Automatic Updates**: Click **Next**."
+              - "Page **Remote Access Settings**: Click **Next**."
+              - "Page **Cloud Options**: Click **Next**."
+            checks:
+              - "Page **Finished!** must be opened."
+              - "Message **Ruuvi Gateway is now functioning** must be displayed."
+              - "Message: **Connected to**: Network: Ethernet"
+              - "LED: 'G'"
+          - action: Power off/on the gateway.
+            checks:
+              - "LED: 'G'"
+          - action: Wait 45 minutes.
+            checks:
+              - "LED: 'G'"
+          - action: Refresh the page in the browser
+            checks:
+              - "Check that the firmware version at the bottom of the page is v1.14.2."
+      - test_id: AF007
+        title: Test manual firmware updating mode
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+          - setup_step: Configure mDNS on your computer, set host-name to 'my-https-server', set domain-name to 'local'.
+          - setup_step: Run a local HTTP server.
+            detail: |
+              ```shell
+              python3 ./ruuvi.gwui.html/scripts/http_server_auth.py --port 8000
+              ```
+        steps:
+          - action: Erase flash and write firmware.
+            detail: |
+              ```shell
+              python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+              ```
+            checks:
+              - "LED: 'G'"
+          - action: Use a browser to open the gateway's hostname ruuvigateway<XXXX>.local.
+            checks:
+              - "Check that the '**Login to Settings Page**' page is opened in the browser."
+          - action: Use default credentials to log in (use Device ID (XX:XX:XX:XX:XX:XX:XX:XX) as the password).
+            checks:
+              - "Check that the '**Setup Wizard**' page is opened in the browser."
+          - action: Configure firmware update server on **Software Update** page
+            steps:
+              - "Page **Setup Wizard**: Click **Let's get started**."
+              - "Page **Internet Connection**: click **Skip**."
+              - "Page **Software Update**: Click **Advanced Settings**."
+              - "Page **Software Update**: Enter URL for **Server for automatic firmware updates**: http://my-https-server.local:8000/firmwareupdate"
+              - "Page **Software Update**: Click **Check**."
+              - "Page **Software Update**: Click **Save**."
+              - "Page **Software Update**: Click **Continue and skip update** or **Next**."
+            checks:
+              - "Check that there is no errors during checking and saving the URL."
+          - action: Configure firmware updating for beta testers on **Automatic Updates** page
+            steps:
+              - "Page **Automatic Configuration Download**: Click **Next**."
+              - "Page **Automatic Updates**: Click **Advanced Settings**."
+              - "Page **Automatic Updates**: Select **Manual updates only (not recommended)**."
+              - "Page **Automatic Updates**: Click **Next**."
+              - "Page **Remote Access Settings**: Click **Next**."
+              - "Page **Cloud Options**: Click **Next**."
+            checks:
+              - "Page **Finished!** must be opened."
+              - "Message **Ruuvi Gateway is now functioning** must be displayed."
+              - "Message: **Connected to**: Network: Ethernet"
+              - "LED: 'G'"
+          - action: Power off/on the gateway.
+            checks:
+              - "LED: 'G'"
+          - action: Wait 45 minutes.
+            checks:
+              - "LED: 'G'"
+          - action: Refresh the page in the browser
+            checks:
+              - "Check that the firmware version at the bottom of the page is v1.15.0."
+  - test_set:  Custom HTTP(S) server tests
+    test_set_id: TST-007
+    description:
+    setup:
+      - setup_step: Create a directory for the tests.
+        detail: |
+          ```shell
+          mkdir -p integration_tests/.test_results
+          ```
+      - setup_step: Prepare 'integration_tests/.test_results/secrets.json' with the configuration.
+        detail: |
+          ```json
+          {
+            "gw_mac": "XX:XX:XX:XX:9C:2C",
+            "gw_id": "XX:XX:XX:XX:XX:XX:XX:XX",
+            "url": "http://ruuvigateway9c2c.local",
+            "http_server": "http://my-https-server.local:8000",
+            "https_server": "https://my-https-server.local:8001",
+          }
+          ```
+          - Set "gw_mac" to the MAC address of the gateway.
+          - Set "gw_id" to the Device ID of the gateway (it is used as default password to access the gateway).
+          - Set "url" to the hostname of the gateway, it has format "http://ruuvigatewayXXXX.local", replace 'XXXX' with last 4 digits of gw_mac.
+          - Set "http_server" to the mDNS hostname of your computes.
+          - Set "https_server" to the mDNS hostname of your computes.
+      - setup_step: Generate self-signed certificates
+        detail: |
+          ```shell
+          cd integration_tests/.test_results
+          openssl genrsa -out server_key.pem 2048
+          openssl req -new -key server_key.pem -out server_csr.pem -subj "/C=FI/ST=Uusimaa/L=Helsinki/O=Ruuvi/OU=/CN=my-https-server.local"
+          openssl x509 -req -in server_csr.pem -signkey server_key.pem -out server_cert.pem -days 365
+          openssl genrsa -out client_key.pem 2048
+          openssl req -new -key client_key.pem -out client_csr.pem -subj "/C=FI/ST=Uusimaa/L=Helsinki/O=Ruuvi/OU=/CN=ruuvigateway9c2c.local"
+          openssl x509 -req -in client_csr.pem -signkey client_key.pem -out client_cert.pem -days 365
+          ```
+    tests:
+      - test_id: AG001
+        title: Test sending data to HTTP server without authentication
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+        steps:
+          - action: Erase flash and write firmware.
+            detail: |
+              ```shell
+              python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+              ```
+            checks:
+              - "LED: 'G'"
+          - action: Create a directory for the test and start the logging process.
+            detail: |
+              ```shell
+              mkdir -p integration_tests/.test_results/TST-007-AG001
+              cd integration_tests/.test_results/TST-007-AG001
+              python3 ../../../scripts/ruuvi_gw_uart_log.py
+              ```
+          - action: Run HTTP server.
+            detail: |
+              ```shell
+              cd integration_tests/.test_results/TST-007-AG001
+              source ../../../ruuvi.gwui.html/scripts/.venv/bin/activate
+              python3 ../../../ruuvi.gwui.html/scripts/http_server_auth.py --port 8000
+              ```
+          - action: Configure gateway to send data to HTTP server.
+            detail: |
+              ```shell
+              cd ruuvi.gwui.html
+              node scripts/ruuvi_gw_ui_tester.js --config tests/test_http.yaml --secrets ../integration_tests/.test_results/secrets.json 
+              ```
+            checks:
+              - "The script ruuvi_gw_ui_tester.js must print message '**Finished successfully**' at the end."
+              - "LED: 'G'"
+      - test_id: AG002
+        title: Test sending data to HTTP server with authentication
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+        steps:
+          - action: (Optionally) Erase flash and write firmware.
+            detail: |
+              ```shell
+              python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+              ```
+            checks:
+              - "LED: 'G'"
+          - action: Create a directory for the test and start the logging process.
+            detail: |
+              ```shell
+              mkdir -p integration_tests/.test_results/TST-007-AG002
+              cd integration_tests/.test_results/TST-007-AG002
+              python3 ../../../scripts/ruuvi_gw_uart_log.py
+              ```
+          - action: Run HTTP server with authentication.
+            detail: |
+              ```shell
+              cd integration_tests/.test_results/TST-007-AG002
+              source ../../../ruuvi.gwui.html/scripts/.venv/bin/activate
+              python3 ../../../ruuvi.gwui.html/scripts/http_server_auth.py --port 8000 -u user1 -p pass1
+              ```
+          - action: Configure gateway to send data to HTTP server.
+            detail: |
+              ```shell
+              cd ruuvi.gwui.html
+              node scripts/ruuvi_gw_ui_tester.js --config tests/test_http_with_auth.yaml --secrets ../integration_tests/.test_results/secrets.json 
+              ```
+            checks:
+              - "The script ruuvi_gw_ui_tester.js must print message '**Finished successfully**' at the end."
+              - "LED: 'G'"
+      - test_id: AG003
+        title: Test sending data to local HTTPS server with the server certificate checking
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+        steps:
+          - action: (Optionally) Erase flash and write firmware.
+            detail: |
+              ```shell
+              python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+              ```
+            checks:
+              - "LED: 'G'"
+          - action: Create a directory for the test and start the logging process.
+            detail: |
+              ```shell
+              mkdir -p integration_tests/.test_results/TST-007-AG003
+              cd integration_tests/.test_results/TST-007-AG003
+              python3 ../../../scripts/ruuvi_gw_uart_log.py
+              ```
+          - action: Run HTTPS server with self-signed certificate.
+            detail: |
+              ```shell
+              cd integration_tests/.test_results/TST-007-AG003
+              source ../../../ruuvi.gwui.html/scripts/.venv/bin/activate
+              python3 ../../../ruuvi.gwui.html/scripts/http_server_auth.py --port 8001 \
+                --ssl_cert=../../../integration_tests/.test_results/server_cert.pem \
+                --ssl_key=../../../integration_tests/.test_results/server_key.pem
+              ```
+          - action: Configure gateway to send data to HTTPS server with self-signed server certificate.
+            detail: |
+              ```shell
+              cd ruuvi.gwui.html
+              node scripts/ruuvi_gw_ui_tester.js --config tests/test_https_with_server_cert_checking.yaml --secrets ../integration_tests/.test_results/secrets.json 
+              ```
+            checks:
+              - "The script ruuvi_gw_ui_tester.js must print message '**Finished successfully**' at the end."
+              - "LED: 'G'"
+      - test_id: AG004
+        title: Test sending data to local HTTPS server with the server and client certificates checking
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+        steps:
+          - action: (Optionally) Erase flash and write firmware.
+            detail: |
+              ```shell
+              python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+              ```
+            checks:
+              - "LED: 'G'"
+          - action: Create a directory for the test and start the logging process.
+            detail: |
+              ```shell
+              mkdir -p integration_tests/.test_results/TST-007-AG004
+              cd integration_tests/.test_results/TST-007-AG004
+              python3 ../../../scripts/ruuvi_gw_uart_log.py
+              ```
+          - action: Run HTTPS server with the server and client self-signed certificates.
+            detail: |
+              ```shell
+              cd integration_tests/.test_results/TST-007-AG004
+              source ../../../ruuvi.gwui.html/scripts/.venv/bin/activate
+              python3 ../../../ruuvi.gwui.html/scripts/http_server_auth.py --port 8001 \
+                --ssl_cert=../../../integration_tests/.test_results/server_cert.pem \
+                --ssl_key=../../../integration_tests/.test_results/server_key.pem \
+                --ca_cert=../../../integration_tests/.test_results/client_cert.pem
+              ```
+          - action: Configure gateway to send data to HTTPS server with the server and client certificates.
+            detail: |
+              ```shell
+              cd ruuvi.gwui.html
+              node scripts/ruuvi_gw_ui_tester.js --config tests/test_https_with_server_and_client_cert_checking.yaml --secrets ../integration_tests/.test_results/secrets.json 
+              ```
+            checks:
+              - "The script ruuvi_gw_ui_tester.js must print message '**Finished successfully**' at the end."
+              - "LED: 'G'"
+  - test_set:  MQTT server tests
+    test_set_id: TST-008
+    description:
+    setup:
+      - setup_step: Create a directory for the tests.
+        detail: |
+          ```shell
+          mkdir -p integration_tests/.test_results
+          ```
+      - setup_step: Prepare 'integration_tests/.test_results/secrets.json' with the configuration.
+        detail: |
+          ```json
+          {
+            "gw_mac": "XX:XX:XX:XX:9C:2C",
+            "gw_id": "XX:XX:XX:XX:XX:XX:XX:XX",
+            "url": "http://ruuvigateway9c2c.local",
+            "http_server": "http://my-https-server.local:8000",
+            "https_server": "https://my-https-server.local:8001",
+            "mqtt_client_cert": [
+              "-----BEGIN CERTIFICATE-----",
+              ... certificate content ...,
+              "-----END CERTIFICATE-----"
+            ],
+            "mqtt_client_key": [
+              "-----BEGIN RSA PRIVATE KEY-----",
+              ... key content ...,
+              "-----END RSA PRIVATE KEY-----"
+            ],
+            "mqtt_server_cert": [
+              "-----BEGIN CERTIFICATE-----",
+              ... certificate content ...,
+              "-----END CERTIFICATE-----"
+            ]
+          }
+          ```
+          - Set "gw_mac" to the MAC address of the gateway.
+          - Set "gw_id" to the Device ID of the gateway (it is used as default password to access the gateway).
+          - Set "url" to the hostname of the gateway, it has format "http://ruuvigatewayXXXX.local", replace 'XXXX' with last 4 digits of gw_mac.
+          - Set "http_server" to the mDNS hostname of your computes.
+          - Set "https_server" to the mDNS hostname of your computes.
+          - Set "mqtt_client_cert" to the content of the AWS MQTT client certificate.
+          - Set "mqtt_client_key" to the content of the AWS MQTT client key.
+          - Set "mqtt_server_cert" to the content of the AWS MQTT server certificate.
+    tests:
+      - test_id: AE001
+        title: Test sending data to MQTT server via TCP
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+        steps:
+          - action: Erase flash and write firmware.
+            detail: |
+              ```shell
+              python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+              ```
+            checks:
+              - "LED: 'G'"
+          - action: Create a directory for the test and start the logging process.
+            detail: |
+              ```shell
+              mkdir -p integration_tests/.test_results/TST-008-AE001
+              cd integration_tests/.test_results/TST-008-AE001
+              python3 ../../../scripts/ruuvi_gw_uart_log.py
+              ```
+          - action: Configure gateway to send data to MQTT server via TCP.
+            detail: |
+              ```shell
+              cd ruuvi.gwui.html
+              node scripts/ruuvi_gw_ui_tester.js --config tests/test_mqtt_tcp.yaml --secrets ../integration_tests/.test_results/secrets.json 
+              ```
+            checks:
+              - "The script ruuvi_gw_ui_tester.js must print message '**Finished successfully**' at the end."
+              - "LED: 'G'"
+      - test_id: AE002
+        title: Test sending data to MQTT server via SSL
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+        steps:
+          - action: (Optionally) Erase flash and write firmware.
+            detail: |
+              ```shell
+              python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+              ```
+            checks:
+              - "LED: 'G'"
+          - action: Create a directory for the test and start the logging process.
+            detail: |
+              ```shell
+              mkdir -p integration_tests/.test_results/TST-008-AE002
+              cd integration_tests/.test_results/TST-008-AE002
+              python3 ../../../scripts/ruuvi_gw_uart_log.py
+              ```
+          - action: Configure gateway to send data to MQTT server via SSL.
+            detail: |
+              ```shell
+              cd ruuvi.gwui.html
+              node scripts/ruuvi_gw_ui_tester.js --config tests/test_mqtt_ssl.yaml --secrets ../integration_tests/.test_results/secrets.json 
+              ```
+            checks:
+              - "The script ruuvi_gw_ui_tester.js must print message '**Finished successfully**' at the end."
+              - "LED: 'G'"
+      - test_id: AE003
+        title: Test sending data to MQTT server via WebSocket
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+        steps:
+          - action: (Optionally) Erase flash and write firmware.
+            detail: |
+              ```shell
+              python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+              ```
+            checks:
+              - "LED: 'G'"
+          - action: Create a directory for the test and start the logging process.
+            detail: |
+              ```shell
+              mkdir -p integration_tests/.test_results/TST-008-AE003
+              cd integration_tests/.test_results/TST-008-AE003
+              python3 ../../../scripts/ruuvi_gw_uart_log.py
+              ```
+          - action: Configure gateway to send data to MQTT server via WebSocket.
+            detail: |
+              ```shell
+              cd ruuvi.gwui.html
+              node scripts/ruuvi_gw_ui_tester.js --config tests/test_mqtt_ws.yaml --secrets ../integration_tests/.test_results/secrets.json 
+              ```
+            checks:
+              - "The script ruuvi_gw_ui_tester.js must print message '**Finished successfully**' at the end."
+              - "LED: 'G'"
+      - test_id: AE004
+        title: Test sending data to MQTT server via Secure WebSocket
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+        steps:
+          - action: (Optionally) Erase flash and write firmware.
+            detail: |
+              ```shell
+              python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+              ```
+            checks:
+              - "LED: 'G'"
+          - action: Create a directory for the test and start the logging process.
+            detail: |
+              ```shell
+              mkdir -p integration_tests/.test_results/TST-008-AE004
+              cd integration_tests/.test_results/TST-008-AE004
+              python3 ../../../scripts/ruuvi_gw_uart_log.py
+              ```
+          - action: Configure gateway to send data to MQTT server via Secure WebSocket.
+            detail: |
+              ```shell
+              cd ruuvi.gwui.html
+              node scripts/ruuvi_gw_ui_tester.js --config tests/test_mqtt_wss.yaml --secrets ../integration_tests/.test_results/secrets.json 
+              ```
+            checks:
+              - "The script ruuvi_gw_ui_tester.js must print message '**Finished successfully**' at the end."
+              - "LED: 'G'"
+      - test_id: AE005
+        title: Test sending data to AWS MQTT server
+        setup:
+          - setup_step: Connect Ethernet cable to the gateway.
+        steps:
+          - action: (Optionally) Erase flash and write firmware.
+            detail: |
+              ```shell
+              python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+              ```
+            checks:
+              - "LED: 'G'"
+          - action: Create a directory for the test and start the logging process.
+            detail: |
+              ```shell
+              mkdir -p integration_tests/.test_results/TST-008-AE005
+              cd integration_tests/.test_results/TST-008-AE005
+              python3 ../../../scripts/ruuvi_gw_uart_log.py
+              ```
+          - action: Configure gateway to send data to AWS MQTT server.
+            detail: |
+              ```shell
+              cd ruuvi.gwui.html
+              node scripts/ruuvi_gw_ui_tester.js --config tests/test_mqtt_aws.yaml --secrets ../integration_tests/.test_results/secrets.json 
+              ```
+            checks:
+              - "The script ruuvi_gw_ui_tester.js must print message '**Finished successfully**' at the end."
+              - "LED: 'G'"
