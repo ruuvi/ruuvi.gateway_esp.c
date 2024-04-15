@@ -9,7 +9,7 @@
 - **Action**: Erase flash and write firmware.
 
     ```shell
-    python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+    python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash
     ```
 
     **Checks**:
@@ -25,7 +25,7 @@
 - **Action**: Erase flash and write firmware.
 
     ```shell
-    python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+    python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash
     ```
 
     **Checks**:
@@ -41,7 +41,7 @@
 - Connect Ethernet cable to the gateway.
 - Erase flash and write firmware v1.9.2.
     ```shell
-    python3 ruuvi_gw_flash.py v1.9.2 --erase_flash
+    python3 scripts/ruuvi_gw_flash.py v1.9.2 --erase_flash
     ```
 
 
@@ -55,7 +55,7 @@
 - **Action**: Write firmware v1.15.0.
 
     ```shell
-    python3 ruuvi_gw_flash.py v1.15.0
+    python3 scripts/ruuvi_gw_flash.py v1.15.0
     ```
 
     **Checks**:
@@ -1306,7 +1306,7 @@
 - **Action**: Erase flash and write firmware.
 
     ```shell
-    python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+    python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash
     ```
 
     **Checks**:
@@ -1357,7 +1357,7 @@
 - **Action**: Erase flash and write firmware.
 
     ```shell
-    python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+    python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash
     ```
 
     **Checks**:
@@ -1408,7 +1408,7 @@
 - **Action**: Erase flash and write firmware.
 
     ```shell
-    python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+    python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash
     ```
 
     **Checks**:
@@ -1465,7 +1465,7 @@
 - **Action**: Erase flash and write firmware.
 
     ```shell
-    python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+    python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash
     ```
 
     **Checks**:
@@ -1522,7 +1522,7 @@
 - **Action**: Erase flash and write firmware.
 
     ```shell
-    python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+    python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash
     ```
 
     **Checks**:
@@ -1604,7 +1604,7 @@
 - **Action**: Erase flash and write firmware.
 
     ```shell
-    python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+    python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash
     ```
 
     **Checks**:
@@ -1672,7 +1672,7 @@
 - **Action**: Erase flash and write firmware.
 
     ```shell
-    python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+    python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash
     ```
 
     **Checks**:
@@ -1758,7 +1758,7 @@
 - **Action**: Erase flash and write firmware.
 
     ```shell
-    python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+    python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash
     ```
 
     **Checks**:
@@ -1874,7 +1874,7 @@
 - **Action**: Erase flash and write firmware.
 
     ```shell
-    python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+    python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash
     ```
 
     **Checks**:
@@ -1918,7 +1918,7 @@
 - **Action**: (Optionally) Erase flash and write firmware.
 
     ```shell
-    python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+    python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash
     ```
 
     **Checks**:
@@ -1962,7 +1962,7 @@
 - **Action**: (Optionally) Erase flash and write firmware.
 
     ```shell
-    python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+    python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash
     ```
 
     **Checks**:
@@ -2008,7 +2008,7 @@
 - **Action**: (Optionally) Erase flash and write firmware.
 
     ```shell
-    python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+    python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash
     ```
 
     **Checks**:
@@ -2098,7 +2098,7 @@
 - **Action**: Erase flash and write firmware.
 
     ```shell
-    python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+    python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash
     ```
 
     **Checks**:
@@ -2134,7 +2134,7 @@
 - **Action**: (Optionally) Erase flash and write firmware.
 
     ```shell
-    python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+    python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash
     ```
 
     **Checks**:
@@ -2170,7 +2170,7 @@
 - **Action**: (Optionally) Erase flash and write firmware.
 
     ```shell
-    python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+    python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash
     ```
 
     **Checks**:
@@ -2206,7 +2206,7 @@
 - **Action**: (Optionally) Erase flash and write firmware.
 
     ```shell
-    python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+    python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash
     ```
 
     **Checks**:
@@ -2242,7 +2242,7 @@
 - **Action**: (Optionally) Erase flash and write firmware.
 
     ```shell
-    python3 ruuvi_gw_flash.py v1.15.0 --erase_flash
+    python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash
     ```
 
     **Checks**:
