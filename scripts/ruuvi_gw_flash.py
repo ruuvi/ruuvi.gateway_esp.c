@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
 
+# -----------------------------------------------------------------------------------
+# File: ruuvi_gw_flash.py
+# Copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
+# Author: TheSomeMan
+#
+# Description: This script is used to handle firmware operations for the Ruuvi Gateway.
+# -----------------------------------------------------------------------------------
+
 import glob
 import argparse
 import subprocess
@@ -222,7 +230,7 @@ def parse_arguments():
 
 def autodetect_serial_port():
     # Find ports
-    ports = glob.glob('/dev/ttyUSB*') + glob.glob('/dev/cu.wchusbserial*')
+    ports = glob.glob('/dev/ttyUSB*') + glob.glob('/dev/cu.wchusbserial*') + glob.glob('/dev/tty.usbserial-*')
 
     # If no port available
     if not ports:
