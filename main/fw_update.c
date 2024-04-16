@@ -22,6 +22,7 @@
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
+#include "network_timeout.h"
 
 #define FW_UPDATE_TASK_STACK_SIZE ((7 * 1024) - 512)
 #define FW_UPDATE_TASK_PRIORITY   (1)
@@ -981,6 +982,8 @@ bool
 fw_update_run(const fw_updating_reason_e fw_updating_reason)
 {
     g_fw_updating_reason = fw_updating_reason;
+    LOG_INFO("Update network watchdog timestamp");
+    network_timeout_update_timestamp();
     if (!os_task_create_finite_without_param(
             &fw_update_task,
             "fw_update_task",
