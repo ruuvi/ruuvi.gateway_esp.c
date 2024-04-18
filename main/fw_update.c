@@ -22,6 +22,7 @@
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
+#include "network_timeout.h"
 
 #define FW_UPDATE_TASK_STACK_SIZE ((7 * 1024) - 512)
 #define FW_UPDATE_TASK_PRIORITY   (1)
@@ -35,6 +36,9 @@
 #define FW_UPDATE_PERCENTAGE_100 (100U)
 
 #define FW_UPDATE_DELAY_BEFORE_REBOOT_SECONDS (5U)
+
+#define FW_UPDATE_MAX_OTA_PARTITION_SIZE  (4U * 1024U * 1024U)
+#define FW_UPDATE_MAX_DATA_PARTITION_SIZE (0xC0000U)
 
 typedef struct fw_update_config_t
 {
@@ -329,7 +333,9 @@ fw_update_data_partition_cb_on_recv_data(
         (printf_ulong_t)buf_size);
 
     const fw_update_percentage_t percentage = FW_UPDATE_PERCENTAGE_50
-                                              + (((offset + buf_size) * FW_UPDATE_PERCENTAGE_50) / content_length);
+                                              + (((offset + buf_size) * FW_UPDATE_PERCENTAGE_50)
+                                                 / ((0 != content_length) ? content_length
+                                                                          : FW_UPDATE_MAX_DATA_PARTITION_SIZE));
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, percentage);
 
     const esp_err_t err = esp_partition_write(p_info->p_partition, p_info->offset, p_buf, buf_size);
@@ -460,7 +466,9 @@ fw_update_ota_partition_cb_on_recv_data(
         (printf_ulong_t)buf_size);
 
     const fw_update_percentage_t percentage = FW_UPDATE_PERCENTAGE_50
-                                              + (((offset + buf_size) * FW_UPDATE_PERCENTAGE_50) / content_length);
+                                              + (((offset + buf_size) * FW_UPDATE_PERCENTAGE_50)
+                                                 / ((0 != content_length) ? content_length
+                                                                          : FW_UPDATE_MAX_OTA_PARTITION_SIZE));
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, percentage);
 
     const esp_err_t err = esp_ota_write_patched(p_info->out_handle, p_buf, buf_size);
@@ -974,6 +982,8 @@ bool
 fw_update_run(const fw_updating_reason_e fw_updating_reason)
 {
     g_fw_updating_reason = fw_updating_reason;
+    LOG_INFO("Update network watchdog timestamp");
+    network_timeout_update_timestamp();
     if (!os_task_create_finite_without_param(
             &fw_update_task,
             "fw_update_task",

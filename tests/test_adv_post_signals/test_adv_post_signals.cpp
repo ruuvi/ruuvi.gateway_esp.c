@@ -2257,7 +2257,7 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_activate_cfg_mode) // NOLINT
         ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_CFG_MODE_ACTIVATED, &adv_post_state));
         ASSERT_FALSE(adv_post_state.flag_stop);
         ASSERT_EQ(4, this->m_events_history.size());
-        ASSERT_EQ(EVENT_HISTORY_NETWORK_WATCHDOG_TIMER_STOP, this->m_events_history[0].event_type);
+        ASSERT_EQ(EVENT_HISTORY_NETWORK_TIMEOUT_UPDATE_TIMESTAMP, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[3].event_type);
@@ -2306,7 +2306,7 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_activate_cfg_mode) // NOLINT
         ASSERT_FALSE(adv_post_handle_sig(ADV_POST_SIG_CFG_MODE_ACTIVATED, &adv_post_state));
         ASSERT_FALSE(adv_post_state.flag_stop);
         ASSERT_EQ(4, this->m_events_history.size());
-        ASSERT_EQ(EVENT_HISTORY_NETWORK_WATCHDOG_TIMER_STOP, this->m_events_history[0].event_type);
+        ASSERT_EQ(EVENT_HISTORY_NETWORK_TIMEOUT_UPDATE_TIMESTAMP, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[1].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_UNLOCK, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_TABLE_CLEAR, this->m_events_history[3].event_type);
@@ -2348,7 +2348,7 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_deactivate_cfg_mode) // NOLI
         ASSERT_TRUE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
         ASSERT_EQ(10, this->m_events_history.size());
-        ASSERT_EQ(EVENT_HISTORY_NETWORK_WATCHDOG_TIMER_START, this->m_events_history[0].event_type);
+        ASSERT_EQ(EVENT_HISTORY_NETWORK_TIMEOUT_UPDATE_TIMESTAMP, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[1].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[3].event_type);
@@ -2376,7 +2376,7 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_deactivate_cfg_mode) // NOLI
         ASSERT_TRUE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
         ASSERT_EQ(10, this->m_events_history.size());
-        ASSERT_EQ(EVENT_HISTORY_NETWORK_WATCHDOG_TIMER_START, this->m_events_history[0].event_type);
+        ASSERT_EQ(EVENT_HISTORY_NETWORK_TIMEOUT_UPDATE_TIMESTAMP, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[1].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[3].event_type);
@@ -2408,7 +2408,7 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_deactivate_cfg_mode) // NOLI
         ASSERT_TRUE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
         ASSERT_EQ(10, this->m_events_history.size());
-        ASSERT_EQ(EVENT_HISTORY_NETWORK_WATCHDOG_TIMER_START, this->m_events_history[0].event_type);
+        ASSERT_EQ(EVENT_HISTORY_NETWORK_TIMEOUT_UPDATE_TIMESTAMP, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[1].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[3].event_type);
@@ -2440,7 +2440,7 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_deactivate_cfg_mode) // NOLI
         ASSERT_TRUE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
         ASSERT_EQ(10, this->m_events_history.size());
-        ASSERT_EQ(EVENT_HISTORY_NETWORK_WATCHDOG_TIMER_START, this->m_events_history[0].event_type);
+        ASSERT_EQ(EVENT_HISTORY_NETWORK_TIMEOUT_UPDATE_TIMESTAMP, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[1].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[3].event_type);
@@ -2477,7 +2477,7 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_deactivate_cfg_mode) // NOLI
         ASSERT_TRUE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
         ASSERT_EQ(10, this->m_events_history.size());
-        ASSERT_EQ(EVENT_HISTORY_NETWORK_WATCHDOG_TIMER_START, this->m_events_history[0].event_type);
+        ASSERT_EQ(EVENT_HISTORY_NETWORK_TIMEOUT_UPDATE_TIMESTAMP, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[1].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[3].event_type);
@@ -2513,7 +2513,7 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_deactivate_cfg_mode) // NOLI
         ASSERT_TRUE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
         ASSERT_EQ(10, this->m_events_history.size());
-        ASSERT_EQ(EVENT_HISTORY_NETWORK_WATCHDOG_TIMER_START, this->m_events_history[0].event_type);
+        ASSERT_EQ(EVENT_HISTORY_NETWORK_TIMEOUT_UPDATE_TIMESTAMP, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[1].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV1_POST_TIMER_RESTART_WITH_DEFAULT_PERIOD, this->m_events_history[3].event_type);
@@ -2548,7 +2548,7 @@ TEST_F(TestAdvPostSignals, test_adv_post_handle_sig_deactivate_cfg_mode) // NOLI
         ASSERT_TRUE(adv_post_state.flag_need_to_send_advs1);
         ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
         ASSERT_EQ(4, this->m_events_history.size());
-        ASSERT_EQ(EVENT_HISTORY_NETWORK_WATCHDOG_TIMER_START, this->m_events_history[0].event_type);
+        ASSERT_EQ(EVENT_HISTORY_NETWORK_TIMEOUT_UPDATE_TIMESTAMP, this->m_events_history[0].event_type);
         ASSERT_EQ(EVENT_HISTORY_RUUVI_SEND_NRF_SETTINGS_FROM_GW_CFG, this->m_events_history[1].event_type);
         ASSERT_EQ(EVENT_HISTORY_ADV_POST_CFG_CACHE_MUTEX_LOCK, this->m_events_history[2].event_type);
         ASSERT_EQ(EVENT_HISTORY_GATEWAY_RESTART, this->m_events_history[3].event_type);

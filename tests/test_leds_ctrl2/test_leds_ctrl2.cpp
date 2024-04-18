@@ -93,6 +93,31 @@ TEST_F(TestLedsCtrl2, test_one_target_http_ruuvi) // NOLINT
     ASSERT_EQ("G", string(leds_ctrl2_get_new_blinking_sequence().p_sequence));
 }
 
+TEST_F(TestLedsCtrl2, test_one_target_http_ruuvi__immediate_led_g_after_network_connected) // NOLINT
+{
+    leds_ctrl2_configure((leds_ctrl_params_t) {
+        .flag_use_mqtt        = false,
+        .http_targets_bitmask = (1U << 0U) | (0U << 1U),
+    });
+
+    ASSERT_EQ("G", string(leds_ctrl2_get_new_blinking_sequence().p_sequence));
+
+    leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_HTTP1_DATA_SENT_FAIL);
+    ASSERT_EQ("RRRRR-----", string(leds_ctrl2_get_new_blinking_sequence().p_sequence));
+
+    leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_WIFI_AP_STARTED);
+    ASSERT_EQ("RRRRRRRRRRGGGGGGGGGG", string(leds_ctrl2_get_new_blinking_sequence().p_sequence));
+
+    leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_NETWORK_DISCONNECTED);
+    ASSERT_EQ("RRRRRRRRRRGGGGGGGGGG", string(leds_ctrl2_get_new_blinking_sequence().p_sequence));
+
+    leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_WIFI_AP_STOPPED);
+    ASSERT_EQ("R-R-R-R-R-", string(leds_ctrl2_get_new_blinking_sequence().p_sequence));
+
+    leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_NETWORK_CONNECTED);
+    ASSERT_EQ("G", string(leds_ctrl2_get_new_blinking_sequence().p_sequence));
+}
+
 TEST_F(TestLedsCtrl2, test_one_target_http_custom) // NOLINT
 {
     leds_ctrl2_configure((leds_ctrl_params_t) {
