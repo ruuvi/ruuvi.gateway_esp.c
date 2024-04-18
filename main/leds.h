@@ -70,6 +70,9 @@ leds_notify_http_poll_timeout(void);
 bool
 leds_get_green_led_state(void);
 
+void
+leds_simulate_ev_network_disconnected(void);
+
 #if RUUVI_TESTS_LEDS
 
 LEDS_STATIC

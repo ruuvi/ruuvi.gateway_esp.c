@@ -95,6 +95,12 @@ leds_ctrl2_event_to_str(const leds_ctrl2_event_e event)
         case LEDS_CTRL2_EVENT_WIFI_AP_STOPPED:
             p_desc = "EVENT_WIFI_AP_STOPPED";
             break;
+        case LEDS_CTRL2_EVENT_WPS_ACTIVATED:
+            p_desc = "EVENT_WPS_ACTIVATED";
+            break;
+        case LEDS_CTRL2_EVENT_WPS_DEACTIVATED:
+            p_desc = "EVENT_WPS_DEACTIVATED";
+            break;
         case LEDS_CTRL2_EVENT_NETWORK_CONNECTED:
             p_desc = "EVENT_NETWORK_CONNECTED";
             break;
@@ -156,6 +162,11 @@ leds_ctrl2_on_event(leds_ctrl2_state_t* const p_state, const leds_ctrl2_event_e 
             break;
         case LEDS_CTRL2_EVENT_NETWORK_CONNECTED:
             p_state->flag_network_connected = true;
+            // Set the HTTP connection status to true in order to immediately switch the LED to 'G',
+            // as the next attempt to send data over HTTP will be made within a minute,
+            // and we don't want to wait so long until LED state will be updated.
+            p_state->flag_http_conn_status[0] = true;
+            p_state->flag_http_conn_status[1] = true;
             break;
         case LEDS_CTRL2_EVENT_NETWORK_DISCONNECTED:
             p_state->flag_network_connected = false;

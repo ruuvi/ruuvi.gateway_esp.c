@@ -976,3 +976,9 @@ leds_notify_http_poll_timeout(void)
         LOG_ERR("%s failed", "os_signal_send");
     }
 }
+
+void
+leds_simulate_ev_network_disconnected(void)
+{
+    os_signal_send(g_p_leds_signal, leds_task_conv_to_sig_num(LEDS_TASK_SIG_ON_EV_NETWORK_DISCONNECTED));
+}
