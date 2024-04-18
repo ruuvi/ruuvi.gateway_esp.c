@@ -366,6 +366,15 @@ main_task_handle_sig_deactivate_cfg_mode(void)
         gw_status_clear_waiting_auto_cfg_by_wps();
     }
 
+    if (!gw_status_is_network_connected())
+    {
+        leds_simulate_ev_network_disconnected();
+    }
+    // Simulate on_get_history to restart g_p_timer_sig_get_history_timeout and call leds_notify_http_poll_ok.
+    // This will switch LED to 'G' immediately, and we don't need to wait for the next HTTP poll.
+    LOG_INFO("DEACTIVATE_CFG_MODE: Simulate on_get_history");
+    main_task_on_get_history();
+
     if (gw_cfg_is_empty() || gw_cfg_get_eth_use_eth() || (!wifi_manager_is_sta_configured()))
     {
         if (gw_cfg_is_empty())
