@@ -441,5 +441,5 @@ def check_environment():
 
 
 if __name__ == '__main__':
-    check_environment()
+    # check_environment()
     main()
