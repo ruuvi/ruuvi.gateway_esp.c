@@ -94,6 +94,8 @@ def download_binary_by_artifact_id(github_run_id, fw_ver_dir):
         error(
             "GitHub CLI is not installed. Please install it from https://cli.github.com/")
         sys.exit(1)
+    logger.info(f'Creating directory: {fw_ver_dir}')
+    os.mkdir(fw_ver_dir)
     logger.info(f"Downloading the artifact {github_run_id} with GitHub CLI to {fw_ver_dir}...")
     cmd_with_args = ['gh', 'run', 'download', github_run_id, '--name=ruuvi_gateway_fw', '--dir', fw_ver_dir]
     logger.info(' '.join(cmd_with_args))
@@ -136,8 +138,6 @@ def download_binaries_if_needed(fw_ver):
     if github_run_id:
         fw_ver_dir = os.path.realpath(f'{RELEASES_DIR}/{github_run_id}')
         if not os.path.isdir(fw_ver_dir):
-            logger.info(f'Creating directory: {fw_ver_dir}')
-            os.mkdir(fw_ver_dir)
             try:
                 download_binary_by_artifact_id(github_run_id, fw_ver_dir)
             except Exception as e:
