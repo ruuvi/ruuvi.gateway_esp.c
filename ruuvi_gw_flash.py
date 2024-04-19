@@ -8,7 +8,6 @@
 # Description: This script is used to handle firmware operations for the Ruuvi Gateway.
 # -----------------------------------------------------------------------------------
 
-import glob
 import argparse
 import subprocess
 import sys
@@ -17,6 +16,8 @@ import requests
 import shutil
 import zipfile
 import re
+from datetime import datetime
+import logging
 
 description = """
 This script is used to handle firmware operations for the Ruuvi Gateway.
@@ -29,22 +30,28 @@ if none or multiple ports are available, it will prompt the user to specify.
 
 Possible operations:
 1) [download (if needed) and flash specific version]: python3 ruuvi_gw_flash.py [--port /dev/ttyUSB0] v1.15.0
-2) [download and flash GitHub artifact]: python3 ruuvi_gw_flash.py https://github.com/ruuvi/ruuvi.gateway_esp.c/actions/runs/8187982688/artifacts/1305715066
+2.1) [download and flash GitHub artifact]: python3 ruuvi_gw_flash.py https://github.com/ruuvi/ruuvi.gateway_esp.c/actions/runs/8187982688
+2.2) [download and flash GitHub artifact]: python3 ruuvi_gw_flash.py 8187982688
 3) [only erase flash]: python3 ruuvi_gw_flash.py [--port /dev/ttyUSB0] --erase_flash -
 4) [download, erase and flash specific version]: python3 ruuvi_gw_flash.py [--port /dev/ttyUSB0] --erase_flash v1.15.0
 5) [Build and flash]: python3 ruuvi_gw_flash.py build
 6) [Compile and flash only ruuvi_gateway_esp.bin and ota_data_initial.bin]: python3 ruuvi_gw_flash.py --compile_and_flash build
+7) [Reset]: python3 ruuvi_gw_flash.py [--port /dev/ttyUSB0] --reset -
+7) [Reset and save UART logs]: python3 ruuvi_gw_flash.py [--port /dev/ttyUSB0] - --reset --log_uart
 """
 parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawDescriptionHelpFormatter)
 
 RELEASES_DIR = '.releases'
 
+logger = logging.getLogger(__name__)
+
 
 # Function to print error messages in red
 def error(message):
-    color_red = '\033[0;31m'
-    color_no = '\033[0m'  # No Color
-    print(f"{color_red}Error: {message}{color_no}")
+    # color_red = '\033[0;31m'
+    # color_no = '\033[0m'  # No Color
+    # print(f"{color_red}Error: {message}{color_no}")
+    logger.error(message)
 
 
 def print_usage():
@@ -64,7 +71,7 @@ def check_if_release_exist_on_github(version):
 
 
 def parse_url(url):
-    pattern = r"^https://github\.com/ruuvi/ruuvi\.gateway_esp\.c/actions/runs/\d+/artifacts/(\d+)$"
+    pattern = r"^https://github\.com/ruuvi/ruuvi\.gateway_esp\.c/actions/runs/(\d+)$"
     match = re.match(pattern, url)
     if match is not None:
         return match.group(1)
@@ -79,36 +86,23 @@ def copy_file_to_parent_dir(folder, filename):
     destination_path = str(os.path.join(parent_folder, filename))
 
     shutil.copy(file_path, destination_path)
-    print(f"Copied {filename} to parent directory.")
+    logger.info(f"Copied {filename} to parent directory.")
 
 
-def download_binary_from_url(url, fw_ver_dir):
-    token = os.getenv('GITHUB_TOKEN')
-    headers = {
-        "Accept": "application/vnd.github+json",
-        "Authorization": f"Bearer {token}",
-        "X-GitHub-Api-Version": "2022-11-28"
-    }
-
-    response = requests.get(url, headers=headers, stream=True)
-
-    filename = 'ruuvi_gateway_fw.zip'
-    if response.status_code == 200:
-        print(f'\nDownloading: {url}...', end="", flush=True)
-        with open(f"{fw_ver_dir}/{filename}", 'wb') as fd:
-            for chunk in response.iter_content(chunk_size=10240):
-                fd.write(chunk)
-        print('\nExtracting files...', end='', flush=True)
-        with zipfile.ZipFile(f"{fw_ver_dir}/{filename}", 'r') as zip_ref:
-            zip_ref.extractall(fw_ver_dir)
-            print('')
-            copy_file_to_parent_dir(f'{fw_ver_dir}/binaries_v1.9.2', 'bootloader.bin')
-            shutil.rmtree(f'{fw_ver_dir}/binaries_v1.9.2')
-            copy_file_to_parent_dir(f'{fw_ver_dir}/partition_table', 'partition-table.bin')
-            shutil.rmtree(f'{fw_ver_dir}/partition_table')
-    else:
-        raise Exception(f'Could not download the binary {filename}, '
-                        f'HTTP error {response.status_code}: {response.text}.')
+def download_binary_by_artifact_id(github_run_id, fw_ver_dir):
+    if not executable_exists(['gh']):
+        error(
+            "GitHub CLI is not installed. Please install it from https://cli.github.com/")
+        sys.exit(1)
+    try:
+        subprocess.check_call(['gh', 'run', 'download', github_run_id, '--name=ruuvi_gateway_fw', '--dir', fw_ver_dir])
+    except subprocess.CalledProcessError as e:
+        error(f"Failed to download the artifact {github_run_id} with GitHub CLI: {e}")
+        sys.exit(1)
+    copy_file_to_parent_dir(f'{fw_ver_dir}/binaries_v1.9.2', 'bootloader.bin')
+    shutil.rmtree(f'{fw_ver_dir}/binaries_v1.9.2')
+    copy_file_to_parent_dir(f'{fw_ver_dir}/partition_table', 'partition-table.bin')
+    shutil.rmtree(f'{fw_ver_dir}/partition_table')
 
 
 def download_binary(version, fw_ver_dir, filename):
@@ -116,7 +110,7 @@ def download_binary(version, fw_ver_dir, filename):
     response = requests.get(url, stream=True)
 
     if response.status_code == 200:
-        print(f'\nDownloading: {fw_ver_dir}/{filename}...', end="", flush=True)  # Print file name
+        logger.info(f'Downloading: {fw_ver_dir}/{filename}...')
         with open(f"{fw_ver_dir}/{filename}", 'wb') as f:
             f.write(response.content)
     else:
@@ -127,37 +121,38 @@ def download_binaries_if_needed(fw_ver):
     if not os.path.isdir(RELEASES_DIR):
         os.mkdir(RELEASES_DIR)
 
+    github_run_id = None
     if fw_ver.startswith('https://'):
-        artifact_id = parse_url(fw_ver)
-        if artifact_id is None:
+        github_run_id = parse_url(fw_ver)
+        if github_run_id is None:
             error(f"Invalid URL: {fw_ver}")
             sys.exit(1)
-        url = f'https://api.github.com/repos/ruuvi/ruuvi.gateway_esp.c/actions/artifacts/{artifact_id}/zip'
-        fw_ver_dir = f'{RELEASES_DIR}/{artifact_id}'
+    elif re.fullmatch(r'^\d+$', fw_ver):
+        github_run_id = fw_ver
+    if github_run_id:
+        fw_ver_dir = f'{RELEASES_DIR}/{github_run_id}'
         if not os.path.isdir(fw_ver_dir):
             os.mkdir(fw_ver_dir)
             try:
-                download_binary_from_url(url, fw_ver_dir)
+                download_binary_by_artifact_id(github_run_id, fw_ver_dir)
             except Exception as e:
                 error(str(e))
                 shutil.rmtree(fw_ver_dir)
                 sys.exit(1)
             pass
-        return artifact_id
+        return github_run_id
 
     fw_ver_dir = f'{RELEASES_DIR}/{fw_ver}'
     directory_exists = os.path.isdir(fw_ver_dir)
 
     if not directory_exists:
-        print(f'Checking if the release {fw_ver} exists on GitHub...', end="", flush=True)
+        logger.info(f'Checking if the release {fw_ver} exists on GitHub...')
         release_exists, releases = check_if_release_exist_on_github(fw_ver)
-        print('\n', end='', flush=True)
 
         if not directory_exists and not release_exists:
             error(f'No such firmware version "{fw_ver}" exists on disk or GitHub.')
-            print('Available releases: [', end='')
-            print(', '.join(release['tag_name'] for release in releases), end='')
-            print(']')
+            list_of_releases = ', '.join(release['tag_name'] for release in releases)
+            logger.info(f'Available releases: [${list_of_releases}]')
             sys.exit(1)
 
         os.makedirs(fw_ver_dir)
@@ -174,7 +169,6 @@ def download_binaries_if_needed(fw_ver):
         try:
             for file in firmware_files:
                 download_binary(fw_ver, fw_ver_dir, file)
-            print('\n', end="", flush=True)
         except Exception as e:
             error(str(e))
             shutil.rmtree(fw_ver_dir)
@@ -190,13 +184,17 @@ def parse_arguments():
 
     parser.add_argument('fw_ver',
                         type=str,
-                        help='Firmware version to write or URL of GitHub action artifact. '
+                        help='Firmware version to write, URL of GitHub action or GitHub action run_id. '
                              'Use "-" to skip flashing firmware binaries.')
 
     parser.add_argument('--erase_flash',
                         action='store_true',
                         help='Should the flash be erased before writing firmware. '
                              'Use together with "-" for fw_ver to erase flash only.')
+
+    parser.add_argument('--reset',
+                        action='store_true',
+                        help='Reset the gateway. Use together with "-" for fw_ver.')
 
     parser.add_argument('--compile_and_flash',
                         action='store_true',
@@ -207,10 +205,24 @@ def parse_arguments():
                         action='store_true',
                         help='Download the firmware binaries only, do not flash them.')
 
+    parser.add_argument('--log_uart',
+                        action='store_true',
+                        help='Log UART output to a file.')
+
+    parser.add_argument('--log_to_console',
+                        action='store_true',
+                        help='Log UART output to console.')
+
+    parser.add_argument('--log',
+                        action='store_true',
+                        help='Save log of the script execution to file.')
+
     arguments = parser.parse_args()
 
-    if arguments.fw_ver == "-" and not arguments.erase_flash:
-        error("Nothing to do: '-' is passed as 'fw_ver' but '--erase_flash' is not set")
+    if arguments.log_to_console:
+        arguments.log_uart = True
+    if arguments.fw_ver == "-" and not arguments.erase_flash and not arguments.reset and not arguments.log_uart:
+        error("Nothing to do: '-' is passed as 'fw_ver' but '--erase_flash' or '--reset' or '--log_uart' is not set")
         sys.exit(1)
     if (arguments.fw_ver == "-" or arguments.fw_ver == "build") and arguments.download_only:
         error("Argument '--download_only' requires 'fw_ver' to be set.")
@@ -221,6 +233,9 @@ def parse_arguments():
     if arguments.erase_flash and arguments.compile_and_flash:
         error("'--erase_flash' and '--compile_and_flash' cannot be used together.")
         sys.exit(1)
+    if arguments.erase_flash and arguments.log_uart:
+        error("'--erase_flash' and '--log_uart' cannot be used together.")
+        sys.exit(1)
     if arguments.compile_and_flash and arguments.fw_ver != "build":
         error("'--compile_and_flash' must be used with 'build' as fw_ver.")
         sys.exit(1)
@@ -229,11 +244,11 @@ def parse_arguments():
 
 
 def autodetect_serial_port():
-    # Find ports
-    ports = glob.glob('/dev/ttyUSB*') + glob.glob('/dev/cu.wchusbserial*') + glob.glob('/dev/tty.usbserial-*')
+    import serial.tools.list_ports
+    ports = list(reversed(sorted(p.device for p in serial.tools.list_ports.comports())))
 
     # If no port available
-    if not ports:
+    if len(ports) == 0:
         error("No port available. Please connect a device.")
         sys.exit(1)
 
@@ -246,12 +261,65 @@ def autodetect_serial_port():
     # Set the only available port
     else:
         serial_port = ports[0]
-    print(f"Automatically detected serial port: {serial_port}")
+    logger.info(f"Automatically detected serial port: {serial_port}")
     return serial_port
+
+
+def log_serial_data(serial_port_name, output_file_name, console_output=False):
+    import serial
+    ansi_escape = re.compile(r'\x1b\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]')
+    try:
+        with serial.Serial(serial_port_name, baudrate=115200, timeout=1) as ser:
+            with open(output_file_name, 'w') as f:
+                logger.info(f"Logging UART data to {output_file_name}.")
+                print(f"Press 'Ctrl+C' to stop.")
+                print(f"")
+                while True:
+                    line = ser.readline()
+                    if not line:
+                        continue
+                    line = line.decode('utf-8', errors='ignore').strip()
+                    if console_output:
+                        print(line)
+                    cleaned_line = ansi_escape.sub('', line)
+                    f.write(cleaned_line + '\n')
+    except serial.SerialException as ex:
+        logger.error(f"Serial port {serial_port_name} is not available or disconnected.")
+        logger.error(f"Exiting due to error: {ex}")
+    except KeyboardInterrupt:
+        logger.error("Exiting due to 'Ctrl+C'")
+
+
+def run_process_with_logging(cmd_with_args):
+    logger.info(' '.join(cmd_with_args))
+    try:
+        with subprocess.Popen(cmd_with_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1,
+                              universal_newlines=True) as proc:
+            for line in proc.stdout:
+                logger.info(line.strip())
+        if proc.returncode != 0:
+            logger.error(f"${cmd_with_args[0]} execution failed with code {proc.returncode}")
+            sys.exit(proc.returncode)
+    except subprocess.CalledProcessError as e:
+        error(f"${cmd_with_args[0]} execution failed: ${e}")
+        sys.exit(e.returncode)
 
 
 def main():
     arguments = parse_arguments()
+
+    logger.setLevel(logging.DEBUG)
+    c_handler = logging.StreamHandler()
+    c_handler.setLevel(logging.INFO)
+    c_format = logging.Formatter('[%(asctime)s.%(msecs)03d %(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    c_handler.setFormatter(c_format)
+    logger.addHandler(c_handler)
+    if arguments.log:
+        f_handler = logging.FileHandler(datetime.now().strftime(f"%Y-%m-%dT%H-%M-%S_ruuvi_gw_flash.log"))
+        f_handler.setLevel(logging.INFO)
+        f_format = logging.Formatter('[%(asctime)s.%(msecs)03d %(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+        f_handler.setFormatter(f_format)
+        logger.addHandler(f_handler)
 
     serial_port = arguments.port
     if not serial_port and not arguments.download_only:
@@ -266,36 +334,20 @@ def main():
     if arguments.erase_flash:
         esptool_cmd_with_args = esptool_base_cmd_with_args[:]
         esptool_cmd_with_args.append('erase_flash')
-        try:
-            print(' '.join(esptool_cmd_with_args))
-            subprocess.check_call(esptool_cmd_with_args)
-        except subprocess.CalledProcessError as e:
-            error("esptool.py execution failed.")
-            sys.exit(e.returncode)
+        run_process_with_logging(esptool_cmd_with_args)
 
     if arguments.compile_and_flash:
         if not os.path.isdir("build"):
             arguments.compile_and_flash = False
         else:
-            print('cd build')
+            logger.info('cd build')
             os.chdir("build")
-            try:
-                print(' '.join(['ninja', 'ruuvi_gateway_esp.elf']))
-                subprocess.check_call(['ninja', 'ruuvi_gateway_esp.elf'])
-                print(' '.join(['ninja', '.bin_timestamp']))
-                subprocess.check_call(['ninja', '.bin_timestamp'])
-            except subprocess.CalledProcessError as e:
-                error(f"'ninja' command execution failed with error code: {e.returncode}")
-                sys.exit(e.returncode)
-            print('cd ..')
+            run_process_with_logging(['ninja', 'ruuvi_gateway_esp.elf'])
+            run_process_with_logging(['ninja', '.bin_timestamp'])
+            logger.info('cd ..')
             os.chdir("..")
     if not arguments.compile_and_flash and arguments.fw_ver == "build":
-        try:
-            print(' '.join(['idf.py', 'build']))
-            subprocess.check_call(['idf.py', 'build'])
-        except subprocess.CalledProcessError as e:
-            error(f"'idf.py build' command execution failed with error code: {e.returncode}")
-            sys.exit(e.returncode)
+        run_process_with_logging(['idf.py', 'build'])
 
     if not arguments.download_only and arguments.fw_ver != "-":
         esptool_cmd_with_args = esptool_base_cmd_with_args[:]
@@ -322,13 +374,72 @@ def main():
                     '0x100000', f'{RELEASES_DIR}/{arguments.fw_ver}/ruuvi_gateway_esp.bin',
                     '0x500000', f'{RELEASES_DIR}/{arguments.fw_ver}/fatfs_gwui.bin',
                     '0x5C0000', f'{RELEASES_DIR}/{arguments.fw_ver}/fatfs_nrf52.bin']
-        try:
-            print(' '.join(esptool_cmd_with_args))
-            subprocess.check_call(esptool_cmd_with_args)
-        except subprocess.CalledProcessError as e:
-            error("esptool.py execution failed.")
-            sys.exit(e.returncode)
+        run_process_with_logging(esptool_cmd_with_args)
+
+    if arguments.reset:
+        esptool_cmd_with_args = esptool_base_cmd_with_args[:]
+        esptool_cmd_with_args.append('run')
+        run_process_with_logging(esptool_cmd_with_args)
+
+    if arguments.log_uart:
+        log_file_name = datetime.now().strftime("%Y-%m-%dT%H-%M-%S_ruuvi_gw_uart.log")
+        log_serial_data(serial_port, log_file_name, console_output=arguments.log_to_console)
+
+
+def executable_exists(args):
+    try:
+        subprocess.check_output(args)
+        return True
+
+    except Exception:
+        return False
+
+
+def realpath(path):
+    """
+    Return the cannonical path with normalized case.
+
+    It is useful on Windows to comparision paths in case-insensitive manner.
+    On Unix and Mac OS X it works as `os.path.realpath()` only.
+    """
+    return os.path.normcase(os.path.realpath(path))
+
+
+def check_environment():
+    if "IDF_PATH" not in os.environ:
+        error(f'IDF_PATH environment variable is not set. Please set it to the path of the ESP-IDF directory.')
+        sys.exit(1)
+
+    if sys.version_info[0] < 3:
+        print("WARNING: Support for Python 2 is deprecated and will be removed in future versions.")
+    elif sys.version_info[0] == 3 and sys.version_info[1] < 8:
+        print("WARNING: Python 3 versions older than 3.8 are not supported.")
+
+    requirements_path = realpath(os.path.join(os.path.dirname(__file__), "scripts/requirements.txt"))
+
+    from importlib.metadata import version as package_version, PackageNotFoundError
+
+    not_satisfied = []
+    with open(requirements_path) as f:
+        for line in f:
+            line = line.strip()
+            if line.startswith('file://'):
+                line = os.path.basename(line)
+            if line.startswith('-e') and '#egg=' in line:  # version control URLs, take the egg= part at the end only
+                line = re.search(r'#egg=(\S+)', line).group(1)
+            try:
+                package_version(line)
+            except PackageNotFoundError:
+                not_satisfied.append(line)
+
+    if len(not_satisfied) > 0:
+        print('The following Python requirements are not satisfied:')
+        for requirement in not_satisfied:
+            print(requirement)
+        print(f'Install them using the command: pip3 install -r {requirements_path}')
+        sys.exit(1)
 
 
 if __name__ == '__main__':
+    check_environment()
     main()
