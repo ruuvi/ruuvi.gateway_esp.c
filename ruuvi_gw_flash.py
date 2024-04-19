@@ -13,12 +13,11 @@ import argparse
 import subprocess
 import sys
 import os
-import requests
 import shutil
 import re
 from datetime import datetime
 import logging
-import shutil
+import platform
 
 description = """
 This script is used to handle firmware operations for the Ruuvi Gateway.
@@ -91,7 +90,7 @@ def copy_file_to_parent_dir(folder, filename):
 
 
 def download_binary_by_artifact_id(github_run_id, fw_ver_dir):
-    if not executable_exists('gh'):
+    if shutil.which('gh') is None:
         error(
             "GitHub CLI is not installed. Please install it from https://cli.github.com/")
         sys.exit(1)
@@ -253,13 +252,21 @@ def parse_arguments():
     return arguments
 
 
-def autodetect_serial_port():
+def available_serial_ports():
     import serial.tools.list_ports
-    ports = list(reversed(sorted(p.device for p in serial.tools.list_ports.comports())))
+    list1 = list(p.device for p in serial.tools.list_ports.comports())
+    list2 = []
+    if platform.system() == 'Linux':
+        list2.extend(glob.glob('/dev/ttyUSB*'))
+    elif platform.system() == 'Darwin':
+        list2.extend(glob.glob('/dev/cu.wchusbserial*'))
+        list2.extend(glob.glob('/dev/tty.usbserial-*'))
+    unique_list = list(set(list1 + list2))
+    return list(reversed(sorted(unique_list)))
 
-    if len(ports) == 0:
-        # Try a workaround for macOS
-        ports = glob.glob('/dev/ttyUSB*') + glob.glob('/dev/cu.wchusbserial*') + glob.glob('/dev/tty.usbserial-*')
+
+def autodetect_serial_port():
+    ports = available_serial_ports()
 
     # If no port available
     if len(ports) == 0:
@@ -336,13 +343,25 @@ def main():
         logger.addHandler(f_handler)
 
     serial_port = arguments.port
-    if not serial_port and not arguments.download_only:
-        serial_port = autodetect_serial_port()
+    if serial_port:
+        list_of_available_ports = available_serial_ports()
+        if serial_port not in list_of_available_ports:
+            error(f"Serial port '{serial_port}' is not in list of available ports: {list_of_available_ports}.")
+            sys.exit(1)
+    else:
+        if not arguments.download_only:
+            serial_port = autodetect_serial_port()
 
     if arguments.fw_ver != "-" and arguments.fw_ver != "build":
         arguments.fw_ver = download_binaries_if_needed(arguments.fw_ver)
 
-    esptool_base_cmd_with_args = ['esptool.py', '-p', serial_port, '-b', '460800', '--before', 'default_reset',
+    esptool = None
+    if shutil.which('esptool.py') is not None:
+        esptool = 'esptool.py'
+    elif shutil.which('esptool') is not None:
+        esptool = 'esptool'
+
+    esptool_base_cmd_with_args = [esptool, '-p', serial_port, '-b', '460800', '--before', 'default_reset',
                                   '--after', 'hard_reset', '--chip', 'esp32']
 
     if arguments.erase_flash:
@@ -400,10 +419,6 @@ def main():
         log_serial_data(serial_port, log_file_name, console_output=arguments.log_to_console)
 
 
-def executable_exists(cmd):
-    return shutil.which(cmd) is not None
-
-
 def realpath(path):
     """
     Return the cannonical path with normalized case.
@@ -415,10 +430,6 @@ def realpath(path):
 
 
 def check_environment():
-    # if "IDF_PATH" not in os.environ:
-    #     error(f'IDF_PATH environment variable is not set. Please set it to the path of the ESP-IDF directory.')
-    #     sys.exit(1)
-
     if sys.version_info[0] < 3:
         print("WARNING: Support for Python 2 is deprecated and will be removed in future versions.")
     elif sys.version_info[0] == 3 and sys.version_info[1] < 8:
@@ -432,6 +443,8 @@ def check_environment():
     with open(requirements_path) as f:
         for line in f:
             line = line.strip()
+            if line == '':
+                continue
             if line.startswith('file://'):
                 line = os.path.basename(line)
             if line.startswith('-e') and '#egg=' in line:  # version control URLs, take the egg= part at the end only
@@ -442,13 +455,13 @@ def check_environment():
                 not_satisfied.append(line)
 
     if len(not_satisfied) > 0:
-        print('The following Python requirements are not satisfied:')
-        for requirement in not_satisfied:
-            print(requirement)
-        print(f'Install them using the command: pip3 install -r {requirements_path}')
+        print(f'The following Python requirements are not satisfied: {not_satisfied}')
+        print(f'Install them using the command: pip install -r {requirements_path}')
         sys.exit(1)
 
 
 if __name__ == '__main__':
-    # check_environment()
+    check_environment()
+    import requests
+
     main()
