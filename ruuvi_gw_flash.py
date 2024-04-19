@@ -8,13 +8,13 @@
 # Description: This script is used to handle firmware operations for the Ruuvi Gateway.
 # -----------------------------------------------------------------------------------
 
+import glob
 import argparse
 import subprocess
 import sys
 import os
 import requests
 import shutil
-import zipfile
 import re
 from datetime import datetime
 import logging
@@ -246,6 +246,10 @@ def parse_arguments():
 def autodetect_serial_port():
     import serial.tools.list_ports
     ports = list(reversed(sorted(p.device for p in serial.tools.list_ports.comports())))
+
+    if len(ports) == 0:
+        # Try a workaround for macOS
+        ports = glob.glob('/dev/ttyUSB*') + glob.glob('/dev/cu.wchusbserial*') + glob.glob('/dev/tty.usbserial-*')
 
     # If no port available
     if len(ports) == 0:
