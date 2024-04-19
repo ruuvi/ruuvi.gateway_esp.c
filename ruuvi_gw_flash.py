@@ -18,6 +18,7 @@ import shutil
 import re
 from datetime import datetime
 import logging
+import shutil
 
 description = """
 This script is used to handle firmware operations for the Ruuvi Gateway.
@@ -90,7 +91,7 @@ def copy_file_to_parent_dir(folder, filename):
 
 
 def download_binary_by_artifact_id(github_run_id, fw_ver_dir):
-    if not executable_exists(['gh']):
+    if not executable_exists('gh'):
         error(
             "GitHub CLI is not installed. Please install it from https://cli.github.com/")
         sys.exit(1)
@@ -399,13 +400,8 @@ def main():
         log_serial_data(serial_port, log_file_name, console_output=arguments.log_to_console)
 
 
-def executable_exists(args):
-    try:
-        subprocess.check_output(args)
-        return True
-
-    except Exception:
-        return False
+def executable_exists(cmd):
+    return shutil.which(cmd) is not None
 
 
 def realpath(path):
