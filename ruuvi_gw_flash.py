@@ -406,9 +406,9 @@ def realpath(path):
 
 
 def check_environment():
-    if "IDF_PATH" not in os.environ:
-        error(f'IDF_PATH environment variable is not set. Please set it to the path of the ESP-IDF directory.')
-        sys.exit(1)
+    # if "IDF_PATH" not in os.environ:
+    #     error(f'IDF_PATH environment variable is not set. Please set it to the path of the ESP-IDF directory.')
+    #     sys.exit(1)
 
     if sys.version_info[0] < 3:
         print("WARNING: Support for Python 2 is deprecated and will be removed in future versions.")
