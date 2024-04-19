@@ -94,8 +94,11 @@ def download_binary_by_artifact_id(github_run_id, fw_ver_dir):
         error(
             "GitHub CLI is not installed. Please install it from https://cli.github.com/")
         sys.exit(1)
+    logger.info(f"Downloading the artifact {github_run_id} with GitHub CLI to {fw_ver_dir}...")
+    cmd_with_args = ['gh', 'run', 'download', github_run_id, '--name=ruuvi_gateway_fw', '--dir', fw_ver_dir]
+    logger.info(' '.join(cmd_with_args))
     try:
-        subprocess.check_call(['gh', 'run', 'download', github_run_id, '--name=ruuvi_gateway_fw', '--dir', fw_ver_dir])
+        subprocess.check_call(cmd_with_args)
     except subprocess.CalledProcessError as e:
         error(f"Failed to download the artifact {github_run_id} with GitHub CLI: {e}")
         sys.exit(1)
@@ -110,7 +113,7 @@ def download_binary(version, fw_ver_dir, filename):
     response = requests.get(url, stream=True)
 
     if response.status_code == 200:
-        logger.info(f'Downloading: {fw_ver_dir}/{filename}...')
+        logger.info(f'Downloading: {fw_ver_dir}/{filename}')
         with open(f"{fw_ver_dir}/{filename}", 'wb') as f:
             f.write(response.content)
     else:
@@ -119,6 +122,7 @@ def download_binary(version, fw_ver_dir, filename):
 
 def download_binaries_if_needed(fw_ver):
     if not os.path.isdir(RELEASES_DIR):
+        logger.info(f'Creating directory: {RELEASES_DIR} ({os.path.realpath(RELEASES_DIR)})')
         os.mkdir(RELEASES_DIR)
 
     github_run_id = None
@@ -130,8 +134,9 @@ def download_binaries_if_needed(fw_ver):
     elif re.fullmatch(r'^\d+$', fw_ver):
         github_run_id = fw_ver
     if github_run_id:
-        fw_ver_dir = f'{RELEASES_DIR}/{github_run_id}'
+        fw_ver_dir = os.path.realpath(f'{RELEASES_DIR}/{github_run_id}')
         if not os.path.isdir(fw_ver_dir):
+            logger.info(f'Creating directory: {fw_ver_dir}')
             os.mkdir(fw_ver_dir)
             try:
                 download_binary_by_artifact_id(github_run_id, fw_ver_dir)
@@ -139,10 +144,11 @@ def download_binaries_if_needed(fw_ver):
                 error(str(e))
                 shutil.rmtree(fw_ver_dir)
                 sys.exit(1)
-            pass
+        else:
+            logger.info(f'Directory already exists: {fw_ver_dir}')
         return github_run_id
 
-    fw_ver_dir = f'{RELEASES_DIR}/{fw_ver}'
+    fw_ver_dir = os.path.realpath(f'{RELEASES_DIR}/{fw_ver}')
     directory_exists = os.path.isdir(fw_ver_dir)
 
     if not directory_exists:
@@ -152,9 +158,10 @@ def download_binaries_if_needed(fw_ver):
         if not directory_exists and not release_exists:
             error(f'No such firmware version "{fw_ver}" exists on disk or GitHub.')
             list_of_releases = ', '.join(release['tag_name'] for release in releases)
-            logger.info(f'Available releases: [${list_of_releases}]')
+            logger.info(f'Available releases: [{list_of_releases}]')
             sys.exit(1)
 
+        logger.info(f'Creating directory: {fw_ver_dir}')
         os.makedirs(fw_ver_dir)
 
         firmware_files = [
@@ -173,6 +180,8 @@ def download_binaries_if_needed(fw_ver):
             error(str(e))
             shutil.rmtree(fw_ver_dir)
             sys.exit(1)
+    else:
+        logger.info(f'Directory already exists: {fw_ver_dir}')
     return fw_ver
 
 
@@ -302,10 +311,10 @@ def run_process_with_logging(cmd_with_args):
             for line in proc.stdout:
                 logger.info(line.strip())
         if proc.returncode != 0:
-            logger.error(f"${cmd_with_args[0]} execution failed with code {proc.returncode}")
+            logger.error(f"{cmd_with_args[0]} execution failed with code {proc.returncode}")
             sys.exit(proc.returncode)
     except subprocess.CalledProcessError as e:
-        error(f"${cmd_with_args[0]} execution failed: ${e}")
+        error(f"{cmd_with_args[0]} execution failed: {e}")
         sys.exit(e.returncode)
 
 
