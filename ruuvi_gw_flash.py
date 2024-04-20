@@ -48,14 +48,64 @@ logger = logging.getLogger(__name__)
 
 # Function to print error messages in red
 def error(message):
-    # color_red = '\033[0;31m'
-    # color_no = '\033[0m'  # No Color
-    # print(f"{color_red}Error: {message}{color_no}")
     logger.error(message)
+    color_red = '\033[0;31m'
+    color_no = '\033[0m'  # No Color
+    print(f"{color_red}Error: {message}{color_no}")
 
 
 def print_usage():
     parser.print_help()
+
+
+def ask_user_to_continue():
+    print("Do you want to continue Y(es)/N(no)? ", end="", flush=True)
+
+    def wait_for_keypress_windows():
+        import msvcrt
+        while True:
+            if msvcrt.kbhit():
+                key = msvcrt.getch()
+                if key in [b'y', b'Y', b'n', b'N']:
+                    return key.lower() == b'y'
+                else:
+                    print("\nInvalid input. Please enter Y for yes or N for no.")
+
+    def wait_for_keypress_unix():
+        import termios
+        import tty
+        while True:
+            fd = sys.stdin.fileno()
+            old_settings = termios.tcgetattr(fd)
+            try:
+                tty.setraw(sys.stdin.fileno())
+                ch = sys.stdin.read(1)
+            finally:
+                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+            if ch in ['y', 'Y', 'n', 'N']:
+                return ch.lower() == 'y'
+            else:
+                print("\nInvalid input. Please enter Y for yes or N for no.")
+
+    def wait_for_keypress_portable():
+        while True:
+            key = input()
+            if key in ['y', 'Y', 'n', 'N']:
+                return key.lower() == 'y'
+            else:
+                print("\nInvalid input. Please enter Y for yes or N for no.")
+
+    os_name = platform.system()
+    if os_name == 'Windows':
+        wait_for_keypress = wait_for_keypress_windows
+    elif os_name in ['Linux', 'Darwin']:  # 'Darwin' is for MacOS
+        wait_for_keypress = wait_for_keypress_unix
+    else:
+        wait_for_keypress = wait_for_keypress_portable
+
+    flag_continue = wait_for_keypress()
+    print("")
+    return flag_continue
 
 
 def check_if_release_exist_on_github(version):
@@ -91,7 +141,7 @@ def copy_file_to_parent_dir(folder, filename):
 
 def download_binary_by_artifact_id(github_run_id, fw_ver_dir):
     if shutil.which('gh') is None:
-        error(
+        logger.error(
             "GitHub CLI is not installed. Please install it from https://cli.github.com/")
         sys.exit(1)
     logger.info(f'Creating directory: {fw_ver_dir}')
@@ -102,7 +152,7 @@ def download_binary_by_artifact_id(github_run_id, fw_ver_dir):
     try:
         subprocess.check_call(cmd_with_args)
     except subprocess.CalledProcessError as e:
-        error(f"Failed to download the artifact {github_run_id} with GitHub CLI: {e}")
+        logger.error(f"Failed to download the artifact {github_run_id} with GitHub CLI: {e}")
         sys.exit(1)
     copy_file_to_parent_dir(f'{fw_ver_dir}/binaries_v1.9.2', 'bootloader.bin')
     shutil.rmtree(f'{fw_ver_dir}/binaries_v1.9.2')
@@ -141,7 +191,7 @@ def download_binaries_if_needed(fw_ver):
             try:
                 download_binary_by_artifact_id(github_run_id, fw_ver_dir)
             except Exception as e:
-                error(str(e))
+                logger.error(str(e))
                 shutil.rmtree(fw_ver_dir)
                 sys.exit(1)
         else:
@@ -177,7 +227,7 @@ def download_binaries_if_needed(fw_ver):
             for file in firmware_files:
                 download_binary(fw_ver, fw_ver_dir, file)
         except Exception as e:
-            error(str(e))
+            logger.error(str(e))
             shutil.rmtree(fw_ver_dir)
             sys.exit(1)
     else:
@@ -322,7 +372,7 @@ def run_process_with_logging(cmd_with_args):
             logger.error(f"{cmd_with_args[0]} execution failed with code {proc.returncode}")
             sys.exit(proc.returncode)
     except subprocess.CalledProcessError as e:
-        error(f"{cmd_with_args[0]} execution failed: {e}")
+        logger.error(f"{cmd_with_args[0]} execution failed: {e}")
         sys.exit(e.returncode)
 
 
@@ -347,7 +397,8 @@ def main():
         list_of_available_ports = available_serial_ports()
         if serial_port not in list_of_available_ports:
             error(f"Serial port '{serial_port}' is not in list of available ports: {list_of_available_ports}.")
-            sys.exit(1)
+            if not ask_user_to_continue():
+                sys.exit(1)
     else:
         if not arguments.download_only:
             serial_port = autodetect_serial_port()
@@ -355,11 +406,15 @@ def main():
     if arguments.fw_ver != "-" and arguments.fw_ver != "build":
         arguments.fw_ver = download_binaries_if_needed(arguments.fw_ver)
 
-    esptool = None
     if shutil.which('esptool.py') is not None:
         esptool = 'esptool.py'
     elif shutil.which('esptool') is not None:
         esptool = 'esptool'
+    else:
+        error("esptool.py is not installed.")
+        if not ask_user_to_continue():
+            sys.exit(1)
+        esptool = 'esptool.py'
 
     esptool_base_cmd_with_args = [esptool, '-p', serial_port, '-b', '460800', '--before', 'default_reset',
                                   '--after', 'hard_reset', '--chip', 'esp32']
@@ -380,6 +435,10 @@ def main():
             logger.info('cd ..')
             os.chdir("..")
     if not arguments.compile_and_flash and arguments.fw_ver == "build":
+        if shutil.which('idf.py') is None:
+            error("idf.py not found.")
+            if not ask_user_to_continue():
+                sys.exit(1)
         run_process_with_logging(['idf.py', 'build'])
 
     if not arguments.download_only and arguments.fw_ver != "-":
