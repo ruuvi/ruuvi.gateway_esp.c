@@ -19,6 +19,8 @@ from datetime import datetime
 import logging
 import platform
 
+requirements = ['requests', 'pyserial']
+
 description = """
 This script is used to handle firmware operations for the Ruuvi Gateway.
 It can download and write specific firmware version binaries from GitHub to the device.
@@ -49,7 +51,7 @@ logger = logging.getLogger(__name__)
 # Function to print error messages in red
 def error(message):
     logger.error(message)
-    color_red = '\033[0;31m'
+    color_red = '\033[0;31;1m'
     color_no = '\033[0m'  # No Color
     print(f"{color_red}Error: {message}{color_no}")
 
@@ -74,18 +76,21 @@ def ask_user_to_continue():
     def wait_for_keypress_unix():
         import termios
         import tty
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
         while True:
-            fd = sys.stdin.fileno()
-            old_settings = termios.tcgetattr(fd)
+            tty.setraw(fd)
             try:
-                tty.setraw(sys.stdin.fileno())
                 ch = sys.stdin.read(1)
             finally:
                 termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+            if ch == '\x03':  # Control+C
+                print("\nCTRL+C detected. Exiting...")
+                sys.exit(1)
             if ch in ['y', 'Y', 'n', 'N']:
                 return ch.lower() == 'y'
             else:
-                print("\nInvalid input. Please enter Y for yes or N for no.")
+                print(f"\nInvalid input. Please enter Y for yes or N for no.")
 
     def wait_for_keypress_portable():
         while True:
@@ -494,28 +499,42 @@ def check_environment():
     elif sys.version_info[0] == 3 and sys.version_info[1] < 8:
         print("WARNING: Python 3 versions older than 3.8 are not supported.")
 
-    requirements_path = realpath(os.path.join(os.path.dirname(__file__), "scripts/requirements.txt"))
-
     from importlib.metadata import version as package_version, PackageNotFoundError
 
+    list_of_requirements = requirements
+    list_of_requirements_from_file = []
+    requirements_path = realpath(os.path.join(os.path.dirname(__file__), "requirements.txt"))
+    if os.path.isfile(requirements_path):
+        with open(requirements_path) as f:
+            for line in f:
+                line = line.strip()
+                if line == '':
+                    continue
+                if line.startswith('file://'):
+                    line = os.path.basename(line)
+                if line.startswith('-e') and '#egg=' in line:
+                    # version control URLs, take the egg= part at the end only
+                    line = re.search(r'#egg=(\S+)', line).group(1)
+                list_of_requirements_from_file.append(line)
+        diff1 = [item for item in requirements if item not in list_of_requirements_from_file]
+        if len(diff1) > 0:
+            print(f"WARNING: The following Python requirements are missing in the {requirements_path}: {diff1}")
+            sys.exit(1)
+        list_of_requirements = list_of_requirements_from_file
+
     not_satisfied = []
-    with open(requirements_path) as f:
-        for line in f:
-            line = line.strip()
-            if line == '':
-                continue
-            if line.startswith('file://'):
-                line = os.path.basename(line)
-            if line.startswith('-e') and '#egg=' in line:  # version control URLs, take the egg= part at the end only
-                line = re.search(r'#egg=(\S+)', line).group(1)
-            try:
-                package_version(line)
-            except PackageNotFoundError:
-                not_satisfied.append(line)
+    for package in list_of_requirements:
+        try:
+            package_version(package)
+        except PackageNotFoundError:
+            not_satisfied.append(package)
 
     if len(not_satisfied) > 0:
         print(f'The following Python requirements are not satisfied: {not_satisfied}')
-        print(f'Install them using the command: pip install -r {requirements_path}')
+        if len(list_of_requirements_from_file) > 0:
+            print(f'Install them using the command: pip install -r {requirements_path}')
+        else:
+            print(f'Install them using the command: pip install {" ".join(not_satisfied)}')
         sys.exit(1)
 
 
