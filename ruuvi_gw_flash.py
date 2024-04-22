@@ -18,6 +18,8 @@ import re
 from datetime import datetime
 import logging
 import platform
+import json
+import zipfile
 
 requirements = ['requests', 'pyserial']
 
@@ -126,12 +128,17 @@ def check_if_release_exist_on_github(version):
 
 
 def parse_url(url):
+    pattern = r"^https://github\.com/ruuvi/ruuvi\.gateway_esp\.c/actions/runs/(\d+)/artifacts/\d+$"
+    match = re.match(pattern, url)
+    if match is not None:
+        return match.group(1)
+
     pattern = r"^https://github\.com/ruuvi/ruuvi\.gateway_esp\.c/actions/runs/(\d+)$"
     match = re.match(pattern, url)
     if match is not None:
         return match.group(1)
-    else:
-        return None
+
+    return None
 
 
 def copy_file_to_parent_dir(folder, filename):
@@ -144,21 +151,55 @@ def copy_file_to_parent_dir(folder, filename):
     logger.info(f"Copied {filename} to parent directory.")
 
 
-def download_binary_by_artifact_id(github_run_id, fw_ver_dir):
+def download_binary_by_github_run_id(github_run_id, fw_ver_dir):
     if shutil.which('gh') is None:
         logger.error(
             "GitHub CLI is not installed. Please install it from https://cli.github.com/")
         sys.exit(1)
-    logger.info(f'Creating directory: {fw_ver_dir}')
-    os.mkdir(fw_ver_dir)
-    logger.info(f"Downloading the artifact {github_run_id} with GitHub CLI to {fw_ver_dir}...")
-    cmd_with_args = ['gh', 'run', 'download', github_run_id, '--name=ruuvi_gateway_fw', '--dir', fw_ver_dir]
+    if not os.path.isdir(fw_ver_dir):
+        logger.info(f'Creating directory: {fw_ver_dir}')
+        os.mkdir(fw_ver_dir)
+
+    logger.info(f"Downloading the list of artifacts for the action {github_run_id}...")
+    cmd_with_args = ['gh', 'api', f'repos/ruuvi/ruuvi.gateway_esp.c/actions/runs/{github_run_id}/artifacts']
     logger.info(' '.join(cmd_with_args))
     try:
-        subprocess.check_call(cmd_with_args)
+        process_output = subprocess.run(cmd_with_args, capture_output=True, check=True, text=True)
     except subprocess.CalledProcessError as e:
-        logger.error(f"Failed to download the artifact {github_run_id} with GitHub CLI: {e}")
+        logger.error(f"Failed to download the GitHub action {github_run_id} with GitHub CLI: {e}")
         sys.exit(1)
+    try:
+        json_list_of_artifacts = json.loads(process_output.stdout)
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse the list of artifacts for GitHub action {github_run_id}: {e}")
+        logger.info(f"Output: {process_output.stdout}")
+        sys.exit(1)
+
+    artifact_name = 'ruuvi_gateway_fw'
+    artifact_id = None
+    try:
+        for artifact in json_list_of_artifacts["artifacts"]:
+            if artifact["name"] == 'ruuvi_gateway_fw':
+                artifact_id = artifact["id"]
+    except KeyError as e:
+        logger.error(f"Failed to find the artifact ID for GitHub action {github_run_id}: {e}")
+        logger.info(f"JSON: {process_output.stdout}")
+        sys.exit(1)
+
+    logger.info(f"Downloading the artifact {artifact_id} with GitHub CLI to {fw_ver_dir}...")
+    cmd_with_args = ['gh', 'api', f'repos/ruuvi/ruuvi.gateway_esp.c/actions/artifacts/{artifact_id}/zip']
+    logger.info(' '.join(cmd_with_args))
+    try:
+        artifact_zip = subprocess.run(cmd_with_args, capture_output=True, check=True, text=False)
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Failed to download the artifact {artifact_id} with GitHub CLI: {e}")
+        sys.exit(1)
+    artifact_zip_file_path = f'{fw_ver_dir}/{artifact_name}.zip'
+    with open(artifact_zip_file_path, 'wb') as file:
+        file.write(artifact_zip.stdout)
+    with zipfile.ZipFile(artifact_zip_file_path, 'r') as zip_ref:
+        zip_ref.extractall(fw_ver_dir)
+    os.remove(artifact_zip_file_path)
     copy_file_to_parent_dir(f'{fw_ver_dir}/binaries_v1.9.2', 'bootloader.bin')
     shutil.rmtree(f'{fw_ver_dir}/binaries_v1.9.2')
     copy_file_to_parent_dir(f'{fw_ver_dir}/partition_table', 'partition-table.bin')
@@ -192,9 +233,18 @@ def download_binaries_if_needed(fw_ver):
         github_run_id = fw_ver
     if github_run_id:
         fw_ver_dir = os.path.realpath(f'{RELEASES_DIR}/{github_run_id}')
+        flag_need_to_download = False
         if not os.path.isdir(fw_ver_dir):
+            flag_need_to_download = True
+        else:
+            for file in ['bootloader.bin', 'partition-table.bin', 'ota_data_initial.bin', 'ruuvi_gateway_esp.bin',
+                         'fatfs_gwui.bin', 'fatfs_nrf52.bin']:
+                if not os.path.isfile(f'{fw_ver_dir}/{file}'):
+                    flag_need_to_download = True
+                    break
+        if flag_need_to_download:
             try:
-                download_binary_by_artifact_id(github_run_id, fw_ver_dir)
+                download_binary_by_github_run_id(github_run_id, fw_ver_dir)
             except Exception as e:
                 logger.error(str(e))
                 shutil.rmtree(fw_ver_dir)
