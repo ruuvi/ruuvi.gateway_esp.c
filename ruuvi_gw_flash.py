@@ -359,13 +359,16 @@ def parse_arguments():
 
 def available_serial_ports():
     import serial.tools.list_ports
-    list1 = list(p.device for p in serial.tools.list_ports.comports())
+    list1 = []
     list2 = []
     if platform.system() == 'Linux':
         list2.extend(glob.glob('/dev/ttyUSB*'))
     elif platform.system() == 'Darwin':
-        list2.extend(glob.glob('/dev/cu.wchusbserial*'))
+        # list2.extend(glob.glob('/dev/cu.wchusbserial*'))
+        # list2.extend(glob.glob('/dev/cu.usbserial*'))
         list2.extend(glob.glob('/dev/tty.usbserial-*'))
+    else:
+        list1 = list(p.device for p in serial.tools.list_ports.comports())
     unique_list = list(set(list1 + list2))
     return list(reversed(sorted(unique_list)))
 
