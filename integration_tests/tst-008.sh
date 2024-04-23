@@ -93,29 +93,23 @@ sleep 25
 
 source "$GWUI_SCRIPTS/.venv/bin/activate"
 
-## TST-008-AE001: Test sending data to MQTT server via TCP
 pushd "$GWUI"
+
+## TST-008-AE001: Test sending data to MQTT server via TCP
 node scripts/ruuvi_gw_ui_tester.js --config tests/test_mqtt_tcp.yaml --secrets "$SECRETS_JSON" --dir_test "${TEST_RESULTS_ABS_PATH}"
-popd
 
 ## TST-008-AE002: Test sending data to MQTT server via SSL
-pushd "$GWUI"
 node scripts/ruuvi_gw_ui_tester.js --config tests/test_mqtt_ssl.yaml --secrets "$SECRETS_JSON" --dir_test "${TEST_RESULTS_ABS_PATH}"
-popd
 
 ## TST-008-AE003: Test sending data to MQTT server via WebSocket
-pushd "$GWUI"
 node scripts/ruuvi_gw_ui_tester.js --config tests/test_mqtt_ws.yaml --secrets "$SECRETS_JSON" --dir_test "${TEST_RESULTS_ABS_PATH}"
-popd
 
 ## TST-008-AE004: Test sending data to MQTT server via Secure WebSocket
-pushd "$GWUI"
 node scripts/ruuvi_gw_ui_tester.js --config tests/test_mqtt_wss.yaml --secrets "$SECRETS_JSON" --dir_test "${TEST_RESULTS_ABS_PATH}"
-popd
 
 ## TST-008-AE005: Test sending data to AWS MQTT server
-pushd "$GWUI"
 node scripts/ruuvi_gw_ui_tester.js --config tests/test_mqtt_aws.yaml --secrets "$SECRETS_JSON" --dir_test "${TEST_RESULTS_ABS_PATH}"
+
 popd
 
 RESULT_SUCCESS=1
