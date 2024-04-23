@@ -20,6 +20,7 @@ import logging
 import platform
 import json
 import zipfile
+import signal
 
 requirements = ['requests', 'pyserial']
 
@@ -56,6 +57,14 @@ def error(message):
     color_red = '\033[0;31;1m'
     color_no = '\033[0m'  # No Color
     print(f"{color_red}Error: {message}{color_no}")
+
+
+def signal_handler(sig, frame):
+    error("CTRL+C detected. Exiting...")
+    sys.exit(3)
+
+
+signal.signal(signal.SIGINT, signal_handler)
 
 
 def print_usage():

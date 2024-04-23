@@ -38,6 +38,10 @@ RUUVI_GW_FLASH=$root_abs_path/ruuvi_gw_flash.py
 GWUI=$root_abs_path/ruuvi.gwui.html
 GWUI_SCRIPTS=$GWUI/scripts
 
+pushd "$GWUI"
+npm install
+popd
+
 if [ ! -d "$GWUI_SCRIPTS/.venv" ]; then
     pushd "$GWUI_SCRIPTS"
     python3 -m venv .venv
@@ -67,11 +71,11 @@ cleanup() {
         echo "Stop UART logging"
         PID_LOG_UART=$(cat "$PID_LOG_UART_FILE")
         kill -INT "$PID_LOG_UART"
-        sleep 10
-        if [ -z "$RESULT_SUCCESS" ]; then
-            sleep 10
-        fi
+        sleep 1
         if kill -0 "$PID_LOG_UART" 2>/dev/null; then
+            if [ -z "$RESULT_SUCCESS" ]; then
+                sleep 10
+            fi
             kill -9 "$PID_LOG_UART"
         fi
         rm "$PID_LOG_UART_FILE"
@@ -86,7 +90,7 @@ cleanup() {
 trap cleanup EXIT
 
 cd "$TEST_RESULTS_ABS_PATH"
-python3 "$RUUVI_GW_FLASH" - --reset --log --log_uart >/dev/null 2>&1 &
+python3 "$RUUVI_GW_FLASH" - --reset --log --log_uart >/dev/null 2>&1 </dev/null &
 echo $!>"$PID_LOG_UART_FILE"
 
 sleep 25
