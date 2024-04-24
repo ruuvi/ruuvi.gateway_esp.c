@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# This script uses md-to-html: https://pypi.org/project/md-to-html/
-# pip install md-to-html
+# sudo apt install pandoc
 
-md-to-html --input gateway_configuration.md --output gateway_configuration.html
+pandoc -f markdown -t html5 -o gateway_configuration.html gateway_configuration.md -c gateway_configuration.css
 

@@ -2,6 +2,45 @@
 
 Here you can find a complete Ruuvi Gateway configuration guide for advanced users.
 
+## Configuration Access
+
+You can access the configuration options via either the Wi-Fi hotspot or LAN.
+
+### Wi-Fi Hotspot Access
+
+When unconfigured, Ruuvi Gateway starts a Wi-Fi hotspot automatically, 
+**Configure Ruuvi Gateway XXXX**. 
+Here, 'XXXX' represents the last 4 characters of the Gateway's Bluetooth MAC address.
+
+Steps to configure via hotspot:
+
+1. Connect to the Wi-Fi hotspot - Utilize your device like a smartphone, tablet, or computer.
+2. A captive portal will automatically open in the browser.
+3. If this doesn't happen, manually reach the portal by navigating to http://10.10.0.1.
+
+In case if the Gateway was already configured and you want to activate Wi-Fi hotspot, 
+you can do it by a short press on the **CONFIGURE** button located on the bottom of the 
+Gateway under USB port.
+
+If you want to completely erase the Gateway configuration and start the Wi-Fi hotspot,
+you can do a long press on the **CONFIGURE** button (more than 10 seconds).
+
+After configuration is complete, you will see the assigned Gateway IP address on the final page.
+
+### LAN access
+
+A configured and locally connected Ruuvi Gateway offers configuration access.
+
+Steps to configure via LAN:
+
+1. In the browser, enter the Gateway IP address prefixed by 'http://'. 
+For instance, if the Gateway IP address is 192.168.2.101, enter http://192.168.2.101.
+2. Alternatively, use the Gateway hostname. The hostname format is `ruuvigatewayXXXX.local`, 
+where 'XXXX' is the last 4 characters of the Bluetooth MAC address of the Gateway in lowercase. 
+Retrieve 'XXXX' by activating the Wi-Fi hotspot 
+and checking its name **Configure Ruuvi Gateway XXXX**.
+
+
 ## Current firmware version information
 
 Firmware version information can be found at the bottom of each page:
