@@ -32,6 +32,8 @@ or flash only specific binaries (ruuvi_gateway_esp.bin and ota_data_initial.bin)
 
 Serial port can be specified, if not, the script will automatically detect the only available port,
 if none or multiple ports are available, it will prompt the user to specify.
+Also it is possible to specify the serial port in the environment variable RUUVI_GW_SERIAL_PORT:
+`export RUUVI_GW_SERIAL_PORT=/dev/ttyUSB1`
 
 Possible operations:
 1) [download (if needed) and flash specific version]: python3 ruuvi_gw_flash.py [--port /dev/ttyUSB0] v1.15.0
@@ -382,23 +384,19 @@ def available_serial_ports():
     return list(reversed(sorted(unique_list)))
 
 
-def autodetect_serial_port():
-    ports = available_serial_ports()
-
+def autodetect_serial_port(ports):
     # If no port available
     if len(ports) == 0:
         error("No port available. Please connect a device.")
         sys.exit(1)
 
     # If more than one port available
-    elif len(ports) > 1:
-        error("Multiple ports available. Please specify the port.")
-        print_usage()
+    if len(ports) > 1:
+        error(f"Multiple ports available: {ports}. Please specify the port.")
         sys.exit(1)
 
     # Set the only available port
-    else:
-        serial_port = ports[0]
+    serial_port = ports[0]
     logger.info(f"Automatically detected serial port: {serial_port}")
     return serial_port
 
@@ -460,15 +458,21 @@ def main():
         logger.addHandler(f_handler)
 
     serial_port = arguments.port
+    list_of_available_ports = available_serial_ports()
     if serial_port:
-        list_of_available_ports = available_serial_ports()
         if serial_port not in list_of_available_ports:
+            error(f"Serial port '{serial_port}' is not in list of available ports: {list_of_available_ports}.")
+            if not ask_user_to_continue():
+                sys.exit(1)
+    elif serial_port := os.getenv('RUUVI_GW_SERIAL_PORT'):
+        if serial_port not in list_of_available_ports:
+            logger.info(f"Environment variable RUUVI_GW_SERIAL_PORT is set to {serial_port}.")
             error(f"Serial port '{serial_port}' is not in list of available ports: {list_of_available_ports}.")
             if not ask_user_to_continue():
                 sys.exit(1)
     else:
         if not arguments.download_only:
-            serial_port = autodetect_serial_port()
+            serial_port = autodetect_serial_port(list_of_available_ports)
 
     if arguments.fw_ver != "-" and arguments.fw_ver != "build":
         arguments.fw_ver = download_binaries_if_needed(arguments.fw_ver)
