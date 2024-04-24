@@ -37,8 +37,15 @@ Steps to configure via LAN:
 For instance, if the Gateway IP address is 192.168.2.101, enter http://192.168.2.101.
 2. Alternatively, use the Gateway hostname. The hostname format is `ruuvigatewayXXXX.local`, 
 where 'XXXX' is the last 4 characters of the Bluetooth MAC address of the Gateway in lowercase. 
-Retrieve 'XXXX' by activating the Wi-Fi hotspot 
+
+You can find these 4 characters 'XXXX' on the bottom of the Gateway:
+![start_page](images/photo_gw_bottom.jpg)
+
+Also, you can retrieve 'XXXX' by activating the Wi-Fi hotspot 
 and checking its name **Configure Ruuvi Gateway XXXX**.
+
+In this example, the Gateway hostname is `ruuvigateway4b64.local`, 
+Wi-Fi hotspot name is "**Configure Ruuvi Gateway 4B64**".
 
 
 ## Current firmware version information
