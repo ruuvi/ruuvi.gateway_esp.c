@@ -28,14 +28,15 @@ set -x
 # Set exit on error
 set -e
 
-root_relative_path=".."
-pushd "$root_relative_path" >/dev/null
-root_abs_path=$(pwd)
-popd >/dev/null
+SCRIPT_ABS_PATH=$(realpath "$0")
+FILENAME=$(basename "$0" .sh)
+TEST_NAME=$(echo "$FILENAME" | tr '[:lower:]' '[:upper:]')
 
-RUUVI_GW_FLASH=$root_abs_path/ruuvi_gw_flash.py
+ROOT_ABS_PATH=$(realpath "$SCRIPT_ABS_PATH/..")
 
-GWUI=$root_abs_path/ruuvi.gwui.html
+RUUVI_GW_FLASH=$ROOT_ABS_PATH/ruuvi_gw_flash.py
+
+GWUI=$ROOT_ABS_PATH/ruuvi.gwui.html
 GWUI_SCRIPTS=$GWUI/scripts
 
 pushd "$GWUI"
@@ -51,22 +52,24 @@ if [ ! -d "$GWUI_SCRIPTS/.venv" ]; then
     popd
 fi
 
-SECRETS_JSON=$root_abs_path/integration_tests/.test_results/secrets.json
+TEST_RESULTS_ASB_PATH=$ROOT_ABS_PATH/integration_tests/.test_results
+SECRETS_JSON=$TEST_RESULTS_ASB_PATH/secrets.json
 
-TEST_RESULTS_REL_PATH=.test_results/TST-008
-mkdir -p $TEST_RESULTS_REL_PATH
-mkdir -p $TEST_RESULTS_REL_PATH/logs
+TEST_RESULTS_REL_PATH=.test_results/$TEST_NAME
+mkdir -p "$TEST_RESULTS_REL_PATH"
+mkdir -p "$TEST_RESULTS_REL_PATH/logs"
 
-pushd $TEST_RESULTS_REL_PATH
+pushd "$TEST_RESULTS_REL_PATH"
 TEST_RESULTS_ABS_PATH=$(pwd)
-LOG_FILE=logs/$(date +%Y-%m-%dT%H-%M-%S).log
+TIMESTAMP=$(date +%Y-%m-%dT%H-%M-%S)
+LOG_FILE=logs/$TIMESTAMP.log
 exec > >(tee "$LOG_FILE") 2>&1
 popd
 
 PID_LOG_UART_FILE=$TEST_RESULTS_ABS_PATH/pid_gw_uart_log.txt
 
 cleanup() {
-    set +e
+    set +x +e
     echo "Cleaning up..."
     if [ -f "$PID_LOG_UART_FILE" ]; then
         echo "Stop UART logging"
@@ -86,6 +89,8 @@ cleanup() {
     else
         echo "Test failed"
     fi
+    cd "$TEST_RESULTS_ASB_PATH"
+    zip -q -r "ruuvi_gw_tests_${TIMESTAMP}_${TEST_NAME}.zip" "$TEST_NAME/logs/"
 }
 
 trap cleanup EXIT

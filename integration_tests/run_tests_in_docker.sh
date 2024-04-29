@@ -62,7 +62,7 @@ cleanup() {
     docker stop $CONTAINER_NAME
     docker network rm ruuvi_gw_bridge_network
     pushd .test_results
-    zip -r "$TIMESTAMP.zip" "$TIMESTAMP/"
+    zip -r "ruuvi_gw_tests_${TIMESTAMP}_docker.zip" "$TIMESTAMP/"
     popd
 }
 
@@ -77,7 +77,7 @@ docker network create -d macvlan \
 
 docker run --rm -d -i -t --name $CONTAINER_NAME --network ruuvi_gw_bridge_network "--device=$SERIAL_PORT:/dev/ttyUSB0" $RUUVI_GW_TESTING_IMAGE
 
-docker cp .test_results/secrets.json $CONTAINER_NAME:/ruuvi/ruuvi.gateway_esp.c/integration_tests/.test_results/secrets.json
+docker exec $CONTAINER_NAME /ruuvi/ruuvi.gateway_esp.c/integration_tests/docker_scripts/git_pull_and_update_submodules.sh
 
 pushd ..
 modified_files=$(git ls-files -m)
@@ -93,5 +93,9 @@ for file in $modified_files; do
 done
 popd
 
-docker cp docker_internal_tests_runner.sh $CONTAINER_NAME:/ruuvi/docker_internal_tests_runner.sh
-docker exec $CONTAINER_NAME /ruuvi/docker_internal_tests_runner.sh
+docker exec $CONTAINER_NAME /ruuvi/ruuvi.gateway_esp.c/integration_tests/docker_scripts/start_avahi_daemon.sh
+docker cp .test_results/secrets.json $CONTAINER_NAME:/ruuvi/ruuvi.gateway_esp.c/integration_tests/.test_results/secrets.json
+docker exec $CONTAINER_NAME /ruuvi/ruuvi.gateway_esp.c/integration_tests/docker_scripts/patch_secrets_json.sh
+
+docker exec $CONTAINER_NAME /ruuvi/ruuvi.gateway_esp.c/integration_tests/tst-007.sh --docker
+docker exec $CONTAINER_NAME /ruuvi/ruuvi.gateway_esp.c/integration_tests/tst-008.sh --docker
