@@ -12,7 +12,7 @@ then
             echo "    sudo apt-get update && sudo apt-get install mosquitto-clients"
             ;;
         Darwin*)
-            echo "On MacOS:"
+            echo "On macOS:"
             echo "    brew install mosquitto"
             ;;
         *)
@@ -55,10 +55,11 @@ SECRETS_JSON=$root_abs_path/integration_tests/.test_results/secrets.json
 
 TEST_RESULTS_REL_PATH=.test_results/TST-008
 mkdir -p $TEST_RESULTS_REL_PATH
+mkdir -p $TEST_RESULTS_REL_PATH/logs
 
 pushd $TEST_RESULTS_REL_PATH
 TEST_RESULTS_ABS_PATH=$(pwd)
-LOG_FILE=$(date +%Y-%m-%dT%H-%M-%S).log
+LOG_FILE=logs/$(date +%Y-%m-%dT%H-%M-%S).log
 exec > >(tee "$LOG_FILE") 2>&1
 popd
 
@@ -89,30 +90,40 @@ cleanup() {
 
 trap cleanup EXIT
 
+echo ========================================
 cd "$TEST_RESULTS_ABS_PATH"
-python3 "$RUUVI_GW_FLASH" - --reset --log --log_uart >/dev/null 2>&1 </dev/null &
+#python3 "$RUUVI_GW_FLASH" v1.15.0 --erase_flash --log
+python3 "$RUUVI_GW_FLASH" - --reset --log --log_uart --log_dir ./logs >/dev/null 2>&1 </dev/null &
 echo $!>"$PID_LOG_UART_FILE"
+PID_LOG_UART=$(cat "$PID_LOG_UART_FILE")
+sleep 2
+if kill -0 "$PID_LOG_UART" 2>/dev/null; then
+    echo "UART logging started"
+  else
+    echo "Failed to start UART logging"
+    exit 1
+fi
 
-sleep 25
+sleep 23
 
 source "$GWUI_SCRIPTS/.venv/bin/activate"
 
 pushd "$GWUI"
 
 ## TST-008-AE001: Test sending data to MQTT server via TCP
-node scripts/ruuvi_gw_ui_tester.js --config tests/test_mqtt_tcp.yaml --secrets "$SECRETS_JSON" --dir_test "${TEST_RESULTS_ABS_PATH}"
+node scripts/ruuvi_gw_ui_tester.js --config tests/test_mqtt_tcp.yaml --secrets "$SECRETS_JSON" --dir_test "${TEST_RESULTS_ABS_PATH}" "$@"
 
 ## TST-008-AE002: Test sending data to MQTT server via SSL
-node scripts/ruuvi_gw_ui_tester.js --config tests/test_mqtt_ssl.yaml --secrets "$SECRETS_JSON" --dir_test "${TEST_RESULTS_ABS_PATH}"
+node scripts/ruuvi_gw_ui_tester.js --config tests/test_mqtt_ssl.yaml --secrets "$SECRETS_JSON" --dir_test "${TEST_RESULTS_ABS_PATH}" "$@"
 
 ## TST-008-AE003: Test sending data to MQTT server via WebSocket
-node scripts/ruuvi_gw_ui_tester.js --config tests/test_mqtt_ws.yaml --secrets "$SECRETS_JSON" --dir_test "${TEST_RESULTS_ABS_PATH}"
+node scripts/ruuvi_gw_ui_tester.js --config tests/test_mqtt_ws.yaml --secrets "$SECRETS_JSON" --dir_test "${TEST_RESULTS_ABS_PATH}" "$@"
 
 ## TST-008-AE004: Test sending data to MQTT server via Secure WebSocket
-node scripts/ruuvi_gw_ui_tester.js --config tests/test_mqtt_wss.yaml --secrets "$SECRETS_JSON" --dir_test "${TEST_RESULTS_ABS_PATH}"
+node scripts/ruuvi_gw_ui_tester.js --config tests/test_mqtt_wss.yaml --secrets "$SECRETS_JSON" --dir_test "${TEST_RESULTS_ABS_PATH}" "$@"
 
 ## TST-008-AE005: Test sending data to AWS MQTT server
-node scripts/ruuvi_gw_ui_tester.js --config tests/test_mqtt_aws.yaml --secrets "$SECRETS_JSON" --dir_test "${TEST_RESULTS_ABS_PATH}"
+node scripts/ruuvi_gw_ui_tester.js --config tests/test_mqtt_aws.yaml --secrets "$SECRETS_JSON" --dir_test "${TEST_RESULTS_ABS_PATH}" "$@"
 
 popd
 

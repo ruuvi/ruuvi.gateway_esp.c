@@ -32,10 +32,11 @@ SECRETS_JSON=$root_abs_path/integration_tests/.test_results/secrets.json
 
 TEST_RESULTS_REL_PATH=.test_results/TST-007
 mkdir -p $TEST_RESULTS_REL_PATH
+mkdir -p $TEST_RESULTS_REL_PATH/logs
 
 pushd $TEST_RESULTS_REL_PATH
 TEST_RESULTS_ABS_PATH=$(pwd)
-LOG_FILE=$(date +%Y-%m-%dT%H-%M-%S).log
+LOG_FILE=logs/$(date +%Y-%m-%dT%H-%M-%S).log
 exec > >(tee "$LOG_FILE") 2>&1
 popd
 
@@ -66,28 +67,37 @@ cleanup() {
 
 trap cleanup EXIT
 
+echo ========================================
 cd "$TEST_RESULTS_ABS_PATH"
 #python3 "$RUUVI_GW_FLASH" v1.15.0 --erase_flash --log
-python3 "$RUUVI_GW_FLASH" - --reset --log --log_uart >/dev/null 2>&1 </dev/null &
+python3 "$RUUVI_GW_FLASH" - --reset --log --log_uart --log_dir ./logs >/dev/null 2>&1 </dev/null &
 echo $!>"$PID_LOG_UART_FILE"
+PID_LOG_UART=$(cat "$PID_LOG_UART_FILE")
+sleep 2
+if kill -0 "$PID_LOG_UART" 2>/dev/null; then
+    echo "UART logging started"
+  else
+    echo "Failed to start UART logging"
+    exit 1
+fi
 
-sleep 25
+sleep 23
 
 source "$GWUI_SCRIPTS/.venv/bin/activate"
 
 pushd "$GWUI"
 
 ## TST-007-AG001: Test sending data to HTTP server without authentication
-node scripts/ruuvi_gw_ui_tester.js --config tests/test_http.yaml --secrets "$SECRETS_JSON" --dir_test "${TEST_RESULTS_ABS_PATH}"
+node scripts/ruuvi_gw_ui_tester.js --config tests/test_http.yaml --secrets "$SECRETS_JSON" --dir_test "${TEST_RESULTS_ABS_PATH}" "$@"
 
 ## TST-007-AG002: Test sending data to HTTP server with authentication
-node scripts/ruuvi_gw_ui_tester.js --config tests/test_http_with_auth.yaml --secrets "$SECRETS_JSON" --dir_test "${TEST_RESULTS_ABS_PATH}"
+node scripts/ruuvi_gw_ui_tester.js --config tests/test_http_with_auth.yaml --secrets "$SECRETS_JSON" --dir_test "${TEST_RESULTS_ABS_PATH}" "$@"
 
 ## TST-007-AG003: Test sending data to local HTTPS server with the server certificate checking
-node scripts/ruuvi_gw_ui_tester.js --config tests/test_https_with_server_cert_checking.yaml --secrets "$SECRETS_JSON" --dir_test "${TEST_RESULTS_ABS_PATH}"
+node scripts/ruuvi_gw_ui_tester.js --config tests/test_https_with_server_cert_checking.yaml --secrets "$SECRETS_JSON" --dir_test "${TEST_RESULTS_ABS_PATH}" "$@"
 
 # TST-007-AG004: Test sending data to local HTTPS server with the server and client certificates checking
-#node scripts/ruuvi_gw_ui_tester.js --config tests/test_https_with_server_and_client_cert_checking.yaml --secrets "$SECRETS_JSON" --dir_test "${TEST_RESULTS_ABS_PATH}"
+#node scripts/ruuvi_gw_ui_tester.js --config tests/test_https_with_server_and_client_cert_checking.yaml --secrets "$SECRETS_JSON" --dir_test "${TEST_RESULTS_ABS_PATH}" "$@"
 
 popd
 

@@ -50,7 +50,55 @@ parser = argparse.ArgumentParser(description=description, formatter_class=argpar
 
 RELEASES_DIR = '.releases'
 
-logger = logging.getLogger(__name__)
+g_flag_disable_user_interaction = False
+
+
+# This custom filter will allow through any records with a level less than ERROR
+class StdoutFilter(logging.Filter):
+    def filter(self, record):
+        return record.levelno < logging.ERROR
+
+
+class Logger:
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.INFO)
+
+        formatter = logging.Formatter('[%(asctime)s.%(msecs)03d %(levelname)s] %(message)s',
+                                      datefmt='%Y-%m-%dT%H:%M:%S')
+
+        handler_out = logging.StreamHandler(sys.stdout)
+        handler_out.setLevel(logging.INFO)
+        handler_out.setFormatter(formatter)
+        handler_out.addFilter(StdoutFilter())
+
+        handler_err = logging.StreamHandler(sys.stderr)
+        handler_err.setLevel(logging.ERROR)
+        handler_err.setFormatter(formatter)
+
+        self.logger.addHandler(handler_out)
+        self.logger.addHandler(handler_err)
+
+    def addHandler(self, handler):
+        self.logger.addHandler(handler)
+
+    def debug(self, msg):
+        self.logger.debug(msg)
+
+    def info(self, msg):
+        self.logger.info(msg)
+
+    def warning(self, msg):
+        self.logger.warning(msg)
+
+    def error(self, msg):
+        self.logger.error(msg)
+
+    def critical(self, msg):
+        self.logger.critical(msg)
+
+
+logger = Logger()
 
 
 # Function to print error messages in red
@@ -58,7 +106,7 @@ def error(message):
     logger.error(message)
     color_red = '\033[0;31;1m'
     color_no = '\033[0m'  # No Color
-    print(f"{color_red}Error: {message}{color_no}")
+    print(f"{color_red}Error: {message}{color_no}", file=sys.stderr)
 
 
 def signal_handler(sig, frame):
@@ -74,6 +122,8 @@ def print_usage():
 
 
 def ask_user_to_continue():
+    if g_flag_disable_user_interaction:
+        return False
     print("Do you want to continue Y(es)/N(no)? ", end="", flush=True)
 
     def wait_for_keypress_windows():
@@ -342,12 +392,23 @@ def parse_arguments():
                         action='store_true',
                         help='Save log of the script execution to file.')
 
+    parser.add_argument('--log_dir',
+                        type=str,
+                        default='.',
+                        help='Directory to save log files.')
+
+    parser.add_argument('--print_port',
+                        action='store_true',
+                        help='Print the only available serial port and exit.')
+
     arguments = parser.parse_args()
 
     if arguments.log_to_console:
         arguments.log_uart = True
-    if arguments.fw_ver == "-" and not arguments.erase_flash and not arguments.reset and not arguments.log_uart:
-        error("Nothing to do: '-' is passed as 'fw_ver' but '--erase_flash' or '--reset' or '--log_uart' is not set")
+    if (arguments.fw_ver == "-" and not arguments.erase_flash and not arguments.reset and not arguments.log_uart and
+            not arguments.print_port):
+        error("Nothing to do: "
+              "'-' is passed as 'fw_ver' but '--erase_flash', '--reset', '--log_uart' or '--print_port' is not set")
         sys.exit(1)
     if (arguments.fw_ver == "-" or arguments.fw_ver == "build") and arguments.download_only:
         error("Argument '--download_only' requires 'fw_ver' to be set.")
@@ -397,7 +458,8 @@ def autodetect_serial_port(ports):
 
     # Set the only available port
     serial_port = ports[0]
-    logger.info(f"Automatically detected serial port: {serial_port}")
+    if not g_flag_disable_user_interaction:
+        logger.info(f"Automatically detected serial port: {serial_port}")
     return serial_port
 
 
@@ -444,18 +506,16 @@ def run_process_with_logging(cmd_with_args):
 def main():
     arguments = parse_arguments()
 
-    logger.setLevel(logging.DEBUG)
-    c_handler = logging.StreamHandler()
-    c_handler.setLevel(logging.INFO)
-    c_format = logging.Formatter('[%(asctime)s.%(msecs)03d %(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-    c_handler.setFormatter(c_format)
-    logger.addHandler(c_handler)
     if arguments.log:
-        f_handler = logging.FileHandler(datetime.now().strftime(f"%Y-%m-%dT%H-%M-%S_ruuvi_gw_flash.log"))
+        f_handler = logging.FileHandler(datetime.now().strftime(f"{arguments.log_dir}/%Y-%m-%dT%H-%M-%S_ruuvi_gw_flash.log"))
         f_handler.setLevel(logging.INFO)
         f_format = logging.Formatter('[%(asctime)s.%(msecs)03d %(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
         f_handler.setFormatter(f_format)
         logger.addHandler(f_handler)
+
+    if arguments.print_port:
+        global g_flag_disable_user_interaction
+        g_flag_disable_user_interaction = True
 
     serial_port = arguments.port
     list_of_available_ports = available_serial_ports()
@@ -473,6 +533,10 @@ def main():
     else:
         if not arguments.download_only:
             serial_port = autodetect_serial_port(list_of_available_ports)
+
+    if arguments.print_port:
+        print(serial_port)
+        sys.exit(0)
 
     if arguments.fw_ver != "-" and arguments.fw_ver != "build":
         arguments.fw_ver = download_binaries_if_needed(arguments.fw_ver)
@@ -545,7 +609,7 @@ def main():
         run_process_with_logging(esptool_cmd_with_args)
 
     if arguments.log_uart:
-        log_file_name = datetime.now().strftime("%Y-%m-%dT%H-%M-%S_ruuvi_gw_uart.log")
+        log_file_name = datetime.now().strftime(f"{arguments.log_dir}/%Y-%m-%dT%H-%M-%S_ruuvi_gw_uart.log")
         log_serial_data(serial_port, log_file_name, console_output=arguments.log_to_console)
 
 
