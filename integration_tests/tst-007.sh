@@ -5,7 +5,8 @@ set -x
 # Set exit on error
 set -e
 
-SCRIPT_ABS_PATH=$(realpath "$0")
+SCRIPT_FULL_PATH=$(realpath "$0")
+SCRIPT_ABS_PATH=$(dirname "$SCRIPT_FULL_PATH")
 FILENAME=$(basename "$0" .sh)
 TEST_NAME=$(echo "$FILENAME" | tr '[:lower:]' '[:upper:]')
 
@@ -32,11 +33,11 @@ fi
 TEST_RESULTS_ASB_PATH=$ROOT_ABS_PATH/integration_tests/.test_results
 SECRETS_JSON=$TEST_RESULTS_ASB_PATH/secrets.json
 
-TEST_RESULTS_REL_PATH=.test_results/$TEST_NAME
-mkdir -p "$TEST_RESULTS_REL_PATH"
-mkdir -p "$TEST_RESULTS_REL_PATH/logs"
+CUR_TEST_RESULTS_ABS_PATH=$TEST_RESULTS_ASB_PATH/$TEST_NAME
+mkdir -p "$CUR_TEST_RESULTS_ABS_PATH"
+mkdir -p "$CUR_TEST_RESULTS_ABS_PATH/logs"
 
-pushd "$TEST_RESULTS_REL_PATH"
+pushd "$CUR_TEST_RESULTS_ABS_PATH"
 TEST_RESULTS_ABS_PATH=$(pwd)
 TIMESTAMP=$(date +%Y-%m-%dT%H-%M-%S)
 LOG_FILE=logs/$TIMESTAMP.log
