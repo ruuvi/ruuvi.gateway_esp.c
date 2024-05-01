@@ -1,0 +1,71 @@
+# Use Ubuntu 22.04 LTS as base image
+FROM ubuntu:22.04
+
+# Set noninteractive installation mode and update
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Update the system and install necessary packages
+RUN apt-get update && apt-get upgrade -y
+RUN apt-get install -y \
+        git \
+        curl \
+        wget \
+        gnupg \
+        python3 python3-pip python3-venv \
+        mosquitto-clients \
+        jq \
+        net-tools \
+        iputils-ping \
+        avahi-daemon avahi-utils
+
+# Set Python 3 as the default Python version
+RUN ln -s /usr/bin/python3 /usr/bin/python
+
+# Install Node.js
+RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
+
+# Install Chrome
+RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor > /usr/share/keyrings/google-linux-signing-key.gpg
+RUN echo "deb [signed-by=/usr/share/keyrings/google-linux-signing-key.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list
+
+RUN apt-get update
+RUN apt-get install -y nodejs
+RUN apt-get install -y google-chrome-stable
+
+# Cleanup
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Disable the dbus requirement of avahi-daemon (for running in a container)
+RUN sed -i 's/#enable-dbus=yes/enable-dbus=no/g' /etc/avahi/avahi-daemon.conf
+RUN sed -i 's/use-ipv6=yes/use-ipv6=no/' /etc/avahi/avahi-daemon.conf
+
+# Remove the dbus start command, not needed in a container
+RUN sed -i '/^DAEMON_ARGS="/ s/"$/ --no-drop-root"/' /etc/default/avahi-daemon
+
+# Expose mDNS port
+EXPOSE 5353/udp
+
+# Set the working directory
+WORKDIR /ruuvi
+
+# Clone the GitHub repository
+ARG GITHUB_REPO_URL
+ARG GITHUB_REPO_BRANCH
+RUN git clone --depth 1 --branch ${GITHUB_REPO_BRANCH} --recursive ${GITHUB_REPO_URL}
+
+RUN ls -la ruuvi.gateway_esp.c
+RUN ls -la ruuvi.gateway_esp.c/ruuvi.gwui.html
+
+RUN pip3 install -r ruuvi.gateway_esp.c/requirements.txt
+RUN pip3 install esptool
+
+WORKDIR /ruuvi/ruuvi.gateway_esp.c/ruuvi.gwui.html
+RUN npm install
+
+# Create a directory for test results
+WORKDIR /ruuvi/ruuvi.gateway_esp.c/integration_tests/.test_results
+
+WORKDIR /ruuvi
+RUN ls -la
+
+CMD ["bash"]
