@@ -181,6 +181,8 @@ static esp_err_t http_dispatch_event(esp_http_client_t *client, esp_http_client_
 {
     esp_http_client_event_t *event = &client->event;
 
+    ESP_LOGD(TAG, "%s: client->state=%d, event=%d", __func__, client->state, event_id);
+
     if (client->event_handler) {
         event->event_id = event_id;
         event->user_data = client->user_data;
@@ -262,7 +264,7 @@ static int http_on_headers_complete(http_parser *parser)
     client->response->data_offset = parser->nread;
     client->response->content_length = parser->content_length;
     client->response->data_process = 0;
-    ESP_LOGD(TAG, "http_on_headers_complete, status=%d, offset=%d, nread=%d", parser->status_code, client->response->data_offset, parser->nread);
+    ESP_LOGI(TAG, "http_on_headers_complete, status=%d, offset=%d, nread=%d", parser->status_code, client->response->data_offset, parser->nread);
     client->state = HTTP_STATE_RES_COMPLETE_HEADER;
     return 0;
 }
@@ -899,11 +901,6 @@ static int esp_http_client_get_data(esp_http_client_handle_t client)
         return ESP_FAIL;
     }
 
-    if ((client->connection_info.method == HTTP_METHOD_HEAD) && (esp_http_client_get_status_code(client) == 200)) {
-        ESP_LOGD(TAG, "HTTP_METHOD_HEAD: HTTP_STATUS=200, content_length=%d", client->response->content_length);
-        return 0;
-    }
-
     esp_http_buffer_t *res_buffer = client->response->buffer;
 
     ESP_LOGD(TAG, "data_process=%d, content_length=%d", client->response->data_process, client->response->content_length);
@@ -1143,28 +1140,28 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                     ESP_LOGE(TAG, "%s: Error response, err %d", __func__, err);
                     return err;
                 }
-                while (client->response->is_chunked && !client->is_chunk_complete) {
-                    if (esp_http_client_get_data(client) <= 0) {
-                        if (client->is_async && errno == EAGAIN) {
-                            ESP_LOGD(TAG, "%s: HTTP_STATE_RES_COMPLETE_HEADER: esp_http_client_get_data: ESP_ERR_HTTP_EAGAIN", __func__);
-                            return ESP_ERR_HTTP_EAGAIN;
-                        }
-                        ESP_LOGD(TAG, "Read finish or server requests close");
-                        break;
-                    }
-                }
-                while (client->response->data_process < client->response->content_length) {
-                    if (esp_http_client_get_data(client) <= 0) {
-                        if (client->is_async && errno == EAGAIN) {
-                            if ((client->connection_info.method == HTTP_METHOD_HEAD) &&
-                                (esp_http_client_get_status_code(client) == 200)) {
-                                break;
+                ESP_LOGD(TAG, "HTTP_STATE_RES_COMPLETE_HEADER: is_chunked=%d, is_chunk_complete=%d",
+                         client->response->is_chunked, client->is_chunk_complete);
+                if (client->connection_info.method != HTTP_METHOD_HEAD) {
+                    while (client->response->is_chunked && !client->is_chunk_complete) {
+                        if (esp_http_client_get_data(client) <= 0) {
+                            if (client->is_async && errno == EAGAIN) {
+                                ESP_LOGD(TAG, "%s: HTTP_STATE_RES_COMPLETE_HEADER: esp_http_client_get_data: ESP_ERR_HTTP_EAGAIN", __func__);
+                                return ESP_ERR_HTTP_EAGAIN;
                             }
-                            ESP_LOGD(TAG, "%s: HTTP_STATE_RES_COMPLETE_HEADER: esp_http_client_get_data: ESP_ERR_HTTP_EAGAIN", __func__);
-                            return ESP_ERR_HTTP_EAGAIN;
+                            ESP_LOGD(TAG, "Read finish or server requests close");
+                            break;
                         }
-                        ESP_LOGD(TAG, "Read finish or server requests close");
-                        break;
+                    }
+                    while (client->response->data_process < client->response->content_length) {
+                        if (esp_http_client_get_data(client) <= 0) {
+                            if (client->is_async && errno == EAGAIN) {
+                                ESP_LOGD(TAG, "%s: HTTP_STATE_RES_COMPLETE_HEADER: esp_http_client_get_data: ESP_ERR_HTTP_EAGAIN", __func__);
+                                return ESP_ERR_HTTP_EAGAIN;
+                            }
+                            ESP_LOGD(TAG, "Read finish or server requests close");
+                            break;
+                        }
                     }
                 }
                 http_dispatch_event(client, HTTP_EVENT_ON_FINISH, NULL, 0);
@@ -1499,6 +1496,7 @@ int esp_http_client_write(esp_http_client_handle_t client, const char *buffer, i
 
 esp_err_t esp_http_client_close(esp_http_client_handle_t client)
 {
+    ESP_LOGD(TAG, "%s: client->state=%d", __func__, client->state);
     if (client->state >= HTTP_STATE_INIT) {
         http_dispatch_event(client, HTTP_EVENT_DISCONNECTED, esp_transport_get_error_handle(client->transport), 0);
         client->state = HTTP_STATE_INIT;
