@@ -118,9 +118,19 @@ esp_err_t esp_create_mbedtls_handle(const char *hostname, size_t hostlen, const 
     mbedtls_esp_enable_debug_log(&tls->conf, CONFIG_MBEDTLS_DEBUG_LEVEL);
 #endif
 
-#ifdef CONFIG_MBEDTLS_SSL_PROTO_TLS1_3
+#ifdef CONFIG_MBEDTLS_SSL_PROTO_TLS1_2
+    mbedtls_ssl_conf_min_tls_version(&tls->conf, MBEDTLS_SSL_VERSION_TLS1_2);
+#elif defined(CONFIG_MBEDTLS_SSL_PROTO_TLS1_3)
     mbedtls_ssl_conf_min_tls_version(&tls->conf, MBEDTLS_SSL_VERSION_TLS1_3);
+#else
+#error "TLS version not defined"
+#endif
+#ifdef CONFIG_MBEDTLS_SSL_PROTO_TLS1_3
     mbedtls_ssl_conf_max_tls_version(&tls->conf, MBEDTLS_SSL_VERSION_TLS1_3);
+#elif defined(CONFIG_MBEDTLS_SSL_PROTO_TLS1_2)
+    mbedtls_ssl_conf_max_tls_version(&tls->conf, MBEDTLS_SSL_VERSION_TLS1_2);
+#else
+#error "TLS version not defined"
 #endif
 
     if ((ret = mbedtls_ssl_setup(&tls->ssl, &tls->conf)) != 0) {
