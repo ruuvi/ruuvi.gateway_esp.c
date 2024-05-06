@@ -65,7 +65,7 @@ JSON_STREAM_GEN_DECL_GENERATOR_SUB_FUNC(
         JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
             p_gen,
             "txPower",
-            RE_5_TXPWR_MIN + (data.tx_power * 2),
+            data.tx_power,
             JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_0);
         JSON_STREAM_GEN_ADD_INT32(p_gen, "measurementSequenceNumber", data.measurement_count);
         mac_address_bin_t tag_mac = { 0 };
