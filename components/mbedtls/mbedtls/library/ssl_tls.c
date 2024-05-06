@@ -1391,7 +1391,10 @@ int mbedtls_ssl_setup(mbedtls_ssl_context *ssl,
     if ((ret = ssl_conf_check(ssl)) != 0) {
         return ret;
     }
+    MBEDTLS_SSL_DEBUG_MSG(2, ("%s: ssl->conf->min_tls_version=%u", __func__, ssl->conf->min_tls_version));
+    MBEDTLS_SSL_DEBUG_MSG(2, ("%s: ssl->conf->max_tls_version=%u", __func__, ssl->conf->max_tls_version));
     ssl->tls_version = ssl->conf->max_tls_version;
+    MBEDTLS_SSL_DEBUG_MSG(2, ("%s: set tls_version=%u", __func__, ssl->tls_version));
 
     /*
      * Prepare base structures

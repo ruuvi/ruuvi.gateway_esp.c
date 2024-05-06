@@ -464,17 +464,21 @@ static int ssl_write_client_hello_body(mbedtls_ssl_context *ssl,
     *out_len = 0;
     *binders_len = 0;
 
+    MBEDTLS_SSL_DEBUG_MSG(2, ("%s: handshake->min_tls_version=%u", __func__, handshake->min_tls_version));
+    MBEDTLS_SSL_DEBUG_MSG(2, ("%s: ssl->tls_version=%u", __func__, ssl->tls_version));
 #if defined(MBEDTLS_SSL_PROTO_TLS1_2)
     unsigned char propose_tls12 =
         (handshake->min_tls_version <= MBEDTLS_SSL_VERSION_TLS1_2)
         &&
         (MBEDTLS_SSL_VERSION_TLS1_2 <= ssl->tls_version);
+    MBEDTLS_SSL_DEBUG_MSG(2, ("%s: propose_tls12=%u", __func__, propose_tls12));
 #endif
 #if defined(MBEDTLS_SSL_PROTO_TLS1_3)
     unsigned char propose_tls13 =
         (handshake->min_tls_version <= MBEDTLS_SSL_VERSION_TLS1_3)
         &&
         (MBEDTLS_SSL_VERSION_TLS1_3 <= ssl->tls_version);
+    MBEDTLS_SSL_DEBUG_MSG(2, ("%s: propose_tls13=%u", __func__, propose_tls12));
 #endif
 
     /*
