@@ -194,6 +194,8 @@ http_check_post_stat_internal3(
         case GW_CFG_HTTP_AUTH_TYPE_BEARER:
             ATTR_FALLTHROUGH;
         case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
+            ATTR_FALLTHROUGH;
+        case GW_CFG_HTTP_AUTH_TYPE_APIKEY:
             p_user->buf[0] = '\0';
             if (!http_post_stat_check_pass(p_params->p_pass))
             {

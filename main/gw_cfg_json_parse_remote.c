@@ -135,6 +135,10 @@ gw_cfg_json_parse_remote(const cJSON* const p_json_root, ruuvi_gw_cfg_remote_t* 
             case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
                 LOG_ERR("Unsupported auth_type=token for remote_cfg");
                 break;
+
+            case GW_CFG_HTTP_AUTH_TYPE_APIKEY:
+                LOG_ERR("Unsupported auth_type=api_key for remote_cfg");
+                break;
         }
     }
     if (!gw_cfg_json_get_bool_val(p_json_root, "remote_cfg_use_ssl_client_cert", &p_gw_cfg_remote->use_ssl_client_cert))

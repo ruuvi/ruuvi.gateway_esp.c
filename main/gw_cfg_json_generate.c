@@ -258,6 +258,24 @@ gw_cfg_json_add_items_remote_auth_token(
 }
 
 static bool
+gw_cfg_json_add_items_remote_auth_apikey(
+    cJSON* const                       p_json_root,
+    const ruuvi_gw_cfg_remote_t* const p_cfg_remote,
+    const bool                         flag_hide_passwords)
+{
+    if (!gw_cfg_json_add_string(p_json_root, "remote_cfg_auth_type", GW_CFG_HTTP_AUTH_TYPE_STR_APIKEY))
+    {
+        return false;
+    }
+    if ((!flag_hide_passwords)
+        && (!gw_cfg_json_add_string(p_json_root, "remote_cfg_auth_apikey", p_cfg_remote->auth.auth_apikey.api_key.buf)))
+    {
+        return false;
+    }
+    return true;
+}
+
+static bool
 gw_cfg_json_add_items_remote(
     cJSON* const                       p_json_root,
     const ruuvi_gw_cfg_remote_t* const p_cfg_remote,
@@ -293,6 +311,12 @@ gw_cfg_json_add_items_remote(
             break;
         case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
             if (!gw_cfg_json_add_items_remote_auth_token(p_json_root, p_cfg_remote, flag_hide_passwords))
+            {
+                return false;
+            }
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_APIKEY:
+            if (!gw_cfg_json_add_items_remote_auth_apikey(p_json_root, p_cfg_remote, flag_hide_passwords))
             {
                 return false;
             }
@@ -401,6 +425,24 @@ gw_cfg_json_add_items_http_custom_auth_token(
 }
 
 static bool
+gw_cfg_json_add_items_http_custom_auth_apikey(
+    cJSON* const                     p_json_root,
+    const ruuvi_gw_cfg_http_t* const p_cfg_http,
+    const bool                       flag_hide_passwords)
+{
+    if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_APIKEY))
+    {
+        return false;
+    }
+    if ((!flag_hide_passwords)
+        && (!gw_cfg_json_add_string(p_json_root, "http_api_key", p_cfg_http->auth.auth_apikey.api_key.buf)))
+    {
+        return false;
+    }
+    return true;
+}
+
+static bool
 gw_cfg_json_add_items_http_custom_params(
     cJSON* const                     p_json_root,
     const ruuvi_gw_cfg_http_t* const p_cfg_http,
@@ -465,6 +507,12 @@ gw_cfg_json_add_items_http_custom_params(
             break;
         case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
             if (!gw_cfg_json_add_items_http_custom_auth_token(p_json_root, p_cfg_http, flag_hide_passwords))
+            {
+                return false;
+            }
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_APIKEY:
+            if (!gw_cfg_json_add_items_http_custom_auth_apikey(p_json_root, p_cfg_http, flag_hide_passwords))
             {
                 return false;
             }

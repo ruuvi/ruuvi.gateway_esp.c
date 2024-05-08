@@ -61,6 +61,12 @@ ruuvi_gw_cfg_remote_cmp(const ruuvi_gw_cfg_remote_t* const p_remote1, const ruuv
                 return false;
             }
             break;
+        case GW_CFG_HTTP_AUTH_TYPE_APIKEY:
+            if (0 != strcmp(p_remote1->auth.auth_apikey.api_key.buf, p_remote2->auth.auth_apikey.api_key.buf))
+            {
+                return false;
+            }
+            break;
     }
     if (p_remote1->refresh_interval_minutes != p_remote2->refresh_interval_minutes)
     {
@@ -146,6 +152,12 @@ ruuvi_gw_cfg_http_cmp(const ruuvi_gw_cfg_http_t* const p_http1, const ruuvi_gw_c
             break;
         case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
             if (0 != strcmp(p_http1->auth.auth_token.token.buf, p_http2->auth.auth_token.token.buf))
+            {
+                return false;
+            }
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_APIKEY:
+            if (0 != strcmp(p_http1->auth.auth_apikey.api_key.buf, p_http2->auth.auth_apikey.api_key.buf))
             {
                 return false;
             }
