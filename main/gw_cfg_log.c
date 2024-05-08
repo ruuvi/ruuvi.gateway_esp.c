@@ -324,6 +324,14 @@ gw_cfg_log_ruuvi_cfg_remote(const ruuvi_gw_cfg_remote_t* const p_remote)
             LOG_INFO("config: remote cfg: auth token: %s", "********");
 #endif
             break;
+        case GW_CFG_HTTP_AUTH_TYPE_APIKEY:
+            LOG_INFO("config: remote cfg: auth_type: %s", GW_CFG_HTTP_AUTH_TYPE_STR_APIKEY);
+#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
+            LOG_DBG("config: remote cfg: auth api_key: %s", p_remote->auth.auth_apikey.api_key.buf);
+#else
+            LOG_INFO("config: remote cfg: auth api_key: %s", "********");
+#endif
+            break;
     }
     LOG_INFO("config: remote cfg: use SSL client cert: %d", p_remote->use_ssl_client_cert);
     LOG_INFO("config: remote cfg: use SSL server cert: %d", p_remote->use_ssl_server_cert);
@@ -354,10 +362,10 @@ gw_cfg_log_ruuvi_cfg_http(const ruuvi_gw_cfg_http_t* const p_http)
         switch (p_http->auth_type)
         {
             case GW_CFG_HTTP_AUTH_TYPE_NONE:
-                LOG_INFO("config: http auth_type: %s", "none");
+                LOG_INFO("config: http auth_type: %s", GW_CFG_HTTP_AUTH_TYPE_STR_NONE);
                 break;
             case GW_CFG_HTTP_AUTH_TYPE_BASIC:
-                LOG_INFO("config: http auth_type: %s", "basic");
+                LOG_INFO("config: http auth_type: %s", GW_CFG_HTTP_AUTH_TYPE_STR_BASIC);
                 LOG_INFO("config: http user: %s", p_http->auth.auth_basic.user.buf);
 #if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
                 LOG_DBG("config: http pass: %s", p_http->auth.auth_basic.password.buf);
@@ -366,7 +374,7 @@ gw_cfg_log_ruuvi_cfg_http(const ruuvi_gw_cfg_http_t* const p_http)
 #endif
                 break;
             case GW_CFG_HTTP_AUTH_TYPE_BEARER:
-                LOG_INFO("config: http auth_type: %s", "bearer");
+                LOG_INFO("config: http auth_type: %s", GW_CFG_HTTP_AUTH_TYPE_STR_BEARER);
 #if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
                 LOG_DBG("config: http bearer token: %s", p_http->auth.auth_bearer.token.buf);
 #else
@@ -374,11 +382,19 @@ gw_cfg_log_ruuvi_cfg_http(const ruuvi_gw_cfg_http_t* const p_http)
 #endif
                 break;
             case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
-                LOG_INFO("config: http auth_type: %s", "token");
+                LOG_INFO("config: http auth_type: %s", GW_CFG_HTTP_AUTH_TYPE_STR_TOKEN);
 #if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
                 LOG_DBG("config: http token: %s", p_http->auth.auth_token.token.buf);
 #else
                 LOG_INFO("config: http token: %s", "********");
+#endif
+                break;
+            case GW_CFG_HTTP_AUTH_TYPE_APIKEY:
+                LOG_INFO("config: http auth_type: %s", GW_CFG_HTTP_AUTH_TYPE_STR_APIKEY);
+#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
+                LOG_DBG("config: http api_key: %s", p_http->auth.auth_apikey.api_key.buf);
+#else
+                LOG_INFO("config: http api_key: %s", "********");
 #endif
                 break;
         }

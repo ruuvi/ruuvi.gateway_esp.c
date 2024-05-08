@@ -81,6 +81,10 @@ gw_cfg_json_parse_http_auth_type(const cJSON* const p_json_root)
     {
         return GW_CFG_HTTP_AUTH_TYPE_TOKEN;
     }
+    if (0 == strcmp(GW_CFG_HTTP_AUTH_TYPE_STR_APIKEY, auth_type_str))
+    {
+        return GW_CFG_HTTP_AUTH_TYPE_APIKEY;
+    }
     LOG_WARN("Unknown http_auth='%s', use 'ruuvi'", auth_type_str);
     return GW_CFG_HTTP_AUTH_TYPE_NONE;
 }
@@ -127,6 +131,19 @@ gw_cfg_json_parse_http_auth_token(const cJSON* const p_json_root, ruuvi_gw_cfg_h
             "http_api_key",
             &p_gw_cfg_http->auth.auth_token.token.buf[0],
             sizeof(p_gw_cfg_http->auth.auth_token.token.buf)))
+    {
+        LOG_WARN("Can't find key '%s' in config-json", "http_api_key");
+    }
+}
+
+static void
+gw_cfg_json_parse_http_auth_apikey(const cJSON* const p_json_root, ruuvi_gw_cfg_http_t* const p_gw_cfg_http)
+{
+    if (!gw_cfg_json_copy_string_val(
+            p_json_root,
+            "http_api_key",
+            &p_gw_cfg_http->auth.auth_apikey.api_key.buf[0],
+            sizeof(p_gw_cfg_http->auth.auth_apikey.api_key.buf)))
     {
         LOG_WARN("Can't find key '%s' in config-json", "http_api_key");
     }
@@ -182,6 +199,9 @@ gw_cfg_json_parse_http(const cJSON* const p_json_root, ruuvi_gw_cfg_http_t* cons
                 break;
             case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
                 gw_cfg_json_parse_http_auth_token(p_json_root, p_gw_cfg_http);
+                break;
+            case GW_CFG_HTTP_AUTH_TYPE_APIKEY:
+                gw_cfg_json_parse_http_auth_apikey(p_json_root, p_gw_cfg_http);
                 break;
         }
         if ((GW_CFG_HTTP_DATA_FORMAT_RUUVI == p_gw_cfg_http->data_format)

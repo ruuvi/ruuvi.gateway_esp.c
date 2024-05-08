@@ -99,22 +99,41 @@ http_send_advs_log_auth_type(const ruuvi_gw_cfg_http_t* const p_cfg_http)
     switch (p_cfg_http->auth_type)
     {
         case GW_CFG_HTTP_AUTH_TYPE_NONE:
-            LOG_DBG("http_init_client_config: URL=%s, auth_type=%s", p_cfg_http->http_url.buf, "None");
+            LOG_DBG(
+                "http_init_client_config: URL=%s, auth_type=%s",
+                p_cfg_http->http_url.buf,
+                GW_CFG_HTTP_AUTH_TYPE_STR_NONE);
             break;
         case GW_CFG_HTTP_AUTH_TYPE_BASIC:
-            LOG_DBG("http_init_client_config: URL=%s, auth_type=%s", p_cfg_http->http_url.buf, "Basic");
+            LOG_DBG(
+                "http_init_client_config: URL=%s, auth_type=%s",
+                p_cfg_http->http_url.buf,
+                GW_CFG_HTTP_AUTH_TYPE_STR_BASIC);
             LOG_DBG(
                 "http_init_client_config: user=%s, pass=%s",
                 p_cfg_http->auth.auth_basic.user.buf,
                 p_cfg_http->auth.auth_basic.password.buf);
             break;
         case GW_CFG_HTTP_AUTH_TYPE_BEARER:
-            LOG_DBG("http_init_client_config: URL=%s, auth_type=%s", p_cfg_http->http_url.buf, "Bearer");
+            LOG_DBG(
+                "http_init_client_config: URL=%s, auth_type=%s",
+                p_cfg_http->http_url.buf,
+                GW_CFG_HTTP_AUTH_TYPE_STR_BEARER);
             LOG_DBG("http_init_client_config: Bearer token: %s", p_cfg_http->auth.auth_bearer.token.buf);
             break;
         case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
-            LOG_DBG("http_init_client_config: URL=%s, auth_type=%s", p_cfg_http->http_url.buf, "Token");
+            LOG_DBG(
+                "http_init_client_config: URL=%s, auth_type=%s",
+                p_cfg_http->http_url.buf,
+                GW_CFG_HTTP_AUTH_TYPE_STR_TOKEN);
             LOG_DBG("http_init_client_config: Token: %s", p_cfg_http->auth.auth_token.token.buf);
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_APIKEY:
+            LOG_DBG(
+                "http_init_client_config: URL=%s, auth_type=%s",
+                p_cfg_http->http_url.buf,
+                GW_CFG_HTTP_AUTH_TYPE_STR_APIKEY);
+            LOG_DBG("http_init_client_config: api_key: %s", p_cfg_http->auth.auth_apikey.api_key.buf);
             break;
     }
 }
@@ -332,6 +351,25 @@ http_check_post_advs_prep_auth_token(ruuvi_gw_cfg_http_t* const p_cfg_http, cons
     return true;
 }
 
+static bool
+http_check_post_advs_prep_auth_apikey(ruuvi_gw_cfg_http_t* const p_cfg_http, const char* const p_apikey)
+{
+    if (NULL == p_apikey)
+    {
+        return false;
+    }
+    if (strlen(p_apikey) >= sizeof(p_cfg_http->auth.auth_apikey.api_key.buf))
+    {
+        return false;
+    }
+    (void)snprintf(
+        p_cfg_http->auth.auth_apikey.api_key.buf,
+        sizeof(p_cfg_http->auth.auth_apikey.api_key.buf),
+        "%s",
+        p_apikey);
+    return true;
+}
+
 static http_server_resp_t
 http_check_post_advs_internal3(
     http_async_info_t* const         p_http_async_info,
@@ -341,10 +379,12 @@ http_check_post_advs_internal3(
 {
     if (NULL == p_params->p_url)
     {
+        LOG_ERR("p_url is NULL");
         return http_server_resp_err(HTTP_RESP_CODE_400);
     }
     if (strlen(p_params->p_url) >= sizeof(p_cfg_http->http_url.buf))
     {
+        LOG_ERR("URL is too long: %s", p_params->p_url);
         return http_server_resp_err(HTTP_RESP_CODE_400);
     }
     switch (p_params->auth_type)
@@ -354,18 +394,28 @@ http_check_post_advs_internal3(
         case GW_CFG_HTTP_AUTH_TYPE_BASIC:
             if (!http_check_post_advs_prep_auth_basic(p_cfg_http, p_params->p_user, p_params->p_pass))
             {
+                LOG_ERR("http_check_post_advs_prep_auth_basic failed");
                 return http_server_resp_err(HTTP_RESP_CODE_400);
             }
             break;
         case GW_CFG_HTTP_AUTH_TYPE_BEARER:
             if (!http_check_post_advs_prep_auth_bearer(p_cfg_http, p_params->p_pass))
             {
+                LOG_ERR("http_check_post_advs_prep_auth_bearer failed");
                 return http_server_resp_err(HTTP_RESP_CODE_400);
             }
             break;
         case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
             if (!http_check_post_advs_prep_auth_token(p_cfg_http, p_params->p_pass))
             {
+                LOG_ERR("http_check_post_advs_prep_auth_token failed");
+                return http_server_resp_err(HTTP_RESP_CODE_400);
+            }
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_APIKEY:
+            if (!http_check_post_advs_prep_auth_apikey(p_cfg_http, p_params->p_pass))
+            {
+                LOG_ERR("http_check_post_advs_prep_auth_apikey failed");
                 return http_server_resp_err(HTTP_RESP_CODE_400);
             }
             break;
@@ -382,6 +432,7 @@ http_check_post_advs_internal3(
         .use_ssl_server_cert = p_params->use_ssl_server_cert,
     };
 
+    LOG_DBG("http_send_advs_internal");
     if (!http_send_advs_internal(p_http_async_info, NULL, p_cfg_http, &params, &p_http_async_info->http_resp_cb_info))
     {
         LOG_ERR("http_post_advs failed");

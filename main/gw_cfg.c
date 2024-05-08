@@ -667,6 +667,8 @@ gw_cfg_get_http_password_copy_unsafe(const gw_cfg_t* const p_gw_cfg)
             return str_buf_printf_with_alloc("%s", p_gw_cfg->ruuvi_cfg.http.auth.auth_bearer.token.buf);
         case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
             return str_buf_printf_with_alloc("%s", p_gw_cfg->ruuvi_cfg.http.auth.auth_token.token.buf);
+        case GW_CFG_HTTP_AUTH_TYPE_APIKEY:
+            return str_buf_printf_with_alloc("%s", p_gw_cfg->ruuvi_cfg.http.auth.auth_apikey.api_key.buf);
     }
     assert(0);
     return str_buf_init_null();

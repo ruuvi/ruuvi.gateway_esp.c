@@ -233,6 +233,8 @@ validate_url_auth_type_to_str(const gw_cfg_http_auth_type_e auth_type)
             return GW_CFG_HTTP_AUTH_TYPE_STR_BEARER;
         case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
             return GW_CFG_HTTP_AUTH_TYPE_STR_TOKEN;
+        case GW_CFG_HTTP_AUTH_TYPE_APIKEY:
+            return GW_CFG_HTTP_AUTH_TYPE_STR_APIKEY;
     }
     return "UNKNOWN";
 }
@@ -610,6 +612,27 @@ gw_cfg_remote_set_auth_token(ruuvi_gw_cfg_remote_t* const p_remote_cfg, const ch
     return true;
 }
 
+static bool
+gw_cfg_remote_set_auth_apikey(ruuvi_gw_cfg_remote_t* const p_remote_cfg, const char* const p_apikey)
+{
+    if (NULL == p_apikey)
+    {
+        LOG_ERR("remote_cfg API Key is NULL");
+        return false;
+    }
+    if (strlen(p_apikey) >= sizeof(p_remote_cfg->auth.auth_apikey.api_key.buf))
+    {
+        LOG_ERR("remote_cfg API Key is too long: %s", p_apikey);
+        return false;
+    }
+    (void)snprintf(
+        p_remote_cfg->auth.auth_apikey.api_key.buf,
+        sizeof(p_remote_cfg->auth.auth_apikey.api_key.buf),
+        "%s",
+        p_apikey);
+    return true;
+}
+
 static http_server_resp_t
 validate_url_on_get_check_remote_cfg(const http_check_params_t* const p_params)
 {
@@ -639,6 +662,9 @@ validate_url_on_get_check_remote_cfg(const http_check_params_t* const p_params)
             break;
         case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
             res = gw_cfg_remote_set_auth_token(p_remote_cfg, p_params->p_pass);
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_APIKEY:
+            res = gw_cfg_remote_set_auth_apikey(p_remote_cfg, p_params->p_pass);
             break;
     }
     if (!res)
@@ -706,6 +732,9 @@ validate_url_check_remote_cfg(const validate_url_params_t* const p_params)
             break;
         case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
             p_saved_password = p_saved_remote_cfg->auth.auth_token.token.buf;
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_APIKEY:
+            p_saved_password = p_saved_remote_cfg->auth.auth_apikey.api_key.buf;
             break;
     }
     os_free(p_saved_remote_cfg);
@@ -879,6 +908,26 @@ validate_url_check_file_prep_auth_token(
     return true;
 }
 
+static bool
+validate_url_check_file_prep_auth_apikey(
+    const validate_url_params_t* const p_params,
+    ruuvi_gw_cfg_http_auth_t* const    p_http_auth)
+{
+    if (NULL == p_params->password.buf)
+    {
+        LOG_ERR("API Key is NULL");
+        return false;
+    }
+    if ('\0' == p_params->password.buf[0])
+    {
+        LOG_ERR("API Key is empty");
+        return false;
+    }
+    ruuvi_gw_cfg_http_apikey_t* const p_apikey = &p_http_auth->auth_apikey.api_key;
+    (void)snprintf(p_apikey->buf, sizeof(p_apikey->buf), "%s", p_params->password.buf);
+    return true;
+}
+
 static http_server_resp_t
 validate_url_check_file(const validate_url_params_t* const p_params)
 {
@@ -916,6 +965,13 @@ validate_url_check_file(const validate_url_params_t* const p_params)
                     return http_server_resp_400();
                 }
                 break;
+            case GW_CFG_HTTP_AUTH_TYPE_APIKEY:
+                if (!validate_url_check_file_prep_auth_apikey(p_params, p_http_auth))
+                {
+                    os_free(p_http_auth);
+                    return http_server_resp_400();
+                }
+                break;
         }
     }
     const http_download_param_with_auth_t params = {
@@ -947,6 +1003,9 @@ validate_url_check_file(const validate_url_params_t* const p_params)
             break;
         case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
             LOG_DBG("Validate URL (GET file): token=%s", params.p_http_auth->auth_token.token.buf);
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_APIKEY:
+            LOG_DBG("Validate URL (GET file): api_key=%s", params.p_http_auth->auth_apikey.api_key.buf);
             break;
     }
     const http_resp_code_e http_resp_code = http_check(&params);
@@ -984,6 +1043,10 @@ validate_url_get_auth_type(const char* const p_params, gw_cfg_http_auth_type_e* 
     else if (0 == strcmp(GW_CFG_HTTP_AUTH_TYPE_STR_TOKEN, auth_type_str_buf.buf))
     {
         auth_type = GW_CFG_HTTP_AUTH_TYPE_TOKEN;
+    }
+    else if (0 == strcmp(GW_CFG_HTTP_AUTH_TYPE_STR_APIKEY, auth_type_str_buf.buf))
+    {
+        auth_type = GW_CFG_HTTP_AUTH_TYPE_APIKEY;
     }
     else
     {

@@ -34,6 +34,7 @@ extern "C" {
 
 #define GW_CFG_MAX_HTTP_BEARER_TOKEN_LEN 256
 #define GW_CFG_MAX_HTTP_TOKEN_LEN        256
+#define GW_CFG_MAX_HTTP_APIKEY_LEN       256
 #define GW_CFG_MAX_HTTP_URL_LEN          256
 #define GW_CFG_MAX_HTTP_USER_LEN         51
 #define GW_CFG_MAX_HTTP_PASS_LEN         51
@@ -167,6 +168,11 @@ typedef struct ruuvi_gw_cfg_http_token_t
     char buf[GW_CFG_MAX_HTTP_TOKEN_LEN];
 } ruuvi_gw_cfg_http_token_t;
 
+typedef struct ruuvi_gw_cfg_http_apikey_t
+{
+    char buf[GW_CFG_MAX_HTTP_APIKEY_LEN];
+} ruuvi_gw_cfg_http_apikey_t;
+
 #define GW_CFG_HTTP_AUTH_TYPE_STR_SIZE 8
 
 #define GW_CFG_HTTP_AUTH_TYPE_STR_NO     "no" /* deprecated */
@@ -174,6 +180,7 @@ typedef struct ruuvi_gw_cfg_http_token_t
 #define GW_CFG_HTTP_AUTH_TYPE_STR_BASIC  "basic"
 #define GW_CFG_HTTP_AUTH_TYPE_STR_BEARER "bearer"
 #define GW_CFG_HTTP_AUTH_TYPE_STR_TOKEN  "token"
+#define GW_CFG_HTTP_AUTH_TYPE_STR_APIKEY "api_key"
 
 typedef enum gw_cfg_http_auth_type_e
 {
@@ -181,6 +188,7 @@ typedef enum gw_cfg_http_auth_type_e
     GW_CFG_HTTP_AUTH_TYPE_BASIC  = 1,
     GW_CFG_HTTP_AUTH_TYPE_BEARER = 2,
     GW_CFG_HTTP_AUTH_TYPE_TOKEN  = 3,
+    GW_CFG_HTTP_AUTH_TYPE_APIKEY = 4,
 } gw_cfg_http_auth_type_e;
 
 typedef struct ruuvi_gw_cfg_http_auth_basic_t
@@ -200,6 +208,10 @@ typedef union ruuvi_gw_cfg_http_auth_t
     {
         ruuvi_gw_cfg_http_token_t token;
     } auth_token;
+    struct
+    {
+        ruuvi_gw_cfg_http_apikey_t api_key;
+    } auth_apikey;
 } ruuvi_gw_cfg_http_auth_t;
 
 typedef uint16_t gw_cfg_remote_refresh_interval_minutes_t;

@@ -518,6 +518,14 @@ http_handle_add_authorization_if_needed(
             return false;
         }
     }
+    else if (GW_CFG_HTTP_AUTH_TYPE_APIKEY == auth_type)
+    {
+        str_buf = str_buf_printf_with_alloc("%s", p_http_auth->auth_apikey.api_key.buf);
+        if (NULL == str_buf.buf)
+        {
+            return false;
+        }
+    }
     else
     {
         // MISRA C:2012, 15.7 - All if...else if constructs shall be terminated with an else statement
