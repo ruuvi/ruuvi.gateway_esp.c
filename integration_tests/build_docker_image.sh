@@ -10,7 +10,9 @@ mkdir -p .test_results
 exec > >(tee ".test_results/build_docker_image.log") 2>&1
 
 GITHUB_REPO_URL=https://github.com/ruuvi/ruuvi.gateway_esp.c.git
-GITHUB_REPO_BRANCH=$(git branch --show-current)
+
+# use $1 if set; otherwise, use the output of the command git branch --show-current
+GITHUB_REPO_BRANCH=${1:-$(git branch --show-current)}
 
 if [ -z "$GITHUB_REPO_BRANCH" ]; then
     GITHUB_REPO_BRANCH=$(git rev-parse --abbrev-ref HEAD)
