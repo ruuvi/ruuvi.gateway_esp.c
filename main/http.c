@@ -235,7 +235,7 @@ http_wait_until_async_req_completed_handle_http_resp(
         "HTTP GET Status = %d, content_length = %d",
         http_resp_code,
         esp_http_client_get_content_length(p_http_handle));
-    if (HTTP_RESP_CODE_200 == http_resp_code)
+    if ((HTTP_RESP_CODE_200 <= http_resp_code) && (http_resp_code <= HTTP_RESP_CODE_299))
     {
         if ((NULL != p_cb_info) && (NULL != p_cb_info->p_buf))
         {
@@ -661,7 +661,7 @@ http_async_poll(uint32_t* const p_malloc_fail_cnt)
     {
         const esp_http_client_http_status_code_t http_status = esp_http_client_get_status_code(
             p_http_async_info->p_http_client_handle);
-        if (HTTP_RESP_CODE_200 == http_status)
+        if ((HTTP_RESP_CODE_200 <= http_status) && (http_status <= HTTP_RESP_CODE_299))
         {
             http_async_poll_handle_resp_ok(p_http_async_info, http_status);
             flag_success = true;
