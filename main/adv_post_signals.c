@@ -210,7 +210,18 @@ static void
 adv_post_handle_sig_task_watchdog_feed(ATTR_UNUSED adv_post_state_t* const p_adv_post_state) // NOSONAR
 {
     LOG_DBG("Feed watchdog");
-    LOG_INFO("Advs cnt: %lu", (printf_ulong_t)adv_post_advs_cnt_get_and_clear());
+    time_t    cur_time = time(NULL);
+    struct tm tm_time  = { 0 };
+    gmtime_r(&cur_time, &tm_time);
+    LOG_INFO(
+        "[%04u-%02u-%02u %02u:%02u:%02u] Advs cnt: %lu",
+        tm_time.tm_year + 1900,
+        tm_time.tm_mon + 1,
+        tm_time.tm_mday,
+        tm_time.tm_hour,
+        tm_time.tm_min,
+        tm_time.tm_sec,
+        (printf_ulong_t)adv_post_advs_cnt_get_and_clear());
     const esp_err_t err = esp_task_wdt_reset();
     if (ESP_OK != err)
     {
