@@ -761,17 +761,23 @@ validate_url_check_remote_cfg(const validate_url_params_t* const p_params)
 static http_server_resp_t
 validate_url_check_fw_update_url_step3(const cJSON* const p_json_root, const char* const p_json_buf)
 {
-    bool flag_use_beta_version = false;
+    const ruuvi_esp32_fw_ver_str_t* const p_esp32_fw_ver         = gw_cfg_get_esp32_fw_ver();
+    const auto_update_cycle_type_e        auto_update_cycle_type = gw_cfg_get_auto_update_cycle();
+    const fw_update_info_t                fw_update_json         = parse_fw_update_info_json(
+        p_json_root,
+        p_esp32_fw_ver,
+        auto_update_cycle_type);
 
-    const char* const p_binaries_url = parse_fw_update_info_json(p_json_root, &flag_use_beta_version);
-    if (NULL == p_binaries_url)
+    if (!fw_update_json.is_valid)
     {
         LOG_ERR("Failed to parse fw_update_info: %s", p_json_buf);
         return http_server_cb_gen_resp(HTTP_RESP_CODE_502, "Server returned incorrect json: could not get latest/url");
     }
 
     const char*            p_err_file_name = NULL;
-    const http_resp_code_e http_resp_code  = http_server_check_fw_update_binary_files(p_binaries_url, &p_err_file_name);
+    const http_resp_code_e http_resp_code  = http_server_check_fw_update_binary_files(
+        fw_update_json.p_url,
+        &p_err_file_name);
     if (HTTP_RESP_CODE_200 != http_resp_code)
     {
         LOG_ERR(

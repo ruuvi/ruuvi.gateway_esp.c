@@ -121,133 +121,155 @@ http_server_cb_on_delete(
     return http_server_resp_404();
 }
 
-const char*
-parse_fw_update_info_json(const cJSON* const p_json_root, bool* const p_flag_use_beta_version)
+fw_update_info_t
+parse_fw_update_info_json(
+    const cJSON* const                    p_json_root,
+    const ruuvi_esp32_fw_ver_str_t* const p_esp32_fw_ver,
+    const auto_update_cycle_type_e        auto_update_cycle_type)
 {
-    *p_flag_use_beta_version         = false;
+    fw_update_info_t fw_update_info = {
+        .is_valid              = false,
+        .is_update_required    = false,
+        .flag_use_beta_version = false,
+        .p_url                 = NULL,
+        .p_latest_url          = NULL,
+        .p_beta_url            = NULL,
+    };
+
     const cJSON* const p_json_latest = cJSON_GetObjectItem(p_json_root, "latest");
     if (NULL == p_json_latest)
     {
         LOG_ERR("Can't find key '%s' in firmware_update info", "latest");
-        return NULL;
+        return fw_update_info;
     }
     const char* p_latest_version = json_wrap_get_string_val(p_json_latest, "version");
-    const char* p_latest_url     = json_wrap_get_string_val(p_json_latest, "url");
+    fw_update_info.p_latest_url  = json_wrap_get_string_val(p_json_latest, "url");
 
     if (NULL == p_latest_version)
     {
         LOG_ERR("Can't find key '%s' in firmware_update info", "latest/version");
-        return NULL;
+        return fw_update_info;
     }
-    if (NULL == p_latest_url)
+    if (NULL == fw_update_info.p_latest_url)
     {
         LOG_ERR("Can't find key '%s' in firmware_update info", "latest/url");
-        return NULL;
+        return fw_update_info;
     }
     if ('\0' == p_latest_version[0])
     {
         LOG_ERR("Firmware_update info 'latest/version' is empty");
-        return NULL;
+        return fw_update_info;
     }
-    if ('\0' == p_latest_url[0])
+    if ('\0' == fw_update_info.p_latest_url[0])
     {
         LOG_ERR("Firmware_update info 'latest/url' is empty");
-        return NULL;
+        return fw_update_info;
     }
-    if (!http_download_is_url_valid(p_latest_url))
+    if (!http_download_is_url_valid(fw_update_info.p_latest_url))
     {
-        LOG_ERR("Firmware_update info 'latest/url' is invalid: %s", p_latest_url);
-        return NULL;
+        LOG_ERR("Firmware_update info 'latest/url' is invalid: %s", fw_update_info.p_latest_url);
+        return fw_update_info;
     }
+    fw_update_info.is_valid = true;
 
     const char*        p_beta_version = NULL;
-    const char*        p_beta_url     = NULL;
     const cJSON* const p_json_beta    = cJSON_GetObjectItem(p_json_root, "beta");
     if (NULL != p_json_beta)
     {
-        p_beta_version = json_wrap_get_string_val(p_json_beta, "version");
-        p_beta_url     = json_wrap_get_string_val(p_json_beta, "url");
+        p_beta_version            = json_wrap_get_string_val(p_json_beta, "version");
+        fw_update_info.p_beta_url = json_wrap_get_string_val(p_json_beta, "url");
     }
-    bool flag_beta_version_exist = false;
-    if ((NULL == p_beta_version) || (NULL == p_beta_url) || ('\0' == p_beta_version[0]) || ('\0' == p_beta_url[0])
-        || (!http_download_is_url_valid(p_beta_url)))
+    if ((NULL == p_beta_version) || (NULL == fw_update_info.p_beta_url) || ('\0' == p_beta_version[0])
+        || ('\0' == fw_update_info.p_beta_url[0]) || (!http_download_is_url_valid(fw_update_info.p_beta_url)))
     {
-        p_beta_version = p_latest_version;
-        p_beta_url     = p_latest_url;
-    }
-    else
-    {
-        flag_beta_version_exist = true;
+        fw_update_info.p_beta_url = NULL;
     }
 
-    const ruuvi_esp32_fw_ver_str_t* const p_esp32_fw_ver = gw_cfg_get_esp32_fw_ver();
-
-    switch (gw_cfg_get_auto_update_cycle())
+    switch (auto_update_cycle_type)
     {
         case AUTO_UPDATE_CYCLE_TYPE_REGULAR:
+            fw_update_info.p_url = fw_update_info.p_latest_url;
             if (0 != strcmp(p_esp32_fw_ver->buf, p_latest_version))
             {
-                return p_latest_url;
+                fw_update_info.is_update_required = true;
             }
             break;
         case AUTO_UPDATE_CYCLE_TYPE_BETA_TESTER:
-            if (0 != strcmp(p_esp32_fw_ver->buf, p_beta_version))
+            if (NULL != fw_update_info.p_beta_url)
             {
-                *p_flag_use_beta_version = flag_beta_version_exist;
-                return p_beta_url;
+                fw_update_info.p_url                 = fw_update_info.p_beta_url;
+                fw_update_info.flag_use_beta_version = true;
+                if (0 != strcmp(p_esp32_fw_ver->buf, p_beta_version))
+                {
+                    fw_update_info.is_update_required = true;
+                }
+            }
+            else
+            {
+                fw_update_info.p_url = fw_update_info.p_latest_url;
+                if (0 != strcmp(p_esp32_fw_ver->buf, p_latest_version))
+                {
+                    fw_update_info.is_update_required = true;
+                }
             }
             break;
         case AUTO_UPDATE_CYCLE_TYPE_MANUAL:
+            fw_update_info.p_url              = fw_update_info.p_latest_url;
+            fw_update_info.is_update_required = false;
             break;
     }
-    return NULL;
+    return fw_update_info;
 }
 
 static void
 http_server_cb_on_user_req_download_latest_release_info(void)
 {
     LOG_INFO("Download firmware update info");
-    str_buf_t                   fw_update_url  = gw_cfg_get_fw_update_url();
-    http_server_download_info_t fw_update_info = http_download_firmware_update_info(fw_update_url.buf, false);
+    str_buf_t                   fw_update_url      = gw_cfg_get_fw_update_url();
+    http_server_download_info_t fw_update_download = http_download_firmware_update_info(fw_update_url.buf, false);
     str_buf_free_buf(&fw_update_url);
-    if (fw_update_info.is_error)
+    if (fw_update_download.is_error)
     {
         LOG_ERR(
             "Failed to download firmware update info: http_resp_code=%u, message: %s",
-            fw_update_info.http_resp_code,
-            NULL != fw_update_info.p_json_buf ? fw_update_info.p_json_buf : "<NULL>");
-        if (NULL != fw_update_info.p_json_buf)
+            fw_update_download.http_resp_code,
+            NULL != fw_update_download.p_json_buf ? fw_update_download.p_json_buf : "<NULL>");
+        if (NULL != fw_update_download.p_json_buf)
         {
-            os_free(fw_update_info.p_json_buf);
+            os_free(fw_update_download.p_json_buf);
         }
         main_task_schedule_retry_check_for_fw_updates();
         return;
     }
-    LOG_INFO("Firmware update info (json): %s", fw_update_info.p_json_buf);
+    LOG_INFO("Firmware update info (json): %s", fw_update_download.p_json_buf);
 
     main_task_schedule_next_check_for_fw_updates();
 
-    cJSON* p_json_root = cJSON_Parse(fw_update_info.p_json_buf);
-    os_free(fw_update_info.p_json_buf);
+    cJSON* p_json_root = cJSON_Parse(fw_update_download.p_json_buf);
+    os_free(fw_update_download.p_json_buf);
     if (NULL == p_json_root)
     {
-        LOG_ERR("Failed to parse fw_update_info: %s", fw_update_info.p_json_buf);
+        LOG_ERR("Failed to parse fw_update_info: %s", fw_update_download.p_json_buf);
         return;
     }
 
-    bool flag_update_ready     = false;
-    bool flag_use_beta_version = false;
+    bool flag_update_ready = false;
 
-    const char* const p_binaries_url = parse_fw_update_info_json(p_json_root, &flag_use_beta_version);
-    if (NULL != p_binaries_url)
+    const ruuvi_esp32_fw_ver_str_t* const p_esp32_fw_ver         = gw_cfg_get_esp32_fw_ver();
+    const auto_update_cycle_type_e        auto_update_cycle_type = gw_cfg_get_auto_update_cycle();
+    const fw_update_info_t                fw_update_json         = parse_fw_update_info_json(
+        p_json_root,
+        p_esp32_fw_ver,
+        auto_update_cycle_type);
+    if (fw_update_json.is_valid && fw_update_json.is_update_required && (NULL != fw_update_json.p_url))
     {
-        fw_update_set_binaries_url("%s", p_binaries_url);
+        fw_update_set_binaries_url("%s", fw_update_json.p_url);
         LOG_INFO(
             "Update is required (current version: %s, %s version: %s)",
             gw_cfg_get_esp32_fw_ver()->buf,
-            flag_use_beta_version ? "beta" : "latest",
-            p_binaries_url);
-        const http_resp_code_e http_resp_code = http_server_check_fw_update_binary_files(p_binaries_url, NULL);
+            fw_update_json.flag_use_beta_version ? "beta" : "latest",
+            fw_update_json.p_url);
+        const http_resp_code_e http_resp_code = http_server_check_fw_update_binary_files(fw_update_json.p_url, NULL);
         if (HTTP_RESP_CODE_200 != http_resp_code)
         {
             LOG_ERR("Failed to check firmware update binary files: http_resp_code=%u", http_resp_code);
@@ -262,7 +284,7 @@ http_server_cb_on_user_req_download_latest_release_info(void)
         LOG_INFO("Firmware update: No update is required, the latest version is already installed");
     }
 
-    cJSON_Delete(p_json_root); // p_binaries_url is invalid after this line
+    cJSON_Delete(p_json_root); // fw_update_json.p_url is invalid after this line
 
     if (flag_update_ready)
     {
