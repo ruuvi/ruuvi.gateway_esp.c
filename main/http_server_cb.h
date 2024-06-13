@@ -99,8 +99,21 @@ http_server_get_from_params(const char* const p_params, const char* const p_key)
 http_resp_code_e
 http_server_check_fw_update_binary_files(const char* const p_fw_binaries_url, const char** p_p_err_file_name);
 
-const char*
-parse_fw_update_info_json(const cJSON* const p_json_root, bool* const p_flag_use_beta_version);
+typedef struct fw_update_info_t
+{
+    bool        is_valid;
+    bool        is_update_required;
+    bool        flag_use_beta_version;
+    const char* p_url;
+    const char* p_latest_url;
+    const char* p_beta_url;
+} fw_update_info_t;
+
+fw_update_info_t
+parse_fw_update_info_json(
+    const cJSON* const                    p_json_root,
+    const ruuvi_esp32_fw_ver_str_t* const p_esp32_fw_ver,
+    const auto_update_cycle_type_e        auto_update_cycle_type);
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 
