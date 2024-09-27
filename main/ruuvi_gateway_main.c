@@ -100,11 +100,14 @@ conv_bool_to_u8(const bool x)
 }
 
 void
-ruuvi_send_nrf_settings(const ruuvi_gw_cfg_scan_t* const p_scan, const ruuvi_gw_cfg_filter_t* const p_filter)
+ruuvi_send_nrf_settings(const ruuvi_gw_cfg_scan_t* const p_scan_src, const ruuvi_gw_cfg_filter_t* const p_filter)
 {
+    ruuvi_gw_cfg_scan_t scan          = *p_scan_src;
+    scan.scan_extended_payload        = true;
+    ruuvi_gw_cfg_scan_t* const p_scan = &scan;
     LOG_INFO(
-        "### "
-        "sending settings to NRF: use filter: %d, "
+        "### sending settings to NRF: "
+        "use filter: %d, "
         "company id: 0x%04x,"
         "use scan coded phy: %d,"
         "use scan 1mbit/phy: %d,"

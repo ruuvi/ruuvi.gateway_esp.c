@@ -193,7 +193,16 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t* const p_flash_info)
     p_flash_info->p_next_fatfs_nrf52_partition     = find_data_fat_partition_by_name(p_fatfs_nrf52_partition_name);
     if (NULL == p_flash_info->p_next_fatfs_nrf52_partition)
     {
-        return false;
+        if (!p_flash_info->is_ota0_active)
+        {
+            LOG_ERR("Can't find seconds partition for nRF52 firmware: %s", p_fatfs_nrf52_partition_name);
+            return false;
+        }
+        LOG_WARN(
+            "Can't find seconds partition for nRF52 firmware: %s, use the first one: %s",
+            p_fatfs_nrf52_partition_name,
+            GW_NRF_PARTITION);
+        p_flash_info->p_next_fatfs_nrf52_partition = find_data_fat_partition_by_name(GW_NRF_PARTITION);
     }
     LOG_INFO(
         "Next fatfs_nrf52 partition: %s: address 0x%08x, size 0x%x",

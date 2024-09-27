@@ -3,13 +3,15 @@
 cmake_minimum_required(VERSION 3.5)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+add_compile_definitions(RI_ADV_EXTENDED_ENABLED=1)
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffile-prefix-map=${CMAKE_SOURCE_DIR}=.")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffile-prefix-map=$ENV{IDF_PATH}=IDF")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffile-prefix-map=${CMAKE_SOURCE_DIR}=.")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffile-prefix-map=$ENV{IDF_PATH}=IDF")
 
 set(EXPECTED_IDF_VERSION v4.2.2)
-set(RUUVI_NRF52_FW_URL https://github.com/ruuvi/ruuvi.gateway_nrf.c/releases/download/v1.0.0/ruuvigw_nrf_armgcc_ruuvigw_release_v1.0.0_full.hex)
+set(RUUVI_NRF52_FW_URL https://github.com/ruuvi/ruuvi.gateway_nrf.c/releases/download/0.5.2/ruuvigw_nrf_armgcc_ruuvigw_release_dcb8b10_full.hex)
 
 set(EXTRA_COMPONENT_DIRS
         ${CMAKE_SOURCE_DIR}/components/ruuvi.comm_tester.c/components
@@ -28,11 +30,7 @@ ExternalProject_Add(mkfatfs
         BUILD_ALWAYS 1
 )
 
-string(REGEX MATCH ".*/v?([0-9]+.[0-9]+.[0-9]+)/[^/]*" _ ${RUUVI_NRF52_FW_URL})
-set(RUUVI_NRF52_FW_VERSION v${CMAKE_MATCH_1})
-if("${RUUVI_NRF52_FW_VERSION}" STREQUAL "v")
-    message(FATAL_ERROR "Bad nRF52 firmware version: ${RUUVI_NRF52_FW_URL}")
-endif()
+set(RUUVI_NRF52_FW_VERSION v1.0.2)
 
 set(GW_GWUI_PARTITION fatfs_gwui)
 file(STRINGS "partitions.csv" PARTITIONS_CSV)

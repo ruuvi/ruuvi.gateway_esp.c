@@ -92,6 +92,7 @@ typedef struct metrics_sha256_str_t
 typedef struct metrics_info_t
 {
     uint64_t                    received_advertisements;
+    uint64_t                    received_ext_advertisements;
     int64_t                     uptime_us;
     metrics_total_free_info_t   total_free_bytes;
     metrics_largest_free_info_t largest_free_block;
@@ -117,14 +118,16 @@ typedef struct metrics_tmp_buf_t
 static const char TAG[] = "metrics";
 
 static uint64_t          g_received_advertisements;
+static uint64_t          g_received_advertisements_ext;
 static os_mutex_t        g_p_metrics_mutex;
 static os_mutex_static_t g_metrics_mutex_mem;
 
 void
 metrics_init(void)
 {
-    g_received_advertisements = 0;
-    g_p_metrics_mutex         = os_mutex_create_static(&g_metrics_mutex_mem);
+    g_received_advertisements     = 0;
+    g_received_advertisements_ext = 0;
+    g_p_metrics_mutex             = os_mutex_create_static(&g_metrics_mutex_mem);
 }
 
 void
@@ -150,10 +153,17 @@ metrics_unlock(void)
 }
 
 void
-metrics_received_advs_increment(void)
+metrics_received_advs_increment(const bool is_ext_adv)
 {
     metrics_lock();
-    g_received_advertisements += 1;
+    if (is_ext_adv)
+    {
+        g_received_advertisements_ext += 1;
+    }
+    else
+    {
+        g_received_advertisements += 1;
+    }
     metrics_unlock();
 }
 
@@ -164,6 +174,15 @@ metrics_received_advs_get(void)
     const uint64_t num_received_advertisements = g_received_advertisements;
     metrics_unlock();
     return num_received_advertisements;
+}
+
+uint64_t
+metrics_received_ext_advs_get(void)
+{
+    metrics_lock();
+    const uint64_t num_received_ext_advertisements = g_received_advertisements_ext;
+    metrics_unlock();
+    return num_received_ext_advertisements;
 }
 
 static size_t
@@ -272,6 +291,7 @@ gen_metrics(void)
         &p_tmp_buf->tmp_sha256_ctx);
 
     p_metrics->received_advertisements        = metrics_received_advs_get();
+    p_metrics->received_ext_advertisements    = metrics_received_ext_advs_get();
     p_metrics->uptime_us                      = esp_timer_get_time();
     p_metrics->total_free_bytes.size_exec     = (ulong_t)get_total_free_bytes(MALLOC_CAP_EXEC);
     p_metrics->total_free_bytes.size_32bit    = (ulong_t)get_total_free_bytes(MALLOC_CAP_32BIT);
@@ -457,6 +477,10 @@ metrics_print(str_buf_t* p_str_buf, const metrics_info_t* p_metrics)
         p_str_buf,
         METRICS_PREFIX "received_advertisements %lld\n",
         (printf_long_long_t)p_metrics->received_advertisements);
+    str_buf_printf(
+        p_str_buf,
+        METRICS_PREFIX "received_ext_advertisements %lld\n",
+        (printf_long_long_t)p_metrics->received_ext_advertisements);
     str_buf_printf(p_str_buf, METRICS_PREFIX "uptime_us %lld\n", (printf_long_long_t)p_metrics->uptime_us);
     metrics_print_total_free_bytes(p_str_buf, p_metrics);
     metrics_print_largest_free_blk(p_str_buf, p_metrics);

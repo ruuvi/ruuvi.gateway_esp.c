@@ -86,7 +86,8 @@ u64_to_array(const uint64_t u64, uint8_t* const p_array, const uint8_t num_bytes
 static bool
 adv_put_to_table(const adv_report_t* const p_adv)
 {
-    metrics_received_advs_increment();
+    const bool is_ext_adv = (p_adv->data_len > 31) ? true : false;
+    metrics_received_advs_increment(is_ext_adv);
     return adv_table_put(p_adv);
 }
 
@@ -188,6 +189,50 @@ adv_post_check_if_mac_filtered_out(
 }
 
 static void
+adv_post_log_adv_report(
+    const adv_report_t* const         p_adv,
+    const adv_post_cfg_cache_t* const p_cfg_cache,
+    const time_t                      timestamp)
+{
+#if LOG_LOCAL_LEVEL < LOG_LEVEL_VERBOSE
+    bool flag_log_single_allowed_mac = false;
+    if (p_cfg_cache->scan_filter_allow_listed && (p_cfg_cache->scan_filter_length > 0)
+        && (p_cfg_cache->scan_filter_length <= 3))
+    {
+        for (int i = 0; i < p_cfg_cache->scan_filter_length; ++i)
+        {
+            if (0 == memcmp(&p_cfg_cache->p_arr_of_scan_filter_mac[i].mac, p_adv->tag_mac.mac, MAC_ADDRESS_NUM_BYTES))
+            {
+                flag_log_single_allowed_mac = true;
+                break;
+            }
+        }
+    }
+
+    if (flag_log_single_allowed_mac)
+    {
+        LOG_INFO(
+            "Recv Adv: MAC=%s, ID=0x%02x%02x, time=%lu, RSSI=%d",
+            mac_address_to_str(&p_adv->tag_mac).str_buf,
+            p_adv->data_buf[6],
+            p_adv->data_buf[5],
+            (printf_ulong_t)timestamp,
+            p_adv->rssi);
+    }
+#else
+    LOG_DUMP_INFO(
+        p_adv->data_buf,
+        p_adv->data_len,
+        "Recv Adv: MAC=%s, ID=0x%02x%02x, time=%lu, RSSI=%d",
+        mac_address_to_str(&p_adv->tag_mac).str_buf,
+        p_adv->data_buf[6],
+        p_adv->data_buf[5],
+        (printf_ulong_t)timestamp,
+        p_adv->rssi);
+#endif
+}
+
+static void
 adv_post_send_report(void* p_arg)
 {
     adv_post_advs_cnt_inc();
@@ -226,15 +271,7 @@ adv_post_send_report(void* p_arg)
 
     adv_post_timers_relaunch_timer_sig_recv_adv_timeout();
 
-    LOG_DUMP_VERBOSE(
-        adv_report.data_buf,
-        adv_report.data_len,
-        "Recv Adv: MAC=%s, ID=0x%02x%02x, time=%lu, RSSI=%d",
-        mac_address_to_str(&adv_report.tag_mac).str_buf,
-        adv_report.data_buf[6],
-        adv_report.data_buf[5],
-        (printf_ulong_t)timestamp,
-        adv_report.rssi);
+    adv_post_log_adv_report(&adv_report, p_cfg_cache, timestamp);
 
     if (flag_ntp_use && (!flag_time_is_synchronized))
     {

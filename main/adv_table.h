@@ -28,7 +28,7 @@ extern "C" {
 #define ADV_TABLE_STATIC static
 #endif
 
-#define ADV_DATA_MAX_LEN (32)
+#define ADV_DATA_MAX_LEN (48)
 #define MAX_ADVS_TABLE   (GW_CFG_MAX_NUM_SENSORS)
 
 typedef int8_t   wifi_rssi_t;

@@ -9,6 +9,7 @@
 #define RUUVI_GATEWAY_ESP_METRICS_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -21,7 +22,7 @@ void
 metrics_deinit(void);
 
 void
-metrics_received_advs_increment(void);
+metrics_received_advs_increment(const bool is_ext_adv);
 
 uint64_t
 metrics_received_advs_get(void);

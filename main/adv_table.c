@@ -12,9 +12,9 @@
 #include "sys/queue.h"
 
 #if defined(__XTENSA__)
-#define ADV_REPORT_EXPECTED_SIZE (16U + 32U)
+#define ADV_REPORT_EXPECTED_SIZE (16U + 48U)
 #elif defined(__linux__) && defined(__x86_64__)
-#define ADV_REPORT_EXPECTED_SIZE (24U + 32U)
+#define ADV_REPORT_EXPECTED_SIZE (24U + 48U)
 #endif
 
 _Static_assert(sizeof(adv_report_t) == ADV_REPORT_EXPECTED_SIZE, "sizeof(adv_report_t)");
@@ -156,6 +156,13 @@ adv_table_check_if_adv_must_be_discarded(const adv_report_t* const p_adv, const 
     {
         // Discard the data if it's equal to the previous value (new measurement should have different measurement
         // counter)
+        return true;
+    }
+    const bool is_prev_ext_adv = (p_prev_adv->data_len > 31) ? true : false;
+    const bool is_new_ext_adv  = (p_adv->data_len > 31) ? true : false;
+    if (is_prev_ext_adv && !is_new_ext_adv)
+    {
+        // Discard the data if the previous data is extended advertisement and the new data is not extended
         return true;
     }
     return false;
