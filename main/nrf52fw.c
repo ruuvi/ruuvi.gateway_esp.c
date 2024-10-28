@@ -20,9 +20,6 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
 
-#define NRF52FW_IUCR_BASE_ADDR (0x10001000)
-#define NRF52FW_IUCR_FW_VER    (NRF52FW_IUCR_BASE_ADDR + 0x080)
-
 #define NRF52FW_SLEEP_WHILE_FLASHING_MS (20U)
 
 typedef struct nrf52fw_update_tmp_data_t
@@ -345,14 +342,14 @@ NRF52FW_STATIC
 bool
 nrf52fw_read_current_fw_ver(ruuvi_nrf52_fw_ver_t* const p_fw_ver)
 {
-    return nrf52swd_read_mem(NRF52FW_IUCR_FW_VER, 1, &p_fw_ver->version);
+    return nrf52swd_read_mem(NRF52FW_UICR_FW_VER, 1, &p_fw_ver->version);
 }
 
 NRF52FW_STATIC
 bool
 nrf52fw_write_current_fw_ver(const uint32_t fw_ver)
 {
-    return nrf52swd_write_mem(NRF52FW_IUCR_FW_VER, 1, &fw_ver);
+    return nrf52swd_write_mem(NRF52FW_UICR_FW_VER, 1, &fw_ver);
 }
 
 #if RUUVI_TESTS_NRF52FW
@@ -555,10 +552,35 @@ nrf52fw_flash_write_firmware(
             return false;
         }
     }
-    if (!nrf52fw_write_current_fw_ver(p_fw_info->fw_ver.version))
+    /*
+     * Starting from gateway_nrf v2.0.0 the firmware image.hex file contains the firmware version in the last segment,
+     * but only if it's a released version.
+     * So, we need to write the firmware version to the UICR register only if it was not written yet.
+     */
+    ruuvi_nrf52_fw_ver_t fw_ver = { 0 };
+    if (!nrf52fw_read_current_fw_ver(&fw_ver))
     {
-        LOG_ERR("Failed to write firmware version");
+        LOG_ERR("%s failed", "nrf52fw_read_current_fw_ver");
         return false;
+    }
+    if (0xFFFFFFFFU == fw_ver.version)
+    {
+        if (!nrf52fw_write_current_fw_ver(p_fw_info->fw_ver.version))
+        {
+            LOG_ERR("Failed to write firmware version");
+            return false;
+        }
+    }
+    else
+    {
+        if (fw_ver.version != p_fw_info->fw_ver.version)
+        {
+            LOG_ERR(
+                "Firmware version in the firmware image: 0x%08x, but expected version is 0x%08x",
+                fw_ver.version,
+                p_fw_info->fw_ver.version);
+            return false;
+        }
     }
     return true;
 }

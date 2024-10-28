@@ -34,6 +34,9 @@
 extern "C" {
 #endif
 
+#define NRF52FW_UICR_BASE_ADDR (0x10001000)
+#define NRF52FW_UICR_FW_VER    (NRF52FW_UICR_BASE_ADDR + 0x080)
+
 typedef struct nrf52fw_segment_t
 {
     uint32_t address;
