@@ -86,11 +86,20 @@ gw_cfg_json_parse_scan(const cJSON* const p_json_root, ruuvi_gw_cfg_scan_t* cons
         {
             LOG_WARN("Can't find key '%s' in config-json", "scan_channel_39");
         }
-        if (flag_need_to_conv_conf && !flag_scan_default_exists)
+        if (flag_need_to_conv_conf && (!flag_scan_default_exists))
         {
             LOG_INFO("Convert deprecated key '%s' to '%s'", "scan_extended_payload", "scan_2mbit_phy");
-            if ((!p_gw_cfg_scan->scan_coded_phy) && p_gw_cfg_scan->scan_1mbit_phy && p_gw_cfg_scan->scan_2mbit_phy
-                && p_gw_cfg_scan->scan_channel_37 && p_gw_cfg_scan->scan_channel_38 && p_gw_cfg_scan->scan_channel_39)
+            bool flag_scan_default = true;
+            if (p_gw_cfg_scan->scan_coded_phy || (!p_gw_cfg_scan->scan_1mbit_phy) || (!p_gw_cfg_scan->scan_2mbit_phy))
+            {
+                flag_scan_default = false;
+            }
+            if ((!p_gw_cfg_scan->scan_channel_37) || (!p_gw_cfg_scan->scan_channel_38)
+                || (!p_gw_cfg_scan->scan_channel_39))
+            {
+                flag_scan_default = false;
+            }
+            if (flag_scan_default)
             {
                 LOG_INFO("Set scan_default=true");
                 p_gw_cfg_scan->scan_default                            = true;

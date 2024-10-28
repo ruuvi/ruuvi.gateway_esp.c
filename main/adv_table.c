@@ -21,6 +21,8 @@ _Static_assert(sizeof(adv_report_t) == ADV_REPORT_EXPECTED_SIZE, "sizeof(adv_rep
 
 #define ADV_TABLE_HASH_SIZE (101)
 
+#define BLE_MAX_REGULAR_ADV_DATA_LEN (31U)
+
 typedef struct adv_reports_list_elem_t adv_reports_list_elem_t;
 
 typedef STAILQ_HEAD(adv_report_list_t, adv_reports_list_elem_t) adv_report_list_t;
@@ -159,9 +161,9 @@ adv_table_check_if_adv_must_be_discarded(const adv_report_t* const p_adv, const 
         return true;
     }
 #if 1
-    const bool is_prev_ext_adv = (p_prev_adv->data_len > 31) ? true : false;
-    const bool is_new_ext_adv  = (p_adv->data_len > 31) ? true : false;
-    if (is_prev_ext_adv && !is_new_ext_adv)
+    const bool is_prev_ext_adv = (p_prev_adv->data_len > BLE_MAX_REGULAR_ADV_DATA_LEN) ? true : false;
+    const bool is_new_ext_adv  = (p_adv->data_len > BLE_MAX_REGULAR_ADV_DATA_LEN) ? true : false;
+    if (is_prev_ext_adv && (!is_new_ext_adv))
     {
         // Discard the data if the previous data is extended advertisement and the new data is not extended
         return true;

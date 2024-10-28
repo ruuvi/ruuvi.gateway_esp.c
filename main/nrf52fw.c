@@ -22,6 +22,8 @@
 
 #define NRF52FW_SLEEP_WHILE_FLASHING_MS (20U)
 
+#define NRF52FW_ERASED_FLASH_DWORD_VAL (0xFFFFFFFFU)
+
 typedef struct nrf52fw_update_tmp_data_t
 {
     nrf52fw_tmp_buf_t        tmp_buf;
@@ -563,7 +565,7 @@ nrf52fw_flash_write_firmware(
         LOG_ERR("%s failed", "nrf52fw_read_current_fw_ver");
         return false;
     }
-    if (0xFFFFFFFFU == fw_ver.version)
+    if (NRF52FW_ERASED_FLASH_DWORD_VAL == fw_ver.version)
     {
         if (!nrf52fw_write_current_fw_ver(p_fw_info->fw_ver.version))
         {

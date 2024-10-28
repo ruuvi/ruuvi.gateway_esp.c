@@ -102,6 +102,35 @@ find_data_fat_partition_by_name(const char* const p_partition_name)
     return p_partition;
 }
 
+static void
+fw_update_log_running_partition_state(const esp_ota_img_states_t running_partition_state)
+{
+    switch (running_partition_state)
+    {
+        case ESP_OTA_IMG_NEW:
+            LOG_INFO("Currently running partition state: %s", "NEW");
+            break;
+        case ESP_OTA_IMG_PENDING_VERIFY:
+            LOG_INFO("Currently running partition state: %s", "PENDING_VERIFY");
+            break;
+        case ESP_OTA_IMG_VALID:
+            LOG_INFO("Currently running partition state: %s", "VALID");
+            break;
+        case ESP_OTA_IMG_INVALID:
+            LOG_INFO("Currently running partition state: %s", "INVALID");
+            break;
+        case ESP_OTA_IMG_ABORTED:
+            LOG_INFO("Currently running partition state: %s", "ABORTED");
+            break;
+        case ESP_OTA_IMG_UNDEFINED:
+            LOG_INFO("Currently running partition state: %s", "UNDEFINED");
+            break;
+        default:
+            LOG_INFO("Currently running partition state: UNKNOWN (%d)", (printf_int_t)running_partition_state);
+            break;
+    }
+}
+
 static bool
 fw_update_read_flash_info_internal(ruuvi_flash_info_t* const p_flash_info)
 {
@@ -137,32 +166,7 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t* const p_flash_info)
         LOG_ERR_ESP(err, "%s failed", "esp_ota_get_state_partition");
         return false;
     }
-    switch (p_flash_info->running_partition_state)
-    {
-        case ESP_OTA_IMG_NEW:
-            LOG_INFO("Currently running partition state: %s", "NEW");
-            break;
-        case ESP_OTA_IMG_PENDING_VERIFY:
-            LOG_INFO("Currently running partition state: %s", "PENDING_VERIFY");
-            break;
-        case ESP_OTA_IMG_VALID:
-            LOG_INFO("Currently running partition state: %s", "VALID");
-            break;
-        case ESP_OTA_IMG_INVALID:
-            LOG_INFO("Currently running partition state: %s", "INVALID");
-            break;
-        case ESP_OTA_IMG_ABORTED:
-            LOG_INFO("Currently running partition state: %s", "ABORTED");
-            break;
-        case ESP_OTA_IMG_UNDEFINED:
-            LOG_INFO("Currently running partition state: %s", "UNDEFINED");
-            break;
-        default:
-            LOG_INFO(
-                "Currently running partition state: UNKNOWN (%d)",
-                (printf_int_t)p_flash_info->running_partition_state);
-            break;
-    }
+    fw_update_log_running_partition_state(p_flash_info->running_partition_state);
 
     p_flash_info->p_next_update_partition = esp_ota_get_next_update_partition(p_flash_info->p_running_partition);
     if (NULL == p_flash_info->p_next_update_partition)

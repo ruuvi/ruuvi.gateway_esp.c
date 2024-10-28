@@ -288,31 +288,43 @@ ble_tx_power_to_str(const int8_t tx_power)
     return tx_power_str;
 }
 
+#define BLE_MSG_CHUNK_LEN_OFFSET                                             (0U)
+#define BLE_MSG_CHUNK_TYPE_OFFSET                                            (1U)
+#define BLE_MSG_CHUNK_TYPE_MANUFACTURED_SPECIFIC_DATA                        (0xFFU)
+#define BLE_MSG_CHUNK_DATA_OFFSET                                            (2U)
+#define BLE_MSG_CHUNK_MANUFACTURED_SPECIFIC_DATA_MIN_LEN                     (3U)
+#define BLE_MSG_CHUNK_MANUFACTURED_SPECIFIC_DATA_MANUFACTURER_ID_LOW_OFFSET  (2U)
+#define BLE_MSG_CHUNK_MANUFACTURED_SPECIFIC_DATA_MANUFACTURER_ID_HIGH_OFFSET (3U)
+#define NUM_BITS_PER_BYTE                                                    (8U)
+
 static uint16_t
 get_ble_manuf_id(const adv_report_t* const p_adv)
 {
-    if (p_adv->data_len < 2)
+    if (p_adv->data_len < BLE_MSG_CHUNK_DATA_OFFSET)
     {
         return 0;
     }
     const uint8_t* p_data = p_adv->data_buf;
-    while (((ptrdiff_t)p_adv->data_len - (ptrdiff_t)(p_data - p_adv->data_buf)) >= 2)
+    while (((ptrdiff_t)p_adv->data_len - (p_data - p_adv->data_buf)) >= BLE_MSG_CHUNK_DATA_OFFSET)
     {
-        const uint8_t len  = p_data[0];
-        const uint8_t type = p_data[1];
-        if (0xFFU != type)
+        const uint8_t len  = p_data[BLE_MSG_CHUNK_LEN_OFFSET];
+        const uint8_t type = p_data[BLE_MSG_CHUNK_TYPE_OFFSET];
+        if (BLE_MSG_CHUNK_TYPE_MANUFACTURED_SPECIFIC_DATA != type)
         {
             p_data += len + 1;
             continue;
         }
-        if (len < 3)
+        if (len < BLE_MSG_CHUNK_MANUFACTURED_SPECIFIC_DATA_MIN_LEN)
         {
             break;
         }
-        return ((uint16_t)p_data[3] << 8) | p_data[2];
+        return (uint16_t)((uint16_t)p_data[BLE_MSG_CHUNK_MANUFACTURED_SPECIFIC_DATA_MANUFACTURER_ID_HIGH_OFFSET] << NUM_BITS_PER_BYTE)
+               | (uint16_t)p_data[BLE_MSG_CHUNK_MANUFACTURED_SPECIFIC_DATA_MANUFACTURER_ID_LOW_OFFSET];
     }
     return 0;
 }
+
+#define ADV_POST_MAX_NUM_SCAN_FILTERS_FOR_LOGGING (3U)
 
 static void
 adv_post_log_adv_report(
@@ -323,9 +335,9 @@ adv_post_log_adv_report(
 #if 1 && LOG_LOCAL_LEVEL < LOG_LEVEL_VERBOSE
     bool flag_log_single_allowed_mac = false;
     if (p_cfg_cache->scan_filter_allow_listed && (p_cfg_cache->scan_filter_length > 0)
-        && (p_cfg_cache->scan_filter_length <= 3))
+        && (p_cfg_cache->scan_filter_length <= ADV_POST_MAX_NUM_SCAN_FILTERS_FOR_LOGGING))
     {
-        for (int i = 0; i < p_cfg_cache->scan_filter_length; ++i)
+        for (uint32_t i = 0; i < p_cfg_cache->scan_filter_length; ++i)
         {
             if (0 == memcmp(&p_cfg_cache->p_arr_of_scan_filter_mac[i].mac, p_adv->tag_mac.mac, MAC_ADDRESS_NUM_BYTES))
             {
