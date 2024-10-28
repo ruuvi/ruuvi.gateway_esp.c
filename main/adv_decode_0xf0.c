@@ -4,10 +4,7 @@
  */
 
 #include "adv_decode.h"
-#include "ruuvi_endpoint_5.h"
-#include "ruuvi_endpoint_6.h"
 #include "ruuvi_endpoint_f0.h"
-#include "ruuvi_endpoint_e0.h"
 
 #define NUM_BITS_PER_BYTE (8U)
 #define BYTE_MASK         (0xFFU)
@@ -22,62 +19,58 @@ JSON_STREAM_GEN_DECL_GENERATOR_SUB_FUNC(
     if (RE_SUCCESS == decode_status)
     {
         JSON_STREAM_GEN_ADD_INT32(p_gen, "dataFormat", RE_F0_DESTINATION);
-        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT( // Data format 0xF0: temperature in C
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
             p_gen,
             "temperature",
             data.temperature_c,
             JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_0);
-        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT( // Data format 0xF0: humidity in %
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
             p_gen,
             "humidity",
             data.humidity_rh,
             JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_1);
-        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT( // Data format 0xF0: pressure in Pa
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
             p_gen,
             "pressure",
             data.pressure_pa,
             JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_0);
-        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT( // Data format 0xF0: PM1.0
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
             p_gen,
             "PM1.0",
             data.pm1p0_ppm,
             JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_1);
-        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT( // Data format 0xF0: PM2.5
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
             p_gen,
             "PM2.5",
             data.pm2p5_ppm,
             JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_1);
-        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT( // Data format 0xF0: PM4.0
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
             p_gen,
             "PM4.0",
             data.pm4p0_ppm,
             JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_1);
-        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT( // Data format 0xF0: PM10.0
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
             p_gen,
             "PM10.0",
             data.pm10p0_ppm,
             JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_1);
-        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT( // Data format 0xF0: CO2
-            p_gen,
-            "CO2",
-            data.co2,
-            JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_0);
-        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT( // Data format 0xF0: VOC
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(p_gen, "CO2", data.co2, JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_0);
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
             p_gen,
             "VOC",
             data.voc_index,
             JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_0);
-        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT( // Data format 0xF0: NOx
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
             p_gen,
             "NOx",
             data.nox_index,
             JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_0);
-        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT( // Data format 0xF0: luminosity
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
             p_gen,
             "luminosity",
             data.luminosity,
             JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_0);
-        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT( // Data format 0xF0: sound_dba_avg
+        JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
             p_gen,
             "sound_dba_avg",
             data.sound_dba_avg,

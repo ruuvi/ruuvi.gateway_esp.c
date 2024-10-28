@@ -5,9 +5,6 @@
 
 #include "adv_decode.h"
 #include "ruuvi_endpoint_5.h"
-#include "ruuvi_endpoint_6.h"
-#include "ruuvi_endpoint_f0.h"
-#include "ruuvi_endpoint_e0.h"
 
 #define NUM_BITS_PER_BYTE (8U)
 #define BYTE_MASK         (0xFFU)
