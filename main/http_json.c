@@ -11,6 +11,8 @@
 #include "runtime_stat.h"
 #include "ruuvi_endpoint_5.h"
 #include "ruuvi_endpoint_6.h"
+#include "ruuvi_endpoint_e0.h"
+#include "ruuvi_endpoint_f0.h"
 #include "adv_decode.h"
 
 #if defined(RUUVI_TESTS)
@@ -254,6 +256,25 @@ static JSON_STREAM_GEN_DECL_GENERATOR_SUB_FUNC(
     {
         JSON_STREAM_GEN_ADD_UINT32(p_gen, "counter", p_adv->timestamp);
     }
+    switch (p_adv->secondary_phy)
+    {
+        case RE_CA_UART_BLE_PHY_NOT_SET:
+            JSON_STREAM_GEN_ADD_STRING(p_gen, "ble_phy", "1M");
+            break;
+        case RE_CA_UART_BLE_PHY_2MBPS:
+            JSON_STREAM_GEN_ADD_STRING(p_gen, "ble_phy", "2M");
+            break;
+        case RE_CA_UART_BLE_PHY_CODED:
+            JSON_STREAM_GEN_ADD_STRING(p_gen, "ble_phy", "Coded");
+            break;
+        default:
+            break;
+    }
+    JSON_STREAM_GEN_ADD_UINT32(p_gen, "ble_chan", p_adv->ch_index);
+    if (RE_CA_UART_BLE_GAP_POWER_LEVEL_INVALID != p_adv->tx_power)
+    {
+        JSON_STREAM_GEN_ADD_UINT32(p_gen, "ble_tx_power", p_adv->tx_power);
+    }
     if (p_ctx->flag_raw_data)
     {
         JSON_STREAM_GEN_ADD_HEX_BUF(p_gen, "data", p_adv->data_buf, p_adv->data_len);
@@ -267,6 +288,14 @@ static JSON_STREAM_GEN_DECL_GENERATOR_SUB_FUNC(
         if (re_6_check_format(p_adv->data_buf))
         {
             JSON_STREAM_GEN_CALL_GENERATOR_SUB_FUNC(adv_decode_df6_cb_json_stream_gen, p_gen, p_adv);
+        }
+        if (re_f0_check_format(p_adv->data_buf))
+        {
+            JSON_STREAM_GEN_CALL_GENERATOR_SUB_FUNC(adv_decode_dfxf0_cb_json_stream_gen, p_gen, p_adv);
+        }
+        if (re_e0_check_format(p_adv->data_buf))
+        {
+            JSON_STREAM_GEN_CALL_GENERATOR_SUB_FUNC(adv_decode_dfxe0_cb_json_stream_gen, p_gen, p_adv);
         }
     }
     JSON_STREAM_GEN_END_OBJECT(p_gen);
