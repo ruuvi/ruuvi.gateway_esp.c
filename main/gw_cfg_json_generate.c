@@ -846,7 +846,7 @@ gw_cfg_json_add_items_scan(cJSON* const p_json_root, const ruuvi_gw_cfg_scan_t* 
     {
         return false;
     }
-    if (!gw_cfg_json_add_bool(p_json_root, "scan_extended_payload", p_cfg_scan->scan_extended_payload))
+    if (!gw_cfg_json_add_bool(p_json_root, "scan_2mbit_phy", p_cfg_scan->scan_2mbit_phy))
     {
         return false;
     }
@@ -859,6 +859,10 @@ gw_cfg_json_add_items_scan(cJSON* const p_json_root, const ruuvi_gw_cfg_scan_t* 
         return false;
     }
     if (!gw_cfg_json_add_bool(p_json_root, "scan_channel_39", p_cfg_scan->scan_channel_39))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(p_json_root, "scan_default", p_cfg_scan->scan_default))
     {
         return false;
     }

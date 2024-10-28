@@ -367,7 +367,7 @@ ruuvi_gw_cfg_scan_cmp(const ruuvi_gw_cfg_scan_t* const p_scan1, const ruuvi_gw_c
     {
         return false;
     }
-    if (p_scan1->scan_extended_payload != p_scan2->scan_extended_payload)
+    if (p_scan1->scan_2mbit_phy != p_scan2->scan_2mbit_phy)
     {
         return false;
     }
@@ -380,6 +380,10 @@ ruuvi_gw_cfg_scan_cmp(const ruuvi_gw_cfg_scan_t* const p_scan1, const ruuvi_gw_c
         return false;
     }
     if (p_scan1->scan_channel_39 != p_scan2->scan_channel_39)
+    {
+        return false;
+    }
+    if (p_scan1->scan_default != p_scan2->scan_default)
     {
         return false;
     }

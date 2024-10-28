@@ -63,6 +63,9 @@ gw_cfg_default_get_ntp(void);
 const ruuvi_gw_cfg_filter_t*
 gw_cfg_default_get_filter(void);
 
+const ruuvi_gw_cfg_scan_t*
+gw_cfg_default_get_scan(void);
+
 const ruuvi_gw_cfg_lan_auth_t*
 gw_cfg_default_get_lan_auth(void);
 

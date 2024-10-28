@@ -106,7 +106,7 @@ typedef struct ruuvi_gw_cfg_blob_scan_t
 {
     bool scan_coded_phy;
     bool scan_1mbit_phy;
-    bool scan_extended_payload;
+    bool scan_2mbit_phy;
     bool scan_channel_37;
     bool scan_channel_38;
     bool scan_channel_39;

@@ -377,13 +377,13 @@ gw_cfg_storage_check_file(const char* const p_file_name)
 TEST_F(TestMetrics, test_metrics_init_deinit) // NOLINT
 {
     metrics_init();
-    metrics_received_advs_increment();
+    metrics_received_advs_increment(RE_CA_UART_BLE_PHY_NOT_SET);
     metrics_deinit();
 }
 
 TEST_F(TestMetrics, test_metrics_received_advs_increment_without_init) // NOLINT
 {
-    metrics_received_advs_increment();
+    metrics_received_advs_increment(RE_CA_UART_BLE_PHY_NOT_SET);
     metrics_deinit();
 }
 
@@ -395,6 +395,8 @@ TEST_F(TestMetrics, test_metrics_generate) // NOLINT
     const char* p_metrics_str = metrics_generate();
     ASSERT_EQ(
         string("ruuvigw_received_advertisements 0\n"
+               "ruuvigw_received_ext_advertisements 0\n"
+               "ruuvigw_received_coded_advertisements 0\n"
                "ruuvigw_uptime_us 15317668796\n"
                "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_EXEC\"} 194796\n"
                "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_32BIT\"} 201116\n"
@@ -428,12 +430,96 @@ TEST_F(TestMetrics, test_metrics_generate) // NOLINT
         string(p_metrics_str));
     os_free(p_metrics_str);
 
-    metrics_received_advs_increment();
+    metrics_received_advs_increment(RE_CA_UART_BLE_PHY_NOT_SET);
     this->m_uptime = 15317668797;
 
     p_metrics_str = metrics_generate();
     ASSERT_EQ(
         string("ruuvigw_received_advertisements 1\n"
+               "ruuvigw_received_ext_advertisements 0\n"
+               "ruuvigw_received_coded_advertisements 0\n"
+               "ruuvigw_uptime_us 15317668797\n"
+               "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_EXEC\"} 194796\n"
+               "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_32BIT\"} 201116\n"
+               "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_8BIT\"} 134284\n"
+               "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_DMA\"} 134164\n"
+               "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_PID2\"} 10\n"
+               "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_PID3\"} 20\n"
+               "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_PID4\"} 30\n"
+               "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_PID5\"} 40\n"
+               "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_PID6\"} 50\n"
+               "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_PID7\"} 60\n"
+               "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_SPIRAM\"} 70\n"
+               "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_INTERNAL\"} 201116\n"
+               "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_DEFAULT\"} 134284\n"
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_EXEC\"} 65536\n"
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_32BIT\"} 65537\n"
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_8BIT\"} 65538\n"
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_DMA\"} 65539\n"
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_PID2\"} 65540\n"
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_PID3\"} 65541\n"
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_PID4\"} 65542\n"
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_PID5\"} 65543\n"
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_PID6\"} 65544\n"
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_PID7\"} 65545\n"
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_SPIRAM\"} 65546\n"
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_INTERNAL\"} 65547\n"
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_DEFAULT\"} 65548\n"
+               "ruuvigw_info{mac=\"AA:BB:CC:DD:EE:FF\",esp_fw=\"v1.10.0\",nrf_fw=\"v0.7.2\"} 1\n"
+               "ruuvigw_gw_cfg_crc32 2864434397\n"
+               "ruuvigw_ruuvi_json_crc32 2864434397\n"),
+        string(p_metrics_str));
+    os_free(p_metrics_str);
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+
+    metrics_received_advs_increment(RE_CA_UART_BLE_PHY_2MBPS);
+    p_metrics_str = metrics_generate();
+    ASSERT_EQ(
+        string("ruuvigw_received_advertisements 1\n"
+               "ruuvigw_received_ext_advertisements 1\n"
+               "ruuvigw_received_coded_advertisements 0\n"
+               "ruuvigw_uptime_us 15317668797\n"
+               "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_EXEC\"} 194796\n"
+               "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_32BIT\"} 201116\n"
+               "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_8BIT\"} 134284\n"
+               "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_DMA\"} 134164\n"
+               "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_PID2\"} 10\n"
+               "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_PID3\"} 20\n"
+               "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_PID4\"} 30\n"
+               "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_PID5\"} 40\n"
+               "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_PID6\"} 50\n"
+               "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_PID7\"} 60\n"
+               "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_SPIRAM\"} 70\n"
+               "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_INTERNAL\"} 201116\n"
+               "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_DEFAULT\"} 134284\n"
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_EXEC\"} 65536\n"
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_32BIT\"} 65537\n"
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_8BIT\"} 65538\n"
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_DMA\"} 65539\n"
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_PID2\"} 65540\n"
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_PID3\"} 65541\n"
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_PID4\"} 65542\n"
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_PID5\"} 65543\n"
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_PID6\"} 65544\n"
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_PID7\"} 65545\n"
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_SPIRAM\"} 65546\n"
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_INTERNAL\"} 65547\n"
+               "ruuvigw_heap_largest_free_block_bytes{capability=\"MALLOC_CAP_DEFAULT\"} 65548\n"
+               "ruuvigw_info{mac=\"AA:BB:CC:DD:EE:FF\",esp_fw=\"v1.10.0\",nrf_fw=\"v0.7.2\"} 1\n"
+               "ruuvigw_gw_cfg_crc32 2864434397\n"
+               "ruuvigw_ruuvi_json_crc32 2864434397\n"),
+        string(p_metrics_str));
+    os_free(p_metrics_str);
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+
+    metrics_received_advs_increment(RE_CA_UART_BLE_PHY_CODED);
+    p_metrics_str = metrics_generate();
+    ASSERT_EQ(
+        string("ruuvigw_received_advertisements 1\n"
+               "ruuvigw_received_ext_advertisements 1\n"
+               "ruuvigw_received_coded_advertisements 1\n"
                "ruuvigw_uptime_us 15317668797\n"
                "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_EXEC\"} 194796\n"
                "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_32BIT\"} 201116\n"

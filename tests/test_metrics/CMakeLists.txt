@@ -63,6 +63,7 @@ target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}
         ${WIFI_MANAGER_INC}
         include
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src
         $ENV{IDF_PATH}/components/json/cJSON
         $ENV{IDF_PATH}/components/app_update/include
         $ENV{IDF_PATH}/components/spi_flash/include

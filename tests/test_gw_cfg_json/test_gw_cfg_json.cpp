@@ -508,10 +508,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_for_ui_client) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -600,10 +601,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_default) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -676,10 +678,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_default_company_id_0x0500) // NOLINT
         "\t\"company_use_filtering\":\ttrue,\n"
         "\t\"scan_coded_phy\":\tfalse,\n"
         "\t\"scan_1mbit_phy\":\ttrue,\n"
-        "\t\"scan_extended_payload\":\ttrue,\n"
+        "\t\"scan_2mbit_phy\":\ttrue,\n"
         "\t\"scan_channel_37\":\ttrue,\n"
         "\t\"scan_channel_38\":\ttrue,\n"
         "\t\"scan_channel_39\":\ttrue,\n"
+        "\t\"scan_default\":\ttrue,\n"
         "\t\"scan_filter_allow_listed\":\tfalse,\n"
         "\t\"scan_filter_list\":\t[],\n"
         "\t\"coordinates\":\t\"\",\n"
@@ -770,10 +773,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_disabled) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -865,10 +869,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_enabled) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -965,10 +970,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_disabled) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -1062,10 +1068,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_no) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -1166,10 +1173,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_basic) // NOL
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -1268,10 +1276,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_bearer) // NO
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -1362,10 +1371,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_disabled) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -1468,10 +1478,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_TCP_raw) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -1573,10 +1584,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_TCP_disable_retained_mes
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -1679,10 +1691,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_SSL_raw_and_decoded) // 
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -1785,10 +1798,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WS_decoded) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -1890,10 +1904,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WSS) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -1997,10 +2012,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_custom_http_enabled) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -2088,10 +2104,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_disabled) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -2191,10 +2208,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_data_format_ruuvi) // NO
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -2294,10 +2312,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_data_format_ruuvi_raw_an
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -2397,10 +2416,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_data_format_ruuvi_decode
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -2500,10 +2520,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_none) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -2613,10 +2634,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_basic) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -2721,10 +2743,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_bearer) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -2829,10 +2852,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_token) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -2937,10 +2961,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_apikey) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -3038,10 +3063,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_equal_to_default) // NOL
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -3153,10 +3179,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_equal_to_default_auth_di
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -3246,10 +3273,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_disabled) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -3351,10 +3379,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_enabled) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -3443,10 +3472,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_default) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -3542,10 +3572,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -3647,10 +3678,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi_with_api_key) // NOLIN
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -3746,10 +3778,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_digest) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -3845,10 +3878,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_basic) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -3943,10 +3977,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_allow) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -4041,10 +4076,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_deny) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -4138,10 +4174,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_beta_tester) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -4235,10 +4272,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_manual) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -4328,10 +4366,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_unknown) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -4418,10 +4457,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_disabled) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -4513,10 +4553,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_enabled_via_dhcp) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -4617,10 +4658,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_custom) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -4712,10 +4754,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_enabled) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -4807,10 +4850,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_disabled) // NOLINT
                "\t\"company_use_filtering\":\tfalse,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -4833,10 +4877,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_default) // NOLINT
 
     gw_cfg.ruuvi_cfg.scan.scan_coded_phy                  = false;
     gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy                  = true;
-    gw_cfg.ruuvi_cfg.scan.scan_extended_payload           = true;
+    gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy                  = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_37                 = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_38                 = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_39                 = true;
+    gw_cfg.ruuvi_cfg.scan.scan_default                    = true;
     gw_cfg.ruuvi_cfg.scan_filter.scan_filter_allow_listed = false;
     gw_cfg.ruuvi_cfg.scan_filter.scan_filter_length       = 0;
 
@@ -4908,10 +4953,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_default) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -4934,10 +4980,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_coded_phy_true) // NOLINT
 
     gw_cfg.ruuvi_cfg.scan.scan_coded_phy                  = true;
     gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy                  = true;
-    gw_cfg.ruuvi_cfg.scan.scan_extended_payload           = true;
+    gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy                  = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_37                 = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_38                 = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_39                 = true;
+    gw_cfg.ruuvi_cfg.scan.scan_default                    = false;
     gw_cfg.ruuvi_cfg.scan_filter.scan_filter_allow_listed = false;
     gw_cfg.ruuvi_cfg.scan_filter.scan_filter_length       = 0;
 
@@ -5009,10 +5056,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_coded_phy_true) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\ttrue,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\tfalse,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -5035,10 +5083,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_1mbit_phy_false) // NOLINT
 
     gw_cfg.ruuvi_cfg.scan.scan_coded_phy                  = false;
     gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy                  = false;
-    gw_cfg.ruuvi_cfg.scan.scan_extended_payload           = true;
+    gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy                  = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_37                 = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_38                 = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_39                 = true;
+    gw_cfg.ruuvi_cfg.scan.scan_default                    = false;
     gw_cfg.ruuvi_cfg.scan_filter.scan_filter_allow_listed = false;
     gw_cfg.ruuvi_cfg.scan_filter.scan_filter_length       = 0;
 
@@ -5110,10 +5159,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_1mbit_phy_false) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\tfalse,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\tfalse,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -5129,17 +5179,18 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_1mbit_phy_false) // NOLINT
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
 }
 
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_extended_payload_false) // NOLINT
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_2mbit_phy_false) // NOLINT
 {
     gw_cfg_t         gw_cfg   = get_gateway_config_default();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
     gw_cfg.ruuvi_cfg.scan.scan_coded_phy                  = false;
     gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy                  = true;
-    gw_cfg.ruuvi_cfg.scan.scan_extended_payload           = false;
+    gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy                  = false;
     gw_cfg.ruuvi_cfg.scan.scan_channel_37                 = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_38                 = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_39                 = true;
+    gw_cfg.ruuvi_cfg.scan.scan_default                    = false;
     gw_cfg.ruuvi_cfg.scan_filter.scan_filter_allow_listed = false;
     gw_cfg.ruuvi_cfg.scan_filter.scan_filter_length       = 0;
 
@@ -5211,10 +5262,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_extended_payload_false) // NOLIN
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\tfalse,\n"
+               "\t\"scan_2mbit_phy\":\tfalse,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\tfalse,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -5237,10 +5289,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_37_false) // NOLINT
 
     gw_cfg.ruuvi_cfg.scan.scan_coded_phy                  = false;
     gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy                  = true;
-    gw_cfg.ruuvi_cfg.scan.scan_extended_payload           = true;
+    gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy                  = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_37                 = false;
     gw_cfg.ruuvi_cfg.scan.scan_channel_38                 = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_39                 = true;
+    gw_cfg.ruuvi_cfg.scan.scan_default                    = false;
     gw_cfg.ruuvi_cfg.scan_filter.scan_filter_allow_listed = false;
     gw_cfg.ruuvi_cfg.scan_filter.scan_filter_length       = 0;
 
@@ -5312,10 +5365,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_37_false) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\tfalse,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\tfalse,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -5338,10 +5392,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_38_false) // NOLINT
 
     gw_cfg.ruuvi_cfg.scan.scan_coded_phy                  = false;
     gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy                  = true;
-    gw_cfg.ruuvi_cfg.scan.scan_extended_payload           = true;
+    gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy                  = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_37                 = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_38                 = false;
     gw_cfg.ruuvi_cfg.scan.scan_channel_39                 = true;
+    gw_cfg.ruuvi_cfg.scan.scan_default                    = false;
     gw_cfg.ruuvi_cfg.scan_filter.scan_filter_allow_listed = false;
     gw_cfg.ruuvi_cfg.scan_filter.scan_filter_length       = 0;
 
@@ -5413,10 +5468,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_38_false) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\tfalse,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\tfalse,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -5439,10 +5495,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_39_false) // NOLINT
 
     gw_cfg.ruuvi_cfg.scan.scan_coded_phy                  = false;
     gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy                  = true;
-    gw_cfg.ruuvi_cfg.scan.scan_extended_payload           = true;
+    gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy                  = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_37                 = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_38                 = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_39                 = false;
+    gw_cfg.ruuvi_cfg.scan.scan_default                    = false;
     gw_cfg.ruuvi_cfg.scan_filter.scan_filter_allow_listed = false;
     gw_cfg.ruuvi_cfg.scan_filter.scan_filter_length       = 0;
 
@@ -5514,10 +5571,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_39_false) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\tfalse,\n"
+               "\t\"scan_default\":\tfalse,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -5540,10 +5598,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_filter1_not_allow_listed) // NOL
 
     gw_cfg.ruuvi_cfg.scan.scan_coded_phy                  = false;
     gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy                  = true;
-    gw_cfg.ruuvi_cfg.scan.scan_extended_payload           = true;
+    gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy                  = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_37                 = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_38                 = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_39                 = false;
+    gw_cfg.ruuvi_cfg.scan.scan_default                    = false;
     gw_cfg.ruuvi_cfg.scan_filter.scan_filter_allow_listed = false;
     gw_cfg.ruuvi_cfg.scan_filter.scan_filter_length       = 1;
     mac_addr_from_str("AA:BB:CC:DD:EE:FF", &gw_cfg.ruuvi_cfg.scan_filter.scan_filter_list[0]);
@@ -5616,10 +5675,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_filter1_not_allow_listed) // NOL
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\tfalse,\n"
+               "\t\"scan_default\":\tfalse,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[\"AA:BB:CC:DD:EE:FF\"],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -5642,10 +5702,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_filter2_allow_listed) // NOLINT
 
     gw_cfg.ruuvi_cfg.scan.scan_coded_phy                  = false;
     gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy                  = true;
-    gw_cfg.ruuvi_cfg.scan.scan_extended_payload           = true;
+    gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy                  = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_37                 = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_38                 = true;
     gw_cfg.ruuvi_cfg.scan.scan_channel_39                 = false;
+    gw_cfg.ruuvi_cfg.scan.scan_default                    = false;
     gw_cfg.ruuvi_cfg.scan_filter.scan_filter_allow_listed = true;
     gw_cfg.ruuvi_cfg.scan_filter.scan_filter_length       = 2;
     mac_addr_from_str("A0:B0:C0:D0:E0:F0", &gw_cfg.ruuvi_cfg.scan_filter.scan_filter_list[0]);
@@ -5719,10 +5780,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_filter2_allow_listed) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\tfalse,\n"
+               "\t\"scan_default\":\tfalse,\n"
                "\t\"scan_filter_allow_listed\":\ttrue,\n"
                "\t\"scan_filter_list\":\t[\"A0:B0:C0:D0:E0:F0\", \"A1:B1:C1:D1:E1:F1\"],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -5813,10 +5875,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_coordinates) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"123,456\",\n"
@@ -5899,10 +5962,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_default) // NOLINT
 
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_channel_39);
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_default);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_allow_listed);
     ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
@@ -5977,10 +6041,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_default) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -6065,10 +6130,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
             .scan = {
                 .scan_coded_phy = true,
                 .scan_1mbit_phy = false,
-                .scan_extended_payload = false,
+                .scan_2mbit_phy = false,
                 .scan_channel_37 = false,
                 .scan_channel_38 = false,
                 .scan_channel_39 = false,
+                .scan_default = false,
             },
             .scan_filter = {
                 .scan_filter_allow_listed = false,
@@ -6149,10 +6215,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
 
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_39);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_default);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_allow_listed);
     ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
@@ -6224,10 +6291,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
                "\t\"company_use_filtering\":\tfalse,\n"
                "\t\"scan_coded_phy\":\ttrue,\n"
                "\t\"scan_1mbit_phy\":\tfalse,\n"
-               "\t\"scan_extended_payload\":\tfalse,\n"
+               "\t\"scan_2mbit_phy\":\tfalse,\n"
                "\t\"scan_channel_37\":\tfalse,\n"
                "\t\"scan_channel_38\":\tfalse,\n"
                "\t\"scan_channel_39\":\tfalse,\n"
+               "\t\"scan_default\":\tfalse,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"coordinates1\",\n"
@@ -6312,10 +6380,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
             .scan = {
                 .scan_coded_phy = true,
                 .scan_1mbit_phy = false,
-                .scan_extended_payload = false,
+                .scan_2mbit_phy = false,
                 .scan_channel_37 = false,
                 .scan_channel_38 = false,
                 .scan_channel_39 = false,
+                .scan_default = false,
             },
             .scan_filter = {
                 .scan_filter_allow_listed = false,
@@ -6396,10 +6465,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
 
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_39);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_default);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_allow_listed);
     ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
@@ -6471,10 +6541,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
                "\t\"company_use_filtering\":\tfalse,\n"
                "\t\"scan_coded_phy\":\ttrue,\n"
                "\t\"scan_1mbit_phy\":\tfalse,\n"
-               "\t\"scan_extended_payload\":\tfalse,\n"
+               "\t\"scan_2mbit_phy\":\tfalse,\n"
                "\t\"scan_channel_37\":\tfalse,\n"
                "\t\"scan_channel_38\":\tfalse,\n"
                "\t\"scan_channel_39\":\tfalse,\n"
+               "\t\"scan_default\":\tfalse,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"coordinates1\",\n"
@@ -6559,10 +6630,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
             .scan = {
                 .scan_coded_phy = true,
                 .scan_1mbit_phy = false,
-                .scan_extended_payload = false,
+                .scan_2mbit_phy = false,
                 .scan_channel_37 = false,
                 .scan_channel_38 = false,
                 .scan_channel_39 = false,
+                .scan_default = false,
             },
             .scan_filter = {
                 .scan_filter_allow_listed = false,
@@ -6643,10 +6715,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
 
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_39);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_default);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_allow_listed);
     ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
@@ -6718,10 +6791,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
                "\t\"company_use_filtering\":\tfalse,\n"
                "\t\"scan_coded_phy\":\ttrue,\n"
                "\t\"scan_1mbit_phy\":\tfalse,\n"
-               "\t\"scan_extended_payload\":\tfalse,\n"
+               "\t\"scan_2mbit_phy\":\tfalse,\n"
                "\t\"scan_channel_37\":\tfalse,\n"
                "\t\"scan_channel_38\":\tfalse,\n"
                "\t\"scan_channel_39\":\tfalse,\n"
+               "\t\"scan_default\":\tfalse,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"coordinates1\",\n"
@@ -6801,10 +6875,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
           "\t\"company_use_filtering\":\tfalse,\n"
           "\t\"scan_coded_phy\":\ttrue,\n"
           "\t\"scan_1mbit_phy\":\tfalse,\n"
-          "\t\"scan_extended_payload\":\tfalse,\n"
+          "\t\"scan_2mbit_phy\":\tfalse,\n"
           "\t\"scan_channel_37\":\tfalse,\n"
           "\t\"scan_channel_38\":\tfalse,\n"
           "\t\"scan_channel_39\":\tfalse,\n"
+          "\t\"scan_default\":\tfalse,\n"
           "\t\"scan_filter_allow_listed\":\tfalse,\n"
           "\t\"scan_filter_list\":\t[],\n"
           "\t\"coordinates\":\t\"coordinates1\",\n"
@@ -6866,10 +6941,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
 
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_39);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_default);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_allow_listed);
     ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
@@ -6942,10 +7018,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
                "\t\"company_use_filtering\":\tfalse,\n"
                "\t\"scan_coded_phy\":\ttrue,\n"
                "\t\"scan_1mbit_phy\":\tfalse,\n"
-               "\t\"scan_extended_payload\":\tfalse,\n"
+               "\t\"scan_2mbit_phy\":\tfalse,\n"
                "\t\"scan_channel_37\":\tfalse,\n"
                "\t\"scan_channel_38\":\tfalse,\n"
                "\t\"scan_channel_39\":\tfalse,\n"
+               "\t\"scan_default\":\tfalse,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"coordinates1\",\n"
@@ -7030,10 +7107,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
             .scan = {
                 .scan_coded_phy = true,
                 .scan_1mbit_phy = false,
-                .scan_extended_payload = false,
+                .scan_2mbit_phy = false,
                 .scan_channel_37 = false,
                 .scan_channel_38 = false,
                 .scan_channel_39 = false,
+                .scan_default = false,
             },
             .scan_filter = {
                 .scan_filter_allow_listed = false,
@@ -7114,10 +7192,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
 
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_39);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_default);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_allow_listed);
     ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
@@ -7189,10 +7268,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
                "\t\"company_use_filtering\":\tfalse,\n"
                "\t\"scan_coded_phy\":\ttrue,\n"
                "\t\"scan_1mbit_phy\":\tfalse,\n"
-               "\t\"scan_extended_payload\":\tfalse,\n"
+               "\t\"scan_2mbit_phy\":\tfalse,\n"
                "\t\"scan_channel_37\":\tfalse,\n"
                "\t\"scan_channel_38\":\tfalse,\n"
                "\t\"scan_channel_39\":\tfalse,\n"
+               "\t\"scan_default\":\tfalse,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"coordinates1\",\n"
@@ -7277,10 +7357,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
             .scan = {
                 .scan_coded_phy = true,
                 .scan_1mbit_phy = false,
-                .scan_extended_payload = false,
+                .scan_2mbit_phy = false,
                 .scan_channel_37 = false,
                 .scan_channel_38 = false,
                 .scan_channel_39 = false,
+                .scan_default = false,
             },
             .scan_filter = {
                 .scan_filter_allow_listed = false,
@@ -7361,10 +7442,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
 
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_39);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_default);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_allow_listed);
     ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
@@ -7436,10 +7518,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
                "\t\"company_use_filtering\":\tfalse,\n"
                "\t\"scan_coded_phy\":\ttrue,\n"
                "\t\"scan_1mbit_phy\":\tfalse,\n"
-               "\t\"scan_extended_payload\":\tfalse,\n"
+               "\t\"scan_2mbit_phy\":\tfalse,\n"
                "\t\"scan_channel_37\":\tfalse,\n"
                "\t\"scan_channel_38\":\tfalse,\n"
                "\t\"scan_channel_39\":\tfalse,\n"
+               "\t\"scan_default\":\tfalse,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"coordinates1\",\n"
@@ -7524,10 +7607,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_custom) // NOLINT
             .scan = {
                 .scan_coded_phy = true,
                 .scan_1mbit_phy = false,
-                .scan_extended_payload = false,
+                .scan_2mbit_phy = false,
                 .scan_channel_37 = false,
                 .scan_channel_38 = false,
                 .scan_channel_39 = false,
+                .scan_default = false,
             },
             .scan_filter = {
                 .scan_filter_allow_listed = false,
@@ -7608,10 +7692,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_custom) // NOLINT
 
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_channel_39);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_default);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_allow_listed);
     ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
@@ -7683,10 +7768,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_custom) // NOLINT
                "\t\"company_use_filtering\":\tfalse,\n"
                "\t\"scan_coded_phy\":\ttrue,\n"
                "\t\"scan_1mbit_phy\":\tfalse,\n"
-               "\t\"scan_extended_payload\":\tfalse,\n"
+               "\t\"scan_2mbit_phy\":\tfalse,\n"
                "\t\"scan_channel_37\":\tfalse,\n"
                "\t\"scan_channel_38\":\tfalse,\n"
                "\t\"scan_channel_39\":\tfalse,\n"
+               "\t\"scan_default\":\tfalse,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"coordinates1\",\n"
@@ -7773,10 +7859,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -7852,10 +7939,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
           "\t\"company_use_filtering\":\ttrue,\n"
           "\t\"scan_coded_phy\":\tfalse,\n"
           "\t\"scan_1mbit_phy\":\ttrue,\n"
-          "\t\"scan_extended_payload\":\ttrue,\n"
+          "\t\"scan_2mbit_phy\":\ttrue,\n"
           "\t\"scan_channel_37\":\ttrue,\n"
           "\t\"scan_channel_38\":\ttrue,\n"
           "\t\"scan_channel_39\":\ttrue,\n"
+          "\t\"scan_default\":\ttrue,\n"
           "\t\"scan_filter_allow_listed\":\tfalse,\n"
           "\t\"scan_filter_list\":\t[],\n"
           "\t\"coordinates\":\t\"\",\n"
@@ -7938,10 +8026,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -8032,10 +8121,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -8121,10 +8211,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -8196,10 +8287,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
 
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_channel_39);
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_default);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_allow_listed);
     ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
@@ -8276,10 +8368,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -8343,12 +8436,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'ntp_server4' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'company_id' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'company_use_filtering' in config-json"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'scan_coded_phy' in config-json"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'scan_1mbit_phy' in config-json"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'scan_extended_payload' in config-json"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'scan_channel_37' in config-json"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'scan_channel_38' in config-json"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'scan_channel_39' in config-json"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'scan_default' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'scan_filter_allow_listed' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'scan_filter_list' in config-json"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("Can't find key 'coordinates' in config-json"));
@@ -8419,10 +8507,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_string) // NOLINT
 
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_channel_39);
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.scan.scan_default);
     ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_allow_listed);
     ASSERT_EQ(0, gw_cfg2.ruuvi_cfg.scan_filter.scan_filter_length);
 
@@ -8499,10 +8588,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_string) // NOLINT
                "\t\"company_use_filtering\":\ttrue,\n"
                "\t\"scan_coded_phy\":\tfalse,\n"
                "\t\"scan_1mbit_phy\":\ttrue,\n"
-               "\t\"scan_extended_payload\":\ttrue,\n"
+               "\t\"scan_2mbit_phy\":\ttrue,\n"
                "\t\"scan_channel_37\":\ttrue,\n"
                "\t\"scan_channel_38\":\ttrue,\n"
                "\t\"scan_channel_39\":\ttrue,\n"
+               "\t\"scan_default\":\ttrue,\n"
                "\t\"scan_filter_allow_listed\":\tfalse,\n"
                "\t\"scan_filter_list\":\t[],\n"
                "\t\"coordinates\":\t\"\",\n"
@@ -8582,16 +8672,17 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_malloc_failed) // NOLINT
           "\t\"company_use_filtering\":\ttrue,\n"
           "\t\"scan_coded_phy\":\tfalse,\n"
           "\t\"scan_1mbit_phy\":\ttrue,\n"
-          "\t\"scan_extended_payload\":\ttrue,\n"
+          "\t\"scan_2mbit_phy\":\ttrue,\n"
           "\t\"scan_channel_37\":\ttrue,\n"
           "\t\"scan_channel_38\":\ttrue,\n"
           "\t\"scan_channel_39\":\ttrue,\n"
+          "\t\"scan_default\":\ttrue,\n"
           "\t\"scan_filter_allow_listed\":\tfalse,\n"
           "\t\"scan_filter_list\":\t[],\n"
           "\t\"coordinates\":\t\"\",\n"
           "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
           "}";
-    for (uint32_t i = 0; i < 168; ++i)
+    for (uint32_t i = 0; i < 170; ++i)
     {
         this->m_malloc_cnt         = 0;
         this->m_malloc_fail_on_cnt = i + 1;
@@ -8605,7 +8696,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_malloc_failed) // NOLINT
 
     {
         this->m_malloc_cnt         = 0;
-        this->m_malloc_fail_on_cnt = 169;
+        this->m_malloc_fail_on_cnt = 171;
         gw_cfg_t gw_cfg2           = get_gateway_config_default();
         ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, p_json_str, &gw_cfg2));
         ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
@@ -11666,7 +11757,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_extended_payload
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_extended_payload"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_2mbit_phy"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -11685,7 +11776,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_extended_payload
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_extended_payload"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_2mbit_phy"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
@@ -11804,7 +11895,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_39_2) //
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_scan_filter_allow_listed) // NOLINT
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_scan_default) // NOLINT
 {
     const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
@@ -11815,6 +11906,44 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_scan_filter_allow_li
     };
     cJSON_InitHooks(&hooks);
     this->m_malloc_fail_on_cnt = 169;
+
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_default"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_scan_default_2) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 170;
+
+    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_EQ(nullptr, json_str.p_str);
+    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_default"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_scan_filter_allow_listed) // NOLINT
+{
+    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
+    cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+    this->m_malloc_fail_on_cnt = 171;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -11833,7 +11962,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_scan_filter_allow_li
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 170;
+    this->m_malloc_fail_on_cnt = 172;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -11852,7 +11981,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_scan_filter_list) //
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 171;
+    this->m_malloc_fail_on_cnt = 173;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -11871,7 +12000,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_scan_filter_list_2) 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 172;
+    this->m_malloc_fail_on_cnt = 174;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -11890,7 +12019,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates) // NOLI
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 173;
+    this->m_malloc_fail_on_cnt = 175;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -11909,7 +12038,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates_2) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 174;
+    this->m_malloc_fail_on_cnt = 176;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -11928,7 +12057,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates_3) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 175;
+    this->m_malloc_fail_on_cnt = 177;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -11947,7 +12076,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_fw_update_url) // NO
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 176;
+    this->m_malloc_fail_on_cnt = 178;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -11966,7 +12095,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_fw_update_url_2) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 177;
+    this->m_malloc_fail_on_cnt = 179;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -11985,7 +12114,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_fw_update_url_3) // 
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 178;
+    this->m_malloc_fail_on_cnt = 180;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);
@@ -12004,7 +12133,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_converting_to_json_s
         .free_fn   = &os_free_internal,
     };
     cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 179;
+    this->m_malloc_fail_on_cnt = 181;
 
     ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
     ASSERT_EQ(nullptr, json_str.p_str);

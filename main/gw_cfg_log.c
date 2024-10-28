@@ -525,10 +525,11 @@ gw_cfg_log_ruuvi_cfg_scan(const ruuvi_gw_cfg_scan_t* const p_scan)
 {
     LOG_INFO("config: use scan coded phy: %d", p_scan->scan_coded_phy);
     LOG_INFO("config: use scan 1mbit/phy: %d", p_scan->scan_1mbit_phy);
-    LOG_INFO("config: use scan extended payload: %d", p_scan->scan_extended_payload);
+    LOG_INFO("config: use scan 2mbit/phy: %d", p_scan->scan_2mbit_phy);
     LOG_INFO("config: use scan channel 37: %d", p_scan->scan_channel_37);
     LOG_INFO("config: use scan channel 38: %d", p_scan->scan_channel_38);
     LOG_INFO("config: use scan channel 39: %d", p_scan->scan_channel_39);
+    LOG_INFO("config: scan default       : %d", p_scan->scan_default);
 }
 
 static void

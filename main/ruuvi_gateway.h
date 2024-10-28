@@ -18,6 +18,8 @@
 extern "C" {
 #endif
 
+#define ADV_DATA_MAX_LEN (48)
+
 #define RUUVI_BITS_PER_BYTE (8U)
 #define RUUVI_BYTE_MASK     (0xFFU)
 

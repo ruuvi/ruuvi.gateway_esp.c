@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "ruuvi_endpoint_ca_uart.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,7 +23,7 @@ void
 metrics_deinit(void);
 
 void
-metrics_received_advs_increment(const bool is_ext_adv);
+metrics_received_advs_increment(const re_ca_uart_ble_phy_e secondary_phy);
 
 uint64_t
 metrics_received_advs_get(void);

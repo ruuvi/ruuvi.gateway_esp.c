@@ -100,18 +100,15 @@ conv_bool_to_u8(const bool x)
 }
 
 void
-ruuvi_send_nrf_settings(const ruuvi_gw_cfg_scan_t* const p_scan_src, const ruuvi_gw_cfg_filter_t* const p_filter)
+ruuvi_send_nrf_settings(const ruuvi_gw_cfg_scan_t* const p_scan, const ruuvi_gw_cfg_filter_t* const p_filter)
 {
-    ruuvi_gw_cfg_scan_t scan          = *p_scan_src;
-    scan.scan_extended_payload        = true;
-    ruuvi_gw_cfg_scan_t* const p_scan = &scan;
     LOG_INFO(
         "### sending settings to NRF: "
         "use filter: %d, "
         "company id: 0x%04x,"
-        "use scan coded phy: %d,"
-        "use scan 1mbit/phy: %d,"
-        "use scan extended payload: %d,"
+        "use scan Coded PHY: %d,"
+        "use scan 1Mbit PHY: %d,"
+        "use scan 2Mbit PHY: %d,"
         "use scan channel 37: %d,"
         "use scan channel 38: %d,"
         "use scan channel 39: %d",
@@ -119,7 +116,7 @@ ruuvi_send_nrf_settings(const ruuvi_gw_cfg_scan_t* const p_scan_src, const ruuvi
         p_filter->company_id,
         p_scan->scan_coded_phy,
         p_scan->scan_1mbit_phy,
-        p_scan->scan_extended_payload,
+        p_scan->scan_2mbit_phy,
         p_scan->scan_channel_37,
         p_scan->scan_channel_38,
         p_scan->scan_channel_39);
@@ -129,11 +126,12 @@ ruuvi_send_nrf_settings(const ruuvi_gw_cfg_scan_t* const p_scan_src, const ruuvi
         p_filter->company_id,
         conv_bool_to_u8(p_filter->company_use_filtering),
         conv_bool_to_u8(p_scan->scan_coded_phy),
-        conv_bool_to_u8(p_scan->scan_extended_payload),
+        conv_bool_to_u8(p_scan->scan_2mbit_phy),
         conv_bool_to_u8(p_scan->scan_1mbit_phy),
         conv_bool_to_u8(p_scan->scan_channel_37),
         conv_bool_to_u8(p_scan->scan_channel_38),
-        conv_bool_to_u8(p_scan->scan_channel_39));
+        conv_bool_to_u8(p_scan->scan_channel_39),
+        ADV_DATA_MAX_LEN);
 }
 
 void
@@ -380,6 +378,7 @@ cb_after_nrf52_fw_updating(const bool flag_success)
     }
     wifi_manager_stop_ap();
     http_server_cb_allow_cfg_updating();
+    main_task_send_sig_deactivate_cfg_mode();
 }
 
 static void

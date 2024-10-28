@@ -515,10 +515,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
 
         "\t\"scan_coded_phy\":\ttrue,\n"
         "\t\"scan_1mbit_phy\":\ttrue,\n"
-        "\t\"scan_extended_payload\":\ttrue,\n"
+        "\t\"scan_2mbit_phy\":\ttrue,\n"
         "\t\"scan_channel_37\":\ttrue,\n"
         "\t\"scan_channel_38\":\ttrue,\n"
         "\t\"scan_channel_39\":\ttrue,\n"
+        "\t\"scan_default\":\tfalse,\n"
         "\t\"scan_filter_allow_listed\":\tfalse,\n"
         "\t\"scan_filter_list\":\t[]\n"
         "}");
@@ -581,10 +582,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     ASSERT_EQ(string("coord:123,456"), gw_cfg.ruuvi_cfg.coordinates.buf);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_default);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan_filter.scan_filter_allow_listed);
     ASSERT_EQ(0, gw_cfg.ruuvi_cfg.scan_filter.scan_filter_length);
 
@@ -642,9 +644,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server4: time4.server.com");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_id: 888");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_use_filtering: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_default: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_coded_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_1mbit_phy: 1");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_2mbit_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_37: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_38: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_39: 1");
@@ -723,10 +727,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_data_format_raw_and_decoded) // NOLI
 
         "\t\"scan_coded_phy\":\ttrue,\n"
         "\t\"scan_1mbit_phy\":\ttrue,\n"
-        "\t\"scan_extended_payload\":\ttrue,\n"
+        "\t\"scan_2mbit_phy\":\ttrue,\n"
         "\t\"scan_channel_37\":\ttrue,\n"
         "\t\"scan_channel_38\":\ttrue,\n"
         "\t\"scan_channel_39\":\ttrue,\n"
+        "\t\"scan_default\":\tfalse,\n"
         "\t\"scan_filter_allow_listed\":\tfalse,\n"
         "\t\"scan_filter_list\":\t[]\n"
         "}");
@@ -789,10 +794,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_data_format_raw_and_decoded) // NOLI
     ASSERT_EQ(string("coord:123,456"), gw_cfg.ruuvi_cfg.coordinates.buf);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_default);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan_filter.scan_filter_allow_listed);
     ASSERT_EQ(0, gw_cfg.ruuvi_cfg.scan_filter.scan_filter_length);
 
@@ -851,9 +857,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_data_format_raw_and_decoded) // NOLI
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server4: time4.server.com");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_id: 888");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_use_filtering: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_default: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_coded_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_1mbit_phy: 1");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_2mbit_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_37: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_38: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_39: 1");
@@ -933,10 +941,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_data_format_decoded) // NOLINT
 
         "\t\"scan_coded_phy\":\ttrue,\n"
         "\t\"scan_1mbit_phy\":\ttrue,\n"
-        "\t\"scan_extended_payload\":\ttrue,\n"
+        "\t\"scan_2mbit_phy\":\ttrue,\n"
         "\t\"scan_channel_37\":\ttrue,\n"
         "\t\"scan_channel_38\":\ttrue,\n"
         "\t\"scan_channel_39\":\ttrue,\n"
+        "\t\"scan_default\":\tfalse,\n"
         "\t\"scan_filter_allow_listed\":\tfalse,\n"
         "\t\"scan_filter_list\":\t[]\n"
         "}");
@@ -999,10 +1008,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_data_format_decoded) // NOLINT
     ASSERT_EQ(string("coord:123,456"), gw_cfg.ruuvi_cfg.coordinates.buf);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_default);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan_filter.scan_filter_allow_listed);
     ASSERT_EQ(0, gw_cfg.ruuvi_cfg.scan_filter.scan_filter_length);
 
@@ -1060,9 +1070,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_data_format_decoded) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server4: time4.server.com");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_id: 888");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_use_filtering: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_default: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_coded_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_1mbit_phy: 1");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_2mbit_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_37: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_38: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_39: 1");
@@ -1137,10 +1149,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords) // NOLINT
 
         "\t\"scan_coded_phy\":\ttrue,\n"
         "\t\"scan_1mbit_phy\":\ttrue,\n"
-        "\t\"scan_extended_payload\":\ttrue,\n"
+        "\t\"scan_2mbit_phy\":\ttrue,\n"
         "\t\"scan_channel_37\":\ttrue,\n"
         "\t\"scan_channel_38\":\ttrue,\n"
-        "\t\"scan_channel_39\":\ttrue\n"
+        "\t\"scan_channel_39\":\ttrue,\n"
+        "\t\"scan_default\":\tfalse\n"
         "}");
 
     gw_cfg_t gw_cfg = { 0 };
@@ -1232,10 +1245,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords) // NOLINT
     ASSERT_EQ(string("coord:123,456"), gw_cfg.ruuvi_cfg.coordinates.buf);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_default);
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
@@ -1314,9 +1328,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server4: time4.server.com");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_id: 888");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_use_filtering: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_default: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_coded_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_1mbit_phy: 1");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_2mbit_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_37: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_38: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_39: 1");
@@ -1388,10 +1404,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords_and_remote_cfg_auth_cha
 
         "\t\"scan_coded_phy\":\ttrue,\n"
         "\t\"scan_1mbit_phy\":\ttrue,\n"
-        "\t\"scan_extended_payload\":\ttrue,\n"
+        "\t\"scan_2mbit_phy\":\ttrue,\n"
         "\t\"scan_channel_37\":\ttrue,\n"
         "\t\"scan_channel_38\":\ttrue,\n"
-        "\t\"scan_channel_39\":\ttrue\n"
+        "\t\"scan_channel_39\":\ttrue,\n"
+        "\t\"scan_default\":\tfalse\n"
         "}");
 
     gw_cfg_t gw_cfg = { 0 };
@@ -1480,10 +1497,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords_and_remote_cfg_auth_cha
     ASSERT_EQ(string("coord:123,456"), gw_cfg.ruuvi_cfg.coordinates.buf);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_default);
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
@@ -1554,9 +1572,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords_and_remote_cfg_auth_cha
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server4: time4.server.com");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_id: 888");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_use_filtering: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_default: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_coded_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_1mbit_phy: 1");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_2mbit_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_37: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_38: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_39: 1");
@@ -1631,10 +1651,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_empty_prefix_and_client_id) // NOLIN
 
         "\t\"scan_coded_phy\":\ttrue,\n"
         "\t\"scan_1mbit_phy\":\ttrue,\n"
-        "\t\"scan_extended_payload\":\ttrue,\n"
+        "\t\"scan_2mbit_phy\":\ttrue,\n"
         "\t\"scan_channel_37\":\ttrue,\n"
         "\t\"scan_channel_38\":\ttrue,\n"
-        "\t\"scan_channel_39\":\ttrue\n"
+        "\t\"scan_channel_39\":\ttrue,\n"
+        "\t\"scan_default\":\tfalse\n"
         "}");
 
     gw_cfg_t gw_cfg = { 0 };
@@ -1693,10 +1714,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_empty_prefix_and_client_id) // NOLIN
     ASSERT_EQ(string("coord:123,456"), gw_cfg.ruuvi_cfg.coordinates.buf);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_default);
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
@@ -1753,9 +1775,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_empty_prefix_and_client_id) // NOLIN
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server4: time4.server.com");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_id: 888");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_use_filtering: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_default: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_coded_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_1mbit_phy: 1");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_2mbit_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_37: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_38: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_39: 1");
@@ -1828,10 +1852,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_no_prefix_and_client_id) // NOLINT
 
         "\t\"scan_coded_phy\":\ttrue,\n"
         "\t\"scan_1mbit_phy\":\ttrue,\n"
-        "\t\"scan_extended_payload\":\ttrue,\n"
+        "\t\"scan_2mbit_phy\":\ttrue,\n"
         "\t\"scan_channel_37\":\ttrue,\n"
         "\t\"scan_channel_38\":\ttrue,\n"
-        "\t\"scan_channel_39\":\ttrue\n"
+        "\t\"scan_channel_39\":\ttrue,\n"
+        "\t\"scan_default\":\tfalse\n"
         "}");
 
     gw_cfg_t gw_cfg = { 0 };
@@ -1890,10 +1915,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_no_prefix_and_client_id) // NOLINT
     ASSERT_EQ(string("coord:123,456"), gw_cfg.ruuvi_cfg.coordinates.buf);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_default);
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
@@ -1950,9 +1976,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_no_prefix_and_client_id) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server4: time4.server.com");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_id: 888");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_use_filtering: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_default: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_coded_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_1mbit_phy: 1");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_2mbit_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_37: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_38: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_39: 1");
@@ -2027,10 +2055,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl_raw_and_decoded) // NOLINT
 
         "\t\"scan_coded_phy\":\ttrue,\n"
         "\t\"scan_1mbit_phy\":\ttrue,\n"
-        "\t\"scan_extended_payload\":\ttrue,\n"
+        "\t\"scan_2mbit_phy\":\ttrue,\n"
         "\t\"scan_channel_37\":\ttrue,\n"
         "\t\"scan_channel_38\":\ttrue,\n"
-        "\t\"scan_channel_39\":\ttrue\n"
+        "\t\"scan_channel_39\":\ttrue,\n"
+        "\t\"scan_default\":\tfalse\n"
         "}");
 
     gw_cfg_t gw_cfg = { 0 };
@@ -2089,10 +2118,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl_raw_and_decoded) // NOLINT
     ASSERT_EQ(string("coord:123,456"), gw_cfg.ruuvi_cfg.coordinates.buf);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_default);
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
@@ -2143,9 +2173,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl_raw_and_decoded) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server4: time4.server.com");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_id: 888");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_use_filtering: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_default: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_coded_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_1mbit_phy: 1");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_2mbit_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_37: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_38: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_39: 1");
@@ -2220,10 +2252,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket_decoded) // NOLINT
 
         "\t\"scan_coded_phy\":\ttrue,\n"
         "\t\"scan_1mbit_phy\":\ttrue,\n"
-        "\t\"scan_extended_payload\":\ttrue,\n"
+        "\t\"scan_2mbit_phy\":\ttrue,\n"
         "\t\"scan_channel_37\":\ttrue,\n"
         "\t\"scan_channel_38\":\ttrue,\n"
-        "\t\"scan_channel_39\":\ttrue\n"
+        "\t\"scan_channel_39\":\ttrue,\n"
+        "\t\"scan_default\":\tfalse\n"
         "}");
 
     gw_cfg_t gw_cfg = { 0 };
@@ -2282,10 +2315,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket_decoded) // NOLINT
     ASSERT_EQ(string("coord:123,456"), gw_cfg.ruuvi_cfg.coordinates.buf);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_default);
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
@@ -2336,9 +2370,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket_decoded) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server4: time4.server.com");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_id: 888");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_use_filtering: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_default: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_coded_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_1mbit_phy: 1");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_2mbit_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_37: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_38: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_39: 1");
@@ -2413,10 +2449,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
 
         "\t\"scan_coded_phy\":\ttrue,\n"
         "\t\"scan_1mbit_phy\":\ttrue,\n"
-        "\t\"scan_extended_payload\":\ttrue,\n"
+        "\t\"scan_2mbit_phy\":\ttrue,\n"
         "\t\"scan_channel_37\":\ttrue,\n"
         "\t\"scan_channel_38\":\ttrue,\n"
-        "\t\"scan_channel_39\":\ttrue\n"
+        "\t\"scan_channel_39\":\ttrue,\n"
+        "\t\"scan_default\":\tfalse\n"
         "}");
 
     gw_cfg_t gw_cfg = { 0 };
@@ -2475,10 +2512,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
     ASSERT_EQ(string("coord:123,456"), gw_cfg.ruuvi_cfg.coordinates.buf);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_default);
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
@@ -2529,9 +2567,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server4: time4.server.com");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_id: 888");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_use_filtering: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_default: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_coded_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_1mbit_phy: 1");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_2mbit_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_37: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_38: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_39: 1");
@@ -2606,10 +2646,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_full_config) // NOLINT
 
         "\t\"scan_coded_phy\":\ttrue,\n"
         "\t\"scan_1mbit_phy\":\ttrue,\n"
-        "\t\"scan_extended_payload\":\ttrue,\n"
+        "\t\"scan_2mbit_phy\":\ttrue,\n"
         "\t\"scan_channel_37\":\ttrue,\n"
         "\t\"scan_channel_38\":\ttrue,\n"
-        "\t\"scan_channel_39\":\ttrue\n"
+        "\t\"scan_channel_39\":\ttrue,\n"
+        "\t\"scan_default\":\tfalse\n"
         "}");
 
     gw_cfg_t gw_cfg = { 0 };
@@ -2670,10 +2711,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_full_config) // NOLINT
     ASSERT_EQ(string("coord:123,456"), gw_cfg.ruuvi_cfg.coordinates.buf);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_default);
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
@@ -2719,9 +2761,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_full_config) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_use: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_id: 888");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_use_filtering: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_default: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_coded_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_1mbit_phy: 1");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_2mbit_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_37: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_38: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_39: 1");
@@ -2791,10 +2835,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_min_config) // NOLINT
 
         "\t\"scan_coded_phy\":\ttrue,\n"
         "\t\"scan_1mbit_phy\":\ttrue,\n"
-        "\t\"scan_extended_payload\":\ttrue,\n"
+        "\t\"scan_2mbit_phy\":\ttrue,\n"
         "\t\"scan_channel_37\":\ttrue,\n"
         "\t\"scan_channel_38\":\ttrue,\n"
-        "\t\"scan_channel_39\":\ttrue\n"
+        "\t\"scan_channel_39\":\ttrue,\n"
+        "\t\"scan_default\":\tfalse\n"
         "}");
 
     gw_cfg_t gw_cfg = { 0 };
@@ -2855,10 +2900,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_min_config) // NOLINT
     ASSERT_EQ(string("coord:123,456"), gw_cfg.ruuvi_cfg.coordinates.buf);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_default);
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
@@ -2904,9 +2950,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_min_config) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_use: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_id: 888");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_use_filtering: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_default: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_coded_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_1mbit_phy: 1");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_2mbit_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_37: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_38: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_39: 1");
@@ -2977,10 +3025,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_via_dhcp) // NOLINT
 
         "\t\"scan_coded_phy\":\ttrue,\n"
         "\t\"scan_1mbit_phy\":\ttrue,\n"
-        "\t\"scan_extended_payload\":\ttrue,\n"
+        "\t\"scan_2mbit_phy\":\ttrue,\n"
         "\t\"scan_channel_37\":\ttrue,\n"
         "\t\"scan_channel_38\":\ttrue,\n"
-        "\t\"scan_channel_39\":\ttrue\n"
+        "\t\"scan_channel_39\":\ttrue,\n"
+        "\t\"scan_default\":\tfalse\n"
         "}");
 
     gw_cfg_t gw_cfg = { 0 };
@@ -3041,10 +3090,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_via_dhcp) // NOLINT
     ASSERT_EQ(string("coord:123,456"), gw_cfg.ruuvi_cfg.coordinates.buf);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_default);
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
@@ -3091,9 +3141,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_via_dhcp) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_use_dhcp: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_id: 888");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_use_filtering: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_default: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_coded_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_1mbit_phy: 1");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_2mbit_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_37: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_38: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_39: 1");
@@ -3166,10 +3218,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_custom) // NOLINT
 
         "\t\"scan_coded_phy\":\ttrue,\n"
         "\t\"scan_1mbit_phy\":\ttrue,\n"
-        "\t\"scan_extended_payload\":\ttrue,\n"
+        "\t\"scan_2mbit_phy\":\ttrue,\n"
         "\t\"scan_channel_37\":\ttrue,\n"
         "\t\"scan_channel_38\":\ttrue,\n"
-        "\t\"scan_channel_39\":\ttrue\n"
+        "\t\"scan_channel_39\":\ttrue,\n"
+        "\t\"scan_default\":\tfalse\n"
         "}");
 
     gw_cfg_t gw_cfg = { 0 };
@@ -3230,10 +3283,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_custom) // NOLINT
     ASSERT_EQ(string("coord:123,456"), gw_cfg.ruuvi_cfg.coordinates.buf);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_default);
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
@@ -3286,9 +3340,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_custom) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'ntp_server4' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_id: 888");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_use_filtering: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_default: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_coded_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_1mbit_phy: 1");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_2mbit_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_37: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_38: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_39: 1");
@@ -3363,10 +3419,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_default) // NOLINT
 
         "\t\"scan_coded_phy\":\ttrue,\n"
         "\t\"scan_1mbit_phy\":\ttrue,\n"
-        "\t\"scan_extended_payload\":\ttrue,\n"
+        "\t\"scan_2mbit_phy\":\ttrue,\n"
         "\t\"scan_channel_37\":\ttrue,\n"
         "\t\"scan_channel_38\":\ttrue,\n"
-        "\t\"scan_channel_39\":\ttrue\n"
+        "\t\"scan_channel_39\":\ttrue,\n"
+        "\t\"scan_default\":\tfalse\n"
         "}");
 
     gw_cfg_t gw_cfg = { 0 };
@@ -3427,10 +3484,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_default) // NOLINT
     ASSERT_EQ(string("coord:123,456"), gw_cfg.ruuvi_cfg.coordinates.buf);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_default);
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
@@ -3481,9 +3539,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_default) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "ntp_server4: time.ruuvi.com");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_id: 888");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_use_filtering: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_default: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_coded_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_1mbit_phy: 1");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_2mbit_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_37: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_38: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_39: 1");
@@ -3562,10 +3622,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
         "\"company_use_filtering\":true,"
         "\"scan_coded_phy\":true,"
         "\"scan_1mbit_phy\":true,"
-        "\"scan_extended_payload\":true,"
+        "\"scan_2mbit_phy\":true,"
         "\"scan_channel_37\":true,"
         "\"scan_channel_38\":true,"
-        "\"scan_channel_39\":true"
+        "\"scan_channel_39\":true,"
+        "\"scan_default\":false"
         "}",
         &gw_cfg,
         &flag_network_cfg));
@@ -3668,9 +3729,11 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_id: not found or invalid");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'company_id' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "company_use_filtering: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_default: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_coded_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_1mbit_phy: 1");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: 1");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_extended_payload: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_2mbit_phy: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_37: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_38: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "scan_channel_39: 1");

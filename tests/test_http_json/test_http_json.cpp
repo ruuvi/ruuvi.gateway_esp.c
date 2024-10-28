@@ -173,10 +173,15 @@ TEST_F(TestHttpJson, test_1) // NOLINT
 
     adv_report_table_t adv_table = { .num_of_advs = 1,
                                      .table       = { {
-                                               .timestamp = 1612358929,
-                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-                                               .rssi      = -70,
-                                               .data_len  = data.size(),
+                                               .timestamp     = 1612358929,
+                                               .tag_mac       = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                                               .rssi          = -70,
+                                               .primary_phy   = RE_CA_UART_BLE_PHY_1MBPS,
+                                               .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
+                                               .ch_index      = 37,
+                                               .is_coded_phy  = false,
+                                               .tx_power      = RE_CA_UART_BLE_GAP_POWER_LEVEL_INVALID,
+                                               .data_len      = data.size(),
                                      } } };
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
 
@@ -227,6 +232,8 @@ TEST_F(TestHttpJson, test_1) // NOLINT
                "      \"AA:BB:CC:01:02:03\": {\n"
                "        \"rssi\": -70,\n"
                "        \"timestamp\": 1612358929,\n"
+               "        \"ble_phy\": \"1M\",\n"
+               "        \"ble_chan\": 37,\n"
                "        \"data\": \"0201061BFF99040515714D9FC56DFFF0FFF803E4B516E84D7EF41F0C28CBD6\"\n"
                "      }\n"
                "    }\n"
@@ -249,10 +256,15 @@ TEST_F(TestHttpJson, test_1_with_raw_and_decoded) // NOLINT
 
     adv_report_table_t adv_table = { .num_of_advs = 1,
                                      .table       = { {
-                                               .timestamp = 1612358929,
-                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-                                               .rssi      = -70,
-                                               .data_len  = data.size(),
+                                               .timestamp     = 1612358929,
+                                               .tag_mac       = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                                               .rssi          = -70,
+                                               .primary_phy   = RE_CA_UART_BLE_PHY_1MBPS,
+                                               .secondary_phy = RE_CA_UART_BLE_PHY_2MBPS,
+                                               .ch_index      = 25,
+                                               .is_coded_phy  = false,
+                                               .tx_power      = 7,
+                                               .data_len      = data.size(),
                                      } } };
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
 
@@ -303,6 +315,9 @@ TEST_F(TestHttpJson, test_1_with_raw_and_decoded) // NOLINT
                "      \"AA:BB:CC:01:02:03\": {\n"
                "        \"rssi\": -70,\n"
                "        \"timestamp\": 1612358929,\n"
+               "        \"ble_phy\": \"2M\",\n"
+               "        \"ble_chan\": 25,\n"
+               "        \"ble_tx_power\": 7,\n"
                "        \"data\": \"0201061BFF99040515714D9FC56DFFF0FFF803E4B516E84D7EF41F0C28CBD6\",\n"
                "        \"dataFormat\": 5,\n"
                "        \"temperature\": 27.445,\n"
@@ -337,10 +352,15 @@ TEST_F(TestHttpJson, test_1_without_raw_and_with_decoded) // NOLINT
 
     adv_report_table_t adv_table = { .num_of_advs = 1,
                                      .table       = { {
-                                               .timestamp = 1612358929,
-                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-                                               .rssi      = -70,
-                                               .data_len  = data.size(),
+                                               .timestamp     = 1612358929,
+                                               .tag_mac       = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                                               .rssi          = -70,
+                                               .primary_phy   = RE_CA_UART_BLE_PHY_CODED,
+                                               .secondary_phy = RE_CA_UART_BLE_PHY_CODED,
+                                               .ch_index      = 15,
+                                               .is_coded_phy  = true,
+                                               .tx_power      = 8,
+                                               .data_len      = data.size(),
                                      } } };
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
 
@@ -391,6 +411,9 @@ TEST_F(TestHttpJson, test_1_without_raw_and_with_decoded) // NOLINT
                "      \"AA:BB:CC:01:02:03\": {\n"
                "        \"rssi\": -70,\n"
                "        \"timestamp\": 1612358929,\n"
+               "        \"ble_phy\": \"Coded\",\n"
+               "        \"ble_chan\": 15,\n"
+               "        \"ble_tx_power\": 8,\n"
                "        \"dataFormat\": 5,\n"
                "        \"temperature\": 27.445,\n"
                "        \"humidity\": 49.6775,\n"
@@ -421,10 +444,15 @@ TEST_F(TestHttpJson, test_1_without_timestamp) // NOLINT
 
     adv_report_table_t adv_table = { .num_of_advs = 1,
                                      .table       = { {
-                                               .timestamp = 1011,
-                                               .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-                                               .rssi      = -70,
-                                               .data_len  = data.size(),
+                                               .timestamp     = 1011,
+                                               .tag_mac       = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                                               .rssi          = -70,
+                                               .primary_phy   = RE_CA_UART_BLE_PHY_1MBPS,
+                                               .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
+                                               .ch_index      = 37,
+                                               .is_coded_phy  = false,
+                                               .tx_power      = 8,
+                                               .data_len      = data.size(),
                                      } } };
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
 
@@ -474,6 +502,9 @@ TEST_F(TestHttpJson, test_1_without_timestamp) // NOLINT
                "      \"AA:BB:CC:01:02:03\": {\n"
                "        \"rssi\": -70,\n"
                "        \"counter\": 1011,\n"
+               "        \"ble_phy\": \"1M\",\n"
+               "        \"ble_chan\": 37,\n"
+               "        \"ble_tx_power\": 8,\n"
                "        \"data\": \"AA\"\n"
                "      }\n"
                "    }\n"
@@ -495,16 +526,26 @@ TEST_F(TestHttpJson, test_2) // NOLINT
     adv_report_table_t adv_table = { .num_of_advs = 2,
                                      .table       = {
                                                {
-                                                   .timestamp = 1612358929,
-                                                   .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-                                                   .rssi      = -70,
-                                                   .data_len  = data1.size(),
+                                                   .timestamp     = 1612358929,
+                                                   .tag_mac       = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+                                                   .rssi          = -70,
+                                                   .primary_phy   = RE_CA_UART_BLE_PHY_1MBPS,
+                                                   .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
+                                                   .ch_index      = 37,
+                                                   .is_coded_phy  = false,
+                                                   .tx_power      = RE_CA_UART_BLE_GAP_POWER_LEVEL_INVALID,
+                                                   .data_len      = data1.size(),
                                          },
                                                {
-                                                   .timestamp = 1612358930,
-                                                   .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x04 },
-                                                   .rssi      = -71,
-                                                   .data_len  = data2.size(),
+                                                   .timestamp     = 1612358930,
+                                                   .tag_mac       = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x04 },
+                                                   .rssi          = -71,
+                                                   .primary_phy   = RE_CA_UART_BLE_PHY_1MBPS,
+                                                   .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
+                                                   .ch_index      = 38,
+                                                   .is_coded_phy  = false,
+                                                   .tx_power      = RE_CA_UART_BLE_GAP_POWER_LEVEL_INVALID,
+                                                   .data_len      = data2.size(),
                                          },
                                      } };
     memcpy(adv_table.table[0].data_buf, data1.data(), data1.size());
@@ -557,11 +598,15 @@ TEST_F(TestHttpJson, test_2) // NOLINT
                "      \"AA:BB:CC:01:02:03\": {\n"
                "        \"rssi\": -70,\n"
                "        \"timestamp\": 1612358929,\n"
+               "        \"ble_phy\": \"1M\",\n"
+               "        \"ble_chan\": 37,\n"
                "        \"data\": \"AA\"\n"
                "      },\n"
                "      \"AA:BB:CC:01:02:04\": {\n"
                "        \"rssi\": -71,\n"
                "        \"timestamp\": 1612358930,\n"
+               "        \"ble_phy\": \"1M\",\n"
+               "        \"ble_chan\": 38,\n"
                "        \"data\": \"BB\"\n"
                "      }\n"
                "    }\n"
@@ -588,6 +633,11 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_wifi) // NOLINT
                                                    .samples_counter = 11,
                                                    .tag_mac         = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                    .rssi            = -70,
+                                                   .primary_phy     = RE_CA_UART_BLE_PHY_1MBPS,
+                                                   .secondary_phy   = RE_CA_UART_BLE_PHY_NOT_SET,
+                                                   .ch_index        = 37,
+                                                   .is_coded_phy    = false,
+                                                   .tx_power        = 8,
                                                    .data_len        = data.size(),
                                          },
                                                {
@@ -595,6 +645,11 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_wifi) // NOLINT
                                                    .samples_counter = 10,
                                                    .tag_mac         = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x04 },
                                                    .rssi            = -70,
+                                                   .primary_phy     = RE_CA_UART_BLE_PHY_1MBPS,
+                                                   .secondary_phy   = RE_CA_UART_BLE_PHY_NOT_SET,
+                                                   .ch_index        = 37,
+                                                   .is_coded_phy    = false,
+                                                   .tx_power        = 8,
                                                    .data_len        = data.size(),
                                          },
                                                {
@@ -602,6 +657,11 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_wifi) // NOLINT
                                                    .samples_counter = 0,
                                                    .tag_mac         = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x05 },
                                                    .rssi            = -70,
+                                                   .primary_phy     = RE_CA_UART_BLE_PHY_1MBPS,
+                                                   .secondary_phy   = RE_CA_UART_BLE_PHY_NOT_SET,
+                                                   .ch_index        = 37,
+                                                   .is_coded_phy    = false,
+                                                   .tx_power        = 8,
                                                    .data_len        = data.size(),
                                          },
                                                {
@@ -609,6 +669,11 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_wifi) // NOLINT
                                                    .samples_counter = 0,
                                                    .tag_mac         = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x06 },
                                                    .rssi            = -70,
+                                                   .primary_phy     = RE_CA_UART_BLE_PHY_1MBPS,
+                                                   .secondary_phy   = RE_CA_UART_BLE_PHY_NOT_SET,
+                                                   .ch_index        = 37,
+                                                   .is_coded_phy    = false,
+                                                   .tx_power        = 8,
                                                    .data_len        = data.size(),
                                          },
                                      } };
@@ -679,6 +744,11 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_ethernet) // NOLINT
                                                    .samples_counter = 12,
                                                    .tag_mac         = { 0xab, 0xbb, 0xcc, 0x01, 0x02, 0xF3 },
                                                    .rssi            = -69,
+                                                   .primary_phy     = RE_CA_UART_BLE_PHY_1MBPS,
+                                                   .secondary_phy   = RE_CA_UART_BLE_PHY_NOT_SET,
+                                                   .ch_index        = 37,
+                                                   .is_coded_phy    = false,
+                                                   .tx_power        = 8,
                                                    .data_len        = data.size(),
                                          },
                                                {
@@ -686,6 +756,11 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_ethernet) // NOLINT
                                                    .samples_counter = 11,
                                                    .tag_mac         = { 0xab, 0xbb, 0xcc, 0x01, 0x02, 0xF4 },
                                                    .rssi            = -68,
+                                                   .primary_phy     = RE_CA_UART_BLE_PHY_1MBPS,
+                                                   .secondary_phy   = RE_CA_UART_BLE_PHY_NOT_SET,
+                                                   .ch_index        = 37,
+                                                   .is_coded_phy    = false,
+                                                   .tx_power        = 8,
                                                    .data_len        = data.size(),
                                          },
                                                {
@@ -693,6 +768,11 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_ethernet) // NOLINT
                                                    .samples_counter = 0,
                                                    .tag_mac         = { 0xab, 0xbb, 0xcc, 0x01, 0x02, 0xF5 },
                                                    .rssi            = -67,
+                                                   .primary_phy     = RE_CA_UART_BLE_PHY_1MBPS,
+                                                   .secondary_phy   = RE_CA_UART_BLE_PHY_NOT_SET,
+                                                   .ch_index        = 37,
+                                                   .is_coded_phy    = false,
+                                                   .tx_power        = 8,
                                                    .data_len        = data.size(),
                                          },
                                      } };
@@ -763,6 +843,11 @@ TEST_F(TestHttpJson, test_create_status_json_str_malloc_failed) // NOLINT
                                                    .samples_counter = 11,
                                                    .tag_mac         = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
                                                    .rssi            = -70,
+                                                   .primary_phy     = RE_CA_UART_BLE_PHY_1MBPS,
+                                                   .secondary_phy   = RE_CA_UART_BLE_PHY_NOT_SET,
+                                                   .ch_index        = 37,
+                                                   .is_coded_phy    = false,
+                                                   .tx_power        = 8,
                                                    .data_len        = data.size(),
                                          },
                                                {
@@ -770,6 +855,11 @@ TEST_F(TestHttpJson, test_create_status_json_str_malloc_failed) // NOLINT
                                                    .samples_counter = 10,
                                                    .tag_mac         = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x04 },
                                                    .rssi            = -70,
+                                                   .primary_phy     = RE_CA_UART_BLE_PHY_1MBPS,
+                                                   .secondary_phy   = RE_CA_UART_BLE_PHY_NOT_SET,
+                                                   .ch_index        = 37,
+                                                   .is_coded_phy    = false,
+                                                   .tx_power        = 8,
                                                    .data_len        = data.size(),
                                          },
                                                {
@@ -777,6 +867,11 @@ TEST_F(TestHttpJson, test_create_status_json_str_malloc_failed) // NOLINT
                                                    .samples_counter = 0,
                                                    .tag_mac         = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x05 },
                                                    .rssi            = -70,
+                                                   .primary_phy     = RE_CA_UART_BLE_PHY_1MBPS,
+                                                   .secondary_phy   = RE_CA_UART_BLE_PHY_NOT_SET,
+                                                   .ch_index        = 37,
+                                                   .is_coded_phy    = false,
+                                                   .tx_power        = 8,
                                                    .data_len        = data.size(),
                                          },
                                                {
@@ -784,6 +879,11 @@ TEST_F(TestHttpJson, test_create_status_json_str_malloc_failed) // NOLINT
                                                    .samples_counter = 0,
                                                    .tag_mac         = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x06 },
                                                    .rssi            = -70,
+                                                   .primary_phy     = RE_CA_UART_BLE_PHY_1MBPS,
+                                                   .secondary_phy   = RE_CA_UART_BLE_PHY_NOT_SET,
+                                                   .ch_index        = 37,
+                                                   .is_coded_phy    = false,
+                                                   .tx_power        = 8,
                                                    .data_len        = data.size(),
                                          },
                                      } };

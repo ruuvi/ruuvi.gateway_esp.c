@@ -107,10 +107,11 @@ static const gw_cfg_ruuvi_t g_gateway_config_default_ruuvi = {
         .scan = {
             .scan_coded_phy = false,
             .scan_1mbit_phy = true,
-            .scan_extended_payload = true,
+            .scan_2mbit_phy = true,
             .scan_channel_37 = true,
             .scan_channel_38 = true,
             .scan_channel_39 = true,
+            .scan_default = true,
         },
         .scan_filter = {
             .scan_filter_allow_listed = false,
@@ -284,6 +285,12 @@ const ruuvi_gw_cfg_filter_t*
 gw_cfg_default_get_filter(void)
 {
     return &g_gw_cfg_default.ruuvi_cfg.filter;
+}
+
+const ruuvi_gw_cfg_scan_t*
+gw_cfg_default_get_scan(void)
+{
+    return &g_gw_cfg_default.ruuvi_cfg.scan;
 }
 
 const ruuvi_gw_cfg_lan_auth_t*
