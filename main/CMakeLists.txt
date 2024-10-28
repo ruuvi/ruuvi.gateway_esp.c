@@ -1,6 +1,9 @@
 idf_component_register(
     SRCS
-        adv_decode.c
+        adv_decode_0x05.c
+        adv_decode_0x06.c
+        adv_decode_0xe0.c
+        adv_decode_0xf0.c
         adv_decode.h
         adv_mqtt.c
         adv_mqtt.h

@@ -5,7 +5,10 @@ set(ProjectId ruuvi_gateway_esp-test-http_server_cb)
 
 add_executable(${ProjectId}
         test_http_server_cb.cpp
-        ${RUUVI_GW_SRC}/adv_decode.c
+        ${RUUVI_GW_SRC}/adv_decode_0x05.c
+        ${RUUVI_GW_SRC}/adv_decode_0x06.c
+        ${RUUVI_GW_SRC}/adv_decode_0xe0.c
+        ${RUUVI_GW_SRC}/adv_decode_0xf0.c
         ${RUUVI_GW_SRC}/adv_decode.h
         ${RUUVI_GW_SRC}/adv_table.h
         ${RUUVI_GW_SRC}/bin2hex.c
