@@ -289,7 +289,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_lan_auth_ruuvi_to_default) // NOL
         .scan = {
             .scan_coded_phy = false,
             .scan_1mbit_phy = true,
-            .scan_extended_payload = true,
+            .scan_2mbit_phy = true,
             .scan_channel_37 = true,
             .scan_channel_38 = true,
             .scan_channel_39 = true,
@@ -356,7 +356,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_do_not_convert_lan_auth_ruuvi_to_default_
         .scan = {
             .scan_coded_phy = false,
             .scan_1mbit_phy = true,
-            .scan_extended_payload = true,
+            .scan_2mbit_phy = true,
             .scan_channel_37 = true,
             .scan_channel_38 = true,
             .scan_channel_39 = true,
@@ -423,7 +423,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_do_not_convert_lan_auth_ruuvi_to_default_
         .scan = {
             .scan_coded_phy = false,
             .scan_1mbit_phy = true,
-            .scan_extended_payload = true,
+            .scan_2mbit_phy = true,
             .scan_channel_37 = true,
             .scan_channel_38 = true,
             .scan_channel_39 = true,
@@ -489,7 +489,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_update_cycle_regular) // NOLINT
         .scan = {
             .scan_coded_phy = false,
             .scan_1mbit_phy = true,
-            .scan_extended_payload = true,
+            .scan_2mbit_phy = true,
             .scan_channel_37 = true,
             .scan_channel_38 = true,
             .scan_channel_39 = true,
@@ -542,7 +542,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_update_cycle_regular) // NOLINT
 
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
@@ -599,7 +599,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_update_cycle_beta) // NOLINT
         .scan = {
             .scan_coded_phy = true,
             .scan_1mbit_phy = false,
-            .scan_extended_payload = false,
+            .scan_2mbit_phy = false,
             .scan_channel_37 = false,
             .scan_channel_38 = false,
             .scan_channel_39 = false,
@@ -656,7 +656,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_update_cycle_beta) // NOLINT
 
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
@@ -713,7 +713,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_update_cycle_manual) // NOLINT
         .scan = {
             .scan_coded_phy = true,
             .scan_1mbit_phy = false,
-            .scan_extended_payload = false,
+            .scan_2mbit_phy = false,
             .scan_channel_37 = false,
             .scan_channel_38 = false,
             .scan_channel_39 = false,
@@ -765,7 +765,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_update_cycle_manual) // NOLINT
 
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
@@ -822,7 +822,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_update_cycle_unknown) // NOLINT
         .scan = {
             .scan_coded_phy = true,
             .scan_1mbit_phy = false,
-            .scan_extended_payload = false,
+            .scan_2mbit_phy = false,
             .scan_channel_37 = false,
             .scan_channel_38 = false,
             .scan_channel_39 = false,
@@ -874,7 +874,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_update_cycle_unknown) // NOLINT
 
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
@@ -931,7 +931,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_with_incorrect_header) // NOLINT
         .scan = {
             .scan_coded_phy = true,
             .scan_1mbit_phy = false,
-            .scan_extended_payload = false,
+            .scan_2mbit_phy = false,
             .scan_channel_37 = false,
             .scan_channel_38 = false,
             .scan_channel_39 = false,
@@ -986,7 +986,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_with_incorrect_header) // NOLINT
 
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);
@@ -1043,7 +1043,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_with_incorrect_fmt_version) // NO
         .scan = {
             .scan_coded_phy = true,
             .scan_1mbit_phy = false,
-            .scan_extended_payload = false,
+            .scan_2mbit_phy = false,
             .scan_channel_37 = false,
             .scan_channel_38 = false,
             .scan_channel_39 = false,
@@ -1098,7 +1098,7 @@ TEST_F(TestGwCfgBlob, test_gw_cfg_blob_convert_with_incorrect_fmt_version) // NO
 
     ASSERT_EQ(false, gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_EQ(true, gw_cfg.ruuvi_cfg.scan.scan_channel_39);

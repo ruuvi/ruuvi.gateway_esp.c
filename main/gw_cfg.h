@@ -322,10 +322,11 @@ typedef struct ruuvi_gw_cfg_scan_t
 {
     bool scan_coded_phy;
     bool scan_1mbit_phy;
-    bool scan_extended_payload;
+    bool scan_2mbit_phy;
     bool scan_channel_37;
     bool scan_channel_38;
     bool scan_channel_39;
+    bool scan_default;
 } ruuvi_gw_cfg_scan_t;
 
 typedef struct ruuvi_gw_cfg_scan_filter_t

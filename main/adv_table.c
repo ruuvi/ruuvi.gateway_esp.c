@@ -12,14 +12,16 @@
 #include "sys/queue.h"
 
 #if defined(__XTENSA__)
-#define ADV_REPORT_EXPECTED_SIZE (16U + 32U)
+#define ADV_REPORT_EXPECTED_SIZE (20U + 48U)
 #elif defined(__linux__) && defined(__x86_64__)
-#define ADV_REPORT_EXPECTED_SIZE (24U + 32U)
+#define ADV_REPORT_EXPECTED_SIZE (24U + 48U)
 #endif
 
 _Static_assert(sizeof(adv_report_t) == ADV_REPORT_EXPECTED_SIZE, "sizeof(adv_report_t)");
 
 #define ADV_TABLE_HASH_SIZE (101)
+
+#define BLE_MAX_REGULAR_ADV_DATA_LEN (31U)
 
 typedef struct adv_reports_list_elem_t adv_reports_list_elem_t;
 
@@ -158,6 +160,15 @@ adv_table_check_if_adv_must_be_discarded(const adv_report_t* const p_adv, const 
         // counter)
         return true;
     }
+#if 1
+    const bool is_prev_ext_adv = (p_prev_adv->data_len > BLE_MAX_REGULAR_ADV_DATA_LEN) ? true : false;
+    const bool is_new_ext_adv  = (p_adv->data_len > BLE_MAX_REGULAR_ADV_DATA_LEN) ? true : false;
+    if (is_prev_ext_adv && (!is_new_ext_adv))
+    {
+        // Discard the data if the previous data is extended advertisement and the new data is not extended
+        return true;
+    }
+#endif
     return false;
 }
 

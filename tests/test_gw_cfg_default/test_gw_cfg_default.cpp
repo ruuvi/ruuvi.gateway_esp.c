@@ -305,7 +305,7 @@ TEST_F(TestGwCfgDefault, test_1) // NOLINT
 
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.scan.scan_coded_phy);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.scan.scan_1mbit_phy);
-    ASSERT_TRUE(gw_cfg.ruuvi_cfg.scan.scan_extended_payload);
+    ASSERT_TRUE(gw_cfg.ruuvi_cfg.scan.scan_2mbit_phy);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.scan.scan_channel_37);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.scan.scan_channel_38);
     ASSERT_TRUE(gw_cfg.ruuvi_cfg.scan.scan_channel_39);
@@ -375,10 +375,11 @@ TEST_F(TestGwCfgDefault, test_1) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: company id: 0x0499"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan coded phy: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan 1mbit/phy: 1"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan extended payload: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan 2mbit/phy: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan channel 37: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan channel 38: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan channel 39: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: scan default       : 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use scan filter: no"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: coordinates: "));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: fw_update: url: https://network.ruuvi.com/firmwareupdate"));

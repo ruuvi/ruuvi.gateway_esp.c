@@ -5,6 +5,7 @@
  * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
  */
 
+#include "metrics.h"
 #include "esp_heap_caps.h"
 #include <string.h>
 #include "esp32/rom/crc.h"
@@ -92,6 +93,8 @@ typedef struct metrics_sha256_str_t
 typedef struct metrics_info_t
 {
     uint64_t                    received_advertisements;
+    uint64_t                    received_ext_advertisements;
+    uint64_t                    received_coded_advertisements;
     int64_t                     uptime_us;
     metrics_total_free_info_t   total_free_bytes;
     metrics_largest_free_info_t largest_free_block;
@@ -117,14 +120,18 @@ typedef struct metrics_tmp_buf_t
 static const char TAG[] = "metrics";
 
 static uint64_t          g_received_advertisements;
+static uint64_t          g_received_advertisements_ext;
+static uint64_t          g_received_advertisements_coded;
 static os_mutex_t        g_p_metrics_mutex;
 static os_mutex_static_t g_metrics_mutex_mem;
 
 void
 metrics_init(void)
 {
-    g_received_advertisements = 0;
-    g_p_metrics_mutex         = os_mutex_create_static(&g_metrics_mutex_mem);
+    g_received_advertisements       = 0;
+    g_received_advertisements_ext   = 0;
+    g_received_advertisements_coded = 0;
+    g_p_metrics_mutex               = os_mutex_create_static(&g_metrics_mutex_mem);
 }
 
 void
@@ -150,10 +157,23 @@ metrics_unlock(void)
 }
 
 void
-metrics_received_advs_increment(void)
+metrics_received_advs_increment(const re_ca_uart_ble_phy_e secondary_phy)
 {
     metrics_lock();
-    g_received_advertisements += 1;
+    switch (secondary_phy)
+    {
+        case RE_CA_UART_BLE_PHY_NOT_SET:
+            g_received_advertisements += 1;
+            break;
+        case RE_CA_UART_BLE_PHY_2MBPS:
+            g_received_advertisements_ext += 1;
+            break;
+        case RE_CA_UART_BLE_PHY_CODED:
+            g_received_advertisements_coded += 1;
+            break;
+        default:
+            break;
+    }
     metrics_unlock();
 }
 
@@ -164,6 +184,24 @@ metrics_received_advs_get(void)
     const uint64_t num_received_advertisements = g_received_advertisements;
     metrics_unlock();
     return num_received_advertisements;
+}
+
+uint64_t
+metrics_received_ext_advs_get(void)
+{
+    metrics_lock();
+    const uint64_t num_received_ext_advertisements = g_received_advertisements_ext;
+    metrics_unlock();
+    return num_received_ext_advertisements;
+}
+
+uint64_t
+metrics_received_coded_advs_get(void)
+{
+    metrics_lock();
+    const uint64_t num_received_coded_advertisements = g_received_advertisements_coded;
+    metrics_unlock();
+    return num_received_coded_advertisements;
 }
 
 static size_t
@@ -272,6 +310,8 @@ gen_metrics(void)
         &p_tmp_buf->tmp_sha256_ctx);
 
     p_metrics->received_advertisements        = metrics_received_advs_get();
+    p_metrics->received_ext_advertisements    = metrics_received_ext_advs_get();
+    p_metrics->received_coded_advertisements  = metrics_received_coded_advs_get();
     p_metrics->uptime_us                      = esp_timer_get_time();
     p_metrics->total_free_bytes.size_exec     = (ulong_t)get_total_free_bytes(MALLOC_CAP_EXEC);
     p_metrics->total_free_bytes.size_32bit    = (ulong_t)get_total_free_bytes(MALLOC_CAP_32BIT);
@@ -457,6 +497,14 @@ metrics_print(str_buf_t* p_str_buf, const metrics_info_t* p_metrics)
         p_str_buf,
         METRICS_PREFIX "received_advertisements %lld\n",
         (printf_long_long_t)p_metrics->received_advertisements);
+    str_buf_printf(
+        p_str_buf,
+        METRICS_PREFIX "received_ext_advertisements %lld\n",
+        (printf_long_long_t)p_metrics->received_ext_advertisements);
+    str_buf_printf(
+        p_str_buf,
+        METRICS_PREFIX "received_coded_advertisements %lld\n",
+        (printf_long_long_t)p_metrics->received_coded_advertisements);
     str_buf_printf(p_str_buf, METRICS_PREFIX "uptime_us %lld\n", (printf_long_long_t)p_metrics->uptime_us);
     metrics_print_total_free_bytes(p_str_buf, p_metrics);
     metrics_print_largest_free_blk(p_str_buf, p_metrics);

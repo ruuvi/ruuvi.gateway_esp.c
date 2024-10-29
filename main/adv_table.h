@@ -13,6 +13,8 @@
 #include <time.h>
 #include "mac_addr.h"
 #include "gw_cfg.h"
+#include "ruuvi_endpoint_ca_uart.h"
+#include "ruuvi_gateway.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,8 +30,7 @@ extern "C" {
 #define ADV_TABLE_STATIC static
 #endif
 
-#define ADV_DATA_MAX_LEN (32)
-#define MAX_ADVS_TABLE   (GW_CFG_MAX_NUM_SENSORS)
+#define MAX_ADVS_TABLE (GW_CFG_MAX_NUM_SENSORS)
 
 typedef int8_t   wifi_rssi_t;
 typedef uint8_t  ble_data_len_t;
@@ -37,12 +38,17 @@ typedef uint32_t adv_counter_t;
 
 typedef struct adv_report_t
 {
-    time_t            timestamp;
-    adv_counter_t     samples_counter;
-    mac_address_bin_t tag_mac;
-    wifi_rssi_t       rssi;
-    ble_data_len_t    data_len;
-    uint8_t           data_buf[ADV_DATA_MAX_LEN];
+    time_t               timestamp;
+    adv_counter_t        samples_counter;
+    mac_address_bin_t    tag_mac;
+    wifi_rssi_t          rssi;
+    re_ca_uart_ble_phy_e primary_phy : 4;
+    re_ca_uart_ble_phy_e secondary_phy : 4;
+    uint8_t              ch_index;
+    bool                 is_coded_phy;
+    int8_t               tx_power;
+    ble_data_len_t       data_len;
+    uint8_t              data_buf[ADV_DATA_MAX_LEN];
 } adv_report_t;
 
 typedef uint32_t num_of_advs_t;

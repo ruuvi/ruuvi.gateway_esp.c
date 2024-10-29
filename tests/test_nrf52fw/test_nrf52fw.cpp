@@ -183,12 +183,14 @@ protected:
         this->m_mount_info.mount_err                            = ESP_OK;
         this->m_mount_info.unmount_err                          = ESP_OK;
         this->m_mount_info.wl_handle                            = 0;
+        this->m_uicr_fw_ver                                     = 0xFFFFFFFFU;
+        this->m_uicr_fw_ver_simulate_write_error                = false;
+        this->m_uicr_fw_ver_simulate_read_error                 = false;
     }
 
     void
     TearDown() override
     {
-        g_pTestClass = nullptr;
         this->m_progress.clear();
         this->cb_before_updating_cnt = 0;
         this->cb_after_updating_cnt  = 0;
@@ -209,6 +211,7 @@ protected:
             remove_dir_with_files(this->m_mount_point_dir);
         }
         esp_log_wrapper_deinit();
+        g_pTestClass = nullptr;
     }
 
     FILE*
@@ -241,10 +244,30 @@ public:
     list<ProgressInfo>        m_progress;
     uint32_t                  cb_before_updating_cnt;
     uint32_t                  cb_after_updating_cnt;
+    uint32_t                  m_uicr_fw_ver;
+    bool                      m_uicr_fw_ver_simulate_write_error;
+    bool                      m_uicr_fw_ver_simulate_read_error;
 
     bool
     write_mem(const uint32_t addr, const uint32_t num_words, const uint32_t* p_buf)
     {
+        if (NRF52FW_UICR_FW_VER == addr)
+        {
+            if (1 != num_words)
+            {
+                return false;
+            }
+            if (0xFFFFFFFFU != this->m_uicr_fw_ver)
+            {
+                return false;
+            }
+            if (this->m_uicr_fw_ver_simulate_write_error)
+            {
+                return false;
+            }
+            this->m_uicr_fw_ver = *p_buf;
+            return true;
+        }
         for (auto& x : this->m_memSegmentsWrite)
         {
             const uint32_t segmentEndAddr = x.segmentAddr + x.data.size() * sizeof(uint32_t);
@@ -269,6 +292,19 @@ public:
     read_mem(const uint32_t addr, const uint32_t num_words, uint32_t* p_buf)
     {
         assert(0 == (addr % sizeof(uint32_t)));
+        if (NRF52FW_UICR_FW_VER == addr)
+        {
+            if (1 != num_words)
+            {
+                return false;
+            }
+            if (this->m_uicr_fw_ver_simulate_read_error)
+            {
+                return false;
+            }
+            *p_buf = this->m_uicr_fw_ver;
+            return true;
+        }
         for (const auto& x : this->m_memSegmentsRead)
         {
             const uint32_t segmentEndAddr = x.segmentAddr + x.data.size() * sizeof(uint32_t);
@@ -409,6 +445,7 @@ bool
 nrf52swd_erase_all(void)
 {
     g_pTestClass->m_cnt_nrf52swd_erase_all += 1;
+    g_pTestClass->m_uicr_fw_ver = 0xFFFFFFFFU;
     return g_pTestClass->m_result_nrf52swd_erase_all;
 }
 
@@ -1047,18 +1084,11 @@ TEST_F(TestNRF52Fw, nrf52fw_read_info_txt_bad_line_3) // NOLINT
 TEST_F(TestNRF52Fw, nrf52fw_read_current_fw_version_ok) // NOLINT
 {
     const uint32_t version = 0x01020300;
-    this->m_memSegmentsRead.emplace_back(MemSegment(0x10001080, 1, &version));
+    this->m_uicr_fw_ver    = version;
 
     ruuvi_nrf52_fw_ver_t fw_ver = { 0 };
     ASSERT_TRUE(nrf52fw_read_current_fw_ver(&fw_ver));
     ASSERT_EQ(version, fw_ver.version);
-    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestNRF52Fw, nrf52fw_read_current_fw_version_fail) // NOLINT
-{
-    ruuvi_nrf52_fw_ver_t fw_ver = { 0 };
-    ASSERT_FALSE(nrf52fw_read_current_fw_ver(&fw_ver));
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
@@ -1067,21 +1097,16 @@ TEST_F(TestNRF52Fw, nrf52fw_write_current_fw_version_ok) // NOLINT
     const uint32_t version = 0x01020300;
 
     ASSERT_TRUE(nrf52fw_write_current_fw_ver(version));
-    ASSERT_EQ(1, this->m_memSegmentsWrite.size());
     {
-        ASSERT_EQ(0x10001080, this->m_memSegmentsWrite[0].segmentAddr); // UICR
-        ASSERT_EQ(1, this->m_memSegmentsWrite[0].data.size());
-        ASSERT_EQ(version, this->m_memSegmentsWrite[0].data[0]);
+        ASSERT_EQ(version, this->m_uicr_fw_ver); // UICR
     }
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
 TEST_F(TestNRF52Fw, nrf52fw_write_current_fw_version_fail) // NOLINT
 {
-    const uint32_t version = 0;
-    this->m_memSegmentsWrite.emplace_back(MemSegment(0x10001080, 1, &version));
-
-    ASSERT_FALSE(nrf52fw_write_current_fw_ver(version));
+    ASSERT_TRUE(nrf52fw_write_current_fw_ver(0x01020300));
+    ASSERT_FALSE(nrf52fw_write_current_fw_ver(0x02030400));
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
@@ -1765,7 +1790,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_ok) // NOLINT
     flashfatfs_unmount(&this->m_p_ffs);
     this->m_p_ffs = nullptr;
 
-    ASSERT_EQ(3, this->m_memSegmentsWrite.size());
+    ASSERT_EQ(2, this->m_memSegmentsWrite.size());
     {
         ASSERT_EQ(this->m_memSegmentsRead[0].segmentAddr, this->m_memSegmentsWrite[0].segmentAddr);
         ASSERT_EQ(this->m_memSegmentsRead[0].data, this->m_memSegmentsWrite[0].data);
@@ -1775,9 +1800,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_ok) // NOLINT
         ASSERT_EQ(this->m_memSegmentsRead[1].data, this->m_memSegmentsWrite[1].data);
     }
     {
-        ASSERT_EQ(0x10001080, this->m_memSegmentsWrite[2].segmentAddr); // IUCR
-        ASSERT_EQ(1, this->m_memSegmentsWrite[2].data.size());
-        ASSERT_EQ(fw_info.fw_ver.version, this->m_memSegmentsWrite[2].data[0]);
+        ASSERT_EQ(fw_info.fw_ver.version, this->m_uicr_fw_ver);
     }
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
@@ -1793,6 +1816,125 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001200...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001300...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001400...");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_ok_with_version_segment) // NOLINT
+{
+    nrf52fw_info_t fw_info = { 0 };
+    fw_info.fw_ver.version = 0x01020300;
+    fw_info.num_segments   = 3;
+    {
+        nrf52fw_segment_t* p_segment = &fw_info.segments[0];
+        snprintf(p_segment->file_name, sizeof(p_segment->file_name), "segment_1.bin");
+        p_segment->address = 0x00000000;
+        p_segment->size    = 516;
+        p_segment->crc     = 0;
+    }
+    {
+        nrf52fw_segment_t* p_segment = &fw_info.segments[1];
+        snprintf(p_segment->file_name, sizeof(p_segment->file_name), "segment_2.bin");
+        p_segment->address = 0x00001000;
+        p_segment->size    = 1028;
+        p_segment->crc     = 0;
+    }
+    {
+        nrf52fw_segment_t* p_segment = &fw_info.segments[2];
+        snprintf(p_segment->file_name, sizeof(p_segment->file_name), "segment_3.bin");
+        p_segment->address = 0x10001080;
+        p_segment->size    = 4;
+        p_segment->crc     = 0;
+    }
+
+    {
+        nrf52fw_segment_t* p_segment      = &fw_info.segments[0];
+        uint32_t*          p_segment_buf1 = (uint32_t*)malloc(p_segment->size);
+        ASSERT_NE(nullptr, p_segment_buf1);
+        for (unsigned i = 0; i < p_segment->size / sizeof(uint32_t); ++i)
+        {
+            p_segment_buf1[i] = 0xAA000000 + i;
+        }
+        this->m_fd = this->open_file(p_segment->file_name, "wb");
+        ASSERT_NE(nullptr, this->m_fd);
+        fwrite(p_segment_buf1, 1, p_segment->size, this->m_fd);
+        fclose(this->m_fd);
+        this->m_fd = nullptr;
+        this->m_memSegmentsRead.emplace_back(
+            MemSegment(p_segment->address, p_segment->size / sizeof(uint32_t), p_segment_buf1));
+        free(p_segment_buf1);
+    }
+
+    {
+        nrf52fw_segment_t* p_segment      = &fw_info.segments[1];
+        uint32_t*          p_segment_buf2 = (uint32_t*)malloc(p_segment->size);
+        ASSERT_NE(nullptr, p_segment_buf2);
+        for (unsigned i = 0; i < p_segment->size / sizeof(uint32_t); ++i)
+        {
+            p_segment_buf2[i] = 0xBB000000 + i;
+        }
+        this->m_fd = this->open_file(p_segment->file_name, "wb");
+        ASSERT_NE(nullptr, this->m_fd);
+        fwrite(p_segment_buf2, 1, p_segment->size, this->m_fd);
+        fclose(this->m_fd);
+        this->m_fd = nullptr;
+        this->m_memSegmentsRead.emplace_back(
+            MemSegment(p_segment->address, p_segment->size / sizeof(uint32_t), p_segment_buf2));
+        free(p_segment_buf2);
+    }
+
+    {
+        nrf52fw_segment_t* p_segment      = &fw_info.segments[2];
+        uint32_t*          p_segment_buf3 = (uint32_t*)malloc(p_segment->size);
+        ASSERT_NE(nullptr, p_segment_buf3);
+        p_segment_buf3[0] = fw_info.fw_ver.version;
+        this->m_fd        = this->open_file(p_segment->file_name, "wb");
+        ASSERT_NE(nullptr, this->m_fd);
+        fwrite(p_segment_buf3, 1, p_segment->size, this->m_fd);
+        fclose(this->m_fd);
+        this->m_fd = nullptr;
+        free(p_segment_buf3);
+    }
+
+    nrf52fw_tmp_buf_t tmp_buf = { 0 };
+
+    this->m_p_ffs = flashfatfs_mount(this->m_mount_point, GW_NRF_PARTITION, 2);
+    ASSERT_NE(nullptr, this->m_p_ffs);
+
+    ASSERT_TRUE(nrf52fw_flash_write_firmware(this->m_p_ffs, &tmp_buf, &fw_info, nullptr, nullptr));
+
+    flashfatfs_unmount(&this->m_p_ffs);
+    this->m_p_ffs = nullptr;
+
+    ASSERT_EQ(2, this->m_memSegmentsWrite.size());
+    {
+        ASSERT_EQ(this->m_memSegmentsRead[0].segmentAddr, this->m_memSegmentsWrite[0].segmentAddr);
+        ASSERT_EQ(this->m_memSegmentsRead[0].data, this->m_memSegmentsWrite[0].data);
+    }
+    {
+        ASSERT_EQ(this->m_memSegmentsRead[1].segmentAddr, this->m_memSegmentsWrite[1].segmentAddr);
+        ASSERT_EQ(this->m_memSegmentsRead[1].data, this->m_memSegmentsWrite[1].data);
+    }
+    {
+        ASSERT_EQ(fw_info.fw_ver.version, this->m_uicr_fw_ver);
+    }
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Erasing flash memory...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash 3 segments");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 0: 0x00000000 size=516 from segment_1.bin");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000000...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000100...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000200...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 1: 0x00001000 size=1028 from segment_2.bin");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001000...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001100...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001200...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001300...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001400...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 2: 0x10001080 size=4 from segment_3.bin");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x10001080...");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
@@ -1860,8 +2002,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_version) // NOLIN
     ASSERT_NE(nullptr, this->m_p_ffs);
 
     {
-        const uint32_t version = 0;
-        this->m_memSegmentsWrite.emplace_back(MemSegment(0x10001080, 1, &version));
+        this->m_uicr_fw_ver_simulate_write_error = true;
     }
 
     ASSERT_FALSE(nrf52fw_flash_write_firmware(this->m_p_ffs, &tmp_buf, &fw_info, nullptr, nullptr));
@@ -1869,14 +2010,14 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_version) // NOLIN
     flashfatfs_unmount(&this->m_p_ffs);
     this->m_p_ffs = nullptr;
 
-    ASSERT_EQ(3, this->m_memSegmentsWrite.size());
+    ASSERT_EQ(2, this->m_memSegmentsWrite.size());
     {
-        ASSERT_EQ(this->m_memSegmentsRead[0].segmentAddr, this->m_memSegmentsWrite[1].segmentAddr);
-        ASSERT_EQ(this->m_memSegmentsRead[0].data, this->m_memSegmentsWrite[1].data);
+        ASSERT_EQ(this->m_memSegmentsRead[0].segmentAddr, this->m_memSegmentsWrite[0].segmentAddr);
+        ASSERT_EQ(this->m_memSegmentsRead[0].data, this->m_memSegmentsWrite[0].data);
     }
     {
-        ASSERT_EQ(this->m_memSegmentsRead[1].segmentAddr, this->m_memSegmentsWrite[2].segmentAddr);
-        ASSERT_EQ(this->m_memSegmentsRead[1].data, this->m_memSegmentsWrite[2].data);
+        ASSERT_EQ(this->m_memSegmentsRead[1].segmentAddr, this->m_memSegmentsWrite[1].segmentAddr);
+        ASSERT_EQ(this->m_memSegmentsRead[1].data, this->m_memSegmentsWrite[1].data);
     }
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
@@ -2545,8 +2686,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_not_needed) // 
     }
 
     {
-        const uint32_t version = 0x01020300;
-        this->m_memSegmentsRead.emplace_back(MemSegment(0x10001080, 1, &version));
+        this->m_uicr_fw_ver = 0x01020300;
     }
 
     ASSERT_TRUE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr, nullptr));
@@ -2644,8 +2784,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required) // NO
     }
 
     {
-        const uint32_t version = 0x01020000;
-        this->m_memSegmentsRead.emplace_back(MemSegment(0x10001080, 1, &version));
+        this->m_uicr_fw_ver = 0x01020000;
     }
     this->m_memSegmentsRead.emplace_back(MemSegment(0x00000000, segment1_size / sizeof(uint32_t), segment1_buf.get()));
     this->m_memSegmentsRead.emplace_back(MemSegment(0x00001000, segment2_size / sizeof(uint32_t), segment2_buf.get()));
@@ -2654,7 +2793,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required) // NO
     ASSERT_TRUE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr, nullptr));
 
     ASSERT_EQ(1, this->m_cnt_nrf52swd_erase_all);
-    ASSERT_EQ(4, this->m_memSegmentsWrite.size());
+    ASSERT_EQ(3, this->m_memSegmentsWrite.size());
 
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
@@ -2692,7 +2831,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required) // NO
         snprintf(buf, sizeof(buf), "Writing 0x%08x...", (unsigned)(0x00026000U + offset));
         TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, buf);
     }
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on nRF52: v1.2.0");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on nRF52: v1.2.3");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
@@ -2787,8 +2926,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required__with_
     }
 
     {
-        const uint32_t version = 0x01020000;
-        this->m_memSegmentsRead.emplace_back(MemSegment(0x10001080, 1, &version));
+        this->m_uicr_fw_ver = 0x01020000;
     }
     this->m_memSegmentsRead.emplace_back(MemSegment(0x00000000, segment1_size / sizeof(uint32_t), segment1_buf.get()));
     this->m_memSegmentsRead.emplace_back(MemSegment(0x00001000, segment2_size / sizeof(uint32_t), segment2_buf.get()));
@@ -2811,7 +2949,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required__with_
     ASSERT_EQ(1, this->cb_after_updating_cnt);
 
     ASSERT_EQ(1, this->m_cnt_nrf52swd_erase_all);
-    ASSERT_EQ(4, this->m_memSegmentsWrite.size());
+    ASSERT_EQ(3, this->m_memSegmentsWrite.size());
 
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
@@ -2849,7 +2987,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required__with_
         snprintf(buf, sizeof(buf), "Writing 0x%08x...", (unsigned)(0x00026000U + offset));
         TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, buf);
     }
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on nRF52: v1.2.0");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on nRF52: v1.2.3");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
@@ -3409,8 +3547,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__debug_run_failed) // N
     }
 
     {
-        const uint32_t version = 0x01020300;
-        this->m_memSegmentsRead.emplace_back(MemSegment(0x10001080, 1, &version));
+        this->m_uicr_fw_ver = 0x01020300;
     }
 
     this->m_result_nrf52swd_debug_run = false;
@@ -3891,6 +4028,10 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_read_version) //
         this->m_fd = nullptr;
     }
 
+    {
+        this->m_uicr_fw_ver_simulate_read_error = true;
+    }
+
     ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr, nullptr));
 
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
@@ -3985,8 +4126,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_check_firmware) 
     }
 
     {
-        const uint32_t version = 0x01020000;
-        this->m_memSegmentsRead.emplace_back(MemSegment(0x10001080, 1, &version));
+        this->m_uicr_fw_ver = 0x01020000;
     }
 
     ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr, nullptr));
@@ -4086,8 +4226,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_write_firmware) 
     }
 
     {
-        const uint32_t version = 0x01020000;
-        this->m_memSegmentsRead.emplace_back(MemSegment(0x10001080, 1, &version));
+        this->m_uicr_fw_ver = 0x01020000;
     }
     {
         const uint32_t stub = 0;

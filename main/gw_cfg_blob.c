@@ -208,12 +208,13 @@ gw_cfg_blob_convert_scan(
     ruuvi_gw_cfg_scan_t* const            p_cfg_dst_scan,
     const ruuvi_gw_cfg_blob_scan_t* const p_cfg_src_scan)
 {
-    p_cfg_dst_scan->scan_coded_phy        = p_cfg_src_scan->scan_coded_phy;
-    p_cfg_dst_scan->scan_1mbit_phy        = p_cfg_src_scan->scan_1mbit_phy;
-    p_cfg_dst_scan->scan_extended_payload = p_cfg_src_scan->scan_extended_payload;
-    p_cfg_dst_scan->scan_channel_37       = p_cfg_src_scan->scan_channel_37;
-    p_cfg_dst_scan->scan_channel_38       = p_cfg_src_scan->scan_channel_38;
-    p_cfg_dst_scan->scan_channel_39       = p_cfg_src_scan->scan_channel_39;
+    p_cfg_dst_scan->scan_coded_phy  = p_cfg_src_scan->scan_coded_phy;
+    p_cfg_dst_scan->scan_1mbit_phy  = p_cfg_src_scan->scan_1mbit_phy;
+    p_cfg_dst_scan->scan_2mbit_phy  = p_cfg_src_scan->scan_2mbit_phy;
+    p_cfg_dst_scan->scan_channel_37 = p_cfg_src_scan->scan_channel_37;
+    p_cfg_dst_scan->scan_channel_38 = p_cfg_src_scan->scan_channel_38;
+    p_cfg_dst_scan->scan_channel_39 = p_cfg_src_scan->scan_channel_39;
+    p_cfg_dst_scan->scan_default    = false;
 }
 
 void
