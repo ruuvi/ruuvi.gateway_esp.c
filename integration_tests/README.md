@@ -2,6 +2,17 @@
 
 This directory contains description of integration tests for Ruuvi Gateway.
 
+## Preparation of the environment
+
+1. Install Ruuvi Gateway firmware on the Gateway.
+2. Erase the configuration of the Gateway by long pressing on the Configure button.
+3. Connect the Gateway to Ethernet or Wi-Fi.
+4. Create directory '.test_results'.
+5. Copy 'secrets_example.json' to '.test_results/secrets.json'.
+6. Edit '.test_results/secrets.json' and set the correct values.
+   * Set "gw_hostname" attribute in the '.test_results/secrets.json' file to the IP address or 
+      name of the Gateway (for example "ruuvigateway9c2c.local").
+
 ## ruuvi_gw_integration_tests.yaml
 
 `ruuvi_gw_integration_tests.yaml` contains the main description of the integration tests.
@@ -28,11 +39,6 @@ To run these tests you need to install some python packages:
 ```bash
 pip3 install requests pyserial
 ```
-
-Before running these test you need to prepare the environment:
-* Create directory '.test_results'.
-* Copy 'secrets_example.json' to '.test_results/secrets.json'.
-* Edit '.test_results/secrets.json' and set the correct values.
 
 ### Running tests locally on Ubuntu or macOS
 
@@ -97,6 +103,10 @@ docker system prune -a
 ```shell
 ./build_docker_image.sh
 ```
+
+If `build_docker_image.sh` fails with error "Could not resolve 'archive.ubuntu.com'", 
+follow the instructions on [stackoverflow](https://stackoverflow.com/questions/24991136/docker-build-could-not-resolve-archive-ubuntu-com-apt-get-fails-to-install-a)
+or [Fix Docker's networking DNS config](https://robinwinslow.uk/fix-docker-networking-dns)
 
 Logs will be saved to '.test_results/build_docker_image.log'.
 
