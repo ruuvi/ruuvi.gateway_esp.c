@@ -46,6 +46,7 @@ http_server_resp_t
 http_server_cb_on_post_ruuvi(const char* p_body, const bool flag_access_from_lan)
 {
     LOG_DBG("POST /ruuvi.json, flag_access_from_lan=%d", (printf_int_t)flag_access_from_lan);
+    LOG_DBG("POST /ruuvi.json, body: %s", p_body);
     bool      flag_network_cfg = false;
     gw_cfg_t* p_gw_cfg_tmp     = os_calloc(1, sizeof(*p_gw_cfg_tmp));
     if (NULL == p_gw_cfg_tmp)
