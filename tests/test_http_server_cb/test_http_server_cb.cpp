@@ -2048,6 +2048,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg) // NOLINT
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("POST /ruuvi.json, body: {\"use_eth\":true,\n\"eth_dhcp\":true,\n\"company_use_filtering\":false\n}"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_eth: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "eth_dhcp: 1");
@@ -2087,6 +2090,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg_from_lan) // NOLINT
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=1"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("POST /ruuvi.json, body: {\"use_eth\":true,\n\"eth_dhcp\":true,\n\"company_use_filtering\":false\n}"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'remote_cfg_use' in config-json");
@@ -2316,6 +2322,44 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("POST /ruuvi.json, body: {"
+               "\"remote_cfg_use\":false,\n"
+               "\"remote_cfg_url\":\"\",\n"
+               "\"remote_cfg_auth_type\":\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
+               "\"remote_cfg_refresh_interval_minutes\":0,\n"
+               "\"use_http_ruuvi\":false,"
+               "\"use_http_ruuvi\":false,"
+               "\"use_http\":false,"
+               "\"http_data_format\":\"ruuvi\","
+               "\"http_auth\":\"none\","
+               "\"http_url\":\"https://network.ruuvi.com/record\","
+               "\"http_user\":\"\","
+               "\"http_pass\":\"\","
+               "\"use_http_stat\":true,"
+               "\"http_stat_url\":\"https://network.ruuvi.com/status\","
+               "\"http_stat_user\":\"\","
+               "\"http_stat_pass\":\"\","
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
+               "\"use_mqtt\":true,"
+               "\"mqtt_disable_retained_messages\":false,"
+               "\"mqtt_transport\":\"TCP\","
+               "\t\"mqtt_data_format\":\t\"ruuvi_raw\","
+               "\n\"mqtt_server\":\"test.mosquitto.org\","
+               "\"mqtt_port\":1883,"
+               "\"mqtt_sending_interval\":0,"
+               "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
+               "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
+               "\"mqtt_user\":\"\","
+               "\"mqtt_pass\":\"\","
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
+               "\"company_use_filtering\":true\n"
+               "}"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_url: ");
@@ -2497,6 +2541,31 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed1) // NOLINT
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("POST /ruuvi.json, body: {"
+               "\"use_mqtt\":true,"
+               "\"mqtt_disable_retained_messages\":false,"
+               "\"mqtt_server\":\"test.mosquitto.org\","
+               "\"mqtt_port\":1883,"
+               "\"mqtt_sending_interval\":0,"
+               "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
+               "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
+               "\"mqtt_user\":\"\","
+               "\"mqtt_pass\":\"\","
+               "\"use_http_ruuvi\":false,"
+               "\"use_http\":false,"
+               "\"http_data_format\":\"ruuvi\","
+               "\"http_auth\":\"none\","
+               "\"http_url\":\"https://network.ruuvi.com/record\","
+               "\"http_user\":\"\","
+               "\"http_pass\":\"\","
+               "\"use_http_stat\":true,"
+               "\"http_stat_url\":\"https://network.ruuvi.com/status\","
+               "\"http_stat_user\":\"\","
+               "\"http_stat_pass\":\"\","
+               "\"company_use_filtering\":true"
+               "}"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Failed to allocate memory for gw_cfg"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
@@ -2547,6 +2616,31 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed2) // NOLINT
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("POST /ruuvi.json, body: {"
+               "\"use_mqtt\":true,"
+               "\"mqtt_disable_retained_messages\":false,"
+               "\"mqtt_server\":\"test.mosquitto.org\","
+               "\"mqtt_port\":1883,"
+               "\"mqtt_sending_interval\":0,"
+               "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
+               "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
+               "\"mqtt_user\":\"\","
+               "\"mqtt_pass\":\"\","
+               "\"use_http_ruuvi\":false,"
+               "\"use_http\":false,"
+               "\"http_data_format\":\"ruuvi\","
+               "\"http_auth\":\"none\","
+               "\"http_url\":\"https://network.ruuvi.com/record\","
+               "\"http_user\":\"\","
+               "\"http_pass\":\"\","
+               "\"use_http_stat\":true,"
+               "\"http_stat_url\":\"https://network.ruuvi.com/status\","
+               "\"http_stat_user\":\"\","
+               "\"http_stat_pass\":\"\","
+               "\"company_use_filtering\":true"
+               "}"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Failed to parse json or no memory"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
@@ -2597,6 +2691,31 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed3) // NOLINT
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("POST /ruuvi.json, body: {"
+               "\"use_mqtt\":true,"
+               "\"mqtt_disable_retained_messages\":false,"
+               "\"mqtt_server\":\"test.mosquitto.org\","
+               "\"mqtt_port\":1883,"
+               "\"mqtt_sending_interval\":0,"
+               "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
+               "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
+               "\"mqtt_user\":\"\","
+               "\"mqtt_pass\":\"\","
+               "\"use_http_ruuvi\":false,"
+               "\"use_http\":false,"
+               "\"http_data_format\":\"ruuvi\","
+               "\"http_auth\":\"none\","
+               "\"http_url\":\"https://network.ruuvi.com/record\","
+               "\"http_user\":\"\","
+               "\"http_pass\":\"\","
+               "\"use_http_stat\":true,"
+               "\"http_stat_url\":\"https://network.ruuvi.com/status\","
+               "\"http_stat_user\":\"\","
+               "\"http_stat_pass\":\"\","
+               "\"company_use_filtering\":true"
+               "}"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Failed to parse json or no memory"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
@@ -2678,6 +2797,43 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
         ESP_LOG_INFO,
         string("http_server_cb_on_post: Clear all saved TLS session tickets"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("POST /ruuvi.json, body: {"
+               "\"remote_cfg_use\":false,\n"
+               "\"remote_cfg_url\":\"\",\n"
+               "\"remote_cfg_auth_type\":\"none\",\n"
+               "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
+               "\"remote_cfg_refresh_interval_minutes\":0,\n"
+               "\"use_http_ruuvi\":false,"
+               "\"use_http\":false,"
+               "\"http_data_format\":\"ruuvi\","
+               "\"http_auth\":\"none\","
+               "\"http_url\":\"https://network.ruuvi.com/record\","
+               "\"http_user\":\"\","
+               "\"http_pass\":\"\","
+               "\"use_http_stat\":true,"
+               "\"http_stat_url\":\"https://network.ruuvi.com/status\","
+               "\"http_stat_user\":\"\","
+               "\"http_stat_pass\":\"\","
+               "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
+               "\"use_mqtt\":true,"
+               "\"mqtt_disable_retained_messages\":false,"
+               "\"mqtt_transport\":\"TCP\","
+               "\t\"mqtt_data_format\":\t\"ruuvi_raw\",\n"
+               "\"mqtt_server\":\"test.mosquitto.org\","
+               "\"mqtt_port\":1883,\"mqtt_sending_interval\":0,"
+               "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
+               "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
+               "\"mqtt_user\":\"\","
+               "\"mqtt_pass\":\"\","
+               "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
+               "\"lan_auth_api_key\":\"wH3F9SIiAA3rhG32aJki2Z7ekdFc0vtxuDhxl39zFvw=\","
+               "\"company_use_filtering\":true"
+               "}"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_url: ");
@@ -2895,6 +3051,48 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
         ESP_LOG_INFO,
         string("http_server_cb_on_post: Clear all saved TLS session tickets"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("POST /ruuvi.json, body: {"
+               "\"remote_cfg_use\":false,\n"
+               "\"remote_cfg_url\":\"\",\n"
+               "\"remote_cfg_auth_type\":\"none\",\n"
+               "\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
+               "\"remote_cfg_refresh_interval_minutes\":0,\n"
+               "\"use_http_ruuvi\":false,"
+               "\"use_http\":false,"
+               "\"http_data_format\":\"ruuvi\","
+               "\"http_auth\":\"none\","
+               "\"http_url\":\"https://network.ruuvi.com/record\","
+               "\"http_user\":\"\","
+               "\"http_pass\":\"\","
+               "\"use_http_stat\":true,"
+               "\"http_stat_url\":\"https://network.ruuvi.com/status\","
+               "\"http_stat_user\":\"\","
+               "\"http_stat_pass\":\"\","
+               "\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\"http_stat_use_ssl_server_cert\":\tfalse,\n"
+               "\"use_mqtt\":true,"
+               "\"mqtt_disable_retained_messages\":false,"
+               "\"mqtt_transport\":\"TCP\","
+               "\t\"mqtt_data_format\":\t\"ruuvi_raw\",\n"
+               "\"mqtt_server\":\"test.mosquitto.org\","
+               "\"mqtt_port\":1883,"
+               "\"mqtt_sending_interval\":0,"
+               "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
+               "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
+               "\"mqtt_user\":\"\","
+               "\"mqtt_pass\":\"\","
+               "\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\"mqtt_use_ssl_server_cert\":\tfalse,\n"
+               "\"lan_auth_type\":\"lan_auth_digest\","
+               "\"lan_auth_user\":\"user2\","
+               "\"lan_auth_pass\":\"password2\","
+               "\"lan_auth_api_key\":\"6kl/fd/c+3qvWm3Mhmwgh3BWNp+HDRQiLp/X0PuwG8Q=\","
+               "\"lan_auth_api_key_rw\":\"KAv9oAT0c1XzbCF9N/Bnj2mgVR7R4QbBn/L3Wq5/zuI=\","
+               "\"company_use_filtering\":true"
+               "}"));
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_url: ");
@@ -3089,6 +3287,43 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
         ESP_LOG_INFO,
         string("http_server_cb_on_post: Clear all saved TLS session tickets"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("POST /ruuvi.json, body: {"
+               "\"remote_cfg_use\":false,\n"
+               "\"remote_cfg_url\":\"\","
+               "\n\"remote_cfg_auth_type\":\"none\",\n"
+               "\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
+               "\"remote_cfg_refresh_interval_minutes\":0,\n"
+               "\"use_http_ruuvi\":false,"
+               "\"use_http\":false,"
+               "\"http_data_format\":\"ruuvi\","
+               "\"http_auth\":\"none\","
+               "\"http_url\":\"https://network.ruuvi.com/record\","
+               "\"http_user\":\"\","
+               "\"http_pass\":\"\","
+               "\"use_http_stat\":true,"
+               "\"http_stat_url\":\"https://network.ruuvi.com/status\","
+               "\"http_stat_user\":\"\","
+               "\"http_stat_pass\":\"\","
+               "\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\"http_stat_use_ssl_server_cert\":\tfalse,\n"
+               "\"use_mqtt\":true,"
+               "\"mqtt_disable_retained_messages\":false,"
+               "\"mqtt_transport\":\"TCP\","
+               "\t\"mqtt_data_format\":\t\"ruuvi_raw\",\n"
+               "\"mqtt_server\":\"test.mosquitto.org\","
+               "\"mqtt_port\":1883,"
+               "\"mqtt_sending_interval\":0,"
+               "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
+               "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
+               "\"mqtt_user\":\"\","
+               "\"mqtt_pass\":\"\","
+               "\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\"mqtt_use_ssl_server_cert\":\tfalse,\n"
+               "\"company_use_filtering\":true"
+               "}"));
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
@@ -3288,6 +3523,43 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_wifi_ap_active) //
         ESP_LOG_INFO,
         string("http_server_cb_on_post: Clear all saved TLS session tickets"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("POST /ruuvi.json, body: {"
+               "\"remote_cfg_use\":false,\n"
+               "\"remote_cfg_url\":\"\",\n"
+               "\"remote_cfg_auth_type\":\"none\",\n"
+               "\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+               "\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
+               "\"remote_cfg_refresh_interval_minutes\":0,\n"
+               "\"use_http_ruuvi\":false,"
+               "\"use_http\":false,"
+               "\"http_data_format\":\"ruuvi\","
+               "\"http_auth\":\"none\","
+               "\"http_url\":\"https://network.ruuvi.com/record\","
+               "\"http_user\":\"\","
+               "\"http_pass\":\"\","
+               "\"use_http_stat\":true,"
+               "\"http_stat_url\":\"https://network.ruuvi.com/status\","
+               "\"http_stat_user\":\"\","
+               "\"http_stat_pass\":\"\","
+               "\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+               "\"http_stat_use_ssl_server_cert\":\tfalse,\n"
+               "\"use_mqtt\":true,"
+               "\"mqtt_disable_retained_messages\":false,"
+               "\"mqtt_transport\":\"TCP\","
+               "\t\"mqtt_data_format\":\t\"ruuvi_raw\",\n"
+               "\"mqtt_server\":\"test.mosquitto.org\","
+               "\"mqtt_port\":1883,"
+               "\"mqtt_sending_interval\":0,"
+               "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
+               "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
+               "\"mqtt_user\":\"\","
+               "\"mqtt_pass\":\"\","
+               "\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+               "\"mqtt_use_ssl_server_cert\":\tfalse,\n"
+               "\"company_use_filtering\":true"
+               "}"));
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "Gateway SETTINGS (via HTTP):");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_use: 0");
