@@ -13,7 +13,7 @@ on:
 jobs:
   build:
     name: Build firmware
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Check out code
@@ -64,6 +64,7 @@ jobs:
 
       - name: Run build
         run: |
+          lsb_release -a          
           source $HOME/esp/esp-idf/export.sh
           python --version
           which python
