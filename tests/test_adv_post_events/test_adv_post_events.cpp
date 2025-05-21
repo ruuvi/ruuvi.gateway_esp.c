@@ -109,7 +109,7 @@ adv_post_signals_get(void)
 TEST_F(TestAdvPostEvents, test_1) // NOLINT
 {
     adv_post_subscribe_events();
-    ASSERT_EQ(this->m_subscribedEvents.size(), 12);
+    ASSERT_EQ(this->m_subscribedEvents.size(), 14);
     EXPECT_EQ(this->m_subscribedEvents[0].event, EVENT_MGR_EV_WIFI_DISCONNECTED);
     EXPECT_EQ(this->m_subscribedEvents[1].event, EVENT_MGR_EV_ETH_DISCONNECTED);
     EXPECT_EQ(this->m_subscribedEvents[2].event, EVENT_MGR_EV_WIFI_CONNECTED);
@@ -118,10 +118,12 @@ TEST_F(TestAdvPostEvents, test_1) // NOLINT
     EXPECT_EQ(this->m_subscribedEvents[5].event, EVENT_MGR_EV_GW_CFG_READY);
     EXPECT_EQ(this->m_subscribedEvents[6].event, EVENT_MGR_EV_GW_CFG_CHANGED_RUUVI);
     EXPECT_EQ(this->m_subscribedEvents[7].event, EVENT_MGR_EV_RELAYING_MODE_CHANGED);
-    EXPECT_EQ(this->m_subscribedEvents[8].event, EVENT_MGR_EV_GREEN_LED_STATE_CHANGED);
-    EXPECT_EQ(this->m_subscribedEvents[9].event, EVENT_MGR_EV_CFG_MODE_ACTIVATED);
-    EXPECT_EQ(this->m_subscribedEvents[10].event, EVENT_MGR_EV_CFG_MODE_DEACTIVATED);
-    EXPECT_EQ(this->m_subscribedEvents[11].event, EVENT_MGR_EV_CFG_BLE_SCAN_CHANGED);
+    EXPECT_EQ(this->m_subscribedEvents[8].event, EVENT_MGR_EV_NRF52_REBOOTED);
+    EXPECT_EQ(this->m_subscribedEvents[9].event, EVENT_MGR_EV_NRF52_CONFIGURED);
+    EXPECT_EQ(this->m_subscribedEvents[10].event, EVENT_MGR_EV_GREEN_LED_STATE_CHANGED);
+    EXPECT_EQ(this->m_subscribedEvents[11].event, EVENT_MGR_EV_CFG_MODE_ACTIVATED);
+    EXPECT_EQ(this->m_subscribedEvents[12].event, EVENT_MGR_EV_CFG_MODE_DEACTIVATED);
+    EXPECT_EQ(this->m_subscribedEvents[13].event, EVENT_MGR_EV_CFG_BLE_SCAN_CHANGED);
 
     adv_post_unsubscribe_events();
     ASSERT_EQ(this->m_subscribedEvents.size(), 0);

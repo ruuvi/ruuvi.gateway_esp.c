@@ -23,6 +23,7 @@
 #include "adv_post_green_led.h"
 #include "adv_post_timers.h"
 #include "adv_post_cfg_cache.h"
+#include "adv_post_nrf52.h"
 #if defined(RUUVI_TESTS) && RUUVI_TESTS
 #define LOG_LOCAL_DISABLED 1
 #define LOG_LOCAL_LEVEL    LOG_LEVEL_NONE
@@ -30,7 +31,7 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #endif
 #include "log.h"
-static const char* TAG = "ADV_POST_TASK";
+static const char* TAG = "ADV_POST_SIGNALS";
 
 typedef void (*adv_post_sig_handler_t)(adv_post_state_t* const p_adv_post_state);
 
@@ -64,6 +65,14 @@ adv_post_signals_send_sig(const adv_post_sig_e adv_post_sig)
     {
         LOG_ERR("%s failed, sig=%d", "os_signal_send", adv_post_sig);
     }
+}
+
+static void
+ruuvi_send_nrf_settings_from_gw_cfg(void)
+{
+    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
+    adv_post_nrf52_cfg_update(&p_gw_cfg->ruuvi_cfg.scan, &p_gw_cfg->ruuvi_cfg.filter);
+    gw_cfg_unlock_ro(&p_gw_cfg);
 }
 
 bool
@@ -423,6 +432,63 @@ adv_post_handle_sig_cfg_mode_deactivated(adv_post_state_t* const p_adv_post_stat
 }
 
 static void
+adv_post_handle_sig_nrf52_rebooted(ATTR_UNUSED adv_post_state_t* const p_adv_post_state)
+{
+    LOG_INFO("Got ADV_POST_SIG_NRF52_REBOOTED");
+    adv_post_nrf52_on_sig_nrf52_rebooted();
+}
+
+static void
+adv_post_handle_sig_nrf52_configured(ATTR_UNUSED adv_post_state_t* const p_adv_post_state)
+{
+    LOG_INFO("Got ADV_POST_SIG_NRF52_CONFIGURED");
+    adv_post_nrf52_on_sig_nrf52_configured();
+}
+
+static void
+adv_post_handle_sig_nrf52_ack_led_ctrl(ATTR_UNUSED adv_post_state_t* const p_adv_post_state)
+{
+    LOG_DBG("Got ADV_POST_SIG_NRF52_ACK_LED_CTRL");
+    adv_post_nrf52_on_sync_ack_led_ctrl();
+}
+
+static void
+adv_post_handle_sig_nrf52_ack_cfg(ATTR_UNUSED adv_post_state_t* const p_adv_post_state)
+{
+    LOG_INFO("Got ADV_POST_SIG_NRF52_ACK_CFG");
+    adv_post_nrf52_on_sync_ack_cfg();
+    adv_post_green_led_enable();
+}
+
+static void
+adv_post_handle_sig_nrf52_ack_timeout(ATTR_UNUSED adv_post_state_t* const p_adv_post_state)
+{
+    LOG_INFO("Got ADV_POST_SIG_NRF52_ACK_TIMEOUT");
+    adv_post_nrf52_on_sync_ack_timeout();
+}
+
+static void
+adv_post_handle_sig_nrf52_cfg_update(ATTR_UNUSED adv_post_state_t* const p_adv_post_state)
+{
+    LOG_INFO("Got ADV_POST_SIG_NRF52_CFG_UPDATE");
+    adv_post_nrf52_on_sig_nrf52_cfg_update();
+}
+
+static void
+adv_post_handle_sig_nrf52_hw_reset_off(ATTR_UNUSED adv_post_state_t* const p_adv_post_state)
+{
+    LOG_INFO("Got ADV_POST_SIG_NRF52_HW_RESET_OFF");
+    adv_post_nrf52_on_sig_nrf52_hw_reset_off();
+}
+
+static void
+adv_post_handle_sig_nrf52_cfg_req_timeout(ATTR_UNUSED adv_post_state_t* const p_adv_post_state)
+{
+    LOG_INFO("Got ADV_POST_SIG_NRF52_CFG_REQ_TIMEOUT");
+    adv_post_nrf52_on_sig_nrf52_cfg_req_timeout();
+}
+
+static void
 adv_post_handle_sig_green_led_state_changed(ATTR_UNUSED adv_post_state_t* const p_adv_post_state) // NOSONAR
 {
     if (leds_get_green_led_state())
@@ -469,6 +535,14 @@ adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p
         [ADV_POST_SIG_BLE_SCAN_CHANGED]        = &adv_post_handle_sig_ble_scan_changed,
         [ADV_POST_SIG_CFG_MODE_ACTIVATED]      = &adv_post_handle_sig_cfg_mode_activated,
         [ADV_POST_SIG_CFG_MODE_DEACTIVATED]    = &adv_post_handle_sig_cfg_mode_deactivated,
+        [ADV_POST_SIG_NRF52_REBOOTED]          = &adv_post_handle_sig_nrf52_rebooted,
+        [ADV_POST_SIG_NRF52_CONFIGURED]        = &adv_post_handle_sig_nrf52_configured,
+        [ADV_POST_SIG_NRF52_ACK_LED_CTRL]      = &adv_post_handle_sig_nrf52_ack_led_ctrl,
+        [ADV_POST_SIG_NRF52_ACK_CFG]           = &adv_post_handle_sig_nrf52_ack_cfg,
+        [ADV_POST_SIG_NRF52_ACK_TIMEOUT]       = &adv_post_handle_sig_nrf52_ack_timeout,
+        [ADV_POST_SIG_NRF52_CFG_UPDATE]        = &adv_post_handle_sig_nrf52_cfg_update,
+        [ADV_POST_SIG_NRF52_HW_RESET_OFF]      = &adv_post_handle_sig_nrf52_hw_reset_off,
+        [ADV_POST_SIG_NRF52_CFG_REQ_TIMEOUT]   = &adv_post_handle_sig_nrf52_cfg_req_timeout,
         [ADV_POST_SIG_GREEN_LED_STATE_CHANGED] = &adv_post_handle_sig_green_led_state_changed,
         [ADV_POST_SIG_GREEN_LED_UPDATE]        = &adv_post_handle_sig_green_led_update,
         [ADV_POST_SIG_RECV_ADV_TIMEOUT]        = &adv_post_handle_sig_recv_adv_timeout,
@@ -498,4 +572,11 @@ adv_post_signals_deinit(void)
 {
     os_signal_unregister_cur_thread(g_p_adv_post_sig);
     os_signal_delete(&g_p_adv_post_sig);
+}
+
+void
+adv_post_signals_send_sig_nrf52_cfg_update(void)
+{
+    LOG_INFO("Send sig: ADV_POST_SIG_NRF52_CFG_UPDATE");
+    adv_post_signals_send_sig(ADV_POST_SIG_NRF52_CFG_UPDATE);
 }

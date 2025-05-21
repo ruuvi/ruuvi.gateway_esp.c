@@ -13,18 +13,13 @@
 #include "lwip/sockets.h"
 #include "adv_post.h"
 #include "adv_mqtt.h"
-#include "api.h"
-#include "cJSON.h"
 #include "os_task.h"
 #include "os_malloc.h"
-#include "gpio.h"
 #include "leds.h"
 #include "ruuvi_nvs.h"
 #include "ruuvi_boards.h"
-#include "terminal.h"
 #include "time_task.h"
 #include "wifi_manager.h"
-#include "ruuvi_endpoint_ca_uart.h"
 #include "nrf52fw.h"
 #include "attribs.h"
 #include "http_server_cb.h"
@@ -44,6 +39,7 @@
 #include "reset_info.h"
 #include "network_subsystem.h"
 #include "gw_cfg_storage.h"
+#include "time_units.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -56,8 +52,6 @@ static const char TAG[] = "ruuvi_gateway";
 
 #define MAC_ADDRESS_IDX_OF_LAST_BYTE        (MAC_ADDRESS_NUM_BYTES - 1U)
 #define MAC_ADDRESS_IDX_OF_PENULTIMATE_BYTE (MAC_ADDRESS_NUM_BYTES - 2U)
-
-#define NRF52_COMM_TASK_PRIORITY (9)
 
 #define RUUVI_GATEWAY_DELAY_AFTER_NRF52_UPDATING_SECONDS (5)
 
@@ -92,55 +86,6 @@ http_server_mutex_unlock(void)
 
 static void
 ruuvi_cb_on_change_cfg(const gw_cfg_t* const p_gw_cfg);
-
-static inline uint8_t
-conv_bool_to_u8(const bool x)
-{
-    return x ? (uint8_t)RE_CA_BOOL_ENABLE : (uint8_t)RE_CA_BOOL_DISABLE;
-}
-
-void
-ruuvi_send_nrf_settings(const ruuvi_gw_cfg_scan_t* const p_scan, const ruuvi_gw_cfg_filter_t* const p_filter)
-{
-    LOG_INFO(
-        "### sending settings to NRF: "
-        "use filter: %d, "
-        "company id: 0x%04x,"
-        "use scan Coded PHY: %d,"
-        "use scan 1Mbit PHY: %d,"
-        "use scan 2Mbit PHY: %d,"
-        "use scan channel 37: %d,"
-        "use scan channel 38: %d,"
-        "use scan channel 39: %d",
-        p_filter->company_use_filtering,
-        p_filter->company_id,
-        p_scan->scan_coded_phy,
-        p_scan->scan_1mbit_phy,
-        p_scan->scan_2mbit_phy,
-        p_scan->scan_channel_37,
-        p_scan->scan_channel_38,
-        p_scan->scan_channel_39);
-
-    api_send_all(
-        RE_CA_UART_SET_ALL,
-        p_filter->company_id,
-        conv_bool_to_u8(p_filter->company_use_filtering),
-        conv_bool_to_u8(p_scan->scan_coded_phy),
-        conv_bool_to_u8(p_scan->scan_2mbit_phy),
-        conv_bool_to_u8(p_scan->scan_1mbit_phy),
-        conv_bool_to_u8(p_scan->scan_channel_37),
-        conv_bool_to_u8(p_scan->scan_channel_38),
-        conv_bool_to_u8(p_scan->scan_channel_39),
-        ADV_DATA_MAX_LEN);
-}
-
-void
-ruuvi_send_nrf_settings_from_gw_cfg(void)
-{
-    const gw_cfg_t* p_gw_cfg = gw_cfg_lock_ro();
-    ruuvi_send_nrf_settings(&p_gw_cfg->ruuvi_cfg.scan, &p_gw_cfg->ruuvi_cfg.filter);
-    gw_cfg_unlock_ro(&p_gw_cfg);
-}
 
 static mac_address_bin_t
 gateway_read_mac_addr(const esp_mac_type_t mac_type)
@@ -553,8 +498,7 @@ main_task_init(void)
 
     adv_mqtt_init();
     adv_post_init();
-    terminal_open(NULL, true, NRF52_COMM_TASK_PRIORITY);
-    api_process(true);
+
     const nrf52_device_info_t nrf52_device_info = ruuvi_device_id_request_and_wait();
 
     ruuvi_deinit_gw_cfg();

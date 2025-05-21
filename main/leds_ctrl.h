@@ -23,6 +23,8 @@ typedef enum leds_ctrl_event_e
     LEDS_CTRL_EVENT_NRF52_FW_UPDATING,
     LEDS_CTRL_EVENT_NRF52_READY,
     LEDS_CTRL_EVENT_NRF52_FAILURE,
+    LEDS_CTRL_EVENT_NRF52_REBOOTED,
+    LEDS_CTRL_EVENT_NRF52_CONFIGURED,
     LEDS_CTRL_EVENT_CFG_READY,
 } leds_ctrl_event_e;
 
@@ -33,6 +35,7 @@ typedef enum leds_ctrl_state_e
     LEDS_CTRL_STATE_CHECKING_NRF52_FW, // Turn off RED
     LEDS_CTRL_STATE_FLASHING_NRF52_FW, // Blinking RED "R---------"
     LEDS_CTRL_STATE_NRF52_FAILURE,     // Solid RED
+    LEDS_CTRL_STATE_NRF52_REBOOTED,    // Blinking RED "-------R-R"
     LEDS_CTRL_STATE_CFG_ERASING,       // Turn off RED
     LEDS_CTRL_STATE_CFG_ERASED,        // Blinking RED "RR--"
     LEDS_CTRL_STATE_WAITING_CFG_READY, // GREEN LED is ON and it is controlled by nRF52

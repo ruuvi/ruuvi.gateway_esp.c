@@ -10,9 +10,7 @@
 #include <time.h>
 #include "esp_task_wdt.h"
 #include "os_task.h"
-#include "cJSON.h"
 #include "mqtt.h"
-#include "api.h"
 #include "types_def.h"
 #include "ruuvi_endpoint_ca_uart.h"
 #include "ruuvi_gateway.h"
@@ -21,7 +19,6 @@
 #include "mac_addr.h"
 #include "ruuvi_device_id.h"
 #include "event_mgr.h"
-#include "gw_status.h"
 #include "gw_cfg.h"
 #include "adv_post_signals.h"
 #include "adv_post_timers.h"
@@ -30,28 +27,33 @@
 #include "adv_post_green_led.h"
 #include "adv_post_async_comm.h"
 #include "adv_post_statistics.h"
+#include "adv_post_nrf52.h"
+#include "api.h"
+#include "terminal.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
-static const char* TAG = "ADV_POST_TASK";
+static const char* TAG = "ADV_POST";
+
+#define NRF52_COMM_TASK_PRIORITY (9)
 
 static void
-adv_post_send_report(void* p_arg);
+adv_post_nrf52_cb_on_recv_adv(void* p_arg);
 
 static void
-adv_post_send_ack(void* arg);
+adv_post_nrf52_cb_on_recv_ack(void* arg);
 
 static void
-adv_post_cb_on_recv_device_id(void* arg);
+adv_post_nrf52_cb_on_recv_device_id(void* arg);
 
 static void
-adv_post_send_get_all(void* arg);
+adv_post_nrf52_cb_on_recv_get_all(void* arg);
 
 static adv_callbacks_fn_t adv_callback_func_tbl = {
-    .AdvAckCallback    = adv_post_send_ack,
-    .AdvReportCallback = adv_post_send_report,
-    .AdvIdCallback     = adv_post_cb_on_recv_device_id,
-    .AdvGetAllCallback = adv_post_send_get_all,
+    .AdvAckCallback    = adv_post_nrf52_cb_on_recv_ack,
+    .AdvReportCallback = adv_post_nrf52_cb_on_recv_adv,
+    .AdvIdCallback     = adv_post_nrf52_cb_on_recv_device_id,
+    .AdvGetAllCallback = adv_post_nrf52_cb_on_recv_get_all,
 };
 
 static uint32_t g_adv_post_advs_cnt;
@@ -135,15 +137,18 @@ parse_adv_report_from_uart(const re_ca_uart_payload_t* const p_msg, const time_t
 }
 
 static void
-adv_post_send_ack(void* arg)
+adv_post_nrf52_cb_on_recv_ack(void* arg)
 {
-    (void)arg;
-    // Do something
+    LOG_DBG("%s", __func__);
+    const re_ca_uart_payload_t* const p_uart_payload = arg;
+
+    adv_post_nrf52_on_async_ack(p_uart_payload->params.ack.cmd, p_uart_payload->params.ack.ack_state);
 }
 
 static void
-adv_post_cb_on_recv_device_id(void* p_arg)
+adv_post_nrf52_cb_on_recv_device_id(void* p_arg)
 {
+    LOG_DBG("%s", __func__);
     const re_ca_uart_payload_t* const p_uart_payload = (re_ca_uart_payload_t*)p_arg;
 
     nrf52_device_id_t nrf52_device_id = { 0 };
@@ -377,14 +382,20 @@ adv_post_log_adv_report(
 }
 
 static void
-adv_post_send_report(void* p_arg)
+adv_post_nrf52_cb_on_recv_adv(void* p_arg)
 {
-    adv_post_advs_cnt_inc();
+    LOG_DBG("%s", __func__);
+    if (!adv_post_nrf52_is_configured())
+    {
+        LOG_DBG("Drop adv - nRF52 is not configured");
+        return;
+    }
     if (!gw_cfg_is_initialized())
     {
         LOG_DBG("Drop adv - gw_cfg is not ready yet");
         return;
     }
+    adv_post_advs_cnt_inc();
 
     adv_post_cfg_cache_t* p_cfg_cache = adv_post_cfg_cache_mutex_try_lock();
     if (NULL == p_cfg_cache)
@@ -441,18 +452,28 @@ adv_post_send_report(void* p_arg)
 }
 
 static void
-adv_post_send_get_all(void* arg)
+adv_post_nrf52_cb_on_recv_get_all(void* arg)
 {
     (void)arg;
-    LOG_INFO("Got configuration request from NRF52");
-    adv_post_on_green_led_update(ADV_POST_GREEN_LED_CMD_UPDATE);
-    ruuvi_send_nrf_settings_from_gw_cfg();
+    LOG_DBG("%s", __func__);
+    adv_post_green_led_async_disable();
+    if (gw_cfg_is_initialized())
+    {
+        LOG_WARN("Got configuration request from NRF52");
+        LOG_INFO("Notify: EVENT_MGR_EV_NRF52_REBOOTED");
+    }
+    else
+    {
+        LOG_INFO("Got initial configuration request from NRF52");
+    }
+    event_mgr_notify(EVENT_MGR_EV_NRF52_REBOOTED);
 }
 
 void
 adv_post_init(void)
 {
-    adv_post_green_led_init();
+    terminal_open(NULL, true, NRF52_COMM_TASK_PRIORITY);
+    api_process(true);
     adv_post_async_comm_init();
     adv_post_statistics_init();
     adv_table_init();
@@ -469,4 +490,12 @@ adv_post_init(void)
     }
 
     api_callbacks_reg((void*)&adv_callback_func_tbl);
+
+    LOG_INFO("Wait while nRF52 is in hw_reset state");
+    while (adv_post_nrf52_is_in_hw_reset_state())
+    {
+        vTaskDelay(1);
+    }
+    LOG_INFO("nRF52 started");
+    vTaskDelay(pdMS_TO_TICKS(50));
 }

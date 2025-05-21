@@ -9,6 +9,8 @@
 #include "gtest/gtest.h"
 #include <string>
 #include "os_timer_sig.h"
+#include "os_mutex.h"
+#include "os_task.h"
 #include "adv_post_internal.h"
 
 using namespace std;
@@ -74,6 +76,13 @@ os_timer_sig_periodic_start(os_timer_sig_periodic_t* const p_obj)
     g_pTestClass->m_is_timer_active = true;
 }
 
+void
+os_timer_sig_periodic_relaunch(os_timer_sig_periodic_t* const p_obj, bool flag_restart_from_current_moment)
+{
+    assert(p_obj == g_pTestClass->m_p_timer_sig_green_led_update);
+    g_pTestClass->m_is_timer_active = true;
+}
+
 bool
 os_timer_sig_periodic_is_active(os_timer_sig_periodic_t* const p_obj)
 {
@@ -81,11 +90,39 @@ os_timer_sig_periodic_is_active(os_timer_sig_periodic_t* const p_obj)
     return g_pTestClass->m_is_timer_active;
 }
 
-int8_t
-api_send_led_ctrl(const uint16_t time_interval_ms)
+void
+os_timer_sig_periodic_stop(os_timer_sig_periodic_t* const p_obj)
+{
+    assert(p_obj == g_pTestClass->m_p_timer_sig_green_led_update);
+    g_pTestClass->m_is_timer_active = false;
+}
+
+os_mutex_t
+os_mutex_create_static(os_mutex_static_t* const p_mutex_static)
+{
+    return reinterpret_cast<os_mutex_t>(p_mutex_static);
+}
+
+void
+os_mutex_lock(os_mutex_t const h_mutex)
+{
+}
+
+void
+os_mutex_unlock(os_mutex_t const h_mutex)
+{
+}
+
+os_task_handle_t
+os_task_get_cur_task_handle(void)
+{
+    return nullptr;
+}
+
+void
+adv_post_nrf52_send_led_ctrl(const uint16_t time_interval_ms)
 {
     g_pTestClass->m_led_ctrl_time_interval_ms = time_interval_ms;
-    return g_pTestClass->m_api_send_led_ctrl_res;
 }
 
 } // extern "C"

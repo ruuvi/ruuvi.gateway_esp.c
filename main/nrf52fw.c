@@ -897,6 +897,7 @@ nrf52fw_update_fw_if_necessary(
     vTaskDelay(ticks_in_reset_state);
     nrf52fw_hw_reset_nrf52(false);
 
+#if 1
     const bool res = nrf52fw_update_fw_step0(
         p_fatfs_nrf52_partition_name,
         cb_progress,
@@ -904,6 +905,7 @@ nrf52fw_update_fw_if_necessary(
         cb_before_updating,
         cb_after_updating,
         p_nrf52_fw_ver);
+#endif
 
     nrf52fw_hw_reset_nrf52(true);
     vTaskDelay(ticks_in_reset_state);

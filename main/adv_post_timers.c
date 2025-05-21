@@ -19,7 +19,7 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #endif
 #include "log.h"
-static const char* TAG = "ADV_POST_TASK";
+static const char* TAG = "ADV_POST_TIMERS";
 
 typedef struct adv_post_timer_t
 {

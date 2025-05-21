@@ -13,6 +13,8 @@
 #include "adv_post_signals.h"
 #include "adv_post_events.h"
 #include "adv_post_timers.h"
+#include "adv_post_green_led.h"
+#include "adv_post_nrf52.h"
 #include "http.h"
 #if defined(RUUVI_TESTS) && RUUVI_TESTS
 #define LOG_LOCAL_DISABLED 1
@@ -41,9 +43,11 @@ adv_post_task(void)
 {
     esp_log_level_set(TAG, LOG_LOCAL_LEVEL);
 
+    adv_post_green_led_init();
     adv_post_signals_init();
     adv_post_subscribe_events();
     adv_post_create_timers();
+    adv_post_nrf52_init();
 
     if (!os_signal_register_cur_thread(adv_post_signals_get()))
     {
