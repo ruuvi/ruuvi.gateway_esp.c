@@ -6,6 +6,8 @@
  */
 
 #include "cjson_wrap.h"
+
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,7 +44,19 @@ bool
 cjson_wrap_add_uint32(cJSON* const p_object, const char* const p_name, const uint32_t val)
 {
     char val_str[32];
-    snprintf(val_str, sizeof(val_str), "%lu", (printf_ulong_t)val);
+    snprintf(val_str, sizeof(val_str), "%" PRIu32, val);
+    if (NULL == cJSON_AddStringToObject(p_object, p_name, val_str))
+    {
+        return false;
+    }
+    return true;
+}
+
+bool
+cjson_wrap_add_uint64(cJSON* const p_object, const char* const p_name, const uint64_t val)
+{
+    char val_str[48];
+    snprintf(val_str, sizeof(val_str), "%" PRIu64, val);
     if (NULL == cJSON_AddStringToObject(p_object, p_name, val_str))
     {
         return false;

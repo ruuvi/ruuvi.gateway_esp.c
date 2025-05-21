@@ -21,7 +21,7 @@ void
 adv_post_nrf52_init(void);
 
 bool
-adv_post_nrf52_is_in_hw_reset_state();
+adv_post_nrf52_is_in_hw_reset_state(void);
 
 bool
 adv_post_nrf52_is_configured(void);

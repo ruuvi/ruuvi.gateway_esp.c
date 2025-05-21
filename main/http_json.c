@@ -170,7 +170,7 @@ http_json_generate_status_attributes(
     {
         return false;
     }
-    if (!cjson_wrap_add_uint32(p_json_root, "NRF_LOST_ACK_CNT", p_stat_info->nrf_lost_ack_cnt))
+    if (!cjson_wrap_add_uint64(p_json_root, "NRF_LOST_ACK_CNT", p_stat_info->nrf_lost_ack_cnt))
     {
         return false;
     }

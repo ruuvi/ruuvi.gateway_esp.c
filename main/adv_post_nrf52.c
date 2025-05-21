@@ -381,6 +381,34 @@ adv_post_nrf52_on_sig_nrf52_cfg_req_timeout(void)
     adv_post_nrf52_reset();
 }
 
+static void
+adv_post_nrf52_on_async_ack_led_ctrl(const re_ca_uart_ble_bool_t ack_state)
+{
+    if (0 == ack_state.state)
+    {
+        LOG_DBG("Got ACK from nRF52 for cmd=%s, status=%s", "RE_CA_UART_LED_CTRL", "OK");
+        adv_post_signals_send_sig(ADV_POST_SIG_NRF52_ACK_LED_CTRL);
+    }
+    else
+    {
+        LOG_ERR("Got ACK from nRF52 for cmd=%s, status=%s", "RE_CA_UART_LED_CTRL", "ERROR");
+    }
+}
+
+static void
+adv_post_nrf52_on_async_ack_set_all(const re_ca_uart_ble_bool_t ack_state)
+{
+    if (0 == ack_state.state)
+    {
+        LOG_INFO("Got ACK from nRF52 for cmd=%s, status=%s", "RE_CA_UART_SET_ALL", "OK");
+        adv_post_signals_send_sig(ADV_POST_SIG_NRF52_ACK_CFG);
+    }
+    else
+    {
+        LOG_ERR("Got ACK from nRF52 for cmd=%s, status=%s", "RE_CA_UART_SET_ALL", "ERROR");
+    }
+}
+
 void
 adv_post_nrf52_on_async_ack(const re_ca_uart_cmd_t cmd, const re_ca_uart_ble_bool_t ack_state)
 {
@@ -397,26 +425,10 @@ adv_post_nrf52_on_async_ack(const re_ca_uart_cmd_t cmd, const re_ca_uart_ble_boo
     switch (cmd)
     {
         case RE_CA_UART_LED_CTRL:
-            if (0 == ack_state.state)
-            {
-                LOG_DBG("Got ACK from nRF52 for cmd=%s, status=%s", "RE_CA_UART_LED_CTRL", "OK");
-                adv_post_signals_send_sig(ADV_POST_SIG_NRF52_ACK_LED_CTRL);
-            }
-            else
-            {
-                LOG_ERR("Got ACK from nRF52 for cmd=%s, status=%s", "RE_CA_UART_LED_CTRL", "ERROR");
-            }
+            adv_post_nrf52_on_async_ack_led_ctrl(ack_state);
             break;
         case RE_CA_UART_SET_ALL:
-            if (0 == ack_state.state)
-            {
-                LOG_INFO("Got ACK from nRF52 for cmd=%s, status=%s", "RE_CA_UART_SET_ALL", "OK");
-                adv_post_signals_send_sig(ADV_POST_SIG_NRF52_ACK_CFG);
-            }
-            else
-            {
-                LOG_ERR("Got ACK from nRF52 for cmd=%s, status=%s", "RE_CA_UART_SET_ALL", "ERROR");
-            }
+            adv_post_nrf52_on_async_ack_set_all(ack_state);
             break;
         default:
             LOG_ERR("Got ACK from nRF52 for unknown cmd=%d, status=%d", cmd, ack_state.state);
@@ -480,6 +492,10 @@ adv_post_nrf52_on_sync_ack_timeout(void)
         else if (ADV_POST_LED_CTRL_TIME_INTERVAL_INVALID != g_adv_post_nrf52_led_ctrl_time_interval_ms)
         {
             adv_post_nrf52_send_cmd_led_ctrl_internal();
+        }
+        else
+        {
+            // MISRA C:2012, 15.7 - All if...else if constructs shall be terminated with an else statement
         }
     }
 }
