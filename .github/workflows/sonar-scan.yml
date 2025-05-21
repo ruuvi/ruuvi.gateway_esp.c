@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     name: Build and analyze
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     env:
       BUILD_WRAPPER_OUT_DIR: bw-output # Directory where build-wrapper output will be placed
