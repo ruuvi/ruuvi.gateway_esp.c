@@ -28,6 +28,24 @@ metrics_received_advs_increment(const re_ca_uart_ble_phy_e secondary_phy);
 uint64_t
 metrics_received_advs_get(void);
 
+uint32_t
+metrics_nrf_self_reboot_cnt_get(void);
+
+void
+metrics_nrf_self_reboot_cnt_inc(void);
+
+uint32_t
+metrics_nrf_ext_hw_reset_cnt_get(void);
+
+void
+metrics_nrf_ext_hw_reset_cnt_inc(void);
+
+uint64_t
+metrics_nrf_lost_ack_cnt_get(void);
+
+void
+metrics_nrf_lost_ack_cnt_inc(void);
+
 char*
 metrics_generate(void);
 

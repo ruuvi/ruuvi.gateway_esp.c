@@ -280,6 +280,16 @@ http_abort_any_req_during_processing(void)
     g_pTestClass->m_events_history.push_back(EVENT_HISTORY_HTTP_ABORT_ANY_REQ_DURING_PROCESSING);
 }
 
+void
+adv_post_green_led_init(void)
+{
+}
+
+void
+adv_post_nrf52_init(void)
+{
+}
+
 } // extern "C"
 
 /*** Unit-Tests

@@ -391,13 +391,28 @@ TEST_F(TestMetrics, test_metrics_generate) // NOLINT
 {
     metrics_init();
 
-    this->m_uptime            = 15317668796;
+    this->m_uptime = 15317668796;
+    for (int i = 0; i < 5; ++i)
+    {
+        metrics_nrf_lost_ack_cnt_inc();
+    }
+    for (int i = 0; i < 2; ++i)
+    {
+        metrics_nrf_self_reboot_cnt_inc();
+    }
+    for (int i = 0; i < 3; ++i)
+    {
+        metrics_nrf_ext_hw_reset_cnt_inc();
+    }
     const char* p_metrics_str = metrics_generate();
     ASSERT_EQ(
         string("ruuvigw_received_advertisements 0\n"
                "ruuvigw_received_ext_advertisements 0\n"
                "ruuvigw_received_coded_advertisements 0\n"
                "ruuvigw_uptime_us 15317668796\n"
+               "ruuvigw_nrf_self_reboot_cnt 2\n"
+               "ruuvigw_nrf_ext_hw_reset_cnt 3\n"
+               "ruuvigw_nrf_lost_ack_cnt 5\n"
                "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_EXEC\"} 194796\n"
                "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_32BIT\"} 201116\n"
                "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_8BIT\"} 134284\n"
@@ -433,12 +448,18 @@ TEST_F(TestMetrics, test_metrics_generate) // NOLINT
     metrics_received_advs_increment(RE_CA_UART_BLE_PHY_NOT_SET);
     this->m_uptime = 15317668797;
 
+    metrics_nrf_lost_ack_cnt_inc();
+    metrics_nrf_self_reboot_cnt_inc();
+    metrics_nrf_ext_hw_reset_cnt_inc();
     p_metrics_str = metrics_generate();
     ASSERT_EQ(
         string("ruuvigw_received_advertisements 1\n"
                "ruuvigw_received_ext_advertisements 0\n"
                "ruuvigw_received_coded_advertisements 0\n"
                "ruuvigw_uptime_us 15317668797\n"
+               "ruuvigw_nrf_self_reboot_cnt 3\n"
+               "ruuvigw_nrf_ext_hw_reset_cnt 4\n"
+               "ruuvigw_nrf_lost_ack_cnt 6\n"
                "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_EXEC\"} 194796\n"
                "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_32BIT\"} 201116\n"
                "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_8BIT\"} 134284\n"
@@ -480,6 +501,9 @@ TEST_F(TestMetrics, test_metrics_generate) // NOLINT
                "ruuvigw_received_ext_advertisements 1\n"
                "ruuvigw_received_coded_advertisements 0\n"
                "ruuvigw_uptime_us 15317668797\n"
+               "ruuvigw_nrf_self_reboot_cnt 3\n"
+               "ruuvigw_nrf_ext_hw_reset_cnt 4\n"
+               "ruuvigw_nrf_lost_ack_cnt 6\n"
                "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_EXEC\"} 194796\n"
                "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_32BIT\"} 201116\n"
                "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_8BIT\"} 134284\n"
@@ -521,6 +545,9 @@ TEST_F(TestMetrics, test_metrics_generate) // NOLINT
                "ruuvigw_received_ext_advertisements 1\n"
                "ruuvigw_received_coded_advertisements 1\n"
                "ruuvigw_uptime_us 15317668797\n"
+               "ruuvigw_nrf_self_reboot_cnt 3\n"
+               "ruuvigw_nrf_ext_hw_reset_cnt 4\n"
+               "ruuvigw_nrf_lost_ack_cnt 6\n"
                "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_EXEC\"} 194796\n"
                "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_32BIT\"} 201116\n"
                "ruuvigw_heap_free_bytes{capability=\"MALLOC_CAP_8BIT\"} 134284\n"

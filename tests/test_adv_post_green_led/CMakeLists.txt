@@ -25,6 +25,7 @@ target_include_directories(${ProjectId} PUBLIC
         ${WIFI_MANAGER_INC}
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${COMPONENTS}/ruuvi.comm_tester.c/src/lib
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src
         $ENV{IDF_PATH}/components/esp_wifi/include
         $ENV{IDF_PATH}/components/esp_common/include
         $ENV{IDF_PATH}/components/esp_event/include

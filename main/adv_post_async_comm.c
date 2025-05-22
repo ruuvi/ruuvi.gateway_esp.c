@@ -27,7 +27,7 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #endif
 #include "log.h"
-static const char* TAG = "ADV_POST_TASK";
+static const char* TAG = "ADV_POST_ASYNC_COMM";
 
 static uint32_t          g_adv_post_nonce;
 static adv_post_action_e g_adv_post_action = ADV_POST_ACTION_NONE;

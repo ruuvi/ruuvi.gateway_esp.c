@@ -484,12 +484,12 @@ TEST_F(TestAdvPostTimers, test_adv_post_timer_recv_adv_timeout) // NOLINT
     adv_post_timers_start_timer_sig_recv_adv_timeout();
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
-    ASSERT_EQ(10 * 1000, timerData.period_ticks);
+    ASSERT_EQ(50 * 1000, timerData.period_ticks);
 
     adv_post_timers_relaunch_timer_sig_recv_adv_timeout();
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
-    ASSERT_EQ(10 * 1000, timerData.period_ticks);
+    ASSERT_EQ(50 * 1000, timerData.period_ticks);
 }
 
 TEST_F(TestAdvPostTimers, test_adv_post_timer_http_ruuvi_reconfiguration) // NOLINT
