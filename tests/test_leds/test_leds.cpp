@@ -287,6 +287,12 @@ event_mgr_subscribe_sig_static(
     g_event_to_sig_num[event] = sig_num;
 }
 
+bool
+gw_cfg_is_initialized(void)
+{
+    return true;
+}
+
 #ifdef __cplusplus
 }
 #endif
@@ -492,7 +498,7 @@ TEST_F(TestLeds, test_all) // NOLINT
     cmdQueue.push_and_wait(MainTaskCmd_leds_notify_http1_data_sent_fail);
     ASSERT_EQ(LEDS_CTRL_STATE_SUBSTATE, leds_ctrl_get_state());
     ASSERT_EQ(idx, testEvents.size());
-    ASSERT_TRUE(waitEvent(std::chrono::milliseconds(200)));
+    ASSERT_TRUE(waitEvent(std::chrono::milliseconds(1000)));
     ASSERT_EQ(idx + 3, testEvents.size());
     {
         auto* pEv = reinterpret_cast<TestEventGreenLedStateChanged*>(testEvents[idx++]);

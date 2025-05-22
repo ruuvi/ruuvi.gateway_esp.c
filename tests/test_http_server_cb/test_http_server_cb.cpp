@@ -305,11 +305,6 @@ main_task_send_sig_activate_cfg_mode(void)
 }
 
 void
-ruuvi_send_nrf_settings(const ruuvi_gw_cfg_scan_t* const p_scan, const ruuvi_gw_cfg_filter_t* const p_filter)
-{
-}
-
-void
 timer_cfg_mode_deactivation_start(void)
 {
 }
@@ -851,6 +846,11 @@ fw_update_run(const fw_updating_reason_e fw_updating_reason)
 
 void
 esp_transport_ssl_clear_saved_session_tickets(void)
+{
+}
+
+void
+adv_post_nrf52_cfg_update(const ruuvi_gw_cfg_scan_t* const p_scan, const ruuvi_gw_cfg_filter_t* const p_filter)
 {
 }
 

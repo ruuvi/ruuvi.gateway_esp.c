@@ -28,6 +28,8 @@ idf_component_register(
         adv_post_events.h
         adv_post_green_led.c
         adv_post_green_led.h
+        adv_post_nrf52.c
+        adv_post_nrf52.h
         adv_post_internal.h
         adv_post_signals.c
         adv_post_signals.h

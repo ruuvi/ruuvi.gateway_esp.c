@@ -687,6 +687,9 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_wifi) // NOLINT
         .nrf_status             = true,
         .is_connected_to_wifi   = is_wifi,
         .network_disconnect_cnt = network_disconnect_cnt,
+        .nrf_self_reboot_cnt    = 3,
+        .nrf_ext_hw_reset_cnt   = 2,
+        .nrf_lost_ack_cnt       = 117,
         .reset_reason           = { "POWER_ON" },
         .reset_cnt              = 3,
         .p_reset_info           = "",
@@ -705,6 +708,9 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_wifi) // NOLINT
                "\t\"RESET_REASON\":\t\"POWER_ON\",\n"
                "\t\"RESET_CNT\":\t\"3\",\n"
                "\t\"RESET_INFO\":\t\"\",\n"
+               "\t\"NRF_SELF_REBOOT_CNT\":\t\"3\",\n"
+               "\t\"NRF_EXT_HW_RESET_CNT\":\t\"2\",\n"
+               "\t\"NRF_LOST_ACK_CNT\":\t\"117\",\n"
                "\t\"SENSORS_SEEN\":\t\"2\",\n"
                "\t\"ACTIVE_SENSORS\":\t[{\n"
                "\t\t\t\"MAC\":\t\"AA:BB:CC:01:02:03\",\n"
@@ -724,7 +730,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_wifi) // NOLINT
                "}"),
         string(this->m_json_str.p_str));
     cjson_wrap_free_json_str(&this->m_json_str);
-    ASSERT_EQ(76, this->m_malloc_cnt);
+    ASSERT_EQ(85, this->m_malloc_cnt);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
@@ -786,6 +792,9 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_ethernet) // NOLINT
         .nrf_status             = false,
         .is_connected_to_wifi   = is_wifi,
         .network_disconnect_cnt = network_disconnect_cnt,
+        .nrf_self_reboot_cnt    = 3,
+        .nrf_ext_hw_reset_cnt   = 2,
+        .nrf_lost_ack_cnt       = 117,
         .reset_reason           = { "TASK_WDT" },
         .reset_cnt              = 4,
         .p_reset_info           = "main (active task: idle)",
@@ -804,6 +813,9 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_ethernet) // NOLINT
                "\t\"RESET_REASON\":\t\"TASK_WDT\",\n"
                "\t\"RESET_CNT\":\t\"4\",\n"
                "\t\"RESET_INFO\":\t\"main (active task: idle)\",\n"
+               "\t\"NRF_SELF_REBOOT_CNT\":\t\"3\",\n"
+               "\t\"NRF_EXT_HW_RESET_CNT\":\t\"2\",\n"
+               "\t\"NRF_LOST_ACK_CNT\":\t\"117\",\n"
                "\t\"SENSORS_SEEN\":\t\"2\",\n"
                "\t\"ACTIVE_SENSORS\":\t[{\n"
                "\t\t\t\"MAC\":\t\"AB:BB:CC:01:02:F3\",\n"
@@ -823,7 +835,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_ethernet) // NOLINT
                "}"),
         string(this->m_json_str.p_str));
     cjson_wrap_free_json_str(&this->m_json_str);
-    ASSERT_EQ(74, this->m_malloc_cnt);
+    ASSERT_EQ(83, this->m_malloc_cnt);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
@@ -898,12 +910,15 @@ TEST_F(TestHttpJson, test_create_status_json_str_malloc_failed) // NOLINT
         .nrf_status             = true,
         .is_connected_to_wifi   = is_wifi,
         .network_disconnect_cnt = network_disconnect_cnt,
+        .nrf_self_reboot_cnt    = 3,
+        .nrf_ext_hw_reset_cnt   = 2,
+        .nrf_lost_ack_cnt       = 117,
         .reset_reason           = { "SW" },
         .reset_cnt              = 3,
         .p_reset_info           = "",
     };
 
-    for (uint32_t i = 1; i < 76; ++i)
+    for (uint32_t i = 1; i < 85; ++i)
     {
         this->m_malloc_fail_on_cnt = i;
         this->m_malloc_cnt         = 0;
@@ -916,12 +931,12 @@ TEST_F(TestHttpJson, test_create_status_json_str_malloc_failed) // NOLINT
     }
 
     {
-        this->m_malloc_fail_on_cnt = 77;
+        this->m_malloc_fail_on_cnt = 86;
         this->m_malloc_cnt         = 0;
         ASSERT_TRUE(http_json_create_status_str(&stat_info, &adv_table, &this->m_json_str));
         ASSERT_NE(nullptr, this->m_json_str.p_str);
         cjson_wrap_free_json_str(&this->m_json_str);
-        ASSERT_EQ(76, this->m_malloc_cnt);
+        ASSERT_EQ(85, this->m_malloc_cnt);
         ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
     }
 }

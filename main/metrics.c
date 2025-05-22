@@ -6,24 +6,23 @@
  */
 
 #include "metrics.h"
-#include "esp_heap_caps.h"
+#include <inttypes.h>
 #include <string.h>
+#include "esp_heap_caps.h"
 #include "esp32/rom/crc.h"
 #include "esp_timer.h"
 #include "mbedtls/sha256.h"
-#include "gw_mac.h"
 #include "str_buf.h"
 #include "os_malloc.h"
 #include "os_mutex.h"
 #include "esp_type_wrapper.h"
 #include "mac_addr.h"
-#include "nrf52fw.h"
 #include "fw_ver.h"
-#include "fw_update.h"
 #include "cjson_wrap.h"
 #include "gw_cfg_ruuvi_json.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
+
 #include "log.h"
 
 #define METRICS_PREFIX "ruuvigw_"
@@ -96,6 +95,9 @@ typedef struct metrics_info_t
     uint64_t                    received_ext_advertisements;
     uint64_t                    received_coded_advertisements;
     int64_t                     uptime_us;
+    uint32_t                    nrf_self_reboot_cnt;
+    uint32_t                    nrf_ext_hw_reset_cnt;
+    uint64_t                    nrf_lost_ack_cnt;
     metrics_total_free_info_t   total_free_bytes;
     metrics_largest_free_info_t largest_free_block;
     mac_address_str_t           mac_addr_str;
@@ -122,6 +124,9 @@ static const char TAG[] = "metrics";
 static uint64_t          g_received_advertisements;
 static uint64_t          g_received_advertisements_ext;
 static uint64_t          g_received_advertisements_coded;
+static uint64_t          g_nrf_lost_ack_cnt;
+static uint32_t          g_nrf_self_reboot_cnt;
+static uint32_t          g_nrf_ext_hw_reset_cnt;
 static os_mutex_t        g_p_metrics_mutex;
 static os_mutex_static_t g_metrics_mutex_mem;
 
@@ -131,6 +136,9 @@ metrics_init(void)
     g_received_advertisements       = 0;
     g_received_advertisements_ext   = 0;
     g_received_advertisements_coded = 0;
+    g_nrf_lost_ack_cnt              = 0;
+    g_nrf_self_reboot_cnt           = 0;
+    g_nrf_ext_hw_reset_cnt          = 0;
     g_p_metrics_mutex               = os_mutex_create_static(&g_metrics_mutex_mem);
 }
 
@@ -202,6 +210,57 @@ metrics_received_coded_advs_get(void)
     const uint64_t num_received_coded_advertisements = g_received_advertisements_coded;
     metrics_unlock();
     return num_received_coded_advertisements;
+}
+
+uint32_t
+metrics_nrf_self_reboot_cnt_get(void)
+{
+    metrics_lock();
+    const uint32_t nrf_self_reboot_cnt = g_nrf_self_reboot_cnt;
+    metrics_unlock();
+    return nrf_self_reboot_cnt;
+}
+
+void
+metrics_nrf_self_reboot_cnt_inc(void)
+{
+    metrics_lock();
+    g_nrf_self_reboot_cnt += 1;
+    metrics_unlock();
+}
+
+uint32_t
+metrics_nrf_ext_hw_reset_cnt_get(void)
+{
+    metrics_lock();
+    const uint32_t nrf_ext_hw_reset_cnt = g_nrf_ext_hw_reset_cnt;
+    metrics_unlock();
+    return nrf_ext_hw_reset_cnt;
+}
+
+void
+metrics_nrf_ext_hw_reset_cnt_inc(void)
+{
+    metrics_lock();
+    g_nrf_ext_hw_reset_cnt += 1;
+    metrics_unlock();
+}
+
+uint64_t
+metrics_nrf_lost_ack_cnt_get(void)
+{
+    metrics_lock();
+    const uint64_t lost_ack_cnt = g_nrf_lost_ack_cnt;
+    metrics_unlock();
+    return lost_ack_cnt;
+}
+
+void
+metrics_nrf_lost_ack_cnt_inc(void)
+{
+    metrics_lock();
+    g_nrf_lost_ack_cnt += 1;
+    metrics_unlock();
 }
 
 static size_t
@@ -312,6 +371,9 @@ gen_metrics(void)
     p_metrics->received_advertisements        = metrics_received_advs_get();
     p_metrics->received_ext_advertisements    = metrics_received_ext_advs_get();
     p_metrics->received_coded_advertisements  = metrics_received_coded_advs_get();
+    p_metrics->nrf_self_reboot_cnt            = metrics_nrf_self_reboot_cnt_get();
+    p_metrics->nrf_ext_hw_reset_cnt           = metrics_nrf_ext_hw_reset_cnt_get();
+    p_metrics->nrf_lost_ack_cnt               = metrics_nrf_lost_ack_cnt_get();
     p_metrics->uptime_us                      = esp_timer_get_time();
     p_metrics->total_free_bytes.size_exec     = (ulong_t)get_total_free_bytes(MALLOC_CAP_EXEC);
     p_metrics->total_free_bytes.size_32bit    = (ulong_t)get_total_free_bytes(MALLOC_CAP_32BIT);
@@ -506,6 +568,9 @@ metrics_print(str_buf_t* p_str_buf, const metrics_info_t* p_metrics)
         METRICS_PREFIX "received_coded_advertisements %lld\n",
         (printf_long_long_t)p_metrics->received_coded_advertisements);
     str_buf_printf(p_str_buf, METRICS_PREFIX "uptime_us %lld\n", (printf_long_long_t)p_metrics->uptime_us);
+    str_buf_printf(p_str_buf, METRICS_PREFIX "nrf_self_reboot_cnt %" PRIu32 "\n", p_metrics->nrf_self_reboot_cnt);
+    str_buf_printf(p_str_buf, METRICS_PREFIX "nrf_ext_hw_reset_cnt %" PRIu32 "\n", p_metrics->nrf_ext_hw_reset_cnt);
+    str_buf_printf(p_str_buf, METRICS_PREFIX "nrf_lost_ack_cnt %" PRIu64 "\n", p_metrics->nrf_lost_ack_cnt);
     metrics_print_total_free_bytes(p_str_buf, p_metrics);
     metrics_print_largest_free_blk(p_str_buf, p_metrics);
     metrics_print_gwinfo(p_str_buf, p_metrics);

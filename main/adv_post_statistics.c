@@ -18,6 +18,7 @@
 #include "http.h"
 #include "reset_task.h"
 #include "ruuvi_gateway.h"
+#include "metrics.h"
 #if defined(RUUVI_TESTS) && RUUVI_TESTS
 #define LOG_LOCAL_DISABLED 1
 #define LOG_LOCAL_LEVEL    LOG_LEVEL_NONE
@@ -25,7 +26,7 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #endif
 #include "log.h"
-static const char* TAG = "ADV_POST_TASK";
+static const char* TAG = "ADV_POST_STAT";
 
 static uint32_t g_adv_post_stat_nonce;
 
@@ -52,6 +53,9 @@ adv_post_statistics_info_generate(const str_buf_t* const p_reset_info)
     p_stat_info->nrf_status             = gw_status_get_nrf_status();
     p_stat_info->is_connected_to_wifi   = wifi_manager_is_connected_to_wifi();
     p_stat_info->network_disconnect_cnt = g_network_disconnect_cnt;
+    p_stat_info->nrf_self_reboot_cnt    = metrics_nrf_self_reboot_cnt_get();
+    p_stat_info->nrf_ext_hw_reset_cnt   = metrics_nrf_ext_hw_reset_cnt_get();
+    p_stat_info->nrf_lost_ack_cnt       = metrics_nrf_lost_ack_cnt_get();
     (void)snprintf(
         p_stat_info->reset_reason.buf,
         sizeof(p_stat_info->reset_reason.buf),

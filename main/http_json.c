@@ -162,6 +162,18 @@ http_json_generate_status_attributes(
     {
         return false;
     }
+    if (!cjson_wrap_add_uint32(p_json_root, "NRF_SELF_REBOOT_CNT", p_stat_info->nrf_self_reboot_cnt))
+    {
+        return false;
+    }
+    if (!cjson_wrap_add_uint32(p_json_root, "NRF_EXT_HW_RESET_CNT", p_stat_info->nrf_ext_hw_reset_cnt))
+    {
+        return false;
+    }
+    if (!cjson_wrap_add_uint64(p_json_root, "NRF_LOST_ACK_CNT", p_stat_info->nrf_lost_ack_cnt))
+    {
+        return false;
+    }
     uint32_t num_sensors_seen = 0;
     if (NULL != p_reports)
     {

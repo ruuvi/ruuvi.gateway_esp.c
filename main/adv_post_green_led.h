@@ -8,6 +8,8 @@
 #ifndef RUUVI_GATEWAY_ESP_ADV_POST_GREEN_LED_H
 #define RUUVI_GATEWAY_ESP_ADV_POST_GREEN_LED_H
 
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -24,6 +26,12 @@ adv_post_green_led_init(void);
 
 void
 adv_post_on_green_led_update(const adv_post_green_led_cmd_e cmd);
+
+void
+adv_post_green_led_async_disable(void);
+
+void
+adv_post_green_led_enable(void);
 
 #ifdef __cplusplus
 }

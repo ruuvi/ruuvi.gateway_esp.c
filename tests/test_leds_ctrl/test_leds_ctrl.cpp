@@ -9,7 +9,9 @@
 #include "leds_ctrl2.h"
 #include "gtest/gtest.h"
 #include <string>
+
 #include "os_task.h"
+#include "esp_log.h"
 
 using namespace std;
 
@@ -61,6 +63,24 @@ os_task_get_cur_task_handle(void)
 {
     static int x = 0;
     return reinterpret_cast<os_task_handle_t>(&x);
+}
+
+const char*
+os_task_get_name(void)
+{
+    static const char* p_name = "test_task";
+    return p_name;
+}
+
+os_task_priority_t
+os_task_get_priority(void)
+{
+    return 0;
+}
+
+void
+esp_log_write(esp_log_level_t level, const char* tag, const char* fmt, ...)
+{
 }
 
 } // extern "C"
@@ -175,34 +195,34 @@ TEST_F(TestLedsCtrl, test_regular_boot) // NOLINT
     ASSERT_EQ("-", string(leds_ctrl_get_new_blinking_sequence().p_sequence));
 
     leds_ctrl_handle_event(LEDS_CTRL_EVENT_CFG_READY);
-    ASSERT_EQ("G", string(leds_ctrl_get_new_blinking_sequence().p_sequence));
+    ASSERT_EQ("GGGGGGGGGG", string(leds_ctrl_get_new_blinking_sequence().p_sequence));
 
     leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_NETWORK_CONNECTED);
-    ASSERT_EQ("G", string(leds_ctrl2_get_new_blinking_sequence().p_sequence));
+    ASSERT_EQ("GGGGGGGGGG", string(leds_ctrl2_get_new_blinking_sequence().p_sequence));
 
     leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_HTTP1_DATA_SENT_SUCCESSFULLY);
-    ASSERT_EQ("G", string(leds_ctrl2_get_new_blinking_sequence().p_sequence));
+    ASSERT_EQ("GGGGGGGGGG", string(leds_ctrl2_get_new_blinking_sequence().p_sequence));
 
     leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_RECV_ADV);
-    ASSERT_EQ("G", string(leds_ctrl2_get_new_blinking_sequence().p_sequence));
+    ASSERT_EQ("GGGGGGGGGG", string(leds_ctrl2_get_new_blinking_sequence().p_sequence));
 
     leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_NETWORK_DISCONNECTED);
     ASSERT_EQ("R-R-R-R-R-", string(leds_ctrl2_get_new_blinking_sequence().p_sequence));
 
     leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_NETWORK_CONNECTED);
-    ASSERT_EQ("G", string(leds_ctrl2_get_new_blinking_sequence().p_sequence));
+    ASSERT_EQ("GGGGGGGGGG", string(leds_ctrl2_get_new_blinking_sequence().p_sequence));
 
     leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_HTTP1_DATA_SENT_FAIL);
     ASSERT_EQ("RRRRR-----", string(leds_ctrl2_get_new_blinking_sequence().p_sequence));
 
     leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_HTTP1_DATA_SENT_SUCCESSFULLY);
-    ASSERT_EQ("G", string(leds_ctrl2_get_new_blinking_sequence().p_sequence));
+    ASSERT_EQ("GGGGGGGGGG", string(leds_ctrl2_get_new_blinking_sequence().p_sequence));
 
     leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_RECV_ADV_TIMEOUT);
     ASSERT_EQ("G-G-G-G-G-", string(leds_ctrl2_get_new_blinking_sequence().p_sequence));
 
     leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_RECV_ADV);
-    ASSERT_EQ("G", string(leds_ctrl2_get_new_blinking_sequence().p_sequence));
+    ASSERT_EQ("GGGGGGGGGG", string(leds_ctrl2_get_new_blinking_sequence().p_sequence));
 
     leds_ctrl_handle_event(LEDS_CTRL_EVENT_REBOOT);
     ASSERT_EQ("-", string(leds_ctrl_get_new_blinking_sequence().p_sequence));
@@ -227,10 +247,10 @@ TEST_F(TestLedsCtrl, test_regular_boot_then_firmware_updating) // NOLINT
     ASSERT_EQ("-", string(leds_ctrl_get_new_blinking_sequence().p_sequence));
 
     leds_ctrl_handle_event(LEDS_CTRL_EVENT_CFG_READY);
-    ASSERT_EQ("G", string(leds_ctrl_get_new_blinking_sequence().p_sequence));
+    ASSERT_EQ("GGGGGGGGGG", string(leds_ctrl_get_new_blinking_sequence().p_sequence));
 
     leds_ctrl2_handle_event(LEDS_CTRL2_EVENT_NETWORK_CONNECTED);
-    ASSERT_EQ("G", string(leds_ctrl2_get_new_blinking_sequence().p_sequence));
+    ASSERT_EQ("GGGGGGGGGG", string(leds_ctrl2_get_new_blinking_sequence().p_sequence));
 
     leds_ctrl_handle_event(LEDS_CTRL_EVENT_NRF52_FW_UPDATING);
     ASSERT_EQ("R---------", string(leds_ctrl_get_new_blinking_sequence().p_sequence));

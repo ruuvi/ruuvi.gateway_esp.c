@@ -19,7 +19,7 @@
 #include "partition_table.h"
 #include "gw_cfg_json_parse_filter.h"
 #include "gw_cfg_json_parse_scan.h"
-#include "adv_post.h"
+#include "adv_post_nrf52.h"
 #include "reset_task.h"
 #include "event_mgr.h"
 #include "esp_transport_ssl.h"
@@ -111,7 +111,7 @@ http_server_cb_on_post_ble_scanning(const char* const p_body)
     gw_cfg_unlock_ro(&p_gw_cfg);
     gw_cfg_json_parse_filter(p_json_root, &filter);
     gw_cfg_json_parse_scan(p_json_root, &scan);
-    ruuvi_send_nrf_settings(&scan, &filter);
+    adv_post_nrf52_cfg_update(&scan, &filter);
     cJSON_Delete(p_json_root);
 
     event_mgr_notify(EVENT_MGR_EV_CFG_BLE_SCAN_CHANGED);

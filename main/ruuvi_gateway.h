@@ -59,12 +59,6 @@ extern "C" {
 extern volatile uint32_t g_network_disconnect_cnt;
 
 void
-ruuvi_send_nrf_settings(const ruuvi_gw_cfg_scan_t* const p_scan, const ruuvi_gw_cfg_filter_t* const p_filter);
-
-void
-ruuvi_send_nrf_settings_from_gw_cfg(void);
-
-void
 timer_cfg_mode_deactivation_start_with_delay(const TimeUnitsSeconds_t delay_sec);
 
 void

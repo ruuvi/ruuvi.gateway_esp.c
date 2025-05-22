@@ -34,9 +34,17 @@ typedef enum adv_post_sig_e
     ADV_POST_SIG_BLE_SCAN_CHANGED        = OS_SIGNAL_NUM_14,
     ADV_POST_SIG_CFG_MODE_ACTIVATED      = OS_SIGNAL_NUM_15,
     ADV_POST_SIG_CFG_MODE_DEACTIVATED    = OS_SIGNAL_NUM_16,
-    ADV_POST_SIG_GREEN_LED_STATE_CHANGED = OS_SIGNAL_NUM_17,
-    ADV_POST_SIG_GREEN_LED_UPDATE        = OS_SIGNAL_NUM_18,
-    ADV_POST_SIG_RECV_ADV_TIMEOUT        = OS_SIGNAL_NUM_19,
+    ADV_POST_SIG_NRF52_REBOOTED          = OS_SIGNAL_NUM_17,
+    ADV_POST_SIG_NRF52_CONFIGURED        = OS_SIGNAL_NUM_18,
+    ADV_POST_SIG_NRF52_ACK_LED_CTRL      = OS_SIGNAL_NUM_19,
+    ADV_POST_SIG_NRF52_ACK_CFG           = OS_SIGNAL_NUM_20,
+    ADV_POST_SIG_NRF52_ACK_TIMEOUT       = OS_SIGNAL_NUM_21,
+    ADV_POST_SIG_NRF52_CFG_UPDATE        = OS_SIGNAL_NUM_22,
+    ADV_POST_SIG_NRF52_HW_RESET_OFF      = OS_SIGNAL_NUM_23,
+    ADV_POST_SIG_NRF52_CFG_REQ_TIMEOUT   = OS_SIGNAL_NUM_24,
+    ADV_POST_SIG_GREEN_LED_STATE_CHANGED = OS_SIGNAL_NUM_25,
+    ADV_POST_SIG_GREEN_LED_UPDATE        = OS_SIGNAL_NUM_26,
+    ADV_POST_SIG_RECV_ADV_TIMEOUT        = OS_SIGNAL_NUM_27,
 } adv_post_sig_e;
 
 #define ADV_POST_SIG_FIRST (ADV_POST_SIG_STOP)
@@ -66,6 +74,9 @@ adv_post_signals_is_thread_registered(void);
 
 bool
 adv_post_handle_sig(const adv_post_sig_e adv_post_sig, adv_post_state_t* const p_adv_post_state);
+
+void
+adv_post_signals_send_sig_nrf52_cfg_update(void);
 
 #ifdef __cplusplus
 }
