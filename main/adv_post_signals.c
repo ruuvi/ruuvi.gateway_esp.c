@@ -463,7 +463,7 @@ adv_post_handle_sig_nrf52_ack_cfg(ATTR_UNUSED adv_post_state_t* const p_adv_post
 static void
 adv_post_handle_sig_nrf52_ack_timeout(ATTR_UNUSED adv_post_state_t* const p_adv_post_state)
 {
-    LOG_INFO("Got ADV_POST_SIG_NRF52_ACK_TIMEOUT");
+    LOG_DBG("Got ADV_POST_SIG_NRF52_ACK_TIMEOUT");
     adv_post_nrf52_on_sync_ack_timeout();
 }
 
