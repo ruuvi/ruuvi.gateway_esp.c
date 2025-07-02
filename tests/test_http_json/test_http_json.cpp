@@ -171,18 +171,22 @@ TEST_F(TestHttpJson, test_1) // NOLINT
                   0xFFU, 0xF8U, 0x03U, 0xE4U, 0xB5U, 0x16U, 0xE8U, 0x4DU, 0x7EU, 0xF4U, 0x1FU, 0x0CU, 0x28U, 0xCBU, 0xD6U,
     };
 
-    adv_report_table_t adv_table = { .num_of_advs = 1,
-                                     .table       = { {
-                                               .timestamp     = 1612358929,
-                                               .tag_mac       = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-                                               .rssi          = -70,
-                                               .primary_phy   = RE_CA_UART_BLE_PHY_1MBPS,
-                                               .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
-                                               .ch_index      = 37,
-                                               .is_coded_phy  = false,
-                                               .tx_power      = RE_CA_UART_BLE_GAP_POWER_LEVEL_INVALID,
-                                               .data_len      = data.size(),
-                                     } } };
+    adv_report_table_t adv_table = {
+        .num_of_advs = 1,
+        .table = {
+            {
+                .timestamp = 1612358929,
+                .tag_mac = {0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03},
+                .rssi = -70,
+                .primary_phy = RE_CA_UART_BLE_PHY_1MBPS,
+                .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
+                .ch_index = 37,
+                .is_coded_phy = false,
+                .tx_power = RE_CA_UART_BLE_GAP_POWER_LEVEL_INVALID,
+                .data_len = data.size(),
+            },
+        },
+    };
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
 
     const bool     flag_raw_data       = true;
@@ -254,18 +258,22 @@ TEST_F(TestHttpJson, test_1_with_raw_and_decoded) // NOLINT
                   0xFFU, 0xF8U, 0x03U, 0xE4U, 0xB5U, 0x16U, 0xE8U, 0x4DU, 0x7EU, 0xF4U, 0x1FU, 0x0CU, 0x28U, 0xCBU, 0xD6U,
     };
 
-    adv_report_table_t adv_table = { .num_of_advs = 1,
-                                     .table       = { {
-                                               .timestamp     = 1612358929,
-                                               .tag_mac       = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-                                               .rssi          = -70,
-                                               .primary_phy   = RE_CA_UART_BLE_PHY_1MBPS,
-                                               .secondary_phy = RE_CA_UART_BLE_PHY_2MBPS,
-                                               .ch_index      = 25,
-                                               .is_coded_phy  = false,
-                                               .tx_power      = 7,
-                                               .data_len      = data.size(),
-                                     } } };
+    adv_report_table_t adv_table = {
+        .num_of_advs = 1,
+        .table = {
+            {
+                .timestamp = 1612358929,
+                .tag_mac = {0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03},
+                .rssi = -70,
+                .primary_phy = RE_CA_UART_BLE_PHY_1MBPS,
+                .secondary_phy = RE_CA_UART_BLE_PHY_2MBPS,
+                .ch_index = 25,
+                .is_coded_phy = false,
+                .tx_power = 7,
+                .data_len = data.size(),
+            },
+        },
+    };
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
 
     const bool     flag_raw_data       = true;
@@ -350,18 +358,22 @@ TEST_F(TestHttpJson, test_1_without_raw_and_with_decoded) // NOLINT
                   0xFFU, 0xF8U, 0x03U, 0xE4U, 0xB5U, 0x16U, 0xE8U, 0x4DU, 0x7EU, 0xF4U, 0x1FU, 0x0CU, 0x28U, 0xCBU, 0xD6U,
     };
 
-    adv_report_table_t adv_table = { .num_of_advs = 1,
-                                     .table       = { {
-                                               .timestamp     = 1612358929,
-                                               .tag_mac       = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-                                               .rssi          = -70,
-                                               .primary_phy   = RE_CA_UART_BLE_PHY_CODED,
-                                               .secondary_phy = RE_CA_UART_BLE_PHY_CODED,
-                                               .ch_index      = 15,
-                                               .is_coded_phy  = true,
-                                               .tx_power      = 8,
-                                               .data_len      = data.size(),
-                                     } } };
+    adv_report_table_t adv_table = {
+        .num_of_advs = 1,
+        .table = {
+            {
+                .timestamp = 1612358929,
+                .tag_mac = {0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03},
+                .rssi = -70,
+                .primary_phy = RE_CA_UART_BLE_PHY_CODED,
+                .secondary_phy = RE_CA_UART_BLE_PHY_CODED,
+                .ch_index = 15,
+                .is_coded_phy = true,
+                .tx_power = 8,
+                .data_len = data.size(),
+            },
+        },
+    };
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
 
     const bool     flag_raw_data       = false;
@@ -442,18 +454,22 @@ TEST_F(TestHttpJson, test_1_without_timestamp) // NOLINT
     const ruuvi_gw_cfg_coordinates_t coordinates = { "170.112233,59.445566" };
     const std::array<uint8_t, 1>     data        = { 0xAAU };
 
-    adv_report_table_t adv_table = { .num_of_advs = 1,
-                                     .table       = { {
-                                               .timestamp     = 1011,
-                                               .tag_mac       = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-                                               .rssi          = -70,
-                                               .primary_phy   = RE_CA_UART_BLE_PHY_1MBPS,
-                                               .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
-                                               .ch_index      = 37,
-                                               .is_coded_phy  = false,
-                                               .tx_power      = 8,
-                                               .data_len      = data.size(),
-                                     } } };
+    adv_report_table_t adv_table = {
+        .num_of_advs = 1,
+        .table = {
+            {
+                .timestamp = 1011,
+                .tag_mac = {0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03},
+                .rssi = -70,
+                .primary_phy = RE_CA_UART_BLE_PHY_1MBPS,
+                .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
+                .ch_index = 37,
+                .is_coded_phy = false,
+                .tx_power = 8,
+                .data_len = data.size(),
+            },
+        },
+    };
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
 
     const bool     flag_raw_data       = true;
@@ -523,31 +539,33 @@ TEST_F(TestHttpJson, test_2) // NOLINT
     const std::array<uint8_t, 1>     data1       = { 0xAAU };
     const std::array<uint8_t, 1>     data2       = { 0xBBU };
 
-    adv_report_table_t adv_table = { .num_of_advs = 2,
-                                     .table       = {
-                                               {
-                                                   .timestamp     = 1612358929,
-                                                   .tag_mac       = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-                                                   .rssi          = -70,
-                                                   .primary_phy   = RE_CA_UART_BLE_PHY_1MBPS,
-                                                   .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
-                                                   .ch_index      = 37,
-                                                   .is_coded_phy  = false,
-                                                   .tx_power      = RE_CA_UART_BLE_GAP_POWER_LEVEL_INVALID,
-                                                   .data_len      = data1.size(),
-                                         },
-                                               {
-                                                   .timestamp     = 1612358930,
-                                                   .tag_mac       = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x04 },
-                                                   .rssi          = -71,
-                                                   .primary_phy   = RE_CA_UART_BLE_PHY_1MBPS,
-                                                   .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
-                                                   .ch_index      = 38,
-                                                   .is_coded_phy  = false,
-                                                   .tx_power      = RE_CA_UART_BLE_GAP_POWER_LEVEL_INVALID,
-                                                   .data_len      = data2.size(),
-                                         },
-                                     } };
+    adv_report_table_t adv_table = {
+        .num_of_advs = 2,
+        .table = {
+            {
+                .timestamp = 1612358929,
+                .tag_mac = {0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03},
+                .rssi = -70,
+                .primary_phy = RE_CA_UART_BLE_PHY_1MBPS,
+                .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
+                .ch_index = 37,
+                .is_coded_phy = false,
+                .tx_power = RE_CA_UART_BLE_GAP_POWER_LEVEL_INVALID,
+                .data_len = data1.size(),
+            },
+            {
+                .timestamp = 1612358930,
+                .tag_mac = {0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x04},
+                .rssi = -71,
+                .primary_phy = RE_CA_UART_BLE_PHY_1MBPS,
+                .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
+                .ch_index = 38,
+                .is_coded_phy = false,
+                .tx_power = RE_CA_UART_BLE_GAP_POWER_LEVEL_INVALID,
+                .data_len = data2.size(),
+            },
+        },
+    };
     memcpy(adv_table.table[0].data_buf, data1.data(), data1.size());
     memcpy(adv_table.table[1].data_buf, data2.data(), data2.size());
 
@@ -626,73 +644,79 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_wifi) // NOLINT
     const uint32_t               nonce                  = 1234567;
     const std::array<uint8_t, 1> data                   = { 0xAAU };
 
-    adv_report_table_t adv_table = { .num_of_advs = 4,
-                                     .table       = {
-                                               {
-                                                   .timestamp       = 1612358929,
-                                                   .samples_counter = 11,
-                                                   .tag_mac         = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-                                                   .rssi            = -70,
-                                                   .primary_phy     = RE_CA_UART_BLE_PHY_1MBPS,
-                                                   .secondary_phy   = RE_CA_UART_BLE_PHY_NOT_SET,
-                                                   .ch_index        = 37,
-                                                   .is_coded_phy    = false,
-                                                   .tx_power        = 8,
-                                                   .data_len        = data.size(),
-                                         },
-                                               {
-                                                   .timestamp       = 1612358928,
-                                                   .samples_counter = 10,
-                                                   .tag_mac         = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x04 },
-                                                   .rssi            = -70,
-                                                   .primary_phy     = RE_CA_UART_BLE_PHY_1MBPS,
-                                                   .secondary_phy   = RE_CA_UART_BLE_PHY_NOT_SET,
-                                                   .ch_index        = 37,
-                                                   .is_coded_phy    = false,
-                                                   .tx_power        = 8,
-                                                   .data_len        = data.size(),
-                                         },
-                                               {
-                                                   .timestamp       = 1612358925,
-                                                   .samples_counter = 0,
-                                                   .tag_mac         = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x05 },
-                                                   .rssi            = -70,
-                                                   .primary_phy     = RE_CA_UART_BLE_PHY_1MBPS,
-                                                   .secondary_phy   = RE_CA_UART_BLE_PHY_NOT_SET,
-                                                   .ch_index        = 37,
-                                                   .is_coded_phy    = false,
-                                                   .tx_power        = 8,
-                                                   .data_len        = data.size(),
-                                         },
-                                               {
-                                                   .timestamp       = 1612358924,
-                                                   .samples_counter = 0,
-                                                   .tag_mac         = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x06 },
-                                                   .rssi            = -70,
-                                                   .primary_phy     = RE_CA_UART_BLE_PHY_1MBPS,
-                                                   .secondary_phy   = RE_CA_UART_BLE_PHY_NOT_SET,
-                                                   .ch_index        = 37,
-                                                   .is_coded_phy    = false,
-                                                   .tx_power        = 8,
-                                                   .data_len        = data.size(),
-                                         },
-                                     } };
+    adv_report_table_t adv_table = {
+        .num_of_advs = 4,
+        .table = {
+            {
+                .timestamp = 1612358929,
+                .samples_counter = 11,
+                .tag_mac = {0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03},
+                .rssi = -70,
+                .primary_phy = RE_CA_UART_BLE_PHY_1MBPS,
+                .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
+                .ch_index = 37,
+                .is_coded_phy = false,
+                .tx_power = 8,
+                .data_len = data.size(),
+            },
+            {
+                .timestamp = 1612358928,
+                .samples_counter = 10,
+                .tag_mac = {0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x04},
+                .rssi = -70,
+                .primary_phy = RE_CA_UART_BLE_PHY_1MBPS,
+                .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
+                .ch_index = 37,
+                .is_coded_phy = false,
+                .tx_power = 8,
+                .data_len = data.size(),
+            },
+            {
+                .timestamp = 1612358925,
+                .samples_counter = 0,
+                .tag_mac = {0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x05},
+                .rssi = -70,
+                .primary_phy = RE_CA_UART_BLE_PHY_1MBPS,
+                .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
+                .ch_index = 37,
+                .is_coded_phy = false,
+                .tx_power = 8,
+                .data_len = data.size(),
+            },
+            {
+                .timestamp = 1612358924,
+                .samples_counter = 0,
+                .tag_mac = {0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x06},
+                .rssi = -70,
+                .primary_phy = RE_CA_UART_BLE_PHY_1MBPS,
+                .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
+                .ch_index = 37,
+                .is_coded_phy = false,
+                .tx_power = 8,
+                .data_len = data.size(),
+            },
+        },
+    };
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
     const http_json_statistics_info_t stat_info = {
-        .nrf52_mac_addr         = nrf52_mac_addr,
-        .esp_fw                 = { "1.9.0" },
-        .nrf_fw                 = { "0.7.1" },
-        .uptime                 = uptime,
-        .nonce                  = nonce,
-        .nrf_status             = true,
-        .is_connected_to_wifi   = is_wifi,
-        .network_disconnect_cnt = network_disconnect_cnt,
-        .nrf_self_reboot_cnt    = 3,
-        .nrf_ext_hw_reset_cnt   = 2,
-        .nrf_lost_ack_cnt       = 117,
-        .reset_reason           = { "POWER_ON" },
-        .reset_cnt              = 3,
-        .p_reset_info           = "",
+        .nrf52_mac_addr              = nrf52_mac_addr,
+        .esp_fw                      = { "1.9.0" },
+        .nrf_fw                      = { "0.7.1" },
+        .uptime                      = uptime,
+        .nonce                       = nonce,
+        .nrf_status                  = true,
+        .is_connected_to_wifi        = is_wifi,
+        .network_disconnect_cnt      = network_disconnect_cnt,
+        .nrf_self_reboot_cnt         = 3,
+        .nrf_ext_hw_reset_cnt        = 2,
+        .nrf_lost_ack_cnt            = 117,
+        .total_free_bytes_internal   = 123456,
+        .total_free_bytes_default    = 67890,
+        .largest_free_block_internal = 97125,
+        .largest_free_block_default  = 54321,
+        .reset_reason                = { "POWER_ON" },
+        .reset_cnt                   = 3,
+        .p_reset_info                = "",
     };
     ASSERT_TRUE(http_json_create_status_str(&stat_info, &adv_table, &this->m_json_str));
     ASSERT_EQ(
@@ -711,6 +735,10 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_wifi) // NOLINT
                "\t\"NRF_SELF_REBOOT_CNT\":\t\"3\",\n"
                "\t\"NRF_EXT_HW_RESET_CNT\":\t\"2\",\n"
                "\t\"NRF_LOST_ACK_CNT\":\t\"117\",\n"
+               "\t\"TOTAL_FREE_BYTES_INTERNAL\":\t\"123456\",\n"
+               "\t\"TOTAL_FREE_BYTES_DEFAULT\":\t\"67890\",\n"
+               "\t\"LARGEST_FREE_BLOCK_INTERNAL\":\t\"97125\",\n"
+               "\t\"LARGEST_FREE_BLOCK_DEFAULT\":\t\"54321\",\n"
                "\t\"SENSORS_SEEN\":\t\"2\",\n"
                "\t\"ACTIVE_SENSORS\":\t[{\n"
                "\t\t\t\"MAC\":\t\"AA:BB:CC:01:02:03\",\n"
@@ -730,7 +758,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_wifi) // NOLINT
                "}"),
         string(this->m_json_str.p_str));
     cjson_wrap_free_json_str(&this->m_json_str);
-    ASSERT_EQ(85, this->m_malloc_cnt);
+    ASSERT_EQ(97, this->m_malloc_cnt);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
@@ -743,61 +771,67 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_ethernet) // NOLINT
     const uint32_t               nonce                  = 1234568;
     const std::array<uint8_t, 1> data                   = { 0xABU };
 
-    adv_report_table_t adv_table = { .num_of_advs = 3,
-                                     .table       = {
-                                               {
-                                                   .timestamp       = 1612358930,
-                                                   .samples_counter = 12,
-                                                   .tag_mac         = { 0xab, 0xbb, 0xcc, 0x01, 0x02, 0xF3 },
-                                                   .rssi            = -69,
-                                                   .primary_phy     = RE_CA_UART_BLE_PHY_1MBPS,
-                                                   .secondary_phy   = RE_CA_UART_BLE_PHY_NOT_SET,
-                                                   .ch_index        = 37,
-                                                   .is_coded_phy    = false,
-                                                   .tx_power        = 8,
-                                                   .data_len        = data.size(),
-                                         },
-                                               {
-                                                   .timestamp       = 1612358929,
-                                                   .samples_counter = 11,
-                                                   .tag_mac         = { 0xab, 0xbb, 0xcc, 0x01, 0x02, 0xF4 },
-                                                   .rssi            = -68,
-                                                   .primary_phy     = RE_CA_UART_BLE_PHY_1MBPS,
-                                                   .secondary_phy   = RE_CA_UART_BLE_PHY_NOT_SET,
-                                                   .ch_index        = 37,
-                                                   .is_coded_phy    = false,
-                                                   .tx_power        = 8,
-                                                   .data_len        = data.size(),
-                                         },
-                                               {
-                                                   .timestamp       = 1612358926,
-                                                   .samples_counter = 0,
-                                                   .tag_mac         = { 0xab, 0xbb, 0xcc, 0x01, 0x02, 0xF5 },
-                                                   .rssi            = -67,
-                                                   .primary_phy     = RE_CA_UART_BLE_PHY_1MBPS,
-                                                   .secondary_phy   = RE_CA_UART_BLE_PHY_NOT_SET,
-                                                   .ch_index        = 37,
-                                                   .is_coded_phy    = false,
-                                                   .tx_power        = 8,
-                                                   .data_len        = data.size(),
-                                         },
-                                     } };
+    adv_report_table_t adv_table = {
+        .num_of_advs = 3,
+        .table = {
+            {
+                .timestamp = 1612358930,
+                .samples_counter = 12,
+                .tag_mac = {0xab, 0xbb, 0xcc, 0x01, 0x02, 0xF3},
+                .rssi = -69,
+                .primary_phy = RE_CA_UART_BLE_PHY_1MBPS,
+                .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
+                .ch_index = 37,
+                .is_coded_phy = false,
+                .tx_power = 8,
+                .data_len = data.size(),
+            },
+            {
+                .timestamp = 1612358929,
+                .samples_counter = 11,
+                .tag_mac = {0xab, 0xbb, 0xcc, 0x01, 0x02, 0xF4},
+                .rssi = -68,
+                .primary_phy = RE_CA_UART_BLE_PHY_1MBPS,
+                .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
+                .ch_index = 37,
+                .is_coded_phy = false,
+                .tx_power = 8,
+                .data_len = data.size(),
+            },
+            {
+                .timestamp = 1612358926,
+                .samples_counter = 0,
+                .tag_mac = {0xab, 0xbb, 0xcc, 0x01, 0x02, 0xF5},
+                .rssi = -67,
+                .primary_phy = RE_CA_UART_BLE_PHY_1MBPS,
+                .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
+                .ch_index = 37,
+                .is_coded_phy = false,
+                .tx_power = 8,
+                .data_len = data.size(),
+            },
+        },
+    };
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
     const http_json_statistics_info_t stat_info = {
-        .nrf52_mac_addr         = nrf52_mac_addr,
-        .esp_fw                 = { "1.9.0" },
-        .nrf_fw                 = { "0.7.1" },
-        .uptime                 = uptime,
-        .nonce                  = nonce,
-        .nrf_status             = false,
-        .is_connected_to_wifi   = is_wifi,
-        .network_disconnect_cnt = network_disconnect_cnt,
-        .nrf_self_reboot_cnt    = 3,
-        .nrf_ext_hw_reset_cnt   = 2,
-        .nrf_lost_ack_cnt       = 117,
-        .reset_reason           = { "TASK_WDT" },
-        .reset_cnt              = 4,
-        .p_reset_info           = "main (active task: idle)",
+        .nrf52_mac_addr              = nrf52_mac_addr,
+        .esp_fw                      = { "1.9.0" },
+        .nrf_fw                      = { "0.7.1" },
+        .uptime                      = uptime,
+        .nonce                       = nonce,
+        .nrf_status                  = false,
+        .is_connected_to_wifi        = is_wifi,
+        .network_disconnect_cnt      = network_disconnect_cnt,
+        .nrf_self_reboot_cnt         = 3,
+        .nrf_ext_hw_reset_cnt        = 2,
+        .nrf_lost_ack_cnt            = 117,
+        .total_free_bytes_internal   = 123456,
+        .total_free_bytes_default    = 67890,
+        .largest_free_block_internal = 97125,
+        .largest_free_block_default  = 54321,
+        .reset_reason                = { "TASK_WDT" },
+        .reset_cnt                   = 4,
+        .p_reset_info                = "main (active task: idle)",
     };
     ASSERT_TRUE(http_json_create_status_str(&stat_info, &adv_table, &this->m_json_str));
     ASSERT_EQ(
@@ -816,6 +850,10 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_ethernet) // NOLINT
                "\t\"NRF_SELF_REBOOT_CNT\":\t\"3\",\n"
                "\t\"NRF_EXT_HW_RESET_CNT\":\t\"2\",\n"
                "\t\"NRF_LOST_ACK_CNT\":\t\"117\",\n"
+               "\t\"TOTAL_FREE_BYTES_INTERNAL\":\t\"123456\",\n"
+               "\t\"TOTAL_FREE_BYTES_DEFAULT\":\t\"67890\",\n"
+               "\t\"LARGEST_FREE_BLOCK_INTERNAL\":\t\"97125\",\n"
+               "\t\"LARGEST_FREE_BLOCK_DEFAULT\":\t\"54321\",\n"
                "\t\"SENSORS_SEEN\":\t\"2\",\n"
                "\t\"ACTIVE_SENSORS\":\t[{\n"
                "\t\t\t\"MAC\":\t\"AB:BB:CC:01:02:F3\",\n"
@@ -835,7 +873,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_ethernet) // NOLINT
                "}"),
         string(this->m_json_str.p_str));
     cjson_wrap_free_json_str(&this->m_json_str);
-    ASSERT_EQ(83, this->m_malloc_cnt);
+    ASSERT_EQ(95, this->m_malloc_cnt);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
@@ -848,77 +886,83 @@ TEST_F(TestHttpJson, test_create_status_json_str_malloc_failed) // NOLINT
     const uint32_t               nonce                  = 1234567;
     const std::array<uint8_t, 1> data                   = { 0xAAU };
 
-    adv_report_table_t adv_table = { .num_of_advs = 4,
-                                     .table       = {
-                                               {
-                                                   .timestamp       = 1612358929,
-                                                   .samples_counter = 11,
-                                                   .tag_mac         = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
-                                                   .rssi            = -70,
-                                                   .primary_phy     = RE_CA_UART_BLE_PHY_1MBPS,
-                                                   .secondary_phy   = RE_CA_UART_BLE_PHY_NOT_SET,
-                                                   .ch_index        = 37,
-                                                   .is_coded_phy    = false,
-                                                   .tx_power        = 8,
-                                                   .data_len        = data.size(),
-                                         },
-                                               {
-                                                   .timestamp       = 1612358928,
-                                                   .samples_counter = 10,
-                                                   .tag_mac         = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x04 },
-                                                   .rssi            = -70,
-                                                   .primary_phy     = RE_CA_UART_BLE_PHY_1MBPS,
-                                                   .secondary_phy   = RE_CA_UART_BLE_PHY_NOT_SET,
-                                                   .ch_index        = 37,
-                                                   .is_coded_phy    = false,
-                                                   .tx_power        = 8,
-                                                   .data_len        = data.size(),
-                                         },
-                                               {
-                                                   .timestamp       = 1612358925,
-                                                   .samples_counter = 0,
-                                                   .tag_mac         = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x05 },
-                                                   .rssi            = -70,
-                                                   .primary_phy     = RE_CA_UART_BLE_PHY_1MBPS,
-                                                   .secondary_phy   = RE_CA_UART_BLE_PHY_NOT_SET,
-                                                   .ch_index        = 37,
-                                                   .is_coded_phy    = false,
-                                                   .tx_power        = 8,
-                                                   .data_len        = data.size(),
-                                         },
-                                               {
-                                                   .timestamp       = 1612358924,
-                                                   .samples_counter = 0,
-                                                   .tag_mac         = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x06 },
-                                                   .rssi            = -70,
-                                                   .primary_phy     = RE_CA_UART_BLE_PHY_1MBPS,
-                                                   .secondary_phy   = RE_CA_UART_BLE_PHY_NOT_SET,
-                                                   .ch_index        = 37,
-                                                   .is_coded_phy    = false,
-                                                   .tx_power        = 8,
-                                                   .data_len        = data.size(),
-                                         },
-                                     } };
+    adv_report_table_t adv_table = {
+        .num_of_advs = 4,
+        .table = {
+            {
+                .timestamp = 1612358929,
+                .samples_counter = 11,
+                .tag_mac = {0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03},
+                .rssi = -70,
+                .primary_phy = RE_CA_UART_BLE_PHY_1MBPS,
+                .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
+                .ch_index = 37,
+                .is_coded_phy = false,
+                .tx_power = 8,
+                .data_len = data.size(),
+            },
+            {
+                .timestamp = 1612358928,
+                .samples_counter = 10,
+                .tag_mac = {0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x04},
+                .rssi = -70,
+                .primary_phy = RE_CA_UART_BLE_PHY_1MBPS,
+                .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
+                .ch_index = 37,
+                .is_coded_phy = false,
+                .tx_power = 8,
+                .data_len = data.size(),
+            },
+            {
+                .timestamp = 1612358925,
+                .samples_counter = 0,
+                .tag_mac = {0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x05},
+                .rssi = -70,
+                .primary_phy = RE_CA_UART_BLE_PHY_1MBPS,
+                .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
+                .ch_index = 37,
+                .is_coded_phy = false,
+                .tx_power = 8,
+                .data_len = data.size(),
+            },
+            {
+                .timestamp = 1612358924,
+                .samples_counter = 0,
+                .tag_mac = {0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x06},
+                .rssi = -70,
+                .primary_phy = RE_CA_UART_BLE_PHY_1MBPS,
+                .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
+                .ch_index = 37,
+                .is_coded_phy = false,
+                .tx_power = 8,
+                .data_len = data.size(),
+            },
+        },
+    };
     memcpy(adv_table.table[0].data_buf, data.data(), data.size());
 
     const http_json_statistics_info_t stat_info = {
-        .nrf52_mac_addr         = nrf52_mac_addr,
-        .esp_fw                 = { "1.9.0" },
-        .nrf_fw                 = { "0.7.1" },
-        .uptime                 = uptime,
-        .nonce                  = nonce,
-        .nrf_status             = true,
-        .is_connected_to_wifi   = is_wifi,
-        .network_disconnect_cnt = network_disconnect_cnt,
-        .nrf_self_reboot_cnt    = 3,
-        .nrf_ext_hw_reset_cnt   = 2,
-        .nrf_lost_ack_cnt       = 117,
-        .reset_reason           = { "SW" },
-        .reset_cnt              = 3,
-        .p_reset_info           = "",
+        .nrf52_mac_addr              = nrf52_mac_addr,
+        .esp_fw                      = { "1.9.0" },
+        .nrf_fw                      = { "0.7.1" },
+        .uptime                      = uptime,
+        .nonce                       = nonce,
+        .nrf_status                  = true,
+        .is_connected_to_wifi        = is_wifi,
+        .network_disconnect_cnt      = network_disconnect_cnt,
+        .nrf_self_reboot_cnt         = 3,
+        .nrf_ext_hw_reset_cnt        = 2,
+        .nrf_lost_ack_cnt            = 117,
+        .total_free_bytes_internal   = 123456,
+        .total_free_bytes_default    = 67890,
+        .largest_free_block_internal = 97125,
+        .largest_free_block_default  = 54321,
+        .reset_reason                = { "SW" },
+        .reset_cnt                   = 3,
+        .p_reset_info                = "",
     };
 
-    for (uint32_t i = 1; i < 85; ++i)
+    for (uint32_t i = 1; i < 97; ++i)
     {
         this->m_malloc_fail_on_cnt = i;
         this->m_malloc_cnt         = 0;
@@ -931,12 +975,12 @@ TEST_F(TestHttpJson, test_create_status_json_str_malloc_failed) // NOLINT
     }
 
     {
-        this->m_malloc_fail_on_cnt = 86;
+        this->m_malloc_fail_on_cnt = 98;
         this->m_malloc_cnt         = 0;
         ASSERT_TRUE(http_json_create_status_str(&stat_info, &adv_table, &this->m_json_str));
         ASSERT_NE(nullptr, this->m_json_str.p_str);
         cjson_wrap_free_json_str(&this->m_json_str);
-        ASSERT_EQ(85, this->m_malloc_cnt);
+        ASSERT_EQ(97, this->m_malloc_cnt);
         ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
     }
 }

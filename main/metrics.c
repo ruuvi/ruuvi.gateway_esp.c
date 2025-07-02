@@ -263,12 +263,55 @@ metrics_nrf_lost_ack_cnt_inc(void)
     metrics_unlock();
 }
 
-static size_t
-get_total_free_bytes(const uint32_t caps)
+static uint32_t
+metrics_malloc_cap_to_caps(const metrics_malloc_cap_e malloc_cap)
+{
+    switch (malloc_cap)
+    {
+        case METRICS_MALLOC_CAP_EXEC:
+            return MALLOC_CAP_EXEC;
+        case METRICS_MALLOC_CAP_32BIT:
+            return MALLOC_CAP_32BIT;
+        case METRICS_MALLOC_CAP_8BIT:
+            return MALLOC_CAP_8BIT;
+        case METRICS_MALLOC_CAP_DMA:
+            return MALLOC_CAP_DMA;
+        case METRICS_MALLOC_CAP_PID2:
+            return MALLOC_CAP_PID2;
+        case METRICS_MALLOC_CAP_PID3:
+            return MALLOC_CAP_PID3;
+        case METRICS_MALLOC_CAP_PID4:
+            return MALLOC_CAP_PID4;
+        case METRICS_MALLOC_CAP_PID5:
+            return MALLOC_CAP_PID5;
+        case METRICS_MALLOC_CAP_PID6:
+            return MALLOC_CAP_PID6;
+        case METRICS_MALLOC_CAP_PID7:
+            return MALLOC_CAP_PID7;
+        case METRICS_MALLOC_CAP_SPIRAM:
+            return MALLOC_CAP_SPIRAM;
+        case METRICS_MALLOC_CAP_INTERNAL:
+            return MALLOC_CAP_INTERNAL;
+        case METRICS_MALLOC_CAP_DEFAULT:
+            return MALLOC_CAP_DEFAULT;
+        case METRICS_MALLOC_CAP_IRAM_8BIT:
+            return MALLOC_CAP_IRAM_8BIT;
+    }
+    return 0; // Should not happen
+}
+
+uint32_t
+metrics_get_total_free_bytes(const metrics_malloc_cap_e malloc_cap)
 {
     multi_heap_info_t x = { 0 };
-    heap_caps_get_info(&x, caps);
+    heap_caps_get_info(&x, metrics_malloc_cap_to_caps(malloc_cap));
     return x.total_free_bytes;
+}
+
+uint32_t
+metrics_get_largest_free_block(const metrics_malloc_cap_e malloc_cap)
+{
+    return heap_caps_get_largest_free_block(metrics_malloc_cap_to_caps(malloc_cap));
 }
 
 static void
@@ -375,33 +418,33 @@ gen_metrics(void)
     p_metrics->nrf_ext_hw_reset_cnt           = metrics_nrf_ext_hw_reset_cnt_get();
     p_metrics->nrf_lost_ack_cnt               = metrics_nrf_lost_ack_cnt_get();
     p_metrics->uptime_us                      = esp_timer_get_time();
-    p_metrics->total_free_bytes.size_exec     = (ulong_t)get_total_free_bytes(MALLOC_CAP_EXEC);
-    p_metrics->total_free_bytes.size_32bit    = (ulong_t)get_total_free_bytes(MALLOC_CAP_32BIT);
-    p_metrics->total_free_bytes.size_8bit     = (ulong_t)get_total_free_bytes(MALLOC_CAP_8BIT);
-    p_metrics->total_free_bytes.size_dma      = (ulong_t)get_total_free_bytes(MALLOC_CAP_DMA);
-    p_metrics->total_free_bytes.size_pid2     = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID2);
-    p_metrics->total_free_bytes.size_pid3     = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID3);
-    p_metrics->total_free_bytes.size_pid4     = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID4);
-    p_metrics->total_free_bytes.size_pid5     = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID5);
-    p_metrics->total_free_bytes.size_pid6     = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID6);
-    p_metrics->total_free_bytes.size_pid7     = (ulong_t)get_total_free_bytes(MALLOC_CAP_PID7);
-    p_metrics->total_free_bytes.size_spiram   = (ulong_t)get_total_free_bytes(MALLOC_CAP_SPIRAM);
-    p_metrics->total_free_bytes.size_internal = (ulong_t)get_total_free_bytes(MALLOC_CAP_INTERNAL);
-    p_metrics->total_free_bytes.size_default  = (ulong_t)get_total_free_bytes(MALLOC_CAP_DEFAULT);
+    p_metrics->total_free_bytes.size_exec     = (ulong_t)metrics_get_total_free_bytes(METRICS_MALLOC_CAP_EXEC);
+    p_metrics->total_free_bytes.size_32bit    = (ulong_t)metrics_get_total_free_bytes(METRICS_MALLOC_CAP_32BIT);
+    p_metrics->total_free_bytes.size_8bit     = (ulong_t)metrics_get_total_free_bytes(METRICS_MALLOC_CAP_8BIT);
+    p_metrics->total_free_bytes.size_dma      = (ulong_t)metrics_get_total_free_bytes(METRICS_MALLOC_CAP_DMA);
+    p_metrics->total_free_bytes.size_pid2     = (ulong_t)metrics_get_total_free_bytes(METRICS_MALLOC_CAP_PID2);
+    p_metrics->total_free_bytes.size_pid3     = (ulong_t)metrics_get_total_free_bytes(METRICS_MALLOC_CAP_PID3);
+    p_metrics->total_free_bytes.size_pid4     = (ulong_t)metrics_get_total_free_bytes(METRICS_MALLOC_CAP_PID4);
+    p_metrics->total_free_bytes.size_pid5     = (ulong_t)metrics_get_total_free_bytes(METRICS_MALLOC_CAP_PID5);
+    p_metrics->total_free_bytes.size_pid6     = (ulong_t)metrics_get_total_free_bytes(METRICS_MALLOC_CAP_PID6);
+    p_metrics->total_free_bytes.size_pid7     = (ulong_t)metrics_get_total_free_bytes(METRICS_MALLOC_CAP_PID7);
+    p_metrics->total_free_bytes.size_spiram   = (ulong_t)metrics_get_total_free_bytes(METRICS_MALLOC_CAP_SPIRAM);
+    p_metrics->total_free_bytes.size_internal = (ulong_t)metrics_get_total_free_bytes(METRICS_MALLOC_CAP_INTERNAL);
+    p_metrics->total_free_bytes.size_default  = (ulong_t)metrics_get_total_free_bytes(METRICS_MALLOC_CAP_DEFAULT);
 
-    p_metrics->largest_free_block.size_exec     = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_EXEC);
-    p_metrics->largest_free_block.size_32bit    = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_32BIT);
-    p_metrics->largest_free_block.size_8bit     = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
-    p_metrics->largest_free_block.size_dma      = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_DMA);
-    p_metrics->largest_free_block.size_pid2     = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_PID2);
-    p_metrics->largest_free_block.size_pid3     = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_PID3);
-    p_metrics->largest_free_block.size_pid4     = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_PID4);
-    p_metrics->largest_free_block.size_pid5     = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_PID5);
-    p_metrics->largest_free_block.size_pid6     = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_PID6);
-    p_metrics->largest_free_block.size_pid7     = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_PID7);
-    p_metrics->largest_free_block.size_spiram   = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM);
-    p_metrics->largest_free_block.size_internal = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
-    p_metrics->largest_free_block.size_default  = (ulong_t)heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT);
+    p_metrics->largest_free_block.size_exec     = (ulong_t)metrics_get_largest_free_block(METRICS_MALLOC_CAP_EXEC);
+    p_metrics->largest_free_block.size_32bit    = (ulong_t)metrics_get_largest_free_block(METRICS_MALLOC_CAP_32BIT);
+    p_metrics->largest_free_block.size_8bit     = (ulong_t)metrics_get_largest_free_block(METRICS_MALLOC_CAP_8BIT);
+    p_metrics->largest_free_block.size_dma      = (ulong_t)metrics_get_largest_free_block(METRICS_MALLOC_CAP_DMA);
+    p_metrics->largest_free_block.size_pid2     = (ulong_t)metrics_get_largest_free_block(METRICS_MALLOC_CAP_PID2);
+    p_metrics->largest_free_block.size_pid3     = (ulong_t)metrics_get_largest_free_block(METRICS_MALLOC_CAP_PID3);
+    p_metrics->largest_free_block.size_pid4     = (ulong_t)metrics_get_largest_free_block(METRICS_MALLOC_CAP_PID4);
+    p_metrics->largest_free_block.size_pid5     = (ulong_t)metrics_get_largest_free_block(METRICS_MALLOC_CAP_PID5);
+    p_metrics->largest_free_block.size_pid6     = (ulong_t)metrics_get_largest_free_block(METRICS_MALLOC_CAP_PID6);
+    p_metrics->largest_free_block.size_pid7     = (ulong_t)metrics_get_largest_free_block(METRICS_MALLOC_CAP_PID7);
+    p_metrics->largest_free_block.size_spiram   = (ulong_t)metrics_get_largest_free_block(METRICS_MALLOC_CAP_SPIRAM);
+    p_metrics->largest_free_block.size_internal = (ulong_t)metrics_get_largest_free_block(METRICS_MALLOC_CAP_INTERNAL);
+    p_metrics->largest_free_block.size_default  = (ulong_t)metrics_get_largest_free_block(METRICS_MALLOC_CAP_DEFAULT);
     p_metrics->mac_addr_str                     = *gw_cfg_get_nrf52_mac_addr();
     p_metrics->esp_fw                           = *gw_cfg_get_esp32_fw_ver();
     p_metrics->nrf_fw                           = *gw_cfg_get_nrf52_fw_ver();

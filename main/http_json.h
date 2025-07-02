@@ -39,6 +39,10 @@ typedef struct http_json_statistics_info_t
     uint32_t                                nrf_self_reboot_cnt;
     uint32_t                                nrf_ext_hw_reset_cnt;
     uint64_t                                nrf_lost_ack_cnt;
+    uint32_t                                total_free_bytes_internal;
+    uint32_t                                total_free_bytes_default;
+    uint32_t                                largest_free_block_internal;
+    uint32_t                                largest_free_block_default;
     http_json_statistics_reset_reason_buf_t reset_reason;
     uint32_t                                reset_cnt;
     const char*                             p_reset_info;
