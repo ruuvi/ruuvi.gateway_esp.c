@@ -46,6 +46,30 @@ metrics_nrf_lost_ack_cnt_get(void);
 void
 metrics_nrf_lost_ack_cnt_inc(void);
 
+typedef enum metrics_malloc_cap_e
+{
+    METRICS_MALLOC_CAP_EXEC,
+    METRICS_MALLOC_CAP_32BIT,
+    METRICS_MALLOC_CAP_8BIT,
+    METRICS_MALLOC_CAP_DMA,
+    METRICS_MALLOC_CAP_PID2,
+    METRICS_MALLOC_CAP_PID3,
+    METRICS_MALLOC_CAP_PID4,
+    METRICS_MALLOC_CAP_PID5,
+    METRICS_MALLOC_CAP_PID6,
+    METRICS_MALLOC_CAP_PID7,
+    METRICS_MALLOC_CAP_SPIRAM,
+    METRICS_MALLOC_CAP_INTERNAL,
+    METRICS_MALLOC_CAP_DEFAULT,
+    METRICS_MALLOC_CAP_IRAM_8BIT,
+} metrics_malloc_cap_e;
+
+uint32_t
+metrics_get_total_free_bytes(const metrics_malloc_cap_e malloc_cap);
+
+uint32_t
+metrics_get_largest_free_block(const metrics_malloc_cap_e malloc_cap);
+
 char*
 metrics_generate(void);
 

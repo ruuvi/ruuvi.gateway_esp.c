@@ -10,6 +10,7 @@
 #include <string>
 #include "esp_system.h"
 #include "os_malloc.h"
+#include "metrics.h"
 
 using namespace std;
 
@@ -103,6 +104,10 @@ public:
     uint32_t                 m_nrf_self_reboot_cnt {};
     uint32_t                 m_nrf_ext_hw_reset_cnt {};
     uint64_t                 m_nrf_lost_ack_cnt {};
+    uint32_t                 m_metrics_total_free_bytes_internal {};
+    uint32_t                 m_metrics_total_free_bytes_default {};
+    uint32_t                 m_metrics_largest_free_block_internal {};
+    uint32_t                 m_metrics_largest_free_block_default {};
     bool                     m_is_connected_to_wifi {};
     bool                     m_nrf_status {};
     esp_reset_reason_t       m_esp_reset_reason {};
@@ -283,6 +288,34 @@ metrics_nrf_lost_ack_cnt_get(void)
     return g_pTestClass->m_nrf_lost_ack_cnt;
 }
 
+uint32_t
+metrics_get_total_free_bytes(const metrics_malloc_cap_e malloc_cap)
+{
+    switch (malloc_cap)
+    {
+        case METRICS_MALLOC_CAP_INTERNAL:
+            return g_pTestClass->m_metrics_total_free_bytes_internal;
+        case METRICS_MALLOC_CAP_DEFAULT:
+            return g_pTestClass->m_metrics_total_free_bytes_default;
+        default:
+            return 0;
+    }
+}
+
+uint32_t
+metrics_get_largest_free_block(const metrics_malloc_cap_e malloc_cap)
+{
+    switch (malloc_cap)
+    {
+        case METRICS_MALLOC_CAP_INTERNAL:
+            return g_pTestClass->m_metrics_largest_free_block_internal;
+        case METRICS_MALLOC_CAP_DEFAULT:
+            return g_pTestClass->m_metrics_largest_free_block_default;
+        default:
+            return 0;
+    }
+}
+
 } // extern "C"
 
 /*** Unit-Tests
@@ -304,6 +337,11 @@ TEST_F(TestAdvPostStatistics, test_adv_post_statistics_info_generate) // NOLINT
         this->m_nrf_lost_ack_cnt     = 117;
         this->m_esp_reset_reason     = ESP_RST_POWERON;
 
+        this->m_metrics_total_free_bytes_internal   = 123456;
+        this->m_metrics_total_free_bytes_default    = 67890;
+        this->m_metrics_largest_free_block_internal = 97125;
+        this->m_metrics_largest_free_block_default  = 54321;
+
         str_buf_t reset_info = str_buf_printf_with_alloc("reset reason 123");
         ASSERT_NE(nullptr, reset_info.buf);
 
@@ -322,6 +360,10 @@ TEST_F(TestAdvPostStatistics, test_adv_post_statistics_info_generate) // NOLINT
         ASSERT_EQ(11, p_stat_info->nrf_self_reboot_cnt);
         ASSERT_EQ(13, p_stat_info->nrf_ext_hw_reset_cnt);
         ASSERT_EQ(117, p_stat_info->nrf_lost_ack_cnt);
+        ASSERT_EQ(123456, p_stat_info->total_free_bytes_internal);
+        ASSERT_EQ(67890, p_stat_info->total_free_bytes_default);
+        ASSERT_EQ(97125, p_stat_info->largest_free_block_internal);
+        ASSERT_EQ(54321, p_stat_info->largest_free_block_default);
         ASSERT_EQ(string("reset reason 123"), string(p_stat_info->p_reset_info));
         str_buf_free_buf(&reset_info);
         os_free(p_stat_info);
@@ -337,6 +379,11 @@ TEST_F(TestAdvPostStatistics, test_adv_post_statistics_info_generate) // NOLINT
         this->m_nrf_ext_hw_reset_cnt = 14;
         this->m_nrf_lost_ack_cnt     = 118;
         this->m_esp_reset_reason     = ESP_RST_PANIC;
+
+        this->m_metrics_total_free_bytes_internal   = 123456;
+        this->m_metrics_total_free_bytes_default    = 67890;
+        this->m_metrics_largest_free_block_internal = 97125;
+        this->m_metrics_largest_free_block_default  = 54321;
 
         str_buf_t reset_info = str_buf_printf_with_alloc("reset reason 526");
         ASSERT_NE(nullptr, reset_info.buf);
@@ -356,6 +403,10 @@ TEST_F(TestAdvPostStatistics, test_adv_post_statistics_info_generate) // NOLINT
         ASSERT_EQ(12, p_stat_info->nrf_self_reboot_cnt);
         ASSERT_EQ(14, p_stat_info->nrf_ext_hw_reset_cnt);
         ASSERT_EQ(118, p_stat_info->nrf_lost_ack_cnt);
+        ASSERT_EQ(123456, p_stat_info->total_free_bytes_internal);
+        ASSERT_EQ(67890, p_stat_info->total_free_bytes_default);
+        ASSERT_EQ(97125, p_stat_info->largest_free_block_internal);
+        ASSERT_EQ(54321, p_stat_info->largest_free_block_default);
         ASSERT_EQ(string("reset reason 526"), string(p_stat_info->p_reset_info));
         str_buf_free_buf(&reset_info);
         os_free(p_stat_info);
@@ -371,6 +422,11 @@ TEST_F(TestAdvPostStatistics, test_adv_post_statistics_info_generate) // NOLINT
         this->m_nrf_ext_hw_reset_cnt = 14;
         this->m_nrf_lost_ack_cnt     = 118;
         this->m_esp_reset_reason     = ESP_RST_PANIC;
+
+        this->m_metrics_total_free_bytes_internal   = 123456;
+        this->m_metrics_total_free_bytes_default    = 67890;
+        this->m_metrics_largest_free_block_internal = 97125;
+        this->m_metrics_largest_free_block_default  = 54321;
 
         str_buf_t reset_info = str_buf_init_null();
 
@@ -389,6 +445,10 @@ TEST_F(TestAdvPostStatistics, test_adv_post_statistics_info_generate) // NOLINT
         ASSERT_EQ(12, p_stat_info->nrf_self_reboot_cnt);
         ASSERT_EQ(14, p_stat_info->nrf_ext_hw_reset_cnt);
         ASSERT_EQ(118, p_stat_info->nrf_lost_ack_cnt);
+        ASSERT_EQ(123456, p_stat_info->total_free_bytes_internal);
+        ASSERT_EQ(67890, p_stat_info->total_free_bytes_default);
+        ASSERT_EQ(97125, p_stat_info->largest_free_block_internal);
+        ASSERT_EQ(54321, p_stat_info->largest_free_block_default);
         ASSERT_EQ(string(""), string(p_stat_info->p_reset_info));
         os_free(p_stat_info);
         ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
@@ -403,6 +463,11 @@ TEST_F(TestAdvPostStatistics, test_adv_post_statistics_info_generate) // NOLINT
         this->m_nrf_ext_hw_reset_cnt = 14;
         this->m_nrf_lost_ack_cnt     = 118;
         this->m_esp_reset_reason     = ESP_RST_PANIC;
+
+        this->m_metrics_total_free_bytes_internal   = 123456;
+        this->m_metrics_total_free_bytes_default    = 67890;
+        this->m_metrics_largest_free_block_internal = 97125;
+        this->m_metrics_largest_free_block_default  = 54321;
 
         http_json_statistics_info_t* p_stat_info = adv_post_statistics_info_generate(nullptr);
         ASSERT_NE(nullptr, p_stat_info);
@@ -419,6 +484,10 @@ TEST_F(TestAdvPostStatistics, test_adv_post_statistics_info_generate) // NOLINT
         ASSERT_EQ(12, p_stat_info->nrf_self_reboot_cnt);
         ASSERT_EQ(14, p_stat_info->nrf_ext_hw_reset_cnt);
         ASSERT_EQ(118, p_stat_info->nrf_lost_ack_cnt);
+        ASSERT_EQ(123456, p_stat_info->total_free_bytes_internal);
+        ASSERT_EQ(67890, p_stat_info->total_free_bytes_default);
+        ASSERT_EQ(97125, p_stat_info->largest_free_block_internal);
+        ASSERT_EQ(54321, p_stat_info->largest_free_block_default);
         ASSERT_EQ(string(""), string(p_stat_info->p_reset_info));
         os_free(p_stat_info);
         ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
@@ -439,6 +508,11 @@ TEST_F(TestAdvPostStatistics, adv_post_statistics_do_send) // NOLINT
     this->m_nrf_ext_hw_reset_cnt = 13;
     this->m_nrf_lost_ack_cnt     = 117;
     this->m_esp_reset_reason     = ESP_RST_POWERON;
+
+    this->m_metrics_total_free_bytes_internal   = 123456;
+    this->m_metrics_total_free_bytes_default    = 67890;
+    this->m_metrics_largest_free_block_internal = 97125;
+    this->m_metrics_largest_free_block_default  = 54321;
 
     {
         this->m_cfg_http_stat = ruuvi_gw_cfg_http_stat_t {
@@ -489,6 +563,10 @@ TEST_F(TestAdvPostStatistics, adv_post_statistics_do_send) // NOLINT
         ASSERT_EQ(11, g_pTestClass->m_http_post_stat_arg_stat_info.nrf_self_reboot_cnt);
         ASSERT_EQ(13, g_pTestClass->m_http_post_stat_arg_stat_info.nrf_ext_hw_reset_cnt);
         ASSERT_EQ(117, g_pTestClass->m_http_post_stat_arg_stat_info.nrf_lost_ack_cnt);
+        ASSERT_EQ(123456, g_pTestClass->m_http_post_stat_arg_stat_info.total_free_bytes_internal);
+        ASSERT_EQ(67890, g_pTestClass->m_http_post_stat_arg_stat_info.total_free_bytes_default);
+        ASSERT_EQ(97125, g_pTestClass->m_http_post_stat_arg_stat_info.largest_free_block_internal);
+        ASSERT_EQ(54321, g_pTestClass->m_http_post_stat_arg_stat_info.largest_free_block_default);
         ASSERT_EQ(string("reset_info"), string(g_pTestClass->m_http_post_stat_arg_stat_info_reset_info_str));
 
         ASSERT_EQ(0, g_pTestClass->m_http_post_stat_arg_reports.num_of_advs);
@@ -564,6 +642,10 @@ TEST_F(TestAdvPostStatistics, adv_post_statistics_do_send) // NOLINT
         ASSERT_EQ(11, g_pTestClass->m_http_post_stat_arg_stat_info.nrf_self_reboot_cnt);
         ASSERT_EQ(13, g_pTestClass->m_http_post_stat_arg_stat_info.nrf_ext_hw_reset_cnt);
         ASSERT_EQ(117, g_pTestClass->m_http_post_stat_arg_stat_info.nrf_lost_ack_cnt);
+        ASSERT_EQ(123456, g_pTestClass->m_http_post_stat_arg_stat_info.total_free_bytes_internal);
+        ASSERT_EQ(67890, g_pTestClass->m_http_post_stat_arg_stat_info.total_free_bytes_default);
+        ASSERT_EQ(97125, g_pTestClass->m_http_post_stat_arg_stat_info.largest_free_block_internal);
+        ASSERT_EQ(54321, g_pTestClass->m_http_post_stat_arg_stat_info.largest_free_block_default);
         ASSERT_EQ(string("reset_info"), string(g_pTestClass->m_http_post_stat_arg_stat_info_reset_info_str));
 
         ASSERT_EQ(1, g_pTestClass->m_http_post_stat_arg_reports.num_of_advs);
@@ -668,6 +750,10 @@ TEST_F(TestAdvPostStatistics, adv_post_statistics_do_send) // NOLINT
         ASSERT_EQ(11, g_pTestClass->m_http_post_stat_arg_stat_info.nrf_self_reboot_cnt);
         ASSERT_EQ(13, g_pTestClass->m_http_post_stat_arg_stat_info.nrf_ext_hw_reset_cnt);
         ASSERT_EQ(117, g_pTestClass->m_http_post_stat_arg_stat_info.nrf_lost_ack_cnt);
+        ASSERT_EQ(123456, g_pTestClass->m_http_post_stat_arg_stat_info.total_free_bytes_internal);
+        ASSERT_EQ(67890, g_pTestClass->m_http_post_stat_arg_stat_info.total_free_bytes_default);
+        ASSERT_EQ(97125, g_pTestClass->m_http_post_stat_arg_stat_info.largest_free_block_internal);
+        ASSERT_EQ(54321, g_pTestClass->m_http_post_stat_arg_stat_info.largest_free_block_default);
         ASSERT_EQ(string("reset_info"), string(g_pTestClass->m_http_post_stat_arg_stat_info_reset_info_str));
 
         ASSERT_EQ(2, g_pTestClass->m_http_post_stat_arg_reports.num_of_advs);
@@ -735,6 +821,11 @@ TEST_F(TestAdvPostStatistics, adv_post_statistics_do_send_malloc_failed_1) // NO
     this->m_nrf_lost_ack_cnt     = 117;
     this->m_esp_reset_reason     = ESP_RST_POWERON;
 
+    this->m_metrics_total_free_bytes_internal   = 123456;
+    this->m_metrics_total_free_bytes_default    = 67890;
+    this->m_metrics_largest_free_block_internal = 97125;
+    this->m_metrics_largest_free_block_default  = 54321;
+
     {
         this->m_cfg_http_stat = ruuvi_gw_cfg_http_stat_t {
             .use_http_stat                 = true,
@@ -772,6 +863,11 @@ TEST_F(TestAdvPostStatistics, adv_post_statistics_do_send_malloc_failed_2) // NO
     this->m_nrf_ext_hw_reset_cnt = 13;
     this->m_nrf_lost_ack_cnt     = 117;
     this->m_esp_reset_reason     = ESP_RST_POWERON;
+
+    this->m_metrics_total_free_bytes_internal   = 123456;
+    this->m_metrics_total_free_bytes_default    = 67890;
+    this->m_metrics_largest_free_block_internal = 97125;
+    this->m_metrics_largest_free_block_default  = 54321;
 
     {
         this->m_cfg_http_stat = ruuvi_gw_cfg_http_stat_t {
@@ -811,6 +907,11 @@ TEST_F(TestAdvPostStatistics, adv_post_statistics_do_send_malloc_failed_3) // NO
     this->m_nrf_lost_ack_cnt     = 117;
     this->m_esp_reset_reason     = ESP_RST_POWERON;
 
+    this->m_metrics_total_free_bytes_internal   = 123456;
+    this->m_metrics_total_free_bytes_default    = 67890;
+    this->m_metrics_largest_free_block_internal = 97125;
+    this->m_metrics_largest_free_block_default  = 54321;
+
     {
         this->m_cfg_http_stat = ruuvi_gw_cfg_http_stat_t {
             .use_http_stat                 = true,
@@ -848,6 +949,11 @@ TEST_F(TestAdvPostStatistics, adv_post_statistics_do_send_malloc_failed_4) // NO
     this->m_nrf_ext_hw_reset_cnt = 13;
     this->m_nrf_lost_ack_cnt     = 117;
     this->m_esp_reset_reason     = ESP_RST_POWERON;
+
+    this->m_metrics_total_free_bytes_internal   = 123456;
+    this->m_metrics_total_free_bytes_default    = 67890;
+    this->m_metrics_largest_free_block_internal = 97125;
+    this->m_metrics_largest_free_block_default  = 54321;
 
     {
         this->m_cfg_http_stat = ruuvi_gw_cfg_http_stat_t {
@@ -887,6 +993,11 @@ TEST_F(TestAdvPostStatistics, adv_post_statistics_do_send_malloc_failed_5_succes
     this->m_nrf_lost_ack_cnt     = 117;
     this->m_esp_reset_reason     = ESP_RST_POWERON;
 
+    this->m_metrics_total_free_bytes_internal   = 123456;
+    this->m_metrics_total_free_bytes_default    = 67890;
+    this->m_metrics_largest_free_block_internal = 97125;
+    this->m_metrics_largest_free_block_default  = 54321;
+
     {
         this->m_cfg_http_stat = ruuvi_gw_cfg_http_stat_t {
             .use_http_stat                 = true,
@@ -924,6 +1035,11 @@ TEST_F(TestAdvPostStatistics, adv_post_statistics_do_send_http_post_stat_failed)
     this->m_nrf_ext_hw_reset_cnt = 13;
     this->m_nrf_lost_ack_cnt     = 117;
     this->m_esp_reset_reason     = ESP_RST_POWERON;
+
+    this->m_metrics_total_free_bytes_internal   = 123456;
+    this->m_metrics_total_free_bytes_default    = 67890;
+    this->m_metrics_largest_free_block_internal = 97125;
+    this->m_metrics_largest_free_block_default  = 54321;
 
     {
         this->m_cfg_http_stat = ruuvi_gw_cfg_http_stat_t {
