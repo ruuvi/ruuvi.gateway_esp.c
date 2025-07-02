@@ -10,6 +10,7 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/adv_decode_0x05.c
         ${RUUVI_GW_SRC}/adv_decode_0x06.c
         ${RUUVI_GW_SRC}/adv_decode_0xe0.c
+        ${RUUVI_GW_SRC}/adv_decode_0xe1.c
         ${RUUVI_GW_SRC}/adv_decode_0xf0.c
         ${RUUVI_GW_SRC}/adv_decode.h
         ${RUUVI_GW_SRC}/cjson_wrap.c
@@ -24,6 +25,8 @@ add_executable(${ProjectId}
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_f0.h
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_e0.c
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_e0.h
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_e1.c
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_e1.h
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoints.c
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoints.h
         $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c

@@ -161,7 +161,7 @@ TestHttpJson::~TestHttpJson() = default;
 /*** Unit-Tests
  * *******************************************************************************************************/
 
-TEST_F(TestHttpJson, test_1) // NOLINT
+TEST_F(TestHttpJson, test_df_5_with_raw_data) // NOLINT
 {
     const time_t                     timestamp   = 1612358920;
     const mac_address_str_t          gw_mac_addr = { "AA:CC:EE:00:11:22" };
@@ -248,7 +248,7 @@ TEST_F(TestHttpJson, test_1) // NOLINT
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestHttpJson, test_1_with_raw_and_decoded) // NOLINT
+TEST_F(TestHttpJson, test_df_5_with_raw_and_decoded_data) // NOLINT
 {
     const time_t                     timestamp   = 1612358920;
     const mac_address_str_t          gw_mac_addr = { "AA:CC:EE:00:11:22" };
@@ -348,7 +348,7 @@ TEST_F(TestHttpJson, test_1_with_raw_and_decoded) // NOLINT
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestHttpJson, test_1_without_raw_and_with_decoded) // NOLINT
+TEST_F(TestHttpJson, test_df_5_without_raw_and_with_decoded) // NOLINT
 {
     const time_t                     timestamp   = 1612358920;
     const mac_address_str_t          gw_mac_addr = { "AA:CC:EE:00:11:22" };
@@ -438,6 +438,697 @@ TEST_F(TestHttpJson, test_1_without_raw_and_with_decoded) // NOLINT
                "        \"txPower\": 4,\n"
                "        \"measurementSequenceNumber\": 19838,\n"
                "        \"id\": \"F4:1F:0C:28:CB:D6\"\n"
+               "      }\n"
+               "    }\n"
+               "  }\n"
+               "}"),
+        json_str);
+    json_stream_gen_delete(&p_gen);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestHttpJson, test_df_6_with_raw_data) // NOLINT
+{
+    const time_t                     timestamp   = 1612358920;
+    const mac_address_str_t          gw_mac_addr = { "AA:CC:EE:00:11:22" };
+    const ruuvi_gw_cfg_coordinates_t coordinates = { "170.112233,59.445566" };
+    const std::array<uint8_t, 31>    data        = {
+                  0x02U, 0x01U, 0x06U,        // BLE advertising header
+                  0x03U, 0x03U, 0x98U, 0xFCU, // Ruuvi tag service UUID
+                  0x17U, 0xFFU, 0x99U, 0x04U, // Manufacturer-specific data header
+                  0x06U,                      // Data format 6
+                  0x14U, 0x64U,               // Temperature in 0.005 degrees Celsius
+                  0x57U, 0xF8U,               // Humidity in 0.0025 percent
+                  0xC7U, 0x9DU,               // Pressure in hPa, from offset 50000
+                  0x00U, 0x1DU,               // PM 2.5 in 0.1 µg/m³
+                  0x03U, 0x26U,               // CO2 in ppm
+                  0x74U,                      // VOC in ppb
+                  0x01U,                      // NOx in ppb
+                  0x14U,                      // Luminosity
+                  0xD7U,                      // Sound level avg in 0.2 dBA, from offset 18
+                  0x05U,                      // Seq cnt
+                  0x00U,                      // Flags
+                  0x4EU, 0xB2U, 0x72U,        // 3 least significant bytes of MAC address
+    };
+
+    adv_report_table_t adv_table = {
+        .num_of_advs = 1,
+        .table = {
+            {
+                .timestamp = 1612358929,
+                .tag_mac = {0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03},
+                .rssi = -70,
+                .primary_phy = RE_CA_UART_BLE_PHY_1MBPS,
+                .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
+                .ch_index = 37,
+                .is_coded_phy = false,
+                .tx_power = RE_CA_UART_BLE_GAP_POWER_LEVEL_INVALID,
+                .data_len = data.size(),
+            },
+        },
+    };
+    memcpy(adv_table.table[0].data_buf, data.data(), data.size());
+
+    const bool     flag_raw_data       = true;
+    const bool     flag_decode         = false;
+    const bool     flag_use_timestamps = true;
+    const bool     flag_use_nonce      = true;
+    const uint32_t nonce               = 12345678;
+
+    const http_json_create_stream_gen_advs_params_t params = {
+        .flag_raw_data       = flag_raw_data,
+        .flag_decode         = flag_decode,
+        .flag_use_timestamps = flag_use_timestamps,
+        .cur_time            = timestamp,
+        .flag_use_nonce      = flag_use_nonce,
+        .nonce               = nonce,
+        .p_mac_addr          = &gw_mac_addr,
+        .p_coordinates       = &coordinates,
+    };
+
+    json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(&adv_table, &params);
+    ASSERT_NE(nullptr, p_gen);
+
+    string json_str("");
+    while (true)
+    {
+        const char* p_chunk = json_stream_gen_get_next_chunk(p_gen);
+        if (nullptr == p_chunk)
+        {
+            ASSERT_FALSE(nullptr == p_chunk);
+        }
+
+        if ('\0' == p_chunk[0])
+        {
+            break;
+        }
+        json_str += string(p_chunk);
+    }
+
+    ASSERT_EQ(
+        string("{\n"
+               "  \"data\": {\n"
+               "    \"coordinates\": \"170.112233,59.445566\",\n"
+               "    \"timestamp\": 1612358920,\n"
+               "    \"nonce\": 12345678,\n"
+               "    \"gw_mac\": \"AA:CC:EE:00:11:22\",\n"
+               "    \"tags\": {\n"
+               "      \"AA:BB:CC:01:02:03\": {\n"
+               "        \"rssi\": -70,\n"
+               "        \"timestamp\": 1612358929,\n"
+               "        \"ble_phy\": \"1M\",\n"
+               "        \"ble_chan\": 37,\n"
+               "        \"data\": \"020106030398FC17FF990406146457F8C79D001D0326740114D705004EB272\"\n"
+               "      }\n"
+               "    }\n"
+               "  }\n"
+               "}"),
+        json_str);
+    json_stream_gen_delete(&p_gen);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestHttpJson, test_df_6_with_raw_and_decoded_data) // NOLINT
+{
+    const time_t                     timestamp   = 1612358920;
+    const mac_address_str_t          gw_mac_addr = { "AA:CC:EE:00:11:22" };
+    const ruuvi_gw_cfg_coordinates_t coordinates = { "170.112233,59.445566" };
+    const std::array<uint8_t, 31>    data        = {
+                  0x02U, 0x01U, 0x06U,        // BLE advertising header
+                  0x03U, 0x03U, 0x98U, 0xFCU, // Ruuvi tag service UUID
+                  0x17U, 0xFFU, 0x99U, 0x04U, // Manufacturer-specific data header
+                  0x06U,                      // Data format 6
+                  0x14U, 0x64U,               // Temperature in 0.005 degrees Celsius
+                  0x57U, 0xF8U,               // Humidity in 0.0025 percent
+                  0xC7U, 0x9DU,               // Pressure in hPa, from offset 50000
+                  0x00U, 0x1DU,               // PM 2.5 in 0.1 µg/m³
+                  0x03U, 0x26U,               // CO2 in ppm
+                  0x74U,                      // VOC in ppb
+                  0x01U,                      // NOx in ppb
+                  0x14U,                      // Luminosity
+                  0xD7U,                      // Sound level avg in 0.2 dBA, from offset 18
+                  0x05U,                      // Seq cnt
+                  0x00U,                      // Flags
+                  0x4EU, 0xB2U, 0x72U,        // 3 least significant bytes of MAC address
+    };
+
+    adv_report_table_t adv_table = {
+        .num_of_advs = 1,
+        .table = {
+            {
+                .timestamp = 1612358929,
+                .tag_mac = {0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03},
+                .rssi = -70,
+                .primary_phy = RE_CA_UART_BLE_PHY_1MBPS,
+                .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
+                .ch_index = 37,
+                .is_coded_phy = false,
+                .tx_power = RE_CA_UART_BLE_GAP_POWER_LEVEL_INVALID,
+                .data_len = data.size(),
+            },
+        },
+    };
+    memcpy(adv_table.table[0].data_buf, data.data(), data.size());
+
+    const bool     flag_raw_data       = true;
+    const bool     flag_decode         = true;
+    const bool     flag_use_timestamps = true;
+    const bool     flag_use_nonce      = true;
+    const uint32_t nonce               = 12345678;
+
+    const http_json_create_stream_gen_advs_params_t params = {
+        .flag_raw_data       = flag_raw_data,
+        .flag_decode         = flag_decode,
+        .flag_use_timestamps = flag_use_timestamps,
+        .cur_time            = timestamp,
+        .flag_use_nonce      = flag_use_nonce,
+        .nonce               = nonce,
+        .p_mac_addr          = &gw_mac_addr,
+        .p_coordinates       = &coordinates,
+    };
+
+    json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(&adv_table, &params);
+    ASSERT_NE(nullptr, p_gen);
+
+    string json_str("");
+    while (true)
+    {
+        const char* p_chunk = json_stream_gen_get_next_chunk(p_gen);
+        if (nullptr == p_chunk)
+        {
+            ASSERT_FALSE(nullptr == p_chunk);
+        }
+
+        if ('\0' == p_chunk[0])
+        {
+            break;
+        }
+        json_str += string(p_chunk);
+    }
+
+    ASSERT_EQ(
+        string("{\n"
+               "  \"data\": {\n"
+               "    \"coordinates\": \"170.112233,59.445566\",\n"
+               "    \"timestamp\": 1612358920,\n"
+               "    \"nonce\": 12345678,\n"
+               "    \"gw_mac\": \"AA:CC:EE:00:11:22\",\n"
+               "    \"tags\": {\n"
+               "      \"AA:BB:CC:01:02:03\": {\n"
+               "        \"rssi\": -70,\n"
+               "        \"timestamp\": 1612358929,\n"
+               "        \"ble_phy\": \"1M\",\n"
+               "        \"ble_chan\": 37,\n"
+               "        \"data\": \"020106030398FC17FF990406146457F8C79D001D0326740114D705004EB272\",\n"
+               "        \"dataFormat\": 6,\n"
+               "        \"temperature\": 26.1,\n"
+               "        \"humidity\": 56.3,\n"
+               "        \"pressure\": 101101,\n"
+               "        \"PM2.5\": 2.9,\n"
+               "        \"CO2\": 806,\n"
+               "        \"VOC\": 116,\n"
+               "        \"NOx\": 1,\n"
+               "        \"luminosity\": 1,\n"
+               "        \"sound_dba_avg\": 61.0,\n"
+               "        \"measurementSequenceNumber\": 5,\n"
+               "        \"flag_calibration_in_progress\": false,\n"
+               "        \"flag_button_pressed\": false,\n"
+               "        \"flag_rtc_running_on_boot\": false,\n"
+               "        \"id\": \"4E:B2:72\"\n"
+               "      }\n"
+               "    }\n"
+               "  }\n"
+               "}"),
+        json_str);
+    json_stream_gen_delete(&p_gen);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestHttpJson, test_df_6_without_raw_and_with_decoded_data) // NOLINT
+{
+    const time_t                     timestamp   = 1612358920;
+    const mac_address_str_t          gw_mac_addr = { "AA:CC:EE:00:11:22" };
+    const ruuvi_gw_cfg_coordinates_t coordinates = { "170.112233,59.445566" };
+    const std::array<uint8_t, 31>    data        = {
+                  0x02U, 0x01U, 0x06U,        // BLE advertising header
+                  0x03U, 0x03U, 0x98U, 0xFCU, // Ruuvi tag service UUID
+                  0x17U, 0xFFU, 0x99U, 0x04U, // Manufacturer-specific data header
+                  0x06U,                      // Data format 6
+                  0x14U, 0x64U,               // Temperature in 0.005 degrees Celsius
+                  0x57U, 0xF8U,               // Humidity in 0.0025 percent
+                  0xC7U, 0x9DU,               // Pressure in hPa, from offset 50000
+                  0x00U, 0x1DU,               // PM 2.5 in 0.1 µg/m³
+                  0x03U, 0x26U,               // CO2 in ppm
+                  0x74U,                      // VOC in ppb
+                  0x01U,                      // NOx in ppb
+                  0x14U,                      // Luminosity
+                  0xD7U,                      // Sound level avg in 0.2 dBA, from offset 18
+                  0x05U,                      // Seq cnt
+                  0x00U,                      // Flags
+                  0x4EU, 0xB2U, 0x72U,        // 3 least significant bytes of MAC address
+    };
+
+    adv_report_table_t adv_table = {
+        .num_of_advs = 1,
+        .table = {
+            {
+                .timestamp = 1612358929,
+                .tag_mac = {0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03},
+                .rssi = -70,
+                .primary_phy = RE_CA_UART_BLE_PHY_1MBPS,
+                .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
+                .ch_index = 37,
+                .is_coded_phy = false,
+                .tx_power = RE_CA_UART_BLE_GAP_POWER_LEVEL_INVALID,
+                .data_len = data.size(),
+            },
+        },
+    };
+    memcpy(adv_table.table[0].data_buf, data.data(), data.size());
+
+    const bool     flag_raw_data       = false;
+    const bool     flag_decode         = true;
+    const bool     flag_use_timestamps = true;
+    const bool     flag_use_nonce      = true;
+    const uint32_t nonce               = 12345678;
+
+    const http_json_create_stream_gen_advs_params_t params = {
+        .flag_raw_data       = flag_raw_data,
+        .flag_decode         = flag_decode,
+        .flag_use_timestamps = flag_use_timestamps,
+        .cur_time            = timestamp,
+        .flag_use_nonce      = flag_use_nonce,
+        .nonce               = nonce,
+        .p_mac_addr          = &gw_mac_addr,
+        .p_coordinates       = &coordinates,
+    };
+
+    json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(&adv_table, &params);
+    ASSERT_NE(nullptr, p_gen);
+
+    string json_str("");
+    while (true)
+    {
+        const char* p_chunk = json_stream_gen_get_next_chunk(p_gen);
+        if (nullptr == p_chunk)
+        {
+            ASSERT_FALSE(nullptr == p_chunk);
+        }
+
+        if ('\0' == p_chunk[0])
+        {
+            break;
+        }
+        json_str += string(p_chunk);
+    }
+
+    ASSERT_EQ(
+        string("{\n"
+               "  \"data\": {\n"
+               "    \"coordinates\": \"170.112233,59.445566\",\n"
+               "    \"timestamp\": 1612358920,\n"
+               "    \"nonce\": 12345678,\n"
+               "    \"gw_mac\": \"AA:CC:EE:00:11:22\",\n"
+               "    \"tags\": {\n"
+               "      \"AA:BB:CC:01:02:03\": {\n"
+               "        \"rssi\": -70,\n"
+               "        \"timestamp\": 1612358929,\n"
+               "        \"ble_phy\": \"1M\",\n"
+               "        \"ble_chan\": 37,\n"
+               "        \"dataFormat\": 6,\n"
+               "        \"temperature\": 26.1,\n"
+               "        \"humidity\": 56.3,\n"
+               "        \"pressure\": 101101,\n"
+               "        \"PM2.5\": 2.9,\n"
+               "        \"CO2\": 806,\n"
+               "        \"VOC\": 116,\n"
+               "        \"NOx\": 1,\n"
+               "        \"luminosity\": 1,\n"
+               "        \"sound_dba_avg\": 61.0,\n"
+               "        \"measurementSequenceNumber\": 5,\n"
+               "        \"flag_calibration_in_progress\": false,\n"
+               "        \"flag_button_pressed\": false,\n"
+               "        \"flag_rtc_running_on_boot\": false,\n"
+               "        \"id\": \"4E:B2:72\"\n"
+               "      }\n"
+               "    }\n"
+               "  }\n"
+               "}"),
+        json_str);
+    json_stream_gen_delete(&p_gen);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestHttpJson, test_df_e1_with_raw_data) // NOLINT
+{
+    const time_t                     timestamp   = 1612358920;
+    const mac_address_str_t          gw_mac_addr = { "AA:CC:EE:00:11:22" };
+    const ruuvi_gw_cfg_coordinates_t coordinates = { "170.112233,59.445566" };
+    const std::array<uint8_t, 48>    data        = {
+                  0x2BU, 0xFFU, 0x99U, 0x04U,               // Manufacturer-specific data header
+                  0xE1U,                                    // Data format E1
+                  0x16U, 0x1EU,                             // Temperature in 0.005 degrees Celsius
+                  0x52U, 0x6CU,                             // Humidity in 0.0025 percent
+                  0xC6U, 0x8BU,                             // Pressure in hPa, from offset 50000
+                  0x00U, 0x6EU,                             // PM 1.0 in 0.1 µg/m³
+                  0x00U, 0x72U,                             // PM 2.5 in 0.1 µg/m³
+                  0x00U, 0x73U,                             // PM 4.0 in 0.1 µg/m³
+                  0x00U, 0x74U,                             // PM 10.0 in 0.1 µg/m³
+                  0x03U, 0x76U,                             // CO2 in ppm
+                  0x10U,                                    // VOC in ppb
+                  0x01U,                                    // NOx in ppb
+                  0x0CU, 0x1DU, 0x90U,                      // Luminosity
+                  0x3CU,                                    // Sound level inst in 0.2 dBA, from offset 18
+                  0xB9U,                                    // Sound level avg in 0.2 dBA, from offset 18
+                  0x6DU,                                    // Sound level peak in 0.2 dBA, from offset 18
+                  0x12U, 0x13U, 0x14U,                      // Seq cnt
+                  0x20U,                                    // Flags
+                  0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU,        // Reserved
+                  0xE3U, 0x75U, 0xCFU, 0x37U, 0x4EU, 0x23U, // MAC address
+                  0x03U, 0x03U, 0x98U, 0xFCU,               // Ruuvi tag service UUID
+    };
+
+    adv_report_table_t adv_table = {
+        .num_of_advs = 1,
+        .table = {
+            {
+                .timestamp = 1612358929,
+                .tag_mac = {0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03},
+                .rssi = -70,
+                .primary_phy = RE_CA_UART_BLE_PHY_1MBPS,
+                .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
+                .ch_index = 37,
+                .is_coded_phy = false,
+                .tx_power = RE_CA_UART_BLE_GAP_POWER_LEVEL_INVALID,
+                .data_len = data.size(),
+            },
+        },
+    };
+    memcpy(adv_table.table[0].data_buf, data.data(), data.size());
+
+    const bool     flag_raw_data       = true;
+    const bool     flag_decode         = false;
+    const bool     flag_use_timestamps = true;
+    const bool     flag_use_nonce      = true;
+    const uint32_t nonce               = 12345678;
+
+    const http_json_create_stream_gen_advs_params_t params = {
+        .flag_raw_data       = flag_raw_data,
+        .flag_decode         = flag_decode,
+        .flag_use_timestamps = flag_use_timestamps,
+        .cur_time            = timestamp,
+        .flag_use_nonce      = flag_use_nonce,
+        .nonce               = nonce,
+        .p_mac_addr          = &gw_mac_addr,
+        .p_coordinates       = &coordinates,
+    };
+
+    json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(&adv_table, &params);
+    ASSERT_NE(nullptr, p_gen);
+
+    string json_str("");
+    while (true)
+    {
+        const char* p_chunk = json_stream_gen_get_next_chunk(p_gen);
+        if (nullptr == p_chunk)
+        {
+            ASSERT_FALSE(nullptr == p_chunk);
+        }
+
+        if ('\0' == p_chunk[0])
+        {
+            break;
+        }
+        json_str += string(p_chunk);
+    }
+
+    ASSERT_EQ(
+        string("{\n"
+               "  \"data\": {\n"
+               "    \"coordinates\": \"170.112233,59.445566\",\n"
+               "    \"timestamp\": 1612358920,\n"
+               "    \"nonce\": 12345678,\n"
+               "    \"gw_mac\": \"AA:CC:EE:00:11:22\",\n"
+               "    \"tags\": {\n"
+               "      \"AA:BB:CC:01:02:03\": {\n"
+               "        \"rssi\": -70,\n"
+               "        \"timestamp\": 1612358929,\n"
+               "        \"ble_phy\": \"1M\",\n"
+               "        \"ble_chan\": 37,\n"
+               "        \"data\": "
+               "\"2BFF9904E1161E526CC68B006E007200730074037610010C1D903CB96D12131420FFFFFFFFFFE375CF374E23030398FC\"\n"
+               "      }\n"
+               "    }\n"
+               "  }\n"
+               "}"),
+        json_str);
+    json_stream_gen_delete(&p_gen);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestHttpJson, test_df_e1_with_raw_and_decoded_data) // NOLINT
+{
+    const time_t                     timestamp   = 1612358920;
+    const mac_address_str_t          gw_mac_addr = { "AA:CC:EE:00:11:22" };
+    const ruuvi_gw_cfg_coordinates_t coordinates = { "170.112233,59.445566" };
+    const std::array<uint8_t, 48>    data        = {
+                  0x2BU, 0xFFU, 0x99U, 0x04U,               // Manufacturer-specific data header
+                  0xE1U,                                    // Data format E1
+                  0x16U, 0x1EU,                             // Temperature in 0.005 degrees Celsius
+                  0x52U, 0x6CU,                             // Humidity in 0.0025 percent
+                  0xC6U, 0x8BU,                             // Pressure in hPa, from offset 50000
+                  0x00U, 0x6EU,                             // PM 1.0 in 0.1 µg/m³
+                  0x00U, 0x72U,                             // PM 2.5 in 0.1 µg/m³
+                  0x00U, 0x73U,                             // PM 4.0 in 0.1 µg/m³
+                  0x00U, 0x74U,                             // PM 10.0 in 0.1 µg/m³
+                  0x03U, 0x76U,                             // CO2 in ppm
+                  0x10U,                                    // VOC in ppb
+                  0x01U,                                    // NOx in ppb
+                  0x0CU, 0x1DU, 0x90U,                      // Luminosity
+                  0x3CU,                                    // Sound level inst in 0.2 dBA, from offset 18
+                  0xB9U,                                    // Sound level avg in 0.2 dBA, from offset 18
+                  0x6DU,                                    // Sound level peak in 0.2 dBA, from offset 18
+                  0x12U, 0x13U, 0x14U,                      // Seq cnt
+                  0x20U,                                    // Flags
+                  0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU,        // Reserved
+                  0xE3U, 0x75U, 0xCFU, 0x37U, 0x4EU, 0x23U, // MAC address
+                  0x03U, 0x03U, 0x98U, 0xFCU,               // Ruuvi tag service UUID
+    };
+
+    adv_report_table_t adv_table = {
+        .num_of_advs = 1,
+        .table = {
+            {
+                .timestamp = 1612358929,
+                .tag_mac = {0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03},
+                .rssi = -70,
+                .primary_phy = RE_CA_UART_BLE_PHY_1MBPS,
+                .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
+                .ch_index = 37,
+                .is_coded_phy = false,
+                .tx_power = RE_CA_UART_BLE_GAP_POWER_LEVEL_INVALID,
+                .data_len = data.size(),
+            },
+        },
+    };
+    memcpy(adv_table.table[0].data_buf, data.data(), data.size());
+
+    const bool     flag_raw_data       = true;
+    const bool     flag_decode         = true;
+    const bool     flag_use_timestamps = true;
+    const bool     flag_use_nonce      = true;
+    const uint32_t nonce               = 12345678;
+
+    const http_json_create_stream_gen_advs_params_t params = {
+        .flag_raw_data       = flag_raw_data,
+        .flag_decode         = flag_decode,
+        .flag_use_timestamps = flag_use_timestamps,
+        .cur_time            = timestamp,
+        .flag_use_nonce      = flag_use_nonce,
+        .nonce               = nonce,
+        .p_mac_addr          = &gw_mac_addr,
+        .p_coordinates       = &coordinates,
+    };
+
+    json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(&adv_table, &params);
+    ASSERT_NE(nullptr, p_gen);
+
+    string json_str("");
+    while (true)
+    {
+        const char* p_chunk = json_stream_gen_get_next_chunk(p_gen);
+        if (nullptr == p_chunk)
+        {
+            ASSERT_FALSE(nullptr == p_chunk);
+        }
+
+        if ('\0' == p_chunk[0])
+        {
+            break;
+        }
+        json_str += string(p_chunk);
+    }
+
+    ASSERT_EQ(
+        string("{\n"
+               "  \"data\": {\n"
+               "    \"coordinates\": \"170.112233,59.445566\",\n"
+               "    \"timestamp\": 1612358920,\n"
+               "    \"nonce\": 12345678,\n"
+               "    \"gw_mac\": \"AA:CC:EE:00:11:22\",\n"
+               "    \"tags\": {\n"
+               "      \"AA:BB:CC:01:02:03\": {\n"
+               "        \"rssi\": -70,\n"
+               "        \"timestamp\": 1612358929,\n"
+               "        \"ble_phy\": \"1M\",\n"
+               "        \"ble_chan\": 37,\n"
+               "        \"data\": "
+               "\"2BFF9904E1161E526CC68B006E007200730074037610010C1D903CB96D12131420FFFFFFFFFFE375CF374E23030398FC\",\n"
+               "        \"dataFormat\": 225,\n"
+               "        \"temperature\": 28.310,\n"
+               "        \"humidity\": 52.75,\n"
+               "        \"pressure\": 100827,\n"
+               "        \"PM1.0\": 11.0,\n"
+               "        \"PM2.5\": 11.4,\n"
+               "        \"PM4.0\": 11.5,\n"
+               "        \"PM10.0\": 11.6,\n"
+               "        \"CO2\": 886,\n"
+               "        \"VOC\": 16,\n"
+               "        \"NOx\": 1,\n"
+               "        \"luminosity\": 7940,\n"
+               "        \"sound_dba_inst\": 30.0,\n"
+               "        \"sound_dba_avg\": 55.0,\n"
+               "        \"sound_dba_peak\": 91.0,\n"
+               "        \"measurementSequenceNumber\": 1184532,\n"
+               "        \"flag_calibration_in_progress\": false,\n"
+               "        \"flag_button_pressed\": false,\n"
+               "        \"flag_rtc_running_on_boot\": false,\n"
+               "        \"id\": \"E3:75:CF:37:4E:23\"\n"
+               "      }\n"
+               "    }\n"
+               "  }\n"
+               "}"),
+        json_str);
+    json_stream_gen_delete(&p_gen);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestHttpJson, test_df_e1_without_raw_and_with_decoded_data) // NOLINT
+{
+    const time_t                     timestamp   = 1612358920;
+    const mac_address_str_t          gw_mac_addr = { "AA:CC:EE:00:11:22" };
+    const ruuvi_gw_cfg_coordinates_t coordinates = { "170.112233,59.445566" };
+    const std::array<uint8_t, 48>    data        = {
+                  0x2BU, 0xFFU, 0x99U, 0x04U,               // Manufacturer-specific data header
+                  0xE1U,                                    // Data format E1
+                  0x16U, 0x1EU,                             // Temperature in 0.005 degrees Celsius
+                  0x52U, 0x6CU,                             // Humidity in 0.0025 percent
+                  0xC6U, 0x8BU,                             // Pressure in hPa, from offset 50000
+                  0x00U, 0x6EU,                             // PM 1.0 in 0.1 µg/m³
+                  0x00U, 0x72U,                             // PM 2.5 in 0.1 µg/m³
+                  0x00U, 0x73U,                             // PM 4.0 in 0.1 µg/m³
+                  0x00U, 0x74U,                             // PM 10.0 in 0.1 µg/m³
+                  0x03U, 0x76U,                             // CO2 in ppm
+                  0x10U,                                    // VOC in ppb
+                  0x01U,                                    // NOx in ppb
+                  0x0CU, 0x1DU, 0x90U,                      // Luminosity
+                  0x3CU,                                    // Sound level inst in 0.2 dBA, from offset 18
+                  0xB9U,                                    // Sound level avg in 0.2 dBA, from offset 18
+                  0x6DU,                                    // Sound level peak in 0.2 dBA, from offset 18
+                  0x12U, 0x13U, 0x14U,                      // Seq cnt
+                  0x20U,                                    // Flags
+                  0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU,        // Reserved
+                  0xE3U, 0x75U, 0xCFU, 0x37U, 0x4EU, 0x23U, // MAC address
+                  0x03U, 0x03U, 0x98U, 0xFCU,               // Ruuvi tag service UUID
+    };
+
+    adv_report_table_t adv_table = {
+        .num_of_advs = 1,
+        .table = {
+            {
+                .timestamp = 1612358929,
+                .tag_mac = {0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03},
+                .rssi = -70,
+                .primary_phy = RE_CA_UART_BLE_PHY_1MBPS,
+                .secondary_phy = RE_CA_UART_BLE_PHY_NOT_SET,
+                .ch_index = 37,
+                .is_coded_phy = false,
+                .tx_power = RE_CA_UART_BLE_GAP_POWER_LEVEL_INVALID,
+                .data_len = data.size(),
+            },
+        },
+    };
+    memcpy(adv_table.table[0].data_buf, data.data(), data.size());
+
+    const bool     flag_raw_data       = false;
+    const bool     flag_decode         = true;
+    const bool     flag_use_timestamps = true;
+    const bool     flag_use_nonce      = true;
+    const uint32_t nonce               = 12345678;
+
+    const http_json_create_stream_gen_advs_params_t params = {
+        .flag_raw_data       = flag_raw_data,
+        .flag_decode         = flag_decode,
+        .flag_use_timestamps = flag_use_timestamps,
+        .cur_time            = timestamp,
+        .flag_use_nonce      = flag_use_nonce,
+        .nonce               = nonce,
+        .p_mac_addr          = &gw_mac_addr,
+        .p_coordinates       = &coordinates,
+    };
+
+    json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(&adv_table, &params);
+    ASSERT_NE(nullptr, p_gen);
+
+    string json_str("");
+    while (true)
+    {
+        const char* p_chunk = json_stream_gen_get_next_chunk(p_gen);
+        if (nullptr == p_chunk)
+        {
+            ASSERT_FALSE(nullptr == p_chunk);
+        }
+
+        if ('\0' == p_chunk[0])
+        {
+            break;
+        }
+        json_str += string(p_chunk);
+    }
+
+    ASSERT_EQ(
+        string("{\n"
+               "  \"data\": {\n"
+               "    \"coordinates\": \"170.112233,59.445566\",\n"
+               "    \"timestamp\": 1612358920,\n"
+               "    \"nonce\": 12345678,\n"
+               "    \"gw_mac\": \"AA:CC:EE:00:11:22\",\n"
+               "    \"tags\": {\n"
+               "      \"AA:BB:CC:01:02:03\": {\n"
+               "        \"rssi\": -70,\n"
+               "        \"timestamp\": 1612358929,\n"
+               "        \"ble_phy\": \"1M\",\n"
+               "        \"ble_chan\": 37,\n"
+               "        \"dataFormat\": 225,\n"
+               "        \"temperature\": 28.310,\n"
+               "        \"humidity\": 52.75,\n"
+               "        \"pressure\": 100827,\n"
+               "        \"PM1.0\": 11.0,\n"
+               "        \"PM2.5\": 11.4,\n"
+               "        \"PM4.0\": 11.5,\n"
+               "        \"PM10.0\": 11.6,\n"
+               "        \"CO2\": 886,\n"
+               "        \"VOC\": 16,\n"
+               "        \"NOx\": 1,\n"
+               "        \"luminosity\": 7940,\n"
+               "        \"sound_dba_inst\": 30.0,\n"
+               "        \"sound_dba_avg\": 55.0,\n"
+               "        \"sound_dba_peak\": 91.0,\n"
+               "        \"measurementSequenceNumber\": 1184532,\n"
+               "        \"flag_calibration_in_progress\": false,\n"
+               "        \"flag_button_pressed\": false,\n"
+               "        \"flag_rtc_running_on_boot\": false,\n"
+               "        \"id\": \"E3:75:CF:37:4E:23\"\n"
                "      }\n"
                "    }\n"
                "  }\n"

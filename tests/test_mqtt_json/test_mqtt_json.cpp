@@ -369,6 +369,65 @@ TEST_F(TestMqttJson, test_decoded_df5) // NOLINT
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
+TEST_F(TestMqttJson, test_raw_df6) // NOLINT
+{
+    const json_stream_gen_size_t  max_chunk_size = 1024U;
+    const time_t                  timestamp      = 1612358920;
+    const mac_address_str_t       gw_mac_addr    = { .str_buf = "AA:CC:EE:00:11:22" };
+    const char*                   p_coordinates  = "170.112233,59.445566";
+    const std::array<uint8_t, 31> data           = {
+                  0x02U, 0x01U, 0x06U,        // BLE advertising header
+                  0x03U, 0x03U, 0x98U, 0xFCU, // Ruuvi tag service UUID
+                  0x17U, 0xFFU, 0x99U, 0x04U, // Manufacturer-specific data header
+                  0x06U,                      // Data format 6
+                  0x14U, 0x64U,               // Temperature in 0.005 degrees Celsius
+                  0x57U, 0xF8U,               // Humidity in 0.0025 percent
+                  0xC7U, 0x9DU,               // Pressure in hPa, from offset 50000
+                  0x00U, 0x1DU,               // PM 2.5 in 0.1 µg/m³
+                  0x03U, 0x26U,               // CO2 in ppm
+                  0x74U,                      // VOC in ppb
+                  0x01U,                      // NOx in ppb
+                  0x14U,                      // Luminosity
+                  0xD7U,                      // Sound level avg in 0.2 dBA, from offset 18
+                  0x05U,                      // Seq cnt
+                  0x00U,                      // Flags
+                  0x4EU, 0xB2U, 0x72U,        // 3 least significant bytes of MAC address
+    };
+
+    adv_report_t adv_report = {
+        .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+        .rssi      = -70,
+        .data_len  = data.size(),
+    };
+    memcpy(adv_report.data_buf, data.data(), data.size());
+
+    this->m_json_str = mqtt_create_json_str(
+        &adv_report,
+        true,
+        timestamp,
+        &gw_mac_addr,
+        p_coordinates,
+        GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW,
+        max_chunk_size);
+    ASSERT_NE(nullptr, this->m_json_str.buf);
+
+    ASSERT_EQ(
+        string("{"
+               "\"gw_mac\":\"AA:CC:EE:00:11:22\","
+               "\"rssi\":-70,"
+               "\"aoa\":[],"
+               "\"gwts\":1612358920,"
+               "\"ts\":1612358929,"
+               "\"data\":\"020106030398FC17FF990406146457F8C79D001D0326740114D705004EB272\","
+               "\"coords\":\"170.112233,59.445566\""
+               "}"),
+        string(this->m_json_str.buf));
+    str_buf_free_buf(&this->m_json_str);
+    ASSERT_EQ(2, this->m_malloc_cnt);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
 TEST_F(TestMqttJson, test_raw_and_decoded_df6) // NOLINT
 {
     const json_stream_gen_size_t  max_chunk_size = 1024U;
@@ -376,8 +435,22 @@ TEST_F(TestMqttJson, test_raw_and_decoded_df6) // NOLINT
     const mac_address_str_t       gw_mac_addr    = { .str_buf = "AA:CC:EE:00:11:22" };
     const char*                   p_coordinates  = "170.112233,59.445566";
     const std::array<uint8_t, 31> data           = {
-                  0x02U, 0x01U, 0x06U, 0x1BU, 0xFFU, 0x99U, 0x04U, 0x06U, 0x00U, 0x1CU, 0x00U, 0x1DU, 0x00U, 0x1DU, 0x00U, 0x1DU,
-                  0x03U, 0x26U, 0x8CU, 0xCEU, 0x80U, 0x11U, 0x05U, 0x14U, 0x22U, 0x94U, 0xB9U, 0x7EU, 0x4EU, 0xB2U, 0x72U,
+                  0x02U, 0x01U, 0x06U,        // BLE advertising header
+                  0x03U, 0x03U, 0x98U, 0xFCU, // Ruuvi tag service UUID
+                  0x17U, 0xFFU, 0x99U, 0x04U, // Manufacturer-specific data header
+                  0x06U,                      // Data format 6
+                  0x14U, 0x64U,               // Temperature in 0.005 degrees Celsius
+                  0x57U, 0xF8U,               // Humidity in 0.0025 percent
+                  0xC7U, 0x9DU,               // Pressure in hPa, from offset 50000
+                  0x00U, 0x1DU,               // PM 2.5 in 0.1 µg/m³
+                  0x03U, 0x26U,               // CO2 in ppm
+                  0x74U,                      // VOC in ppb
+                  0x01U,                      // NOx in ppb
+                  0x14U,                      // Luminosity
+                  0xD7U,                      // Sound level avg in 0.2 dBA, from offset 18
+                  0x05U,                      // Seq cnt
+                  0x00U,                      // Flags
+                  0x4EU, 0xB2U, 0x72U,        // 3 least significant bytes of MAC address
     };
 
     adv_report_t adv_report = {
@@ -405,19 +478,22 @@ TEST_F(TestMqttJson, test_raw_and_decoded_df6) // NOLINT
                "\"aoa\":[],"
                "\"gwts\":1612358920,"
                "\"ts\":1612358929,"
-               "\"data\":\"0201061BFF990406001C001D001D001D03268CCE801105142294B97E4EB272\","
+               "\"data\":\"020106030398FC17FF990406146457F8C79D001D0326740114D705004EB272\","
                "\"dataFormat\":6,"
                "\"temperature\":26.1,"
                "\"humidity\":56.3,"
-               "\"PM1.0\":2.8,"
+               "\"pressure\":101101,"
                "\"PM2.5\":2.9,"
-               "\"PM4.0\":2.9,"
-               "\"PM10.0\":2.9,"
                "\"CO2\":806,"
                "\"VOC\":116,"
                "\"NOx\":1,"
-               "\"measurementSequenceNumber\":5154,"
-               "\"id\":\"94:B9:7E:4E:B2:72\","
+               "\"luminosity\":1,"
+               "\"sound_dba_avg\":61.0,"
+               "\"measurementSequenceNumber\":5,"
+               "\"flag_calibration_in_progress\":false,"
+               "\"flag_button_pressed\":false,"
+               "\"flag_rtc_running_on_boot\":false,"
+               "\"id\":\"4E:B2:72\","
                "\"coords\":\"170.112233,59.445566\""
                "}"),
         string(this->m_json_str.buf));
@@ -433,8 +509,22 @@ TEST_F(TestMqttJson, test_decoded_df6) // NOLINT
     const mac_address_str_t       gw_mac_addr    = { .str_buf = "AA:CC:EE:00:11:22" };
     const char*                   p_coordinates  = "170.112233,59.445566";
     const std::array<uint8_t, 31> data           = {
-                  0x02U, 0x01U, 0x06U, 0x1BU, 0xFFU, 0x99U, 0x04U, 0x06U, 0x00U, 0x1CU, 0x00U, 0x1DU, 0x00U, 0x1DU, 0x00U, 0x1DU,
-                  0x03U, 0x26U, 0x8CU, 0xCEU, 0x80U, 0x11U, 0x05U, 0x14U, 0x22U, 0x94U, 0xB9U, 0x7EU, 0x4EU, 0xB2U, 0x72U,
+                  0x02U, 0x01U, 0x06U,        // BLE advertising header
+                  0x03U, 0x03U, 0x98U, 0xFCU, // Ruuvi tag service UUID
+                  0x17U, 0xFFU, 0x99U, 0x04U, // Manufacturer-specific data header
+                  0x06U,                      // Data format 6
+                  0x14U, 0x64U,               // Temperature in 0.005 degrees Celsius
+                  0x57U, 0xF8U,               // Humidity in 0.0025 percent
+                  0xC7U, 0x9DU,               // Pressure in hPa, from offset 50000
+                  0x00U, 0x1DU,               // PM 2.5 in 0.1 µg/m³
+                  0x03U, 0x26U,               // CO2 in ppm
+                  0x74U,                      // VOC in ppb
+                  0x01U,                      // NOx in ppb
+                  0x14U,                      // Luminosity
+                  0xD7U,                      // Sound level avg in 0.2 dBA, from offset 18
+                  0x05U,                      // Seq cnt
+                  0x00U,                      // Flags
+                  0x4EU, 0xB2U, 0x72U,        // 3 least significant bytes of MAC address
     };
 
     adv_report_t adv_report = {
@@ -465,15 +555,251 @@ TEST_F(TestMqttJson, test_decoded_df6) // NOLINT
                "\"dataFormat\":6,"
                "\"temperature\":26.1,"
                "\"humidity\":56.3,"
-               "\"PM1.0\":2.8,"
+               "\"pressure\":101101,"
                "\"PM2.5\":2.9,"
-               "\"PM4.0\":2.9,"
-               "\"PM10.0\":2.9,"
                "\"CO2\":806,"
                "\"VOC\":116,"
                "\"NOx\":1,"
-               "\"measurementSequenceNumber\":5154,"
-               "\"id\":\"94:B9:7E:4E:B2:72\","
+               "\"luminosity\":1,"
+               "\"sound_dba_avg\":61.0,"
+               "\"measurementSequenceNumber\":5,"
+               "\"flag_calibration_in_progress\":false,"
+               "\"flag_button_pressed\":false,"
+               "\"flag_rtc_running_on_boot\":false,"
+               "\"id\":\"4E:B2:72\","
+               "\"coords\":\"170.112233,59.445566\""
+               "}"),
+        string(this->m_json_str.buf));
+    str_buf_free_buf(&this->m_json_str);
+    ASSERT_EQ(2, this->m_malloc_cnt);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestMqttJson, test_raw_df_e1) // NOLINT
+{
+    const json_stream_gen_size_t  max_chunk_size = 1024U;
+    const time_t                  timestamp      = 1612358920;
+    const mac_address_str_t       gw_mac_addr    = { .str_buf = "AA:CC:EE:00:11:22" };
+    const char*                   p_coordinates  = "170.112233,59.445566";
+    const std::array<uint8_t, 48> data           = {
+                  0x2BU, 0xFFU, 0x99U, 0x04U,               // Manufacturer-specific data header
+                  0xE1U,                                    // Data format E1
+                  0x16U, 0x1EU,                             // Temperature in 0.005 degrees Celsius
+                  0x52U, 0x6CU,                             // Humidity in 0.0025 percent
+                  0xC6U, 0x8BU,                             // Pressure in hPa, from offset 50000
+                  0x00U, 0x6EU,                             // PM 1.0 in 0.1 µg/m³
+                  0x00U, 0x72U,                             // PM 2.5 in 0.1 µg/m³
+                  0x00U, 0x73U,                             // PM 4.0 in 0.1 µg/m³
+                  0x00U, 0x74U,                             // PM 10.0 in 0.1 µg/m³
+                  0x03U, 0x76U,                             // CO2 in ppm
+                  0x10U,                                    // VOC in ppb
+                  0x01U,                                    // NOx in ppb
+                  0x0CU, 0x1DU, 0x90U,                      // Luminosity
+                  0x3CU,                                    // Sound level inst in 0.2 dBA, from offset 18
+                  0xB9U,                                    // Sound level avg in 0.2 dBA, from offset 18
+                  0x6DU,                                    // Sound level peak in 0.2 dBA, from offset 18
+                  0x12U, 0x13U, 0x14U,                      // Seq cnt
+                  0x20U,                                    // Flags
+                  0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU,        // Reserved
+                  0xE3U, 0x75U, 0xCFU, 0x37U, 0x4EU, 0x23U, // MAC address
+                  0x03U, 0x03U, 0x98U, 0xFCU,               // Ruuvi tag service UUID
+    };
+
+    adv_report_t adv_report = {
+        .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+        .rssi      = -70,
+        .data_len  = data.size(),
+    };
+    memcpy(adv_report.data_buf, data.data(), data.size());
+
+    this->m_json_str = mqtt_create_json_str(
+        &adv_report,
+        true,
+        timestamp,
+        &gw_mac_addr,
+        p_coordinates,
+        GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW,
+        max_chunk_size);
+    ASSERT_NE(nullptr, this->m_json_str.buf);
+
+    ASSERT_EQ(
+        string("{"
+               "\"gw_mac\":\"AA:CC:EE:00:11:22\","
+               "\"rssi\":-70,"
+               "\"aoa\":[],"
+               "\"gwts\":1612358920,"
+               "\"ts\":1612358929,"
+               "\"data\":"
+               "\"2BFF9904E1161E526CC68B006E007200730074037610010C1D903CB96D12131420FFFFFFFFFFE375CF374E23030398FC\","
+               "\"coords\":\"170.112233,59.445566\""
+               "}"),
+        string(this->m_json_str.buf));
+    str_buf_free_buf(&this->m_json_str);
+    ASSERT_EQ(2, this->m_malloc_cnt);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestMqttJson, test_raw_and_decoded_df_e1) // NOLINT
+{
+    const json_stream_gen_size_t  max_chunk_size = 1024U;
+    const time_t                  timestamp      = 1612358920;
+    const mac_address_str_t       gw_mac_addr    = { .str_buf = "AA:CC:EE:00:11:22" };
+    const char*                   p_coordinates  = "170.112233,59.445566";
+    const std::array<uint8_t, 48> data           = {
+                  0x2BU, 0xFFU, 0x99U, 0x04U,               // Manufacturer-specific data header
+                  0xE1U,                                    // Data format E1
+                  0x16U, 0x1EU,                             // Temperature in 0.005 degrees Celsius
+                  0x52U, 0x6CU,                             // Humidity in 0.0025 percent
+                  0xC6U, 0x8BU,                             // Pressure in hPa, from offset 50000
+                  0x00U, 0x6EU,                             // PM 1.0 in 0.1 µg/m³
+                  0x00U, 0x72U,                             // PM 2.5 in 0.1 µg/m³
+                  0x00U, 0x73U,                             // PM 4.0 in 0.1 µg/m³
+                  0x00U, 0x74U,                             // PM 10.0 in 0.1 µg/m³
+                  0x03U, 0x76U,                             // CO2 in ppm
+                  0x10U,                                    // VOC in ppb
+                  0x01U,                                    // NOx in ppb
+                  0x0CU, 0x1DU, 0x90U,                      // Luminosity
+                  0x3CU,                                    // Sound level inst in 0.2 dBA, from offset 18
+                  0xB9U,                                    // Sound level avg in 0.2 dBA, from offset 18
+                  0x6DU,                                    // Sound level peak in 0.2 dBA, from offset 18
+                  0x12U, 0x13U, 0x14U,                      // Seq cnt
+                  0x20U,                                    // Flags
+                  0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU,        // Reserved
+                  0xE3U, 0x75U, 0xCFU, 0x37U, 0x4EU, 0x23U, // MAC address
+                  0x03U, 0x03U, 0x98U, 0xFCU,               // Ruuvi tag service UUID
+    };
+
+    adv_report_t adv_report = {
+        .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+        .rssi      = -70,
+        .data_len  = data.size(),
+    };
+    memcpy(adv_report.data_buf, data.data(), data.size());
+
+    this->m_json_str = mqtt_create_json_str(
+        &adv_report,
+        true,
+        timestamp,
+        &gw_mac_addr,
+        p_coordinates,
+        GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW_AND_DECODED,
+        max_chunk_size);
+    ASSERT_NE(nullptr, this->m_json_str.buf);
+
+    ASSERT_EQ(
+        string("{"
+               "\"gw_mac\":\"AA:CC:EE:00:11:22\","
+               "\"rssi\":-70,"
+               "\"aoa\":[],"
+               "\"gwts\":1612358920,"
+               "\"ts\":1612358929,"
+               "\"data\":"
+               "\"2BFF9904E1161E526CC68B006E007200730074037610010C1D903CB96D12131420FFFFFFFFFFE375CF374E23030398FC\","
+               "\"dataFormat\":225,"
+               "\"temperature\":28.310,"
+               "\"humidity\":52.75,"
+               "\"pressure\":100827,"
+               "\"PM1.0\":11.0,"
+               "\"PM2.5\":11.4,"
+               "\"PM4.0\":11.5,"
+               "\"PM10.0\":11.6,"
+               "\"CO2\":886,"
+               "\"VOC\":16,"
+               "\"NOx\":1,"
+               "\"luminosity\":7940,"
+               "\"sound_dba_inst\":30.0,"
+               "\"sound_dba_avg\":55.0,"
+               "\"sound_dba_peak\":91.0,"
+               "\"measurementSequenceNumber\":1184532,"
+               "\"flag_calibration_in_progress\":false,"
+               "\"flag_button_pressed\":false,"
+               "\"flag_rtc_running_on_boot\":false,"
+               "\"id\":\"E3:75:CF:37:4E:23\","
+               "\"coords\":\"170.112233,59.445566\""
+               "}"),
+        string(this->m_json_str.buf));
+    str_buf_free_buf(&this->m_json_str);
+    ASSERT_EQ(2, this->m_malloc_cnt);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestMqttJson, test_decoded_df_e1) // NOLINT
+{
+    const json_stream_gen_size_t  max_chunk_size = 1024U;
+    const time_t                  timestamp      = 1612358920;
+    const mac_address_str_t       gw_mac_addr    = { .str_buf = "AA:CC:EE:00:11:22" };
+    const char*                   p_coordinates  = "170.112233,59.445566";
+    const std::array<uint8_t, 48> data           = {
+                  0x2BU, 0xFFU, 0x99U, 0x04U,               // Manufacturer-specific data header
+                  0xE1U,                                    // Data format E1
+                  0x16U, 0x1EU,                             // Temperature in 0.005 degrees Celsius
+                  0x52U, 0x6CU,                             // Humidity in 0.0025 percent
+                  0xC6U, 0x8BU,                             // Pressure in hPa, from offset 50000
+                  0x00U, 0x6EU,                             // PM 1.0 in 0.1 µg/m³
+                  0x00U, 0x72U,                             // PM 2.5 in 0.1 µg/m³
+                  0x00U, 0x73U,                             // PM 4.0 in 0.1 µg/m³
+                  0x00U, 0x74U,                             // PM 10.0 in 0.1 µg/m³
+                  0x03U, 0x76U,                             // CO2 in ppm
+                  0x10U,                                    // VOC in ppb
+                  0x01U,                                    // NOx in ppb
+                  0x0CU, 0x1DU, 0x90U,                      // Luminosity
+                  0x3CU,                                    // Sound level inst in 0.2 dBA, from offset 18
+                  0xB9U,                                    // Sound level avg in 0.2 dBA, from offset 18
+                  0x6DU,                                    // Sound level peak in 0.2 dBA, from offset 18
+                  0x12U, 0x13U, 0x14U,                      // Seq cnt
+                  0x20U,                                    // Flags
+                  0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU,        // Reserved
+                  0xE3U, 0x75U, 0xCFU, 0x37U, 0x4EU, 0x23U, // MAC address
+                  0x03U, 0x03U, 0x98U, 0xFCU,               // Ruuvi tag service UUID
+    };
+
+    adv_report_t adv_report = {
+        .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+        .rssi      = -70,
+        .data_len  = data.size(),
+    };
+    memcpy(adv_report.data_buf, data.data(), data.size());
+
+    this->m_json_str = mqtt_create_json_str(
+        &adv_report,
+        true,
+        timestamp,
+        &gw_mac_addr,
+        p_coordinates,
+        GW_CFG_MQTT_DATA_FORMAT_RUUVI_DECODED,
+        max_chunk_size);
+    ASSERT_NE(nullptr, this->m_json_str.buf);
+
+    ASSERT_EQ(
+        string("{"
+               "\"gw_mac\":\"AA:CC:EE:00:11:22\","
+               "\"rssi\":-70,"
+               "\"aoa\":[],"
+               "\"gwts\":1612358920,"
+               "\"ts\":1612358929,"
+               "\"dataFormat\":225,"
+               "\"temperature\":28.310,"
+               "\"humidity\":52.75,"
+               "\"pressure\":100827,"
+               "\"PM1.0\":11.0,"
+               "\"PM2.5\":11.4,"
+               "\"PM4.0\":11.5,"
+               "\"PM10.0\":11.6,"
+               "\"CO2\":886,"
+               "\"VOC\":16,"
+               "\"NOx\":1,"
+               "\"luminosity\":7940,"
+               "\"sound_dba_inst\":30.0,"
+               "\"sound_dba_avg\":55.0,"
+               "\"sound_dba_peak\":91.0,"
+               "\"measurementSequenceNumber\":1184532,"
+               "\"flag_calibration_in_progress\":false,"
+               "\"flag_button_pressed\":false,"
+               "\"flag_rtc_running_on_boot\":false,"
+               "\"id\":\"E3:75:CF:37:4E:23\","
                "\"coords\":\"170.112233,59.445566\""
                "}"),
         string(this->m_json_str.buf));
