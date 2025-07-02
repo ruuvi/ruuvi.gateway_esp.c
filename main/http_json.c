@@ -174,6 +174,22 @@ http_json_generate_status_attributes(
     {
         return false;
     }
+    if (!cjson_wrap_add_uint32(p_json_root, "TOTAL_FREE_BYTES_INTERNAL", p_stat_info->total_free_bytes_internal))
+    {
+        return false;
+    }
+    if (!cjson_wrap_add_uint32(p_json_root, "TOTAL_FREE_BYTES_DEFAULT", p_stat_info->total_free_bytes_default))
+    {
+        return false;
+    }
+    if (!cjson_wrap_add_uint32(p_json_root, "LARGEST_FREE_BLOCK_INTERNAL", p_stat_info->largest_free_block_internal))
+    {
+        return false;
+    }
+    if (!cjson_wrap_add_uint32(p_json_root, "LARGEST_FREE_BLOCK_DEFAULT", p_stat_info->largest_free_block_default))
+    {
+        return false;
+    }
     uint32_t num_sensors_seen = 0;
     if (NULL != p_reports)
     {

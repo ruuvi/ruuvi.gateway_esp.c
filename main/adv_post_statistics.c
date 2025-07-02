@@ -36,6 +36,14 @@ adv_post_statistics_init(void)
     g_adv_post_stat_nonce = esp_random();
 }
 
+static size_t
+get_total_free_bytes(const uint32_t caps)
+{
+    multi_heap_info_t x = { 0 };
+    heap_caps_get_info(&x, caps);
+    return x.total_free_bytes;
+}
+
 http_json_statistics_info_t*
 adv_post_statistics_info_generate(const str_buf_t* const p_reset_info)
 {
@@ -45,17 +53,21 @@ adv_post_statistics_info_generate(const str_buf_t* const p_reset_info)
         return NULL;
     }
 
-    p_stat_info->nrf52_mac_addr         = *gw_cfg_get_nrf52_mac_addr();
-    p_stat_info->esp_fw                 = *gw_cfg_get_esp32_fw_ver();
-    p_stat_info->nrf_fw                 = *gw_cfg_get_nrf52_fw_ver();
-    p_stat_info->uptime                 = g_uptime_counter;
-    p_stat_info->nonce                  = g_adv_post_stat_nonce;
-    p_stat_info->nrf_status             = gw_status_get_nrf_status();
-    p_stat_info->is_connected_to_wifi   = wifi_manager_is_connected_to_wifi();
-    p_stat_info->network_disconnect_cnt = g_network_disconnect_cnt;
-    p_stat_info->nrf_self_reboot_cnt    = metrics_nrf_self_reboot_cnt_get();
-    p_stat_info->nrf_ext_hw_reset_cnt   = metrics_nrf_ext_hw_reset_cnt_get();
-    p_stat_info->nrf_lost_ack_cnt       = metrics_nrf_lost_ack_cnt_get();
+    p_stat_info->nrf52_mac_addr              = *gw_cfg_get_nrf52_mac_addr();
+    p_stat_info->esp_fw                      = *gw_cfg_get_esp32_fw_ver();
+    p_stat_info->nrf_fw                      = *gw_cfg_get_nrf52_fw_ver();
+    p_stat_info->uptime                      = g_uptime_counter;
+    p_stat_info->nonce                       = g_adv_post_stat_nonce;
+    p_stat_info->nrf_status                  = gw_status_get_nrf_status();
+    p_stat_info->is_connected_to_wifi        = wifi_manager_is_connected_to_wifi();
+    p_stat_info->network_disconnect_cnt      = g_network_disconnect_cnt;
+    p_stat_info->nrf_self_reboot_cnt         = metrics_nrf_self_reboot_cnt_get();
+    p_stat_info->nrf_ext_hw_reset_cnt        = metrics_nrf_ext_hw_reset_cnt_get();
+    p_stat_info->nrf_lost_ack_cnt            = metrics_nrf_lost_ack_cnt_get();
+    p_stat_info->total_free_bytes_internal   = get_total_free_bytes(MALLOC_CAP_INTERNAL);
+    p_stat_info->total_free_bytes_default    = get_total_free_bytes(MALLOC_CAP_DEFAULT);
+    p_stat_info->largest_free_block_internal = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
+    p_stat_info->largest_free_block_default  = heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT);
     (void)snprintf(
         p_stat_info->reset_reason.buf,
         sizeof(p_stat_info->reset_reason.buf),
