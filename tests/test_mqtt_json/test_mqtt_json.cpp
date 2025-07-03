@@ -385,12 +385,12 @@ TEST_F(TestMqttJson, test_raw_df6) // NOLINT
                   0xC7U, 0x9DU,               // Pressure in hPa, from offset 50000
                   0x00U, 0x1DU,               // PM 2.5 in 0.1 µg/m³
                   0x03U, 0x26U,               // CO2 in ppm
-                  0x74U,                      // VOC in ppb
+                  0x3AU,                      // VOC in ppb
                   0x01U,                      // NOx in ppb
                   0x14U,                      // Luminosity
-                  0xD7U,                      // Sound level avg in 0.2 dBA, from offset 18
+                  0x6BU,                      // Sound level avg in 0.2 dBA, from offset 18
                   0x05U,                      // Seq cnt
-                  0x00U,                      // Flags
+                  0xD0U,                      // Flags
                   0x4EU, 0xB2U, 0x72U,        // 3 least significant bytes of MAC address
     };
 
@@ -419,7 +419,7 @@ TEST_F(TestMqttJson, test_raw_df6) // NOLINT
                "\"aoa\":[],"
                "\"gwts\":1612358920,"
                "\"ts\":1612358929,"
-               "\"data\":\"020106030398FC17FF990406146457F8C79D001D0326740114D705004EB272\","
+               "\"data\":\"020106030398FC17FF990406146457F8C79D001D03263A01146B05D04EB272\","
                "\"coords\":\"170.112233,59.445566\""
                "}"),
         string(this->m_json_str.buf));
@@ -444,12 +444,12 @@ TEST_F(TestMqttJson, test_raw_and_decoded_df6) // NOLINT
                   0xC7U, 0x9DU,               // Pressure in hPa, from offset 50000
                   0x00U, 0x1DU,               // PM 2.5 in 0.1 µg/m³
                   0x03U, 0x26U,               // CO2 in ppm
-                  0x74U,                      // VOC in ppb
+                  0x3AU,                      // VOC in ppb
                   0x01U,                      // NOx in ppb
                   0x14U,                      // Luminosity
-                  0xD7U,                      // Sound level avg in 0.2 dBA, from offset 18
+                  0x6BU,                      // Sound level avg in 0.2 dBA, from offset 18
                   0x05U,                      // Seq cnt
-                  0x00U,                      // Flags
+                  0xD0U,                      // Flags
                   0x4EU, 0xB2U, 0x72U,        // 3 least significant bytes of MAC address
     };
 
@@ -478,17 +478,17 @@ TEST_F(TestMqttJson, test_raw_and_decoded_df6) // NOLINT
                "\"aoa\":[],"
                "\"gwts\":1612358920,"
                "\"ts\":1612358929,"
-               "\"data\":\"020106030398FC17FF990406146457F8C79D001D0326740114D705004EB272\","
+               "\"data\":\"020106030398FC17FF990406146457F8C79D001D03263A01146B05D04EB272\","
                "\"dataFormat\":6,"
                "\"temperature\":26.1,"
                "\"humidity\":56.3,"
                "\"pressure\":101101,"
                "\"PM2.5\":2.9,"
                "\"CO2\":806,"
-               "\"VOC\":116,"
-               "\"NOx\":1,"
+               "\"VOC\":117,"
+               "\"NOx\":3,"
                "\"luminosity\":1,"
-               "\"sound_dba_avg\":61.0,"
+               "\"sound_avg_dba\":61.0,"
                "\"measurementSequenceNumber\":5,"
                "\"flag_calibration_in_progress\":false,"
                "\"flag_button_pressed\":false,"
@@ -518,12 +518,12 @@ TEST_F(TestMqttJson, test_decoded_df6) // NOLINT
                   0xC7U, 0x9DU,               // Pressure in hPa, from offset 50000
                   0x00U, 0x1DU,               // PM 2.5 in 0.1 µg/m³
                   0x03U, 0x26U,               // CO2 in ppm
-                  0x74U,                      // VOC in ppb
+                  0x3AU,                      // VOC in ppb
                   0x01U,                      // NOx in ppb
                   0x14U,                      // Luminosity
-                  0xD7U,                      // Sound level avg in 0.2 dBA, from offset 18
+                  0x6BU,                      // Sound level avg in 0.2 dBA, from offset 18
                   0x05U,                      // Seq cnt
-                  0x00U,                      // Flags
+                  0xD0U,                      // Flags
                   0x4EU, 0xB2U, 0x72U,        // 3 least significant bytes of MAC address
     };
 
@@ -558,10 +558,10 @@ TEST_F(TestMqttJson, test_decoded_df6) // NOLINT
                "\"pressure\":101101,"
                "\"PM2.5\":2.9,"
                "\"CO2\":806,"
-               "\"VOC\":116,"
-               "\"NOx\":1,"
+               "\"VOC\":117,"
+               "\"NOx\":3,"
                "\"luminosity\":1,"
-               "\"sound_dba_avg\":61.0,"
+               "\"sound_avg_dba\":61.0,"
                "\"measurementSequenceNumber\":5,"
                "\"flag_calibration_in_progress\":false,"
                "\"flag_button_pressed\":false,"
@@ -595,11 +595,11 @@ TEST_F(TestMqttJson, test_raw_df_e1) // NOLINT
                   0x10U,                                    // VOC in ppb
                   0x01U,                                    // NOx in ppb
                   0x0CU, 0x1DU, 0x90U,                      // Luminosity
-                  0x3CU,                                    // Sound level inst in 0.2 dBA, from offset 18
-                  0xB9U,                                    // Sound level avg in 0.2 dBA, from offset 18
-                  0x6DU,                                    // Sound level peak in 0.2 dBA, from offset 18
+                  0x1EU,                                    // Sound level inst in 0.2 dBA, from offset 18
+                  0x5CU,                                    // Sound level avg in 0.2 dBA, from offset 18
+                  0xB6U,                                    // Sound level peak in 0.2 SPL dB, from offset 18
                   0x12U, 0x13U, 0x14U,                      // Seq cnt
-                  0x20U,                                    // Flags
+                  0xF8U,                                    // Flags
                   0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU,        // Reserved
                   0xE3U, 0x75U, 0xCFU, 0x37U, 0x4EU, 0x23U, // MAC address
                   0x03U, 0x03U, 0x98U, 0xFCU,               // Ruuvi tag service UUID
@@ -631,7 +631,7 @@ TEST_F(TestMqttJson, test_raw_df_e1) // NOLINT
                "\"gwts\":1612358920,"
                "\"ts\":1612358929,"
                "\"data\":"
-               "\"2BFF9904E1161E526CC68B006E007200730074037610010C1D903CB96D12131420FFFFFFFFFFE375CF374E23030398FC\","
+               "\"2BFF9904E1161E526CC68B006E007200730074037610010C1D901E5CB6121314F8FFFFFFFFFFE375CF374E23030398FC\","
                "\"coords\":\"170.112233,59.445566\""
                "}"),
         string(this->m_json_str.buf));
@@ -660,11 +660,11 @@ TEST_F(TestMqttJson, test_raw_and_decoded_df_e1) // NOLINT
                   0x10U,                                    // VOC in ppb
                   0x01U,                                    // NOx in ppb
                   0x0CU, 0x1DU, 0x90U,                      // Luminosity
-                  0x3CU,                                    // Sound level inst in 0.2 dBA, from offset 18
-                  0xB9U,                                    // Sound level avg in 0.2 dBA, from offset 18
-                  0x6DU,                                    // Sound level peak in 0.2 dBA, from offset 18
+                  0x1EU,                                    // Sound level inst in 0.2 dBA, from offset 18
+                  0x5CU,                                    // Sound level avg in 0.2 dBA, from offset 18
+                  0xB6U,                                    // Sound level peak in 0.2 SPL dB, from offset 18
                   0x12U, 0x13U, 0x14U,                      // Seq cnt
-                  0x20U,                                    // Flags
+                  0xF8U,                                    // Flags
                   0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU,        // Reserved
                   0xE3U, 0x75U, 0xCFU, 0x37U, 0x4EU, 0x23U, // MAC address
                   0x03U, 0x03U, 0x98U, 0xFCU,               // Ruuvi tag service UUID
@@ -696,7 +696,7 @@ TEST_F(TestMqttJson, test_raw_and_decoded_df_e1) // NOLINT
                "\"gwts\":1612358920,"
                "\"ts\":1612358929,"
                "\"data\":"
-               "\"2BFF9904E1161E526CC68B006E007200730074037610010C1D903CB96D12131420FFFFFFFFFFE375CF374E23030398FC\","
+               "\"2BFF9904E1161E526CC68B006E007200730074037610010C1D901E5CB6121314F8FFFFFFFFFFE375CF374E23030398FC\","
                "\"dataFormat\":225,"
                "\"temperature\":28.310,"
                "\"humidity\":52.75,"
@@ -706,12 +706,12 @@ TEST_F(TestMqttJson, test_raw_and_decoded_df_e1) // NOLINT
                "\"PM4.0\":11.5,"
                "\"PM10.0\":11.6,"
                "\"CO2\":886,"
-               "\"VOC\":16,"
-               "\"NOx\":1,"
+               "\"VOC\":33,"
+               "\"NOx\":3,"
                "\"luminosity\":7940,"
-               "\"sound_dba_inst\":30.0,"
-               "\"sound_dba_avg\":55.0,"
-               "\"sound_dba_peak\":91.0,"
+               "\"sound_inst_dba\":30.2,"
+               "\"sound_avg_dba\":55.0,"
+               "\"sound_peak_spl_db\":91.0,"
                "\"measurementSequenceNumber\":1184532,"
                "\"flag_calibration_in_progress\":false,"
                "\"flag_button_pressed\":false,"
@@ -745,11 +745,11 @@ TEST_F(TestMqttJson, test_decoded_df_e1) // NOLINT
                   0x10U,                                    // VOC in ppb
                   0x01U,                                    // NOx in ppb
                   0x0CU, 0x1DU, 0x90U,                      // Luminosity
-                  0x3CU,                                    // Sound level inst in 0.2 dBA, from offset 18
-                  0xB9U,                                    // Sound level avg in 0.2 dBA, from offset 18
-                  0x6DU,                                    // Sound level peak in 0.2 dBA, from offset 18
+                  0x1EU,                                    // Sound level inst in 0.2 dBA, from offset 18
+                  0x5CU,                                    // Sound level avg in 0.2 dBA, from offset 18
+                  0xB6U,                                    // Sound level peak in 0.2 SPL dB, from offset 18
                   0x12U, 0x13U, 0x14U,                      // Seq cnt
-                  0x20U,                                    // Flags
+                  0xF8U,                                    // Flags
                   0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU,        // Reserved
                   0xE3U, 0x75U, 0xCFU, 0x37U, 0x4EU, 0x23U, // MAC address
                   0x03U, 0x03U, 0x98U, 0xFCU,               // Ruuvi tag service UUID
@@ -789,12 +789,12 @@ TEST_F(TestMqttJson, test_decoded_df_e1) // NOLINT
                "\"PM4.0\":11.5,"
                "\"PM10.0\":11.6,"
                "\"CO2\":886,"
-               "\"VOC\":16,"
-               "\"NOx\":1,"
+               "\"VOC\":33,"
+               "\"NOx\":3,"
                "\"luminosity\":7940,"
-               "\"sound_dba_inst\":30.0,"
-               "\"sound_dba_avg\":55.0,"
-               "\"sound_dba_peak\":91.0,"
+               "\"sound_inst_dba\":30.2,"
+               "\"sound_avg_dba\":55.0,"
+               "\"sound_peak_spl_db\":91.0,"
                "\"measurementSequenceNumber\":1184532,"
                "\"flag_calibration_in_progress\":false,"
                "\"flag_button_pressed\":false,"

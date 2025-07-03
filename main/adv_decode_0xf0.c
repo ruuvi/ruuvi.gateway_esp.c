@@ -72,8 +72,8 @@ JSON_STREAM_GEN_DECL_GENERATOR_SUB_FUNC(
             JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_0);
         JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
             p_gen,
-            "sound_dba_avg",
-            data.sound_dba_avg,
+            "sound_avg_dba",
+            data.sound_avg_dba,
             JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_1);
         JSON_STREAM_GEN_ADD_INT32(p_gen, "measurementSequenceNumber", data.flag_seq_cnt);
         JSON_STREAM_GEN_ADD_BOOL(p_gen, "flag_usb_on", data.flag_usb_on);
