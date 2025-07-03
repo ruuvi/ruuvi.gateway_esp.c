@@ -12,6 +12,7 @@
 #include "ruuvi_endpoint_5.h"
 #include "ruuvi_endpoint_6.h"
 #include "ruuvi_endpoint_e0.h"
+#include "ruuvi_endpoint_e1.h"
 #include "ruuvi_endpoint_f0.h"
 #include "adv_decode.h"
 
@@ -330,6 +331,10 @@ static JSON_STREAM_GEN_DECL_GENERATOR_SUB_FUNC(
         if (re_e0_check_format(p_adv->data_buf))
         {
             JSON_STREAM_GEN_CALL_GENERATOR_SUB_FUNC(adv_decode_dfxe0_cb_json_stream_gen, p_gen, p_adv);
+        }
+        if (re_e1_check_format(p_adv->data_buf))
+        {
+            JSON_STREAM_GEN_CALL_GENERATOR_SUB_FUNC(adv_decode_dfxe1_cb_json_stream_gen, p_gen, p_adv);
         }
     }
     JSON_STREAM_GEN_END_OBJECT(p_gen);

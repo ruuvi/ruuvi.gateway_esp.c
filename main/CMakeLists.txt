@@ -3,6 +3,7 @@ idf_component_register(
         adv_decode_0x05.c
         adv_decode_0x06.c
         adv_decode_0xe0.c
+        adv_decode_0xe1.c
         adv_decode_0xf0.c
         adv_decode.h
         adv_mqtt.c
