@@ -43,8 +43,9 @@ Possible operations:
 4) [download, erase and flash specific version]: python3 ruuvi_gw_flash.py [--port /dev/ttyUSB0] --erase_flash v1.15.0
 5) [Build and flash]: python3 ruuvi_gw_flash.py build
 6) [Compile and flash only ruuvi_gateway_esp.bin and ota_data_initial.bin]: python3 ruuvi_gw_flash.py --compile_and_flash build
-7) [Reset]: python3 ruuvi_gw_flash.py [--port /dev/ttyUSB0] --reset -
-7) [Reset and save UART logs]: python3 ruuvi_gw_flash.py [--port /dev/ttyUSB0] - --reset --log_uart
+7) [Compile and flash only ruuvi_gateway_esp.bin and ota_data_initial.bin]: python3 ruuvi_gw_flash.py --compile_only build
+8) [Reset]: python3 ruuvi_gw_flash.py [--port /dev/ttyUSB0] --reset -
+9) [Reset and save UART logs]: python3 ruuvi_gw_flash.py [--port /dev/ttyUSB0] - --reset --log_uart
 """
 parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawDescriptionHelpFormatter)
 
@@ -376,6 +377,11 @@ def parse_arguments():
                         help='Compile the project and flash only ruuvi_gateway_esp.bin and ota_data_initial.bin '
                              '(use with "build" as fw_ver.')
 
+    parser.add_argument('--compile_only',
+                        action='store_true',
+                        help='Only compile the project '
+                             '(use with "build" as fw_ver.')
+
     parser.add_argument('--download_only',
                         action='store_true',
                         help='Download the firmware binaries only, do not flash them.')
@@ -419,11 +425,17 @@ def parse_arguments():
     if arguments.erase_flash and arguments.compile_and_flash:
         error("'--erase_flash' and '--compile_and_flash' cannot be used together.")
         sys.exit(1)
+    if arguments.compile_only and arguments.compile_and_flash:
+        error("'--compile_only' and '--compile_and_flash' cannot be used together.")
+        sys.exit(1)
     if arguments.erase_flash and arguments.log_uart:
         error("'--erase_flash' and '--log_uart' cannot be used together.")
         sys.exit(1)
     if arguments.compile_and_flash and arguments.fw_ver != "build":
         error("'--compile_and_flash' must be used with 'build' as fw_ver.")
+        sys.exit(1)
+    if arguments.compile_only and arguments.fw_ver != "build":
+        error("'--compile_only' must be used with 'build' as fw_ver.")
         sys.exit(1)
 
     return arguments
@@ -559,6 +571,18 @@ def main():
         esptool_cmd_with_args.append('erase_flash')
         run_process_with_logging(esptool_cmd_with_args)
 
+    if arguments.compile_only:
+        if not os.path.isdir("build"):
+            logger.error('fw_ver must be "build"')
+            sys.exit(1)
+        else:
+            logger.info('cd build')
+            os.chdir("build")
+            run_process_with_logging(['ninja', 'ruuvi_gateway_esp.elf'])
+            run_process_with_logging(['ninja', '.bin_timestamp'])
+            logger.info('cd ..')
+            os.chdir("..")
+            sys.exit(0)
     if arguments.compile_and_flash:
         if not os.path.isdir("build"):
             arguments.compile_and_flash = False
