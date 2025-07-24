@@ -489,14 +489,7 @@ adv_post_nrf52_on_sync_ack_timeout(void)
     g_adv_post_nrf52_is_waiting_ack = false;
     metrics_nrf_lost_ack_cnt_inc();
     g_adv_post_nrf52_ack_timeout_cnt += 1;
-    if (1 == g_adv_post_nrf52_ack_timeout_cnt)
-    {
-        LOG_WARN("nRF52 ACK timeout, cnt=%u", g_adv_post_nrf52_ack_timeout_cnt);
-    }
-    else
-    {
-        LOG_WARN("nRF52 ACK timeout, cnt=%u", g_adv_post_nrf52_ack_timeout_cnt);
-    }
+    LOG_WARN("nRF52 ACK timeout, cnt=%u", g_adv_post_nrf52_ack_timeout_cnt);
     if (g_adv_post_nrf52_ack_timeout_cnt >= ADV_POST_NRF52_NO_ACK_MAX_CNT)
     {
         LOG_ERR("nRF52 ACK timeout counter exceeds the limit, reset nRF52");
