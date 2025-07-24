@@ -169,6 +169,12 @@ adv_post_nrf52_send_cmd_cfg_internal(void)
     assert(!g_adv_post_nrf52_cfg.flag_nrf52_configured);
     assert(g_adv_post_nrf52_flag_cfg_required);
 
+    if (nrf52fw_get_manual_reset_mode())
+    {
+        LOG_WARN("### sending settings to NRF: manual reset mode is ON, so the settings will not be sent to nRF52");
+        return;
+    }
+
     ruuvi_gw_cfg_scan_t   scan   = { 0 };
     ruuvi_gw_cfg_filter_t filter = { 0 };
     adv_post_nrf52_cfg_get_cached(&scan, &filter);
@@ -314,18 +320,25 @@ adv_post_nrf52_on_sig_nrf52_rebooted(void)
     g_adv_post_nrf52_flag_cfg_required         = false;
     g_adv_post_nrf52_is_waiting_ack            = false;
 
-    if (adv_post_nrf52_cfg_is_ready())
+    if (nrf52fw_get_manual_reset_mode())
     {
-        LOG_INFO("nRF52 Recv sig nrf52_rebooted and cfg is ready");
-        if (!os_timer_sig_one_shot_is_active(g_adv_post_timer_sig_nrf52_cfg_req_timeout))
-        {
-            metrics_nrf_self_reboot_cnt_inc();
-        }
-        adv_post_signals_send_sig_nrf52_cfg_update();
+        LOG_WARN("nRF52 Recv sig nrf52_rebooted when in manual reset mode, do not send cfg");
     }
     else
     {
-        LOG_WARN("nRF52 Recv sig nrf52_rebooted, but cfg is not ready");
+        if (adv_post_nrf52_cfg_is_ready())
+        {
+            LOG_INFO("nRF52 Recv sig nrf52_rebooted and cfg is ready");
+            if (!os_timer_sig_one_shot_is_active(g_adv_post_timer_sig_nrf52_cfg_req_timeout))
+            {
+                metrics_nrf_self_reboot_cnt_inc();
+            }
+            adv_post_signals_send_sig_nrf52_cfg_update();
+        }
+        else
+        {
+            LOG_WARN("nRF52 Recv sig nrf52_rebooted, but cfg is not ready");
+        }
     }
     os_timer_sig_one_shot_stop(g_adv_post_timer_sig_nrf52_cfg_req_timeout);
 }
@@ -446,6 +459,7 @@ adv_post_nrf52_on_sync_ack_led_ctrl(void)
     g_adv_post_nrf52_is_waiting_ack = false;
     if (g_adv_post_nrf52_flag_cfg_required)
     {
+        LOG_INFO("nRF52: Sync handle ACK for LED_CTRL: send CFG");
         adv_post_nrf52_send_cmd_cfg_internal();
     }
 }
@@ -475,14 +489,7 @@ adv_post_nrf52_on_sync_ack_timeout(void)
     g_adv_post_nrf52_is_waiting_ack = false;
     metrics_nrf_lost_ack_cnt_inc();
     g_adv_post_nrf52_ack_timeout_cnt += 1;
-    if (1 == g_adv_post_nrf52_ack_timeout_cnt)
-    {
-        LOG_DBG("nRF52 ACK timeout, cnt=%u", g_adv_post_nrf52_ack_timeout_cnt);
-    }
-    else
-    {
-        LOG_WARN("nRF52 ACK timeout, cnt=%u", g_adv_post_nrf52_ack_timeout_cnt);
-    }
+    LOG_WARN("nRF52 ACK timeout, cnt=%u", g_adv_post_nrf52_ack_timeout_cnt);
     if (g_adv_post_nrf52_ack_timeout_cnt >= ADV_POST_NRF52_NO_ACK_MAX_CNT)
     {
         LOG_ERR("nRF52 ACK timeout counter exceeds the limit, reset nRF52");
@@ -494,6 +501,7 @@ adv_post_nrf52_on_sync_ack_timeout(void)
     {
         if (g_adv_post_nrf52_flag_cfg_required)
         {
+            LOG_INFO("nRF52 ACK timeout: send CFG");
             adv_post_nrf52_send_cmd_cfg_internal();
         }
         else if (ADV_POST_LED_CTRL_TIME_INTERVAL_INVALID != g_adv_post_nrf52_led_ctrl_time_interval_ms)

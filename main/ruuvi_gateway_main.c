@@ -478,7 +478,8 @@ main_task_init(void)
             NULL,
             &cb_before_nrf52_fw_updating,
             &cb_after_nrf52_fw_updating,
-            &nrf52_fw_ver))
+            &nrf52_fw_ver,
+            true))
     {
         LOG_ERR("%s failed", "nrf52fw_update_fw_if_necessary");
         if (esp_ota_check_rollback_is_possible())

@@ -73,6 +73,12 @@ typedef struct nrf52fw_progress_info_t
 } nrf52fw_progress_info_t;
 
 void
+nrf52fw_set_manual_reset_mode(const bool flag_manual_reset_mode);
+
+bool
+nrf52fw_get_manual_reset_mode(void);
+
+void
 nrf52fw_hw_reset_nrf52(const bool flag_reset);
 
 bool
@@ -82,7 +88,8 @@ nrf52fw_update_fw_if_necessary(
     void* const                 p_param_cb_progress,
     nrf52fw_cb_before_updating  cb_before_updating,
     nrf52fw_cb_after_updating   cb_after_updating,
-    ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver);
+    ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver,
+    const bool                  flag_run_fw_after_update);
 
 bool
 nrf52fw_software_reset(void);

@@ -16,6 +16,7 @@
 #include "os_malloc.h"
 #include "os_str.h"
 #include "gpio_switch_ctrl.h"
+#include "adv_post_green_led.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -34,6 +35,44 @@ typedef struct nrf52fw_update_tmp_data_t
 } nrf52fw_update_tmp_data_t;
 
 static const char* TAG = "nRF52Fw";
+
+#if !RUUVI_TESTS_NRF52FW
+static portMUX_TYPE g_nrf52fw_manual_reset_mode_spinlock = portMUX_INITIALIZER_UNLOCKED;
+#endif
+static bool g_nrf52fw_flag_manual_reset_mode = false;
+
+void
+nrf52fw_set_manual_reset_mode(const bool flag_manual_reset_mode)
+{
+#if !RUUVI_TESTS_NRF52FW
+    portENTER_CRITICAL(&g_nrf52fw_manual_reset_mode_spinlock);
+#endif
+    g_nrf52fw_flag_manual_reset_mode = flag_manual_reset_mode;
+#if !RUUVI_TESTS_NRF52FW
+    portEXIT_CRITICAL(&g_nrf52fw_manual_reset_mode_spinlock);
+#endif
+    if (flag_manual_reset_mode)
+    {
+        LOG_INFO("nRF52 manual reset mode: ON");
+    }
+    else
+    {
+        LOG_INFO("nRF52 manual reset mode: OFF");
+    }
+}
+
+bool
+nrf52fw_get_manual_reset_mode(void)
+{
+#if !RUUVI_TESTS_NRF52FW
+    portENTER_CRITICAL(&g_nrf52fw_manual_reset_mode_spinlock);
+#endif
+    const bool flag_manual_reset_mode = g_nrf52fw_flag_manual_reset_mode;
+#if !RUUVI_TESTS_NRF52FW
+    portEXIT_CRITICAL(&g_nrf52fw_manual_reset_mode_spinlock);
+#endif
+    return flag_manual_reset_mode;
+}
 
 NRF52FW_STATIC
 bool
@@ -839,7 +878,8 @@ nrf52fw_update_fw_step0(
     void* const                 p_param_cb_progress,
     nrf52fw_cb_before_updating  cb_before_updating,
     nrf52fw_cb_after_updating   cb_after_updating,
-    ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver)
+    ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver,
+    const bool                  flag_run_fw_after_update)
 {
     if (!nrf52fw_init_swd())
     {
@@ -855,7 +895,7 @@ nrf52fw_update_fw_step0(
         cb_after_updating,
         p_nrf52_fw_ver);
 
-    if (result)
+    if (result && flag_run_fw_after_update)
     {
         result = nrf52swd_debug_run();
         if (!result)
@@ -890,26 +930,33 @@ nrf52fw_update_fw_if_necessary(
     void* const                 p_param_cb_progress,
     nrf52fw_cb_before_updating  cb_before_updating,
     nrf52fw_cb_after_updating   cb_after_updating,
-    ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver)
+    ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver,
+    const bool                  flag_run_fw_after_update)
 {
+    adv_post_green_led_async_disable();
+    nrf52fw_set_manual_reset_mode(true);
+
     const TickType_t ticks_in_reset_state = 100;
     nrf52fw_hw_reset_nrf52(true);
     vTaskDelay(ticks_in_reset_state);
     nrf52fw_hw_reset_nrf52(false);
 
-#if 1
     const bool res = nrf52fw_update_fw_step0(
         p_fatfs_nrf52_partition_name,
         cb_progress,
         p_param_cb_progress,
         cb_before_updating,
         cb_after_updating,
-        p_nrf52_fw_ver);
-#endif
+        p_nrf52_fw_ver,
+        flag_run_fw_after_update);
 
     nrf52fw_hw_reset_nrf52(true);
-    vTaskDelay(ticks_in_reset_state);
-    nrf52fw_hw_reset_nrf52(false);
+    if (flag_run_fw_after_update)
+    {
+        vTaskDelay(ticks_in_reset_state);
+        nrf52fw_hw_reset_nrf52(false);
+        nrf52fw_set_manual_reset_mode(false);
+    }
 
     return res;
 }
