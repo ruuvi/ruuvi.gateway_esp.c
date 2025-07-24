@@ -857,7 +857,8 @@ fw_update_do_actions(void)
             NULL,
             &fw_update_nrf52fw_cb_before_updating,
             &fw_update_nrf52fw_cb_after_updating,
-            NULL))
+            NULL,
+            false))
     {
         LOG_ERR("%s failed", "nrf52fw_update_fw_if_necessary");
         fw_update_set_extra_info_for_status_json_update_failed_nrf52("Failed to update nRF52 firmware");

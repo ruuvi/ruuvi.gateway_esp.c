@@ -30,6 +30,9 @@ void
 adv_post_nrf52_send_led_ctrl(const uint16_t time_interval_ms);
 
 void
+adv_post_nrf52_set_manual_reset_mode(const bool flag_manual_reset_mode);
+
+void
 adv_post_nrf52_on_sig_nrf52_rebooted(void);
 
 void

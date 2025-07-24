@@ -16,6 +16,8 @@
 #include "os_malloc.h"
 #include "os_str.h"
 #include "gpio_switch_ctrl.h"
+#include "adv_post_green_led.h"
+#include "adv_post_nrf52.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -839,7 +841,8 @@ nrf52fw_update_fw_step0(
     void* const                 p_param_cb_progress,
     nrf52fw_cb_before_updating  cb_before_updating,
     nrf52fw_cb_after_updating   cb_after_updating,
-    ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver)
+    ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver,
+    const bool                  flag_run_fw_after_update)
 {
     if (!nrf52fw_init_swd())
     {
@@ -855,7 +858,7 @@ nrf52fw_update_fw_step0(
         cb_after_updating,
         p_nrf52_fw_ver);
 
-    if (result)
+    if (result && flag_run_fw_after_update)
     {
         result = nrf52swd_debug_run();
         if (!result)
@@ -890,26 +893,33 @@ nrf52fw_update_fw_if_necessary(
     void* const                 p_param_cb_progress,
     nrf52fw_cb_before_updating  cb_before_updating,
     nrf52fw_cb_after_updating   cb_after_updating,
-    ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver)
+    ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver,
+    const bool                  flag_run_fw_after_update)
 {
+    adv_post_green_led_async_disable();
+    adv_post_nrf52_set_manual_reset_mode(true);
+
     const TickType_t ticks_in_reset_state = 100;
     nrf52fw_hw_reset_nrf52(true);
     vTaskDelay(ticks_in_reset_state);
     nrf52fw_hw_reset_nrf52(false);
 
-#if 1
     const bool res = nrf52fw_update_fw_step0(
         p_fatfs_nrf52_partition_name,
         cb_progress,
         p_param_cb_progress,
         cb_before_updating,
         cb_after_updating,
-        p_nrf52_fw_ver);
-#endif
+        p_nrf52_fw_ver,
+        flag_run_fw_after_update);
 
     nrf52fw_hw_reset_nrf52(true);
-    vTaskDelay(ticks_in_reset_state);
-    nrf52fw_hw_reset_nrf52(false);
+    if (flag_run_fw_after_update)
+    {
+        vTaskDelay(ticks_in_reset_state);
+        nrf52fw_hw_reset_nrf52(false);
+        adv_post_nrf52_set_manual_reset_mode(false);
+    }
 
     return res;
 }

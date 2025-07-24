@@ -50,6 +50,9 @@ static bool             g_adv_post_nrf52_is_waiting_ack;
 static bool             g_adv_post_nrf52_flag_cfg_required;
 static uint16_t         g_adv_post_nrf52_ack_timeout_cnt;
 
+static portMUX_TYPE g_adv_post_nrf52_manual_reset_mode_spinlock = portMUX_INITIALIZER_UNLOCKED;
+static bool         g_adv_post_nrf52_flag_manual_reset_mode     = false;
+
 #define ADV_POST_LED_CTRL_TIME_INTERVAL_INVALID (0xFFFFU)
 static uint16_t g_adv_post_nrf52_led_ctrl_time_interval_ms;
 
@@ -132,6 +135,31 @@ adv_post_nrf52_is_configured(void)
     return flag_nrf52_configured;
 }
 
+void
+adv_post_nrf52_set_manual_reset_mode(const bool flag_manual_reset_mode)
+{
+    portENTER_CRITICAL(&g_adv_post_nrf52_manual_reset_mode_spinlock);
+    g_adv_post_nrf52_flag_manual_reset_mode = flag_manual_reset_mode;
+    portEXIT_CRITICAL(&g_adv_post_nrf52_manual_reset_mode_spinlock);
+    if (flag_manual_reset_mode)
+    {
+        LOG_INFO("nRF52 manual reset mode: ON");
+    }
+    else
+    {
+        LOG_INFO("nRF52 manual reset mode: OFF");
+    }
+}
+
+static bool
+adv_post_nrf52_get_manual_reset_mode(void)
+{
+    portENTER_CRITICAL(&g_adv_post_nrf52_manual_reset_mode_spinlock);
+    const bool flag_manual_reset_mode = g_adv_post_nrf52_flag_manual_reset_mode;
+    portEXIT_CRITICAL(&g_adv_post_nrf52_manual_reset_mode_spinlock);
+    return flag_manual_reset_mode;
+}
+
 static void
 adv_post_nrf52_set_waiting_ack(const re_ca_uart_cmd_t cmd)
 {
@@ -168,6 +196,12 @@ adv_post_nrf52_send_cmd_cfg_internal(void)
     assert(!g_adv_post_nrf52_is_waiting_ack);
     assert(!g_adv_post_nrf52_cfg.flag_nrf52_configured);
     assert(g_adv_post_nrf52_flag_cfg_required);
+
+    if (adv_post_nrf52_get_manual_reset_mode())
+    {
+        LOG_WARN("### sending settings to NRF: manual reset mode is ON, so the settings will not be sent to nRF52");
+        return;
+    }
 
     ruuvi_gw_cfg_scan_t   scan   = { 0 };
     ruuvi_gw_cfg_filter_t filter = { 0 };
@@ -314,18 +348,25 @@ adv_post_nrf52_on_sig_nrf52_rebooted(void)
     g_adv_post_nrf52_flag_cfg_required         = false;
     g_adv_post_nrf52_is_waiting_ack            = false;
 
-    if (adv_post_nrf52_cfg_is_ready())
+    if (adv_post_nrf52_get_manual_reset_mode())
     {
-        LOG_INFO("nRF52 Recv sig nrf52_rebooted and cfg is ready");
-        if (!os_timer_sig_one_shot_is_active(g_adv_post_timer_sig_nrf52_cfg_req_timeout))
-        {
-            metrics_nrf_self_reboot_cnt_inc();
-        }
-        adv_post_signals_send_sig_nrf52_cfg_update();
+        LOG_WARN("nRF52 Recv sig nrf52_rebooted when in manual reset mode, do not send cfg");
     }
     else
     {
-        LOG_WARN("nRF52 Recv sig nrf52_rebooted, but cfg is not ready");
+        if (adv_post_nrf52_cfg_is_ready())
+        {
+            LOG_INFO("nRF52 Recv sig nrf52_rebooted and cfg is ready");
+            if (!os_timer_sig_one_shot_is_active(g_adv_post_timer_sig_nrf52_cfg_req_timeout))
+            {
+                metrics_nrf_self_reboot_cnt_inc();
+            }
+            adv_post_signals_send_sig_nrf52_cfg_update();
+        }
+        else
+        {
+            LOG_WARN("nRF52 Recv sig nrf52_rebooted, but cfg is not ready");
+        }
     }
     os_timer_sig_one_shot_stop(g_adv_post_timer_sig_nrf52_cfg_req_timeout);
 }
@@ -446,6 +487,7 @@ adv_post_nrf52_on_sync_ack_led_ctrl(void)
     g_adv_post_nrf52_is_waiting_ack = false;
     if (g_adv_post_nrf52_flag_cfg_required)
     {
+        LOG_INFO("nRF52: Sync handle ACK for LED_CTRL: send CFG");
         adv_post_nrf52_send_cmd_cfg_internal();
     }
 }
@@ -477,7 +519,7 @@ adv_post_nrf52_on_sync_ack_timeout(void)
     g_adv_post_nrf52_ack_timeout_cnt += 1;
     if (1 == g_adv_post_nrf52_ack_timeout_cnt)
     {
-        LOG_DBG("nRF52 ACK timeout, cnt=%u", g_adv_post_nrf52_ack_timeout_cnt);
+        LOG_WARN("nRF52 ACK timeout, cnt=%u", g_adv_post_nrf52_ack_timeout_cnt);
     }
     else
     {
@@ -494,6 +536,7 @@ adv_post_nrf52_on_sync_ack_timeout(void)
     {
         if (g_adv_post_nrf52_flag_cfg_required)
         {
+            LOG_INFO("nRF52 ACK timeout: send CFG");
             adv_post_nrf52_send_cmd_cfg_internal();
         }
         else if (ADV_POST_LED_CTRL_TIME_INTERVAL_INVALID != g_adv_post_nrf52_led_ctrl_time_interval_ms)

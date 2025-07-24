@@ -82,7 +82,8 @@ nrf52fw_update_fw_if_necessary(
     void* const                 p_param_cb_progress,
     nrf52fw_cb_before_updating  cb_before_updating,
     nrf52fw_cb_after_updating   cb_after_updating,
-    ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver);
+    ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver,
+    const bool                  flag_run_fw_after_update);
 
 bool
 nrf52fw_software_reset(void);

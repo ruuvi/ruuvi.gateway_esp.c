@@ -40,6 +40,12 @@ adv_post_green_led_init(void)
 void
 adv_post_green_led_async_disable(void)
 {
+    if (NULL == g_adv_post_green_led_disabled_mutex)
+    {
+        g_adv_post_green_led_disabled = true;
+        LOG_WARN("GREEN LED: Disable Green LED updating (adv_post task is not initialized yet)");
+        return;
+    }
     os_mutex_lock(g_adv_post_green_led_disabled_mutex);
     g_adv_post_green_led_disabled = true;
     LOG_WARN("GREEN LED: Disable Green LED updating");
@@ -49,6 +55,7 @@ adv_post_green_led_async_disable(void)
 void
 adv_post_green_led_enable(void)
 {
+    assert(NULL != g_adv_post_green_led_disabled_mutex);
     assert(g_adv_post_task_handle == os_task_get_cur_task_handle());
     os_mutex_lock(g_adv_post_green_led_disabled_mutex);
     LOG_WARN("GREEN LED: Enable Green LED updating");
