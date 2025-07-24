@@ -73,6 +73,12 @@ typedef struct nrf52fw_progress_info_t
 } nrf52fw_progress_info_t;
 
 void
+nrf52fw_set_manual_reset_mode(const bool flag_manual_reset_mode);
+
+bool
+nrf52fw_get_manual_reset_mode(void);
+
+void
 nrf52fw_hw_reset_nrf52(const bool flag_reset);
 
 bool
