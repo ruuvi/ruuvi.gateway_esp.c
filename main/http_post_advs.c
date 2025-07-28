@@ -427,7 +427,7 @@ http_check_post_advs_internal3(
     const http_send_advs_internal_params_t params = {
         .nonce               = esp_random(),
         .flag_use_timestamps = gw_cfg_get_ntp_use(),
-        .flag_post_to_ruuvi  = false,
+        .flag_post_to_ruuvi  = (0 == strcmp(p_params->p_url, RUUVI_GATEWAY_HTTP_DEFAULT_URL) ? true : false),
         .use_ssl_client_cert = p_params->use_ssl_client_cert,
         .use_ssl_server_cert = p_params->use_ssl_server_cert,
     };
