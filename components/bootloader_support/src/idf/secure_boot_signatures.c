@@ -19,6 +19,8 @@
 #include "esp_log.h"
 #include "esp_image_format.h"
 #include "esp_secure_boot.h"
+#include "mbedtls/rsa.h"
+#include "mbedtls/version.h"
 #include "mbedtls/sha256.h"
 #include "mbedtls/x509.h"
 #include "mbedtls/md.h"
@@ -282,7 +284,13 @@ esp_err_t esp_secure_boot_verify_rsa_signature_block(const ets_secure_boot_signa
                                 .n = sizeof(sig_block->block[i].key.e)/sizeof(mbedtls_mpi_uint), // 1
                                 .p = (void *)&sig_block->block[i].key.e,
         };
+        /* Mbed TLS 2.x vs 3.x API differences */
+#if defined(MBEDTLS_VERSION_MAJOR) && (MBEDTLS_VERSION_MAJOR >= 3)
+        mbedtls_rsa_init(&pk);
+        mbedtls_rsa_set_padding(&pk, MBEDTLS_RSA_PKCS_V21, MBEDTLS_MD_SHA256);
+#else
         mbedtls_rsa_init(&pk, MBEDTLS_RSA_PKCS_V21, MBEDTLS_MD_SHA256);
+#endif
         ret = mbedtls_rsa_import(&pk, &N, NULL, NULL, NULL, &e);
         if (ret != 0) {
             ESP_LOGE(TAG, "Failed mbedtls_rsa_import, err: %d", ret);
@@ -312,8 +320,23 @@ esp_err_t esp_secure_boot_verify_rsa_signature_block(const ets_secure_boot_signa
             goto exit;
         }
 
-        ret = mbedtls_rsa_rsassa_pss_verify( &pk, mbedtls_ctr_drbg_random, &ctr_drbg, MBEDTLS_RSA_PUBLIC, MBEDTLS_MD_SHA256, DIGEST_LEN,
-                                            image_digest, sig_be);
+        /* Verify RSA-PSS signature: function signature changed in Mbed TLS 3.x */
+#if defined(MBEDTLS_VERSION_MAJOR) && (MBEDTLS_VERSION_MAJOR >= 3)
+        ret = mbedtls_rsa_rsassa_pss_verify(&pk,
+                                            MBEDTLS_MD_SHA256,
+                                            DIGEST_LEN,
+                                            image_digest,
+                                            sig_be);
+#else
+        ret = mbedtls_rsa_rsassa_pss_verify(&pk,
+                                            mbedtls_ctr_drbg_random,
+                                            &ctr_drbg,
+                                            MBEDTLS_RSA_PUBLIC,
+                                            MBEDTLS_MD_SHA256,
+                                            DIGEST_LEN,
+                                            image_digest,
+                                            sig_be);
+#endif
         if (ret != 0) {
             ESP_LOGE(TAG, "Failed mbedtls_rsa_rsassa_pss_verify, err: %d", ret);
         } else {
