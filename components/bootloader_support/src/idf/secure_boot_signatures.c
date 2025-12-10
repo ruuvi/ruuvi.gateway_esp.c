@@ -198,12 +198,23 @@ esp_err_t esp_secure_boot_verify_signature(uint32_t src_addr, uint32_t length)
     return err;
 }
 
-esp_err_t esp_secure_boot_verify_rsa_signature_block(const ets_secure_boot_signature_t *sig_block, const uint8_t *image_digest, uint8_t *verified_digest)
+typedef struct verify_rsa_sig_block_mem_t {
+    uint8_t sig_block_key_digest[SECURE_BOOT_NUM_BLOCKS][DIGEST_LEN];
+    uint8_t efuse_trusted_digest[DIGEST_LEN];
+    uint8_t zeroes[DIGEST_LEN];
+    mbedtls_rsa_context pk;
+    mbedtls_entropy_context entropy;
+    mbedtls_ctr_drbg_context ctr_drbg;
+} verify_rsa_sig_block_mem_t;
+
+static esp_err_t esp_secure_boot_verify_rsa_signature_block_internal(
+    const ets_secure_boot_signature_t *sig_block,
+    const uint8_t *image_digest,
+    uint8_t *verified_digest,
+    verify_rsa_sig_block_mem_t* const p_mem)
 {
     uint8_t i = 0;
 #if CONFIG_SECURE_BOOT_V2_ENABLED /* Verify key against efuse block */
-    uint8_t sig_block_key_digest[SECURE_BOOT_NUM_BLOCKS][DIGEST_LEN] = {0};
-
     /* Note: in IDF verification we don't add any fault injection resistance, as we don't expect this to be called
        during boot-time verification. */
     memset(verified_digest, 0, DIGEST_LEN);
@@ -213,29 +224,26 @@ esp_err_t esp_secure_boot_verify_rsa_signature_block(const ets_secure_boot_signa
         bootloader_sha256_handle_t sig_block_sha;
         sig_block_sha = bootloader_sha256_start();
         bootloader_sha256_data(sig_block_sha, &sig_block->block[i].key, sizeof(sig_block->block[i].key));
-        bootloader_sha256_finish(sig_block_sha, (unsigned char *)sig_block_key_digest[i]);
+        bootloader_sha256_finish(sig_block_sha, (unsigned char *)p_mem->sig_block_key_digest[i]);
     }
 
 #if CONFIG_IDF_TARGET_ESP32
-    uint8_t efuse_trusted_digest[DIGEST_LEN] = {0};
-    memcpy(efuse_trusted_digest, (uint8_t *) EFUSE_BLK2_RDATA0_REG, sizeof(efuse_trusted_digest));
+    memcpy(p_mem->efuse_trusted_digest, (uint8_t *) EFUSE_BLK2_RDATA0_REG, sizeof(p_mem->efuse_trusted_digest));
 
-    if (memcmp(efuse_trusted_digest, sig_block_key_digest[0], DIGEST_LEN) != 0) {
-        const uint8_t zeroes[DIGEST_LEN] = {0};
+    if (memcmp(p_mem->efuse_trusted_digest, p_mem->sig_block_key_digest[0], DIGEST_LEN) != 0) {
         /* Can't continue if secure boot is enabled, OR if a different digest is already written in efuse BLK2
 
            (If BLK2 is empty and Secure Boot is disabled then we assume that it will be enabled later.)
          */
-        if (esp_secure_boot_enabled() || memcmp(efuse_trusted_digest, zeroes, DIGEST_LEN) != 0) {
+        if (esp_secure_boot_enabled() || memcmp(p_mem->efuse_trusted_digest, p_mem->zeroes, DIGEST_LEN) != 0) {
             ESP_LOGE(TAG, "Public key digest in eFuse BLK2 and the signature block don't match.");
             return ESP_FAIL;
         }
     }
 #elif CONFIG_IDF_TARGET_ESP32S2
     bool match = false;
-    ets_secure_boot_key_digests_t efuse_trusted_digest;
     ETS_STATUS r;
-    r = ets_secure_boot_read_key_digests(&efuse_trusted_digest);
+    r = ets_secure_boot_read_key_digests(&p_mem->efuse_trusted_digest);
     if (r != 0) {
         ESP_LOGI(TAG, "Could not read secure boot digests!");
         return ESP_FAIL;
@@ -245,18 +253,15 @@ esp_err_t esp_secure_boot_verify_rsa_signature_block(const ets_secure_boot_signa
 
     ESP_LOGI(TAG, "Verifying with RSA-PSS...");
     int ret = 0;
-    mbedtls_rsa_context pk;
-    mbedtls_entropy_context entropy;
-    mbedtls_ctr_drbg_context ctr_drbg;
     unsigned char *sig_be = calloc(1, RSA_KEY_SIZE);
     unsigned char *buf = calloc(1, RSA_KEY_SIZE);
     if (sig_be == NULL || buf == NULL) {
         return ESP_ERR_NO_MEM;
     }
 
-    mbedtls_entropy_init(&entropy);
-    mbedtls_ctr_drbg_init(&ctr_drbg);
-    ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, NULL, 0);
+    mbedtls_entropy_init(&p_mem->entropy);
+    mbedtls_ctr_drbg_init(&p_mem->ctr_drbg);
+    ret = mbedtls_ctr_drbg_seed(&p_mem->ctr_drbg, mbedtls_entropy_func, &p_mem->entropy, NULL, 0);
     if (ret != 0) {
         ESP_LOGE(TAG, "mbedtls_ctr_drbg_seed returned -0x%04x\n", ret);
         goto exit;
@@ -265,7 +270,7 @@ esp_err_t esp_secure_boot_verify_rsa_signature_block(const ets_secure_boot_signa
     for (i = 0; i < SECURE_BOOT_NUM_BLOCKS; i++) {
 #if CONFIG_IDF_TARGET_ESP32S2
         for (uint8_t j = 0; j < SECURE_BOOT_NUM_BLOCKS; j++) {
-            if (digest_matches(efuse_trusted_digest.key_digests[j], sig_block_key_digest[i])) {
+            if (digest_matches(p_mem->efuse_trusted_digest.key_digests[j], p_mem->sig_block_key_digest[i])) {
                 ESP_LOGI(TAG, "eFuse key matches(%d) matches the application key(%d).", j, i);
                 match = true;
                 break;
@@ -286,24 +291,24 @@ esp_err_t esp_secure_boot_verify_rsa_signature_block(const ets_secure_boot_signa
         };
         /* Mbed TLS 2.x vs 3.x API differences */
 #if defined(MBEDTLS_VERSION_MAJOR) && (MBEDTLS_VERSION_MAJOR >= 3)
-        mbedtls_rsa_init(&pk);
-        mbedtls_rsa_set_padding(&pk, MBEDTLS_RSA_PKCS_V21, MBEDTLS_MD_SHA256);
+        mbedtls_rsa_init(&p_mem->pk);
+        mbedtls_rsa_set_padding(&p_mem->pk, MBEDTLS_RSA_PKCS_V21, MBEDTLS_MD_SHA256);
 #else
-        mbedtls_rsa_init(&pk, MBEDTLS_RSA_PKCS_V21, MBEDTLS_MD_SHA256);
+        mbedtls_rsa_init(&p_mem->pk, MBEDTLS_RSA_PKCS_V21, MBEDTLS_MD_SHA256);
 #endif
-        ret = mbedtls_rsa_import(&pk, &N, NULL, NULL, NULL, &e);
+        ret = mbedtls_rsa_import(&p_mem->pk, &N, NULL, NULL, NULL, &e);
         if (ret != 0) {
             ESP_LOGE(TAG, "Failed mbedtls_rsa_import, err: %d", ret);
             goto exit;
         }
 
-        ret = mbedtls_rsa_complete(&pk);
+        ret = mbedtls_rsa_complete(&p_mem->pk);
         if (ret != 0) {
             ESP_LOGE(TAG, "Failed mbedtls_rsa_complete, err: %d", ret);
             goto exit;
         }
 
-        ret = mbedtls_rsa_check_pubkey(&pk);
+        ret = mbedtls_rsa_check_pubkey(&p_mem->pk);
         if (ret != 0) {
             ESP_LOGI(TAG, "Key is not an RSA key -%0x", -ret);
             goto exit;
@@ -314,7 +319,7 @@ esp_err_t esp_secure_boot_verify_rsa_signature_block(const ets_secure_boot_signa
             sig_be[RSA_KEY_SIZE- j - 1] = sig_block->block[i].signature[j];
         }
 
-        ret = mbedtls_rsa_public( &pk, sig_be, buf);
+        ret = mbedtls_rsa_public( &p_mem->pk, sig_be, buf);
         if (ret != 0) {
             ESP_LOGE(TAG, "mbedtls_rsa_public failed, err: %d", ret);
             goto exit;
@@ -322,15 +327,15 @@ esp_err_t esp_secure_boot_verify_rsa_signature_block(const ets_secure_boot_signa
 
         /* Verify RSA-PSS signature: function signature changed in Mbed TLS 3.x */
 #if defined(MBEDTLS_VERSION_MAJOR) && (MBEDTLS_VERSION_MAJOR >= 3)
-        ret = mbedtls_rsa_rsassa_pss_verify(&pk,
+        ret = mbedtls_rsa_rsassa_pss_verify(&p_mem->pk,
                                             MBEDTLS_MD_SHA256,
                                             DIGEST_LEN,
                                             image_digest,
                                             sig_be);
 #else
-        ret = mbedtls_rsa_rsassa_pss_verify(&pk,
+        ret = mbedtls_rsa_rsassa_pss_verify(&p_mem->pk,
                                             mbedtls_ctr_drbg_random,
-                                            &ctr_drbg,
+                                            &p_mem->ctr_drbg,
                                             MBEDTLS_RSA_PUBLIC,
                                             MBEDTLS_MD_SHA256,
                                             DIGEST_LEN,
@@ -343,7 +348,7 @@ esp_err_t esp_secure_boot_verify_rsa_signature_block(const ets_secure_boot_signa
             ESP_LOGI(TAG, "Signature verified successfully!");
         }
         exit:
-            mbedtls_rsa_free(&pk);
+            mbedtls_rsa_free(&p_mem->pk);
             if (ret == 0) {
                 break;
             }
@@ -356,5 +361,17 @@ esp_err_t esp_secure_boot_verify_rsa_signature_block(const ets_secure_boot_signa
 #elif CONFIG_IDF_TARGET_ESP32S2
     return (ret != 0 || match == false) ? ESP_ERR_IMAGE_INVALID: ESP_OK;
 #endif /* CONFIG_IDF_TARGET_ESP32 */
+}
+
+esp_err_t esp_secure_boot_verify_rsa_signature_block(
+    const ets_secure_boot_signature_t *sig_block, const uint8_t *image_digest, uint8_t *verified_digest)
+{
+    verify_rsa_sig_block_mem_t* p_mem = calloc(1, sizeof(verify_rsa_sig_block_mem_t));
+    if (NULL == p_mem) {
+        return ESP_ERR_NO_MEM;
+    }
+    const esp_err_t res = esp_secure_boot_verify_rsa_signature_block_internal(sig_block, image_digest, verified_digest, p_mem);
+    free(p_mem);
+    return res;
 }
 #endif
