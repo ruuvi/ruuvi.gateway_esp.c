@@ -1,0 +1,104 @@
+name: Build Firmware
+
+on:
+  push:
+    branches: [ master ]
+    tags: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+    types: [opened, synchronize, reopened]
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build firmware (dev)
+    environment: dev
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+          submodules: true
+
+      - name: Checkout submodules
+        run: git submodule update --init --recursive
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.8
+
+      - name: Set Python 3.8 as default
+        run: |
+          echo "alias python=python3.8" >> ~/.bashrc
+          source ~/.bashrc          
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ cmake gcovr
+          sudo apt-get install -y gcc git wget make libncurses-dev flex bison gperf python3 python3-pip python3-setuptools python3-serial python3-click python3-cryptography python3-future python3-pyparsing python3-pyelftools cmake ninja-build ccache libffi-dev libssl-dev
+
+      - name: Set IDF_PATH
+        run: echo "IDF_PATH=$HOME/esp/esp-idf" >> $GITHUB_ENV
+
+      - name: Cache ESP-IDF and tools
+        id: cache-esp-idf
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/esp
+            ~/.espressif
+          key: esp-idf-${{ hashFiles('.github/workflows/build-fw.yml') }}
+
+      - name: Download and install ESP-IDF v4.2.2
+        if: steps.cache-esp-idf.outputs.cache-hit != 'true'
+        run: |
+          mkdir ~/esp
+          cd ~/esp
+          git clone --recursive --branch v4.2.2 https://github.com/espressif/esp-idf.git
+          cd $IDF_PATH
+          ./install.sh --python `which python3.8`
+
+      - name: Prepare secure boot signing key
+        env:
+          SECURE_BOOT_SIGNING_KEY: ${{ secrets.SECURE_BOOT_SIGNING_KEY }}
+        run: |
+          set +x # do not echo secrets
+          mkdir -p "~/.signing_keys"
+          install -m 600 /dev/null "~/.signing_keys/secure_boot_signing_key.pem"
+          printf "%s" "$SECURE_BOOT_SIGNING_KEY" > "~/.signing_keys/secure_boot_signing_key.pem"
+
+      - name: Run build
+        run: |
+          lsb_release -a          
+          source $HOME/esp/esp-idf/export.sh
+          python --version
+          which python
+          pip install bincopy
+          printenv | grep IDF
+          idf.py --version          
+          mkdir build
+          cd build
+          cmake .. -G Ninja
+          ninja
+          touch ../CMakeLists.txt
+          cmake .. -G Ninja
+          ninja
+          cd ..
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ruuvi_gateway_fw
+          path: |
+            build/ruuvi_gateway_esp.bin
+            build/binaries_v1.9.2/bootloader.bin
+            build/partition_table/partition-table.bin
+            build/ota_data_initial.bin
+            build/fatfs_nrf52.bin
+            build/fatfs_gwui.bin
+            build/gw_cfg_def.bin

@@ -4,15 +4,13 @@ on:
   push:
     branches: [ master ]
     tags: [ '*' ]
-  pull_request:
-    branches: [ '*' ]
-    types: [opened, synchronize, reopened]
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
 jobs:
   build:
-    name: Build firmware
+    name: Build firmware (prod)
+    environment: prod
     runs-on: ubuntu-22.04
 
     steps:
@@ -61,6 +59,15 @@ jobs:
           git clone --recursive --branch v4.2.2 https://github.com/espressif/esp-idf.git
           cd $IDF_PATH
           ./install.sh --python `which python3.8`
+
+      - name: Prepare secure boot signing key
+        env:
+          SECURE_BOOT_SIGNING_KEY: ${{ secrets.SECURE_BOOT_SIGNING_KEY }}
+        run: |
+          set +x # do not echo secrets
+          mkdir -p "~/.signing_keys"
+          install -m 600 /dev/null "~/.signing_keys/secure_boot_signing_key.pem"
+          printf "%s" "$SECURE_BOOT_SIGNING_KEY" > "~/.signing_keys/secure_boot_signing_key.pem"
 
       - name: Run build
         run: |
