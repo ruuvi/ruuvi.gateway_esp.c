@@ -65,9 +65,9 @@ jobs:
           SECURE_BOOT_SIGNING_KEY: ${{ secrets.SECURE_BOOT_SIGNING_KEY }}
         run: |
           set +x # do not echo secrets
-          mkdir -p "~/.signing_keys"
-          install -m 600 /dev/null "~/.signing_keys/secure_boot_signing_key.pem"
-          printf "%s" "$SECURE_BOOT_SIGNING_KEY" > "~/.signing_keys/secure_boot_signing_key.pem"
+          mkdir -p ~/.signing_keys
+          install -m 600 /dev/null ~/.signing_keys/secure_boot_signing_key.pem
+          printf "%s" "$SECURE_BOOT_SIGNING_KEY" > ~/.signing_keys/secure_boot_signing_key.pem
 
       - name: Run build
         run: |

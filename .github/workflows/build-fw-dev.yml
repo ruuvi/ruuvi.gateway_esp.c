@@ -71,8 +71,6 @@ jobs:
           mkdir -p ~/.signing_keys
           install -m 600 /dev/null ~/.signing_keys/secure_boot_signing_key.pem
           printf "%s" "$SECURE_BOOT_SIGNING_KEY" > ~/.signing_keys/secure_boot_signing_key.pem
-          ls -la ~/
-          ls -la ~/.signing_keys/
 
       - name: Run build
         run: |
@@ -83,8 +81,6 @@ jobs:
           pip install bincopy
           printenv | grep IDF
           idf.py --version          
-          ls -la ~/
-          ls -la ~/.signing_keys/
           mkdir build
           cd build
           cmake .. -G Ninja
