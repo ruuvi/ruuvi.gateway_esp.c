@@ -816,7 +816,7 @@ fw_update_erase_next_ota_partition(const esp_partition_t* const p_partition_ota)
         p_partition_ota->label,
         p_partition_ota->address,
         p_partition_ota->size);
-    const esp_err_t err = esp_ota_erase_patched(p_partition_ota);
+    const esp_err_t err = esp_ota_safe_erase(p_partition_ota);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(

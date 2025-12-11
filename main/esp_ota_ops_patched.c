@@ -297,7 +297,7 @@ esp_ota_end_patched(const esp_ota_handle_t handle)
 }
 
 esp_err_t
-esp_ota_erase_patched(const esp_partition_t* const p_partition)
+esp_ota_safe_erase(const esp_partition_t* const p_partition)
 {
     if (NULL == p_partition)
     {
