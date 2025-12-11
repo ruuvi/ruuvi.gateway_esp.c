@@ -6,10 +6,13 @@ on:
   pull_request:
     branches: [ '*' ]
     types: [opened, synchronize, reopened]
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
 
 jobs:
   build:
     name: Build and analyze
+    environment: dev
     runs-on: ubuntu-22.04
 
     env:
@@ -25,12 +28,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: 3.8
-
-      - name: Check Python version
-        run: |
-          python --version
-          python3 --version
-          python3.8 --version
 
       - name: Set Python 3.8 as default
         run: |
@@ -61,7 +58,7 @@ jobs:
       - name: Download and install ESP-IDF v4.2.2
         if: steps.cache-esp-idf.outputs.cache-hit != 'true'
         run: |
-          mkdir ~/esp
+          mkdir -p ~/esp
           cd ~/esp
           git clone --recursive --branch v4.2.2 https://github.com/espressif/esp-idf.git
           cd $IDF_PATH
