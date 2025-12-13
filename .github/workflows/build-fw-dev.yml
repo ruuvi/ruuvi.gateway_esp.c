@@ -1,8 +1,9 @@
-name: SonarCloud Analysis
+name: Build Firmware
 
 on:
   push:
     branches: [ master ]
+    tags: [ '*' ]
   pull_request:
     branches: [ '*' ]
     types: [opened, synchronize, reopened]
@@ -11,12 +12,9 @@ on:
 
 jobs:
   build:
-    name: Build and analyze
+    name: Build firmware (dev)
     environment: dev
     runs-on: ubuntu-22.04
-
-    env:
-      BUILD_WRAPPER_OUT_DIR: bw-output # Directory where build-wrapper output will be placed
 
     steps:
       - name: Check out code
@@ -37,11 +35,8 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc g++ cmake make ninja-build
-          sudo apt-get install -y git wget libncurses-dev flex bison gperf python3 python3-pip python3-setuptools python3-serial python3-click python3-cryptography python3-future python3-pyparsing python3-pyelftools ccache libffi-dev libssl-dev
-          sudo apt-get install -y gcovr
-          sudo apt-get install -y locales
-          sudo locale-gen de_DE.UTF-8
+          sudo apt-get install -y g++ cmake gcovr
+          sudo apt-get install -y gcc git wget make libncurses-dev flex bison gperf python3 python3-pip python3-setuptools python3-serial python3-click python3-cryptography python3-future python3-pyparsing python3-pyelftools cmake ninja-build ccache libffi-dev libssl-dev
 
       - name: Set IDF_PATH
         run: echo "IDF_PATH=$HOME/esp/esp-idf" >> $GITHUB_ENV
@@ -53,7 +48,7 @@ jobs:
           path: |
             ~/esp
             ~/.espressif
-          key: esp-idf-${{ hashFiles('.github/workflows/sonar-scan.yml') }}
+          key: esp-idf-${{ hashFiles('.github/workflows/build-fw-dev.yml') }}
 
       - name: Download and install ESP-IDF v4.2.2
         if: steps.cache-esp-idf.outputs.cache-hit != 'true'
@@ -64,9 +59,6 @@ jobs:
           cd $IDF_PATH
           ./install.sh --python `which python3.8`
 
-      - name: Install Build Wrapper
-        uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v6
-
       - name: Prepare secure boot signing key
         env:
           SECURE_BOOT_SIGNING_KEY: ${{ secrets.SECURE_BOOT_SIGNING_KEY }}
@@ -76,8 +68,9 @@ jobs:
           install -m 600 /dev/null ~/.signing_keys/secure_boot_signing_key.pem
           printf "%s" "$SECURE_BOOT_SIGNING_KEY" > ~/.signing_keys/secure_boot_signing_key.pem
 
-      - name: Run build-wrapper
+      - name: Run build
         run: |
+          lsb_release -a          
           source $HOME/esp/esp-idf/export.sh
           python --version
           which python
@@ -86,28 +79,22 @@ jobs:
           idf.py --version          
           mkdir build
           cd build
-          build-wrapper-linux-x86-64 --out-dir ../${{ env.BUILD_WRAPPER_OUT_DIR }} cmake -DCMAKE_BUILD_TYPE=Debug -G "Ninja" ..
-          build-wrapper-linux-x86-64 --out-dir ../${{ env.BUILD_WRAPPER_OUT_DIR }} ninja
+          cmake .. -G Ninja
+          ninja
+          touch ../CMakeLists.txt
+          cmake .. -G Ninja
+          ninja
           cd ..
 
-      - name: Run test with coverage
-        run: |
-          cd tests
-          mkdir build
-          cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="--coverage" -G "Ninja" ..
-          ninja
-          ctest
-          cd ../..
-          gcovr -r . --sonarqube -o coverage.xml
-
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v6
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          # Consult https://docs.sonarsource.com/sonarqube-server/latest/analyzing-source-code/scanners/sonarscanner/ for more information and options
-          args: >
-            -Dsonar.cfamily.compile-commands=${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json
-            -Dsonar.coverageReportPaths=coverage.xml
+          name: ruuvi_gateway_fw
+          path: |
+            build/ruuvi_gateway_esp.bin
+            build/binaries_v1.9.2/bootloader.bin
+            build/partition_table/partition-table.bin
+            build/ota_data_initial.bin
+            build/fatfs_nrf52.bin
+            build/fatfs_gwui.bin
+            build/gw_cfg_def.bin

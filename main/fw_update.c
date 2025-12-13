@@ -569,7 +569,7 @@ fw_update_ota(const char* const p_url)
     err = esp_ota_end_patched(out_handle);
     if (ESP_OK != err)
     {
-        LOG_ERR("%s failed", "esp_ota_end");
+        LOG_ERR_ESP(err, "%s failed", "esp_ota_end");
         return false;
     }
 
@@ -746,7 +746,7 @@ fw_update_nrf52fw_cb_after_updating(const bool flag_success)
 static bool
 fw_update_ruuvi_gateway_esp_bin(void)
 {
-    LOG_INFO("fw_update_ota");
+    LOG_INFO("fw_update_ruuvi_gateway_esp_bin");
     str_buf_t url = str_buf_printf_with_alloc("%s/%s", g_fw_update_cfg.binaries_url, "ruuvi_gateway_esp.bin");
     if (NULL == url.buf)
     {
@@ -801,6 +801,77 @@ fw_update_fatfs_nrf52_bin(void)
     }
     str_buf_free_buf(&url);
     return true;
+}
+
+static bool
+fw_update_erase_next_ota_partition(const esp_partition_t* const p_partition_ota)
+{
+    if (NULL == p_partition_ota)
+    {
+        LOG_ERR("Partition is NULL");
+        return false;
+    }
+    LOG_INFO(
+        "Erase OTA partition '%s' (address 0x%08x, size 0x%x)",
+        p_partition_ota->label,
+        p_partition_ota->address,
+        p_partition_ota->size);
+    const esp_err_t err = esp_ota_safe_erase(p_partition_ota);
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(
+            err,
+            "Failed to erase OTA partition '%s', address 0x%08x, size 0x%x",
+            p_partition_ota->label,
+            p_partition_ota->address,
+            p_partition_ota->size);
+        return false;
+    }
+    return true;
+}
+
+static bool
+fw_update_erase_next_data_partition(const esp_partition_t* const p_partition)
+{
+    if (NULL == p_partition)
+    {
+        LOG_ERR("Partition is NULL");
+        return false;
+    }
+    LOG_INFO(
+        "Erase partition '%s' (address 0x%08x, size 0x%x)",
+        p_partition->label,
+        p_partition->address,
+        p_partition->size);
+    esp_err_t err = erase_partition_with_sleep(p_partition);
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(
+            err,
+            "Failed to erase partition '%s', address 0x%08x, size 0x%x",
+            p_partition->label,
+            p_partition->address,
+            p_partition->size);
+        return false;
+    }
+    return true;
+}
+
+static void
+fw_update_erase_all_next_partitions(void)
+{
+    if (!fw_update_erase_next_ota_partition(g_ruuvi_flash_info.p_next_update_partition))
+    {
+        LOG_ERR("Failed to erase next OTA partition");
+    }
+    if (!fw_update_erase_next_data_partition(g_ruuvi_flash_info.p_next_fatfs_gwui_partition))
+    {
+        LOG_ERR("Failed to erase next fatfs_gwui partition");
+    }
+    if (!fw_update_erase_next_data_partition(g_ruuvi_flash_info.p_next_fatfs_nrf52_partition))
+    {
+        LOG_ERR("Failed to erase next fatfs_nrf52 partition");
+    }
 }
 
 static bool
@@ -939,6 +1010,12 @@ fw_update_task(void)
     timer_cfg_mode_deactivation_stop();
 
     const bool flag_fw_update_successful = fw_update_do_actions();
+    if (!flag_fw_update_successful)
+    {
+        LOG_ERR(
+            "Failed to update firmware, erase all next partitions to avoid booting into invalid or unsigned firmware");
+        fw_update_erase_all_next_partitions();
+    }
 
     const char* const p_reboot_reason_msg = fw_update_get_reboot_reason_msg(
         g_fw_updating_reason,

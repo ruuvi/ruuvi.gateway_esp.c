@@ -26,6 +26,16 @@ esp_ota_write_patched(const esp_ota_handle_t handle, const void* const p_data, c
 esp_err_t
 esp_ota_end_patched(const esp_ota_handle_t handle);
 
+/**
+ * @brief This function erases the given partition safely by checking that the partition is valid inactive OTA
+ * partition.
+ * @note This function is just an extract of code from esp_ota_begin_patched function.
+ * @param p_partition Pointer to partition to erase.
+ * @return ESP_OK on success, error code otherwise.
+ */
+esp_err_t
+esp_ota_safe_erase(const esp_partition_t* const p_partition);
+
 #ifdef __cplusplus
 }
 #endif

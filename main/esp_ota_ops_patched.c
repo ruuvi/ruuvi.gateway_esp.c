@@ -295,3 +295,46 @@ esp_ota_end_patched(const esp_ota_handle_t handle)
     os_free(p_it);
     return ret;
 }
+
+esp_err_t
+esp_ota_safe_erase(const esp_partition_t* const p_partition)
+{
+    if (NULL == p_partition)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    const esp_partition_t* const p_partition_verified = esp_partition_verify(p_partition);
+    if (NULL == p_partition_verified)
+    {
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    if (!is_ota_partition(p_partition_verified))
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    const esp_partition_t* p_running_partition = esp_ota_get_running_partition();
+    if (p_partition_verified == p_running_partition)
+    {
+        return ESP_ERR_OTA_PARTITION_CONFLICT;
+    }
+
+#ifdef CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE
+    esp_ota_img_states_t ota_state_running_part = ESP_OTA_IMG_UNDEFINED;
+    if ((ESP_OK == esp_ota_get_state_partition(p_running_partition, &ota_state_running_part))
+        && (ESP_OTA_IMG_PENDING_VERIFY == ota_state_running_part))
+    {
+        ESP_LOGE(TAG, "Running app has not confirmed state (ESP_OTA_IMG_PENDING_VERIFY)");
+        return ESP_ERR_OTA_ROLLBACK_INVALID_STATE;
+    }
+#endif
+
+    const esp_err_t ret = erase_partition_with_sleep(p_partition_verified);
+    if (ESP_OK != ret)
+    {
+        return ret;
+    }
+    return ESP_OK;
+}
