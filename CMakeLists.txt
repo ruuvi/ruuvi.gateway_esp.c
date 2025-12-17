@@ -11,7 +11,43 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffile-prefix-map=${CMAKE_SOURCE_DIR}=."
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffile-prefix-map=$ENV{IDF_PATH}=IDF")
 
 set(EXPECTED_IDF_VERSION v4.2.2)
-set(RUUVI_NRF52_FW_URL https://github.com/ruuvi/ruuvi.gateway_nrf.c/releases/download/v2.0.0/ruuvigw_nrf_armgcc_ruuvigw_release_v2.0.0_full.hex)
+
+# ==============================================================================
+# nRF52 Firmware Configuration
+# ==============================================================================
+
+set(RUUVI_NRF52_FW_VERSION "v2.0.0")
+
+# Define which nRF52 firmware to use:
+set(RUUVI_NRF52_FW_CONFIG "Prod-RuuviGateway")
+#set(RUUVI_NRF52_FW_CONFIG "Dev-RuuviGateway")
+#set(RUUVI_NRF52_FW_CONFIG "Dev-nRF52840-DK")
+#set(RUUVI_NRF52_FW_CONFIG "Dev-nRF52-DK")
+
+# Configure firmware URL based on selected configuration
+if(RUUVI_NRF52_FW_CONFIG STREQUAL "Prod-RuuviGateway")
+    set(RUUVI_NRF52_FW_TARGET "ruuvigw_nrf")
+    set(RUUVI_NRF52_FW_URL "https://github.com/ruuvi/ruuvi.gateway_nrf.c/releases/download/${RUUVI_NRF52_FW_VERSION}/${RUUVI_NRF52_FW_TARGET}_armgcc_ruuvigw_release_${RUUVI_NRF52_FW_VERSION}_full.hex")
+    message(STATUS "nRF52 FW URL: ${RUUVI_NRF52_FW_URL}")
+else()
+    set(RUUVI_NRF52_FW_BASE_DIR "${CMAKE_SOURCE_DIR}/../ruuvi.gateway_nrf.c/src")
+    message(STATUS "nRF52 FW base dir: ${RUUVI_NRF52_FW_BASE_DIR}")
+
+    if(RUUVI_NRF52_FW_CONFIG STREQUAL "Dev-RuuviGateway")
+        set(RUUVI_NRF52_FW_TARGET "ruuvigw_nrf")
+        message(STATUS "nRF52 FW: Development - Ruuvi Gateway (local)")
+    elseif(RUUVI_NRF52_FW_CONFIG STREQUAL "Dev-nRF52840-DK")
+        set(RUUVI_NRF52_FW_TARGET "pca10059")
+        message(STATUS "nRF52 FW: Development - nRF52840 DK (local)")
+    elseif(RUUVI_NRF52_FW_CONFIG STREQUAL "Dev-nRF52-DK")
+        set(RUUVI_NRF52_FW_TARGET "pca10040")
+        message(STATUS "nRF52 FW: Development - nRF52 DK (local)")
+    else()
+        message(FATAL_ERROR "Invalid RUUVI_NRF52_FW_CONFIG value: ${RUUVI_NRF52_FW_CONFIG}")
+    endif()
+endif()
+
+# ==============================================================================
 
 set(EXTRA_COMPONENT_DIRS
         ${CMAKE_SOURCE_DIR}/components/ruuvi.comm_tester.c/components
@@ -29,12 +65,6 @@ ExternalProject_Add(mkfatfs
         INSTALL_COMMAND ""
         BUILD_ALWAYS 1
 )
-
-string(REGEX MATCH ".*/v?([0-9]+.[0-9]+.[0-9]+)/[^/]*" _ ${RUUVI_NRF52_FW_URL})
-set(RUUVI_NRF52_FW_VERSION v${CMAKE_MATCH_1})
-if("${RUUVI_NRF52_FW_VERSION}" STREQUAL "v")
-    message(FATAL_ERROR "Bad nRF52 firmware version: ${RUUVI_NRF52_FW_URL}")
-endif()
 
 set(GW_GWUI_PARTITION fatfs_gwui)
 file(STRINGS "partitions.csv" PARTITIONS_CSV)
