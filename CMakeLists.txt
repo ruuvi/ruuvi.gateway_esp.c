@@ -3,6 +3,20 @@
 cmake_minimum_required(VERSION 3.5)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+set(FATFS_GWUI_IMG ${CMAKE_BINARY_DIR}/fatfs_gwui.bin)
+set(GWUI_UNSIGNED "${FATFS_GWUI_IMG}")
+set(GWUI_SIGNED   "${GWUI_UNSIGNED}.signed")
+set(GWUI_SIGNATURE "${GWUI_UNSIGNED}.signature")
+set(GWUI_SIGNATURE_ADDR 0xF8000)
+set(GWUI_SIGNATURE_ADDR2 0xF9000)
+
+set(FATFS_NRF52_IMG ${CMAKE_BINARY_DIR}/fatfs_nrf52.bin)
+set(NRF52_UNSIGNED "${FATFS_NRF52_IMG}")
+set(NRF52_SIGNED   "${NRF52_UNSIGNED}.signed")
+set(NRF52_SIGNATURE "${NRF52_UNSIGNED}.signature")
+set(NRF52_SIGNATURE_ADDR 0xFA000)
+set(NRF52_SIGNATURE_ADDR2 0xFB000)
+
 add_compile_definitions(RI_ADV_EXTENDED_ENABLED=1 RI_COMM_BLE_PAYLOAD_MAX_LENGTH=48)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffile-prefix-map=${CMAKE_SOURCE_DIR}=.")
@@ -128,6 +142,10 @@ target_compile_definitions(__idf_main PUBLIC
         GW_GWUI_PARTITION="${GW_GWUI_PARTITION}"
         GW_NRF_PARTITION="${GW_NRF_PARTITION}"
         GW_CFG_PARTITION="${GW_CFG_PARTITION}"
+        GWUI_SIGNATURE_ADDR=${GWUI_SIGNATURE_ADDR}
+        GWUI_SIGNATURE_ADDR2=${GWUI_SIGNATURE_ADDR2}
+        NRF52_SIGNATURE_ADDR=${NRF52_SIGNATURE_ADDR}
+        NRF52_SIGNATURE_ADDR2=${NRF52_SIGNATURE_ADDR2}
         BOARD_RUUVIGW_ESP
 )
 
@@ -139,3 +157,32 @@ target_include_directories(__idf_lwip BEFORE PUBLIC ./include)
 target_include_directories(__idf_esp_common BEFORE PUBLIC ./components/esp-tls)
 
 target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "partition_table/partition-table.bin" BINARY)
+
+# Only add if the signature-producing target exists (i.e., signing enabled)
+if(TARGET gen_nrf52_signature)
+    # Ensure the file path exists at configure time so target_add_binary_data doesn't error
+    if(NOT EXISTS "${NRF52_SIGNATURE}")
+        file(WRITE "${NRF52_SIGNATURE}" "")
+    endif()
+    # Tell CMake this file will be generated/updated during the build
+    set_source_files_properties("${NRF52_SIGNATURE}" PROPERTIES GENERATED TRUE)
+
+    # Embed the signature as raw binary data into the ELF
+    target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "${NRF52_SIGNATURE}" BINARY)
+    # Ensure the signature is generated before the ELF is linked
+    add_dependencies(${CMAKE_PROJECT_NAME}.elf gen_nrf52_signature)
+endif()
+
+# Only add if the signature-producing target exists (i.e., signing enabled)
+if(TARGET gen_gwui_signature)
+    # Ensure the file path exists at configure time so target_add_binary_data doesn't error
+    if(NOT EXISTS "${GWUI_SIGNATURE}")
+        file(WRITE "${GWUI_SIGNATURE}" "")
+    endif()
+    set_source_files_properties("${GWUI_SIGNATURE}" PROPERTIES GENERATED TRUE)
+
+    # Embed the signature as raw binary data into the ELF
+    target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "${GWUI_SIGNATURE}" BINARY)
+    # Ensure the signature is generated before the ELF is linked
+    add_dependencies(${CMAKE_PROJECT_NAME}.elf gen_gwui_signature)
+endif()
