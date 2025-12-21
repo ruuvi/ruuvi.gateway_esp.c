@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "esp_ota_ops_patched.h"
+#include "esp_ota_ops.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -20,30 +22,22 @@
 #include <string.h>
 #include <assert.h>
 #include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
 #include "os_malloc.h"
 
 #include "esp_err.h"
 #include "esp_partition.h"
-#include "esp_spi_flash.h"
 #include "esp_image_format.h"
 #include "esp_secure_boot.h"
 #include "esp_flash_encrypt.h"
-#include "esp_spi_flash.h"
 #include "sdkconfig.h"
 
-#include "esp_ota_ops.h"
 #include "sys/queue.h"
-#include "esp32/rom/crc.h"
-#include "esp_log.h"
 #include "esp_flash_partitions.h"
 #include "bootloader_common.h"
 #include "sys/param.h"
-#include "esp_system.h"
-#include "esp_efuse.h"
 
-extern esp_err_t
-erase_partition_with_sleep(const esp_partition_t* const p_partition);
+#define LOG_LOCAL_LEVEL 3
+#include "esp_log.h"
 
 #define ESP_OTA_FLASH_ENCRYPTION_MIN_CHUNK_SIZE (16U)
 #define ESP_OTA_FLASH_ENCRYPTION_FILL           (0xFFU)
@@ -68,8 +62,8 @@ static uint32_t s_ota_ops_last_handle = 0;
 const static char* TAG = "esp_ota_ops";
 
 /* Return true if this is an OTA app partition */
-static bool
-is_ota_partition(const esp_partition_t* p)
+bool
+esp_ota_is_ota_partition(const esp_partition_t* p)
 {
     return (
         (NULL != p) && (ESP_PARTITION_TYPE_APP == p->type) && (p->subtype >= ESP_PARTITION_SUBTYPE_APP_OTA_0)
@@ -77,7 +71,11 @@ is_ota_partition(const esp_partition_t* p)
 }
 
 esp_err_t
-esp_ota_begin_patched(const esp_partition_t* const p_partition, esp_ota_handle_t* const p_out_handle)
+esp_ota_begin_patched(
+    const esp_partition_t* const   p_partition,
+    esp_ota_handle_t* const        p_out_handle,
+    uint32_t const                 delay_ticks,
+    const esp_ota_erase_callback_t callback)
 {
     if ((NULL == p_partition) || (NULL == p_out_handle))
     {
@@ -90,7 +88,7 @@ esp_ota_begin_patched(const esp_partition_t* const p_partition, esp_ota_handle_t
         return ESP_ERR_NOT_FOUND;
     }
 
-    if (!is_ota_partition(p_partition_verified))
+    if (!esp_ota_is_ota_partition(p_partition_verified))
     {
         return ESP_ERR_INVALID_ARG;
     }
@@ -111,7 +109,7 @@ esp_ota_begin_patched(const esp_partition_t* const p_partition, esp_ota_handle_t
     }
 #endif
 
-    const esp_err_t ret = erase_partition_with_sleep(p_partition_verified);
+    const esp_err_t ret = esp_ota_helper_erase_partition_with_sleep(p_partition_verified, delay_ticks, callback);
     if (ESP_OK != ret)
     {
         return ret;
@@ -294,47 +292,4 @@ esp_ota_end_patched(const esp_ota_handle_t handle)
     LIST_REMOVE(p_it, entries);
     os_free(p_it);
     return ret;
-}
-
-esp_err_t
-esp_ota_safe_erase(const esp_partition_t* const p_partition)
-{
-    if (NULL == p_partition)
-    {
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    const esp_partition_t* const p_partition_verified = esp_partition_verify(p_partition);
-    if (NULL == p_partition_verified)
-    {
-        return ESP_ERR_NOT_FOUND;
-    }
-
-    if (!is_ota_partition(p_partition_verified))
-    {
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    const esp_partition_t* p_running_partition = esp_ota_get_running_partition();
-    if (p_partition_verified == p_running_partition)
-    {
-        return ESP_ERR_OTA_PARTITION_CONFLICT;
-    }
-
-#ifdef CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE
-    esp_ota_img_states_t ota_state_running_part = ESP_OTA_IMG_UNDEFINED;
-    if ((ESP_OK == esp_ota_get_state_partition(p_running_partition, &ota_state_running_part))
-        && (ESP_OTA_IMG_PENDING_VERIFY == ota_state_running_part))
-    {
-        ESP_LOGE(TAG, "Running app has not confirmed state (ESP_OTA_IMG_PENDING_VERIFY)");
-        return ESP_ERR_OTA_ROLLBACK_INVALID_STATE;
-    }
-#endif
-
-    const esp_err_t ret = erase_partition_with_sleep(p_partition_verified);
-    if (ESP_OK != ret)
-    {
-        return ret;
-    }
-    return ESP_OK;
 }

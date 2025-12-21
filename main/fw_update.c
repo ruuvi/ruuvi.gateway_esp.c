@@ -12,6 +12,7 @@
 #include "cjson_wrap.h"
 #include "wifi_manager.h"
 #include "esp_ota_ops_patched.h"
+#include "esp_ota_helpers.h"
 #include "nrf52fw.h"
 #include "reset_task.h"
 #include "settings.h"
@@ -19,10 +20,9 @@
 #include "leds.h"
 #include "gw_status.h"
 #include "os_malloc.h"
-
+#include "network_timeout.h"
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
-#include "network_timeout.h"
 
 #define FW_UPDATE_TASK_STACK_SIZE ((7 * 1024) - 512)
 #define FW_UPDATE_TASK_PRIORITY   (1)
@@ -267,30 +267,20 @@ fw_update_get_cur_version(void)
     return version_str;
 }
 
-esp_err_t
-erase_partition_with_sleep(const esp_partition_t* const p_partition)
+static void
+fw_update_cb_erase_partition(const uint32_t offset, const uint32_t partition_size)
 {
-    assert(p_partition != NULL);
-    if ((p_partition->size % SPI_FLASH_SEC_SIZE) != 0)
-    {
-        return ESP_ERR_INVALID_SIZE;
-    }
-    size_t offset = 0;
-    while (offset < p_partition->size)
-    {
-        const uint32_t  sector_address = p_partition->address + offset;
-        const esp_err_t err = esp_flash_erase_region(p_partition->flash_chip, sector_address, SPI_FLASH_SEC_SIZE);
-        if (ESP_OK != err)
-        {
-            LOG_ERR_ESP(err, "Failed to erase sector at 0x%08x", (printf_uint_t)(p_partition->address + offset));
-            return err;
-        }
-        const fw_update_percentage_t percentage = (offset * FW_UPDATE_PERCENTAGE_50) / p_partition->size;
-        fw_update_set_extra_info_for_status_json(g_update_progress_stage, percentage);
-        vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS));
-        offset += SPI_FLASH_SEC_SIZE;
-    }
-    return ESP_OK;
+    const fw_update_percentage_t percentage = (offset * FW_UPDATE_PERCENTAGE_50) / partition_size;
+    fw_update_set_extra_info_for_status_json(g_update_progress_stage, percentage);
+}
+
+static esp_err_t
+fw_update_erase_data_partition_with_sleep(const esp_partition_t* const p_partition)
+{
+    return esp_ota_helper_erase_partition_with_sleep(
+        p_partition,
+        pdMS_TO_TICKS(FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS),
+        &fw_update_cb_erase_partition);
 }
 
 static bool
@@ -383,7 +373,12 @@ fw_update_data_partition(const esp_partition_t* const p_partition, const char* c
         .is_error    = false,
     };
     LOG_INFO("fw_update_data_partition: Erase partition");
-    esp_err_t err = erase_partition_with_sleep(p_partition);
+    LOG_INFO(
+        "Erase partition %s, address 0x%08x, size 0x%x",
+        p_partition->label,
+        p_partition->address,
+        p_partition->size);
+    const esp_err_t err = fw_update_erase_data_partition_with_sleep(p_partition);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(
@@ -555,7 +550,11 @@ fw_update_ota(const char* const p_url)
 
     LOG_INFO("fw_update_ota: Erase partition");
     esp_ota_handle_t out_handle = 0;
-    esp_err_t        err        = esp_ota_begin_patched(p_partition, &out_handle);
+    esp_err_t        err        = esp_ota_begin_patched(
+        p_partition,
+        &out_handle,
+        pdMS_TO_TICKS(FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS),
+        &fw_update_cb_erase_partition);
     if (ESP_OK != err)
     {
         LOG_ERR("%s failed", "esp_ota_begin");
@@ -816,7 +815,10 @@ fw_update_erase_next_ota_partition(const esp_partition_t* const p_partition_ota)
         p_partition_ota->label,
         p_partition_ota->address,
         p_partition_ota->size);
-    const esp_err_t err = esp_ota_safe_erase(p_partition_ota);
+    const esp_err_t err = esp_ota_helper_safe_erase_app_partition(
+        p_partition_ota,
+        pdMS_TO_TICKS(FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS),
+        &fw_update_cb_erase_partition);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(
@@ -843,7 +845,7 @@ fw_update_erase_next_data_partition(const esp_partition_t* const p_partition)
         p_partition->label,
         p_partition->address,
         p_partition->size);
-    esp_err_t err = erase_partition_with_sleep(p_partition);
+    esp_err_t err = fw_update_erase_data_partition_with_sleep(p_partition);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(
