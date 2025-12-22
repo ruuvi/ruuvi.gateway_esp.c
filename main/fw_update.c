@@ -85,6 +85,21 @@ static fw_update_config_t   g_fw_update_cfg;
 static fw_update_stage_e    g_update_progress_stage;
 static fw_updating_reason_e g_fw_updating_reason;
 
+static bool
+fw_update_check_is_valid_pub_key(const esp_ota_sha256_digest_t* const p_pub_key_digest)
+{
+    const ruuvi_flash_info_t* const p_flash_info = &g_ruuvi_flash_info;
+    if (0 != memcmp(p_pub_key_digest, &p_flash_info->running_app_pub_key_digest, sizeof(*p_pub_key_digest)))
+    {
+        LOG_DUMP_WARN(
+            &p_flash_info->running_app_pub_key_digest.digest[0],
+            sizeof(p_flash_info->running_app_pub_key_digest.digest),
+            "Running partition pub key digest");
+        return false;
+    }
+    return true;
+}
+
 static const esp_partition_t*
 find_data_fat_partition_by_name(const char* const p_partition_name)
 {
@@ -130,6 +145,39 @@ fw_update_log_running_partition_state(const esp_ota_img_states_t running_partiti
             break;
     }
 }
+static bool
+fw_update_self_check_signature(ruuvi_flash_info_t* const p_flash_info)
+{
+    const esp_partition_pos_t part_pos = {
+        .offset = p_flash_info->p_running_partition->address,
+        .size   = p_flash_info->p_running_partition->size,
+    };
+
+    LOG_INFO("Verifying signature of the running partition...");
+    const esp_err_t err = esp_image_verify(ESP_IMAGE_VERIFY, &part_pos, &p_flash_info->image_metadata);
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "Failed to verify image in running partition");
+        return false;
+    }
+    LOG_INFO("Signature of the running partition is valid.");
+
+    // Save public key digest of running partition for later comparison with pub key digest of firmware updates
+    LOG_INFO("Calculating public key digest of running partition...");
+    if (!esp_ota_helper_calc_pub_key_digest_for_app_image(
+            &p_flash_info->image_metadata,
+            &p_flash_info->running_app_pub_key_digest))
+    {
+        LOG_ERR("Failed to calculate public key digest of running partition");
+        return false;
+    }
+    LOG_DUMP_INFO(
+        &p_flash_info->running_app_pub_key_digest.digest[0],
+        sizeof(p_flash_info->running_app_pub_key_digest.digest),
+        "Running partition pub key digest");
+
+    return true;
+}
 
 static bool
 fw_update_read_flash_info_internal(ruuvi_flash_info_t* const p_flash_info)
@@ -156,7 +204,11 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t* const p_flash_info)
         LOG_ERR("There is no running partition info");
         return false;
     }
-    LOG_INFO("Currently running partition: %s", p_flash_info->p_running_partition->label);
+    LOG_INFO(
+        "Currently running partition: %s: address 0x%08x, size 0x%x",
+        p_flash_info->p_running_partition->label,
+        p_flash_info->p_running_partition->address,
+        p_flash_info->p_running_partition->size);
 
     esp_err_t err = esp_ota_get_state_partition(
         p_flash_info->p_running_partition,
@@ -219,10 +271,18 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t* const p_flash_info)
 }
 
 bool
-fw_update_read_flash_info(void)
+fw_update_read_flash_info_and_check_signatures(void)
 {
-    ruuvi_flash_info_t* p_flash_info = &g_ruuvi_flash_info;
+    ruuvi_flash_info_t* const p_flash_info = &g_ruuvi_flash_info;
+
     fw_update_read_flash_info_internal(p_flash_info);
+
+    if (!fw_update_self_check_signature(p_flash_info))
+    {
+        LOG_ERR("Self check of running partition signature failed");
+        return false;
+    }
+
     return p_flash_info->is_valid;
 }
 
@@ -541,7 +601,8 @@ fw_update_ota_partition(
 static bool
 fw_update_ota(const char* const p_url)
 {
-    const esp_partition_t* const p_partition = g_ruuvi_flash_info.p_next_update_partition;
+    ruuvi_flash_info_t*          p_flash_info = &g_ruuvi_flash_info;
+    const esp_partition_t* const p_partition  = p_flash_info->p_next_update_partition;
     if (NULL == p_partition)
     {
         LOG_ERR("Can't find partition to update firmware");
@@ -564,13 +625,21 @@ fw_update_ota(const char* const p_url)
     LOG_INFO("fw_update_ota: Download and write partition data");
     const bool res = fw_update_ota_partition(p_partition, out_handle, p_url);
 
+    esp_ota_sha256_digest_t pub_key_digest = { 0 };
     LOG_INFO("fw_update_ota: Finish writing to partition");
-    err = esp_ota_end_patched(out_handle);
+    err = esp_ota_end_patched(out_handle, &pub_key_digest);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(err, "%s failed", "esp_ota_end");
         return false;
     }
+    LOG_DUMP_INFO(&pub_key_digest.digest[0], sizeof(pub_key_digest.digest), "New firmware image pub key digest");
+    if (!fw_update_check_is_valid_pub_key(&pub_key_digest))
+    {
+        LOG_ERR("Public key digest of new firmware does not match the running one");
+        return false;
+    }
+    LOG_INFO("Image public key digest matches the running one");
 
     return res;
 }

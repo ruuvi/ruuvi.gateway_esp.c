@@ -220,7 +220,7 @@ esp_ota_write_patched(const esp_ota_handle_t handle, const void* const p_data, c
 }
 
 esp_err_t
-esp_ota_end_patched(const esp_ota_handle_t handle)
+esp_ota_end_patched(const esp_ota_handle_t handle, esp_ota_sha256_digest_t* const p_pub_key_digest)
 {
     ota_ops_entry_t* p_it = NULL;
     esp_err_t        ret  = ESP_OK;
@@ -282,7 +282,24 @@ esp_ota_end_patched(const esp_ota_handle_t handle)
             {
                 if (esp_image_verify(ESP_IMAGE_VERIFY, &part_pos, p_metadata) != ESP_OK)
                 {
+                    ESP_LOGE(
+                        TAG,
+                        "Image verify failed for partition at address 0x%08x, size 0x%08x",
+                        part_pos.offset,
+                        part_pos.size);
                     ret = ESP_ERR_OTA_VALIDATE_FAILED;
+                }
+                else
+                {
+                    if (!esp_ota_helper_calc_pub_key_digest_for_app_image(p_metadata, p_pub_key_digest))
+                    {
+                        ESP_LOGE(
+                            TAG,
+                            "Public key digest calculation failed for partition at address 0x%08x, size 0x%08x",
+                            part_pos.offset,
+                            part_pos.size);
+                        ret = ESP_ERR_OTA_VALIDATE_FAILED;
+                    }
                 }
             }
             os_free(p_metadata);
