@@ -601,8 +601,8 @@ fw_update_ota_partition(
 static bool
 fw_update_ota(const char* const p_url)
 {
-    ruuvi_flash_info_t*          p_flash_info = &g_ruuvi_flash_info;
-    const esp_partition_t* const p_partition  = p_flash_info->p_next_update_partition;
+    const ruuvi_flash_info_t* const p_flash_info = &g_ruuvi_flash_info;
+    const esp_partition_t* const    p_partition  = p_flash_info->p_next_update_partition;
     if (NULL == p_partition)
     {
         LOG_ERR("Can't find partition to update firmware");

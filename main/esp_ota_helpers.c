@@ -25,6 +25,7 @@
 #include "esp_flash_partitions.h"
 #include "bootloader_common.h"
 #include "sys/param.h"
+#include "os_malloc.h"
 
 #define LOG_LOCAL_LEVEL 3
 #include "log.h"
@@ -111,7 +112,7 @@ esp_ota_helper_safe_erase_app_partition(
 static bool
 esp_ota_helper_calc_sha256(const uint8_t* const p_data, const size_t data_len, uint8_t* const p_out_sha256)
 {
-    mbedtls_sha256_context* const p_sha256_ctx = calloc(1, sizeof(*p_sha256_ctx));
+    mbedtls_sha256_context* p_sha256_ctx = os_calloc(1, sizeof(*p_sha256_ctx));
     if (NULL == p_sha256_ctx)
     {
         return false;
@@ -121,25 +122,25 @@ esp_ota_helper_calc_sha256(const uint8_t* const p_data, const size_t data_len, u
     {
         LOG_ERR("%s failed", "mbedtls_sha256_starts");
         mbedtls_sha256_free(p_sha256_ctx);
-        free(p_sha256_ctx);
+        os_free(p_sha256_ctx);
         return false;
     }
     if (mbedtls_sha256_update(p_sha256_ctx, p_data, data_len) < 0)
     {
         LOG_ERR("%s failed", "mbedtls_sha256_update");
         mbedtls_sha256_free(p_sha256_ctx);
-        free(p_sha256_ctx);
+        os_free(p_sha256_ctx);
         return false;
     }
     if (mbedtls_sha256_finish(p_sha256_ctx, p_out_sha256) < 0)
     {
         LOG_ERR("%s failed", "mbedtls_sha256_finish");
         mbedtls_sha256_free(p_sha256_ctx);
-        free(p_sha256_ctx);
+        os_free(p_sha256_ctx);
         return false;
     }
     mbedtls_sha256_free(p_sha256_ctx);
-    free(p_sha256_ctx);
+    os_free(p_sha256_ctx);
     return true;
 }
 
