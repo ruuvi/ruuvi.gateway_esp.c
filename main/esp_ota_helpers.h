@@ -9,10 +9,18 @@
 #include <stdbool.h>
 #include <esp_err.h>
 #include <esp_partition.h>
+#include <esp_secure_boot.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define ESP_OTA_SHA256_DIGEST_SIZE (32U)
+
+typedef struct esp_ota_sha256_digest_t
+{
+    uint8_t digest[ESP_OTA_SHA256_DIGEST_SIZE];
+} esp_ota_sha256_digest_t;
 
 typedef void (*esp_ota_erase_callback_t)(const uint32_t offset, const uint32_t partition_size);
 
@@ -43,6 +51,39 @@ esp_ota_helper_safe_erase_app_partition(
     const esp_partition_t* const   p_partition,
     const uint32_t                 delay_ticks,
     const esp_ota_erase_callback_t callback);
+
+/**
+ * @brief This function calculates the public key digest from secure boot signature.
+ * @param p_sig_block Pointer to signature block.
+ * @param[OUT] p_pub_key_digest Pointer to public key digest structure to fill.
+ * @return true on success, false otherwise.
+ */
+bool
+esp_ota_helper_calc_pub_key_digest_for_signature(
+    const ets_secure_boot_signature_t* const p_sig_block,
+    esp_ota_sha256_digest_t* const           p_pub_key_digest);
+
+/**
+ * @brief This function calculates the public key digest from signature.
+ * @param signature_addr Address of the signature block in flash.
+ * @param[OUT] p_pub_key_digest Pointer to public key digest structure to fill.
+ * @return true on success, false otherwise.
+ */
+bool
+esp_ota_helper_calc_pub_key_digest_for_signature_in_flash(
+    const uint32_t                 signature_addr,
+    esp_ota_sha256_digest_t* const p_pub_key_digest);
+
+/**
+ * @brief This function calculates the public key digest from image metadata.
+ * @param p_metadata Pointer to image metadata.
+ * @param[OUT] p_pub_key_digest Pointer to public key digest structure to fill.
+ * @return true on success, false otherwise.
+ */
+bool
+esp_ota_helper_calc_pub_key_digest_for_app_image(
+    const esp_image_metadata_t* const p_metadata,
+    esp_ota_sha256_digest_t* const    p_pub_key_digest);
 
 #ifdef __cplusplus
 }

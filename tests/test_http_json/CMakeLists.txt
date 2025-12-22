@@ -45,6 +45,7 @@ target_include_directories(${ProjectId} PUBLIC
         ${RUUVI_GW_SRC}
         ${WIFI_MANAGER_INC}
         include
+        ${COMPONENTS}/bootloader_support/include
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src
         $ENV{IDF_PATH}/components/json/cJSON
         $ENV{IDF_PATH}/components/esp_common/include

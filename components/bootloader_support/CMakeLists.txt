@@ -14,8 +14,8 @@ set(srcs
     "src/bootloader_efuse_${IDF_TARGET}.c"
     )
 
+set(include_dirs "include" "include_bootloader")
 if(BOOTLOADER_BUILD)
-    set(include_dirs "include" "include_bootloader")
     set(priv_requires micro-ecc spi_flash efuse)
     list(APPEND srcs
     "src/bootloader_init.c"
@@ -26,8 +26,6 @@ if(BOOTLOADER_BUILD)
 else()
     list(APPEND srcs
         "src/idf/bootloader_sha.c")
-    set(include_dirs "include")
-    set(priv_include_dirs "include_bootloader")
     set(priv_requires spi_flash mbedtls efuse)
 endif()
 
