@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define LOG_LOCAL_LEVEL 4
 #include <stdlib.h>
 #include <string.h>
 #include "esp_log.h"
