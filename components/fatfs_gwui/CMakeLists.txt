@@ -3,16 +3,13 @@ idf_component_register(PRIV_REQUIRES partition_table)
 set(RUUVI_GWUI_HTML ${CMAKE_SOURCE_DIR}/ruuvi.gwui.html)
 set(FATFS_GWUI_TMP_DIR ${CMAKE_BINARY_DIR}/fatfs_gwui)
 
-set(MKFATFS ${CMAKE_BINARY_DIR}/mkfatfs/mkfatfs)
-
 ExternalProject_Add(fatfs_gwui_ext
         PREFIX fatfs_gwui_ext
-        DEPENDS mkfatfs
         SOURCE_DIR ${RUUVI_GWUI_HTML}
         BUILD_BYPRODUCTS ${FATFS_GWUI_IMG}
         CONFIGURE_COMMAND ""
         BUILD_COMMAND
-            ${CMAKE_SOURCE_DIR}/scripts/build_gwui_fatfs.sh ${RUUVI_GWUI_HTML} ${FATFS_GWUI_TMP_DIR} ${FATFS_GWUI_IMG} ${FATFS_GWUI_SIZE} ${MKFATFS}
+            ${CMAKE_SOURCE_DIR}/scripts/build_gwui_fatfs.sh ${RUUVI_GWUI_HTML} ${FATFS_GWUI_TMP_DIR} ${FATFS_GWUI_IMG} ${FATFS_GWUI_SIZE}
         INSTALL_COMMAND ""
         BUILD_ALWAYS 1
 )
@@ -36,7 +33,7 @@ if(NOT BOOTLOADER_BUILD AND CONFIG_SECURE_SIGNED_APPS AND CONFIG_SECURE_BOOT_BUI
             -o "${GWUI_SIGNED}" "${GWUI_UNSIGNED}"
             COMMAND ${CMAKE_COMMAND} -E echo "Generated signed binary image ${GWUI_SIGNED} from ${GWUI_UNSIGNED}"
             COMMAND ${CMAKE_COMMAND} -E md5sum "${GWUI_SIGNED}" > "${build_dir}/.signed_gwui_timestamp"
-            DEPENDS fatfs_gwui_ext
+            DEPENDS fatfs_gwui_ext ${FATFS_GWUI_IMG}
             VERBATIM
             COMMENT "Signing GWUI FATFS image"
     )

@@ -3,20 +3,18 @@ idf_component_register(PRIV_REQUIRES partition_table)
 set(DOWNLOAD_FW_HEX gw_nrf_fw.hex)
 
 set(FATFS_NRF52_TMP_DIR ${CMAKE_BINARY_DIR}/fatfs_nrf52)
-set(MKFATFS ${CMAKE_BINARY_DIR}/mkfatfs/mkfatfs)
 
 if(DEFINED RUUVI_NRF52_FW_URL)
     # It's a URL - download it
     ExternalProject_Add(fatfs_nrf52_ext
             PREFIX fatfs_nrf52_ext
-            DEPENDS mkfatfs
             URL ${RUUVI_NRF52_FW_URL}
             DOWNLOAD_NAME ${DOWNLOAD_FW_HEX}
             DOWNLOAD_NO_EXTRACT 1
             CONFIGURE_COMMAND ""
             BUILD_COMMAND
                 python3 ${CMAKE_SOURCE_DIR}/scripts/ihex_to_segments.py -i=../${DOWNLOAD_FW_HEX} -o=${FATFS_NRF52_TMP_DIR} -f=info.txt -v=${RUUVI_NRF52_FW_VERSION} &&
-                ${MKFATFS} -c ${FATFS_NRF52_TMP_DIR} -s ${FATFS_NRF52_SIZE} ${FATFS_NRF52_IMG}
+                ${CMAKE_SOURCE_DIR}/scripts/build_nrf52_fatfs.sh ${FATFS_NRF52_TMP_DIR} ${FATFS_NRF52_IMG} ${FATFS_NRF52_SIZE}
             INSTALL_COMMAND ""
             BUILD_ALWAYS 1
             BUILD_BYPRODUCTS ${FATFS_NRF52_IMG}
@@ -61,12 +59,12 @@ else()
 
     ExternalProject_Add(fatfs_nrf52_ext
             PREFIX fatfs_nrf52_ext
-            DEPENDS mkfatfs fatfs_nrf52_build_fw
+            DEPENDS fatfs_nrf52_build_fw
             DOWNLOAD_COMMAND ""
             CONFIGURE_COMMAND ""
             BUILD_COMMAND
                 python3 ${CMAKE_SOURCE_DIR}/scripts/ihex_to_segments.py -i=${CMAKE_CURRENT_BINARY_DIR}/fatfs_nrf52_ext/${DOWNLOAD_FW_HEX} -o=${FATFS_NRF52_TMP_DIR} -f=info.txt -v=${RUUVI_NRF52_FW_VERSION} &&
-                ${MKFATFS} -c ${FATFS_NRF52_TMP_DIR} -s ${FATFS_NRF52_SIZE} ${FATFS_NRF52_IMG}
+                ${CMAKE_SOURCE_DIR}/scripts/build_nrf52_fatfs.sh ${FATFS_NRF52_TMP_DIR} ${FATFS_NRF52_IMG} ${FATFS_NRF52_SIZE}
             INSTALL_COMMAND ""
             BUILD_ALWAYS 1
             BUILD_BYPRODUCTS ${FATFS_NRF52_IMG}
@@ -92,7 +90,7 @@ if(NOT BOOTLOADER_BUILD AND CONFIG_SECURE_SIGNED_APPS AND CONFIG_SECURE_BOOT_BUI
             -o "${NRF52_SIGNED}" "${NRF52_UNSIGNED}"
             COMMAND ${CMAKE_COMMAND} -E echo "Generated signed binary image ${NRF52_SIGNED} from ${NRF52_UNSIGNED}"
             COMMAND ${CMAKE_COMMAND} -E md5sum "${NRF52_SIGNED}" > "${build_dir}/.signed_nrf52fw_timestamp"
-            DEPENDS fatfs_nrf52_ext
+            DEPENDS fatfs_nrf52_ext ${FATFS_NRF52_IMG}
             VERBATIM
             COMMENT "Signing nRF52 FATFS image"
     )
