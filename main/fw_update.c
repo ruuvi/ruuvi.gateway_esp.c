@@ -339,7 +339,9 @@ static void
 fw_update_cb_erase_partition(const uint32_t offset, const uint32_t partition_size, void* const p_user_data)
 {
     const fw_update_erase_partition_user_data_t* const p_data = p_user_data;
-    const fw_update_percentage_t percentage = p_data->percent_base + (offset * p_data->percent_range) / partition_size;
+
+    const fw_update_percentage_t percentage = p_data->percent_base
+                                              + ((offset * p_data->percent_range) / partition_size);
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, percentage);
 }
 
