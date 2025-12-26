@@ -75,7 +75,8 @@ esp_ota_begin_patched(
     const esp_partition_t* const   p_partition,
     esp_ota_handle_t* const        p_out_handle,
     uint32_t const                 delay_ticks,
-    const esp_ota_erase_callback_t callback)
+    const esp_ota_erase_callback_t callback,
+    void* const                    p_user_data)
 {
     if ((NULL == p_partition) || (NULL == p_out_handle))
     {
@@ -109,7 +110,11 @@ esp_ota_begin_patched(
     }
 #endif
 
-    const esp_err_t ret = esp_ota_helper_erase_partition_with_sleep(p_partition_verified, delay_ticks, callback);
+    const esp_err_t ret = esp_ota_helper_erase_partition_with_sleep(
+        p_partition_verified,
+        delay_ticks,
+        callback,
+        p_user_data);
     if (ESP_OK != ret)
     {
         return ret;
