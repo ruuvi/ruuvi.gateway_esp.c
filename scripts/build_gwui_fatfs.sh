@@ -35,16 +35,12 @@ if [ -z "$4" ]
     FATFS_GWUI_SIZE=$4
 fi
 
-if [ -z "$5" ]
-  then
-    MKFATFS=$CMAKE_BINARY_DIR/mkfatfs/mkfatfs
-  else
-    MKFATFS=$5
-fi
-
 cd "$RUUVI_GWUI_HTML"
 [ ! -d "$RUUVI_GWUI_HTML/node_modules" ] && npm install
 npm run build-prod
 npm run test
 python3 "$SCRIPT_PATH/prep_gwui.py" -i="$RUUVI_GWUI_HTML/build" -o="$FATFS_GWUI_TMP_DIR"
-"$MKFATFS" -c "$FATFS_GWUI_TMP_DIR" -s "$FATFS_GWUI_SIZE" "$FATFS_GWUI_IMG"
+truncate -s $(($FATFS_GWUI_SIZE)) "$FATFS_GWUI_IMG"
+export SOURCE_DATE_EPOCH=315532800  # 1980-01-01 00:00:00 UTC (to create reproducible builds)
+mformat -i "$FATFS_GWUI_IMG" -v GWUI -N 0 ::
+mcopy -i "$FATFS_GWUI_IMG" -v -s $FATFS_GWUI_TMP_DIR/* ::

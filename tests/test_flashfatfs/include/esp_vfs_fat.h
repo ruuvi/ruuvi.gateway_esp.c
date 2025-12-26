@@ -15,7 +15,6 @@
 #pragma once
 #include <stddef.h>
 #include "esp_err.h"
-#include "wear_levelling.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -175,12 +174,14 @@ esp_err_t esp_vfs_fat_sdmmc_unmount();
  *      - ESP_FAIL if partition can not be mounted
  *      - other error codes from wear levelling library, SPI flash driver, or FATFS drivers
  */
+#if 0
 esp_err_t
 esp_vfs_fat_spiflash_mount(
     const char*                       base_path,
     const char*                       partition_label,
     const esp_vfs_fat_mount_config_t* mount_config,
     wl_handle_t*                      wl_handle);
+#endif
 
 /**
  * @brief Unmount FAT filesystem and release resources acquired using esp_vfs_fat_spiflash_mount
@@ -192,10 +193,11 @@ esp_vfs_fat_spiflash_mount(
  *      - ESP_OK on success
  *      - ESP_ERR_INVALID_STATE if esp_vfs_fat_spiflash_mount hasn't been called
  */
+#if 0
 esp_err_t
 esp_vfs_fat_spiflash_unmount(const char* base_path, wl_handle_t wl_handle);
+#endif
 
-#if 0
 /**
  * @brief Convenience function to initialize read-only FAT filesystem and register it in VFS
  *
@@ -219,12 +221,12 @@ esp_vfs_fat_spiflash_unmount(const char* base_path, wl_handle_t wl_handle);
  *      - ESP_FAIL if partition can not be mounted
  *      - other error codes from SPI flash driver, or FATFS drivers
  */
-esp_err_t esp_vfs_fat_rawflash_mount(const char* base_path,
-    const char* partition_label,
+esp_err_t
+esp_vfs_fat_rawflash_mount(
+    const char*                       base_path,
+    const char*                       partition_label,
     const esp_vfs_fat_mount_config_t* mount_config);
-#endif
 
-#if 0
 /**
  * @brief Unmount FAT filesystem and release resources acquired using esp_vfs_fat_rawflash_mount
  *
@@ -235,8 +237,8 @@ esp_err_t esp_vfs_fat_rawflash_mount(const char* base_path,
  *      - ESP_OK on success
  *      - ESP_ERR_INVALID_STATE if esp_vfs_fat_spiflash_mount hasn't been called
  */
- esp_err_t esp_vfs_fat_rawflash_unmount(const char* base_path, const char* partition_label);
-#endif
+esp_err_t
+esp_vfs_fat_rawflash_unmount(const char* base_path, const char* partition_label);
 
 #ifdef __cplusplus
 }

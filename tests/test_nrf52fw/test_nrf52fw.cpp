@@ -40,7 +40,6 @@ public:
     bool                       flag_mounted = false;
     esp_err_t                  mount_err    = ESP_OK;
     esp_err_t                  unmount_err  = ESP_OK;
-    wl_handle_t                wl_handle    = 0;
 };
 
 class MemAllocTrace
@@ -182,7 +181,6 @@ protected:
         this->m_mount_info.flag_mounted                         = false;
         this->m_mount_info.mount_err                            = ESP_OK;
         this->m_mount_info.unmount_err                          = ESP_OK;
-        this->m_mount_info.wl_handle                            = 0;
         this->m_uicr_fw_ver                                     = 0xFFFFFFFFU;
         this->m_uicr_fw_ver_simulate_write_error                = false;
         this->m_uicr_fw_ver_simulate_read_error                 = false;
@@ -462,25 +460,22 @@ nrf52swd_read_mem(const uint32_t addr, const uint32_t num_words, uint32_t* p_buf
 }
 
 esp_err_t
-esp_vfs_fat_spiflash_mount(
+esp_vfs_fat_rawflash_mount(
     const char*                       base_path,
     const char*                       partition_label,
-    const esp_vfs_fat_mount_config_t* mount_config,
-    wl_handle_t*                      wl_handle)
+    const esp_vfs_fat_mount_config_t* mount_config)
 {
     g_pTestClass->m_mount_info.base_path       = string(base_path);
     g_pTestClass->m_mount_info.partition_label = string(partition_label);
     g_pTestClass->m_mount_info.mount_config    = *mount_config;
-    *wl_handle                                 = g_pTestClass->m_mount_info.wl_handle;
     g_pTestClass->m_mount_info.flag_mounted    = true;
     return g_pTestClass->m_mount_info.mount_err;
 }
 
 esp_err_t
-esp_vfs_fat_spiflash_unmount(const char* base_path, wl_handle_t wl_handle)
+esp_vfs_fat_rawflash_unmount(const char* base_path, const char* partition_label)
 {
     assert(g_pTestClass->m_mount_info.flag_mounted);
-    assert(g_pTestClass->m_mount_info.wl_handle == wl_handle);
     g_pTestClass->m_mount_info.flag_mounted = false;
     return g_pTestClass->m_mount_info.unmount_err;
 }
@@ -3914,7 +3909,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_mount_failed) //
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_ERROR, "esp_vfs_fat_spiflash_mount failed, err=261 (ESP_ERR_NOT_FOUND)");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_ERROR, "esp_vfs_fat_rawflash_mount failed, err=261 (ESP_ERR_NOT_FOUND)");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "flashfatfs_mount failed");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");

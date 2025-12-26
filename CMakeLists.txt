@@ -71,14 +71,14 @@ set(EXCLUDE_COMPONENTS "nghttp2" "openssl" "libsodium" "coap" "protocomm" "freem
 
 include(ExternalProject)
 
-ExternalProject_Add(mkfatfs
-        PREFIX mkfatfs
-        SOURCE_DIR ${CMAKE_SOURCE_DIR}/mkfatfs
-        BINARY_DIR ${CMAKE_BINARY_DIR}/mkfatfs
-        BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/mkfatfs/mkfatfs
-        INSTALL_COMMAND ""
-        BUILD_ALWAYS 1
-)
+# ExternalProject_Add(mkfatfs
+#         PREFIX mkfatfs
+#         SOURCE_DIR ${CMAKE_SOURCE_DIR}/mkfatfs
+#         BINARY_DIR ${CMAKE_BINARY_DIR}/mkfatfs
+#         BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/mkfatfs/mkfatfs
+#         INSTALL_COMMAND ""
+#         BUILD_ALWAYS 1
+# )
 
 set(GW_GWUI_PARTITION fatfs_gwui)
 file(STRINGS "partitions.csv" PARTITIONS_CSV)
