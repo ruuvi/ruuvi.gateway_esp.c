@@ -32,7 +32,9 @@
 
 #define FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS (20)
 
+#define FW_UPDATE_PERCENTAGE_33  (33U)
 #define FW_UPDATE_PERCENTAGE_50  (50U)
+#define FW_UPDATE_PERCENTAGE_66  (66U)
 #define FW_UPDATE_PERCENTAGE_100 (100U)
 
 #define FW_UPDATE_DELAY_BEFORE_REBOOT_SECONDS (5U)
@@ -72,6 +74,12 @@ typedef enum fw_update_stage_e
 } fw_update_stage_e;
 
 typedef uint32_t fw_update_percentage_t;
+
+typedef struct fw_update_erase_partition_user_data_t
+{
+    uint32_t percent_base;
+    uint32_t percent_range;
+} fw_update_erase_partition_user_data_t;
 
 static void
 fw_update_set_extra_info_for_status_json(
@@ -328,19 +336,28 @@ fw_update_get_cur_version(void)
 }
 
 static void
-fw_update_cb_erase_partition(const uint32_t offset, const uint32_t partition_size)
+fw_update_cb_erase_partition(const uint32_t offset, const uint32_t partition_size, void* const p_user_data)
 {
-    const fw_update_percentage_t percentage = (offset * FW_UPDATE_PERCENTAGE_50) / partition_size;
+    const fw_update_erase_partition_user_data_t* const p_data = p_user_data;
+    const fw_update_percentage_t percentage = p_data->percent_base + (offset * p_data->percent_range) / partition_size;
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, percentage);
 }
 
 static esp_err_t
-fw_update_erase_data_partition_with_sleep(const esp_partition_t* const p_partition)
+fw_update_erase_data_partition_with_sleep(
+    const esp_partition_t* const p_partition,
+    const uint32_t               percent_base,
+    const uint32_t               percent_range)
 {
+    fw_update_erase_partition_user_data_t user_data = {
+        .percent_base  = percent_base,
+        .percent_range = percent_range,
+    };
     return esp_ota_helper_erase_partition_with_sleep(
         p_partition,
         pdMS_TO_TICKS(FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS),
-        &fw_update_cb_erase_partition);
+        &fw_update_cb_erase_partition,
+        &user_data);
 }
 
 static bool
@@ -414,7 +431,6 @@ fw_update_data_partition_cb_on_recv_data(
         return false;
     }
     p_info->offset += buf_size;
-
     return true;
 }
 
@@ -438,7 +454,7 @@ fw_update_data_partition(const esp_partition_t* const p_partition, const char* c
         p_partition->label,
         p_partition->address,
         p_partition->size);
-    const esp_err_t err = fw_update_erase_data_partition_with_sleep(p_partition);
+    const esp_err_t err = fw_update_erase_data_partition_with_sleep(p_partition, 0, FW_UPDATE_PERCENTAGE_50);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(
@@ -610,12 +626,18 @@ fw_update_ota(const char* const p_url)
     }
 
     LOG_INFO("fw_update_ota: Erase partition");
+    fw_update_erase_partition_user_data_t user_data = {
+        .percent_base  = 0,
+        .percent_range = FW_UPDATE_PERCENTAGE_50,
+    };
     esp_ota_handle_t out_handle = 0;
-    esp_err_t        err        = esp_ota_begin_patched(
+
+    esp_err_t err = esp_ota_begin_patched(
         p_partition,
         &out_handle,
         pdMS_TO_TICKS(FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS),
-        &fw_update_cb_erase_partition);
+        &fw_update_cb_erase_partition,
+        &user_data);
     if (ESP_OK != err)
     {
         LOG_ERR("%s failed", "esp_ota_begin");
@@ -872,7 +894,10 @@ fw_update_fatfs_nrf52_bin(void)
 }
 
 static bool
-fw_update_erase_next_ota_partition(const esp_partition_t* const p_partition_ota)
+fw_update_erase_next_ota_partition(
+    const esp_partition_t* const p_partition_ota,
+    const uint32_t               percent_base,
+    const uint32_t               percent_range)
 {
     if (NULL == p_partition_ota)
     {
@@ -884,10 +909,16 @@ fw_update_erase_next_ota_partition(const esp_partition_t* const p_partition_ota)
         p_partition_ota->label,
         p_partition_ota->address,
         p_partition_ota->size);
+
+    fw_update_erase_partition_user_data_t user_data = {
+        .percent_base  = percent_base,
+        .percent_range = percent_range,
+    };
     const esp_err_t err = esp_ota_helper_safe_erase_app_partition(
         p_partition_ota,
         pdMS_TO_TICKS(FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS),
-        &fw_update_cb_erase_partition);
+        &fw_update_cb_erase_partition,
+        &user_data);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(
@@ -902,7 +933,10 @@ fw_update_erase_next_ota_partition(const esp_partition_t* const p_partition_ota)
 }
 
 static bool
-fw_update_erase_next_data_partition(const esp_partition_t* const p_partition)
+fw_update_erase_next_data_partition(
+    const esp_partition_t* const p_partition,
+    const uint32_t               percent_base,
+    const uint32_t               percent_range)
 {
     if (NULL == p_partition)
     {
@@ -914,7 +948,7 @@ fw_update_erase_next_data_partition(const esp_partition_t* const p_partition)
         p_partition->label,
         p_partition->address,
         p_partition->size);
-    esp_err_t err = fw_update_erase_data_partition_with_sleep(p_partition);
+    esp_err_t err = fw_update_erase_data_partition_with_sleep(p_partition, percent_base, percent_range);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(
@@ -931,15 +965,21 @@ fw_update_erase_next_data_partition(const esp_partition_t* const p_partition)
 static void
 fw_update_erase_all_next_partitions(void)
 {
-    if (!fw_update_erase_next_ota_partition(g_ruuvi_flash_info.p_next_update_partition))
+    if (!fw_update_erase_next_ota_partition(g_ruuvi_flash_info.p_next_update_partition, 0, FW_UPDATE_PERCENTAGE_33))
     {
         LOG_ERR("Failed to erase next OTA partition");
     }
-    if (!fw_update_erase_next_data_partition(g_ruuvi_flash_info.p_next_fatfs_gwui_partition))
+    if (!fw_update_erase_next_data_partition(
+            g_ruuvi_flash_info.p_next_fatfs_gwui_partition,
+            FW_UPDATE_PERCENTAGE_33,
+            FW_UPDATE_PERCENTAGE_66))
     {
         LOG_ERR("Failed to erase next fatfs_gwui partition");
     }
-    if (!fw_update_erase_next_data_partition(g_ruuvi_flash_info.p_next_fatfs_nrf52_partition))
+    if (!fw_update_erase_next_data_partition(
+            g_ruuvi_flash_info.p_next_fatfs_nrf52_partition,
+            FW_UPDATE_PERCENTAGE_66,
+            FW_UPDATE_PERCENTAGE_100))
     {
         LOG_ERR("Failed to erase next fatfs_nrf52 partition");
     }
@@ -1085,6 +1125,7 @@ fw_update_task(void)
     {
         LOG_ERR(
             "Failed to update firmware, erase all next partitions to avoid booting into invalid or unsigned firmware");
+        g_update_progress_stage = FW_UPDATE_STAGE_4;
         fw_update_erase_all_next_partitions();
     }
 
@@ -1112,9 +1153,9 @@ fw_update_task(void)
             default:
                 break;
         }
-        LOG_INFO("Wait 5 seconds before reboot");
-        sleep_with_task_watchdog_feeding(FW_UPDATE_DELAY_BEFORE_REBOOT_SECONDS);
     }
+    LOG_INFO("Wait 5 seconds before reboot");
+    sleep_with_task_watchdog_feeding(FW_UPDATE_DELAY_BEFORE_REBOOT_SECONDS);
     gateway_restart(p_reboot_reason_msg);
 }
 

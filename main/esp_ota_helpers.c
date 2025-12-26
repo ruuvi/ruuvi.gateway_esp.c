@@ -36,7 +36,8 @@ esp_err_t
 esp_ota_helper_erase_partition_with_sleep(
     const esp_partition_t* const   p_partition,
     uint32_t const                 delay_ticks,
-    const esp_ota_erase_callback_t callback)
+    const esp_ota_erase_callback_t callback,
+    void* const                    p_user_data)
 {
     assert(p_partition != NULL);
     if ((p_partition->size % SPI_FLASH_SEC_SIZE) != 0)
@@ -55,7 +56,7 @@ esp_ota_helper_erase_partition_with_sleep(
         }
         if (NULL != callback)
         {
-            callback(offset, p_partition->size);
+            callback(offset, p_partition->size, p_user_data);
         }
         vTaskDelay(delay_ticks);
         offset += SPI_FLASH_SEC_SIZE;
@@ -67,7 +68,8 @@ esp_err_t
 esp_ota_helper_safe_erase_app_partition(
     const esp_partition_t* const p_partition,
     uint32_t                     delay_ticks,
-    esp_ota_erase_callback_t     callback)
+    esp_ota_erase_callback_t     callback,
+    void* const                  p_user_data)
 {
     if (NULL == p_partition)
     {
@@ -101,7 +103,11 @@ esp_ota_helper_safe_erase_app_partition(
     }
 #endif
 
-    const esp_err_t ret = esp_ota_helper_erase_partition_with_sleep(p_partition_verified, delay_ticks, callback);
+    const esp_err_t ret = esp_ota_helper_erase_partition_with_sleep(
+        p_partition_verified,
+        delay_ticks,
+        callback,
+        p_user_data);
     if (ESP_OK != ret)
     {
         return ret;
