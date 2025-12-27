@@ -531,30 +531,6 @@ fw_update_data_partition(const esp_partition_t* const p_partition, const char* c
     return true;
 }
 
-bool
-fw_update_fatfs_gwui(const char* const p_url)
-{
-    const esp_partition_t* const p_partition = g_ruuvi_flash_info.p_next_fatfs_gwui_partition;
-    if (NULL == p_partition)
-    {
-        LOG_ERR("Can't find partition to update fatfs_gwui");
-        return false;
-    }
-    return fw_update_data_partition(p_partition, p_url);
-}
-
-bool
-fw_update_fatfs_nrf52(const char* const p_url)
-{
-    const esp_partition_t* const p_partition = g_ruuvi_flash_info.p_next_fatfs_nrf52_partition;
-    if (NULL == p_partition)
-    {
-        LOG_ERR("Can't find partition to update fatfs_nrf52");
-        return false;
-    }
-    return fw_update_data_partition(p_partition, p_url);
-}
-
 static bool
 fw_update_ota_partition_cb_on_recv_data(
     const uint8_t* const   p_buf,
@@ -898,40 +874,54 @@ fw_update_ruuvi_gateway_esp_bin(fw_update_error_message_info_t* const p_error_me
 static bool
 fw_update_fatfs_gwui_bin(void)
 {
-    LOG_INFO("fw_update_fatfs_gwui");
+    LOG_INFO("fw_update_fatfs_gwui_bin");
+    const ruuvi_flash_info_t* const p_flash_info = &g_ruuvi_flash_info;
+    const esp_partition_t* const    p_partition  = p_flash_info->p_next_fatfs_gwui_partition;
+    if (NULL == p_partition)
+    {
+        LOG_ERR("Can't find partition to update fatfs_gwui");
+        return false;
+    }
     str_buf_t url = str_buf_printf_with_alloc("%s/%s", g_fw_update_cfg.binaries_url, "fatfs_gwui.bin");
     if (NULL == url.buf)
     {
         LOG_ERR("Can't allocate memory");
         return false;
     }
-    if (!fw_update_fatfs_gwui(url.buf))
+    bool res = fw_update_data_partition(p_partition, url.buf);
+    str_buf_free_buf(&url);
+    if (!res)
     {
-        LOG_ERR("%s failed", "fw_update_fatfs_gwui");
-        str_buf_free_buf(&url);
+        LOG_ERR("%s failed", "fw_update_data_partition");
         return false;
     }
-    str_buf_free_buf(&url);
     return true;
 }
 
 static bool
 fw_update_fatfs_nrf52_bin(void)
 {
-    LOG_INFO("fw_update_fatfs_nrf52");
+    LOG_INFO("fw_update_fatfs_nrf52_bin");
+    const ruuvi_flash_info_t* const p_flash_info = &g_ruuvi_flash_info;
+    const esp_partition_t* const    p_partition  = g_ruuvi_flash_info.p_next_fatfs_nrf52_partition;
+    if (NULL == p_partition)
+    {
+        LOG_ERR("Can't find partition to update fatfs_nrf52");
+        return false;
+    }
     str_buf_t url = str_buf_printf_with_alloc("%s/%s", g_fw_update_cfg.binaries_url, "fatfs_nrf52.bin");
     if (NULL == url.buf)
     {
         LOG_ERR("Can't allocate memory");
         return false;
     }
-    if (!fw_update_fatfs_nrf52(url.buf))
+    bool res = fw_update_data_partition(p_partition, url.buf);
+    str_buf_free_buf(&url);
+    if (!res)
     {
-        LOG_ERR("%s failed", "fw_update_fatfs_nrf52");
-        str_buf_free_buf(&url);
+        LOG_ERR("%s failed", "fw_update_data_partition");
         return false;
     }
-    str_buf_free_buf(&url);
     return true;
 }
 
