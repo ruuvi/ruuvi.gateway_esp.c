@@ -472,23 +472,14 @@ fw_update_data_partition_cb_on_recv_data(
 }
 
 static bool
-fw_update_data_partition(
-    const esp_partition_t* const p_partition,
-    const char* const            p_url,
-    const uint32_t               signature_addr)
+fw_update_data_partition_download(const esp_partition_t* const p_partition, const char* const p_url)
 {
-    LOG_INFO(
-        "Update partition %s (address 0x%08x, size 0x%x) from %s",
-        p_partition->label,
-        p_partition->address,
-        p_partition->size,
-        p_url);
     fw_update_data_partition_info_t fw_update_info = {
         .p_partition = p_partition,
         .offset      = 0,
         .is_error    = false,
     };
-    LOG_INFO("fw_update_data_partition: Erase partition");
+
     LOG_INFO(
         "Erase partition %s, address 0x%08x, size 0x%x",
         p_partition->label,
@@ -530,6 +521,29 @@ fw_update_data_partition(
         LOG_ERR("Failed to update partition %s - some problem during writing", p_partition->label);
         return false;
     }
+    LOG_INFO("Partition %s has been successfully downloaded", p_partition->label);
+    return true;
+}
+
+static bool
+fw_update_data_partition(
+    const esp_partition_t* const p_partition,
+    const char* const            p_url,
+    const uint32_t               signature_addr)
+{
+    LOG_INFO(
+        "Update partition %s (address 0x%08x, size 0x%x) from %s",
+        p_partition->label,
+        p_partition->address,
+        p_partition->size,
+        p_url);
+
+    if (!fw_update_data_partition_download(p_partition, p_url))
+    {
+        LOG_ERR("Failed to download data for partition %s", p_partition->label);
+        return false;
+    }
+
     LOG_INFO("Partition %s has been successfully updated", p_partition->label);
     return true;
 }
