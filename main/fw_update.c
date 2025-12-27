@@ -245,39 +245,69 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t* const p_flash_info)
         p_flash_info->p_next_update_partition->address,
         p_flash_info->p_next_update_partition->size);
     p_flash_info->is_ota0_active = (0 == strcmp("ota_0", p_flash_info->p_running_partition->label)) ? true : false;
-    const char* const p_gwui_parition_name    = p_flash_info->is_ota0_active ? GW_GWUI_PARTITION_2 : GW_GWUI_PARTITION;
-    p_flash_info->p_next_fatfs_gwui_partition = find_data_fat_partition_by_name(p_gwui_parition_name);
-    if (NULL == p_flash_info->p_next_fatfs_gwui_partition)
+
+    const esp_partition_t* const p_gw_gwui = find_data_fat_partition_by_name(GW_GWUI_PARTITION);
+    if (NULL == p_gw_gwui)
     {
+        LOG_ERR("Can't find first partition for gwui filesystem: %s", GW_GWUI_PARTITION);
         return false;
     }
+    const esp_partition_t* const p_gw_gwui2 = find_data_fat_partition_by_name(GW_GWUI_PARTITION_2);
+    if (NULL == p_gw_gwui2)
+    {
+        LOG_ERR("Can't find second partition for gwui filesystem: %s", GW_GWUI_PARTITION_2);
+        return false;
+    }
+    p_flash_info->p_cur_fatfs_gwui_partition     = p_flash_info->is_ota0_active ? p_gw_gwui : p_gw_gwui2;
+    p_flash_info->p_next_fatfs_gwui_partition    = p_flash_info->is_ota0_active ? p_gw_gwui2 : p_gw_gwui;
+    p_flash_info->cur_fatfs_gwui_signature_addr  = p_flash_info->is_ota0_active ? GWUI_SIGNATURE_ADDR
+                                                                                : GWUI_SIGNATURE_ADDR2;
+    p_flash_info->next_fatfs_gwui_signature_addr = p_flash_info->is_ota0_active ? GWUI_SIGNATURE_ADDR2
+                                                                                : GWUI_SIGNATURE_ADDR;
     LOG_INFO(
-        "Next fatfs_gwui partition: %s: address 0x%08x, size 0x%x",
+        "Cur fatfs_gwui partition: %s: address 0x%08x, size 0x%x, signature addr 0x%08x",
+        p_flash_info->p_cur_fatfs_gwui_partition->label,
+        p_flash_info->p_cur_fatfs_gwui_partition->address,
+        p_flash_info->p_cur_fatfs_gwui_partition->size,
+        p_flash_info->cur_fatfs_gwui_signature_addr);
+    LOG_INFO(
+        "Next fatfs_gwui partition: %s: address 0x%08x, size 0x%x, signature addr 0x%08x",
         p_flash_info->p_next_fatfs_gwui_partition->label,
         p_flash_info->p_next_fatfs_gwui_partition->address,
-        p_flash_info->p_next_fatfs_gwui_partition->size);
+        p_flash_info->p_next_fatfs_gwui_partition->size,
+        p_flash_info->next_fatfs_gwui_signature_addr);
 
-    const char* const p_fatfs_nrf52_partition_name = p_flash_info->is_ota0_active ? GW_NRF_PARTITION_2
-                                                                                  : GW_NRF_PARTITION;
-    p_flash_info->p_next_fatfs_nrf52_partition     = find_data_fat_partition_by_name(p_fatfs_nrf52_partition_name);
-    if (NULL == p_flash_info->p_next_fatfs_nrf52_partition)
+    const esp_partition_t* const p_gw_nrf = find_data_fat_partition_by_name(GW_NRF_PARTITION);
+    if (NULL == p_gw_nrf)
     {
-        if (!p_flash_info->is_ota0_active)
-        {
-            LOG_ERR("Can't find seconds partition for nRF52 firmware: %s", p_fatfs_nrf52_partition_name);
-            return false;
-        }
-        LOG_WARN(
-            "Can't find seconds partition for nRF52 firmware: %s, use the first one: %s",
-            p_fatfs_nrf52_partition_name,
-            GW_NRF_PARTITION);
-        p_flash_info->p_next_fatfs_nrf52_partition = find_data_fat_partition_by_name(GW_NRF_PARTITION);
+        LOG_ERR("Can't find first partition for nRF52 firmware: %s", GW_NRF_PARTITION);
+        return false;
     }
+    const esp_partition_t* const p_gw_nrf2 = find_data_fat_partition_by_name(GW_NRF_PARTITION_2);
+    if (NULL == p_gw_nrf2)
+    {
+        LOG_ERR("Can't find second partition for nRF52 firmware: %s", GW_NRF_PARTITION_2);
+        return false;
+    }
+    p_flash_info->p_cur_fatfs_nrf52_partition     = p_flash_info->is_ota0_active ? p_gw_nrf : p_gw_nrf2;
+    p_flash_info->p_next_fatfs_nrf52_partition    = p_flash_info->is_ota0_active ? p_gw_nrf2 : p_gw_nrf;
+    p_flash_info->cur_fatfs_nrf52_signature_addr  = p_flash_info->is_ota0_active ? NRF52_SIGNATURE_ADDR
+                                                                                 : NRF52_SIGNATURE_ADDR2;
+    p_flash_info->next_fatfs_nrf52_signature_addr = p_flash_info->is_ota0_active ? NRF52_SIGNATURE_ADDR2
+                                                                                 : NRF52_SIGNATURE_ADDR;
+
     LOG_INFO(
-        "Next fatfs_nrf52 partition: %s: address 0x%08x, size 0x%x",
+        "Cur fatfs_nrf52 partition: %s: address 0x%08x, size 0x%x, signature addr 0x%08x",
+        p_flash_info->p_cur_fatfs_nrf52_partition->label,
+        p_flash_info->p_cur_fatfs_nrf52_partition->address,
+        p_flash_info->p_cur_fatfs_nrf52_partition->size,
+        p_flash_info->cur_fatfs_nrf52_signature_addr);
+    LOG_INFO(
+        "Next fatfs_nrf52 partition: %s: address 0x%08x, size 0x%x, signature addr 0x%08x",
         p_flash_info->p_next_fatfs_nrf52_partition->label,
         p_flash_info->p_next_fatfs_nrf52_partition->address,
-        p_flash_info->p_next_fatfs_nrf52_partition->size);
+        p_flash_info->p_next_fatfs_nrf52_partition->size,
+        p_flash_info->next_fatfs_nrf52_signature_addr);
 
     p_flash_info->is_valid = true;
     return true;

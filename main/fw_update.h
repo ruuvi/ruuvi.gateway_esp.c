@@ -31,10 +31,16 @@ typedef struct ruuvi_flash_info_t
     const esp_partition_t*  p_boot_partition;
     const esp_partition_t*  p_running_partition;
     esp_ota_img_states_t    running_partition_state;
+    const esp_partition_t*  p_cur_fatfs_gwui_partition;
+    const esp_partition_t*  p_cur_fatfs_nrf52_partition;
     const esp_partition_t*  p_next_update_partition;
     const esp_partition_t*  p_next_fatfs_gwui_partition;
     const esp_partition_t*  p_next_fatfs_nrf52_partition;
     esp_image_metadata_t    image_metadata;
+    uint32_t                cur_fatfs_gwui_signature_addr;
+    uint32_t                next_fatfs_gwui_signature_addr;
+    uint32_t                cur_fatfs_nrf52_signature_addr;
+    uint32_t                next_fatfs_nrf52_signature_addr;
     esp_ota_sha256_digest_t running_app_pub_key_digest;
 } ruuvi_flash_info_t;
 
