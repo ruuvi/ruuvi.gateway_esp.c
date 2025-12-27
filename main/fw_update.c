@@ -472,7 +472,10 @@ fw_update_data_partition_cb_on_recv_data(
 }
 
 static bool
-fw_update_data_partition(const esp_partition_t* const p_partition, const char* const p_url)
+fw_update_data_partition(
+    const esp_partition_t* const p_partition,
+    const char* const            p_url,
+    const uint32_t               signature_addr)
 {
     LOG_INFO(
         "Update partition %s (address 0x%08x, size 0x%x) from %s",
@@ -882,13 +885,15 @@ fw_update_fatfs_gwui_bin(void)
         LOG_ERR("Can't find partition to update fatfs_gwui");
         return false;
     }
+    const uint32_t signature_addr = p_flash_info->next_fatfs_gwui_signature_addr;
+
     str_buf_t url = str_buf_printf_with_alloc("%s/%s", g_fw_update_cfg.binaries_url, "fatfs_gwui.bin");
     if (NULL == url.buf)
     {
         LOG_ERR("Can't allocate memory");
         return false;
     }
-    bool res = fw_update_data_partition(p_partition, url.buf);
+    bool res = fw_update_data_partition(p_partition, url.buf, signature_addr);
     str_buf_free_buf(&url);
     if (!res)
     {
@@ -909,13 +914,15 @@ fw_update_fatfs_nrf52_bin(void)
         LOG_ERR("Can't find partition to update fatfs_nrf52");
         return false;
     }
+    const uint32_t signature_addr = p_flash_info->next_fatfs_nrf52_signature_addr;
+
     str_buf_t url = str_buf_printf_with_alloc("%s/%s", g_fw_update_cfg.binaries_url, "fatfs_nrf52.bin");
     if (NULL == url.buf)
     {
         LOG_ERR("Can't allocate memory");
         return false;
     }
-    bool res = fw_update_data_partition(p_partition, url.buf);
+    bool res = fw_update_data_partition(p_partition, url.buf, signature_addr);
     str_buf_free_buf(&url);
     if (!res)
     {
