@@ -28,7 +28,8 @@ esp_ota_begin_patched(
     const esp_partition_t* const   p_partition,
     esp_ota_handle_t* const        p_out_handle,
     uint32_t const                 delay_ticks,
-    const esp_ota_erase_callback_t callback);
+    const esp_ota_erase_callback_t callback,
+    void* const                    p_user_data);
 
 esp_err_t
 esp_ota_write_patched(const esp_ota_handle_t handle, const void* const p_data, const size_t size);
