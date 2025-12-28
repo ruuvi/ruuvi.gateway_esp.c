@@ -168,6 +168,67 @@ fw_update_log_running_partition_state(const esp_ota_img_states_t running_partiti
             break;
     }
 }
+
+static bool
+fw_update_check_fatfs_partition_signature(
+    const esp_partition_t* const             p_fatfs_partition,
+    const uint32_t                           fatfs_partition_signature_addr,
+    const ets_secure_boot_signature_t* const p_embedded_signature)
+{
+    LOG_INFO("Verify fatfs partition '%s'", p_fatfs_partition->label);
+    esp_ota_sha256_digest_t fatfs_partition_pub_key_digest = { 0 };
+    if (!esp_ota_helper_data_partition_verify_using_signature_from_flash(
+            p_fatfs_partition,
+            fatfs_partition_signature_addr,
+            &fatfs_partition_pub_key_digest))
+    {
+        LOG_DUMP_INFO(
+            &fatfs_partition_pub_key_digest.digest[0],
+            sizeof(fatfs_partition_pub_key_digest.digest),
+            "Fatfs partition '%s' pub key digest:",
+            p_fatfs_partition->label);
+        // If signature verification failed, then check using signature embedded in binary.
+        // This applies when only FAT-FS images without signature blocks are flashed
+        // (firmware versions v1.16.x and earlier do not download signature blocks).
+        LOG_WARN(
+            "Failed to verify fatfs partition '%s', trying to verify using embedded signature",
+            p_fatfs_partition->label);
+
+        if (!esp_ota_helper_calc_digest_for_parition(p_fatfs_partition, &fatfs_partition_pub_key_digest))
+        {
+            LOG_ERR("Failed to calculate digest for fatfs partition '%s'", p_fatfs_partition->label);
+            return false;
+        }
+        if (!esp_ota_helper_data_partition_verify(&fatfs_partition_pub_key_digest, p_embedded_signature))
+        {
+            LOG_ERR("Failed to verify fatfs partition '%s' using embedded signature", p_fatfs_partition->label);
+            return false;
+        }
+        LOG_INFO("Successfully verified fatfs partition '%s' using embedded signature", p_fatfs_partition->label);
+    }
+    else
+    {
+        LOG_DUMP_INFO(
+            &fatfs_partition_pub_key_digest.digest[0],
+            sizeof(fatfs_partition_pub_key_digest.digest),
+            "Fatfs partition '%s' pub key digest",
+            p_fatfs_partition->label);
+        LOG_INFO("Successfully verified fatfs partition '%s' signature", p_fatfs_partition->label);
+        // If signature verification passed, then check that the public key of partition signature matches with the
+        // public key of running partition - this is for the case when using the old bootloader without Secure Boot
+        // enabled.
+        if (!fw_update_check_is_valid_pub_key(&fatfs_partition_pub_key_digest))
+        {
+            LOG_ERR(
+                "Public key digest of fatfs partition '%s' does not match running partition",
+                p_fatfs_partition->label);
+            return false;
+        }
+        LOG_INFO("Public key digest of fatfs partition '%s' matches running partition", p_fatfs_partition->label);
+    }
+    return true;
+}
+
 static bool
 fw_update_self_check_signature(ruuvi_flash_info_t* const p_flash_info)
 {
@@ -198,6 +259,37 @@ fw_update_self_check_signature(ruuvi_flash_info_t* const p_flash_info)
         &p_flash_info->running_app_pub_key_digest.digest[0],
         sizeof(p_flash_info->running_app_pub_key_digest.digest),
         "Running partition pub key digest");
+
+    extern const ets_secure_boot_signature_t fatfs_gwui_signature_start[] asm("_binary_fatfs_gwui_bin_signature_start");
+    extern const uint8_t                     fatfs_gwui_signature_end[] asm("_binary_fatfs_gwui_bin_signature_end");
+    assert(
+        ((uintptr_t)fatfs_gwui_signature_end - (uintptr_t)fatfs_gwui_signature_start)
+        == sizeof(ets_secure_boot_signature_t));
+
+    if (!fw_update_check_fatfs_partition_signature(
+            p_flash_info->p_cur_fatfs_gwui_partition,
+            p_flash_info->cur_fatfs_gwui_signature_addr,
+            fatfs_gwui_signature_start))
+    {
+        LOG_ERR("fatfs_gwui partition signature check failed");
+        return false;
+    }
+
+    extern const ets_secure_boot_signature_t fatfs_nrf52_signature_start[] asm(
+        "_binary_fatfs_nrf52_bin_signature_start");
+    extern const uint8_t fatfs_nrf52_signature_end[] asm("_binary_fatfs_nrf52_bin_signature_end");
+    assert(
+        ((uintptr_t)fatfs_nrf52_signature_end - (uintptr_t)fatfs_nrf52_signature_start)
+        == sizeof(ets_secure_boot_signature_t));
+
+    if (!fw_update_check_fatfs_partition_signature(
+            p_flash_info->p_cur_fatfs_nrf52_partition,
+            p_flash_info->cur_fatfs_nrf52_signature_addr,
+            fatfs_nrf52_signature_start))
+    {
+        LOG_ERR("fatfs_nrf52 partition signature check failed");
+        return false;
+    }
 
     return true;
 }

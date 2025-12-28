@@ -57,6 +57,17 @@ esp_ota_helper_safe_erase_app_partition(
     void* const                    p_user_data);
 
 /**
+ * @brief This function calculates the SHA-256 digest for the given partition.
+ * @param p_partition Pointer to partition to calculate digest for.
+ * @param[OUT] p_digest Pointer to digest structure to fill.
+ * @return true on success, false otherwise.
+ */
+bool
+esp_ota_helper_calc_digest_for_parition(
+    const esp_partition_t* const   p_partition,
+    esp_ota_sha256_digest_t* const p_digest);
+
+/**
  * @brief This function calculates the public key digest from secure boot signature.
  * @param p_sig_block Pointer to signature block.
  * @param[OUT] p_pub_key_digest Pointer to public key digest structure to fill.
@@ -88,6 +99,36 @@ bool
 esp_ota_helper_calc_pub_key_digest_for_app_image(
     const esp_image_metadata_t* const p_metadata,
     esp_ota_sha256_digest_t* const    p_pub_key_digest);
+
+/** @brief Verify a data partition's signature.
+ *
+ *  Performs RSA-PSS Verification of the SHA-256 image based on the public key
+ *  in the signature block, compared against the public key digest.
+ *
+ * @param[IN] p_digest - Pointer to the data partition digest.
+ * @param[IN] p_sig_block - Pointer to signature block.
+ * @return true if the signature is valid, false otherwise.
+ */
+bool
+esp_ota_helper_data_partition_verify(
+    const esp_ota_sha256_digest_t* const     p_digest,
+    const ets_secure_boot_signature_t* const p_sig_block);
+
+/** @brief Verify a data partition's signature.
+ *
+ *  Performs RSA-PSS Verification of the SHA-256 image based on the public key
+ *  in the signature block, compared against the public key digest.
+ *
+ * @param p_partition - Pointer to data partition to verify.
+ * @param signature_addr - Address of the signature block in flash.
+ * @param[OUT] p_pub_key_digest - Pointer to the data partition public key digest structure to fill.
+ * @return true if the signature is valid, false otherwise.
+ */
+bool
+esp_ota_helper_data_partition_verify_using_signature_from_flash(
+    const esp_partition_t* const   p_partition,
+    const uint32_t                 signature_addr,
+    esp_ota_sha256_digest_t* const p_pub_key_digest);
 
 #ifdef __cplusplus
 }
