@@ -725,6 +725,30 @@ fw_update_data_partition_download(const esp_partition_t* const p_partition, cons
 }
 
 static bool
+fw_update_data_partition_verify(const esp_partition_t* const p_partition, const uint32_t signature_addr)
+{
+    LOG_INFO("Verifying signature for partition %s", p_partition->label);
+    esp_ota_sha256_digest_t pub_key_digest = { 0 };
+    if (!esp_ota_helper_data_partition_verify_using_signature_from_flash(p_partition, signature_addr, &pub_key_digest))
+    {
+        LOG_ERR("Failed to verify signature for partition %s", p_partition->label);
+        return false;
+    }
+    LOG_DUMP_INFO(
+        &pub_key_digest.digest[0],
+        sizeof(pub_key_digest.digest),
+        "Partition %s pub key digest",
+        p_partition->label);
+    if (!fw_update_check_is_valid_pub_key(&pub_key_digest))
+    {
+        LOG_ERR("Public key digest of partition %s does not match running partition", p_partition->label);
+        return false;
+    }
+    LOG_INFO("Public key digest of partition %s matches running partition", p_partition->label);
+    return true;
+}
+
+static bool
 fw_update_data_partition(
     const esp_partition_t* const p_partition,
     const char* const            p_url,
@@ -740,6 +764,12 @@ fw_update_data_partition(
     if (!fw_update_data_partition_download(p_partition, p_url))
     {
         LOG_ERR("Failed to download data for partition %s", p_partition->label);
+        return false;
+    }
+
+    if (!fw_update_data_partition_verify(p_partition, signature_addr))
+    {
+        LOG_ERR("Failed to verify data for partition %s", p_partition->label);
         return false;
     }
 
