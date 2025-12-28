@@ -81,6 +81,11 @@ typedef struct fw_update_erase_partition_user_data_t
     uint32_t percent_range;
 } fw_update_erase_partition_user_data_t;
 
+typedef struct fw_update_error_message_info_t
+{
+    const char* p_message;
+} fw_update_error_message_info_t;
+
 static void
 fw_update_set_extra_info_for_status_json(
     const enum fw_update_stage_e fw_updating_stage,
@@ -617,7 +622,7 @@ fw_update_ota_partition(
 }
 
 static bool
-fw_update_ota(const char* const p_url)
+fw_update_ota(const char* const p_url, fw_update_error_message_info_t* const p_error_message_info)
 {
     const ruuvi_flash_info_t* const p_flash_info = &g_ruuvi_flash_info;
     const esp_partition_t* const    p_partition  = p_flash_info->p_next_update_partition;
@@ -654,13 +659,18 @@ fw_update_ota(const char* const p_url)
     err = esp_ota_end_patched(out_handle, &pub_key_digest);
     if (ESP_OK != err)
     {
-        LOG_ERR_ESP(err, "%s failed", "esp_ota_end");
+        LOG_ERR_ESP(err, "%s failed", "esp_ota_end_patched");
+        if (ESP_ERR_OTA_VALIDATE_FAILED == err)
+        {
+            p_error_message_info->p_message = "Firmware signature verification failed";
+        }
         return false;
     }
     LOG_DUMP_INFO(&pub_key_digest.digest[0], sizeof(pub_key_digest.digest), "New firmware image pub key digest");
     if (!fw_update_check_is_valid_pub_key(&pub_key_digest))
     {
         LOG_ERR("Public key digest of new firmware does not match the running one");
+        p_error_message_info->p_message = "Firmware signature verification failed";
         return false;
     }
     LOG_INFO("Image public key digest matches the running one");
@@ -836,7 +846,7 @@ fw_update_nrf52fw_cb_after_updating(const bool flag_success)
 }
 
 static bool
-fw_update_ruuvi_gateway_esp_bin(void)
+fw_update_ruuvi_gateway_esp_bin(fw_update_error_message_info_t* const p_error_message_info)
 {
     LOG_INFO("fw_update_ruuvi_gateway_esp_bin");
     str_buf_t url = str_buf_printf_with_alloc("%s/%s", g_fw_update_cfg.binaries_url, "ruuvi_gateway_esp.bin");
@@ -845,7 +855,7 @@ fw_update_ruuvi_gateway_esp_bin(void)
         LOG_ERR("Can't allocate memory");
         return false;
     }
-    if (!fw_update_ota(url.buf))
+    if (!fw_update_ota(url.buf, p_error_message_info))
     {
         LOG_ERR("%s failed", "fw_update_ota");
         str_buf_free_buf(&url);
@@ -988,15 +998,19 @@ fw_update_erase_all_next_partitions(void)
 }
 
 static bool
-fw_update_do_actions(void)
+fw_update_do_actions(fw_update_error_message_info_t* const p_error_message_info)
 {
     g_update_progress_stage = FW_UPDATE_STAGE_1;
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, 0);
 
-    if (!fw_update_ruuvi_gateway_esp_bin())
+    p_error_message_info->p_message = NULL;
+    if (!fw_update_ruuvi_gateway_esp_bin(p_error_message_info))
     {
         LOG_ERR("%s failed", "fw_update_ruuvi_gateway_esp_bin");
-        fw_update_set_extra_info_for_status_json_update_failed("Failed to update OTA");
+        if (NULL == p_error_message_info->p_message)
+        {
+            p_error_message_info->p_message = "Failed to update OTA";
+        }
         return false;
     }
 
@@ -1006,7 +1020,10 @@ fw_update_do_actions(void)
     if (!fw_update_fatfs_gwui_bin())
     {
         LOG_ERR("%s failed", "fw_update_fatfs_gwui_bin");
-        fw_update_set_extra_info_for_status_json_update_failed("Failed to update GWUI");
+        if (NULL == p_error_message_info->p_message)
+        {
+            p_error_message_info->p_message = "Failed to update GWUI";
+        }
         return false;
     }
 
@@ -1016,7 +1033,10 @@ fw_update_do_actions(void)
     if (!fw_update_fatfs_nrf52_bin())
     {
         LOG_ERR("%s failed", "fw_update_fatfs_nrf52_bin");
-        fw_update_set_extra_info_for_status_json_update_failed("Failed to update nRF52");
+        if (NULL == p_error_message_info->p_message)
+        {
+            p_error_message_info->p_message = "Failed to update nRF52";
+        }
         return false;
     }
 
@@ -1025,7 +1045,10 @@ fw_update_do_actions(void)
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(err, "%s failed", "esp_ota_set_boot_partition");
-        fw_update_set_extra_info_for_status_json_update_failed("Failed to switch boot partition");
+        if (NULL == p_error_message_info->p_message)
+        {
+            p_error_message_info->p_message = "Failed to switch boot partition";
+        }
         return false;
     }
 
@@ -1045,6 +1068,10 @@ fw_update_do_actions(void)
             false))
     {
         LOG_ERR("%s failed", "nrf52fw_update_fw_if_necessary");
+        if (NULL == p_error_message_info->p_message)
+        {
+            p_error_message_info->p_message = "Failed to update nRF52 firmware";
+        }
         fw_update_set_extra_info_for_status_json_update_failed_nrf52("Failed to update nRF52 firmware");
         return false;
     }
@@ -1122,13 +1149,17 @@ fw_update_task(void)
     }
     timer_cfg_mode_deactivation_stop();
 
-    const bool flag_fw_update_successful = fw_update_do_actions();
+    fw_update_error_message_info_t error_message_info = {
+        .p_message = NULL,
+    };
+    const bool flag_fw_update_successful = fw_update_do_actions(&error_message_info);
     if (!flag_fw_update_successful)
     {
         LOG_ERR(
             "Failed to update firmware, erase all next partitions to avoid booting into invalid or unsigned firmware");
         g_update_progress_stage = FW_UPDATE_STAGE_4;
         fw_update_erase_all_next_partitions();
+        fw_update_set_extra_info_for_status_json_update_failed(error_message_info.p_message);
     }
 
     const char* const p_reboot_reason_msg = fw_update_get_reboot_reason_msg(
