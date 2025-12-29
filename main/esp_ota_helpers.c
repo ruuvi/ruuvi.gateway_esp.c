@@ -151,7 +151,7 @@ esp_ota_helper_calc_sha256(const uint8_t* const p_data, const size_t data_len, u
 }
 
 bool
-esp_ota_helper_calc_digest_for_parition(
+esp_ota_helper_calc_digest_for_partition(
     const esp_partition_t* const   p_partition,
     esp_ota_sha256_digest_t* const p_digest)
 {
@@ -285,7 +285,7 @@ esp_ota_helper_data_partition_verify_using_signature_from_flash(
     esp_ota_sha256_digest_t* const p_pub_key_digest)
 {
     esp_ota_sha256_digest_t digest = { 0 };
-    if (!esp_ota_helper_calc_digest_for_parition(p_partition, &digest))
+    if (!esp_ota_helper_calc_digest_for_partition(p_partition, &digest))
     {
         LOG_ERR("calc_digest_for_partition failed for address 0x%08x", p_partition->address);
         return false;

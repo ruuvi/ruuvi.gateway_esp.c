@@ -194,7 +194,7 @@ fw_update_check_fatfs_partition_signature(
             "Failed to verify fatfs partition '%s', trying to verify using embedded signature",
             p_fatfs_partition->label);
 
-        if (!esp_ota_helper_calc_digest_for_parition(p_fatfs_partition, &fatfs_partition_pub_key_digest))
+        if (!esp_ota_helper_calc_digest_for_partition(p_fatfs_partition, &fatfs_partition_pub_key_digest))
         {
             LOG_ERR("Failed to calculate digest for fatfs partition '%s'", p_fatfs_partition->label);
             return false;

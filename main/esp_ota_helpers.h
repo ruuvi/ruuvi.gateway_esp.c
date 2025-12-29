@@ -63,7 +63,7 @@ esp_ota_helper_safe_erase_app_partition(
  * @return true on success, false otherwise.
  */
 bool
-esp_ota_helper_calc_digest_for_parition(
+esp_ota_helper_calc_digest_for_partition(
     const esp_partition_t* const   p_partition,
     esp_ota_sha256_digest_t* const p_digest);
 
