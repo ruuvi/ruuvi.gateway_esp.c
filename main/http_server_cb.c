@@ -764,9 +764,8 @@ http_resp_code_e
 http_server_check_fw_update_binary_files(const char* const p_fw_binaries_url, const char** p_p_err_file_name)
 {
     const char* arr_of_file_names[] = {
-        "ruuvi_gateway_esp.bin",
-        "fatfs_gwui.bin",
-        "fatfs_nrf52.bin",
+        "ruuvi_gateway_esp.bin",     "fatfs_gwui.bin.signature", "fatfs_gwui.bin",
+        "fatfs_nrf52.bin.signature", "fatfs_nrf52.bin",
     };
     for (size_t i = 0; i < OS_ARRAY_SIZE(arr_of_file_names); ++i)
     {
