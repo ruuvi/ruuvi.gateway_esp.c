@@ -71,15 +71,6 @@ set(EXCLUDE_COMPONENTS "nghttp2" "openssl" "libsodium" "coap" "protocomm" "freem
 
 include(ExternalProject)
 
-# ExternalProject_Add(mkfatfs
-#         PREFIX mkfatfs
-#         SOURCE_DIR ${CMAKE_SOURCE_DIR}/mkfatfs
-#         BINARY_DIR ${CMAKE_BINARY_DIR}/mkfatfs
-#         BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/mkfatfs/mkfatfs
-#         INSTALL_COMMAND ""
-#         BUILD_ALWAYS 1
-# )
-
 set(GW_GWUI_PARTITION fatfs_gwui)
 file(STRINGS "partitions.csv" PARTITIONS_CSV)
 string(REGEX MATCH "${GW_GWUI_PARTITION}, *data, *fat, *(0x[0-9a-fA-F]+), *([x0-9a-fA-F]+)," PARTITION_FATFS_GWUI ${PARTITIONS_CSV})
@@ -157,6 +148,7 @@ target_include_directories(__idf_lwip BEFORE PUBLIC ./include)
 target_include_directories(__idf_esp_common BEFORE PUBLIC ./components/esp-tls)
 
 target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "partition_table/partition-table.bin" BINARY)
+target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "nrf52_sha256/sha256_stub.bin" BINARY)
 
 # Only add if the signature-producing target exists (i.e., signing enabled)
 if(TARGET gen_nrf52_signature)

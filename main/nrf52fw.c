@@ -13,17 +13,25 @@
 #include "esp32/rom/crc.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include <mbedtls/sha256.h>
 #include "os_malloc.h"
 #include "os_str.h"
 #include "gpio_switch_ctrl.h"
 #include "adv_post_green_led.h"
 
-#define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
+#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
 #define NRF52FW_SLEEP_WHILE_FLASHING_MS (20U)
 
 #define NRF52FW_ERASED_FLASH_DWORD_VAL (0xFFFFFFFFU)
+
+#define NRF52FW_SHA256_DIGEST_SIZE (32U)
+
+typedef struct nrf52fw_sha256_t
+{
+    uint8_t digest[NRF52FW_SHA256_DIGEST_SIZE];
+} nrf52fw_sha256_t;
 
 typedef struct nrf52fw_update_tmp_data_t
 {
@@ -32,6 +40,10 @@ typedef struct nrf52fw_update_tmp_data_t
     ruuvi_nrf52_fw_ver_str_t fatfs_nrf52_fw_ver;
     ruuvi_nrf52_fw_ver_t     cur_fw_ver;
     ruuvi_nrf52_fw_ver_str_t cur_nrf52_ver;
+    ruuvi_nrf52_hw_rev_t     nrf52_hw_rev;
+    nrf52fw_sha256_t         sha256_digest_fatfs;
+    nrf52swd_sha256_t        sha256_digest_nrf52;
+    nrf52swd_segment_t       sha256_stub_mem_segments[NRF52SWD_SHA256_MAX_SEGMENTS];
 } nrf52fw_update_tmp_data_t;
 
 static const char* TAG = "nRF52Fw";
@@ -388,6 +400,13 @@ nrf52fw_read_current_fw_ver(ruuvi_nrf52_fw_ver_t* const p_fw_ver)
 
 NRF52FW_STATIC
 bool
+nrf52fw_read_nrf52_ficr_hw_rev(ruuvi_nrf52_hw_rev_t* const p_hw_ver)
+{
+    return nrf52swd_read_mem(NRF52FW_FICR_INFO_PART, 1, &p_hw_ver->part_code);
+}
+
+NRF52FW_STATIC
+bool
 nrf52fw_write_current_fw_ver(const uint32_t fw_ver)
 {
     return nrf52swd_write_mem(NRF52FW_UICR_FW_VER, 1, &fw_ver);
@@ -714,6 +733,112 @@ nrf52fw_check_firmware(const flash_fat_fs_t* p_ffs, nrf52fw_tmp_buf_t* p_tmp_buf
     return true;
 }
 
+static bool
+nrf52fw_update_sha256_for_fd(
+    mbedtls_sha256_context*  p_sha256_ctx,
+    const file_descriptor_t  fd,
+    uint32_t                 rem_len,
+    nrf52fw_tmp_buf_t* const p_tmp_buf)
+{
+    while (rem_len > 0)
+    {
+        const uint32_t len_to_read = (rem_len > sizeof(p_tmp_buf->buf_wr)) ? sizeof(p_tmp_buf->buf_wr) : rem_len;
+        const int32_t  len         = nrf52fw_file_read(fd, p_tmp_buf->buf_wr, len_to_read);
+        if (len < 0)
+        {
+            LOG_ERR("%s failed", "nrf52fw_file_read");
+            return false;
+        }
+        if (len != (int32_t)len_to_read)
+        {
+            LOG_ERR("read len %d not equal to expected len %u", len, len_to_read);
+            return false;
+        }
+        rem_len -= (uint32_t)len;
+        if (mbedtls_sha256_update(p_sha256_ctx, (const unsigned char*)p_tmp_buf->buf_wr, len) < 0)
+        {
+            LOG_ERR("%s failed", "mbedtls_sha256_update");
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool
+nrf52fw_update_sha256_for_segment(
+    mbedtls_sha256_context*        p_sha256_ctx,
+    const nrf52fw_segment_t* const p_segment_info,
+    const flash_fat_fs_t*          p_ffs,
+    nrf52fw_tmp_buf_t* const       p_tmp_buf)
+{
+    const file_descriptor_t fd = flashfatfs_open(p_ffs, p_segment_info->file_name);
+    LOG_INFO(
+        "Opened file '%s' for SHA256 calculation (size %u bytes)",
+        p_segment_info->file_name,
+        p_segment_info->size);
+    if (fd < 0)
+    {
+        LOG_ERR("Can't open '%s'", p_segment_info->file_name);
+        return false;
+    }
+    const bool res = nrf52fw_update_sha256_for_fd(p_sha256_ctx, fd, p_segment_info->size, p_tmp_buf);
+    close(fd);
+    return res;
+}
+
+static bool
+nrf52fw_calc_sha256_internal(
+    mbedtls_sha256_context*     p_sha256_ctx,
+    const nrf52fw_info_t* const p_fw_info,
+    nrf52fw_sha256_t* const     p_out_sha256,
+    const flash_fat_fs_t*       p_ffs,
+    nrf52fw_tmp_buf_t* const    p_tmp_buf)
+{
+    mbedtls_sha256_init(p_sha256_ctx);
+    if (mbedtls_sha256_starts(p_sha256_ctx, 0) < 0)
+    {
+        LOG_ERR("%s failed", "mbedtls_sha256_starts");
+        return false;
+    }
+    for (uint32_t i = 0; i < p_fw_info->num_segments; ++i)
+    {
+        LOG_DBG("Calculating SHA256 for segment %u...", i);
+        if (!nrf52fw_update_sha256_for_segment(p_sha256_ctx, &p_fw_info->segments[i], p_ffs, p_tmp_buf))
+        {
+            LOG_ERR("%s failed for segment %u", "nrf52fw_update_sha256_for_segment", i);
+            return false;
+        }
+    }
+    if (mbedtls_sha256_finish(p_sha256_ctx, p_out_sha256->digest) < 0)
+    {
+        LOG_ERR("%s failed", "mbedtls_sha256_finish");
+        return false;
+    }
+    return true;
+}
+
+static bool
+nrf52fw_calc_sha256(
+    const nrf52fw_info_t* const p_fw_info,
+    nrf52fw_sha256_t* const     p_out_sha256,
+    const flash_fat_fs_t*       p_ffs,
+    nrf52fw_tmp_buf_t* const    p_tmp_buf)
+{
+    mbedtls_sha256_context* p_sha256_ctx = os_calloc(1, sizeof(*p_sha256_ctx));
+    if (NULL == p_sha256_ctx)
+    {
+        LOG_ERR("%s failed", "os_malloc");
+        return false;
+    }
+
+    const bool res = nrf52fw_calc_sha256_internal(p_sha256_ctx, p_fw_info, p_out_sha256, p_ffs, p_tmp_buf);
+
+    mbedtls_sha256_free(p_sha256_ctx);
+    os_free(p_sha256_ctx);
+
+    return res;
+}
+
 NRF52FW_STATIC
 bool
 nrf52fw_update_fw_step3(
@@ -730,22 +855,74 @@ nrf52fw_update_fw_step3(
         LOG_ERR("%s failed", "nrf52fw_read_info_txt");
         return false;
     }
-    p_tmp_data->fatfs_nrf52_fw_ver = nrf52_fw_ver_get_str(&p_tmp_data->fw_info.fw_ver);
-    LOG_INFO("Firmware on FatFS: %s", p_tmp_data->fatfs_nrf52_fw_ver.buf);
+    if (!nrf52fw_read_nrf52_ficr_hw_rev(&p_tmp_data->nrf52_hw_rev))
+    {
+        LOG_ERR("%s failed", "nrf52fw_read_nrf52_ficr_hw_rev");
+        return false;
+    }
+    LOG_INFO("nRF52 factory information: Part code: 0x%08x", p_tmp_data->nrf52_hw_rev.part_code);
 
     if (!nrf52fw_read_current_fw_ver(&p_tmp_data->cur_fw_ver))
     {
         LOG_ERR("%s failed", "nrf52fw_read_current_fw_ver");
         return false;
     }
+    p_tmp_data->cur_nrf52_ver = nrf52_fw_ver_get_str(&p_tmp_data->cur_fw_ver);
+    LOG_INFO("### Firmware on nRF52: %s", p_tmp_data->cur_nrf52_ver.buf);
     if (NULL != p_nrf52_fw_ver)
     {
         *p_nrf52_fw_ver = p_tmp_data->cur_fw_ver;
     }
-    p_tmp_data->cur_nrf52_ver = nrf52_fw_ver_get_str(&p_tmp_data->cur_fw_ver);
-    LOG_INFO("### Firmware on nRF52: %s", p_tmp_data->cur_nrf52_ver.buf);
+    for (uint32_t i = 0; i < p_tmp_data->fw_info.num_segments; ++i)
+    {
+        const nrf52fw_segment_t* const p_segment_info = &p_tmp_data->fw_info.segments[i];
+        if ((NRF52FW_UICR_FW_VER == p_segment_info->address) && (sizeof(uint32_t) == p_segment_info->size))
+        {
+            /*
+             * Skip UICR.FW_VER segment for SHA256 calculation, because it is included only in the released firmware.
+             */
+            continue;
+        }
+        p_tmp_data->sha256_stub_mem_segments[i].start_addr = p_segment_info->address;
+        p_tmp_data->sha256_stub_mem_segments[i].size_bytes = p_segment_info->size;
+    }
 
-    if (p_tmp_data->cur_fw_ver.version == p_tmp_data->fw_info.fw_ver.version)
+    if (!nrf52swd_calc_sha256_digest_on_nrf52(
+            &p_tmp_data->sha256_stub_mem_segments[0],
+            p_tmp_data->fw_info.num_segments,
+            &p_tmp_data->sha256_digest_nrf52))
+    {
+        LOG_ERR("Failed to calculate SHA256 digest on nRF52");
+        return false;
+    }
+    LOG_DUMP_INFO(
+        p_tmp_data->sha256_digest_nrf52.digest,
+        sizeof(p_tmp_data->sha256_digest_nrf52.digest),
+        "SHA256 digest of nRF52 firmware on nRF52");
+
+    p_tmp_data->fatfs_nrf52_fw_ver = nrf52_fw_ver_get_str(&p_tmp_data->fw_info.fw_ver);
+    LOG_INFO("Firmware on FatFS: %s", p_tmp_data->fatfs_nrf52_fw_ver.buf);
+    if (!nrf52fw_check_firmware(p_ffs, &p_tmp_data->tmp_buf, &p_tmp_data->fw_info))
+    {
+        LOG_ERR("%s failed", "nrf52fw_check_firmware");
+        return false;
+    }
+    if (!nrf52fw_calc_sha256(&p_tmp_data->fw_info, &p_tmp_data->sha256_digest_fatfs, p_ffs, &p_tmp_data->tmp_buf))
+    {
+        LOG_ERR("%s failed", "nrf52fw_calc_sha256");
+        return false;
+    }
+    LOG_DUMP_INFO(
+        p_tmp_data->sha256_digest_fatfs.digest,
+        sizeof(p_tmp_data->sha256_digest_fatfs.digest),
+        "SHA256 digest of nRF52 firmware on FatFS");
+
+    if ((p_tmp_data->cur_fw_ver.version == p_tmp_data->fw_info.fw_ver.version)
+        && (0
+            == memcmp(
+                p_tmp_data->sha256_digest_nrf52.digest,
+                p_tmp_data->sha256_digest_fatfs.digest,
+                sizeof(p_tmp_data->sha256_digest_nrf52.digest))))
     {
         LOG_INFO("### Firmware updating is not needed");
         return true;
@@ -756,19 +933,7 @@ nrf52fw_update_fw_step3(
     {
         cb_before_updating();
     }
-    if (!nrf52fw_check_firmware(p_ffs, &p_tmp_data->tmp_buf, &p_tmp_data->fw_info))
-    {
-        LOG_ERR("%s failed", "nrf52fw_check_firmware");
-        if (NULL != p_nrf52_fw_ver)
-        {
-            nrf52fw_read_current_fw_ver(p_nrf52_fw_ver);
-        }
-        if (NULL != cb_after_updating)
-        {
-            cb_after_updating(false);
-        }
-        return false;
-    }
+
     if (!nrf52fw_flash_write_firmware(
             p_ffs,
             &p_tmp_data->tmp_buf,

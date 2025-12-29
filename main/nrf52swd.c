@@ -11,6 +11,7 @@
 #include "freertos/task.h"
 #include <driver/spi_master.h>
 #include <driver/gpio.h>
+#include <os_malloc.h>
 #include "libswd.h"
 #include "ruuvi_board_gwesp.h"
 #include "gpio_switch_ctrl.h"
@@ -33,6 +34,33 @@ typedef int LibSWD_Data_t;
     { \
         LOG_ERR_VAL(err, "%s failed", func); \
     } while (0)
+
+#define NRF52SWD_CORETEXM_REG_R0  (0)
+#define NRF52SWD_CORETEXM_REG_PC  (15)
+#define NRF52SWD_CORETEXM_REG_MSP (17)
+
+#define NRF52SWD_SHA256_STUB_REQ_ADDR   (0x20000000U)
+#define NRF52SWD_SHA256_STUB_RES_ADDR   (0x20000080U)
+#define NRF52SWD_SHA256_STUB_CODE_ADDR  (0x20001000U)
+#define NRF52SWD_SHA256_STUB_STACK_ADDR (0x20006000U)
+
+#define NRF52SWD_SHA256_CALC_TIMEOUT_MS (1000U)
+
+#define SHA256_STUB_STATUS_RUNNING  (0U)
+#define SHA256_STUB_STATUS_FINISHED (1U)
+#define SHA256_STUB_STATUS_ERROR    (2U)
+
+typedef struct nrf52swd_sha256_stub_req_t
+{
+    uint32_t           num;
+    nrf52swd_segment_t seg[NRF52SWD_SHA256_MAX_SEGMENTS];
+} nrf52swd_sha256_stub_req_t;
+
+typedef struct nrf52swd_sha256_stub_res_t
+{
+    uint32_t status;
+    uint8_t  digest[NRF52SWD_SHA256_DIGEST_SIZE_BYTES];
+} nrf52swd_sha256_stub_res_t;
 
 static const spi_bus_config_t pinsSPI = {
     .mosi_io_num     = RB_ESP32_GPIO_MUX_NRF52_SWD_IO,
@@ -517,4 +545,205 @@ nrf52swd_write_mem(const uint32_t addr, const uint32_t num_words, const uint32_t
         return false;
     }
     return true;
+}
+
+static int
+cortexm_write_reg(libswd_ctx_t* const p_ctx, const uint32_t regnum, const uint32_t value)
+{
+    int v   = (int)value;
+    int err = libswd_memap_write_int_32(p_ctx, LIBSWD_OPERATION_EXECUTE, LIBSWD_ARM_DEBUG_DCRDR_ADDR, 1, &v);
+    if (err < 0)
+    {
+        return err;
+    }
+
+    // 2) Issue "write register regnum" via DCRSR (bit16=1)
+    v   = (int)(regnum | (1 << 16));
+    err = libswd_memap_write_int_32(p_ctx, LIBSWD_OPERATION_EXECUTE, LIBSWD_ARM_DEBUG_DCRSR_ADDR, 1, &v);
+    if (err < 0)
+    {
+        return err;
+    }
+
+    // 3) (Optional but recommended) poll DHCSR.S_REGRDY
+    // Read DHCSR until S_REGRDY set (bit 16)
+    for (int i = 0; i < 1000; i++)
+    {
+        int dhcsr = 0;
+        err       = libswd_memap_read_int_32(p_ctx, LIBSWD_OPERATION_EXECUTE, LIBSWD_ARM_DEBUG_DHCSR_ADDR, 1, &dhcsr);
+        if (err < 0)
+        {
+            return err;
+        }
+        if (0 != ((uint32_t)dhcsr & LIBSWD_ARM_DEBUG_DHCSR_SREGRDY))
+        {
+            break;
+        }
+        usleep(100);
+    }
+    return 0;
+}
+
+typedef struct nrf52swd_calc_sha256_mem_t
+{
+    nrf52swd_sha256_stub_req_t req;
+    nrf52swd_sha256_stub_res_t res;
+} nrf52swd_calc_sha256_mem_t;
+
+static bool
+nrf52swd_calc_sha256_digest_on_nrf52_internal(
+    const nrf52swd_segment_t*         p_segments,
+    const uint32_t                    num_segments,
+    nrf52swd_sha256_t* const          p_sha256,
+    nrf52swd_calc_sha256_mem_t* const p_mem)
+{
+    extern const uint8_t sha256_stub_start[] asm("_binary_sha256_stub_bin_start");
+    extern const uint8_t sha256_stub_end[] asm("_binary_sha256_stub_bin_end");
+
+    libswd_ctx_t*  ctx              = gp_nrf52swd_libswd_ctx;
+    const uint32_t sha256_stub_size = (uint32_t)(sha256_stub_end - sha256_stub_start);
+
+    LOG_INFO("Loading SHA256 stub (%u bytes) to nRF52 RAM...", (unsigned)sha256_stub_size);
+
+    LibSWD_ReturnCode_t ret_val = libswd_memap_write_int_32(
+        ctx,
+        LIBSWD_OPERATION_EXECUTE,
+        (int)NRF52SWD_SHA256_STUB_CODE_ADDR,
+        (int)(sha256_stub_size + sizeof(uint32_t) - 1) / sizeof(uint32_t),
+        (int*)sha256_stub_start);
+    if (LIBSWD_OK != ret_val)
+    {
+        LOG_ERR("Failed to write SHA256 stub, err=%d", ret_val);
+        return false;
+    }
+
+    p_mem->req.num = num_segments;
+    LOG_INFO("SHA256 calculation: %u segments", (unsigned)num_segments);
+    for (uint32_t i = 0; i < num_segments; ++i)
+    {
+        p_mem->req.seg[i] = p_segments[i];
+        LOG_INFO(
+            "  Segment %u: addr=0x%08x, size=%u bytes",
+            (unsigned)i,
+            (unsigned)p_mem->req.seg[i].start_addr,
+            (unsigned)p_mem->req.seg[i].size_bytes);
+    }
+
+    ret_val = libswd_memap_write_int_32(
+        ctx,
+        LIBSWD_OPERATION_EXECUTE,
+        NRF52SWD_SHA256_STUB_REQ_ADDR,
+        sizeof(p_mem->req) / sizeof(uint32_t),
+        (int*)&p_mem->req);
+    if (LIBSWD_OK != ret_val)
+    {
+        LOG_ERR("Failed to write SHA256 params, err=%d", ret_val);
+        return false;
+    }
+
+    ret_val = libswd_memap_write_int_32(
+        ctx,
+        LIBSWD_OPERATION_EXECUTE,
+        NRF52SWD_SHA256_STUB_RES_ADDR,
+        sizeof(p_mem->res) / sizeof(uint32_t),
+        (int*)&p_mem->res);
+    if (LIBSWD_OK != ret_val)
+    {
+        LOG_ERR("Failed to write SHA256 params, err=%d", ret_val);
+        return false;
+    }
+
+    ret_val = cortexm_write_reg(
+        ctx,
+        NRF52SWD_CORETEXM_REG_PC,
+        NRF52SWD_SHA256_STUB_CODE_ADDR | 1U); // IMPORTANT: bit0=1 in Thumb mode
+    if (LIBSWD_OK != ret_val)
+    {
+        LOG_ERR("Failed to write PC, err=%d", ret_val);
+        return false;
+    }
+
+    LOG_INFO("Starting SHA256 calculation on nRF52...");
+
+    if (!nrf52swd_debug_run())
+    {
+        LOG_ERR("%s failed", "nrf52swd_debug_run");
+        return false;
+    }
+
+    LOG_INFO("Waiting for SHA256 calculation to complete...");
+    const TickType_t time_start = xTaskGetTickCount();
+    while ((xTaskGetTickCount() - time_start) < pdMS_TO_TICKS(NRF52SWD_SHA256_CALC_TIMEOUT_MS))
+    {
+        ret_val = libswd_memap_read_int_32(
+            ctx,
+            LIBSWD_OPERATION_EXECUTE,
+            NRF52SWD_SHA256_STUB_RES_ADDR + offsetof(nrf52swd_sha256_stub_res_t, status),
+            1,
+            (int*)&p_mem->res.status);
+        if (LIBSWD_OK != ret_val)
+        {
+            LOG_ERR("Failed to read SHA256 stub status, err=%d", ret_val);
+            return false;
+        }
+        if (SHA256_STUB_STATUS_RUNNING != p_mem->res.status)
+        {
+            break;
+        }
+        usleep(200);
+    }
+
+    if (SHA256_STUB_STATUS_FINISHED != p_mem->res.status)
+    {
+        LOG_ERR("nRF52 SHA256 calculation: stub reported error: status=%u", (unsigned)p_mem->res.status);
+        return false;
+    }
+
+    ret_val = libswd_memap_read_int_32(
+        ctx,
+        LIBSWD_OPERATION_EXECUTE,
+        NRF52SWD_SHA256_STUB_RES_ADDR + offsetof(nrf52swd_sha256_stub_res_t, digest),
+        sizeof(p_mem->res.digest) / sizeof(uint32_t),
+        (int*)p_mem->res.digest);
+    if (LIBSWD_OK != ret_val)
+    {
+        LOG_ERR("Failed to read SHA256 digest, err=%d", ret_val);
+        return false;
+    }
+    memcpy(p_sha256->digest, p_mem->res.digest, sizeof(p_sha256->digest));
+
+    if (!nrf52swd_debug_halt())
+    {
+        LOG_ERR("nrf52swd_debug_halt failed");
+        return false;
+    }
+    if (!nrf52swd_debug_enable_reset_vector_catch())
+    {
+        LOG_ERR("nrf52swd_debug_enable_reset_vector_catch failed");
+        return false;
+    }
+    if (!nrf52swd_debug_reset())
+    {
+        LOG_ERR("nrf52swd_debug_reset failed");
+        return false;
+    }
+
+    return true;
+}
+
+bool
+nrf52swd_calc_sha256_digest_on_nrf52(
+    const nrf52swd_segment_t* p_segments,
+    const uint32_t            num_segments,
+    nrf52swd_sha256_t* const  p_sha256)
+{
+    nrf52swd_calc_sha256_mem_t* p_mem = os_calloc(1, sizeof(*p_mem));
+    if (NULL == p_mem)
+    {
+        LOG_ERR("os_calloc failed");
+        return false;
+    }
+    bool result = nrf52swd_calc_sha256_digest_on_nrf52_internal(p_segments, num_segments, p_sha256, p_mem);
+    os_free(p_mem);
+    return result;
 }

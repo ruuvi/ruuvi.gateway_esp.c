@@ -25,6 +25,21 @@
 extern "C" {
 #endif
 
+#define NRF52SWD_SHA256_MAX_SEGMENTS (8U)
+
+#define NRF52SWD_SHA256_DIGEST_SIZE_BYTES (32U)
+
+typedef struct nrf52swd_sha256_t
+{
+    uint8_t digest[NRF52SWD_SHA256_DIGEST_SIZE_BYTES];
+} nrf52swd_sha256_t;
+
+typedef struct nrf52swd_segment_t
+{
+    uint32_t start_addr;
+    uint32_t size_bytes;
+} nrf52swd_segment_t;
+
 bool
 nrf52swd_init_gpio_cfg_nreset(void);
 
@@ -63,6 +78,12 @@ nrf52swd_read_mem(const uint32_t addr, const uint32_t num_words, uint32_t* p_buf
 
 bool
 nrf52swd_write_mem(const uint32_t addr, const uint32_t num_words, const uint32_t* p_buf);
+
+bool
+nrf52swd_calc_sha256_digest_on_nrf52(
+    const nrf52swd_segment_t* p_segments,
+    const uint32_t            num_segments,
+    nrf52swd_sha256_t* const  p_sha256);
 
 #if RUUVI_TESTS_NRF52SWD
 
