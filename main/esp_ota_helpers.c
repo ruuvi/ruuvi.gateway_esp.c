@@ -151,6 +151,30 @@ esp_ota_helper_calc_sha256(const uint8_t* const p_data, const size_t data_len, u
 }
 
 bool
+esp_ota_helper_calc_digest_for_partition(
+    const esp_partition_t* const   p_partition,
+    esp_ota_sha256_digest_t* const p_digest)
+{
+    const void* p_data = bootloader_mmap(p_partition->address, p_partition->size);
+    if (NULL == p_data)
+    {
+        LOG_ERR(
+            "bootloader_mmap failed for partition '%s' at address 0x%08x",
+            p_partition->label,
+            p_partition->address);
+        return false;
+    }
+    if (!esp_ota_helper_calc_sha256(p_data, p_partition->size, &p_digest->digest[0]))
+    {
+        LOG_ERR("calc_sha256 failed for partition '%s' at address 0x%08x", p_partition->label, p_partition->address);
+        bootloader_munmap(p_data);
+        return false;
+    }
+    bootloader_munmap(p_data);
+    return true;
+}
+
+bool
 esp_ota_helper_calc_pub_key_digest_for_signature(
     const ets_secure_boot_signature_t* const p_sig_block,
     esp_ota_sha256_digest_t* const           p_pub_key_digest)
@@ -228,5 +252,93 @@ esp_ota_helper_calc_pub_key_digest_for_app_image(
         "Public key digest for partition at address 0x%08x, size 0x%08x",
         p_metadata->start_addr,
         signature_offset);
+    return true;
+}
+
+bool
+esp_ota_helper_data_partition_verify(
+    const esp_ota_sha256_digest_t* const     p_digest,
+    const ets_secure_boot_signature_t* const p_sig_block)
+{
+    esp_ota_sha256_digest_t verified_digest = { 0 };
+
+    // If Secure Boot is not enabled or the pub key digest has not been written to eFuse yet,
+    // then esp_secure_boot_verify_rsa_signature_block() will verify the signature using the pub key
+    // embedded into sig_block and return ESP_OK.
+    const esp_err_t err = esp_secure_boot_verify_rsa_signature_block(
+        p_sig_block,
+        &p_digest->digest[0],
+        &verified_digest.digest[0]);
+    if (ESP_OK != err)
+    {
+        LOG_ERR("esp_secure_boot_verify_rsa_signature_block failed");
+        return false;
+    }
+
+    return true;
+}
+
+bool
+esp_ota_helper_data_partition_verify_using_signature_from_flash(
+    const esp_partition_t* const   p_partition,
+    const uint32_t                 signature_addr,
+    esp_ota_sha256_digest_t* const p_pub_key_digest)
+{
+    esp_ota_sha256_digest_t digest = { 0 };
+    if (!esp_ota_helper_calc_digest_for_partition(p_partition, &digest))
+    {
+        LOG_ERR("calc_digest_for_partition failed for address 0x%08x", p_partition->address);
+        return false;
+    }
+    LOG_DUMP_INFO(&digest.digest[0], sizeof(digest.digest), "Data partition '%s' digest", p_partition->label);
+    const ets_secure_boot_signature_t* const p_sig_block = bootloader_mmap(
+        signature_addr,
+        sizeof(ets_secure_boot_signature_t));
+    if (NULL == p_sig_block)
+    {
+        LOG_ERR("bootloader_mmap failed for signature at address 0x%08x", signature_addr);
+        return false;
+    }
+
+    if (!esp_ota_helper_calc_pub_key_digest_for_signature(p_sig_block, p_pub_key_digest))
+    {
+        LOG_ERR(
+            "esp_ota_helper_calc_pub_key_digest_for_signature failed for partition '%s', using signature at "
+            "address 0x%08x",
+            p_partition->label,
+            signature_addr);
+        bootloader_munmap(p_sig_block);
+        return false;
+    }
+
+    LOG_DUMP_DBG(
+        (const void*)&p_sig_block->block[0].key,
+        sizeof(p_sig_block->block[0].key),
+        "Data partition '%s' public key",
+        p_partition->label);
+    LOG_DUMP_DBG(
+        (const void*)&p_pub_key_digest->digest[0],
+        sizeof(p_pub_key_digest->digest),
+        "Data partition '%s' public key digest",
+        p_partition->label);
+    LOG_DUMP_DBG(
+        &p_sig_block->block[0].signature[0],
+        sizeof(p_sig_block->block[0].signature),
+        "Data partition '%s' signature",
+        p_partition->label);
+
+    const bool is_verified = esp_ota_helper_data_partition_verify(&digest, p_sig_block);
+
+    bootloader_munmap(p_sig_block);
+
+    if (!is_verified)
+    {
+        LOG_ERR(
+            "esp_ota_helper_data_partition_verify failed for partition '%s', using signature at address 0x%08x",
+            p_partition->label,
+            signature_addr);
+        return false;
+    }
+
     return true;
 }
