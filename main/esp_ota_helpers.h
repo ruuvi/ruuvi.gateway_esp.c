@@ -114,22 +114,6 @@ esp_ota_helper_data_partition_verify(
     const esp_ota_sha256_digest_t* const     p_digest,
     const ets_secure_boot_signature_t* const p_sig_block);
 
-/** @brief Verify a data partition's signature.
- *
- *  Performs RSA-PSS Verification of the SHA-256 image based on the public key
- *  in the signature block, compared against the public key digest.
- *
- * @param p_partition - Pointer to data partition to verify.
- * @param signature_addr - Address of the signature block in flash.
- * @param[OUT] p_pub_key_digest - Pointer to the data partition public key digest structure to fill.
- * @return true if the signature is valid, false otherwise.
- */
-bool
-esp_ota_helper_data_partition_verify_using_signature_from_flash(
-    const esp_partition_t* const   p_partition,
-    const uint32_t                 signature_addr,
-    esp_ota_sha256_digest_t* const p_pub_key_digest);
-
 #ifdef __cplusplus
 }
 #endif
