@@ -54,10 +54,3 @@ if(NOT BOOTLOADER_BUILD AND CONFIG_SECURE_SIGNED_APPS AND CONFIG_SECURE_BOOT_BUI
     add_custom_target(gen_gwui_signature ALL DEPENDS "${GWUI_SIGNATURE}")
     add_dependencies(gen_gwui_signature gen_signed_gwui_binary)
 endif()
-
-if(NOT BOOTLOADER_BUILD AND CONFIG_SECURE_SIGNED_APPS AND CONFIG_SECURE_BOOT_BUILD_SIGNED_BINARIES)
-    if (NOT DEFINED GWUI_SIGNATURE_ADDR)
-        message(FATAL_ERROR "GWUI_SIGNATURE_ADDR is not defined")
-    endif()
-    esptool_py_flash_target_image(flash gen_gwui_signature ${GWUI_SIGNATURE_ADDR} "${GWUI_SIGNATURE}")
-endif()
