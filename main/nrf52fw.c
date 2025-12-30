@@ -1116,6 +1116,11 @@ nrf52fw_update_fw_if_necessary(
         flag_run_fw_after_update);
 
     nrf52fw_hw_reset_nrf52(true);
+    if (!res)
+    {
+        LOG_ERR("### nRF52 firmware update check failed");
+        return false;
+    }
     if (flag_run_fw_after_update)
     {
         vTaskDelay(ticks_in_reset_state);

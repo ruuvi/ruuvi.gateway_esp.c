@@ -485,17 +485,17 @@ main_task_init(void)
         if (esp_ota_check_rollback_is_possible())
         {
             LOG_ERR("Firmware rollback is possible, so try to do it");
-            return false;
         }
-        LOG_ERR("Firmware rollback is not possible, try to send HTTP statistics");
+        else
+        {
+            LOG_ERR("Firmware rollback is not possible");
+        }
         gw_status_clear_nrf_status();
         leds_notify_nrf52_failure();
+        return false;
     }
-    else
-    {
-        gw_status_set_nrf_status();
-        leds_notify_nrf52_ready();
-    }
+    gw_status_set_nrf_status();
+    leds_notify_nrf52_ready();
 
     adv_mqtt_init();
     adv_post_init();
