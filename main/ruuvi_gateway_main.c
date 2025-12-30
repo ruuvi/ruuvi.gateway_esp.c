@@ -541,10 +541,9 @@ app_main(void)
         {
             LOG_ERR_ESP(err, "%s failed", "esp_ota_mark_app_invalid_rollback_and_reboot");
         }
-        for (;;)
-        {
-            vTaskDelay(1);
-        }
+        LOG_INFO("Restarting system in 5 seconds...");
+        vTaskDelay(pdMS_TO_TICKS(RESET_TASK_DELAY_BEFORE_REBOOT_MS));
+        esp_restart();
     }
     else
     {
