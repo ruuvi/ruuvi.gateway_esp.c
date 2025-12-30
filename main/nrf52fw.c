@@ -582,14 +582,7 @@ nrf52fw_fill_sha256_stub_mem_segments(nrf52fw_update_tmp_data_t* const p_tmp_dat
 {
     for (uint32_t i = 0; i < p_tmp_data->fw_info.num_segments; ++i)
     {
-        const nrf52fw_segment_t* const p_segment_info = &p_tmp_data->fw_info.segments[i];
-        if ((NRF52FW_UICR_FW_VER == p_segment_info->address) && (sizeof(uint32_t) == p_segment_info->size))
-        {
-            /*
-             * Skip UICR.FW_VER segment for SHA256 calculation, because it is included only in the released firmware.
-             */
-            continue;
-        }
+        const nrf52fw_segment_t* const p_segment_info      = &p_tmp_data->fw_info.segments[i];
         p_tmp_data->sha256_stub_mem_segments[i].start_addr = p_segment_info->address;
         p_tmp_data->sha256_stub_mem_segments[i].size_bytes = p_segment_info->size;
     }
