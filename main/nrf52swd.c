@@ -69,8 +69,16 @@ typedef struct nrf52swd_sha256_stub_res_t
 
 typedef struct nrf52swd_calc_sha256_mem_t
 {
-    nrf52swd_sha256_stub_req_t req;
-    nrf52swd_sha256_stub_res_t res;
+    union
+    {
+        nrf52swd_sha256_stub_req_t req;
+        uint32_t req_buf[((sizeof(nrf52swd_sha256_stub_req_t) + sizeof(uint32_t)) - 1) / sizeof(uint32_t)];
+    };
+    union
+    {
+        nrf52swd_sha256_stub_res_t res;
+        uint32_t res_buf[((sizeof(nrf52swd_sha256_stub_res_t) + sizeof(uint32_t)) - 1) / sizeof(uint32_t)];
+    };
 } nrf52swd_calc_sha256_mem_t;
 
 static const spi_bus_config_t pinsSPI = {
@@ -645,7 +653,7 @@ nrf52swd_get_binary_sha256_stub_bin_end(void)
 #endif
 
 static bool
-nrf52swd_wait_sha256_ready(libswd_ctx_t* const ctx, nrf52swd_calc_sha256_mem_t* const p_mem)
+nrf52swd_wait_sha256_ready(nrf52swd_calc_sha256_mem_t* const p_mem)
 {
     const TickType_t time_start = xTaskGetTickCount();
     while ((xTaskGetTickCount() - time_start) < pdMS_TO_TICKS(NRF52SWD_SHA256_CALC_TIMEOUT_MS))
@@ -681,7 +689,7 @@ nrf52swd_calc_sha256_digest_on_nrf52_internal(
 
     LOG_INFO("Loading SHA256 stub (%u bytes) to nRF52 RAM...", (unsigned)sha256_stub_size);
 
-    const uint32_t num_words = (sha256_stub_size + sizeof(uint32_t) - 1) / sizeof(uint32_t);
+    const uint32_t num_words = ((sha256_stub_size + sizeof(uint32_t)) - 1) / sizeof(uint32_t);
     if (!nrf52swd_write_ram(ctx, NRF52SWD_SHA256_STUB_CODE_ADDR, (const uint32_t*)sha256_stub_start, num_words))
     {
         return false;
@@ -703,8 +711,8 @@ nrf52swd_calc_sha256_digest_on_nrf52_internal(
     if (!nrf52swd_write_ram(
             ctx,
             NRF52SWD_SHA256_STUB_REQ_ADDR,
-            (const uint32_t*)&p_mem->req,
-            sizeof(p_mem->req) / sizeof(uint32_t)))
+            &p_mem->req_buf[0],
+            sizeof(p_mem->req_buf) / sizeof(p_mem->req_buf[0])))
     {
         return false;
     }
@@ -713,8 +721,8 @@ nrf52swd_calc_sha256_digest_on_nrf52_internal(
     if (!nrf52swd_write_ram(
             ctx,
             NRF52SWD_SHA256_STUB_RES_ADDR,
-            (const uint32_t*)&p_mem->res,
-            sizeof(p_mem->res) / sizeof(uint32_t)))
+            (const uint32_t*)&p_mem->res_buf[0],
+            sizeof(p_mem->res_buf) / sizeof(p_mem->res_buf[0])))
     {
         return false;
     }
@@ -737,7 +745,7 @@ nrf52swd_calc_sha256_digest_on_nrf52_internal(
     }
 
     LOG_INFO("Waiting for SHA256 calculation to complete...");
-    if (!nrf52swd_wait_sha256_ready(ctx, p_mem))
+    if (!nrf52swd_wait_sha256_ready(p_mem))
     {
         LOG_ERR("nrf52swd_wait_sha256_ready failed");
         return false;

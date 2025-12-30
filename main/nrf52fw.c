@@ -737,10 +737,10 @@ static bool
 nrf52fw_update_sha256_for_fd(
     mbedtls_sha256_context*  p_sha256_ctx,
     const file_descriptor_t  fd,
-    const uint32_t           len,
+    const uint32_t           buf_len,
     nrf52fw_tmp_buf_t* const p_tmp_buf)
 {
-    uint32_t rem_len = len;
+    uint32_t rem_len = buf_len;
     while (rem_len > 0)
     {
         const uint32_t len_to_read = (rem_len > sizeof(p_tmp_buf->buf_wr)) ? sizeof(p_tmp_buf->buf_wr) : rem_len;
