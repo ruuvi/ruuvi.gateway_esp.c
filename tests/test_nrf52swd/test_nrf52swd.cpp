@@ -15,6 +15,7 @@
 #include "os_task.h"
 #include "libswd.h"
 #include "nrf52swd.h"
+#include "os_malloc.h"
 
 using namespace std;
 
@@ -25,6 +26,20 @@ class TestNRF52Swd;
 static TestNRF52Swd* g_pTestClass;
 
 extern "C" {
+
+static const uint8_t binary_sha256_stub_bin[960] = { 0 };
+
+const uint8_t*
+nrf52swd_get_binary_sha256_stub_bin_start(void)
+{
+    return &binary_sha256_stub_bin[0];
+}
+
+const uint8_t*
+nrf52swd_get_binary_sha256_stub_bin_end(void)
+{
+    return &binary_sha256_stub_bin[sizeof(binary_sha256_stub_bin)];
+}
 
 typedef struct spi_device_t
 {
@@ -58,6 +73,45 @@ gpio_switch_ctrl_deactivate(void)
 }
 
 } // extern "C"
+
+class MemAllocTrace
+{
+    vector<void*> allocated_mem;
+
+    std::vector<void*>::iterator
+    find(void* ptr)
+    {
+        for (auto iter = this->allocated_mem.begin(); iter != this->allocated_mem.end(); ++iter)
+        {
+            if (*iter == ptr)
+            {
+                return iter;
+            }
+        }
+        return this->allocated_mem.end();
+    }
+
+public:
+    void
+    add(void* ptr)
+    {
+        auto iter = find(ptr);
+        assert(iter == this->allocated_mem.end()); // ptr was found in the list of allocated memory blocks
+        this->allocated_mem.push_back(ptr);
+    }
+    void
+    remove(void* ptr)
+    {
+        auto iter = find(ptr);
+        assert(iter != this->allocated_mem.end()); // ptr was not found in the list of allocated memory blocks
+        this->allocated_mem.erase(iter);
+    }
+    bool
+    is_empty()
+    {
+        return this->allocated_mem.empty();
+    }
+};
 
 class MemSegment
 {
@@ -94,8 +148,10 @@ protected:
     SetUp() override
     {
         esp_log_wrapper_init();
-        g_pTestClass           = this;
-        this->m_vTaskDelay_cnt = 0;
+        g_pTestClass               = this;
+        this->m_vTaskDelay_cnt     = 0;
+        this->m_malloc_cnt         = 0;
+        this->m_malloc_fail_on_cnt = 0;
         {
             const gpio_config_t gpio_cfg = { 0 };
             for (uint32_t i = 0; i < sizeof(this->m_gpio_config) / sizeof(this->m_gpio_config[0]); ++i)
@@ -184,6 +240,10 @@ public:
     TestNRF52Swd();
 
     ~TestNRF52Swd() override;
+
+    uint32_t      m_malloc_cnt;
+    uint32_t      m_malloc_fail_on_cnt;
+    MemAllocTrace m_mem_alloc_trace;
 
     uint32_t m_vTaskDelay_cnt;
 
@@ -303,6 +363,45 @@ void
 vTaskDelay(const TickType_t xTicksToDelay)
 {
     g_pTestClass->m_vTaskDelay_cnt += 1;
+}
+
+TickType_t
+xTaskGetTickCount(void)
+{
+    return 0;
+}
+
+void*
+os_malloc(const size_t size)
+{
+    if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
+    {
+        return nullptr;
+    }
+    void* ptr = malloc(size);
+    assert(nullptr != ptr);
+    g_pTestClass->m_mem_alloc_trace.add(ptr);
+    return ptr;
+}
+
+void
+os_free_internal(void* ptr)
+{
+    g_pTestClass->m_mem_alloc_trace.remove(ptr);
+    free(ptr);
+}
+
+void*
+os_calloc(const size_t nmemb, const size_t size)
+{
+    if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
+    {
+        return nullptr;
+    }
+    void* ptr = calloc(nmemb, size);
+    assert(nullptr != ptr);
+    g_pTestClass->m_mem_alloc_trace.add(ptr);
+    return ptr;
 }
 
 esp_err_t

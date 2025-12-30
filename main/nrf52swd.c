@@ -62,6 +62,12 @@ typedef struct nrf52swd_sha256_stub_res_t
     uint8_t  digest[NRF52SWD_SHA256_DIGEST_SIZE_BYTES];
 } nrf52swd_sha256_stub_res_t;
 
+typedef struct nrf52swd_calc_sha256_mem_t
+{
+    nrf52swd_sha256_stub_req_t req;
+    nrf52swd_sha256_stub_res_t res;
+} nrf52swd_calc_sha256_mem_t;
+
 static const spi_bus_config_t pinsSPI = {
     .mosi_io_num     = RB_ESP32_GPIO_MUX_NRF52_SWD_IO,
     .miso_io_num     = GPIO_NUM_NC, // not connected
@@ -584,11 +590,25 @@ cortexm_write_reg(libswd_ctx_t* const p_ctx, const uint32_t regnum, const uint32
     return 0;
 }
 
-typedef struct nrf52swd_calc_sha256_mem_t
+extern const uint8_t*
+nrf52swd_get_binary_sha256_stub_bin_start(void);
+extern const uint8_t*
+nrf52swd_get_binary_sha256_stub_bin_end(void);
+
+#if !RUUVI_TESTS_NRF52SWD
+const uint8_t*
+nrf52swd_get_binary_sha256_stub_bin_start(void)
 {
-    nrf52swd_sha256_stub_req_t req;
-    nrf52swd_sha256_stub_res_t res;
-} nrf52swd_calc_sha256_mem_t;
+    extern const uint8_t sha256_stub_start[] asm("_binary_sha256_stub_bin_start");
+    return sha256_stub_start;
+}
+const uint8_t*
+nrf52swd_get_binary_sha256_stub_bin_end(void)
+{
+    extern const uint8_t sha256_stub_end[] asm("_binary_sha256_stub_bin_end");
+    return sha256_stub_end;
+}
+#endif
 
 static bool
 nrf52swd_calc_sha256_digest_on_nrf52_internal(
@@ -597,8 +617,8 @@ nrf52swd_calc_sha256_digest_on_nrf52_internal(
     nrf52swd_sha256_t* const          p_sha256,
     nrf52swd_calc_sha256_mem_t* const p_mem)
 {
-    extern const uint8_t sha256_stub_start[] asm("_binary_sha256_stub_bin_start");
-    extern const uint8_t sha256_stub_end[] asm("_binary_sha256_stub_bin_end");
+    const uint8_t* const sha256_stub_start = nrf52swd_get_binary_sha256_stub_bin_start();
+    const uint8_t* const sha256_stub_end   = nrf52swd_get_binary_sha256_stub_bin_end();
 
     libswd_ctx_t*  ctx              = gp_nrf52swd_libswd_ctx;
     const uint32_t sha256_stub_size = (uint32_t)(sha256_stub_end - sha256_stub_start);
