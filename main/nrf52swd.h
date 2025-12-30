@@ -77,7 +77,7 @@ bool
 nrf52swd_read_mem(const uint32_t addr, const uint32_t num_words, uint32_t* p_buf);
 
 bool
-nrf52swd_write_mem(const uint32_t addr, const uint32_t num_words, const uint32_t* p_buf);
+nrf52swd_write_flash(const uint32_t addr, const uint32_t num_words, const uint32_t* p_buf);
 
 bool
 nrf52swd_calc_sha256_digest_on_nrf52(

@@ -521,8 +521,29 @@ nrf52swd_read_mem(const uint32_t addr, const uint32_t num_words, uint32_t* p_buf
     return result;
 }
 
+static bool
+nrf52swd_write_ram(
+    libswd_ctx_t* const   ctx,
+    const uint32_t        ram_addr,
+    const uint32_t* const p_buf,
+    const uint32_t        num_words)
+{
+    LibSWD_ReturnCode_t ret_val = libswd_memap_write_int_32(
+        ctx,
+        LIBSWD_OPERATION_EXECUTE,
+        (LibSWD_Data_t)ram_addr,
+        num_words,
+        (LibSWD_Data_t*)p_buf);
+    if (LIBSWD_OK != ret_val)
+    {
+        LOG_ERR("Failed to write to RAM at address 0x%08x, num_words=%u, err=%d", ram_addr, num_words, ret_val);
+        return false;
+    }
+    return true;
+}
+
 bool
-nrf52swd_write_mem(const uint32_t addr, const uint32_t num_words, const uint32_t* p_buf)
+nrf52swd_write_flash(const uint32_t addr, const uint32_t num_words, const uint32_t* p_buf)
 {
     if (!nrf51swd_nvmc_wait_while_busy())
     {
@@ -558,33 +579,41 @@ nrf52swd_write_mem(const uint32_t addr, const uint32_t num_words, const uint32_t
     return true;
 }
 
-static LibSWD_ReturnCode_t
-nrf52swd_cortexm_write_reg(libswd_ctx_t* const p_ctx, const uint32_t regnum, const uint32_t value)
+static bool
+nrf52swd_write_cortexm_reg(libswd_ctx_t* const p_ctx, const uint32_t regnum, const uint32_t value)
 {
-    int v   = (int)value;
-    int err = libswd_memap_write_int_32(p_ctx, LIBSWD_OPERATION_EXECUTE, LIBSWD_ARM_DEBUG_DCRDR_ADDR, 1, &v);
-    if (err < 0)
+    LibSWD_Data_t       v   = (LibSWD_Data_t)value;
+    LibSWD_ReturnCode_t err = libswd_memap_write_int_32(
+        p_ctx,
+        LIBSWD_OPERATION_EXECUTE,
+        LIBSWD_ARM_DEBUG_DCRDR_ADDR,
+        1,
+        &v);
+    if (LIBSWD_OK != err)
     {
-        return err;
+        LOG_ERR("libswd_memap_write_int_32(DCRDR) failed, err=%d", err);
+        return false;
     }
 
     // 2) Issue "write register regnum" via DCRSR (bit16=1)
     v   = regnum | (1 << NRF52SWD_OFFSET_BIT_16);
     err = libswd_memap_write_int_32(p_ctx, LIBSWD_OPERATION_EXECUTE, LIBSWD_ARM_DEBUG_DCRSR_ADDR, 1, &v);
-    if (err < 0)
+    if (LIBSWD_OK != err)
     {
-        return err;
+        LOG_ERR("libswd_memap_write_int_32(DCRSR) failed, err=%d", err);
+        return false;
     }
 
     // 3) (Optional but recommended) poll DHCSR.S_REGRDY
     // Read DHCSR until S_REGRDY set (bit 16)
-    for (int i = 0; i < NRF52SWD_WRITE_REG_NUM_POLL_RETRIES; i++)
+    for (int i = 0; i < NRF52SWD_WRITE_REG_NUM_POLL_RETRIES; ++i)
     {
-        int dhcsr = 0;
-        err       = libswd_memap_read_int_32(p_ctx, LIBSWD_OPERATION_EXECUTE, LIBSWD_ARM_DEBUG_DHCSR_ADDR, 1, &dhcsr);
-        if (err < 0)
+        LibSWD_Data_t dhcsr = 0;
+        err = libswd_memap_read_int_32(p_ctx, LIBSWD_OPERATION_EXECUTE, LIBSWD_ARM_DEBUG_DHCSR_ADDR, 1, &dhcsr);
+        if (LIBSWD_OK != err)
         {
-            return err;
+            LOG_ERR("libswd_memap_read_int_32(DHCSR) failed, err=%d", err);
+            return false;
         }
         if (0 != ((uint32_t)dhcsr & LIBSWD_ARM_DEBUG_DHCSR_SREGRDY))
         {
@@ -592,7 +621,7 @@ nrf52swd_cortexm_write_reg(libswd_ctx_t* const p_ctx, const uint32_t regnum, con
         }
         usleep(NRF52SWD_WRITE_REG_DELAY_BETWEEN_POLL_US);
     }
-    return 0;
+    return true;
 }
 
 extern const uint8_t*
@@ -616,37 +645,16 @@ nrf52swd_get_binary_sha256_stub_bin_end(void)
 #endif
 
 static bool
-nrf52swd_write_ram(libswd_ctx_t* const ctx, const uint32_t ram_addr, const uint8_t* const p_buf, const uint32_t buf_len)
-{
-    LibSWD_ReturnCode_t ret_val = libswd_memap_write_int_32(
-        ctx,
-        LIBSWD_OPERATION_EXECUTE,
-        (int)ram_addr,
-        (int)(buf_len + sizeof(uint32_t) - 1) / sizeof(uint32_t),
-        (int*)p_buf);
-    if (LIBSWD_OK != ret_val)
-    {
-        LOG_ERR("Failed to write to RAM at address 0x%08x, len=%u, err=%d", ram_addr, buf_len, ret_val);
-        return false;
-    }
-    return true;
-}
-
-static bool
 nrf52swd_wait_sha256_ready(libswd_ctx_t* const ctx, nrf52swd_calc_sha256_mem_t* const p_mem)
 {
     const TickType_t time_start = xTaskGetTickCount();
     while ((xTaskGetTickCount() - time_start) < pdMS_TO_TICKS(NRF52SWD_SHA256_CALC_TIMEOUT_MS))
     {
-        const LibSWD_ReturnCode_t ret_val = libswd_memap_read_int_32(
-            ctx,
-            LIBSWD_OPERATION_EXECUTE,
-            NRF52SWD_SHA256_STUB_RES_ADDR + offsetof(nrf52swd_sha256_stub_res_t, status),
-            1,
-            (int*)&p_mem->res.status);
-        if (LIBSWD_OK != ret_val)
+        if (!nrf52swd_read_reg(
+                NRF52SWD_SHA256_STUB_RES_ADDR + offsetof(nrf52swd_sha256_stub_res_t, status),
+                &p_mem->res.status))
         {
-            LOG_ERR("Failed to read SHA256 stub status, err=%d", ret_val);
+            LOG_ERR("Failed to read SHA256 stub status");
             return false;
         }
         if (SHA256_STUB_STATUS_RUNNING != p_mem->res.status)
@@ -673,7 +681,8 @@ nrf52swd_calc_sha256_digest_on_nrf52_internal(
 
     LOG_INFO("Loading SHA256 stub (%u bytes) to nRF52 RAM...", (unsigned)sha256_stub_size);
 
-    if (!nrf52swd_write_ram(ctx, NRF52SWD_SHA256_STUB_CODE_ADDR, sha256_stub_start, sha256_stub_size))
+    const uint32_t num_words = (sha256_stub_size + sizeof(uint32_t) - 1) / sizeof(uint32_t);
+    if (!nrf52swd_write_ram(ctx, NRF52SWD_SHA256_STUB_CODE_ADDR, (const uint32_t*)sha256_stub_start, num_words))
     {
         return false;
     }
@@ -690,23 +699,32 @@ nrf52swd_calc_sha256_digest_on_nrf52_internal(
             (unsigned)p_mem->req.seg[i].size_bytes);
     }
 
-    if (!nrf52swd_write_ram(ctx, NRF52SWD_SHA256_STUB_REQ_ADDR, (const uint8_t*)&p_mem->req, sizeof(p_mem->req)))
+    _Static_assert(0 == (sizeof(p_mem->req) % sizeof(uint32_t)), "");
+    if (!nrf52swd_write_ram(
+            ctx,
+            NRF52SWD_SHA256_STUB_REQ_ADDR,
+            (const uint32_t*)&p_mem->req,
+            sizeof(p_mem->req) / sizeof(uint32_t)))
     {
         return false;
     }
 
-    if (!nrf52swd_write_ram(ctx, NRF52SWD_SHA256_STUB_RES_ADDR, (const uint8_t*)&p_mem->res, sizeof(p_mem->res)))
+    _Static_assert(0 == (sizeof(p_mem->res) % sizeof(uint32_t)), "");
+    if (!nrf52swd_write_ram(
+            ctx,
+            NRF52SWD_SHA256_STUB_RES_ADDR,
+            (const uint32_t*)&p_mem->res,
+            sizeof(p_mem->res) / sizeof(uint32_t)))
     {
         return false;
     }
 
-    LibSWD_ReturnCode_t ret_val = nrf52swd_cortexm_write_reg(
-        ctx,
-        NRF52SWD_CORETEXM_REG_PC,
-        NRF52SWD_SHA256_STUB_CODE_ADDR | 1U); // IMPORTANT: bit0=1 in Thumb mode
-    if (LIBSWD_OK != ret_val)
+    if (!nrf52swd_write_cortexm_reg(
+            ctx,
+            NRF52SWD_CORETEXM_REG_PC,
+            NRF52SWD_SHA256_STUB_CODE_ADDR | 1U)) // IMPORTANT: bit0=1 in Thumb mode
     {
-        LOG_ERR("Failed to write PC, err=%d", ret_val);
+        LOG_ERR("Failed to write PC");
         return false;
     }
 
@@ -731,15 +749,12 @@ nrf52swd_calc_sha256_digest_on_nrf52_internal(
         return false;
     }
 
-    ret_val = libswd_memap_read_int_32(
-        ctx,
-        LIBSWD_OPERATION_EXECUTE,
-        NRF52SWD_SHA256_STUB_RES_ADDR + offsetof(nrf52swd_sha256_stub_res_t, digest),
-        sizeof(p_mem->res.digest) / sizeof(uint32_t),
-        (int*)p_mem->res.digest);
-    if (LIBSWD_OK != ret_val)
+    if (!nrf52swd_read_mem(
+            NRF52SWD_SHA256_STUB_RES_ADDR + offsetof(nrf52swd_sha256_stub_res_t, digest),
+            sizeof(p_mem->res.digest) / sizeof(uint32_t),
+            (uint32_t*)p_mem->res.digest))
     {
-        LOG_ERR("Failed to read SHA256 digest, err=%d", ret_val);
+        LOG_ERR("Failed to read SHA256 digest");
         return false;
     }
     memcpy(p_sha256->digest, p_mem->res.digest, sizeof(p_sha256->digest));

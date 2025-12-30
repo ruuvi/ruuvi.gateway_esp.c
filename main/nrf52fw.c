@@ -409,7 +409,7 @@ NRF52FW_STATIC
 bool
 nrf52fw_write_current_fw_ver(const uint32_t fw_ver)
 {
-    return nrf52swd_write_mem(NRF52FW_UICR_FW_VER, 1, &fw_ver);
+    return nrf52swd_write_flash(NRF52FW_UICR_FW_VER, 1, &fw_ver);
 }
 
 #if RUUVI_TESTS_NRF52FW
@@ -459,9 +459,9 @@ nrf52fw_flash_write_block(
         return false;
     }
     LOG_INFO("Writing 0x%08x...", addr);
-    if (!nrf52swd_write_mem(addr, len / sizeof(uint32_t), p_tmp_buf->buf_wr))
+    if (!nrf52swd_write_flash(addr, len / sizeof(uint32_t), p_tmp_buf->buf_wr))
     {
-        LOG_ERR("%s failed", "nrf52swd_write_mem");
+        LOG_ERR("%s failed", "nrf52swd_write_flash");
         return false;
     }
 #if NRF52FW_ENABLE_FLASH_VERIFICATION
@@ -737,9 +737,10 @@ static bool
 nrf52fw_update_sha256_for_fd(
     mbedtls_sha256_context*  p_sha256_ctx,
     const file_descriptor_t  fd,
-    uint32_t                 rem_len,
+    const uint32_t           len,
     nrf52fw_tmp_buf_t* const p_tmp_buf)
 {
+    uint32_t rem_len = len;
     while (rem_len > 0)
     {
         const uint32_t len_to_read = (rem_len > sizeof(p_tmp_buf->buf_wr)) ? sizeof(p_tmp_buf->buf_wr) : rem_len;

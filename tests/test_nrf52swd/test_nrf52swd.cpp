@@ -303,7 +303,7 @@ public:
     uint32_t m_nvmc_reg_erase_all_cnt_before_fail;
 
     bool
-    write_mem(const uint32_t addr, const uint32_t num_words, const uint32_t* p_buf)
+    write_flash(const uint32_t addr, const uint32_t num_words, const uint32_t* p_buf)
     {
         this->m_memSegmentsWrite.emplace_back(addr, num_words, p_buf);
         if ((0x4001E000UL + 0x504U) == addr)
@@ -580,7 +580,7 @@ libswd_memap_write_int_32(libswd_ctx_t* libswdctx, libswd_operation_t operation,
 {
     assert(&g_pTestClass->m_libswd_ctx == libswdctx);
     g_pTestClass->m_libswd_write_int_32_operation = operation;
-    if (!g_pTestClass->write_mem((uint32_t)addr, (uint32_t)count, (uint32_t*)data))
+    if (!g_pTestClass->write_flash((uint32_t)addr, (uint32_t)count, (uint32_t*)data))
     {
         return -1;
     }
@@ -1585,7 +1585,7 @@ TEST_F(TestNRF52Swd, nrf52swd_read_mem_fail) // NOLINT
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
-TEST_F(TestNRF52Swd, nrf52swd_write_mem_ok) // NOLINT
+TEST_F(TestNRF52Swd, nrf52swd_write_flash_ok) // NOLINT
 {
     ASSERT_TRUE(nrf52swd_init());
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52 SWD init");
@@ -1602,7 +1602,7 @@ TEST_F(TestNRF52Swd, nrf52swd_write_mem_ok) // NOLINT
     const uint32_t reg_addr       = 0x00010000U;
     const uint32_t arr_of_vals[5] = { 5, 6, 7, 8, 9 };
 
-    ASSERT_TRUE(nrf52swd_write_mem(reg_addr, sizeof(arr_of_vals) / sizeof(arr_of_vals[0]), arr_of_vals));
+    ASSERT_TRUE(nrf52swd_write_flash(reg_addr, sizeof(arr_of_vals) / sizeof(arr_of_vals[0]), arr_of_vals));
     ASSERT_EQ(3, this->m_memSegmentsWrite.size());
     {
         ASSERT_EQ(0x4001E000UL + 0x504U, this->m_memSegmentsWrite[0].segmentAddr);
@@ -1627,7 +1627,7 @@ TEST_F(TestNRF52Swd, nrf52swd_write_mem_ok) // NOLINT
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
-TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_write_mem_fail_on_first_wait) // NOLINT
+TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_write_flash_fail_on_first_wait) // NOLINT
 {
     ASSERT_TRUE(nrf52swd_init());
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52 SWD init");
@@ -1644,7 +1644,7 @@ TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_write_mem_fail_on_first_wait) // NOLINT
     const uint32_t reg_addr       = 0x00010000U;
     const uint32_t arr_of_vals[5] = { 5, 6, 7, 8, 9 };
 
-    ASSERT_FALSE(nrf52swd_write_mem(reg_addr, sizeof(arr_of_vals) / sizeof(arr_of_vals[0]), arr_of_vals));
+    ASSERT_FALSE(nrf52swd_write_flash(reg_addr, sizeof(arr_of_vals) / sizeof(arr_of_vals[0]), arr_of_vals));
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
 
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_read_reg: libswd_memap_read_int_32(0x4001e400) failed, err=-1");
@@ -1654,12 +1654,12 @@ TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_write_mem_fail_on_first_wait) // NOLINT
         "nrf52swd_read_reg(REG_READY) failed, err=-1");
     TEST_CHECK_LOG_RECORD_WITH_FUNC(
         ESP_LOG_ERROR,
-        "nrf52swd_write_mem",
+        "nrf52swd_write_flash",
         "nrf51swd_nvmc_wait_while_busy failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
-TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_write_mem_fail_on_second_wait) // NOLINT
+TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_write_flash_fail_on_second_wait) // NOLINT
 {
     ASSERT_TRUE(nrf52swd_init());
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52 SWD init");
@@ -1676,7 +1676,7 @@ TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_write_mem_fail_on_second_wait) // NOLINT
     const uint32_t reg_addr       = 0x00010000U;
     const uint32_t arr_of_vals[5] = { 5, 6, 7, 8, 9 };
 
-    ASSERT_FALSE(nrf52swd_write_mem(reg_addr, sizeof(arr_of_vals) / sizeof(arr_of_vals[0]), arr_of_vals));
+    ASSERT_FALSE(nrf52swd_write_flash(reg_addr, sizeof(arr_of_vals) / sizeof(arr_of_vals[0]), arr_of_vals));
     ASSERT_EQ(2, this->m_memSegmentsWrite.size());
     {
         ASSERT_EQ(0x4001E000UL + 0x504U, this->m_memSegmentsWrite[0].segmentAddr);
@@ -1700,12 +1700,12 @@ TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_write_mem_fail_on_second_wait) // NOLINT
         "nrf52swd_read_reg(REG_READY) failed, err=-1");
     TEST_CHECK_LOG_RECORD_WITH_FUNC(
         ESP_LOG_ERROR,
-        "nrf52swd_write_mem",
+        "nrf52swd_write_flash",
         "nrf51swd_nvmc_wait_while_busy failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
-TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_write_mem_fail_on_write_reg_config_wen_wen) // NOLINT
+TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_write_flash_fail_on_write_reg_config_wen_wen) // NOLINT
 {
     ASSERT_TRUE(nrf52swd_init());
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52 SWD init");
@@ -1723,7 +1723,7 @@ TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_write_mem_fail_on_write_reg_config_wen_we
     const uint32_t reg_addr       = 0x00010000U;
     const uint32_t arr_of_vals[5] = { 5, 6, 7, 8, 9 };
 
-    ASSERT_FALSE(nrf52swd_write_mem(reg_addr, sizeof(arr_of_vals) / sizeof(arr_of_vals[0]), arr_of_vals));
+    ASSERT_FALSE(nrf52swd_write_flash(reg_addr, sizeof(arr_of_vals) / sizeof(arr_of_vals[0]), arr_of_vals));
     ASSERT_EQ(1, this->m_memSegmentsWrite.size());
     {
         ASSERT_EQ(0x4001E000UL + 0x504U, this->m_memSegmentsWrite[0].segmentAddr);
@@ -1734,12 +1734,12 @@ TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_write_mem_fail_on_write_reg_config_wen_we
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_write_reg: libswd_memap_write_int_32(0x4001e504) failed, err=-1");
     TEST_CHECK_LOG_RECORD_WITH_FUNC(
         ESP_LOG_ERROR,
-        "nrf52swd_write_mem",
+        "nrf52swd_write_flash",
         "nrf52swd_write_reg(REG_CONFIG):=WEN failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
-TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_write_mem_fail_on_write_reg_config_wen_ren) // NOLINT
+TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_write_flash_fail_on_write_reg_config_wen_ren) // NOLINT
 {
     ASSERT_TRUE(nrf52swd_init());
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52 SWD init");
@@ -1757,7 +1757,7 @@ TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_write_mem_fail_on_write_reg_config_wen_re
     const uint32_t reg_addr       = 0x00010000U;
     const uint32_t arr_of_vals[5] = { 5, 6, 7, 8, 9 };
 
-    ASSERT_FALSE(nrf52swd_write_mem(reg_addr, sizeof(arr_of_vals) / sizeof(arr_of_vals[0]), arr_of_vals));
+    ASSERT_FALSE(nrf52swd_write_flash(reg_addr, sizeof(arr_of_vals) / sizeof(arr_of_vals[0]), arr_of_vals));
     ASSERT_EQ(3, this->m_memSegmentsWrite.size());
     {
         ASSERT_EQ(0x4001E000UL + 0x504U, this->m_memSegmentsWrite[0].segmentAddr);
@@ -1782,12 +1782,12 @@ TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_write_mem_fail_on_write_reg_config_wen_re
     TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, "nrf52swd_write_reg: libswd_memap_write_int_32(0x4001e504) failed, err=-1");
     TEST_CHECK_LOG_RECORD_WITH_FUNC(
         ESP_LOG_ERROR,
-        "nrf52swd_write_mem",
+        "nrf52swd_write_flash",
         "nrf52swd_write_reg(REG_CONFIG):=REN failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
-TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_write_mem_fail_on_write) // NOLINT
+TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_write_flash_fail_on_write) // NOLINT
 {
     ASSERT_TRUE(nrf52swd_init());
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, "nRF52 SWD init");
@@ -1805,7 +1805,7 @@ TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_write_mem_fail_on_write) // NOLINT
     const uint32_t reg_addr       = 0x00010000U;
     const uint32_t arr_of_vals[5] = { 5, 6, 7, 8, 9 };
 
-    ASSERT_FALSE(nrf52swd_write_mem(reg_addr, sizeof(arr_of_vals) / sizeof(arr_of_vals[0]), arr_of_vals));
+    ASSERT_FALSE(nrf52swd_write_flash(reg_addr, sizeof(arr_of_vals) / sizeof(arr_of_vals[0]), arr_of_vals));
     ASSERT_EQ(2, this->m_memSegmentsWrite.size());
     {
         ASSERT_EQ(0x4001E000UL + 0x504U, this->m_memSegmentsWrite[0].segmentAddr);
@@ -1822,6 +1822,6 @@ TEST_F(TestNRF52Swd, nrf52swd_nrf52swd_write_mem_fail_on_write) // NOLINT
         ASSERT_EQ(arr_of_vals[4], this->m_memSegmentsWrite[1].data[4]);
     }
 
-    TEST_CHECK_LOG_RECORD_WITH_FUNC(ESP_LOG_ERROR, "nrf52swd_write_mem", "libswd_memap_write_int_32 failed, err=-1");
+    TEST_CHECK_LOG_RECORD_WITH_FUNC(ESP_LOG_ERROR, "nrf52swd_write_flash", "libswd_memap_write_int_32 failed, err=-1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
