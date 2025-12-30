@@ -6,6 +6,7 @@
  */
 
 #include "nrf52fw.h"
+#include "nrf52fw_info_txt.h"
 #include <string>
 #include <list>
 #include <sys/stat.h>
@@ -1010,7 +1011,7 @@ TEST_F(TestNRF52Fw, test_nrf52fw_parse_info_file_segments_overflow) // NOLINT
     }
 }
 
-TEST_F(TestNRF52Fw, nrf52fw_read_info_txt) // NOLINT
+TEST_F(TestNRF52Fw, nrf52fw_info_txt_read) // NOLINT
 {
     {
         this->m_fd = open_file(this->m_info_txt_name, "w");
@@ -1027,7 +1028,7 @@ TEST_F(TestNRF52Fw, nrf52fw_read_info_txt) // NOLINT
         ASSERT_NE(nullptr, this->m_p_ffs);
 
         nrf52fw_info_t info = { 0 };
-        ASSERT_TRUE(nrf52fw_read_info_txt(this->m_p_ffs, this->m_info_txt_name, &info));
+        ASSERT_TRUE(nrf52fw_info_txt_read(this->m_p_ffs, this->m_info_txt_name, &info));
 
         ASSERT_EQ(0x01040200, info.fw_ver.version);
         ASSERT_EQ(3, info.num_segments);
@@ -1059,14 +1060,14 @@ TEST_F(TestNRF52Fw, nrf52fw_read_info_txt) // NOLINT
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestNRF52Fw, nrf52fw_read_info_txt_no_file) // NOLINT
+TEST_F(TestNRF52Fw, nrf52fw_info_read_txt_no_file) // NOLINT
 {
     nrf52fw_info_t info = { 0 };
 
     this->m_p_ffs = flashfatfs_mount(this->m_mount_point, GW_NRF_PARTITION, 2);
     ASSERT_NE(nullptr, this->m_p_ffs);
 
-    ASSERT_FALSE(nrf52fw_read_info_txt(this->m_p_ffs, this->m_info_txt_name, &info));
+    ASSERT_FALSE(nrf52fw_info_txt_read(this->m_p_ffs, this->m_info_txt_name, &info));
 
     ASSERT_TRUE(flashfatfs_unmount(&this->m_p_ffs));
     this->m_p_ffs = nullptr;
@@ -1083,7 +1084,7 @@ TEST_F(TestNRF52Fw, nrf52fw_read_info_txt_no_file) // NOLINT
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestNRF52Fw, nrf52fw_read_info_txt_bad_line_3) // NOLINT
+TEST_F(TestNRF52Fw, nrf52fw_info_read_txt_bad_line_3) // NOLINT
 {
     {
         this->m_fd = open_file(this->m_info_txt_name, "w");
@@ -1099,7 +1100,7 @@ TEST_F(TestNRF52Fw, nrf52fw_read_info_txt_bad_line_3) // NOLINT
     ASSERT_NE(nullptr, this->m_p_ffs);
     {
         nrf52fw_info_t info = { 0 };
-        ASSERT_FALSE(nrf52fw_read_info_txt(this->m_p_ffs, this->m_info_txt_name, &info));
+        ASSERT_FALSE(nrf52fw_info_txt_read(this->m_p_ffs, this->m_info_txt_name, &info));
 
         ASSERT_EQ(0x01040200, info.fw_ver.version);
         ASSERT_EQ(1, info.num_segments);
@@ -4531,7 +4532,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_read_info_txt) /
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_ERROR, "Can't open: ./fs_nrf52/info.txt");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "Can't open: info.txt");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_read_info_txt failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_info_txt_read failed");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");

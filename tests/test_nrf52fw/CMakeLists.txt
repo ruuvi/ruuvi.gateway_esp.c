@@ -8,6 +8,8 @@ add_executable(${ProjectId}
         crc.cpp
         ${RUUVI_GW_SRC}/nrf52fw.c
         ${RUUVI_GW_SRC}/nrf52fw.h
+        ${RUUVI_GW_SRC}/nrf52fw_info_txt.c
+        ${RUUVI_GW_SRC}/nrf52fw_info_txt.h
         ${RUUVI_GW_SRC}/nrf52_fw_ver.c
         ${RUUVI_GW_SRC}/nrf52_fw_ver.h
         ${RUUVI_GW_SRC}/flashfatfs.c
