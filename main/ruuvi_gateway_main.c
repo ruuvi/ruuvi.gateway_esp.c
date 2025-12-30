@@ -55,6 +55,8 @@ static const char TAG[] = "ruuvi_gateway";
 
 #define RUUVI_GATEWAY_DELAY_AFTER_NRF52_UPDATING_SECONDS (5)
 
+#define RUUVI_GATEWAY_DELAY_BEFORE_REBOOT_AFTER_FW_ROLLBACK_MS (5000)
+
 uint32_t volatile g_network_disconnect_cnt;
 
 static os_mutex_t        g_http_server_mutex_incoming_connection;
@@ -542,7 +544,7 @@ app_main(void)
             LOG_ERR_ESP(err, "%s failed", "esp_ota_mark_app_invalid_rollback_and_reboot");
         }
         LOG_INFO("Restarting system in 5 seconds...");
-        vTaskDelay(pdMS_TO_TICKS(RESET_TASK_DELAY_BEFORE_REBOOT_MS));
+        vTaskDelay(pdMS_TO_TICKS(RUUVI_GATEWAY_DELAY_BEFORE_REBOOT_AFTER_FW_ROLLBACK_MS));
         esp_restart();
     }
     else
