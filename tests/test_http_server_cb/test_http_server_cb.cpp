@@ -3795,9 +3795,7 @@ TEST_F(
           "}";
     this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
@@ -3843,10 +3841,6 @@ TEST_F(
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
         "I http_download: http_download_json: completed within 0 ticks\n"
         "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
@@ -3877,11 +3871,8 @@ TEST_F(
           "}";
     this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
-    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
 
@@ -3926,10 +3917,6 @@ TEST_F(
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
         "I http_download: http_download_json: completed within 0 ticks\n"
         "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
@@ -3960,9 +3947,7 @@ TEST_F(
           "}";
     this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
@@ -4013,10 +3998,6 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
 }
@@ -4042,9 +4023,7 @@ TEST_F(
           "}";
     this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.3.3/ruuvi_gateway_esp.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.3.3/fatfs_gwui.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.3.3/fatfs_gwui.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.3.3/fatfs_nrf52.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.3.3/fatfs_nrf52.bin" };
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
@@ -4090,10 +4069,6 @@ TEST_F(
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
         "I http_download: http_download_json: completed within 0 ticks\n"
         "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
@@ -4124,9 +4099,7 @@ TEST_F(
           "}";
     this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.3.3/ruuvi_gateway_esp.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.3.3/fatfs_gwui.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.3.3/fatfs_gwui.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.3.3/fatfs_nrf52.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.3.3/fatfs_nrf52.bin" };
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
@@ -4172,10 +4145,6 @@ TEST_F(
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
         "I http_download: http_download_json: completed within 0 ticks\n"
         "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
@@ -4206,9 +4175,7 @@ TEST_F(
           "}";
     this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.3.3/ruuvi_gateway_esp.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.3.3/fatfs_gwui.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.3.3/fatfs_gwui.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.3.3/fatfs_nrf52.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.3.3/fatfs_nrf52.bin" };
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
@@ -4254,10 +4221,6 @@ TEST_F(
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
         "I http_download: http_download_json: completed within 0 ticks\n"
         "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
@@ -4293,11 +4256,8 @@ TEST_F(
           "}";
     this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
-    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
 
@@ -4350,10 +4310,6 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
 }
@@ -4385,9 +4341,7 @@ TEST_F(
     this->m_firmware_update_resp  = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[] = {
         "https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.4/ruuvi_gateway_esp.bin",
-        "https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.4/fatfs_gwui.bin.signature",
         "https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.4/fatfs_gwui.bin",
-        "https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.4/fatfs_nrf52.bin.signature",
         "https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.4/fatfs_nrf52.bin"
     };
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
@@ -4442,10 +4396,6 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
 }
@@ -4476,11 +4426,8 @@ TEST_F(
           "}";
     this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
-    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
 
@@ -4533,10 +4480,6 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
 }
@@ -4567,9 +4510,7 @@ TEST_F(
           "}";
     this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.3.3/ruuvi_gateway_esp.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.3.3/fatfs_gwui.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.3.3/fatfs_gwui.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.3.3/fatfs_nrf52.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.3.3/fatfs_nrf52.bin" };
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
@@ -4623,10 +4564,6 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
 }
@@ -4658,9 +4595,7 @@ TEST_F(
     this->m_firmware_update_resp  = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[] = {
         "https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.3.3/ruuvi_gateway_esp.bin",
-        "https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.3.3/fatfs_gwui.bin.signature",
         "https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.3.3/fatfs_gwui.bin",
-        "https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.3.3/fatfs_nrf52.bin.signature",
         "https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.3.3/fatfs_nrf52.bin"
     };
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
@@ -4715,10 +4650,6 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
 }
@@ -4749,9 +4680,7 @@ TEST_F(
           "}";
     this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.3.3/ruuvi_gateway_esp.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.3.3/fatfs_gwui.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.3.3/fatfs_gwui.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.3.3/fatfs_nrf52.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.3.3/fatfs_nrf52.bin" };
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
@@ -4800,10 +4729,6 @@ TEST_F(
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
         "I http_download: http_download_json: completed within 0 ticks\n"
         "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
@@ -5405,11 +5330,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
           "}";
     this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
-    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
 
@@ -5462,10 +5384,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
 }
@@ -5486,9 +5404,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
           "}";
     this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
@@ -5541,10 +5457,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
 }
@@ -5566,11 +5478,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
           "}";
     this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
-    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
 
@@ -5622,10 +5531,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
             "I http_download: http_check: completed within 0 ticks\n"
             "D http_server: Feed watchdog\n"
             "I http_download: http_check: completed within 0 ticks\n"
-            "D http_server: Feed watchdog\n"
-            "I http_download: http_check: completed within 0 ticks\n"
-            "D http_server: Feed watchdog\n"
-            "I http_download: http_check: completed within 0 ticks\n"
             "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
 }
@@ -5647,11 +5552,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
           "}";
     this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
-    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
 
@@ -5703,10 +5605,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
 }
@@ -5727,11 +5625,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
           "}";
     this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
-    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
 
@@ -5777,10 +5672,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
         "I http_download: http_download_json: completed within 0 ticks\n"
         "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
@@ -5862,11 +5753,8 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__
           "}";
     this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
-    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
 
@@ -5881,10 +5769,6 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__
         "I http_download: http_download_json: completed within 0 ticks\n"
         "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
         "I http_server: Update is required (current version: v1.3.3, latest version: https://fwupdate.ruuvi.com/v1.14.3)\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
@@ -5920,11 +5804,8 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__
           "}";
     this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
-    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
 
@@ -5939,10 +5820,6 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__
         "I http_download: http_download_json: completed within 0 ticks\n"
         "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
         "I http_server: Update is required (current version: v1.3.3, latest version: https://fwupdate.ruuvi.com/v1.14.3)\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
-        "I http_download: http_check: completed within 0 ticks\n"
-        "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n"
         "I http_download: http_check: completed within 0 ticks\n"
@@ -5972,12 +5849,9 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__
           "  }"
           "}";
     this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
-    const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin.signature",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin.signature",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
-    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
+    const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.3.3/ruuvi_gateway_esp.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.3.3/fatfs_gwui.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.3.3/fatfs_nrf52.bin" };
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
 
@@ -6020,12 +5894,9 @@ TEST_F(
           "  }"
           "}";
     this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
-    const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin.signature",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin.signature",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
-    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
+    const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.3.3/ruuvi_gateway_esp.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.3.3/fatfs_gwui.bin",
+                                                 "https://fwupdate.ruuvi.com/v1.3.3/fatfs_nrf52.bin" };
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
 
@@ -6068,9 +5939,7 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_beta__lat
     this->m_firmware_update_resp  = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[] = {
         "https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.4/ruuvi_gateway_esp.bin",
-        "https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.4/fatfs_gwui.bin.signature",
         "https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.4/fatfs_gwui.bin",
-        "https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.4/fatfs_nrf52.bin.signature",
         "https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.4/fatfs_nrf52.bin"
     };
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
@@ -6089,10 +5958,6 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_beta__lat
             "I http_download: http_download_json: completed within 0 ticks\n"
             "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
             "I http_server: Update is required (current version: v1.3.3, beta version: https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.4)\n"
-            "I http_download: http_check: completed within 0 ticks\n"
-            "D http_server: Feed watchdog\n"
-            "I http_download: http_check: completed within 0 ticks\n"
-            "D http_server: Feed watchdog\n"
             "I http_download: http_check: completed within 0 ticks\n"
             "D http_server: Feed watchdog\n"
             "I http_download: http_check: completed within 0 ticks\n"
@@ -6123,11 +5988,8 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_beta__lat
           "}";
     this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
-    this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
 
@@ -6142,10 +6004,6 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_beta__lat
             "I http_download: http_download_json: completed within 0 ticks\n"
             "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
             "I http_server: Update is required (current version: v1.3.3, latest version: https://fwupdate.ruuvi.com/v1.14.3)\n"
-            "I http_download: http_check: completed within 0 ticks\n"
-            "D http_server: Feed watchdog\n"
-            "I http_download: http_check: completed within 0 ticks\n"
-            "D http_server: Feed watchdog\n"
             "I http_download: http_check: completed within 0 ticks\n"
             "D http_server: Feed watchdog\n"
             "I http_download: http_check: completed within 0 ticks\n"
@@ -6176,9 +6034,7 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_beta__lat
           "}";
     this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.3.3/ruuvi_gateway_esp.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.3.3/fatfs_gwui.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.3.3/fatfs_gwui.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.3.3/fatfs_nrf52.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.3.3/fatfs_nrf52.bin" };
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
@@ -6221,9 +6077,7 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_beta__lat
           "}";
     this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.3.3/ruuvi_gateway_esp.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.3.3/fatfs_gwui.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.3.3/fatfs_gwui.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.3.3/fatfs_nrf52.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.3.3/fatfs_nrf52.bin" };
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
@@ -6267,9 +6121,7 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_manual__l
     this->m_firmware_update_resp  = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[] = {
         "https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.4/ruuvi_gateway_esp.bin",
-        "https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.4/fatfs_gwui.bin.signature",
         "https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.4/fatfs_gwui.bin",
-        "https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.4/fatfs_nrf52.bin.signature",
         "https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.4/fatfs_nrf52.bin"
     };
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
@@ -6308,9 +6160,7 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_manual__l
           "}";
     this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.14.3/ruuvi_gateway_esp.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_gwui.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.14.3/fatfs_nrf52.bin" };
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
@@ -6348,9 +6198,7 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_manual__l
           "}";
     this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.3.3/ruuvi_gateway_esp.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.3.3/fatfs_gwui.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.3.3/fatfs_gwui.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.3.3/fatfs_nrf52.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.3.3/fatfs_nrf52.bin" };
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
@@ -6395,9 +6243,7 @@ TEST_F(
           "}";
     this->m_firmware_update_resp             = str_buf_printf_with_alloc("%s", p_firmwareUpdateJson);
     const char* arr_of_binaries[]            = { "https://fwupdate.ruuvi.com/v1.3.3/ruuvi_gateway_esp.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.3.3/fatfs_gwui.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.3.3/fatfs_gwui.bin",
-                                                 "https://fwupdate.ruuvi.com/v1.3.3/fatfs_nrf52.bin.signature",
                                                  "https://fwupdate.ruuvi.com/v1.3.3/fatfs_nrf52.bin" };
     this->m_http_check_with_auth_arr_of_urls = arr_of_binaries;
     this->m_http_check_with_auth_num_of_urls = sizeof(arr_of_binaries) / sizeof(arr_of_binaries[0]);
