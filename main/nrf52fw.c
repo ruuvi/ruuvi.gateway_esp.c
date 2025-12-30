@@ -860,8 +860,43 @@ nrf52fw_fill_sha256_stub_mem_segments(nrf52fw_update_tmp_data_t* const p_tmp_dat
 
 NRF52FW_STATIC
 bool
+nrf52fw_update_fw_step4(
+    const flash_fat_fs_t* const      p_ffs,
+    nrf52fw_update_tmp_data_t* const p_tmp_data,
+    nrf52fw_cb_progress              cb_progress,
+    void* const                      p_param_cb_progress,
+    ruuvi_nrf52_fw_ver_t* const      p_nrf52_fw_ver)
+{
+    if (!nrf52fw_flash_write_firmware(
+            p_ffs,
+            &p_tmp_data->tmp_buf,
+            &p_tmp_data->fw_info,
+            cb_progress,
+            p_param_cb_progress))
+    {
+        LOG_ERR("%s failed", "nrf52fw_flash_write_firmware");
+        if (NULL != p_nrf52_fw_ver)
+        {
+            nrf52fw_read_current_fw_ver(p_nrf52_fw_ver);
+        }
+        return false;
+    }
+    if (!nrf52fw_read_current_fw_ver(&p_tmp_data->cur_fw_ver))
+    {
+        LOG_ERR("%s failed", "nrf52fw_read_current_fw_ver");
+        if (NULL != p_nrf52_fw_ver)
+        {
+            *p_nrf52_fw_ver = p_tmp_data->cur_fw_ver;
+        }
+        return false;
+    }
+    return true;
+}
+
+NRF52FW_STATIC
+bool
 nrf52fw_update_fw_step3(
-    const flash_fat_fs_t*            p_ffs,
+    const flash_fat_fs_t* const      p_ffs,
     nrf52fw_update_tmp_data_t* const p_tmp_data,
     nrf52fw_cb_progress              cb_progress,
     void* const                      p_param_cb_progress,
@@ -942,40 +977,14 @@ nrf52fw_update_fw_step3(
         cb_before_updating();
     }
 
-    if (!nrf52fw_flash_write_firmware(
-            p_ffs,
-            &p_tmp_data->tmp_buf,
-            &p_tmp_data->fw_info,
-            cb_progress,
-            p_param_cb_progress))
-    {
-        LOG_ERR("%s failed", "nrf52fw_flash_write_firmware");
-        if (NULL != p_nrf52_fw_ver)
-        {
-            nrf52fw_read_current_fw_ver(p_nrf52_fw_ver);
-        }
-        if (NULL != cb_after_updating)
-        {
-            cb_after_updating(false);
-        }
-        return false;
-    }
-    if (!nrf52fw_read_current_fw_ver(&p_tmp_data->cur_fw_ver))
-    {
-        LOG_ERR("%s failed", "nrf52fw_read_current_fw_ver");
-        if (NULL != p_nrf52_fw_ver)
-        {
-            *p_nrf52_fw_ver = p_tmp_data->cur_fw_ver;
-        }
-        if (NULL != cb_after_updating)
-        {
-            cb_after_updating(false);
-        }
-        return false;
-    }
+    const bool res = nrf52fw_update_fw_step4(p_ffs, p_tmp_data, cb_progress, p_param_cb_progress, p_nrf52_fw_ver);
     if (NULL != cb_after_updating)
     {
         cb_after_updating(true);
+    }
+    if (!res)
+    {
+        return false;
     }
     if (NULL != p_nrf52_fw_ver)
     {
@@ -989,7 +998,7 @@ nrf52fw_update_fw_step3(
 NRF52FW_STATIC
 bool
 nrf52fw_update_fw_step2(
-    const flash_fat_fs_t*       p_ffs,
+    const flash_fat_fs_t* const p_ffs,
     nrf52fw_cb_progress         cb_progress,
     void* const                 p_param_cb_progress,
     nrf52fw_cb_before_updating  cb_before_updating,

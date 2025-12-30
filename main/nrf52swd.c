@@ -614,7 +614,7 @@ nrf52swd_write_cortexm_reg(libswd_ctx_t* const p_ctx, const uint32_t regnum, con
 
     // 3) (Optional but recommended) poll DHCSR.S_REGRDY
     // Read DHCSR until S_REGRDY set (bit 16)
-    for (int i = 0; i < NRF52SWD_WRITE_REG_NUM_POLL_RETRIES; ++i)
+    for (int32_t i = 0; i < NRF52SWD_WRITE_REG_NUM_POLL_RETRIES; ++i)
     {
         LibSWD_Data_t dhcsr = 0;
         err = libswd_memap_read_int_32(p_ctx, LIBSWD_OPERATION_EXECUTE, LIBSWD_ARM_DEBUG_DHCSR_ADDR, 1, &dhcsr);
