@@ -112,3 +112,14 @@ if(NOT BOOTLOADER_BUILD AND CONFIG_SECURE_SIGNED_APPS AND CONFIG_SECURE_BOOT_BUI
     add_custom_target(gen_nrf52_signature ALL DEPENDS "${NRF52_SIGNATURE}")
     add_dependencies(gen_nrf52_signature gen_signed_nrf52fw_binary)
 endif()
+
+# Extract the last 3*4096 bytes from the unsigned image into a separate file
+add_custom_command(
+        OUTPUT "${NRF52_FATFS_WL_AREA}"
+        COMMAND ${python} -c "import sys; f=open(sys.argv[1],'rb'); f.seek(-3*4096,2); open(sys.argv[2],'wb').write(f.read())" "${NRF52_UNSIGNED}" "${NRF52_FATFS_WL_AREA}"
+        DEPENDS "${NRF52_UNSIGNED}"
+        VERBATIM
+        COMMENT "Extracting 3x4096-byte area used for wear-leveling on FAT-FS from ${NRF52_UNSIGNED} to ${NRF52_FATFS_WL_AREA}"
+)
+add_custom_target(gen_nrf52_fatfs_wl_area ALL DEPENDS "${NRF52_FATFS_WL_AREA}")
+add_dependencies(gen_nrf52_fatfs_wl_area fatfs_nrf52_ext)
