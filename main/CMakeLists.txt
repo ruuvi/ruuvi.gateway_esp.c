@@ -163,6 +163,8 @@ idf_component_register(
         nrf52_fw_ver.h
         nrf52fw.c
         nrf52fw.h
+        nrf52fw_info_txt.c
+        nrf52fw_info_txt.h
         nrf52swd.c
         nrf52swd.h
         partition_table.c

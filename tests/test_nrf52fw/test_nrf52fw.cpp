@@ -6,6 +6,7 @@
  */
 
 #include "nrf52fw.h"
+#include "nrf52fw_info_txt.h"
 #include <string>
 #include <list>
 #include <sys/stat.h>
@@ -17,6 +18,8 @@
 #include "esp32/rom/crc.h"
 #include "freertos/FreeRTOS.h"
 #include "os_task.h"
+#include "os_malloc.h"
+#include "nrf52swd.h"
 
 using namespace std;
 
@@ -184,6 +187,11 @@ protected:
         this->m_uicr_fw_ver                                     = 0xFFFFFFFFU;
         this->m_uicr_fw_ver_simulate_write_error                = false;
         this->m_uicr_fw_ver_simulate_read_error                 = false;
+        this->m_ficr_info_part_simulate_read_error              = false;
+        this->m_nrf52_sha256_digest                             = (nrf52swd_sha256_t) {
+                                        .digest = { 0 },
+        };
+        this->m_calc_nrf52_sha256_digest_status = true;
     }
 
     void
@@ -245,9 +253,12 @@ public:
     uint32_t                  m_uicr_fw_ver;
     bool                      m_uicr_fw_ver_simulate_write_error;
     bool                      m_uicr_fw_ver_simulate_read_error;
+    bool                      m_ficr_info_part_simulate_read_error;
+    nrf52swd_sha256_t         m_nrf52_sha256_digest;
+    bool                      m_calc_nrf52_sha256_digest_status;
 
     bool
-    write_mem(const uint32_t addr, const uint32_t num_words, const uint32_t* p_buf)
+    write_flash(const uint32_t addr, const uint32_t num_words, const uint32_t* p_buf)
     {
         if (NRF52FW_UICR_FW_VER == addr)
         {
@@ -301,6 +312,19 @@ public:
                 return false;
             }
             *p_buf = this->m_uicr_fw_ver;
+            return true;
+        }
+        if (NRF52FW_FICR_INFO_PART == addr)
+        {
+            if (1 != num_words)
+            {
+                return false;
+            }
+            if (this->m_ficr_info_part_simulate_read_error)
+            {
+                return false;
+            }
+            p_buf[0] = 0x00052811U;
             return true;
         }
         for (const auto& x : this->m_memSegmentsRead)
@@ -448,9 +472,19 @@ nrf52swd_erase_all(void)
 }
 
 bool
-nrf52swd_write_mem(const uint32_t addr, const uint32_t num_words, const uint32_t* p_buf)
+nrf52swd_write_flash(const uint32_t addr, const uint32_t num_words, const uint32_t* p_buf)
 {
-    return g_pTestClass->write_mem(addr, num_words, p_buf);
+    return g_pTestClass->write_flash(addr, num_words, p_buf);
+}
+
+bool
+nrf52swd_calc_sha256_digest_on_nrf52(
+    const nrf52swd_segment_t* p_segments,
+    const uint32_t            num_segments,
+    nrf52swd_sha256_t* const  p_sha256)
+{
+    memcpy(p_sha256, &g_pTestClass->m_nrf52_sha256_digest, sizeof(*p_sha256));
+    return g_pTestClass->m_calc_nrf52_sha256_digest_status;
 }
 
 bool
@@ -977,7 +1011,7 @@ TEST_F(TestNRF52Fw, test_nrf52fw_parse_info_file_segments_overflow) // NOLINT
     }
 }
 
-TEST_F(TestNRF52Fw, nrf52fw_read_info_txt) // NOLINT
+TEST_F(TestNRF52Fw, nrf52fw_info_txt_read) // NOLINT
 {
     {
         this->m_fd = open_file(this->m_info_txt_name, "w");
@@ -994,7 +1028,7 @@ TEST_F(TestNRF52Fw, nrf52fw_read_info_txt) // NOLINT
         ASSERT_NE(nullptr, this->m_p_ffs);
 
         nrf52fw_info_t info = { 0 };
-        ASSERT_TRUE(nrf52fw_read_info_txt(this->m_p_ffs, this->m_info_txt_name, &info));
+        ASSERT_TRUE(nrf52fw_info_txt_read(this->m_p_ffs, this->m_info_txt_name, &info));
 
         ASSERT_EQ(0x01040200, info.fw_ver.version);
         ASSERT_EQ(3, info.num_segments);
@@ -1026,14 +1060,14 @@ TEST_F(TestNRF52Fw, nrf52fw_read_info_txt) // NOLINT
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestNRF52Fw, nrf52fw_read_info_txt_no_file) // NOLINT
+TEST_F(TestNRF52Fw, nrf52fw_info_read_txt_no_file) // NOLINT
 {
     nrf52fw_info_t info = { 0 };
 
     this->m_p_ffs = flashfatfs_mount(this->m_mount_point, GW_NRF_PARTITION, 2);
     ASSERT_NE(nullptr, this->m_p_ffs);
 
-    ASSERT_FALSE(nrf52fw_read_info_txt(this->m_p_ffs, this->m_info_txt_name, &info));
+    ASSERT_FALSE(nrf52fw_info_txt_read(this->m_p_ffs, this->m_info_txt_name, &info));
 
     ASSERT_TRUE(flashfatfs_unmount(&this->m_p_ffs));
     this->m_p_ffs = nullptr;
@@ -1050,7 +1084,7 @@ TEST_F(TestNRF52Fw, nrf52fw_read_info_txt_no_file) // NOLINT
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestNRF52Fw, nrf52fw_read_info_txt_bad_line_3) // NOLINT
+TEST_F(TestNRF52Fw, nrf52fw_info_read_txt_bad_line_3) // NOLINT
 {
     {
         this->m_fd = open_file(this->m_info_txt_name, "w");
@@ -1066,7 +1100,7 @@ TEST_F(TestNRF52Fw, nrf52fw_read_info_txt_bad_line_3) // NOLINT
     ASSERT_NE(nullptr, this->m_p_ffs);
     {
         nrf52fw_info_t info = { 0 };
-        ASSERT_FALSE(nrf52fw_read_info_txt(this->m_p_ffs, this->m_info_txt_name, &info));
+        ASSERT_FALSE(nrf52fw_info_txt_read(this->m_p_ffs, this->m_info_txt_name, &info));
 
         ASSERT_EQ(0x01040200, info.fw_ver.version);
         ASSERT_EQ(1, info.num_segments);
@@ -1479,7 +1513,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_error_on_write) // NOLINT
 
     ASSERT_FALSE(nrf52fw_flash_write_segment(fileno(this->m_fd), &tmp_buf, segment_addr, sizeof(segment_buf), nullptr));
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001000...");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_write_mem failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_write_flash failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -1679,7 +1713,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_segment_from_file_error_on_writing_segme
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001000...");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_write_mem failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_write_flash failed");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "Failed to write segment 0x00001000 from 'segment_1.bin'");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2125,7 +2159,7 @@ TEST_F(TestNRF52Fw, nrf52fw_flash_write_firmware_error_writing_segment) // NOLIN
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000200...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 1: 0x00001000 size=1028 from segment_2.bin");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00001000...");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_write_mem failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_write_flash failed");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "Failed to write segment 0x00001000 from 'segment_2.bin'");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "Failed to write segment 1: 0x00001000 from segment_2.bin");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
@@ -2689,6 +2723,13 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_not_needed) // 
         this->m_uicr_fw_ver = 0x01020300;
     }
 
+    this->m_nrf52_sha256_digest = (nrf52swd_sha256_t) {
+        .digest = {
+            0xD1, 0xA2, 0xBB, 0x94, 0x11, 0xE4, 0x17, 0x9F, 0x98, 0xD6, 0x4C, 0x9C, 0x73, 0x29, 0x85, 0xCE,
+            0x94, 0x38, 0x01, 0xC0, 0xB8, 0x06, 0xAF, 0x88, 0x8D, 0xAD, 0xA7, 0x3A, 0xE7, 0x56, 0xCA, 0x13,
+        },
+    };
+
     ASSERT_TRUE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr, nullptr, true));
 
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
@@ -2700,8 +2741,26 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_not_needed) // 
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 factory information: Part code: 0x00052811");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware on nRF52: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "SHA256 digest of nRF52 firmware on nRF52:");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0000: D1 A2 BB 94 11 E4 17 9F 98 D6 4C 9C 73 29 85 CE | ..........L.s)..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0010: 94 38 01 C0 B8 06 AF 88 8D AD A7 3A E7 56 CA 13 | .8.........:.V..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Opened file 'segment_1.bin' for SHA256 calculation (size 2816 bytes)");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Opened file 'segment_2.bin' for SHA256 calculation (size 151016 bytes)");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Opened file 'segment_3.bin' for SHA256 calculation (size 24448 bytes)");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "SHA256 digest of nRF52 firmware on FatFS:");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0000: D1 A2 BB 94 11 E4 17 9F 98 D6 4C 9C 73 29 85 CE | ..........L.s)..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0010: 94 38 01 C0 B8 06 AF 88 8D AD A7 3A E7 56 CA 13 | .8.........:.V..\n");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware updating is not needed");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
@@ -2789,6 +2848,13 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_not_needed_dont
         this->m_uicr_fw_ver = 0x01020300;
     }
 
+    this->m_nrf52_sha256_digest = (nrf52swd_sha256_t) {
+        .digest = {
+            0xD1, 0xA2, 0xBB, 0x94, 0x11, 0xE4, 0x17, 0x9F, 0x98, 0xD6, 0x4C, 0x9C, 0x73, 0x29, 0x85, 0xCE,
+            0x94, 0x38, 0x01, 0xC0, 0xB8, 0x06, 0xAF, 0x88, 0x8D, 0xAD, 0xA7, 0x3A, 0xE7, 0x56, 0xCA, 0x13,
+        },
+    };
+
     ASSERT_TRUE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr, nullptr, false));
 
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
@@ -2800,8 +2866,26 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_not_needed_dont
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 factory information: Part code: 0x00052811");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware on nRF52: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "SHA256 digest of nRF52 firmware on nRF52:");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0000: D1 A2 BB 94 11 E4 17 9F 98 D6 4C 9C 73 29 85 CE | ..........L.s)..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0010: 94 38 01 C0 B8 06 AF 88 8D AD A7 3A E7 56 CA 13 | .8.........:.V..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Opened file 'segment_1.bin' for SHA256 calculation (size 2816 bytes)");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Opened file 'segment_2.bin' for SHA256 calculation (size 151016 bytes)");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Opened file 'segment_3.bin' for SHA256 calculation (size 24448 bytes)");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "SHA256 digest of nRF52 firmware on FatFS:");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0000: D1 A2 BB 94 11 E4 17 9F 98 D6 4C 9C 73 29 85 CE | ..........L.s)..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0010: 94 38 01 C0 B8 06 AF 88 8D AD A7 3A E7 56 CA 13 | .8.........:.V..\n");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware updating is not needed");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
@@ -2810,7 +2894,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_not_needed_dont
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
-TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required) // NOLINT
+TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required_because_version_mismatch) // NOLINT
 {
     const char* segment1_path = "segment_1.bin";
     const char* segment2_path = "segment_2.bin";
@@ -2890,6 +2974,13 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required) // NO
     this->m_memSegmentsRead.emplace_back(MemSegment(0x00001000, segment2_size / sizeof(uint32_t), segment2_buf.get()));
     this->m_memSegmentsRead.emplace_back(MemSegment(0x00026000, segment3_size / sizeof(uint32_t), segment3_buf.get()));
 
+    this->m_nrf52_sha256_digest = (nrf52swd_sha256_t) {
+        .digest = {
+            0xD1, 0xA2, 0xBB, 0x94, 0x11, 0xE4, 0x17, 0x9F, 0x98, 0xD6, 0x4C, 0x9C, 0x73, 0x29, 0x85, 0xCE,
+            0x94, 0x38, 0x01, 0xC0, 0xB8, 0x06, 0xAF, 0x88, 0x8D, 0xAD, 0xA7, 0x3A, 0xE7, 0x56, 0xCA, 0x13,
+        },
+    };
+
     ASSERT_TRUE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr, nullptr, true));
 
     ASSERT_EQ(1, this->m_cnt_nrf52swd_erase_all);
@@ -2901,8 +2992,183 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required) // NO
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 factory information: Part code: 0x00052811");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware on nRF52: v1.2.0");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "SHA256 digest of nRF52 firmware on nRF52:");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0000: D1 A2 BB 94 11 E4 17 9F 98 D6 4C 9C 73 29 85 CE | ..........L.s)..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0010: 94 38 01 C0 B8 06 AF 88 8D AD A7 3A E7 56 CA 13 | .8.........:.V..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Opened file 'segment_1.bin' for SHA256 calculation (size 2816 bytes)");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Opened file 'segment_2.bin' for SHA256 calculation (size 151016 bytes)");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Opened file 'segment_3.bin' for SHA256 calculation (size 24448 bytes)");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "SHA256 digest of nRF52 firmware on FatFS:");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0000: D1 A2 BB 94 11 E4 17 9F 98 D6 4C 9C 73 29 85 CE | ..........L.s)..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0010: 94 38 01 C0 B8 06 AF 88 8D AD A7 3A E7 56 CA 13 | .8.........:.V..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Need to update firmware on nRF52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Erasing flash memory...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash 3 segments");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 0: 0x00000000 size=2816 from segment_1.bin");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000000...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000100...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000200...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000300...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000400...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000500...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000600...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000700...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000800...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000900...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000a00...");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 1: 0x00001000 size=151016 from segment_2.bin");
+    for (uint32_t offset = 0; offset < segment2_size; offset += 256)
+    {
+        char buf[80];
+        snprintf(buf, sizeof(buf), "Writing 0x%08x...", (unsigned)(0x00001000U + offset));
+        TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, buf);
+    }
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 2: 0x00026000 size=24448 from segment_3.bin");
+    for (uint32_t offset = 0; offset < segment3_size; offset += 256)
+    {
+        char buf[80];
+        snprintf(buf, sizeof(buf), "Writing 0x%08x...", (unsigned)(0x00026000U + offset));
+        TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, buf);
+    }
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on nRF52: v1.2.3");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 manual reset mode: OFF");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required_because_sha256_mismatch) // NOLINT
+{
+    const char* segment1_path = "segment_1.bin";
+    const char* segment2_path = "segment_2.bin";
+    const char* segment3_path = "segment_3.bin";
+
+    const size_t segment1_size = 2816;
+    const size_t segment2_size = 151016;
+    const size_t segment3_size = 24448;
+
+    uint32_t segment1_crc = 0;
+    uint32_t segment2_crc = 0;
+    uint32_t segment3_crc = 0;
+
+    std::unique_ptr<uint32_t[]> segment1_buf(new uint32_t[segment1_size / sizeof(uint32_t)]);
+    {
+        for (int i = 0; i < segment1_size / sizeof(uint32_t); ++i)
+        {
+            segment1_buf[i] = 0xAA000000 + i;
+        }
+        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment1_buf.get()), segment1_size);
+        {
+            this->m_fd = this->open_file(segment1_path, "wb");
+            ASSERT_NE(nullptr, this->m_fd);
+            fwrite(segment1_buf.get(), 1, segment1_size, this->m_fd);
+            fclose(this->m_fd);
+            this->m_fd = nullptr;
+        }
+    }
+
+    std::unique_ptr<uint32_t[]> segment2_buf(new uint32_t[segment2_size / sizeof(uint32_t)]);
+    {
+        for (int i = 0; i < segment2_size / sizeof(uint32_t); ++i)
+        {
+            segment2_buf[i] = 0xBB000000 + i;
+        }
+        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment2_buf.get()), segment2_size);
+        {
+            this->m_fd = this->open_file(segment2_path, "wb");
+            ASSERT_NE(nullptr, this->m_fd);
+            fwrite(segment2_buf.get(), 1, segment2_size, this->m_fd);
+            fclose(this->m_fd);
+            this->m_fd = nullptr;
+        }
+    }
+
+    std::unique_ptr<uint32_t[]> segment3_buf(new uint32_t[segment3_size / sizeof(uint32_t)]);
+    {
+        for (int i = 0; i < segment3_size / sizeof(uint32_t); ++i)
+        {
+            segment3_buf[i] = 0xCC000000 + i;
+        }
+        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment3_buf.get()), segment3_size);
+        {
+            this->m_fd = this->open_file(segment3_path, "wb");
+            ASSERT_NE(nullptr, this->m_fd);
+            fwrite(segment3_buf.get(), 1, segment3_size, this->m_fd);
+            fclose(this->m_fd);
+            this->m_fd = nullptr;
+        }
+    }
+
+    {
+        this->m_fd = this->open_file("info.txt", "w");
+        ASSERT_NE(nullptr, this->m_fd);
+        fprintf(this->m_fd, "# v1.2.3\n");
+        fprintf(this->m_fd, "0x00000000 %u %s 0x%08x\n", (unsigned)segment1_size, segment1_path, segment1_crc);
+        fprintf(this->m_fd, "0x00001000 %u %s 0x%08x\n", (unsigned)segment2_size, segment2_path, segment2_crc);
+        fprintf(this->m_fd, "0x00026000 %u %s 0x%08x\n", (unsigned)segment3_size, segment3_path, segment3_crc);
+        fclose(this->m_fd);
+        this->m_fd = nullptr;
+    }
+
+    {
+        this->m_uicr_fw_ver = 0x01020300;
+    }
+    this->m_memSegmentsRead.emplace_back(MemSegment(0x00000000, segment1_size / sizeof(uint32_t), segment1_buf.get()));
+    this->m_memSegmentsRead.emplace_back(MemSegment(0x00001000, segment2_size / sizeof(uint32_t), segment2_buf.get()));
+    this->m_memSegmentsRead.emplace_back(MemSegment(0x00026000, segment3_size / sizeof(uint32_t), segment3_buf.get()));
+
+    this->m_nrf52_sha256_digest = (nrf52swd_sha256_t) {
+        .digest = {
+            0xD1, 0xA2, 0xBB, 0x94, 0x11, 0xE4, 0x17, 0x9F, 0x98, 0xD6, 0x4C, 0x9C, 0x73, 0x29, 0x85, /*0xCE*/ 0x00,
+            0x94, 0x38, 0x01, 0xC0, 0xB8, 0x06, 0xAF, 0x88, 0x8D, 0xAD, 0xA7, 0x3A, 0xE7, 0x56, 0xCA, 0x13,
+        },
+    };
+
+    ASSERT_TRUE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr, nullptr, true));
+
+    ASSERT_EQ(1, this->m_cnt_nrf52swd_erase_all);
+    ASSERT_EQ(3, this->m_memSegmentsWrite.size());
+
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 manual reset mode: ON");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 factory information: Part code: 0x00052811");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware on nRF52: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "SHA256 digest of nRF52 firmware on nRF52:");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0000: D1 A2 BB 94 11 E4 17 9F 98 D6 4C 9C 73 29 85 00 | ..........L.s)..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0010: 94 38 01 C0 B8 06 AF 88 8D AD A7 3A E7 56 CA 13 | .8.........:.V..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Opened file 'segment_1.bin' for SHA256 calculation (size 2816 bytes)");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Opened file 'segment_2.bin' for SHA256 calculation (size 151016 bytes)");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Opened file 'segment_3.bin' for SHA256 calculation (size 24448 bytes)");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "SHA256 digest of nRF52 firmware on FatFS:");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0000: D1 A2 BB 94 11 E4 17 9F 98 D6 4C 9C 73 29 85 CE | ..........L.s)..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0010: 94 38 01 C0 B8 06 AF 88 8D AD A7 3A E7 56 CA 13 | .8.........:.V..\n");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Need to update firmware on nRF52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Erasing flash memory...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash 3 segments");
@@ -3022,6 +3288,13 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required_dont_r
     this->m_memSegmentsRead.emplace_back(MemSegment(0x00001000, segment2_size / sizeof(uint32_t), segment2_buf.get()));
     this->m_memSegmentsRead.emplace_back(MemSegment(0x00026000, segment3_size / sizeof(uint32_t), segment3_buf.get()));
 
+    this->m_nrf52_sha256_digest = (nrf52swd_sha256_t) {
+        .digest = {
+            0xD1, 0xA2, 0xBB, 0x94, 0x11, 0xE4, 0x17, 0x9F, 0x98, 0xD6, 0x4C, 0x9C, 0x73, 0x29, 0x85, 0xCE,
+            0x94, 0x38, 0x01, 0xC0, 0xB8, 0x06, 0xAF, 0x88, 0x8D, 0xAD, 0xA7, 0x3A, 0xE7, 0x56, 0xCA, 0x13,
+        },
+    };
+
     ASSERT_TRUE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr, nullptr, false));
 
     ASSERT_EQ(1, this->m_cnt_nrf52swd_erase_all);
@@ -3033,8 +3306,26 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required_dont_r
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 factory information: Part code: 0x00052811");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware on nRF52: v1.2.0");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "SHA256 digest of nRF52 firmware on nRF52:");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0000: D1 A2 BB 94 11 E4 17 9F 98 D6 4C 9C 73 29 85 CE | ..........L.s)..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0010: 94 38 01 C0 B8 06 AF 88 8D AD A7 3A E7 56 CA 13 | .8.........:.V..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Opened file 'segment_1.bin' for SHA256 calculation (size 2816 bytes)");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Opened file 'segment_2.bin' for SHA256 calculation (size 151016 bytes)");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Opened file 'segment_3.bin' for SHA256 calculation (size 24448 bytes)");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "SHA256 digest of nRF52 firmware on FatFS:");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0000: D1 A2 BB 94 11 E4 17 9F 98 D6 4C 9C 73 29 85 CE | ..........L.s)..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0010: 94 38 01 C0 B8 06 AF 88 8D AD A7 3A E7 56 CA 13 | .8.........:.V..\n");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Need to update firmware on nRF52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Erasing flash memory...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash 3 segments");
@@ -3164,6 +3455,13 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required__with_
     this->m_memSegmentsRead.emplace_back(MemSegment(0x00001000, segment2_size / sizeof(uint32_t), segment2_buf.get()));
     this->m_memSegmentsRead.emplace_back(MemSegment(0x00026000, segment3_size / sizeof(uint32_t), segment3_buf.get()));
 
+    this->m_nrf52_sha256_digest = (nrf52swd_sha256_t) {
+        .digest = {
+            0xD1, 0xA2, 0xBB, 0x94, 0x11, 0xE4, 0x17, 0x9F, 0x98, 0xD6, 0x4C, 0x9C, 0x73, 0x29, 0x85, 0xCE,
+            0x94, 0x38, 0x01, 0xC0, 0xB8, 0x06, 0xAF, 0x88, 0x8D, 0xAD, 0xA7, 0x3A, 0xE7, 0x56, 0xCA, 0x13,
+        },
+    };
+
     this->cb_before_updating_cnt         = 0;
     this->cb_after_updating_cnt          = 0;
     uint32_t             cb_progress_cnt = 0;
@@ -3190,8 +3488,26 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required__with_
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 factory information: Part code: 0x00052811");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware on nRF52: v1.2.0");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "SHA256 digest of nRF52 firmware on nRF52:");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0000: D1 A2 BB 94 11 E4 17 9F 98 D6 4C 9C 73 29 85 CE | ..........L.s)..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0010: 94 38 01 C0 B8 06 AF 88 8D AD A7 3A E7 56 CA 13 | .8.........:.V..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Opened file 'segment_1.bin' for SHA256 calculation (size 2816 bytes)");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Opened file 'segment_2.bin' for SHA256 calculation (size 151016 bytes)");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Opened file 'segment_3.bin' for SHA256 calculation (size 24448 bytes)");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "SHA256 digest of nRF52 firmware on FatFS:");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0000: D1 A2 BB 94 11 E4 17 9F 98 D6 4C 9C 73 29 85 CE | ..........L.s)..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0010: 94 38 01 C0 B8 06 AF 88 8D AD A7 3A E7 56 CA 13 | .8.........:.V..\n");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Need to update firmware on nRF52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Erasing flash memory...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash 3 segments");
@@ -3322,8 +3638,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_init failed");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_init_swd failed");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 manual reset mode: OFF");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "### nRF52 firmware update check failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -3419,8 +3734,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_check_id_code failed");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_init_swd failed");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 manual reset mode: OFF");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "### nRF52 firmware update check failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -3516,8 +3830,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_debug_halt failed");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_init_swd failed");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 manual reset mode: OFF");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "### nRF52 firmware update check failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -3613,8 +3926,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_init_swd_nrf52sw
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_debug_reset failed");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_init_swd failed");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 manual reset mode: OFF");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "### nRF52 firmware update check failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -3712,8 +4024,7 @@ TEST_F(
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_debug_enable_reset_vector_catch failed");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_init_swd failed");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 manual reset mode: OFF");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "### nRF52 firmware update check failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -3795,6 +4106,13 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__debug_run_failed) // N
         this->m_uicr_fw_ver = 0x01020300;
     }
 
+    this->m_nrf52_sha256_digest = (nrf52swd_sha256_t) {
+        .digest = {
+            0xD1, 0xA2, 0xBB, 0x94, 0x11, 0xE4, 0x17, 0x9F, 0x98, 0xD6, 0x4C, 0x9C, 0x73, 0x29, 0x85, 0xCE,
+            0x94, 0x38, 0x01, 0xC0, 0xB8, 0x06, 0xAF, 0x88, 0x8D, 0xAD, 0xA7, 0x3A, 0xE7, 0x56, 0xCA, 0x13,
+        },
+    };
+
     this->m_result_nrf52swd_debug_run = false;
     ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr, nullptr, true));
 
@@ -3807,15 +4125,32 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__debug_run_failed) // N
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 factory information: Part code: 0x00052811");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware on nRF52: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "SHA256 digest of nRF52 firmware on nRF52:");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0000: D1 A2 BB 94 11 E4 17 9F 98 D6 4C 9C 73 29 85 CE | ..........L.s)..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0010: 94 38 01 C0 B8 06 AF 88 8D AD A7 3A E7 56 CA 13 | .8.........:.V..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Opened file 'segment_1.bin' for SHA256 calculation (size 2816 bytes)");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Opened file 'segment_2.bin' for SHA256 calculation (size 151016 bytes)");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Opened file 'segment_3.bin' for SHA256 calculation (size 24448 bytes)");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "SHA256 digest of nRF52 firmware on FatFS:");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0000: D1 A2 BB 94 11 E4 17 9F 98 D6 4C 9C 73 29 85 CE | ..........L.s)..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0010: 94 38 01 C0 B8 06 AF 88 8D AD A7 3A E7 56 CA 13 | .8.........:.V..\n");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware updating is not needed");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_debug_run failed");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 manual reset mode: OFF");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "### nRF52 firmware update check failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -3913,8 +4248,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_mount_failed) //
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "flashfatfs_mount failed");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 manual reset mode: OFF");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "### nRF52 firmware update check failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -4012,8 +4346,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_mount_failed_no_
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "flashfatfs_mount failed");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 manual reset mode: OFF");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "### nRF52 firmware update check failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -4112,8 +4445,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_step2_no_mem) //
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 manual reset mode: OFF");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "### nRF52 firmware update check failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -4200,12 +4532,115 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_read_info_txt) /
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_ERROR, "Can't open: ./fs_nrf52/info.txt");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "Can't open: info.txt");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_read_info_txt failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_info_txt_read failed");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "### nRF52 firmware update check failed");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_read_factory_info) // NOLINT
+{
+    const char* segment1_path = "segment_1.bin";
+    const char* segment2_path = "segment_2.bin";
+    const char* segment3_path = "segment_3.bin";
+
+    const size_t segment1_size = 2816;
+    const size_t segment2_size = 151016;
+    const size_t segment3_size = 24448;
+
+    uint32_t segment1_crc = 0;
+    uint32_t segment2_crc = 0;
+    uint32_t segment3_crc = 0;
+
+    {
+        std::unique_ptr<uint32_t[]> segment1_buf(new uint32_t[segment1_size / sizeof(uint32_t)]);
+        for (int i = 0; i < segment1_size / sizeof(uint32_t); ++i)
+        {
+            segment1_buf[i] = 0xAA000000 + i;
+        }
+        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment1_buf.get()), segment1_size);
+        {
+            this->m_fd = this->open_file(segment1_path, "wb");
+            ASSERT_NE(nullptr, this->m_fd);
+            fwrite(segment1_buf.get(), 1, segment1_size, this->m_fd);
+            fclose(this->m_fd);
+            this->m_fd = nullptr;
+        }
+    }
+
+    {
+        std::unique_ptr<uint32_t[]> segment2_buf(new uint32_t[segment2_size / sizeof(uint32_t)]);
+        for (int i = 0; i < segment2_size / sizeof(uint32_t); ++i)
+        {
+            segment2_buf[i] = 0xBB000000 + i;
+        }
+        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment2_buf.get()), segment2_size);
+        {
+            this->m_fd = this->open_file(segment2_path, "wb");
+            ASSERT_NE(nullptr, this->m_fd);
+            fwrite(segment2_buf.get(), 1, segment2_size, this->m_fd);
+            fclose(this->m_fd);
+            this->m_fd = nullptr;
+        }
+    }
+
+    {
+        std::unique_ptr<uint32_t[]> segment3_buf(new uint32_t[segment3_size / sizeof(uint32_t)]);
+        for (int i = 0; i < segment3_size / sizeof(uint32_t); ++i)
+        {
+            segment3_buf[i] = 0xCC000000 + i;
+        }
+        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment3_buf.get()), segment3_size);
+        {
+            this->m_fd = this->open_file(segment3_path, "wb");
+            ASSERT_NE(nullptr, this->m_fd);
+            fwrite(segment3_buf.get(), 1, segment3_size, this->m_fd);
+            fclose(this->m_fd);
+            this->m_fd = nullptr;
+        }
+    }
+
+    {
+        this->m_fd = this->open_file("info.txt", "w");
+        ASSERT_NE(nullptr, this->m_fd);
+        fprintf(this->m_fd, "# v1.2.3\n");
+        fprintf(this->m_fd, "0x00000000 %u %s 0x%08x\n", (unsigned)segment1_size, segment1_path, segment1_crc);
+        fprintf(this->m_fd, "0x00001000 %u %s 0x%08x\n", (unsigned)segment2_size, segment2_path, segment2_crc);
+        fprintf(this->m_fd, "0x00026000 %u %s 0x%08x\n", (unsigned)segment3_size, segment3_path, segment3_crc);
+        fclose(this->m_fd);
+        this->m_fd = nullptr;
+    }
+
+    {
+        this->m_ficr_info_part_simulate_read_error = true;
+    }
+
+    this->m_nrf52_sha256_digest = (nrf52swd_sha256_t) {
+        .digest = {
+            0xD1, 0xA2, 0xBB, 0x94, 0x11, 0xE4, 0x17, 0x9F, 0x98, 0xD6, 0x4C, 0x9C, 0x73, 0x29, 0x85, 0xCE,
+            0x94, 0x38, 0x01, 0xC0, 0xB8, 0x06, 0xAF, 0x88, 0x8D, 0xAD, 0xA7, 0x3A, 0xE7, 0x56, 0xCA, 0x13,
+        },
+    };
+
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr, nullptr, true));
+
+    ASSERT_EQ(0, this->m_memSegmentsWrite.size());
+    ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
+
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 manual reset mode: ON");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 manual reset mode: OFF");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_read_nrf52_ficr_hw_rev failed");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "### nRF52 firmware update check failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -4287,6 +4722,13 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_read_version) //
         this->m_uicr_fw_ver_simulate_read_error = true;
     }
 
+    this->m_nrf52_sha256_digest = (nrf52swd_sha256_t) {
+        .digest = {
+            0xD1, 0xA2, 0xBB, 0x94, 0x11, 0xE4, 0x17, 0x9F, 0x98, 0xD6, 0x4C, 0x9C, 0x73, 0x29, 0x85, 0xCE,
+            0x94, 0x38, 0x01, 0xC0, 0xB8, 0x06, 0xAF, 0x88, 0x8D, 0xAD, 0xA7, 0x3A, 0xE7, 0x56, 0xCA, 0x13,
+        },
+    };
+
     ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr, nullptr, true));
 
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
@@ -4298,13 +4740,121 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_read_version) //
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 factory information: Part code: 0x00052811");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_read_current_fw_ver failed");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "### nRF52 firmware update check failed");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_calc_nrf52_sha256) // NOLINT
+{
+    const char* segment1_path = "segment_1.bin";
+    const char* segment2_path = "segment_2.bin";
+    const char* segment3_path = "segment_3.bin";
+
+    const size_t segment1_size = 2816;
+    const size_t segment2_size = 151016;
+    const size_t segment3_size = 24448;
+
+    uint32_t segment1_crc = 0;
+    uint32_t segment2_crc = 0;
+    uint32_t segment3_crc = 0;
+
+    {
+        std::unique_ptr<uint32_t[]> segment1_buf(new uint32_t[segment1_size / sizeof(uint32_t)]);
+        for (int i = 0; i < segment1_size / sizeof(uint32_t); ++i)
+        {
+            segment1_buf[i] = 0xAA000000 + i;
+        }
+        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment1_buf.get()), segment1_size);
+        {
+            this->m_fd = this->open_file(segment1_path, "wb");
+            ASSERT_NE(nullptr, this->m_fd);
+            fwrite(segment1_buf.get(), 1, segment1_size, this->m_fd);
+            fclose(this->m_fd);
+            this->m_fd = nullptr;
+        }
+    }
+
+    {
+        std::unique_ptr<uint32_t[]> segment2_buf(new uint32_t[segment2_size / sizeof(uint32_t)]);
+        for (int i = 0; i < segment2_size / sizeof(uint32_t); ++i)
+        {
+            segment2_buf[i] = 0xBB000000 + i;
+        }
+        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment2_buf.get()), segment2_size);
+        {
+            this->m_fd = this->open_file(segment2_path, "wb");
+            ASSERT_NE(nullptr, this->m_fd);
+            fwrite(segment2_buf.get(), 1, segment2_size, this->m_fd);
+            fclose(this->m_fd);
+            this->m_fd = nullptr;
+        }
+    }
+
+    {
+        std::unique_ptr<uint32_t[]> segment3_buf(new uint32_t[segment3_size / sizeof(uint32_t)]);
+        for (int i = 0; i < segment3_size / sizeof(uint32_t); ++i)
+        {
+            segment3_buf[i] = 0xCC000000 + i;
+        }
+        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment3_buf.get()), segment3_size);
+        {
+            this->m_fd = this->open_file(segment3_path, "wb");
+            ASSERT_NE(nullptr, this->m_fd);
+            fwrite(segment3_buf.get(), 1, segment3_size, this->m_fd);
+            fclose(this->m_fd);
+            this->m_fd = nullptr;
+        }
+    }
+
+    {
+        this->m_fd = this->open_file("info.txt", "w");
+        ASSERT_NE(nullptr, this->m_fd);
+        fprintf(this->m_fd, "# v1.2.3\n");
+        fprintf(this->m_fd, "0x00000000 %u %s 0x%08x\n", (unsigned)segment1_size, segment1_path, segment1_crc);
+        fprintf(this->m_fd, "0x00001000 %u %s 0x%08x\n", (unsigned)segment2_size, segment2_path, segment2_crc);
+        fprintf(this->m_fd, "0x00026000 %u %s 0x%08x\n", (unsigned)segment3_size, segment3_path, segment3_crc);
+        fclose(this->m_fd);
+        this->m_fd = nullptr;
+    }
+
+    {
+        this->m_uicr_fw_ver = 0x01020300;
+    }
+    {
+        this->m_calc_nrf52_sha256_digest_status = false;
+    }
+
+    this->m_nrf52_sha256_digest = (nrf52swd_sha256_t) {
+        .digest = {
+            0xD1, 0xA2, 0xBB, 0x94, 0x11, 0xE4, 0x17, 0x9F, 0x98, 0xD6, 0x4C, 0x9C, 0x73, 0x29, 0x85, 0xCE,
+            0x94, 0x38, 0x01, 0xC0, 0xB8, 0x06, 0xAF, 0x88, 0x8D, 0xAD, 0xA7, 0x3A, 0xE7, 0x56, 0xCA, 0x13,
+        },
+    };
+
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr, nullptr, true));
+
+    ASSERT_EQ(0, this->m_memSegmentsWrite.size());
+    ASSERT_EQ(0, this->m_cnt_nrf52swd_erase_all);
+
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 manual reset mode: ON");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 manual reset mode: OFF");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 factory information: Part code: 0x00052811");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware on nRF52: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "Failed to calculate SHA256 digest on nRF52");
+    TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "### nRF52 firmware update check failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -4386,6 +4936,13 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_check_firmware) 
         this->m_uicr_fw_ver = 0x01020000;
     }
 
+    this->m_nrf52_sha256_digest = (nrf52swd_sha256_t) {
+        .digest = {
+            0xD1, 0xA2, 0xBB, 0x94, 0x11, 0xE4, 0x17, 0x9F, 0x98, 0xD6, 0x4C, 0x9C, 0x73, 0x29, 0x85, 0xCE,
+            0x94, 0x38, 0x01, 0xC0, 0xB8, 0x06, 0xAF, 0x88, 0x8D, 0xAD, 0xA7, 0x3A, 0xE7, 0x56, 0xCA, 0x13,
+        },
+    };
+
     ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr, nullptr, true));
 
     ASSERT_EQ(0, this->m_memSegmentsWrite.size());
@@ -4397,16 +4954,23 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_check_firmware) 
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
+
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 factory information: Part code: 0x00052811");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware on nRF52: v1.2.0");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Need to update firmware on nRF52");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "SHA256 digest of nRF52 firmware on nRF52:");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0000: D1 A2 BB 94 11 E4 17 9F 98 D6 4C 9C 73 29 85 CE | ..........L.s)..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0010: 94 38 01 C0 B8 06 AF 88 8D AD A7 3A E7 56 CA 13 | .8.........:.V..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "Segment: 0x00001000: expected CRC: 0x5b3ddbc1, actual CRC: 0x5b3ddbc0");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_check_firmware failed");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 manual reset mode: OFF");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "### nRF52 firmware update check failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
@@ -4492,6 +5056,13 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_write_firmware) 
         this->m_memSegmentsWrite.emplace_back(MemSegment(0x00000000, 1, &stub));
     }
 
+    this->m_nrf52_sha256_digest = (nrf52swd_sha256_t) {
+        .digest = {
+            0xD1, 0xA2, 0xBB, 0x94, 0x11, 0xE4, 0x17, 0x9F, 0x98, 0xD6, 0x4C, 0x9C, 0x73, 0x29, 0x85, 0xCE,
+            0x94, 0x38, 0x01, 0xC0, 0xB8, 0x06, 0xAF, 0x88, 0x8D, 0xAD, 0xA7, 0x3A, 0xE7, 0x56, 0xCA, 0x13,
+        },
+    };
+
     ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, nullptr, nullptr, nullptr, nullptr, nullptr, true));
 
     ASSERT_EQ(1, this->m_memSegmentsWrite.size());
@@ -4503,22 +5074,39 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_write_firmware) 
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 factory information: Part code: 0x00052811");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Firmware on nRF52: v1.2.0");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "SHA256 digest of nRF52 firmware on nRF52:");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0000: D1 A2 BB 94 11 E4 17 9F 98 D6 4C 9C 73 29 85 CE | ..........L.s)..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0010: 94 38 01 C0 B8 06 AF 88 8D AD A7 3A E7 56 CA 13 | .8.........:.V..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Firmware on FatFS: v1.2.3");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Opened file 'segment_1.bin' for SHA256 calculation (size 2816 bytes)");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Opened file 'segment_2.bin' for SHA256 calculation (size 151016 bytes)");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Opened file 'segment_3.bin' for SHA256 calculation (size 24448 bytes)");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "SHA256 digest of nRF52 firmware on FatFS:");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0000: D1 A2 BB 94 11 E4 17 9F 98 D6 4C 9C 73 29 85 CE | ..........L.s)..\n");
+    TEST_CHECK_LOG_RECORD_NRF52(
+        ESP_LOG_INFO,
+        "0010: 94 38 01 C0 B8 06 AF 88 8D AD A7 3A E7 56 CA 13 | .8.........:.V..\n");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "### Need to update firmware on nRF52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Erasing flash memory...");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash 3 segments");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Flash segment 0: 0x00000000 size=2816 from segment_1.bin");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Writing 0x00000000...");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_write_mem failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52swd_write_flash failed");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "Failed to write segment 0x00000000 from 'segment_1.bin'");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "Failed to write segment 0: 0x00000000 from segment_1.bin");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "nrf52fw_flash_write_firmware failed");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: false");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "nRF52 manual reset mode: OFF");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "### nRF52 firmware update check failed");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }

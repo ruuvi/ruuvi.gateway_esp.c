@@ -8,12 +8,18 @@ add_executable(${ProjectId}
         crc.cpp
         ${RUUVI_GW_SRC}/nrf52fw.c
         ${RUUVI_GW_SRC}/nrf52fw.h
+        ${RUUVI_GW_SRC}/nrf52fw_info_txt.c
+        ${RUUVI_GW_SRC}/nrf52fw_info_txt.h
         ${RUUVI_GW_SRC}/nrf52_fw_ver.c
         ${RUUVI_GW_SRC}/nrf52_fw_ver.h
         ${RUUVI_GW_SRC}/flashfatfs.c
         ${RUUVI_GW_SRC}/flashfatfs.h
         ${RUUVI_ESP_WRAPPERS}/src/os_str.c
         ${RUUVI_ESP_WRAPPERS_INC}/os_str.h
+        ${COMPONENTS}/mbedtls/mbedtls/library/sha256.c
+        ${COMPONENTS}/mbedtls/mbedtls/include/mbedtls/sha256.h
+        ${COMPONENTS}/mbedtls/mbedtls/library/platform_util.c
+        ${COMPONENTS}/mbedtls/mbedtls/include/mbedtls/platform_util.h
         $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
 )
 
@@ -29,6 +35,7 @@ target_include_directories(${ProjectId} PUBLIC
         ${WIFI_MANAGER_INC}
         include
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${COMPONENTS}/mbedtls/mbedtls/include
         $ENV{IDF_PATH}/components/esp_rom/include
         $ENV{IDF_PATH}/components/esp_wifi/include
         $ENV{IDF_PATH}/components/esp_common/include

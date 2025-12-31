@@ -55,6 +55,8 @@ static const char TAG[] = "ruuvi_gateway";
 
 #define RUUVI_GATEWAY_DELAY_AFTER_NRF52_UPDATING_SECONDS (5)
 
+#define RUUVI_GATEWAY_DELAY_BEFORE_REBOOT_AFTER_FW_ROLLBACK_MS (5000)
+
 uint32_t volatile g_network_disconnect_cnt;
 
 static os_mutex_t        g_http_server_mutex_incoming_connection;
@@ -485,17 +487,17 @@ main_task_init(void)
         if (esp_ota_check_rollback_is_possible())
         {
             LOG_ERR("Firmware rollback is possible, so try to do it");
-            return false;
         }
-        LOG_ERR("Firmware rollback is not possible, try to send HTTP statistics");
+        else
+        {
+            LOG_ERR("Firmware rollback is not possible");
+        }
         gw_status_clear_nrf_status();
         leds_notify_nrf52_failure();
+        return false;
     }
-    else
-    {
-        gw_status_set_nrf_status();
-        leds_notify_nrf52_ready();
-    }
+    gw_status_set_nrf_status();
+    leds_notify_nrf52_ready();
 
     adv_mqtt_init();
     adv_post_init();
@@ -541,10 +543,9 @@ app_main(void)
         {
             LOG_ERR_ESP(err, "%s failed", "esp_ota_mark_app_invalid_rollback_and_reboot");
         }
-        for (;;)
-        {
-            vTaskDelay(1);
-        }
+        LOG_INFO("Restarting system in 5 seconds...");
+        vTaskDelay(pdMS_TO_TICKS(RUUVI_GATEWAY_DELAY_BEFORE_REBOOT_AFTER_FW_ROLLBACK_MS));
+        esp_restart();
     }
     else
     {
