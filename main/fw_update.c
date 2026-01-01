@@ -224,7 +224,6 @@ fw_update_compare_nrf52_wl_area(
             "Reading WL area chunk: offset_in_partition=%u, chunk_size=%u",
             (unsigned)(base_offset_in_partition + offset),
             (unsigned)chunk_size);
-        vTaskDelay(pdMS_TO_TICKS(100));
         esp_err_t err = esp_partition_read(
             p_cur_fatfs_nrf52_partition,
             base_offset_in_partition + offset,
