@@ -17,8 +17,24 @@
 #include "soc/gpio_periph.h"
 #include "soc/rtc.h"
 #include "hal/emac.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "esp_log.h"
 
 #define ETH_CRC_LENGTH (4)
+
+static const char *TAG = "emac_hal";
+
+static inline const char*
+get_task_name(void)
+{
+    const char* task_name = pcTaskGetTaskName(NULL);
+    if (NULL == task_name)
+    {
+        task_name = "???";
+    }
+    return task_name;
+}
 
 #if CONFIG_ETH_RMII_CLK_OUTPUT
 static void emac_config_apll_clock(void)
@@ -452,6 +468,10 @@ uint32_t emac_hal_transmit_frame(emac_hal_context_t *hal, uint8_t *buf, uint32_t
         bufcount++;
     }
     if (bufcount > CONFIG_ETH_DMA_TX_BUFFER_NUM) {
+        ESP_LOGE(TAG, "[%s] Frame length %u is too large to transmit (DMA buffer is %u bytes)", 
+            get_task_name(),
+            length, 
+            CONFIG_ETH_DMA_TX_BUFFER_NUM * CONFIG_ETH_DMA_BUFFER_SIZE);
         goto err;
     }
 
@@ -460,6 +480,9 @@ uint32_t emac_hal_transmit_frame(emac_hal_context_t *hal, uint8_t *buf, uint32_t
     for (int i = 0; i < bufcount; i++) {
         /* Check if the descriptor is owned by the Ethernet DMA (when 1) or CPU (when 0) */
         if (desc_iter->TDES0.Own != EMAC_DMADESC_OWNER_CPU) {
+            ESP_LOGE(TAG, "[%s] No free Tx descriptor available to transmit frame with length %u bytes", 
+                get_task_name(),
+                length);
             goto err;
         }
         /* Clear FIRST and LAST segment bits */
