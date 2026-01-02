@@ -42,6 +42,8 @@
 #define FW_UPDATE_MAX_OTA_PARTITION_SIZE  (4U * 1024U * 1024U)
 #define FW_UPDATE_MAX_DATA_PARTITION_SIZE (0xC0000U)
 
+#define FW_UPDATE_WL_AREA_TMP_BUF_SIZE (512U)
+
 typedef struct fw_update_config_t
 {
     char binaries_url[FW_UPDATE_URL_MAX_LEN + 1];
@@ -201,6 +203,123 @@ fw_update_check_fatfs_partition_signature(
 }
 
 static bool
+fw_update_compare_nrf52_wl_area(
+    const esp_partition_t* const p_cur_fatfs_nrf52_partition,
+    const uint8_t                fatfs_nrf52_wl_area_start[],
+    const uint32_t               wl_area_size,
+    uint8_t* const               p_wl_area_tmp_buf,
+    const uint32_t               wl_area_tmp_buf_size,
+    bool* const                  p_is_valid)
+{
+    const uint32_t base_offset_in_partition = p_cur_fatfs_nrf52_partition->size - wl_area_size;
+
+    *p_is_valid = false;
+
+    uint32_t offset = 0;
+    while (offset < wl_area_size)
+    {
+        const uint32_t chunk_size = ((offset + wl_area_tmp_buf_size) < wl_area_size) ? wl_area_tmp_buf_size
+                                                                                     : (wl_area_size - offset);
+        LOG_DBG(
+            "Reading WL area chunk: offset_in_partition=%u, chunk_size=%u",
+            (unsigned)(base_offset_in_partition + offset),
+            (unsigned)chunk_size);
+        esp_err_t err = esp_partition_read(
+            p_cur_fatfs_nrf52_partition,
+            base_offset_in_partition + offset,
+            p_wl_area_tmp_buf,
+            chunk_size);
+        if (ESP_OK != err)
+        {
+            LOG_ERR_ESP(err, "Failed to read WL area from fatfs_nrf52 partition");
+            return false;
+        }
+        if (0 != memcmp(p_wl_area_tmp_buf, &fatfs_nrf52_wl_area_start[offset], chunk_size))
+        {
+            break;
+        }
+        offset += chunk_size;
+    }
+
+    if (offset == wl_area_size)
+    {
+        *p_is_valid = true;
+    }
+
+    return true;
+}
+
+static bool
+fw_update_restore_nrf52_wl_area_if_needed(const esp_partition_t* const p_cur_fatfs_nrf52_partition)
+{
+    extern const uint8_t fatfs_nrf52_wl_area_start[] asm("_binary_fatfs_nrf52_wl_area_bin_start");
+    extern const uint8_t fatfs_nrf52_wl_area_end[] asm("_binary_fatfs_nrf52_wl_area_bin_end");
+
+    const uint32_t wl_area_size = (uintptr_t)fatfs_nrf52_wl_area_end - (uintptr_t)fatfs_nrf52_wl_area_start;
+    if (wl_area_size > p_cur_fatfs_nrf52_partition->size)
+    {
+        LOG_ERR(
+            "WL area size (%u bytes) is larger than fatfs_nrf52 partition size (%u bytes)",
+            (unsigned)wl_area_size,
+            (unsigned)p_cur_fatfs_nrf52_partition->size);
+        return false;
+    }
+
+    uint8_t* p_wl_area_buf = os_malloc(FW_UPDATE_WL_AREA_TMP_BUF_SIZE);
+    if (NULL == p_wl_area_buf)
+    {
+        LOG_ERR("%s failed", "os_malloc");
+        return false;
+    }
+
+    bool       is_valid = false;
+    const bool res      = fw_update_compare_nrf52_wl_area(
+        p_cur_fatfs_nrf52_partition,
+        fatfs_nrf52_wl_area_start,
+        wl_area_size,
+        p_wl_area_buf,
+        FW_UPDATE_WL_AREA_TMP_BUF_SIZE,
+        &is_valid);
+
+    os_free(p_wl_area_buf);
+    if (!res)
+    {
+        LOG_ERR("Failed to compare WL area in fatfs_nrf52 partition");
+        return false;
+    }
+
+    if (is_valid)
+    {
+        LOG_INFO("WL area in fatfs_nrf52 partition is valid, no need to restore");
+        return true;
+    }
+
+    LOG_WARN("Restoring WL area in fatfs_nrf52 partition...");
+    esp_err_t err = esp_partition_erase_range(
+        p_cur_fatfs_nrf52_partition,
+        p_cur_fatfs_nrf52_partition->size - wl_area_size,
+        wl_area_size);
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "Failed to erase WL area in fatfs_nrf52 partition");
+        return false;
+    }
+
+    err = esp_partition_write(
+        p_cur_fatfs_nrf52_partition,
+        p_cur_fatfs_nrf52_partition->size - wl_area_size,
+        fatfs_nrf52_wl_area_start,
+        wl_area_size);
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "Failed to write WL area to fatfs_nrf52 partition");
+        return false;
+    }
+
+    return true;
+}
+
+static bool
 fw_update_self_check_signature(ruuvi_flash_info_t* const p_flash_info)
 {
     const esp_partition_pos_t part_pos = {
@@ -242,6 +361,15 @@ fw_update_self_check_signature(ruuvi_flash_info_t* const p_flash_info)
             fatfs_gwui_signature_start))
     {
         LOG_ERR("fatfs_gwui partition signature check failed");
+        return false;
+    }
+
+    LOG_INFO(
+        "Checking that '%s' has not been damaged by wear leveling before reboot",
+        p_flash_info->p_cur_fatfs_nrf52_partition->label);
+    if (!fw_update_restore_nrf52_wl_area_if_needed(p_flash_info->p_cur_fatfs_nrf52_partition))
+    {
+        LOG_ERR("fatfs_nrf52 wl area restore failed");
         return false;
     }
 

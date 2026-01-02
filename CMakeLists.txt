@@ -12,6 +12,7 @@ set(FATFS_NRF52_IMG ${CMAKE_BINARY_DIR}/fatfs_nrf52.bin)
 set(NRF52_UNSIGNED "${FATFS_NRF52_IMG}")
 set(NRF52_SIGNED   "${NRF52_UNSIGNED}.signed")
 set(NRF52_SIGNATURE "${NRF52_UNSIGNED}.signature")
+set(NRF52_FATFS_WL_AREA ${CMAKE_BINARY_DIR}/fatfs_nrf52_wl_area.bin)
 
 add_compile_definitions(RI_ADV_EXTENDED_ENABLED=1 RI_COMM_BLE_PAYLOAD_MAX_LENGTH=48)
 
@@ -170,3 +171,15 @@ if(TARGET gen_gwui_signature)
     # Ensure the signature is generated before the ELF is linked
     add_dependencies(${CMAKE_PROJECT_NAME}.elf gen_gwui_signature)
 endif()
+
+# Ensure the file path exists at configure time so target_add_binary_data doesn't error
+if(NOT EXISTS "${NRF52_FATFS_WL_AREA}")
+    file(WRITE "${NRF52_FATFS_WL_AREA}" "")
+endif()
+# Tell CMake this file will be generated/updated during the build
+set_source_files_properties("${NRF52_FATFS_WL_AREA}" PROPERTIES GENERATED TRUE)
+
+# Embed the nrf52_fatfs_wl_area as raw binary data into the ELF
+target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "${NRF52_FATFS_WL_AREA}" BINARY)
+# Ensure the nrf52_fatfs_wl_area is generated before the ELF is linked
+add_dependencies(${CMAKE_PROJECT_NAME}.elf gen_nrf52_fatfs_wl_area)
