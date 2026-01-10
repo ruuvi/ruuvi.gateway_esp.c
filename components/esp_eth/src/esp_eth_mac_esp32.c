@@ -31,6 +31,8 @@
 #include "soc/soc.h"
 #include "sdkconfig.h"
 
+#define EMAC_TX_ERR_LIMIT (20)
+
 static const char *TAG = "emac_esp32";
 #define MAC_CHECK(a, str, goto_tag, ret_value, ...)                               \
     do                                                                            \
@@ -217,12 +219,19 @@ static esp_err_t emac_esp32_set_promiscuous(esp_eth_mac_t *mac, bool enable)
 
 static esp_err_t emac_esp32_transmit(esp_eth_mac_t *mac, uint8_t *buf, uint32_t length)
 {
+    static uint32_t g_tx_transmit_err_cnt = 0;
     esp_err_t ret = ESP_OK;
     emac_esp32_t *emac = __containerof(mac, emac_esp32_t, parent);
     uint32_t sent_len = emac_hal_transmit_frame(&emac->hal, buf, length);
-    MAC_CHECK(sent_len == length, "insufficient TX buffer size", err, ESP_ERR_INVALID_SIZE);
+    MAC_CHECK(sent_len == length, "insufficient TX buffer size to transmit frame with length %u bytes", err, ESP_ERR_INVALID_SIZE, length);
     return ESP_OK;
 err:
+    g_tx_transmit_err_cnt += 1;
+    ESP_LOGE(TAG, "Total TX transmit error count: %u", g_tx_transmit_err_cnt);
+    if (g_tx_transmit_err_cnt > EMAC_TX_ERR_LIMIT) {
+        ESP_LOGE(TAG, "TX transmit error count %u exceeded limit %u, restarting", g_tx_transmit_err_cnt, EMAC_TX_ERR_LIMIT);
+        esp_restart();
+    }
     return ret;
 }
 
