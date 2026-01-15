@@ -182,7 +182,7 @@ adv_post_timers_relaunch_timer_sig_retransmit_to_http_ruuvi(void)
     os_timer_sig_periodic_t* const p_timer_sig
         = g_p_adv_post_periodic_timer_sig[ADV_POST_PERIODIC_TIMER_SIG_RETRANSMIT];
     LOG_INFO("%s", __func__);
-    os_timer_sig_periodic_relaunch(p_timer_sig, true);
+    os_timer_sig_periodic_relaunch(p_timer_sig, false);
 }
 
 void
@@ -191,7 +191,7 @@ adv_post_timers_relaunch_timer_sig_retransmit_to_http_custom(void)
     os_timer_sig_periodic_t* const p_timer_sig
         = g_p_adv_post_periodic_timer_sig[ADV_POST_PERIODIC_TIMER_SIG_RETRANSMIT2];
     LOG_INFO("%s", __func__);
-    os_timer_sig_periodic_relaunch(p_timer_sig, true);
+    os_timer_sig_periodic_relaunch(p_timer_sig, false);
 }
 
 void
@@ -236,12 +236,12 @@ adv_post_timers_stop_timer_sig_send_statistics(void)
 }
 
 void
-adv_post_timers_relaunch_timer_sig_send_statistics(void)
+adv_post_timers_relaunch_timer_sig_send_statistics(const bool flag_restart_from_current_moment)
 {
     os_timer_sig_periodic_t* const p_timer_sig
         = g_p_adv_post_periodic_timer_sig[ADV_POST_PERIODIC_TIMER_SIG_SEND_STATISTICS];
-    LOG_INFO("%s", __func__);
-    os_timer_sig_periodic_relaunch(p_timer_sig, true);
+    LOG_INFO("%s: flag_restart_from_current_moment=%d", __func__, flag_restart_from_current_moment);
+    os_timer_sig_periodic_relaunch(p_timer_sig, flag_restart_from_current_moment);
 }
 
 void

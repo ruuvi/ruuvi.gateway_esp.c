@@ -45,7 +45,7 @@ void
 adv_post_timers_stop_timer_sig_send_statistics(void);
 
 void
-adv_post_timers_relaunch_timer_sig_send_statistics(void);
+adv_post_timers_relaunch_timer_sig_send_statistics(const bool flag_restart_from_current_moment);
 
 void
 adv_post_timers_postpone_sending_statistics(void);
