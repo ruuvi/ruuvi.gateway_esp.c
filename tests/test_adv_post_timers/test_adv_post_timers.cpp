@@ -418,7 +418,7 @@ TEST_F(TestAdvPostTimers, test_timer_sig_send_statistics) // NOLINT
 
     adv_post_timers_postpone_sending_statistics();
 
-    adv_post_timers_relaunch_timer_sig_send_statistics();
+    adv_post_timers_relaunch_timer_sig_send_statistics(false);
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(60 * 60 * 1000, timerData.period_ticks);
@@ -427,12 +427,17 @@ TEST_F(TestAdvPostTimers, test_timer_sig_send_statistics) // NOLINT
     ASSERT_FALSE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
 
-    adv_post_timers_relaunch_timer_sig_send_statistics();
+    adv_post_timers_relaunch_timer_sig_send_statistics(false);
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(60 * 60 * 1000, timerData.period_ticks);
 
-    adv_post_timers_relaunch_timer_sig_send_statistics();
+    adv_post_timers_relaunch_timer_sig_send_statistics(false);
+    ASSERT_TRUE(timerData.is_active);
+    ASSERT_FALSE(timerData.flag_timer_triggered);
+    ASSERT_EQ(60 * 60 * 1000, timerData.period_ticks);
+
+    adv_post_timers_relaunch_timer_sig_send_statistics(true);
     ASSERT_TRUE(timerData.is_active);
     ASSERT_FALSE(timerData.flag_timer_triggered);
     ASSERT_EQ(60 * 60 * 1000, timerData.period_ticks);

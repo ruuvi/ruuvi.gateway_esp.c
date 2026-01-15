@@ -45,7 +45,7 @@ void
 adv_post_timers_stop_timer_sig_send_statistics(void);
 
 void
-adv_post_timers_relaunch_timer_sig_send_statistics(void);
+adv_post_timers_relaunch_timer_sig_send_statistics(const bool flag_restart_from_current_moment);
 
 void
 adv_post_timers_postpone_sending_statistics(void);
@@ -78,10 +78,16 @@ void
 adv2_post_timer_set_default_period_by_server_resp(const uint32_t period_ms);
 
 void
+adv1_post_timer_restart_from_current_moment(void);
+
+void
 adv1_post_timer_relaunch_with_default_period(void);
 
 void
 adv1_post_timer_relaunch_with_increased_period(void);
+
+void
+adv2_post_timer_restart_from_current_moment(void);
 
 void
 adv2_post_timer_relaunch_with_default_period(void);
