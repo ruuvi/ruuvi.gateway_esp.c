@@ -302,7 +302,7 @@ adv_post_on_gw_cfg_change(adv_post_state_t* const p_adv_post_state)
     if (gw_cfg_get_http_use_http_ruuvi())
     {
         LOG_INFO("Start timer for advs1 retransmission");
-        adv1_post_timer_relaunch_with_default_period();
+        adv1_post_timer_restart_from_current_moment();
         p_adv_post_state->flag_need_to_send_advs1 = true;
     }
     else
@@ -316,7 +316,7 @@ adv_post_on_gw_cfg_change(adv_post_state_t* const p_adv_post_state)
     {
         LOG_INFO("Start timer for advs2 retransmission");
         adv2_post_timer_set_default_period(gw_cfg_get_http_period() * TIME_UNITS_MS_PER_SECOND);
-        adv2_post_timer_relaunch_with_default_period();
+        adv2_post_timer_restart_from_current_moment();
         p_adv_post_state->flag_need_to_send_advs2 = true;
     }
     else

@@ -78,10 +78,16 @@ void
 adv2_post_timer_set_default_period_by_server_resp(const uint32_t period_ms);
 
 void
+adv1_post_timer_restart_from_current_moment(void);
+
+void
 adv1_post_timer_relaunch_with_default_period(void);
 
 void
 adv1_post_timer_relaunch_with_increased_period(void);
+
+void
+adv2_post_timer_restart_from_current_moment(void);
 
 void
 adv2_post_timer_relaunch_with_default_period(void);
