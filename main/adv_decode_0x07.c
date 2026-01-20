@@ -25,9 +25,9 @@ re_mac_addr24_u64_to_str(const uint64_t mac24)
     str_buf_printf(
         &str_buf,
         "%02X:%02X:%02X",
-        (uint8_t)((mac24 >> BIT_OFFSET_BYTE2) & NUM_BITS_PER_BYTE),
-        (uint8_t)((mac24 >> BIT_OFFSET_BYTE1) & NUM_BITS_PER_BYTE),
-        (uint8_t)((mac24 >> BIT_OFFSET_BYTE0) & NUM_BITS_PER_BYTE));
+        (uint8_t)((mac24 >> BIT_OFFSET_BYTE2) & BYTE_MASK),
+        (uint8_t)((mac24 >> BIT_OFFSET_BYTE1) & BYTE_MASK),
+        (uint8_t)((mac24 >> BIT_OFFSET_BYTE0) & BYTE_MASK));
     return mac_str;
 }
 
