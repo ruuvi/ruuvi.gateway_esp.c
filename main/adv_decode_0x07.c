@@ -6,8 +6,15 @@
 #include "adv_decode.h"
 #include "ruuvi_endpoint_7.h"
 
+#define NUM_BITS_PER_BYTE (8U)
+#define BYTE_MASK         (0xFFU)
+
+#define BIT_OFFSET_BYTE0 (0U * NUM_BITS_PER_BYTE)
+#define BIT_OFFSET_BYTE1 (1U * NUM_BITS_PER_BYTE)
+#define BIT_OFFSET_BYTE2 (2U * NUM_BITS_PER_BYTE)
+
 static mac_address_str_t
-re_mac_addr24_to_str(const uint64_t mac24)
+re_mac_addr24_u64_to_str(const uint64_t mac24)
 {
     mac_address_str_t mac_str = { 0 };
     str_buf_t         str_buf = {
@@ -18,9 +25,9 @@ re_mac_addr24_to_str(const uint64_t mac24)
     str_buf_printf(
         &str_buf,
         "%02X:%02X:%02X",
-        (uint8_t)((mac24 >> 16U) & 0xFFU),
-        (uint8_t)((mac24 >> 8U) & 0xFFU),
-        (uint8_t)((mac24 >> 0U) & 0xFFU));
+        (uint8_t)((mac24 >> BIT_OFFSET_BYTE2) & NUM_BITS_PER_BYTE),
+        (uint8_t)((mac24 >> BIT_OFFSET_BYTE1) & NUM_BITS_PER_BYTE),
+        (uint8_t)((mac24 >> BIT_OFFSET_BYTE0) & NUM_BITS_PER_BYTE));
     return mac_str;
 }
 
@@ -85,7 +92,7 @@ JSON_STREAM_GEN_DECL_GENERATOR_SUB_FUNC(
         JSON_STREAM_GEN_ADD_BOOL(p_gen, "motionDetected", data.motion_detected);
         JSON_STREAM_GEN_ADD_BOOL(p_gen, "presenceDetected", data.presence_detected);
 
-        const mac_address_str_t tag_mac_str = re_mac_addr24_to_str(data.address);
+        const mac_address_str_t tag_mac_str = re_mac_addr24_u64_to_str(data.address);
         JSON_STREAM_GEN_ADD_STRING(p_gen, "id", tag_mac_str.str_buf);
     }
     JSON_STREAM_GEN_END_GENERATOR_SUB_FUNC();
