@@ -7,6 +7,9 @@
 
 #include "mqtt_json.h"
 #include <cstring>
+#include <vector>
+#include <array>
+#include <string>
 #include "gtest/gtest.h"
 #include "os_malloc.h"
 #include "str_buf.h"
@@ -566,6 +569,212 @@ TEST_F(TestMqttJson, test_decoded_df6) // NOLINT
                "\"flag_calibration_in_progress\":false,"
                "\"flag_button_pressed\":false,"
                "\"flag_rtc_running_on_boot\":false,"
+               "\"id\":\"4E:B2:72\","
+               "\"coords\":\"170.112233,59.445566\""
+               "}"),
+        string(this->m_json_str.buf));
+    str_buf_free_buf(&this->m_json_str);
+    ASSERT_EQ(2, this->m_malloc_cnt);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestMqttJson, test_raw_df7) // NOLINT
+{
+    const json_stream_gen_size_t  max_chunk_size = 1024U;
+    const time_t                  timestamp      = 1612358920;
+    const mac_address_str_t       gw_mac_addr    = { .str_buf = "AA:CC:EE:00:11:22" };
+    const char*                   p_coordinates  = "170.112233,59.445566";
+    const std::array<uint8_t, 27> data           = {
+                  0x02U, 0x01U, 0x06U,        // BLE advertising header
+                  0x17U, 0xFFU, 0x99U, 0x04U, // Manufacturer-specific data header
+                  0x07U,                      // Data format 6
+                  0x05U,                      // Message counter
+                  0x03U,                      // State flags
+                  0x14U, 0x64U,               // Temperature in 0.005 degrees Celsius
+                  0x57U, 0xF8U,               // Humidity in 0.0025 percent
+                  0xC7U, 0x9DU,               // Pressure in hPa, from offset 50000
+                  0x1BU,                      // Tilt X (pitch) in 0.1 degrees
+                  0xE5U,                      // Tilt Y (roll) in 0.1 degrees
+                  0x00U, 0x01U,               // Luminosity
+                  0x00U,                      // Color temperature
+                  0xAAU,                      // Battery (4-bit) + Motion intensity (4-bit)
+                  0x05U,                      // Motion count
+                  0x0FU,                      // CRC8 over bytes 0-15
+                  0x4EU, 0xB2U, 0x72U,        // 3 least significant bytes of MAC address
+    };
+
+    adv_report_t adv_report = {
+        .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+        .rssi      = -70,
+        .data_len  = data.size(),
+    };
+    memcpy(adv_report.data_buf, data.data(), data.size());
+
+    this->m_json_str = mqtt_create_json_str(
+        &adv_report,
+        true,
+        timestamp,
+        &gw_mac_addr,
+        p_coordinates,
+        GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW,
+        max_chunk_size);
+    ASSERT_NE(nullptr, this->m_json_str.buf);
+
+    ASSERT_EQ(
+        string("{"
+               "\"gw_mac\":\"AA:CC:EE:00:11:22\","
+               "\"rssi\":-70,"
+               "\"aoa\":[],"
+               "\"gwts\":1612358920,"
+               "\"ts\":1612358929,"
+               "\"data\":\"02010617FF9904070503146457F8C79D1BE5000100AA050F4EB272\","
+               "\"coords\":\"170.112233,59.445566\""
+               "}"),
+        string(this->m_json_str.buf));
+    str_buf_free_buf(&this->m_json_str);
+    ASSERT_EQ(2, this->m_malloc_cnt);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestMqttJson, test_raw_and_decoded_df7) // NOLINT
+{
+    const json_stream_gen_size_t  max_chunk_size = 1024U;
+    const time_t                  timestamp      = 1612358920;
+    const mac_address_str_t       gw_mac_addr    = { .str_buf = "AA:CC:EE:00:11:22" };
+    const char*                   p_coordinates  = "170.112233,59.445566";
+    const std::array<uint8_t, 27> data           = {
+                  0x02U, 0x01U, 0x06U,        // BLE advertising header
+                  0x17U, 0xFFU, 0x99U, 0x04U, // Manufacturer-specific data header
+                  0x07U,                      // Data format 6
+                  0x05U,                      // Message counter
+                  0x03U,                      // State flags
+                  0x14U, 0x64U,               // Temperature in 0.005 degrees Celsius
+                  0x57U, 0xF8U,               // Humidity in 0.0025 percent
+                  0xC7U, 0x9DU,               // Pressure in hPa, from offset 50000
+                  0x1BU,                      // Tilt X (pitch) in 0.1 degrees
+                  0xE5U,                      // Tilt Y (roll) in 0.1 degrees
+                  0x00U, 0x01U,               // Luminosity
+                  0x00U,                      // Color temperature
+                  0xAAU,                      // Battery (4-bit) + Motion intensity (4-bit)
+                  0x05U,                      // Motion count
+                  0x0FU,                      // CRC8 over bytes 0-15
+                  0x4EU, 0xB2U, 0x72U,        // 3 least significant bytes of MAC address
+    };
+
+    adv_report_t adv_report = {
+        .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+        .rssi      = -70,
+        .data_len  = data.size(),
+    };
+    memcpy(adv_report.data_buf, data.data(), data.size());
+
+    this->m_json_str = mqtt_create_json_str(
+        &adv_report,
+        true,
+        timestamp,
+        &gw_mac_addr,
+        p_coordinates,
+        GW_CFG_MQTT_DATA_FORMAT_RUUVI_RAW_AND_DECODED,
+        max_chunk_size);
+    ASSERT_NE(nullptr, this->m_json_str.buf);
+
+    ASSERT_EQ(
+        string("{"
+               "\"gw_mac\":\"AA:CC:EE:00:11:22\","
+               "\"rssi\":-70,"
+               "\"aoa\":[],"
+               "\"gwts\":1612358920,"
+               "\"ts\":1612358929,"
+               "\"data\":\"02010617FF9904070503146457F8C79D1BE5000100AA050F4EB272\","
+               "\"dataFormat\":7,"
+               "\"temperature\":26.1,"
+               "\"humidity\":56.3,"
+               "\"pressure\":101101,"
+               "\"tiltX\":19.3,"
+               "\"tiltY\":-19.3,"
+               "\"luminosity\":1,"
+               "\"colorTemperature\":1000,"
+               "\"battery\":3.086,"
+               "\"motionIntensity\":10,"
+               "\"motionCount\":5,"
+               "\"measurementSequenceNumber\":5,"
+               "\"motionDetected\":true,"
+               "\"presenceDetected\":true,"
+               "\"id\":\"4E:B2:72\","
+               "\"coords\":\"170.112233,59.445566\""
+               "}"),
+        string(this->m_json_str.buf));
+    str_buf_free_buf(&this->m_json_str);
+    ASSERT_EQ(2, this->m_malloc_cnt);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestMqttJson, test_decoded_df7) // NOLINT
+{
+    const json_stream_gen_size_t  max_chunk_size = 1024U;
+    const time_t                  timestamp      = 1612358920;
+    const mac_address_str_t       gw_mac_addr    = { .str_buf = "AA:CC:EE:00:11:22" };
+    const char*                   p_coordinates  = "170.112233,59.445566";
+    const std::array<uint8_t, 27> data           = {
+                  0x02U, 0x01U, 0x06U,        // BLE advertising header
+                  0x17U, 0xFFU, 0x99U, 0x04U, // Manufacturer-specific data header
+                  0x07U,                      // Data format 6
+                  0x05U,                      // Message counter
+                  0x03U,                      // State flags
+                  0x14U, 0x64U,               // Temperature in 0.005 degrees Celsius
+                  0x57U, 0xF8U,               // Humidity in 0.0025 percent
+                  0xC7U, 0x9DU,               // Pressure in hPa, from offset 50000
+                  0x1BU,                      // Tilt X (pitch) in 0.1 degrees
+                  0xE5U,                      // Tilt Y (roll) in 0.1 degrees
+                  0x00U, 0x01U,               // Luminosity
+                  0x00U,                      // Color temperature
+                  0xAAU,                      // Battery (4-bit) + Motion intensity (4-bit)
+                  0x05U,                      // Motion count
+                  0x0FU,                      // CRC8 over bytes 0-15
+                  0x4EU, 0xB2U, 0x72U,        // 3 least significant bytes of MAC address
+    };
+
+    adv_report_t adv_report = {
+        .timestamp = 1612358929,
+        .tag_mac   = { 0xaa, 0xbb, 0xcc, 0x01, 0x02, 0x03 },
+        .rssi      = -70,
+        .data_len  = data.size(),
+    };
+    memcpy(adv_report.data_buf, data.data(), data.size());
+
+    this->m_json_str = mqtt_create_json_str(
+        &adv_report,
+        true,
+        timestamp,
+        &gw_mac_addr,
+        p_coordinates,
+        GW_CFG_MQTT_DATA_FORMAT_RUUVI_DECODED,
+        max_chunk_size);
+    ASSERT_NE(nullptr, this->m_json_str.buf);
+
+    ASSERT_EQ(
+        string("{"
+               "\"gw_mac\":\"AA:CC:EE:00:11:22\","
+               "\"rssi\":-70,"
+               "\"aoa\":[],"
+               "\"gwts\":1612358920,"
+               "\"ts\":1612358929,"
+               "\"dataFormat\":7,"
+               "\"temperature\":26.1,"
+               "\"humidity\":56.3,"
+               "\"pressure\":101101,"
+               "\"tiltX\":19.3,"
+               "\"tiltY\":-19.3,"
+               "\"luminosity\":1,"
+               "\"colorTemperature\":1000,"
+               "\"battery\":3.086,"
+               "\"motionIntensity\":10,"
+               "\"motionCount\":5,"
+               "\"measurementSequenceNumber\":5,"
+               "\"motionDetected\":true,"
+               "\"presenceDetected\":true,"
                "\"id\":\"4E:B2:72\","
                "\"coords\":\"170.112233,59.445566\""
                "}"),
