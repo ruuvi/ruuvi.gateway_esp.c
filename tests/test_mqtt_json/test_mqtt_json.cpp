@@ -587,7 +587,7 @@ TEST_F(TestMqttJson, test_raw_df7) // NOLINT
     const std::array<uint8_t, 27> data           = {
                   0x02U, 0x01U, 0x06U,        // BLE advertising header
                   0x17U, 0xFFU, 0x99U, 0x04U, // Manufacturer-specific data header
-                  0x07U,                      // Data format 6
+                  0x07U,                      // Data format 7
                   0x05U,                      // Message counter
                   0x03U,                      // State flags
                   0x14U, 0x64U,               // Temperature in 0.005 degrees Celsius
@@ -646,7 +646,7 @@ TEST_F(TestMqttJson, test_raw_and_decoded_df7) // NOLINT
     const std::array<uint8_t, 27> data           = {
                   0x02U, 0x01U, 0x06U,        // BLE advertising header
                   0x17U, 0xFFU, 0x99U, 0x04U, // Manufacturer-specific data header
-                  0x07U,                      // Data format 6
+                  0x07U,                      // Data format 7
                   0x05U,                      // Message counter
                   0x03U,                      // State flags
                   0x14U, 0x64U,               // Temperature in 0.005 degrees Celsius
@@ -720,7 +720,7 @@ TEST_F(TestMqttJson, test_decoded_df7) // NOLINT
     const std::array<uint8_t, 27> data           = {
                   0x02U, 0x01U, 0x06U,        // BLE advertising header
                   0x17U, 0xFFU, 0x99U, 0x04U, // Manufacturer-specific data header
-                  0x07U,                      // Data format 6
+                  0x07U,                      // Data format 7
                   0x05U,                      // Message counter
                   0x03U,                      // State flags
                   0x14U, 0x64U,               // Temperature in 0.005 degrees Celsius
