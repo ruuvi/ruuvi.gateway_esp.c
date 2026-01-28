@@ -1040,7 +1040,6 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                                                           client->connection_info.port, client->timeout_ms);
                     ESP_LOGD(TAG, "%s: esp_transport_connect_async: res=%d", __func__, ret);
                     if (ret == ASYNC_TRANS_CONNECT_FAIL) {
-                        ESP_LOGE(TAG, "Connection failed");
                         esp_tls_error_handle_t err_handle = esp_transport_get_error_handle(client->transport);
                         if (NULL != err_handle) {
                             int esp_tls_code = 0;
@@ -1054,11 +1053,20 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                                 str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(esp_tls_last_esp_err);
                                 ESP_LOGE(
                                     TAG,
-                                    "Connection failed: esp_tls_last_esp_err=%d (%s)",
+                                    "Connection failed: error=0x%04X(%d) (%s)",
+                                    esp_tls_last_esp_err,
                                     esp_tls_last_esp_err,
                                     (NULL != err_desc.buf) ? err_desc.buf : "");
                                 str_buf_free_buf(&err_desc);
-                                return esp_tls_last_esp_err;
+                                err_desc = esp_err_to_name_with_alloc_str_buf(esp_tls_code);
+                                ESP_LOGE(
+                                    TAG,
+                                    "Connection failed: esp_tls_code=-0x%04X(%d) (%s)",
+                                    -esp_tls_code,
+                                    esp_tls_code,
+                                    (NULL != err_desc.buf) ? err_desc.buf : "");
+                                str_buf_free_buf(&err_desc);
+                                return (0 != esp_tls_code) ? esp_tls_code : esp_tls_last_esp_err;
                             }
                             if (0 != sock_errno) {
                                 str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(sock_errno);
@@ -1261,12 +1269,25 @@ static esp_err_t esp_http_client_connect(esp_http_client_handle_t client)
                     str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(esp_tls_last_esp_err);
                     ESP_LOGE(
                         TAG,
-                        "Connection failed: esp_tls_last_esp_err=%d (%s)",
+                        "Connection failed: error=0x%04X(%d) (%s)",
+                        esp_tls_last_esp_err,
                         esp_tls_last_esp_err,
                         (NULL != err_desc.buf) ? err_desc.buf : "");
                     str_buf_free_buf(&err_desc);
+                    err_desc = esp_err_to_name_with_alloc_str_buf(esp_tls_code);
+                    ESP_LOGE(
+                        TAG,
+                        "Connection failed: esp_tls_code=-0x%04X(%d) (%s)",
+                        -esp_tls_code,
+                        esp_tls_code,
+                        (NULL != err_desc.buf) ? err_desc.buf : "");
+                    str_buf_free_buf(&err_desc);
+                    if (0 != esp_tls_code) {
+                        return esp_tls_code;
+                    }
+                    return esp_tls_last_esp_err;
                 }
-                else if (0 != sock_errno) {
+                if (0 != sock_errno) {
                     str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(sock_errno);
                     ESP_LOGE(
                         TAG,
@@ -1274,10 +1295,9 @@ static esp_err_t esp_http_client_connect(esp_http_client_handle_t client)
                         sock_errno,
                         (NULL != err_desc.buf) ? err_desc.buf : "");
                     str_buf_free_buf(&err_desc);
+                    return sock_errno;
                 }
-                else {
-                    ESP_LOGE(TAG, "Connection failed: Unknown error");
-                }
+                ESP_LOGE(TAG, "Connection failed: Unknown error");
                 return ESP_ERR_HTTP_CONNECT;
             } else if (ret == ASYNC_TRANS_CONNECTING) {
                 ESP_LOGD(TAG, "Connection not yet established");
