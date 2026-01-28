@@ -52,6 +52,15 @@ static int32_t g_saved_session_last_used_idx;
 static SemaphoreHandle_t g_saved_sessions_sema;
 static StaticSemaphore_t g_saved_sessions_sema_mem;
 
+static void log_heap_info(void) {
+    ESP_LOGI(TAG,
+        "Cur free heap: default: max block %u, free %u; IRAM: max block %u, free %u",
+        (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT),
+        (unsigned)heap_caps_get_free_size( MALLOC_CAP_DEFAULT ),
+        (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC),
+        (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC));
+}
+
 static void
 saved_sessions_sema_init(void) {
     if (NULL == g_saved_sessions_sema) {
@@ -115,12 +124,7 @@ unlock_saved_session(transport_esp_tls_t* const ssl) {
         ssl->cfg.client_session = NULL;
     }
     log_saved_session_tickets();
-    ESP_LOGI(TAG,
-        "Cur free heap: default: max block %u, free %u; IRAM: max block %u, free %u",
-        (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT),
-        (unsigned)heap_caps_get_free_size( MALLOC_CAP_DEFAULT ),
-        (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC),
-        (unsigned)heap_caps_get_free_size( MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC ));
+    log_heap_info();
     xSemaphoreGive(g_saved_sessions_sema);
 }
 
@@ -190,13 +194,6 @@ static void save_new_session_ticket(transport_esp_tls_t *ssl)
 
     log_saved_session_tickets();
 
-    ESP_LOGI(TAG,
-        "Cur free heap: default: max block %u, free %u; IRAM: max block %u, free %u",
-        (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT),
-        (unsigned)heap_caps_get_free_size( MALLOC_CAP_DEFAULT ),
-        (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC),
-        (unsigned)heap_caps_get_free_size( MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC ));
-
     xSemaphoreGive(g_saved_sessions_sema);
 }
 
@@ -219,12 +216,7 @@ void esp_transport_ssl_clear_saved_session_tickets(void)
         g_saved_sessions[i] = NULL;
     }
     log_saved_session_tickets();
-    ESP_LOGI(TAG,
-        "Cur free heap: default: max block %u, free %u; IRAM: max block %u, free %u",
-        (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT),
-        (unsigned)heap_caps_get_free_size( MALLOC_CAP_DEFAULT ),
-        (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC),
-        (unsigned)heap_caps_get_free_size( MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC ));
+    log_heap_info();
     xSemaphoreGive(g_saved_sessions_sema);
 }
 
@@ -334,12 +326,7 @@ static int ssl_connect(esp_transport_handle_t t, const char *host, int port, int
     if (esp_tls_conn_new_sync(host, strlen(host), port, &ssl->cfg, ssl->tls) <= 0) {
         ESP_TRANSPORT_LOGE_FUNC("[%s] Failed to open a new connection", host);
         unlock_saved_session(ssl);
-        ESP_LOGW(TAG,
-            "Cur free heap: default: max block %u, free %u; IRAM: max block %u, free %u",
-            (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT),
-            (unsigned)heap_caps_get_free_size( MALLOC_CAP_DEFAULT ),
-            (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC),
-            (unsigned)heap_caps_get_free_size( MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC ));
+        log_heap_info();
         esp_tls_error_handle_t esp_tls_error_handle;
         esp_tls_get_error_handle(ssl->tls, &esp_tls_error_handle);
         esp_transport_set_errors(t, esp_tls_error_handle);
@@ -644,19 +631,9 @@ static int ssl_read(esp_transport_handle_t t, char *buffer, int len, int timeout
         if (ret < 0) {
             if (ret == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET) {
                 ret = ERR_TCP_TRANSPORT_CONNECTION_TIMEOUT;
-                ESP_LOGI(TAG,
-                    "Cur free heap: default: max block %u, free %u; IRAM: max block %u, free %u",
-                    (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT),
-                    (unsigned)heap_caps_get_free_size( MALLOC_CAP_DEFAULT ),
-                    (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC),
-                    (unsigned)heap_caps_get_free_size( MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC ));
+                log_heap_info();
                 save_new_session_ticket(ssl);
-                ESP_LOGI(TAG,
-                    "Cur free heap: default: max block %u, free %u; IRAM: max block %u, free %u",
-                    (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT),
-                    (unsigned)heap_caps_get_free_size( MALLOC_CAP_DEFAULT ),
-                    (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC),
-                    (unsigned)heap_caps_get_free_size( MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC ));
+                log_heap_info();
                 continue;
             }
 
