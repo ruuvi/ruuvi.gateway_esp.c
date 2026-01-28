@@ -254,16 +254,16 @@ static int esp_tls_connect_async(esp_transport_handle_t t, const char *host, int
         if (!is_plain_tcp) {
             ssl->cfg.client_session = get_saved_session_info_for_host(ssl, host);
             if (NULL != ssl->cfg.client_session) {
-                ESP_TRANSPORT_LOGI("[%s] Reuse saved TLS session ticket for host", host);
+                ESP_TRANSPORT_LOGI("[%s:%d] Reuse saved TLS session ticket for host", host, port);
             } else {
-                ESP_TRANSPORT_LOGI("[%s] There is no saved TLS session ticket for host", host);
+                ESP_TRANSPORT_LOGI("[%s:%d] There is no saved TLS session ticket for host", host, port);
             }
         }
         ssl->ssl_initialized = true;
         ssl->tls = esp_tls_init();
         ESP_LOGD(TAG, "%s: esp_tls_init, tls=%p", __func__, ssl->tls);
         if (!ssl->tls) {
-            ESP_TRANSPORT_LOGE_FUNC("[%s] esp_tls_init failed", esp_tls_get_hostname(ssl->tls));
+            ESP_TRANSPORT_LOGE_FUNC("[%s:%d] esp_tls_init failed", host, port);
             return -1;
         }
         ssl->conn_state = TRANS_SSL_CONNECTING;
@@ -275,8 +275,7 @@ static int esp_tls_connect_async(esp_transport_handle_t t, const char *host, int
         int progress = esp_tls_conn_new_async(host, strlen(host), port, &ssl->cfg, ssl->tls);
         if (progress >= 0) {
             if (esp_tls_get_conn_sockfd(ssl->tls, &ssl->sockfd) != ESP_OK) {
-                ESP_TRANSPORT_LOGE_FUNC("[%s] Error in obtaining socket fd for the session",
-                        esp_tls_get_hostname(ssl->tls));
+                ESP_TRANSPORT_LOGE_FUNC("[%s:%d] Error in obtaining socket fd for the session", host, port);
                 esp_tls_conn_destroy(ssl->tls);
                 return -1;
             }
