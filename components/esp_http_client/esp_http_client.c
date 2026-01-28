@@ -1061,7 +1061,7 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                                 err_desc = esp_err_to_name_with_alloc_str_buf(esp_tls_code);
                                 ESP_LOGE(
                                     TAG,
-                                    "Connection failed: esp_tls_last_esp_err=-0x%04X(%d) (%s)",
+                                    "Connection failed: esp_tls_code=-0x%04X(%d) (%s)",
                                     -esp_tls_code,
                                     esp_tls_code,
                                     (NULL != err_desc.buf) ? err_desc.buf : "");
@@ -1277,7 +1277,7 @@ static esp_err_t esp_http_client_connect(esp_http_client_handle_t client)
                     err_desc = esp_err_to_name_with_alloc_str_buf(esp_tls_code);
                     ESP_LOGE(
                         TAG,
-                        "Connection failed: esp_tls_last_esp_err=-0x%04X(%d) (%s)",
+                        "Connection failed: esp_tls_code=-0x%04X(%d) (%s)",
                         -esp_tls_code,
                         esp_tls_code,
                         (NULL != err_desc.buf) ? err_desc.buf : "");
