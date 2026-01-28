@@ -662,6 +662,7 @@ http_async_poll(uint32_t* const p_malloc_fail_cnt)
     {
         LOG_ERR("Failed to allocate memory during HTTPS connection");
         gateway_restart("Low memory");
+        return false;
     }
 
     bool flag_success = false;

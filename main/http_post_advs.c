@@ -189,6 +189,7 @@ http_send_advs_internal(
     {
         LOG_ERR("Not enough memory to create http_json_create_stream_gen_advs");
         gateway_restart("Low memory");
+        return false;
     }
 
 #if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG

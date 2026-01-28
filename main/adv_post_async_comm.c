@@ -109,6 +109,7 @@ adv_post_do_retransmission(const bool flag_use_timestamps, const adv_post_action
     {
         LOG_ERR("Can't allocate %u bytes of memory", (printf_uint_t)sizeof(*p_adv_reports_buf));
         gateway_restart("Low memory");
+        return false;
     }
 
     bool res = false;

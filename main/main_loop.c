@@ -6,7 +6,8 @@
  */
 
 #include "ruuvi_gateway.h"
-#include "esp_task_wdt.h"
+#include <esp_task_wdt.h>
+#include <esp_heap_caps.h>
 #include "os_signal.h"
 #include "os_timer_sig.h"
 #include "os_time.h"
