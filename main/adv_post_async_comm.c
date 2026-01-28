@@ -20,6 +20,7 @@
 #include "adv_post_statistics.h"
 #include "adv_post_timers.h"
 #include "adv_post_signals.h"
+#include "reset_task.h"
 #if defined(RUUVI_TESTS) && RUUVI_TESTS
 #define LOG_LOCAL_DISABLED 1
 #define LOG_LOCAL_LEVEL    LOG_LEVEL_NONE
@@ -102,11 +103,12 @@ adv_post_retransmit_advs(
 static bool
 adv_post_do_retransmission(const bool flag_use_timestamps, const adv_post_action_e adv_post_action)
 {
+    LOG_DBG("Allocate %u bytes for adv reports buffer", (printf_uint_t)sizeof(adv_report_table_t));
     adv_report_table_t* p_adv_reports_buf = os_calloc(1, sizeof(*p_adv_reports_buf));
     if (NULL == p_adv_reports_buf)
     {
-        LOG_ERR("Can't allocate memory");
-        return false;
+        LOG_ERR("Can't allocate %u bytes of memory", (printf_uint_t)sizeof(*p_adv_reports_buf));
+        gateway_restart("Low memory");
     }
 
     bool res = false;
@@ -350,8 +352,7 @@ adv_post_do_async_comm_in_progress(adv_post_state_t* const p_adv_post_state)
         LOG_DBG("http_server_mutex_unlock");
         http_server_mutex_unlock();
 
-        const uint32_t free_heap = esp_get_free_heap_size();
-        LOG_INFO("Cur free heap: %lu", (printf_ulong_t)free_heap);
+        ruuvi_log_heap_usage();
     }
     else
     {

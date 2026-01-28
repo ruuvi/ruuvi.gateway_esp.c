@@ -405,6 +405,8 @@ http_send_async(http_async_info_t* const p_http_async_info)
 
     LOG_INFO("### HTTP POST to URL=%s", p_http_config->url);
 
+    ruuvi_log_heap_usage();
+
     if (p_http_async_info->use_json_stream_gen)
     {
         if (!http_send_async_from_json_stream_gen(p_http_async_info))
@@ -456,6 +458,7 @@ http_send_async(http_async_info_t* const p_http_async_info)
         }
         esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
         p_http_async_info->p_http_client_handle = NULL;
+        ruuvi_log_heap_usage();
         return false;
     }
     return true;
@@ -654,6 +657,11 @@ http_async_poll(uint32_t* const p_malloc_fail_cnt)
     {
         LOG_DBG("esp_http_client_perform: ESP_ERR_HTTP_EAGAIN");
         return false;
+    }
+    if (esp_tls_err_is_ssl_alloc_failed(err))
+    {
+        LOG_ERR("Failed to allocate memory during HTTPS connection");
+        gateway_restart("Low memory");
     }
 
     bool flag_success = false;
