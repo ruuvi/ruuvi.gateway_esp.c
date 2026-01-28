@@ -56,7 +56,7 @@ static void log_heap_info(void) {
     ESP_LOGI(TAG,
         "Cur free heap: default: max block %u, free %u; IRAM: max block %u, free %u",
         (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT),
-        (unsigned)heap_caps_get_free_size( MALLOC_CAP_DEFAULT ),
+        (unsigned)heap_caps_get_free_size(MALLOC_CAP_DEFAULT),
         (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC),
         (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC));
 }
