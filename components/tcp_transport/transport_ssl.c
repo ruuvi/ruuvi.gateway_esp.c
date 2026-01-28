@@ -13,6 +13,7 @@
 #define LOG_LOCAL_LEVEL 3
 #include "esp_log.h"
 
+#include "esp_heap_caps.h"
 #include "esp_transport.h"
 #include "esp_transport_ssl.h"
 #include "esp_transport_internal.h"
