@@ -10,6 +10,8 @@
 #include "gw_cfg.h"
 #include "adv_table.h"
 #include "adv_post_signals.h"
+#include "reset_task.h"
+#include "ruuvi_gateway.h"
 #include <string>
 
 using namespace std;
@@ -415,6 +417,16 @@ void
 main_task_send_sig_restart_services(void)
 {
     g_pTestClass->m_send_sig_restart_services++;
+}
+
+void
+ruuvi_log_heap_usage(void)
+{
+}
+
+void
+gateway_restart(const char* const p_msg)
+{
 }
 
 } // extern "C"
