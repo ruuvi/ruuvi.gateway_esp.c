@@ -658,15 +658,6 @@ http_async_poll(uint32_t* const p_malloc_fail_cnt)
         LOG_DBG("esp_http_client_perform: ESP_ERR_HTTP_EAGAIN");
         return false;
     }
-    if (esp_tls_err_is_ssl_alloc_failed(err))
-    {
-        // In case if esp_http_client_perform fails with MBEDTLS_ERR_SSL_ALLOC_FAILED
-        // this means that there is not enough memory to allocate buffers for TLS connection
-        // and the handshake process has not been started.
-        LOG_ERR("Failed to allocate buffers for TLS connection");
-        gateway_restart("Low memory");
-        return false;
-    }
 
     bool flag_success = false;
     if (ESP_OK == err)
@@ -692,7 +683,15 @@ http_async_poll(uint32_t* const p_malloc_fail_cnt)
             p_http_async_info->http_client_config.esp_http_client_config.url);
         // If there is not enough memory in the system, the HTTPS connection may fail
         // with the error 32784 (ESP_ERR_MBEDTLS_SSL_HANDSHAKE_FAILED)
-        if (esp_tls_err_is_ssl_handshake_failed(err))
+        if (esp_tls_err_is_ssl_alloc_failed(err))
+        {
+            // In case if esp_http_client_perform fails with MBEDTLS_ERR_SSL_ALLOC_FAILED
+            // this means that there is not enough memory to allocate buffers for TLS connection
+            // and the handshake process has not been started.
+            LOG_ERR("Failed to allocate buffers for TLS connection");
+            gateway_restart("Low memory");
+        }
+        else if (esp_tls_err_is_ssl_handshake_failed(err))
         {
             *p_malloc_fail_cnt += 1;
             if (*p_malloc_fail_cnt >= RUUVI_MAX_LOW_HEAP_MEM_CNT)
