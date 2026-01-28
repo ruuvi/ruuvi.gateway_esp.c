@@ -683,7 +683,7 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
                 esp_tls_get_hostname(tls),
                 -tls->error_handle->esp_tls_error_code,
                 tls->error_handle->esp_tls_error_code,
-                err_desc.buf);
+                (NULL != err_desc.buf) ? err_desc.buf : "");
             str_buf_free_buf(&err_desc);
             ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, esp_ret);
             tls->conn_state = ESP_TLS_FAIL;

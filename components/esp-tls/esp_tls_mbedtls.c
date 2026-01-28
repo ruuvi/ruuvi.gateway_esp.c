@@ -135,7 +135,7 @@ esp_err_t esp_create_mbedtls_handle(const char *hostname, size_t hostlen, const 
 
     if ((ret = mbedtls_ssl_setup(&tls->ssl, &tls->conf)) != 0) {
         str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(ret);
-        ESP_LOGE(TAG, "mbedtls_ssl_setup returned -0x%04X(%d) (%s)", -ret, ret, err_desc.buf);
+        ESP_LOGE(TAG, "mbedtls_ssl_setup returned -0x%04X(%d) (%s)", -ret, ret, (NULL != err_desc.buf) ? err_desc.buf : "");
         str_buf_free_buf(&err_desc);
         mbedtls_print_error_msg(ret);
         ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_MBEDTLS, ret);
