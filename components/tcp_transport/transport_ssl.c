@@ -13,6 +13,7 @@
 #define LOG_LOCAL_LEVEL 3
 #include "esp_log.h"
 
+#include "esp_heap_caps.h"
 #include "esp_transport.h"
 #include "esp_transport_ssl.h"
 #include "esp_transport_internal.h"
@@ -50,6 +51,15 @@ static esp_tls_client_session_t* g_saved_sessions[ESP_TLS_MAX_NUM_SAVED_SESSIONS
 static int32_t g_saved_session_last_used_idx;
 static SemaphoreHandle_t g_saved_sessions_sema;
 static StaticSemaphore_t g_saved_sessions_sema_mem;
+
+static void log_heap_info(void) {
+    ESP_LOGI(TAG,
+        "Cur free heap: default: max block %u, free %u; IRAM: max block %u, free %u",
+        (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT),
+        (unsigned)heap_caps_get_free_size(MALLOC_CAP_DEFAULT),
+        (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC),
+        (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC));
+}
 
 static void
 saved_sessions_sema_init(void) {
@@ -114,6 +124,7 @@ unlock_saved_session(transport_esp_tls_t* const ssl) {
         ssl->cfg.client_session = NULL;
     }
     log_saved_session_tickets();
+    log_heap_info();
     xSemaphoreGive(g_saved_sessions_sema);
 }
 
@@ -205,6 +216,7 @@ void esp_transport_ssl_clear_saved_session_tickets(void)
         g_saved_sessions[i] = NULL;
     }
     log_saved_session_tickets();
+    log_heap_info();
     xSemaphoreGive(g_saved_sessions_sema);
 }
 
@@ -234,15 +246,16 @@ static int esp_tls_connect_async(esp_transport_handle_t t, const char *host, int
         if (!is_plain_tcp) {
             ssl->cfg.client_session = get_saved_session_info_for_host(ssl, host);
             if (NULL != ssl->cfg.client_session) {
-                ESP_TRANSPORT_LOGI("[%s] Reuse saved TLS session ticket for host", host);
+                ESP_TRANSPORT_LOGI("[%s:%d] Reuse saved TLS session ticket for host", host, port);
             } else {
-                ESP_TRANSPORT_LOGI("[%s] There is no saved TLS session ticket for host", host);
+                ESP_TRANSPORT_LOGI("[%s:%d] There is no saved TLS session ticket for host", host, port);
             }
         }
         ssl->ssl_initialized = true;
         ssl->tls = esp_tls_init();
         ESP_LOGD(TAG, "%s: esp_tls_init, tls=%p", __func__, ssl->tls);
         if (!ssl->tls) {
+            ESP_TRANSPORT_LOGE_FUNC("[%s:%d] esp_tls_init failed", host, port);
             return -1;
         }
         ssl->conn_state = TRANS_SSL_CONNECTING;
@@ -254,8 +267,7 @@ static int esp_tls_connect_async(esp_transport_handle_t t, const char *host, int
         int progress = esp_tls_conn_new_async(host, strlen(host), port, &ssl->cfg, ssl->tls);
         if (progress >= 0) {
             if (esp_tls_get_conn_sockfd(ssl->tls, &ssl->sockfd) != ESP_OK) {
-                ESP_TRANSPORT_LOGE_FUNC("[%s] Error in obtaining socket fd for the session",
-                        esp_tls_get_hostname(ssl->tls));
+                ESP_TRANSPORT_LOGE_FUNC("[%s:%d] Error in obtaining socket fd for the session", host, port);
                 esp_tls_conn_destroy(ssl->tls);
                 return -1;
             }
@@ -265,10 +277,14 @@ static int esp_tls_connect_async(esp_transport_handle_t t, const char *host, int
                 ESP_TRANSPORT_LOGD_FUNC("TRANS_SSL_CONNECTING[%s:%d] esp_tls_conn_new_async: Connected", host, port);
             }
         } else {
-            ESP_TRANSPORT_LOGE_FUNC("[%s:%d] esp_tls_conn_new_async: Failed, res=%d", host, port, progress);
-            ESP_LOGD(TAG, "%s: esp_transport_set_errors", __func__);
             esp_tls_error_handle_t esp_tls_error_handle;
             esp_tls_get_error_handle(ssl->tls, &esp_tls_error_handle);
+            str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(esp_tls_error_handle->esp_tls_error_code);
+            ESP_TRANSPORT_LOGE_FUNC("[%s:%d] esp_tls_conn_new_async: Failed, res=%d, last_error=%d, esp_tls_error_code=-0x%04X(%d) (%s)",
+                host, port, progress, esp_tls_error_handle->last_error, -esp_tls_error_handle->esp_tls_error_code,
+                esp_tls_error_handle->esp_tls_error_code, (NULL != err_desc.buf) ? err_desc.buf : "");
+            str_buf_free_buf(&err_desc);
+            ESP_LOGD(TAG, "%s: esp_transport_set_errors", __func__);
             esp_transport_set_errors(t, esp_tls_error_handle);
         }
         return progress;
@@ -309,8 +325,8 @@ static int ssl_connect(esp_transport_handle_t t, const char *host, int port, int
     }
     if (esp_tls_conn_new_sync(host, strlen(host), port, &ssl->cfg, ssl->tls) <= 0) {
         ESP_TRANSPORT_LOGE_FUNC("[%s] Failed to open a new connection", host);
-        ESP_LOGW(TAG, "Cur free heap: %u", (unsigned)esp_get_free_heap_size());
         unlock_saved_session(ssl);
+        log_heap_info();
         esp_tls_error_handle_t esp_tls_error_handle;
         esp_tls_get_error_handle(ssl->tls, &esp_tls_error_handle);
         esp_transport_set_errors(t, esp_tls_error_handle);
@@ -615,9 +631,9 @@ static int ssl_read(esp_transport_handle_t t, char *buffer, int len, int timeout
         if (ret < 0) {
             if (ret == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET) {
                 ret = ERR_TCP_TRANSPORT_CONNECTION_TIMEOUT;
-                ESP_LOGI(TAG, "Cur free heap: %u", (unsigned)esp_get_free_heap_size());
+                log_heap_info();
                 save_new_session_ticket(ssl);
-                ESP_LOGI(TAG, "Cur free heap: %u", (unsigned)esp_get_free_heap_size());
+                log_heap_info();
                 continue;
             }
 
