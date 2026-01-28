@@ -677,7 +677,14 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
         }
         esp_ret = create_ssl_handle(hostname, hostlen, cfg, tls);
         if (esp_ret != ESP_OK) {
-            ESP_TLS_LOGE_FUNC("[sock=%d][%s] create_ssl_handle failed", tls->sockfd, esp_tls_get_hostname(tls));
+            str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(tls->error_handle->esp_tls_error_code);
+            ESP_TLS_LOGE_FUNC("[sock=%d][%s] create_ssl_handle failed, error code: -0x%04X(%d) (%s)",
+                tls->sockfd,
+                esp_tls_get_hostname(tls),
+                -tls->error_handle->esp_tls_error_code,
+                tls->error_handle->esp_tls_error_code,
+                err_desc.buf);
+            str_buf_free_buf(&err_desc);
             ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, esp_ret);
             tls->conn_state = ESP_TLS_FAIL;
             close(tls->sockfd);
