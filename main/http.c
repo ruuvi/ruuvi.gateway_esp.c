@@ -660,7 +660,10 @@ http_async_poll(uint32_t* const p_malloc_fail_cnt)
     }
     if (esp_tls_err_is_ssl_alloc_failed(err))
     {
-        LOG_ERR("Failed to allocate memory during HTTPS connection");
+        // In case if esp_http_client_perform fails with MBEDTLS_ERR_SSL_ALLOC_FAILED
+        // this means that there is not enough memory to allocate buffers for TLS connection
+        // and the handshake process has not been started.
+        LOG_ERR("Failed to allocate buffers for TLS connection");
         gateway_restart("Low memory");
         return false;
     }

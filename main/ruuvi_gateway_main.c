@@ -12,6 +12,7 @@
 #include <esp_heap_caps.h>
 #include "freertos/FreeRTOS.h"
 #include "lwip/sockets.h"
+#include "esp_type_wrapper.h"
 #include "adv_post.h"
 #include "adv_mqtt.h"
 #include "os_task.h"
@@ -572,8 +573,8 @@ ruuvi_log_heap_usage(void)
 {
     LOG_INFO(
         "Cur free heap: default: max block %u, free %u; IRAM: max block %u, free %u",
-        (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT),
-        (unsigned)heap_caps_get_free_size(MALLOC_CAP_DEFAULT),
-        (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC),
-        (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC));
+        (printf_uint_t)heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT),
+        (printf_uint_t)heap_caps_get_free_size(MALLOC_CAP_DEFAULT),
+        (printf_uint_t)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC),
+        (printf_uint_t)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC));
 }

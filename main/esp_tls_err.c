@@ -41,6 +41,10 @@ esp_tls_err_is_ssl_alloc_failed(const esp_err_t err)
 bool
 esp_tls_err_is_ssl_handshake_failed(const esp_err_t err)
 {
+    if (MBEDTLS_ERR_SSL_HANDSHAKE_FAILURE == err)
+    {
+        return true;
+    }
     if (ESP_ERR_MBEDTLS_SSL_HANDSHAKE_FAILED == err)
     {
         return true;
