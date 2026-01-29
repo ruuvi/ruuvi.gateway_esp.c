@@ -110,6 +110,8 @@ protected:
 
         this->m_send_sig_restart_services = 0;
 
+        this->m_flag_gateway_restart_low_memory = false;
+
         adv_post_async_comm_init();
     }
 
@@ -172,6 +174,8 @@ public:
     bool m_leds_notify_http2_data_sent_fail { false };
 
     uint32_t m_send_sig_restart_services { 0 };
+
+    bool m_flag_gateway_restart_low_memory { false };
 };
 
 TestAdvPostAsyncComm::TestAdvPostAsyncComm()
@@ -422,8 +426,9 @@ ruuvi_log_heap_usage(void)
 }
 
 void
-gateway_restart(const char* const p_msg)
+gateway_restart_low_memory(void)
 {
+    g_pTestClass->m_flag_gateway_restart_low_memory = true;
 }
 
 } // extern "C"
@@ -483,6 +488,7 @@ TEST_F(TestAdvPostAsyncComm, test_regular_sequence) // NOLINT
     };
 
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -502,6 +508,7 @@ TEST_F(TestAdvPostAsyncComm, test_regular_sequence) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -515,6 +522,7 @@ TEST_F(TestAdvPostAsyncComm, test_regular_sequence) // NOLINT
     adv_post_state.flag_need_to_send_advs2          = true;
     this->m_hmac_sha256_set_key_for_http_custom_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -529,6 +537,7 @@ TEST_F(TestAdvPostAsyncComm, test_regular_sequence) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -541,6 +550,7 @@ TEST_F(TestAdvPostAsyncComm, test_regular_sequence) // NOLINT
     adv_post_state.flag_need_to_send_statistics = true;
     this->m_hmac_sha256_set_key_for_stats_res   = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -556,6 +566,7 @@ TEST_F(TestAdvPostAsyncComm, test_regular_sequence) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -568,6 +579,7 @@ TEST_F(TestAdvPostAsyncComm, test_regular_sequence) // NOLINT
     adv_post_state.flag_need_to_send_mqtt_periodic = true;
     this->m_mqtt_publish_adv_res                   = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -582,6 +594,7 @@ TEST_F(TestAdvPostAsyncComm, test_regular_sequence) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -625,6 +638,7 @@ TEST_F(TestAdvPostAsyncComm, test_regular_sequence) // NOLINT
     this->m_mqtt_publish_adv_arg_timestamp = 0;
     this->m_http_async_poll_res            = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -727,6 +741,7 @@ TEST_F(TestAdvPostAsyncComm, test_no_timestamps) // NOLINT
     };
 
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -745,6 +760,7 @@ TEST_F(TestAdvPostAsyncComm, test_no_timestamps) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -757,6 +773,7 @@ TEST_F(TestAdvPostAsyncComm, test_no_timestamps) // NOLINT
     adv_post_state.flag_need_to_send_advs2          = true;
     this->m_hmac_sha256_set_key_for_http_custom_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -771,6 +788,7 @@ TEST_F(TestAdvPostAsyncComm, test_no_timestamps) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -783,6 +801,7 @@ TEST_F(TestAdvPostAsyncComm, test_no_timestamps) // NOLINT
     adv_post_state.flag_need_to_send_statistics = true;
     this->m_hmac_sha256_set_key_for_stats_res   = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -798,6 +817,7 @@ TEST_F(TestAdvPostAsyncComm, test_no_timestamps) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -810,6 +830,7 @@ TEST_F(TestAdvPostAsyncComm, test_no_timestamps) // NOLINT
     adv_post_state.flag_need_to_send_mqtt_periodic = true;
     this->m_mqtt_publish_adv_res                   = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -824,6 +845,7 @@ TEST_F(TestAdvPostAsyncComm, test_no_timestamps) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -867,6 +889,7 @@ TEST_F(TestAdvPostAsyncComm, test_no_timestamps) // NOLINT
     this->m_mqtt_publish_adv_arg_timestamp = 0;
     this->m_http_async_poll_res            = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -960,6 +983,7 @@ TEST_F(TestAdvPostAsyncComm, test_no_time_sync) // NOLINT
     };
 
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -978,6 +1002,7 @@ TEST_F(TestAdvPostAsyncComm, test_no_time_sync) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -990,6 +1015,7 @@ TEST_F(TestAdvPostAsyncComm, test_no_time_sync) // NOLINT
     adv_post_state.flag_need_to_send_advs2          = true;
     this->m_hmac_sha256_set_key_for_http_custom_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1004,6 +1030,7 @@ TEST_F(TestAdvPostAsyncComm, test_no_time_sync) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1016,6 +1043,7 @@ TEST_F(TestAdvPostAsyncComm, test_no_time_sync) // NOLINT
     adv_post_state.flag_need_to_send_statistics = true;
     this->m_hmac_sha256_set_key_for_stats_res   = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1031,6 +1059,7 @@ TEST_F(TestAdvPostAsyncComm, test_no_time_sync) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1043,6 +1072,7 @@ TEST_F(TestAdvPostAsyncComm, test_no_time_sync) // NOLINT
     adv_post_state.flag_need_to_send_mqtt_periodic = true;
     this->m_mqtt_publish_adv_res                   = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1057,6 +1087,7 @@ TEST_F(TestAdvPostAsyncComm, test_no_time_sync) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1100,6 +1131,7 @@ TEST_F(TestAdvPostAsyncComm, test_no_time_sync) // NOLINT
     this->m_mqtt_publish_adv_arg_timestamp = 0;
     this->m_http_async_poll_res            = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1193,6 +1225,7 @@ TEST_F(TestAdvPostAsyncComm, test_time_not_synchronized) // NOLINT
     };
 
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1205,6 +1238,7 @@ TEST_F(TestAdvPostAsyncComm, test_time_not_synchronized) // NOLINT
     adv_post_state.flag_need_to_send_advs2 = true;
 
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1217,6 +1251,7 @@ TEST_F(TestAdvPostAsyncComm, test_time_not_synchronized) // NOLINT
     adv_post_state.flag_need_to_send_statistics = true;
 
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1229,6 +1264,7 @@ TEST_F(TestAdvPostAsyncComm, test_time_not_synchronized) // NOLINT
     adv_post_state.flag_need_to_send_mqtt_periodic = true;
 
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1292,6 +1328,7 @@ TEST_F(TestAdvPostAsyncComm, test_no_network_connection) // NOLINT
     };
 
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1304,6 +1341,7 @@ TEST_F(TestAdvPostAsyncComm, test_no_network_connection) // NOLINT
     adv_post_state.flag_need_to_send_advs2 = true;
 
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1316,6 +1354,7 @@ TEST_F(TestAdvPostAsyncComm, test_no_network_connection) // NOLINT
     adv_post_state.flag_need_to_send_statistics = true;
 
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1328,6 +1367,7 @@ TEST_F(TestAdvPostAsyncComm, test_no_network_connection) // NOLINT
     adv_post_state.flag_need_to_send_mqtt_periodic = true;
 
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1393,6 +1433,7 @@ TEST_F(TestAdvPostAsyncComm, test_malloc_failed_1) // NOLINT
     this->m_malloc_fail_on_cnt = 1;
 
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_TRUE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_TRUE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1460,6 +1501,7 @@ TEST_F(TestAdvPostAsyncComm, test_malloc_failed_2) // NOLINT
     this->m_malloc_fail_on_cnt = 2;
 
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_TRUE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1526,6 +1568,7 @@ TEST_F(TestAdvPostAsyncComm, test_malloc_failed_3) // NOLINT
     this->m_malloc_fail_on_cnt = 3;
 
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1544,6 +1587,7 @@ TEST_F(TestAdvPostAsyncComm, test_malloc_failed_3) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1556,6 +1600,7 @@ TEST_F(TestAdvPostAsyncComm, test_malloc_failed_3) // NOLINT
     adv_post_state.flag_need_to_send_advs2          = true;
     this->m_hmac_sha256_set_key_for_http_custom_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_TRUE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_TRUE(this->m_leds_notify_http2_data_sent_fail);
@@ -1620,6 +1665,7 @@ TEST_F(TestAdvPostAsyncComm, test_malloc_failed_4) // NOLINT
     this->m_malloc_fail_on_cnt = 4;
 
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1638,6 +1684,7 @@ TEST_F(TestAdvPostAsyncComm, test_malloc_failed_4) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1650,6 +1697,7 @@ TEST_F(TestAdvPostAsyncComm, test_malloc_failed_4) // NOLINT
     adv_post_state.flag_need_to_send_advs2          = true;
     this->m_hmac_sha256_set_key_for_http_custom_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_TRUE(this->m_leds_notify_http2_data_sent_fail);
@@ -1714,6 +1762,7 @@ TEST_F(TestAdvPostAsyncComm, test_malloc_failed_5) // NOLINT
     this->m_malloc_fail_on_cnt = 5;
 
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1732,6 +1781,7 @@ TEST_F(TestAdvPostAsyncComm, test_malloc_failed_5) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1744,6 +1794,7 @@ TEST_F(TestAdvPostAsyncComm, test_malloc_failed_5) // NOLINT
     adv_post_state.flag_need_to_send_advs2          = true;
     this->m_hmac_sha256_set_key_for_http_custom_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1758,6 +1809,7 @@ TEST_F(TestAdvPostAsyncComm, test_malloc_failed_5) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1770,6 +1822,7 @@ TEST_F(TestAdvPostAsyncComm, test_malloc_failed_5) // NOLINT
     adv_post_state.flag_need_to_send_statistics = true;
     this->m_hmac_sha256_set_key_for_stats_res   = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1785,6 +1838,7 @@ TEST_F(TestAdvPostAsyncComm, test_malloc_failed_5) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1798,6 +1852,7 @@ TEST_F(TestAdvPostAsyncComm, test_malloc_failed_5) // NOLINT
     this->m_mqtt_publish_adv_res                   = true;
     ASSERT_EQ(0, this->m_send_sig_restart_services);
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_TRUE(this->m_flag_gateway_restart_low_memory);
     ASSERT_EQ(1, this->m_send_sig_restart_services);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
@@ -1868,6 +1923,7 @@ TEST_F(TestAdvPostAsyncComm, test_malloc_failed_6) // NOLINT
     this->m_malloc_fail_on_cnt = 6;
 
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1886,6 +1942,7 @@ TEST_F(TestAdvPostAsyncComm, test_malloc_failed_6) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1898,6 +1955,7 @@ TEST_F(TestAdvPostAsyncComm, test_malloc_failed_6) // NOLINT
     adv_post_state.flag_need_to_send_advs2          = true;
     this->m_hmac_sha256_set_key_for_http_custom_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1912,6 +1970,7 @@ TEST_F(TestAdvPostAsyncComm, test_malloc_failed_6) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1924,6 +1983,7 @@ TEST_F(TestAdvPostAsyncComm, test_malloc_failed_6) // NOLINT
     adv_post_state.flag_need_to_send_statistics = true;
     this->m_hmac_sha256_set_key_for_stats_res   = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1939,6 +1999,7 @@ TEST_F(TestAdvPostAsyncComm, test_malloc_failed_6) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1951,6 +2012,7 @@ TEST_F(TestAdvPostAsyncComm, test_malloc_failed_6) // NOLINT
     adv_post_state.flag_need_to_send_mqtt_periodic = true;
     this->m_mqtt_publish_adv_res                   = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -1965,6 +2027,7 @@ TEST_F(TestAdvPostAsyncComm, test_malloc_failed_6) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2008,6 +2071,7 @@ TEST_F(TestAdvPostAsyncComm, test_malloc_failed_6) // NOLINT
     this->m_mqtt_publish_adv_arg_timestamp = 0;
     this->m_http_async_poll_res            = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2102,6 +2166,7 @@ TEST_F(TestAdvPostAsyncComm, test_mqtt_interrupted_periodical_sending) // NOLINT
 
     this->m_mqtt_publish_adv_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2119,6 +2184,7 @@ TEST_F(TestAdvPostAsyncComm, test_mqtt_interrupted_periodical_sending) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2184,6 +2250,7 @@ TEST_F(TestAdvPostAsyncComm, test_relaying_disabled) // NOLINT
     };
 
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2195,6 +2262,7 @@ TEST_F(TestAdvPostAsyncComm, test_relaying_disabled) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2207,6 +2275,7 @@ TEST_F(TestAdvPostAsyncComm, test_relaying_disabled) // NOLINT
     adv_post_state.flag_need_to_send_advs2          = true;
     this->m_hmac_sha256_set_key_for_http_custom_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2216,6 +2285,7 @@ TEST_F(TestAdvPostAsyncComm, test_relaying_disabled) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2228,6 +2298,7 @@ TEST_F(TestAdvPostAsyncComm, test_relaying_disabled) // NOLINT
     adv_post_state.flag_need_to_send_statistics = true;
     this->m_hmac_sha256_set_key_for_stats_res   = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2237,6 +2308,7 @@ TEST_F(TestAdvPostAsyncComm, test_relaying_disabled) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2249,6 +2321,7 @@ TEST_F(TestAdvPostAsyncComm, test_relaying_disabled) // NOLINT
     adv_post_state.flag_need_to_send_mqtt_periodic = true;
     this->m_mqtt_publish_adv_res                   = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2263,6 +2336,7 @@ TEST_F(TestAdvPostAsyncComm, test_relaying_disabled) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2328,6 +2402,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_post_advs_failed) // NOLINT
     };
 
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_TRUE(this->m_leds_notify_http1_data_sent_fail);
     this->m_leds_notify_http1_data_sent_fail = false;
@@ -2340,6 +2415,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_post_advs_failed) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_TRUE(this->m_leds_notify_http1_data_sent_fail);
     this->m_leds_notify_http1_data_sent_fail = false;
@@ -2353,6 +2429,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_post_advs_failed) // NOLINT
     adv_post_state.flag_need_to_send_advs2          = true;
     this->m_hmac_sha256_set_key_for_http_custom_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_TRUE(this->m_leds_notify_http2_data_sent_fail);
@@ -2363,6 +2440,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_post_advs_failed) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_TRUE(this->m_leds_notify_http2_data_sent_fail);
@@ -2376,6 +2454,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_post_advs_failed) // NOLINT
     adv_post_state.flag_need_to_send_statistics = true;
     this->m_hmac_sha256_set_key_for_stats_res   = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2385,6 +2464,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_post_advs_failed) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2397,6 +2477,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_post_advs_failed) // NOLINT
     adv_post_state.flag_need_to_send_mqtt_periodic = true;
     this->m_mqtt_publish_adv_res                   = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2411,6 +2492,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_post_advs_failed) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2454,6 +2536,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_post_advs_failed) // NOLINT
     this->m_mqtt_publish_adv_arg_timestamp = 0;
     this->m_http_async_poll_res            = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2547,6 +2630,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_server_mutex_try_lock_false) // NOLINT
     };
 
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2558,6 +2642,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_server_mutex_try_lock_false) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2570,6 +2655,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_server_mutex_try_lock_false) // NOLINT
     adv_post_state.flag_need_to_send_advs2          = true;
     this->m_hmac_sha256_set_key_for_http_custom_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2579,6 +2665,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_server_mutex_try_lock_false) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2591,6 +2678,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_server_mutex_try_lock_false) // NOLINT
     adv_post_state.flag_need_to_send_statistics = true;
     this->m_hmac_sha256_set_key_for_stats_res   = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2600,6 +2688,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_server_mutex_try_lock_false) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2612,6 +2701,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_server_mutex_try_lock_false) // NOLINT
     adv_post_state.flag_need_to_send_mqtt_periodic = true;
     this->m_mqtt_publish_adv_res                   = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2626,6 +2716,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_server_mutex_try_lock_false) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2669,6 +2760,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_server_mutex_try_lock_false) // NOLINT
     this->m_mqtt_publish_adv_arg_timestamp = 0;
     this->m_http_async_poll_res            = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2762,6 +2854,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_async_poll_failed) // NOLINT
     };
 
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2780,6 +2873,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_async_poll_failed) // NOLINT
 
     this->m_http_async_poll_res = false;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2791,6 +2885,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_async_poll_failed) // NOLINT
     adv_post_state.flag_need_to_send_advs2          = true;
     this->m_hmac_sha256_set_key_for_http_custom_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2800,6 +2895,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_async_poll_failed) // NOLINT
 
     this->m_http_async_poll_res = false;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2811,6 +2907,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_async_poll_failed) // NOLINT
     adv_post_state.flag_need_to_send_statistics = true;
     this->m_hmac_sha256_set_key_for_stats_res   = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2820,6 +2917,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_async_poll_failed) // NOLINT
 
     this->m_http_async_poll_res = false;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2831,6 +2929,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_async_poll_failed) // NOLINT
     adv_post_state.flag_need_to_send_mqtt_periodic = true;
     this->m_mqtt_publish_adv_res                   = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2845,6 +2944,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_async_poll_failed) // NOLINT
 
     this->m_http_async_poll_res = false;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2857,6 +2957,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_async_poll_failed) // NOLINT
     this->m_mqtt_publish_adv_arg_timestamp = 0;
     this->m_http_async_poll_res            = false;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_TRUE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2921,6 +3022,7 @@ TEST_F(TestAdvPostAsyncComm, test_disable_sending_statistics) // NOLINT
     };
 
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2930,6 +3032,7 @@ TEST_F(TestAdvPostAsyncComm, test_disable_sending_statistics) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -2942,6 +3045,7 @@ TEST_F(TestAdvPostAsyncComm, test_disable_sending_statistics) // NOLINT
     adv_post_state.flag_need_to_send_mqtt_periodic = true;
     this->m_mqtt_publish_adv_res                   = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -3009,6 +3113,7 @@ TEST_F(TestAdvPostAsyncComm, test_adv_post_statistics_do_send_failed) // NOLINT
     };
 
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -3018,6 +3123,7 @@ TEST_F(TestAdvPostAsyncComm, test_adv_post_statistics_do_send_failed) // NOLINT
 
     this->m_http_async_poll_res = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
@@ -3030,6 +3136,7 @@ TEST_F(TestAdvPostAsyncComm, test_adv_post_statistics_do_send_failed) // NOLINT
     adv_post_state.flag_need_to_send_mqtt_periodic = true;
     this->m_mqtt_publish_adv_res                   = true;
     adv_post_do_async_comm(&adv_post_state);
+    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);

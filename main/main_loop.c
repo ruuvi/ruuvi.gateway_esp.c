@@ -250,7 +250,7 @@ main_task_handle_sig_log_heap_usage(void)
                     "Reboot the Gateway.",
                     (printf_uint_t)(g_heap_usage_max_free_heap / RUUVI_NUM_BYTES_IN_1KB),
                     (printf_uint_t)(g_heap_usage_max_largest_free_block / RUUVI_NUM_BYTES_IN_1KB));
-                gateway_restart("Low memory");
+                gateway_restart_low_memory();
             }
         }
         else

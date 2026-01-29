@@ -302,3 +302,9 @@ gateway_restart(const char* const p_msg)
         }
     }
 }
+
+void
+gateway_restart_low_memory(void)
+{
+    gateway_restart("Low memory");
+}

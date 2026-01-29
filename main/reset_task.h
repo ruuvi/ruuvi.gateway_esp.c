@@ -31,6 +31,9 @@ reset_task_notify_configure_button_event(void);
 void
 gateway_restart(const char* const p_msg);
 
+void
+gateway_restart_low_memory(void);
+
 #ifdef __cplusplus
 }
 #endif

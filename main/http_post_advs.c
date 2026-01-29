@@ -188,7 +188,7 @@ http_send_advs_internal(
     if (NULL == p_http_async_info->select.p_gen)
     {
         LOG_ERR("Not enough memory to create http_json_create_stream_gen_advs");
-        gateway_restart("Low memory");
+        gateway_restart_low_memory();
         return false;
     }
 

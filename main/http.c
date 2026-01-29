@@ -686,7 +686,7 @@ http_async_poll(void)
             // this means that there is not enough memory to allocate buffers for TLS connection
             // and the handshake process has not been started.
             LOG_ERR("Failed to allocate buffers for TLS connection");
-            gateway_restart("Low memory");
+            gateway_restart_low_memory();
         }
     }
 
