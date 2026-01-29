@@ -6,7 +6,8 @@
  */
 
 #include "ruuvi_gateway.h"
-#include "esp_task_wdt.h"
+#include <esp_task_wdt.h>
+#include <esp_heap_caps.h>
 #include "os_signal.h"
 #include "os_timer_sig.h"
 #include "os_time.h"
@@ -180,12 +181,15 @@ check_if_checking_for_fw_updates_allowed(void)
 static void
 main_task_handle_sig_log_heap_usage(void)
 {
-    static uint32_t g_heap_usage_stat_cnt      = 0;
-    static uint32_t g_heap_usage_min_free_heap = 0xFFFFFFFFU;
-    static uint32_t g_heap_usage_max_free_heap = 0;
-    static uint32_t g_heap_limit_cnt           = 0;
+    static uint32_t g_heap_usage_stat_cnt               = 0;
+    static uint32_t g_heap_usage_min_free_heap          = 0xFFFFFFFFU;
+    static uint32_t g_heap_usage_max_free_heap          = 0;
+    static uint32_t g_heap_usage_min_largest_free_block = 0xFFFFFFFFU;
+    static uint32_t g_heap_usage_max_largest_free_block = 0;
+    static uint32_t g_heap_limit_cnt                    = 0;
 
-    const uint32_t free_heap = esp_get_free_heap_size();
+    const uint32_t free_heap          = heap_caps_get_free_size(MALLOC_CAP_DEFAULT);
+    const uint32_t largest_free_block = heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT);
 
     g_heap_usage_stat_cnt += 1;
     if (g_heap_usage_stat_cnt
@@ -199,31 +203,65 @@ main_task_handle_sig_log_heap_usage(void)
         {
             g_heap_usage_max_free_heap = free_heap;
         }
+        if (largest_free_block < g_heap_usage_min_largest_free_block)
+        {
+            g_heap_usage_min_largest_free_block = largest_free_block;
+        }
+        if (largest_free_block > g_heap_usage_max_largest_free_block)
+        {
+            g_heap_usage_max_largest_free_block = largest_free_block;
+        }
     }
     else
     {
-        LOG_INFO(
-            "free heap: %lu .. %lu",
+        const uint32_t max_free_block_default = heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT);
+        const uint32_t cur_free_heap_default  = heap_caps_get_free_size(MALLOC_CAP_DEFAULT);
+        const uint32_t min_free_heap_default  = heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT);
+        const uint32_t max_free_block_iram    = heap_caps_get_largest_free_block(
+            MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC);
+        const uint32_t cur_free_heap_iram = heap_caps_get_free_size(
+            MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC);
+        const uint32_t min_free_heap_iram = heap_caps_get_minimum_free_size(
+            MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC);
+        LOG_WARN(
+            "Free heap: %lu .. %lu (default: cur %lu, min %lu; IRAM: cur %lu, min %lu; diff: %ld)",
             (printf_ulong_t)g_heap_usage_min_free_heap,
-            (printf_ulong_t)g_heap_usage_max_free_heap);
-        if (g_heap_usage_max_free_heap < (RUUVI_FREE_HEAP_LIM_KIB * RUUVI_NUM_BYTES_IN_1KB))
+            (printf_ulong_t)g_heap_usage_max_free_heap,
+            (printf_ulong_t)cur_free_heap_default,
+            (printf_ulong_t)min_free_heap_default,
+            (printf_ulong_t)cur_free_heap_iram,
+            (printf_ulong_t)min_free_heap_iram,
+            (printf_long_t)((int32_t)cur_free_heap_iram - (int32_t)cur_free_heap_default));
+        LOG_WARN(
+            "Largest free block in heap: %lu .. %lu (default: %lu; IRAM: %lu)",
+            (printf_ulong_t)g_heap_usage_min_largest_free_block,
+            (printf_ulong_t)g_heap_usage_max_largest_free_block,
+            (printf_ulong_t)max_free_block_default,
+            (printf_ulong_t)max_free_block_iram);
+
+        if ((g_heap_usage_max_free_heap < (RUUVI_FREE_HEAP_LIM_KIB * RUUVI_NUM_BYTES_IN_1KB))
+            || (g_heap_usage_max_largest_free_block < (RUUVI_LARGEST_FREE_BLOCK_LIM_KIB * RUUVI_NUM_BYTES_IN_1KB)))
         {
             g_heap_limit_cnt += 1;
             if (g_heap_limit_cnt >= RUUVI_MAX_LOW_HEAP_MEM_CNT)
             {
                 LOG_ERR(
-                    "Only %uKiB of free memory left - probably due to a memory leak. Reboot the Gateway.",
-                    (printf_uint_t)(g_heap_usage_min_free_heap / RUUVI_NUM_BYTES_IN_1KB));
-                gateway_restart("Low memory");
+                    "Only %u KiB of free memory left and largest free block is %u KiB - probably due to a memory leak. "
+                    "Reboot the Gateway.",
+                    (printf_uint_t)(g_heap_usage_max_free_heap / RUUVI_NUM_BYTES_IN_1KB),
+                    (printf_uint_t)(g_heap_usage_max_largest_free_block / RUUVI_NUM_BYTES_IN_1KB));
+                gateway_restart_low_memory();
             }
         }
         else
         {
             g_heap_limit_cnt = 0;
         }
-        g_heap_usage_stat_cnt      = 0;
-        g_heap_usage_min_free_heap = UINT32_MAX;
-        g_heap_usage_max_free_heap = 0;
+        g_heap_usage_stat_cnt               = 0;
+        g_heap_usage_min_free_heap          = UINT32_MAX;
+        g_heap_usage_max_free_heap          = 0;
+        g_heap_usage_min_largest_free_block = UINT32_MAX;
+        g_heap_usage_max_largest_free_block = 0;
     }
 }
 

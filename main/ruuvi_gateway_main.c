@@ -9,8 +9,10 @@
 #include <esp_task_wdt.h>
 #include <driver/gpio.h>
 #include <esp_system.h>
+#include <esp_heap_caps.h>
 #include "freertos/FreeRTOS.h"
 #include "lwip/sockets.h"
+#include "esp_type_wrapper.h"
 #include "adv_post.h"
 #include "adv_mqtt.h"
 #include "os_task.h"
@@ -564,4 +566,15 @@ app_main(void)
         }
         main_loop();
     }
+}
+
+void
+ruuvi_log_heap_usage(void)
+{
+    LOG_INFO(
+        "Cur free heap: default: max block %u, free %u; IRAM: max block %u, free %u",
+        (printf_uint_t)heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT),
+        (printf_uint_t)heap_caps_get_free_size(MALLOC_CAP_DEFAULT),
+        (printf_uint_t)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC),
+        (printf_uint_t)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC));
 }

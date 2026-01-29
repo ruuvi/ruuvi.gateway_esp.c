@@ -405,6 +405,8 @@ http_send_async(http_async_info_t* const p_http_async_info)
 
     LOG_INFO("### HTTP POST to URL=%s", p_http_config->url);
 
+    ruuvi_log_heap_usage();
+
     if (p_http_async_info->use_json_stream_gen)
     {
         if (!http_send_async_from_json_stream_gen(p_http_async_info))
@@ -456,6 +458,7 @@ http_send_async(http_async_info_t* const p_http_async_info)
         }
         esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
         p_http_async_info->p_http_client_handle = NULL;
+        ruuvi_log_heap_usage();
         return false;
     }
     return true;
@@ -634,7 +637,7 @@ http_async_poll_do_actions_after_completion(const http_async_info_t* const p_htt
 }
 
 bool
-http_async_poll(uint32_t* const p_malloc_fail_cnt)
+http_async_poll(void)
 {
     http_async_info_t* p_http_async_info = http_get_async_info();
 
@@ -670,7 +673,6 @@ http_async_poll(uint32_t* const p_malloc_fail_cnt)
         {
             http_async_poll_handle_resp_err(p_http_async_info, http_status);
         }
-        *p_malloc_fail_cnt = 0;
     }
     else
     {
@@ -678,19 +680,13 @@ http_async_poll(uint32_t* const p_malloc_fail_cnt)
             err,
             "### HTTP POST to URL=%s: failed",
             p_http_async_info->http_client_config.esp_http_client_config.url);
-        // If there is not enough memory in the system, the HTTPS connection may fail
-        // with the error 32784 (ESP_ERR_MBEDTLS_SSL_HANDSHAKE_FAILED)
-        if (esp_tls_err_is_ssl_handshake_failed(err))
+        if (esp_tls_err_is_ssl_alloc_failed(err))
         {
-            *p_malloc_fail_cnt += 1;
-            if (*p_malloc_fail_cnt >= RUUVI_MAX_LOW_HEAP_MEM_CNT)
-            {
-                gateway_restart("Low memory");
-            }
-        }
-        else
-        {
-            *p_malloc_fail_cnt = 0;
+            // In case if esp_http_client_perform fails with MBEDTLS_ERR_SSL_ALLOC_FAILED
+            // this means that there is not enough memory to allocate buffers for TLS connection
+            // and the handshake process has not been started.
+            LOG_ERR("Failed to allocate buffers for TLS connection");
+            gateway_restart_low_memory();
         }
     }
 

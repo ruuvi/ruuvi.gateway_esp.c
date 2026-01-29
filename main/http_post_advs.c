@@ -147,8 +147,6 @@ http_send_advs_internal(
     const http_send_advs_internal_params_t* const p_params,
     void* const                                   p_user_data)
 {
-    static uint32_t g_http_post_advs_malloc_fail_cnt = 0;
-
     p_http_async_info->recipient = p_params->flag_post_to_ruuvi ? HTTP_POST_RECIPIENT_ADVS1 : HTTP_POST_RECIPIENT_ADVS2;
 
     bool flag_raw_data = true;
@@ -190,14 +188,9 @@ http_send_advs_internal(
     if (NULL == p_http_async_info->select.p_gen)
     {
         LOG_ERR("Not enough memory to create http_json_create_stream_gen_advs");
-        g_http_post_advs_malloc_fail_cnt += 1;
-        if (g_http_post_advs_malloc_fail_cnt > RUUVI_MAX_LOW_HEAP_MEM_CNT)
-        {
-            gateway_restart("Low memory");
-        }
+        gateway_restart_low_memory();
         return false;
     }
-    g_http_post_advs_malloc_fail_cnt = 0;
 
 #if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
     http_send_advs_log_auth_type(p_cfg_http);

@@ -20,6 +20,7 @@
 #include "adv_post_statistics.h"
 #include "adv_post_timers.h"
 #include "adv_post_signals.h"
+#include "reset_task.h"
 #if defined(RUUVI_TESTS) && RUUVI_TESTS
 #define LOG_LOCAL_DISABLED 1
 #define LOG_LOCAL_LEVEL    LOG_LEVEL_NONE
@@ -36,8 +37,6 @@ static const adv_report_table_t* g_p_adv_post_reports_mqtt;
 static uint32_t                  g_adv_post_reports_mqtt_idx;
 static time_t                    g_adv_post_reports_mqtt_timestamp;
 
-static uint32_t g_adv_post_malloc_fail_cnt[2];
-
 void
 adv_post_async_comm_init(void)
 {
@@ -46,10 +45,6 @@ adv_post_async_comm_init(void)
     g_p_adv_post_reports_mqtt         = NULL;
     g_adv_post_reports_mqtt_idx       = 0;
     g_adv_post_reports_mqtt_timestamp = 0;
-    for (uint32_t i = 0; i < OS_ARRAY_SIZE(g_adv_post_malloc_fail_cnt); ++i)
-    {
-        g_adv_post_malloc_fail_cnt[i] = 0;
-    }
 }
 
 static void
@@ -102,10 +97,12 @@ adv_post_retransmit_advs(
 static bool
 adv_post_do_retransmission(const bool flag_use_timestamps, const adv_post_action_e adv_post_action)
 {
+    LOG_DBG("Allocate %u bytes for adv reports buffer", (printf_uint_t)sizeof(adv_report_table_t));
     adv_report_table_t* p_adv_reports_buf = os_calloc(1, sizeof(*p_adv_reports_buf));
     if (NULL == p_adv_reports_buf)
     {
-        LOG_ERR("Can't allocate memory");
+        LOG_ERR("Can't allocate %u bytes of memory", (printf_uint_t)sizeof(*p_adv_reports_buf));
+        gateway_restart_low_memory();
         return false;
     }
 
@@ -322,8 +319,7 @@ adv_post_do_async_comm_in_progress(adv_post_state_t* const p_adv_post_state)
 {
     if (ADV_POST_ACTION_POST_ADVS_TO_MQTT != g_adv_post_action)
     {
-        if (!http_async_poll(
-                &g_adv_post_malloc_fail_cnt[ADV_POST_ACTION_POST_ADVS_TO_RUUVI == g_adv_post_action ? 0 : 1]))
+        if (!http_async_poll())
         {
             LOG_DBG("os_timer_sig_one_shot_start: g_p_adv_post_timer_sig_do_async_comm");
             adv_post_timers_start_timer_sig_do_async_comm();
@@ -350,8 +346,7 @@ adv_post_do_async_comm_in_progress(adv_post_state_t* const p_adv_post_state)
         LOG_DBG("http_server_mutex_unlock");
         http_server_mutex_unlock();
 
-        const uint32_t free_heap = esp_get_free_heap_size();
-        LOG_INFO("Cur free heap: %lu", (printf_ulong_t)free_heap);
+        ruuvi_log_heap_usage();
     }
     else
     {
