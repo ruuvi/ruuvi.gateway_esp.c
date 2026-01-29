@@ -37,8 +37,6 @@ static const adv_report_table_t* g_p_adv_post_reports_mqtt;
 static uint32_t                  g_adv_post_reports_mqtt_idx;
 static time_t                    g_adv_post_reports_mqtt_timestamp;
 
-static uint32_t g_adv_post_malloc_fail_cnt[2];
-
 void
 adv_post_async_comm_init(void)
 {
@@ -47,10 +45,6 @@ adv_post_async_comm_init(void)
     g_p_adv_post_reports_mqtt         = NULL;
     g_adv_post_reports_mqtt_idx       = 0;
     g_adv_post_reports_mqtt_timestamp = 0;
-    for (uint32_t i = 0; i < OS_ARRAY_SIZE(g_adv_post_malloc_fail_cnt); ++i)
-    {
-        g_adv_post_malloc_fail_cnt[i] = 0;
-    }
 }
 
 static void
@@ -325,8 +319,7 @@ adv_post_do_async_comm_in_progress(adv_post_state_t* const p_adv_post_state)
 {
     if (ADV_POST_ACTION_POST_ADVS_TO_MQTT != g_adv_post_action)
     {
-        if (!http_async_poll(
-                &g_adv_post_malloc_fail_cnt[ADV_POST_ACTION_POST_ADVS_TO_RUUVI == g_adv_post_action ? 0 : 1]))
+        if (!http_async_poll())
         {
             LOG_DBG("os_timer_sig_one_shot_start: g_p_adv_post_timer_sig_do_async_comm");
             adv_post_timers_start_timer_sig_do_async_comm();

@@ -97,7 +97,6 @@ protected:
         this->m_mqtt_publish_adv_arg_timestamp           = 0;
 
         this->m_http_async_poll_res                           = false;
-        this->m_http_async_poll_malloc_fail_cnt               = 0;
         this->m_esp_get_free_heap_size_res                    = 0;
         this->m_default_period_for_http_ruuvi                 = 60 * 1000;
         this->m_default_period_for_http_custom                = 65 * 1000;
@@ -151,7 +150,6 @@ public:
     bool                m_mqtt_publish_adv_arg_flag_use_timestamps { false };
     time_t              m_mqtt_publish_adv_arg_timestamp {};
     bool                m_http_async_poll_res { true };
-    uint32_t            m_http_async_poll_malloc_fail_cnt { 0 };
     uint32_t            m_esp_get_free_heap_size_res { 0 };
     adv_post_sig_e      m_adv_post_signals_send_sig {};
     bool                m_adv_post_timers_start_timer_sig_do_async_comm {};
@@ -389,9 +387,8 @@ adv_post_timers_start_timer_sig_do_async_comm(void)
 }
 
 bool
-http_async_poll(uint32_t* const p_malloc_fail_cnt)
+http_async_poll(void)
 {
-    *p_malloc_fail_cnt = g_pTestClass->m_http_async_poll_malloc_fail_cnt;
     return g_pTestClass->m_http_async_poll_res;
 }
 
