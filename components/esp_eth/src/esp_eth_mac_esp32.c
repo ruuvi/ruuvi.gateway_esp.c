@@ -247,9 +247,8 @@ err:
             (unsigned)g_tx_transmit_err_cnt, EMAC_TX_ERR_LIMIT);
         if (NULL != g_esp_eth_mac_callback_on_low_memory) {
             g_esp_eth_mac_callback_on_low_memory();
-        } else {
-            esp_restart();
         }
+        esp_restart();
     }
     return ret;
 }
@@ -285,17 +284,16 @@ static void emac_esp32_rx_task(void *arg)
             buffer = malloc(length);
             if (!buffer) {
                 low_memory_cnt += 1;
+                ESP_LOGE(TAG, "[%s] no mem for receive buffer (%u bytes): %u out of %u times",
+                    pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???",
+                    ETH_MAX_PACKET_SIZE,
+                    (unsigned)low_memory_cnt,
+                    EMAC_RX_ERR_LOW_MEM_LIMIT);
                 if (low_memory_cnt >= EMAC_RX_ERR_LOW_MEM_LIMIT) {
-                    ESP_LOGE(TAG, "[%s] no mem for receive buffer (%u bytes): %u out of %u times",
-                        pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???",
-                        ETH_MAX_PACKET_SIZE,
-                        (unsigned)low_memory_cnt,
-                        EMAC_RX_ERR_LOW_MEM_LIMIT);
                     if (NULL != g_esp_eth_mac_callback_on_low_memory) {
                         g_esp_eth_mac_callback_on_low_memory();
-                    } else {
-                        esp_restart();
                     }
+                    esp_restart();
                 }
             } else {
                 low_memory_cnt = 0;

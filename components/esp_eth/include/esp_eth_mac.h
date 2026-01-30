@@ -310,19 +310,22 @@ typedef void (*esp_eth_mac_callback_on_low_memory_t)(void);
  *
  * @note This function should be called before calling ethernet_init.
  *
- * @note If callback is not registered, the default action is to restart the system.
+ * @note If a callback is not registered (i.e., NULL is used), the default
+ *       action on a low-memory condition is to restart the system.
  *
  * @note It may be called multiple times; each call replaces the previously
- * registered callback. Passing NULL unregisters any previously registered
- * callback and disables low-memory notifications.
+ *       registered callback. Passing NULL unregisters any previously
+ *       registered callback and restores the default restart-on-low-memory
+ *       behavior.
  *
  * @note This function is not guaranteed to be thread-safe. If it can be called
- * from multiple tasks, the caller must provide external synchronization to
- * avoid concurrent registration/unregistration.
+ *       from multiple tasks, the caller must provide external synchronization
+ *       to avoid concurrent registration/unregistration.
  *
- * @param callback_on_low_memory: Callback function for low memory condition, or NULL to unregister the callback.
- *      This callback is invoked from emac_esp32_rx_task or from "tIT" (TCP/IP task from LWIP).
- *      This callback can print logs or trigger a restart to recover from low memory.
+ * @param callback_on_low_memory: Callback function for low memory condition,
+ *        or NULL to unregister the callback and use the default restart behavior.
+ *        This callback is invoked from emac_esp32_rx_task or from "tiT" (TCP/IP task from LWIP).
+ *        This callback can print logs or trigger a restart to recover from low memory.
  */
 void esp_eth_mac_register_callback_on_low_memory(esp_eth_mac_callback_on_low_memory_t callback_on_low_memory);
 
