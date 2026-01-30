@@ -66,6 +66,13 @@ typedef struct {
 #endif
 } emac_esp32_t;
 
+static esp_eth_mac_callback_on_low_memory_t g_esp_eth_mac_callback_on_low_memory;
+
+void esp_eth_mac_register_callback_on_low_memory(esp_eth_mac_callback_on_low_memory_t callback_on_low_memory)
+{
+    g_esp_eth_mac_callback_on_low_memory = callback_on_low_memory;
+}
+
 static esp_err_t emac_esp32_set_mediator(esp_eth_mac_t *mac, esp_eth_mediator_t *eth)
 {
     esp_err_t ret = ESP_OK;
@@ -264,7 +271,12 @@ static void emac_esp32_rx_task(void *arg)
             length = ETH_MAX_PACKET_SIZE;
             buffer = malloc(length);
             if (!buffer) {
-                ESP_LOGE(TAG, "no mem for receive buffer");
+                ESP_LOGE(TAG, "[%s] no mem for receive buffer (%u bytes)",
+                    pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???",
+                    ETH_MAX_PACKET_SIZE);
+                if (NULL != g_esp_eth_mac_callback_on_low_memory) {
+                    g_esp_eth_mac_callback_on_low_memory();
+                }
             } else if (emac_esp32_receive(&emac->parent, buffer, &length) == ESP_OK) {
                 /* pass the buffer to stack (e.g. TCP/IP layer) */
                 if (length) {

@@ -295,6 +295,18 @@ typedef struct {
         .flags = 0,                 \
     }
 
+/**
+ * @brief Callback function for low memory condition
+ */
+typedef void (*esp_eth_mac_callback_on_low_memory_t)();
+
+/**
+ * @brief Register a callback function for low memory condition
+ *
+ * @param callback_on_low_memory: Callback function for low memory condition
+ */
+void esp_eth_mac_register_callback_on_low_memory(esp_eth_mac_callback_on_low_memory_t callback_on_low_memory);
+
 #if CONFIG_ETH_USE_ESP32_EMAC
 /**
 * @brief Create ESP32 Ethernet MAC instance

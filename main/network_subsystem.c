@@ -23,6 +23,7 @@
 #include "gw_status.h"
 #include "event_mgr.h"
 #include "ruuvi_gateway.h"
+#include "reset_task.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -341,6 +342,7 @@ network_subsystem_init(const force_start_wifi_hotspot_e force_start_wifi_hotspot
         return false;
     }
     LOG_INFO("%s: ### Init Ethernet subsystem", __func__);
+    esp_eth_mac_register_callback_on_low_memory(&gateway_restart_low_memory);
     ethernet_init(&ethernet_link_up_cb, &ethernet_link_down_cb, &ethernet_connection_ok_cb);
 
     if (flag_start_ethernet)
