@@ -33,6 +33,8 @@
 
 #define EMAC_TX_ERR_LIMIT (20)
 
+#define EMAC_RX_ERR_LOW_MEM_LIMIT   (5U)
+
 static const char *TAG = "emac_esp32";
 #define MAC_CHECK(a, str, goto_tag, ret_value, ...)                               \
     do                                                                            \
@@ -65,6 +67,13 @@ typedef struct {
     esp_pm_lock_handle_t pm_lock;
 #endif
 } emac_esp32_t;
+
+static esp_eth_mac_callback_on_low_memory_t g_esp_eth_mac_callback_on_low_memory;
+
+void esp_eth_mac_register_callback_on_low_memory(esp_eth_mac_callback_on_low_memory_t callback_on_low_memory)
+{
+    g_esp_eth_mac_callback_on_low_memory = callback_on_low_memory;
+}
 
 static esp_err_t emac_esp32_set_mediator(esp_eth_mac_t *mac, esp_eth_mediator_t *eth)
 {
@@ -219,17 +228,26 @@ static esp_err_t emac_esp32_set_promiscuous(esp_eth_mac_t *mac, bool enable)
 
 static esp_err_t emac_esp32_transmit(esp_eth_mac_t *mac, uint8_t *buf, uint32_t length)
 {
+    // This function is called from the "tiT" thread (TCP/IP task from LWIP)
     static uint32_t g_tx_transmit_err_cnt = 0;
     esp_err_t ret = ESP_OK;
     emac_esp32_t *emac = __containerof(mac, emac_esp32_t, parent);
     uint32_t sent_len = emac_hal_transmit_frame(&emac->hal, buf, length);
     MAC_CHECK(sent_len == length, "insufficient TX buffer size to transmit frame with length %u bytes", err, ESP_ERR_INVALID_SIZE, length);
+    g_tx_transmit_err_cnt = 0;
     return ESP_OK;
 err:
     g_tx_transmit_err_cnt += 1;
-    ESP_LOGE(TAG, "Total TX transmit error count: %u", g_tx_transmit_err_cnt);
+    ESP_LOGE(TAG, "[%s] Total TX transmit error count: %u",
+        pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???",
+        (unsigned)g_tx_transmit_err_cnt);
     if (g_tx_transmit_err_cnt > EMAC_TX_ERR_LIMIT) {
-        ESP_LOGE(TAG, "TX transmit error count %u exceeded limit %u, restarting", g_tx_transmit_err_cnt, EMAC_TX_ERR_LIMIT);
+        ESP_LOGE(TAG, "[%s] TX transmit error count %u exceeded limit %u, restarting",
+            pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???",
+            (unsigned)g_tx_transmit_err_cnt, EMAC_TX_ERR_LIMIT);
+        if (NULL != g_esp_eth_mac_callback_on_low_memory) {
+            g_esp_eth_mac_callback_on_low_memory();
+        }
         esp_restart();
     }
     return ret;
@@ -257,6 +275,7 @@ static void emac_esp32_rx_task(void *arg)
     emac_esp32_t *emac = (emac_esp32_t *)arg;
     uint8_t *buffer = NULL;
     uint32_t length = 0;
+    uint32_t low_memory_cnt = 0;
     while (1) {
         // block indefinitely until got notification from underlay event
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
@@ -264,16 +283,30 @@ static void emac_esp32_rx_task(void *arg)
             length = ETH_MAX_PACKET_SIZE;
             buffer = malloc(length);
             if (!buffer) {
-                ESP_LOGE(TAG, "no mem for receive buffer");
-            } else if (emac_esp32_receive(&emac->parent, buffer, &length) == ESP_OK) {
-                /* pass the buffer to stack (e.g. TCP/IP layer) */
-                if (length) {
-                    emac->eth->stack_input(emac->eth, buffer, length);
+                low_memory_cnt += 1;
+                ESP_LOGE(TAG, "[%s] no mem for receive buffer (%u bytes): %u out of %u times",
+                    pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???",
+                    ETH_MAX_PACKET_SIZE,
+                    (unsigned)low_memory_cnt,
+                    EMAC_RX_ERR_LOW_MEM_LIMIT);
+                if (low_memory_cnt >= EMAC_RX_ERR_LOW_MEM_LIMIT) {
+                    if (NULL != g_esp_eth_mac_callback_on_low_memory) {
+                        g_esp_eth_mac_callback_on_low_memory();
+                    }
+                    esp_restart();
+                }
+            } else {
+                low_memory_cnt = 0;
+                if (emac_esp32_receive(&emac->parent, buffer, &length) == ESP_OK) {
+                    /* pass the buffer to stack (e.g. TCP/IP layer) */
+                    if (length) {
+                        emac->eth->stack_input(emac->eth, buffer, length);
+                    } else {
+                        free(buffer);
+                    }
                 } else {
                     free(buffer);
                 }
-            } else {
-                free(buffer);
             }
         } while (emac->frames_remain);
     }
