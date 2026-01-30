@@ -298,12 +298,31 @@ typedef struct {
 /**
  * @brief Callback function for low memory condition
  */
-typedef void (*esp_eth_mac_callback_on_low_memory_t)();
+typedef void (*esp_eth_mac_callback_on_low_memory_t)(void);
 
 /**
- * @brief Register a callback function for low memory condition
+ * @brief Register a callback function for low memory condition.
+ * This function registers a callback that may be invoked by the Ethernet MAC
+ * driver from emac_esp32_rx_task or from "tiT" (TCP/IP task from LWIP).
+ * The callback can be invoked in two cases:
+ * - when it detects that there is not enough memory to receive or process incoming frames
+ * - when there is a TX-transmit error count exceeded the limit.
  *
- * @param callback_on_low_memory: Callback function for low memory condition
+ * @note This function should be called before calling ethernet_init.
+ *
+ * @note If callback is not registered, the default action is to restart the system.
+ *
+ * @note It may be called multiple times; each call replaces the previously
+ * registered callback. Passing NULL unregisters any previously registered
+ * callback and disables low-memory notifications.
+ *
+ * @note This function is not guaranteed to be thread-safe. If it can be called
+ * from multiple tasks, the caller must provide external synchronization to
+ * avoid concurrent registration/unregistration.
+ *
+ * @param callback_on_low_memory: Callback function for low memory condition, or NULL to unregister the callback.
+ *      This callback is invoked from emac_esp32_rx_task or from "tIT" (TCP/IP task from LWIP).
+ *      This callback can print logs or trigger a restart to recover from low memory.
  */
 void esp_eth_mac_register_callback_on_low_memory(esp_eth_mac_callback_on_low_memory_t callback_on_low_memory);
 
