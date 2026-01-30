@@ -240,7 +240,8 @@ adv_post_do_async_comm_send_statistics(adv_post_state_t* const p_adv_post_state)
     if (!adv_post_statistics_do_send())
     {
         LOG_ERR("Failed to send statistics");
-        g_adv_post_action = ADV_POST_ACTION_NONE;
+        g_adv_post_action                              = ADV_POST_ACTION_NONE;
+        p_adv_post_state->flag_need_to_send_statistics = false;
         LOG_DBG("http_server_mutex_unlock");
         http_server_mutex_unlock();
         return;

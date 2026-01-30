@@ -2358,7 +2358,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_post_advs_failed) // NOLINT
     this->m_gw_cfg_get_http_stat_use_http_stat_res = true;
     this->m_gw_cfg_get_mqtt_use_mqtt_res           = true;
     this->m_gw_cfg_get_ntp_use_res                 = true;
-    this->m_adv_post_statistics_do_send_res        = true;
+    this->m_adv_post_statistics_do_send_res        = false;
     this->m_gw_status_is_mqtt_connected_res        = true;
 
     adv_post_state_t adv_post_state = {
@@ -2413,17 +2413,10 @@ TEST_F(TestAdvPostAsyncComm, test_http_post_advs_failed) // NOLINT
     ASSERT_TRUE(this->m_adv_post_timers_start_timer_sig_do_async_comm);
     this->m_adv_post_timers_start_timer_sig_do_async_comm = false;
 
-    this->m_http_async_poll_res = true;
-    adv_post_do_async_comm(&adv_post_state);
-    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
-    ASSERT_FALSE(this->m_http_server_mutex_locked);
-    ASSERT_TRUE(this->m_leds_notify_http1_data_sent_fail);
-    this->m_leds_notify_http1_data_sent_fail = false;
-    ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
-    ASSERT_EQ(2, this->m_http_post_advs_call_cnt);
-    ASSERT_EQ(0, this->m_adv_post_statistics_do_send_call_cnt);
-    ASSERT_EQ(0, this->m_mqtt_publish_adv_call_cnt);
-    this->m_http_async_poll_res = false;
+    ASSERT_FALSE(adv_post_state.flag_need_to_send_advs1);
+    ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
+    ASSERT_FALSE(adv_post_state.flag_need_to_send_statistics);
+    ASSERT_FALSE(adv_post_state.flag_need_to_send_mqtt_periodic);
 
     adv_post_state.flag_need_to_send_advs1          = false;
     adv_post_state.flag_need_to_send_advs2          = true;
@@ -2434,44 +2427,31 @@ TEST_F(TestAdvPostAsyncComm, test_http_post_advs_failed) // NOLINT
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_TRUE(this->m_leds_notify_http2_data_sent_fail);
     this->m_leds_notify_http2_data_sent_fail = false;
-    ASSERT_EQ(3, this->m_http_post_advs_call_cnt);
+    ASSERT_EQ(2, this->m_http_post_advs_call_cnt);
     ASSERT_EQ(0, this->m_adv_post_statistics_do_send_call_cnt);
     ASSERT_EQ(0, this->m_mqtt_publish_adv_call_cnt);
 
-    this->m_http_async_poll_res = true;
-    adv_post_do_async_comm(&adv_post_state);
-    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
-    ASSERT_FALSE(this->m_http_server_mutex_locked);
-    ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
-    ASSERT_TRUE(this->m_leds_notify_http2_data_sent_fail);
-    this->m_leds_notify_http2_data_sent_fail = false;
-    ASSERT_EQ(4, this->m_http_post_advs_call_cnt);
-    ASSERT_EQ(0, this->m_adv_post_statistics_do_send_call_cnt);
-    ASSERT_EQ(0, this->m_mqtt_publish_adv_call_cnt);
-    this->m_http_async_poll_res = false;
+    ASSERT_FALSE(adv_post_state.flag_need_to_send_advs1);
+    ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
+    ASSERT_FALSE(adv_post_state.flag_need_to_send_statistics);
+    ASSERT_FALSE(adv_post_state.flag_need_to_send_mqtt_periodic);
 
     adv_post_state.flag_need_to_send_advs2      = false;
     adv_post_state.flag_need_to_send_statistics = true;
     this->m_hmac_sha256_set_key_for_stats_res   = true;
     adv_post_do_async_comm(&adv_post_state);
     ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
-    ASSERT_TRUE(this->m_http_server_mutex_locked);
-    ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
-    ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
-    ASSERT_EQ(4, this->m_http_post_advs_call_cnt);
-    ASSERT_EQ(1, this->m_adv_post_statistics_do_send_call_cnt);
-    ASSERT_EQ(0, this->m_mqtt_publish_adv_call_cnt);
-
-    this->m_http_async_poll_res = true;
-    adv_post_do_async_comm(&adv_post_state);
-    ASSERT_FALSE(this->m_flag_gateway_restart_low_memory);
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
-    ASSERT_EQ(4, this->m_http_post_advs_call_cnt);
+    ASSERT_EQ(2, this->m_http_post_advs_call_cnt);
     ASSERT_EQ(1, this->m_adv_post_statistics_do_send_call_cnt);
     ASSERT_EQ(0, this->m_mqtt_publish_adv_call_cnt);
-    this->m_http_async_poll_res = false;
+
+    ASSERT_FALSE(adv_post_state.flag_need_to_send_advs1);
+    ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
+    ASSERT_FALSE(adv_post_state.flag_need_to_send_statistics);
+    ASSERT_FALSE(adv_post_state.flag_need_to_send_mqtt_periodic);
 
     adv_post_state.flag_need_to_send_statistics    = false;
     adv_post_state.flag_need_to_send_mqtt_periodic = true;
@@ -2481,9 +2461,14 @@ TEST_F(TestAdvPostAsyncComm, test_http_post_advs_failed) // NOLINT
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
-    ASSERT_EQ(4, this->m_http_post_advs_call_cnt);
+    ASSERT_EQ(2, this->m_http_post_advs_call_cnt);
     ASSERT_EQ(1, this->m_adv_post_statistics_do_send_call_cnt);
     ASSERT_EQ(0, this->m_mqtt_publish_adv_call_cnt);
+
+    ASSERT_FALSE(adv_post_state.flag_need_to_send_advs1);
+    ASSERT_FALSE(adv_post_state.flag_need_to_send_advs2);
+    ASSERT_FALSE(adv_post_state.flag_need_to_send_statistics);
+    ASSERT_FALSE(adv_post_state.flag_need_to_send_mqtt_periodic);
 
     ASSERT_EQ(ADV_POST_SIG_DO_ASYNC_COMM, this->m_adv_post_signals_send_sig);
     ASSERT_TRUE(this->m_adv_post_timers_start_timer_sig_do_async_comm);
@@ -2496,7 +2481,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_post_advs_failed) // NOLINT
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
-    ASSERT_EQ(4, this->m_http_post_advs_call_cnt);
+    ASSERT_EQ(2, this->m_http_post_advs_call_cnt);
     ASSERT_EQ(1, this->m_adv_post_statistics_do_send_call_cnt);
     ASSERT_EQ(1, this->m_mqtt_publish_adv_call_cnt);
     ASSERT_TRUE(this->m_adv_post_timers_start_timer_sig_do_async_comm);
@@ -2540,7 +2525,7 @@ TEST_F(TestAdvPostAsyncComm, test_http_post_advs_failed) // NOLINT
     ASSERT_FALSE(this->m_http_server_mutex_locked);
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
-    ASSERT_EQ(4, this->m_http_post_advs_call_cnt);
+    ASSERT_EQ(2, this->m_http_post_advs_call_cnt);
     ASSERT_EQ(1, this->m_adv_post_statistics_do_send_call_cnt);
     ASSERT_EQ(2, this->m_mqtt_publish_adv_call_cnt);
     ASSERT_FALSE(this->m_adv_post_timers_start_timer_sig_do_async_comm);
@@ -3128,7 +3113,7 @@ TEST_F(TestAdvPostAsyncComm, test_adv_post_statistics_do_send_failed) // NOLINT
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
     ASSERT_EQ(0, this->m_http_post_advs_call_cnt);
-    ASSERT_EQ(2, this->m_adv_post_statistics_do_send_call_cnt);
+    ASSERT_EQ(1, this->m_adv_post_statistics_do_send_call_cnt);
     ASSERT_EQ(0, this->m_mqtt_publish_adv_call_cnt);
     this->m_http_async_poll_res = false;
 
@@ -3141,7 +3126,7 @@ TEST_F(TestAdvPostAsyncComm, test_adv_post_statistics_do_send_failed) // NOLINT
     ASSERT_FALSE(this->m_leds_notify_http1_data_sent_fail);
     ASSERT_FALSE(this->m_leds_notify_http2_data_sent_fail);
     ASSERT_EQ(0, this->m_http_post_advs_call_cnt);
-    ASSERT_EQ(2, this->m_adv_post_statistics_do_send_call_cnt);
+    ASSERT_EQ(1, this->m_adv_post_statistics_do_send_call_cnt);
     ASSERT_EQ(0, this->m_mqtt_publish_adv_call_cnt);
 
     ASSERT_EQ(0, this->m_adv_post_signals_send_sig);
