@@ -9,13 +9,11 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
+#if RUUVI_GATEWAY_ENABLE_MEM_FRAGMENTATION_TEST
 static const char TAG[] = "ruuvi_gateway";
 
-#if RUUVI_GATEWAY_ENABLE_MEM_FRAGMENTATION_TEST
 void* volatile g_p_fragmented_mem;
-#endif
 
-#if RUUVI_GATEWAY_ENABLE_MEM_FRAGMENTATION_TEST
 void
 mem_fragmentation_test(void)
 {
