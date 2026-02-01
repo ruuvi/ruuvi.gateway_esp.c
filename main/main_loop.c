@@ -33,7 +33,7 @@
 static const char TAG[] = "ruuvi_gateway";
 
 #define MAIN_TASK_LOG_HEAP_STAT_PERIOD_MS       (100U)
-#define MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS (10U)
+#define MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS ((RUUVI_GATEWAY_ENABLE_MEM_FRAGMENTATION_TEST) ? 1U : 10U)
 
 #define MAIN_TASK_CHECK_FOR_REMOTE_CFG_PERIOD_MS (60U * TIME_UNITS_SECONDS_PER_MINUTE * TIME_UNITS_MS_PER_SECOND)
 #define MAIN_TASK_GET_HISTORY_TIMEOUT_MS         (70U * TIME_UNITS_MS_PER_SECOND)
@@ -95,6 +95,10 @@ static event_mgr_ev_info_static_t g_main_loop_ev_info_mem_eth_disconnected;
 static event_mgr_ev_info_static_t g_main_loop_ev_info_mem_relaying_mode_changed;
 static event_mgr_ev_info_static_t g_main_loop_ev_info_mem_ap_started;
 static event_mgr_ev_info_static_t g_main_loop_ev_info_mem_ap_stopped;
+
+#if RUUVI_GATEWAY_ENABLE_MEM_FRAGMENTATION_TEST
+volatile void* volatile g_p_fragmented_mem;
+#endif
 
 ATTR_PURE
 static os_signal_num_e
@@ -178,6 +182,38 @@ check_if_checking_for_fw_updates_allowed(void)
     return res;
 }
 
+#if RUUVI_GATEWAY_ENABLE_MEM_FRAGMENTATION_TEST
+static void
+mem_fragmentation_test(void)
+{
+    static uint32_t block_size = 5 * 1024;
+    void*           p_mem      = os_malloc(block_size);
+    if (NULL == p_mem)
+    {
+        LOG_ERR("Failed to allocate memory for fragmentation test %u bytes", block_size);
+        block_size /= 2;
+        if (0 == block_size)
+        {
+            block_size = 1;
+        }
+    }
+
+    g_p_fragmented_mem = os_malloc(8);
+    if (NULL == g_p_fragmented_mem)
+    {
+        LOG_ERR("Failed to allocate memory for fragmentation test");
+    }
+    if (NULL != p_mem)
+    {
+        os_free(p_mem);
+    }
+    if (block_size < (20 * 1024))
+    {
+        block_size += 32;
+    }
+}
+#endif // RUUVI_GATEWAY_ENABLE_MEM_FRAGMENTATION_TEST
+
 static void
 main_task_handle_sig_log_heap_usage(void)
 {
@@ -187,6 +223,10 @@ main_task_handle_sig_log_heap_usage(void)
     static uint32_t g_heap_usage_min_largest_free_block = 0xFFFFFFFFU;
     static uint32_t g_heap_usage_max_largest_free_block = 0;
     static uint32_t g_heap_limit_cnt                    = 0;
+
+#if RUUVI_GATEWAY_ENABLE_MEM_FRAGMENTATION_TEST
+    mem_fragmentation_test();
+#endif
 
     const uint32_t free_heap          = heap_caps_get_free_size(MALLOC_CAP_DEFAULT);
     const uint32_t largest_free_block = heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT);
