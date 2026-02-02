@@ -17,7 +17,6 @@
 #include <esp_attr.h>
 #include "driver/periph_ctrl.h"
 #include "driver/gpio.h"
-#include "esp_attr.h"
 #include "esp_log.h"
 #include "esp_eth.h"
 #include "esp_pm.h"
@@ -26,7 +25,6 @@
 #include "esp_intr_alloc.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "freertos/semphr.h"
 #include "hal/cpu_hal.h"
 #include "hal/emac.h"
 #include "soc/soc.h"
