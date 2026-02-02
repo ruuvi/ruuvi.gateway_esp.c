@@ -26,6 +26,7 @@
 #include "gw_cfg_log.h"
 #include "reset_task.h"
 #include "runtime_stat.h"
+#include "mem_fragmentation_test.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -33,7 +34,7 @@
 static const char TAG[] = "ruuvi_gateway";
 
 #define MAIN_TASK_LOG_HEAP_STAT_PERIOD_MS       (100U)
-#define MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS (10U)
+#define MAIN_TASK_LOG_HEAP_USAGE_PERIOD_SECONDS ((RUUVI_GATEWAY_ENABLE_MEM_FRAGMENTATION_TEST) ? 1U : 10U)
 
 #define MAIN_TASK_CHECK_FOR_REMOTE_CFG_PERIOD_MS (60U * TIME_UNITS_SECONDS_PER_MINUTE * TIME_UNITS_MS_PER_SECOND)
 #define MAIN_TASK_GET_HISTORY_TIMEOUT_MS         (70U * TIME_UNITS_MS_PER_SECOND)
@@ -187,6 +188,10 @@ main_task_handle_sig_log_heap_usage(void)
     static uint32_t g_heap_usage_min_largest_free_block = 0xFFFFFFFFU;
     static uint32_t g_heap_usage_max_largest_free_block = 0;
     static uint32_t g_heap_limit_cnt                    = 0;
+
+#if RUUVI_GATEWAY_ENABLE_MEM_FRAGMENTATION_TEST
+    mem_fragmentation_test();
+#endif
 
     const uint32_t free_heap          = heap_caps_get_free_size(MALLOC_CAP_DEFAULT);
     const uint32_t largest_free_block = heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT);

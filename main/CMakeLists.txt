@@ -149,6 +149,8 @@ idf_component_register(
         leds.c
         leds.h
         main_loop.c
+        mem_fragmentation_test.c
+        mem_fragmentation_test.h
         metrics.c
         metrics.h
         mqtt.c

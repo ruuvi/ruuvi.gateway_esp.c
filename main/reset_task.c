@@ -306,5 +306,8 @@ gateway_restart(const char* const p_msg)
 void
 gateway_restart_low_memory(void)
 {
+    LOG_ERR("Low memory - restart gateway");
+#if !RUUVI_GATEWAY_ENABLE_MEM_FRAGMENTATION_TEST
     gateway_restart("Low memory");
+#endif // RUUVI_GATEWAY_ENABLE_MEM_FRAGMENTATION_TEST
 }
