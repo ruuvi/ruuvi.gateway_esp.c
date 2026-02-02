@@ -7,14 +7,15 @@
 
 #include "network_timeout.h"
 #include <stddef.h>
+#include <esp_attr.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/timers.h>
 #include "os_mutex.h"
 #include "ruuvi_gateway.h"
 
-static TickType_t        g_network_timeout_last_successful_timestamp;
-static os_mutex_t        g_p_network_timeout_mutex;
-static os_mutex_static_t g_network_timeout_mutex_mem;
+static TickType_t IRAM_ATTR g_network_timeout_last_successful_timestamp;
+static os_mutex_t IRAM_ATTR g_p_network_timeout_mutex;
+static os_mutex_static_t    g_network_timeout_mutex_mem;
 
 static void
 network_timeout_lock(void)

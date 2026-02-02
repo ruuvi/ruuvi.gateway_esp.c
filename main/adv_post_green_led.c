@@ -6,6 +6,7 @@
  */
 
 #include "adv_post_green_led.h"
+#include <esp_attr.h>
 #include "os_timer_sig.h"
 #include "os_mutex.h"
 #include "os_task.h"
@@ -19,14 +20,14 @@
 #endif
 #include "log.h"
 #include "adv_post_timers.h"
-static const char* TAG = "ADV_POST_GREEN_LED";
+static const char TAG[] = "ADV_POST_GREEN_LED";
 
-static bool             g_adv_post_green_led_state;
-static os_task_handle_t g_adv_post_task_handle;
+static bool                       g_adv_post_green_led_state;
+static os_task_handle_t IRAM_ATTR g_adv_post_task_handle;
 
-static bool              g_adv_post_green_led_disabled;
-static os_mutex_static_t g_adv_post_green_led_disabled_mutex_mem;
-static os_mutex_t        g_adv_post_green_led_disabled_mutex;
+static bool                 g_adv_post_green_led_disabled;
+static os_mutex_static_t    g_adv_post_green_led_disabled_mutex_mem;
+static os_mutex_t IRAM_ATTR g_adv_post_green_led_disabled_mutex;
 
 void
 adv_post_green_led_init(void)

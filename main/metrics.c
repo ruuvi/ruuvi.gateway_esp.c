@@ -8,6 +8,7 @@
 #include "metrics.h"
 #include <inttypes.h>
 #include <string.h>
+#include <esp_attr.h>
 #include "esp_heap_caps.h"
 #include "esp32/rom/crc.h"
 #include "esp_timer.h"
@@ -121,14 +122,14 @@ typedef struct metrics_tmp_buf_t
 
 static const char TAG[] = "metrics";
 
-static uint64_t          g_received_advertisements;
-static uint64_t          g_received_advertisements_ext;
-static uint64_t          g_received_advertisements_coded;
-static uint64_t          g_nrf_lost_ack_cnt;
-static uint32_t          g_nrf_self_reboot_cnt;
-static uint32_t          g_nrf_ext_hw_reset_cnt;
-static os_mutex_t        g_p_metrics_mutex;
-static os_mutex_static_t g_metrics_mutex_mem;
+static uint64_t IRAM_ATTR   g_received_advertisements;
+static uint64_t IRAM_ATTR   g_received_advertisements_ext;
+static uint64_t IRAM_ATTR   g_received_advertisements_coded;
+static uint64_t IRAM_ATTR   g_nrf_lost_ack_cnt;
+static uint32_t IRAM_ATTR   g_nrf_self_reboot_cnt;
+static uint32_t IRAM_ATTR   g_nrf_ext_hw_reset_cnt;
+static os_mutex_t IRAM_ATTR g_p_metrics_mutex;
+static os_mutex_static_t    g_metrics_mutex_mem;
 
 void
 metrics_init(void)

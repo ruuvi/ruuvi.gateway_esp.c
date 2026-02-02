@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <assert.h>
 #include <string.h>
+#include <esp_attr.h>
 #include "os_task.h"
 #if defined(RUUVI_TESTS_LEDS_BLINKING) && RUUVI_TESTS_LEDS_BLINKING
 #define LOG_LOCAL_DISABLED
@@ -24,9 +25,9 @@
 #define STATIC static
 #endif
 
-STATIC leds_blinking_mode_t g_leds_blinking_mode;
-STATIC int32_t              g_leds_blinking_sequence_idx;
-static os_task_handle_t     g_leds_blinking_task_handle;
+STATIC leds_blinking_mode_t       g_leds_blinking_mode;
+STATIC int32_t IRAM_ATTR          g_leds_blinking_sequence_idx;
+static os_task_handle_t IRAM_ATTR g_leds_blinking_task_handle;
 
 static const char TAG[] = "LEDS";
 

@@ -14,7 +14,7 @@
 #include "log.h"
 
 #if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
-static const char* TAG = "leds_ctrl";
+static const char TAG[] = "leds_ctrl";
 #endif
 
 typedef struct leds_ctrl_state_t

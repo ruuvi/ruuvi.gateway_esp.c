@@ -24,7 +24,7 @@
 #define RUUVI_TESTS_FLASHFATFS (0)
 #endif
 
-static const char* TAG = "FlashFatFS";
+static const char TAG[] = "FlashFatFS";
 
 struct flash_fat_fs_t
 {

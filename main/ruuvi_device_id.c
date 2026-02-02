@@ -7,6 +7,7 @@
 
 #include "ruuvi_device_id.h"
 #include <string.h>
+#include <esp_attr.h>
 #include "str_buf.h"
 #include "os_mutex.h"
 #include "api.h"
@@ -24,10 +25,10 @@ static const char TAG[] = "nrf52";
 
 #define BYTE_FF (0xFFU)
 
-static nrf52_device_info_t g_nrf52_device_info = { 0 };
-static volatile bool       g_ruuvi_device_id_flag_nrf52_id_received;
-static os_mutex_t          g_ruuvi_device_id_mutex;
-static os_mutex_static_t   g_ruuvi_device_id_mutex_mem;
+static nrf52_device_info_t  g_nrf52_device_info = { 0 };
+static volatile bool        g_ruuvi_device_id_flag_nrf52_id_received;
+static os_mutex_t IRAM_ATTR g_ruuvi_device_id_mutex;
+static os_mutex_static_t    g_ruuvi_device_id_mutex_mem;
 
 void
 ruuvi_device_id_init(void)

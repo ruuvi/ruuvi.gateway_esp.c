@@ -23,7 +23,7 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #endif
 #include "log.h"
-static const char* TAG = "ADV_POST_TASK";
+static const char TAG[] = "ADV_POST_TASK";
 
 static void
 adv_post_wdt_add_and_start(void)

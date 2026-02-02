@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <string.h>
+#include <esp_attr.h>
 #include "os_mutex.h"
 #include "os_timer_sig.h"
 #include "ruuvi_endpoint_ca_uart.h"
@@ -22,7 +23,7 @@
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
-static const char* TAG = "ADV_POST_NRF52";
+static const char TAG[] = "ADV_POST_NRF52";
 
 #define ADV_POST_NRF52_RESET_TIMEOUT_MS   (100U)
 #define ADV_POST_NRF52_CFG_REQ_TIMEOUT_MS (500U)
@@ -42,7 +43,7 @@ typedef struct adv_post_nrf52_cfg_t
 
 static adv_post_nrf52_cfg_t g_adv_post_nrf52_cfg;
 
-static os_task_handle_t g_adv_post_nrf52_task_handle;
+static os_task_handle_t IRAM_ATTR g_adv_post_nrf52_task_handle;
 // All functions that send commands to nRF52 must be called from the same thread.
 // So, there is no need to use mutexes to protect the access to the following global variables.
 static re_ca_uart_cmd_t g_adv_post_nrf52_last_cmd;
@@ -53,14 +54,14 @@ static uint16_t         g_adv_post_nrf52_ack_timeout_cnt;
 #define ADV_POST_LED_CTRL_TIME_INTERVAL_INVALID (0xFFFFU)
 static uint16_t g_adv_post_nrf52_led_ctrl_time_interval_ms;
 
-static os_timer_sig_one_shot_static_t g_adv_post_timer_sig_nrf52_ack_timeout_mem;
-static os_timer_sig_one_shot_t*       g_adv_post_timer_sig_nrf52_ack_timeout;
+static os_timer_sig_one_shot_static_t     g_adv_post_timer_sig_nrf52_ack_timeout_mem;
+static os_timer_sig_one_shot_t* IRAM_ATTR g_adv_post_timer_sig_nrf52_ack_timeout;
 
-static os_timer_sig_one_shot_static_t g_adv_post_timer_sig_nrf52_reset_mem;
-static os_timer_sig_one_shot_t*       g_adv_post_timer_sig_nrf52_reset;
+static os_timer_sig_one_shot_static_t     g_adv_post_timer_sig_nrf52_reset_mem;
+static os_timer_sig_one_shot_t* IRAM_ATTR g_adv_post_timer_sig_nrf52_reset;
 
-static os_timer_sig_one_shot_static_t g_adv_post_timer_sig_nrf52_cfg_req_timeout_mem;
-static os_timer_sig_one_shot_t*       g_adv_post_timer_sig_nrf52_cfg_req_timeout;
+static os_timer_sig_one_shot_static_t     g_adv_post_timer_sig_nrf52_cfg_req_timeout_mem;
+static os_timer_sig_one_shot_t* IRAM_ATTR g_adv_post_timer_sig_nrf52_cfg_req_timeout;
 
 bool
 adv_post_nrf52_is_in_hw_reset_state(void)

@@ -13,7 +13,7 @@
 #include "adv_mqtt_signals.h"
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
-static const char* TAG = "ADV_MQTT";
+static const char TAG[] = "ADV_MQTT";
 
 void
 adv_mqtt_init(void)

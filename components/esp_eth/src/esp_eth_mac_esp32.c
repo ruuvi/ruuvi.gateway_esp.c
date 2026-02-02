@@ -14,6 +14,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/cdefs.h>
+#include <esp_attr.h>
 #include "driver/periph_ctrl.h"
 #include "driver/gpio.h"
 #include "esp_attr.h"
@@ -68,7 +69,7 @@ typedef struct {
 #endif
 } emac_esp32_t;
 
-static esp_eth_mac_callback_on_low_memory_t g_esp_eth_mac_callback_on_low_memory;
+static esp_eth_mac_callback_on_low_memory_t IRAM_ATTR g_esp_eth_mac_callback_on_low_memory;
 
 void esp_eth_mac_register_callback_on_low_memory(esp_eth_mac_callback_on_low_memory_t callback_on_low_memory)
 {
@@ -229,7 +230,7 @@ static esp_err_t emac_esp32_set_promiscuous(esp_eth_mac_t *mac, bool enable)
 static esp_err_t emac_esp32_transmit(esp_eth_mac_t *mac, uint8_t *buf, uint32_t length)
 {
     // This function is called from the "tiT" thread (TCP/IP task from LWIP)
-    static uint32_t g_tx_transmit_err_cnt = 0;
+    static uint32_t IRAM_ATTR g_tx_transmit_err_cnt = 0;
     esp_err_t ret = ESP_OK;
     emac_esp32_t *emac = __containerof(mac, emac_esp32_t, parent);
     uint32_t sent_len = emac_hal_transmit_frame(&emac->hal, buf, length);

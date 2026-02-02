@@ -36,7 +36,7 @@
 // Cloudfare public DNS
 const char* dns_fallback_server = "1.1.1.1";
 
-static const char* TAG = "ETH";
+static const char TAG[] = "ETH";
 
 static esp_eth_handle_t            g_eth_handle;
 static ethernet_cb_link_up_t       g_ethernet_link_up_cb;

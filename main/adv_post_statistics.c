@@ -6,6 +6,7 @@
  */
 
 #include "adv_post_statistics.h"
+#include <esp_attr.h>
 #include "os_malloc.h"
 #include "gw_cfg.h"
 #include "runtime_stat.h"
@@ -26,9 +27,9 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #endif
 #include "log.h"
-static const char* TAG = "ADV_POST_STAT";
+static const char TAG[] = "ADV_POST_STAT";
 
-static uint32_t g_adv_post_stat_nonce;
+static uint32_t IRAM_ATTR g_adv_post_stat_nonce;
 
 void
 adv_post_statistics_init(void)

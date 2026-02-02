@@ -47,7 +47,7 @@ typedef struct nrf52fw_update_tmp_data_t
     nrf52swd_segment_t       sha256_stub_mem_segments[NRF52SWD_SHA256_MAX_SEGMENTS];
 } nrf52fw_update_tmp_data_t;
 
-static const char* TAG = "nRF52Fw";
+static const char TAG[] = "nRF52Fw";
 
 #if !RUUVI_TESTS_NRF52FW
 static portMUX_TYPE g_nrf52fw_manual_reset_mode_spinlock = portMUX_INITIALIZER_UNLOCKED;

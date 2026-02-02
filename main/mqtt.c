@@ -6,6 +6,7 @@
  */
 
 #include "mqtt.h"
+#include <esp_attr.h>
 #include <esp_task_wdt.h>
 #include "esp_err.h"
 #include "cJSON.h"
@@ -76,11 +77,11 @@ typedef struct mqtt_protected_data_t
 } mqtt_protected_data_t;
 
 static bool                  g_mqtt_mutex_initialized = false;
-static os_mutex_t            g_mqtt_mutex;
+static os_mutex_t IRAM_ATTR  g_mqtt_mutex;
 static os_mutex_static_t     g_mqtt_mutex_mem;
 static mqtt_protected_data_t g_mqtt_data;
 
-static const char* TAG = "MQTT";
+static const char TAG[] = "MQTT";
 
 static mqtt_protected_data_t*
 mqtt_mutex_lock(void)

@@ -18,7 +18,7 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #endif
 #include "log.h"
-static const char* TAG = "GW_CFG";
+static const char TAG[] = "GW_CFG";
 
 _Static_assert(sizeof(GW_CFG_HTTP_AUTH_TYPE_STR_NO) <= GW_CFG_HTTP_AUTH_TYPE_STR_SIZE, "");
 _Static_assert(sizeof(GW_CFG_HTTP_AUTH_TYPE_STR_NONE) <= GW_CFG_HTTP_AUTH_TYPE_STR_SIZE, "");

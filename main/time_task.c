@@ -8,6 +8,7 @@
 #include "time_task.h"
 #include <time.h>
 #include <assert.h>
+#include <esp_attr.h>
 #include "os_task.h"
 #include "esp_sntp.h"
 #include "attribs.h"
@@ -59,7 +60,7 @@ static event_mgr_ev_info_static_t g_time_task_ev_info_mem_eth_connected;
 static event_mgr_ev_info_static_t g_time_task_ev_info_mem_eth_disconnected;
 static event_mgr_ev_info_static_t g_time_task_ev_info_mem_gw_cfg_changed_ruuvi;
 
-static time_t g_time_min_valid;
+static time_t IRAM_ATTR g_time_min_valid;
 
 static bool g_time_is_synchronized;
 

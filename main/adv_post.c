@@ -8,6 +8,7 @@
 #include "adv_post.h"
 #include <string.h>
 #include <time.h>
+#include <esp_attr.h>
 #include "esp_task_wdt.h"
 #include "os_task.h"
 #include "mqtt.h"
@@ -33,7 +34,7 @@
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
-static const char* TAG = "ADV_POST";
+static const char TAG[] = "ADV_POST";
 
 #define NRF52_COMM_TASK_PRIORITY (9)
 
@@ -56,7 +57,7 @@ static adv_callbacks_fn_t adv_callback_func_tbl = {
     .AdvGetAllCallback = adv_post_nrf52_cb_on_recv_get_all,
 };
 
-static uint32_t g_adv_post_advs_cnt;
+static uint32_t IRAM_ATTR g_adv_post_advs_cnt;
 
 static void
 adv_post_advs_cnt_inc(void)

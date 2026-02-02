@@ -10,6 +10,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <esp_attr.h>
 #include "settings.h"
 #include "os_wrapper_types.h"
 #include "time_units.h"
@@ -59,7 +60,7 @@ extern "C" {
 #define RUUVI_MQTT_TLS_IN_CONTENT_LEN  (8192)
 #define RUUVI_MQTT_TLS_OUT_CONTENT_LEN (4096)
 
-extern volatile uint32_t g_network_disconnect_cnt;
+extern volatile uint32_t IRAM_ATTR g_network_disconnect_cnt;
 
 void
 timer_cfg_mode_deactivation_start_with_delay(const TimeUnitsSeconds_t delay_sec);

@@ -6,7 +6,8 @@
  */
 
 #include "event_mgr.h"
-#include "assert.h"
+#include <assert.h>
+#include <esp_attr.h>
 #include "os_mutex.h"
 #include "os_signal.h"
 #include "sys/queue.h"
@@ -27,21 +28,27 @@ _Static_assert(
     sizeof(event_mgr_ev_info_static_t) == sizeof(event_mgr_ev_info_t),
     "sizeof(event_mgr_ev_info_static_t) == sizeof(event_mgr_ev_info_t)");
 
+/**
+ * @note All fields in this struct must be 32-bit aligned because IRAM_ATTR is used.
+ */
 typedef struct event_mgr_queue_of_subscribers_t
 {
     TAILQ_HEAD(event_mgr_queue_of_subscribers_head_t, event_mgr_ev_info_t) head;
 } event_mgr_queue_of_subscribers_t;
 
+/**
+ * @note All fields in this struct must be 32-bit aligned because IRAM_ATTR is used.
+ */
 struct event_mgr_t
 {
     os_mutex_t                       h_mutex;
-    os_mutex_static_t                mutex_static;
     event_mgr_queue_of_subscribers_t events[EVENT_MGR_EV_LAST];
 };
 
-static const char* TAG = "event_mgr";
+static const char TAG[] = "event_mgr";
 
-static event_mgr_t g_event_mgr;
+static event_mgr_t IRAM_ATTR g_event_mgr;
+static os_mutex_static_t     g_event_mgr_mutex_static;
 
 bool
 event_mgr_init(void)
@@ -51,7 +58,7 @@ event_mgr_init(void)
     {
         return false;
     }
-    p_obj->h_mutex = os_mutex_create_static(&p_obj->mutex_static);
+    p_obj->h_mutex = os_mutex_create_static(&g_event_mgr_mutex_static);
     for (uint32_t i = EVENT_MGR_EV_NONE; i < EVENT_MGR_EV_LAST; ++i)
     {
         const event_mgr_ev_e ev = (const event_mgr_ev_e)i;

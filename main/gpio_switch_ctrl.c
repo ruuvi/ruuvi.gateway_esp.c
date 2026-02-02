@@ -7,6 +7,7 @@
 
 #include "gpio_switch_ctrl.h"
 #include <driver/gpio.h>
+#include <esp_attr.h>
 #include "os_mutex.h"
 #include "esp_type_wrapper.h"
 #include "ruuvi_board_gwesp.h"
@@ -14,11 +15,11 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
-static const char* TAG = "SwitchCtrl";
+static const char TAG[] = "SwitchCtrl";
 
-static os_mutex_t        g_switch_ctrl_mutex;
-static os_mutex_static_t g_switch_ctrl_mutex_mem;
-static uint32_t          g_switch_ctrl_cnt;
+static os_mutex_t IRAM_ATTR g_switch_ctrl_mutex;
+static os_mutex_static_t    g_switch_ctrl_mutex_mem;
+static uint32_t IRAM_ATTR   g_switch_ctrl_cnt;
 
 void
 gpio_switch_ctrl_init(void)

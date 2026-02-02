@@ -6,6 +6,7 @@
  */
 
 #include "ruuvi_gateway.h"
+#include <esp_attr.h>
 #include <esp_task_wdt.h>
 #include <driver/gpio.h>
 #include <esp_system.h>
@@ -59,10 +60,10 @@ static const char TAG[] = "ruuvi_gateway";
 
 #define RUUVI_GATEWAY_DELAY_BEFORE_REBOOT_AFTER_FW_ROLLBACK_MS (5000)
 
-uint32_t volatile g_network_disconnect_cnt;
+volatile uint32_t IRAM_ATTR g_network_disconnect_cnt;
 
-static os_mutex_t        g_http_server_mutex_incoming_connection;
-static os_mutex_static_t g_http_server_mutex_incoming_connection_mem;
+static os_mutex_t IRAM_ATTR g_http_server_mutex_incoming_connection;
+static os_mutex_static_t    g_http_server_mutex_incoming_connection_mem;
 
 void
 http_server_mutex_activate(void)

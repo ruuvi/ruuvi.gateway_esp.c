@@ -8,6 +8,7 @@
 #include "adv_table.h"
 #include <string.h>
 #include <limits.h>
+#include <esp_attr.h>
 #include "os_mutex.h"
 #include "sys/queue.h"
 
@@ -42,14 +43,14 @@ struct adv_reports_list_elem_t
     adv_report_t adv_report;
 };
 
-static os_mutex_t              gp_adv_reports_mutex;
-static os_mutex_static_t       g_adv_reports_mutex_mem;
-static adv_reports_list_elem_t g_arr_of_adv_reports[MAX_ADVS_TABLE];
-static adv_report_list_t       g_adv_hash_table[ADV_TABLE_HASH_SIZE];
-static adv_report_list_t       g_adv_reports_retransmission_list1;
-static adv_report_list_t       g_adv_reports_retransmission_list2;
-static adv_report_list_t       g_adv_reports_retransmission_list3;
-static adv_report_hist_list_t  g_adv_reports_hist_list;
+static os_mutex_t IRAM_ATTR             gp_adv_reports_mutex;
+static os_mutex_static_t                g_adv_reports_mutex_mem;
+static adv_reports_list_elem_t          g_arr_of_adv_reports[MAX_ADVS_TABLE];
+static adv_report_list_t IRAM_ATTR      g_adv_hash_table[ADV_TABLE_HASH_SIZE];
+static adv_report_list_t IRAM_ATTR      g_adv_reports_retransmission_list1;
+static adv_report_list_t IRAM_ATTR      g_adv_reports_retransmission_list2;
+static adv_report_list_t IRAM_ATTR      g_adv_reports_retransmission_list3;
+static adv_report_hist_list_t IRAM_ATTR g_adv_reports_hist_list;
 
 void
 adv_table_init(void)

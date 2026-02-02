@@ -7,6 +7,7 @@
 
 #include "adv_mqtt_signals.h"
 #include <esp_task_wdt.h>
+#include <esp_attr.h>
 #include "os_malloc.h"
 #include "event_mgr.h"
 #include "adv_table.h"
@@ -27,12 +28,12 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #endif
 #include "log.h"
-static const char* TAG = "ADV_MQTT_TASK";
+static const char TAG[] = "ADV_MQTT_TASK";
 
 typedef void (*adv_mqtt_sig_handler_t)(adv_mqtt_state_t* const p_adv_mqtt_state);
 
-static os_signal_t*       g_p_adv_mqtt_sig;
-static os_signal_static_t g_adv_mqtt_sig_mem;
+static os_signal_t* IRAM_ATTR g_p_adv_mqtt_sig;
+static os_signal_static_t     g_adv_mqtt_sig_mem;
 
 ATTR_PURE
 os_signal_num_e
