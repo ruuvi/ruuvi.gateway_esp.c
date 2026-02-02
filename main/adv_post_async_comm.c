@@ -167,6 +167,7 @@ adv_post_do_async_comm_send_advs1(adv_post_state_t* const p_adv_post_state)
     {
         g_adv_post_action = ADV_POST_ACTION_NONE;
         leds_notify_http1_data_sent_fail();
+        p_adv_post_state->flag_need_to_send_advs1 = false;
         LOG_DBG("http_server_mutex_unlock");
         http_server_mutex_unlock();
         return;
@@ -200,6 +201,7 @@ adv_post_do_async_comm_send_advs2(adv_post_state_t* const p_adv_post_state)
     {
         g_adv_post_action = ADV_POST_ACTION_NONE;
         leds_notify_http2_data_sent_fail();
+        p_adv_post_state->flag_need_to_send_advs2 = false;
         LOG_DBG("http_server_mutex_unlock");
         http_server_mutex_unlock();
         return;
@@ -238,7 +240,8 @@ adv_post_do_async_comm_send_statistics(adv_post_state_t* const p_adv_post_state)
     if (!adv_post_statistics_do_send())
     {
         LOG_ERR("Failed to send statistics");
-        g_adv_post_action = ADV_POST_ACTION_NONE;
+        g_adv_post_action                              = ADV_POST_ACTION_NONE;
+        p_adv_post_state->flag_need_to_send_statistics = false;
         LOG_DBG("http_server_mutex_unlock");
         http_server_mutex_unlock();
         return;
@@ -277,7 +280,8 @@ adv_post_do_async_comm_start_sending_periodic_mqtt(adv_post_state_t* const p_adv
 
     if (!adv_post_do_retransmission(p_adv_post_state->flag_use_timestamps, ADV_POST_ACTION_POST_ADVS_TO_MQTT))
     {
-        g_adv_post_action = ADV_POST_ACTION_NONE;
+        g_adv_post_action                                 = ADV_POST_ACTION_NONE;
+        p_adv_post_state->flag_need_to_send_mqtt_periodic = false;
         main_task_send_sig_restart_services();
         return;
     }
