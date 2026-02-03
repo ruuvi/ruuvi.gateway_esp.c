@@ -22,7 +22,7 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #endif
 #include "log.h"
-static const char* TAG = "ADV_MQTT";
+static const char TAG[] = "ADV_MQTT";
 
 static void
 adv_mqtt_wdt_add_and_start(void)

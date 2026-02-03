@@ -6,6 +6,7 @@
  */
 
 #include "adv_post_timers.h"
+#include <esp_attr.h>
 #include "os_timer_sig.h"
 #include "adv_post_signals.h"
 #include "adv_post_internal.h"
@@ -19,7 +20,7 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #endif
 #include "log.h"
-static const char* TAG = "ADV_POST_TIMERS";
+static const char TAG[] = "ADV_POST_TIMERS";
 
 typedef struct adv_post_timer_t
 {
@@ -60,11 +61,11 @@ typedef enum adv_post_timer_sig_one_shot_e
     ADV_POST_ONE_SHOT_TIMER_SIG_NUM,
 } adv_post_timer_sig_one_shot_e;
 
-os_timer_sig_periodic_static_t g_adv_post_periodic_timer_sig_mem[ADV_POST_PERIODIC_TIMER_SIG_NUM];
-os_timer_sig_periodic_t*       g_p_adv_post_periodic_timer_sig[ADV_POST_PERIODIC_TIMER_SIG_NUM];
+os_timer_sig_periodic_static_t     g_adv_post_periodic_timer_sig_mem[ADV_POST_PERIODIC_TIMER_SIG_NUM];
+os_timer_sig_periodic_t* IRAM_ATTR g_p_adv_post_periodic_timer_sig[ADV_POST_PERIODIC_TIMER_SIG_NUM];
 
-os_timer_sig_one_shot_static_t g_adv_post_one_shot_timer_sig_mem[ADV_POST_ONE_SHOT_TIMER_SIG_NUM];
-os_timer_sig_one_shot_t*       g_p_adv_post_one_shot_timer_sig[ADV_POST_ONE_SHOT_TIMER_SIG_NUM];
+os_timer_sig_one_shot_static_t     g_adv_post_one_shot_timer_sig_mem[ADV_POST_ONE_SHOT_TIMER_SIG_NUM];
+os_timer_sig_one_shot_t* IRAM_ATTR g_p_adv_post_one_shot_timer_sig[ADV_POST_ONE_SHOT_TIMER_SIG_NUM];
 
 static const timer_sig_periodic_desc_t g_adv_post_periodic_timer_sig[ADV_POST_PERIODIC_TIMER_SIG_NUM] = {
     [ADV_POST_PERIODIC_TIMER_SIG_RETRANSMIT] = {

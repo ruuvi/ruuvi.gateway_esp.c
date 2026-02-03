@@ -6,6 +6,7 @@
  */
 
 #include "driver/gpio.h"
+#include <esp_attr.h>
 #include "gpio.h"
 #include "ruuvi_boards.h"
 #include "reset_task.h"

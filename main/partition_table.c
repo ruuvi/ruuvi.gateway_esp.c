@@ -8,6 +8,7 @@
 #include "partition_table.h"
 #include <stdint.h>
 #include <string.h>
+#include <esp_attr.h>
 #include <esp_spi_flash.h>
 #include "os_malloc.h"
 #include "os_mutex.h"
@@ -22,8 +23,8 @@ static const char TAG[] = "partition_table";
 extern const uint8_t partition_table_start[] asm("_binary_partition_table_bin_start");
 extern const uint8_t partition_table_end[] asm("_binary_partition_table_bin_end");
 
-static os_mutex_static_t g_mutex_partition_table_mem;
-static os_mutex_t        g_mutex_partition_table = NULL;
+static os_mutex_static_t    g_mutex_partition_table_mem;
+static os_mutex_t IRAM_ATTR g_mutex_partition_table = NULL;
 
 void
 partition_table_update_init_mutex(void)

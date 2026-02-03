@@ -183,3 +183,15 @@ set_source_files_properties("${NRF52_FATFS_WL_AREA}" PROPERTIES GENERATED TRUE)
 target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "${NRF52_FATFS_WL_AREA}" BINARY)
 # Ensure the nrf52_fatfs_wl_area is generated before the ELF is linked
 add_dependencies(${CMAKE_PROJECT_NAME}.elf gen_nrf52_fatfs_wl_area)
+
+# Add a post-build command to the project ELF to automatically show memory usage.
+idf_build_get_property(idf_path IDF_PATH)
+idf_build_get_property(python PYTHON)
+add_custom_command(TARGET ${CMAKE_PROJECT_NAME}.elf POST_BUILD
+        COMMAND ${python} ${idf_path}/tools/idf_size.py
+        --target ${IDF_TARGET}
+        ${CMAKE_BINARY_DIR}/${CMAKE_PROJECT_NAME}.map
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        COMMENT "Showing memory usage"
+        USES_TERMINAL
+)

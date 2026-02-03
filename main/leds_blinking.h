@@ -9,6 +9,7 @@
 #define RUUVI_GATEWAY_ESP_LEDS_BLINKING_H
 
 #include <stdbool.h>
+#include <esp_attr.h>
 #include "leds_ctrl_defs.h"
 
 #ifdef __cplusplus
@@ -17,7 +18,7 @@ extern "C" {
 
 #if defined(RUUVI_TESTS) && RUUVI_TESTS
 extern leds_blinking_mode_t g_leds_blinking_mode;
-extern int32_t              g_leds_blinking_sequence_idx;
+extern int32_t IRAM_ATTR    g_leds_blinking_sequence_idx;
 #endif
 
 void

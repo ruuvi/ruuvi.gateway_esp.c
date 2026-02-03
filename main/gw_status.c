@@ -6,6 +6,7 @@
  */
 
 #include "gw_status.h"
+#include <esp_attr.h>
 #include <esp_task_wdt.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
@@ -36,18 +37,21 @@
 
 #define TIMEOUT_WAITING_UNTIL_RELAYING_STOPPED_SECONDS (15)
 
+/**
+ * @note All fields in this struct must be 32-bit aligned because IRAM_ATTR is used.
+ */
 typedef struct gw_status_relaying_t
 {
-    os_mutex_t        mutex_cnt_relaying_suspended;
-    os_mutex_static_t mutex_mem_cnt_relaying_suspended;
-    int32_t           cnt_relaying_via_http_suspended;
-    int32_t           cnt_relaying_via_mqtt_suspended;
+    os_mutex_t mutex_cnt_relaying_suspended;
+    int32_t    cnt_relaying_via_http_suspended;
+    int32_t    cnt_relaying_via_mqtt_suspended;
 } gw_status_relaying_t;
 
 static const char TAG[] = "gw_status";
 
-static EventGroupHandle_t   g_p_ev_grp_status_bits;
-static gw_status_relaying_t g_gw_status_relaying;
+static EventGroupHandle_t             g_p_ev_grp_status_bits;
+static gw_status_relaying_t IRAM_ATTR g_gw_status_relaying;
+static os_mutex_static_t              g_mutex_mem_cnt_relaying_suspended;
 
 bool
 gw_status_init(void)
@@ -61,7 +65,7 @@ gw_status_init(void)
     gw_status_relaying_t* const p_relaying      = &g_gw_status_relaying;
     p_relaying->cnt_relaying_via_http_suspended = 0;
     p_relaying->cnt_relaying_via_mqtt_suspended = 0;
-    p_relaying->mutex_cnt_relaying_suspended    = os_mutex_create_static(&p_relaying->mutex_mem_cnt_relaying_suspended);
+    p_relaying->mutex_cnt_relaying_suspended    = os_mutex_create_static(&g_mutex_mem_cnt_relaying_suspended);
     return true;
 }
 

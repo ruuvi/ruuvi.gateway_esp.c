@@ -23,7 +23,7 @@
 #endif
 #include "log.h"
 
-static const char* TAG = "SWD";
+static const char TAG[] = "SWD";
 
 typedef int LibSWD_ReturnCode_t;
 typedef int LibSWD_IdCode_t;

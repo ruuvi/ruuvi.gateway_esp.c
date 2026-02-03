@@ -7,10 +7,11 @@
 
 #include "adv_mqtt_cfg_cache.h"
 #include <stddef.h>
+#include <esp_attr.h>
 #include "os_mutex.h"
 
 static adv_mqtt_cfg_cache_t g_adv_mqtt_cfg_cache;
-static os_mutex_t           g_p_adv_mqtt_cfg_cache_access_mutex;
+static os_mutex_t IRAM_ATTR g_p_adv_mqtt_cfg_cache_access_mutex;
 static os_mutex_static_t    g_adv_mqtt_cfg_cache_access_mutex_mem;
 
 void

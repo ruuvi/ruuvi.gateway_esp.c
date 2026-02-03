@@ -6,6 +6,7 @@
  */
 
 #include "ruuvi_gateway.h"
+#include <esp_attr.h>
 #include <esp_task_wdt.h>
 #include <esp_heap_caps.h>
 #include "os_signal.h"
@@ -70,24 +71,24 @@ typedef enum main_task_sig_e
 #define MAIN_TASK_SIG_FIRST (MAIN_TASK_SIG_LOG_HEAP_USAGE)
 #define MAIN_TASK_SIG_LAST  (MAIN_TASK_SIG_TASK_WATCHDOG_FEED)
 
-static os_signal_t*                   g_p_signal_main_task;
-static os_signal_static_t             g_signal_main_task_mem;
-static os_timer_sig_periodic_t*       g_p_timer_sig_log_heap_usage;
-static os_timer_sig_periodic_static_t g_timer_sig_log_heap_usage;
-static os_timer_sig_periodic_t*       g_p_timer_sig_log_runtime_stat;
-static os_timer_sig_periodic_static_t g_timer_sig_log_runtime_stat;
-static os_timer_sig_one_shot_t*       g_p_timer_sig_check_for_fw_updates;
-static os_timer_sig_one_shot_static_t g_timer_sig_check_for_fw_updates_mem;
-static os_timer_sig_one_shot_t*       g_p_timer_sig_deactivate_cfg_mode;
-static os_timer_sig_one_shot_static_t g_p_timer_sig_deactivate_cfg_mode_mem;
-static os_timer_sig_periodic_t*       g_p_timer_sig_check_for_remote_cfg;
-static os_timer_sig_periodic_static_t g_timer_sig_check_for_remote_cfg_mem;
-static os_timer_sig_one_shot_t*       g_p_timer_sig_get_history_timeout;
-static os_timer_sig_one_shot_static_t g_timer_sig_get_history_timeout_mem;
-static os_timer_sig_periodic_t*       g_p_timer_sig_task_watchdog_feed;
-static os_timer_sig_periodic_static_t g_timer_sig_task_watchdog_feed_mem;
-static os_timer_sig_one_shot_t*       g_p_timer_sig_deferred_ethernet_activation;
-static os_timer_sig_one_shot_static_t g_timer_sig_deferred_ethernet_activation_mem;
+static os_signal_t* IRAM_ATTR             g_p_signal_main_task;
+static os_signal_static_t                 g_signal_main_task_mem;
+static os_timer_sig_periodic_t* IRAM_ATTR g_p_timer_sig_log_heap_usage;
+static os_timer_sig_periodic_static_t     g_timer_sig_log_heap_usage;
+static os_timer_sig_periodic_t* IRAM_ATTR g_p_timer_sig_log_runtime_stat;
+static os_timer_sig_periodic_static_t     g_timer_sig_log_runtime_stat;
+static os_timer_sig_one_shot_t* IRAM_ATTR g_p_timer_sig_check_for_fw_updates;
+static os_timer_sig_one_shot_static_t     g_timer_sig_check_for_fw_updates_mem;
+static os_timer_sig_one_shot_t* IRAM_ATTR g_p_timer_sig_deactivate_cfg_mode;
+static os_timer_sig_one_shot_static_t     g_p_timer_sig_deactivate_cfg_mode_mem;
+static os_timer_sig_periodic_t* IRAM_ATTR g_p_timer_sig_check_for_remote_cfg;
+static os_timer_sig_periodic_static_t     g_timer_sig_check_for_remote_cfg_mem;
+static os_timer_sig_one_shot_t* IRAM_ATTR g_p_timer_sig_get_history_timeout;
+static os_timer_sig_one_shot_static_t     g_timer_sig_get_history_timeout_mem;
+static os_timer_sig_periodic_t* IRAM_ATTR g_p_timer_sig_task_watchdog_feed;
+static os_timer_sig_periodic_static_t     g_timer_sig_task_watchdog_feed_mem;
+static os_timer_sig_one_shot_t* IRAM_ATTR g_p_timer_sig_deferred_ethernet_activation;
+static os_timer_sig_one_shot_static_t     g_timer_sig_deferred_ethernet_activation_mem;
 
 static event_mgr_ev_info_static_t g_main_loop_ev_info_mem_wifi_connected;
 static event_mgr_ev_info_static_t g_main_loop_ev_info_mem_eth_connected;
@@ -182,12 +183,12 @@ check_if_checking_for_fw_updates_allowed(void)
 static void
 main_task_handle_sig_log_heap_usage(void)
 {
-    static uint32_t g_heap_usage_stat_cnt               = 0;
-    static uint32_t g_heap_usage_min_free_heap          = 0xFFFFFFFFU;
-    static uint32_t g_heap_usage_max_free_heap          = 0;
-    static uint32_t g_heap_usage_min_largest_free_block = 0xFFFFFFFFU;
-    static uint32_t g_heap_usage_max_largest_free_block = 0;
-    static uint32_t g_heap_limit_cnt                    = 0;
+    static uint32_t IRAM_ATTR g_heap_usage_stat_cnt               = 0;
+    static uint32_t IRAM_ATTR g_heap_usage_min_free_heap          = 0xFFFFFFFFU;
+    static uint32_t IRAM_ATTR g_heap_usage_max_free_heap          = 0;
+    static uint32_t IRAM_ATTR g_heap_usage_min_largest_free_block = 0xFFFFFFFFU;
+    static uint32_t IRAM_ATTR g_heap_usage_max_largest_free_block = 0;
+    static uint32_t IRAM_ATTR g_heap_limit_cnt                    = 0;
 
 #if RUUVI_GATEWAY_ENABLE_MEM_FRAGMENTATION_TEST
     mem_fragmentation_test();
@@ -777,6 +778,8 @@ void
 main_loop(void)
 {
     LOG_INFO("Main loop started");
+    heap_caps_print_heap_info(MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL);
+    heap_caps_print_heap_info(MALLOC_CAP_INTERNAL | MALLOC_CAP_EXEC | MALLOC_CAP_32BIT);
     main_wdt_add_and_start();
 
     if (gw_cfg_get_mqtt_use_mqtt())

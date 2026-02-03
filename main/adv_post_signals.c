@@ -7,6 +7,7 @@
 
 #include "adv_post_signals.h"
 #include <string.h>
+#include <esp_attr.h>
 #include <esp_task_wdt.h>
 #include "os_malloc.h"
 #include "event_mgr.h"
@@ -31,12 +32,12 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #endif
 #include "log.h"
-static const char* TAG = "ADV_POST_SIGNALS";
+static const char TAG[] = "ADV_POST_SIGNALS";
 
 typedef void (*adv_post_sig_handler_t)(adv_post_state_t* const p_adv_post_state);
 
-static os_signal_t*       g_p_adv_post_sig;
-static os_signal_static_t g_adv_post_sig_mem;
+static os_signal_t* IRAM_ATTR g_p_adv_post_sig;
+static os_signal_static_t     g_adv_post_sig_mem;
 
 ATTR_PURE
 os_signal_num_e

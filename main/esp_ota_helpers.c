@@ -30,7 +30,7 @@
 #define LOG_LOCAL_LEVEL 3
 #include "log.h"
 
-const static char* TAG = "esp_ota_ops";
+const static char TAG[] = "esp_ota_ops";
 
 esp_err_t
 esp_ota_helper_erase_partition_with_sleep(

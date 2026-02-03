@@ -22,6 +22,7 @@
 #include <string.h>
 #include <assert.h>
 #include <freertos/FreeRTOS.h>
+#include <esp_attr.h>
 #include "os_malloc.h"
 
 #include "esp_err.h"
@@ -57,9 +58,9 @@ typedef LIST_HEAD(ota_ops_entries_head, ota_ops_entry_t) ota_ops_entries_head_t;
 
 static ota_ops_entries_head_t s_ota_ops_entries_head = LIST_HEAD_INITIALIZER(s_ota_ops_entries_head);
 
-static uint32_t s_ota_ops_last_handle = 0;
+static uint32_t IRAM_ATTR s_ota_ops_last_handle = 0;
 
-const static char* TAG = "esp_ota_ops";
+const static char TAG[] = "esp_ota_ops";
 
 /* Return true if this is an OTA app partition */
 bool

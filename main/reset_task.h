@@ -10,14 +10,15 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <esp_attr.h>
 #include "attribs.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern volatile uint32_t g_cnt_cfg_button_pressed;
-extern volatile uint32_t g_uptime_counter;
+extern volatile uint32_t IRAM_ATTR g_cnt_cfg_button_pressed;
+extern volatile uint32_t IRAM_ATTR g_uptime_counter;
 
 bool
 reset_task_init(void);

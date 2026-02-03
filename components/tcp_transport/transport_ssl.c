@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
-
+#include <esp_attr.h>
 #include "esp_tls.h"
 #define LOG_LOCAL_LEVEL 3
 #include "esp_log.h"
@@ -47,9 +47,9 @@ typedef struct transport_esp_tls {
 
 #define ESP_TLS_MAX_NUM_SAVED_SESSIONS (2)
 
-static esp_tls_client_session_t* g_saved_sessions[ESP_TLS_MAX_NUM_SAVED_SESSIONS];
-static int32_t g_saved_session_last_used_idx;
-static SemaphoreHandle_t g_saved_sessions_sema;
+static esp_tls_client_session_t* IRAM_ATTR g_saved_sessions[ESP_TLS_MAX_NUM_SAVED_SESSIONS];
+static int32_t IRAM_ATTR g_saved_session_last_used_idx;
+static SemaphoreHandle_t IRAM_ATTR g_saved_sessions_sema;
 static StaticSemaphore_t g_saved_sessions_sema_mem;
 
 static void log_heap_info(void) {

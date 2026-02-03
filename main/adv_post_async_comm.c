@@ -7,6 +7,7 @@
 
 #include "adv_post_async_comm.h"
 #include <esp_system.h>
+#include <esp_attr.h>
 #include "os_malloc.h"
 #include "os_timer_sig.h"
 #include "time_task.h"
@@ -28,14 +29,14 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #endif
 #include "log.h"
-static const char* TAG = "ADV_POST_ASYNC_COMM";
+static const char TAG[] = "ADV_POST_ASYNC_COMM";
 
-static uint32_t          g_adv_post_nonce;
-static adv_post_action_e g_adv_post_action = ADV_POST_ACTION_NONE;
+static uint32_t IRAM_ATTR g_adv_post_nonce;
+static adv_post_action_e  g_adv_post_action = ADV_POST_ACTION_NONE;
 
-static const adv_report_table_t* g_p_adv_post_reports_mqtt;
-static uint32_t                  g_adv_post_reports_mqtt_idx;
-static time_t                    g_adv_post_reports_mqtt_timestamp;
+static const adv_report_table_t* IRAM_ATTR g_p_adv_post_reports_mqtt;
+static uint32_t IRAM_ATTR                  g_adv_post_reports_mqtt_idx;
+static time_t IRAM_ATTR                    g_adv_post_reports_mqtt_timestamp;
 
 void
 adv_post_async_comm_init(void)

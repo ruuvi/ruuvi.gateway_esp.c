@@ -7,6 +7,7 @@
 
 #include "runtime_stat.h"
 #include <string.h>
+#include <esp_attr.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos_task_stack_size.h"
@@ -39,7 +40,7 @@ typedef struct runtime_stat_accumulated_task_info_t
 typedef uint32_t runtime_stat_task_info_idx_t;
 
 static runtime_stat_accumulated_task_info_t g_runtime_stat_accumulated[RUNTIME_STAT_MAX_NUM_TASKS];
-static os_mutex_t                           g_runtime_stat_accumulated_mutex;
+static os_mutex_t IRAM_ATTR                 g_runtime_stat_accumulated_mutex;
 static os_mutex_static_t                    g_runtime_stat_accumulated_mutex_mem;
 static runtime_stat_task_info_t             g_tasks_info[RUNTIME_STAT_MAX_NUM_TASKS] = { 0 };
 
@@ -308,8 +309,8 @@ log_runtime_statistics(void)
         return;
     }
 
-    static uint32_t prev_total_time = 0;
-    uint32_t        total_time      = 0;
+    static IRAM_ATTR uint32_t prev_total_time = 0;
+    uint32_t                  total_time      = 0;
 
     const uint32_t num_tasks = uxTaskGetSystemState(p_arr_of_tasks, RUNTIME_STAT_MAX_NUM_TASKS, &total_time);
 

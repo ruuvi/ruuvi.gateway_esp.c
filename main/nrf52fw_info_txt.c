@@ -13,7 +13,7 @@
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 
-static const char* TAG = "nRF52Fw";
+static const char TAG[] = "nRF52Fw";
 
 NRF52FW_STATIC
 bool
