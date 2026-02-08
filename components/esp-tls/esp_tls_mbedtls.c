@@ -310,7 +310,7 @@ void esp_mbedtls_verify_certificate(esp_tls_t *tls)
     int flags;
 
     if ((flags = mbedtls_ssl_get_verify_result(&tls->ssl)) != 0) {
-        ESP_LOGE(TAG, "Failed to verify peer certificate for host: %s", tls->ssl.hostname);
+        ESP_LOGE(TAG, "Failed to verify peer certificate for host: %s", tls->ssl.hostname.buf);
         ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_MBEDTLS_CERT_FLAGS, flags);
 #if (CONFIG_LOG_DEFAULT_LEVEL_DEBUG || CONFIG_LOG_DEFAULT_LEVEL_VERBOSE)
         char buf[100];
@@ -641,8 +641,19 @@ esp_err_t set_client_config(const char *hostname, size_t hostlen, esp_tls_cfg_t 
     if (!cfg->skip_common_name) {
         char *use_host = NULL;
         if (cfg->common_name != NULL) {
-            use_host = strndup(cfg->common_name, strlen(cfg->common_name));
+            const size_t common_name_len = strlen(cfg->common_name);
+            if (common_name_len > MBEDTLS_SSL_MAX_HOST_NAME_LEN) {
+                ESP_LOGE(TAG, "common_name '%s' length %zu exceeds mbedtls max limit %u",
+                        cfg->common_name, common_name_len, MBEDTLS_SSL_MAX_HOST_NAME_LEN);
+                return ESP_ERR_INVALID_ARG;
+            }
+            use_host = strndup(cfg->common_name, common_name_len);
         } else {
+            if (hostlen > MBEDTLS_SSL_MAX_HOST_NAME_LEN) {
+                ESP_LOGE(TAG, "Hostname '%.*s' length %zu exceeds mbedtls max limit %u",
+                         (int)hostlen, hostname, hostlen, MBEDTLS_SSL_MAX_HOST_NAME_LEN);
+                return ESP_ERR_INVALID_ARG;
+            }
             use_host = strndup(hostname, hostlen);
         }
 

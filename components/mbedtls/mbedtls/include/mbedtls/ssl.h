@@ -270,7 +270,7 @@
 #define MBEDTLS_SSL_TRANSPORT_STREAM            0   /*!< TLS      */
 #define MBEDTLS_SSL_TRANSPORT_DATAGRAM          1   /*!< DTLS     */
 
-#define MBEDTLS_SSL_MAX_HOST_NAME_LEN           255 /*!< Maximum host name defined in RFC 1035 */
+#define MBEDTLS_SSL_MAX_HOST_NAME_LEN           127 /*!< Maximum host name defined in RFC 1035: 255. Use lower value for the embedded platform */
 #define MBEDTLS_SSL_MAX_ALPN_NAME_LEN           255 /*!< Maximum size in bytes of a protocol name in alpn ext., RFC 7301 */
 
 #define MBEDTLS_SSL_MAX_ALPN_LIST_LEN           65535 /*!< Maximum size in bytes of list in alpn ext., RFC 7301          */
@@ -1185,6 +1185,11 @@ typedef enum {
     MBEDTLS_SSL_VERSION_TLS1_3 = 0x0304, /*!< (D)TLS 1.3 */
 } mbedtls_ssl_protocol_version;
 
+typedef struct mbedtls_ssl_hostname_t
+{
+    char buf[MBEDTLS_SSL_MAX_HOST_NAME_LEN + 1];
+} mbedtls_ssl_hostname_t;
+
 /*
  * This structure is used for storing current session data.
  *
@@ -1243,7 +1248,7 @@ struct mbedtls_ssl_session {
     unsigned char MBEDTLS_PRIVATE(resumption_key)[MBEDTLS_SSL_TLS1_3_TICKET_RESUMPTION_KEY_LEN];
 
 #if defined(MBEDTLS_SSL_SERVER_NAME_INDICATION) && defined(MBEDTLS_SSL_CLI_C)
-    char *MBEDTLS_PRIVATE(hostname);             /*!< host name binded with tickets */
+    mbedtls_ssl_hostname_t MBEDTLS_PRIVATE(ticket_hostname);  /*!< host name binded with tickets */
 #endif /* MBEDTLS_SSL_SERVER_NAME_INDICATION && MBEDTLS_SSL_CLI_C */
 
 #if defined(MBEDTLS_HAVE_TIME) && defined(MBEDTLS_SSL_CLI_C)
@@ -1793,7 +1798,7 @@ struct mbedtls_ssl_context {
      * User settings
      */
 #if defined(MBEDTLS_X509_CRT_PARSE_C)
-    char *MBEDTLS_PRIVATE(hostname);             /*!< expected peer CN for verification
+    mbedtls_ssl_hostname_t MBEDTLS_PRIVATE(hostname); /*!< expected peer CN for verification
                                                     (and SNI if available)                 */
 #endif /* MBEDTLS_X509_CRT_PARSE_C */
 
@@ -3823,7 +3828,7 @@ int mbedtls_ssl_set_hostname(mbedtls_ssl_context *ssl, const char *hostname);
  */
 static inline const char *mbedtls_ssl_get_hostname(mbedtls_ssl_context *ssl)
 {
-    return ssl->MBEDTLS_PRIVATE(hostname);
+    return ssl->MBEDTLS_PRIVATE(hostname).buf;
 }
 #endif /* MBEDTLS_X509_CRT_PARSE_C */
 

@@ -47,15 +47,15 @@ static int ssl_write_hostname_ext(mbedtls_ssl_context *ssl,
 
     *olen = 0;
 
-    if (ssl->hostname == NULL) {
+    if (ssl->hostname.buf[0] == '\0') {
         return 0;
     }
 
     MBEDTLS_SSL_DEBUG_MSG(3,
                           ("client hello, adding server name extension: %s",
-                           ssl->hostname));
+                           ssl->hostname.buf));
 
-    hostname_len = strlen(ssl->hostname);
+    hostname_len = strlen(ssl->hostname.buf);
 
     MBEDTLS_SSL_CHK_BUF_PTR(p, end, hostname_len + 9);
 
@@ -99,7 +99,7 @@ static int ssl_write_hostname_ext(mbedtls_ssl_context *ssl,
     MBEDTLS_PUT_UINT16_BE(hostname_len, p, 0);
     p += 2;
 
-    memcpy(p, ssl->hostname, hostname_len);
+    memcpy(p, ssl->hostname.buf, hostname_len);
 
     *olen = hostname_len + 9;
 
@@ -911,11 +911,11 @@ static int ssl_prepare_client_hello(mbedtls_ssl_context *ssl)
     defined(MBEDTLS_SSL_SERVER_NAME_INDICATION)
     if (ssl->tls_version == MBEDTLS_SSL_VERSION_TLS1_3  &&
         ssl->handshake->resume) {
-        int hostname_mismatch = ssl->hostname != NULL ||
-                                session_negotiate->hostname != NULL;
-        if (ssl->hostname != NULL && session_negotiate->hostname != NULL) {
+        int hostname_mismatch = ssl->hostname.buf[0] != '\0' ||
+                                session_negotiate->ticket_hostname.buf[0] != '\0';
+        if (ssl->hostname.buf[0] != '\0' && session_negotiate->ticket_hostname.buf[0] != '\0') {
             hostname_mismatch = strcmp(
-                ssl->hostname, session_negotiate->hostname) != 0;
+                ssl->hostname.buf, session_negotiate->ticket_hostname.buf) != 0;
         }
 
         if (hostname_mismatch) {
@@ -926,7 +926,7 @@ static int ssl_prepare_client_hello(mbedtls_ssl_context *ssl)
         }
     } else {
         return mbedtls_ssl_session_set_hostname(session_negotiate,
-                                                ssl->hostname);
+                                                &ssl->hostname);
     }
 #endif /* MBEDTLS_SSL_PROTO_TLS1_3 &&
           MBEDTLS_SSL_SESSION_TICKETS &&
