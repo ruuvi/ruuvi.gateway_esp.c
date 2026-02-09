@@ -900,11 +900,15 @@ void esp_transport_ssl_skip_common_name_check(esp_transport_handle_t t)
 void esp_transport_ssl_set_common_name(esp_transport_handle_t t, const char *common_name)
 {
     GET_SSL_FROM_TRANSPORT_OR_RETURN(ssl, t);
+    /* Treat NULL as "clear" / fallback to hostname as per API docs. */
+    if (common_name == NULL) {
+        ssl->cfg.common_name = NULL;
+        return;
+    }
     if (strlen(common_name) > MBEDTLS_SSL_MAX_HOST_NAME_LEN) {
         ESP_TRANSPORT_LOGE_FUNC("The length of common_name '%s' exceeds the maximum limit of %u characters.",
                                 common_name,
                                 MBEDTLS_SSL_MAX_HOST_NAME_LEN);
-        ssl->cfg.common_name = NULL;
         return;
     }
     ssl->cfg.common_name = common_name;

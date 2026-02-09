@@ -2639,6 +2639,8 @@ static int ssl_tls13_session_load(mbedtls_ssl_session *session,
         if (hostname_len_with_null > 0) {
             memcpy(session->ticket_hostname.buf, p, hostname_len_with_null);
             p += hostname_len_with_null;
+        } else {
+            session->ticket_hostname.buf[0] = '\0';
         }
 #endif /* MBEDTLS_SSL_SERVER_NAME_INDICATION &&
           MBEDTLS_SSL_SESSION_TICKETS */
@@ -7292,7 +7294,7 @@ static int ssl_parse_certificate_verify(mbedtls_ssl_context *ssl,
             ssl->conf->f_ca_cb,
             ssl->conf->p_ca_cb,
             ssl->conf->cert_profile,
-            ssl->hostname,
+            ssl->hostname.buf,
             &ssl->session_negotiate->verify_result,
             f_vrfy, p_vrfy);
     } else
@@ -9555,7 +9557,7 @@ int mbedtls_ssl_session_set_hostname(mbedtls_ssl_session *session,
     if (p_hostname == NULL) {
         session->ticket_hostname.buf[0] = '\0';
     } else {
-        memcpy(&session->ticket_hostname.buf, &p_hostname->buf, hostname_len);
+        memcpy(session->ticket_hostname.buf, p_hostname->buf, hostname_len);
         session->ticket_hostname.buf[hostname_len] = '\0';
     }
 
