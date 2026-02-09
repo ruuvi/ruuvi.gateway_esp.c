@@ -639,36 +639,26 @@ esp_err_t set_client_config(const char *hostname, size_t hostlen, esp_tls_cfg_t 
     assert(tls != NULL);
     int ret;
     if (!cfg->skip_common_name) {
-        char *use_host = NULL;
         if (cfg->common_name != NULL) {
             const size_t common_name_len = strlen(cfg->common_name);
-            if (common_name_len > MBEDTLS_SSL_MAX_HOST_NAME_LEN) {
+            if (common_name_len >= sizeof(tls->ssl.hostname.buf)) {
                 ESP_LOGE(TAG, "common_name '%s' length %zu exceeds mbedtls max limit %u",
                         cfg->common_name, common_name_len, MBEDTLS_SSL_MAX_HOST_NAME_LEN);
                 return ESP_ERR_INVALID_ARG;
             }
-            use_host = strndup(cfg->common_name, common_name_len);
+            strcpy(tls->ssl.hostname.buf, cfg->common_name);
         } else {
-            if (hostlen > MBEDTLS_SSL_MAX_HOST_NAME_LEN) {
+            if (hostlen >= sizeof(tls->ssl.hostname.buf)) {
                 ESP_LOGE(TAG, "Hostname '%.*s' length %zu exceeds mbedtls max limit %u",
-                         (int)hostlen, hostname, hostlen, MBEDTLS_SSL_MAX_HOST_NAME_LEN);
+                         ((hostlen <= INT_MAX) ? (int)hostlen : INT_MAX),
+                         hostname,
+                         hostlen,
+                         MBEDTLS_SSL_MAX_HOST_NAME_LEN);
                 return ESP_ERR_INVALID_ARG;
             }
-            use_host = strndup(hostname, hostlen);
+            memcpy(tls->ssl.hostname.buf, hostname, hostlen);
+            tls->ssl.hostname.buf[hostlen] = '\0';
         }
-
-        if (use_host == NULL) {
-            return ESP_ERR_NO_MEM;
-        }
-        /* Hostname set here should match CN in server certificate */
-        if ((ret = mbedtls_ssl_set_hostname(&tls->ssl, use_host)) != 0) {
-            ESP_LOGE(TAG, "mbedtls_ssl_set_hostname returned -0x%04X", -ret);
-            mbedtls_print_error_msg(ret);
-            ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_MBEDTLS, ret);
-            free(use_host);
-            return ESP_ERR_MBEDTLS_SSL_SET_HOSTNAME_FAILED;
-        }
-        free(use_host);
     }
 
     if ((ret = mbedtls_ssl_config_defaults(&tls->conf,
