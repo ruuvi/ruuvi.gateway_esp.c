@@ -7294,7 +7294,7 @@ static int ssl_parse_certificate_verify(mbedtls_ssl_context *ssl,
             ssl->conf->f_ca_cb,
             ssl->conf->p_ca_cb,
             ssl->conf->cert_profile,
-            ssl->hostname.buf,
+            ('\0' != ssl->hostname.buf[0]) ? ssl->hostname.buf : NULL,
             &ssl->session_negotiate->verify_result,
             f_vrfy, p_vrfy);
     } else
@@ -7322,7 +7322,7 @@ static int ssl_parse_certificate_verify(mbedtls_ssl_context *ssl,
             chain,
             ca_chain, ca_crl,
             ssl->conf->cert_profile,
-            ssl->hostname.buf,
+            ('\0' != ssl->hostname.buf[0]) ? ssl->hostname.buf : NULL,
             &ssl->session_negotiate->verify_result,
             f_vrfy, p_vrfy, rs_ctx);
     }
