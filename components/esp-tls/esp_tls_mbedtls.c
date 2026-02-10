@@ -640,15 +640,13 @@ esp_err_t set_client_config(const char *hostname, size_t hostlen, esp_tls_cfg_t 
     int ret;
     if (!cfg->skip_common_name) {
         if (cfg->common_name != NULL) {
-            const size_t common_name_len = strlen(cfg->common_name);
-            if (common_name_len >= sizeof(tls->ssl.hostname.buf)) {
+            if (mbedtls_ssl_set_hostname(&tls->ssl, cfg->common_name) != 0) {
                 ESP_LOGE(TAG, "common_name '%s' length %zu exceeds mbedtls max limit %u",
-                        cfg->common_name, common_name_len, MBEDTLS_SSL_MAX_HOST_NAME_LEN);
+                        cfg->common_name, strlen(cfg->common_name), MBEDTLS_SSL_MAX_HOST_NAME_LEN);
                 return ESP_ERR_INVALID_ARG;
             }
-            strcpy(tls->ssl.hostname.buf, cfg->common_name);
         } else {
-            if (hostlen >= sizeof(tls->ssl.hostname.buf)) {
+            if (mbedtls_ssl_set_hostname(&tls->ssl, hostname) != 0) {
                 ESP_LOGE(TAG, "Hostname '%.*s' length %zu exceeds mbedtls max limit %u",
                          ((hostlen <= INT_MAX) ? (int)hostlen : INT_MAX),
                          hostname,
@@ -656,8 +654,6 @@ esp_err_t set_client_config(const char *hostname, size_t hostlen, esp_tls_cfg_t 
                          MBEDTLS_SSL_MAX_HOST_NAME_LEN);
                 return ESP_ERR_INVALID_ARG;
             }
-            memcpy(tls->ssl.hostname.buf, hostname, hostlen);
-            tls->ssl.hostname.buf[hostlen] = '\0';
         }
     }
 
