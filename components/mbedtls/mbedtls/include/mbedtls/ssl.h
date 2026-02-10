@@ -1248,7 +1248,7 @@ struct mbedtls_ssl_session {
     unsigned char MBEDTLS_PRIVATE(resumption_key)[MBEDTLS_SSL_TLS1_3_TICKET_RESUMPTION_KEY_LEN];
 
 #if defined(MBEDTLS_SSL_SERVER_NAME_INDICATION) && defined(MBEDTLS_SSL_CLI_C)
-    mbedtls_ssl_hostname_t MBEDTLS_PRIVATE(ticket_hostname);  /*!< host name binded with tickets */
+    mbedtls_ssl_hostname_t MBEDTLS_PRIVATE(ticket_hostname);  /*!< host name bound with tickets */
 #endif /* MBEDTLS_SSL_SERVER_NAME_INDICATION && MBEDTLS_SSL_CLI_C */
 
 #if defined(MBEDTLS_HAVE_TIME) && defined(MBEDTLS_SSL_CLI_C)
