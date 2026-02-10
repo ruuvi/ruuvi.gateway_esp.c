@@ -2861,7 +2861,7 @@ int mbedtls_ct_hmac(mbedtls_md_context_t *ctx,
 /**
  * \brief Get the maximum outbound content length from an SSL configuration.
  *
- * \param[in] ssl_conf The SSL configuration. Must not be \c NULL.
+ * \param[in] ssl_conf The SSL configuration.
  *
  * \return The maximum length of the outbound content in bytes.
  *         If \c MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is defined, returns the
@@ -2869,6 +2869,9 @@ int mbedtls_ct_hmac(mbedtls_md_context_t *ctx,
  *         Otherwise, returns the fixed \c MBEDTLS_SSL_OUT_CONTENT_LEN value.
  */
 static inline uint32_t mbedtls_ssl_conf_get_out_content_len(const mbedtls_ssl_config* const ssl_conf) {
+    if (NULL == ssl_conf) {
+        return MBEDTLS_SSL_OUT_CONTENT_LEN;
+    }
 #if defined(MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
     const uint32_t ssl_out_content_len = ssl_conf->ssl_out_content_len;
 #else
@@ -2892,7 +2895,7 @@ static inline uint32_t mbedtls_ssl_conf_get_out_content_len(const mbedtls_ssl_co
  *         \c MBEDTLS_SSL_OUT_CONTENT_LEN.
  */
 static inline uint32_t mbedtls_ssl_get_out_content_len(const mbedtls_ssl_context* const ssl) {
-    if ((NULL == ssl) || (NULL == ssl->conf)) {
+    if (NULL == ssl) {
         return MBEDTLS_SSL_OUT_CONTENT_LEN;
     }
     return mbedtls_ssl_conf_get_out_content_len(ssl->conf);
@@ -2916,7 +2919,7 @@ static inline uint32_t mbedtls_ssl_get_out_buffer_size(const uint32_t ssl_out_co
 /**
  * \brief Get the maximum inbound content length from an SSL configuration.
  *
- * \param[in] ssl_conf The SSL configuration. Must not be \c NULL.
+ * \param[in] ssl_conf The SSL configuration.
  *
  * \return The maximum length of the inbound content in bytes.
  *         If \c MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is defined, returns the
@@ -2924,6 +2927,9 @@ static inline uint32_t mbedtls_ssl_get_out_buffer_size(const uint32_t ssl_out_co
  *         Otherwise, returns the fixed \c MBEDTLS_SSL_IN_CONTENT_LEN value.
  */
 static inline uint32_t mbedtls_ssl_conf_get_in_content_len(const mbedtls_ssl_config* const ssl_conf) {
+    if (NULL == ssl_conf) {
+        return MBEDTLS_SSL_IN_CONTENT_LEN;
+    }
 #if defined(MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
     const uint32_t ssl_in_content_len = ssl_conf->ssl_in_content_len;
 #else
@@ -2947,7 +2953,7 @@ static inline uint32_t mbedtls_ssl_conf_get_in_content_len(const mbedtls_ssl_con
  *         \c MBEDTLS_SSL_IN_CONTENT_LEN.
  */
 static inline uint32_t mbedtls_ssl_get_in_content_len(const mbedtls_ssl_context* const ssl) {
-    if ((NULL == ssl) || (NULL == ssl->conf)) {
+    if (NULL == ssl) {
         return MBEDTLS_SSL_IN_CONTENT_LEN;
     }
     return mbedtls_ssl_conf_get_in_content_len(ssl->conf);

@@ -1379,10 +1379,10 @@ int mbedtls_ssl_setup(mbedtls_ssl_context *ssl,
                       const mbedtls_ssl_config *conf)
 {
     int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
-    const uint32_t in_content_len = mbedtls_ssl_get_in_content_len(ssl);
-    const uint32_t out_content_len = mbedtls_ssl_get_out_content_len(ssl);
+    const uint32_t in_content_len = mbedtls_ssl_conf_get_in_content_len(conf);
+    const uint32_t out_content_len = mbedtls_ssl_conf_get_out_content_len(conf);
     const uint32_t in_buf_size = mbedtls_ssl_get_in_buffer_size(in_content_len);
-    const uint32_t out_buf_size = mbedtls_ssl_get_in_buffer_size(out_content_len);
+    const uint32_t out_buf_size = mbedtls_ssl_get_out_buffer_size(out_content_len);
 
     ssl->conf = conf;
 
@@ -1402,25 +1402,25 @@ int mbedtls_ssl_setup(mbedtls_ssl_context *ssl,
     ssl->out_buf = NULL;
 
 #if defined(MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
-    MBEDTLS_SSL_DEBUG_MSG(2, ("%s: in_content_len=%" PRIu32 ", in_buf_size=%" PRIu32,
-        __func__, in_content_len, in_buf_size));
+    MBEDTLS_SSL_DEBUG_MSG(2, ("%s: in_content_len=%" MBEDTLS_PRINTF_SIZET ", in_buf_size=%" MBEDTLS_PRINTF_SIZET,
+        __func__, (size_t)in_content_len, (size_t)in_buf_size));
     ssl->in_buf_len = in_buf_size;
 #endif
     ssl->in_buf = mbedtls_calloc(1, in_buf_size);
     if (ssl->in_buf == NULL) {
-        MBEDTLS_SSL_DEBUG_MSG(1, ("alloc(%" PRIu32 " bytes) failed", in_buf_size));
+        MBEDTLS_SSL_DEBUG_MSG(1, ("alloc(%" MBEDTLS_PRINTF_SIZET " bytes) failed", (size_t)in_buf_size));
         ret = MBEDTLS_ERR_SSL_ALLOC_FAILED;
         goto error;
     }
 
 #if defined(MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
-    MBEDTLS_SSL_DEBUG_MSG(2, ("%s: out_content_len=%" PRIu32 ", out_buf_size=%" PRIu32,
-        __func__, out_content_len, out_buf_size));
+    MBEDTLS_SSL_DEBUG_MSG(2, ("%s: out_content_len=%" MBEDTLS_PRINTF_SIZET ", out_buf_size=%" MBEDTLS_PRINTF_SIZET,
+        __func__, (size_t)out_content_len, (size_t)out_buf_size));
     ssl->out_buf_len = out_buf_size;
 #endif
     ssl->out_buf = mbedtls_calloc(1, out_buf_size);
     if (ssl->out_buf == NULL) {
-        MBEDTLS_SSL_DEBUG_MSG(1, ("alloc(%" PRIu32 " bytes) failed", out_buf_size));
+        MBEDTLS_SSL_DEBUG_MSG(1, ("alloc(%" MBEDTLS_PRINTF_SIZET " bytes) failed", (size_t)out_buf_size));
         ret = MBEDTLS_ERR_SSL_ALLOC_FAILED;
         goto error;
     }

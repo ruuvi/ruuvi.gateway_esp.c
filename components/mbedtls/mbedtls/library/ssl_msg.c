@@ -4288,7 +4288,7 @@ static int ssl_load_buffered_message(mbedtls_ssl_context *ssl)
 
         /* Double-check that we haven't accidentally buffered
          * a message that doesn't fit into the input buffer. */
-        if (msg_len + 12 > mbedtls_ssl_get_in_buffer_size(ssl)) {
+        if (msg_len + 12 > mbedtls_ssl_get_in_content_len(ssl)) {
             MBEDTLS_SSL_DEBUG_MSG(1, ("should never happen"));
             return MBEDTLS_ERR_SSL_INTERNAL_ERROR;
         }
