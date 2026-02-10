@@ -2863,13 +2863,12 @@ int mbedtls_ssl_write_handshake_msg_ext(mbedtls_ssl_context *ssl,
 #if defined(MBEDTLS_SSL_PROTO_DTLS)
         if (ssl->conf->transport == MBEDTLS_SSL_TRANSPORT_DATAGRAM) {
             /* Make room for the additional DTLS fields */
-            const uint32_t ssl_out_buf_size = mbedtls_ssl_get_out_content_len(ssl);
-            if (ssl_out_buf_size - ssl->out_msglen < 8) {
+            if (ssl_out_content_len - ssl->out_msglen < 8) {
                 MBEDTLS_SSL_DEBUG_MSG(1, ("DTLS handshake message too large: "
                                           "size %" MBEDTLS_PRINTF_SIZET ", maximum %"
                                           MBEDTLS_PRINTF_SIZET,
                                           hs_len,
-                                          (size_t) (ssl_out_buf_size - 12)));
+                                          (size_t) (ssl_out_content_len - 12)));
                 return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
             }
 

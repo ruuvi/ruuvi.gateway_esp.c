@@ -3052,8 +3052,8 @@ ecdh_calc_secret:
         header_len = 4;
         content_len = ssl->conf->psk_identity_len;
 
-        const uint32_t ssl_out_buf_size = mbedtls_ssl_get_out_content_len(ssl);
-        if (header_len + 2 + content_len > ssl_out_buf_size) {
+        const uint32_t ssl_out_content_len = mbedtls_ssl_get_out_content_len(ssl);
+        if (header_len + 2 + content_len > ssl_out_content_len) {
             MBEDTLS_SSL_DEBUG_MSG(1,
                                   ("psk identity too long or SSL buffer too short"));
             return MBEDTLS_ERR_SSL_BUFFER_TOO_SMALL;
@@ -3088,7 +3088,7 @@ ecdh_calc_secret:
             content_len = mbedtls_dhm_get_len(&ssl->handshake->dhm_ctx);
 
             if (header_len + 2 + content_len >
-                ssl_out_buf_size) {
+                ssl_out_content_len) {
                 MBEDTLS_SSL_DEBUG_MSG(1,
                                       ("psk identity or DHM size too long or SSL buffer too short"));
                 return MBEDTLS_ERR_SSL_BUFFER_TOO_SMALL;
@@ -3134,7 +3134,7 @@ ecdh_calc_secret:
             ret = mbedtls_ecdh_make_public(&ssl->handshake->ecdh_ctx,
                                            &content_len,
                                            &ssl->out_msg[header_len],
-                                           ssl_out_buf_size - header_len,
+                                           ssl_out_content_len - header_len,
                                            ssl->conf->f_rng, ssl->conf->p_rng);
             if (ret != 0) {
                 MBEDTLS_SSL_DEBUG_RET(1, "mbedtls_ecdh_make_public", ret);
@@ -3176,8 +3176,7 @@ ecdh_calc_secret:
 
 #if defined(MBEDTLS_USE_PSA_CRYPTO)
         unsigned char *out_p = ssl->out_msg + header_len;
-        unsigned char *end_p = ssl->out_msg + ssl_out_content_len -
-                               header_len;
+        unsigned char *end_p = ssl->out_msg + ssl_out_content_len;
         ret = mbedtls_psa_ecjpake_write_round(&ssl->handshake->psa_pake_ctx,
                                               out_p, end_p - out_p, &content_len,
                                               MBEDTLS_ECJPAKE_ROUND_TWO);
