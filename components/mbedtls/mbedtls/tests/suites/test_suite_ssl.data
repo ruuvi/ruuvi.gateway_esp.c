@@ -913,6 +913,9 @@ ssl_dtls_replay:"abcd12340000abcd12340100":"abcd123400ff":0
 SSL SET_HOSTNAME memory leak: call ssl_set_hostname twice
 ssl_set_hostname_twice:"server0":"server1"
 
+SSL SET_HOSTNAME max length: test max valid length and exceeding length
+ssl_set_hostname_max_len
+
 SSL session serialization: Wrong major version
 depends_on:MBEDTLS_SSL_PROTO_TLS1_2
 ssl_session_serialize_version_check:1:0:0:0:0:MBEDTLS_SSL_VERSION_TLS1_2
