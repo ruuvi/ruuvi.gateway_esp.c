@@ -2753,9 +2753,9 @@ static int ssl_resume_server_key_exchange(mbedtls_ssl_context *ssl,
      * after the call to ssl_prepare_server_key_exchange.
      * ssl_write_server_key_exchange also takes care of incrementing
      * ssl->out_msglen. */
-    unsigned char *sig_start = ssl->out_msg + ssl->out_msglen + 2;
-    size_t sig_max_len = (ssl->out_buf + mbedtls_ssl_get_out_content_len(ssl)
-                          - sig_start);
+    unsigned char * const sig_start = ssl->out_msg + ssl->out_msglen + 2;
+    unsigned char * const end_p = ssl->out_buf + mbedtls_ssl_get_out_content_len(ssl);
+    const size_t sig_max_len = (end_p >= sig_start) ? (end_p - sig_start) : 0;
     int ret = ssl->conf->f_async_resume(ssl,
                                         sig_start, signature_len, sig_max_len);
     if (ret != MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS) {
@@ -2813,8 +2813,7 @@ static int ssl_prepare_server_key_exchange(mbedtls_ssl_context *ssl,
         int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
 #if defined(MBEDTLS_USE_PSA_CRYPTO)
         unsigned char *out_p = ssl->out_msg + ssl->out_msglen;
-        unsigned char *end_p = ssl->out_msg + mbedtls_ssl_get_out_content_len(ssl) -
-                               ssl->out_msglen;
+        unsigned char *end_p = ssl->out_msg + mbedtls_ssl_get_out_content_len(ssl);
         size_t output_offset = 0;
         size_t output_len = 0;
 

@@ -2906,7 +2906,7 @@ static inline uint32_t mbedtls_ssl_get_out_content_len(const mbedtls_ssl_context
  *
  * \param[in] ssl_out_content_len  The maximum outbound content length in bytes.
  *
-* \return The outbound buffer size in bytes.
+ * \return The outbound buffer size in bytes.
  */
 static inline uint32_t mbedtls_ssl_get_out_buffer_size(const uint32_t ssl_out_content_len) {
     uint32_t ssl_out_buffer_size = MBEDTLS_SSL_HEADER_LEN + ssl_out_content_len + MBEDTLS_SSL_PAYLOAD_OVERHEAD;
