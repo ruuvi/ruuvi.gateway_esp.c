@@ -1615,8 +1615,10 @@ struct mbedtls_ssl_config {
     const mbedtls_x509_crt *MBEDTLS_PRIVATE(dn_hints);/*!< acceptable client cert issuers    */
 #endif
 
+#if defined(MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
     uint32_t MBEDTLS_PRIVATE(ssl_in_content_len);
     uint32_t MBEDTLS_PRIVATE(ssl_out_content_len);
+#endif
 };
 
 struct mbedtls_ssl_context {

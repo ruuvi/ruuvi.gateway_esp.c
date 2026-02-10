@@ -30,7 +30,9 @@
 
 #if !defined(MBEDTLS_SSL_TEST_IMPOSSIBLE)
 
+#if !defined(ARRAY_LENGTH)
 #define ARRAY_LENGTH(x)     (sizeof(x)/sizeof(x[0]))
+#endif
 
 void my_debug(void *ctx, int level,
               const char *file, int line,
