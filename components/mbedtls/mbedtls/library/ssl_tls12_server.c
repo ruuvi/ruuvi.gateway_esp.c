@@ -1704,7 +1704,7 @@ static void ssl_write_cid_ext(mbedtls_ssl_context *ssl,
 {
     unsigned char *p = buf;
     size_t ext_len;
-    const unsigned char *end = ssl->out_msg + ssl->conf->ssl_out_content_len;
+    const unsigned char *end = ssl->out_msg + mbedtls_ssl_get_out_content_len(ssl);
 
     *olen = 0;
 
@@ -1939,7 +1939,7 @@ static void ssl_write_ecjpake_kkpp_ext(mbedtls_ssl_context *ssl,
 {
     int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
     unsigned char *p = buf;
-    const unsigned char *end = ssl->out_msg + ssl->conf->ssl_out_content_len;
+    const unsigned char *end = ssl->out_msg + mbedtls_ssl_get_out_content_len(ssl);
     size_t kkpp_len;
 
     *olen = 0;
@@ -1994,7 +1994,7 @@ static void ssl_write_use_srtp_ext(mbedtls_ssl_context *ssl,
 {
     size_t mki_len = 0, ext_len = 0;
     uint16_t profile_value = 0;
-    const unsigned char *end = ssl->out_msg + ssl->conf->ssl_out_content_len;
+    const unsigned char *end = ssl->out_msg + mbedtls_ssl_get_out_content_len(ssl);
 
     *olen = 0;
 
@@ -2376,7 +2376,7 @@ static int ssl_write_server_hello(mbedtls_ssl_context *ssl)
 #endif
 
 #if defined(MBEDTLS_SSL_ALPN)
-    unsigned char *end = buf + ssl->conf->ssl_out_content_len - 4;
+    unsigned char *end = buf + mbedtls_ssl_get_out_content_len(ssl) - 4;
     if ((ret = mbedtls_ssl_write_alpn_ext(ssl, p + 2 + ext_len, end, &olen))
         != 0) {
         return ret;
@@ -2437,7 +2437,7 @@ static int ssl_write_certificate_request(mbedtls_ssl_context *ssl)
     uint16_t dn_size, total_dn_size; /* excluding length bytes */
     size_t ct_len, sa_len; /* including length bytes */
     unsigned char *buf, *p;
-    const unsigned char * const end = ssl->out_msg + ssl->conf->ssl_out_content_len;
+    const unsigned char * const end = ssl->out_msg + mbedtls_ssl_get_out_content_len(ssl);
     const mbedtls_x509_crt *crt;
     int authmode;
 
@@ -2753,9 +2753,9 @@ static int ssl_resume_server_key_exchange(mbedtls_ssl_context *ssl,
      * after the call to ssl_prepare_server_key_exchange.
      * ssl_write_server_key_exchange also takes care of incrementing
      * ssl->out_msglen. */
-    unsigned char *sig_start = ssl->out_msg + ssl->out_msglen + 2;
-    size_t sig_max_len = (ssl->out_buf + ssl->conf->ssl_out_content_len
-                          - sig_start);
+    unsigned char * const sig_start = ssl->out_msg + ssl->out_msglen + 2;
+    unsigned char * const end_p = ssl->out_buf + mbedtls_ssl_get_out_content_len(ssl);
+    const size_t sig_max_len = (end_p >= sig_start) ? (end_p - sig_start) : 0;
     int ret = ssl->conf->f_async_resume(ssl,
                                         sig_start, signature_len, sig_max_len);
     if (ret != MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS) {
@@ -2813,8 +2813,7 @@ static int ssl_prepare_server_key_exchange(mbedtls_ssl_context *ssl,
         int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
 #if defined(MBEDTLS_USE_PSA_CRYPTO)
         unsigned char *out_p = ssl->out_msg + ssl->out_msglen;
-        unsigned char *end_p = ssl->out_msg + ssl->conf->ssl_out_content_len -
-                               ssl->out_msglen;
+        unsigned char *end_p = ssl->out_msg + mbedtls_ssl_get_out_content_len(ssl);
         size_t output_offset = 0;
         size_t output_len = 0;
 
@@ -2854,7 +2853,7 @@ static int ssl_prepare_server_key_exchange(mbedtls_ssl_context *ssl,
         ret = mbedtls_ecjpake_write_round_two(
             &ssl->handshake->ecjpake_ctx,
             ssl->out_msg + ssl->out_msglen,
-            ssl->conf->ssl_out_content_len - ssl->out_msglen, &len,
+            mbedtls_ssl_get_out_content_len(ssl) - ssl->out_msglen, &len,
             ssl->conf->f_rng, ssl->conf->p_rng);
         if (ret != 0) {
             MBEDTLS_SSL_DEBUG_RET(1, "mbedtls_ecjpake_write_round_two", ret);
@@ -3035,7 +3034,7 @@ curve_matching_done:
          */
         unsigned char *own_pubkey = p + data_length_size;
 
-        size_t own_pubkey_max_len = (size_t) (ssl->conf->ssl_out_content_len
+        size_t own_pubkey_max_len = (size_t) (mbedtls_ssl_get_out_content_len(ssl)
                                               - (own_pubkey - ssl->out_msg));
 
         status = psa_export_public_key(handshake->xxdh_psa_privkey,
@@ -3067,7 +3066,7 @@ curve_matching_done:
         if ((ret = mbedtls_ecdh_make_params(
                  &ssl->handshake->ecdh_ctx, &len,
                  ssl->out_msg + ssl->out_msglen,
-                 ssl->conf->ssl_out_content_len - ssl->out_msglen,
+                 mbedtls_ssl_get_out_content_len(ssl) - ssl->out_msglen,
                  ssl->conf->f_rng, ssl->conf->p_rng)) != 0) {
             MBEDTLS_SSL_DEBUG_RET(1, "mbedtls_ecdh_make_params", ret);
             return ret;
@@ -4265,7 +4264,7 @@ static int ssl_write_new_session_ticket(mbedtls_ssl_context *ssl)
     if ((ret = ssl->conf->f_ticket_write(ssl->conf->p_ticket,
                                          ssl->session_negotiate,
                                          ssl->out_msg + 10,
-                                         ssl->out_msg + ssl->conf->ssl_out_content_len,
+                                         ssl->out_msg + mbedtls_ssl_get_out_content_len(ssl),
                                          &tlen, &lifetime)) != 0) {
         MBEDTLS_SSL_DEBUG_RET(1, "mbedtls_ssl_ticket_write", ret);
         tlen = 0;
