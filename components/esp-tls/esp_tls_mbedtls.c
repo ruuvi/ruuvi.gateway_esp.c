@@ -310,7 +310,7 @@ void esp_mbedtls_verify_certificate(esp_tls_t *tls)
     int flags;
 
     if ((flags = mbedtls_ssl_get_verify_result(&tls->ssl)) != 0) {
-        ESP_LOGE(TAG, "Failed to verify peer certificate for host: %s", tls->ssl.hostname);
+        ESP_LOGE(TAG, "Failed to verify peer certificate for host: %s", tls->ssl.hostname.buf);
         ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_MBEDTLS_CERT_FLAGS, flags);
 #if (CONFIG_LOG_DEFAULT_LEVEL_DEBUG || CONFIG_LOG_DEFAULT_LEVEL_VERBOSE)
         char buf[100];
@@ -639,25 +639,26 @@ esp_err_t set_client_config(const char *hostname, size_t hostlen, esp_tls_cfg_t 
     assert(tls != NULL);
     int ret;
     if (!cfg->skip_common_name) {
-        char *use_host = NULL;
         if (cfg->common_name != NULL) {
-            use_host = strndup(cfg->common_name, strlen(cfg->common_name));
+            const size_t common_name_len = strlen(cfg->common_name);
+            if (common_name_len >= sizeof(tls->ssl.hostname.buf)) {
+                ESP_LOGE(TAG, "common_name '%s' length %zu exceeds mbedtls max limit %u",
+                        cfg->common_name, common_name_len, MBEDTLS_SSL_MAX_HOST_NAME_LEN);
+                return ESP_ERR_INVALID_ARG;
+            }
+            strcpy(tls->ssl.hostname.buf, cfg->common_name);
         } else {
-            use_host = strndup(hostname, hostlen);
+            if (hostlen >= sizeof(tls->ssl.hostname.buf)) {
+                ESP_LOGE(TAG, "Hostname '%.*s' length %zu exceeds mbedtls max limit %u",
+                         ((hostlen <= INT_MAX) ? (int)hostlen : INT_MAX),
+                         hostname,
+                         hostlen,
+                         MBEDTLS_SSL_MAX_HOST_NAME_LEN);
+                return ESP_ERR_INVALID_ARG;
+            }
+            memcpy(tls->ssl.hostname.buf, hostname, hostlen);
+            tls->ssl.hostname.buf[hostlen] = '\0';
         }
-
-        if (use_host == NULL) {
-            return ESP_ERR_NO_MEM;
-        }
-        /* Hostname set here should match CN in server certificate */
-        if ((ret = mbedtls_ssl_set_hostname(&tls->ssl, use_host)) != 0) {
-            ESP_LOGE(TAG, "mbedtls_ssl_set_hostname returned -0x%04X", -ret);
-            mbedtls_print_error_msg(ret);
-            ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_MBEDTLS, ret);
-            free(use_host);
-            return ESP_ERR_MBEDTLS_SSL_SET_HOSTNAME_FAILED;
-        }
-        free(use_host);
     }
 
     if ((ret = mbedtls_ssl_config_defaults(&tls->conf,

@@ -713,7 +713,7 @@ static int ssl_tls13_validate_certificate(mbedtls_ssl_context *ssl)
         ssl->session_negotiate->peer_cert,
         ca_chain, ca_crl,
         ssl->conf->cert_profile,
-        ssl->hostname,
+        ('\0' != ssl->hostname.buf[0]) ? ssl->hostname.buf : NULL,
         &verify_result,
         ssl->conf->f_vrfy, ssl->conf->p_vrfy);
 

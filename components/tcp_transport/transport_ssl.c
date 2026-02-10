@@ -80,7 +80,7 @@ log_saved_session_tickets(void) {
             ESP_TRANSPORT_LOGD("LOG: TLS session ticket[%d]: NULL", last_used_idx);
         } else {
             ESP_TRANSPORT_LOGD("LOG: TLS session ticket[%d]: %s",
-                               last_used_idx, g_saved_sessions[last_used_idx]->saved_session.hostname);
+                               last_used_idx, g_saved_sessions[last_used_idx]->saved_session.ticket_hostname.buf);
         }
     }
 }
@@ -95,7 +95,7 @@ get_saved_session_info_for_host(transport_esp_tls_t* const ssl, const char* cons
     for (int i = 0; i < ESP_TLS_MAX_NUM_SAVED_SESSIONS; ++i) {
         esp_tls_client_session_t* const p_saved_session = g_saved_sessions[i];
         if ((NULL != p_saved_session)
-            && (0 == strcmp(p_saved_session->saved_session.hostname, hostname)))
+            && (0 == strcmp(p_saved_session->saved_session.ticket_hostname.buf, hostname)))
         {
             p_found_saved_session = p_saved_session;
             g_saved_sessions[i] = NULL;
@@ -119,7 +119,7 @@ unlock_saved_session(transport_esp_tls_t* const ssl) {
     if (NULL != ssl->cfg.client_session)
     {
         ESP_TRANSPORT_LOGI("Free TLS saved session for ssl=%p, session=%p: %s",
-                           ssl, ssl->cfg.client_session, ssl->cfg.client_session->saved_session.hostname);
+                           ssl, ssl->cfg.client_session, ssl->cfg.client_session->saved_session.ticket_hostname.buf);
         esp_tls_free_client_session(ssl->cfg.client_session);
         ssl->cfg.client_session = NULL;
     }
@@ -139,7 +139,8 @@ static void save_new_session_ticket(transport_esp_tls_t *ssl)
     saved_sessions_sema_init();
     xSemaphoreTake(g_saved_sessions_sema, portMAX_DELAY);
 
-    ESP_TRANSPORT_LOGD_FUNC("[%s] Got new TLS session ticket, session=%p", p_session->saved_session.hostname, p_session);
+    ESP_TRANSPORT_LOGD_FUNC("[%s] Got new TLS session ticket, session=%p",
+                            p_session->saved_session.ticket_hostname.buf, p_session);
     log_saved_session_tickets();
 
     int found_idx = -1;
@@ -148,7 +149,8 @@ static void save_new_session_ticket(transport_esp_tls_t *ssl)
         if (NULL == p_saved_session) {
             continue;
         }
-        if (0 == strcmp(p_saved_session->saved_session.hostname, p_session->saved_session.hostname)) {
+        if (0 == strcmp(p_saved_session->saved_session.ticket_hostname.buf,
+                        p_session->saved_session.ticket_hostname.buf)) {
             found_idx = i;
             break;
         }
@@ -156,10 +158,12 @@ static void save_new_session_ticket(transport_esp_tls_t *ssl)
     if (found_idx >= 0) {
         ESP_TRANSPORT_LOGI(
             "[%s] Got new TLS session ticket, replace existing one (slot %d)",
-            p_session->saved_session.hostname,
+            p_session->saved_session.ticket_hostname.buf,
             found_idx);
         ESP_TRANSPORT_LOGI("Free TLS saved session for ssl=%p, session=%p: %s",
-                           ssl, g_saved_sessions[found_idx], g_saved_sessions[found_idx]->saved_session.hostname);
+                           ssl,
+                           g_saved_sessions[found_idx],
+                           g_saved_sessions[found_idx]->saved_session.ticket_hostname.buf);
         esp_tls_free_client_session(g_saved_sessions[found_idx]);
         g_saved_sessions[found_idx] = p_session;
     } else {
@@ -175,7 +179,7 @@ static void save_new_session_ticket(transport_esp_tls_t *ssl)
         if (found_idx >= 0) {
             ESP_TRANSPORT_LOGI(
                 "[%s] Got new TLS session ticket, save it to an empty slot (slot %d)",
-                p_session->saved_session.hostname,
+                p_session->saved_session.ticket_hostname.buf,
                 found_idx);
             g_saved_sessions[found_idx] = p_session;
         } else {
@@ -184,11 +188,11 @@ static void save_new_session_ticket(transport_esp_tls_t *ssl)
 
             ESP_TRANSPORT_LOGI("Free TLS saved session for ssl=%p, session=%p: %s",
                                ssl, g_saved_sessions[g_saved_session_last_used_idx],
-                               g_saved_sessions[g_saved_session_last_used_idx]->saved_session.hostname);
+                               g_saved_sessions[g_saved_session_last_used_idx]->saved_session.ticket_hostname.buf);
             esp_tls_free_client_session(g_saved_sessions[g_saved_session_last_used_idx]);
             g_saved_sessions[g_saved_session_last_used_idx] = p_session;
             ESP_TRANSPORT_LOGI("[%s] Save new TLS session ticket (slot %d)",
-                               p_session->saved_session.hostname, g_saved_session_last_used_idx);
+                               p_session->saved_session.ticket_hostname.buf, g_saved_session_last_used_idx);
         }
     }
 
@@ -210,8 +214,10 @@ void esp_transport_ssl_clear_saved_session_tickets(void)
         if (NULL == p_saved_session) {
             continue;
         }
-        ESP_TRANSPORT_LOGI("[%s] Clear TLS session ticket (slot %d)", p_saved_session->saved_session.hostname, i);
-        ESP_TRANSPORT_LOGI("Free TLS saved session, session=%p: %s", p_saved_session, p_saved_session->saved_session.hostname);
+        ESP_TRANSPORT_LOGI("[%s] Clear TLS session ticket (slot %d)",
+                           p_saved_session->saved_session.ticket_hostname.buf, i);
+        ESP_TRANSPORT_LOGI("Free TLS saved session, session=%p: %s",
+                           p_saved_session, p_saved_session->saved_session.ticket_hostname.buf);
         esp_tls_free_client_session(p_saved_session);
         g_saved_sessions[i] = NULL;
     }
@@ -894,6 +900,17 @@ void esp_transport_ssl_skip_common_name_check(esp_transport_handle_t t)
 void esp_transport_ssl_set_common_name(esp_transport_handle_t t, const char *common_name)
 {
     GET_SSL_FROM_TRANSPORT_OR_RETURN(ssl, t);
+    /* Treat NULL as "clear" / fallback to hostname as per API docs. */
+    if (common_name == NULL) {
+        ssl->cfg.common_name = NULL;
+        return;
+    }
+    if (strlen(common_name) > MBEDTLS_SSL_MAX_HOST_NAME_LEN) {
+        ESP_TRANSPORT_LOGE_FUNC("The length of common_name '%s' exceeds the maximum limit of %u characters.",
+                                common_name,
+                                MBEDTLS_SSL_MAX_HOST_NAME_LEN);
+        return;
+    }
     ssl->cfg.common_name = common_name;
 }
 
