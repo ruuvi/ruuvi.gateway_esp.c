@@ -2885,7 +2885,7 @@ static inline uint32_t mbedtls_ssl_conf_get_out_content_len(const mbedtls_ssl_co
  *
 * \return The maximum length of the outbound content in bytes.
  *         If the SSL context is \c NULL or has no configuration attached (\c ssl->conf is \c NULL),
- *         returns the fixed \c MBEDTLS_SSL_OUT_BUFFER_LEN value.
+ *         returns the fixed \c MBEDTLS_SSL_OUT_CONTENT_LEN value.
  *         Otherwise, if \c MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is defined, returns the
  *         configured \c ssl_out_content_len from the SSL configuration.
  *         If \c MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is not defined, returns
@@ -2908,7 +2908,7 @@ static inline uint32_t mbedtls_ssl_get_out_content_len(const mbedtls_ssl_context
 static inline uint32_t mbedtls_ssl_get_out_buffer_size(const uint32_t ssl_out_content_len) {
     uint32_t ssl_out_buffer_size = MBEDTLS_SSL_HEADER_LEN + ssl_out_content_len + MBEDTLS_SSL_PAYLOAD_OVERHEAD;
 #if defined(MBEDTLS_SSL_DTLS_CONNECTION_ID)
-    ssl_out_buffer_size += MBEDTLS_SSL_CID_IN_LEN_MAX;
+    ssl_out_buffer_size += MBEDTLS_SSL_CID_OUT_LEN_MAX;
 #endif
     return ssl_out_buffer_size;
 }
@@ -2942,7 +2942,7 @@ static inline uint32_t mbedtls_ssl_conf_get_in_content_len(const mbedtls_ssl_con
  *         If the SSL context is \c NULL or has no configuration attached (\c ssl->conf is \c NULL),
  *         returns the fixed \c MBEDTLS_SSL_IN_CONTENT_LEN value.
  *         Otherwise, if \c MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is defined, returns the
- *         configured \c ssl_out_content_len from the SSL configuration.
+ *         configured \c ssl_in_content_len from the SSL configuration.
  *         If \c MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is not defined, returns
  *         \c MBEDTLS_SSL_IN_CONTENT_LEN.
  */
