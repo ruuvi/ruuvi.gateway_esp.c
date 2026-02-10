@@ -3825,7 +3825,7 @@ int mbedtls_ssl_set_hostname(mbedtls_ssl_context *ssl, const char *hostname);
  *
  * \param ssl      SSL context
  *
- * \return         const pointer to the hostname value
+ * \return         const pointer to the hostname value or \c NULL if not set.
  */
 static inline const char *mbedtls_ssl_get_hostname(mbedtls_ssl_context *ssl)
 {
