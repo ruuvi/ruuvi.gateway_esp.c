@@ -2721,6 +2721,7 @@ MBEDTLS_CHECK_RETURN_CRITICAL
 static int ssl_write_client_key_exchange(mbedtls_ssl_context *ssl)
 {
     int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    const uint32_t ssl_out_content_len = mbedtls_ssl_get_out_content_len(ssl);
 
     size_t header_len;
     size_t content_len;
@@ -2933,8 +2934,6 @@ ecdh_calc_secret:
 
         header_len = 4;
 
-        const uint32_t ssl_out_content_len = mbedtls_ssl_get_out_content_len(ssl);
-
         if (header_len + content_len_size + ssl->conf->psk_identity_len
             > ssl_out_content_len) {
             MBEDTLS_SSL_DEBUG_MSG(1,
@@ -3052,7 +3051,6 @@ ecdh_calc_secret:
         header_len = 4;
         content_len = ssl->conf->psk_identity_len;
 
-        const uint32_t ssl_out_content_len = mbedtls_ssl_get_out_content_len(ssl);
         if (header_len + 2 + content_len > ssl_out_content_len) {
             MBEDTLS_SSL_DEBUG_MSG(1,
                                   ("psk identity too long or SSL buffer too short"));
