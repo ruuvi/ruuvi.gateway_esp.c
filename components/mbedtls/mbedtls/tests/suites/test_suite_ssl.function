@@ -3497,14 +3497,14 @@ void ssl_tls13_session_hostname_load_invalid()
     mbedtls_ssl_session session;
     unsigned char *buf = NULL;
     size_t len;
-    size_t hostname_len_offset;
 
     /*
      * Test TLS 1.3 session load with invalid hostname data.
      * This tests rejection of hostname too long (> MBEDTLS_SSL_MAX_HOST_NAME_LEN + 1).
      *
-     * We create a valid session, serialize it, then corrupt the hostname length
-     * field to exceed the maximum allowed value.
+     * We create a valid session with max valid hostname,
+     * serialize it, then extend the hostname by 1 byte
+     * to exceed the maximum allowed value.
      */
     mbedtls_ssl_session_init(&session);
     USE_PSA_INIT();
@@ -3513,13 +3513,13 @@ void ssl_tls13_session_hostname_load_invalid()
     TEST_ASSERT(mbedtls_test_ssl_tls13_populate_session(
                     &session, 0, MBEDTLS_SSL_IS_CLIENT) == 0);
     
-    /* Set a short hostname so we can find and corrupt its length */
-    memcpy(session.ticket_hostname.buf, "test.example.com", 17);
+    memset(session.ticket_hostname.buf, 'a', MBEDTLS_SSL_MAX_HOST_NAME_LEN);
+    session.ticket_hostname.buf[MBEDTLS_SSL_MAX_HOST_NAME_LEN] = '\0';
 
     /* Serialize the session */
     TEST_ASSERT(mbedtls_ssl_session_save(&session, NULL, 0, &len)
                 == MBEDTLS_ERR_SSL_BUFFER_TOO_SMALL);
-    TEST_ASSERT((buf = mbedtls_calloc(1, len)) != NULL);
+    TEST_ASSERT((buf = mbedtls_calloc(1, len + 1)) != NULL);
     TEST_ASSERT(mbedtls_ssl_session_save(&session, buf, len, &len) == 0);
 
     mbedtls_ssl_session_free(&session);
@@ -3541,14 +3541,18 @@ void ssl_tls13_session_hostname_load_invalid()
      * Then TLS 1.3 data starts at offset 6
      * hostname_len is at offset: 6 + 1 + 2 + 4 + 1 + 1 + 32 = 47
      */
-    hostname_len_offset = 5 + 1 + 1 + 2 + 4 + 1 + 1 + 32;
+    size_t hostname_len_offset = 5 + 1 + 1 + 2 + 4 + 1 + 1 + 32;
 
-    /* Set hostname length to 0x0100 (256) which is > MBEDTLS_SSL_MAX_HOST_NAME_LEN + 1 (128) */
-    buf[hostname_len_offset] = 0x01;     /* High byte */
-    buf[hostname_len_offset + 1] = 0x00; /* Low byte */
+    /* Set hostname length to (MBEDTLS_SSL_MAX_HOST_NAME_LEN + 1) == (128) */
+    memmove(&buf[hostname_len_offset + 3],
+            &buf[hostname_len_offset + 2],
+            len - (hostname_len_offset + 2));
+    const size_t hostname_len_with_nul = MBEDTLS_SSL_MAX_HOST_NAME_LEN + 1U + 1U;
+    buf[hostname_len_offset] = (hostname_len_with_nul >> 8U) & 0xFFU;  /* High byte */
+    buf[hostname_len_offset + 1] = hostname_len_with_nul & 0xFFU;      /* Low byte */
 
     /* Try to load - should fail with BAD_INPUT_DATA */
-    TEST_ASSERT(mbedtls_ssl_session_load(&session, buf, len)
+    TEST_ASSERT(mbedtls_ssl_session_load(&session, buf, len + 1)
                 == MBEDTLS_ERR_SSL_BAD_INPUT_DATA);
 
 exit:
