@@ -1207,12 +1207,12 @@ void ssl_set_hostname_max_len()
     /* Test 3: Clear hostname by passing NULL */
     TEST_ASSERT(mbedtls_ssl_set_hostname(&ssl, NULL) == 0);
     retrieved_hostname = mbedtls_ssl_get_hostname(&ssl);
-    TEST_ASSERT(strlen(retrieved_hostname) == 0);
+    TEST_ASSERT(retrieved_hostname == NULL);
 
     /* Test 4: Set empty string - should succeed */
     TEST_ASSERT(mbedtls_ssl_set_hostname(&ssl, "") == 0);
     retrieved_hostname = mbedtls_ssl_get_hostname(&ssl);
-    TEST_ASSERT(strlen(retrieved_hostname) == 0);
+    TEST_ASSERT(retrieved_hostname == NULL);
 
     /* Test 5: Set normal hostname after clearing */
     TEST_ASSERT(mbedtls_ssl_set_hostname(&ssl, "example.com") == 0);

@@ -3829,7 +3829,7 @@ int mbedtls_ssl_set_hostname(mbedtls_ssl_context *ssl, const char *hostname);
  */
 static inline const char *mbedtls_ssl_get_hostname(mbedtls_ssl_context *ssl)
 {
-    return ssl->MBEDTLS_PRIVATE(hostname).buf;
+    return ('\0' != ssl->MBEDTLS_PRIVATE(hostname).buf[0]) ? ssl->MBEDTLS_PRIVATE(hostname).buf : NULL;
 }
 #endif /* MBEDTLS_X509_CRT_PARSE_C */
 
