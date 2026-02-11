@@ -9,6 +9,7 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/mqtt_json.h
         ${RUUVI_GW_SRC}/adv_decode_0x05.c
         ${RUUVI_GW_SRC}/adv_decode_0x06.c
+        ${RUUVI_GW_SRC}/adv_decode_0x07.c
         ${RUUVI_GW_SRC}/adv_decode_0xe0.c
         ${RUUVI_GW_SRC}/adv_decode_0xe1.c
         ${RUUVI_GW_SRC}/adv_decode_0xf0.c
@@ -19,6 +20,8 @@ add_executable(${ProjectId}
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_5.h
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_6.c
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_6.h
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_7.c
+        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_7.h
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_f0.c
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_f0.h
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_e0.c

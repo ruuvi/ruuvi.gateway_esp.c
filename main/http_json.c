@@ -11,6 +11,7 @@
 #include "runtime_stat.h"
 #include "ruuvi_endpoint_5.h"
 #include "ruuvi_endpoint_6.h"
+#include "ruuvi_endpoint_7.h"
 #include "ruuvi_endpoint_e0.h"
 #include "ruuvi_endpoint_e1.h"
 #include "ruuvi_endpoint_f0.h"
@@ -323,6 +324,10 @@ static JSON_STREAM_GEN_DECL_GENERATOR_SUB_FUNC(
         if (re_6_check_format(p_adv->data_buf))
         {
             JSON_STREAM_GEN_CALL_GENERATOR_SUB_FUNC(adv_decode_df6_cb_json_stream_gen, p_gen, p_adv);
+        }
+        if (re_7_check_format(p_adv->data_buf))
+        {
+            JSON_STREAM_GEN_CALL_GENERATOR_SUB_FUNC(adv_decode_df7_cb_json_stream_gen, p_gen, p_adv);
         }
         if (re_f0_check_format(p_adv->data_buf))
         {

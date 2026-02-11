@@ -8,6 +8,7 @@
 #include "http_server_cb.h"
 #include <cstring>
 #include <utility>
+#include <array>
 #include "gtest/gtest.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
