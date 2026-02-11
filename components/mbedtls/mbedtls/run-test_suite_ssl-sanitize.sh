@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 # Create a new build directory for this configuration
 mkdir -p cmake-build-sanitize
 cd cmake-build-sanitize

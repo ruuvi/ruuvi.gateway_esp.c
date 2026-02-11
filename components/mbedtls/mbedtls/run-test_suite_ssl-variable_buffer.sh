@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 # Create a new build directory for this configuration
 mkdir -p cmake-build-variable_buffer
 cd cmake-build-variable_buffer
