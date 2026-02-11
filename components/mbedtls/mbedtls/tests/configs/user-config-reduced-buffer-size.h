@@ -5,7 +5,7 @@
  *   cmake .. -DMBEDTLS_USER_CONFIG_FILE="../tests/configs/user-config-reduced-buffer-size.h"
  */
 
-#define MBEDTLS_SSL_IN_CONTENT_LEN 16384
+#define MBEDTLS_SSL_IN_CONTENT_LEN 8192
 #define MBEDTLS_SSL_OUT_CONTENT_LEN 4096
 
 /* Marker macro to enable conditional test selection for reduced buffer size.

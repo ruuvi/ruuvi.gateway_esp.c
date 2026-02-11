@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 # Create a new build directory for this configuration
-mkdir -p cmake-build-sinitize
-cd cmake-build-sinitize
+mkdir -p cmake-build-sanitize
+cd cmake-build-sanitize
 
 # Configure with the user config file
 cmake .. -DCMAKE_CXX_FLAGS="-fsanitize=address -g" -DCMAKE_C_FLAGS="-fsanitize=address -g"
