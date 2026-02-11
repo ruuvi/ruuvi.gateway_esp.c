@@ -3583,32 +3583,66 @@ void ssl_tls13_session_hostname_load_invalid()
     mbedtls_ssl_session_init(&session);
 
     /*
-     * Find and corrupt the hostname length field.
-     * Session format after header and TLS version (0x04):
+     * Find and increment the hostname length field.
+     *
+     * The serialized session format encodes the resumption_key_len,
+     * so we locate the hostname length field by  parsing the buffer
+     * instead of relying on hard-coded offsets.
+     *
+     * Serialized layout (relevant parts):
+     *   - header (5 bytes)
+     *   - tls_version (1 byte)
      *   - endpoint (1 byte)
      *   - ciphersuite (2 bytes)
      *   - ticket_age_add (4 bytes)
      *   - ticket_flags (1 byte)
      *   - resumption_key_len (1 byte) = 32
-     *   - resumption_key (32 bytes)
-     *   - hostname_len (2 bytes) <-- we want to corrupt this
+     *   - resumption_key (resumption_key_len bytes)
+     *   - hostname_len (2 bytes) <-- we want to increment this
      *
      * Header is 5 bytes (version major, minor, patch, config flags 2 bytes)
-     * TLS version is 1 byte
-     * Then TLS 1.3 data starts at offset 6
-     * hostname_len is at offset: 6 + 1 + 2 + 4 + 1 + 1 + 32 = 47
      */
-    size_t hostname_len_offset = 5 + 1 + 1 + 2 + 4 + 1 + 1 + 32;
 
-    /* Increase hostname length by 1 byte to make it longer than MBEDTLS_SSL_MAX_HOST_NAME_LEN */
+    const size_t header_len = 5;
+    TEST_ASSERT(len >= header_len);
+    /* Move past header and TLS version byte */
+    size_t offset = header_len;  /* after header */
+    offset += 1;  /* TLS version (1 byte) */
+    /* Skip fixed-size TLS 1.3 fields:
+     *   - endpoint (1 byte)
+     *   - ciphersuite (2 bytes)
+     *   - ticket_age_add (4 bytes)
+     *   - ticket_flags (1 byte)
+     */
+    TEST_ASSERT(len >= (offset + 1 + 2 + 4 + 1));
+    offset += 1 + 2 + 4 + 1;
+    /* Read resumption_key_len and skip the key */
+    TEST_ASSERT(len >= (offset + 1));
+    size_t resumption_key_len = buf[offset];
+    offset += 1;
+    TEST_ASSERT(len >= (offset + resumption_key_len + 2));
+    offset += resumption_key_len;
+    /* offset now points to hostname_len (2 bytes) */
+
+    const size_t hostname_len_offset = offset;
+    TEST_ASSERT(hostname_len_offset == (5 + 1 + 1 + 2 + 4 + 1 + 1 + 32));
+
+    /* Increase hostname length by 1 byte to make it longer
+     * than MBEDTLS_SSL_MAX_HOST_NAME_LEN.
+     */
     memmove(&buf[hostname_len_offset + 3],
             &buf[hostname_len_offset + 2],
             len - (hostname_len_offset + 2));
-    size_t hostname_len_with_nul = ((size_t)buf[hostname_len_offset] << 8U) | buf[hostname_len_offset + 1];
-    TEST_ASSERT(hostname_len_with_nul == (MBEDTLS_SSL_MAX_HOST_NAME_LEN + 1U /* NUL */));
+    size_t hostname_len_with_nul =
+        ((size_t)buf[hostname_len_offset] << 8U) |
+        buf[hostname_len_offset + 1];
+    TEST_ASSERT(hostname_len_with_nul ==
+                (MBEDTLS_SSL_MAX_HOST_NAME_LEN + 1U /* NUL */));
     hostname_len_with_nul += 1;
-    buf[hostname_len_offset] = (hostname_len_with_nul >> 8U) & 0xFFU;  /* High byte */
-    buf[hostname_len_offset + 1] = hostname_len_with_nul & 0xFFU;      /* Low byte */
+    buf[hostname_len_offset] =
+        (hostname_len_with_nul >> 8U) & 0xFFU;  /* High byte */
+    buf[hostname_len_offset + 1] =
+        hostname_len_with_nul & 0xFFU;      /* Low byte */
 
     /* Try to load - should fail with BAD_INPUT_DATA */
     TEST_ASSERT(mbedtls_ssl_session_load(&session, buf, len + 1)
