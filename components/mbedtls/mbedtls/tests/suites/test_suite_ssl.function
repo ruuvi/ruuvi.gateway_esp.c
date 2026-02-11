@@ -3650,8 +3650,10 @@ void ssl_buffer_allocation_size()
     TEST_ASSERT(ret == 0);
 
     /* Calculate expected buffer sizes using the same formula as ssl_tls.c */
-    const uint32_t expected_in_buf_size = mbedtls_ssl_get_in_buffer_size(conf.ssl_in_content_len);
-    const uint32_t expected_out_buf_size = mbedtls_ssl_get_out_buffer_size(conf.ssl_out_content_len);
+    const uint32_t expected_in_buf_size = mbedtls_ssl_get_in_buffer_size(
+                                              mbedtls_ssl_conf_get_in_content_len(&conf));
+    const uint32_t expected_out_buf_size = mbedtls_ssl_get_out_buffer_size(
+                                               mbedtls_ssl_conf_get_out_content_len(&conf));
 
     /* Verify buffer sizes match expected values */
     TEST_ASSERT(ssl.in_buf_len == expected_in_buf_size);
