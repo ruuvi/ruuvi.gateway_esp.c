@@ -3600,11 +3600,13 @@ void ssl_tls13_session_hostname_load_invalid()
      */
     size_t hostname_len_offset = 5 + 1 + 1 + 2 + 4 + 1 + 1 + 32;
 
-    /* Set hostname length to (MBEDTLS_SSL_MAX_HOST_NAME_LEN + 1) == (128) */
+    /* Increase hostname length by 1 byte to make it longer than MBEDTLS_SSL_MAX_HOST_NAME_LEN */
     memmove(&buf[hostname_len_offset + 3],
             &buf[hostname_len_offset + 2],
             len - (hostname_len_offset + 2));
-    const size_t hostname_len_with_nul = MBEDTLS_SSL_MAX_HOST_NAME_LEN + 1U + 1U;
+    size_t hostname_len_with_nul = ((size_t)buf[hostname_len_offset] << 8U) | buf[hostname_len_offset + 1];
+    TEST_ASSERT(hostname_len_with_nul == (MBEDTLS_SSL_MAX_HOST_NAME_LEN + 1U /* NUL */));
+    hostname_len_with_nul += 1;
     buf[hostname_len_offset] = (hostname_len_with_nul >> 8U) & 0xFFU;  /* High byte */
     buf[hostname_len_offset + 1] = hostname_len_with_nul & 0xFFU;      /* Low byte */
 
@@ -3624,9 +3626,6 @@ void ssl_buffer_allocation_size()
 {
     mbedtls_ssl_context ssl;
     mbedtls_ssl_config conf;
-    int ret;
-    uint32_t expected_in_buf_size;
-    uint32_t expected_out_buf_size;
 
     /*
      * Test that mbedtls_ssl_setup() allocates buffers with correct size
@@ -3647,21 +3646,12 @@ void ssl_buffer_allocation_size()
                                             MBEDTLS_SSL_PRESET_DEFAULT) == 0);
 
     /* Setup SSL context - this allocates the buffers */
-    ret = mbedtls_ssl_setup(&ssl, &conf);
+    int ret = mbedtls_ssl_setup(&ssl, &conf);
     TEST_ASSERT(ret == 0);
 
     /* Calculate expected buffer sizes using the same formula as ssl_tls.c */
-    expected_in_buf_size = MBEDTLS_SSL_HEADER_LEN
-                         + conf.ssl_in_content_len
-                         + MBEDTLS_SSL_PAYLOAD_OVERHEAD;
-    expected_out_buf_size = MBEDTLS_SSL_HEADER_LEN
-                          + conf.ssl_out_content_len
-                          + MBEDTLS_SSL_PAYLOAD_OVERHEAD;
-
-#if defined(MBEDTLS_SSL_DTLS_CONNECTION_ID)
-    expected_in_buf_size += MBEDTLS_SSL_CID_IN_LEN_MAX;
-    expected_out_buf_size += MBEDTLS_SSL_CID_OUT_LEN_MAX;
-#endif
+    const uint32_t expected_in_buf_size = mbedtls_ssl_get_in_buffer_size(conf.ssl_in_content_len);
+    const uint32_t expected_out_buf_size = mbedtls_ssl_get_out_buffer_size(conf.ssl_out_content_len);
 
     /* Verify buffer sizes match expected values */
     TEST_ASSERT(ssl.in_buf_len == expected_in_buf_size);
