@@ -640,10 +640,15 @@ esp_err_t set_client_config(const char *hostname, size_t hostlen, esp_tls_cfg_t 
     int ret;
     if (!cfg->skip_common_name) {
         if (cfg->common_name != NULL) {
-            if (mbedtls_ssl_set_hostname(&tls->ssl, cfg->common_name) != 0) {
-                ESP_LOGE(TAG, "common_name '%s' length %zu exceeds mbedtls max limit %u",
-                        cfg->common_name, strlen(cfg->common_name), MBEDTLS_SSL_MAX_HOST_NAME_LEN);
-                return ESP_ERR_INVALID_ARG;
+            const int res = mbedtls_ssl_set_hostname(&tls->ssl, cfg->common_name);
+            if (0 != res) {
+                if (MBEDTLS_ERR_SSL_BAD_INPUT_DATA == res) {
+                    ESP_LOGE(TAG, "common_name '%s' length %zu exceeds mbedtls max limit %u",
+                            cfg->common_name, strlen(cfg->common_name), MBEDTLS_SSL_MAX_HOST_NAME_LEN);
+                    return ESP_ERR_INVALID_ARG;
+                }
+                ESP_LOGE(TAG, "Failed to set common_name '%s' with error %d", cfg->common_name, res);
+                return ESP_ERR_MBEDTLS_SSL_SET_HOSTNAME_FAILED;
             }
         } else {
             if (hostlen >= sizeof(tls->ssl.hostname.buf)) {

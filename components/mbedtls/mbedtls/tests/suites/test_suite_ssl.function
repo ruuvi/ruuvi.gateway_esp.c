@@ -3625,7 +3625,13 @@ void ssl_tls13_session_hostname_load_invalid()
     /* offset now points to hostname_len (2 bytes) */
 
     const size_t hostname_len_offset = offset;
-    TEST_ASSERT(hostname_len_offset == (5 + 1 + 1 + 2 + 4 + 1 + 1 + 32));
+
+    TEST_ASSERT(hostname_len_offset ==
+                header_len +           /* record header */
+                1 +                    /* TLS version */
+                (1 + 2 + 4 + 1) +      /* endpoint + ciphersuite + ticket_age_add + ticket_flags */
+                1 +                    /* resumption_key_len field */
+                resumption_key_len);   /* resumption key data */
 
     /* Increase hostname length by 1 byte to make it longer
      * than MBEDTLS_SSL_MAX_HOST_NAME_LEN.
