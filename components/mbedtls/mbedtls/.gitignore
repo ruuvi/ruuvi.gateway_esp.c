@@ -65,3 +65,6 @@ massif-*
 
 # Clangd compilation database
 compile_commands.json
+
+cmake-build*
+

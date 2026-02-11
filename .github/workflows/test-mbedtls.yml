@@ -21,3 +21,6 @@ jobs:
         run: |
           cd components/mbedtls/mbedtls
           make test -j $(nproc)
+          ./run-test_suite_ssl-sanitize.sh
+          ./run-test_suite_ssl-reduced_buffer_size.sh
+          ./run-test_suite_ssl-variable_buffer.sh

@@ -3669,7 +3669,16 @@ void ssl_buffer_allocation_size()
      * This is a regression test for a bug where the buffer was allocated
      * with only content_len bytes, causing out-of-bounds writes during
      * mbedtls_ssl_free() when clearing memory.
+     *
+     * We use custom content lengths (not the defaults) to ensure that
+     * the MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH feature is actually being
+     * used and tested with non-default buffer sizes.
      */
+#if defined(MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
+    const uint32_t custom_in_content_len = 8192;
+    const uint32_t custom_out_content_len = 4096;
+#endif
+
     mbedtls_ssl_init(&ssl);
     mbedtls_ssl_config_init(&conf);
     USE_PSA_INIT();
@@ -3678,6 +3687,17 @@ void ssl_buffer_allocation_size()
                                             MBEDTLS_SSL_IS_CLIENT,
                                             MBEDTLS_SSL_TRANSPORT_STREAM,
                                             MBEDTLS_SSL_PRESET_DEFAULT) == 0);
+
+#if defined(MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
+    /* Set custom content lengths to test variable buffer allocation.
+     * Tests use MBEDTLS_ALLOW_PRIVATE_ACCESS to access private members. */
+    conf.ssl_in_content_len = custom_in_content_len;
+    conf.ssl_out_content_len = custom_out_content_len;
+
+    /* Verify the config getters return our custom values */
+    TEST_ASSERT(mbedtls_ssl_conf_get_in_content_len(&conf) == custom_in_content_len);
+    TEST_ASSERT(mbedtls_ssl_conf_get_out_content_len(&conf) == custom_out_content_len);
+#endif
 
     /* Setup SSL context - this allocates the buffers */
     int ret = mbedtls_ssl_setup(&ssl, &conf);

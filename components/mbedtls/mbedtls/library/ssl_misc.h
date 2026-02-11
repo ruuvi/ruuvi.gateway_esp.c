@@ -398,7 +398,6 @@ uint32_t mbedtls_ssl_get_extension_mask(unsigned int extension_type);
    implicit sequence number. */
 #define MBEDTLS_SSL_HEADER_LEN 13
 
-#if !defined(MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
 #if !defined(MBEDTLS_SSL_DTLS_CONNECTION_ID)
 #define MBEDTLS_SSL_IN_BUFFER_LEN  \
     ((MBEDTLS_SSL_HEADER_LEN) + (MBEDTLS_SSL_IN_PAYLOAD_LEN))
@@ -406,7 +405,6 @@ uint32_t mbedtls_ssl_get_extension_mask(unsigned int extension_type);
 #define MBEDTLS_SSL_IN_BUFFER_LEN  \
     ((MBEDTLS_SSL_HEADER_LEN) + (MBEDTLS_SSL_IN_PAYLOAD_LEN) \
      + (MBEDTLS_SSL_CID_IN_LEN_MAX))
-#endif
 #endif
 
 #if !defined(MBEDTLS_SSL_DTLS_CONNECTION_ID)
@@ -2874,7 +2872,9 @@ static inline uint32_t mbedtls_ssl_conf_get_out_content_len(const mbedtls_ssl_co
         return MBEDTLS_SSL_OUT_CONTENT_LEN;
     }
 #if defined(MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
-    const uint32_t ssl_out_content_len = ssl_conf->ssl_out_content_len;
+    const uint32_t ssl_out_content_len = (0 != ssl_conf->ssl_out_content_len) ?
+                                         ssl_conf->ssl_out_content_len :
+                                         MBEDTLS_SSL_OUT_CONTENT_LEN;
 #else
     (void)ssl_conf;
     const uint32_t ssl_out_content_len = MBEDTLS_SSL_OUT_CONTENT_LEN;
@@ -2935,7 +2935,9 @@ static inline uint32_t mbedtls_ssl_conf_get_in_content_len(const mbedtls_ssl_con
         return MBEDTLS_SSL_IN_CONTENT_LEN;
     }
 #if defined(MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
-    const uint32_t ssl_in_content_len = ssl_conf->ssl_in_content_len;
+    const uint32_t ssl_in_content_len = (0 != ssl_conf->ssl_in_content_len) ?
+                                        ssl_conf->ssl_in_content_len :
+                                        MBEDTLS_SSL_IN_CONTENT_LEN;
 #else
     (void)ssl_conf;
     const uint32_t ssl_in_content_len = MBEDTLS_SSL_IN_CONTENT_LEN;
