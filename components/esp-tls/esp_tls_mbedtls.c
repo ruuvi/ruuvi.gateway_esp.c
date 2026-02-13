@@ -16,6 +16,7 @@
 #include "esp_tls_mbedtls.h"
 #include "esp_tls_private.h"
 #include "esp_tls_error_capture_internal.h"
+#include "ssl_misc.h"
 #include <errno.h>
 #include "esp_log.h"
 #include "snprintf_with_esp_err_desc.h"
@@ -209,10 +210,20 @@ int esp_mbedtls_handshake(esp_tls_t *tls, const esp_tls_cfg_t *cfg)
     int ret;
 #ifdef CONFIG_ESP_TLS_CLIENT_SESSION_TICKETS
     if (cfg->client_session != NULL) {
-        ESP_LOGD(TAG, "Reusing the already saved client session context");
-        if ((ret = mbedtls_ssl_set_session(&tls->ssl, &(cfg->client_session->saved_session))) != 0 ) {
-            ESP_LOGE(TAG, " mbedtls_ssl_conf_session returned -0x%04X", -ret);
-            return -1;
+        /**
+         * esp_mbedtls_handshake is called multiple times while establishing a non-blocking connection.
+         * On the first call, tls->ssl.handshake->resume is 0.
+         * When calling mbedtls_ssl_set_session, a clone of the session object is created
+         * (which includes memory allocation, copying, and freeing).
+         * To avoid cloning the session multiple times on subsequent calls, check the
+         * "resume" flag to determine if the session has already been set.
+         */
+        if ((NULL == tls->ssl.handshake) || (0 == tls->ssl.handshake->resume)) {
+            ESP_LOGD(TAG, "Reusing the already saved client session context");
+            if ((ret = mbedtls_ssl_set_session(&tls->ssl, &(cfg->client_session->saved_session))) != 0 ) {
+                ESP_LOGE(TAG, "mbedtls_ssl_set_session returned -0x%04X", -ret);
+                return -1;
+            }
         }
     }
 #endif
