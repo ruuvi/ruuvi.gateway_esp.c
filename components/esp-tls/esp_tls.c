@@ -86,6 +86,7 @@ static const char *TAG = "esp-tls";
 #define _esp_tls_write                      esp_mbedtls_write
 #define _esp_tls_conn_delete                esp_mbedtls_conn_delete
 #define _esp_tls_net_init                   esp_mbedtls_net_init
+#define _esp_tls_copy_client_session        esp_mbedtls_copy_client_session
 #define _esp_tls_get_client_session         esp_mbedtls_get_client_session
 #define _esp_tls_free_client_session        esp_mbedtls_free_client_session
 #define _esp_tls_get_ssl_context            esp_mbedtls_get_ssl_context
@@ -960,6 +961,11 @@ mbedtls_x509_crt *esp_tls_get_global_ca_store(void)
 #endif /* CONFIG_ESP_TLS_USING_MBEDTLS */
 
 #ifdef CONFIG_ESP_TLS_CLIENT_SESSION_TICKETS
+bool esp_tls_copy_client_session(const esp_tls_t * const tls, esp_tls_client_session_t * const p_client_session)
+{
+    return _esp_tls_copy_client_session(tls, p_client_session);
+}
+
 esp_tls_client_session_t *esp_tls_get_client_session(esp_tls_t *tls)
 {
     return _esp_tls_get_client_session(tls);

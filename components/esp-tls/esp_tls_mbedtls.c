@@ -163,6 +163,17 @@ void *esp_mbedtls_get_ssl_context(esp_tls_t *tls)
 }
 
 #ifdef CONFIG_ESP_TLS_CLIENT_SESSION_TICKETS
+bool esp_mbedtls_copy_client_session(const esp_tls_t * const tls, esp_tls_client_session_t * const p_client_session)
+{
+    int ret = mbedtls_ssl_get_session(&tls->ssl, &p_client_session->saved_session);
+    if (ret != 0) {
+        ESP_LOGE(TAG, "Error in obtaining the client ssl session, mbedtls_ssl_get_session returned -0x%04X", -ret);
+        mbedtls_print_error_msg(ret);
+        return false;
+    }
+    return true;
+}
+
 esp_tls_client_session_t *esp_mbedtls_get_client_session(esp_tls_t *tls)
 {
     if (tls == NULL) {
@@ -176,10 +187,7 @@ esp_tls_client_session_t *esp_mbedtls_get_client_session(esp_tls_t *tls)
         return NULL;
     }
 
-    int ret = mbedtls_ssl_get_session(&tls->ssl, &(client_session->saved_session));
-    if (ret != 0) {
-        ESP_LOGE(TAG, "Error in obtaining the client ssl session");
-        mbedtls_print_error_msg(ret);
+    if (!esp_mbedtls_copy_client_session(tls, client_session)) {
         free(client_session);
         return NULL;
     }

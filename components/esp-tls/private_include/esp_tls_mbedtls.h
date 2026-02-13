@@ -5,6 +5,7 @@
  */
 
 #pragma once
+#include <stdbool.h>
 #include "esp_tls.h"
 #include "esp_tls_private.h"
 
@@ -106,6 +107,23 @@ void esp_mbedtls_server_session_ticket_ctx_free(esp_tls_server_session_ticket_ct
 esp_err_t set_client_config(const char *hostname, size_t hostlen, esp_tls_cfg_t *cfg, esp_tls_t *tls);
 
 #ifdef CONFIG_ESP_TLS_CLIENT_SESSION_TICKETS
+/**
+ * @brief Copy the TLS client's session state from an active TLS context into a user-provided session container.
+ *
+ * This helper is typically used to persist session information (for example, to enable
+ * session resumption on a later connection) without transferring ownership of the
+ * underlying TLS context.
+ *
+ * @note Copying the session may involve deep-copying internal data and allocating memory.
+ *
+ * @param[in]  tls              TLS context to copy the session from. Must not be @c NULL.
+ * @param[out] p_client_session Destination session object to receive the copied data. Must not be @c NULL.
+ *
+ * @return @c true on success, @c false on failure (for example, if inputs are invalid, no session is available,
+ *         or memory allocation failed).
+ */
+bool esp_mbedtls_copy_client_session(const esp_tls_t * const tls, esp_tls_client_session_t * const p_client_session);
+
 /**
  * Internal Callback for mbedtls_get_client_session
  */

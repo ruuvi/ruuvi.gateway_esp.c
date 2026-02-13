@@ -712,6 +712,25 @@ esp_err_t esp_tls_plain_tcp_connect(const char *host, int hostlen, int port, con
 
 #ifdef CONFIG_ESP_TLS_CLIENT_SESSION_TICKETS
 /**
+ * @brief Copy the client session ticket from an established TLS connection.
+ *
+ * This function copies the current client session (used for TLS session resumption)
+ * from an active @c esp_tls_t context into the caller-provided session container.
+ * The copied session can later be supplied via @c esp_tls_cfg_t::client_session when
+ * creating a new connection to attempt session resumption.
+ *
+ * @note This function should be called only after the TLS connection is established.
+ * @note Copying the session may involve deep-copying internal data and allocating memory.
+ *
+ * @param[in]  tls              TLS context to copy the session from. Must not be @c NULL.
+ * @param[out] p_client_session Destination session object to receive the copied session. Must not be @c NULL.
+ *
+ * @return @c true on success, @c false on failure (for example, if inputs are invalid, no session is available,
+ *         or memory allocation failed).
+ */
+bool esp_tls_copy_client_session(const esp_tls_t * const tls, esp_tls_client_session_t * const p_client_session);
+
+/**
  * @brief Obtain the client session ticket
  *
  * This function should be called when the TLS connection is already established.
