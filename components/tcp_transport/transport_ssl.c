@@ -67,9 +67,6 @@ static void log_heap_info(void) {
 
 static void
 saved_sessions_sema_lock(void) {
-    if (NULL == g_saved_sessions_sema) {
-        g_saved_sessions_sema = xSemaphoreCreateMutexStatic(&g_saved_sessions_sema_mem);
-    }
     xSemaphoreTake(g_saved_sessions_sema, portMAX_DELAY);
 }
 
@@ -110,6 +107,8 @@ static transport_ssl_saved_session_ticket_slot_t* find_session_ticket_slot_for_s
 
 void esp_transport_ssl_init_saved_tickets_storage(void)
 {
+    g_saved_sessions_sema = xSemaphoreCreateMutexStatic(&g_saved_sessions_sema_mem);
+
     for (int i = 0; i < ESP_TLS_MAX_NUM_SAVED_SESSIONS; i++) {
         transport_ssl_saved_session_ticket_slot_t* const p_slot = &g_saved_session_tickets[i];
         memset(p_slot, 0, sizeof(*p_slot));
@@ -201,6 +200,7 @@ unlock_saved_session(transport_esp_tls_t* const ssl) {
             ESP_TRANSPORT_LOGI("[%s] Unlock and free TLS saved session slot for ssl=%p, session=%p",
                                esp_tls_get_hostname(ssl->tls), ssl, &p_slot->session);
             mbedtls_ssl_session_free(&p_slot->session.saved_session);
+            mbedtls_ssl_session_init(&p_slot->session.saved_session);
             p_slot->is_locked = false;
             p_slot->is_valid = false;
         }
@@ -233,6 +233,7 @@ static void save_new_session_ticket(transport_esp_tls_t *ssl)
         ESP_TRANSPORT_LOGI("[%s] Got new TLS session ticket, replace existing one at slot %d (ssl=%p, session=%p)",
             p_slot->hostname.buf, (int)slot_idx, ssl, &p_slot->session);
         mbedtls_ssl_session_free(&p_slot->session.saved_session);
+        mbedtls_ssl_session_init(&p_slot->session.saved_session);
         p_slot->is_valid = false;
     } else {
         ESP_TRANSPORT_LOGI("[%s] Got new TLS session ticket, save it to an empty slot %d (ssl=%p, session=%p)",
@@ -242,6 +243,7 @@ static void save_new_session_ticket(transport_esp_tls_t *ssl)
     if (!esp_tls_copy_client_session(ssl->tls, &p_slot->session)) {
         ESP_TRANSPORT_LOGE_FUNC("[%s] Error while copying the client ssl session", esp_tls_get_hostname(ssl->tls));
         mbedtls_ssl_session_free(&p_slot->session.saved_session);
+        mbedtls_ssl_session_init(&p_slot->session.saved_session);
         saved_sessions_sema_unlock();
         return;
     }
@@ -264,6 +266,7 @@ void esp_transport_ssl_clear_saved_session_tickets(void)
         }
         ESP_TRANSPORT_LOGI("[%s] Clear TLS session ticket (slot %d)", p_slot->session.saved_session.ticket_hostname.buf, i);
         mbedtls_ssl_session_free(&p_slot->session.saved_session);
+        mbedtls_ssl_session_init(&p_slot->session.saved_session);
         p_slot->is_valid = false;
     }
     log_saved_session_tickets();
