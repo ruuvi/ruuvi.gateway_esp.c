@@ -209,10 +209,25 @@ int esp_mbedtls_handshake(esp_tls_t *tls, const esp_tls_cfg_t *cfg)
     int ret;
 #ifdef CONFIG_ESP_TLS_CLIENT_SESSION_TICKETS
     if (cfg->client_session != NULL) {
-        ESP_LOGD(TAG, "Reusing the already saved client session context");
-        if ((ret = mbedtls_ssl_set_session(&tls->ssl, &(cfg->client_session->saved_session))) != 0 ) {
-            ESP_LOGE(TAG, " mbedtls_ssl_conf_session returned -0x%04X", -ret);
-            return -1;
+        /**
+         * esp_mbedtls_handshake is called multiple times while establishing a non-blocking connection.
+         * On the first call, tls->ssl.session_negotiate->ticket_hostname.buf is empty. After
+         * calling mbedtls_ssl_set_session, a clone of the session object is created
+         * (which includes memory allocation, copying, and freeing).
+         * To avoid cloning the session multiple times on subsequent calls, we compare the
+         * ticket_hostname to determine if the session has already been set.
+         */
+        if (0 != strcmp(tls->ssl.session_negotiate->ticket_hostname.buf,
+                        cfg->client_session->saved_session.ticket_hostname.buf)) {
+            ESP_LOGI(TAG, "Reusing the already saved client session context");
+            ESP_LOGD(TAG, "%s: mbedtls_ssl_set_session, current hostname='%s', saved session hostname='%s'",
+                __func__,
+                tls->ssl.session_negotiate->ticket_hostname.buf,
+                cfg->client_session->saved_session.ticket_hostname.buf);
+            if ((ret = mbedtls_ssl_set_session(&tls->ssl, &(cfg->client_session->saved_session))) != 0 ) {
+                ESP_LOGE(TAG, " mbedtls_ssl_conf_session returned -0x%04X", -ret);
+                return -1;
+            }
         }
     }
 #endif
