@@ -225,7 +225,7 @@ int esp_mbedtls_handshake(esp_tls_t *tls, const esp_tls_cfg_t *cfg)
                 tls->ssl.session_negotiate->ticket_hostname.buf,
                 cfg->client_session->saved_session.ticket_hostname.buf);
             if ((ret = mbedtls_ssl_set_session(&tls->ssl, &(cfg->client_session->saved_session))) != 0 ) {
-                ESP_LOGE(TAG, " mbedtls_ssl_conf_session returned -0x%04X", -ret);
+                ESP_LOGE(TAG, "mbedtls_ssl_set_session returned -0x%04X", -ret);
                 return -1;
             }
         }
