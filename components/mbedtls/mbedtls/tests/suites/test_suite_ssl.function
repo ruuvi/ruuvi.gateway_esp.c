@@ -1168,6 +1168,63 @@ exit:
 }
 /* END_CASE */
 
+/* BEGIN_CASE depends_on:MBEDTLS_SSL_HANDSHAKE_WITH_CERT_ENABLED */
+void ssl_set_hostname_max_len()
+{
+    /*
+     * Test mbedtls_ssl_set_hostname with various hostname lengths,
+     * especially around the maximum allowed length (MBEDTLS_SSL_MAX_HOST_NAME_LEN = 127).
+     */
+    mbedtls_ssl_context ssl;
+    const char *retrieved_hostname;
+    char hostname_max[MBEDTLS_SSL_MAX_HOST_NAME_LEN + 1];
+    char hostname_too_long[MBEDTLS_SSL_MAX_HOST_NAME_LEN + 2];
+
+    mbedtls_ssl_init(&ssl);
+    USE_PSA_INIT();
+
+    /* Create hostname with exactly max allowed length (127 chars) */
+    memset(hostname_max, 'a', MBEDTLS_SSL_MAX_HOST_NAME_LEN);
+    hostname_max[MBEDTLS_SSL_MAX_HOST_NAME_LEN] = '\0';
+
+    /* Create hostname with max + 1 length (128 chars) - should fail */
+    memset(hostname_too_long, 'b', MBEDTLS_SSL_MAX_HOST_NAME_LEN + 1);
+    hostname_too_long[MBEDTLS_SSL_MAX_HOST_NAME_LEN + 1] = '\0';
+
+    /* Test 1: Set hostname with max valid length - should succeed */
+    TEST_ASSERT(mbedtls_ssl_set_hostname(&ssl, hostname_max) == 0);
+    retrieved_hostname = mbedtls_ssl_get_hostname(&ssl);
+    TEST_ASSERT(strlen(retrieved_hostname) == MBEDTLS_SSL_MAX_HOST_NAME_LEN);
+    TEST_ASSERT(strcmp(hostname_max, retrieved_hostname) == 0);
+
+    /* Test 2: Set hostname exceeding max length - should fail */
+    TEST_ASSERT(mbedtls_ssl_set_hostname(&ssl, hostname_too_long)
+                == MBEDTLS_ERR_SSL_BAD_INPUT_DATA);
+    /* Verify that the old hostname is preserved after failure */
+    retrieved_hostname = mbedtls_ssl_get_hostname(&ssl);
+    TEST_ASSERT(strcmp(hostname_max, retrieved_hostname) == 0);
+
+    /* Test 3: Clear hostname by passing NULL */
+    TEST_ASSERT(mbedtls_ssl_set_hostname(&ssl, NULL) == 0);
+    retrieved_hostname = mbedtls_ssl_get_hostname(&ssl);
+    TEST_ASSERT(retrieved_hostname == NULL);
+
+    /* Test 4: Set empty string - should succeed */
+    TEST_ASSERT(mbedtls_ssl_set_hostname(&ssl, "") == 0);
+    retrieved_hostname = mbedtls_ssl_get_hostname(&ssl);
+    TEST_ASSERT(retrieved_hostname == NULL);
+
+    /* Test 5: Set normal hostname after clearing */
+    TEST_ASSERT(mbedtls_ssl_set_hostname(&ssl, "example.com") == 0);
+    retrieved_hostname = mbedtls_ssl_get_hostname(&ssl);
+    TEST_ASSERT(strcmp("example.com", retrieved_hostname) == 0);
+
+exit:
+    mbedtls_ssl_free(&ssl);
+    USE_PSA_DONE();
+}
+/* END_CASE */
+
 /* BEGIN_CASE */
 void ssl_crypt_record(int cipher_type, int hash_id,
                       int etm, int tag_mode, int ver,
@@ -3438,5 +3495,240 @@ void elliptic_curve_get_properties()
     goto exit;
 exit:
     MD_OR_USE_PSA_DONE();
+}
+/* END_CASE */
+
+/* BEGIN_CASE depends_on:MBEDTLS_SSL_PROTO_TLS1_3:MBEDTLS_SSL_SESSION_TICKETS:MBEDTLS_SSL_CLI_C:MBEDTLS_SSL_SERVER_NAME_INDICATION */
+void ssl_tls13_session_hostname_save_load(int hostname_len)
+{
+    mbedtls_ssl_session original, restored;
+    unsigned char *buf = NULL;
+    size_t len;
+
+    /*
+     * Test TLS 1.3 session hostname serialization/deserialization
+     * with various hostname lengths including maximum length.
+     */
+    mbedtls_ssl_session_init(&original);
+    mbedtls_ssl_session_init(&restored);
+    USE_PSA_INIT();
+
+    /* Prepare a TLS 1.3 client session with hostname */
+    TEST_ASSERT(mbedtls_test_ssl_tls13_populate_session(
+                    &original, 0, MBEDTLS_SSL_IS_CLIENT) == 0);
+
+    /* Set hostname with specified length */
+    if (hostname_len > 0) {
+        /* Fill hostname with 'a' characters */
+        TEST_ASSERT(hostname_len <= MBEDTLS_SSL_MAX_HOST_NAME_LEN);
+        memset(original.ticket_hostname.buf, 'a', hostname_len);
+        original.ticket_hostname.buf[hostname_len] = '\0';
+    } else {
+        original.ticket_hostname.buf[0] = '\0';
+    }
+
+    /* Serialize the session */
+    TEST_ASSERT(mbedtls_ssl_session_save(&original, NULL, 0, &len)
+                == MBEDTLS_ERR_SSL_BUFFER_TOO_SMALL);
+    TEST_ASSERT((buf = mbedtls_calloc(1, len)) != NULL);
+    TEST_ASSERT(mbedtls_ssl_session_save(&original, buf, len, &len) == 0);
+
+    /* Restore session from serialized data */
+    TEST_ASSERT(mbedtls_ssl_session_load(&restored, buf, len) == 0);
+
+    /* Verify hostname matches */
+    TEST_ASSERT(strcmp(original.ticket_hostname.buf,
+                       restored.ticket_hostname.buf) == 0);
+
+exit:
+    mbedtls_ssl_session_free(&original);
+    mbedtls_ssl_session_free(&restored);
+    mbedtls_free(buf);
+    USE_PSA_DONE();
+}
+/* END_CASE */
+
+/* BEGIN_CASE depends_on:MBEDTLS_SSL_PROTO_TLS1_3:MBEDTLS_SSL_SESSION_TICKETS:MBEDTLS_SSL_CLI_C:MBEDTLS_SSL_SERVER_NAME_INDICATION */
+void ssl_tls13_session_hostname_load_invalid()
+{
+    mbedtls_ssl_session session;
+    unsigned char *buf = NULL;
+    size_t len;
+
+    /*
+     * Test TLS 1.3 session load with invalid hostname data.
+     * This tests rejection of hostname too long (> MBEDTLS_SSL_MAX_HOST_NAME_LEN + 1).
+     *
+     * We create a valid session with max valid hostname,
+     * serialize it, then extend the hostname by 1 byte
+     * to exceed the maximum allowed value.
+     */
+    mbedtls_ssl_session_init(&session);
+    USE_PSA_INIT();
+
+    /* Create a valid TLS 1.3 client session with hostname */
+    TEST_ASSERT(mbedtls_test_ssl_tls13_populate_session(
+                    &session, 0, MBEDTLS_SSL_IS_CLIENT) == 0);
+    
+    memset(session.ticket_hostname.buf, 'a', MBEDTLS_SSL_MAX_HOST_NAME_LEN);
+    session.ticket_hostname.buf[MBEDTLS_SSL_MAX_HOST_NAME_LEN] = '\0';
+
+    /* Serialize the session */
+    TEST_ASSERT(mbedtls_ssl_session_save(&session, NULL, 0, &len)
+                == MBEDTLS_ERR_SSL_BUFFER_TOO_SMALL);
+    TEST_ASSERT((buf = mbedtls_calloc(1, len + 1)) != NULL);
+    TEST_ASSERT(mbedtls_ssl_session_save(&session, buf, len, &len) == 0);
+
+    mbedtls_ssl_session_free(&session);
+    mbedtls_ssl_session_init(&session);
+
+    /*
+     * Find and increment the hostname length field.
+     *
+     * The serialized session format encodes the resumption_key_len,
+     * so we locate the hostname length field by  parsing the buffer
+     * instead of relying on hard-coded offsets.
+     *
+     * Serialized layout (relevant parts):
+     *   - header (5 bytes)
+     *   - tls_version (1 byte)
+     *   - endpoint (1 byte)
+     *   - ciphersuite (2 bytes)
+     *   - ticket_age_add (4 bytes)
+     *   - ticket_flags (1 byte)
+     *   - resumption_key_len (1 byte) = 32
+     *   - resumption_key (resumption_key_len bytes)
+     *   - hostname_len (2 bytes) <-- we want to increment this
+     *
+     * Header is 5 bytes (version major, minor, patch, config flags 2 bytes)
+     */
+
+    const size_t header_len = 5;
+    TEST_ASSERT(len >= header_len);
+    /* Move past header and TLS version byte */
+    size_t offset = header_len;  /* after header */
+    offset += 1;  /* TLS version (1 byte) */
+    /* Skip fixed-size TLS 1.3 fields:
+     *   - endpoint (1 byte)
+     *   - ciphersuite (2 bytes)
+     *   - ticket_age_add (4 bytes)
+     *   - ticket_flags (1 byte)
+     */
+    TEST_ASSERT(len >= (offset + 1 + 2 + 4 + 1));
+    offset += 1 + 2 + 4 + 1;
+    /* Read resumption_key_len and skip the key */
+    TEST_ASSERT(len >= (offset + 1));
+    size_t resumption_key_len = buf[offset];
+    offset += 1;
+    TEST_ASSERT(len >= (offset + resumption_key_len + 2));
+    offset += resumption_key_len;
+    /* offset now points to hostname_len (2 bytes) */
+
+    const size_t hostname_len_offset = offset;
+
+    TEST_ASSERT(hostname_len_offset ==
+                header_len +           /* record header */
+                1 +                    /* TLS version */
+                (1 + 2 + 4 + 1) +      /* endpoint + ciphersuite + ticket_age_add + ticket_flags */
+                1 +                    /* resumption_key_len field */
+                resumption_key_len);   /* resumption key data */
+
+    /* Increase hostname length by 1 byte to make it longer
+     * than MBEDTLS_SSL_MAX_HOST_NAME_LEN.
+     */
+    memmove(&buf[hostname_len_offset + 3],
+            &buf[hostname_len_offset + 2],
+            len - (hostname_len_offset + 2));
+    size_t hostname_len_with_nul =
+        ((size_t)buf[hostname_len_offset] << 8U) |
+        buf[hostname_len_offset + 1];
+    TEST_ASSERT(hostname_len_with_nul ==
+                (MBEDTLS_SSL_MAX_HOST_NAME_LEN + 1U /* NUL */));
+    hostname_len_with_nul += 1;
+    buf[hostname_len_offset] =
+        (hostname_len_with_nul >> 8U) & 0xFFU;  /* High byte */
+    buf[hostname_len_offset + 1] =
+        hostname_len_with_nul & 0xFFU;      /* Low byte */
+
+    /* Try to load - should fail with BAD_INPUT_DATA */
+    TEST_ASSERT(mbedtls_ssl_session_load(&session, buf, len + 1)
+                == MBEDTLS_ERR_SSL_BAD_INPUT_DATA);
+
+exit:
+    mbedtls_ssl_session_free(&session);
+    mbedtls_free(buf);
+    USE_PSA_DONE();
+}
+/* END_CASE */
+
+/* BEGIN_CASE depends_on:MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH */
+void ssl_buffer_allocation_size()
+{
+    mbedtls_ssl_context ssl;
+    mbedtls_ssl_config conf;
+
+    /*
+     * Test that mbedtls_ssl_setup() allocates buffers with correct size
+     * that accounts for header and payload overhead (MBEDTLS_SSL_HEADER_LEN
+     * + MBEDTLS_SSL_PAYLOAD_OVERHEAD + content_len [+ CID]).
+     *
+     * This is a regression test for a bug where the buffer was allocated
+     * with only content_len bytes, causing out-of-bounds writes during
+     * mbedtls_ssl_free() when clearing memory.
+     *
+     * We use custom content lengths (not the defaults) to ensure that
+     * the MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH feature is actually being
+     * used and tested with non-default buffer sizes.
+     */
+#if defined(MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
+    const uint32_t custom_in_content_len = 8192;
+    const uint32_t custom_out_content_len = 4096;
+#endif
+
+    mbedtls_ssl_init(&ssl);
+    mbedtls_ssl_config_init(&conf);
+    USE_PSA_INIT();
+
+    TEST_ASSERT(mbedtls_ssl_config_defaults(&conf,
+                                            MBEDTLS_SSL_IS_CLIENT,
+                                            MBEDTLS_SSL_TRANSPORT_STREAM,
+                                            MBEDTLS_SSL_PRESET_DEFAULT) == 0);
+
+#if defined(MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
+    /* Set custom content lengths to test variable buffer allocation.
+     * Tests use MBEDTLS_ALLOW_PRIVATE_ACCESS to access private members. */
+    conf.ssl_in_content_len = custom_in_content_len;
+    conf.ssl_out_content_len = custom_out_content_len;
+
+    /* Verify the config getters return our custom values */
+    TEST_ASSERT(mbedtls_ssl_conf_get_in_content_len(&conf) == custom_in_content_len);
+    TEST_ASSERT(mbedtls_ssl_conf_get_out_content_len(&conf) == custom_out_content_len);
+#endif
+
+    /* Setup SSL context - this allocates the buffers */
+    int ret = mbedtls_ssl_setup(&ssl, &conf);
+    TEST_ASSERT(ret == 0);
+
+    /* Calculate expected buffer sizes using the same formula as ssl_tls.c */
+    const uint32_t expected_in_buf_size = mbedtls_ssl_get_in_buffer_size(
+                                              mbedtls_ssl_conf_get_in_content_len(&conf));
+    const uint32_t expected_out_buf_size = mbedtls_ssl_get_out_buffer_size(
+                                               mbedtls_ssl_conf_get_out_content_len(&conf));
+
+    /* Verify buffer sizes match expected values */
+    TEST_ASSERT(ssl.in_buf_len == expected_in_buf_size);
+    TEST_ASSERT(ssl.out_buf_len == expected_out_buf_size);
+
+    /* Verify buffers were actually allocated */
+    TEST_ASSERT(ssl.in_buf != NULL);
+    TEST_ASSERT(ssl.out_buf != NULL);
+
+exit:
+    /* This will call mbedtls_ssl_free() which clears the entire buffer.
+     * If buffer was under-allocated, this would write out of bounds
+     * and be caught by ASan/valgrind. */
+    mbedtls_ssl_free(&ssl);
+    mbedtls_ssl_config_free(&conf);
+    USE_PSA_DONE();
 }
 /* END_CASE */

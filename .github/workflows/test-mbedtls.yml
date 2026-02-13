@@ -1,0 +1,26 @@
+name: Test mbedtls
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ '*' ]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  test-mbedtls:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Run tests
+        run: |
+          cd components/mbedtls/mbedtls
+          make test -j $(nproc)
+          ./run-test_suite_ssl-sanitize.sh
+          ./run-test_suite_ssl-reduced_buffer_size.sh
+          ./run-test_suite_ssl-variable_buffer.sh

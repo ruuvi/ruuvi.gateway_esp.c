@@ -18,7 +18,6 @@
  */
 
 #include "common.h"
-#include <esp_log.h>
 
 #if defined(MBEDTLS_DEBUG_C)
 
@@ -58,7 +57,6 @@ static inline void debug_send_line(const mbedtls_ssl_context *ssl, int level,
     mbedtls_snprintf(idstr, sizeof(idstr), "%p: %s", (void *) ssl, str);
     ssl->conf->f_dbg(ssl->conf->p_dbg, level, file, line, idstr);
 #else
-//    ESP_LOGI("mbedtls", "### f_dbg=%p: %s:%d: msg: %s", ssl->conf->f_dbg, file, line, str);
     ssl->conf->f_dbg(ssl->conf->p_dbg, level, file, line, str);
 #endif
 }

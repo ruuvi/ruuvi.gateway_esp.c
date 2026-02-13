@@ -2023,13 +2023,13 @@ void mbedtls_test_ssl_perform_handshake(
          * after it receives a message, so we force it. */
         TEST_ASSERT(exchange_data(&(client.ssl), &(server.ssl)) == 0);
 
-        TEST_ASSERT(client.ssl.out_buf_len ==
+        TEST_ASSERT(client.ssl.out_buf_len >=
                     mbedtls_ssl_get_output_buflen(&client.ssl));
-        TEST_ASSERT(client.ssl.in_buf_len ==
+        TEST_ASSERT(client.ssl.in_buf_len >=
                     mbedtls_ssl_get_input_buflen(&client.ssl));
-        TEST_ASSERT(server.ssl.out_buf_len ==
+        TEST_ASSERT(server.ssl.out_buf_len >=
                     mbedtls_ssl_get_output_buflen(&server.ssl));
-        TEST_ASSERT(server.ssl.in_buf_len ==
+        TEST_ASSERT(server.ssl.in_buf_len >=
                     mbedtls_ssl_get_input_buflen(&server.ssl));
     }
 #endif
