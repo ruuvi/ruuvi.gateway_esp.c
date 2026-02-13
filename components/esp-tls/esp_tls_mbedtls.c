@@ -219,7 +219,7 @@ int esp_mbedtls_handshake(esp_tls_t *tls, const esp_tls_cfg_t *cfg)
          * "resume" flag to determine if the session has already been set.
          */
         if ((NULL == tls->ssl.handshake) || (0 == tls->ssl.handshake->resume)) {
-            ESP_LOGI(TAG, "Reusing the already saved client session context");
+            ESP_LOGD(TAG, "Reusing the already saved client session context");
             if ((ret = mbedtls_ssl_set_session(&tls->ssl, &(cfg->client_session->saved_session))) != 0 ) {
                 ESP_LOGE(TAG, "mbedtls_ssl_set_session returned -0x%04X", -ret);
                 return -1;
