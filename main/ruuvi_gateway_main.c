@@ -42,9 +42,10 @@
 #include "reset_info.h"
 #include "network_subsystem.h"
 #include "gw_cfg_storage.h"
-#include "time_units.h"
+#include "esp_transport_ssl.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
+#include "http_parser.h"
 #include "log.h"
 #include "partition_table.h"
 
@@ -59,6 +60,9 @@ static const char TAG[] = "ruuvi_gateway";
 #define RUUVI_GATEWAY_DELAY_AFTER_NRF52_UPDATING_SECONDS (5)
 
 #define RUUVI_GATEWAY_DELAY_BEFORE_REBOOT_AFTER_FW_ROLLBACK_MS (5000)
+
+#define RUUVI_GATEWAY_SSL_SAVED_SESSION_TICKET_IDX_RUUVI  (0U)
+#define RUUVI_GATEWAY_SSL_SAVED_SESSION_TICKET_IDX_CUSTOM (1U)
 
 volatile uint32_t IRAM_ATTR g_network_disconnect_cnt;
 
@@ -364,6 +368,57 @@ handle_reset_button_is_pressed_during_boot(void)
 }
 
 static void
+set_saved_ssl_ticket_hostname(const uint32_t idx, const mbedtls_ssl_hostname_t* const p_hostname)
+{
+    if (!esp_transport_ssl_set_saved_ticket_hostname(idx, p_hostname))
+    {
+        LOG_ERR(
+            "esp_transport_ssl_set_saved_ticket_hostname failed for hostname '%s' at idx %" PRIu32,
+            (NULL != p_hostname) ? p_hostname->buf : "<NULL>",
+            idx);
+    }
+}
+
+static void
+ruuvi_cb_on_change_cfg_set_hostnames_for_ssl_saved_tickets(
+    const gw_cfg_t* const         p_gw_cfg,
+    mbedtls_ssl_hostname_t* const p_hostname)
+{
+    _Static_assert(sizeof(RUUVI_GATEWAY_HTTP_HOST) <= sizeof(p_hostname->buf), "RUUVI_GATEWAY_HTTP_HOST is too long");
+    snprintf(
+        p_hostname->buf,
+        sizeof(p_hostname->buf),
+        "%s",
+        ((NULL != p_gw_cfg) && p_gw_cfg->ruuvi_cfg.http.use_http_ruuvi) ? RUUVI_GATEWAY_HTTP_HOST : "");
+    set_saved_ssl_ticket_hostname(RUUVI_GATEWAY_SSL_SAVED_SESSION_TICKET_IDX_RUUVI, p_hostname);
+
+    memset(p_hostname->buf, 0, sizeof(p_hostname->buf));
+    if ((NULL != p_gw_cfg) && p_gw_cfg->ruuvi_cfg.http.use_http)
+    {
+        struct http_parser_url u = { 0 };
+        http_parser_url_init(&u);
+        const char* const p_url = p_gw_cfg->ruuvi_cfg.http.http_url.buf;
+        if (0 == http_parser_parse_url(p_url, strlen(p_url), 0, &u))
+        {
+            if (0 != (u.field_set & (1U << UF_HOST)))
+            {
+                const uint16_t host_len = u.field_data[UF_HOST].len;
+                if (host_len < sizeof(p_hostname->buf))
+                {
+                    memcpy(p_hostname->buf, &p_url[u.field_data[UF_HOST].off], host_len);
+                    p_hostname->buf[host_len] = '\0';
+                }
+                else
+                {
+                    LOG_ERR("Hostname in URL is too long for saved session ticket: %" PRIu16, host_len);
+                }
+            }
+        }
+    }
+    set_saved_ssl_ticket_hostname(RUUVI_GATEWAY_SSL_SAVED_SESSION_TICKET_IDX_CUSTOM, p_hostname);
+}
+
+static void
 ruuvi_cb_on_change_cfg(const gw_cfg_t* const p_gw_cfg)
 {
     LOG_INFO("%s: settings_save_to_flash", __func__);
@@ -382,6 +437,20 @@ ruuvi_cb_on_change_cfg(const gw_cfg_t* const p_gw_cfg)
     {
         LOG_ERR("%s failed", "http_server_set_auth");
     }
+
+    mbedtls_ssl_hostname_t* p_hostname = os_calloc(1, sizeof(*p_hostname));
+    if (NULL == p_hostname)
+    {
+        LOG_ERR("os_calloc failed for mbedtls_ssl_hostname_t");
+        set_saved_ssl_ticket_hostname(RUUVI_GATEWAY_SSL_SAVED_SESSION_TICKET_IDX_RUUVI, NULL);
+        set_saved_ssl_ticket_hostname(RUUVI_GATEWAY_SSL_SAVED_SESSION_TICKET_IDX_CUSTOM, NULL);
+    }
+    else
+    {
+        ruuvi_cb_on_change_cfg_set_hostnames_for_ssl_saved_tickets(p_gw_cfg, p_hostname);
+        os_free(p_hostname);
+    }
+
     if (gw_status_is_waiting_auto_cfg_by_wps())
     {
         main_task_send_sig_deactivate_cfg_mode();
@@ -465,6 +534,8 @@ main_task_init(void)
         ruuvi_nvs_erase();
         ruuvi_nvs_init();
     }
+
+    esp_transport_ssl_init_saved_tickets_storage();
 
     if (!ruuvi_init_gw_cfg(NULL, NULL))
     {

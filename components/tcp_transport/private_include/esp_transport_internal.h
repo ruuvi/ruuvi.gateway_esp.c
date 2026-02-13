@@ -30,6 +30,9 @@ extern "C" {
 #define ESP_TRANSPORT_LOGE_LINE(fmt, ...) \
     ESP_LOGE(TAG, "[%s] %s:%d: " fmt, pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", __FILE__, __LINE__, ##__VA_ARGS__)
 
+#define ESP_TRANSPORT_LOGW(fmt, ...) \
+    ESP_LOGW(TAG, "[%s] " fmt, pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", ##__VA_ARGS__)
+
 #define ESP_TRANSPORT_LOGW_FUNC(fmt, ...) \
     ESP_LOGW(TAG, "[%s] %s: " fmt, pcTaskGetTaskName(NULL) ? pcTaskGetTaskName(NULL) : "???", __func__, ##__VA_ARGS__)
 

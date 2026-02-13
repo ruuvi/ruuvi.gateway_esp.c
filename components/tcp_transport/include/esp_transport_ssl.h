@@ -7,6 +7,7 @@
 #ifndef _ESP_TRANSPORT_SSL_H_
 #define _ESP_TRANSPORT_SSL_H_
 
+#include <stdint.h>
 #include "esp_transport.h"
 #include "esp_tls.h"
 
@@ -14,6 +15,16 @@
 extern "C" {
 #endif
 
+/**
+ * @def ESP_TLS_MAX_NUM_SAVED_SESSIONS
+ * @brief Maximum number of TLS session tickets that can be cached for reuse.
+ *
+ * This macro defines the capacity of the internal saved-session storage used by
+ * the SSL/TLS transport layer (for example, for session resumption).
+ *
+ * @note Increasing this value may increase RAM usage.
+ */
+#define ESP_TLS_MAX_NUM_SAVED_SESSIONS (2)
 
 /**
  * @brief       Create new SSL transport, the transport handle must be release esp_transport_destroy callback
@@ -206,6 +217,37 @@ void esp_transport_ssl_set_buffer_size(esp_transport_handle_t t, const size_t ss
  * @brief      Clear all saved TLS session tickets.
  */
 void esp_transport_ssl_clear_saved_session_tickets(void);
+
+
+/**
+ * @brief Initialize storage for saved TLS session tickets.
+ *
+ * This function initializes the storage for saved session tickets, including
+ * clearing any existing session data and initializing the session slots.
+ *
+ * @note This function should be called before using any other session-related
+ *       functions to ensure proper initialization.
+ */
+void esp_transport_ssl_init_saved_tickets_storage(void);
+
+/**
+ * @brief Set (or clear) the hostname associated with a saved TLS session ticket slot.
+ *
+ * This function updates the hostname label used to match a cached session ticket
+ * against a target server when attempting session resumption.
+ *
+ * Passing a non-NULL hostname assigns/overwrites the hostname for the given slot.
+ * Passing @c NULL clears the hostname for the slot.
+ *
+ * @param[in] idx        Saved session slot index. Must be less than
+ *                       @c ESP_TLS_MAX_NUM_SAVED_SESSIONS.
+ * @param[in] p_hostname Pointer to the hostname to store, or @c NULL to clear it.
+ *
+ * @return @c true on success, @c false if @p idx is out of range.
+ */
+bool esp_transport_ssl_set_saved_ticket_hostname(
+    const uint32_t idx,
+    const mbedtls_ssl_hostname_t* const p_hostname);
 
 #ifdef __cplusplus
 }

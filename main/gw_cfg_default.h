@@ -17,9 +17,11 @@
 extern "C" {
 #endif
 
-#define RUUVI_GATEWAY_HTTP_DEFAULT_URL "https://network.ruuvi.com/record"
-#define RUUVI_GATEWAY_HTTP_STATUS_URL  "https://network.ruuvi.com/status"
-#define RUUVI_GATEWAY_FW_UPDATE_URL    "https://network.ruuvi.com/firmwareupdate"
+#define RUUVI_GATEWAY_HTTP_HOST "network.ruuvi.com"
+
+#define RUUVI_GATEWAY_HTTP_DEFAULT_URL "https://" RUUVI_GATEWAY_HTTP_HOST "/record"
+#define RUUVI_GATEWAY_HTTP_STATUS_URL  "https://" RUUVI_GATEWAY_HTTP_HOST "/status"
+#define RUUVI_GATEWAY_FW_UPDATE_URL    "https://" RUUVI_GATEWAY_HTTP_HOST "/firmwareupdate"
 
 #define RUUVI_GATEWAY_AUTH_DEFAULT_USER "Admin"
 
