@@ -30,6 +30,9 @@
 #include "mbedtls/error.h"
 #include "mbedtls/constant_time.h"
 
+#include "esp_log.h"
+static const char TAG[] = "ssl_tls12_client";
+
 #if defined(MBEDTLS_USE_PSA_CRYPTO)
 #include "psa_util_internal.h"
 #include "psa/crypto.h"
@@ -394,14 +397,14 @@ static int ssl_write_session_ticket_ext(mbedtls_ssl_context *ssl,
 
     *olen = 4;
 
-    if (ssl->session_negotiate->ticket == NULL || tlen == 0) {
+    if (tlen == 0) {
         return 0;
     }
 
     MBEDTLS_SSL_DEBUG_MSG(3,
                           ("sending session ticket of length %" MBEDTLS_PRINTF_SIZET, tlen));
 
-    memcpy(p, ssl->session_negotiate->ticket, tlen);
+    memcpy(p, ssl->session_negotiate->ticket.buf, tlen);
 
     *olen += tlen;
 
@@ -3395,7 +3398,6 @@ static int ssl_parse_new_session_ticket(mbedtls_ssl_context *ssl)
     int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
     uint32_t lifetime;
     size_t ticket_len;
-    unsigned char *ticket;
     const unsigned char *msg;
 
     MBEDTLS_SSL_DEBUG_MSG(2, ("=> parse new session ticket"));
@@ -3460,28 +3462,23 @@ static int ssl_parse_new_session_ticket(mbedtls_ssl_context *ssl)
         return 0;
     }
 
-    if (ssl->session != NULL && ssl->session->ticket != NULL) {
-        mbedtls_zeroize_and_free(ssl->session->ticket,
+    if (ssl->session != NULL && ssl->session->ticket_len != 0) {
+        mbedtls_platform_zeroize(ssl->session->ticket.buf,
                                  ssl->session->ticket_len);
-        ssl->session->ticket = NULL;
         ssl->session->ticket_len = 0;
     }
 
-    mbedtls_zeroize_and_free(ssl->session_negotiate->ticket,
+    mbedtls_platform_zeroize(ssl->session_negotiate->ticket.buf,
                              ssl->session_negotiate->ticket_len);
-    ssl->session_negotiate->ticket = NULL;
     ssl->session_negotiate->ticket_len = 0;
 
-    if ((ticket = mbedtls_calloc(1, ticket_len)) == NULL) {
-        MBEDTLS_SSL_DEBUG_MSG(1, ("ticket alloc failed"));
-        mbedtls_ssl_send_alert_message(ssl, MBEDTLS_SSL_ALERT_LEVEL_FATAL,
-                                       MBEDTLS_SSL_ALERT_MSG_INTERNAL_ERROR);
-        return MBEDTLS_ERR_SSL_ALLOC_FAILED;
+    if (ticket_len > sizeof(ssl->session_negotiate->ticket.buf)) {
+        ESP_LOGW(TAG, "%s: session ticket is too large (%u bytes) - ignore it", __func__, (unsigned)ticket_len);
+        ssl->session_negotiate->ticket_len = 0;
+        return 0;
     }
+    memcpy(ssl->session_negotiate->ticket.buf, msg + 6, ticket_len);
 
-    memcpy(ticket, msg + 6, ticket_len);
-
-    ssl->session_negotiate->ticket = ticket;
     ssl->session_negotiate->ticket_len = ticket_len;
     ssl->session_negotiate->ticket_lifetime = lifetime;
 

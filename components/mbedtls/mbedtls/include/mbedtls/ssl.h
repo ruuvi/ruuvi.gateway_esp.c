@@ -273,6 +273,8 @@
 #define MBEDTLS_SSL_MAX_HOST_NAME_LEN           127 /*!< Maximum host name defined in RFC 1035: 255. Use lower value for the embedded platform */
 #define MBEDTLS_SSL_MAX_ALPN_NAME_LEN           255 /*!< Maximum size in bytes of a protocol name in alpn ext., RFC 7301 */
 
+#define MBEDTLS_SSL_SESSION_TICKET_MAX_LEN      768 /*!< Maximum size in bytes of session ticket, RFC 5077: 65535 bytes. Use lower value for the embedded platform */
+
 #define MBEDTLS_SSL_MAX_ALPN_LIST_LEN           65535 /*!< Maximum size in bytes of list in alpn ext., RFC 7301          */
 
 /* RFC 6066 section 4, see also mfl_code_to_length in ssl_tls.c
@@ -1190,6 +1192,11 @@ typedef struct mbedtls_ssl_hostname_t
     char buf[MBEDTLS_SSL_MAX_HOST_NAME_LEN + 1];
 } mbedtls_ssl_hostname_t;
 
+typedef struct mbedtls_ssl_session_ticket_t
+{
+    unsigned char buf[MBEDTLS_SSL_SESSION_TICKET_MAX_LEN];
+} mbedtls_ssl_session_ticket_t;
+
 /*
  * This structure is used for storing current session data.
  *
@@ -1235,7 +1242,7 @@ struct mbedtls_ssl_session {
     uint32_t MBEDTLS_PRIVATE(verify_result);          /*!<  verification result     */
 
 #if defined(MBEDTLS_SSL_SESSION_TICKETS) && defined(MBEDTLS_SSL_CLI_C)
-    unsigned char *MBEDTLS_PRIVATE(ticket);      /*!< RFC 5077 session ticket */
+    mbedtls_ssl_session_ticket_t MBEDTLS_PRIVATE(ticket); /*!< RFC 5077 session ticket */
     size_t MBEDTLS_PRIVATE(ticket_len);          /*!< session ticket length   */
     uint32_t MBEDTLS_PRIVATE(ticket_lifetime);   /*!< ticket lifetime hint    */
 #endif /* MBEDTLS_SSL_SESSION_TICKETS && MBEDTLS_SSL_CLI_C */

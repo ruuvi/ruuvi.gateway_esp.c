@@ -773,7 +773,7 @@ static int ssl_prepare_client_hello(mbedtls_ssl_context *ssl)
     /* Check if a tls13 ticket has been configured. */
     if (ssl->handshake->resume != 0 &&
         session_negotiate->tls_version == MBEDTLS_SSL_VERSION_TLS1_3 &&
-        session_negotiate->ticket != NULL) {
+        session_negotiate->ticket_len != 0) {
         mbedtls_time_t now = mbedtls_time(NULL);
         uint64_t age = (uint64_t) (now - session_negotiate->ticket_received);
         if (session_negotiate->ticket_received > now ||
@@ -862,8 +862,7 @@ static int ssl_prepare_client_hello(mbedtls_ssl_context *ssl)
         }
 #endif
         if (!renegotiating) {
-            if ((session_negotiate->ticket != NULL) &&
-                (session_negotiate->ticket_len != 0)) {
+            if (session_negotiate->ticket_len != 0) {
                 session_id_len = 32;
             }
         }
