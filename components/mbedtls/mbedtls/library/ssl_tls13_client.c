@@ -2811,8 +2811,13 @@ static int ssl_tls13_parse_new_session_ticket(mbedtls_ssl_context *ssl,
 
     if (ticket_len > sizeof(session->ticket.buf)) {
 #ifdef ESP_PLATFORM
+#if defined(MBEDTLS_SSL_SERVER_NAME_INDICATION) && defined(MBEDTLS_SSL_CLI_C)
         ESP_LOGW(TAG, "%s: Session ticket length %u is too big for hostname '%s' - ignore ticket",
                  __func__, (unsigned)ticket_len, session->ticket_hostname.buf);
+#else
+        ESP_LOGW(TAG, "%s: Session ticket length %u is too big - ignore ticket",
+                 __func__, (unsigned)ticket_len);
+#endif
 #endif
         ssl->handshake->received_extensions = MBEDTLS_SSL_EXT_MASK_NONE;
         /* session has been updated, allow export */
