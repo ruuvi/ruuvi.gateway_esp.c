@@ -3476,7 +3476,7 @@ static int ssl_parse_new_session_ticket(mbedtls_ssl_context *ssl)
 
     if (ticket_len > sizeof(ssl->session_negotiate->ticket.buf)) {
 #ifdef ESP_PLATFORM
-#if defined(MBEDTLS_SSL_SERVER_NAME_INDICATION) && defined(MBEDTLS_SSL_CLI_C)
+#if defined(MBEDTLS_SSL_PROTO_TLS1_3) && defined(MBEDTLS_SSL_SERVER_NAME_INDICATION) && defined(MBEDTLS_SSL_CLI_C)
         ESP_LOGW(TAG, "%s: Session ticket length %u is too big for hostname '%s' - ignore ticket",
                  __func__,
                  (unsigned)ticket_len,
