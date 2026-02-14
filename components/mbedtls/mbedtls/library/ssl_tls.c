@@ -2568,6 +2568,9 @@ static int ssl_tls13_session_save(const mbedtls_ssl_session *session,
         p += 2;
 
         if (session->ticket_len > 0) {
+            if (session->ticket_len > sizeof(session->ticket.buf)) {
+                return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
+            }
             memcpy(p, session->ticket.buf, session->ticket_len);
             p += session->ticket_len;
         }
@@ -8958,9 +8961,7 @@ static size_t ssl_tls12_session_save(const mbedtls_ssl_session *session,
         *p++ = MBEDTLS_BYTE_0(session->ticket_len);
 
         if (session->ticket_len != 0) {
-            memcpy(p, session->ticket.buf,
-                   (session->ticket_len <= sizeof(session->ticket.buf)) ?
-                   session->ticket_len : sizeof(session->ticket.buf));
+            memcpy(p, session->ticket.buf, session->ticket_len);
             p += session->ticket_len;
         }
 

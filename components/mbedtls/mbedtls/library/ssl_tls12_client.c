@@ -378,6 +378,9 @@ static int ssl_write_session_ticket_ext(mbedtls_ssl_context *ssl,
 {
     unsigned char *p = buf;
     size_t tlen = ssl->session_negotiate->ticket_len;
+    if (tlen > sizeof(ssl->session_negotiate->ticket.buf)) {
+        return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
+    }
 
     *olen = 0;
 
@@ -406,9 +409,7 @@ static int ssl_write_session_ticket_ext(mbedtls_ssl_context *ssl,
     MBEDTLS_SSL_DEBUG_MSG(3,
                           ("sending session ticket of length %" MBEDTLS_PRINTF_SIZET, tlen));
 
-    memcpy(p, ssl->session_negotiate->ticket.buf,
-           (tlen <= sizeof(ssl->session_negotiate->ticket.buf)) ?
-           tlen : sizeof(ssl->session_negotiate->ticket.buf));
+    memcpy(p, ssl->session_negotiate->ticket.buf, tlen);
 
     *olen += tlen;
 

@@ -732,6 +732,9 @@ static int ssl_tls13_ticket_get_identity(mbedtls_ssl_context *ssl,
     if (!ssl_tls13_has_configured_ticket(ssl)) {
         return -1;
     }
+    if (session->ticket_len > sizeof(session->ticket.buf)) {
+        return -1;
+    }
 
     *hash_alg = ssl_tls13_get_ciphersuite_hash_alg(session->ciphersuite);
     *identity = &session->ticket.buf[0];
