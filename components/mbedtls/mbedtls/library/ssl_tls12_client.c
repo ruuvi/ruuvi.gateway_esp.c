@@ -3473,7 +3473,10 @@ static int ssl_parse_new_session_ticket(mbedtls_ssl_context *ssl)
     ssl->session_negotiate->ticket_len = 0;
 
     if (ticket_len > sizeof(ssl->session_negotiate->ticket.buf)) {
-        ESP_LOGW(TAG, "%s: session ticket is too large (%u bytes) - ignore it", __func__, (unsigned)ticket_len);
+        ESP_LOGW(TAG, "%s: Session ticket length %u is too big for hostname '%s' - ignore ticket",
+                 __func__,
+                 (unsigned)ticket_len,
+                 (NULL != ssl->session) ? ssl->session->ticket_hostname.buf : "<NULL>");
         ssl->session_negotiate->ticket_len = 0;
         return 0;
     }

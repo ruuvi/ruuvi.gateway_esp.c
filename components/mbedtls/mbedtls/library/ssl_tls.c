@@ -2667,7 +2667,8 @@ static int ssl_tls13_session_load(mbedtls_ssl_session *session,
                 memcpy(session->ticket.buf, p, session->ticket_len);
                 p += session->ticket_len;
             } else {
-                ESP_LOGW(TAG, "%s: Session ticket length %zu is too big - ignore ticket", __func__, session->ticket_len);
+                ESP_LOGW(TAG, "%s: Session ticket length %u is too big for hostname '%s' - ignore ticket",
+                         __func__, (unsigned)session->ticket_len, session->ticket_hostname.buf);
                 p += session->ticket_len;
                 session->ticket_len = 0;
             }
@@ -9136,7 +9137,8 @@ static int ssl_tls12_session_load(mbedtls_ssl_session *session,
             memcpy(session->ticket.buf, p, session->ticket_len);
             p += session->ticket_len;
         } else {
-            ESP_LOGW(TAG, "%s: Session ticket length %zu is too big - ignore ticket", __func__, session->ticket_len);
+            ESP_LOGW(TAG, "%s: Session ticket length %u is too big for hostname '%s' - ignore ticket",
+                     __func__, (unsigned)session->ticket_len, session->ticket_hostname.buf);
             p += session->ticket_len;
             session->ticket_len = 0;
         }
