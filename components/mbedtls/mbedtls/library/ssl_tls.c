@@ -9142,8 +9142,13 @@ static int ssl_tls12_session_load(mbedtls_ssl_session *session,
             p += session->ticket_len;
         } else {
 #ifdef ESP_PLATFORM
+#if defined(MBEDTLS_SSL_SERVER_NAME_INDICATION) && defined(MBEDTLS_SSL_CLI_C)
             ESP_LOGW(TAG, "%s: Session ticket length %u is too big for hostname '%s' - ignore ticket",
                      __func__, (unsigned)session->ticket_len, session->ticket_hostname.buf);
+#else
+            ESP_LOGW(TAG, "%s: Session ticket length %u is too big - ignore ticket",
+                     __func__, (unsigned)session->ticket_len);
+#endif
 #endif
             p += session->ticket_len;
             session->ticket_len = 0;
