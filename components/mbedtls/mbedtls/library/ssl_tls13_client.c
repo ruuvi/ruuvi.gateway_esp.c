@@ -2813,6 +2813,8 @@ static int ssl_tls13_parse_new_session_ticket(mbedtls_ssl_context *ssl,
         ssl->handshake->received_extensions = MBEDTLS_SSL_EXT_MASK_NONE;
         /* session has been updated, allow export */
         session->exported = 0;
+        *ticket_nonce = NULL;
+        *ticket_nonce_len = 0;
         return 0;
     }
     memcpy(session->ticket.buf, p, ticket_len);
@@ -2932,8 +2934,10 @@ static int ssl_tls13_process_new_session_ticket(mbedtls_ssl_context *ssl)
                              ssl, buf, buf + buf_len,
                              &ticket_nonce, &ticket_nonce_len));
 
-    MBEDTLS_SSL_PROC_CHK(ssl_tls13_postprocess_new_session_ticket(
-                             ssl, ticket_nonce, ticket_nonce_len));
+    if ((NULL != ticket_nonce) && (ticket_nonce_len > 0)) {
+        MBEDTLS_SSL_PROC_CHK(ssl_tls13_postprocess_new_session_ticket(
+                                 ssl, ticket_nonce, ticket_nonce_len));
+    }
 
     mbedtls_ssl_handshake_set_state(ssl, MBEDTLS_SSL_HANDSHAKE_OVER);
 
