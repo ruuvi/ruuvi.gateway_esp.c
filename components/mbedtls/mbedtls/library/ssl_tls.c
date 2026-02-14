@@ -3670,6 +3670,9 @@ static int ssl_session_save(const mbedtls_ssl_session *session,
     switch (session->tls_version) {
 #if defined(MBEDTLS_SSL_PROTO_TLS1_2)
         case MBEDTLS_SSL_VERSION_TLS1_2:
+            if (session->ticket_len > sizeof(session->ticket.buf)) {
+                return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
+            }
             used += ssl_tls12_session_save(session, p, remaining_len);
             break;
 #endif /* MBEDTLS_SSL_PROTO_TLS1_2 */
