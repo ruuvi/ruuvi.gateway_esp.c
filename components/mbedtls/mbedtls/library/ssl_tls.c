@@ -8958,7 +8958,9 @@ static size_t ssl_tls12_session_save(const mbedtls_ssl_session *session,
         *p++ = MBEDTLS_BYTE_0(session->ticket_len);
 
         if (session->ticket_len != 0) {
-            memcpy(p, session->ticket.buf, session->ticket_len);
+            memcpy(p, session->ticket.buf,
+                   (session->ticket_len <= sizeof(session->ticket.buf)) ?
+                   session->ticket_len : sizeof(session->ticket.buf));
             p += session->ticket_len;
         }
 

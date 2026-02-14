@@ -2801,7 +2801,9 @@ static int ssl_tls13_parse_new_session_ticket(mbedtls_ssl_context *ssl,
 
     /* Check if we previously received a ticket already. */
     if (session->ticket_len > 0) {
-        mbedtls_platform_zeroize(session->ticket.buf, session->ticket_len);
+        mbedtls_platform_zeroize(session->ticket.buf,
+                                 (session->ticket_len <= sizeof(session->ticket.buf)) ?
+                                 session->ticket_len : sizeof(session->ticket.buf));
         session->ticket_len = 0;
     }
 

@@ -406,7 +406,9 @@ static int ssl_write_session_ticket_ext(mbedtls_ssl_context *ssl,
     MBEDTLS_SSL_DEBUG_MSG(3,
                           ("sending session ticket of length %" MBEDTLS_PRINTF_SIZET, tlen));
 
-    memcpy(p, ssl->session_negotiate->ticket.buf, tlen);
+    memcpy(p, ssl->session_negotiate->ticket.buf,
+           (tlen <= sizeof(ssl->session_negotiate->ticket.buf)) ?
+           tlen : sizeof(ssl->session_negotiate->ticket.buf));
 
     *olen += tlen;
 
@@ -3466,12 +3468,14 @@ static int ssl_parse_new_session_ticket(mbedtls_ssl_context *ssl)
 
     if (ssl->session != NULL && ssl->session->ticket_len != 0) {
         mbedtls_platform_zeroize(ssl->session->ticket.buf,
-                                 ssl->session->ticket_len);
+                                 (ssl->session->ticket_len <= sizeof(ssl->session->ticket.buf) ?
+                                 ssl->session->ticket_len : sizeof(ssl->session->ticket.buf)));
         ssl->session->ticket_len = 0;
     }
 
     mbedtls_platform_zeroize(ssl->session_negotiate->ticket.buf,
-                             ssl->session_negotiate->ticket_len);
+                             (ssl->session_negotiate->ticket_len <= sizeof(ssl->session_negotiate->ticket.buf) ?
+                             ssl->session_negotiate->ticket_len : sizeof(ssl->session_negotiate->ticket.buf)));
     ssl->session_negotiate->ticket_len = 0;
 
     if (ticket_len > sizeof(ssl->session_negotiate->ticket.buf)) {
