@@ -35,8 +35,10 @@
 #include "ssl_debug_helpers.h"
 #include "md_psa.h"
 
+#ifdef ESP_PLATFORM
 #include "esp_log.h"
 static const char TAG[] = "ssl_tls13_client";
+#endif
 
 #if defined(MBEDTLS_SSL_TLS1_3_KEY_EXCHANGE_MODE_SOME_EPHEMERAL_ENABLED)
 /* Define a local translating function to save code size by not using too many
@@ -2808,8 +2810,10 @@ static int ssl_tls13_parse_new_session_ticket(mbedtls_ssl_context *ssl,
         session, MBEDTLS_SSL_TLS1_3_TICKET_FLAGS_MASK);
 
     if (ticket_len > sizeof(session->ticket.buf)) {
+#ifdef ESP_PLATFORM
         ESP_LOGW(TAG, "%s: Session ticket length %u is too big for hostname '%s' - ignore ticket",
                  __func__, (unsigned)ticket_len, session->ticket_hostname.buf);
+#endif
         ssl->handshake->received_extensions = MBEDTLS_SSL_EXT_MASK_NONE;
         /* session has been updated, allow export */
         session->exported = 0;

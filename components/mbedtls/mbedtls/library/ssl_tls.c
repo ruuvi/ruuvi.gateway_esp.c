@@ -50,8 +50,10 @@
 #include "mbedtls/oid.h"
 #endif
 
+#ifdef ESP_PLATFORM
 #include "esp_log.h"
 static const char *TAG = "ssl_tls";
+#endif
 
 #if defined(MBEDTLS_USE_PSA_CRYPTO)
 /* Define local translating functions to save code size by not using too many
@@ -2667,8 +2669,10 @@ static int ssl_tls13_session_load(mbedtls_ssl_session *session,
                 memcpy(session->ticket.buf, p, session->ticket_len);
                 p += session->ticket_len;
             } else {
+#ifdef ESP_PLATFORM
                 ESP_LOGW(TAG, "%s: Session ticket length %u is too big for hostname '%s' - ignore ticket",
                          __func__, (unsigned)session->ticket_len, session->ticket_hostname.buf);
+#endif
                 p += session->ticket_len;
                 session->ticket_len = 0;
             }
@@ -9137,8 +9141,10 @@ static int ssl_tls12_session_load(mbedtls_ssl_session *session,
             memcpy(session->ticket.buf, p, session->ticket_len);
             p += session->ticket_len;
         } else {
+#ifdef ESP_PLATFORM
             ESP_LOGW(TAG, "%s: Session ticket length %u is too big for hostname '%s' - ignore ticket",
                      __func__, (unsigned)session->ticket_len, session->ticket_hostname.buf);
+#endif
             p += session->ticket_len;
             session->ticket_len = 0;
         }
