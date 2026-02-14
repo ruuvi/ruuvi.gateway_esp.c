@@ -273,7 +273,7 @@
 #define MBEDTLS_SSL_MAX_HOST_NAME_LEN           127 /*!< Maximum host name defined in RFC 1035: 255. Use lower value for the embedded platform */
 #define MBEDTLS_SSL_MAX_ALPN_NAME_LEN           255 /*!< Maximum size in bytes of a protocol name in alpn ext., RFC 7301 */
 
-#define MBEDTLS_SSL_SESSION_TICKET_MAX_LEN      768 /*!< Maximum size in bytes of session ticket, RFC 5077: 65535 bytes. Use lower value for the embedded platform */
+#define MBEDTLS_SSL_SESSION_TICKET_MAX_LEN      1024 /*!< Maximum size in bytes of session ticket, RFC 5077: 65535 bytes. Use lower value for the embedded platform */
 
 #define MBEDTLS_SSL_MAX_ALPN_LIST_LEN           65535 /*!< Maximum size in bytes of list in alpn ext., RFC 7301          */
 
