@@ -3477,7 +3477,6 @@ static int ssl_parse_new_session_ticket(mbedtls_ssl_context *ssl)
                  __func__,
                  (unsigned)ticket_len,
                  (NULL != ssl->session) ? ssl->session->ticket_hostname.buf : "<NULL>");
-        ssl->session_negotiate->ticket_len = 0;
         return 0;
     }
     memcpy(ssl->session_negotiate->ticket.buf, msg + 6, ticket_len);
