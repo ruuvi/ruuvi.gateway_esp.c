@@ -2075,10 +2075,8 @@ void ssl_serialize_session_save_load(int ticket_len, char *crt_file,
 #if defined(MBEDTLS_SSL_SESSION_TICKETS) && defined(MBEDTLS_SSL_CLI_C)
         TEST_ASSERT(original.ticket_len == restored.ticket_len);
         if (original.ticket_len != 0) {
-            TEST_ASSERT(original.ticket != NULL);
-            TEST_ASSERT(restored.ticket != NULL);
-            TEST_ASSERT(memcmp(original.ticket,
-                               restored.ticket, original.ticket_len) == 0);
+            TEST_ASSERT(memcmp(original.ticket.buf,
+                               restored.ticket.buf, original.ticket_len) == 0);
         }
         TEST_ASSERT(original.ticket_lifetime == restored.ticket_lifetime);
 #endif
@@ -2112,10 +2110,8 @@ void ssl_serialize_session_save_load(int ticket_len, char *crt_file,
             TEST_ASSERT(original.ticket_lifetime == restored.ticket_lifetime);
             TEST_ASSERT(original.ticket_len == restored.ticket_len);
             if (original.ticket_len != 0) {
-                TEST_ASSERT(original.ticket != NULL);
-                TEST_ASSERT(restored.ticket != NULL);
-                TEST_ASSERT(memcmp(original.ticket,
-                                   restored.ticket,
+                TEST_ASSERT(memcmp(original.ticket.buf,
+                                   restored.ticket.buf,
                                    original.ticket_len) == 0);
             }
 

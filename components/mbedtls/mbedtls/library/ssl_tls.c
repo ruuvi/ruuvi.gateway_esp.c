@@ -50,6 +50,11 @@
 #include "mbedtls/oid.h"
 #endif
 
+#ifdef ESP_PLATFORM
+#include "esp_log.h"
+static const char *TAG = "ssl_tls";
+#endif
+
 #if defined(MBEDTLS_USE_PSA_CRYPTO)
 /* Define local translating functions to save code size by not using too many
  * arguments in each translating place. */
@@ -241,9 +246,6 @@ int mbedtls_ssl_session_copy(mbedtls_ssl_session *dst,
 {
     mbedtls_ssl_session_free(dst);
     memcpy(dst, src, sizeof(mbedtls_ssl_session));
-#if defined(MBEDTLS_SSL_SESSION_TICKETS) && defined(MBEDTLS_SSL_CLI_C)
-    dst->ticket = NULL;
-#endif /* MBEDTLS_SSL_SESSION_TICKETS && MBEDTLS_SSL_CLI_C */
 
 #if defined(MBEDTLS_X509_CRT_PARSE_C)
 
@@ -283,15 +285,6 @@ int mbedtls_ssl_session_copy(mbedtls_ssl_session *dst,
 #endif /* MBEDTLS_X509_CRT_PARSE_C */
 
 #if defined(MBEDTLS_SSL_SESSION_TICKETS) && defined(MBEDTLS_SSL_CLI_C)
-    if (src->ticket != NULL) {
-        dst->ticket = mbedtls_calloc(1, src->ticket_len);
-        if (dst->ticket == NULL) {
-            return MBEDTLS_ERR_SSL_ALLOC_FAILED;
-        }
-
-        memcpy(dst->ticket, src->ticket, src->ticket_len);
-    }
-
 #if defined(MBEDTLS_SSL_PROTO_TLS1_3) && \
     defined(MBEDTLS_SSL_SERVER_NAME_INDICATION)
     if (src->endpoint == MBEDTLS_SSL_IS_CLIENT) {
@@ -2574,8 +2567,11 @@ static int ssl_tls13_session_save(const mbedtls_ssl_session *session,
         MBEDTLS_PUT_UINT16_BE(session->ticket_len, p, 0);
         p += 2;
 
-        if (session->ticket != NULL && session->ticket_len > 0) {
-            memcpy(p, session->ticket, session->ticket_len);
+        if (session->ticket_len > 0) {
+            if (session->ticket_len > sizeof(session->ticket.buf)) {
+                return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
+            }
+            memcpy(p, session->ticket.buf, session->ticket_len);
             p += session->ticket_len;
         }
     }
@@ -2672,12 +2668,22 @@ static int ssl_tls13_session_load(mbedtls_ssl_session *session,
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
         if (session->ticket_len > 0) {
-            session->ticket = mbedtls_calloc(1, session->ticket_len);
-            if (session->ticket == NULL) {
-                return MBEDTLS_ERR_SSL_ALLOC_FAILED;
+            if (session->ticket_len <= sizeof(session->ticket.buf)) {
+                memcpy(session->ticket.buf, p, session->ticket_len);
+                p += session->ticket_len;
+            } else {
+#ifdef ESP_PLATFORM
+#if defined(MBEDTLS_SSL_PROTO_TLS1_3) && defined(MBEDTLS_SSL_SERVER_NAME_INDICATION) && defined(MBEDTLS_SSL_CLI_C)
+                ESP_LOGW(TAG, "%s: Session ticket length %u is too big for hostname '%s' - ignore ticket",
+                         __func__, (unsigned)session->ticket_len, session->ticket_hostname.buf);
+#else
+                ESP_LOGW(TAG, "%s: Session ticket length %u is too big - ignore ticket",
+                         __func__, (unsigned)session->ticket_len);
+#endif
+#endif
+                p += session->ticket_len;
+                session->ticket_len = 0;
             }
-            memcpy(session->ticket, p, session->ticket_len);
-            p += session->ticket_len;
         }
     }
 #endif /* MBEDTLS_SSL_CLI_C */
@@ -3664,6 +3670,9 @@ static int ssl_session_save(const mbedtls_ssl_session *session,
     switch (session->tls_version) {
 #if defined(MBEDTLS_SSL_PROTO_TLS1_2)
         case MBEDTLS_SSL_VERSION_TLS1_2:
+            if (session->ticket_len > sizeof(session->ticket.buf)) {
+                return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
+            }
             used += ssl_tls12_session_save(session, p, remaining_len);
             break;
 #endif /* MBEDTLS_SSL_PROTO_TLS1_2 */
@@ -4250,10 +4259,6 @@ void mbedtls_ssl_session_free(mbedtls_ssl_session *session)
 
 #if defined(MBEDTLS_X509_CRT_PARSE_C)
     ssl_clear_peer_cert(session);
-#endif
-
-#if defined(MBEDTLS_SSL_SESSION_TICKETS) && defined(MBEDTLS_SSL_CLI_C)
-    mbedtls_free(session->ticket);
 #endif
 
     mbedtls_platform_zeroize(session, sizeof(mbedtls_ssl_session));
@@ -8958,8 +8963,8 @@ static size_t ssl_tls12_session_save(const mbedtls_ssl_session *session,
         *p++ = MBEDTLS_BYTE_1(session->ticket_len);
         *p++ = MBEDTLS_BYTE_0(session->ticket_len);
 
-        if (session->ticket != NULL) {
-            memcpy(p, session->ticket, session->ticket_len);
+        if (session->ticket_len != 0) {
+            memcpy(p, session->ticket.buf, session->ticket_len);
             p += session->ticket_len;
         }
 
@@ -9051,7 +9056,7 @@ static int ssl_tls12_session_load(mbedtls_ssl_session *session,
 #endif /* !MBEDTLS_SSL_KEEP_PEER_CERTIFICATE */
 #endif /* MBEDTLS_X509_CRT_PARSE_C */
 #if defined(MBEDTLS_SSL_SESSION_TICKETS) && defined(MBEDTLS_SSL_CLI_C)
-    session->ticket = NULL;
+    session->ticket_len = 0;
 #endif /* MBEDTLS_SSL_SESSION_TICKETS && MBEDTLS_SSL_CLI_C */
 
     /*
@@ -9143,14 +9148,22 @@ static int ssl_tls12_session_load(mbedtls_ssl_session *session,
         if (session->ticket_len > (size_t) (end - p)) {
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
-
-        session->ticket = mbedtls_calloc(1, session->ticket_len);
-        if (session->ticket == NULL) {
-            return MBEDTLS_ERR_SSL_ALLOC_FAILED;
+        if (session->ticket_len <= sizeof(session->ticket.buf)) {
+            memcpy(session->ticket.buf, p, session->ticket_len);
+            p += session->ticket_len;
+        } else {
+#ifdef ESP_PLATFORM
+#if defined(MBEDTLS_SSL_PROTO_TLS1_3) && defined(MBEDTLS_SSL_SERVER_NAME_INDICATION) && defined(MBEDTLS_SSL_CLI_C)
+            ESP_LOGW(TAG, "%s: Session ticket length %u is too big for hostname '%s' - ignore ticket",
+                     __func__, (unsigned)session->ticket_len, session->ticket_hostname.buf);
+#else
+            ESP_LOGW(TAG, "%s: Session ticket length %u is too big - ignore ticket",
+                     __func__, (unsigned)session->ticket_len);
+#endif
+#endif
+            p += session->ticket_len;
+            session->ticket_len = 0;
         }
-
-        memcpy(session->ticket, p, session->ticket_len);
-        p += session->ticket_len;
     }
 
     if (4 > (size_t) (end - p)) {

@@ -1599,13 +1599,11 @@ int mbedtls_test_ssl_tls12_populate_session(mbedtls_ssl_session *session,
     session->verify_result = 0xdeadbeef;
 
 #if defined(MBEDTLS_SSL_SESSION_TICKETS) && defined(MBEDTLS_SSL_CLI_C)
-    if (ticket_len != 0) {
-        session->ticket = mbedtls_calloc(1, ticket_len);
-        if (session->ticket == NULL) {
-            return -1;
-        }
-        memset(session->ticket, 33, ticket_len);
+    if ((size_t)ticket_len > sizeof(session->ticket.buf)) {
+        return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
+    assert((size_t)ticket_len <= sizeof(session->ticket.buf));
+    memset(session->ticket.buf, 33, ticket_len);
     session->ticket_len = ticket_len;
     session->ticket_lifetime = 86401;
 #else
@@ -1652,13 +1650,11 @@ int mbedtls_test_ssl_tls13_populate_session(mbedtls_ssl_session *session,
         session->ticket_lifetime = 0xfedcba98;
 
         session->ticket_len = ticket_len;
-        if (ticket_len != 0) {
-            session->ticket = mbedtls_calloc(1, ticket_len);
-            if (session->ticket == NULL) {
-                return -1;
-            }
-            memset(session->ticket, 33, ticket_len);
+        if ((size_t)ticket_len > sizeof(session->ticket.buf)) {
+            return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
+        assert((size_t)ticket_len <= sizeof(session->ticket.buf));
+        memset(session->ticket.buf, 33, ticket_len);
     }
 #endif /* MBEDTLS_SSL_CLI_C */
 

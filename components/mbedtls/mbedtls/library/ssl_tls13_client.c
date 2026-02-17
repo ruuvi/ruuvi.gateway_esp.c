@@ -35,6 +35,11 @@
 #include "ssl_debug_helpers.h"
 #include "md_psa.h"
 
+#ifdef ESP_PLATFORM
+#include "esp_log.h"
+static const char TAG[] = "ssl_tls13_client";
+#endif
+
 #if defined(MBEDTLS_SSL_TLS1_3_KEY_EXCHANGE_MODE_SOME_EPHEMERAL_ENABLED)
 /* Define a local translating function to save code size by not using too many
  * arguments in each translating place. */
@@ -697,7 +702,7 @@ static int ssl_tls13_has_configured_ticket(mbedtls_ssl_context *ssl)
 {
     mbedtls_ssl_session *session = ssl->session_negotiate;
     return ssl->handshake->resume &&
-           session != NULL && session->ticket != NULL &&
+           session != NULL && session->ticket_len != 0 &&
            mbedtls_ssl_conf_tls13_check_kex_modes(
         ssl, mbedtls_ssl_session_get_ticket_flags(
             session, MBEDTLS_SSL_TLS1_3_KEY_EXCHANGE_MODE_PSK_ALL));
@@ -727,9 +732,12 @@ static int ssl_tls13_ticket_get_identity(mbedtls_ssl_context *ssl,
     if (!ssl_tls13_has_configured_ticket(ssl)) {
         return -1;
     }
+    if (session->ticket_len > sizeof(session->ticket.buf)) {
+        return -1;
+    }
 
     *hash_alg = ssl_tls13_get_ciphersuite_hash_alg(session->ciphersuite);
-    *identity = session->ticket;
+    *identity = &session->ticket.buf[0];
     *identity_len = session->ticket_len;
     return 0;
 }
@@ -2758,7 +2766,6 @@ static int ssl_tls13_parse_new_session_ticket(mbedtls_ssl_context *ssl,
     unsigned char *p = buf;
     mbedtls_ssl_session *session = ssl->session;
     size_t ticket_len;
-    unsigned char *ticket;
     size_t extensions_len;
 
     *ticket_nonce = NULL;
@@ -2796,24 +2803,37 @@ static int ssl_tls13_parse_new_session_ticket(mbedtls_ssl_context *ssl,
     MBEDTLS_SSL_DEBUG_BUF(3, "received ticket", p, ticket_len);
 
     /* Check if we previously received a ticket already. */
-    if (session->ticket != NULL || session->ticket_len > 0) {
-        mbedtls_free(session->ticket);
-        session->ticket = NULL;
+    if (session->ticket_len > 0) {
+        mbedtls_platform_zeroize(session->ticket.buf,
+                                 (session->ticket_len <= sizeof(session->ticket.buf)) ?
+                                 session->ticket_len : sizeof(session->ticket.buf));
         session->ticket_len = 0;
     }
-
-    if ((ticket = mbedtls_calloc(1, ticket_len)) == NULL) {
-        MBEDTLS_SSL_DEBUG_MSG(1, ("ticket alloc failed"));
-        return MBEDTLS_ERR_SSL_ALLOC_FAILED;
-    }
-    memcpy(ticket, p, ticket_len);
-    p += ticket_len;
-    session->ticket = ticket;
-    session->ticket_len = ticket_len;
 
     /* Clear all flags in ticket_flags */
     mbedtls_ssl_session_clear_ticket_flags(
         session, MBEDTLS_SSL_TLS1_3_TICKET_FLAGS_MASK);
+
+    if (ticket_len > sizeof(session->ticket.buf)) {
+#ifdef ESP_PLATFORM
+#if defined(MBEDTLS_SSL_SERVER_NAME_INDICATION) && defined(MBEDTLS_SSL_CLI_C)
+        ESP_LOGW(TAG, "%s: Session ticket length %u is too big for hostname '%s' - ignore ticket",
+                 __func__, (unsigned)ticket_len, session->ticket_hostname.buf);
+#else
+        ESP_LOGW(TAG, "%s: Session ticket length %u is too big - ignore ticket",
+                 __func__, (unsigned)ticket_len);
+#endif
+#endif
+        ssl->handshake->received_extensions = MBEDTLS_SSL_EXT_MASK_NONE;
+        /* session has been updated, allow export */
+        session->exported = 0;
+        *ticket_nonce = NULL;
+        *ticket_nonce_len = 0;
+        return 0;
+    }
+    memcpy(session->ticket.buf, p, ticket_len);
+    p += ticket_len;
+    session->ticket_len = ticket_len;
 
     MBEDTLS_SSL_CHK_BUF_READ_PTR(p, end, 2);
     extensions_len = MBEDTLS_GET_UINT16_BE(p, 0);
@@ -2928,8 +2948,10 @@ static int ssl_tls13_process_new_session_ticket(mbedtls_ssl_context *ssl)
                              ssl, buf, buf + buf_len,
                              &ticket_nonce, &ticket_nonce_len));
 
-    MBEDTLS_SSL_PROC_CHK(ssl_tls13_postprocess_new_session_ticket(
-                             ssl, ticket_nonce, ticket_nonce_len));
+    if ((NULL != ticket_nonce) && (ticket_nonce_len > 0)) {
+        MBEDTLS_SSL_PROC_CHK(ssl_tls13_postprocess_new_session_ticket(
+                                 ssl, ticket_nonce, ticket_nonce_len));
+    }
 
     mbedtls_ssl_handshake_set_state(ssl, MBEDTLS_SSL_HANDSHAKE_OVER);
 
