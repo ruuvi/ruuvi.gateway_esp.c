@@ -30,7 +30,7 @@
 #include "mbedtls/ssl.h"
 #include "ssl_client.h"
 #include "ssl_debug_helpers.h"
-#include "ssl_misc.h"
+#include "mbedtls/ssl_misc.h"
 
 #include "mbedtls/debug.h"
 #include "mbedtls/error.h"

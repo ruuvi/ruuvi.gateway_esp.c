@@ -25,7 +25,7 @@
 
 #include "mbedtls/ssl.h"
 #include "ssl_client.h"
-#include "ssl_misc.h"
+#include "mbedtls/ssl_misc.h"
 #include "mbedtls/debug.h"
 #include "mbedtls/error.h"
 #include "mbedtls/constant_time.h"

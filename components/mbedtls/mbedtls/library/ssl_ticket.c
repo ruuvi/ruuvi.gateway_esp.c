@@ -23,7 +23,7 @@
 
 #include "mbedtls/platform.h"
 
-#include "ssl_misc.h"
+#include "mbedtls/ssl_misc.h"
 #include "mbedtls/ssl_ticket.h"
 #include "mbedtls/error.h"
 #include "mbedtls/platform_util.h"

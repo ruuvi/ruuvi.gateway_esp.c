@@ -3,7 +3,7 @@
  * testing (using malformed inputs). */
 
 #include <mbedtls/ssl.h>
-#include <ssl_misc.h>
+#include <mbedtls/ssl_misc.h>
 #include <test/ssl_helpers.h>
 
 /* END_HEADER */

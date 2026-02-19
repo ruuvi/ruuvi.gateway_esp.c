@@ -18,8 +18,7 @@
  */
 #define MBEDTLS_ALLOW_PRIVATE_ACCESS
 
-// located at mbedtls/library/ssl_misc.h
-#include "ssl_misc.h"
+#include "mbedtls/ssl_misc.h"
 
 #include "mbedtls/ssl.h"
 #include "mbedtls/platform.h"

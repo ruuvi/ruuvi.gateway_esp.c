@@ -1,5 +1,5 @@
 /* BEGIN_HEADER */
-#include <ssl_misc.h>
+#include <mbedtls/ssl_misc.h>
 #include <mbedtls/timing.h>
 #include <mbedtls/debug.h>
 #include <mbedtls/pk.h>

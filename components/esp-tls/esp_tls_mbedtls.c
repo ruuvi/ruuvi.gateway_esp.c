@@ -16,7 +16,7 @@
 #include "esp_tls_mbedtls.h"
 #include "esp_tls_private.h"
 #include "esp_tls_error_capture_internal.h"
-#include "ssl_misc.h"
+#include "mbedtls/ssl_misc.h"
 #include <errno.h>
 #include "esp_log.h"
 #include "snprintf_with_esp_err_desc.h"

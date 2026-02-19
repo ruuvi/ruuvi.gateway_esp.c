@@ -31,7 +31,7 @@
 #include "mbedtls/platform.h"
 
 #include "ssl_client.h"
-#include "ssl_misc.h"
+#include "mbedtls/ssl_misc.h"
 #include "ssl_tls13_keys.h"
 #include "ssl_debug_helpers.h"
 

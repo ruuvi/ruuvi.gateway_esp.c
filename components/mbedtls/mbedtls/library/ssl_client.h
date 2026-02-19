@@ -23,7 +23,7 @@
 #include "common.h"
 
 #if defined(MBEDTLS_SSL_TLS_C)
-#include "ssl_misc.h"
+#include "mbedtls/ssl_misc.h"
 #endif
 
 #include <stddef.h>

@@ -28,7 +28,7 @@
 #include "mbedtls/platform.h"
 
 #include "mbedtls/ssl_cache.h"
-#include "ssl_misc.h"
+#include "mbedtls/ssl_misc.h"
 #include "mbedtls/error.h"
 
 #include <string.h>

@@ -22,7 +22,7 @@
 #define MBEDTLS_ALLOW_PRIVATE_ACCESS
 
 // located at mbedtls/library/ssl_misc.h
-#include "ssl_misc.h"
+#include "mbedtls/ssl_misc.h"
 
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/entropy.h"
