@@ -1721,8 +1721,8 @@ struct mbedtls_ssl_context {
     mbedtls_ssl_set_timer_t *MBEDTLS_PRIVATE(f_set_timer);       /*!< set timer callback */
     mbedtls_ssl_get_timer_t *MBEDTLS_PRIVATE(f_get_timer);       /*!< get timer callback */
 
-    bool flag_in_buf_pre_allocated;  /*!< true if the input buffer is pre-allocated */
-    bool flag_out_buf_pre_allocated; /*!< true if the output buffer is pre-allocated */
+    bool MBEDTLS_PRIVATE(flag_in_buf_pre_allocated);  /*!< true if the input buffer is pre-allocated */
+    bool MBEDTLS_PRIVATE(flag_out_buf_pre_allocated); /*!< true if the output buffer is pre-allocated */
 
     /*
      * Record layer (incoming data)

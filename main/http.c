@@ -8,14 +8,12 @@
 #include "http.h"
 #include <string.h>
 #include <esp_task_wdt.h>
-#include "cJSON.h"
 #include "cjson_wrap.h"
 #include "esp_http_client.h"
 #include "ruuvi_gateway.h"
 #include "leds.h"
 #include "os_str.h"
 #include "hmac_sha256.h"
-#include "adv_post.h"
 #include "adv_post_timers.h"
 #include "adv_post_async_comm.h"
 #include "fw_update.h"
@@ -25,10 +23,10 @@
 #include "os_malloc.h"
 #include "http_server_resp.h"
 #include "snprintf_with_esp_err_desc.h"
-#include "gw_cfg_default.h"
 #include "esp_tls_err.h"
 #include "reset_task.h"
 #include "network_timeout.h"
+#include "mbedtls/ssl_misc.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -46,10 +44,18 @@ typedef int esp_http_client_len_t;
 typedef int esp_http_client_http_status_code_t;
 
 static http_async_info_t g_http_async_info;
+#if !defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
+static uint8_t g_http_ssl_in_buf[MBEDTLS_SSL_IN_BUFFER_LEN];
+static uint8_t g_http_ssl_out_buf[MBEDTLS_SSL_OUT_BUFFER_LEN];
+#endif
 
 http_async_info_t*
 http_get_async_info(void)
 {
+#if !defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
+    g_http_async_info.in_buf  = g_http_ssl_in_buf;
+    g_http_async_info.out_buf = g_http_ssl_out_buf;
+#endif
     http_async_info_t* p_http_async_info = &g_http_async_info;
     if (NULL == p_http_async_info->p_http_async_sema)
     {

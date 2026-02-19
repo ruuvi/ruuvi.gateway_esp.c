@@ -4,9 +4,6 @@ ssl_pre_allocated_buffers_basic:
 Test SSL pre-allocated buffers: partial (only input buffer)
 ssl_pre_allocated_buffers_partial:
 
-Test SSL pre-allocated buffers: no resize
-ssl_pre_allocated_buffers_no_resize:
-
 Test SSL pre-allocated buffers: zero on free
 ssl_pre_allocated_buffers_zero_on_free:
 

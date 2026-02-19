@@ -18,7 +18,6 @@
 #include "time_units.h"
 #include "gw_cfg.h"
 #include "hmac_sha256.h"
-#include "mbedtls/ssl_misc.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -68,8 +67,8 @@ typedef struct http_async_info_t
     os_task_handle_t      p_task;
     http_resp_cb_info_t   http_resp_cb_info;
 #if !defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
-    uint8_t in_buf[MBEDTLS_SSL_IN_BUFFER_LEN];
-    uint8_t out_buf[MBEDTLS_SSL_OUT_BUFFER_LEN];
+    uint8_t* in_buf;
+    uint8_t* out_buf;
 #endif
 } http_async_info_t;
 
