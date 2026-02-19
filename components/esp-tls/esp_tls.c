@@ -1122,3 +1122,8 @@ const char* esp_tls_get_hostname(const esp_tls_t * const tls)
     }
     return (NULL != tls->hostname) ? tls->hostname : "";
 }
+
+void esp_tls_set_mode_mandatory_pre_allocated_in_out_buf(void)
+{
+    esp_mbedtls_set_mode_mandatory_pre_allocated_in_out_buf();
+}

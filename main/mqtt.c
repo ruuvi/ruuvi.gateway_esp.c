@@ -9,6 +9,7 @@
 #include <esp_attr.h>
 #include <esp_task_wdt.h>
 #include "esp_err.h"
+#include "mbedtls/ssl_misc.h"
 #include "cJSON.h"
 #include "cjson_wrap.h"
 #include "mqtt_client.h"
@@ -80,6 +81,10 @@ static bool                  g_mqtt_mutex_initialized = false;
 static os_mutex_t IRAM_ATTR  g_mqtt_mutex;
 static os_mutex_static_t     g_mqtt_mutex_mem;
 static mqtt_protected_data_t g_mqtt_data;
+#if !defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
+uint8_t g_mqtt_ssl_in_buf[MBEDTLS_SSL_IN_BUFFER_LEN];
+uint8_t g_mqtt_ssl_out_buf[MBEDTLS_SSL_OUT_BUFFER_LEN];
+#endif
 
 static const char TAG[] = "MQTT";
 
@@ -470,6 +475,8 @@ typedef struct mqtt_client_config_params_t
     const char* const             p_cert_pem;
     const char* const             p_client_cert_pem;
     const char* const             p_client_key_pem;
+    uint8_t* const                p_ssl_in_buf;
+    uint8_t* const                p_ssl_out_buf;
 } mqtt_client_config_params_t;
 
 static void
@@ -522,8 +529,12 @@ mqtt_generate_client_config(
     p_cli_cfg->network_timeout_ms          = MQTT_NETWORK_TIMEOUT_MS;
     p_cli_cfg->disable_keepalive           = false;
     p_cli_cfg->path                        = NULL;
-    p_cli_cfg->ssl_in_content_len          = RUUVI_MQTT_TLS_IN_CONTENT_LEN;
-    p_cli_cfg->ssl_out_content_len         = RUUVI_MQTT_TLS_OUT_CONTENT_LEN;
+    p_cli_cfg->p_ssl_in_buf                = p_cfg_params->p_ssl_in_buf;
+    p_cli_cfg->p_ssl_out_buf               = p_cfg_params->p_ssl_out_buf;
+#if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
+    p_cli_cfg->ssl_in_content_len  = RUUVI_MQTT_TLS_IN_CONTENT_LEN;
+    p_cli_cfg->ssl_out_content_len = RUUVI_MQTT_TLS_OUT_CONTENT_LEN;
+#endif
 }
 
 static esp_mqtt_client_config_t*
@@ -568,6 +579,13 @@ mqtt_create_client_config(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg
         .p_cert_pem        = p_mqtt_data->str_buf_server_cert_mqtt.buf,
         .p_client_cert_pem = p_mqtt_data->str_buf_client_cert.buf,
         .p_client_key_pem  = p_mqtt_data->str_buf_client_key.buf,
+#if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
+        .p_ssl_in_buf  = NULL,
+        .p_ssl_out_buf = NULL,
+#else
+        .p_ssl_in_buf  = g_mqtt_ssl_in_buf,
+        .p_ssl_out_buf = g_mqtt_ssl_out_buf,
+#endif
     };
 
     mqtt_generate_client_config(p_cli_cfg, p_mqtt_cfg, &cfg_params, p_mqtt_data);

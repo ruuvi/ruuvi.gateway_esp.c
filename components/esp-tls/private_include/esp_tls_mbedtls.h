@@ -154,3 +154,8 @@ mbedtls_x509_crt *esp_mbedtls_get_global_ca_store(void);
  * Callback function for freeing global ca store for TLS/SSL using mbedtls
  */
 void esp_mbedtls_free_global_ca_store(void);
+
+/**
+ * Internal Callback for setting mandatory pre-allocated I/O buffers mode.
+ */
+void esp_mbedtls_set_mode_mandatory_pre_allocated_in_out_buf(void);

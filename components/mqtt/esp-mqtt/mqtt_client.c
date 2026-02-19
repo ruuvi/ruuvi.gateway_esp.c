@@ -92,8 +92,12 @@ typedef struct {
     bool skip_cert_common_name_check;
     bool use_secure_element;
     void *ds_data;
+    uint8_t *p_ssl_in_buf; // pre-allocated buffer for incoming content. It can be NULL.
+    uint8_t *p_ssl_out_buf; // pre-allocated buffer for outgoing content. It can be NULL.
+#if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
     size_t ssl_in_content_len;
     size_t ssl_out_content_len;
+#endif
 } mqtt_config_storage_t;
 
 typedef enum {
@@ -207,9 +211,15 @@ static esp_err_t esp_mqtt_set_ssl_transport_properties(esp_transport_list_handle
 {
     esp_transport_handle_t ssl = esp_transport_list_get_transport(transport_list, "mqtts");
 
+    ESP_LOGD(TAG, "%s: esp_transport_ssl_set_buffer: ssl_in_buf=%p, ssl_out_buf=%p",
+             __func__, cfg->p_ssl_in_buf, cfg->p_ssl_out_buf);
+    esp_transport_ssl_set_buffer(ssl, cfg->p_ssl_in_buf, cfg->p_ssl_out_buf);
+
+#if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
     ESP_LOGD(TAG, "%s: esp_transport_ssl_set_buffer_size: ssl_in_content_len=%u, ssl_out_content_len=%u",
              __func__, (unsigned)cfg->ssl_in_content_len, (unsigned)cfg->ssl_out_content_len);
     esp_transport_ssl_set_buffer_size(ssl, cfg->ssl_in_content_len, cfg->ssl_out_content_len);
+#endif
 
     if (NULL != cfg->cacert_buf) {
         ESP_LOGI(TAG, "Set custom SSL certificate for the server");
@@ -548,6 +558,7 @@ esp_err_t esp_mqtt_set_config(esp_mqtt_client_handle_t client, const esp_mqtt_cl
         }
     }
 
+#if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
     if (config->ssl_in_content_len) {
         ESP_LOGD(TAG, "%s: Configure ssl_in_content_len=%u", __func__, config->ssl_in_content_len);
         client->config->ssl_in_content_len = config->ssl_in_content_len;
@@ -556,6 +567,12 @@ esp_err_t esp_mqtt_set_config(esp_mqtt_client_handle_t client, const esp_mqtt_cl
         ESP_LOGD(TAG, "%s: Configure ssl_out_content_len=%u", __func__, config->ssl_out_content_len);
         client->config->ssl_out_content_len = config->ssl_out_content_len;
     }
+#endif
+
+    ESP_LOGD(TAG, "%s: Configure p_ssl_in_buf=%p, p_ssl_out_buf=%p",
+             __func__, config->p_ssl_in_buf, config->p_ssl_out_buf);
+    client->config->p_ssl_in_buf = config->p_ssl_in_buf;
+    client->config->p_ssl_out_buf = config->p_ssl_out_buf;
 
     esp_mqtt_check_cfg_conflict(client->config, config);
 

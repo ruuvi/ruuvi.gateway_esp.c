@@ -3479,6 +3479,10 @@ static int ssl_parse_new_session_ticket(mbedtls_ssl_context *ssl)
                              ssl->session_negotiate->ticket_len : sizeof(ssl->session_negotiate->ticket.buf)));
     ssl->session_negotiate->ticket_len = 0;
 
+#ifdef ESP_PLATFORM
+    ESP_LOGD(TAG, "%s: session ticket: %u bytes", __func__, (unsigned)ticket_len);
+#endif
+
     if (ticket_len > sizeof(ssl->session_negotiate->ticket.buf)) {
 #ifdef ESP_PLATFORM
 #if defined(MBEDTLS_SSL_PROTO_TLS1_3) && defined(MBEDTLS_SSL_SERVER_NAME_INDICATION) && defined(MBEDTLS_SSL_CLI_C)

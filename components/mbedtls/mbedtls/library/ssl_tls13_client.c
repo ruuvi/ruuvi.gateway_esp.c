@@ -2814,6 +2814,9 @@ static int ssl_tls13_parse_new_session_ticket(mbedtls_ssl_context *ssl,
     mbedtls_ssl_session_clear_ticket_flags(
         session, MBEDTLS_SSL_TLS1_3_TICKET_FLAGS_MASK);
 
+#ifdef ESP_PLATFORM
+    ESP_LOGD(TAG, "%s: session ticket: %u bytes", __func__, (unsigned)ticket_len);
+#endif
     if (ticket_len > sizeof(session->ticket.buf)) {
 #ifdef ESP_PLATFORM
 #if defined(MBEDTLS_SSL_SERVER_NAME_INDICATION) && defined(MBEDTLS_SSL_CLI_C)

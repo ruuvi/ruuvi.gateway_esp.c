@@ -18,6 +18,7 @@
 #include "time_units.h"
 #include "gw_cfg.h"
 #include "hmac_sha256.h"
+#include "mbedtls/ssl_misc.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -66,6 +67,10 @@ typedef struct http_async_info_t
     http_post_recipient_e recipient;
     os_task_handle_t      p_task;
     http_resp_cb_info_t   http_resp_cb_info;
+#if !defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
+    uint8_t in_buf[MBEDTLS_SSL_IN_BUFFER_LEN];
+    uint8_t out_buf[MBEDTLS_SSL_OUT_BUFFER_LEN];
+#endif
 } http_async_info_t;
 
 typedef struct http_header_item_t
@@ -92,8 +97,12 @@ typedef struct http_init_client_config_params_t
     const char* const                         p_server_cert;
     const char* const                         p_client_cert;
     const char* const                         p_client_key;
-    const size_t                              ssl_in_content_len;
-    const size_t                              ssl_out_content_len;
+    uint8_t* const                            p_ssl_in_buf; //!< Pre-allocated buffer for incoming data. It can be NULL.
+    uint8_t* const p_ssl_out_buf;                           //!< Pre-allocated buffer for outgoing data. It can be NULL.
+#if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
+    const size_t ssl_in_content_len;
+    const size_t ssl_out_content_len;
+#endif
 } http_init_client_config_params_t;
 
 bool

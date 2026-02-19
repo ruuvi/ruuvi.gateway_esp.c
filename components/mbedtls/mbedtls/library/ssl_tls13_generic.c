@@ -38,6 +38,10 @@
 
 #include "psa/crypto.h"
 #include "psa_util_internal.h"
+#ifdef ESP_PLATFORM
+#include "esp_log.h"
+static const char TAG[] = "ssl_tls13";
+#endif
 
 #if defined(MBEDTLS_SSL_TLS1_3_KEY_EXCHANGE_MODE_SOME_EPHEMERAL_ENABLED)
 /* Define a local translating function to save code size by not using too many
@@ -479,6 +483,9 @@ int mbedtls_ssl_tls13_parse_certificate(mbedtls_ssl_context *ssl,
     /* In case we tried to reuse a session but it failed */
     if (ssl->session_negotiate->peer_cert != NULL) {
         mbedtls_x509_crt_free(ssl->session_negotiate->peer_cert);
+#ifdef ESP_PLATFORM
+        ESP_LOGD(TAG, "%s: Free peer certificate (mbedtls_x509_crt): %p", __func__, ssl->session_negotiate->peer_cert);
+#endif
         mbedtls_free(ssl->session_negotiate->peer_cert);
     }
 
@@ -496,6 +503,10 @@ int mbedtls_ssl_tls13_parse_certificate(mbedtls_ssl_context *ssl,
                                      MBEDTLS_ERR_SSL_ALLOC_FAILED);
         return MBEDTLS_ERR_SSL_ALLOC_FAILED;
     }
+#ifdef ESP_PLATFORM
+    ESP_LOGD(TAG, "%s: Allocate %zu bytes for peer certificate (mbedtls_x509_crt): %p",
+        __func__, sizeof(mbedtls_x509_crt), ssl->session_negotiate->peer_cert);
+#endif
 
     mbedtls_x509_crt_init(ssl->session_negotiate->peer_cert);
 

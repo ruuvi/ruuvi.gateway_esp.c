@@ -198,8 +198,12 @@ typedef struct esp_tls_cfg {
 
     esp_tls_addr_family_t addr_family;      /*!< The address family to use when connecting to a host. */
 
+    uint8_t *p_ssl_in_buf;                  /*!< Pre-allocated buffer for incoming content. Can be NULL */
+    uint8_t *p_ssl_out_buf;                 /*!< Pre-allocated buffer for outgoing content. Can be NULL */
+#if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
     size_t ssl_in_content_len;             /*!< Maximum incoming fragment length in bytes (default MBEDTLS_SSL_IN_CONTENT_LEN) */
     size_t ssl_out_content_len;            /*!< Maximum outgoing fragment length in bytes (default MBEDTLS_SSL_OUT_CONTENT_LEN) */
+#endif
 } esp_tls_cfg_t;
 
 #ifdef CONFIG_ESP_TLS_SERVER
@@ -753,6 +757,21 @@ esp_tls_client_session_t *esp_tls_get_client_session(esp_tls_t *tls);
  */
 void esp_tls_free_client_session(esp_tls_client_session_t *client_session);
 #endif /* CONFIG_ESP_TLS_CLIENT_SESSION_TICKETS */
+
+/**
+ * @brief Set the mode of esp-tls to use pre-allocated buffers for SSL in/out buffers.
+ *      This is an optimization to avoid dynamic memory allocation for SSL buffers,
+ *      which can be beneficial in memory-constrained environments.
+ *      When this mode is enabled, the application must provide pre-allocated buffers
+ *      for SSL input and output through the `p_ssl_in_buf` and `p_ssl_out_buf` members of `esp_tls_cfg_t` structure.
+ *
+ * @note This function should be called before establishing any TLS connection using esp-tls APIs.
+ *
+ * @note The size of the pre-allocated in/out buffers should be @c MBEDTLS_SSL_IN_BUFFER_LEN and
+ *      @c MBEDTLS_SSL_OUT_BUFFER_LEN respectively.
+ */
+void esp_tls_set_mode_mandatory_pre_allocated_in_out_buf(void);
+
 #ifdef __cplusplus
 }
 #endif

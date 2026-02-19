@@ -206,8 +206,12 @@ typedef struct {
     int network_timeout_ms;                 /*!< Abort network operation if it is not completed after this value, in milliseconds (defaults to 10s) */
     bool disable_keepalive;                 /*!< Set disable_keepalive=true to turn off keep-alive mechanism, false by default (keepalive is active by default). Note: setting the config value `keepalive` to `0` doesn't disable keepalive feature, but uses a default keepalive period */
     const char *path;                       /*!< Path in the URI*/
-    size_t      ssl_in_content_len;
-    size_t      ssl_out_content_len;
+    uint8_t *p_ssl_in_buf;                  /*!< Pre-allocated buffer for incoming content. It can be NULL */
+    uint8_t *p_ssl_out_buf;                 /*!< Pre-allocated buffer for outgoing content. It can be NULL */
+#if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
+    size_t ssl_in_content_len;              /*!< Max size of incoming content. Buffer will be allocated if p_ssl_in_content_buf is NULL */
+    size_t ssl_out_content_len;             /*!< Max size of outgoing content. Buffer will be allocated if p_ssl_out_content_buf is NULL */
+#endif
 } esp_mqtt_client_config_t;
 
 /**

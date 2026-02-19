@@ -61,14 +61,23 @@ http_send_statistics_internal(
     }
 
     const http_init_client_config_params_t http_cli_cfg_params = {
-        .p_url               = &p_cfg_http_stat->http_stat_url,
-        .p_user              = &p_cfg_http_stat->http_stat_user,
-        .p_password          = &p_cfg_http_stat->http_stat_pass,
-        .p_server_cert       = str_buf_server_cert_stat.buf,
-        .p_client_cert       = str_buf_client_cert.buf,
-        .p_client_key        = str_buf_client_key.buf,
+        .p_url         = &p_cfg_http_stat->http_stat_url,
+        .p_user        = &p_cfg_http_stat->http_stat_user,
+        .p_password    = &p_cfg_http_stat->http_stat_pass,
+        .p_server_cert = str_buf_server_cert_stat.buf,
+        .p_client_cert = str_buf_client_cert.buf,
+        .p_client_key  = str_buf_client_key.buf,
+#if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
+        .p_ssl_in_buf  = NULL,
+        .p_ssl_out_buf = NULL,
+#else
+        .p_ssl_in_buf  = p_http_async_info->in_buf,
+        .p_ssl_out_buf = p_http_async_info->out_buf,
+#endif
+#if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
         .ssl_in_content_len  = RUUVI_POST_STAT_TLS_IN_CONTENT_LEN,
         .ssl_out_content_len = RUUVI_POST_STAT_TLS_OUT_CONTENT_LEN,
+#endif
     };
 
     http_init_client_config(&p_http_async_info->http_client_config, &http_cli_cfg_params, p_user_data);
