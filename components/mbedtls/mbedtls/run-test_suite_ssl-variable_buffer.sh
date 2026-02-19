@@ -14,3 +14,8 @@ cmake .. -DMBEDTLS_USER_CONFIG_FILE="../tests/configs/user-config-variable-buffe
 # Build and run tests
 cmake --build . --target test_suite_ssl
 cd tests && ./test_suite_ssl
+cd ..
+
+cmake --build . --target test_suite_ssl_pre_allocated_buffers
+cd tests && ./test_suite_ssl_pre_allocated_buffers
+

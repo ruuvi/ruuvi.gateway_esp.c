@@ -1,0 +1,17 @@
+Test SSL pre-allocated buffers: basic functionality
+ssl_pre_allocated_buffers_basic:
+
+Test SSL pre-allocated buffers: partial (only input buffer)
+ssl_pre_allocated_buffers_partial:
+
+Test SSL pre-allocated buffers: no resize
+ssl_pre_allocated_buffers_no_resize:
+
+Test SSL pre-allocated buffers: zero on free
+ssl_pre_allocated_buffers_zero_on_free:
+
+Test SSL pre-allocated buffers: backward compatibility (no pre-allocated buffers)
+ssl_no_pre_allocated_buffers_still_works:
+
+Test SSL pre-allocated buffers: custom size
+ssl_pre_allocated_buffers_custom_size:
