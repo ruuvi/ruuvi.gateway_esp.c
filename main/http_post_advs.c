@@ -40,7 +40,9 @@ http_init_client_config_for_http_target(
     http_client_config_t* const                   p_http_client_config,
     const ruuvi_gw_cfg_http_t* const              p_cfg_http,
     const http_send_advs_internal_params_t* const p_params,
-    void* const                                   p_user_data)
+    void* const                                   p_user_data,
+    uint8_t* const                                p_in_buf,
+    uint8_t* const                                p_out_buf)
 {
     const ruuvi_gw_cfg_http_user_t*     p_http_user = NULL;
     const ruuvi_gw_cfg_http_password_t* p_http_pass = NULL;
@@ -75,14 +77,18 @@ http_init_client_config_for_http_target(
         str_buf_server_cert_http = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT);
     }
     const http_init_client_config_params_t http_cli_cfg_params = {
-        .p_url               = p_http_url,
-        .p_user              = p_http_user,
-        .p_password          = p_http_pass,
-        .p_server_cert       = str_buf_server_cert_http.buf,
-        .p_client_cert       = str_buf_client_cert.buf,
-        .p_client_key        = str_buf_client_key.buf,
+        .p_url         = p_http_url,
+        .p_user        = p_http_user,
+        .p_password    = p_http_pass,
+        .p_server_cert = str_buf_server_cert_http.buf,
+        .p_client_cert = str_buf_client_cert.buf,
+        .p_client_key  = str_buf_client_key.buf,
+        .p_ssl_in_buf  = p_in_buf,
+        .p_ssl_out_buf = p_out_buf,
+#if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
         .ssl_in_content_len  = RUUVI_POST_ADVS_TLS_IN_CONTENT_LEN,
         .ssl_out_content_len = RUUVI_POST_ADVS_TLS_OUT_CONTENT_LEN,
+#endif
     };
 
     http_init_client_config(p_http_client_config, &http_cli_cfg_params, p_user_data);
@@ -197,7 +203,19 @@ http_send_advs_internal(
 #endif
 
     http_client_config_t* const p_http_cli_cfg = &p_http_async_info->http_client_config;
-    if (!http_init_client_config_for_http_target(p_http_cli_cfg, p_cfg_http, p_params, p_user_data))
+    if (!http_init_client_config_for_http_target(
+            p_http_cli_cfg,
+            p_cfg_http,
+            p_params,
+            p_user_data,
+#if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
+            NULL,
+            NULL
+#else
+            p_http_async_info->in_buf,
+            p_http_async_info->out_buf
+#endif
+            ))
     {
         http_async_info_free_data(p_http_async_info);
         return false;

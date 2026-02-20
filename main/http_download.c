@@ -214,7 +214,9 @@ http_download_create_config(
     const esp_http_client_method_t              http_method,
     const ruuvi_gw_cfg_http_auth_basic_t* const p_auth_basic,
     http_event_handle_cb const                  p_event_handler,
-    void* const                                 p_cb_info)
+    void* const                                 p_cb_info,
+    uint8_t* const                              p_ssl_in_buf,
+    uint8_t* const                              p_ssl_out_buf)
 {
     esp_http_client_config_t* p_http_config = os_calloc(1, sizeof(*p_http_config));
     if (NULL == p_http_config)
@@ -254,8 +256,12 @@ http_download_create_config(
     p_http_config->keep_alive_idle             = 0;
     p_http_config->keep_alive_interval         = 0;
     p_http_config->keep_alive_count            = 0;
-    p_http_config->ssl_in_content_len          = CONFIG_MBEDTLS_SSL_IN_CONTENT_LEN;
-    p_http_config->ssl_out_content_len         = CONFIG_MBEDTLS_SSL_OUT_CONTENT_LEN;
+    p_http_config->p_ssl_in_buf                = p_ssl_in_buf;
+    p_http_config->p_ssl_out_buf               = p_ssl_out_buf;
+#if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
+    p_http_config->ssl_in_content_len  = CONFIG_MBEDTLS_SSL_IN_CONTENT_LEN;
+    p_http_config->ssl_out_content_len = CONFIG_MBEDTLS_SSL_OUT_CONTENT_LEN;
+#endif
     return p_http_config;
 }
 
@@ -349,29 +355,47 @@ http_download_or_check(
     p_cb_info->offset                  = 0;
     p_cb_info->flag_feed_task_watchdog = p_param->base.flag_feed_task_watchdog;
 
+    LOG_DBG("suspend_http_relaying and wait");
+    const bool flag_wait_relaying_completed = true;
+    gw_status_suspend_http_relaying(flag_wait_relaying_completed);
+    LOG_DBG("suspend_relaying_and_wait: finished");
+
+    http_async_info_t* const p_http_async_info = http_get_async_info();
+    LOG_DBG("os_sema_wait_immediate: p_http_async_sema");
+    if (!os_sema_wait_immediate(p_http_async_info->p_http_async_sema))
+    {
+        /* Because the amount of memory is limited and may not be sufficient for two simultaneous queries,
+         * this function should only be called from a single thread. */
+        LOG_ERR("This function is called twice from two different threads, which can lead to memory shortages");
+        assert(0);
+    }
+    p_http_async_info->p_task = xTaskGetCurrentTaskHandle();
+
     esp_http_client_config_t* p_http_config = http_download_create_config(
         &p_param->base,
         http_method,
         p_auth_basic,
         &http_download_event_handler,
-        p_cb_info);
+        p_cb_info,
+        p_http_async_info->in_buf,
+        p_http_async_info->out_buf);
     if (NULL == p_http_config)
     {
         LOG_ERR("Can't allocate memory for http_config");
         os_free(p_cb_info);
+        os_sema_signal(p_http_async_info->p_http_async_sema);
+        LOG_DBG("resume_http_relaying and wait");
+        gw_status_resume_http_relaying(flag_wait_relaying_completed);
+        LOG_DBG("resume_http_relaying: finished");
         return http_server_resp_500();
     }
-
-    LOG_DBG("suspend_http_relaying and wait");
-    const bool flag_wait_relaying_completed = true;
-    gw_status_suspend_http_relaying(flag_wait_relaying_completed);
-    LOG_DBG("suspend_relaying_and_wait: finished");
 
     p_cb_info->http_handle = http_client_init(p_param, p_http_config);
     if (NULL == p_cb_info->http_handle)
     {
         os_free(p_http_config);
         os_free(p_cb_info);
+        os_sema_signal(p_http_async_info->p_http_async_sema);
         LOG_DBG("resume_http_relaying and wait");
         gw_status_resume_http_relaying(flag_wait_relaying_completed);
         LOG_DBG("resume_http_relaying: finished");
@@ -403,6 +427,7 @@ http_download_or_check(
 
     os_free(p_http_config);
     os_free(p_cb_info);
+    os_sema_signal(p_http_async_info->p_http_async_sema);
     LOG_DBG("resume_http_relaying and wait");
     gw_status_resume_http_relaying(flag_wait_relaying_completed);
     LOG_DBG("resume_http_relaying: finished");

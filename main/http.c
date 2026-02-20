@@ -8,14 +8,12 @@
 #include "http.h"
 #include <string.h>
 #include <esp_task_wdt.h>
-#include "cJSON.h"
 #include "cjson_wrap.h"
 #include "esp_http_client.h"
 #include "ruuvi_gateway.h"
 #include "leds.h"
 #include "os_str.h"
 #include "hmac_sha256.h"
-#include "adv_post.h"
 #include "adv_post_timers.h"
 #include "adv_post_async_comm.h"
 #include "fw_update.h"
@@ -25,10 +23,10 @@
 #include "os_malloc.h"
 #include "http_server_resp.h"
 #include "snprintf_with_esp_err_desc.h"
-#include "gw_cfg_default.h"
 #include "esp_tls_err.h"
 #include "reset_task.h"
 #include "network_timeout.h"
+#include "mbedtls/ssl_misc.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -46,10 +44,18 @@ typedef int esp_http_client_len_t;
 typedef int esp_http_client_http_status_code_t;
 
 static http_async_info_t g_http_async_info;
+#if !defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
+static uint8_t g_http_ssl_in_buf[MBEDTLS_SSL_IN_BUFFER_LEN];
+static uint8_t g_http_ssl_out_buf[MBEDTLS_SSL_OUT_BUFFER_LEN];
+#endif
 
 http_async_info_t*
 http_get_async_info(void)
 {
+#if !defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
+    g_http_async_info.in_buf  = g_http_ssl_in_buf;
+    g_http_async_info.out_buf = g_http_ssl_out_buf;
+#endif
     http_async_info_t* p_http_async_info = &g_http_async_info;
     if (NULL == p_http_async_info->p_http_async_sema)
     {
@@ -190,38 +196,45 @@ http_init_client_config(
     LOG_DBG("user=%s", p_http_client_config->http_user.buf);
     LOG_DBG("pass=%s", p_http_client_config->http_pass.buf);
 
-    p_http_client_config->esp_http_client_config = (esp_http_client_config_t) {
-        .url       = &p_http_client_config->http_url.buf[0],
-        .host      = NULL,
-        .port      = 0,
-        .username  = &p_http_client_config->http_user.buf[0],
-        .password  = &p_http_client_config->http_pass.buf[0],
+    p_http_client_config->esp_http_client_config = (esp_http_client_config_t)
+    {
+        // clang-format off
+        .url = &p_http_client_config->http_url.buf[0],
+        .host = NULL,
+        .port = 0,
+        .username = &p_http_client_config->http_user.buf[0],
+        .password = &p_http_client_config->http_pass.buf[0],
         .auth_type = ('\0' != p_http_client_config->http_user.buf[0]) ? HTTP_AUTH_TYPE_BASIC : HTTP_AUTH_TYPE_NONE,
-        .path      = NULL,
-        .query     = NULL,
-        .cert_pem  = p_params->p_server_cert,
-        .client_cert_pem             = p_params->p_client_cert,
-        .client_key_pem              = p_params->p_client_key,
-        .user_agent                  = NULL,
-        .method                      = HTTP_METHOD_POST,
-        .timeout_ms                  = 0,
-        .disable_auto_redirect       = false,
-        .max_redirection_count       = 0,
-        .max_authorization_retries   = 0,
-        .event_handler               = &http_post_event_handler,
-        .transport_type              = HTTP_TRANSPORT_UNKNOWN,
-        .buffer_size                 = 0,
-        .buffer_size_tx              = 0,
-        .user_data                   = p_user_data,
-        .is_async                    = true,
-        .use_global_ca_store         = false,
+        .path = NULL,
+        .query = NULL,
+        .cert_pem = p_params->p_server_cert,
+        .client_cert_pem = p_params->p_client_cert,
+        .client_key_pem = p_params->p_client_key,
+        .user_agent = NULL,
+        .method = HTTP_METHOD_POST,
+        .timeout_ms = 0,
+        .disable_auto_redirect = false,
+        .max_redirection_count = 0,
+        .max_authorization_retries = 0,
+        .event_handler = &http_post_event_handler,
+        .transport_type = HTTP_TRANSPORT_UNKNOWN,
+        .buffer_size = 0,
+        .buffer_size_tx = 0,
+        .user_data = p_user_data,
+        .is_async = true,
+        .use_global_ca_store = false,
         .skip_cert_common_name_check = false,
-        .keep_alive_enable           = false,
-        .keep_alive_idle             = 0,
-        .keep_alive_interval         = 0,
-        .keep_alive_count            = 0,
-        .ssl_in_content_len          = p_params->ssl_in_content_len,
-        .ssl_out_content_len         = p_params->ssl_out_content_len,
+        .keep_alive_enable = false,
+        .keep_alive_idle = 0,
+        .keep_alive_interval = 0,
+        .keep_alive_count = 0,
+        .p_ssl_in_buf = p_params->p_ssl_in_buf,
+        .p_ssl_out_buf = p_params->p_ssl_out_buf,
+#if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
+        .ssl_in_content_len = p_params->ssl_in_content_len,
+        .ssl_out_content_len = p_params->ssl_out_content_len,
+#endif
+        // clang-format on
     };
 }
 

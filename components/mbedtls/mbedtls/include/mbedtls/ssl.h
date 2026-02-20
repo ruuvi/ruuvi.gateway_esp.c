@@ -21,6 +21,7 @@
  */
 #ifndef MBEDTLS_SSL_H
 #define MBEDTLS_SSL_H
+#include <stdbool.h>
 #include "mbedtls/platform_util.h"
 #include "mbedtls/private_access.h"
 
@@ -1626,6 +1627,8 @@ struct mbedtls_ssl_config {
     uint32_t MBEDTLS_PRIVATE(ssl_in_content_len);
     uint32_t MBEDTLS_PRIVATE(ssl_out_content_len);
 #endif
+    uint8_t* MBEDTLS_PRIVATE(p_ssl_in_buf);
+    uint8_t* MBEDTLS_PRIVATE(p_ssl_out_buf);
 };
 
 struct mbedtls_ssl_context {
@@ -1717,6 +1720,9 @@ struct mbedtls_ssl_context {
 
     mbedtls_ssl_set_timer_t *MBEDTLS_PRIVATE(f_set_timer);       /*!< set timer callback */
     mbedtls_ssl_get_timer_t *MBEDTLS_PRIVATE(f_get_timer);       /*!< get timer callback */
+
+    bool MBEDTLS_PRIVATE(flag_in_buf_pre_allocated);  /*!< true if the input buffer is pre-allocated */
+    bool MBEDTLS_PRIVATE(flag_out_buf_pre_allocated); /*!< true if the output buffer is pre-allocated */
 
     /*
      * Record layer (incoming data)

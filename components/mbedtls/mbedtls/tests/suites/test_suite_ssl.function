@@ -1,5 +1,5 @@
 /* BEGIN_HEADER */
-#include <ssl_misc.h>
+#include <mbedtls/ssl_misc.h>
 #include <mbedtls/timing.h>
 #include <mbedtls/debug.h>
 #include <mbedtls/pk.h>
@@ -3706,9 +3706,9 @@ void ssl_buffer_allocation_size()
     TEST_ASSERT(ret == 0);
 
     /* Calculate expected buffer sizes using the same formula as ssl_tls.c */
-    const uint32_t expected_in_buf_size = mbedtls_ssl_get_in_buffer_size(
+    const uint32_t expected_in_buf_size = MBEDTLS_SSL_IN_BUFFER_LEN_CALC(
                                               mbedtls_ssl_conf_get_in_content_len(&conf));
-    const uint32_t expected_out_buf_size = mbedtls_ssl_get_out_buffer_size(
+    const uint32_t expected_out_buf_size = MBEDTLS_SSL_OUT_BUFFER_LEN_CALC(
                                                mbedtls_ssl_conf_get_out_content_len(&conf));
 
     /* Verify buffer sizes match expected values */

@@ -80,6 +80,11 @@
 #endif /* !_WIN32 || EFIX64 || EFI32 */
 #endif
 
+#ifdef ESP_PLATFORM
+#include "esp_log.h"
+static const char TAG[] = "x509_crt";
+#endif
+
 /*
  * Item in a verification chain: cert and flags for it
  */
@@ -1124,6 +1129,9 @@ static int x509_crt_parse_der_core(mbedtls_x509_crt *crt,
     if (make_copy != 0) {
         /* Create and populate a new buffer for the raw field. */
         crt->raw.p = p = mbedtls_calloc(1, crt->raw.len);
+#ifdef ESP_PLATFORM
+        ESP_LOGD(TAG, "%s: Allocate %zu bytes for crt->raw.p", __func__, crt->raw.len);
+#endif
         if (crt->raw.p == NULL) {
             return MBEDTLS_ERR_X509_ALLOC_FAILED;
         }
@@ -1345,6 +1353,9 @@ static int mbedtls_x509_crt_parse_der_internal(mbedtls_x509_crt *chain,
      * Add new certificate on the end of the chain if needed.
      */
     if (crt->version != 0 && crt->next == NULL) {
+#ifdef ESP_PLATFORM
+        ESP_LOGD(TAG, "%s: Allocate %zu bytes for next peer certificate (mbedtls_x509_crt)", __func__, sizeof(mbedtls_x509_crt));
+#endif
         crt->next = mbedtls_calloc(1, sizeof(mbedtls_x509_crt));
 
         if (crt->next == NULL) {

@@ -206,8 +206,30 @@ typedef struct {
     int network_timeout_ms;                 /*!< Abort network operation if it is not completed after this value, in milliseconds (defaults to 10s) */
     bool disable_keepalive;                 /*!< Set disable_keepalive=true to turn off keep-alive mechanism, false by default (keepalive is active by default). Note: setting the config value `keepalive` to `0` doesn't disable keepalive feature, but uses a default keepalive period */
     const char *path;                       /*!< Path in the URI*/
-    size_t      ssl_in_content_len;
-    size_t      ssl_out_content_len;
+    uint8_t *p_ssl_in_buf;                  /*!< Pre-allocated buffer for incoming SSL content.
+                                                 Can be NULL (buffer will be allocated internally).
+                                                 If CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is enabled and
+                                                 `ssl_in_content_len` is set, the user must pre-allocate
+                                                 this buffer with a size calculated using
+                                                 @c MBEDTLS_SSL_IN_BUFFER_LEN_CALC(ssl_in_content_len).
+                                                 If CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is disabled,
+                                                 then the user must pre-allocate this buffer with
+                                                 size @c MBEDTLS_SSL_IN_BUFFER_LEN. */
+    uint8_t *p_ssl_out_buf;                 /*!< Pre-allocated buffer for outgoing SSL content.
+                                                 Can be NULL (buffer will be allocated internally).
+                                                 If CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is enabled and
+                                                 `ssl_out_content_len` is set, the user must pre-allocate
+                                                 this buffer with a size calculated using
+                                                 @c MBEDTLS_SSL_OUT_BUFFER_LEN_CALC(ssl_out_content_len).
+                                                 If CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is disabled,
+                                                 then the user must pre-allocate this buffer with
+                                                 size @c MBEDTLS_SSL_OUT_BUFFER_LEN.*/
+#if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
+    size_t ssl_in_content_len;              /*!< Maximum incoming fragment length for the TLS connection.
+                                                 Buffer will be allocated if p_ssl_in_buf is NULL */
+    size_t ssl_out_content_len;             /*!< Maximum outgoing fragment length for the TLS connection.
+                                                 Buffer will be allocated if p_ssl_out_buf is NULL */
+#endif
 } esp_mqtt_client_config_t;
 
 /**

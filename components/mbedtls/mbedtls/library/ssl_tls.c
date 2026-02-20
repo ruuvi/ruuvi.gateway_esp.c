@@ -30,7 +30,7 @@
 #include "mbedtls/ssl.h"
 #include "ssl_client.h"
 #include "ssl_debug_helpers.h"
-#include "ssl_misc.h"
+#include "mbedtls/ssl_misc.h"
 
 #include "mbedtls/debug.h"
 #include "mbedtls/error.h"
@@ -333,7 +333,7 @@ static void handle_buffer_resizing(mbedtls_ssl_context *ssl, int downsizing,
     int modified = 0;
     size_t written_in = 0, iv_offset_in = 0, len_offset_in = 0;
     size_t written_out = 0, iv_offset_out = 0, len_offset_out = 0;
-    if (ssl->in_buf != NULL) {
+    if ((ssl->in_buf != NULL) && (!ssl->flag_in_buf_pre_allocated)) {
         written_in = ssl->in_msg - ssl->in_buf;
         iv_offset_in = ssl->in_iv - ssl->in_buf;
         len_offset_in = ssl->in_len - ssl->in_buf;
@@ -342,6 +342,9 @@ static void handle_buffer_resizing(mbedtls_ssl_context *ssl, int downsizing,
             ssl->in_buf_len < in_buf_new_len) {
             if (resize_buffer(&ssl->in_buf, in_buf_new_len, &ssl->in_buf_len) != 0) {
                 MBEDTLS_SSL_DEBUG_MSG(1, ("input buffer resizing failed - out of memory"));
+#ifdef ESP_PLATFORM
+                ESP_LOGE(TAG, "input buffer resizing failed - out of memory");
+#endif
             } else {
                 MBEDTLS_SSL_DEBUG_MSG(2, ("Reallocating in_buf to %" MBEDTLS_PRINTF_SIZET,
                                           in_buf_new_len));
@@ -350,7 +353,7 @@ static void handle_buffer_resizing(mbedtls_ssl_context *ssl, int downsizing,
         }
     }
 
-    if (ssl->out_buf != NULL) {
+    if ((ssl->out_buf != NULL) && (!ssl->flag_out_buf_pre_allocated)) {
         written_out = ssl->out_msg - ssl->out_buf;
         iv_offset_out = ssl->out_iv - ssl->out_buf;
         len_offset_out = ssl->out_len - ssl->out_buf;
@@ -359,6 +362,9 @@ static void handle_buffer_resizing(mbedtls_ssl_context *ssl, int downsizing,
             ssl->out_buf_len < out_buf_new_len) {
             if (resize_buffer(&ssl->out_buf, out_buf_new_len, &ssl->out_buf_len) != 0) {
                 MBEDTLS_SSL_DEBUG_MSG(1, ("output buffer resizing failed - out of memory"));
+#ifdef ESP_PLATFORM
+                ESP_LOGE(TAG, "output buffer resizing failed - out of memory");
+#endif
             } else {
                 MBEDTLS_SSL_DEBUG_MSG(2, ("Reallocating out_buf to %" MBEDTLS_PRINTF_SIZET,
                                           out_buf_new_len));
@@ -1074,8 +1080,11 @@ static int ssl_handshake_init(mbedtls_ssl_context *ssl)
 #if defined(MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
     /* If the buffers are too small - reallocate */
 
-    const uint32_t in_buffer_size = mbedtls_ssl_get_in_buffer_size(mbedtls_ssl_get_in_content_len(ssl));
-    const uint32_t out_buffer_size = mbedtls_ssl_get_out_buffer_size(mbedtls_ssl_get_out_content_len(ssl));
+#ifdef ESP_PLATFORM
+    ESP_LOGD(TAG, "%s: If the buffers are too small - reallocate", __func__);
+#endif
+    const uint32_t in_buffer_size = MBEDTLS_SSL_IN_BUFFER_LEN_CALC(mbedtls_ssl_get_in_content_len(ssl));
+    const uint32_t out_buffer_size = MBEDTLS_SSL_OUT_BUFFER_LEN_CALC(mbedtls_ssl_get_out_content_len(ssl));
     handle_buffer_resizing(ssl, 0, in_buffer_size, out_buffer_size);
 #endif
 
@@ -1374,8 +1383,8 @@ int mbedtls_ssl_setup(mbedtls_ssl_context *ssl,
     int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
     const uint32_t in_content_len = mbedtls_ssl_conf_get_in_content_len(conf);
     const uint32_t out_content_len = mbedtls_ssl_conf_get_out_content_len(conf);
-    const uint32_t in_buf_size = mbedtls_ssl_get_in_buffer_size(in_content_len);
-    const uint32_t out_buf_size = mbedtls_ssl_get_out_buffer_size(out_content_len);
+    const uint32_t in_buf_size = MBEDTLS_SSL_IN_BUFFER_LEN_CALC(in_content_len);
+    const uint32_t out_buf_size = MBEDTLS_SSL_OUT_BUFFER_LEN_CALC(out_content_len);
 
     ssl->conf = conf;
 
@@ -1399,11 +1408,28 @@ int mbedtls_ssl_setup(mbedtls_ssl_context *ssl,
         __func__, (size_t)in_content_len, (size_t)in_buf_size));
     ssl->in_buf_len = in_buf_size;
 #endif
-    ssl->in_buf = mbedtls_calloc(1, in_buf_size);
-    if (ssl->in_buf == NULL) {
-        MBEDTLS_SSL_DEBUG_MSG(1, ("alloc(%" MBEDTLS_PRINTF_SIZET " bytes) failed", (size_t)in_buf_size));
-        ret = MBEDTLS_ERR_SSL_ALLOC_FAILED;
-        goto error;
+    if (NULL != conf->p_ssl_in_buf) {
+        ssl->flag_in_buf_pre_allocated = true;
+        ssl->in_buf = conf->p_ssl_in_buf;
+        MBEDTLS_SSL_DEBUG_MSG(2, ("%s: Using user provided input buffer at %p with size %" MBEDTLS_PRINTF_SIZET, __func__, (void *)ssl->in_buf, (size_t)in_buf_size));
+#ifdef ESP_PLATFORM
+        ESP_LOGD(TAG, "%s: Using user provided input buffer at %p with size %" MBEDTLS_PRINTF_SIZET,
+            __func__, (void *)ssl->in_buf, (size_t)in_buf_size);
+#endif
+    } else {
+#ifdef ESP_PLATFORM
+        ESP_LOGD(TAG, "%s: Allocating input buffer of size %" MBEDTLS_PRINTF_SIZET, __func__, (size_t)in_buf_size);
+#endif
+        ssl->flag_in_buf_pre_allocated = false;
+        ssl->in_buf = mbedtls_calloc(1, in_buf_size);
+        if (ssl->in_buf == NULL) {
+            MBEDTLS_SSL_DEBUG_MSG(1, ("alloc(%" MBEDTLS_PRINTF_SIZET " bytes) failed", (size_t)in_buf_size));
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: alloc(%" MBEDTLS_PRINTF_SIZET " bytes) failed", __func__, (size_t)in_buf_size);
+#endif
+            ret = MBEDTLS_ERR_SSL_ALLOC_FAILED;
+            goto error;
+        }
     }
 
 #if defined(MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
@@ -1411,11 +1437,28 @@ int mbedtls_ssl_setup(mbedtls_ssl_context *ssl,
         __func__, (size_t)out_content_len, (size_t)out_buf_size));
     ssl->out_buf_len = out_buf_size;
 #endif
-    ssl->out_buf = mbedtls_calloc(1, out_buf_size);
-    if (ssl->out_buf == NULL) {
-        MBEDTLS_SSL_DEBUG_MSG(1, ("alloc(%" MBEDTLS_PRINTF_SIZET " bytes) failed", (size_t)out_buf_size));
-        ret = MBEDTLS_ERR_SSL_ALLOC_FAILED;
-        goto error;
+    if (NULL != conf->p_ssl_out_buf) {
+        ssl->flag_out_buf_pre_allocated = true;
+        ssl->out_buf = conf->p_ssl_out_buf;
+        MBEDTLS_SSL_DEBUG_MSG(2, ("%s: Using user provided output buffer at %p with size %" MBEDTLS_PRINTF_SIZET, __func__, (void *)ssl->out_buf, (size_t)out_buf_size));
+#ifdef ESP_PLATFORM
+        ESP_LOGD(TAG, "%s: Using user provided output buffer at %p with size %" MBEDTLS_PRINTF_SIZET,
+            __func__, (void *)ssl->out_buf, (size_t)out_buf_size);
+#endif
+    } else {
+#ifdef ESP_PLATFORM
+        ESP_LOGD(TAG, "%s: Allocating output buffer of size %" MBEDTLS_PRINTF_SIZET, __func__, (size_t)out_buf_size);
+#endif
+        ssl->flag_out_buf_pre_allocated = false;
+        ssl->out_buf = mbedtls_calloc(1, out_buf_size);
+        if (ssl->out_buf == NULL) {
+            MBEDTLS_SSL_DEBUG_MSG(1, ("alloc(%" MBEDTLS_PRINTF_SIZET " bytes) failed", (size_t)out_buf_size));
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: alloc(%" MBEDTLS_PRINTF_SIZET " bytes) failed", __func__, (size_t)out_buf_size);
+#endif
+            ret = MBEDTLS_ERR_SSL_ALLOC_FAILED;
+            goto error;
+        }
     }
 
     mbedtls_ssl_reset_in_out_pointers(ssl);
@@ -1431,8 +1474,12 @@ int mbedtls_ssl_setup(mbedtls_ssl_context *ssl,
     return 0;
 
 error:
-    mbedtls_free(ssl->in_buf);
-    mbedtls_free(ssl->out_buf);
+    if (!ssl->flag_in_buf_pre_allocated) {
+        mbedtls_free(ssl->in_buf);
+    }
+    if (!ssl->flag_out_buf_pre_allocated) {
+        mbedtls_free(ssl->out_buf);
+    }
 
     ssl->conf = NULL;
 
@@ -4847,7 +4894,19 @@ void mbedtls_ssl_free(mbedtls_ssl_context *ssl)
         size_t out_buf_len = MBEDTLS_SSL_OUT_BUFFER_LEN;
 #endif
 
-        mbedtls_zeroize_and_free(ssl->out_buf, out_buf_len);
+        if (!ssl->flag_out_buf_pre_allocated) {
+#ifdef ESP_PLATFORM
+            ESP_LOGD(TAG, "%s: Freeing output buffer at %p with size %" MBEDTLS_PRINTF_SIZET,
+                __func__, (void *)ssl->out_buf, (size_t)out_buf_len);
+#endif
+            mbedtls_zeroize_and_free(ssl->out_buf, out_buf_len);
+        } else {
+#ifdef ESP_PLATFORM
+            ESP_LOGD(TAG, "%s: Zeroize user provided output buffer at %p with size %" MBEDTLS_PRINTF_SIZET,
+                __func__, (void *)ssl->out_buf, (size_t)out_buf_len);
+#endif
+            mbedtls_platform_zeroize(ssl->out_buf, out_buf_len);
+        }
         ssl->out_buf = NULL;
     }
 
@@ -4858,7 +4917,19 @@ void mbedtls_ssl_free(mbedtls_ssl_context *ssl)
         size_t in_buf_len = MBEDTLS_SSL_IN_BUFFER_LEN;
 #endif
 
-        mbedtls_zeroize_and_free(ssl->in_buf, in_buf_len);
+        if (!ssl->flag_in_buf_pre_allocated) {
+#ifdef ESP_PLATFORM
+            ESP_LOGD(TAG, "%s: Freeing input buffer at %p with size %" MBEDTLS_PRINTF_SIZET,
+                __func__, (void *)ssl->in_buf, (size_t)in_buf_len);
+#endif
+            mbedtls_zeroize_and_free(ssl->in_buf, in_buf_len);
+        } else {
+#ifdef ESP_PLATFORM
+            ESP_LOGD(TAG, "%s: Zeroize user provided input buffer at %p with size %" MBEDTLS_PRINTF_SIZET,
+                __func__, (void *)ssl->in_buf, (size_t)in_buf_len);
+#endif
+            mbedtls_platform_zeroize(ssl->in_buf, in_buf_len);
+        }
         ssl->in_buf = NULL;
     }
 
@@ -9080,6 +9151,10 @@ static int ssl_tls12_session_load(mbedtls_ssl_session *session,
         }
 
         session->peer_cert = mbedtls_calloc(1, sizeof(mbedtls_x509_crt));
+#ifdef ESP_PLATFORM
+        ESP_LOGD(TAG, "%s: Allocate %zu bytes for peer certificate (mbedtls_x509_crt): %p",
+            __func__, sizeof(mbedtls_x509_crt), session->peer_cert);
+#endif
 
         if (session->peer_cert == NULL) {
             return MBEDTLS_ERR_SSL_ALLOC_FAILED;
@@ -9090,6 +9165,9 @@ static int ssl_tls12_session_load(mbedtls_ssl_session *session,
         if ((ret = mbedtls_x509_crt_parse_der(session->peer_cert,
                                               p, cert_len)) != 0) {
             mbedtls_x509_crt_free(session->peer_cert);
+#ifdef ESP_PLATFORM
+            ESP_LOGD(TAG, "%s: Free peer certificate (mbedtls_x509_crt): %p", __func__, session->peer_cert);
+#endif
             mbedtls_free(session->peer_cert);
             session->peer_cert = NULL;
             return ret;

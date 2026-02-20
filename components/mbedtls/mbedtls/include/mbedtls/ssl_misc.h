@@ -332,8 +332,14 @@ uint32_t mbedtls_ssl_get_extension_mask(unsigned int extension_type);
 #define MBEDTLS_SSL_IN_PAYLOAD_LEN (MBEDTLS_SSL_PAYLOAD_OVERHEAD + \
                                     (MBEDTLS_SSL_IN_CONTENT_LEN))
 
+#define MBEDTLS_SSL_IN_PAYLOAD_LEN_CALC(content_len) \
+    (MBEDTLS_SSL_PAYLOAD_OVERHEAD + (content_len))
+
 #define MBEDTLS_SSL_OUT_PAYLOAD_LEN (MBEDTLS_SSL_PAYLOAD_OVERHEAD + \
                                      (MBEDTLS_SSL_OUT_CONTENT_LEN))
+
+#define MBEDTLS_SSL_OUT_PAYLOAD_LEN_CALC(content_len) \
+    (MBEDTLS_SSL_PAYLOAD_OVERHEAD + (content_len))
 
 /* The maximum number of buffered handshake messages. */
 #define MBEDTLS_SSL_MAX_BUFFERED_HS 4
@@ -399,21 +405,33 @@ uint32_t mbedtls_ssl_get_extension_mask(unsigned int extension_type);
 #define MBEDTLS_SSL_HEADER_LEN 13
 
 #if !defined(MBEDTLS_SSL_DTLS_CONNECTION_ID)
-#define MBEDTLS_SSL_IN_BUFFER_LEN  \
+#define MBEDTLS_SSL_IN_BUFFER_LEN                                \
     ((MBEDTLS_SSL_HEADER_LEN) + (MBEDTLS_SSL_IN_PAYLOAD_LEN))
+#define MBEDTLS_SSL_IN_BUFFER_LEN_CALC(content_len)              \
+    ((MBEDTLS_SSL_HEADER_LEN) + (MBEDTLS_SSL_IN_PAYLOAD_LEN_CALC(content_len)))
 #else
-#define MBEDTLS_SSL_IN_BUFFER_LEN  \
-    ((MBEDTLS_SSL_HEADER_LEN) + (MBEDTLS_SSL_IN_PAYLOAD_LEN) \
+#define MBEDTLS_SSL_IN_BUFFER_LEN                                \
+    ((MBEDTLS_SSL_HEADER_LEN) + (MBEDTLS_SSL_IN_PAYLOAD_LEN)     \
      + (MBEDTLS_SSL_CID_IN_LEN_MAX))
+#define MBEDTLS_SSL_IN_BUFFER_LEN_CALC(content_len)              \
+    ((MBEDTLS_SSL_HEADER_LEN)                                    \
+    + (MBEDTLS_SSL_IN_PAYLOAD_LEN_CALC(content_len))             \
+    + (MBEDTLS_SSL_CID_IN_LEN_MAX))
 #endif
 
 #if !defined(MBEDTLS_SSL_DTLS_CONNECTION_ID)
-#define MBEDTLS_SSL_OUT_BUFFER_LEN  \
+#define MBEDTLS_SSL_OUT_BUFFER_LEN                               \
     ((MBEDTLS_SSL_HEADER_LEN) + (MBEDTLS_SSL_OUT_PAYLOAD_LEN))
+#define MBEDTLS_SSL_OUT_BUFFER_LEN_CALC(content_len)             \
+    ((MBEDTLS_SSL_HEADER_LEN) + (MBEDTLS_SSL_OUT_PAYLOAD_LEN_CALC(content_len)))
 #else
 #define MBEDTLS_SSL_OUT_BUFFER_LEN                               \
     ((MBEDTLS_SSL_HEADER_LEN) + (MBEDTLS_SSL_OUT_PAYLOAD_LEN)    \
      + (MBEDTLS_SSL_CID_OUT_LEN_MAX))
+#define MBEDTLS_SSL_OUT_BUFFER_LEN_CALC(content_len)             \
+    ((MBEDTLS_SSL_HEADER_LEN)                                    \
+    + (MBEDTLS_SSL_OUT_PAYLOAD_LEN_CALC(content_len))            \
+    + (MBEDTLS_SSL_CID_OUT_LEN_MAX))
 #endif
 
 #define MBEDTLS_CLIENT_HELLO_RANDOM_LEN 32
@@ -2904,22 +2922,6 @@ static inline uint32_t mbedtls_ssl_get_out_content_len(const mbedtls_ssl_context
 }
 
 /**
- * \brief Get the outbound buffer size.
- *
- * \param[in] ssl_out_content_len  The maximum outbound content length in bytes.
- *
- * \return The outbound buffer size in bytes.
- */
-static inline uint32_t mbedtls_ssl_get_out_buffer_size(const uint32_t ssl_out_content_len)
-{
-    uint32_t ssl_out_buffer_size = MBEDTLS_SSL_HEADER_LEN + ssl_out_content_len + MBEDTLS_SSL_PAYLOAD_OVERHEAD;
-#if defined(MBEDTLS_SSL_DTLS_CONNECTION_ID)
-    ssl_out_buffer_size += MBEDTLS_SSL_CID_OUT_LEN_MAX;
-#endif
-    return ssl_out_buffer_size;
-}
-
-/**
  * \brief Get the maximum inbound content length from an SSL configuration.
  *
  * \param[in] ssl_conf The SSL configuration.
@@ -2964,22 +2966,6 @@ static inline uint32_t mbedtls_ssl_get_in_content_len(const mbedtls_ssl_context 
         return MBEDTLS_SSL_IN_CONTENT_LEN;
     }
     return mbedtls_ssl_conf_get_in_content_len(ssl->conf);
-}
-
-/**
- * \brief Get the inbound buffer size.
- *
- * \param[in] ssl_in_content_len  The maximum inbound content length in bytes.
- *
- * \return The inbound buffer size in bytes.
- */
-static inline uint32_t mbedtls_ssl_get_in_buffer_size(const uint32_t ssl_in_content_len)
-{
-    uint32_t ssl_in_buffer_size = MBEDTLS_SSL_HEADER_LEN + ssl_in_content_len + MBEDTLS_SSL_PAYLOAD_OVERHEAD;
-#if defined(MBEDTLS_SSL_DTLS_CONNECTION_ID)
-    ssl_in_buffer_size += MBEDTLS_SSL_CID_IN_LEN_MAX;
-#endif
-    return ssl_in_buffer_size;
 }
 
 #endif /* ssl_misc.h */

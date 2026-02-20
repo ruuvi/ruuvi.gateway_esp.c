@@ -535,6 +535,7 @@ main_task_init(void)
         ruuvi_nvs_init();
     }
 
+    esp_tls_set_mode_mandatory_pre_allocated_in_out_buf();
     esp_transport_ssl_init_saved_tickets_storage();
 
     if (!ruuvi_init_gw_cfg(NULL, NULL))

@@ -28,7 +28,7 @@
 #if defined(MBEDTLS_DEBUG_C)
 
 #include "mbedtls/ssl.h"
-#include "ssl_misc.h"
+#include "mbedtls/ssl_misc.h"
 
 
 const char *mbedtls_ssl_states_str(mbedtls_ssl_states in);

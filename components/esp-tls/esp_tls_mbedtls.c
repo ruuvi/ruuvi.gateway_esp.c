@@ -16,7 +16,7 @@
 #include "esp_tls_mbedtls.h"
 #include "esp_tls_private.h"
 #include "esp_tls_error_capture_internal.h"
-#include "ssl_misc.h"
+#include "mbedtls/ssl_misc.h"
 #include <errno.h>
 #include "esp_log.h"
 #include "snprintf_with_esp_err_desc.h"
@@ -48,6 +48,7 @@ static esp_err_t esp_mbedtls_init_pk_ctx_for_ds(const void *pki);
 
 static const char *TAG = "esp-tls-mbedtls";
 static mbedtls_x509_crt *global_cacert = NULL;
+static bool g_mandatory_pre_allocated_in_out_buf = false;
 
 /* This function shall return the error message when appropriate log level has been set, otherwise this function shall do nothing */
 static void mbedtls_print_error_msg(int error)
@@ -177,10 +178,13 @@ bool esp_mbedtls_copy_client_session(const esp_tls_t * const tls, esp_tls_client
 
 esp_tls_client_session_t *esp_mbedtls_get_client_session(esp_tls_t *tls)
 {
+    ESP_LOGD(TAG, "%s: esp_mbedtls_get_client_session", __func__);
     if (tls == NULL) {
         ESP_LOGE(TAG, "esp_tls session context cannot be NULL");
         return NULL;
     }
+
+    ESP_LOGD(TAG, "%s: Allocate %zu bytes for client session context", __func__, sizeof(esp_tls_client_session_t));
 
     esp_tls_client_session_t *client_session = (esp_tls_client_session_t*)calloc(1, sizeof(esp_tls_client_session_t));
     if (client_session == NULL) {
@@ -282,11 +286,16 @@ ssize_t esp_mbedtls_write(esp_tls_t *tls, const char *data, size_t datalen)
 {
     size_t written = 0;
     size_t write_len = datalen;
+#if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
+    const size_t ssl_out_content_len = tls->conf.ssl_out_content_len;
+#else
+    const size_t ssl_out_content_len = MBEDTLS_SSL_OUT_CONTENT_LEN;
+#endif
     while (written < datalen) {
-        if (write_len > tls->conf.ssl_out_content_len) {
-            write_len = tls->conf.ssl_out_content_len;
+        if (write_len > ssl_out_content_len) {
+            write_len = ssl_out_content_len;
         }
-        if (datalen > tls->conf.ssl_out_content_len) {
+        if (datalen > ssl_out_content_len) {
             ESP_LOGE(TAG, "Fragmenting data of excessive size :%zu, offset: %zu, size %zu", datalen, written, write_len);
         }
         ssize_t ret = mbedtls_ssl_write(&tls->ssl, (unsigned char*) data + written, write_len);
@@ -694,10 +703,24 @@ esp_err_t set_client_config(const char *hostname, size_t hostlen, esp_tls_cfg_t 
     }
     mbedtls_ssl_conf_read_timeout(&tls->conf, cfg->timeout_ms);
 
+    ESP_TLS_LOGI("[%.*s] Configure TLS I/O buffers: in_buf=%p, out_buf=%p",
+                 hostlen, hostname, cfg->p_ssl_in_buf, cfg->p_ssl_out_buf);
+    tls->conf.p_ssl_in_buf = cfg->p_ssl_in_buf;
+    tls->conf.p_ssl_out_buf = cfg->p_ssl_out_buf;
+
+#if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
     ESP_TLS_LOGI("[%.*s] Configure size of TLS I/O buffers: in_content_len=%u, out_content_len=%u",
                  hostlen, hostname, cfg->ssl_in_content_len, cfg->ssl_out_content_len);
     tls->conf.ssl_in_content_len = cfg->ssl_in_content_len;
     tls->conf.ssl_out_content_len = cfg->ssl_out_content_len;
+#endif
+
+    if (g_mandatory_pre_allocated_in_out_buf) {
+        if ((NULL == cfg->p_ssl_in_buf) || (NULL == cfg->p_ssl_out_buf)) {
+            ESP_LOGE(TAG, "Mandatory pre-allocated TLS I/O buffers are enabled, but not provided in the configuration");
+            return ESP_ERR_INVALID_ARG;
+        }
+    }
 
 #ifdef CONFIG_MBEDTLS_SSL_RENEGOTIATION
     mbedtls_ssl_conf_renegotiation(&tls->conf, MBEDTLS_SSL_RENEGOTIATION_ENABLED);
@@ -1061,3 +1084,9 @@ exit:
     return ret;
 }
 #endif /* CONFIG_ESP_TLS_USE_DS_PERIPHERAL */
+
+void esp_mbedtls_set_mode_mandatory_pre_allocated_in_out_buf(void)
+{
+    ESP_LOGI(TAG, "Pre-allocated TLS I/O buffers mode enabled");
+    g_mandatory_pre_allocated_in_out_buf = true;
+}

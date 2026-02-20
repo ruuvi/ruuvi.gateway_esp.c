@@ -33,7 +33,7 @@
 #include <test/psa_crypto_helpers.h>
 
 #if defined(MBEDTLS_SSL_TLS_C)
-#include <ssl_misc.h>
+#include <mbedtls/ssl_misc.h>
 #include <mbedtls/timing.h>
 #include <mbedtls/debug.h>
 
