@@ -330,15 +330,10 @@ static void handle_buffer_resizing(mbedtls_ssl_context *ssl, int downsizing,
 {
     MBEDTLS_SSL_DEBUG_MSG(2, ("%s: in_buf_new_len=%u, out_buf_new_len=%u",
              __func__, (unsigned) in_buf_new_len, (unsigned) out_buf_new_len));
-    assert(!ssl->flag_in_buf_pre_allocated);
-    assert(!ssl->flag_out_buf_pre_allocated);
-    if (ssl->flag_in_buf_pre_allocated || ssl->flag_out_buf_pre_allocated) {
-        return;
-    }
     int modified = 0;
     size_t written_in = 0, iv_offset_in = 0, len_offset_in = 0;
     size_t written_out = 0, iv_offset_out = 0, len_offset_out = 0;
-    if (ssl->in_buf != NULL) {
+    if ((ssl->in_buf != NULL) && (!ssl->flag_in_buf_pre_allocated)) {
         written_in = ssl->in_msg - ssl->in_buf;
         iv_offset_in = ssl->in_iv - ssl->in_buf;
         len_offset_in = ssl->in_len - ssl->in_buf;
@@ -358,7 +353,7 @@ static void handle_buffer_resizing(mbedtls_ssl_context *ssl, int downsizing,
         }
     }
 
-    if (ssl->out_buf != NULL) {
+    if ((ssl->out_buf != NULL) && (!ssl->flag_out_buf_pre_allocated)) {
         written_out = ssl->out_msg - ssl->out_buf;
         iv_offset_out = ssl->out_iv - ssl->out_buf;
         len_offset_out = ssl->out_len - ssl->out_buf;
@@ -1083,16 +1078,14 @@ static int ssl_handshake_init(mbedtls_ssl_context *ssl)
         ssl->handshake = mbedtls_calloc(1, sizeof(mbedtls_ssl_handshake_params));
     }
 #if defined(MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
-    if ((!ssl->flag_in_buf_pre_allocated) && (!ssl->flag_out_buf_pre_allocated)) {
-        /* If the buffers are too small - reallocate */
+    /* If the buffers are too small - reallocate */
 
 #ifdef ESP_PLATFORM
-        ESP_LOGD(TAG, "%s: If the buffers are too small - reallocate", __func__);
+    ESP_LOGD(TAG, "%s: If the buffers are too small - reallocate", __func__);
 #endif
-        const uint32_t in_buffer_size = MBEDTLS_SSL_IN_BUFFER_LEN_CALC(mbedtls_ssl_get_in_content_len(ssl));
-        const uint32_t out_buffer_size = MBEDTLS_SSL_OUT_BUFFER_LEN_CALC(mbedtls_ssl_get_out_content_len(ssl));
-        handle_buffer_resizing(ssl, 0, in_buffer_size, out_buffer_size);
-    }
+    const uint32_t in_buffer_size = MBEDTLS_SSL_IN_BUFFER_LEN_CALC(mbedtls_ssl_get_in_content_len(ssl));
+    const uint32_t out_buffer_size = MBEDTLS_SSL_OUT_BUFFER_LEN_CALC(mbedtls_ssl_get_out_content_len(ssl));
+    handle_buffer_resizing(ssl, 0, in_buffer_size, out_buffer_size);
 #endif
 
     /* All pointers should exist and can be directly freed without issue */
@@ -4292,15 +4285,12 @@ void mbedtls_ssl_handshake_free(mbedtls_ssl_context *ssl)
 
 
 #if defined(MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
-    if ((!ssl->flag_in_buf_pre_allocated) && (!ssl->flag_out_buf_pre_allocated))
-    {
-        /* If the buffers are too big - reallocate. Because of the way Mbed TLS
-         * processes datagrams and the fact that a datagram is allowed to have
-         * several records in it, it is possible that the I/O buffers are not
-         * empty at this stage */
-        handle_buffer_resizing(ssl, 1, mbedtls_ssl_get_input_buflen(ssl),
-                               mbedtls_ssl_get_output_buflen(ssl));
-    }
+    /* If the buffers are too big - reallocate. Because of the way Mbed TLS
+     * processes datagrams and the fact that a datagram is allowed to have
+     * several records in it, it is possible that the I/O buffers are not
+     * empty at this stage */
+    handle_buffer_resizing(ssl, 1, mbedtls_ssl_get_input_buflen(ssl),
+                           mbedtls_ssl_get_output_buflen(ssl));
 #endif
 
     /* mbedtls_platform_zeroize MUST be last one in this function */

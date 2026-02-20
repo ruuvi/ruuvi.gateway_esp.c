@@ -221,8 +221,8 @@ void esp_transport_ssl_set_buffer_size(esp_transport_handle_t t,
  * @brief      Set pre-allocated buffers for input and output buffer.
  *
  * @param[in]  t        The transport handle
- * @param[in]  p_ssl_in_buf Pointer to per-allocated buffer for incoming data. It can be NULL.
- * @param[in]  p_ssl_out_buf Pointer to per-allocated buffer for outgoing data. It can be NULL.
+ * @param[in]  p_ssl_in_buf Pointer to pre-allocated buffer for incoming data. It can be NULL.
+ * @param[in]  p_ssl_out_buf Pointer to pre-allocated buffer for outgoing data. It can be NULL.
  */
 void esp_transport_ssl_set_buffer(esp_transport_handle_t t,
                                   uint8_t *const p_ssl_in_buf,

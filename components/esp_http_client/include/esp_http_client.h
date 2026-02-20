@@ -135,11 +135,29 @@ typedef struct {
     int                         keep_alive_idle;     /*!< Keep-alive idle time. Default is 5 (second) */
     int                         keep_alive_interval; /*!< Keep-alive interval time. Default is 5 (second) */
     int                         keep_alive_count;    /*!< Keep-alive packet retry send count. Default is 3 counts */
-    uint8_t                     *p_ssl_in_buf;       /*!< Pre-allocated buffer for incoming data. It can be NULL */
-    uint8_t                     *p_ssl_out_buf;      /*!< Pre-allocated buffer for outgoing data. It can be NULL */
+    uint8_t                     *p_ssl_in_buf;       /*!< Pre-allocated buffer for incoming SSL content.
+                                                          Can be NULL (buffer will be allocated internally).
+                                                          If CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is enabled and
+                                                          `ssl_in_content_len` is set, the user must pre-allocate
+                                                          this buffer with a size calculated using
+                                                          @c MBEDTLS_SSL_IN_BUFFER_LEN_CALC(ssl_in_content_len).
+                                                          If CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is disabled,
+                                                          then the user must pre-allocate this buffer with
+                                                          size @c MBEDTLS_SSL_IN_BUFFER_LEN. */
+    uint8_t                     *p_ssl_out_buf;      /*!< Pre-allocated buffer for outgoing SSL content.
+                                                          Can be NULL (buffer will be allocated internally).
+                                                          If CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is enabled and
+                                                          `ssl_out_content_len` is set, the user must pre-allocate
+                                                          this buffer with a size calculated using
+                                                          @c MBEDTLS_SSL_OUT_BUFFER_LEN_CALC(ssl_out_content_len).
+                                                          If CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is disabled,
+                                                          then the user must pre-allocate this buffer with
+                                                          size @c MBEDTLS_SSL_OUT_BUFFER_LEN.*/
 #if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
-    size_t                      ssl_in_content_len;  /*!< Maximum incoming fragment length for the TLS connection */
-    size_t                      ssl_out_content_len; /*!< Maximum outgoing fragment length for the TLS connection */
+    size_t                      ssl_in_content_len;  /*!< Maximum incoming fragment length for the TLS connection.
+                                                          Buffer will be allocated if p_ssl_in_buf is NULL */
+    size_t                      ssl_out_content_len; /*!< Maximum outgoing fragment length for the TLS connection.
+                                                          Buffer will be allocated if p_ssl_out_buf is NULL */
 #endif
 } esp_http_client_config_t;
 

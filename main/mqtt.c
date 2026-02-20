@@ -475,8 +475,19 @@ typedef struct mqtt_client_config_params_t
     const char* const             p_cert_pem;
     const char* const             p_client_cert_pem;
     const char* const             p_client_key_pem;
-    uint8_t* const                p_ssl_in_buf;
-    uint8_t* const                p_ssl_out_buf;
+
+    uint8_t* const p_ssl_in_buf;  /*!< Pre-allocated buffer for incoming data. It can be NULL.
+                                       The size of the buffer must be:
+                                       - @c MBEDTLS_SSL_IN_BUFFER_LEN
+                                         if CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is disabled
+                                       - @c MBEDTLS_SSL_IN_BUFFER_LEN_CALC(ssl_in_content_len)
+                                         if CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is enabled */
+    uint8_t* const p_ssl_out_buf; /*!< Pre-allocated buffer for outgoing data. It can be NULL.
+                                       The size of the buffer must be:
+                                       - @c MBEDTLS_SSL_IN_BUFFER_LEN
+                                         if CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is disabled
+                                       - @c MBEDTLS_SSL_IN_BUFFER_LEN_CALC(ssl_in_content_len)
+                                         if CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is enabled */
 } mqtt_client_config_params_t;
 
 static void
