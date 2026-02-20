@@ -199,7 +199,7 @@ typedef enum {
  *             and it returns a esp_http_client_handle_t that you must use as input to other functions in the interface.
  *             This call MUST have a corresponding call to esp_http_client_cleanup when the operation is complete.
  *
- * @param[in]  config   The configurations, see `http_client_config_t`
+ * @param[in]  config   The configurations, see `esp_http_client_config_t`
  *
  * @return
  *     - `esp_http_client_handle_t`
