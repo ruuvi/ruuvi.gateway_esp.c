@@ -764,11 +764,21 @@ void esp_tls_free_client_session(esp_tls_client_session_t *client_session);
  *      which can be beneficial in memory-constrained environments.
  *      When this mode is enabled, the application must provide pre-allocated buffers
  *      for SSL input and output through the `p_ssl_in_buf` and `p_ssl_out_buf` members of `esp_tls_cfg_t` structure.
+ *      If this mode is enabled, but the user does not provide the buffers, an error will be returned.
+ *      When this mode is not enabled, then the user can choose to provide the pre-allocated buffers or
+ *      let esp-tls allocate/free them internally as needed.
  *
  * @note This function should be called before establishing any TLS connection using esp-tls APIs.
  *
  * @note The size of the pre-allocated in/out buffers should be @c MBEDTLS_SSL_IN_BUFFER_LEN and
- *      @c MBEDTLS_SSL_OUT_BUFFER_LEN respectively.
+ *      @c MBEDTLS_SSL_OUT_BUFFER_LEN respectively when CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is not enabled.
+ *      When CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is enabled, the user can provide custom pre-allocated buffers
+ *      through the `p_ssl_in_buf` and `p_ssl_out_buf` members of @c esp_tls_cfg_t structure and size of these buffers
+ *      must be calculated using macro @c MBEDTLS_SSL_IN_BUFFER_LEN_CALC and @c MBEDTLS_SSL_OUT_BUFFER_LEN_CALC
+ *      depending on the max allowed content length specified in `ssl_in_content_len` and `ssl_out_content_len`
+ *      members of @c esp_tls_cfg_t.
+ *      The default content lengths for in/out SSL buffers are @c MBEDTLS_SSL_IN_CONTENT_LEN and
+ *      @c MBEDTLS_SSL_OUT_CONTENT_LEN respectively.
  */
 void esp_tls_set_mode_mandatory_pre_allocated_in_out_buf(void);
 

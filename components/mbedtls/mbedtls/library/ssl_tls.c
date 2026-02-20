@@ -1089,8 +1089,8 @@ static int ssl_handshake_init(mbedtls_ssl_context *ssl)
 #ifdef ESP_PLATFORM
         ESP_LOGD(TAG, "%s: If the buffers are too small - reallocate", __func__);
 #endif
-        const uint32_t in_buffer_size = mbedtls_ssl_get_in_buffer_size(mbedtls_ssl_get_in_content_len(ssl));
-        const uint32_t out_buffer_size = mbedtls_ssl_get_out_buffer_size(mbedtls_ssl_get_out_content_len(ssl));
+        const uint32_t in_buffer_size = MBEDTLS_SSL_IN_BUFFER_LEN_CALC(mbedtls_ssl_get_in_content_len(ssl));
+        const uint32_t out_buffer_size = MBEDTLS_SSL_OUT_BUFFER_LEN_CALC(mbedtls_ssl_get_out_content_len(ssl));
         handle_buffer_resizing(ssl, 0, in_buffer_size, out_buffer_size);
     }
 #endif
@@ -1390,8 +1390,8 @@ int mbedtls_ssl_setup(mbedtls_ssl_context *ssl,
     int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
     const uint32_t in_content_len = mbedtls_ssl_conf_get_in_content_len(conf);
     const uint32_t out_content_len = mbedtls_ssl_conf_get_out_content_len(conf);
-    const uint32_t in_buf_size = mbedtls_ssl_get_in_buffer_size(in_content_len);
-    const uint32_t out_buf_size = mbedtls_ssl_get_out_buffer_size(out_content_len);
+    const uint32_t in_buf_size = MBEDTLS_SSL_IN_BUFFER_LEN_CALC(in_content_len);
+    const uint32_t out_buf_size = MBEDTLS_SSL_OUT_BUFFER_LEN_CALC(out_content_len);
 
     ssl->conf = conf;
 
