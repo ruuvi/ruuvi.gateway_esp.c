@@ -246,8 +246,8 @@ void ssl_pre_allocated_buffers_custom_size()
     conf.ssl_out_content_len = custom_out_content_len;
 
     /* Calculate required buffer sizes */
-    in_buf_size = mbedtls_ssl_get_in_buffer_size(custom_in_content_len);
-    out_buf_size = mbedtls_ssl_get_out_buffer_size(custom_out_content_len);
+    in_buf_size = MBEDTLS_SSL_IN_BUFFER_LEN_CALC(custom_in_content_len);
+    out_buf_size = MBEDTLS_SSL_OUT_BUFFER_LEN_CALC(custom_out_content_len);
 
     /* Allocate buffers */
     in_buf = mbedtls_calloc(1, in_buf_size);
