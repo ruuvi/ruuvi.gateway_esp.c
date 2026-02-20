@@ -105,9 +105,9 @@ typedef struct http_init_client_config_params_t
                                          if CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is enabled */
     uint8_t* const p_ssl_out_buf; /*!< Pre-allocated buffer for outgoing data. It can be NULL.
                                        The size of the buffer must be:
-                                       - @c MBEDTLS_SSL_IN_BUFFER_LEN
+                                       - @c MBEDTLS_SSL_OUT_BUFFER_LEN
                                          if CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is disabled
-                                       - @c MBEDTLS_SSL_IN_BUFFER_LEN_CALC(ssl_in_content_len)
+                                       - @c MBEDTLS_SSL_OUT_BUFFER_LEN_CALC(ssl_in_content_len)
                                          if CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is enabled */
 #if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
     const size_t ssl_in_content_len;
