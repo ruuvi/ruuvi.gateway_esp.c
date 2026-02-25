@@ -570,6 +570,9 @@ static const esp_err_msg_t esp_err_msg_table[] = {
 #   ifdef      ESP_ERR_HTTP_EAGAIN
     ERR_TBL_IT(ESP_ERR_HTTP_EAGAIN),                            /* 28679 0x7007 Mapping of errno EAGAIN to esp_err_t */
 #   endif
+#   ifdef      ESP_ERR_HTTP_READ_DATA
+    ERR_TBL_IT(ESP_ERR_HTTP_READ_DATA),                         /* 28680 0x7008 Error read HTTP data */
+#   endif
 #   ifdef      ESP_ERR_HTTP_CONNECTION_CLOSED
     ERR_TBL_IT(ESP_ERR_HTTP_CONNECTION_CLOSED),                 /* 28680 0x7008 Read FIN from peer and the connection closed */
 #   endif
