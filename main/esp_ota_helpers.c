@@ -35,6 +35,7 @@ const static char TAG[] = "esp_ota_ops";
 esp_err_t
 esp_ota_helper_erase_partition_with_sleep(
     const esp_partition_t* const   p_partition,
+    const bool                     flag_erase_only_first_sector,
     uint32_t const                 delay_ticks,
     const esp_ota_erase_callback_t callback,
     void* const                    p_user_data)
@@ -59,6 +60,10 @@ esp_ota_helper_erase_partition_with_sleep(
             callback(offset, p_partition->size, p_user_data);
         }
         vTaskDelay(delay_ticks);
+        if (flag_erase_only_first_sector)
+        {
+            break;
+        }
         offset += SPI_FLASH_SEC_SIZE;
     }
     return ESP_OK;
@@ -67,6 +72,7 @@ esp_ota_helper_erase_partition_with_sleep(
 esp_err_t
 esp_ota_helper_safe_erase_app_partition(
     const esp_partition_t* const p_partition,
+    const bool                   flag_erase_only_first_sector,
     uint32_t                     delay_ticks,
     esp_ota_erase_callback_t     callback,
     void* const                  p_user_data)
@@ -105,6 +111,7 @@ esp_ota_helper_safe_erase_app_partition(
 
     const esp_err_t ret = esp_ota_helper_erase_partition_with_sleep(
         p_partition_verified,
+        flag_erase_only_first_sector,
         delay_ticks,
         callback,
         p_user_data);
