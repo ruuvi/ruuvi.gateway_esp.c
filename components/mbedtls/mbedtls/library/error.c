@@ -810,9 +810,12 @@ void mbedtls_strerror(int ret, char *buf, size_t buflen)
 
     memset(buf, 0x00, buflen);
 
-    if (ret < 0) {
-        ret = -ret;
+    if (ret >= 0) {
+        mbedtls_snprintf(buf, buflen, "UNKNOWN ERROR CODE (%04X)", (unsigned int) ret);
+        return;
     }
+
+    ret = -ret;
 
     if (ret & 0xFF80) {
         use_ret = ret & 0xFF80;
