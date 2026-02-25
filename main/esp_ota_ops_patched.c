@@ -111,8 +111,11 @@ esp_ota_begin_patched(
     }
 #endif
 
+    const bool flag_erase_only_first_sector = false;
+
     const esp_err_t ret = esp_ota_helper_erase_partition_with_sleep(
         p_partition_verified,
+        flag_erase_only_first_sector,
         delay_ticks,
         callback,
         p_user_data);

@@ -601,6 +601,7 @@ fw_update_cb_erase_partition(const uint32_t offset, const uint32_t partition_siz
 static esp_err_t
 fw_update_erase_data_partition_with_sleep(
     const esp_partition_t* const p_partition,
+    const bool                   flag_erase_only_first_sector,
     const uint32_t               percent_base,
     const uint32_t               percent_range)
 {
@@ -610,6 +611,7 @@ fw_update_erase_data_partition_with_sleep(
     };
     return esp_ota_helper_erase_partition_with_sleep(
         p_partition,
+        flag_erase_only_first_sector,
         pdMS_TO_TICKS(FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS),
         &fw_update_cb_erase_partition,
         &user_data);
@@ -703,7 +705,13 @@ fw_update_data_partition_download(const esp_partition_t* const p_partition, cons
         p_partition->label,
         p_partition->address,
         p_partition->size);
-    const esp_err_t err = fw_update_erase_data_partition_with_sleep(p_partition, 0, FW_UPDATE_PERCENTAGE_50);
+    const bool flag_erase_only_first_sector = false;
+
+    const esp_err_t err = fw_update_erase_data_partition_with_sleep(
+        p_partition,
+        flag_erase_only_first_sector,
+        0,
+        FW_UPDATE_PERCENTAGE_50);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(
@@ -1182,7 +1190,7 @@ fw_update_erase_next_ota_partition(
         return false;
     }
     LOG_INFO(
-        "Erase OTA partition '%s' (address 0x%08x, size 0x%x)",
+        "Erase first sector only of OTA partition '%s' (address 0x%08x, size 0x%x)",
         p_partition_ota->label,
         p_partition_ota->address,
         p_partition_ota->size);
@@ -1191,8 +1199,12 @@ fw_update_erase_next_ota_partition(
         .percent_base  = percent_base,
         .percent_range = percent_range,
     };
+
+    const bool flag_erase_only_first_sector = true;
+
     const esp_err_t err = esp_ota_helper_safe_erase_app_partition(
         p_partition_ota,
+        flag_erase_only_first_sector,
         pdMS_TO_TICKS(FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS),
         &fw_update_cb_erase_partition,
         &user_data);
@@ -1221,11 +1233,18 @@ fw_update_erase_next_data_partition(
         return false;
     }
     LOG_INFO(
-        "Erase partition '%s' (address 0x%08x, size 0x%x)",
+        "Erase first sector only of data partition '%s' (address 0x%08x, size 0x%x)",
         p_partition->label,
         p_partition->address,
         p_partition->size);
-    esp_err_t err = fw_update_erase_data_partition_with_sleep(p_partition, percent_base, percent_range);
+
+    const bool flag_erase_only_first_sector = true;
+
+    const esp_err_t err = fw_update_erase_data_partition_with_sleep(
+        p_partition,
+        flag_erase_only_first_sector,
+        percent_base,
+        percent_range);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(

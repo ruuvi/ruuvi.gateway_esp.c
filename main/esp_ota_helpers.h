@@ -27,6 +27,7 @@ typedef void (*esp_ota_erase_callback_t)(const uint32_t offset, const uint32_t p
 /**
  * @brief This function erases the given partition with delay between each sector erase.
  * @param p_partition Pointer to partition to erase.
+ * @param flag_erase_only_first_sector Flag to indicate if only the first sector should be erased.
  * @param delay_ticks Number of ticks to delay between erasing each sector.
  * @param callback Optional callback to be called after each sector is erased.
  * @param p_user_data Optional user data pointer passed to the callback.
@@ -35,6 +36,7 @@ typedef void (*esp_ota_erase_callback_t)(const uint32_t offset, const uint32_t p
 esp_err_t
 esp_ota_helper_erase_partition_with_sleep(
     const esp_partition_t* const   p_partition,
+    const bool                     flag_erase_only_first_sector,
     uint32_t const                 delay_ticks,
     const esp_ota_erase_callback_t callback,
     void* const                    p_user_data);
@@ -44,6 +46,7 @@ esp_ota_helper_erase_partition_with_sleep(
  * partition.
  * @note This function is just an extract of code from esp_ota_begin_patched function.
  * @param p_partition Pointer to partition to erase.
+ * @param flag_erase_only_first_sector Flag to indicate if only the first sector should be erased.
  * @param delay_ticks Number of ticks to delay between erasing each sector.
  * @param callback Optional callback to be called after each sector is erased.
  * @param p_user_data Optional user data pointer passed to the callback.
@@ -52,6 +55,7 @@ esp_ota_helper_erase_partition_with_sleep(
 esp_err_t
 esp_ota_helper_safe_erase_app_partition(
     const esp_partition_t* const   p_partition,
+    const bool                     flag_erase_only_first_sector,
     const uint32_t                 delay_ticks,
     const esp_ota_erase_callback_t callback,
     void* const                    p_user_data);
