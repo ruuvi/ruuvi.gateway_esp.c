@@ -573,6 +573,9 @@ static const esp_err_msg_t esp_err_msg_table[] = {
 #   ifdef      ESP_ERR_HTTP_CONNECTION_CLOSED
     ERR_TBL_IT(ESP_ERR_HTTP_CONNECTION_CLOSED),                 /* 28680 0x7008 Read FIN from peer and the connection closed */
 #   endif
+#   ifdef      ESP_ERR_HTTP_READ_DATA
+    ERR_TBL_IT(ESP_ERR_HTTP_READ_DATA),                         /* 28681 0x7009 Error read HTTP data */
+#   endif
     // components/esp-tls/esp_tls_errors.h
 #   ifdef      ESP_ERR_ESP_TLS_BASE
     ERR_TBL_IT(ESP_ERR_ESP_TLS_BASE),                           /* 32768 0x8000 Starting number of ESP-TLS error codes */
