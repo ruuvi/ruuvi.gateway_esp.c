@@ -916,6 +916,9 @@ static int esp_http_client_get_data(esp_http_client_handle_t client)
     if (rlen > 0) {
         http_parser_execute(client->parser, client->parser_settings, res_buffer->data, rlen);
     }
+    if (rlen < 0) {
+        ESP_LOGE(TAG, "%s: esp_transport_read failed, res=-0x%04x(%d)", __func__, -rlen, rlen);
+    }
     return rlen;
 }
 
@@ -971,6 +974,12 @@ int esp_http_client_read(esp_http_client_handle_t client, char *buffer, int len)
         ESP_LOGD(TAG, "need_read=%d, byte_to_read=%d, rlen=%d, ridx=%d", need_read, byte_to_read, rlen, ridx);
 
         if (rlen <= 0) {
+            if (rlen < 0) {
+                str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(rlen);
+                ESP_LOGE(TAG, "%s: esp_transport_read failed, res=-0x%04x(%d): %s",
+                    __func__, -rlen, rlen, err_desc.buf ? err_desc.buf : "");
+                str_buf_free_buf(&err_desc);
+            }
             if (errno != 0) {
                 esp_log_level_t sev = ESP_LOG_WARN;
                 /* On connection close from server, recv should ideally return 0 but we have error conversion
@@ -1158,22 +1167,32 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                          client->response->is_chunked, client->is_chunk_complete);
                 if (client->connection_info.method != HTTP_METHOD_HEAD) {
                     while (client->response->is_chunked && !client->is_chunk_complete) {
-                        if (esp_http_client_get_data(client) <= 0) {
+                        const int rlen = esp_http_client_get_data(client);
+                        if (rlen <= 0) {
                             if (client->is_async && errno == EAGAIN) {
                                 ESP_LOGD(TAG, "%s: HTTP_STATE_RES_COMPLETE_HEADER: esp_http_client_get_data: ESP_ERR_HTTP_EAGAIN", __func__);
                                 return ESP_ERR_HTTP_EAGAIN;
                             }
                             ESP_LOGD(TAG, "Read finish or server requests close");
+                            if (rlen < 0) {
+                                ESP_LOGE(TAG, "%s: esp_http_client_get_data failed, res=-0x%04x(%d)",
+                                    __func__, -rlen, rlen);
+                            }
                             break;
                         }
                     }
                     while (client->response->data_process < client->response->content_length) {
-                        if (esp_http_client_get_data(client) <= 0) {
+                        const int rlen = esp_http_client_get_data(client);
+                        if (rlen <= 0) {
                             if (client->is_async && errno == EAGAIN) {
                                 ESP_LOGD(TAG, "%s: HTTP_STATE_RES_COMPLETE_HEADER: esp_http_client_get_data: ESP_ERR_HTTP_EAGAIN", __func__);
                                 return ESP_ERR_HTTP_EAGAIN;
                             }
                             ESP_LOGD(TAG, "Read finish or server requests close");
+                            if (rlen < 0) {
+                                ESP_LOGE(TAG, "%s: esp_http_client_get_data failed, res=-0x%04x(%d)",
+                                    __func__, -rlen, rlen);
+                            }
                             break;
                         }
                     }
@@ -1192,7 +1211,7 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                     }
                 }
                 break;
-                default:
+            default:
                 break;
         }
     } while (client->process_again);
@@ -1213,7 +1232,15 @@ int esp_http_client_fetch_headers(esp_http_client_handle_t client)
         ESP_LOGD(TAG, "%s: esp_transport_read", __func__);
         buffer->len = esp_transport_read(client->transport, buffer->data, client->buffer_size_rx, client->timeout_ms);
         ESP_LOGD(TAG, "%s: esp_transport_read, len=%d", __func__, buffer->len);
-        if (buffer->len <= 0) {
+        if (buffer->len < 0) {
+            str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(buffer->len);
+            ESP_LOGE(TAG, "%s: esp_transport_read failed, res=-0x%04x(%d): %s",
+                __func__, -buffer->len, buffer->len, err_desc.buf ? err_desc.buf : "");
+            str_buf_free_buf(&err_desc);
+            return ESP_FAIL;
+        }
+        if (0 == buffer->len) {
+            ESP_LOGD(TAG, "%s: esp_transport_read: no data", __func__);
             return ESP_FAIL;
         }
         http_parser_execute(client->parser, client->parser_settings, buffer->data, buffer->len);
