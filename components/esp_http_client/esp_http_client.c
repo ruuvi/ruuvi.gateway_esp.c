@@ -1165,6 +1165,7 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                 }
                 ESP_LOGD(TAG, "HTTP_STATE_RES_COMPLETE_HEADER: is_chunked=%d, is_chunk_complete=%d",
                          client->response->is_chunked, client->is_chunk_complete);
+                bool flag_error = false;
                 if (client->connection_info.method != HTTP_METHOD_HEAD) {
                     while (client->response->is_chunked && !client->is_chunk_complete) {
                         const int rlen = esp_http_client_get_data(client);
@@ -1177,6 +1178,7 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                             if (rlen < 0) {
                                 ESP_LOGE(TAG, "%s: esp_http_client_get_data failed, res=-0x%04x(%d)",
                                     __func__, -rlen, rlen);
+                                flag_error = true;
                             }
                             break;
                         }
@@ -1192,10 +1194,16 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                             if (rlen < 0) {
                                 ESP_LOGE(TAG, "%s: esp_http_client_get_data failed, res=-0x%04x(%d)",
                                     __func__, -rlen, rlen);
+                                flag_error = true;
                             }
                             break;
                         }
                     }
+                }
+                if (flag_error) {
+                    client->response->status_code = 504; // Gateway Timeout
+                    http_dispatch_event(client, HTTP_EVENT_ERROR, NULL, 0);
+                    return ESP_ERR_HTTP_READ_DATA;
                 }
                 http_dispatch_event(client, HTTP_EVENT_ON_FINISH, NULL, 0);
 
