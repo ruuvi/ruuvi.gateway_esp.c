@@ -254,6 +254,14 @@ static int ws_connect(esp_transport_handle_t t, const char *host, int port, int 
     do {
         if ((len = esp_transport_read(ws->parent, ws->buffer + header_len, WS_BUFFER_SIZE - header_len, timeout_ms)) <= 0) {
             ESP_LOGE(TAG, "Error read response for Upgrade header %s", ws->buffer);
+            if (len < 0) {
+                str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(len);
+                ESP_LOGE(TAG, "%s: esp_transport_read failed, res=-0x%04x(%d): %s",
+                    __func__, -len, len, err_desc.buf ? err_desc.buf : "");
+                str_buf_free_buf(&err_desc);
+            } else {
+                ESP_LOGE(TAG, "%s: esp_transport_read: no data", __func__);
+            }
             return -1;
         }
         header_len += len;
@@ -408,7 +416,14 @@ static int ws_read_payload(esp_transport_handle_t t, char *buffer, int len, int 
 
     // Receive and process payload
     if (bytes_to_read != 0 && (rlen = esp_transport_read(ws->parent, buffer, bytes_to_read, timeout_ms)) <= 0) {
-        ESP_LOGE(TAG, "Error read data");
+        if (rlen < 0) {
+            str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(rlen);
+            ESP_LOGE(TAG, "%s: esp_transport_read failed, res=-0x%04x(%d): %s",
+                __func__, -rlen, rlen, err_desc.buf ? err_desc.buf : "");
+            str_buf_free_buf(&err_desc);
+        } else {
+            ESP_LOGE(TAG, "%s: esp_transport_read: no data", __func__);
+        }
         return rlen;
     }
     ws->frame_state.bytes_remaining -= rlen;
@@ -439,7 +454,14 @@ static int ws_read_header(esp_transport_handle_t t, char *buffer, int len, int t
     int header = 2;
     int mask_len = 4;
     if ((rlen = esp_transport_read(ws->parent, data_ptr, header, timeout_ms)) <= 0) {
-        ESP_LOGE(TAG, "Error read data");
+        if (rlen < 0) {
+            str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(rlen);
+            ESP_LOGE(TAG, "%s: esp_transport_read failed, res=-0x%04x(%d): %s",
+                __func__, -rlen, rlen, err_desc.buf ? err_desc.buf : "");
+            str_buf_free_buf(&err_desc);
+        } else {
+            ESP_LOGE(TAG, "%s: esp_transport_read: no data", __func__);
+        }
         return rlen;
     }
     ws->frame_state.header_received = true;
@@ -453,7 +475,14 @@ static int ws_read_header(esp_transport_handle_t t, char *buffer, int len, int t
     if (payload_len == 126) {
         // headerLen += 2;
         if ((rlen = esp_transport_read(ws->parent, data_ptr, header, timeout_ms)) <= 0) {
-            ESP_LOGE(TAG, "Error read data");
+            if (rlen < 0) {
+                str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(rlen);
+                ESP_LOGE(TAG, "%s: esp_transport_read failed, res=-0x%04x(%d): %s",
+                    __func__, -rlen, rlen, err_desc.buf ? err_desc.buf : "");
+                str_buf_free_buf(&err_desc);
+            } else {
+                ESP_LOGE(TAG, "%s: esp_transport_read: no data", __func__);
+            }
             return rlen;
         }
         payload_len = data_ptr[0] << 8 | data_ptr[1];
@@ -461,7 +490,14 @@ static int ws_read_header(esp_transport_handle_t t, char *buffer, int len, int t
         // headerLen += 8;
         header = 8;
         if ((rlen = esp_transport_read(ws->parent, data_ptr, header, timeout_ms)) <= 0) {
-            ESP_LOGE(TAG, "Error read data");
+            if (rlen < 0) {
+                str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(rlen);
+                ESP_LOGE(TAG, "%s: esp_transport_read failed, res=-0x%04x(%d): %s",
+                    __func__, -rlen, rlen, err_desc.buf ? err_desc.buf : "");
+                str_buf_free_buf(&err_desc);
+            } else {
+                ESP_LOGE(TAG, "%s: esp_transport_read: no data", __func__);
+            }
             return rlen;
         }
 
@@ -476,7 +512,14 @@ static int ws_read_header(esp_transport_handle_t t, char *buffer, int len, int t
     if (mask) {
         // Read and store mask
         if (payload_len != 0 && (rlen = esp_transport_read(ws->parent, buffer, mask_len, timeout_ms)) <= 0) {
-            ESP_LOGE(TAG, "Error read data");
+            if (rlen < 0) {
+                str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(rlen);
+                ESP_LOGE(TAG, "%s: esp_transport_read failed, res=-0x%04x(%d): %s",
+                    __func__, -rlen, rlen, err_desc.buf ? err_desc.buf : "");
+                str_buf_free_buf(&err_desc);
+            } else {
+                ESP_LOGE(TAG, "%s: esp_transport_read: no data", __func__);
+            }
             return rlen;
         }
         memcpy(ws->frame_state.mask_key, buffer, mask_len);
