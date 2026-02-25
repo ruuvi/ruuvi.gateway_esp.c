@@ -744,7 +744,10 @@ fw_update_data_partition_download(const esp_partition_t* const p_partition, cons
 }
 
 static bool
-fw_update_data_partition(const esp_partition_t* const p_partition, const char* const p_url)
+fw_update_data_partition(
+    const esp_partition_t* const          p_partition,
+    const char* const                     p_url,
+    fw_update_error_message_info_t* const p_error_message_info)
 {
     LOG_INFO(
         "Update partition %s (address 0x%08x, size 0x%x) from %s",
@@ -756,6 +759,7 @@ fw_update_data_partition(const esp_partition_t* const p_partition, const char* c
     if (!fw_update_data_partition_download(p_partition, p_url))
     {
         LOG_ERR("Failed to download data for partition %s", p_partition->label);
+        p_error_message_info->p_message = "Firmware image download ended with an error";
         return false;
     }
 
@@ -893,7 +897,12 @@ fw_update_ota(const char* const p_url, fw_update_error_message_info_t* const p_e
     }
 
     LOG_INFO("fw_update_ota: Download and write partition data");
-    const bool res = fw_update_ota_partition(p_partition, out_handle, p_url);
+    if (!fw_update_ota_partition(p_partition, out_handle, p_url))
+    {
+        LOG_ERR("Failed to download firmware image");
+        p_error_message_info->p_message = "Firmware image download ended with an error";
+        return false;
+    }
 
     esp_ota_sha256_digest_t pub_key_digest = { 0 };
     LOG_INFO("fw_update_ota: Finish writing to partition");
@@ -916,7 +925,7 @@ fw_update_ota(const char* const p_url, fw_update_error_message_info_t* const p_e
     }
     LOG_INFO("Image public key digest matches the running one");
 
-    return res;
+    return true;
 }
 
 static bool
@@ -1107,7 +1116,7 @@ fw_update_ruuvi_gateway_esp_bin(fw_update_error_message_info_t* const p_error_me
 }
 
 static bool
-fw_update_fatfs_gwui_bin(void)
+fw_update_fatfs_gwui_bin(fw_update_error_message_info_t* const p_error_message_info)
 {
     LOG_INFO("fw_update_fatfs_gwui_bin");
     const ruuvi_flash_info_t* const p_flash_info = &g_ruuvi_flash_info;
@@ -1123,7 +1132,7 @@ fw_update_fatfs_gwui_bin(void)
         LOG_ERR("Can't allocate memory");
         return false;
     }
-    const bool res = fw_update_data_partition(p_partition, url.buf);
+    const bool res = fw_update_data_partition(p_partition, url.buf, p_error_message_info);
     str_buf_free_buf(&url);
     if (!res)
     {
@@ -1134,7 +1143,7 @@ fw_update_fatfs_gwui_bin(void)
 }
 
 static bool
-fw_update_fatfs_nrf52_bin(void)
+fw_update_fatfs_nrf52_bin(fw_update_error_message_info_t* const p_error_message_info)
 {
     LOG_INFO("fw_update_fatfs_nrf52_bin");
     const ruuvi_flash_info_t* const p_flash_info = &g_ruuvi_flash_info;
@@ -1151,7 +1160,7 @@ fw_update_fatfs_nrf52_bin(void)
         LOG_ERR("Can't allocate memory");
         return false;
     }
-    const bool res = fw_update_data_partition(p_partition, url.buf);
+    const bool res = fw_update_data_partition(p_partition, url.buf, p_error_message_info);
     str_buf_free_buf(&url);
     if (!res)
     {
@@ -1273,7 +1282,7 @@ fw_update_do_actions(fw_update_error_message_info_t* const p_error_message_info)
     g_update_progress_stage = FW_UPDATE_STAGE_2;
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, 0);
 
-    if (!fw_update_fatfs_gwui_bin())
+    if (!fw_update_fatfs_gwui_bin(p_error_message_info))
     {
         LOG_ERR("%s failed", "fw_update_fatfs_gwui_bin");
         if (NULL == p_error_message_info->p_message)
@@ -1286,7 +1295,7 @@ fw_update_do_actions(fw_update_error_message_info_t* const p_error_message_info)
     g_update_progress_stage = FW_UPDATE_STAGE_3;
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, 0);
 
-    if (!fw_update_fatfs_nrf52_bin())
+    if (!fw_update_fatfs_nrf52_bin(p_error_message_info))
     {
         LOG_ERR("%s failed", "fw_update_fatfs_nrf52_bin");
         if (NULL == p_error_message_info->p_message)
