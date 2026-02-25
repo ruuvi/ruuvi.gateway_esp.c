@@ -893,7 +893,12 @@ fw_update_ota(const char* const p_url, fw_update_error_message_info_t* const p_e
     }
 
     LOG_INFO("fw_update_ota: Download and write partition data");
-    const bool res = fw_update_ota_partition(p_partition, out_handle, p_url);
+    if (!fw_update_ota_partition(p_partition, out_handle, p_url))
+    {
+        LOG_ERR("Failed to download firmware image");
+        p_error_message_info->p_message = "Firmware image download ended with an error";
+        return false;
+    }
 
     esp_ota_sha256_digest_t pub_key_digest = { 0 };
     LOG_INFO("fw_update_ota: Finish writing to partition");
@@ -916,7 +921,7 @@ fw_update_ota(const char* const p_url, fw_update_error_message_info_t* const p_e
     }
     LOG_INFO("Image public key digest matches the running one");
 
-    return res;
+    return true;
 }
 
 static bool
