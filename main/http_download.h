@@ -67,6 +67,14 @@ http_download_with_auth(
 bool
 http_check_with_auth(const http_download_param_with_auth_t* const p_param, http_resp_code_e* const p_http_resp_code);
 
+/**
+ * @brief Download a file from an HTTP server
+ * @param p_param - ptr to @c http_download_param_with_auth_t with URL, connection and authentication parameters, etc.
+ * @param p_cb_on_data - ptr to a callback function that will be called when new data is available
+ * @param p_user_data - ptr to user data that will be passed to the callback function
+ * @param[out] p_flag_allow_retry set to @c true if a network connection was lost and download should be retried
+ * @return @ true if download was successful
+ */
 bool
 http_download(
     const http_download_param_with_auth_t* const p_param,

@@ -818,7 +818,7 @@ fw_update_download_with_retries(
     void* const                      p_user_data)
 {
     size_t downloaded_size = 0;
-    for (int32_t retry_cnt = 0; retry_cnt < FW_UPDATE_MAX_RETRIES; retry_cnt++)
+    for (int32_t retry_cnt = 0; retry_cnt < FW_UPDATE_MAX_RETRIES; ++retry_cnt)
     {
         const fw_update_download_status_e status = fw_update_download(
             p_url,

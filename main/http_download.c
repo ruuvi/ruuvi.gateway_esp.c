@@ -421,7 +421,7 @@ http_download_or_check(
             snprintf(
                 p_cb_info->range_header_buf,
                 sizeof(p_cb_info->range_header_buf),
-                "bytes=%" PRIu32 "-",
+                "bytes=%" PRIu32 "-", // The max size of a firmware update cannot exceed 4 MiB - cast it to u32.
                 (uint32_t)p_param->base.range_start);
         }
         else
@@ -429,7 +429,7 @@ http_download_or_check(
             snprintf(
                 p_cb_info->range_header_buf,
                 sizeof(p_cb_info->range_header_buf),
-                "bytes=%" PRIu32 "-%" PRIu32,
+                "bytes=%" PRIu32 "-%" PRIu32, // The max size of a firmware update cannot exceed 4 MiB - cast it to u32.
                 (uint32_t)p_param->base.range_start,
                 (uint32_t)p_param->base.range_end);
         }
