@@ -42,6 +42,7 @@
 
 #define FW_UPDATE_MAX_OTA_PARTITION_SIZE  (4U * 1024U * 1024U)
 #define FW_UPDATE_MAX_DATA_PARTITION_SIZE (0xC0000U)
+#define FW_UPDATE_MAX_SIZE_BYTES          (FW_UPDATE_MAX_OTA_PARTITION_SIZE)
 
 #define FW_UPDATE_WL_AREA_TMP_BUF_SIZE (512U)
 
@@ -706,7 +707,7 @@ fw_update_data_partition_cb_on_recv_data(
         (printf_ulong_t)p_info->offset,
         (printf_ulong_t)buf_size);
 
-    // On this platform the max size of firmware update cannot be more than 4 MiB,
+    // On this platform the max size of a firmware update is limited by FW_UPDATE_MAX_SIZE_BYTES (4 MiB),
     // so there is no risk of integer overflow during percentage calculation.
     const fw_update_percent_t percentage = FW_UPDATE_PERCENT_50
                                            + (((range_start + content_offset + buf_size) * FW_UPDATE_PERCENT_50)
@@ -839,7 +840,7 @@ fw_update_download_with_retries(
                 return false;
         }
     }
-    LOG_ERR("Failed to download %s after %d retries", p_url, (printf_int_t)FW_UPDATE_MAX_RETRIES);
+    LOG_ERR("Failed to download %s after %d attempts", p_url, (printf_int_t)FW_UPDATE_MAX_RETRIES);
     return false;
 }
 
@@ -949,7 +950,7 @@ fw_update_ota_partition_cb_on_recv_data(
         (printf_ulong_t)p_info->offset,
         (printf_ulong_t)buf_size);
 
-    // On this platform the max size of firmware update cannot be more than 4 MiB,
+    // On this platform the max size of a firmware update is limited by FW_UPDATE_MAX_SIZE_BYTES (4 MiB),
     // so there is no risk of integer overflow during percentage calculation.
     const fw_update_percent_t percentage = FW_UPDATE_PERCENT_50
                                            + (((range_start + content_offset + buf_size) * FW_UPDATE_PERCENT_50)
@@ -1324,7 +1325,7 @@ fw_update_erase_next_ota_partition(
         return false;
     }
     LOG_INFO(
-        "Erase first sector of OTA partition '%s' (address 0x%08x, size 0x%x)",
+        "Erase first sector only of OTA partition '%s' (address 0x%08x, size 0x%x)",
         p_partition_ota->label,
         p_partition_ota->address,
         p_partition_ota->size);
@@ -1367,7 +1368,7 @@ fw_update_erase_next_data_partition(
         return false;
     }
     LOG_INFO(
-        "Erase first sector of data partition '%s' (address 0x%08x, size 0x%x)",
+        "Erase first sector only of data partition '%s' (address 0x%08x, size 0x%x)",
         p_partition->label,
         p_partition->address,
         p_partition->size);
