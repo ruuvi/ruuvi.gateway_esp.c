@@ -421,7 +421,7 @@ http_download_or_check(
             snprintf(
                 p_cb_info->range_header_buf,
                 sizeof(p_cb_info->range_header_buf),
-                "bytes=%" PRIu32 "-",
+                "bytes=%zu-",
                 p_param->base.range_start);
         }
         else
