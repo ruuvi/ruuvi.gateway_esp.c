@@ -726,7 +726,7 @@ fw_update_data_partition_cb_on_recv_data(
             (printf_ulong_t)p_info->offset);
         return false;
     }
-    p_info->offset += buf_size;
+    p_info->offset += buf_size; // This counter retains its value between attempts to resume downloading the file.
     return true;
 }
 
@@ -962,10 +962,14 @@ fw_update_ota_partition_cb_on_recv_data(
     if (ESP_OK != err)
     {
         p_info->is_error = true;
-        LOG_ERR_ESP(err, "Failed to write to OTA-partition %s", p_info->p_partition->label);
+        LOG_ERR_ESP(
+            err,
+            "Failed to write to OTA-partition %s at offset %lu",
+            p_info->p_partition->label,
+            (printf_ulong_t)p_info->offset);
         return false;
     }
-    p_info->offset += buf_size;
+    p_info->offset += buf_size; // This counter retains its value between attempts to resume downloading the file.
     return true;
 }
 

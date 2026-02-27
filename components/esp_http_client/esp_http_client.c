@@ -1201,7 +1201,6 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                     }
                 }
                 if (flag_error) {
-                    client->response->status_code = 504; // Gateway Timeout
                     http_dispatch_event(client, HTTP_EVENT_ERROR, NULL, 0);
                     return ESP_ERR_HTTP_READ_DATA;
                 }

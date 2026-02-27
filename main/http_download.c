@@ -120,23 +120,23 @@ http_download_event_handler(esp_http_client_event_t* p_evt)
             LOG_DBG("HTTP_EVENT_ON_DATA, len=%d", p_evt->data_len);
             LOG_DUMP_VERBOSE(p_evt->data, p_evt->data_len, "<--:");
             http_feed_task_watchdog_if_needed(p_cb_info->flag_feed_task_watchdog);
+            const uint32_t offset = p_cb_info->offset;
+            p_cb_info->offset += p_evt->data_len;
             if (NULL != p_cb_info->cb_on_data)
             {
                 if (!p_cb_info->cb_on_data(
                         p_evt->data,
                         p_evt->data_len,
-                        p_cb_info->offset,
+                        offset,
                         p_cb_info->content_length,
                         (http_resp_code_e)esp_http_client_get_status_code(p_cb_info->http_handle),
                         p_cb_info->range_start,
                         p_cb_info->p_user_data))
                 {
                     LOG_ERR("HTTP_EVENT_ON_DATA: cb_on_data failed");
-                    p_cb_info->offset += p_evt->data_len;
                     return ESP_FAIL;
                 }
             }
-            p_cb_info->offset += p_evt->data_len;
             break;
 
         case HTTP_EVENT_ON_FINISH:
