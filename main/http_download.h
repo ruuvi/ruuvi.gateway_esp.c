@@ -34,11 +34,14 @@ typedef bool (*http_download_cb_on_data_t)(
     const size_t           offset,
     const size_t           content_length,
     const http_resp_code_e resp_code,
+    const size_t           range_start,
     void*                  p_user_data);
 
 typedef struct http_download_param_t
 {
     const char*        p_url;
+    size_t             range_start;
+    size_t             range_end;
     TimeUnitsSeconds_t timeout_seconds;
     bool               flag_feed_task_watchdog;
     bool               flag_free_memory;
@@ -64,11 +67,20 @@ http_download_with_auth(
 bool
 http_check_with_auth(const http_download_param_with_auth_t* const p_param, http_resp_code_e* const p_http_resp_code);
 
+/**
+ * @brief Download a file from an HTTP server
+ * @param p_param - ptr to @c http_download_param_with_auth_t with URL, connection and authentication parameters, etc.
+ * @param p_cb_on_data - ptr to a callback function that will be called when new data is available
+ * @param p_user_data - ptr to user data that will be passed to the callback function
+ * @param[out] p_flag_allow_retry set to @c true if a network connection was lost and download should be retried
+ * @return @ true if download was successful
+ */
 bool
 http_download(
     const http_download_param_with_auth_t* const p_param,
     http_download_cb_on_data_t const             p_cb_on_data,
-    void* const                                  p_user_data);
+    void* const                                  p_user_data,
+    bool* const                                  p_flag_allow_retry);
 
 http_server_download_info_t
 http_download_json(const http_download_param_with_auth_t* const p_params);
