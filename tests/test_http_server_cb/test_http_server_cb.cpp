@@ -492,6 +492,7 @@ public:
     file_descriptor_t     m_fd;
     std::array<char, 128> fw_update_url;
     str_buf_t             m_firmware_update_resp;
+    size_t                m_firmware_update_range_start;
     const char**          m_http_check_with_auth_arr_of_urls;
     size_t                m_http_check_with_auth_num_of_urls;
     fw_updating_reason_e  m_fw_updating_reason;
@@ -506,6 +507,7 @@ TestHttpServerCb::TestHttpServerCb()
     , m_is_fatfs_mounted(false)
     , m_is_fatfs_mount_fail(false)
     , m_fd(-1)
+    , m_firmware_update_range_start(0)
     , Test()
 {
 }
@@ -816,6 +818,7 @@ http_download_with_auth(
             0,
             0,
             HTTP_RESP_CODE_200,
+            g_pTestClass->m_firmware_update_range_start,
             p_user_data);
         return http_server_resp_200_json_in_heap(g_pTestClass->m_firmware_update_resp.buf);
     }

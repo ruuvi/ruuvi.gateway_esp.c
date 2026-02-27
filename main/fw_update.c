@@ -704,6 +704,8 @@ fw_update_data_partition_cb_on_recv_data(
         (printf_ulong_t)p_info->offset,
         (printf_ulong_t)buf_size);
 
+    // On this platform the max size of firmware update cannot be more than 4 MiB,
+    // so there is no risk of integer overflow during percentage calculation.
     const fw_update_percent_t percentage = FW_UPDATE_PERCENT_50
                                            + (((range_start + content_offset + buf_size) * FW_UPDATE_PERCENT_50)
                                               / ((0 != content_length) ? (range_start + content_length)
@@ -946,6 +948,8 @@ fw_update_ota_partition_cb_on_recv_data(
         (printf_ulong_t)p_info->offset,
         (printf_ulong_t)buf_size);
 
+    // On this platform the max size of firmware update cannot be more than 4 MiB,
+    // so there is no risk of integer overflow during percentage calculation.
     const fw_update_percent_t percentage = FW_UPDATE_PERCENT_50
                                            + (((range_start + content_offset + buf_size) * FW_UPDATE_PERCENT_50)
                                               / ((0 != content_length) ? (range_start + content_length)

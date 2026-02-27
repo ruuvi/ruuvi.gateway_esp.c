@@ -323,10 +323,7 @@ http_download_or_check(
     LOG_INFO("HTTP download/check: Method=%s, URL: '%s'", http_client_method_to_str(http_method), p_param->base.p_url);
     if (0 != p_param->base.range_start)
     {
-        LOG_INFO(
-            "HTTP download/check: Range: start=%" PRIu32 ", end=%" PRIu32,
-            p_param->base.range_start,
-            p_param->base.range_end);
+        LOG_INFO("HTTP download/check: Range: start=%zu, end=%zu", p_param->base.range_start, p_param->base.range_end);
     }
 
     if (!http_download_is_url_valid(p_param->base.p_url))
@@ -432,7 +429,7 @@ http_download_or_check(
             snprintf(
                 p_cb_info->range_header_buf,
                 sizeof(p_cb_info->range_header_buf),
-                "bytes=%" PRIu32 "-%" PRIu32,
+                "bytes=%zu-%zu",
                 p_param->base.range_start,
                 p_param->base.range_end);
         }

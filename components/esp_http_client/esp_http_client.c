@@ -917,7 +917,7 @@ static int esp_http_client_get_data(esp_http_client_handle_t client)
         http_parser_execute(client->parser, client->parser_settings, res_buffer->data, rlen);
     }
     if (rlen < 0) {
-        ESP_LOGE(TAG, "%s: esp_transport_read failed, res=-0x04%x(%d)", __func__, -rlen, rlen);
+        ESP_LOGE(TAG, "%s: esp_transport_read failed, res=-0x%04x(%d)", __func__, -rlen, rlen);
     }
     return rlen;
 }
@@ -975,7 +975,7 @@ int esp_http_client_read(esp_http_client_handle_t client, char *buffer, int len)
 
         if (rlen <= 0) {
             if (rlen < 0) {
-                str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(len);
+                str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(rlen);
                 ESP_LOGE(TAG, "%s: esp_transport_read failed, res=-0x%04x(%d): %s",
                     __func__, -rlen, rlen, err_desc.buf ? err_desc.buf : "");
                 str_buf_free_buf(&err_desc);
