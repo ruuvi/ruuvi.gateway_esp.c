@@ -421,17 +421,17 @@ http_download_or_check(
             snprintf(
                 p_cb_info->range_header_buf,
                 sizeof(p_cb_info->range_header_buf),
-                "bytes=%zu-",
-                p_param->base.range_start);
+                "bytes=%" PRIu32 "-",
+                (uint32_t)p_param->base.range_start);
         }
         else
         {
             snprintf(
                 p_cb_info->range_header_buf,
                 sizeof(p_cb_info->range_header_buf),
-                "bytes=%zu-%zu",
-                p_param->base.range_start,
-                p_param->base.range_end);
+                "bytes=%" PRIu32 "-%" PRIu32,
+                (uint32_t)p_param->base.range_start,
+                (uint32_t)p_param->base.range_end);
         }
         const esp_err_t err = esp_http_client_set_header(p_cb_info->http_handle, "Range", p_cb_info->range_header_buf);
         if (ESP_OK != err)
@@ -529,6 +529,7 @@ cb_on_http_download_json_data(
     const size_t           range_start,
     void*                  p_user_data)
 {
+    (void)range_start;
     LOG_INFO("%s: buf_size=%lu", __func__, (printf_ulong_t)buf_size);
 
     http_server_download_info_t* const p_info = p_user_data;

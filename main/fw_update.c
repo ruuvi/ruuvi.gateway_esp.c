@@ -49,6 +49,8 @@
 
 #define FW_UPDATE_DELAY_BETWEEN_NETWORK_CHECK_MS (500U)
 
+#define FW_UPDATE_MAX_RETRIES (5)
+
 typedef struct fw_update_config_t
 {
     char binaries_url[FW_UPDATE_URL_MAX_LEN + 1];
@@ -789,13 +791,10 @@ fw_update_download(
         {
             LOG_INFO("Waiting for network re-connection before retrying download...");
             const TickType_t t1 = xTaskGetTickCount();
-            while ((xTaskGetTickCount() - t1)
-                   < pdMS_TO_TICKS(HTTP_DOWNLOAD_NETWORK_RECONNECTION_TIMEOUT_SECONDS * TIME_UNITS_MS_PER_SECOND))
+            while (((xTaskGetTickCount() - t1)
+                    < pdMS_TO_TICKS(HTTP_DOWNLOAD_NETWORK_RECONNECTION_TIMEOUT_SECONDS * TIME_UNITS_MS_PER_SECOND))
+                   && (!gw_status_is_network_connected()))
             {
-                if (gw_status_is_network_connected())
-                {
-                    break;
-                }
                 vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_BETWEEN_NETWORK_CHECK_MS));
             }
             if (gw_status_is_network_connected())
@@ -819,7 +818,7 @@ fw_update_download_with_retries(
     void* const                      p_user_data)
 {
     size_t downloaded_size = 0;
-    while (1)
+    for (int32_t retry_cnt = 0; retry_cnt < FW_UPDATE_MAX_RETRIES; retry_cnt++)
     {
         const fw_update_download_status_e status = fw_update_download(
             p_url,
@@ -840,6 +839,8 @@ fw_update_download_with_retries(
                 return false;
         }
     }
+    LOG_ERR("Failed to download %s after %d retries", p_url, (printf_int_t)FW_UPDATE_MAX_RETRIES);
+    return false;
 }
 
 static bool
