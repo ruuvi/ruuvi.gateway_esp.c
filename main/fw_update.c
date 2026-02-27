@@ -105,7 +105,7 @@ typedef enum fw_update_download_status_e
 
 typedef struct fw_update_download_cb_data_t
 {
-    size_t                           offset;
+    size_t                           downloaded_size;
     http_download_cb_on_data_t const p_cb_on_data;
     void* const                      p_user_data;
 } fw_update_download_cb_data_t;
@@ -741,7 +741,7 @@ fw_update_download_cb_on_recv_data(
     void* const            p_user_data)
 {
     fw_update_download_cb_data_t* const p_cb_data = p_user_data;
-    p_cb_data->offset += buf_size;
+    p_cb_data->downloaded_size += buf_size;
 
     return p_cb_data->p_cb_on_data(
         p_buf,
@@ -763,9 +763,9 @@ fw_update_download(
 {
     LOG_INFO("Trying to download %s from offset %lu", p_url, (printf_ulong_t)start_offset);
     fw_update_download_cb_data_t cb_data = {
-        .offset       = start_offset,
-        .p_cb_on_data = p_cb_on_data,
-        .p_user_data  = p_user_data,
+        .downloaded_size = start_offset,
+        .p_cb_on_data    = p_cb_on_data,
+        .p_user_data     = p_user_data,
     };
     const http_download_param_with_auth_t params = {
         .base = {
@@ -799,7 +799,7 @@ fw_update_download(
             }
             if (gw_status_is_network_connected())
             {
-                *p_downloaded_size = cb_data.offset;
+                *p_downloaded_size = cb_data.downloaded_size;
                 LOG_WARN("Network re-established, retrying download...");
                 return FW_UPDATE_DOWNLOAD_STATUS_RETRY;
             }
@@ -807,7 +807,7 @@ fw_update_download(
         }
         return FW_UPDATE_DOWNLOAD_STATUS_FAILED;
     }
-    *p_downloaded_size = cb_data.offset;
+    *p_downloaded_size = cb_data.downloaded_size;
     return FW_UPDATE_DOWNLOAD_STATUS_SUCCESS;
 }
 
