@@ -7,6 +7,7 @@
 
 #include "http_download.h"
 #include <string.h>
+#include <inttypes.h>
 #include <esp_task_wdt.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -34,11 +35,15 @@ static const char TAG[] = "http_download";
 
 #define BASE_10 (10U)
 
+#define HTTP_RANGE_HEADER_BUF_SIZE (28U)
+
 typedef struct http_download_cb_info_t
 {
     esp_http_client_handle_t   http_handle;
     uint32_t                   content_length;
     bool                       flag_feed_task_watchdog;
+    char                       range_header_buf[HTTP_RANGE_HEADER_BUF_SIZE];
+    size_t                     range_start;
     uint32_t                   offset;
     http_download_cb_on_data_t cb_on_data;
     void*                      p_user_data;
@@ -123,9 +128,11 @@ http_download_event_handler(esp_http_client_event_t* p_evt)
                         p_cb_info->offset,
                         p_cb_info->content_length,
                         (http_resp_code_e)esp_http_client_get_status_code(p_cb_info->http_handle),
+                        p_cb_info->range_start,
                         p_cb_info->p_user_data))
                 {
                     LOG_ERR("HTTP_EVENT_ON_DATA: cb_on_data failed");
+                    p_cb_info->offset += p_evt->data_len;
                     return ESP_FAIL;
                 }
             }
@@ -193,7 +200,7 @@ http_download_by_handle(
         NULL,
         flag_feed_task_watchdog,
         timeout_seconds);
-    LOG_DBG("http_wait_until_async_req_completed: finished");
+    LOG_DBG("http_wait_until_async_req_completed: finished, http_resp_code=%d", resp.http_resp_code);
 
 #if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
     const bool flag_is_in_memory = (HTTP_CONTENT_LOCATION_FLASH_MEM == resp.content_location)
@@ -314,6 +321,13 @@ http_download_or_check(
     void* const                                  p_user_data)
 {
     LOG_INFO("HTTP download/check: Method=%s, URL: '%s'", http_client_method_to_str(http_method), p_param->base.p_url);
+    if (0 != p_param->base.range_start)
+    {
+        LOG_INFO(
+            "HTTP download/check: Range: start=%" PRIu32 ", end=%" PRIu32,
+            p_param->base.range_start,
+            p_param->base.range_end);
+    }
 
     if (!http_download_is_url_valid(p_param->base.p_url))
     {
@@ -352,6 +366,7 @@ http_download_or_check(
     p_cb_info->p_user_data             = p_user_data;
     p_cb_info->http_handle             = NULL;
     p_cb_info->content_length          = 0;
+    p_cb_info->range_start             = p_param->base.range_start;
     p_cb_info->offset                  = 0;
     p_cb_info->flag_feed_task_watchdog = p_param->base.flag_feed_task_watchdog;
 
@@ -400,6 +415,39 @@ http_download_or_check(
         gw_status_resume_http_relaying(flag_wait_relaying_completed);
         LOG_DBG("resume_http_relaying: finished");
         return http_server_resp_500();
+    }
+
+    if (0 != p_param->base.range_start)
+    {
+        if (0 == p_param->base.range_end)
+        {
+            snprintf(
+                p_cb_info->range_header_buf,
+                sizeof(p_cb_info->range_header_buf),
+                "bytes=%" PRIu32 "-",
+                p_param->base.range_start);
+        }
+        else
+        {
+            snprintf(
+                p_cb_info->range_header_buf,
+                sizeof(p_cb_info->range_header_buf),
+                "bytes=%" PRIu32 "-%" PRIu32,
+                p_param->base.range_start,
+                p_param->base.range_end);
+        }
+        const esp_err_t err = esp_http_client_set_header(p_cb_info->http_handle, "Range", p_cb_info->range_header_buf);
+        if (ESP_OK != err)
+        {
+            LOG_ERR("%s failed", "esp_http_client_set_header");
+            os_free(p_http_config);
+            os_free(p_cb_info);
+            os_sema_signal(p_http_async_info->p_http_async_sema);
+            LOG_DBG("resume_http_relaying and wait");
+            gw_status_resume_http_relaying(flag_wait_relaying_completed);
+            LOG_DBG("resume_http_relaying: finished");
+            return http_server_resp_500();
+        }
     }
 
     LOG_DBG("Call http_download_by_handle");
@@ -462,14 +510,16 @@ bool
 http_download(
     const http_download_param_with_auth_t* const p_param,
     http_download_cb_on_data_t const             p_cb_on_data,
-    void* const                                  p_user_data)
+    void* const                                  p_user_data,
+    bool* const                                  p_flag_allow_retry)
 {
     http_server_resp_t resp = http_download_with_auth(p_param, p_cb_on_data, p_user_data);
     if ((HTTP_CONTENT_LOCATION_HEAP == resp.content_location) && (NULL != resp.select_location.memory.p_buf))
     {
         os_free(resp.select_location.memory.p_buf);
     }
-    return (HTTP_RESP_CODE_200 == resp.http_resp_code) ? true : false;
+    *p_flag_allow_retry = (HTTP_RESP_CODE_502 == resp.http_resp_code) ? true : false;
+    return ((HTTP_RESP_CODE_200 == resp.http_resp_code) || (HTTP_RESP_CODE_206 == resp.http_resp_code)) ? true : false;
 }
 
 static bool
@@ -479,6 +529,7 @@ cb_on_http_download_json_data(
     const size_t           offset,
     const size_t           content_length,
     const http_resp_code_e http_resp_code,
+    const size_t           range_start,
     void*                  p_user_data)
 {
     LOG_INFO("%s: buf_size=%lu", __func__, (printf_ulong_t)buf_size);

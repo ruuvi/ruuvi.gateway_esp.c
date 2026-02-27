@@ -34,11 +34,14 @@ typedef bool (*http_download_cb_on_data_t)(
     const size_t           offset,
     const size_t           content_length,
     const http_resp_code_e resp_code,
+    const size_t           range_start,
     void*                  p_user_data);
 
 typedef struct http_download_param_t
 {
     const char*        p_url;
+    size_t             range_start;
+    size_t             range_end;
     TimeUnitsSeconds_t timeout_seconds;
     bool               flag_feed_task_watchdog;
     bool               flag_free_memory;
@@ -68,7 +71,8 @@ bool
 http_download(
     const http_download_param_with_auth_t* const p_param,
     http_download_cb_on_data_t const             p_cb_on_data,
-    void* const                                  p_user_data);
+    void* const                                  p_user_data,
+    bool* const                                  p_flag_allow_retry);
 
 http_server_download_info_t
 http_download_json(const http_download_param_with_auth_t* const p_params);

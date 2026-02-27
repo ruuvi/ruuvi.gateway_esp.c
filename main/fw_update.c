@@ -45,6 +45,10 @@
 
 #define FW_UPDATE_WL_AREA_TMP_BUF_SIZE (512U)
 
+#define FW_UPDATE_DELAY_ON_ERROR_MS (10U)
+
+#define FW_UPDATE_DELAY_BETWEEN_NETWORK_CHECK_MS (500U)
+
 typedef struct fw_update_config_t
 {
     char binaries_url[FW_UPDATE_URL_MAX_LEN + 1];
@@ -60,6 +64,7 @@ typedef struct fw_update_data_partition_info_t
 typedef struct fw_update_ota_partition_info_t
 {
     const esp_partition_t* const p_partition;
+    size_t                       offset;
     esp_ota_handle_t             out_handle;
     bool                         is_error;
 } fw_update_ota_partition_info_t;
@@ -88,6 +93,20 @@ typedef struct fw_update_error_message_info_t
 {
     const char* p_message;
 } fw_update_error_message_info_t;
+
+typedef enum fw_update_download_status_e
+{
+    FW_UPDATE_DOWNLOAD_STATUS_FAILED  = 0,
+    FW_UPDATE_DOWNLOAD_STATUS_SUCCESS = 1,
+    FW_UPDATE_DOWNLOAD_STATUS_RETRY   = 2,
+} fw_update_download_status_e;
+
+typedef struct fw_update_download_cb_data_t
+{
+    size_t                           offset;
+    http_download_cb_on_data_t const p_cb_on_data;
+    void* const                      p_user_data;
+} fw_update_download_cb_data_t;
 
 static void
 fw_update_set_extra_info_for_status_json(
@@ -620,12 +639,13 @@ fw_update_erase_data_partition_with_sleep(
 
 static bool
 fw_update_handle_http_resp_code(
+    const http_resp_code_e expected_http_resp_code,
     const http_resp_code_e http_resp_code,
     const uint8_t* const   p_buf,
     const size_t           buf_size,
     bool* const            p_result)
 {
-    if (HTTP_RESP_CODE_200 != http_resp_code)
+    if (expected_http_resp_code != http_resp_code)
     {
         if ((HTTP_RESP_CODE_301 == http_resp_code) || (HTTP_RESP_CODE_302 == http_resp_code))
         {
@@ -633,7 +653,12 @@ fw_update_handle_http_resp_code(
             *p_result = true;
             return true;
         }
-        LOG_ERR("Got HTTP error %d: %.*s", (printf_int_t)http_resp_code, (printf_int_t)buf_size, (const char*)p_buf);
+        LOG_ERR(
+            "Got HTTP error %d (expected %d): %.*s",
+            (printf_int_t)http_resp_code,
+            (printf_int_t)expected_http_resp_code,
+            (printf_int_t)buf_size,
+            (const char*)p_buf);
         *p_result = false;
         return true;
     }
@@ -644,18 +669,27 @@ static bool
 fw_update_data_partition_cb_on_recv_data(
     const uint8_t* const   p_buf,
     const size_t           buf_size,
-    const size_t           offset,
+    const size_t           content_offset,
     const size_t           content_length,
     const http_resp_code_e http_resp_code,
+    const size_t           range_start,
     void* const            p_user_data)
 {
     fw_update_data_partition_info_t* const p_info = p_user_data;
     if (p_info->is_error)
     {
+        LOG_INFO(
+            "Drop data after an error, content offset %lu, size %lu",
+            (printf_ulong_t)content_offset,
+            (printf_ulong_t)buf_size);
+        vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_ON_ERROR_MS));
         return false;
     }
+
     bool result = false;
-    if (fw_update_handle_http_resp_code(http_resp_code, p_buf, buf_size, &result))
+
+    const http_resp_code_e expected_http_resp_code = (0 != range_start) ? HTTP_RESP_CODE_206 : HTTP_RESP_CODE_200;
+    if (fw_update_handle_http_resp_code(expected_http_resp_code, http_resp_code, p_buf, buf_size, &result))
     {
         if (!result)
         {
@@ -667,12 +701,12 @@ fw_update_data_partition_cb_on_recv_data(
     LOG_INFO(
         "Write to data partition %s, offset %lu, size %lu",
         p_info->p_partition->label,
-        (printf_ulong_t)offset,
+        (printf_ulong_t)p_info->offset,
         (printf_ulong_t)buf_size);
 
     const fw_update_percent_t percentage = FW_UPDATE_PERCENT_50
-                                           + (((offset + buf_size) * FW_UPDATE_PERCENT_50)
-                                              / ((0 != content_length) ? content_length
+                                           + (((range_start + content_offset + buf_size) * FW_UPDATE_PERCENT_50)
+                                              / ((0 != content_length) ? (range_start + content_length)
                                                                        : FW_UPDATE_MAX_DATA_PARTITION_SIZE));
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, percentage);
 
@@ -690,6 +724,120 @@ fw_update_data_partition_cb_on_recv_data(
     }
     p_info->offset += buf_size;
     return true;
+}
+
+static bool
+fw_update_download_cb_on_recv_data(
+    const uint8_t* const   p_buf,
+    const size_t           buf_size,
+    const size_t           content_offset,
+    const size_t           content_length,
+    const http_resp_code_e http_resp_code,
+    const size_t           range_start,
+    void* const            p_user_data)
+{
+    fw_update_download_cb_data_t* const p_cb_data = p_user_data;
+    p_cb_data->offset += buf_size;
+
+    return p_cb_data->p_cb_on_data(
+        p_buf,
+        buf_size,
+        content_offset,
+        content_length,
+        http_resp_code,
+        range_start,
+        p_cb_data->p_user_data);
+}
+
+static fw_update_download_status_e
+fw_update_download(
+    const char* const                p_url,
+    const size_t                     start_offset,
+    http_download_cb_on_data_t const p_cb_on_data,
+    void* const                      p_user_data,
+    size_t* const                    p_downloaded_size)
+{
+    LOG_INFO("Trying to download %s from offset %lu", p_url, (printf_ulong_t)start_offset);
+    fw_update_download_cb_data_t cb_data = {
+        .offset       = start_offset,
+        .p_cb_on_data = p_cb_on_data,
+        .p_user_data  = p_user_data,
+    };
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url = p_url,
+            .range_start = start_offset,
+            .range_end = 0,
+            .timeout_seconds = HTTP_DOWNLOAD_FW_BINARIES_TIMEOUT_SECONDS,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory = true,
+            .p_server_cert = NULL,
+            .p_client_cert = NULL,
+            .p_client_key = NULL,
+        },
+        .auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth = NULL,
+        .p_extra_header_item = NULL,
+    };
+    bool flag_allow_retry = false;
+    if (!http_download(&params, &fw_update_download_cb_on_recv_data, &cb_data, &flag_allow_retry))
+    {
+        LOG_ERR("Failed to download %s", p_url);
+        if (flag_allow_retry && (!gw_status_is_network_connected()))
+        {
+            LOG_INFO("Waiting for network re-connection before retrying download...");
+            const TickType_t t1 = xTaskGetTickCount();
+            while ((xTaskGetTickCount() - t1)
+                   < pdMS_TO_TICKS(HTTP_DOWNLOAD_NETWORK_RECONNECTION_TIMEOUT_SECONDS * TIME_UNITS_MS_PER_SECOND))
+            {
+                if (gw_status_is_network_connected())
+                {
+                    break;
+                }
+                vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_BETWEEN_NETWORK_CHECK_MS));
+            }
+            if (gw_status_is_network_connected())
+            {
+                *p_downloaded_size = cb_data.offset;
+                LOG_WARN("Network re-established, retrying download...");
+                return FW_UPDATE_DOWNLOAD_STATUS_RETRY;
+            }
+            LOG_ERR("Network connection not re-established within timeout");
+        }
+        return FW_UPDATE_DOWNLOAD_STATUS_FAILED;
+    }
+    *p_downloaded_size = cb_data.offset;
+    return FW_UPDATE_DOWNLOAD_STATUS_SUCCESS;
+}
+
+static bool
+fw_update_download_with_retries(
+    const char* const                p_url,
+    http_download_cb_on_data_t const p_cb_on_data,
+    void* const                      p_user_data)
+{
+    size_t downloaded_size = 0;
+    while (1)
+    {
+        const fw_update_download_status_e status = fw_update_download(
+            p_url,
+            downloaded_size,
+            p_cb_on_data,
+            p_user_data,
+            &downloaded_size);
+        switch (status)
+        {
+            case FW_UPDATE_DOWNLOAD_STATUS_SUCCESS:
+                return true;
+            case FW_UPDATE_DOWNLOAD_STATUS_RETRY:
+                break;
+            case FW_UPDATE_DOWNLOAD_STATUS_FAILED:
+                return false;
+            default:
+                LOG_ERR("Unknown download status %d", (printf_int_t)status);
+                return false;
+        }
+    }
 }
 
 static bool
@@ -723,21 +871,7 @@ fw_update_data_partition_download(const esp_partition_t* const p_partition, cons
         return false;
     }
     LOG_INFO("fw_update_data_partition: Download and write partition data");
-    const http_download_param_with_auth_t params = {
-        .base = {
-            .p_url = p_url,
-            .timeout_seconds = HTTP_DOWNLOAD_FW_BINARIES_TIMEOUT_SECONDS,
-            .flag_feed_task_watchdog = false,
-            .flag_free_memory = true,
-            .p_server_cert = NULL,
-            .p_client_cert = NULL,
-            .p_client_key = NULL,
-        },
-        .auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE,
-        .p_http_auth = NULL,
-        .p_extra_header_item = NULL,
-    };
-    if (!http_download(&params, &fw_update_data_partition_cb_on_recv_data, &fw_update_info))
+    if (!fw_update_download_with_retries(p_url, &fw_update_data_partition_cb_on_recv_data, &fw_update_info))
     {
         LOG_ERR("Failed to update partition %s - failed to download %s", p_partition->label, p_url);
         return false;
@@ -778,19 +912,26 @@ static bool
 fw_update_ota_partition_cb_on_recv_data(
     const uint8_t* const   p_buf,
     const size_t           buf_size,
-    const size_t           offset,
+    const size_t           content_offset,
     const size_t           content_length,
     const http_resp_code_e http_resp_code,
+    const size_t           range_start,
     void* const            p_user_data)
 {
     fw_update_ota_partition_info_t* const p_info = p_user_data;
     if (p_info->is_error)
     {
-        LOG_INFO("Drop data after an error, offset %lu, size %lu", (printf_ulong_t)offset, (printf_ulong_t)buf_size);
+        LOG_INFO(
+            "Drop data after an error, content offset %lu, size %lu",
+            (printf_ulong_t)content_offset,
+            (printf_ulong_t)buf_size);
+        vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_ON_ERROR_MS));
         return false;
     }
     bool result = false;
-    if (fw_update_handle_http_resp_code(http_resp_code, p_buf, buf_size, &result))
+
+    const http_resp_code_e expected_http_resp_code = (0 != range_start) ? HTTP_RESP_CODE_206 : HTTP_RESP_CODE_200;
+    if (fw_update_handle_http_resp_code(expected_http_resp_code, http_resp_code, p_buf, buf_size, &result))
     {
         if (!result)
         {
@@ -802,12 +943,12 @@ fw_update_ota_partition_cb_on_recv_data(
     LOG_INFO(
         "Write to OTA-partition %s, offset %lu, size %lu",
         p_info->p_partition->label,
-        (printf_ulong_t)offset,
+        (printf_ulong_t)p_info->offset,
         (printf_ulong_t)buf_size);
 
     const fw_update_percent_t percentage = FW_UPDATE_PERCENT_50
-                                           + (((offset + buf_size) * FW_UPDATE_PERCENT_50)
-                                              / ((0 != content_length) ? content_length
+                                           + (((range_start + content_offset + buf_size) * FW_UPDATE_PERCENT_50)
+                                              / ((0 != content_length) ? (range_start + content_length)
                                                                        : FW_UPDATE_MAX_OTA_PARTITION_SIZE));
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, percentage);
 
@@ -819,6 +960,7 @@ fw_update_ota_partition_cb_on_recv_data(
         LOG_ERR_ESP(err, "Failed to write to OTA-partition %s", p_info->p_partition->label);
         return false;
     }
+    p_info->offset += buf_size;
     return true;
 }
 
@@ -837,25 +979,12 @@ fw_update_ota_partition(
 
     fw_update_ota_partition_info_t fw_update_info = {
         .p_partition = p_partition,
+        .offset      = 0,
         .out_handle  = out_handle,
         .is_error    = false,
     };
 
-    const http_download_param_with_auth_t params = {
-        .base = {
-            .p_url = p_url,
-            .timeout_seconds = HTTP_DOWNLOAD_FW_BINARIES_TIMEOUT_SECONDS,
-            .flag_feed_task_watchdog = false,
-            .flag_free_memory = true,
-            .p_server_cert = NULL,
-            .p_client_cert = NULL,
-            .p_client_key = NULL,
-        },
-        .auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE,
-        .p_http_auth = NULL,
-        .p_extra_header_item = NULL,
-    };
-    if (!http_download(&params, &fw_update_ota_partition_cb_on_recv_data, &fw_update_info))
+    if (!fw_update_download_with_retries(p_url, &fw_update_ota_partition_cb_on_recv_data, &fw_update_info))
     {
         LOG_ERR("Failed to update OTA-partition %s - failed to download %s", p_partition->label, p_url);
         return false;
@@ -1435,7 +1564,15 @@ fw_update_task(void)
     fw_update_error_message_info_t error_message_info = {
         .p_message = NULL,
     };
+
+    const bool flag_wait_relaying_completed = true;
+    gw_status_suspend_http_relaying(flag_wait_relaying_completed);
+
     const bool flag_fw_update_successful = fw_update_do_actions(&error_message_info);
+
+    LOG_DBG("resume_http_relaying and wait");
+    gw_status_resume_http_relaying(flag_wait_relaying_completed);
+
     if (!flag_fw_update_successful)
     {
         LOG_ERR(
