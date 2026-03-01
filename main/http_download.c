@@ -35,7 +35,8 @@ static const char TAG[] = "http_download";
 
 #define BASE_10 (10U)
 
-#define HTTP_RANGE_HEADER_BUF_SIZE (28U)
+#define HTTP_RANGE_HEADER_MAX_LITERAL "bytes=4294967295-4294967295"
+#define HTTP_RANGE_HEADER_BUF_SIZE    (sizeof(HTTP_RANGE_HEADER_MAX_LITERAL))
 
 typedef struct http_download_cb_info_t
 {
