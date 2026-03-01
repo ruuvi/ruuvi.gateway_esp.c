@@ -32,15 +32,17 @@
 
 #define FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS (20)
 
-#define FW_UPDATE_PERCENTAGE_33  (33U)
-#define FW_UPDATE_PERCENTAGE_50  (50U)
-#define FW_UPDATE_PERCENTAGE_66  (66U)
-#define FW_UPDATE_PERCENTAGE_100 (100U)
+#define FW_UPDATE_PERCENT_0   (0U)
+#define FW_UPDATE_PERCENT_33  (33U)
+#define FW_UPDATE_PERCENT_50  (50U)
+#define FW_UPDATE_PERCENT_66  (66U)
+#define FW_UPDATE_PERCENT_100 (100U)
 
 #define FW_UPDATE_DELAY_BEFORE_REBOOT_SECONDS (5U)
 
 #define FW_UPDATE_MAX_OTA_PARTITION_SIZE  (4U * 1024U * 1024U)
 #define FW_UPDATE_MAX_DATA_PARTITION_SIZE (0xC0000U)
+#define FW_UPDATE_MAX_SIZE_BYTES          (FW_UPDATE_MAX_OTA_PARTITION_SIZE)
 
 #define FW_UPDATE_WL_AREA_TMP_BUF_SIZE (512U)
 
@@ -75,12 +77,12 @@ typedef enum fw_update_stage_e
     FW_UPDATE_STAGE_FAILED_NRF52 = 7,
 } fw_update_stage_e;
 
-typedef uint32_t fw_update_percentage_t;
+typedef uint32_t fw_update_percent_t;
 
 typedef struct fw_update_erase_partition_user_data_t
 {
-    uint32_t percent_base;
-    uint32_t percent_range;
+    uint32_t percent_min;
+    uint32_t percent_max;
 } fw_update_erase_partition_user_data_t;
 
 typedef struct fw_update_error_message_info_t
@@ -91,7 +93,7 @@ typedef struct fw_update_error_message_info_t
 static void
 fw_update_set_extra_info_for_status_json(
     const enum fw_update_stage_e fw_updating_stage,
-    const fw_update_percentage_t fw_updating_percentage);
+    const fw_update_percent_t    fw_updating_percentage);
 
 static const char TAG[] = "fw_update";
 
@@ -593,21 +595,21 @@ fw_update_cb_erase_partition(const uint32_t offset, const uint32_t partition_siz
 {
     const fw_update_erase_partition_user_data_t* const p_data = p_user_data;
 
-    const fw_update_percentage_t percentage = p_data->percent_base
-                                              + ((offset * p_data->percent_range) / partition_size);
-    fw_update_set_extra_info_for_status_json(g_update_progress_stage, percentage);
+    const uint32_t            range   = p_data->percent_max - p_data->percent_min;
+    const fw_update_percent_t percent = p_data->percent_min + ((offset * range) / partition_size);
+    fw_update_set_extra_info_for_status_json(g_update_progress_stage, percent);
 }
 
 static esp_err_t
 fw_update_erase_data_partition_with_sleep(
     const esp_partition_t* const p_partition,
     const bool                   flag_erase_only_first_sector,
-    const uint32_t               percent_base,
-    const uint32_t               percent_range)
+    const uint32_t               percent_min,
+    const uint32_t               percent_max)
 {
     fw_update_erase_partition_user_data_t user_data = {
-        .percent_base  = percent_base,
-        .percent_range = percent_range,
+        .percent_min = percent_min,
+        .percent_max = percent_max,
     };
     return esp_ota_helper_erase_partition_with_sleep(
         p_partition,
@@ -669,10 +671,12 @@ fw_update_data_partition_cb_on_recv_data(
         (printf_ulong_t)offset,
         (printf_ulong_t)buf_size);
 
-    const fw_update_percentage_t percentage = FW_UPDATE_PERCENTAGE_50
-                                              + (((offset + buf_size) * FW_UPDATE_PERCENTAGE_50)
-                                                 / ((0 != content_length) ? content_length
-                                                                          : FW_UPDATE_MAX_DATA_PARTITION_SIZE));
+    // On this platform the max size of a firmware update is limited by FW_UPDATE_MAX_SIZE_BYTES (4 MiB),
+    // so there is no risk of integer overflow during percentage calculation.
+    const fw_update_percent_t percentage = FW_UPDATE_PERCENT_50
+                                           + (((offset + buf_size) * FW_UPDATE_PERCENT_50)
+                                              / ((0 != content_length) ? content_length
+                                                                       : FW_UPDATE_MAX_DATA_PARTITION_SIZE));
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, percentage);
 
     const esp_err_t err = esp_partition_write(p_info->p_partition, p_info->offset, p_buf, buf_size);
@@ -710,8 +714,8 @@ fw_update_data_partition_download(const esp_partition_t* const p_partition, cons
     const esp_err_t err = fw_update_erase_data_partition_with_sleep(
         p_partition,
         flag_erase_only_first_sector,
-        0,
-        FW_UPDATE_PERCENTAGE_50);
+        FW_UPDATE_PERCENT_0,
+        FW_UPDATE_PERCENT_50);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(
@@ -809,10 +813,12 @@ fw_update_ota_partition_cb_on_recv_data(
         (printf_ulong_t)offset,
         (printf_ulong_t)buf_size);
 
-    const fw_update_percentage_t percentage = FW_UPDATE_PERCENTAGE_50
-                                              + (((offset + buf_size) * FW_UPDATE_PERCENTAGE_50)
-                                                 / ((0 != content_length) ? content_length
-                                                                          : FW_UPDATE_MAX_OTA_PARTITION_SIZE));
+    // On this platform the max size of a firmware update is limited by FW_UPDATE_MAX_SIZE_BYTES (4 MiB),
+    // so there is no risk of integer overflow during percentage calculation.
+    const fw_update_percent_t percentage = FW_UPDATE_PERCENT_50
+                                           + (((offset + buf_size) * FW_UPDATE_PERCENT_50)
+                                              / ((0 != content_length) ? content_length
+                                                                       : FW_UPDATE_MAX_OTA_PARTITION_SIZE));
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, percentage);
 
     const esp_err_t err = esp_ota_write_patched(p_info->out_handle, p_buf, buf_size);
@@ -869,7 +875,7 @@ fw_update_ota_partition(
         LOG_ERR("Failed to update OTA-partition %s - some problem during writing", p_partition->label);
         return false;
     }
-    fw_update_set_extra_info_for_status_json(g_update_progress_stage, FW_UPDATE_PERCENTAGE_100);
+    fw_update_set_extra_info_for_status_json(g_update_progress_stage, FW_UPDATE_PERCENT_100);
     LOG_INFO("OTA-partition %s has been successfully updated", p_partition->label);
     return true;
 }
@@ -887,8 +893,8 @@ fw_update_ota(const char* const p_url, fw_update_error_message_info_t* const p_e
 
     LOG_INFO("fw_update_ota: Erase partition");
     fw_update_erase_partition_user_data_t user_data = {
-        .percent_base  = 0,
-        .percent_range = FW_UPDATE_PERCENTAGE_50,
+        .percent_min = FW_UPDATE_PERCENT_0,
+        .percent_max = FW_UPDATE_PERCENT_50,
     };
     esp_ota_handle_t out_handle = 0;
 
@@ -1011,7 +1017,7 @@ json_fw_update_url_parse_http_body_get_url(const char* const p_body)
 static void
 fw_update_set_extra_info_for_status_json(
     const enum fw_update_stage_e fw_updating_stage,
-    const fw_update_percentage_t fw_updating_percentage)
+    const fw_update_percent_t    fw_updating_percentage)
 {
     char extra_info_buf[JSON_NETWORK_EXTRA_INFO_SIZE];
     if (FW_UPDATE_STAGE_NONE == fw_updating_stage)
@@ -1080,7 +1086,7 @@ void
 fw_update_nrf52fw_cb_progress(const size_t num_bytes_flashed, const size_t total_size, void* const p_param)
 {
     (void)p_param;
-    const fw_update_percentage_t percentage = (num_bytes_flashed * FW_UPDATE_PERCENTAGE_100) / total_size;
+    const fw_update_percent_t percentage = (num_bytes_flashed * FW_UPDATE_PERCENT_100) / total_size;
     fw_update_set_extra_info_for_status_json(g_update_progress_stage, percentage);
 }
 
@@ -1181,8 +1187,8 @@ fw_update_fatfs_nrf52_bin(fw_update_error_message_info_t* const p_error_message_
 static bool
 fw_update_invalidate_next_ota_partition(
     const esp_partition_t* const p_partition_ota,
-    const uint32_t               percent_base,
-    const uint32_t               percent_range)
+    const uint32_t               percent_min,
+    const uint32_t               percent_max)
 {
     if (NULL == p_partition_ota)
     {
@@ -1196,8 +1202,8 @@ fw_update_invalidate_next_ota_partition(
         p_partition_ota->size);
 
     fw_update_erase_partition_user_data_t user_data = {
-        .percent_base  = percent_base,
-        .percent_range = percent_range,
+        .percent_min = percent_min,
+        .percent_max = percent_max,
     };
 
     const bool flag_erase_only_first_sector = true;
@@ -1224,8 +1230,8 @@ fw_update_invalidate_next_ota_partition(
 static bool
 fw_update_invalidate_next_data_partition(
     const esp_partition_t* const p_partition,
-    const uint32_t               percent_base,
-    const uint32_t               percent_range)
+    const uint32_t               percent_min,
+    const uint32_t               percent_max)
 {
     if (NULL == p_partition)
     {
@@ -1243,8 +1249,8 @@ fw_update_invalidate_next_data_partition(
     const esp_err_t err = fw_update_erase_data_partition_with_sleep(
         p_partition,
         flag_erase_only_first_sector,
-        percent_base,
-        percent_range);
+        percent_min,
+        percent_max);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(
@@ -1263,8 +1269,8 @@ fw_update_invalidate_all_next_partitions(void)
 {
     if (!fw_update_invalidate_next_ota_partition(
             g_ruuvi_flash_info.p_next_update_partition,
-            0,
-            FW_UPDATE_PERCENTAGE_33))
+            FW_UPDATE_PERCENT_0,
+            FW_UPDATE_PERCENT_33))
     {
         LOG_ERR("Failed to invalidate next OTA partition");
     }
@@ -1272,8 +1278,8 @@ fw_update_invalidate_all_next_partitions(void)
 
     if (!fw_update_invalidate_next_data_partition(
             g_ruuvi_flash_info.p_next_fatfs_gwui_partition,
-            FW_UPDATE_PERCENTAGE_33,
-            FW_UPDATE_PERCENTAGE_66))
+            FW_UPDATE_PERCENT_33,
+            FW_UPDATE_PERCENT_66))
     {
         LOG_ERR("Failed to invalidate next fatfs_gwui partition");
     }
@@ -1281,8 +1287,8 @@ fw_update_invalidate_all_next_partitions(void)
 
     if (!fw_update_invalidate_next_data_partition(
             g_ruuvi_flash_info.p_next_fatfs_nrf52_partition,
-            FW_UPDATE_PERCENTAGE_66,
-            FW_UPDATE_PERCENTAGE_100))
+            FW_UPDATE_PERCENT_66,
+            FW_UPDATE_PERCENT_100))
     {
         LOG_ERR("Failed to invalidate next fatfs_nrf52 partition");
     }
