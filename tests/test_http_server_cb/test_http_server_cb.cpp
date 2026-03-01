@@ -817,7 +817,7 @@ http_download_with_auth(
             strlen(g_pTestClass->m_firmware_update_resp.buf),
             0,
             0,
-            HTTP_RESP_CODE_200,
+            (0 == g_pTestClass->m_firmware_update_range_start) ? HTTP_RESP_CODE_200 : HTTP_RESP_CODE_206,
             g_pTestClass->m_firmware_update_range_start,
             p_user_data);
         return http_server_resp_200_json_in_heap(g_pTestClass->m_firmware_update_resp.buf);
