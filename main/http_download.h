@@ -29,25 +29,25 @@ typedef struct http_server_download_info_t
 } http_server_download_info_t;
 
 typedef bool (*http_download_cb_on_data_t)(
-    const uint8_t* const   p_buf,
-    const size_t           buf_size,
-    const size_t           offset,
-    const size_t           content_length,
-    const http_resp_code_e resp_code,
-    const size_t           range_start,
-    void*                  p_user_data);
+    const uint8_t* const   p_buf,          //!< Buffer containing the data
+    const size_t           buf_size,       //!< Size of the data buffer
+    const size_t           offset,         //!< Offset relative to the range start
+    const size_t           content_length, //!< Content length of the response
+    const http_resp_code_e resp_code,      //!< HTTP response code
+    const size_t           range_start,    //!< Start of the range for the download
+    void*                  p_user_data /*!< Pointer to user-defined data */);
 
 typedef struct http_download_param_t
 {
-    const char*        p_url;
-    size_t             range_start;
-    size_t             range_end;
-    TimeUnitsSeconds_t timeout_seconds;
-    bool               flag_feed_task_watchdog;
-    bool               flag_free_memory;
-    const char*        p_server_cert;
-    const char*        p_client_cert;
-    const char*        p_client_key;
+    const char*        p_url;       //!< URL to download from
+    size_t             range_start; //!< Start of the range for the download. If 0, start from the beginning.
+    size_t             range_end;   //!< End of the range for the download. If 0, download until the end of the file.
+    TimeUnitsSeconds_t timeout_seconds;         //!< Timeout for the download operation
+    bool               flag_feed_task_watchdog; //!< Fed task watchdog during the download
+    bool               flag_free_memory;        //!< Flag to indicate if memory should be freed after download
+    const char*        p_server_cert;           //!< Server certificate for secure connections
+    const char*        p_client_cert;           //!< Client certificate for secure connections
+    const char*        p_client_key;            //!< Client private key for secure connections
 } http_download_param_t;
 
 typedef struct http_download_param_with_auth_t

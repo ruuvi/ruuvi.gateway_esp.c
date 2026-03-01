@@ -321,7 +321,7 @@ http_download_or_check(
     void* const                                  p_user_data)
 {
     LOG_INFO("HTTP download/check: Method=%s, URL: '%s'", http_client_method_to_str(http_method), p_param->base.p_url);
-    if (0 != p_param->base.range_start)
+    if ((0 != p_param->base.range_start) || (0 != p_param->base.range_end))
     {
         // The max size of a firmware update cannot exceed UINT32_MAX.
         if ((p_param->base.range_start > UINT32_MAX) || (p_param->base.range_end > UINT32_MAX)
@@ -363,11 +363,17 @@ http_download_or_check(
         p_auth_basic = &p_param->p_http_auth->auth_basic;
     }
 
+    http_async_info_t* const  p_http_async_info            = http_get_async_info();
+    const bool                flag_wait_relaying_completed = true;
+    esp_http_client_config_t* p_http_config                = NULL;
+
+    http_server_resp_t resp = http_server_resp_500();
+
     http_download_cb_info_t* p_cb_info = os_calloc(1, sizeof(*p_cb_info));
     if (NULL == p_cb_info)
     {
         LOG_ERR("Can't allocate memory");
-        return http_server_resp_500();
+        goto cleanup;
     }
     p_cb_info->cb_on_data              = p_cb_on_data;
     p_cb_info->p_user_data             = p_user_data;
@@ -378,11 +384,9 @@ http_download_or_check(
     p_cb_info->flag_feed_task_watchdog = p_param->base.flag_feed_task_watchdog;
 
     LOG_DBG("suspend_http_relaying and wait");
-    const bool flag_wait_relaying_completed = true;
     gw_status_suspend_http_relaying(flag_wait_relaying_completed);
     LOG_DBG("suspend_relaying_and_wait: finished");
 
-    http_async_info_t* const p_http_async_info = http_get_async_info();
     LOG_DBG("os_sema_wait_immediate: p_http_async_sema");
     if (!os_sema_wait_immediate(p_http_async_info->p_http_async_sema))
     {
@@ -393,7 +397,7 @@ http_download_or_check(
     }
     p_http_async_info->p_task = xTaskGetCurrentTaskHandle();
 
-    esp_http_client_config_t* p_http_config = http_download_create_config(
+    p_http_config = http_download_create_config(
         &p_param->base,
         http_method,
         p_auth_basic,
@@ -404,27 +408,17 @@ http_download_or_check(
     if (NULL == p_http_config)
     {
         LOG_ERR("Can't allocate memory for http_config");
-        os_free(p_cb_info);
-        os_sema_signal(p_http_async_info->p_http_async_sema);
-        LOG_DBG("resume_http_relaying and wait");
-        gw_status_resume_http_relaying(flag_wait_relaying_completed);
-        LOG_DBG("resume_http_relaying: finished");
-        return http_server_resp_500();
+        goto cleanup;
     }
 
     p_cb_info->http_handle = http_client_init(p_param, p_http_config);
     if (NULL == p_cb_info->http_handle)
     {
-        os_free(p_http_config);
-        os_free(p_cb_info);
-        os_sema_signal(p_http_async_info->p_http_async_sema);
-        LOG_DBG("resume_http_relaying and wait");
-        gw_status_resume_http_relaying(flag_wait_relaying_completed);
-        LOG_DBG("resume_http_relaying: finished");
-        return http_server_resp_500();
+        LOG_ERR("Can't init http client");
+        goto cleanup;
     }
 
-    if (0 != p_param->base.range_start)
+    if ((0 != p_param->base.range_start) || (0 != p_param->base.range_end))
     {
         if (0 == p_param->base.range_end)
         {
@@ -449,24 +443,12 @@ http_download_or_check(
         if (ESP_OK != err)
         {
             LOG_ERR("%s failed", "esp_http_client_set_header");
-            LOG_DBG("Call esp_http_client_cleanup");
-            const esp_err_t err2 = esp_http_client_cleanup(p_cb_info->http_handle);
-            if (ESP_OK != err2)
-            {
-                LOG_ERR_ESP(err2, "esp_http_client_cleanup failed");
-            }
-            os_free(p_http_config);
-            os_free(p_cb_info);
-            os_sema_signal(p_http_async_info->p_http_async_sema);
-            LOG_DBG("resume_http_relaying and wait");
-            gw_status_resume_http_relaying(flag_wait_relaying_completed);
-            LOG_DBG("resume_http_relaying: finished");
-            return http_server_resp_500();
+            goto cleanup;
         }
     }
 
     LOG_DBG("Call http_download_by_handle");
-    http_server_resp_t resp = http_download_by_handle(
+    resp = http_download_by_handle(
         p_cb_info->http_handle,
         p_param->base.flag_feed_task_watchdog,
         p_param->base.timeout_seconds);
@@ -481,15 +463,28 @@ http_download_or_check(
     LOG_DBG("Resp: resp_code=%d, content: %s", resp.http_resp_code, (NULL != p_json) ? p_json : "<NULL>");
 #endif
 
+cleanup:
     LOG_DBG("Call esp_http_client_cleanup");
-    const esp_err_t err = esp_http_client_cleanup(p_cb_info->http_handle);
-    if (ESP_OK != err)
+    if (NULL != p_cb_info)
     {
-        LOG_ERR_ESP(err, "esp_http_client_cleanup failed");
+        if (NULL != p_cb_info->http_handle)
+        {
+            const esp_err_t err = esp_http_client_cleanup(p_cb_info->http_handle);
+            if (ESP_OK != err)
+            {
+                LOG_ERR_ESP(err, "esp_http_client_cleanup failed");
+            }
+            p_cb_info->http_handle = NULL;
+        }
     }
-
-    os_free(p_http_config);
-    os_free(p_cb_info);
+    if (NULL != p_http_config)
+    {
+        os_free(p_http_config);
+    }
+    if (NULL != p_cb_info)
+    {
+        os_free(p_cb_info);
+    }
     os_sema_signal(p_http_async_info->p_http_async_sema);
     LOG_DBG("resume_http_relaying and wait");
     gw_status_resume_http_relaying(flag_wait_relaying_completed);
