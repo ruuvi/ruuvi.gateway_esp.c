@@ -48,6 +48,10 @@ esp_ota_helper_erase_partition_with_sleep(
     size_t offset = 0;
     while (offset < p_partition->size)
     {
+        if (NULL != callback)
+        {
+            callback(offset, p_partition->size, p_user_data);
+        }
         const uint32_t  sector_address = p_partition->address + offset;
         const esp_err_t err = esp_flash_erase_region(p_partition->flash_chip, sector_address, SPI_FLASH_SEC_SIZE);
         if (ESP_OK != err)
@@ -55,16 +59,16 @@ esp_ota_helper_erase_partition_with_sleep(
             LOG_ERR("Failed to erase sector at 0x%08x, error %d", (unsigned)(p_partition->address + offset), err);
             return err;
         }
-        if (NULL != callback)
-        {
-            callback(offset, p_partition->size, p_user_data);
-        }
-        vTaskDelay(delay_ticks);
+        offset += SPI_FLASH_SEC_SIZE;
         if (flag_erase_only_first_sector)
         {
             break;
         }
-        offset += SPI_FLASH_SEC_SIZE;
+        vTaskDelay(delay_ticks);
+    }
+    if (NULL != callback)
+    {
+        callback(offset, p_partition->size, p_user_data);
     }
     return ESP_OK;
 }
