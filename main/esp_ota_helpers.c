@@ -68,7 +68,7 @@ esp_ota_helper_erase_partition_with_sleep(
     }
     if (NULL != callback)
     {
-        callback(offset, p_partition->size, p_user_data);
+        callback(flag_erase_only_first_sector ? p_partition->size : offset, p_partition->size, p_user_data);
     }
     return ESP_OK;
 }
