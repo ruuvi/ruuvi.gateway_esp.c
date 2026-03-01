@@ -73,7 +73,7 @@ http_check_with_auth(const http_download_param_with_auth_t* const p_param, http_
  * @param p_cb_on_data - ptr to a callback function that will be called when new data is available
  * @param p_user_data - ptr to user data that will be passed to the callback function
  * @param[out] p_flag_allow_retry set to @c true if a network connection was lost and download should be retried
- * @return @ true if download was successful
+ * @return @c true if download was successful
  */
 bool
 http_download(

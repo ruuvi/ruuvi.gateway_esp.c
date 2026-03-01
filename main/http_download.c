@@ -515,7 +515,10 @@ http_download(
     {
         os_free(resp.select_location.memory.p_buf);
     }
-    *p_flag_allow_retry = (HTTP_RESP_CODE_502 == resp.http_resp_code) ? true : false;
+    if (NULL != p_flag_allow_retry)
+    {
+        *p_flag_allow_retry = (HTTP_RESP_CODE_502 == resp.http_resp_code) ? true : false;
+    }
     return ((HTTP_RESP_CODE_200 == resp.http_resp_code) || (HTTP_RESP_CODE_206 == resp.http_resp_code)) ? true : false;
 }
 
