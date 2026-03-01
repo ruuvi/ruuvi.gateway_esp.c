@@ -29,7 +29,7 @@ typedef void (*esp_ota_erase_callback_t)(const uint32_t offset, const uint32_t p
  * @param p_partition Pointer to partition to erase.
  * @param flag_erase_only_first_sector Flag to indicate if only the first sector should be erased.
  * @param delay_ticks Number of ticks to delay between erasing each sector.
- * @param callback Optional callback to be called after each sector is erased.
+ * @param callback Optional callback to be called before each sector is erased and after all sectors are erased.
  * @param p_user_data Optional user data pointer passed to the callback.
  * @return ESP_OK on success, error code otherwise.
  */
@@ -48,7 +48,7 @@ esp_ota_helper_erase_partition_with_sleep(
  * @param p_partition Pointer to partition to erase.
  * @param flag_erase_only_first_sector Flag to indicate if only the first sector should be erased.
  * @param delay_ticks Number of ticks to delay between erasing each sector.
- * @param callback Optional callback to be called after each sector is erased.
+ * @param callback Optional callback to be called before each sector is erased and after all sectors are erased.
  * @param p_user_data Optional user data pointer passed to the callback.
  * @return ESP_OK on success, error code otherwise.
  */
