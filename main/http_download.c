@@ -323,6 +323,14 @@ http_download_or_check(
     LOG_INFO("HTTP download/check: Method=%s, URL: '%s'", http_client_method_to_str(http_method), p_param->base.p_url);
     if (0 != p_param->base.range_start)
     {
+        if ((p_param->base.range_start > UINT32_MAX) || (p_param->base.range_end > UINT32_MAX))
+        {
+            LOG_ERR(
+                "HTTP download/check: Invalid range: start=%zu, end=%zu",
+                p_param->base.range_start,
+                p_param->base.range_end);
+            return http_server_resp_400();
+        }
         LOG_INFO("HTTP download/check: Range: start=%zu, end=%zu", p_param->base.range_start, p_param->base.range_end);
     }
 
