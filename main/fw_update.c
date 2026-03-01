@@ -1212,7 +1212,7 @@ fw_update_invalidate_next_ota_partition(
     {
         LOG_ERR_ESP(
             err,
-            "Failed to erase OTA partition '%s', address 0x%08x, size 0x%x",
+            "Failed to invalidate OTA partition '%s', address 0x%08x, size 0x%x",
             p_partition_ota->label,
             p_partition_ota->address,
             p_partition_ota->size);
@@ -1249,7 +1249,7 @@ fw_update_invalidate_next_data_partition(
     {
         LOG_ERR_ESP(
             err,
-            "Failed to erase partition '%s', address 0x%08x, size 0x%x",
+            "Failed to invalidate partition '%s', address 0x%08x, size 0x%x",
             p_partition->label,
             p_partition->address,
             p_partition->size);
@@ -1259,14 +1259,14 @@ fw_update_invalidate_next_data_partition(
 }
 
 static void
-fw_update_erase_all_next_partitions(void)
+fw_update_invalidate_all_next_partitions(void)
 {
     if (!fw_update_invalidate_next_ota_partition(
             g_ruuvi_flash_info.p_next_update_partition,
             0,
             FW_UPDATE_PERCENTAGE_33))
     {
-        LOG_ERR("Failed to erase next OTA partition");
+        LOG_ERR("Failed to invalidate next OTA partition");
     }
     vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS));
 
@@ -1275,7 +1275,7 @@ fw_update_erase_all_next_partitions(void)
             FW_UPDATE_PERCENTAGE_33,
             FW_UPDATE_PERCENTAGE_66))
     {
-        LOG_ERR("Failed to erase next fatfs_gwui partition");
+        LOG_ERR("Failed to invalidate next fatfs_gwui partition");
     }
     vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS));
 
@@ -1284,7 +1284,7 @@ fw_update_erase_all_next_partitions(void)
             FW_UPDATE_PERCENTAGE_66,
             FW_UPDATE_PERCENTAGE_100))
     {
-        LOG_ERR("Failed to erase next fatfs_nrf52 partition");
+        LOG_ERR("Failed to invalidate next fatfs_nrf52 partition");
     }
 }
 
@@ -1447,9 +1447,10 @@ fw_update_task(void)
     if (!flag_fw_update_successful)
     {
         LOG_ERR(
-            "Failed to update firmware, erase all next partitions to avoid booting into invalid or unsigned firmware");
+            "Failed to update firmware, "
+            "invalidate all next partitions to avoid booting into invalid or unsigned firmware");
         g_update_progress_stage = FW_UPDATE_STAGE_4;
-        fw_update_erase_all_next_partitions();
+        fw_update_invalidate_all_next_partitions();
         fw_update_set_extra_info_for_status_json_update_failed(error_message_info.p_message);
     }
 
