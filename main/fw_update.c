@@ -603,6 +603,7 @@ fw_update_cb_erase_partition(const uint32_t offset, const uint32_t partition_siz
 static esp_err_t
 fw_update_erase_data_partition_with_sleep(
     const esp_partition_t* const p_partition,
+    const bool                   flag_erase_only_first_sector,
     const uint32_t               percent_min,
     const uint32_t               percent_max)
 {
@@ -612,6 +613,7 @@ fw_update_erase_data_partition_with_sleep(
     };
     return esp_ota_helper_erase_partition_with_sleep(
         p_partition,
+        flag_erase_only_first_sector,
         pdMS_TO_TICKS(FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS),
         &fw_update_cb_erase_partition,
         &user_data);
@@ -707,8 +709,11 @@ fw_update_data_partition_download(const esp_partition_t* const p_partition, cons
         p_partition->label,
         p_partition->address,
         p_partition->size);
+    const bool flag_erase_only_first_sector = false;
+
     const esp_err_t err = fw_update_erase_data_partition_with_sleep(
         p_partition,
+        flag_erase_only_first_sector,
         FW_UPDATE_PERCENT_0,
         FW_UPDATE_PERCENT_50);
     if (ESP_OK != err)
@@ -1180,7 +1185,7 @@ fw_update_fatfs_nrf52_bin(fw_update_error_message_info_t* const p_error_message_
 }
 
 static bool
-fw_update_erase_next_ota_partition(
+fw_update_invalidate_next_ota_partition(
     const esp_partition_t* const p_partition_ota,
     const uint32_t               percent_min,
     const uint32_t               percent_max)
@@ -1191,7 +1196,7 @@ fw_update_erase_next_ota_partition(
         return false;
     }
     LOG_INFO(
-        "Erase OTA partition '%s' (address 0x%08x, size 0x%x)",
+        "Erase first sector only of OTA partition '%s' (address 0x%08x, size 0x%x)",
         p_partition_ota->label,
         p_partition_ota->address,
         p_partition_ota->size);
@@ -1200,8 +1205,12 @@ fw_update_erase_next_ota_partition(
         .percent_min = percent_min,
         .percent_max = percent_max,
     };
+
+    const bool flag_erase_only_first_sector = true;
+
     const esp_err_t err = esp_ota_helper_safe_erase_app_partition(
         p_partition_ota,
+        flag_erase_only_first_sector,
         pdMS_TO_TICKS(FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS),
         &fw_update_cb_erase_partition,
         &user_data);
@@ -1209,7 +1218,7 @@ fw_update_erase_next_ota_partition(
     {
         LOG_ERR_ESP(
             err,
-            "Failed to erase OTA partition '%s', address 0x%08x, size 0x%x",
+            "Failed to invalidate OTA partition '%s', address 0x%08x, size 0x%x",
             p_partition_ota->label,
             p_partition_ota->address,
             p_partition_ota->size);
@@ -1219,7 +1228,7 @@ fw_update_erase_next_ota_partition(
 }
 
 static bool
-fw_update_erase_next_data_partition(
+fw_update_invalidate_next_data_partition(
     const esp_partition_t* const p_partition,
     const uint32_t               percent_min,
     const uint32_t               percent_max)
@@ -1230,16 +1239,23 @@ fw_update_erase_next_data_partition(
         return false;
     }
     LOG_INFO(
-        "Erase partition '%s' (address 0x%08x, size 0x%x)",
+        "Erase first sector only of data partition '%s' (address 0x%08x, size 0x%x)",
         p_partition->label,
         p_partition->address,
         p_partition->size);
-    esp_err_t err = fw_update_erase_data_partition_with_sleep(p_partition, percent_min, percent_max);
+
+    const bool flag_erase_only_first_sector = true;
+
+    const esp_err_t err = fw_update_erase_data_partition_with_sleep(
+        p_partition,
+        flag_erase_only_first_sector,
+        percent_min,
+        percent_max);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(
             err,
-            "Failed to erase partition '%s', address 0x%08x, size 0x%x",
+            "Failed to invalidate partition '%s', address 0x%08x, size 0x%x",
             p_partition->label,
             p_partition->address,
             p_partition->size);
@@ -1249,28 +1265,32 @@ fw_update_erase_next_data_partition(
 }
 
 static void
-fw_update_erase_all_next_partitions(void)
+fw_update_invalidate_all_next_partitions(void)
 {
-    if (!fw_update_erase_next_ota_partition(
+    if (!fw_update_invalidate_next_ota_partition(
             g_ruuvi_flash_info.p_next_update_partition,
             FW_UPDATE_PERCENT_0,
             FW_UPDATE_PERCENT_33))
     {
-        LOG_ERR("Failed to erase next OTA partition");
+        LOG_ERR("Failed to invalidate next OTA partition");
     }
-    if (!fw_update_erase_next_data_partition(
+    vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS));
+
+    if (!fw_update_invalidate_next_data_partition(
             g_ruuvi_flash_info.p_next_fatfs_gwui_partition,
             FW_UPDATE_PERCENT_33,
             FW_UPDATE_PERCENT_66))
     {
-        LOG_ERR("Failed to erase next fatfs_gwui partition");
+        LOG_ERR("Failed to invalidate next fatfs_gwui partition");
     }
-    if (!fw_update_erase_next_data_partition(
+    vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS));
+
+    if (!fw_update_invalidate_next_data_partition(
             g_ruuvi_flash_info.p_next_fatfs_nrf52_partition,
             FW_UPDATE_PERCENT_66,
             FW_UPDATE_PERCENT_100))
     {
-        LOG_ERR("Failed to erase next fatfs_nrf52 partition");
+        LOG_ERR("Failed to invalidate next fatfs_nrf52 partition");
     }
 }
 
@@ -1433,9 +1453,10 @@ fw_update_task(void)
     if (!flag_fw_update_successful)
     {
         LOG_ERR(
-            "Failed to update firmware, erase all next partitions to avoid booting into invalid or unsigned firmware");
+            "Failed to update firmware, "
+            "invalidate all next partitions to avoid booting into invalid or unsigned firmware");
         g_update_progress_stage = FW_UPDATE_STAGE_4;
-        fw_update_erase_all_next_partitions();
+        fw_update_invalidate_all_next_partitions();
         fw_update_set_extra_info_for_status_json_update_failed(error_message_info.p_message);
     }
 

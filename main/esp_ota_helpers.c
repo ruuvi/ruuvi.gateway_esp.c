@@ -35,6 +35,7 @@ const static char TAG[] = "esp_ota_ops";
 esp_err_t
 esp_ota_helper_erase_partition_with_sleep(
     const esp_partition_t* const   p_partition,
+    const bool                     flag_erase_only_first_sector,
     uint32_t const                 delay_ticks,
     const esp_ota_erase_callback_t callback,
     void* const                    p_user_data)
@@ -47,6 +48,10 @@ esp_ota_helper_erase_partition_with_sleep(
     size_t offset = 0;
     while (offset < p_partition->size)
     {
+        if (NULL != callback)
+        {
+            callback(offset, p_partition->size, p_user_data);
+        }
         const uint32_t  sector_address = p_partition->address + offset;
         const esp_err_t err = esp_flash_erase_region(p_partition->flash_chip, sector_address, SPI_FLASH_SEC_SIZE);
         if (ESP_OK != err)
@@ -54,12 +59,19 @@ esp_ota_helper_erase_partition_with_sleep(
             LOG_ERR("Failed to erase sector at 0x%08x, error %d", (unsigned)(p_partition->address + offset), err);
             return err;
         }
-        if (NULL != callback)
-        {
-            callback(offset, p_partition->size, p_user_data);
-        }
-        vTaskDelay(delay_ticks);
         offset += SPI_FLASH_SEC_SIZE;
+        if (flag_erase_only_first_sector)
+        {
+            break;
+        }
+        if (offset < p_partition->size)
+        {
+            vTaskDelay(delay_ticks);
+        }
+    }
+    if (NULL != callback)
+    {
+        callback(flag_erase_only_first_sector ? p_partition->size : offset, p_partition->size, p_user_data);
     }
     return ESP_OK;
 }
@@ -67,6 +79,7 @@ esp_ota_helper_erase_partition_with_sleep(
 esp_err_t
 esp_ota_helper_safe_erase_app_partition(
     const esp_partition_t* const p_partition,
+    const bool                   flag_erase_only_first_sector,
     uint32_t                     delay_ticks,
     esp_ota_erase_callback_t     callback,
     void* const                  p_user_data)
@@ -105,6 +118,7 @@ esp_ota_helper_safe_erase_app_partition(
 
     const esp_err_t ret = esp_ota_helper_erase_partition_with_sleep(
         p_partition_verified,
+        flag_erase_only_first_sector,
         delay_ticks,
         callback,
         p_user_data);
