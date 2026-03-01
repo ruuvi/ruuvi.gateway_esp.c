@@ -367,6 +367,20 @@ http_download_or_check(
     const bool                flag_wait_relaying_completed = true;
     esp_http_client_config_t* p_http_config                = NULL;
 
+    LOG_DBG("suspend_http_relaying and wait");
+    gw_status_suspend_http_relaying(flag_wait_relaying_completed);
+    LOG_DBG("suspend_relaying_and_wait: finished");
+
+    LOG_DBG("os_sema_wait_immediate: p_http_async_sema");
+    if (!os_sema_wait_immediate(p_http_async_info->p_http_async_sema))
+    {
+        /* Because the amount of memory is limited and may not be sufficient for two simultaneous queries,
+         * this function should only be called from a single thread. */
+        LOG_ERR("This function is called twice from two different threads, which can lead to memory shortages");
+        assert(0);
+    }
+    p_http_async_info->p_task = xTaskGetCurrentTaskHandle();
+
     http_server_resp_t resp = http_server_resp_500();
 
     http_download_cb_info_t* p_cb_info = os_calloc(1, sizeof(*p_cb_info));
@@ -382,20 +396,6 @@ http_download_or_check(
     p_cb_info->range_start             = p_param->base.range_start;
     p_cb_info->offset                  = 0;
     p_cb_info->flag_feed_task_watchdog = p_param->base.flag_feed_task_watchdog;
-
-    LOG_DBG("suspend_http_relaying and wait");
-    gw_status_suspend_http_relaying(flag_wait_relaying_completed);
-    LOG_DBG("suspend_relaying_and_wait: finished");
-
-    LOG_DBG("os_sema_wait_immediate: p_http_async_sema");
-    if (!os_sema_wait_immediate(p_http_async_info->p_http_async_sema))
-    {
-        /* Because the amount of memory is limited and may not be sufficient for two simultaneous queries,
-         * this function should only be called from a single thread. */
-        LOG_ERR("This function is called twice from two different threads, which can lead to memory shortages");
-        assert(0);
-    }
-    p_http_async_info->p_task = xTaskGetCurrentTaskHandle();
 
     p_http_config = http_download_create_config(
         &p_param->base,
