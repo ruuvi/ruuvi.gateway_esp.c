@@ -492,7 +492,6 @@ public:
     file_descriptor_t     m_fd;
     std::array<char, 128> fw_update_url;
     str_buf_t             m_firmware_update_resp;
-    size_t                m_firmware_update_range_start;
     const char**          m_http_check_with_auth_arr_of_urls;
     size_t                m_http_check_with_auth_num_of_urls;
     fw_updating_reason_e  m_fw_updating_reason;
@@ -507,7 +506,6 @@ TestHttpServerCb::TestHttpServerCb()
     , m_is_fatfs_mounted(false)
     , m_is_fatfs_mount_fail(false)
     , m_fd(-1)
-    , m_firmware_update_range_start(0)
     , Test()
 {
 }
@@ -812,13 +810,15 @@ http_download_with_auth(
 {
     if (0 == strcmp(p_param->base.p_url, "https://network.ruuvi.com/firmwareupdate"))
     {
+        // Request for json always performed from the beginning (partial content is not supported)
+        constexpr size_t range_start = 0;
         p_cb_on_data(
             (const uint8_t*)g_pTestClass->m_firmware_update_resp.buf,
             strlen(g_pTestClass->m_firmware_update_resp.buf),
             0,
             0,
-            (0 == g_pTestClass->m_firmware_update_range_start) ? HTTP_RESP_CODE_200 : HTTP_RESP_CODE_206,
-            g_pTestClass->m_firmware_update_range_start,
+            HTTP_RESP_CODE_200,
+            range_start,
             p_user_data);
         return http_server_resp_200_json_in_heap(g_pTestClass->m_firmware_update_resp.buf);
     }
