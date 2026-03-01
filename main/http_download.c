@@ -377,7 +377,11 @@ http_download_or_check(
         /* Because the amount of memory is limited and may not be sufficient for two simultaneous queries,
          * this function should only be called from a single thread. */
         LOG_ERR("This function is called twice from two different threads, which can lead to memory shortages");
+        LOG_DBG("resume_http_relaying and wait");
+        gw_status_resume_http_relaying(flag_wait_relaying_completed);
+        LOG_DBG("resume_http_relaying: finished");
         assert(0);
+        return http_server_resp_500();
     }
     p_http_async_info->p_task = xTaskGetCurrentTaskHandle();
 
