@@ -1179,7 +1179,7 @@ fw_update_fatfs_nrf52_bin(fw_update_error_message_info_t* const p_error_message_
 }
 
 static bool
-fw_update_erase_next_ota_partition(
+fw_update_invalidate_next_ota_partition(
     const esp_partition_t* const p_partition_ota,
     const uint32_t               percent_base,
     const uint32_t               percent_range)
@@ -1222,7 +1222,7 @@ fw_update_erase_next_ota_partition(
 }
 
 static bool
-fw_update_erase_next_data_partition(
+fw_update_invalidate_next_data_partition(
     const esp_partition_t* const p_partition,
     const uint32_t               percent_base,
     const uint32_t               percent_range)
@@ -1261,18 +1261,25 @@ fw_update_erase_next_data_partition(
 static void
 fw_update_erase_all_next_partitions(void)
 {
-    if (!fw_update_erase_next_ota_partition(g_ruuvi_flash_info.p_next_update_partition, 0, FW_UPDATE_PERCENTAGE_33))
+    if (!fw_update_invalidate_next_ota_partition(
+            g_ruuvi_flash_info.p_next_update_partition,
+            0,
+            FW_UPDATE_PERCENTAGE_33))
     {
         LOG_ERR("Failed to erase next OTA partition");
     }
-    if (!fw_update_erase_next_data_partition(
+    vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS));
+
+    if (!fw_update_invalidate_next_data_partition(
             g_ruuvi_flash_info.p_next_fatfs_gwui_partition,
             FW_UPDATE_PERCENTAGE_33,
             FW_UPDATE_PERCENTAGE_66))
     {
         LOG_ERR("Failed to erase next fatfs_gwui partition");
     }
-    if (!fw_update_erase_next_data_partition(
+    vTaskDelay(pdMS_TO_TICKS(FW_UPDATE_DELAY_AFTER_OPERATION_WITH_FLASH_MS));
+
+    if (!fw_update_invalidate_next_data_partition(
             g_ruuvi_flash_info.p_next_fatfs_nrf52_partition,
             FW_UPDATE_PERCENTAGE_66,
             FW_UPDATE_PERCENTAGE_100))

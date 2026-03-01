@@ -64,7 +64,10 @@ esp_ota_helper_erase_partition_with_sleep(
         {
             break;
         }
-        vTaskDelay(delay_ticks);
+        if (offset < p_partition->size)
+        {
+            vTaskDelay(delay_ticks);
+        }
     }
     if (NULL != callback)
     {
