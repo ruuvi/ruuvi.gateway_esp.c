@@ -437,6 +437,12 @@ http_download_or_check(
         if (ESP_OK != err)
         {
             LOG_ERR("%s failed", "esp_http_client_set_header");
+            LOG_DBG("Call esp_http_client_cleanup");
+            const esp_err_t err2 = esp_http_client_cleanup(p_cb_info->http_handle);
+            if (ESP_OK != err2)
+            {
+                LOG_ERR_ESP(err2, "esp_http_client_cleanup failed");
+            }
             os_free(p_http_config);
             os_free(p_cb_info);
             os_sema_signal(p_http_async_info->p_http_async_sema);
