@@ -323,7 +323,9 @@ http_download_or_check(
     LOG_INFO("HTTP download/check: Method=%s, URL: '%s'", http_client_method_to_str(http_method), p_param->base.p_url);
     if (0 != p_param->base.range_start)
     {
-        if ((p_param->base.range_start > UINT32_MAX) || (p_param->base.range_end > UINT32_MAX))
+        // The max size of a firmware update cannot exceed UINT32_MAX.
+        if ((p_param->base.range_start > UINT32_MAX) || (p_param->base.range_end > UINT32_MAX)
+            || ((0 != p_param->base.range_end) && (p_param->base.range_start > p_param->base.range_end)))
         {
             LOG_ERR(
                 "HTTP download/check: Invalid range: start=%zu, end=%zu",
@@ -429,7 +431,8 @@ http_download_or_check(
             snprintf(
                 p_cb_info->range_header_buf,
                 sizeof(p_cb_info->range_header_buf),
-                "bytes=%" PRIu32 "-", // The max size of a firmware update cannot exceed 4 MiB - cast it to u32.
+                "bytes=%" PRIu32 "-",
+                /* The max size of a firmware update cannot exceed UINT32_MAX, it's safe to cast it to uint32_t */
                 (uint32_t)p_param->base.range_start);
         }
         else
@@ -437,7 +440,8 @@ http_download_or_check(
             snprintf(
                 p_cb_info->range_header_buf,
                 sizeof(p_cb_info->range_header_buf),
-                "bytes=%" PRIu32 "-%" PRIu32, // The max size of a firmware update cannot exceed 4 MiB - cast it to u32.
+                "bytes=%" PRIu32 "-%" PRIu32,
+                /* The max size of a firmware update cannot exceed UINT32_MAX, it's safe to cast it to uint32_t */
                 (uint32_t)p_param->base.range_start,
                 (uint32_t)p_param->base.range_end);
         }
@@ -533,7 +537,10 @@ http_download(
     {
         *p_flag_allow_retry = (HTTP_RESP_CODE_502 == resp.http_resp_code) ? true : false;
     }
-    return ((HTTP_RESP_CODE_200 == resp.http_resp_code) || (HTTP_RESP_CODE_206 == resp.http_resp_code)) ? true : false;
+    return ((HTTP_RESP_CODE_200 == resp.http_resp_code)
+            || ((0 != p_param->base.range_start) && (HTTP_RESP_CODE_206 == resp.http_resp_code)))
+               ? true
+               : false;
 }
 
 static bool
