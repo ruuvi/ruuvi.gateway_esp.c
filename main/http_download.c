@@ -646,9 +646,9 @@ http_download(
     {
         *p_flag_allow_retry = (HTTP_RESP_CODE_502 == resp.http_resp_code) ? true : false;
     }
+    const bool is_range_used = (0 != p_param->base.range_start) || (0 != p_param->base.range_end);
     return ((HTTP_RESP_CODE_200 == resp.http_resp_code)
-            || (((0 != p_param->base.range_start) || (0 != p_param->base.range_end))
-                && (HTTP_RESP_CODE_206 == resp.http_resp_code)))
+            || (is_range_used && (HTTP_RESP_CODE_206 == resp.http_resp_code)))
                ? true
                : false;
 }
