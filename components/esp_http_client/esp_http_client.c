@@ -919,7 +919,7 @@ static int esp_http_client_get_data(esp_http_client_handle_t client)
     if (rlen < 0) {
         str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(esp_transport_translate_error(rlen));
         ESP_LOGE(TAG, "%s: esp_transport_read failed, res=-0x%04x(%d): %s",
-            __func__, -rlen, rlen, err_desc.buf);
+            __func__, -rlen, rlen, (NULL != err_desc.buf) ? err_desc.buf : "");
         str_buf_free_buf(&err_desc);
     }
     return rlen;
