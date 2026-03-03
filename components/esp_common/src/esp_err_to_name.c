@@ -66,6 +66,9 @@
 #if __has_include("ulp_common.h")
 #include "ulp_common.h"
 #endif
+#if __has_include("esp_transport.h")
+#include "esp_transport.h"
+#endif
 
 #ifdef CONFIG_ESP_ERR_TO_NAME_LOOKUP
 #define ERR_TBL_IT(err)    {err, #err}
@@ -733,6 +736,18 @@ static const esp_err_msg_t esp_err_msg_table[] = {
 #   endif
 #   ifdef      ESP_ERR_HW_CRYPTO_DS_INVALID_PADDING
     ERR_TBL_IT(ESP_ERR_HW_CRYPTO_DS_INVALID_PADDING),           /* 49157 0xc005 */
+#   endif
+#   ifdef      ESP_ERR_TCP_TRANSPORT_CONNECTION_TIMEOUT
+    ERR_TBL_IT(ESP_ERR_TCP_TRANSPORT_CONNECTION_TIMEOUT),       /* 57345 0xe001 TCP Transport: Connection has timed out */
+#   endif
+#   ifdef      ESP_ERR_TCP_TRANSPORT_CONNECTION_CLOSED_BY_FIN
+    ERR_TBL_IT(ESP_ERR_TCP_TRANSPORT_CONNECTION_CLOSED_BY_FIN), /* 57346 0xe002 TCP Transport: Read FIN from peer and the connection has closed (in a clean way) */
+#   endif
+#   ifdef      ESP_ERR_TCP_TRANSPORT_CONNECTION_FAILED
+    ERR_TBL_IT(ESP_ERR_TCP_TRANSPORT_CONNECTION_FAILED),        /* 57347 0xe003 TCP Transport: Failed to connect to the peer */
+#   endif
+#   ifdef      ESP_ERR_TCP_TRANSPORT_NO_MEM
+    ERR_TBL_IT(ESP_ERR_TCP_TRANSPORT_NO_MEM),                   /* 57348 0xe004 TCP Transport: Memory allocation failed */
 #   endif
 };
 #endif //CONFIG_ESP_ERR_TO_NAME_LOOKUP

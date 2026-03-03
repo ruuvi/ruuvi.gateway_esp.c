@@ -23,7 +23,7 @@ else()
     idf_component_register(SRCS "${srcs}"
                            INCLUDE_DIRS include ${ESP_COMMON}/include
                            REQUIRES ${target} espcoredump esp_timer esp_ipc
-                           PRIV_REQUIRES soc
+                           PRIV_REQUIRES soc tcp_transport
                            LDFRAGMENTS "${ESP_COMMON}/linker.lf")
 
     set_source_files_properties(

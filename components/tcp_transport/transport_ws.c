@@ -255,7 +255,7 @@ static int ws_connect(esp_transport_handle_t t, const char *host, int port, int 
         if ((len = esp_transport_read(ws->parent, ws->buffer + header_len, WS_BUFFER_SIZE - header_len, timeout_ms)) <= 0) {
             ESP_LOGE(TAG, "Error read response for Upgrade header %s", ws->buffer);
             if (len < 0) {
-                str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(len);
+                str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(esp_transport_translate_error(len));
                 ESP_LOGE(TAG, "%s: esp_transport_read failed, res=-0x%04x(%d): %s",
                     __func__, -len, len, err_desc.buf ? err_desc.buf : "");
                 str_buf_free_buf(&err_desc);
@@ -417,7 +417,7 @@ static int ws_read_payload(esp_transport_handle_t t, char *buffer, int len, int 
     // Receive and process payload
     if (bytes_to_read != 0 && (rlen = esp_transport_read(ws->parent, buffer, bytes_to_read, timeout_ms)) <= 0) {
         if (rlen < 0) {
-            str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(rlen);
+            str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(esp_transport_translate_error(rlen));
             ESP_LOGE(TAG, "%s: esp_transport_read failed, res=-0x%04x(%d): %s",
                 __func__, -rlen, rlen, err_desc.buf ? err_desc.buf : "");
             str_buf_free_buf(&err_desc);
@@ -455,7 +455,7 @@ static int ws_read_header(esp_transport_handle_t t, char *buffer, int len, int t
     int mask_len = 4;
     if ((rlen = esp_transport_read(ws->parent, data_ptr, header, timeout_ms)) <= 0) {
         if (rlen < 0) {
-            str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(rlen);
+            str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(esp_transport_translate_error(rlen));
             ESP_LOGE(TAG, "%s: esp_transport_read failed, res=-0x%04x(%d): %s",
                 __func__, -rlen, rlen, err_desc.buf ? err_desc.buf : "");
             str_buf_free_buf(&err_desc);
@@ -476,7 +476,7 @@ static int ws_read_header(esp_transport_handle_t t, char *buffer, int len, int t
         // headerLen += 2;
         if ((rlen = esp_transport_read(ws->parent, data_ptr, header, timeout_ms)) <= 0) {
             if (rlen < 0) {
-                str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(rlen);
+                str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(esp_transport_translate_error(rlen));
                 ESP_LOGE(TAG, "%s: esp_transport_read failed, res=-0x%04x(%d): %s",
                     __func__, -rlen, rlen, err_desc.buf ? err_desc.buf : "");
                 str_buf_free_buf(&err_desc);
@@ -491,7 +491,7 @@ static int ws_read_header(esp_transport_handle_t t, char *buffer, int len, int t
         header = 8;
         if ((rlen = esp_transport_read(ws->parent, data_ptr, header, timeout_ms)) <= 0) {
             if (rlen < 0) {
-                str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(rlen);
+                str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(esp_transport_translate_error(rlen));
                 ESP_LOGE(TAG, "%s: esp_transport_read failed, res=-0x%04x(%d): %s",
                     __func__, -rlen, rlen, err_desc.buf ? err_desc.buf : "");
                 str_buf_free_buf(&err_desc);
@@ -513,7 +513,7 @@ static int ws_read_header(esp_transport_handle_t t, char *buffer, int len, int t
         // Read and store mask
         if (payload_len != 0 && (rlen = esp_transport_read(ws->parent, buffer, mask_len, timeout_ms)) <= 0) {
             if (rlen < 0) {
-                str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(rlen);
+                str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(esp_transport_translate_error(rlen));
                 ESP_LOGE(TAG, "%s: esp_transport_read failed, res=-0x%04x(%d): %s",
                     __func__, -rlen, rlen, err_desc.buf ? err_desc.buf : "");
                 str_buf_free_buf(&err_desc);
