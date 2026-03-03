@@ -46,6 +46,7 @@ else()
                       lwip
                       spi_flash
                       wpa_supplicant
+                      tcp_transport
                       tcpip_adapter)
 
     idf_build_get_property(build_components BUILD_COMPONENTS)
