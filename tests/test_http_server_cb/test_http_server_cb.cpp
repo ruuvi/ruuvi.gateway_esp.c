@@ -810,12 +810,15 @@ http_download_with_auth(
 {
     if (0 == strcmp(p_param->base.p_url, "https://network.ruuvi.com/firmwareupdate"))
     {
+        // Request for json always performed from the beginning (partial content is not supported)
+        constexpr size_t range_start = 0;
         p_cb_on_data(
             (const uint8_t*)g_pTestClass->m_firmware_update_resp.buf,
             strlen(g_pTestClass->m_firmware_update_resp.buf),
             0,
             0,
             HTTP_RESP_CODE_200,
+            range_start,
             p_user_data);
         return http_server_resp_200_json_in_heap(g_pTestClass->m_firmware_update_resp.buf);
     }

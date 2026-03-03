@@ -7,6 +7,7 @@
 
 #include "http_download.h"
 #include <string.h>
+#include <inttypes.h>
 #include <esp_task_wdt.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -34,15 +35,32 @@ static const char TAG[] = "http_download";
 
 #define BASE_10 (10U)
 
+#define HTTP_RANGE_HEADER_MAX_LITERAL "bytes=4294967295-4294967295"
+#define HTTP_RANGE_HEADER_BUF_SIZE    (sizeof(HTTP_RANGE_HEADER_MAX_LITERAL))
+
+typedef struct http_download_range_header_t
+{
+    char buf[HTTP_RANGE_HEADER_BUF_SIZE];
+} http_download_range_header_t;
+
 typedef struct http_download_cb_info_t
 {
-    esp_http_client_handle_t   http_handle;
-    uint32_t                   content_length;
-    bool                       flag_feed_task_watchdog;
-    uint32_t                   offset;
-    http_download_cb_on_data_t cb_on_data;
-    void*                      p_user_data;
+    esp_http_client_handle_t     http_handle;
+    uint32_t                     content_length;
+    bool                         flag_feed_task_watchdog;
+    http_download_range_header_t range_header;
+    uint32_t                     range_start;
+    uint32_t                     offset;
+    http_download_cb_on_data_t   cb_on_data;
+    void*                        p_user_data;
 } http_download_cb_info_t;
+
+typedef struct http_download_range_info_t
+{
+    bool     is_range_used;
+    uint32_t range_start_u32;
+    uint32_t range_end_u32;
+} http_download_range_info_t;
 
 bool
 http_download_is_url_valid(const char* const p_url)
@@ -115,21 +133,23 @@ http_download_event_handler(esp_http_client_event_t* p_evt)
             LOG_DBG("HTTP_EVENT_ON_DATA, len=%d", p_evt->data_len);
             LOG_DUMP_VERBOSE(p_evt->data, p_evt->data_len, "<--:");
             http_feed_task_watchdog_if_needed(p_cb_info->flag_feed_task_watchdog);
+            const uint32_t offset = p_cb_info->offset;
+            p_cb_info->offset += p_evt->data_len;
             if (NULL != p_cb_info->cb_on_data)
             {
                 if (!p_cb_info->cb_on_data(
                         p_evt->data,
                         p_evt->data_len,
-                        p_cb_info->offset,
+                        offset,
                         p_cb_info->content_length,
                         (http_resp_code_e)esp_http_client_get_status_code(p_cb_info->http_handle),
+                        p_cb_info->range_start,
                         p_cb_info->p_user_data))
                 {
                     LOG_ERR("HTTP_EVENT_ON_DATA: cb_on_data failed");
                     return ESP_FAIL;
                 }
             }
-            p_cb_info->offset += p_evt->data_len;
             break;
 
         case HTTP_EVENT_ON_FINISH:
@@ -193,7 +213,7 @@ http_download_by_handle(
         NULL,
         flag_feed_task_watchdog,
         timeout_seconds);
-    LOG_DBG("http_wait_until_async_req_completed: finished");
+    LOG_DBG("http_wait_until_async_req_completed: finished, http_resp_code=%d", resp.http_resp_code);
 
 #if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
     const bool flag_is_in_memory = (HTTP_CONTENT_LOCATION_FLASH_MEM == resp.content_location)
@@ -306,6 +326,226 @@ http_client_init(
     return p_http_handle;
 }
 
+static bool
+http_download_check_if_range_used(
+    const size_t                      range_start,
+    const size_t                      range_end,
+    http_download_range_info_t* const p_range_info)
+{
+    if ((0 == range_start) && (0 == range_end))
+    {
+        p_range_info->is_range_used   = false;
+        p_range_info->range_start_u32 = 0;
+        p_range_info->range_end_u32   = 0;
+        return true;
+    }
+    // The max size of a firmware update cannot exceed UINT32_MAX.
+    if ((range_start > UINT32_MAX) || (range_end > UINT32_MAX) || ((0 != range_end) && (range_start > range_end)))
+    {
+        LOG_ERR("HTTP download/check: Invalid range: start=%zu, end=%zu", range_start, range_end);
+        return false;
+    }
+    LOG_INFO("HTTP download/check: Range: start=%zu, end=%zu", range_start, range_end);
+    p_range_info->is_range_used   = true;
+    p_range_info->range_start_u32 = (uint32_t)range_start;
+    p_range_info->range_end_u32   = (uint32_t)range_end;
+    return true;
+}
+
+bool
+http_download_set_range_header_if_needed(
+    http_download_cb_info_t* const          p_cb_info,
+    const http_download_range_info_t* const p_range_info)
+{
+    if (p_range_info->is_range_used)
+    {
+        if (0 == p_range_info->range_end_u32)
+        {
+            snprintf(
+                p_cb_info->range_header.buf,
+                sizeof(p_cb_info->range_header.buf),
+                "bytes=%" PRIu32 "-",
+                p_range_info->range_start_u32);
+        }
+        else
+        {
+            snprintf(
+                p_cb_info->range_header.buf,
+                sizeof(p_cb_info->range_header.buf),
+                "bytes=%" PRIu32 "-%" PRIu32,
+                p_range_info->range_start_u32,
+                p_range_info->range_end_u32);
+        }
+        const esp_err_t err = esp_http_client_set_header(p_cb_info->http_handle, "Range", p_cb_info->range_header.buf);
+        if (ESP_OK != err)
+        {
+            LOG_ERR("%s failed", "esp_http_client_set_header");
+            return false;
+        }
+    }
+    return true;
+}
+
+static http_server_resp_t
+http_download_or_check_stage_5(
+    esp_http_client_handle_t const http_handle,
+    const bool                     flag_feed_task_watchdog,
+    const TimeUnitsSeconds_t       timeout_seconds)
+{
+    LOG_DBG("Call http_download_by_handle");
+    const http_server_resp_t resp = http_download_by_handle(http_handle, flag_feed_task_watchdog, timeout_seconds);
+
+#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
+    const bool flag_is_in_memory = (HTTP_CONTENT_LOCATION_FLASH_MEM == resp.content_location)
+                                   || (HTTP_CONTENT_LOCATION_STATIC_MEM == resp.content_location)
+                                   || (HTTP_CONTENT_LOCATION_HEAP == resp.content_location);
+    const char* p_json = (flag_is_in_memory && (NULL != resp.select_location.memory.p_buf))
+                             ? (const char*)resp.select_location.memory.p_buf
+                             : NULL;
+    LOG_DBG("Resp: resp_code=%d, content: %s", resp.http_resp_code, (NULL != p_json) ? p_json : "<NULL>");
+#endif
+
+    return resp;
+}
+
+static http_server_resp_t
+http_download_or_check_stage_4(
+    const http_download_param_with_auth_t* const p_param,
+    http_download_cb_info_t* const               p_cb_info,
+    const esp_http_client_config_t* const        p_http_config,
+    const http_download_range_info_t* const      p_range_info)
+{
+    p_cb_info->http_handle = http_client_init(p_param, p_http_config);
+    if (NULL == p_cb_info->http_handle)
+    {
+        LOG_ERR("Can't init http client");
+        return http_server_resp_500();
+    }
+    if (!http_download_set_range_header_if_needed(p_cb_info, p_range_info))
+    {
+        return http_server_resp_500();
+    }
+
+    const http_server_resp_t resp = http_download_or_check_stage_5(
+        p_cb_info->http_handle,
+        p_param->base.flag_feed_task_watchdog,
+        p_param->base.timeout_seconds);
+
+    LOG_DBG("Call esp_http_client_cleanup");
+    const esp_err_t err = esp_http_client_cleanup(p_cb_info->http_handle);
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "esp_http_client_cleanup failed");
+    }
+    p_cb_info->http_handle = NULL;
+
+    return resp;
+}
+
+static http_server_resp_t
+http_download_or_check_stage_3(
+    const esp_http_client_method_t               http_method,
+    const http_download_param_with_auth_t* const p_param,
+    const ruuvi_gw_cfg_http_auth_basic_t* const  p_auth_basic,
+    const http_async_info_t* const               p_http_async_info,
+    http_download_cb_info_t* const               p_cb_info,
+    const http_download_range_info_t* const      p_range_info)
+{
+    esp_http_client_config_t* p_http_config = http_download_create_config(
+        &p_param->base,
+        http_method,
+        p_auth_basic,
+        &http_download_event_handler,
+        p_cb_info,
+        p_http_async_info->in_buf,
+        p_http_async_info->out_buf);
+    if (NULL == p_http_config)
+    {
+        LOG_ERR("Can't allocate memory for http_config");
+        return http_server_resp_500();
+    }
+
+    const http_server_resp_t resp = http_download_or_check_stage_4(p_param, p_cb_info, p_http_config, p_range_info);
+
+    os_free(p_http_config);
+
+    return resp;
+}
+
+static http_server_resp_t
+http_download_or_check_stage_2(
+    const esp_http_client_method_t               http_method,
+    const http_download_param_with_auth_t* const p_param,
+    http_download_cb_on_data_t const             p_cb_on_data,
+    void* const                                  p_user_data,
+    const ruuvi_gw_cfg_http_auth_basic_t* const  p_auth_basic,
+    const http_async_info_t* const               p_http_async_info,
+    const http_download_range_info_t* const      p_range_info)
+{
+    http_download_cb_info_t* p_cb_info = os_calloc(1, sizeof(*p_cb_info));
+    if (NULL == p_cb_info)
+    {
+        LOG_ERR("Can't allocate memory");
+        return http_server_resp_500();
+    }
+
+    p_cb_info->cb_on_data              = p_cb_on_data;
+    p_cb_info->p_user_data             = p_user_data;
+    p_cb_info->http_handle             = NULL;
+    p_cb_info->content_length          = 0;
+    p_cb_info->range_start             = p_range_info->is_range_used ? p_range_info->range_start_u32 : 0;
+    p_cb_info->offset                  = 0;
+    p_cb_info->flag_feed_task_watchdog = p_param->base.flag_feed_task_watchdog;
+
+    const http_server_resp_t resp = http_download_or_check_stage_3(
+        http_method,
+        p_param,
+        p_auth_basic,
+        p_http_async_info,
+        p_cb_info,
+        p_range_info);
+
+    os_free(p_cb_info);
+
+    return resp;
+}
+
+static http_server_resp_t
+http_download_or_check_stage_1(
+    const esp_http_client_method_t               http_method,
+    const http_download_param_with_auth_t* const p_param,
+    http_download_cb_on_data_t const             p_cb_on_data,
+    void* const                                  p_user_data,
+    const ruuvi_gw_cfg_http_auth_basic_t* const  p_auth_basic,
+    const http_download_range_info_t* const      p_range_info)
+{
+    http_async_info_t* const p_http_async_info = http_get_async_info();
+
+    LOG_DBG("os_sema_wait_immediate: p_http_async_sema");
+    if (!os_sema_wait_immediate(p_http_async_info->p_http_async_sema))
+    {
+        /* Because the amount of memory is limited and may not be sufficient for two simultaneous queries,
+         * this function should only be called from a single thread. */
+        LOG_ERR("This function is called twice from two different threads, which can lead to memory shortages");
+        assert(0);
+        return http_server_resp_500();
+    }
+    p_http_async_info->p_task = xTaskGetCurrentTaskHandle();
+
+    const http_server_resp_t resp = http_download_or_check_stage_2(
+        http_method,
+        p_param,
+        p_cb_on_data,
+        p_user_data,
+        p_auth_basic,
+        p_http_async_info,
+        p_range_info);
+
+    os_sema_signal(p_http_async_info->p_http_async_sema);
+
+    return resp;
+}
+
 static http_server_resp_t
 http_download_or_check(
     const esp_http_client_method_t               http_method,
@@ -314,6 +554,15 @@ http_download_or_check(
     void* const                                  p_user_data)
 {
     LOG_INFO("HTTP download/check: Method=%s, URL: '%s'", http_client_method_to_str(http_method), p_param->base.p_url);
+    http_download_range_info_t range_info = {
+        .is_range_used   = false,
+        .range_start_u32 = 0,
+        .range_end_u32   = 0,
+    };
+    if (!http_download_check_if_range_used(p_param->base.range_start, p_param->base.range_end, &range_info))
+    {
+        return http_server_resp_400();
+    }
 
     if (!http_download_is_url_valid(p_param->base.p_url))
     {
@@ -342,92 +591,15 @@ http_download_or_check(
         p_auth_basic = &p_param->p_http_auth->auth_basic;
     }
 
-    http_download_cb_info_t* p_cb_info = os_calloc(1, sizeof(*p_cb_info));
-    if (NULL == p_cb_info)
-    {
-        LOG_ERR("Can't allocate memory");
-        return http_server_resp_500();
-    }
-    p_cb_info->cb_on_data              = p_cb_on_data;
-    p_cb_info->p_user_data             = p_user_data;
-    p_cb_info->http_handle             = NULL;
-    p_cb_info->content_length          = 0;
-    p_cb_info->offset                  = 0;
-    p_cb_info->flag_feed_task_watchdog = p_param->base.flag_feed_task_watchdog;
+    const bool flag_wait_relaying_completed = true;
 
     LOG_DBG("suspend_http_relaying and wait");
-    const bool flag_wait_relaying_completed = true;
     gw_status_suspend_http_relaying(flag_wait_relaying_completed);
     LOG_DBG("suspend_relaying_and_wait: finished");
 
-    http_async_info_t* const p_http_async_info = http_get_async_info();
-    LOG_DBG("os_sema_wait_immediate: p_http_async_sema");
-    if (!os_sema_wait_immediate(p_http_async_info->p_http_async_sema))
-    {
-        /* Because the amount of memory is limited and may not be sufficient for two simultaneous queries,
-         * this function should only be called from a single thread. */
-        LOG_ERR("This function is called twice from two different threads, which can lead to memory shortages");
-        assert(0);
-    }
-    p_http_async_info->p_task = xTaskGetCurrentTaskHandle();
+    const http_server_resp_t resp
+        = http_download_or_check_stage_1(http_method, p_param, p_cb_on_data, p_user_data, p_auth_basic, &range_info);
 
-    esp_http_client_config_t* p_http_config = http_download_create_config(
-        &p_param->base,
-        http_method,
-        p_auth_basic,
-        &http_download_event_handler,
-        p_cb_info,
-        p_http_async_info->in_buf,
-        p_http_async_info->out_buf);
-    if (NULL == p_http_config)
-    {
-        LOG_ERR("Can't allocate memory for http_config");
-        os_free(p_cb_info);
-        os_sema_signal(p_http_async_info->p_http_async_sema);
-        LOG_DBG("resume_http_relaying and wait");
-        gw_status_resume_http_relaying(flag_wait_relaying_completed);
-        LOG_DBG("resume_http_relaying: finished");
-        return http_server_resp_500();
-    }
-
-    p_cb_info->http_handle = http_client_init(p_param, p_http_config);
-    if (NULL == p_cb_info->http_handle)
-    {
-        os_free(p_http_config);
-        os_free(p_cb_info);
-        os_sema_signal(p_http_async_info->p_http_async_sema);
-        LOG_DBG("resume_http_relaying and wait");
-        gw_status_resume_http_relaying(flag_wait_relaying_completed);
-        LOG_DBG("resume_http_relaying: finished");
-        return http_server_resp_500();
-    }
-
-    LOG_DBG("Call http_download_by_handle");
-    http_server_resp_t resp = http_download_by_handle(
-        p_cb_info->http_handle,
-        p_param->base.flag_feed_task_watchdog,
-        p_param->base.timeout_seconds);
-
-#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
-    const bool flag_is_in_memory = (HTTP_CONTENT_LOCATION_FLASH_MEM == resp.content_location)
-                                   || (HTTP_CONTENT_LOCATION_STATIC_MEM == resp.content_location)
-                                   || (HTTP_CONTENT_LOCATION_HEAP == resp.content_location);
-    const char* p_json = (flag_is_in_memory && (NULL != resp.select_location.memory.p_buf))
-                             ? (const char*)resp.select_location.memory.p_buf
-                             : NULL;
-    LOG_DBG("Resp: resp_code=%d, content: %s", resp.http_resp_code, (NULL != p_json) ? p_json : "<NULL>");
-#endif
-
-    LOG_DBG("Call esp_http_client_cleanup");
-    const esp_err_t err = esp_http_client_cleanup(p_cb_info->http_handle);
-    if (ESP_OK != err)
-    {
-        LOG_ERR_ESP(err, "esp_http_client_cleanup failed");
-    }
-
-    os_free(p_http_config);
-    os_free(p_cb_info);
-    os_sema_signal(p_http_async_info->p_http_async_sema);
     LOG_DBG("resume_http_relaying and wait");
     gw_status_resume_http_relaying(flag_wait_relaying_completed);
     LOG_DBG("resume_http_relaying: finished");
@@ -462,14 +634,23 @@ bool
 http_download(
     const http_download_param_with_auth_t* const p_param,
     http_download_cb_on_data_t const             p_cb_on_data,
-    void* const                                  p_user_data)
+    void* const                                  p_user_data,
+    bool* const                                  p_flag_allow_retry)
 {
     http_server_resp_t resp = http_download_with_auth(p_param, p_cb_on_data, p_user_data);
     if ((HTTP_CONTENT_LOCATION_HEAP == resp.content_location) && (NULL != resp.select_location.memory.p_buf))
     {
         os_free(resp.select_location.memory.p_buf);
     }
-    return (HTTP_RESP_CODE_200 == resp.http_resp_code) ? true : false;
+    if (NULL != p_flag_allow_retry)
+    {
+        *p_flag_allow_retry = (HTTP_RESP_CODE_502 == resp.http_resp_code) ? true : false;
+    }
+    const bool is_range_used = (0 != p_param->base.range_start) || (0 != p_param->base.range_end);
+    return ((HTTP_RESP_CODE_200 == resp.http_resp_code)
+            || (is_range_used && (HTTP_RESP_CODE_206 == resp.http_resp_code)))
+               ? true
+               : false;
 }
 
 static bool
@@ -479,8 +660,10 @@ cb_on_http_download_json_data(
     const size_t           offset,
     const size_t           content_length,
     const http_resp_code_e http_resp_code,
+    const size_t           range_start,
     void*                  p_user_data)
 {
+    (void)range_start;
     LOG_INFO("%s: buf_size=%lu", __func__, (printf_ulong_t)buf_size);
 
     http_server_download_info_t* const p_info = p_user_data;
