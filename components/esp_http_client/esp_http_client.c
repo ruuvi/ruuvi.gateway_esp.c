@@ -916,7 +916,9 @@ static int esp_http_client_get_data(esp_http_client_handle_t client)
     if (rlen > 0) {
         http_parser_execute(client->parser, client->parser_settings, res_buffer->data, rlen);
     }
-    if (rlen < 0) {
+    if (ERR_TCP_TRANSPORT_CONNECTION_CLOSED_BY_FIN == rlen) {
+        ESP_LOGW(TAG, "%s: esp_transport_read: connection closed by peer (FIN)", __func__);
+    } else if (rlen < 0) {
         str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(esp_transport_translate_error(rlen));
         ESP_LOGE(TAG, "%s: esp_transport_read failed, res=-0x%04x(%d): %s",
             __func__, -rlen, rlen, (NULL != err_desc.buf) ? err_desc.buf : "");
@@ -1178,7 +1180,7 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                                 return ESP_ERR_HTTP_EAGAIN;
                             }
                             ESP_LOGD(TAG, "Read finish or server requests close");
-                            if (rlen < 0) {
+                            if ((0 != rlen) && (ERR_TCP_TRANSPORT_CONNECTION_CLOSED_BY_FIN != rlen)) {
                                 ESP_LOGE(TAG, "%s: esp_http_client_get_data failed, res=-0x%04x(%d)",
                                     __func__, -rlen, rlen);
                                 flag_error = true;
@@ -1194,7 +1196,7 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                                 return ESP_ERR_HTTP_EAGAIN;
                             }
                             ESP_LOGD(TAG, "Read finish or server requests close");
-                            if (rlen < 0) {
+                            if ((0 != rlen) && (ERR_TCP_TRANSPORT_CONNECTION_CLOSED_BY_FIN != rlen)) {
                                 ESP_LOGE(TAG, "%s: esp_http_client_get_data failed, res=-0x%04x(%d)",
                                     __func__, -rlen, rlen);
                                 flag_error = true;
