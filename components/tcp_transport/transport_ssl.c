@@ -1082,7 +1082,7 @@ bool esp_transport_ssl_set_buffer(esp_transport_handle_t t, const esp_transport_
     if (p_buf_cfg->ssl_out_buf_len < MBEDTLS_SSL_OUT_BUFFER_LEN_CALC(p_buf_cfg->ssl_out_content_len)) {
         ESP_TRANSPORT_LOGE_FUNC("ssl_out_buf_len=%zu is too small, must be at least %zu",
                                 p_buf_cfg->ssl_out_buf_len,
-                                MBEDTLS_SSL_IN_BUFFER_LEN_CALC(p_buf_cfg->ssl_out_content_len));
+                                MBEDTLS_SSL_OUT_BUFFER_LEN_CALC(p_buf_cfg->ssl_out_content_len));
         return false;
     }
 #else
