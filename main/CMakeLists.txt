@@ -190,6 +190,8 @@ idf_component_register(
         time_str.h
         time_task.c
         time_task.h
+        tls_shared_buf.c
+        tls_shared_buf.h
         url_encode.c
         url_encode.h
         validate_url.c

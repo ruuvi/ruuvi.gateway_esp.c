@@ -6,6 +6,7 @@
 #ifndef _ESP_TLS_H_
 #define _ESP_TLS_H_
 
+#include <stdint.h>
 #include <stdbool.h>
 #include "esp_err.h"
 #include "esp_tls_errors.h"
@@ -200,7 +201,7 @@ typedef struct esp_tls_cfg {
 
     uint8_t *p_ssl_in_buf;                  /*!< Pre-allocated buffer for incoming content. Can be NULL */
     uint8_t *p_ssl_out_buf;                 /*!< Pre-allocated buffer for outgoing content. Can be NULL */
-#if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
+#if CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH
     size_t ssl_in_content_len;             /*!< Maximum incoming fragment length in bytes (default MBEDTLS_SSL_IN_CONTENT_LEN) */
     size_t ssl_out_content_len;            /*!< Maximum outgoing fragment length in bytes (default MBEDTLS_SSL_OUT_CONTENT_LEN) */
 #endif

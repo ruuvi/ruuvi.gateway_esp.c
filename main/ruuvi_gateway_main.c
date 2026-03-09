@@ -43,6 +43,7 @@
 #include "network_subsystem.h"
 #include "gw_cfg_storage.h"
 #include "esp_transport_ssl.h"
+#include "tls_shared_buf.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "http_parser.h"
@@ -535,6 +536,7 @@ main_task_init(void)
         ruuvi_nvs_init();
     }
 
+    tls_shared_buf_init();
     esp_tls_set_mode_mandatory_pre_allocated_in_out_buf();
     esp_transport_ssl_init_saved_tickets_storage();
 

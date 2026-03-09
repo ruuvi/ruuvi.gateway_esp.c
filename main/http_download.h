@@ -62,7 +62,8 @@ http_server_resp_t
 http_download_with_auth(
     const http_download_param_with_auth_t* const p_param,
     http_download_cb_on_data_t const             p_cb_on_data,
-    void* const                                  p_user_data);
+    void* const                                  p_user_data,
+    const bool                                   flag_use_big_tls_buf);
 
 bool
 http_check_with_auth(const http_download_param_with_auth_t* const p_param, http_resp_code_e* const p_http_resp_code);

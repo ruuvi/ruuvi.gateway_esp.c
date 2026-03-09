@@ -94,6 +94,13 @@ add_executable(${ProjectId}
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoint_e1.h
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoints.c
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src/ruuvi_endpoints.h
+        ${COMPONENTS}/esp_common/src/esp_err_to_name.c
+        ${COMPONENTS}/mbedtls/mbedtls/library/md5.c
+        ${COMPONENTS}/mbedtls/mbedtls/include/mbedtls/md5.h
+        ${COMPONENTS}/mbedtls/mbedtls/library/sha256.c
+        ${COMPONENTS}/mbedtls/mbedtls/include/mbedtls/sha256.h
+        ${COMPONENTS}/mbedtls/mbedtls/library/platform_util.c
+        ${COMPONENTS}/mbedtls/mbedtls/include/mbedtls/platform_util.h
         ${RUUVI_JSON_STREAM_GEN_SRC}/json_stream_gen.c
         ${RUUVI_JSON_STREAM_GEN_INC}/json_stream_gen.h
         ${RUUVI_ESP_WRAPPERS_INC}/log.h
@@ -124,17 +131,10 @@ add_executable(${ProjectId}
         ${WIFI_MANAGER_SRC}/include/wifiman_md5.h
         ${WIFI_MANAGER_SRC}/wifi_manager_default_config.c
         ${WIFI_MANAGER_INC}/wifi_manager.h
-        $ENV{IDF_PATH}/components/esp_common/src/esp_err_to_name.c
         $ENV{IDF_PATH}/components/lwip/lwip/src/core/ipv4/ip4_addr.c
         $ENV{IDF_PATH}/components/lwip/lwip/src/core/def.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.h
-        $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/md5.c
-        $ENV{IDF_PATH}/components/mbedtls/mbedtls/include/mbedtls/md5.h
-        $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/sha256.c
-        $ENV{IDF_PATH}/components/mbedtls/mbedtls/include/mbedtls/sha256.h
-        $ENV{IDF_PATH}/components/mbedtls/mbedtls/library/platform_util.c
-        $ENV{IDF_PATH}/components/mbedtls/mbedtls/include/mbedtls/platform_util.h
         $ENV{IDF_PATH}/components/nghttp/nghttp2/third-party/http-parser/http_parser.c
         $ENV{IDF_PATH}/components/nghttp/nghttp2/third-party/http-parser/http_parser.h
 )
@@ -152,20 +152,22 @@ target_include_directories(${ProjectId} PUBLIC
         ${COMPONENTS}/bootloader_support/include
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src
         ${COMPONENTS}/esp_http_client/include
+        ${COMPONENTS}/esp32-wifi-manager/src
+        ${COMPONENTS}/mbedtls/mbedtls/include
+        ${COMPONENTS}/tcp_transport/include
+        ${COMPONENTS}/esp-tls
+        ${COMPONENTS}/esp32-wifi-manager/src/include
         $ENV{IDF_PATH}/components/json/cJSON
         $ENV{IDF_PATH}/components/esp_wifi/include
         $ENV{IDF_PATH}/components/tcpip_adapter/include
-        $ENV{IDF_PATH}/components/esp_common/include
         $ENV{IDF_PATH}/components/esp_event/include
         $ENV{IDF_PATH}/components/lwip/include/apps
-        $ENV{IDF_PATH}/components/mbedtls/mbedtls/include
         $ENV{IDF_PATH}/components/app_update/include
         $ENV{IDF_PATH}/components/spi_flash/include
         $ENV{IDF_PATH}/components/soc/include
         $ENV{IDF_PATH}/components/nghttp/port/include
+        $ENV{IDF_PATH}/components/esp_common/include
         ${CMAKE_CURRENT_SOURCE_DIR}
-        ../../components/esp32-wifi-manager/src/include
-        ../../components/esp32-wifi-manager/src
         ../lwip/extra
         ../lwip/lwip/src/include
         ../lwip/lwip/contrib/ports/unix/lib
