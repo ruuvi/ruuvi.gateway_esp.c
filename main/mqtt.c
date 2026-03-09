@@ -594,14 +594,9 @@ mqtt_app_start_internal2(const esp_mqtt_client_config_t* const p_mqtt_cfg, mqtt_
         return false;
     }
 
-    LOG_DBG("%s: tls_shared_buf_get_mqtts", __func__);
-    p_mqtt_data->p_tls_shared_buf_mqtts = tls_shared_buf_get_mqtts();
-
     const esp_err_t err = esp_mqtt_client_start(p_mqtt_data->p_mqtt_client);
     if (ESP_OK != err)
     {
-        LOG_DBG("%s: tls_shared_buf_unlock_mqtts", __func__);
-        tls_shared_buf_unlock_mqtts(&p_mqtt_data->p_tls_shared_buf_mqtts);
         esp_mqtt_client_destroy(p_mqtt_data->p_mqtt_client);
         p_mqtt_data->p_mqtt_client = NULL;
         return false;
@@ -638,12 +633,25 @@ mqtt_app_start_internal(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg_m
             p_mqtt_cfg->mqtt_user.buf,
             "******");
         gw_status_set_mqtt_error(MQTT_ERROR_CONNECT);
+        str_buf_free_buf(&p_mqtt_data->str_buf_server_cert_mqtt);
+        str_buf_free_buf(&p_mqtt_data->str_buf_client_cert);
+        str_buf_free_buf(&p_mqtt_data->str_buf_client_key);
         return false;
     }
+
+    LOG_DBG("%s: tls_shared_buf_get_mqtts", __func__);
+    p_mqtt_data->p_tls_shared_buf_mqtts = tls_shared_buf_get_mqtts();
+
     const esp_mqtt_client_config_t* p_mqtt_cli_cfg = mqtt_create_client_config(p_mqtt_data, p_mqtt_cfg);
-    if (NULL == p_mqtt_cfg)
+    if (NULL == p_mqtt_cli_cfg)
     {
         LOG_ERR("Can't create MQTT client config");
+        gw_status_set_mqtt_error(MQTT_ERROR_CONNECT);
+        LOG_DBG("%s: tls_shared_buf_unlock_mqtts", __func__);
+        tls_shared_buf_unlock_mqtts(&p_mqtt_data->p_tls_shared_buf_mqtts);
+        str_buf_free_buf(&p_mqtt_data->str_buf_server_cert_mqtt);
+        str_buf_free_buf(&p_mqtt_data->str_buf_client_cert);
+        str_buf_free_buf(&p_mqtt_data->str_buf_client_key);
         return false;
     }
 
@@ -651,6 +659,15 @@ mqtt_app_start_internal(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg_m
     if (is_success)
     {
         gw_status_set_mqtt_started();
+    }
+    else
+    {
+        gw_status_set_mqtt_error(MQTT_ERROR_CONNECT);
+        LOG_DBG("%s: tls_shared_buf_unlock_mqtts", __func__);
+        tls_shared_buf_unlock_mqtts(&p_mqtt_data->p_tls_shared_buf_mqtts);
+        str_buf_free_buf(&p_mqtt_data->str_buf_server_cert_mqtt);
+        str_buf_free_buf(&p_mqtt_data->str_buf_client_cert);
+        str_buf_free_buf(&p_mqtt_data->str_buf_client_key);
     }
     os_free(p_mqtt_cli_cfg);
     return is_success;
