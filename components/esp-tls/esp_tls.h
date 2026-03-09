@@ -6,6 +6,7 @@
 #ifndef _ESP_TLS_H_
 #define _ESP_TLS_H_
 
+#include <stdint.h>
 #include <stdbool.h>
 #include "esp_err.h"
 #include "esp_tls_errors.h"

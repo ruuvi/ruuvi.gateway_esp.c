@@ -18,7 +18,9 @@
 #include "gw_status.h"
 #include "os_str.h"
 #include "http_server_resp.h"
+#if (!RUUVI_TESTS_HTTP_SERVER_CB)
 #include "tls_shared_buf.h"
+#endif
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG

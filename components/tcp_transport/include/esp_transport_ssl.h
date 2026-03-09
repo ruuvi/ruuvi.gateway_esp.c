@@ -8,6 +8,7 @@
 #define _ESP_TRANSPORT_SSL_H_
 
 #include <stdint.h>
+#include "mbedtls/ssl.h"
 #include "esp_transport.h"
 #include "esp_tls.h"
 

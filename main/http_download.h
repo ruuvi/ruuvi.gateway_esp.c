@@ -15,7 +15,6 @@
 #include "wifi_manager_defs.h"
 #include "gw_cfg.h"
 #include "http.h"
-#include "tls_shared_buf.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -18,7 +18,9 @@
 #include "time_units.h"
 #include "gw_cfg.h"
 #include "hmac_sha256.h"
+#if !defined(RUUVI_TESTS)
 #include "tls_shared_buf.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,6 +31,10 @@ extern "C" {
 #define HTTP_DOWNLOAD_FW_BINARIES_TIMEOUT_SECONDS          (5 * TIME_UNITS_SECONDS_PER_MINUTE)
 #define HTTP_DOWNLOAD_CHECK_MQTT_TIMEOUT_SECONDS           (30)
 #define HTTP_DOWNLOAD_NETWORK_RECONNECTION_TIMEOUT_SECONDS (15)
+
+#if defined(RUUVI_TESTS) && RUUVI_TESTS
+typedef struct tls_shared_buf_https_post_t tls_shared_buf_https_post_t;
+#endif
 
 typedef struct http_client_config_t
 {
