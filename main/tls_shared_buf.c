@@ -104,6 +104,7 @@ tls_shared_buf_get_https_download(void)
     if (!os_mutex_try_lock(g_p_tls_shared_buf_mutex_mqtts))
     {
         LOG_ERR("Failed to lock mqtts mutex");
+        os_mutex_unlock(g_p_tls_shared_buf_mutex_https_post);
         assert(0);
         return NULL;
     }
