@@ -564,20 +564,29 @@ mqtt_create_client_config(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg
         p_mqtt_data->str_buf_client_cert.buf ? p_mqtt_data->str_buf_client_cert.buf : "NULL");
     LOG_DBG("client_key_mqtt: %s", p_mqtt_data->str_buf_client_key.buf ? p_mqtt_data->str_buf_client_key.buf : "NULL");
 
-    const mqtt_client_config_params_t cfg_params = {
+    mqtt_client_config_params_t cfg_params = {
         .p_mqtt_topic      = p_mqtt_data->mqtt_disable_retained_messages ? NULL : &p_mqtt_data->mqtt_topic,
         .p_lwt_message     = p_mqtt_data->mqtt_disable_retained_messages ? NULL : p_lwt_message,
         .p_cert_pem        = p_mqtt_data->str_buf_server_cert_mqtt.buf,
         .p_client_cert_pem = p_mqtt_data->str_buf_client_cert.buf,
         .p_client_key_pem  = p_mqtt_data->str_buf_client_key.buf,
 
-        .ssl_buf_cfg.p_ssl_in_buf        = p_mqtt_data->p_tls_shared_buf_mqtts->in_buf,
-        .ssl_buf_cfg.ssl_in_buf_len      = sizeof(p_mqtt_data->p_tls_shared_buf_mqtts->in_buf),
-        .ssl_buf_cfg.ssl_in_content_len  = RUUVI_MQTT_TLS_IN_CONTENT_LEN,
-        .ssl_buf_cfg.p_ssl_out_buf       = p_mqtt_data->p_tls_shared_buf_mqtts->out_buf,
-        .ssl_buf_cfg.ssl_out_buf_len     = sizeof(p_mqtt_data->p_tls_shared_buf_mqtts->out_buf),
-        .ssl_buf_cfg.ssl_out_content_len = RUUVI_MQTT_TLS_OUT_CONTENT_LEN,
+        .ssl_buf_cfg.p_ssl_in_buf        = NULL,
+        .ssl_buf_cfg.ssl_in_buf_len      = 0,
+        .ssl_buf_cfg.ssl_in_content_len  = 0,
+        .ssl_buf_cfg.p_ssl_out_buf       = NULL,
+        .ssl_buf_cfg.ssl_out_buf_len     = 0,
+        .ssl_buf_cfg.ssl_out_content_len = 0,
     };
+    if (NULL != p_mqtt_data->p_tls_shared_buf_mqtts)
+    {
+        cfg_params.ssl_buf_cfg.p_ssl_in_buf        = p_mqtt_data->p_tls_shared_buf_mqtts->in_buf;
+        cfg_params.ssl_buf_cfg.ssl_in_buf_len      = sizeof(p_mqtt_data->p_tls_shared_buf_mqtts->in_buf);
+        cfg_params.ssl_buf_cfg.ssl_in_content_len  = RUUVI_MQTT_TLS_IN_CONTENT_LEN;
+        cfg_params.ssl_buf_cfg.p_ssl_out_buf       = p_mqtt_data->p_tls_shared_buf_mqtts->out_buf;
+        cfg_params.ssl_buf_cfg.ssl_out_buf_len     = sizeof(p_mqtt_data->p_tls_shared_buf_mqtts->out_buf);
+        cfg_params.ssl_buf_cfg.ssl_out_content_len = RUUVI_MQTT_TLS_OUT_CONTENT_LEN;
+    }
 
     mqtt_generate_client_config(p_cli_cfg, p_mqtt_cfg, &cfg_params, p_mqtt_data);
 
@@ -639,16 +648,26 @@ mqtt_app_start_internal(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg_m
         return false;
     }
 
-    LOG_DBG("%s: tls_shared_buf_get_mqtts", __func__);
-    p_mqtt_data->p_tls_shared_buf_mqtts = tls_shared_buf_get_mqtts();
+    if (gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss())
+    {
+        LOG_DBG("%s: tls_shared_buf_get_mqtts", __func__);
+        p_mqtt_data->p_tls_shared_buf_mqtts = tls_shared_buf_get_mqtts();
+    }
+    else
+    {
+        p_mqtt_data->p_tls_shared_buf_mqtts = NULL;
+    }
 
     const esp_mqtt_client_config_t* p_mqtt_cli_cfg = mqtt_create_client_config(p_mqtt_data, p_mqtt_cfg);
     if (NULL == p_mqtt_cli_cfg)
     {
         LOG_ERR("Can't create MQTT client config");
         gw_status_set_mqtt_error(MQTT_ERROR_CONNECT);
-        LOG_DBG("%s: tls_shared_buf_unlock_mqtts", __func__);
-        tls_shared_buf_unlock_mqtts(&p_mqtt_data->p_tls_shared_buf_mqtts);
+        if (NULL != p_mqtt_data->p_tls_shared_buf_mqtts)
+        {
+            LOG_DBG("%s: tls_shared_buf_unlock_mqtts", __func__);
+            tls_shared_buf_unlock_mqtts(&p_mqtt_data->p_tls_shared_buf_mqtts);
+        }
         str_buf_free_buf(&p_mqtt_data->str_buf_server_cert_mqtt);
         str_buf_free_buf(&p_mqtt_data->str_buf_client_cert);
         str_buf_free_buf(&p_mqtt_data->str_buf_client_key);
@@ -663,8 +682,11 @@ mqtt_app_start_internal(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg_m
     else
     {
         gw_status_set_mqtt_error(MQTT_ERROR_CONNECT);
-        LOG_DBG("%s: tls_shared_buf_unlock_mqtts", __func__);
-        tls_shared_buf_unlock_mqtts(&p_mqtt_data->p_tls_shared_buf_mqtts);
+        if (NULL != p_mqtt_data->p_tls_shared_buf_mqtts)
+        {
+            LOG_DBG("%s: tls_shared_buf_unlock_mqtts", __func__);
+            tls_shared_buf_unlock_mqtts(&p_mqtt_data->p_tls_shared_buf_mqtts);
+        }
         str_buf_free_buf(&p_mqtt_data->str_buf_server_cert_mqtt);
         str_buf_free_buf(&p_mqtt_data->str_buf_client_cert);
         str_buf_free_buf(&p_mqtt_data->str_buf_client_key);
@@ -745,8 +767,11 @@ mqtt_app_stop(void)
             esp_task_wdt_add(xTaskGetCurrentTaskHandle());
         }
 
-        LOG_DBG("%s: tls_shared_buf_unlock_mqtts", __func__);
-        tls_shared_buf_unlock_mqtts(&p_mqtt_data->p_tls_shared_buf_mqtts);
+        if (NULL != p_mqtt_data->p_tls_shared_buf_mqtts)
+        {
+            LOG_DBG("%s: tls_shared_buf_unlock_mqtts", __func__);
+            tls_shared_buf_unlock_mqtts(&p_mqtt_data->p_tls_shared_buf_mqtts);
+        }
 
         p_mqtt_data->p_mqtt_client = NULL;
     }
