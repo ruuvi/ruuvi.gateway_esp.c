@@ -18,6 +18,7 @@
 #include "time_units.h"
 #include "gw_cfg.h"
 #include "hmac_sha256.h"
+#include "tls_shared_buf.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -63,14 +64,11 @@ typedef struct http_async_info_t
         cjson_wrap_str_t   cjson_str;
         json_stream_gen_t* p_gen;
     } select;
-    hmac_sha256_t         hmac_sha256;
-    http_post_recipient_e recipient;
-    os_task_handle_t      p_task;
-    http_resp_cb_info_t   http_resp_cb_info;
-#if !defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
-    uint8_t* in_buf;
-    uint8_t* out_buf;
-#endif
+    hmac_sha256_t                hmac_sha256;
+    http_post_recipient_e        recipient;
+    os_task_handle_t             p_task;
+    http_resp_cb_info_t          http_resp_cb_info;
+    tls_shared_buf_https_post_t* p_tls_shared_buf;
 } http_async_info_t;
 
 typedef struct http_header_item_t
@@ -97,23 +95,7 @@ typedef struct http_init_client_config_params_t
     const char* const                         p_server_cert;
     const char* const                         p_client_cert;
     const char* const                         p_client_key;
-
-    uint8_t* const p_ssl_in_buf;  /*!< Pre-allocated buffer for incoming data. It can be NULL.
-                                       The size of the buffer must be:
-                                       - @c MBEDTLS_SSL_IN_BUFFER_LEN
-                                         if CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is disabled
-                                       - @c MBEDTLS_SSL_IN_BUFFER_LEN_CALC(ssl_in_content_len)
-                                         if CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is enabled */
-    uint8_t* const p_ssl_out_buf; /*!< Pre-allocated buffer for outgoing data. It can be NULL.
-                                       The size of the buffer must be:
-                                       - @c MBEDTLS_SSL_OUT_BUFFER_LEN
-                                         if CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is disabled
-                                       - @c MBEDTLS_SSL_OUT_BUFFER_LEN_CALC(ssl_in_content_len)
-                                         if CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is enabled */
-#if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
-    const size_t ssl_in_content_len;
-    const size_t ssl_out_content_len;
-#endif
+    esp_transport_ssl_buf_cfg_t               ssl_buf_cfg; /*!< SSL pre-allocated buffer configuration */
 } http_init_client_config_params_t;
 
 bool

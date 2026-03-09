@@ -27,6 +27,39 @@ extern "C" {
 #define ESP_TLS_MAX_NUM_SAVED_SESSIONS (2)
 
 /**
+ * @brief Configuration for pre-allocated TLS buffers.
+ *
+ * This structure defines the parameters for pre-allocated incoming and outgoing TLS buffers.
+ * It is used to provide memory for the TLS layer to avoid dynamic allocations or to use specific memory areas.
+ *
+ * @note If pre-allocated buffers are not used, then pointers must be set to NULL and sizes must be set to 0.
+ *
+ * Buffer size configuration depends on the macro @c CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH.
+ * - When CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is not defined, the buffer sizes are fixed.
+ *   - 'p_ssl_in_buf' must be set to a valid buffer address of @c MBEDTLS_SSL_IN_BUFFER_LEN size.
+ *   - 'ssl_in_buf_len' must be set to @c MBEDTLS_SSL_IN_BUFFER_LEN
+ *   - 'ssl_in_content_len' must be set to @c MBEDTLS_SSL_IN_CONTENT_LEN
+ *   - 'p_ssl_out_buf' must be set to a valid buffer address of @c MBEDTLS_SSL_OUT_BUFFER_LEN size.
+ *   - 'ssl_out_buf_len' must be set to @c MBEDTLS_SSL_OUT_BUFFER_LEN
+ *   - 'ssl_out_content_len' must be set to @c MBEDTLS_SSL_OUT_CONTENT_LEN
+ * - When CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is defined, the buffer sizes are variable and can be set dynamically.
+ *   - 'p_ssl_in_buf' must be set to a valid buffer address of @c MBEDTLS_SSL_IN_BUFFER_LEN_CALC(ssl_in_content_len) size.
+ *   - 'ssl_in_buf_len' must be set to @c MBEDTLS_SSL_IN_BUFFER_LEN_CALC(ssl_in_content_len)
+ *   - 'ssl_in_content_len' can be set to any user selected value.
+ *   - 'p_ssl_out_buf' must be set to a valid buffer address of @c MBEDTLS_SSL_OUT_BUFFER_LEN_CALC(ssl_out_content_len) size.
+ *   - 'ssl_out_buf_len' must be set to @c MBEDTLS_SSL_OUT_BUFFER_LEN_CALC(ssl_out_content_len)
+ *   - 'ssl_out_content_len' must be set to any user selected value.
+ */
+typedef struct esp_transport_ssl_buf_cfg_t {
+    uint8_t *p_ssl_in_buf;      /*!< Pointer to pre-allocated buffer for incoming TLS data. */
+    size_t ssl_in_buf_len;      /*!< Size of the pre-allocated buffer for incoming TLS data. */
+    size_t ssl_in_content_len;  /*!< Maximum incoming fragment length in bytes. */
+    uint8_t *p_ssl_out_buf;     /*!< Pointer to pre-allocated buffer for outgoing TLS data. */
+    size_t ssl_out_buf_len;     /*!< Size of the pre-allocated buffer for outgoing TLS data. */
+    size_t ssl_out_content_len; /*!< Maximum outgoing fragment length in bytes. */
+} esp_transport_ssl_buf_cfg_t;
+
+/**
  * @brief       Create new SSL transport, the transport handle must be release esp_transport_destroy callback
  *
  * @return      the allocated esp_transport_handle_t, or NULL if the handle can not be allocated
@@ -203,46 +236,15 @@ void esp_transport_ssl_set_keep_alive(esp_transport_handle_t t, esp_transport_ke
  * @param[in]  if_name  The interface name
  */
 void esp_transport_ssl_set_interface_name(esp_transport_handle_t t, struct ifreq *if_name);
-
-#if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
- /**
- * @brief      Set buffer size for input and output buffer.
- *
- * @param[in]  t        The transport handle
- * @param[in]  ssl_in_content_len  Maximum incoming fragment length in bytes (default MBEDTLS_SSL_IN_CONTENT_LEN)
- * @param[in]  ssl_out_content_len  Maximum outgoing fragment length in bytes (default MBEDTLS_SSL_OUT_CONTENT_LEN)
- */
-void esp_transport_ssl_set_buffer_size(esp_transport_handle_t t,
-                                       const size_t ssl_in_content_len,
-                                       const size_t ssl_out_content_len);
-#endif
+    
 
 /**
- * @brief      Set pre-allocated buffers for input and output buffer.
+ * @brief Set pre-allocated buffers for input and output buffer.
  *
- * @param[in]  t        The transport handle
- * @param[in]  p_ssl_in_buf Pointer to pre-allocated buffer for incoming TLS data.
- *                          If this parameter is NULL, the buffer will be allocated dynamically.
- *                          If this parameter is not NULL, then the size of the buffer must be:
- *                          - @c MBEDTLS_SSL_IN_BUFFER_LEN
- *                            if CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is disabled
- *                          - @c MBEDTLS_SSL_IN_BUFFER_LEN_CALC(ssl_in_content_len)
- *                            if CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is enabled,
- *                            where `ssl_in_content_len` has default value @c MBEDTLS_SSL_IN_CONTENT_LEN
- *                            if it's not overridden with @c esp_transport_ssl_set_buffer_size().
- * @param[in]  p_ssl_out_buf Pointer to pre-allocated buffer for outgoing TLS data.
- *                           If this parameter is NULL, the buffer will be allocated dynamically.
- *                           If this parameter is not NULL, then the size of the buffer must be:
- *                           - @c MBEDTLS_SSL_OUT_BUFFER_LEN
- *                             if CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is disabled
- *                           - @c MBEDTLS_SSL_OUT_BUFFER_LEN_CALC(ssl_in_content_len)
- *                             if CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH is enabled,
- *                             where `ssl_out_content_len` has default value @c MBEDTLS_SSL_OUT_CONTENT_LEN
- *                             if it's not overridden with @c esp_transport_ssl_set_buffer_size().
+ * @param[in] t         The transport handle.
+ * @param[in] p_buf_cfg Pointer to struct @c esp_transport_ssl_buf_cfg_t which defines input/output buffers.
  */
-void esp_transport_ssl_set_buffer(esp_transport_handle_t t,
-                                  uint8_t *const p_ssl_in_buf,
-                                  uint8_t *const p_ssl_out_buf);
+bool esp_transport_ssl_set_buffer(esp_transport_handle_t t, const esp_transport_ssl_buf_cfg_t *const p_buf_cfg);
 
 /**
  * @brief      Clear all saved TLS session tickets.

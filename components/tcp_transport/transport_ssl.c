@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <esp_attr.h>
 #include "esp_tls.h"
+#include "mbedtls/ssl_misc.h"
 #define LOG_LOCAL_LEVEL 3
 #include "esp_log.h"
 
@@ -1025,32 +1026,95 @@ void esp_transport_ssl_set_interface_name(esp_transport_handle_t t, struct ifreq
     ssl->cfg.if_name = if_name;
 }
 
-#if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
-void esp_transport_ssl_set_buffer_size(esp_transport_handle_t t,
-                                       const size_t ssl_in_content_len,
-                                       const size_t ssl_out_content_len)
+bool esp_transport_ssl_set_buffer(esp_transport_handle_t t, const esp_transport_ssl_buf_cfg_t *const p_buf_cfg)
 {
-    GET_SSL_FROM_TRANSPORT_OR_RETURN(ssl, t);
-    ssl->cfg.ssl_in_content_len = (0 != ssl_in_content_len) ? ssl_in_content_len : CONFIG_MBEDTLS_SSL_IN_CONTENT_LEN;
-    ssl->cfg.ssl_out_content_len = (0 != ssl_out_content_len) ? ssl_out_content_len : CONFIG_MBEDTLS_SSL_OUT_CONTENT_LEN;
-    ESP_TRANSPORT_LOGI("[%s] Configure size of TLS I/O buffers: in_content_len=%u, out_content_len=%u",
+    transport_esp_tls_t * const ssl = ssl_get_context_data(t);
+    if (NULL == ssl) {
+        ESP_TRANSPORT_LOGE_FUNC("Invalid transport handle");
+        return false;
+    }
+    if (NULL == p_buf_cfg) {
+        ESP_TRANSPORT_LOGE_FUNC("Pointer to buffer configuration is NULL");
+        return false;
+    }
+    ESP_TRANSPORT_LOGD("[%s] Configure TLS I/O buffers: in_buf=%p %zu bytes (content len %zu), out_buf=%p %zu bytes (content len %zu)",
                        esp_tls_get_hostname(ssl->tls),
-                       (unsigned)ssl->cfg.ssl_in_content_len,
-                       (unsigned)ssl->cfg.ssl_out_content_len);
-}
+                       p_buf_cfg->p_ssl_in_buf,
+                       p_buf_cfg->ssl_in_buf_len,
+                       p_buf_cfg->ssl_in_content_len,
+                       p_buf_cfg->p_ssl_out_buf,
+                       p_buf_cfg->ssl_out_buf_len,
+                       p_buf_cfg->ssl_out_content_len);
+    if ((NULL == p_buf_cfg->p_ssl_in_buf) && (NULL == p_buf_cfg->p_ssl_out_buf) && (0 == p_buf_cfg->ssl_in_buf_len)
+            && (0 == p_buf_cfg->ssl_out_buf_len) && (0 == p_buf_cfg->ssl_in_content_len)
+            && (0 == p_buf_cfg->ssl_out_content_len)) {
+        ssl->cfg.p_ssl_in_buf = NULL;
+        ssl->cfg.p_ssl_out_buf = NULL;
+#if defined(MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
+        ssl->cfg.ssl_in_content_len = 0;
+        ssl->cfg.ssl_out_content_len = 0;
+#endif
+        return true;
+    }
+    if (NULL == p_buf_cfg->p_ssl_in_buf) {
+        ESP_TRANSPORT_LOGE_FUNC("p_ssl_in_buf is NULL");
+        return false;
+    }
+    if (NULL == p_buf_cfg->p_ssl_out_buf) {
+        ESP_TRANSPORT_LOGE_FUNC("p_ssl_out_buf is NULL");
+        return false;
+    }
+#if defined(MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
+    if (p_buf_cfg->ssl_in_content_len < 1024) {
+        ESP_TRANSPORT_LOGE_FUNC("ssl_in_content_len=%zu is too small, must be at least 1024", p_buf_cfg->ssl_in_content_len);
+        return false;
+    }
+    if (p_buf_cfg->ssl_in_buf_len < MBEDTLS_SSL_IN_BUFFER_LEN_CALC(p_buf_cfg->ssl_in_content_len)) {
+        ESP_TRANSPORT_LOGE_FUNC("ssl_in_buf_len=%zu is too small, must be at least %zu",
+                                p_buf_cfg->ssl_in_buf_len,
+                                MBEDTLS_SSL_IN_BUFFER_LEN_CALC(p_buf_cfg->ssl_in_content_len));
+        return false;
+    }
+    if (p_buf_cfg->ssl_out_content_len < 1024) {
+        ESP_TRANSPORT_LOGE_FUNC("ssl_out_content_len=%zu is too small, must be at least 1024", p_buf_cfg->ssl_out_content_len);
+        return false;
+    }
+    if (p_buf_cfg->ssl_out_buf_len < MBEDTLS_SSL_OUT_BUFFER_LEN_CALC(p_buf_cfg->ssl_out_content_len)) {
+        ESP_TRANSPORT_LOGE_FUNC("ssl_out_buf_len=%zu is too small, must be at least %zu",
+                                p_buf_cfg->ssl_out_buf_len,
+                                MBEDTLS_SSL_IN_BUFFER_LEN_CALC(p_buf_cfg->ssl_out_content_len));
+        return false;
+    }
+#else
+    if (MBEDTLS_SSL_IN_CONTENT_LEN != p_buf_cfg->ssl_in_content_len) {
+        ESP_TRANSPORT_LOGE_FUNC("ssl_in_content_len=%zu must be equal to %u",
+            p_buf_cfg->ssl_in_content_len, MBEDTLS_SSL_IN_CONTENT_LEN);
+        return false;
+    }
+    if (MBEDTLS_SSL_IN_BUFFER_LEN != p_buf_cfg->ssl_in_buf_len) {
+        ESP_TRANSPORT_LOGE_FUNC("ssl_in_buf_len=%zu must be equal to %u",
+            p_buf_cfg->ssl_in_buf_len, MBEDTLS_SSL_IN_BUFFER_LEN);
+        return false;
+    }
+    if (MBEDTLS_SSL_OUT_CONTENT_LEN != p_buf_cfg->ssl_out_content_len) {
+        ESP_TRANSPORT_LOGE_FUNC("ssl_out_content_len=%zu must be equal to %u",
+            p_buf_cfg->ssl_out_content_len, MBEDTLS_SSL_OUT_CONTENT_LEN);
+        return false;
+    }
+    if (MBEDTLS_SSL_OUT_BUFFER_LEN != p_buf_cfg->ssl_out_buf_len) {
+        ESP_TRANSPORT_LOGE_FUNC("ssl_out_buf_len=%zu must be equal to %u",
+            p_buf_cfg->ssl_out_buf_len, MBEDTLS_SSL_OUT_BUFFER_LEN);
+        return false;
+    }
 #endif
 
-void esp_transport_ssl_set_buffer(esp_transport_handle_t t,
-                                  uint8_t *const p_ssl_in_buf,
-                                  uint8_t *const p_ssl_out_buf)
-{
-    GET_SSL_FROM_TRANSPORT_OR_RETURN(ssl, t);
-    ssl->cfg.p_ssl_in_buf = p_ssl_in_buf;
-    ssl->cfg.p_ssl_out_buf = p_ssl_out_buf;
-    ESP_TRANSPORT_LOGD("[%s] Configure TLS I/O buffers: in_buf=%p, out_buf=%p",
-                       esp_tls_get_hostname(ssl->tls),
-                       ssl->cfg.p_ssl_in_buf,
-                       ssl->cfg.p_ssl_out_buf);
+    ssl->cfg.p_ssl_in_buf = p_buf_cfg->p_ssl_in_buf;
+    ssl->cfg.p_ssl_out_buf = p_buf_cfg->p_ssl_out_buf;
+#if defined(MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
+    ssl->cfg.ssl_in_content_len = p_buf_cfg->ssl_in_content_len;
+    ssl->cfg.ssl_out_content_len = p_buf_cfg->ssl_out_content_len;
+#endif
+    return true;
 }
 
 static transport_esp_tls_t *esp_transport_esp_tls_create(void)

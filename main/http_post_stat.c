@@ -9,13 +9,14 @@
 #include <string.h>
 #include <esp_task_wdt.h>
 #include "os_malloc.h"
-#include "gw_status.h"
 #include "http_server_cb.h"
 #include "http_server_resp.h"
 #include "adv_post.h"
 #include "gw_cfg_storage.h"
 #include "adv_post_statistics.h"
 #include "ruuvi_gateway.h"
+#include "tls_shared_buf.h"
+#include "gw_status.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -67,17 +68,13 @@ http_send_statistics_internal(
         .p_server_cert = str_buf_server_cert_stat.buf,
         .p_client_cert = str_buf_client_cert.buf,
         .p_client_key  = str_buf_client_key.buf,
-#if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
-        .p_ssl_in_buf  = NULL,
-        .p_ssl_out_buf = NULL,
-#else
-        .p_ssl_in_buf  = p_http_async_info->in_buf,
-        .p_ssl_out_buf = p_http_async_info->out_buf,
-#endif
-#if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
-        .ssl_in_content_len  = RUUVI_POST_STAT_TLS_IN_CONTENT_LEN,
-        .ssl_out_content_len = RUUVI_POST_STAT_TLS_OUT_CONTENT_LEN,
-#endif
+
+        .ssl_buf_cfg.p_ssl_in_buf        = p_http_async_info->p_tls_shared_buf->in_buf,
+        .ssl_buf_cfg.ssl_in_buf_len      = sizeof(p_http_async_info->p_tls_shared_buf->in_buf),
+        .ssl_buf_cfg.ssl_in_content_len  = RUUVI_HTTPS_POST_TLS_IN_CONTENT_LEN,
+        .ssl_buf_cfg.p_ssl_out_buf       = p_http_async_info->p_tls_shared_buf->out_buf,
+        .ssl_buf_cfg.ssl_out_buf_len     = sizeof(p_http_async_info->p_tls_shared_buf->out_buf),
+        .ssl_buf_cfg.ssl_out_content_len = RUUVI_HTTPS_POST_TLS_OUT_CONTENT_LEN,
     };
 
     http_init_client_config(&p_http_async_info->http_client_config, &http_cli_cfg_params, p_user_data);
@@ -123,6 +120,9 @@ http_post_stat(
         assert(0);
     }
     p_http_async_info->p_task = xTaskGetCurrentTaskHandle();
+
+    LOG_DBG("tls_shared_buf_get_https_post");
+    p_http_async_info->p_tls_shared_buf = tls_shared_buf_get_https_post();
 
     if (!http_send_statistics_internal(
             p_http_async_info,
@@ -310,6 +310,15 @@ http_check_post_stat(const http_check_params_t* const p_params, const TimeUnitsS
         assert(0);
     }
     p_http_async_info->p_task = xTaskGetCurrentTaskHandle();
+
+    if (gw_status_is_relaying_via_http_enabled())
+    {
+        LOG_ERR("Relaying via HTTP is enabled");
+        assert(0);
+    }
+
+    LOG_DBG("tls_shared_buf_get_https_post");
+    p_http_async_info->p_tls_shared_buf = tls_shared_buf_get_https_post();
 
     const http_server_resp_t resp = http_check_post_stat_internal2(p_http_async_info, p_params, timeout_seconds);
 

@@ -13,12 +13,12 @@
 #include "freertos/task.h"
 #include "str_buf.h"
 #include "os_malloc.h"
-#include "time_str.h"
 #include "ruuvi_gateway.h"
 #include "http_server_cb.h"
 #include "gw_status.h"
 #include "os_str.h"
 #include "http_server_resp.h"
+#include "tls_shared_buf.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
@@ -235,8 +235,7 @@ http_download_create_config(
     const ruuvi_gw_cfg_http_auth_basic_t* const p_auth_basic,
     http_event_handle_cb const                  p_event_handler,
     void* const                                 p_cb_info,
-    uint8_t* const                              p_ssl_in_buf,
-    uint8_t* const                              p_ssl_out_buf)
+    const esp_transport_ssl_buf_cfg_t* const    p_tls_buf_info)
 {
     esp_http_client_config_t* p_http_config = os_calloc(1, sizeof(*p_http_config));
     if (NULL == p_http_config)
@@ -276,12 +275,7 @@ http_download_create_config(
     p_http_config->keep_alive_idle             = 0;
     p_http_config->keep_alive_interval         = 0;
     p_http_config->keep_alive_count            = 0;
-    p_http_config->p_ssl_in_buf                = p_ssl_in_buf;
-    p_http_config->p_ssl_out_buf               = p_ssl_out_buf;
-#if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
-    p_http_config->ssl_in_content_len  = CONFIG_MBEDTLS_SSL_IN_CONTENT_LEN;
-    p_http_config->ssl_out_content_len = CONFIG_MBEDTLS_SSL_OUT_CONTENT_LEN;
-#endif
+    p_http_config->ssl_buf_cfg                 = *p_tls_buf_info;
     return p_http_config;
 }
 
@@ -447,9 +441,9 @@ http_download_or_check_stage_3(
     const esp_http_client_method_t               http_method,
     const http_download_param_with_auth_t* const p_param,
     const ruuvi_gw_cfg_http_auth_basic_t* const  p_auth_basic,
-    const http_async_info_t* const               p_http_async_info,
     http_download_cb_info_t* const               p_cb_info,
-    const http_download_range_info_t* const      p_range_info)
+    const http_download_range_info_t* const      p_range_info,
+    const esp_transport_ssl_buf_cfg_t* const     p_tls_buf_info)
 {
     esp_http_client_config_t* p_http_config = http_download_create_config(
         &p_param->base,
@@ -457,8 +451,7 @@ http_download_or_check_stage_3(
         p_auth_basic,
         &http_download_event_handler,
         p_cb_info,
-        p_http_async_info->in_buf,
-        p_http_async_info->out_buf);
+        p_tls_buf_info);
     if (NULL == p_http_config)
     {
         LOG_ERR("Can't allocate memory for http_config");
@@ -479,8 +472,8 @@ http_download_or_check_stage_2(
     http_download_cb_on_data_t const             p_cb_on_data,
     void* const                                  p_user_data,
     const ruuvi_gw_cfg_http_auth_basic_t* const  p_auth_basic,
-    const http_async_info_t* const               p_http_async_info,
-    const http_download_range_info_t* const      p_range_info)
+    const http_download_range_info_t* const      p_range_info,
+    const esp_transport_ssl_buf_cfg_t* const     p_tls_buf_info)
 {
     http_download_cb_info_t* p_cb_info = os_calloc(1, sizeof(*p_cb_info));
     if (NULL == p_cb_info)
@@ -497,13 +490,8 @@ http_download_or_check_stage_2(
     p_cb_info->offset                  = 0;
     p_cb_info->flag_feed_task_watchdog = p_param->base.flag_feed_task_watchdog;
 
-    const http_server_resp_t resp = http_download_or_check_stage_3(
-        http_method,
-        p_param,
-        p_auth_basic,
-        p_http_async_info,
-        p_cb_info,
-        p_range_info);
+    const http_server_resp_t resp
+        = http_download_or_check_stage_3(http_method, p_param, p_auth_basic, p_cb_info, p_range_info, p_tls_buf_info);
 
     os_free(p_cb_info);
 
@@ -517,7 +505,8 @@ http_download_or_check_stage_1(
     http_download_cb_on_data_t const             p_cb_on_data,
     void* const                                  p_user_data,
     const ruuvi_gw_cfg_http_auth_basic_t* const  p_auth_basic,
-    const http_download_range_info_t* const      p_range_info)
+    const http_download_range_info_t* const      p_range_info,
+    const esp_transport_ssl_buf_cfg_t* const     p_tls_buf_info)
 {
     http_async_info_t* const p_http_async_info = http_get_async_info();
 
@@ -538,12 +527,60 @@ http_download_or_check_stage_1(
         p_cb_on_data,
         p_user_data,
         p_auth_basic,
-        p_http_async_info,
-        p_range_info);
+        p_range_info,
+        p_tls_buf_info);
 
     os_sema_signal(p_http_async_info->p_http_async_sema);
 
     return resp;
+}
+
+static esp_transport_ssl_buf_cfg_t
+http_download_get_tls_shared_buf_info(
+    const bool                        flag_use_big_tls_buf,
+    tls_shared_buf_https_download_t** p_p_buf_big,
+    tls_shared_buf_https_post_t**     p_p_buf_small)
+{
+    *p_p_buf_big   = NULL;
+    *p_p_buf_small = NULL;
+
+    esp_transport_ssl_buf_cfg_t tls_shared_buf_cfg = { 0 };
+    if (flag_use_big_tls_buf)
+    {
+        if (gw_status_is_relaying_via_http_enabled() || gw_status_is_relaying_via_mqtt_enabled())
+        {
+            LOG_ERR(
+                "Relaying via HTTP/MQTT is enabled: %d, %d",
+                gw_status_is_relaying_via_http_enabled(),
+                gw_status_is_relaying_via_mqtt_enabled());
+            assert(0);
+        }
+        tls_shared_buf_https_download_t* p_buf_big = tls_shared_buf_get_https_download();
+        tls_shared_buf_cfg.p_ssl_in_buf            = p_buf_big->in_buf;
+        tls_shared_buf_cfg.p_ssl_out_buf           = p_buf_big->out_buf;
+        tls_shared_buf_cfg.ssl_in_buf_len          = MBEDTLS_SSL_IN_BUFFER_LEN;
+        tls_shared_buf_cfg.ssl_out_buf_len         = MBEDTLS_SSL_OUT_BUFFER_LEN;
+        tls_shared_buf_cfg.ssl_in_content_len      = MBEDTLS_SSL_IN_CONTENT_LEN;
+        tls_shared_buf_cfg.ssl_out_content_len     = MBEDTLS_SSL_OUT_CONTENT_LEN;
+        *p_p_buf_big                               = p_buf_big;
+    }
+    else
+    {
+        if (gw_status_is_relaying_via_http_enabled())
+        {
+            LOG_ERR("Relaying via HTTP is enabled");
+            assert(0);
+        }
+        tls_shared_buf_https_post_t* p_buf_small = tls_shared_buf_get_https_post();
+        tls_shared_buf_cfg.p_ssl_in_buf          = p_buf_small->in_buf;
+        tls_shared_buf_cfg.ssl_in_buf_len        = MBEDTLS_SSL_IN_BUFFER_LEN_CALC(RUUVI_HTTPS_POST_TLS_IN_CONTENT_LEN);
+        tls_shared_buf_cfg.ssl_in_content_len    = RUUVI_HTTPS_POST_TLS_IN_CONTENT_LEN;
+        tls_shared_buf_cfg.p_ssl_out_buf         = p_buf_small->out_buf;
+        tls_shared_buf_cfg.ssl_out_buf_len     = MBEDTLS_SSL_OUT_BUFFER_LEN_CALC(RUUVI_HTTPS_POST_TLS_OUT_CONTENT_LEN);
+        tls_shared_buf_cfg.ssl_out_content_len = RUUVI_HTTPS_POST_TLS_OUT_CONTENT_LEN;
+        *p_p_buf_small                         = p_buf_small;
+    }
+    return tls_shared_buf_cfg;
 }
 
 static http_server_resp_t
@@ -551,7 +588,8 @@ http_download_or_check(
     const esp_http_client_method_t               http_method,
     const http_download_param_with_auth_t* const p_param,
     http_download_cb_on_data_t const             p_cb_on_data,
-    void* const                                  p_user_data)
+    void* const                                  p_user_data,
+    const bool                                   flag_use_big_tls_buf)
 {
     LOG_INFO("HTTP download/check: Method=%s, URL: '%s'", http_client_method_to_str(http_method), p_param->base.p_url);
     http_download_range_info_t range_info = {
@@ -593,16 +631,56 @@ http_download_or_check(
 
     const bool flag_wait_relaying_completed = true;
 
-    LOG_DBG("suspend_http_relaying and wait");
-    gw_status_suspend_http_relaying(flag_wait_relaying_completed);
-    LOG_DBG("suspend_relaying_and_wait: finished");
+    if (flag_use_big_tls_buf && gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss())
+    {
+        LOG_DBG("suspend_relaying and wait");
+        gw_status_suspend_relaying(flag_wait_relaying_completed);
+        LOG_DBG("suspend_relaying: finished");
+    }
+    else
+    {
+        LOG_DBG("suspend_http_relaying and wait");
+        gw_status_suspend_http_relaying(flag_wait_relaying_completed);
+        LOG_DBG("suspend_relaying_and_wait: finished");
+    }
 
-    const http_server_resp_t resp
-        = http_download_or_check_stage_1(http_method, p_param, p_cb_on_data, p_user_data, p_auth_basic, &range_info);
+    tls_shared_buf_https_download_t*  p_buf_big    = NULL;
+    tls_shared_buf_https_post_t*      p_buf_small  = NULL;
+    const esp_transport_ssl_buf_cfg_t tls_buf_info = http_download_get_tls_shared_buf_info(
+        flag_use_big_tls_buf,
+        &p_buf_big,
+        &p_buf_small);
 
-    LOG_DBG("resume_http_relaying and wait");
-    gw_status_resume_http_relaying(flag_wait_relaying_completed);
-    LOG_DBG("resume_http_relaying: finished");
+    const http_server_resp_t resp = http_download_or_check_stage_1(
+        http_method,
+        p_param,
+        p_cb_on_data,
+        p_user_data,
+        p_auth_basic,
+        &range_info,
+        &tls_buf_info);
+
+    if (flag_use_big_tls_buf)
+    {
+        tls_shared_buf_unlock_https_download(&p_buf_big);
+    }
+    else
+    {
+        tls_shared_buf_unlock_https_post(&p_buf_small);
+    }
+
+    if (flag_use_big_tls_buf && gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss())
+    {
+        LOG_DBG("resume_relaying and wait");
+        gw_status_resume_relaying(flag_wait_relaying_completed);
+        LOG_DBG("resume_relaying: finished");
+    }
+    else
+    {
+        LOG_DBG("resume_http_relaying and wait");
+        gw_status_resume_http_relaying(flag_wait_relaying_completed);
+        LOG_DBG("resume_http_relaying: finished");
+    }
 
     return resp;
 }
@@ -611,16 +689,20 @@ http_server_resp_t
 http_download_with_auth(
     const http_download_param_with_auth_t* const p_param,
     http_download_cb_on_data_t const             p_cb_on_data,
-    void* const                                  p_user_data)
+    void* const                                  p_user_data,
+    const bool                                   flag_use_big_tls_buf)
 {
-    return http_download_or_check(HTTP_METHOD_GET, p_param, p_cb_on_data, p_user_data);
+    return http_download_or_check(HTTP_METHOD_GET, p_param, p_cb_on_data, p_user_data, flag_use_big_tls_buf);
 }
 
 bool
 http_check_with_auth(const http_download_param_with_auth_t* const p_param, http_resp_code_e* const p_http_resp_code)
 {
-    http_server_resp_t resp = http_download_or_check(HTTP_METHOD_HEAD, p_param, NULL, NULL);
-    *p_http_resp_code       = resp.http_resp_code;
+    const bool flag_use_big_tls_buf = false;
+
+    http_server_resp_t resp = http_download_or_check(HTTP_METHOD_HEAD, p_param, NULL, NULL, flag_use_big_tls_buf);
+
+    *p_http_resp_code = resp.http_resp_code;
     if ((HTTP_CONTENT_LOCATION_HEAP == resp.content_location) && (NULL != resp.select_location.memory.p_buf))
     {
         os_free(resp.select_location.memory.p_buf);
@@ -637,7 +719,10 @@ http_download(
     void* const                                  p_user_data,
     bool* const                                  p_flag_allow_retry)
 {
-    http_server_resp_t resp = http_download_with_auth(p_param, p_cb_on_data, p_user_data);
+    const bool flag_use_big_tls_buf = true;
+
+    http_server_resp_t resp = http_download_with_auth(p_param, p_cb_on_data, p_user_data, flag_use_big_tls_buf);
+
     if ((HTTP_CONTENT_LOCATION_HEAP == resp.content_location) && (NULL != resp.select_location.memory.p_buf))
     {
         os_free(resp.select_location.memory.p_buf);
@@ -647,6 +732,7 @@ http_download(
         *p_flag_allow_retry = (HTTP_RESP_CODE_502 == resp.http_resp_code) ? true : false;
     }
     const bool is_range_used = (0 != p_param->base.range_start) || (0 != p_param->base.range_end);
+
     return ((HTTP_RESP_CODE_200 == resp.http_resp_code)
             || (is_range_used && (HTTP_RESP_CODE_206 == resp.http_resp_code)))
                ? true
@@ -740,8 +826,14 @@ http_download_json(const http_download_param_with_auth_t* const p_params)
         .p_json_buf     = NULL,
         .json_buf_size  = 0,
     };
-    const TickType_t   download_started_at_tick = xTaskGetTickCount();
-    http_server_resp_t resp = http_download_with_auth(p_params, &cb_on_http_download_json_data, &info);
+    const TickType_t download_started_at_tick = xTaskGetTickCount();
+
+    const bool         flag_use_big_tls_buf = false;
+    http_server_resp_t resp                 = http_download_with_auth(
+        p_params,
+        &cb_on_http_download_json_data,
+        &info,
+        flag_use_big_tls_buf);
     if (HTTP_RESP_CODE_200 != resp.http_resp_code)
     {
         info.is_error       = true;
