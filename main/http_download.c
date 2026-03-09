@@ -560,8 +560,8 @@ http_download_get_tls_shared_buf_info(
         tls_shared_buf_https_download_t* p_buf_big = tls_shared_buf_get_https_download();
         tls_shared_buf_cfg.p_ssl_in_buf            = p_buf_big->in_buf;
         tls_shared_buf_cfg.p_ssl_out_buf           = p_buf_big->out_buf;
-        tls_shared_buf_cfg.ssl_in_buf_len          = MBEDTLS_SSL_IN_BUFFER_LEN;
-        tls_shared_buf_cfg.ssl_out_buf_len         = MBEDTLS_SSL_OUT_BUFFER_LEN;
+        tls_shared_buf_cfg.ssl_in_buf_len          = sizeof(p_buf_big->in_buf);
+        tls_shared_buf_cfg.ssl_out_buf_len         = sizeof(p_buf_big->out_buf);
         tls_shared_buf_cfg.ssl_in_content_len      = MBEDTLS_SSL_IN_CONTENT_LEN;
         tls_shared_buf_cfg.ssl_out_content_len     = MBEDTLS_SSL_OUT_CONTENT_LEN;
         *p_p_buf_big                               = p_buf_big;
@@ -575,12 +575,12 @@ http_download_get_tls_shared_buf_info(
         }
         tls_shared_buf_https_post_t* p_buf_small = tls_shared_buf_get_https_post();
         tls_shared_buf_cfg.p_ssl_in_buf          = p_buf_small->in_buf;
-        tls_shared_buf_cfg.ssl_in_buf_len        = MBEDTLS_SSL_IN_BUFFER_LEN_CALC(RUUVI_HTTPS_POST_TLS_IN_CONTENT_LEN);
+        tls_shared_buf_cfg.ssl_in_buf_len        = sizeof(p_buf_small->in_buf);
         tls_shared_buf_cfg.ssl_in_content_len    = RUUVI_HTTPS_POST_TLS_IN_CONTENT_LEN;
         tls_shared_buf_cfg.p_ssl_out_buf         = p_buf_small->out_buf;
-        tls_shared_buf_cfg.ssl_out_buf_len     = MBEDTLS_SSL_OUT_BUFFER_LEN_CALC(RUUVI_HTTPS_POST_TLS_OUT_CONTENT_LEN);
-        tls_shared_buf_cfg.ssl_out_content_len = RUUVI_HTTPS_POST_TLS_OUT_CONTENT_LEN;
-        *p_p_buf_small                         = p_buf_small;
+        tls_shared_buf_cfg.ssl_out_buf_len       = sizeof(p_buf_small->out_buf);
+        tls_shared_buf_cfg.ssl_out_content_len   = RUUVI_HTTPS_POST_TLS_OUT_CONTENT_LEN;
+        *p_p_buf_small                           = p_buf_small;
     }
     return tls_shared_buf_cfg;
 }
