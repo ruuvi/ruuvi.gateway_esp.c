@@ -593,9 +593,15 @@ mqtt_app_start_internal2(const esp_mqtt_client_config_t* const p_mqtt_cfg, mqtt_
         LOG_ERR("%s failed", "esp_mqtt_client_init");
         return false;
     }
+
+    LOG_DBG("%s: tls_shared_buf_get_mqtts", __func__);
+    p_mqtt_data->p_tls_shared_buf_mqtts = tls_shared_buf_get_mqtts();
+
     const esp_err_t err = esp_mqtt_client_start(p_mqtt_data->p_mqtt_client);
     if (ESP_OK != err)
     {
+        LOG_DBG("%s: tls_shared_buf_unlock_mqtts", __func__);
+        tls_shared_buf_unlock_mqtts(&p_mqtt_data->p_tls_shared_buf_mqtts);
         esp_mqtt_client_destroy(p_mqtt_data->p_mqtt_client);
         p_mqtt_data->p_mqtt_client = NULL;
         return false;
@@ -603,7 +609,7 @@ mqtt_app_start_internal2(const esp_mqtt_client_config_t* const p_mqtt_cfg, mqtt_
     return true;
 }
 
-static void
+static bool
 mqtt_app_start_internal(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg)
 {
     gw_status_clear_mqtt_connected_and_error();
@@ -632,20 +638,22 @@ mqtt_app_start_internal(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg_m
             p_mqtt_cfg->mqtt_user.buf,
             "******");
         gw_status_set_mqtt_error(MQTT_ERROR_CONNECT);
-        return;
+        return false;
     }
     const esp_mqtt_client_config_t* p_mqtt_cli_cfg = mqtt_create_client_config(p_mqtt_data, p_mqtt_cfg);
     if (NULL == p_mqtt_cfg)
     {
         LOG_ERR("Can't create MQTT client config");
-        return;
+        return false;
     }
 
-    if (mqtt_app_start_internal2(p_mqtt_cli_cfg, p_mqtt_data))
+    const bool is_success = mqtt_app_start_internal2(p_mqtt_cli_cfg, p_mqtt_data);
+    if (is_success)
     {
         gw_status_set_mqtt_started();
     }
     os_free(p_mqtt_cli_cfg);
+    return is_success;
 }
 
 void
@@ -660,9 +668,10 @@ mqtt_app_start(const ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg)
     }
     else
     {
-        LOG_DBG("%s: tls_shared_buf_get_mqtts", __func__);
-        p_mqtt_data->p_tls_shared_buf_mqtts = tls_shared_buf_get_mqtts();
-        mqtt_app_start_internal(p_mqtt_data, p_mqtt_cfg);
+        if (!mqtt_app_start_internal(p_mqtt_data, p_mqtt_cfg))
+        {
+            LOG_ERR("MQTT client start failed");
+        }
     }
     mqtt_mutex_unlock(&p_mqtt_data);
 }
