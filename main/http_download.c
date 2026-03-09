@@ -549,12 +549,15 @@ http_download_get_tls_shared_buf_info(
     esp_transport_ssl_buf_cfg_t tls_shared_buf_cfg = { 0 };
     if (flag_use_big_tls_buf)
     {
-        if (gw_status_is_relaying_via_http_enabled() || gw_status_is_relaying_via_mqtt_enabled())
+
+        if (gw_status_is_relaying_via_http_enabled()
+            || (gw_status_is_relaying_via_mqtt_enabled() && gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss()))
         {
             LOG_ERR(
-                "Relaying via HTTP/MQTT is enabled: %d, %d",
+                "Relaying via HTTP/MQTTS is enabled: %d, %d (use mqtt_over_ssl_or_wss=%d)",
                 gw_status_is_relaying_via_http_enabled(),
-                gw_status_is_relaying_via_mqtt_enabled());
+                gw_status_is_relaying_via_mqtt_enabled(),
+                gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss());
             assert(0);
         }
         tls_shared_buf_https_download_t* p_buf_big = tls_shared_buf_get_https_download();
