@@ -9,15 +9,15 @@
 #include <string.h>
 #include <esp_task_wdt.h>
 #include "os_malloc.h"
-#include "gw_status.h"
 #include "http_server_cb.h"
 #include "http_server_resp.h"
 #include "adv_post.h"
 #include "gw_cfg_storage.h"
 #include "gw_cfg_default.h"
 #include "reset_task.h"
-#include "ruuvi_gateway.h"
 #include "adv_post_async_comm.h"
+#include "tls_shared_buf.h"
+#include "gw_status.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -41,8 +41,7 @@ http_init_client_config_for_http_target(
     const ruuvi_gw_cfg_http_t* const              p_cfg_http,
     const http_send_advs_internal_params_t* const p_params,
     void* const                                   p_user_data,
-    uint8_t* const                                p_in_buf,
-    uint8_t* const                                p_out_buf)
+    tls_shared_buf_https_post_t* const            p_tls_shared_buf)
 {
     const ruuvi_gw_cfg_http_user_t*     p_http_user = NULL;
     const ruuvi_gw_cfg_http_password_t* p_http_pass = NULL;
@@ -77,18 +76,18 @@ http_init_client_config_for_http_target(
         str_buf_server_cert_http = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT);
     }
     const http_init_client_config_params_t http_cli_cfg_params = {
-        .p_url         = p_http_url,
-        .p_user        = p_http_user,
-        .p_password    = p_http_pass,
-        .p_server_cert = str_buf_server_cert_http.buf,
-        .p_client_cert = str_buf_client_cert.buf,
-        .p_client_key  = str_buf_client_key.buf,
-        .p_ssl_in_buf  = p_in_buf,
-        .p_ssl_out_buf = p_out_buf,
-#if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
-        .ssl_in_content_len  = RUUVI_POST_ADVS_TLS_IN_CONTENT_LEN,
-        .ssl_out_content_len = RUUVI_POST_ADVS_TLS_OUT_CONTENT_LEN,
-#endif
+        .p_url                           = p_http_url,
+        .p_user                          = p_http_user,
+        .p_password                      = p_http_pass,
+        .p_server_cert                   = str_buf_server_cert_http.buf,
+        .p_client_cert                   = str_buf_client_cert.buf,
+        .p_client_key                    = str_buf_client_key.buf,
+        .ssl_buf_cfg.p_ssl_in_buf        = p_tls_shared_buf->in_buf,
+        .ssl_buf_cfg.ssl_in_buf_len      = sizeof(p_tls_shared_buf->in_buf),
+        .ssl_buf_cfg.ssl_in_content_len  = RUUVI_HTTPS_POST_TLS_IN_CONTENT_LEN,
+        .ssl_buf_cfg.p_ssl_out_buf       = p_tls_shared_buf->out_buf,
+        .ssl_buf_cfg.ssl_out_buf_len     = sizeof(p_tls_shared_buf->out_buf),
+        .ssl_buf_cfg.ssl_out_content_len = RUUVI_HTTPS_POST_TLS_OUT_CONTENT_LEN,
     };
 
     http_init_client_config(p_http_client_config, &http_cli_cfg_params, p_user_data);
@@ -208,14 +207,7 @@ http_send_advs_internal(
             p_cfg_http,
             p_params,
             p_user_data,
-#if defined(CONFIG_MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
-            NULL,
-            NULL
-#else
-            p_http_async_info->in_buf,
-            p_http_async_info->out_buf
-#endif
-            ))
+            p_http_async_info->p_tls_shared_buf))
     {
         http_async_info_free_data(p_http_async_info);
         return false;
@@ -286,6 +278,9 @@ http_post_advs(
         assert(0);
     }
     p_http_async_info->p_task = xTaskGetCurrentTaskHandle();
+
+    LOG_DBG("tls_shared_buf_get_https_post");
+    p_http_async_info->p_tls_shared_buf = tls_shared_buf_get_https_post();
 
     const bool use_ssl_client_cert = (!flag_post_to_ruuvi) && p_cfg_http->http_use_ssl_client_cert;
     const bool use_ssl_server_cert = (!flag_post_to_ruuvi) && p_cfg_http->http_use_ssl_server_cert;
@@ -524,6 +519,14 @@ http_check_post_advs(const http_check_params_t* const p_params, const TimeUnitsS
         assert(0);
     }
     p_http_async_info->p_task = xTaskGetCurrentTaskHandle();
+    if (gw_status_is_relaying_via_http_enabled())
+    {
+        LOG_ERR("Relaying via HTTP is enabled");
+        assert(0);
+    }
+
+    LOG_DBG("tls_shared_buf_get_https_post");
+    p_http_async_info->p_tls_shared_buf = tls_shared_buf_get_https_post();
 
     const http_server_resp_t resp = http_check_post_advs_internal2(p_http_async_info, p_params, timeout_seconds);
 
