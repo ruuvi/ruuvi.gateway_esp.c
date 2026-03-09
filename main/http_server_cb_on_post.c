@@ -281,6 +281,11 @@ http_server_cb_on_post(
     const bool        flag_access_from_lan)
 {
     LOG_DBG("http_server_cb_on_post /%s, params=%s", p_file_name, (NULL != p_uri_params) ? p_uri_params : "");
+    if (fw_update_is_in_progress())
+    {
+        LOG_ERR("FW update in progress, cannot handle POST requests");
+        return http_server_resp_409();
+    }
     if (0 == strcmp(p_file_name, "fw_update_reset"))
     {
         return http_server_cb_on_post_fw_update_reset();

@@ -113,11 +113,16 @@ http_server_cb_on_delete(
 {
     (void)flag_access_from_lan;
     (void)p_resp_auth;
+    LOG_INFO("DELETE /%s, params=%s", p_file_name, (NULL != p_uri_params) ? p_uri_params : "");
+    if (fw_update_is_in_progress())
+    {
+        LOG_ERR("FW update in progress, cannot delete file");
+        return http_server_resp_409();
+    }
     if (0 == strcmp(p_file_name, "ssl_cert"))
     {
         return http_server_cb_on_delete_ssl_cert(p_uri_params);
     }
-    LOG_INFO("DELETE /%s, params=%s", p_file_name, (NULL != p_uri_params) ? p_uri_params : "");
     return http_server_resp_404();
 }
 

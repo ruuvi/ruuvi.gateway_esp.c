@@ -460,6 +460,7 @@ protected:
         this->m_http_check_with_auth_arr_of_urls = nullptr;
         this->m_firmware_update_resp             = str_buf_init_null();
         this->m_fw_updating_reason               = FW_UPDATE_REASON_NONE;
+        this->m_fw_update_is_in_progress         = false;
     }
 
     void
@@ -495,6 +496,7 @@ public:
     const char**          m_http_check_with_auth_arr_of_urls;
     size_t                m_http_check_with_auth_num_of_urls;
     fw_updating_reason_e  m_fw_updating_reason;
+    bool                  m_fw_update_is_in_progress;
 };
 
 TestHttpServerCb::TestHttpServerCb()
@@ -855,6 +857,12 @@ esp_transport_ssl_clear_saved_session_tickets(void)
 void
 adv_post_nrf52_cfg_update(const ruuvi_gw_cfg_scan_t* const p_scan, const ruuvi_gw_cfg_filter_t* const p_filter)
 {
+}
+
+bool
+fw_update_is_in_progress(void)
+{
+    return g_pTestClass->m_fw_update_is_in_progress;
 }
 
 } // extern "C"

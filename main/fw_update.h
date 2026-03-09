@@ -103,6 +103,9 @@ fw_update_set_stage_nrf52_updating(void);
 void
 fw_update_nrf52fw_cb_progress(const size_t num_bytes_flashed, const size_t total_size, void* const p_param);
 
+bool
+fw_update_is_in_progress(void);
+
 #ifdef __cplusplus
 }
 #endif

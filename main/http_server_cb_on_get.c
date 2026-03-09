@@ -500,6 +500,11 @@ http_server_cb_on_get(
     }
     if (0 == strcmp(p_path, "validate_url"))
     {
+        if (fw_update_is_in_progress())
+        {
+            LOG_ERR("FW update in progress, cannot validate URL");
+            return http_server_resp_409();
+        }
         LOG_INFO("%s: Clear all saved TLS session tickets", __func__);
         esp_transport_ssl_clear_saved_session_tickets();
         return validate_url(p_uri_params);

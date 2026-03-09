@@ -1589,9 +1589,6 @@ fw_update_task(void)
 
     const bool flag_fw_update_successful = fw_update_do_actions(&error_message_info);
 
-    LOG_DBG("resume_http_relaying and wait");
-    gw_status_resume_http_relaying(flag_wait_relaying_completed);
-
     if (!flag_fw_update_successful)
     {
         LOG_ERR(
@@ -1671,4 +1668,10 @@ fw_update_run(const fw_updating_reason_e fw_updating_reason)
         return false;
     }
     return true;
+}
+
+bool
+fw_update_is_in_progress(void)
+{
+    return (FW_UPDATE_REASON_NONE != g_fw_updating_reason) ? true : false;
 }

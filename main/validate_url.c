@@ -1109,9 +1109,6 @@ validate_url(const char* const p_url_params)
         return http_server_resp_400();
     }
 
-    const bool flag_wait_until_relaying_stopped = true;
-    gw_status_suspend_relaying(flag_wait_until_relaying_stopped);
-
     validate_url_params_t params = {
         .url                     = http_server_get_from_params_with_decoding(p_url_params, "url="),
         .user                    = http_server_get_from_params_with_decoding(p_url_params, "user="),
@@ -1132,6 +1129,16 @@ validate_url(const char* const p_url_params)
 
     const validate_url_type_e validate_type = validate_url_get_validate_type_from_params(p_url_params);
 
+    const bool flag_wait_until_relaying_stopped = true;
+    if (HTTP_VALIDATE_TYPE_CHECK_MQTT == validate_type)
+    {
+        gw_status_suspend_relaying(flag_wait_until_relaying_stopped);
+    }
+    else
+    {
+        gw_status_suspend_http_relaying(flag_wait_until_relaying_stopped);
+    }
+
     const http_server_resp_t http_resp = validate_url_internal(validate_type, &params, p_url_params);
 
     str_buf_free_buf(&params.url);
@@ -1139,7 +1146,14 @@ validate_url(const char* const p_url_params)
     str_buf_free_buf(&params.password);
 
     const bool flag_wait_until_relaying_resumed = true;
-    gw_status_resume_relaying(flag_wait_until_relaying_resumed);
+    if (HTTP_VALIDATE_TYPE_CHECK_MQTT == validate_type)
+    {
+        gw_status_resume_relaying(flag_wait_until_relaying_resumed);
+    }
+    else
+    {
+        gw_status_resume_http_relaying(flag_wait_until_relaying_resumed);
+    }
 
     return http_resp;
 }
