@@ -502,7 +502,11 @@ http_server_cb_on_get(
     {
         if (fw_update_is_in_progress())
         {
-            LOG_ERR("FW update in progress, cannot validate URL");
+            LOG_ERR(
+                "FW update in progress, cannot handle GET request: /%s%s%s",
+                p_path,
+                (NULL != p_uri_params) ? "?" : "",
+                (NULL != p_uri_params) ? p_uri_params : "");
             return http_server_resp_409();
         }
         LOG_INFO("%s: Clear all saved TLS session tickets", __func__);

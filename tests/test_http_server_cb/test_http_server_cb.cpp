@@ -1576,8 +1576,54 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_default) // NOLINT
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
+TEST_F(TestHttpServerCb, http_server_cb_on_get_default_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+    ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
+    this->m_fd = -1;
+
+    const http_server_resp_t resp = http_server_cb_on_get("", nullptr, false, nullptr);
+    ASSERT_EQ(HTTP_RESP_CODE_404, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(0, resp.content_len);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(0, resp.select_location.fatfs.fd);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: ruuvi.html"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "Can't find file: ruuvi.html");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
 TEST_F(TestHttpServerCb, http_server_cb_on_get_index_html) // NOLINT
 {
+    const char*             expected_resp = "index_html_content";
+    const file_descriptor_t fd            = 1;
+    ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
+    FileInfo fileInfo = FileInfo("index.html.gz", expected_resp);
+    this->m_files.emplace_back(fileInfo);
+    this->m_fd = fd;
+
+    const http_server_resp_t resp = http_server_cb_on_get("index.html", nullptr, false, nullptr);
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(strlen(expected_resp), resp.content_len);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_GZIP, resp.content_encoding);
+    ASSERT_EQ(fd, resp.select_location.fatfs.fd);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /index.html"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: index.html"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File index.html.gz was opened successfully, fd=1");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_index_html_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress      = true;
     const char*             expected_resp = "index_html_content";
     const file_descriptor_t fd            = 1;
     ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
@@ -1762,8 +1808,39 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
+TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+
+    esp_log_wrapper_clear();
+    const http_server_resp_t resp = http_server_cb_on_get("ruuvi.json", nullptr, false, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+}
+
 TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics) // NOLINT
 {
+    const char*              expected_resp = "metrics_info";
+    const http_server_resp_t resp          = http_server_cb_on_get("metrics", nullptr, false, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_PLAIN, resp.content_type);
+    ASSERT_NE(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(string("version=0.0.4"), string(resp.p_content_type_param));
+    ASSERT_EQ(strlen(expected_resp), resp.content_len);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /metrics"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("metrics: ") + string(expected_resp));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress       = true;
     const char*              expected_resp = "metrics_info";
     const http_server_resp_t resp          = http_server_cb_on_get("metrics", nullptr, false, nullptr);
 
@@ -1840,6 +1917,14 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /history"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Requested /history on 60 seconds interval"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_history_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+    const http_server_resp_t resp    = http_server_cb_on_get("history", nullptr, false, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_history_with_time_interval_20) // NOLINT
@@ -6305,4 +6390,138 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__
             "E http_server: Firmware_update info 'latest/version' is empty\n"
             "I http_server: Firmware update: No update is required, the latest version is already installed\n",
             esp_log_wrapper_get_logs());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_fw_update_reset_blocked_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+    const http_server_resp_t resp    = http_server_cb_on_post("fw_update_reset", nullptr, nullptr, false);
+
+    ASSERT_EQ(HTTP_RESP_CODE_409, resp.http_resp_code);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /fw_update_reset, params="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("FW update in progress, cannot handle POST request: /fw_update_reset, params=, flag_access_from_lan=0"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_blocked_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+    const http_server_resp_t resp    = http_server_cb_on_post("ruuvi.json", nullptr, "{}", false);
+
+    ASSERT_EQ(HTTP_RESP_CODE_409, resp.http_resp_code);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /ruuvi.json, params="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("FW update in progress, cannot handle POST request: /ruuvi.json, params=, flag_access_from_lan=0"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_bluetooth_scanning_json_blocked_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+    const http_server_resp_t resp    = http_server_cb_on_post("bluetooth_scanning.json", nullptr, "{}", false);
+
+    ASSERT_EQ(HTTP_RESP_CODE_409, resp.http_resp_code);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("http_server_cb_on_post /bluetooth_scanning.json, params="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("FW update in progress, cannot handle POST request: /bluetooth_scanning.json, params=, "
+               "flag_access_from_lan=0"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_fw_update_json_blocked_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+    const http_server_resp_t resp    = http_server_cb_on_post("fw_update.json", nullptr, "{}", false);
+
+    ASSERT_EQ(HTTP_RESP_CODE_409, resp.http_resp_code);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /fw_update.json, params="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("FW update in progress, cannot handle POST request: /fw_update.json, params=, flag_access_from_lan=0"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_fw_update_url_json_blocked_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+    const http_server_resp_t resp    = http_server_cb_on_post("fw_update_url.json", nullptr, "{}", false);
+
+    ASSERT_EQ(HTTP_RESP_CODE_409, resp.http_resp_code);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /fw_update_url.json, params="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string(
+            "FW update in progress, cannot handle POST request: /fw_update_url.json, params=, flag_access_from_lan=0"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_fw_update_url_blocked_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+    const http_server_resp_t resp    = http_server_cb_on_post("fw_update_url", nullptr, "{}", false);
+
+    ASSERT_EQ(HTTP_RESP_CODE_409, resp.http_resp_code);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /fw_update_url, params="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("FW update in progress, cannot handle POST request: /fw_update_url, params=, flag_access_from_lan=0"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_ssl_cert_blocked_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+    const http_server_resp_t resp    = http_server_cb_on_post("ssl_cert", nullptr, "{}", false);
+
+    ASSERT_EQ(HTTP_RESP_CODE_409, resp.http_resp_code);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /ssl_cert, params="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("FW update in progress, cannot handle POST request: /ssl_cert, params=, flag_access_from_lan=0"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_init_storage_blocked_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+    const http_server_resp_t resp    = http_server_cb_on_post("init_storage", nullptr, "{}", false);
+
+    ASSERT_EQ(HTTP_RESP_CODE_409, resp.http_resp_code);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /init_storage, params="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("FW update in progress, cannot handle POST request: /init_storage, params=, flag_access_from_lan=0"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_any_blocked_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+    const http_server_resp_t resp    = http_server_cb_on_post("any_request", nullptr, "{}", false);
+
+    ASSERT_EQ(HTTP_RESP_CODE_409, resp.http_resp_code);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /any_request, params="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("FW update in progress, cannot handle POST request: /any_request, params=, flag_access_from_lan=0"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_blocked_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+    const http_server_resp_t resp    = http_server_cb_on_get("validate_url", nullptr, false, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_409, resp.http_resp_code);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /validate_url"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("FW update in progress, cannot handle GET request: /validate_url"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
