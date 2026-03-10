@@ -118,10 +118,11 @@ fw_update_set_extra_info_for_status_json(
 
 static const char TAG[] = "fw_update";
 
-static ruuvi_flash_info_t   g_ruuvi_flash_info;
-static fw_update_config_t   g_fw_update_cfg;
-static fw_update_stage_e    g_update_progress_stage;
-static fw_updating_reason_e g_fw_updating_reason;
+static ruuvi_flash_info_t g_ruuvi_flash_info;
+static fw_update_config_t g_fw_update_cfg;
+static fw_update_stage_e  g_update_progress_stage;
+
+static volatile fw_updating_reason_e g_fw_updating_reason;
 
 static bool
 fw_update_check_is_valid_pub_key(const esp_ota_sha256_digest_t* const p_pub_key_digest)
