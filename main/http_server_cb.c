@@ -117,7 +117,7 @@ http_server_cb_on_delete(
     if (fw_update_is_in_progress())
     {
         LOG_ERR(
-            "FW update in progress, cannot delete file: DELETE /%s, params=%s",
+            "FW update in progress, cannot handle DELETE request: DELETE /%s, params=%s",
             p_file_name,
             (NULL != p_uri_params) ? p_uri_params : "");
         return http_server_resp_409();

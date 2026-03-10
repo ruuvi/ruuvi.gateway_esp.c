@@ -6708,3 +6708,23 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_blocked_during_fw_up
         string("FW update in progress, cannot handle GET request: /validate_url"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
+
+TEST_F(TestHttpServerCb, http_server_cb_on_delete_blocked_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+    const http_server_resp_t resp    = http_server_cb_on_delete("unknown.json", nullptr, false, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_409, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(0, resp.content_len);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("DELETE /unknown.json, params="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("FW update in progress, cannot handle DELETE request: DELETE /unknown.json, params="));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
