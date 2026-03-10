@@ -2032,7 +2032,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history) // NOLINT
         const char* p_chunk = json_stream_gen_get_next_chunk(resp.select_location.json_generator.p_json_gen);
         if (nullptr == p_chunk)
         {
-            ASSERT_FALSE(nullptr == p_chunk);
+            ASSERT_NE(nullptr, p_chunk);
         }
 
         if ('\0' == p_chunk[0])
@@ -2093,7 +2093,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_during_fw_update) // NOLI
         const char* p_chunk = json_stream_gen_get_next_chunk(resp.select_location.json_generator.p_json_gen);
         if (nullptr == p_chunk)
         {
-            ASSERT_FALSE(nullptr == p_chunk);
+            ASSERT_NE(nullptr, p_chunk);
         }
 
         if ('\0' == p_chunk[0])
@@ -2153,7 +2153,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_with_time_interval_20) //
         const char* p_chunk = json_stream_gen_get_next_chunk(resp.select_location.json_generator.p_json_gen);
         if (nullptr == p_chunk)
         {
-            ASSERT_FALSE(nullptr == p_chunk);
+            ASSERT_NE(nullptr, p_chunk);
         }
 
         if ('\0' == p_chunk[0])
@@ -2219,7 +2219,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps) // NO
         const char* p_chunk = json_stream_gen_get_next_chunk(resp.select_location.json_generator.p_json_gen);
         if (nullptr == p_chunk)
         {
-            ASSERT_FALSE(nullptr == p_chunk);
+            ASSERT_NE(nullptr, p_chunk);
         }
 
         if ('\0' == p_chunk[0])
@@ -2283,7 +2283,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps_with_f
         const char* p_chunk = json_stream_gen_get_next_chunk(resp.select_location.json_generator.p_json_gen);
         if (nullptr == p_chunk)
         {
-            ASSERT_FALSE(nullptr == p_chunk);
+            ASSERT_NE(nullptr, p_chunk);
         }
 
         if ('\0' == p_chunk[0])
