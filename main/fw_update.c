@@ -7,6 +7,7 @@
 
 #include "fw_update.h"
 #include <string.h>
+#include <assert.h>
 #include "http_download.h"
 #include "cJSON.h"
 #include "cjson_wrap.h"
@@ -126,29 +127,29 @@ static volatile fw_updating_reason_e g_fw_updating_reason;
 static os_mutex_t                    g_fw_updating_reason_mutex;
 static os_mutex_static_t             g_fw_updating_reason_mutex_mem;
 
+void
+fw_update_init(void)
+{
+    g_fw_updating_reason_mutex = os_mutex_create_static(&g_fw_updating_reason_mutex_mem);
+}
+
 static fw_updating_reason_e
 fw_updating_reason_get(void)
 {
-    if (NULL == g_fw_updating_reason_mutex)
-    {
-        g_fw_updating_reason_mutex = os_mutex_create_static(&g_fw_updating_reason_mutex_mem);
-    }
-    os_mutex_lock(&g_fw_updating_reason_mutex);
+    assert(NULL != g_fw_updating_reason_mutex);
+    os_mutex_lock(g_fw_updating_reason_mutex);
     const fw_updating_reason_e reason = g_fw_updating_reason;
-    os_mutex_unlock(&g_fw_updating_reason_mutex);
+    os_mutex_unlock(g_fw_updating_reason_mutex);
     return reason;
 }
 
 static void
 fw_updating_reason_set(const fw_updating_reason_e reason)
 {
-    if (NULL == g_fw_updating_reason_mutex)
-    {
-        g_fw_updating_reason_mutex = os_mutex_create_static(&g_fw_updating_reason_mutex_mem);
-    }
-    os_mutex_lock(&g_fw_updating_reason_mutex);
+    assert(NULL != g_fw_updating_reason_mutex);
+    os_mutex_lock(g_fw_updating_reason_mutex);
     g_fw_updating_reason = reason;
-    os_mutex_unlock(&g_fw_updating_reason_mutex);
+    os_mutex_unlock(g_fw_updating_reason_mutex);
 }
 
 static bool
