@@ -26,6 +26,11 @@ JSON_STREAM_GEN_DECL_GENERATOR_SUB_FUNC(
     const adv_report_t* const p_adv);
 
 JSON_STREAM_GEN_DECL_GENERATOR_SUB_FUNC(
+    adv_decode_df7_cb_json_stream_gen,
+    json_stream_gen_t* const  p_gen,
+    const adv_report_t* const p_adv);
+
+JSON_STREAM_GEN_DECL_GENERATOR_SUB_FUNC(
     adv_decode_dfxf0_cb_json_stream_gen,
     json_stream_gen_t* const  p_gen,
     const adv_report_t* const p_adv);
