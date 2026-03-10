@@ -123,6 +123,33 @@ static fw_update_config_t g_fw_update_cfg;
 static fw_update_stage_e  g_update_progress_stage;
 
 static volatile fw_updating_reason_e g_fw_updating_reason;
+static os_mutex_t                    g_fw_updating_reason_mutex;
+static os_mutex_static_t             g_fw_updating_reason_mutex_mem;
+
+static fw_updating_reason_e
+fw_updating_reason_get(void)
+{
+    if (NULL == g_fw_updating_reason_mutex)
+    {
+        g_fw_updating_reason_mutex = os_mutex_create_static(&g_fw_updating_reason_mutex_mem);
+    }
+    os_mutex_lock(&g_fw_updating_reason_mutex);
+    const fw_updating_reason_e reason = g_fw_updating_reason;
+    os_mutex_unlock(&g_fw_updating_reason_mutex);
+    return reason;
+}
+
+static void
+fw_updating_reason_set(const fw_updating_reason_e reason)
+{
+    if (NULL == g_fw_updating_reason_mutex)
+    {
+        g_fw_updating_reason_mutex = os_mutex_create_static(&g_fw_updating_reason_mutex_mem);
+    }
+    os_mutex_lock(&g_fw_updating_reason_mutex);
+    g_fw_updating_reason = reason;
+    os_mutex_unlock(&g_fw_updating_reason_mutex);
+}
 
 static bool
 fw_update_check_is_valid_pub_key(const esp_ota_sha256_digest_t* const p_pub_key_digest)
@@ -1569,7 +1596,7 @@ fw_update_task(void)
     if (!wifi_manager_is_ap_active())
     {
         LOG_INFO("WiFi AP is not active - start WiFi AP (without timeout)");
-        if (FW_UPDATE_REASON_MANUAL_VIA_LAN == g_fw_updating_reason)
+        if (FW_UPDATE_REASON_MANUAL_VIA_LAN == fw_updating_reason_get())
         {
             start_wifi_ap_without_blocking_req_from_lan();
         }
@@ -1601,16 +1628,16 @@ fw_update_task(void)
     }
 
     const char* const p_reboot_reason_msg = fw_update_get_reboot_reason_msg(
-        g_fw_updating_reason,
+        fw_updating_reason_get(),
         flag_fw_update_successful);
 
     if (!flag_fw_update_successful)
     {
-        g_fw_updating_reason = FW_UPDATE_REASON_NONE;
+        fw_updating_reason_set(FW_UPDATE_REASON_NONE);
     }
     else
     {
-        switch (g_fw_updating_reason)
+        switch (fw_updating_reason_get())
         {
             case FW_UPDATE_REASON_AUTO:
                 settings_write_flag_rebooting_after_auto_update(true);
@@ -1655,7 +1682,7 @@ fw_update_get_binaries_url(void)
 bool
 fw_update_run(const fw_updating_reason_e fw_updating_reason)
 {
-    g_fw_updating_reason = fw_updating_reason;
+    fw_updating_reason_set(fw_updating_reason);
     LOG_INFO("Update network watchdog timestamp");
     network_timeout_update_timestamp();
     if (!os_task_create_finite_without_param(
@@ -1665,7 +1692,7 @@ fw_update_run(const fw_updating_reason_e fw_updating_reason)
             FW_UPDATE_TASK_PRIORITY))
     {
         LOG_ERR("Can't create thread");
-        g_fw_updating_reason = FW_UPDATE_REASON_NONE;
+        fw_updating_reason_set(FW_UPDATE_REASON_NONE);
         return false;
     }
     return true;
@@ -1674,5 +1701,5 @@ fw_update_run(const fw_updating_reason_e fw_updating_reason)
 bool
 fw_update_is_in_progress(void)
 {
-    return (FW_UPDATE_REASON_NONE != g_fw_updating_reason) ? true : false;
+    return (FW_UPDATE_REASON_NONE != fw_updating_reason_get()) ? true : false;
 }
