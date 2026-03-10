@@ -6725,6 +6725,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_delete_blocked_during_fw_update) // N
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("DELETE /unknown.json, params="));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_ERROR,
-        string("FW update in progress, cannot handle DELETE request: DELETE /unknown.json, params="));
+        string("FW update in progress, cannot handle DELETE request: /unknown.json, params="));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
