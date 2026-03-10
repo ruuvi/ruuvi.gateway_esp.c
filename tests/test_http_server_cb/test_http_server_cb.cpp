@@ -460,6 +460,7 @@ protected:
         this->m_http_check_with_auth_arr_of_urls = nullptr;
         this->m_firmware_update_resp             = str_buf_init_null();
         this->m_fw_updating_reason               = FW_UPDATE_REASON_NONE;
+        this->m_fw_update_is_in_progress         = false;
     }
 
     void
@@ -495,6 +496,7 @@ public:
     const char**          m_http_check_with_auth_arr_of_urls;
     size_t                m_http_check_with_auth_num_of_urls;
     fw_updating_reason_e  m_fw_updating_reason;
+    bool                  m_fw_update_is_in_progress;
 };
 
 TestHttpServerCb::TestHttpServerCb()
@@ -856,6 +858,12 @@ esp_transport_ssl_clear_saved_session_tickets(void)
 void
 adv_post_nrf52_cfg_update(const ruuvi_gw_cfg_scan_t* const p_scan, const ruuvi_gw_cfg_filter_t* const p_filter)
 {
+}
+
+bool
+fw_update_is_in_progress(void)
+{
+    return g_pTestClass->m_fw_update_is_in_progress;
 }
 
 } // extern "C"
@@ -1568,8 +1576,54 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_default) // NOLINT
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
+TEST_F(TestHttpServerCb, http_server_cb_on_get_default_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+    ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
+    this->m_fd = -1;
+
+    const http_server_resp_t resp = http_server_cb_on_get("", nullptr, false, nullptr);
+    ASSERT_EQ(HTTP_RESP_CODE_404, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(0, resp.content_len);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(0, resp.select_location.fatfs.fd);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: ruuvi.html"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "Can't find file: ruuvi.html");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
 TEST_F(TestHttpServerCb, http_server_cb_on_get_index_html) // NOLINT
 {
+    const char*             expected_resp = "index_html_content";
+    const file_descriptor_t fd            = 1;
+    ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
+    FileInfo fileInfo = FileInfo("index.html.gz", expected_resp);
+    this->m_files.emplace_back(fileInfo);
+    this->m_fd = fd;
+
+    const http_server_resp_t resp = http_server_cb_on_get("index.html", nullptr, false, nullptr);
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_FATFS, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(strlen(expected_resp), resp.content_len);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_GZIP, resp.content_encoding);
+    ASSERT_EQ(fd, resp.select_location.fatfs.fd);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /index.html"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: index.html"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File index.html.gz was opened successfully, fd=1");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_index_html_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress      = true;
     const char*             expected_resp = "index_html_content";
     const file_descriptor_t fd            = 1;
     ASSERT_TRUE(http_server_cb_init(GW_GWUI_PARTITION));
@@ -1754,8 +1808,169 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
 
+TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+
+    const char* expected_json
+        = "{\n"
+          "\t\"fw_ver\":\t\"v1.3.3\",\n"
+          "\t\"nrf52_fw_ver\":\t\"v0.7.1\",\n"
+          "\t\"gw_mac\":\t\"11:22:33:44:55:66\",\n"
+          "\t\"storage\":\t{\n"
+          "\t\t\"storage_ready\":\tfalse\n"
+          "\t},\n"
+          "\t\"wifi_sta_config\":\t{\n"
+          "\t\t\"ssid\":\t\"\"\n"
+          "\t},\n"
+          "\t\"wifi_ap_config\":\t{\n"
+          "\t\t\"channel\":\t1\n"
+          "\t},\n"
+          "\t\"use_eth\":\ttrue,\n"
+          "\t\"eth_dhcp\":\ttrue,\n"
+          "\t\"eth_static_ip\":\t\"\",\n"
+          "\t\"eth_netmask\":\t\"\",\n"
+          "\t\"eth_gw\":\t\"\",\n"
+          "\t\"eth_dns1\":\t\"\",\n"
+          "\t\"eth_dns2\":\t\"\",\n"
+          "\t\"remote_cfg_use\":\tfalse,\n"
+          "\t\"remote_cfg_url\":\t\"\",\n"
+          "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+          "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
+          "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+          "\t\"use_http_ruuvi\":\tfalse,\n"
+          "\t\"use_http\":\tfalse,\n"
+          "\t\"use_http_stat\":\ttrue,\n"
+          "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL
+          "\",\n"
+          "\t\"http_stat_user\":\t\"\",\n"
+          "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
+          "\t\"use_mqtt\":\ttrue,\n"
+          "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
+          "\t\"mqtt_transport\":\t\"TCP\",\n"
+          "\t\"mqtt_data_format\":\t\"ruuvi_raw\",\n"
+          "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+          "\t\"mqtt_port\":\t1883,\n"
+          "\t\"mqtt_sending_interval\":\t0,\n"
+          "\t\"mqtt_prefix\":\t\"ruuvi/30:AE:A4:02:84:A4\",\n"
+          "\t\"mqtt_client_id\":\t\"30:AE:A4:02:84:A4\",\n"
+          "\t\"mqtt_user\":\t\"\",\n"
+          "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
+          "\t\"lan_auth_type\":\t\"lan_auth_default\",\n"
+          "\t\"lan_auth_user\":\t\"Admin\",\n"
+          "\t\"lan_auth_api_key_use\":\ttrue,\n"
+          "\t\"lan_auth_api_key_rw_use\":\tfalse,\n"
+          "\t\"auto_update_cycle\":\t\"regular\",\n"
+          "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+          "\t\"auto_update_interval_from\":\t0,\n"
+          "\t\"auto_update_interval_to\":\t24,\n"
+          "\t\"auto_update_tz_offset_hours\":\t3,\n"
+          "\t\"ntp_use\":\ttrue,\n"
+          "\t\"ntp_use_dhcp\":\tfalse,\n"
+          "\t\"ntp_server1\":\t\"time1.server.com\",\n"
+          "\t\"ntp_server2\":\t\"time2.server.com\",\n"
+          "\t\"ntp_server3\":\t\"time3.server.com\",\n"
+          "\t\"ntp_server4\":\t\"time4.server.com\",\n"
+          "\t\"company_id\":\t1177,\n"
+          "\t\"company_use_filtering\":\ttrue,\n"
+          "\t\"scan_coded_phy\":\tfalse,\n"
+          "\t\"scan_1mbit_phy\":\ttrue,\n"
+          "\t\"scan_2mbit_phy\":\ttrue,\n"
+          "\t\"scan_channel_37\":\ttrue,\n"
+          "\t\"scan_channel_38\":\ttrue,\n"
+          "\t\"scan_channel_39\":\ttrue,\n"
+          "\t\"scan_default\":\ttrue,\n"
+          "\t\"scan_filter_allow_listed\":\tfalse,\n"
+          "\t\"scan_filter_list\":\t[],\n"
+          "\t\"coordinates\":\t\"\",\n"
+          "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
+          "}";
+    bool     flag_network_cfg = false;
+    gw_cfg_t gw_cfg           = get_gateway_config_default();
+    ASSERT_TRUE(
+        json_ruuvi_parse_http_body(
+            "{"
+            "\"remote_cfg_use\":false,\n"
+            "\"remote_cfg_url\":\"\",\n"
+            "\"remote_cfg_auth_type\":\"none\",\n"
+            "\"remote_cfg_refresh_interval_minutes\":0,\n"
+            "\"use_mqtt\":true,"
+            "\"mqtt_disable_retained_messages\":false,"
+            "\"mqtt_server\":\"test.mosquitto.org\","
+            "\"mqtt_port\":1883,"
+            "\"mqtt_sending_interval\":0,"
+            "\"mqtt_prefix\":\"ruuvi/30:AE:A4:02:84:A4\","
+            "\"mqtt_client_id\":\"30:AE:A4:02:84:A4\","
+            "\"mqtt_user\":\"\","
+            "\"mqtt_pass\":\"\","
+            "\"use_http_ruuvi\":false,"
+            "\"use_http\":false,"
+            "\"http_url\":\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\","
+            "\"http_user\":\"\","
+            "\"http_pass\":\"\","
+            "\"use_http_stat\":true,"
+            "\"http_stat_url\":\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\","
+            "\"http_stat_user\":\"\","
+            "\"http_stat_pass\":\"\","
+            "\"lan_auth_api_key\":\"6kl/fd/c+3qvWm3Mhmwgh3BWNp+HDRQiLp/X0PuwG8Q=\","
+            "\"ntp_use\":true,"
+            "\"ntp_use_dhcp\":false,"
+            "\"ntp_server1\":\"time1.server.com\","
+            "\"ntp_server2\":\"time2.server.com\","
+            "\"ntp_server3\":\"time3.server.com\","
+            "\"ntp_server4\":\"time4.server.com\","
+            "\"company_use_filtering\":true,"
+            "\"fw_update_url\":\"https://network.ruuvi.com/firmwareupdate\""
+            "}",
+            &gw_cfg,
+            &flag_network_cfg));
+    ASSERT_FALSE(flag_network_cfg);
+    gw_cfg_update_ruuvi_cfg(&gw_cfg.ruuvi_cfg);
+
+    esp_log_wrapper_clear();
+    const http_server_resp_t resp = http_server_cb_on_get("ruuvi.json", nullptr, false, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_EQ(strlen(expected_json), resp.content_len);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /ruuvi.json"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Activate cfg_mode"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
 TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics) // NOLINT
 {
+    const char*              expected_resp = "metrics_info";
+    const http_server_resp_t resp          = http_server_cb_on_get("metrics", nullptr, false, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_PLAIN, resp.content_type);
+    ASSERT_NE(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(string("version=0.0.4"), string(resp.p_content_type_param));
+    ASSERT_EQ(strlen(expected_resp), resp.content_len);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /metrics"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("metrics: ") + string(expected_resp));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress       = true;
     const char*              expected_resp = "metrics_info";
     const http_server_resp_t resp          = http_server_cb_on_get("metrics", nullptr, false, nullptr);
 
@@ -1817,7 +2032,68 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history) // NOLINT
         const char* p_chunk = json_stream_gen_get_next_chunk(resp.select_location.json_generator.p_json_gen);
         if (nullptr == p_chunk)
         {
-            ASSERT_FALSE(nullptr == p_chunk);
+            ASSERT_NE(nullptr, p_chunk);
+        }
+
+        if ('\0' == p_chunk[0])
+        {
+            break;
+        }
+        json_str += string(p_chunk);
+    }
+    ASSERT_EQ(string(expected_resp), json_str);
+
+    ASSERT_EQ(strlen(expected_resp), resp.content_len);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /history"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Requested /history on 60 seconds interval"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_history_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+    const char* expected_resp
+        = "{\n"
+          "  \"data\": {\n"
+          "    \"coordinates\": \"\",\n"
+          "    \"timestamp\": 1615660220,\n"
+          "    \"gw_mac\": \"11:22:33:44:55:66\",\n"
+          "    \"tags\": {\n"
+          "      \"AA:BB:CC:11:22:01\": {\n"
+          "        \"rssi\": 50,\n"
+          "        \"timestamp\": 1615660219,\n"
+          "        \"ble_phy\": \"1M\",\n"
+          "        \"ble_chan\": 37,\n"
+          "        \"data\": \"2233\"\n"
+          "      },\n"
+          "      \"AA:BB:CC:11:22:02\": {\n"
+          "        \"rssi\": 51,\n"
+          "        \"timestamp\": 1615660209,\n"
+          "        \"ble_phy\": \"2M\",\n"
+          "        \"ble_chan\": 25,\n"
+          "        \"ble_tx_power\": 8,\n"
+          "        \"data\": \"223344\"\n"
+          "      }\n"
+          "    }\n"
+          "  }\n"
+          "}";
+    const http_server_resp_t resp = http_server_cb_on_get("history", nullptr, false, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_JSON_GENERATOR, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
+
+    ASSERT_NE(nullptr, resp.select_location.json_generator.p_json_gen);
+    string json_str("");
+    while (true)
+    {
+        const char* p_chunk = json_stream_gen_get_next_chunk(resp.select_location.json_generator.p_json_gen);
+        if (nullptr == p_chunk)
+        {
+            ASSERT_NE(nullptr, p_chunk);
         }
 
         if ('\0' == p_chunk[0])
@@ -1877,7 +2153,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_with_time_interval_20) //
         const char* p_chunk = json_stream_gen_get_next_chunk(resp.select_location.json_generator.p_json_gen);
         if (nullptr == p_chunk)
         {
-            ASSERT_FALSE(nullptr == p_chunk);
+            ASSERT_NE(nullptr, p_chunk);
         }
 
         if ('\0' == p_chunk[0])
@@ -1943,7 +2219,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps) // NO
         const char* p_chunk = json_stream_gen_get_next_chunk(resp.select_location.json_generator.p_json_gen);
         if (nullptr == p_chunk)
         {
-            ASSERT_FALSE(nullptr == p_chunk);
+            ASSERT_NE(nullptr, p_chunk);
         }
 
         if ('\0' == p_chunk[0])
@@ -2007,7 +2283,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps_with_f
         const char* p_chunk = json_stream_gen_get_next_chunk(resp.select_location.json_generator.p_json_gen);
         if (nullptr == p_chunk)
         {
-            ASSERT_FALSE(nullptr == p_chunk);
+            ASSERT_NE(nullptr, p_chunk);
         }
 
         if ('\0' == p_chunk[0])
@@ -6297,4 +6573,158 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__
             "E http_server: Firmware_update info 'latest/version' is empty\n"
             "I http_server: Firmware update: No update is required, the latest version is already installed\n",
             esp_log_wrapper_get_logs());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_fw_update_reset_blocked_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+    const http_server_resp_t resp    = http_server_cb_on_post("fw_update_reset", nullptr, nullptr, false);
+
+    ASSERT_EQ(HTTP_RESP_CODE_409, resp.http_resp_code);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /fw_update_reset, params="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("FW update in progress, cannot handle POST request: /fw_update_reset, params=, flag_access_from_lan=0"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_blocked_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+    const http_server_resp_t resp    = http_server_cb_on_post("ruuvi.json", nullptr, "{}", false);
+
+    ASSERT_EQ(HTTP_RESP_CODE_409, resp.http_resp_code);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /ruuvi.json, params="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("FW update in progress, cannot handle POST request: /ruuvi.json, params=, flag_access_from_lan=0"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_bluetooth_scanning_json_blocked_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+    const http_server_resp_t resp    = http_server_cb_on_post("bluetooth_scanning.json", nullptr, "{}", false);
+
+    ASSERT_EQ(HTTP_RESP_CODE_409, resp.http_resp_code);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        string("http_server_cb_on_post /bluetooth_scanning.json, params="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("FW update in progress, cannot handle POST request: /bluetooth_scanning.json, params=, "
+               "flag_access_from_lan=0"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_fw_update_json_blocked_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+    const http_server_resp_t resp    = http_server_cb_on_post("fw_update.json", nullptr, "{}", false);
+
+    ASSERT_EQ(HTTP_RESP_CODE_409, resp.http_resp_code);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /fw_update.json, params="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("FW update in progress, cannot handle POST request: /fw_update.json, params=, flag_access_from_lan=0"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_fw_update_url_json_blocked_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+    const http_server_resp_t resp    = http_server_cb_on_post("fw_update_url.json", nullptr, "{}", false);
+
+    ASSERT_EQ(HTTP_RESP_CODE_409, resp.http_resp_code);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /fw_update_url.json, params="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string(
+            "FW update in progress, cannot handle POST request: /fw_update_url.json, params=, flag_access_from_lan=0"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_fw_update_url_blocked_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+    const http_server_resp_t resp    = http_server_cb_on_post("fw_update_url", nullptr, "{}", false);
+
+    ASSERT_EQ(HTTP_RESP_CODE_409, resp.http_resp_code);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /fw_update_url, params="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("FW update in progress, cannot handle POST request: /fw_update_url, params=, flag_access_from_lan=0"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_ssl_cert_blocked_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+    const http_server_resp_t resp    = http_server_cb_on_post("ssl_cert", nullptr, "{}", false);
+
+    ASSERT_EQ(HTTP_RESP_CODE_409, resp.http_resp_code);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /ssl_cert, params="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("FW update in progress, cannot handle POST request: /ssl_cert, params=, flag_access_from_lan=0"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_init_storage_blocked_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+    const http_server_resp_t resp    = http_server_cb_on_post("init_storage", nullptr, "{}", false);
+
+    ASSERT_EQ(HTTP_RESP_CODE_409, resp.http_resp_code);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /init_storage, params="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("FW update in progress, cannot handle POST request: /init_storage, params=, flag_access_from_lan=0"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_any_blocked_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+    const http_server_resp_t resp    = http_server_cb_on_post("any_request", nullptr, "{}", false);
+
+    ASSERT_EQ(HTTP_RESP_CODE_409, resp.http_resp_code);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /any_request, params="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("FW update in progress, cannot handle POST request: /any_request, params=, flag_access_from_lan=0"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_blocked_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+    const http_server_resp_t resp    = http_server_cb_on_get("validate_url", nullptr, false, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_409, resp.http_resp_code);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /validate_url"));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("FW update in progress, cannot handle GET request: /validate_url"));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_delete_blocked_during_fw_update) // NOLINT
+{
+    this->m_fw_update_is_in_progress = true;
+    const http_server_resp_t resp    = http_server_cb_on_delete("unknown.json", nullptr, false, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_409, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(0, resp.content_len);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
+    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("DELETE /unknown.json, params="));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        string("FW update in progress, cannot handle DELETE request: /unknown.json, params="));
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
 }

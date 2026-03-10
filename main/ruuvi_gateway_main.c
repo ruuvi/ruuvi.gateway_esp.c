@@ -462,6 +462,7 @@ static bool
 main_task_initial_initialization(void)
 {
     reset_info_init();
+    fw_update_init();
     cjson_wrap_init();
     partition_table_update_init_mutex();
 

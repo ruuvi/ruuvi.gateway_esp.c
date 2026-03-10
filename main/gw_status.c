@@ -361,8 +361,8 @@ gw_status_suspend_relaying(const bool flag_wait_until_relaying_stopped)
     os_mutex_lock(p_relaying->mutex_cnt_relaying_suspended);
     const bool flag_notify_change_for_http = (0 == p_relaying->cnt_relaying_via_http_suspended) ? true : false;
     const bool flag_notify_change_for_mqtt = (0 == p_relaying->cnt_relaying_via_mqtt_suspended) ? true : false;
-    LOG_INFO(
-        "SUSPEND RELAYING: cnt_http=%u, cnt_mqtt=%u",
+    LOG_WARN(
+        "#### SUSPEND RELAYING: cnt_http=%u, cnt_mqtt=%u",
         p_relaying->cnt_relaying_via_http_suspended,
         p_relaying->cnt_relaying_via_mqtt_suspended);
     p_relaying->cnt_relaying_via_http_suspended += 1;
@@ -384,7 +384,7 @@ gw_status_resume_relaying(const bool flag_wait)
     bool flag_notify_change_for_mqtt = false;
     if (0 == p_relaying->cnt_relaying_via_http_suspended)
     {
-        LOG_WARN("RESUME RELAYING: Attempt to resume relaying via HTTP, but it is already active");
+        LOG_WARN("#### RESUME RELAYING: Attempt to resume relaying via HTTP, but it is already active");
     }
     else
     {
@@ -396,7 +396,7 @@ gw_status_resume_relaying(const bool flag_wait)
     }
     if (0 == p_relaying->cnt_relaying_via_mqtt_suspended)
     {
-        LOG_WARN("RESUME RELAYING: Attempt to resume relaying via MQTT, but it is already active");
+        LOG_WARN("#### RESUME RELAYING: Attempt to resume relaying via MQTT, but it is already active");
     }
     else
     {
@@ -406,8 +406,8 @@ gw_status_resume_relaying(const bool flag_wait)
             flag_notify_change_for_mqtt = true;
         }
     }
-    LOG_INFO(
-        "RESUME RELAYING: cnt_http=%u (notify=%d), cnt_mqtt=%u (notify=%d)",
+    LOG_WARN(
+        "#### RESUME RELAYING: cnt_http=%u (notify=%d), cnt_mqtt=%u (notify=%d)",
         p_relaying->cnt_relaying_via_http_suspended,
         (int)flag_notify_change_for_http,
         p_relaying->cnt_relaying_via_mqtt_suspended,
@@ -426,8 +426,8 @@ gw_status_suspend_http_relaying(const bool flag_wait_until_relaying_stopped)
     gw_status_relaying_t* const p_relaying = &g_gw_status_relaying;
     os_mutex_lock(p_relaying->mutex_cnt_relaying_suspended);
     const bool flag_notify_change_for_http = (0 == p_relaying->cnt_relaying_via_http_suspended) ? true : false;
-    LOG_INFO(
-        "SUSPEND HTTP RELAYING: cnt=%u, notify=%d",
+    LOG_WARN(
+        "#### SUSPEND HTTP RELAYING: cnt=%u, notify=%d",
         p_relaying->cnt_relaying_via_http_suspended,
         (int)flag_notify_change_for_http);
     p_relaying->cnt_relaying_via_http_suspended += 1;
@@ -447,7 +447,7 @@ gw_status_resume_http_relaying(const bool flag_wait)
     bool flag_notify_change_for_http = false;
     if (0 == p_relaying->cnt_relaying_via_http_suspended)
     {
-        LOG_WARN("RESUME HTTP RELAYING: Attempt to resume relaying via HTTP, but it is already active");
+        LOG_WARN("#### RESUME HTTP RELAYING: Attempt to resume relaying via HTTP, but it is already active");
     }
     else
     {
@@ -456,8 +456,8 @@ gw_status_resume_http_relaying(const bool flag_wait)
         {
             flag_notify_change_for_http = true;
         }
-        LOG_INFO(
-            "RESUME HTTP RELAYING: cnt=%u, notify=%d",
+        LOG_WARN(
+            "#### RESUME HTTP RELAYING: cnt=%u, notify=%d",
             p_relaying->cnt_relaying_via_http_suspended,
             (int)flag_notify_change_for_http);
     }

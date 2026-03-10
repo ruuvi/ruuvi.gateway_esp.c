@@ -48,6 +48,9 @@ typedef enum fw_update_reason_e
     FW_UPDATE_REASON_MANUAL_VIA_LAN,
 } fw_updating_reason_e;
 
+void
+fw_update_init(void);
+
 bool
 fw_update_read_flash_info_and_check_signatures(void);
 
@@ -102,6 +105,9 @@ fw_update_set_stage_nrf52_updating(void);
 
 void
 fw_update_nrf52fw_cb_progress(const size_t num_bytes_flashed, const size_t total_size, void* const p_param);
+
+bool
+fw_update_is_in_progress(void);
 
 #ifdef __cplusplus
 }
