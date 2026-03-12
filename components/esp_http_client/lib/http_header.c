@@ -193,8 +193,9 @@ int http_header_generate_string(http_header_handle_t header, int index, char *bu
         if (siz + 1 > *buffer_len - 2) {
             // if this item would not fit to the buffer, return the index of the last fitting one
             ret_idx = idx - 1;
-            ESP_LOGE(TAG, "Buffer length %d is small to fit all the headers %d bytes",
-                *buffer_len - 2, siz + 1);
+            ESP_LOGE(TAG, "Buffer length %d is too small to fit all headers "
+                     "(%d bytes needed, excluding final CRLF terminator)",
+                     *buffer_len - 2, siz + 1);
             break;
         }
     }
