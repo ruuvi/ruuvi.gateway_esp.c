@@ -31,7 +31,7 @@
 static const char TAG[] = "http_download";
 
 #define HTTP_BUFFER_SIZE    (2048)
-#define HTTP_BUFFER_SIZE_TX (1024)
+#define HTTP_BUFFER_SIZE_TX (2048)
 
 #define HTTP_MIN_DOMAIN_NAME_LEN (3U)
 

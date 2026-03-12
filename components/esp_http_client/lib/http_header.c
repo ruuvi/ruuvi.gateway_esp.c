@@ -183,6 +183,7 @@ int http_header_generate_string(http_header_handle_t header, int index, char *bu
     // iterate over the header entries to calculate buffer size and determine last item
     STAILQ_FOREACH(item, header, next) {
         if (item->value && idx >= index) {
+            ESP_LOGD(TAG, "%s: Header item %s: %s", __func__, item->key, item->value);
             siz += strlen(item->key);
             siz += strlen(item->value);
             siz += 4; //': ' and '\r\n'
@@ -192,7 +193,8 @@ int http_header_generate_string(http_header_handle_t header, int index, char *bu
         if (siz + 1 > *buffer_len - 2) {
             // if this item would not fit to the buffer, return the index of the last fitting one
             ret_idx = idx - 1;
-            ESP_LOGE(TAG, "Buffer length is small to fit all the headers");
+            ESP_LOGE(TAG, "Buffer length %d is small to fit all the headers %d bytes",
+                *buffer_len - 2, siz + 1);
             break;
         }
     }
