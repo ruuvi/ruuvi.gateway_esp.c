@@ -47,12 +47,12 @@ jobs:
             ~/.espressif
           key: esp-idf-${{ hashFiles('.github/workflows/build-fw-prod.yml') }}
 
-      - name: Download and install ESP-IDF v4.2.2
+      - name: Download and install ESP-IDF v4.2.5
         if: steps.cache-esp-idf.outputs.cache-hit != 'true'
         run: |
           mkdir -p ~/esp
           cd ~/esp
-          git clone --recursive --branch v4.2.2 https://github.com/espressif/esp-idf.git
+          git clone --recursive --branch v4.2.5 https://github.com/espressif/esp-idf.git
           cd $IDF_PATH
           ./install.sh --python `which python3.8`
 

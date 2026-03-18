@@ -21,7 +21,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffile-prefix-map=$ENV{IDF_PATH}=IDF")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffile-prefix-map=${CMAKE_SOURCE_DIR}=.")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffile-prefix-map=$ENV{IDF_PATH}=IDF")
 
-set(EXPECTED_IDF_VERSION v4.2.2)
+set(EXPECTED_IDF_VERSION v4.2.5)
 
 # ==============================================================================
 # nRF52 Firmware Configuration
@@ -137,6 +137,7 @@ target_compile_definitions(__idf_esp_netif PUBLIC "-DLWIP_DHCP_GET_NTP_SRV=1")
 target_compile_definitions(__idf_mqtt PUBLIC "-DCONFIG_MQTT_OUTBOX_MAX_SIZE=4096" "-DCONFIG_MQTT_BUFFER_SIZE=1024" "-DCONFIG_MQTT_TASK_PRIORITY=7")
 target_compile_definitions(__idf_esp-tls PUBLIC "-DCONFIG_LWIP_IPV4=1" "-DCONFIG_LWIP_IPV6=0")
 target_include_directories(__idf_lwip BEFORE PUBLIC ./include)
+target_compile_definitions(__idf_lwip PUBLIC "-DDHCP_OPTIONS_LEN=74")
 
 target_include_directories(__idf_esp_common BEFORE PUBLIC ./components/esp-tls)
 

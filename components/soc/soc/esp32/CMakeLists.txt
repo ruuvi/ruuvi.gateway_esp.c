@@ -1,17 +1,19 @@
-add_library(soc_esp32 STATIC
-    "adc_periph.c"
-    "dac_periph.c"
-    "gpio_periph.c"
-    "rtc_io_periph.c"
-    "rtc_periph.c"
-    "sdio_slave_periph.c"
-    "sdmmc_periph.c"
-    "interrupts.c"
-    "spi_periph.c"
-    "ledc_periph.c"
-    "i2s_periph.c"
-    "i2c_periph.c"
-    "uart_periph.c"
-    "touch_sensor_periph.c")
+set(ORIG_SOC_SOC_ESP32 $ENV{IDF_PATH}/components/soc/soc/esp32)
 
-target_include_directories(soc_esp32 PUBLIC include ../include private_include)
+add_library(soc_esp32 STATIC
+    "${ORIG_SOC_SOC_ESP32}/adc_periph.c"
+    "${ORIG_SOC_SOC_ESP32}/dac_periph.c"
+    "${ORIG_SOC_SOC_ESP32}/gpio_periph.c"
+    "${ORIG_SOC_SOC_ESP32}/rtc_io_periph.c"
+    "${ORIG_SOC_SOC_ESP32}/rtc_periph.c"
+    "${ORIG_SOC_SOC_ESP32}/sdio_slave_periph.c"
+    "${ORIG_SOC_SOC_ESP32}/sdmmc_periph.c"
+    "${ORIG_SOC_SOC_ESP32}/interrupts.c"
+    "${ORIG_SOC_SOC_ESP32}/spi_periph.c"
+    "${ORIG_SOC_SOC_ESP32}/ledc_periph.c"
+    "${ORIG_SOC_SOC_ESP32}/i2s_periph.c"
+    "${ORIG_SOC_SOC_ESP32}/i2c_periph.c"
+    "${ORIG_SOC_SOC_ESP32}/uart_periph.c"
+    "${ORIG_SOC_SOC_ESP32}/touch_sensor_periph.c")
+
+target_include_directories(soc_esp32 PUBLIC ${ORIG_SOC_SOC_ESP32}/include ${ORIG_SOC_SOC_ESP32}/../include ${ORIG_SOC_SOC_ESP32}/private_include)

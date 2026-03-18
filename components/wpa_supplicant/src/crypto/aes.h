@@ -9,6 +9,8 @@
 #ifndef AES_H
 #define AES_H
 
+#include "crypto/aes_wrap.h"
+
 #define AES_BLOCK_SIZE 16
 
 void * aes_encrypt_init(const u8 *key, size_t len);
