@@ -13,35 +13,29 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-          submodules: true
-
-      - name: Checkout submodules
-        run: git submodule update --init --recursive
+          submodules: recursive
 
       - name: Set up Python 3.8
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: 3.8
+          python-version: '3.8'
 
       - name: Check Python version
         run: |
+          which python
           python --version
+          python -m pip --version
+          which python3
           python3 --version
-          python3.8 --version
-
-      - name: Set Python 3.8 as default
-        run: |
-          echo "alias python=python3.8" >> ~/.bashrc
-          source ~/.bashrc          
+          python3 -m pip --version
 
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc g++ cmake make ninja-build mtools
-          sudo apt-get install -y git wget libncurses-dev flex bison gperf python3 python3-pip python3-setuptools python3-serial python3-click python3-cryptography python3-future python3-pyparsing python3-pyelftools ccache libffi-dev libssl-dev
+          sudo apt-get install -y git wget libncurses-dev flex bison gperf ccache libffi-dev libssl-dev
           sudo apt-get install -y locales
           sudo locale-gen de_DE.UTF-8
 
@@ -50,25 +44,32 @@ jobs:
 
       - name: Cache ESP-IDF and tools
         id: cache-esp-idf
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/esp
             ~/.espressif
-          key: esp-idf-${{ hashFiles('.github/workflows/google-tests.yml') }}
+          key: esp-idf-v4.2.5-v1
 
-      - name: Download and install ESP-IDF v4.2.2
+      - name: Download and install ESP-IDF v4.2.5
         if: steps.cache-esp-idf.outputs.cache-hit != 'true'
         run: |
-          mkdir ~/esp
+          mkdir -p ~/esp
           cd ~/esp
-          git clone --recursive --branch v4.2.2 https://github.com/espressif/esp-idf.git
+          git clone --recursive --branch v4.2.5 https://github.com/espressif/esp-idf.git
           cd $IDF_PATH
-          ./install.sh --python `which python3.8`
+          ./install.sh
+
+      - name: Verify ESP-IDF installation
+        run: |
+          if [ ! -f "$HOME/esp/esp-idf/export.sh" ]; then
+            echo "ESP-IDF installation is missing or cache is incomplete"
+            exit 1
+          fi
 
       - name: Build
         run: |
-          source $HOME/esp/esp-idf/export.sh
+          source "$HOME/esp/esp-idf/export.sh"
           printenv | grep IDF
           idf.py --version          
           cd tests
@@ -80,4 +81,4 @@ jobs:
       - name: Run tests
         run: |
           cd tests/cmake-build-unit-tests
-          ctest
+          ctest --output-on-failure

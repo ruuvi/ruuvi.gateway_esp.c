@@ -12,7 +12,6 @@
 #include <esp_system.h>
 #include <esp_crc.h>
 #include <esp_attr.h>
-#include <hal/uart_hal.h>
 #include <esp_private/system_internal.h>
 #include "freertos/FreeRTOSConfig.h"
 #include "str_buf.h"
@@ -20,6 +19,7 @@
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
+#include <hal/uart_hal.h>
 
 #define RESET_INFO_DATA_SOFTWARE_MSG_LEN (1024)
 #define RESET_INFO_DATA_PANIC_MSG_LEN    (2048)
