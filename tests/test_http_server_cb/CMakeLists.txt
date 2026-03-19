@@ -135,8 +135,8 @@ add_executable(${ProjectId}
         $ENV{IDF_PATH}/components/lwip/lwip/src/core/def.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.c
         $ENV{IDF_PATH}/components/json/cJSON/cJSON.h
-        $ENV{IDF_PATH}/components/nghttp/nghttp2/third-party/http-parser/http_parser.c
-        $ENV{IDF_PATH}/components/nghttp/nghttp2/third-party/http-parser/http_parser.h
+        $ENV{IDF_PATH}/components/nghttp/port/http_parser.c
+        $ENV{IDF_PATH}/components/nghttp/port/include/http_parser.h
 )
 
 set_target_properties(${ProjectId} PROPERTIES
