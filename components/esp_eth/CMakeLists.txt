@@ -1,6 +1,10 @@
 idf_build_get_property(components_to_build BUILD_COMPONENTS)
 
-set(ORIG $ENV{IDF_PATH}/components/esp_eth)
+idf_build_get_property(idf_path IDF_PATH)
+if(NOT idf_path)
+    message(FATAL_ERROR "IDF_PATH is not set or could not be determined by idf_build_get_property(IDF_PATH)")
+endif()
+set(ORIG "${idf_path}/components/esp_eth")
 
 set(srcs)
 set(include)

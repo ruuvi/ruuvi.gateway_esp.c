@@ -18,25 +18,29 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
 
       - name: Set up Python 3.8
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: 3.8
+          python-version: '3.8'
 
-      - name: Set Python 3.8 as default
+      - name: Check Python version
         run: |
-          echo "alias python=python3.8" >> ~/.bashrc
-          source ~/.bashrc          
+          which python
+          python --version
+          python -m pip --version
+          which python3
+          python3 --version
+          python3 -m pip --version
 
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y g++ cmake gcovr mtools
-          sudo apt-get install -y gcc git wget make libncurses-dev flex bison gperf python3 python3-pip python3-setuptools python3-serial python3-click python3-cryptography python3-future python3-pyparsing python3-pyelftools cmake ninja-build ccache libffi-dev libssl-dev
+          sudo apt-get install -y gcc git wget make libncurses-dev flex bison gperf cmake ninja-build ccache libffi-dev libssl-dev
 
       - name: Set IDF_PATH
         run: echo "IDF_PATH=$HOME/esp/esp-idf" >> $GITHUB_ENV
@@ -48,7 +52,7 @@ jobs:
           path: |
             ~/esp
             ~/.espressif
-          key: esp-idf-${{ hashFiles('.github/workflows/build-fw-dev.yml') }}
+          key: esp-idf-v4.2.5-${{ runner.os }}-${{ hashFiles('.github/workflows/sonar-scan.yml') }}
 
       - name: Download and install ESP-IDF v4.2.5
         if: steps.cache-esp-idf.outputs.cache-hit != 'true'
@@ -57,7 +61,14 @@ jobs:
           cd ~/esp
           git clone --recursive --branch v4.2.5 https://github.com/espressif/esp-idf.git
           cd $IDF_PATH
-          ./install.sh --python `which python3.8`
+          ./install.sh
+
+      - name: Verify ESP-IDF installation
+        run: |
+          if [ ! -f "$HOME/esp/esp-idf/export.sh" ]; then
+            echo "ESP-IDF installation is missing or cache is incomplete"
+            exit 1
+          fi
 
       - name: Prepare secure boot signing key
         env:
@@ -71,10 +82,10 @@ jobs:
       - name: Run build
         run: |
           lsb_release -a          
-          source $HOME/esp/esp-idf/export.sh
+          source "$HOME/esp/esp-idf/export.sh"
           python --version
           which python
-          pip install bincopy
+          python -m pip install bincopy
           printenv | grep IDF
           idf.py --version          
           mkdir build

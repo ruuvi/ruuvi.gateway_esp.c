@@ -1,9 +1,13 @@
-set(ORIG $ENV{IDF_PATH}/components/protocomm)
+idf_build_get_property(idf_path IDF_PATH)
+if(NOT idf_path)
+    message(FATAL_ERROR "IDF_PATH is not set or could not be determined by idf_build_get_property(IDF_PATH)")
+endif()
+set(ORIG "${idf_path}/components/protocomm")
 
-set(include_dirs ${ORIG}/include/common
-                ${ORIG}/include/security
-                ${ORIG}/include/transports)
-set(priv_include_dirs ${ORIG}/proto-c ${ORIG}/src/common)
+set(include_dirs "${ORIG}/include/common"
+                "${ORIG}/include/security"
+                "${ORIG}/include/transports")
+set(priv_include_dirs "${ORIG}/proto-c" "${ORIG}/src/common")
 set(srcs
     "${ORIG}/src/common/protocomm.c"
     "${ORIG}/src/security/security0.c"
@@ -21,7 +25,7 @@ if(CONFIG_BT_ENABLED)
             "${ORIG}/src/simple_ble/simple_ble.c"
             "${ORIG}/src/transports/protocomm_ble.c")
         list(APPEND priv_include_dirs
-                ${ORIG}/src/simple_ble)
+                "${ORIG}/src/simple_ble")
     endif()
     if(CONFIG_BT_NIMBLE_ENABLED)
         list(APPEND srcs

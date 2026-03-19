@@ -1,6 +1,10 @@
 idf_build_get_property(target IDF_TARGET)
 
-set(ORIG_SOC $ENV{IDF_PATH}/components/soc)
+idf_build_get_property(idf_path IDF_PATH)
+if(NOT idf_path)
+    message(FATAL_ERROR "IDF_PATH is not set or could not be determined by idf_build_get_property(IDF_PATH)")
+endif()
+set(ORIG_SOC "${idf_path}/components/soc")
 
 set(srcs "${ORIG_SOC}/src/cpu_util.c"
           "${ORIG_SOC}/src/memory_layout_utils.c"
@@ -48,7 +52,7 @@ endif()
 
 idf_component_register(SRCS ${srcs}
                        PRIV_REQUIRES ${priv_requires}
-                       LDFRAGMENTS ${ORIG_SOC}/linker.lf)
+                       LDFRAGMENTS "${ORIG_SOC}/linker.lf")
 
 if(CONFIG_IDF_TARGET_ESP32)
     target_sources(${COMPONENT_LIB} PRIVATE "${ORIG_SOC}/src/hal/mcpwm_hal.c"
@@ -61,7 +65,7 @@ endif()
 # HAL header via include_next, process the build scripts here first so that
 # include directories appear first in the compile command.
 add_subdirectory(src/${target})
-target_include_directories(${COMPONENT_LIB} PUBLIC ${ORIG_SOC}/include)
+target_include_directories(${COMPONENT_LIB} PUBLIC "${ORIG_SOC}/include")
 
 add_subdirectory(soc)
 target_link_libraries(${COMPONENT_LIB} PUBLIC "soc_${target}")

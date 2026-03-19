@@ -137,6 +137,7 @@ target_compile_definitions(__idf_esp_netif PUBLIC "-DLWIP_DHCP_GET_NTP_SRV=1")
 target_compile_definitions(__idf_mqtt PUBLIC "-DCONFIG_MQTT_OUTBOX_MAX_SIZE=4096" "-DCONFIG_MQTT_BUFFER_SIZE=1024" "-DCONFIG_MQTT_TASK_PRIORITY=7")
 target_compile_definitions(__idf_esp-tls PUBLIC "-DCONFIG_LWIP_IPV4=1" "-DCONFIG_LWIP_IPV6=0")
 target_include_directories(__idf_lwip BEFORE PUBLIC ./include)
+# Increase the value of DHCP_OPTIONS_LEN to ensure that the name "ruuvigatewayXXXX.local" fits in the buffer.
 target_compile_definitions(__idf_lwip PUBLIC "-DDHCP_OPTIONS_LEN=74")
 
 target_include_directories(__idf_esp_common BEFORE PUBLIC ./components/esp-tls)

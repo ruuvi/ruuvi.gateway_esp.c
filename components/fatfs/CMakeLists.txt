@@ -1,4 +1,8 @@
-set(ORIG $ENV{IDF_PATH}/components/fatfs)
+idf_build_get_property(idf_path IDF_PATH)
+if(NOT idf_path)
+    message(FATAL_ERROR "IDF_PATH is not set or could not be determined by idf_build_get_property(IDF_PATH)")
+endif()
+set(ORIG "${idf_path}/components/fatfs")
 
 set(srcs "${ORIG}/diskio/diskio.c"
          "diskio/diskio_rawflash.c"
@@ -12,6 +16,6 @@ set(srcs "${ORIG}/diskio/diskio.c"
          "${ORIG}/vfs/vfs_fat_spiflash.c")
 
 idf_component_register(SRCS ${srcs}
-                       INCLUDE_DIRS ${ORIG}/diskio ${ORIG}/vfs ${ORIG}/src
+                       INCLUDE_DIRS "${ORIG}/diskio" "${ORIG}/vfs" "${ORIG}/src"
                        REQUIRES wear_levelling sdmmc
                       )
