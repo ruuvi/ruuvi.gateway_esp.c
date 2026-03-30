@@ -83,7 +83,7 @@ SDD backports security patches.
 Expedited CI/CD pipeline for hotfix release.
 
 ### Time Frame
-60 Days (Acknowledgment within 7 days)
+90 Days (Acknowledgment within 7 days)
 
 ---
 
