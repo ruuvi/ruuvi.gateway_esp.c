@@ -1,142 +1,250 @@
-# CRA: 303 645 IXIT-1-AUTHMECH
+# IXIT 1-AuthMech: Authentication Mechanisms
 
-IXIT-1-AUTHMECH lists all authentication mechanisms used in the Device Under Test.
+IXIT-1-AuthMech lists all authentication mechanisms used in the Device Under Test.
 
 ---
 
-## IXIT-1-1
+## IXIT-1-1: Wi-Fi Configuration Interface
+
 ### Description
-User login over HTTP on port 80 to the Wi-Fi configuration hotspot.
+Unauthenticated access to the local Wi-Fi configuration hotspot (Captive Portal/Web-UI) for 
+initial device provisioning and network setup.
+
+### Default Status
+Active by Default (Transient Provisioning State).
+This interface is active only after factory reset or manufacturing to facilitate initial network
+provisioning. It is automatically deactivated once the device is successfully configured or after a
+defined timeout period.
+
+### Operational Lifecycle
+The unauthenticated Wi-Fi hotspot is subject to strict state transitions to minimize the attack surface:
+- **Activation:** Only occurs after a factory reset or upon initial power-on from the factory.
+- **Auto-Deactivation (Success):** The hotspot is immediately disabled once the device 
+  is successfully configured (connected to Ethernet/Wi-Fi and validates cloud connectivity).
+- **Auto-Deactivation (Timeout):** If no configuration activity is detected within 1 hour of
+  activation, the hotspot is automatically disabled to prevent persistent open access.
 
 ### Authentication Factor
-Username and password.
+None. 
+The interface is open to any user within the physical range of the Gateway's Wi-Fi Access Point.
+
+### Password Generation Mechanism
+N/A. No passwords are used for this interface.
+
+### Security Guarantees
+- Proximity-based access: Configuration is only accessible when the device is in "Setup Mode" 
+  (Hotspot active), requiring physical proximity to the device.
+- Integrity: Sensitive configuration data sent to the device is protected via the cryptographic 
+  mechanisms described below to prevent tampering during transit.
+
+### Cryptographic Details
+- Data Protection (Post-Connection):
+  - ECDH (Elliptic-Curve Diffie-Hellman): Used for key agreement between the client browser and the 
+    Gateway via `Ruuvi-Ecdh-Pub-Key` headers to establish a secure session without a password.
+  - AES-CBC: Once the ECDH shared secret is established, sensitive JSON payloads (e.g., Wi-Fi 
+    credentials being saved to the gateway) are encrypted using AES-CBC with a random 16-byte IV.
+  - SHA-256: Used to derive the symmetric AES key from the ECDH shared secret and to provide a 
+    plaintext hash for integrity verification of the encrypted configuration data.
+- Transport: Data is sent as a JSON object containing `{ encrypted, iv, hash }` with the 
+  `Ruuvi-Ecdh-Encrypted: true` header.
+
+### Brute Force Prevention Mechanism
+N/A.
+As no authentication values (passwords/PINs) are required, brute-force attacks against
+authentication are not applicable to this interface.
+
+---
+
+## IXIT-1-2: LAN Web-UI (Default Challenge-Response)
+
+### Description
+Authenticated access to the Gateway Web-UI via LAN (HTTP Port 80) using the device's default
+out-of-the-box security mechanism.
+
+### Default Status
+Mandatory Out-of-the-Box State.
+This is the factory-default configuration.
+Access is blocked until the unique per-device password (derived from DEVICEID) is provided.
+
+### Authentication Factor
+Username and Password.
+- Username: Fixed (`Admin`).
+- Password: Unique per-device default password.
 
 ### Generation Security Guarantees
-The username is fixed to `Admin`.
-The default password is unique per device and is generated from the nRF52 64-bit unique device identifier, formatted as uppercase hexadecimal values separated by `:`.
+The default password is the 16-character hexadecimal representation of 
+the `nRF52 64-bit unique device identifier (DEVICEID)`, formatted as uppercase pairs 
+separated by colons (e.g., AA:BB:CC:DD:EE:FF:00:11). 
+This provides an entropy of 2^64, ensuring that credentials are unique per unit and mathematically 
+resistant to brute-force and class-wide automated attacks.
 
 ### Cryptographic Details
 #### Authentication mechanism
-A custom Ruuvi `x-ruuvi-interactive` challenge-response scheme, similar in structure to HTTP Digest:
+A custom `x-ruuvi-interactive` challenge-response scheme, similar in structure to HTTP Digest:
 - The client receives a realm and challenge from the `WWW-Authenticate` header.
-- The client computes `MD5(username:realm:password)` and then `SHA256(challenge:MD5(...))`.
+- The client computes `SHA256(challenge:MD5(username:realm:password))`.
 - The client sends the username and the resulting SHA-256 value in the JSON payload to `/auth`.
 
-#### Cryptography used for authentication
-- **MD5**
-  - Used for the inner password hash: `MD5(username:realm:password)`.
-- **SHA-256**
-  - Used to bind the password hash to the server challenge: `SHA256(challenge:MD5(...))`.
-  - Used to derive the AES key from the ECDH shared secret: `SHA256(shared_secret)`.
-  - Used to compute a plaintext hash for integrity in encrypted messages.
-- **ECDH (Elliptic-Curve Diffie-Hellman)**
-  - Used for key agreement between client and server via `Ruuvi-Ecdh-Pub-Key` headers.
-- **AES-CBC**
-  - Used for symmetric encryption of messages with a random 16-byte IV and a key derived from ECDH via SHA-256.
+#### Session Security
+Uses ECDH for key agreement (public keys are exchanged in `Ruuvi-Ecdh-Pub-Key` headers). 
+Subsequent sensitive configuration payloads are encrypted via 
+AES-CBC (16-byte random IV) and verified with a SHA-256 integrity hash.
+The encrypted data is sent in JSON format as `{ encrypted, iv, hash }` object with the 
+`Ruuvi-Ecdh-Encrypted: true` HTTP header.
 
-> Note: Although the gateway supports encrypted requests using ECDH/AES, the web browser UI does not encrypt the authentication request itself.
-
-#### Cryptography used for saving configuration
-After an ECDH key exchange during authentication, the client derives a symmetric AES key from the ECDH shared secret using SHA-256. When configuration or other sensitive data is saved, it is serialized to JSON, encrypted using AES-CBC with a random 16-byte IV, and accompanied by a SHA-256 hash of the plaintext for integrity checking.
-
-The resulting `{ encrypted, iv, hash }` object is sent as JSON with the `Ruuvi-Ecdh-Encrypted: true` header. Therefore, configuration save operations are protected using ECDH, AES-CBC, and SHA-256.
+**Note**: Although the gateway supports encrypted requests using ECDH/AES, the web browser UI does
+not encrypt the authentication request itself.
 
 ### Brute Force Prevention Mechanism
-Not implemented.
+
+**Time delays** between consecutive attempts to authenticate.
 
 ---
 
-## IXIT-1-2
+## IXIT-1-3: LAN Web-UI (User-Defined Challenge-Response)
+
 ### Description
-Access to the Gateway UI over HTTP on port 80 using the default authentication mechanism.
+
+Authenticated access to the Gateway Web-UI via LAN (HTTP Port 80) using the custom Ruuvi
+challenge-response mechanism with user-defined credentials. This is the intended permanent operating
+state for a secure deployment.
+
+### Default Status
+
+Active after User Configuration.
+This mode becomes active once the user successfully changes the default factory password.
+It replaces IXIT-1-2 as the primary authentication method.
 
 ### Authentication Factor
-Password protected with the default password.
+
+Username and Password.
+Both are fully user-defined.
 
 ### Generation Security Guarantees
-The default password is unique per device and is generated from the nRF52 64-bit unique device identifier, formatted as uppercase hexadecimal values separated by `:`.
+
+The user is responsible for the complexity of the chosen password.
 
 ### Cryptographic Details
+
 #### Authentication mechanism
-A custom Ruuvi `x-ruuvi-interactive` challenge-response scheme, similar in structure to HTTP Digest:
-- The client receives a realm and challenge from the `WWW-Authenticate` header.
-- The client computes `MD5(username:realm:password)` and then `SHA256(challenge:MD5(...))`.
-- The client sends the username and the resulting SHA-256 value in the JSON payload to `/auth`.
 
-#### Cryptography used for authentication
-- **MD5**
-  - Used for the inner password hash: `MD5(username:realm:password)`.
-- **SHA-256**
-  - Used to bind the password hash to the server challenge: `SHA256(challenge:MD5(...))`.
-  - Used to derive the AES key from the ECDH shared secret: `SHA256(shared_secret)`.
-  - Used to compute a plaintext hash for integrity in encrypted messages.
-- **ECDH (Elliptic-Curve Diffie-Hellman)**
-  - Used for key agreement between client and server via `Ruuvi-Ecdh-Pub-Key` headers.
-- **AES-CBC**
-  - Used for symmetric encryption of messages with a random 16-byte IV and a key derived from ECDH via SHA-256.
+Identical to **IXIT-1-2**:
+- Custom `x-ruuvi-interactive` challenge-response scheme.
+- Computation: `SHA256(challenge : MD5(username : realm : password))`.
+- Prevents the transmission of the password in plaintext over the network.
 
-> Note: Although the gateway supports encrypted requests using ECDH/AES, the web browser UI does not encrypt the authentication request itself.
+#### Session Security
 
-#### Cryptography used for saving configuration
-After an ECDH key exchange during authentication, the client derives a symmetric AES key from the ECDH shared secret using SHA-256. When configuration or other sensitive data is saved, it is serialized to JSON, encrypted using AES-CBC with a random 16-byte IV, and accompanied by a SHA-256 hash of the plaintext for integrity checking.
+Uses the same **ECDH key agreement** and **AES-CBC encryption** for sensitive configuration 
+payloads as described in **IXIT-1-2**.
 
-The resulting `{ encrypted, iv, hash }` object is sent as JSON with the `Ruuvi-Ecdh-Encrypted: true` header. Therefore, configuration save operations are protected using ECDH, AES-CBC, and SHA-256.
+**Note**: Although the gateway supports encrypted requests using ECDH/AES, the web browser UI does 
+not encrypt the authentication request itself.
+
+### Brute Force Prevention Mechanism
+
+**Time delays** between consecutive attempts to authenticate.
+
+---
+
+## IXIT-1-4: LAN Web-UI (User-Defined HTTP Basic)
+
+### Description
+Access to the Gateway Web-UI via LAN (HTTP Port 80) using standard HTTP Basic authentication.
+
+### Default Status
+Disabled by Default.
+This mode can only be enabled by an authenticated administrator through a manual configuration change.
+
+### Authentication Factor
+Username and Password.
+Both are fully user-defined.
+
+### Generation Security Guarantees
+Users are responsible for the complexity of the credentials. This mode is a legacy compatibility
+feature and must be explicitly enabled via manual configuration file modification; it is not
+available for selection in the standard Web-UI.
+
+### Cryptographic Details
+**None**. Credentials are Base64 encoded (HTTP Basic authentication).
+
+*Note for Audit*: As this operates over HTTP, credentials are sent in "cleartext" relative to the 
+network layer. This mode is provided for specific legacy integrations.
+
+### Brute Force Prevention Mechanism
+Not implemented.
+Users choosing this mode accept the risk associated with standard HTTP Basic behavior.
+
+---
+
+## IXIT-1-5: LAN Web-UI (User-Defined HTTP Digest)
+
+### Description
+Access to the Gateway Web-UI via LAN (HTTP Port 80) using standard HTTP Digest (RFC 7616)
+authentication.
+
+### Default Status
+Disabled by Default.
+This mode can only be enabled by an authenticated administrator through a manual configuration change.
+
+### Authentication Factor
+Username and Password.
+Both are fully user-defined.
+
+### Generation Security Guarantees
+Users are responsible for the complexity of the credentials. This mode is a legacy compatibility
+feature and must be explicitly enabled via manual configuration file modification; it is not
+available for selection in the standard Web-UI.
+
+### Cryptographic Details
+HTTP Digest (RFC 7616) MD5.
+Uses a standard nonce-based challenge-response to prevent plaintext password transmission.
 
 ### Brute Force Prevention Mechanism
 Not implemented.
 
 ---
 
-## IXIT-1-3
+## IXIT-1-6: LAN Web-UI (Unauthenticated Mode)
+
 ### Description
-Access to the Gateway UI over HTTP on port 80 using Basic authentication.
+Open access to the Gateway Web-UI via LAN (HTTP Port 80) without requiring credentials.
+
+### Default Status
+Disabled by Default.
+This mode can only be enabled by an authenticated administrator through a manual configuration change.
 
 ### Authentication Factor
-Username and password configured by the user.
+None.
 
 ### Generation Security Guarantees
-The username and password can be set by the user to any value.
-This mode is not directly configurable via the Web UI; the only way to enable it is to manually save the configuration to the device.
+This mode is disabled by default. 
+It must be explicitly enabled by the user through the Web-UI.
+By enabling this, the user acknowledges that the local network environment is trusted.
 
 ### Cryptographic Details
-HTTP Basic authentication.
-
-> Note: Over HTTP, Basic authentication does not provide cryptographic protection for the credentials; they are only encoded for transport.
+Not applicable. No authentication-related cryptography is used.
 
 ### Brute Force Prevention Mechanism
-Not implemented.
+Not applicable.
 
 ---
 
-## IXIT-1-4
+## IXIT-1-7: LAN Web-UI (Access Disabled)
+
 ### Description
-Access to the Gateway UI over HTTP on port 80 using Digest authentication.
+Complete restriction of the Web-UI interface over the LAN (HTTP Port 80).
+
+### Default Status
+Disabled by Default.
+This mode can only be enabled by an authenticated administrator through a manual configuration change.
 
 ### Authentication Factor
-Username and password configured by the user.
+N/A. Access is denied.
 
 ### Generation Security Guarantees
-The username and password can be set by the user to any value.
-This mode is not directly configurable via the Web UI; the only way to enable it is to manually save the configuration to the device.
-
-### Cryptographic Details
-HTTP Digest authentication.
-
-### Brute Force Prevention Mechanism
-Not implemented.
-
----
-
-## IXIT-1-5
-### Description
-Access to the Gateway UI over HTTP on port 80 without authentication.
-
-### Authentication Factor
-No authentication.
-
-### Generation Security Guarantees
-Access is allowed to anyone.
-The user must manually enable this authentication mechanism in the Web UI.
+This is a user-configurable state to minimize the device's attack surface. 
+When enabled, the Web-UI service is stopped or blocked at the application layer.
 
 ### Cryptographic Details
 Not applicable.
@@ -146,55 +254,62 @@ Not applicable.
 
 ---
 
-## IXIT-1-6
+## IXIT-1-8: API Data Access (Bearer Token - Read-Only)
+
 ### Description
-Access to the Gateway UI over HTTP on port 80 is denied.
+Machine-to-Machine (M2M) read-only access to the /history API endpoint via HTTP (Port 80) 
+using a Bearer token.
 
-### Authentication Factor
-No authentication.
-
-### Generation Security Guarantees
-Access is denied to the user.
-The user must manually enable this authentication mechanism in the Web UI.
-
-### Cryptographic Details
-Not applicable.
-
-### Brute Force Prevention Mechanism
-Not applicable.
-
----
-
-## IXIT-1-7
-### Description
-Read-only access to the `/history` API over HTTP on port 80 using Bearer token authentication.
+### Default Status
+Disabled by Default.
+This mode can only be enabled by an authenticated administrator through a manual configuration change.
 
 ### Authentication Factor
 Bearer token.
 
 ### Generation Security Guarantees
-The user must manually enable this authentication mechanism in the Web UI and configure the token.
+The token is generated by the user via the Web-UI. 
+The system encourages the use of high-entropy, randomly generated strings.
 
 ### Cryptographic Details
-Bearer token authentication.
+Token-based. 
+The Gateway validates the token provided in the `Authorization: Bearer <token>` header 
+against the stored user-configured token.
 
 ### Brute Force Prevention Mechanism
-Not implemented.
+
+**High-Entropy Tokens**.
+Brute-force is made impracticable through the use of high-entropy, randomly
+generated bearer tokens (e.g., 32+ characters), making automated guessing attacks mathematically
+infeasible within the device's operational lifetime.
 
 ---
 
-## IXIT-1-8
+## IXIT-1-9: API Data Access (Bearer Token - Read/Write)
+
 ### Description
-Read-write access to the Gateway API over HTTP on port 80 using Bearer token authentication.
+Machine-to-Machine (M2M) full access (Read/Write) to the Gateway API via HTTP (Port 80) 
+using a Bearer token.
+
+### Default Status
+Disabled by Default.
+This mode can only be enabled by an authenticated administrator through a manual configuration change.
 
 ### Authentication Factor
 Bearer token.
 
 ### Generation Security Guarantees
-The user must manually enable this authentication mechanism in the Web UI and configure the token.
+Independently configured from the Read-Only token. 
+Must be explicitly generated and enabled by the user via the Web-UI.
 
 ### Cryptographic Details
-Bearer token authentication.
+Token-based. 
+The Gateway validates the token provided in the `Authorization: Bearer <token>` header 
+against the stored user-configured token.
 
 ### Brute Force Prevention Mechanism
-Not implemented.
+
+**High-Entropy Tokens**.
+Brute-force is made impracticable through the use of high-entropy, randomly
+generated bearer tokens (e.g., 32+ characters), making automated guessing attacks mathematically
+infeasible within the device's operational lifetime.
