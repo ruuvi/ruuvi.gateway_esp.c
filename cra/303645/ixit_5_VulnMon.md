@@ -34,7 +34,7 @@ jQuery, CryptoJS, Elliptic, and Winston) are monitored using automated tools.
 
 ### VulnMon-3
 
-**Global CVE & Threat Intelligence Monitoring**: The Security Incident Team (SIT) performs weekly
+**Global CVE & Threat Intelligence Monitoring**: The Security Incident Team (SIT) performs monthly
 reviews of the [NIST National Vulnerability Database (NVD)](https://nvd.nist.gov/vuln) and
 [MITRE CVE](https://www.cve.org/) lists using keywords related to the Ruuvi Gateway’s hardware
 stack (ESP32, nRF52, mbedTLS). If a vulnerability is discovered, it is logged; 
