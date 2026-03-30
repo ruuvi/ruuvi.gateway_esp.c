@@ -92,14 +92,62 @@ AES-CBC (16-byte random IV) and verified with a SHA-256 integrity hash.
 The encrypted data is sent in JSON format as `{ encrypted, iv, hash }` object with the 
 `Ruuvi-Ecdh-Encrypted: true` HTTP header.
 
-> Note: Although the gateway supports encrypted requests using ECDH/AES, the web browser UI does not encrypt the authentication request itself.
+**Note**: Although the gateway supports encrypted requests using ECDH/AES, the web browser UI does
+not encrypt the authentication request itself.
 
 ### Brute Force Prevention Mechanism
-Time delays between consecutive attempts to authenticate.
+
+**Time delays** between consecutive attempts to authenticate.
 
 ---
 
-## IXIT-1-3: LAN Web-UI (User-Defined HTTP Basic)
+## IXIT-1-3: LAN Web-UI (User-Defined Challenge-Response)
+
+### Description
+
+Authenticated access to the Gateway Web-UI via LAN (HTTP Port 80) using the custom Ruuvi
+challenge-response mechanism with user-defined credentials. This is the intended permanent operating
+state for a secure deployment.
+
+### Default Status
+
+Active after User Configuration.
+This mode becomes active once the user successfully changes the default factory password.
+It replaces IXIT-1-2 as the primary authentication method.
+
+### Authentication Factor
+
+Username and Password.
+Both are fully user-defined.
+
+### Generation Security Guarantees
+
+The user is responsible for the complexity of the chosen password.
+
+### Cryptographic Details
+
+#### Authentication mechanism
+
+Identical to **IXIT-1-2**:
+- Custom `x-ruuvi-interactive` challenge-response scheme.
+- Computation: `SHA256(challenge : MD5(username : realm : password))`.
+- Prevents the transmission of the password in plaintext over the network.
+
+#### Session Security
+
+Uses the same **ECDH key agreement** and **AES-CBC encryption** for sensitive configuration 
+payloads as described in **IXIT-1-2**.
+
+**Note**: Although the gateway supports encrypted requests using ECDH/AES, the web browser UI does 
+not encrypt the authentication request itself.
+
+### Brute Force Prevention Mechanism
+
+**Time delays** between consecutive attempts to authenticate.
+
+---
+
+## IXIT-1-4: LAN Web-UI (User-Defined HTTP Basic)
 
 ### Description
 Access to the Gateway Web-UI via LAN (HTTP Port 80) using standard HTTP Basic authentication.
@@ -129,7 +177,7 @@ Users choosing this mode accept the risk associated with standard HTTP Basic beh
 
 ---
 
-## IXIT-1-4: LAN Web-UI (User-Defined HTTP Digest)
+## IXIT-1-5: LAN Web-UI (User-Defined HTTP Digest)
 
 ### Description
 Access to the Gateway Web-UI via LAN (HTTP Port 80) using standard HTTP Digest (RFC 7616)
@@ -157,7 +205,7 @@ Not implemented.
 
 ---
 
-## IXIT-1-5: LAN Web-UI (Unauthenticated Mode)
+## IXIT-1-6: LAN Web-UI (Unauthenticated Mode)
 
 ### Description
 Open access to the Gateway Web-UI via LAN (HTTP Port 80) without requiring credentials.
@@ -182,7 +230,7 @@ Not applicable.
 
 ---
 
-## IXIT-1-6: LAN Web-UI (Access Disabled)
+## IXIT-1-7: LAN Web-UI (Access Disabled)
 
 ### Description
 Complete restriction of the Web-UI interface over the LAN (HTTP Port 80).
@@ -206,7 +254,7 @@ Not applicable.
 
 ---
 
-## IXIT-1-7: API Data Access (Bearer Token - Read-Only)
+## IXIT-1-8: API Data Access (Bearer Token - Read-Only)
 
 ### Description
 Machine-to-Machine (M2M) read-only access to the /history API endpoint via HTTP (Port 80) 
@@ -229,11 +277,15 @@ The Gateway validates the token provided in the `Authorization: Bearer <token>` 
 against the stored user-configured token.
 
 ### Brute Force Prevention Mechanism
-Not implemented.
+
+**High-Entropy Tokens**.
+Brute-force is made impracticable through the use of high-entropy, randomly
+generated bearer tokens (e.g., 32+ characters), making automated guessing attacks mathematically
+infeasible within the device's operational lifetime.
 
 ---
 
-## IXIT-1-8: API Data Access (Bearer Token - Read/Write)
+## IXIT-1-9: API Data Access (Bearer Token - Read/Write)
 
 ### Description
 Machine-to-Machine (M2M) full access (Read/Write) to the Gateway API via HTTP (Port 80) 
@@ -256,4 +308,8 @@ The Gateway validates the token provided in the `Authorization: Bearer <token>` 
 against the stored user-configured token.
 
 ### Brute Force Prevention Mechanism
-Not implemented.
+
+**High-Entropy Tokens**.
+Brute-force is made impracticable through the use of high-entropy, randomly
+generated bearer tokens (e.g., 32+ characters), making automated guessing attacks mathematically
+infeasible within the device's operational lifetime.
