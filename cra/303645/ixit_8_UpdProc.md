@@ -37,7 +37,7 @@ high-priority ticket is created in Ruuvi's internal issue tracking system (GitHu
 The targeted time frame for the completion of this procedure is aligned with the maximum deadlines
 established in **IXIT 3-VulnTypes**:
 - **Standard Security Updates**: Maximum 90 days from initial disclosure to deployment.
-- **Critical Cryptographic/Network Fixes**: Maximum 60 days for expedited rollout.
+- **Critical Cryptographic/Network Fixes**: Maximum 90 days for expedited rollout.
 
 #### Procedural Safeguards
 
