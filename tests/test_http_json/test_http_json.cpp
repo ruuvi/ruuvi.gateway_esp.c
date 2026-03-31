@@ -1332,6 +1332,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_wifi) // NOLINT
     const uint32_t               uptime                 = 123;
     const bool                   is_wifi                = true;
     const uint32_t               network_disconnect_cnt = 3;
+    const uint32_t               mic_failure_cnt        = 1;
     const uint32_t               nonce                  = 1234567;
     const std::array<uint8_t, 1> data                   = { 0xAAU };
 
@@ -1398,6 +1399,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_wifi) // NOLINT
         .nrf_status                  = true,
         .is_connected_to_wifi        = is_wifi,
         .network_disconnect_cnt      = network_disconnect_cnt,
+        .wifi_mic_failure_cnt        = mic_failure_cnt,
         .nrf_self_reboot_cnt         = 3,
         .nrf_ext_hw_reset_cnt        = 2,
         .nrf_lost_ack_cnt            = 117,
@@ -1420,6 +1422,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_wifi) // NOLINT
                "\t\"NONCE\":\t\"1234567\",\n"
                "\t\"CONNECTION\":\t\"WIFI\",\n"
                "\t\"NUM_CONN_LOST\":\t\"3\",\n"
+               "\t\"NUM_MIC_FAILURE\":\t\"1\",\n"
                "\t\"RESET_REASON\":\t\"POWER_ON\",\n"
                "\t\"RESET_CNT\":\t\"3\",\n"
                "\t\"RESET_INFO\":\t\"\",\n"
@@ -1449,7 +1452,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_wifi) // NOLINT
                "}"),
         string(this->m_json_str.p_str));
     cjson_wrap_free_json_str(&this->m_json_str);
-    ASSERT_EQ(97, this->m_malloc_cnt);
+    ASSERT_EQ(100, this->m_malloc_cnt);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
@@ -1459,6 +1462,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_ethernet) // NOLINT
     const uint32_t               uptime                 = 124;
     const bool                   is_wifi                = false;
     const uint32_t               network_disconnect_cnt = 4;
+    const uint32_t               mic_failure_cnt        = 0;
     const uint32_t               nonce                  = 1234568;
     const std::array<uint8_t, 1> data                   = { 0xABU };
 
@@ -1513,6 +1517,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_ethernet) // NOLINT
         .nrf_status                  = false,
         .is_connected_to_wifi        = is_wifi,
         .network_disconnect_cnt      = network_disconnect_cnt,
+        .wifi_mic_failure_cnt        = mic_failure_cnt,
         .nrf_self_reboot_cnt         = 3,
         .nrf_ext_hw_reset_cnt        = 2,
         .nrf_lost_ack_cnt            = 117,
@@ -1535,6 +1540,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_ethernet) // NOLINT
                "\t\"NONCE\":\t\"1234568\",\n"
                "\t\"CONNECTION\":\t\"ETHERNET\",\n"
                "\t\"NUM_CONN_LOST\":\t\"4\",\n"
+               "\t\"NUM_MIC_FAILURE\":\t\"0\",\n"
                "\t\"RESET_REASON\":\t\"TASK_WDT\",\n"
                "\t\"RESET_CNT\":\t\"4\",\n"
                "\t\"RESET_INFO\":\t\"main (active task: idle)\",\n"
@@ -1564,7 +1570,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_connection_ethernet) // NOLINT
                "}"),
         string(this->m_json_str.p_str));
     cjson_wrap_free_json_str(&this->m_json_str);
-    ASSERT_EQ(95, this->m_malloc_cnt);
+    ASSERT_EQ(98, this->m_malloc_cnt);
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
 }
 
@@ -1574,6 +1580,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_malloc_failed) // NOLINT
     const uint32_t               uptime                 = 123;
     const bool                   is_wifi                = true;
     const uint32_t               network_disconnect_cnt = 3;
+    const uint32_t               mic_failure_cnt        = 0;
     const uint32_t               nonce                  = 1234567;
     const std::array<uint8_t, 1> data                   = { 0xAAU };
 
@@ -1641,6 +1648,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_malloc_failed) // NOLINT
         .nrf_status                  = true,
         .is_connected_to_wifi        = is_wifi,
         .network_disconnect_cnt      = network_disconnect_cnt,
+        .wifi_mic_failure_cnt        = mic_failure_cnt,
         .nrf_self_reboot_cnt         = 3,
         .nrf_ext_hw_reset_cnt        = 2,
         .nrf_lost_ack_cnt            = 117,
@@ -1653,7 +1661,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_malloc_failed) // NOLINT
         .p_reset_info                = "",
     };
 
-    for (uint32_t i = 1; i < 97; ++i)
+    for (uint32_t i = 1; i < 100; ++i)
     {
         this->m_malloc_fail_on_cnt = i;
         this->m_malloc_cnt         = 0;
@@ -1666,12 +1674,12 @@ TEST_F(TestHttpJson, test_create_status_json_str_malloc_failed) // NOLINT
     }
 
     {
-        this->m_malloc_fail_on_cnt = 98;
+        this->m_malloc_fail_on_cnt = 101;
         this->m_malloc_cnt         = 0;
         ASSERT_TRUE(http_json_create_status_str(&stat_info, &adv_table, &this->m_json_str));
         ASSERT_NE(nullptr, this->m_json_str.p_str);
         cjson_wrap_free_json_str(&this->m_json_str);
-        ASSERT_EQ(97, this->m_malloc_cnt);
+        ASSERT_EQ(100, this->m_malloc_cnt);
         ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
     }
 }

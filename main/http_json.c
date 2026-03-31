@@ -169,6 +169,10 @@ http_json_generate_status_attributes(
     {
         return false;
     }
+    if (!cjson_wrap_add_uint32(p_json_root, "NUM_MIC_FAILURE", p_stat_info->wifi_mic_failure_cnt))
+    {
+        return false;
+    }
     if (NULL == cJSON_AddStringToObject(p_json_root, "RESET_REASON", p_stat_info->reset_reason.buf))
     {
         return false;

@@ -36,6 +36,7 @@ typedef struct http_json_statistics_info_t
     bool                                    nrf_status;
     bool                                    is_connected_to_wifi;
     uint32_t                                network_disconnect_cnt;
+    uint32_t                                wifi_mic_failure_cnt;
     uint32_t                                nrf_self_reboot_cnt;
     uint32_t                                nrf_ext_hw_reset_cnt;
     uint64_t                                nrf_lost_ack_cnt;

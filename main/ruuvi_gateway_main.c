@@ -66,6 +66,7 @@ static const char TAG[] = "ruuvi_gateway";
 #define RUUVI_GATEWAY_SSL_SAVED_SESSION_TICKET_IDX_CUSTOM (1U)
 
 volatile uint32_t IRAM_ATTR g_network_disconnect_cnt;
+volatile uint32_t IRAM_ATTR g_wifi_cnt_mic_failure;
 
 static os_mutex_t IRAM_ATTR g_http_server_mutex_incoming_connection;
 static os_mutex_static_t    g_http_server_mutex_incoming_connection_mem;

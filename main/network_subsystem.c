@@ -209,9 +209,19 @@ cb_on_request_status_json(void)
 void
 wifi_disconnect_cb(void* p_param) // NOSONAR
 {
-    (void)p_param;
-    LOG_WARN("Wifi disconnected");
+    const wifiman_msg_param_t* const     p_msg_param = p_param;
+    const wifiman_disconnection_reason_t reason      = (wifiman_disconnection_reason_t)p_msg_param->val;
     g_network_disconnect_cnt += 1;
+    LOG_WARN(
+        "Wi-Fi disconnected (counter %u), reason %d (%s)",
+        g_network_disconnect_cnt,
+        reason,
+        wifiman_disconnection_reason_to_str(reason));
+    if (WIFI_REASON_MIC_FAILURE == reason)
+    {
+        g_wifi_cnt_mic_failure += 1;
+        LOG_ERR("Wi-Fi disconnected: MIC_FAILURE counter: %u", g_wifi_cnt_mic_failure);
+    }
     gw_status_clear_wifi_connected();
     event_mgr_notify(EVENT_MGR_EV_WIFI_DISCONNECTED);
 }

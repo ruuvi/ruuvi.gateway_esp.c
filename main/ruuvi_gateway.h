@@ -58,6 +58,7 @@ extern "C" {
 #define RUUVI_MQTT_TLS_OUT_CONTENT_LEN (4096)
 
 extern volatile uint32_t IRAM_ATTR g_network_disconnect_cnt;
+extern volatile uint32_t IRAM_ATTR g_wifi_cnt_mic_failure;
 
 void
 timer_cfg_mode_deactivation_start_with_delay(const TimeUnitsSeconds_t delay_sec);
