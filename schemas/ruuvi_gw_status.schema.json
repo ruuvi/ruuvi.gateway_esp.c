@@ -13,6 +13,7 @@
     "NONCE",
     "CONNECTION",
     "NUM_CONN_LOST",
+    "NUM_MIC_FAILURE",
     "RESET_REASON",
     "RESET_CNT",
     "RESET_INFO",
