@@ -1661,7 +1661,7 @@ TEST_F(TestHttpJson, test_create_status_json_str_malloc_failed) // NOLINT
         .p_reset_info                = "",
     };
 
-    for (uint32_t i = 1; i < 100; ++i)
+    for (uint32_t i = 1; i < 101; ++i)
     {
         this->m_malloc_fail_on_cnt = i;
         this->m_malloc_cnt         = 0;
