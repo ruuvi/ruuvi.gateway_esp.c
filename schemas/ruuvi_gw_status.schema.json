@@ -94,22 +94,32 @@
       "title": "ESP32 reset reason",
       "type": "string",
       "enum": [
+        "UNKNOWN",
         "POWER_ON",
+        "EXT",
         "SW",
         "PANIC",
         "INT_WDT",
         "TASK_WDT",
         "WDT",
-        "BROWNOUT"
+        "DEEP_SLEEP",
+        "BROWNOUT",
+        "SDIO",
+        "UNSPECIFIED"
       ],
       "examples": [
+        "UNKNOWN",
         "POWER_ON",
+        "EXT",
         "SW",
         "PANIC",
         "INT_WDT",
         "TASK_WDT",
         "WDT",
-        "BROWNOUT"
+        "DEEP_SLEEP",
+        "BROWNOUT",
+        "SDIO",
+        "UNSPECIFIED"
       ]
     },
     "RESET_CNT": {
