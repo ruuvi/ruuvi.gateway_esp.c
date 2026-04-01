@@ -82,6 +82,13 @@
         "0"
       ]
     },
+    "NUM_MIC_FAILURE": {
+      "title": "Wi-Fi MIC_FAILURE error counter",
+      "type": "string",
+      "examples": [
+        "0"
+      ]
+    },
     "RESET_REASON": {
       "title": "ESP32 reset reason",
       "type": "string",
