@@ -131,10 +131,7 @@ calc_num_sensors_seen(const adv_report_table_t* const p_reports)
 }
 
 static bool
-http_json_generate_status_attributes(
-    cJSON* const                             p_json_root,
-    const http_json_statistics_info_t* const p_stat_info,
-    const adv_report_table_t* const          p_reports)
+http_json_add_general_info(cJSON* const p_json_root, const http_json_statistics_info_t* const p_stat_info)
 {
     if (NULL == cJSON_AddStringToObject(p_json_root, "DEVICE_ADDR", p_stat_info->nrf52_mac_addr.str_buf))
     {
@@ -160,6 +157,12 @@ http_json_generate_status_attributes(
     {
         return false;
     }
+    return true;
+}
+
+static bool
+http_json_add_network_info(cJSON* const p_json_root, const http_json_statistics_info_t* const p_stat_info)
+{
     const char* const p_connection_type = p_stat_info->is_connected_to_wifi ? "WIFI" : "ETHERNET";
     if (NULL == cJSON_AddStringToObject(p_json_root, "CONNECTION", p_connection_type))
     {
@@ -169,6 +172,16 @@ http_json_generate_status_attributes(
     {
         return false;
     }
+    if (!cjson_wrap_add_uint32(p_json_root, "NUM_MIC_FAILURE", p_stat_info->wifi_mic_failure_cnt))
+    {
+        return false;
+    }
+    return true;
+}
+
+static bool
+http_json_add_reset_info(cJSON* const p_json_root, const http_json_statistics_info_t* const p_stat_info)
+{
     if (NULL == cJSON_AddStringToObject(p_json_root, "RESET_REASON", p_stat_info->reset_reason.buf))
     {
         return false;
@@ -193,6 +206,12 @@ http_json_generate_status_attributes(
     {
         return false;
     }
+    return true;
+}
+
+static bool
+http_json_add_memory_info(cJSON* const p_json_root, const http_json_statistics_info_t* const p_stat_info)
+{
     if (!cjson_wrap_add_uint32(p_json_root, "TOTAL_FREE_BYTES_INTERNAL", p_stat_info->total_free_bytes_internal))
     {
         return false;
@@ -206,6 +225,31 @@ http_json_generate_status_attributes(
         return false;
     }
     if (!cjson_wrap_add_uint32(p_json_root, "LARGEST_FREE_BLOCK_DEFAULT", p_stat_info->largest_free_block_default))
+    {
+        return false;
+    }
+    return true;
+}
+
+static bool
+http_json_generate_status_attributes(
+    cJSON* const                             p_json_root,
+    const http_json_statistics_info_t* const p_stat_info,
+    const adv_report_table_t* const          p_reports)
+{
+    if (!http_json_add_general_info(p_json_root, p_stat_info))
+    {
+        return false;
+    }
+    if (!http_json_add_network_info(p_json_root, p_stat_info))
+    {
+        return false;
+    }
+    if (!http_json_add_reset_info(p_json_root, p_stat_info))
+    {
+        return false;
+    }
+    if (!http_json_add_memory_info(p_json_root, p_stat_info))
     {
         return false;
     }

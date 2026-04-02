@@ -7,6 +7,7 @@
         "NONCE":        "2147378831",
         "CONNECTION":   "ETHERNET",
         "NUM_CONN_LOST":        "0",
+        "NUM_MIC_FAILURE":      "0",
         "RESET_REASON": "POWER_ON",
         "RESET_CNT":    "1",
         "RESET_INFO":   "",

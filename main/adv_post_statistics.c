@@ -54,6 +54,7 @@ adv_post_statistics_info_generate(const str_buf_t* const p_reset_info)
     p_stat_info->nrf_status                  = gw_status_get_nrf_status();
     p_stat_info->is_connected_to_wifi        = wifi_manager_is_connected_to_wifi();
     p_stat_info->network_disconnect_cnt      = g_network_disconnect_cnt;
+    p_stat_info->wifi_mic_failure_cnt        = g_wifi_cnt_mic_failure;
     p_stat_info->nrf_self_reboot_cnt         = metrics_nrf_self_reboot_cnt_get();
     p_stat_info->nrf_ext_hw_reset_cnt        = metrics_nrf_ext_hw_reset_cnt_get();
     p_stat_info->nrf_lost_ack_cnt            = metrics_nrf_lost_ack_cnt_get();
