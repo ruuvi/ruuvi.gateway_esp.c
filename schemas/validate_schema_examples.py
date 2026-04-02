@@ -59,7 +59,16 @@ def main():
         validator = ValidatorClass(subschema)
 
         for i, example in enumerate(examples):
-            errors = sorted(validator.iter_errors(example), key=lambda e: list(e.path))
+            def error_sort_key(err):
+                key = []
+                for p in err.path:
+                    if isinstance(p, int):
+                        key.append((0, p))
+                    else:
+                        key.append((1, str(p)))
+                return tuple(key)
+
+            errors = sorted(validator.iter_errors(example), key=error_sort_key)
             for error in errors:
                 failures.append(
                     {

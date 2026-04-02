@@ -322,7 +322,7 @@
                 },
                 "id": {
                   "type": "string",
-                  "title": "MAC-address of Bluetooth-sensor",
+                  "title": "MAC-address of Bluetooth-sensor or shortened identifier (least 3 bytes of RuuviAir MAC-address received in legacy BLE advertisement)",
                   "pattern": "^(([0-9A-Fa-f]{2}[:-]){5}|([0-9A-Fa-f]{2}[:-]){2})([0-9A-Fa-f]{2})$",
                   "examples": [
                     "F4:1F:0C:28:CB:D6",

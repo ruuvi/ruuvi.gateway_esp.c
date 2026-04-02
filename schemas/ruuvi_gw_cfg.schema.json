@@ -438,6 +438,7 @@
     "mqtt_sending_interval": {
       "title": "MQTT sending interval (in seconds)",
       "type": "integer",
+      "minimum": 0,
       "default": 0,
       "examples": [
         0,
