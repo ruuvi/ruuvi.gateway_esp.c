@@ -43,10 +43,12 @@
         "tags": {
           "type": "object",
           "title": "Map of records with relayed messages from Bluetooth-sensors keyed by sensor MAC address",
+          "additionalProperties": false,
           "patternProperties": {
             "^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$": {
               "type": "object",
               "title": "MAC-address of Bluetooth-sensor",
+              "additionalProperties": false,
               "required": [
                 "rssi",
                 "counter",

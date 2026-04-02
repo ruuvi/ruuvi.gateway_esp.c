@@ -44,6 +44,7 @@
         "tags": {
           "type": "object",
           "title": "Object containing messages from Bluetooth sensors, with MAC addresses as keys",
+          "additionalProperties": false,
           "patternProperties": {
             "^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$": {
               "type": "object",

@@ -259,11 +259,15 @@
       "title": "Data format used for HTTP transmission",
       "type": "string",
       "enum": [
-        "ruuvi"
+        "ruuvi",
+        "ruuvi_raw_and_decoded",
+        "ruuvi_decoded"
       ],
       "default": "ruuvi",
       "examples": [
-        "ruuvi"
+        "ruuvi",
+        "ruuvi_raw_and_decoded",
+        "ruuvi_decoded"
       ]
     },
     "http_auth": {
@@ -273,14 +277,16 @@
         "none",
         "basic",
         "bearer",
-        "token"
+        "token",
+        "api_key"
       ],
       "default": "none",
       "examples": [
         "none",
         "basic",
         "bearer",
-        "token"
+        "token",
+        "api_key"
       ]
     },
     "http_url": {
