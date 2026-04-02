@@ -1,19 +1,38 @@
 {
    "data":{
       "coordinates":"",
-      "timestamp":"1653633988",
-      "nonce":"2636366621",
+      "timestamp":1653633988,
+      "nonce":2636366621,
       "gw_mac":"C8:25:2D:8E:9C:2C",
       "tags":{
          "C6:A5:B9:E0:AD:06":{
             "rssi":-71,
-            "timestamp":"1653633986",
+            "timestamp":1653633986,
+            "ble_phy": "1M",
+            "ble_chan": 37,
             "data":"0201061BFF99040513C85714C7CC00240008041CAB76F41C3CC6A5B9E0AD06"
          },
          "E3:75:CF:37:4E:23":{
             "rssi":-72,
-            "timestamp":"1653633986",
+            "timestamp":1653633986,
+            "ble_phy": "1M",
+            "ble_chan": 38,
             "data":"0201061BFF99040514565D7CC7850008003C03E4A9F6741CC3E375CF374E23"
+         },
+         "E1:9D:F3:4F:8A:A5": {
+            "rssi": -44,
+            "timestamp": 1775069470,
+            "ble_phy": "1M",
+            "ble_chan": 37,
+            "data": "020106030398FC17FF990406143A6194C636005A0330D500F7FF10944F8AA5"
+         },
+         "FD:54:6F:6C:52:92": {
+            "rssi": -77,
+            "timestamp": 1775069464,
+            "ble_phy": "2M",
+            "ble_chan": 10,
+            "ble_tx_power": 8,
+            "data": "2BFF9904E114595CB0C6460030003A0041004402364300FFFFFFFFFFFF103B37F8FFFFFFFFFFFD546F6C5292030398FC"
          }
       }
    }

@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "http://ruuvi.com/schemas/ruuvi_gw_cfg.schema.json",
   "title": "Ruuvi gateway configuration",
   "type": "object",
@@ -27,6 +27,7 @@
       "title": "Gateway MAC address",
       "description": "This field is generated only when configuration is requested via HTTP.",
       "type": "string",
+      "pattern": "^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$",
       "examples": [
         "C8:25:2D:8E:9C:2C"
       ]
@@ -205,10 +206,14 @@
       "title": "HTTP authentication credentials for the remote configuration server for automatic Gateway configuration downloading",
       "description": "It should not be empty if 'remote_cfg_use' is 'true'",
       "type": "string",
-      "pattern": "^(|none|no|basic|bearer)$",
-      "default": "",
+      "enum": [
+        "none",
+        "no",
+        "basic",
+        "bearer"
+      ],
+      "default": "none",
       "examples": [
-        "",
         "none",
         "basic",
         "bearer"
@@ -253,7 +258,9 @@
     "http_data_format": {
       "title": "Data format used for HTTP transmission",
       "type": "string",
-      "pattern": "^(|ruuvi)$",
+      "enum": [
+        "ruuvi"
+      ],
       "default": "ruuvi",
       "examples": [
         "ruuvi"
@@ -262,10 +269,14 @@
     "http_auth": {
       "title": "HTTP authentication type",
       "type": "string",
-      "pattern": "^(|none|basic|bearer|token)$",
+      "enum": [
+        "none",
+        "basic",
+        "bearer",
+        "token"
+      ],
       "default": "none",
       "examples": [
-        "",
         "none",
         "basic",
         "bearer",
@@ -370,7 +381,12 @@
       "title": "MQTT transport type to use",
       "description": "TCP - MQTT over TCP, SSL - MQTT over SSL, WS - MQTT over WebSockets, WSS - MQTT over secure WebSockets",
       "type": "string",
-      "pattern": "^(TCP|SSL|WS|WSS)$",
+      "enum": [
+        "TCP",
+        "SSL",
+        "WS",
+        "WSS"
+      ],
       "default": "TCP",
       "examples": [
         "TCP",
@@ -383,7 +399,11 @@
       "title": "Data format used for MQTT transmission",
       "description": "ruuvi_raw - raw data only, ruuvi_raw_and_decoded - raw and decoded data, ruuvi_decoded - decoded data only",
       "type": "string",
-      "pattern": "^(ruuvi_raw|ruuvi_raw_and_decoded|ruuvi_decoded)$",
+      "enum": [
+        "ruuvi_raw",
+        "ruuvi_raw_and_decoded",
+        "ruuvi_decoded"
+      ],
       "default": "ruuvi_raw",
       "examples": [
         "ruuvi_raw",
@@ -407,6 +427,17 @@
         8886,
         8080,
         8081
+      ]
+    },
+    "mqtt_sending_interval": {
+      "title": "MQTT sending interval (in seconds)",
+      "type": "integer",
+      "default": 0,
+      "examples": [
+        0,
+        10,
+        30,
+        60
       ]
     },
     "mqtt_prefix": {
@@ -453,7 +484,14 @@
       "title": "Configuring the authentication type when accessing Gateway from LAN",
       "description": "'lan_auth_default' - Ruuvi-authentication with username 'Admin' and as a password the Unique ID is used (in format XX:XX:XX:XX:XX:XX:XX:XX) which is printed on the bottom of the Ruuvi Gateway. 'lan_auth_ruuvi' - Ruuvi-authentication, login/password should be specified in 'lan_auth_user' and 'lan_auth_pass'. 'lan_auth_deny' - deny access from LAN. 'lan_auth_allow' - allow access from LAN without a password. 'lan_auth_basic' - HTTP basic authentication, login/password should be specified in 'lan_auth_user' and 'lan_auth_pass'. 'lan_auth_digest' - HTTP digest authentication, login/password should be specified in 'lan_auth_user' and 'lan_auth_pass'.",
       "type": "string",
-      "pattern": "^(lan_auth_default|lan_auth_ruuvi|lan_auth_deny|lan_auth_allow|lan_auth_basic|lan_auth_digest)$",
+      "enum": [
+        "lan_auth_default",
+        "lan_auth_ruuvi",
+        "lan_auth_deny",
+        "lan_auth_allow",
+        "lan_auth_basic",
+        "lan_auth_digest"
+      ],
       "default": "lan_auth_default",
       "examples": [
         "lan_auth_default",
@@ -508,7 +546,11 @@
       "title": "Configure firmware auto-updating rules.",
       "description": "'regular' - check for updates 1-2 times a day according to the schedule, install new versions only 2 weeks after release. 'beta' - install new versions as soon as a new version is released. 'manual' - do not check for firmware updates and do not install updates automatically",
       "type": "string",
-      "pattern": "^(regular|beta|manual)$",
+      "enum": [
+        "regular",
+        "beta",
+        "manual"
+      ],
       "default": "regular",
       "examples": [
         "regular",
@@ -622,6 +664,11 @@
       "type": "boolean",
       "default": true
     },
+    "scan_2mbit_phy": {
+      "title": "Configure Bluetooth scanning: Use Use 2 MBit/s PHY",
+      "type": "boolean",
+      "default": true
+    },
     "scan_extended_payload": {
       "title": "Configure Bluetooth scanning: Use extended payload",
       "type": "boolean",
@@ -639,6 +686,11 @@
     },
     "scan_channel_39": {
       "title": "Configure Bluetooth scanning: Use channel 39",
+      "type": "boolean",
+      "default": true
+    },
+    "scan_default": {
+      "title": "Override scanning parameters with default values",
       "type": "boolean",
       "default": true
     },
@@ -714,6 +766,7 @@
       "mqtt_data_format": "ruuvi_raw",
       "mqtt_server": "test.mosquitto.org",
       "mqtt_port": 1883,
+      "mqtt_sending_interval": 0,
       "mqtt_prefix": "",
       "mqtt_client_id": "",
       "mqtt_user": "",
@@ -736,10 +789,12 @@
       "company_id": 1177,
       "scan_coded_phy": false,
       "scan_1mbit_phy": true,
+      "scan_2mbit_phy": true,
       "scan_extended_payload": true,
       "scan_channel_37": true,
       "scan_channel_38": true,
       "scan_channel_39": true,
+      "scan_default": true,
       "coordinates": "",
       "fw_update_url": "https://network.ruuvi.com/firmwareupdate"
     }

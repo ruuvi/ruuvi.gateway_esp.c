@@ -1,0 +1,59 @@
+{
+  "data": {
+    "coordinates": "",
+    "timestamp": 1687922293,
+    "gw_mac": "C8:25:2D:8E:9C:2C",
+    "tags": {
+      "E1:9D:F3:4F:8A:A5": {
+        "rssi": -44,
+        "timestamp": 1775069470,
+        "ble_phy": "1M",
+        "ble_chan": 37,
+        "data": "020106030398FC17FF990406143A6194C636005A0330D500F7FF10944F8AA5",
+        "dataFormat": 6,
+        "temperature": 25.9,
+        "humidity": 62.4,
+        "pressure": 100742,
+        "PM2.5": 9.0,
+        "CO2": 816,
+        "VOC": 426,
+        "NOx": 1,
+        "luminosity": 48276,
+        "sound_avg_dba": null,
+        "measurementSequenceNumber": 16,
+        "flag_calibration_in_progress": false,
+        "flag_button_pressed": false,
+        "flag_rtc_running_on_boot": true,
+        "id": "4F:8A:A5"
+      },
+      "FD:54:6F:6C:52:92": {
+        "rssi": -77,
+        "timestamp": 1775069464,
+        "ble_phy": "2M",
+        "ble_chan": 10,
+        "ble_tx_power": 8,
+        "data": "2BFF9904E114595CB0C6460030003A0041004402364300FFFFFFFFFFFF103B37F8FFFFFFFFFFFD546F6C5292030398FC",
+        "dataFormat": 225,
+        "temperature": 26.045,
+        "humidity": 59.32,
+        "pressure": 100758,
+        "PM1.0": 4.8,
+        "PM2.5": 5.8,
+        "PM4.0": 6.5,
+        "PM10.0": 6.8,
+        "CO2": 566,
+        "VOC": 135,
+        "NOx": 1,
+        "luminosity": null,
+        "sound_inst_dba": null,
+        "sound_avg_dba": null,
+        "sound_peak_spl_db": null,
+        "measurementSequenceNumber": 1063735,
+        "flag_calibration_in_progress": false,
+        "flag_button_pressed": false,
+        "flag_rtc_running_on_boot": false,
+        "id": "FD:54:6F:6C:52:92"
+      }
+    }
+  }
+}

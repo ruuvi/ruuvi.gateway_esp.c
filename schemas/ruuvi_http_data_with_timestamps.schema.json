@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "http://ruuvi.com/schemas/ruuvi_http_data_with_timestamps.schema.json",
   "title": "Time-stamped data from Bluetooth-sensors relayed via HTTP/HTTPS",
   "type": "object",
@@ -27,21 +27,22 @@
           ]
         },
         "timestamp": {
-          "type": "string",
+          "type": "integer",
           "title": "Timestamp (Unix-time) when the accumulated messages from Bluetooth-sensors was relayed by Gateway",
           "examples": [
-            "1653633988"
+            1653633988
           ]
         },
         "nonce": {
-          "type": "string",
+          "type": "integer",
           "title": "Nonce - sequentially incremented number for each message, the initial value of which is set randomly",
           "examples": [
-            "2636366621"
+            2636366621
           ]
         },
         "gw_mac": {
           "type": "string",
+          "pattern": "^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$",
           "title": "MAC-address of Ruuvi Gateway",
           "examples": [
             "C8:25:2D:8E:9C:2C"
@@ -50,44 +51,71 @@
         "tags": {
           "type": "object",
           "title": "Array of records with relayed messages from Bluetooth-sensors",
-          "items": {
-            "type": "object",
-            "patternProperties": {
-              "^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$": {
-                "type": "object",
-                "title": "MAC-address of Bluetooth-sensor",
-                "required": [
-                  "rssi",
-                  "timestamp",
-                  "data"
-                ],
-                "properties": {
-                  "rssi": {
-                    "type": "integer",
-                    "title": "RSSI",
-                    "examples": [
-                      -71
-                    ]
-                  },
-                  "timestamp": {
-                    "type": "string",
-                    "title": "Timestamp (Unix-time) when the message from Bluetooth-sensor was received by Gateway",
-                    "examples": [
-                      "1653633986"
-                    ]
-                  },
-                  "data": {
-                    "type": "string",
-                    "title": "Relayed message from Bluetooth-sensor in hex encoding",
-                    "examples": [
-                      "0201061BFF99040513C85714C7CC00240008041CAB76F41C3CC6A5B9E0AD06"
-                    ]
-                  }
+          "patternProperties": {
+            "^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$": {
+              "type": "object",
+              "title": "MAC-address of Bluetooth-sensor",
+              "required": [
+                "rssi",
+                "timestamp",
+                "ble_phy",
+                "ble_chan",
+                "data"
+              ],
+              "properties": {
+                "rssi": {
+                  "type": "integer",
+                  "title": "RSSI",
+                  "examples": [
+                    -71
+                  ]
+                },
+                "timestamp": {
+                  "type": [
+                    "integer"
+                  ],
+                  "title": "Timestamp (Unix-time) when the message from Bluetooth-sensor was received by Gateway",
+                  "examples": [
+                    1653633986
+                  ]
+                },
+                "ble_phy": {
+                  "type": "string",
+                  "enum": ["1M", "2M", "Coded"],
+                  "title": "BLE PHY used for communication",
+                  "examples": [
+                    "1M",
+                    "2M",
+                    "Coded"
+                  ]
+                },
+                "ble_chan": {
+                  "type": "integer",
+                  "title": "BLE channel used for communication",
+                  "examples": [
+                    37,
+                    38,
+                    39
+                  ]
+                },
+                "ble_tx_power": {
+                  "type": "integer",
+                  "title": "BLE transmit power used for communication",
+                  "examples": [
+                    7,
+                    8
+                  ]
+                },
+                "data": {
+                  "type": "string",
+                  "title": "Relayed message from Bluetooth-sensor in hex encoding",
+                  "pattern": "^([0-9A-Fa-f]{2})+$",
+                  "examples": [
+                    "0201061BFF99040513C85714C7CC00240008041CAB76F41C3CC6A5B9E0AD06"
+                  ]
                 }
               }
-            },
-            "minItems": 0,
-            "uniqueItems": true
+            }
           }
         }
       }
@@ -97,19 +125,38 @@
     {
       "data": {
         "coordinates": "",
-        "timestamp": "1653633988",
-        "nonce": "2636366621",
+        "timestamp": 1653633988,
+        "nonce": 2636366621,
         "gw_mac": "C8:25:2D:8E:9C:2C",
         "tags": {
           "C6:A5:B9:E0:AD:06": {
             "rssi": -71,
-            "timestamp": "1653633986",
+            "timestamp": 1653633986,
+            "ble_phy": "1M",
+            "ble_chan": 37,
             "data": "0201061BFF99040513C85714C7CC00240008041CAB76F41C3CC6A5B9E0AD06"
           },
           "E3:75:CF:37:4E:23": {
             "rssi": -72,
-            "timestamp": "1653633986",
+            "timestamp": 1653633986,
+            "ble_phy": "1M",
+            "ble_chan": 38,
             "data": "0201061BFF99040514565D7CC7850008003C03E4A9F6741CC3E375CF374E23"
+          },
+          "E1:9D:F3:4F:8A:A5": {
+            "rssi": -44,
+            "timestamp": 1775069470,
+            "ble_phy": "1M",
+            "ble_chan": 37,
+            "data": "020106030398FC17FF990406143A6194C636005A0330D500F7FF10944F8AA5"
+          },
+          "FD:54:6F:6C:52:92": {
+            "rssi": -77,
+            "timestamp": 1775069464,
+            "ble_phy": "2M",
+            "ble_chan": 10,
+            "ble_tx_power": 8,
+            "data": "2BFF9904E114595CB0C6460030003A0041004402364300FFFFFFFFFFFF103B37F8FFFFFFFFFFFD546F6C5292030398FC"
           }
         }
       }
