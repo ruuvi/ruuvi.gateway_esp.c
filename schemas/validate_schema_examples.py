@@ -15,7 +15,13 @@ def join_path(parts):
         if isinstance(p, int):
             out += f"[{p}]"
         else:
-            out += f".{p}"
+            # Use dot-notation for simple identifier-like keys, and
+            # bracket-notation with JSON-string escaping otherwise.
+            if isinstance(p, str) and p and p[0].isalpha() or (isinstance(p, str) and p and p[0] == "_"):
+                if all(ch.isalnum() or ch == "_" for ch in p[1:]):
+                    out += f".{p}"
+                    continue
+            out += f"[{json.dumps(p)}]"
     return out
 
 
