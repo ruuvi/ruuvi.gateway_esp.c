@@ -50,7 +50,7 @@
         },
         "tags": {
           "type": "object",
-          "title": "Array of records with relayed messages from Bluetooth-sensors",
+          "title": "Map of records with relayed messages from Bluetooth-sensors keyed by sensor MAC address",
           "patternProperties": {
             "^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$": {
               "type": "object",
@@ -71,9 +71,7 @@
                   ]
                 },
                 "timestamp": {
-                  "type": [
-                    "integer"
-                  ],
+                  "type": "integer",
                   "title": "Timestamp (Unix-time) when the message from Bluetooth-sensor was received by Gateway",
                   "examples": [
                     1653633986

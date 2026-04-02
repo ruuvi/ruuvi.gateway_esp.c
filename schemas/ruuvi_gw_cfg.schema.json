@@ -655,17 +655,17 @@
       ]
     },
     "scan_coded_phy": {
-      "title": "Configure Bluetooth scanning: Use coded PHY (long range)",
+      "title": "Configure Bluetooth scanning: Use Coded PHY (long range)",
       "type": "boolean",
       "default": false
     },
     "scan_1mbit_phy": {
-      "title": "Configure Bluetooth scanning: Use Use 1 MBit/s PHY",
+      "title": "Configure Bluetooth scanning: Use 1 MBit/s PHY",
       "type": "boolean",
       "default": true
     },
     "scan_2mbit_phy": {
-      "title": "Configure Bluetooth scanning: Use Use 2 MBit/s PHY",
+      "title": "Configure Bluetooth scanning: Use 2 MBit/s PHY",
       "type": "boolean",
       "default": true
     },
