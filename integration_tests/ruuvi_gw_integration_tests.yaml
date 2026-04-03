@@ -1098,7 +1098,7 @@ integration_tests:
           - action: Power off/on the gateway.
             checks:
               - "LED: 'G'"
-          - action: Wait 45 minutes.
+          - action: Wait 2 hours 5 minutes.
             checks:
               - "LED: 'G'"
           - action: Refresh the page in the browser
@@ -1155,7 +1155,7 @@ integration_tests:
           - action: Power off/on the gateway.
             checks:
               - "LED: 'G'"
-          - action: Wait 45 minutes.
+          - action: Wait 2 hours 5 minutes.
             checks:
               - "LED: 'G'"
           - action: Refresh the page in the browser
@@ -1212,7 +1212,7 @@ integration_tests:
           - action: Power off/on the gateway.
             checks:
               - "LED: 'G'"
-          - action: Wait 45 minutes.
+          - action: Wait 2 hours 5 minutes.
             checks:
               - "LED: 'G'"
           - action: Refresh the page in the browser

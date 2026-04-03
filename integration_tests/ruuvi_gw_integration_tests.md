@@ -1645,7 +1645,7 @@
 
     - LED: 'G'
 
-- **Action**: Wait 45 minutes.
+- **Action**: Wait 2 hours 5 minutes.
 
     **Checks**:
 
@@ -1731,7 +1731,7 @@
 
     - LED: 'G'
 
-- **Action**: Wait 45 minutes.
+- **Action**: Wait 2 hours 5 minutes.
 
     **Checks**:
 
@@ -1817,7 +1817,7 @@
 
     - LED: 'G'
 
-- **Action**: Wait 45 minutes.
+- **Action**: Wait 2 hours 5 minutes.
 
     **Checks**:
 
