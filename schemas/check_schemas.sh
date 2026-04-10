@@ -12,13 +12,9 @@ SCHEMAS_DIR=$SCRIPT_DIR
 SCHEMA_RUUVI_GW_CFG=$SCHEMAS_DIR/ruuvi_gw_cfg.schema.json
 EXAMPLES=$SCRIPT_DIR/examples
 
-python3 "$SCHEMAS_DIR/validate_schema_examples.py" "$SCHEMA_RUUVI_GW_CFG"
-python3 "$SCHEMAS_DIR/validate_schema_examples.py" "$SCHEMAS_DIR/ruuvi_gw_status.schema.json"
-python3 "$SCHEMAS_DIR/validate_schema_examples.py" "$SCHEMAS_DIR/ruuvi_history.schema.json"
-python3 "$SCHEMAS_DIR/validate_schema_examples.py" "$SCHEMAS_DIR/ruuvi_http_data_with_timestamps.schema.json"
-python3 "$SCHEMAS_DIR/validate_schema_examples.py" "$SCHEMAS_DIR/ruuvi_http_data_without_timestamps.schema.json"
-python3 "$SCHEMAS_DIR/validate_schema_examples.py" "$SCHEMAS_DIR/ruuvi_mqtt_data_with_timestamps.schema.json"
-python3 "$SCHEMAS_DIR/validate_schema_examples.py" "$SCHEMAS_DIR/ruuvi_mqtt_data_without_timestamps.schema.json"
+for schema in "$SCHEMAS_DIR"/*.schema.json; do
+    python3 "$SCHEMAS_DIR/validate_schema_examples.py" "$schema"
+done
 
 check-jsonschema --schemafile "$SCHEMA_RUUVI_GW_CFG" "$SCRIPT_DIR/../gw_cfg_default/gw_cfg_default.json"
 
