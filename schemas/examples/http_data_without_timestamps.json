@@ -1,20 +1,38 @@
 {
    "data":{
       "coordinates":"",
-      "nonce":"2896361039",
+      "nonce":2896361039,
       "gw_mac":"C8:25:2D:8E:9C:2C",
       "tags":{
          "E3:75:CF:37:4E:23":{
             "rssi":-50,
-            "counter":"363",
+            "counter":363,
+            "ble_phy": "1M",
+            "ble_chan": 37,
             "data":"0201061BFF990405158A5B05C6810004004403DCAB767A45BDE375CF374E23"
          },
          "F4:1F:0C:28:CB:D6":{
             "rssi":-32,
-            "counter":"365",
+            "counter":365,
+            "ble_phy": "1M",
+            "ble_chan": 38,
             "data":"0201061BFF990405166455D5C6DD0008FFF803F0ADB60F2A92F41F0C28CBD6"
+         },
+         "E1:9D:F3:4F:8A:A5": {
+            "rssi": -44,
+            "counter":366,
+            "ble_phy": "1M",
+            "ble_chan": 37,
+            "data": "020106030398FC17FF990406143A6194C636005A0330D500F7FF10944F8AA5"
+         },
+         "FD:54:6F:6C:52:92": {
+            "rssi": -77,
+            "counter":367,
+            "ble_phy": "2M",
+            "ble_chan": 10,
+            "ble_tx_power": 8,
+            "data": "2BFF9904E114595CB0C6460030003A0041004402364300FFFFFFFFFFFF103B37F8FFFFFFFFFFFD546F6C5292030398FC"
          }
       }
    }
 }
-
