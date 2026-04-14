@@ -20,6 +20,7 @@
 #include "os_mkgmtime.h"
 #include "gw_cfg.h"
 #include "ruuvi_gateway.h"
+#include "wifi_manager.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG
 #include "log.h"
@@ -135,11 +136,13 @@ time_task_cb_notification_on_sync(struct timeval* p_tv)
             buf_time_str,
             (printf_uint_t)(p_tv->tv_usec / 1000));
         g_time_is_synchronized = false;
+        wifi_manager_update_time_sync_info(g_time_is_synchronized);
     }
     else
     {
         LOG_INFO("### Time has been synchronized: %s.%03u", buf_time_str, (printf_uint_t)(p_tv->tv_usec / 1000));
         g_time_is_synchronized = true;
+        wifi_manager_update_time_sync_info(g_time_is_synchronized);
         if (SNTP_SYNC_MODE_IMMED == sntp_get_sync_mode())
         {
             LOG_INFO("Switch time sync mode to SMOOTH");
@@ -154,6 +157,7 @@ time_task_sntp_start(void)
 {
     LOG_INFO("### Activate SNTP time synchronization");
     g_time_is_synchronized = false;
+    wifi_manager_update_time_sync_info(g_time_is_synchronized);
     sntp_init();
 }
 
@@ -162,6 +166,7 @@ time_task_sntp_stop(void)
 {
     LOG_INFO("### Deactivate SNTP time synchronization");
     g_time_is_synchronized = false;
+    wifi_manager_update_time_sync_info(g_time_is_synchronized);
     sntp_stop();
 }
 

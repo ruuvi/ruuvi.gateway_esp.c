@@ -125,6 +125,7 @@ public:
     time_t                  cur_time;
     sntp_sync_time_cb_t     sntp_sync_time_cb;
     sntp_sync_mode_t        sync_mode {};
+    std::vector<bool>       wifi_time_sync_info_updates;
 
     TestTimeTask();
 
@@ -365,6 +366,12 @@ bool
 gw_cfg_storage_check_file(const char* const p_file_name)
 {
     return false;
+}
+
+void
+wifi_manager_update_time_sync_info(const bool is_time_valid)
+{
+    gp_obj->wifi_time_sync_info_updates.push_back(is_time_valid);
 }
 
 } // extern "C"
@@ -630,6 +637,8 @@ TEST_F(TestTimeTask, test_all) // NOLINT
     ASSERT_TRUE(this->wait_for_events());
     TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "### Activate SNTP time synchronization");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(1, this->wifi_time_sync_info_updates.size());
+    ASSERT_FALSE(this->wifi_time_sync_info_updates.back());
     {
         const int exp_num_events = 1;
         ASSERT_EQ(exp_num_events, testEvents.size());
@@ -645,6 +654,8 @@ TEST_F(TestTimeTask, test_all) // NOLINT
     cmdQueue.push_and_wait(MAIN_TASK_CMD_SNTP_SYNC_TIME_CB_BAD_TIMESTAMP);
     ASSERT_EQ(0, testEvents.size());
     testEvents.clear();
+    ASSERT_EQ(2, this->wifi_time_sync_info_updates.size());
+    ASSERT_FALSE(this->wifi_time_sync_info_updates.back());
     TEST_CHECK_LOG_RECORD_TIME(
         ESP_LOG_WARN,
         "cmd_handler",
@@ -654,6 +665,8 @@ TEST_F(TestTimeTask, test_all) // NOLINT
     ASSERT_NE(nullptr, gp_obj->sntp_sync_time_cb);
     cmdQueue.push_and_wait(MAIN_TASK_CMD_SNTP_SYNC_TIME_CB_GOOD_TIMESTAMP);
     ASSERT_EQ(1, testEvents.size());
+    ASSERT_EQ(3, this->wifi_time_sync_info_updates.size());
+    ASSERT_TRUE(this->wifi_time_sync_info_updates.back());
     {
         auto* p_base_ev = testEvents[0];
         ASSERT_EQ(TestEventType_SNTP_SetSyncMode, p_base_ev->eventType);
@@ -669,6 +682,8 @@ TEST_F(TestTimeTask, test_all) // NOLINT
     ASSERT_TRUE(this->wait_for_events());
     TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "### Deactivate SNTP time synchronization");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(4, this->wifi_time_sync_info_updates.size());
+    ASSERT_FALSE(this->wifi_time_sync_info_updates.back());
     {
         const int exp_num_events = 1;
         ASSERT_EQ(exp_num_events, testEvents.size());
@@ -685,6 +700,8 @@ TEST_F(TestTimeTask, test_all) // NOLINT
     ASSERT_TRUE(this->wait_for_events());
     TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "### Activate SNTP time synchronization");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(5, this->wifi_time_sync_info_updates.size());
+    ASSERT_FALSE(this->wifi_time_sync_info_updates.back());
     {
         const int exp_num_events = 1;
         ASSERT_EQ(exp_num_events, testEvents.size());
@@ -701,6 +718,8 @@ TEST_F(TestTimeTask, test_all) // NOLINT
     ASSERT_TRUE(this->wait_for_events());
     TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "### Deactivate SNTP time synchronization");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(6, this->wifi_time_sync_info_updates.size());
+    ASSERT_FALSE(this->wifi_time_sync_info_updates.back());
     {
         const int exp_num_events = 1;
         ASSERT_EQ(exp_num_events, testEvents.size());
@@ -727,6 +746,9 @@ TEST_F(TestTimeTask, test_all) // NOLINT
         TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Add time server 3: NULL");
         TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "### Activate SNTP time synchronization");
         ASSERT_TRUE(esp_log_wrapper_is_empty());
+        ASSERT_EQ(8, this->wifi_time_sync_info_updates.size());
+        ASSERT_FALSE(this->wifi_time_sync_info_updates[6]);
+        ASSERT_FALSE(this->wifi_time_sync_info_updates[7]);
 
         ASSERT_EQ(exp_num_events, testEvents.size());
         int idx = 0;
@@ -807,14 +829,15 @@ TEST_F(TestTimeTask, test_all) // NOLINT
 
     cmdQueue.push_and_wait(MAIN_TASK_CMD_CHANGE_NTP_CONFIG2);
     {
-        const int exp_num_events = 8;
+        const int exp_num_events = 7;
         ASSERT_TRUE(this->wait_for_events(1000, exp_num_events));
         TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Got TIME_TASK_SIG_GW_CFG_CHANGED_RUUVI");
         TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "### Deactivate SNTP time synchronization");
         TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "Reconfigure SNTP");
         TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "### Configure SNTP to use DHCP");
-        TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "time_task", "### Activate SNTP time synchronization");
         ASSERT_TRUE(esp_log_wrapper_is_empty());
+        ASSERT_EQ(9, this->wifi_time_sync_info_updates.size());
+        ASSERT_FALSE(this->wifi_time_sync_info_updates.back());
 
         ASSERT_EQ(exp_num_events, testEvents.size());
         int idx = 0;
@@ -860,11 +883,6 @@ TEST_F(TestTimeTask, test_all) // NOLINT
             auto* p_base_ev = testEvents[idx++];
             ASSERT_EQ(TestEventType_NetworkReconnect, p_base_ev->eventType);
             auto* p_ev = reinterpret_cast<TestEventNetworkReconnect*>(p_base_ev);
-        }
-        {
-            auto* p_base_ev = testEvents[idx++];
-            ASSERT_EQ(TestEventType_SNTP_Init, p_base_ev->eventType);
-            auto* p_ev = reinterpret_cast<TestEventSntpInit*>(p_base_ev);
         }
         ASSERT_EQ(exp_num_events, idx);
     }
