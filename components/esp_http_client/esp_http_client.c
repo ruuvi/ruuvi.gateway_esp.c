@@ -1428,7 +1428,7 @@ static esp_err_t esp_http_client_request_send(esp_http_client_handle_t client, i
     int wlen = client->buffer_size_tx - first_line_len;
     while ((client->header_index = http_header_generate_string(client->request->headers, client->header_index, client->request->buffer->data + first_line_len, &wlen))) {
         if (wlen <= 0) {
-            break;
+            return ESP_ERR_HTTP_WRITE_DATA;
         }
         if (first_line_len) {
             wlen += first_line_len;
