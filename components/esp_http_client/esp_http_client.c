@@ -272,7 +272,7 @@ static int http_on_headers_complete(http_parser *parser)
 static int http_on_body(http_parser *parser, const char *at, size_t length)
 {
     esp_http_client_t *client = parser->data;
-    ESP_LOGD(TAG, "http_on_body %d", length);
+    ESP_LOGD(TAG, "http_on_body %zd", length);
     client->response->buffer->raw_data = (char *)at;
     if (client->response->buffer->output_ptr) {
         memcpy(client->response->buffer->output_ptr, (char *)at, length);
@@ -287,7 +287,7 @@ static int http_on_body(http_parser *parser, const char *at, size_t length)
 
 static int http_on_message_complete(http_parser *parser)
 {
-    ESP_LOGD(TAG, "http_on_message_complete, parser=%x", (int)parser);
+    ESP_LOGD(TAG, "http_on_message_complete, parser=%p", parser);
     esp_http_client_handle_t client = parser->data;
     client->is_chunk_complete = true;
     return 0;
@@ -1498,7 +1498,7 @@ static esp_err_t esp_http_client_send_post_data(esp_http_client_handle_t client)
                 ESP_LOGE(TAG, "%s:%d %s: cb_on_post_get_chunk failed", __FILE__, __LINE__, __func__);
                 return -1;
             }
-            ESP_LOGD(TAG, "%s: cb_on_post_get_chunk: len=%d", __func__, len);
+            ESP_LOGD(TAG, "%s: cb_on_post_get_chunk: len=%zd", __func__, len);
             if (0 != len) {
                 client->post_data = p_buf;
                 client->post_len = (int)len;
