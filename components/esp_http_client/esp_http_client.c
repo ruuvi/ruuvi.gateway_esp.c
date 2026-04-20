@@ -1434,8 +1434,7 @@ static esp_err_t esp_http_client_request_send(esp_http_client_handle_t client, i
             wlen += first_line_len;
             first_line_len = 0;
         }
-        client->request->buffer->data[wlen] = 0;
-        ESP_LOGD(TAG, "Write header[%d]: %s", client->header_index, client->request->buffer->data);
+        ESP_LOGD(TAG, "Write header[%d]: %.*s", client->header_index, wlen, client->request->buffer->data);
 
         client->data_write_left = wlen;
         client->data_written_index = 0;
