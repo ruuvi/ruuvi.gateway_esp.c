@@ -27,6 +27,9 @@ extern "C" {
 
 #define DEFAULT_HTTP_BUF_SIZE (512)
 
+#define ESP_HTTP_CLIENT_MAX_HOSTNAME_LEN  (253U)
+#define ESP_HTTP_CLIENT_MAX_HOSTNAME_SIZE ((ESP_HTTP_CLIENT_MAX_HOSTNAME_LEN)+1U)
+
 typedef struct esp_http_client *esp_http_client_handle_t;
 typedef struct esp_http_client_event *esp_http_client_event_handle_t;
 

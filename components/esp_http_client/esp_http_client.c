@@ -421,6 +421,13 @@ static esp_err_t _set_config(esp_http_client_handle_t client, const esp_http_cli
     });
 
     if (config->host) {
+        const size_t host_len = strlen(config->host);
+        if (host_len > ESP_HTTP_CLIENT_MAX_HOSTNAME_LEN) {
+            ESP_LOGE(TAG, "Hostname '%s' is too long (%zu bytes), max length is %u",
+                config->host, host_len, ESP_HTTP_CLIENT_MAX_HOSTNAME_LEN);
+            _clear_connection_info(client);
+            return ESP_ERR_INVALID_ARG;
+        }
         client->connection_info.host = strdup(config->host);
 
         HTTP_MEM_CHECK(TAG, client->connection_info.host, {
@@ -813,6 +820,14 @@ esp_err_t esp_http_client_set_url(esp_http_client_handle_t client, const char *u
     old_port = client->connection_info.port;
 
     if (purl.field_data[UF_HOST].len) {
+        if (purl.field_data[UF_HOST].len > ESP_HTTP_CLIENT_MAX_HOSTNAME_LEN) {
+            ESP_LOGE(TAG, "Hostname '%.*s' is too long (%u bytes), max length is %u",
+                purl.field_data[UF_HOST].len,
+                url + purl.field_data[UF_HOST].off,
+                purl.field_data[UF_HOST].len,
+                ESP_HTTP_CLIENT_MAX_HOSTNAME_LEN);
+            return ESP_ERR_INVALID_ARG;
+        }
         http_utils_assign_string(&client->connection_info.host, url + purl.field_data[UF_HOST].off, purl.field_data[UF_HOST].len);
         HTTP_MEM_CHECK(TAG, client->connection_info.host, {
             free(old_host);
