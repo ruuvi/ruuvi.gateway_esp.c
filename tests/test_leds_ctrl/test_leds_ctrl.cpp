@@ -11,7 +11,7 @@
 #include <string>
 
 #include "os_task.h"
-#include "esp_log.h"
+#include "esp_log_test.h"
 
 using namespace std;
 
