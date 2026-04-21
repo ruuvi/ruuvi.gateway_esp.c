@@ -116,8 +116,8 @@ http_download_event_handler(esp_http_client_event_t* p_evt)
             p_cb_info->offset = 0;
             break;
 
-        case HTTP_EVENT_HEADER_SENT:
-            LOG_INFO("HTTP_EVENT_HEADER_SENT");
+        case HTTP_EVENT_HEADERS_SENT:
+            LOG_INFO("HTTP_EVENT_HEADERS_SENT");
             http_feed_task_watchdog_if_needed(p_cb_info->flag_feed_task_watchdog);
             break;
 
