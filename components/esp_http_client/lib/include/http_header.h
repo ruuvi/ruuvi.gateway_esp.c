@@ -121,6 +121,15 @@ int http_header_generate_string(http_header_handle_t header, int index, char *bu
  */
 esp_err_t http_header_delete(http_header_handle_t header, const char *key);
 
+/**
+ * @brief Count the number of header items in the HTTP header list.
+ *
+ * @param[in]  header  The header
+ *
+ * @return     The number of header items.
+ */
+int http_header_count(http_header_handle_t header);
+
 #ifdef __cplusplus
 }
 #endif

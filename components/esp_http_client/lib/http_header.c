@@ -181,6 +181,10 @@ int http_header_generate_string(http_header_handle_t header, int index, char *bu
     int ret_idx = -1;
     bool is_end = false;
 
+    if (*buffer_len < 1) {
+        return -1;
+    }
+
     // iterate over the header entries to calculate buffer size and determine last item
     STAILQ_FOREACH(item, header, next) {
         if (item->value && idx >= index) {
@@ -202,6 +206,8 @@ int http_header_generate_string(http_header_handle_t header, int index, char *bu
     }
 
     if (siz == 0) {
+        *buffer_len = 0;
+        buffer[0] = '\0';
         return 0;
     }
     if (ret_idx < 0) {
@@ -223,6 +229,7 @@ int http_header_generate_string(http_header_handle_t header, int index, char *bu
         // write the http header terminator if all header entries have been written in this function call
         str_len += snprintf(buffer + str_len, *buffer_len - str_len, "\r\n");
     }
+    buffer[str_len] = '\0';
     *buffer_len = str_len;
     return ret_idx;
 }

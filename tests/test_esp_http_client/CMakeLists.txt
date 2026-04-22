@@ -5,6 +5,7 @@ set(ProjectId ruuvi_gateway_esp-test-esp_http_client)
 
 add_executable(${ProjectId}
         test_esp_http_client.cpp
+        test_http_header.cpp
         tcp_transport_stub.c
         tcp_transport_stub.h
         http_event.hpp
