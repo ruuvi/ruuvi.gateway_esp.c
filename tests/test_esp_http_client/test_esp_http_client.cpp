@@ -867,10 +867,11 @@ TEST_F(TestEspHttpClient, test_http_get_with_long_url_split_req_header) // NOLIN
           "X-Amz-Signature=b5e6f8d9a0c1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7"
           " " ESP_HTTP_CLIENT_DEFAULT_HTTP_PROTOCOL
           "\r\n"
-          "User-Agent: " ESP_HTTP_CLIENT_DEFAULT_HTTP_USER_AGENT "\r\n";
+          "User-Agent: " ESP_HTTP_CLIENT_DEFAULT_HTTP_USER_AGENT
+          "\r\n"
+          "Host: a31415926535897-ats.";
     const string req_header2
-        = "Host: "
-          "a31415926535897-ats.iot.us-west-2.amazonaws.com:8443"
+        = "iot.us-west-2.amazonaws.com:8443"
           "\r\n"
           "Content-Length: 0"
           "\r\n"
@@ -927,10 +928,11 @@ TEST_F(TestEspHttpClient, test_http_get_with_long_path_split_req_header) // NOLI
           "X-Amz-Signature=b5e6f8d9a0c1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7"
           " " ESP_HTTP_CLIENT_DEFAULT_HTTP_PROTOCOL
           "\r\n"
-          "User-Agent: " ESP_HTTP_CLIENT_DEFAULT_HTTP_USER_AGENT "\r\n";
+          "User-Agent: " ESP_HTTP_CLIENT_DEFAULT_HTTP_USER_AGENT
+          "\r\n"
+          "Host: a31415926535897-ats.";
     const string req_header2
-        = "Host: "
-          "a31415926535897-ats.iot.us-west-2.amazonaws.com"
+        = "iot.us-west-2.amazonaws.com"
           "\r\n"
           "Content-Length: 0"
           "\r\n"

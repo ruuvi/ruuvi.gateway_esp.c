@@ -16,6 +16,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -173,65 +174,143 @@ int http_header_set_format(http_header_handle_t header, const char *key, const c
     return len;
 }
 
-int http_header_generate_string(http_header_handle_t header, int index, char *buffer, int *buffer_len)
-{
+static bool generate_item_token(const char *const p_token,
+                                size_t *const p_token_offset,
+                                char *const p_buf,
+                                const size_t buf_len,
+                                size_t *const p_num_bytes_copied) {
+    const size_t token_len = strlen(p_token);
+    const size_t rem_len = token_len - *p_token_offset;
+    const size_t num_bytes_to_copy = rem_len < buf_len ? rem_len : buf_len;
+    memcpy(p_buf, p_token + *p_token_offset, num_bytes_to_copy);
+    *p_num_bytes_copied = num_bytes_to_copy;
+    *p_token_offset += num_bytes_to_copy;
+    if (*p_token_offset == token_len) {
+        *p_token_offset = 0;
+        return true;
+    }
+    return false;
+}
+
+static bool http_header_generate_item(const http_header_item_handle_t item,
+                                      http_header_generate_item_state_t *const p_state,
+                                      char *const p_buf,
+                                      const size_t buf_len,
+                                      size_t *const p_buf_ofs) {
+    ESP_LOGD(TAG, "%s: Header item (stage=%d, offset=%zu) %s: %s",
+             __func__, p_state->stage, p_state->offset, item->key, item->value);
+    if (buf_len < (*p_buf_ofs + 1)) {
+        return false;
+    }
+    size_t rem_buf_len = buf_len - *p_buf_ofs - 1; // Take final '\0' into account
+    while (p_state->stage != HTTP_HEADER_GENERATE_ITEM_STAGE_FINISHED) {
+        if (0 == rem_buf_len) {
+            p_buf[*p_buf_ofs] = '\0'; // Add final '\0' to buffer
+            return false;
+        }
+        size_t bytes_copied = 0;
+        switch (p_state->stage) {
+            case HTTP_HEADER_GENERATE_ITEM_STAGE_INIT:
+                p_state->offset = 0;
+                p_state->stage = HTTP_HEADER_GENERATE_ITEM_STAGE_KEY;
+                bytes_copied = 0;
+                break;
+            case HTTP_HEADER_GENERATE_ITEM_STAGE_KEY:
+                if (generate_item_token(item->key, &p_state->offset, &p_buf[*p_buf_ofs], rem_buf_len, &bytes_copied)) {
+                    p_state->stage = HTTP_HEADER_GENERATE_ITEM_STAGE_KEY_VAL_SEPARATOR;
+                }
+                break;
+            case HTTP_HEADER_GENERATE_ITEM_STAGE_KEY_VAL_SEPARATOR:
+                if (generate_item_token(": ", &p_state->offset, &p_buf[*p_buf_ofs], rem_buf_len, &bytes_copied)) {
+                    p_state->stage = HTTP_HEADER_GENERATE_ITEM_STAGE_VALUE;
+                }
+                break;
+            case HTTP_HEADER_GENERATE_ITEM_STAGE_VALUE:
+                if (generate_item_token(item->value, &p_state->offset, &p_buf[*p_buf_ofs], rem_buf_len,
+                                        &bytes_copied)) {
+                    p_state->stage = HTTP_HEADER_GENERATE_ITEM_STAGE_KEY_VAL_EOL;
+                }
+                break;
+            case HTTP_HEADER_GENERATE_ITEM_STAGE_KEY_VAL_EOL:
+                if (generate_item_token("\r\n", &p_state->offset, &p_buf[*p_buf_ofs], rem_buf_len, &bytes_copied)) {
+                    p_state->stage = HTTP_HEADER_GENERATE_ITEM_STAGE_FINISHED;
+                }
+                break;
+            case HTTP_HEADER_GENERATE_ITEM_STAGE_FINISHED:
+                assert(0);
+                break;
+        }
+        *p_buf_ofs += bytes_copied;
+        rem_buf_len -= bytes_copied;
+    }
+    p_buf[*p_buf_ofs] = '\0'; // Add final '\0' to buffer
+    p_state->stage = HTTP_HEADER_GENERATE_ITEM_STAGE_INIT;
+    p_state->offset = 0;
+    return true;
+}
+
+static bool http_header_generate_string_items(http_header_handle_t header,
+                                              http_header_generate_state_t *const p_state,
+                                              char *const p_buf, const size_t buf_len, size_t *const p_len) {
     http_header_item_handle_t item;
-    int siz = 0;
-    int idx = 0;
-    int ret_idx = -1;
-    bool is_end = false;
-
-    if (*buffer_len < 1) {
-        return -1;
-    }
-
-    // iterate over the header entries to calculate buffer size and determine last item
+    int32_t idx = 0;
+    size_t buf_ofs = 0;
     STAILQ_FOREACH(item, header, next) {
-        if (item->value && idx >= index) {
-            ESP_LOGD(TAG, "%s: Header item %s: %s", __func__, item->key, item->value);
-            siz += strlen(item->key);
-            siz += strlen(item->value);
-            siz += 4; //': ' and '\r\n'
+        if ((NULL != item->value) && (idx >= p_state->item_idx)) {
+            if (!http_header_generate_item(item, &p_state->item_state, p_buf, buf_len, &buf_ofs)) {
+                *p_len = buf_ofs;
+                p_state->item_idx = idx;
+                return false;
+            }
         }
-        idx ++;
+        idx += 1;
+    }
+    *p_len = buf_ofs;
+    p_state->item_idx = idx;
+    return true;
+}
 
-        if (siz + 1 > *buffer_len - 2) {
-            // if this item would not fit to the buffer, return the index of the last fitting one
-            ret_idx = idx - 1;
-            ESP_LOGD(TAG, "Buffer length %d is too small to fit all headers "
-                     "(%d bytes needed, excluding final CRLF terminator)",
-                     *buffer_len - 2, siz + 1);
-            break;
+size_t http_header_generate_string(http_header_handle_t header, http_header_generate_state_t *const p_state,
+                                   char *const p_buf, const size_t buf_len) {
+    size_t buf_ofs = 0;
+    bool flag_exit = false;
+    while (!flag_exit) {
+        switch (p_state->stage) {
+            case HTTP_HEADER_GENERATE_STAGE_INIT:
+                p_state->item_idx = 0;
+                p_state->item_state.stage = HTTP_HEADER_GENERATE_ITEM_STAGE_INIT;
+                p_state->item_state.offset = 0;
+                p_state->stage = HTTP_HEADER_GENERATE_STAGE_ADDING_ITEMS;
+                break;
+            case HTTP_HEADER_GENERATE_STAGE_ADDING_ITEMS:
+                if (!http_header_generate_string_items(header, p_state, p_buf, buf_len, &buf_ofs)) {
+                    flag_exit = true;
+                    break;
+                }
+                p_state->stage = HTTP_HEADER_GENERATE_STAGE_FINAL_EOL;
+                p_state->item_state.stage = HTTP_HEADER_GENERATE_ITEM_STAGE_FINISHED;
+                p_state->item_state.offset = 0;
+                break;
+            case HTTP_HEADER_GENERATE_STAGE_FINAL_EOL: {
+                size_t bytes_copied = 0;
+                if (!generate_item_token("\r\n", &p_state->item_state.offset, &p_buf[buf_ofs], buf_len - buf_ofs - 1,
+                                         &bytes_copied)) {
+                    flag_exit = true;
+                } else {
+                    p_state->stage = HTTP_HEADER_GENERATE_STAGE_FINISHED;
+                }
+                buf_ofs += bytes_copied;
+                break;
+            }
+            case HTTP_HEADER_GENERATE_STAGE_FINISHED:
+                flag_exit = true;
+                break;
         }
     }
-
-    if (siz == 0) {
-        *buffer_len = 0;
-        buffer[0] = '\0';
-        return 0;
+    if (buf_ofs < buf_len) {
+        p_buf[buf_ofs] = '\0';
     }
-    if (ret_idx < 0) {
-        // all items would fit, mark this as the end of http header string
-        ret_idx = idx;
-        is_end = true;
-    }
-
-    // iterate again over the header entries to write only the fitting indeces
-    int str_len = 0;
-    idx = 0;
-    STAILQ_FOREACH(item, header, next) {
-        if (item->value && idx >= index && idx < ret_idx) {
-            str_len += snprintf(buffer + str_len, *buffer_len - str_len, "%s: %s\r\n", item->key, item->value);
-        }
-        idx ++;
-    }
-    if (is_end) {
-        // write the http header terminator if all header entries have been written in this function call
-        str_len += snprintf(buffer + str_len, *buffer_len - str_len, "\r\n");
-    }
-    buffer[str_len] = '\0';
-    *buffer_len = str_len;
-    return ret_idx;
+    return buf_ofs;
 }
 
 esp_err_t http_header_clean(http_header_handle_t header)

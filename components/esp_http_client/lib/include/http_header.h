@@ -15,6 +15,9 @@
 #ifndef _HTTP_HEADER_H_
 #define _HTTP_HEADER_H_
 
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
 #include "sys/queue.h"
 #include "esp_err.h"
 
@@ -24,6 +27,33 @@ extern "C" {
 
 typedef struct http_header *http_header_handle_t;
 typedef struct http_header_item *http_header_item_handle_t;
+
+typedef enum http_header_generate_item_stage_e {
+    HTTP_HEADER_GENERATE_ITEM_STAGE_INIT,
+    HTTP_HEADER_GENERATE_ITEM_STAGE_KEY,
+    HTTP_HEADER_GENERATE_ITEM_STAGE_KEY_VAL_SEPARATOR,
+    HTTP_HEADER_GENERATE_ITEM_STAGE_VALUE,
+    HTTP_HEADER_GENERATE_ITEM_STAGE_KEY_VAL_EOL,
+    HTTP_HEADER_GENERATE_ITEM_STAGE_FINISHED,
+} http_header_generate_item_stage_e;
+
+typedef struct http_header_generate_item_state_t {
+    http_header_generate_item_stage_e stage;
+    size_t offset;
+} http_header_generate_item_state_t;
+
+typedef enum http_header_generate_stage_e {
+    HTTP_HEADER_GENERATE_STAGE_INIT,
+    HTTP_HEADER_GENERATE_STAGE_ADDING_ITEMS,
+    HTTP_HEADER_GENERATE_STAGE_FINAL_EOL,
+    HTTP_HEADER_GENERATE_STAGE_FINISHED,
+} http_header_generate_stage_e;
+
+typedef struct http_header_generate_state_t {
+    http_header_generate_stage_e stage;
+    int32_t item_idx;
+    http_header_generate_item_state_t item_state;
+} http_header_generate_state_t;
 
 /**
  * @brief      initialize and allocate the memory for the header object
@@ -105,9 +135,11 @@ esp_err_t http_header_get(http_header_handle_t header, const char *key, char **v
  * @param      buffer      The buffer
  * @param      buffer_len  The buffer length
  *
- * @return     The last index of header was generated
+ * @return
+ *     - Content length if header was generated successfully (value greater than 0)
+ *     - 0 if generation is complete and there is no more header to generate
  */
-int http_header_generate_string(http_header_handle_t header, int index, char *buffer, int *buffer_len);
+size_t http_header_generate_string(http_header_handle_t header, http_header_generate_state_t* const p_state, char * const p_buf, const size_t buf_len);
 
 /**
  * @brief      Remove the header with key from the headers list

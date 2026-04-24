@@ -121,11 +121,11 @@ struct esp_http_client {
     bool                        disable_auto_redirect;
     esp_http_client_event_t     event;
     int                         data_written_index;
-    int                         data_write_left;
+    ssize_t                     data_write_left;
     bool                        first_line_prepared;
-    int                         header_index;
     bool                        is_async;
     esp_transport_keep_alive_t  keep_alive_cfg;
+    http_header_generate_state_t header_gen_state;
     esp_http_client_cb_on_post_get_chunk cb_on_post_get_chunk;
     void* p_cb_on_post_get_chunk_user_data;
 };
@@ -1417,7 +1417,7 @@ static esp_err_t esp_http_client_request_send(esp_http_client_handle_t client, i
             return first_line_len;
         }
         client->first_line_prepared = true;
-        client->header_index = 0;
+        client->header_gen_state.stage = HTTP_HEADER_GENERATE_STAGE_INIT;
         client->data_written_index = 0;
         client->data_write_left = 0;
     }
@@ -1425,9 +1425,10 @@ static esp_err_t esp_http_client_request_send(esp_http_client_handle_t client, i
     if (client->data_write_left > 0) {
         /* sending leftover data from previous call to esp_http_client_request_send() API */
         int wret = 0;
-        if (((wret = esp_http_client_write(client, client->request->buffer->data + client->data_written_index, client->data_write_left)) < 0)) {
+        if (((wret = esp_http_client_write(client, client->request->buffer->data + client->data_written_index,
+                                           client->data_write_left)) < 0)) {
             if (client->is_async && ((errno == EAGAIN) || (errno == EWOULDBLOCK))) {
-                return ESP_ERR_HTTP_WRITE_DATA; // In case of EAGAIN error, we return ESP_ERR_HTTP_WRITE_DATA
+                return ESP_ERR_HTTP_EAGAIN;
             }
             ESP_LOGE(TAG, "Error write request");
             return ESP_ERR_HTTP_WRITE_DATA;
@@ -1435,37 +1436,35 @@ static esp_err_t esp_http_client_request_send(esp_http_client_handle_t client, i
         client->data_write_left -= wret;
         client->data_written_index += wret;
         if (client->is_async && client->data_write_left > 0) {
-            return ESP_ERR_HTTP_WRITE_DATA;      /* In case of EAGAIN error, we return ESP_ERR_HTTP_WRITE_DATA,
-                                                 and the handling of EAGAIN should be done in the higher level APIs. */
+            return ESP_ERR_HTTP_EAGAIN;
         }
     }
 
-    int wlen = client->buffer_size_tx - first_line_len;
-    while ((client->header_index = http_header_generate_string(client->request->headers, client->header_index, client->request->buffer->data + first_line_len, &wlen))) {
-        if (wlen < 0) {
-            return ESP_ERR_HTTP_WRITE_DATA;
-        }
-        if ((0 != http_header_count(client->request->headers)) && (0 == wlen)) {
-            return ESP_ERR_HTTP_WRITE_DATA;
-        }
+    while (client->header_gen_state.stage != HTTP_HEADER_GENERATE_STAGE_FINISHED) {
+        size_t wlen = http_header_generate_string(client->request->headers, &client->header_gen_state,
+                                                  client->request->buffer->data + first_line_len,
+                                                  client->buffer_size_tx - first_line_len);
         if (first_line_len) {
             wlen += first_line_len;
             first_line_len = 0;
         }
-        ESP_LOGD(TAG, "Write header[%d]: %.*s", client->header_index, wlen, client->request->buffer->data);
+        ESP_LOGD(TAG, "Write header[%d]: %.*s", client->header_gen_state.item_idx,
+                 (int)wlen, client->request->buffer->data);
 
         client->data_write_left = wlen;
         client->data_written_index = 0;
         while (client->data_write_left > 0) {
-            int wret = esp_transport_write(client->transport, client->request->buffer->data + client->data_written_index, client->data_write_left, client->timeout_ms);
+            int wret = esp_transport_write(client->transport,
+                                           client->request->buffer->data + client->data_written_index,
+                                           client->data_write_left, client->timeout_ms);
             if (client->is_async && (wret >= 0) && (wret < client->data_write_left)) {
                 client->data_write_left -= wret;
                 client->data_written_index += wret;
-                return ESP_ERR_HTTP_WRITE_DATA; // In case of EAGAIN error, we return ESP_ERR_HTTP_WRITE_DATA
+                return ESP_ERR_HTTP_EAGAIN;
             }
             if (wret <= 0) {
                 if (client->is_async && ((errno == EAGAIN) || (errno == EWOULDBLOCK))) {
-                    return ESP_ERR_HTTP_WRITE_DATA; // In case of EAGAIN error, we return ESP_ERR_HTTP_WRITE_DATA
+                    return ESP_ERR_HTTP_EAGAIN; // In case of EAGAIN error, we return ESP_ERR_HTTP_WRITE_DATA
                 }
                 ESP_LOGE(TAG, "Error write request");
                 esp_http_client_close(client);
@@ -1496,7 +1495,8 @@ static esp_err_t esp_http_client_send_post_data(esp_http_client_handle_t client)
 
     if (NULL != client->post_data) {
         ESP_LOGD(TAG, "%s: post_data: esp_http_client_write", __func__);
-        int wret = esp_http_client_write(client, client->post_data + client->data_written_index, client->data_write_left);
+        int wret = esp_http_client_write(client, client->post_data + client->data_written_index,
+                                         client->data_write_left);
         ESP_LOGD(TAG, "%s: post_data: esp_http_client_write, wret=%d", __func__, wret);
         if (wret < 0) {
             return wret;
