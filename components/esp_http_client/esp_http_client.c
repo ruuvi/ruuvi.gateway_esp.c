@@ -89,6 +89,27 @@ typedef enum {
     HTTP_STATE_RES_COMPLETE_DATA,
     HTTP_STATE_CLOSE
 } esp_http_state_t;
+
+typedef enum req_send_stage_e {
+    REQ_SEND_STAGE_INIT = 0,
+    REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_METHOD,
+    REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_METHOD_SEPARATOR,
+    REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_PATH,
+    REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_QUERY_SEPARATOR,
+    REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_QUERY,
+    REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_PROTOCOL_SEPARATOR,
+    REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_PROTOCOL,
+    REQ_SEND_STAGE_GEN_FIRST_LINE_EOL,
+    REQ_SEND_STAGE_GEN_HTTP_HEADERS,
+    REQ_SEND_STAGE_FINISHED,
+} req_send_stage_e;
+
+typedef struct req_send_state_t {
+    req_send_stage_e stage;
+    size_t data_offset;
+    http_header_generate_state_t header_gen_state;
+} req_send_state_t;
+
 /**
  * HTTP client class
  */
@@ -122,10 +143,9 @@ struct esp_http_client {
     esp_http_client_event_t     event;
     int                         data_written_index;
     ssize_t                     data_write_left;
-    bool                        first_line_prepared;
     bool                        is_async;
     esp_transport_keep_alive_t  keep_alive_cfg;
-    http_header_generate_state_t header_gen_state;
+    req_send_state_t            req_send_state;
     esp_http_client_cb_on_post_get_chunk cb_on_post_get_chunk;
     void* p_cb_on_post_get_chunk_user_data;
 };
@@ -173,7 +193,7 @@ static const char *HTTP_METHOD_MAPPING[] = {
     "MKCOL"
 };
 
-static esp_err_t esp_http_client_request_send(esp_http_client_handle_t client, int write_len);
+static esp_err_t esp_http_client_request_send(esp_http_client_handle_t const client, const ssize_t write_len);
 static esp_err_t esp_http_client_connect(esp_http_client_handle_t client);
 static esp_err_t esp_http_client_send_post_data(esp_http_client_handle_t client);
 
@@ -517,7 +537,7 @@ static esp_err_t esp_http_client_prepare(esp_http_client_handle_t client)
 {
     client->process_again = 0;
     client->response->data_process = 0;
-    client->first_line_prepared = false;
+    client->req_send_state.stage = REQ_SEND_STAGE_INIT;
     http_parser_init(client->parser, HTTP_RESPONSE);
     if (client->connection_info.username) {
         char *auth_response = NULL;
@@ -1132,6 +1152,8 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                 }
                 ESP_LOGD(TAG, "%s: Set client->state: %s", __func__, "HTTP_STATE_CONNECTED");
                 client->state = HTTP_STATE_CONNECTED;
+                client->data_write_left = 0;
+                client->req_send_state.stage = REQ_SEND_STAGE_INIT;
                 http_dispatch_event(client, HTTP_EVENT_ON_CONNECTED, NULL, 0);
                 /* falls through */
 #if defined(__GNUC__) && (__GNUC__ >= 7)
@@ -1234,7 +1256,7 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                     if (client->state > HTTP_STATE_CONNECTED) {
                         ESP_LOGD(TAG, "%s: Set client->state: %s", __func__, "HTTP_STATE_CONNECTED");
                         client->state = HTTP_STATE_CONNECTED;
-                        client->first_line_prepared = false;
+                        client->req_send_state.stage = REQ_SEND_STAGE_INIT;
                     }
                 }
                 break;
@@ -1371,57 +1393,135 @@ static esp_err_t esp_http_client_connect(esp_http_client_handle_t client)
     return ESP_OK;
 }
 
-static int http_client_prepare_first_line(esp_http_client_handle_t client, int write_len)
-{
-    if (write_len >= 0) {
-        http_header_set_format(client->request->headers, "Content-Length", "%d", write_len);
-    } else {
-        esp_http_client_set_header(client, "Transfer-Encoding", "chunked");
-        esp_http_client_set_method(client, HTTP_METHOD_POST);
+static bool esp_http_client_generate_request_token(const char *const p_token,
+                                                   size_t *const p_token_offset,
+                                                   char *const p_buf,
+                                                   const size_t buf_len,
+                                                   size_t *const p_buf_offset) {
+    const size_t token_len = strlen(p_token);
+    const size_t rem_token_len = token_len - *p_token_offset;
+    size_t rem_buf_len = buf_len - *p_buf_offset;
+    if (0 == rem_buf_len) {
+        return false;
     }
-
-    const char *method = HTTP_METHOD_MAPPING[client->connection_info.method];
-
-    int first_line_len = snprintf(client->request->buffer->data,
-                                  client->buffer_size_tx, "%s %s",
-                                  method,
-                                  client->connection_info.path);
-    if (first_line_len >= client->buffer_size_tx) {
-        ESP_LOGE(TAG, "Out of buffer");
-        return -1;
+    if (1 == rem_buf_len) {
+        p_buf[*p_buf_offset] = '\0';
+        return false;
     }
-
-    if (client->connection_info.query) {
-        first_line_len += snprintf(client->request->buffer->data + first_line_len,
-                                   client->buffer_size_tx - first_line_len, "?%s", client->connection_info.query);
-        if (first_line_len >= client->buffer_size_tx) {
-            ESP_LOGE(TAG, "Out of buffer");
-            return -1;
-
-        }
+    rem_buf_len -= 1; // Reserver space for '\0'
+    const size_t num_bytes_to_copy = rem_token_len < rem_buf_len ? rem_token_len : rem_buf_len;
+    memcpy(&p_buf[*p_buf_offset], &p_token[*p_token_offset], num_bytes_to_copy);
+    *p_buf_offset += num_bytes_to_copy;
+    *p_token_offset += num_bytes_to_copy;
+    p_buf[*p_buf_offset] = '\0';
+    if (*p_token_offset == token_len) {
+        *p_token_offset = 0;
+        return true;
     }
-    first_line_len += snprintf(client->request->buffer->data + first_line_len,
-                               client->buffer_size_tx - first_line_len, " %s\r\n", DEFAULT_HTTP_PROTOCOL);
-    if (first_line_len >= client->buffer_size_tx) {
-        ESP_LOGE(TAG, "Out of buffer");
-        return -1;
-    }
-    return first_line_len;
+    return false;
 }
 
-static esp_err_t esp_http_client_request_send(esp_http_client_handle_t client, int write_len)
-{
-    int first_line_len = 0;
-    if (!client->first_line_prepared) {
-        if ((first_line_len = http_client_prepare_first_line(client, write_len)) < 0) {
-            return first_line_len;
-        }
-        client->first_line_prepared = true;
-        client->header_gen_state.stage = HTTP_HEADER_GENERATE_STAGE_INIT;
-        client->data_written_index = 0;
-        client->data_write_left = 0;
-    }
+static bool gen_req_token(esp_http_client_handle_t const client, const char *const p_token, size_t* const p_buf_ofs) {
+    return esp_http_client_generate_request_token(p_token,
+                                                  &client->req_send_state.data_offset,
+                                                  client->request->buffer->data,
+                                                  client->buffer_size_tx,
+                                                  p_buf_ofs);
+}
 
+static size_t esp_http_client_generate_request(esp_http_client_handle_t const client, const ssize_t write_len) {
+    bool flag_exit = false;
+    size_t buf_ofs = 0;
+    while (!flag_exit) {
+        switch (client->req_send_state.stage) {
+            case REQ_SEND_STAGE_INIT:
+                if (write_len >= 0) {
+                    http_header_set_format(client->request->headers, "Content-Length", "%d", write_len);
+                } else {
+                    esp_http_client_set_header(client, "Transfer-Encoding", "chunked");
+                    esp_http_client_set_method(client, HTTP_METHOD_POST);
+                }
+                client->req_send_state.data_offset = 0;
+                client->req_send_state.stage = REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_METHOD;
+                break;
+            case REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_METHOD:
+                if (!gen_req_token(client, HTTP_METHOD_MAPPING[client->connection_info.method], &buf_ofs)) {
+                    flag_exit = true;
+                } else {
+                    client->req_send_state.stage = REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_METHOD_SEPARATOR;
+                }
+                break;
+            case REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_METHOD_SEPARATOR:
+                if (!gen_req_token(client, " ", &buf_ofs)) {
+                    flag_exit = true;
+                } else {
+                    client->req_send_state.stage = REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_PATH;
+                }
+                break;
+            case REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_PATH:
+                if (!gen_req_token(client, client->connection_info.path, &buf_ofs)) {
+                    flag_exit = true;
+                } else {
+                    client->req_send_state.stage = REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_QUERY_SEPARATOR;
+                }
+                break;
+            case REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_QUERY_SEPARATOR:
+                if (client->connection_info.query && (!gen_req_token(client, "?", &buf_ofs))) {
+                    flag_exit = true;
+                } else {
+                    client->req_send_state.stage = REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_QUERY;
+                }
+                break;
+            case REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_QUERY:
+                if (client->connection_info.query && (!gen_req_token(client, client->connection_info.query, &buf_ofs))) {
+                    flag_exit = true;
+                } else {
+                    client->req_send_state.stage = REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_PROTOCOL_SEPARATOR;
+                }
+                break;
+            case REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_PROTOCOL_SEPARATOR:
+                if (!gen_req_token(client, " ", &buf_ofs)) {
+                    flag_exit = true;
+                } else {
+                    client->req_send_state.stage = REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_PROTOCOL;
+                }
+                break;
+            case REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_PROTOCOL:
+                if (!gen_req_token(client, DEFAULT_HTTP_PROTOCOL, &buf_ofs)) {
+                    flag_exit = true;
+                } else {
+                    client->req_send_state.stage = REQ_SEND_STAGE_GEN_FIRST_LINE_EOL;
+                }
+                break;
+            case REQ_SEND_STAGE_GEN_FIRST_LINE_EOL:
+                if (!gen_req_token(client, "\r\n", &buf_ofs)) {
+                    flag_exit = true;
+                } else {
+                    client->req_send_state.stage = REQ_SEND_STAGE_GEN_HTTP_HEADERS;
+                    client->req_send_state.header_gen_state.stage = HTTP_HEADER_GENERATE_STAGE_INIT;
+                }
+                break;
+            case REQ_SEND_STAGE_GEN_HTTP_HEADERS:
+                buf_ofs += http_header_generate_string(
+                    client->request->headers,
+                    &client->req_send_state.header_gen_state,
+                    &client->request->buffer->data[buf_ofs],
+                    client->buffer_size_tx - buf_ofs);
+                if (client->req_send_state.header_gen_state.stage == HTTP_HEADER_GENERATE_STAGE_FINISHED) {
+                    client->req_send_state.stage = REQ_SEND_STAGE_FINISHED;
+                }
+                flag_exit = true;
+                break;
+            case REQ_SEND_STAGE_FINISHED:
+                flag_exit = true;
+                break;
+        }
+    }
+    return buf_ofs;
+}
+
+static esp_err_t esp_http_client_request_send(esp_http_client_handle_t const client, const ssize_t write_len)
+{
     if (client->data_write_left > 0) {
         /* sending leftover data from previous call to esp_http_client_request_send() API */
         int wret = 0;
@@ -1440,16 +1540,8 @@ static esp_err_t esp_http_client_request_send(esp_http_client_handle_t client, i
         }
     }
 
-    while (client->header_gen_state.stage != HTTP_HEADER_GENERATE_STAGE_FINISHED) {
-        size_t wlen = http_header_generate_string(client->request->headers, &client->header_gen_state,
-                                                  client->request->buffer->data + first_line_len,
-                                                  client->buffer_size_tx - first_line_len);
-        if (first_line_len) {
-            wlen += first_line_len;
-            first_line_len = 0;
-        }
-        ESP_LOGD(TAG, "Write header[%d]: %.*s", client->header_gen_state.item_idx,
-                 (int)wlen, client->request->buffer->data);
+    while (client->req_send_state.stage != REQ_SEND_STAGE_FINISHED) {
+        const size_t wlen = esp_http_client_generate_request(client, write_len);
 
         client->data_write_left = wlen;
         client->data_written_index = 0;
@@ -1473,7 +1565,6 @@ static esp_err_t esp_http_client_request_send(esp_http_client_handle_t client, i
             client->data_write_left -= wret;
             client->data_written_index += wret;
         }
-        wlen = client->buffer_size_tx;
     }
 
     client->data_written_index = 0;
@@ -1546,6 +1637,8 @@ esp_err_t esp_http_client_open(esp_http_client_handle_t client, int write_len)
     if ((err = esp_http_client_connect(client)) != ESP_OK) {
         return err;
     }
+    client->data_write_left = 0;
+    client->req_send_state.stage = REQ_SEND_STAGE_INIT;
     if ((err = esp_http_client_request_send(client, write_len)) != ESP_OK) {
         return err;
     }

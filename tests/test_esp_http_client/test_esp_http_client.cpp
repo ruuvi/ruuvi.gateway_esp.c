@@ -955,3 +955,128 @@ TEST_F(TestEspHttpClient, test_http_get_with_long_path_split_req_header) // NOLI
 
     esp_http_client_cleanup(client);
 }
+
+TEST_F(TestEspHttpClient, test_http_get_with_long_path_and_query_split_req_header) // NOLINT
+{
+    esp_http_client_config_t config = {};
+    config.event_handler            = &event_handler;
+
+    config.host = "a31415926535897-ats.iot.us-west-2.amazonaws.com";
+    config.path
+        = "/topics/gateway/environment/data/sensors/v1/room101/very_long_path"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    config.query
+        = "X-Amz-Algorithm=AWS4-HMAC-SHA256&"
+          "X-Amz-Credential=ASIAUTORANDOMID12345%2F20260419%2Fus-west-2%2Fiotdata%2Faws4_request&"
+          "X-Amz-Date=20260419T010434Z&"
+          "X-Amz-Expires=3600&"
+          "X-Amz-SignedHeaders=content-type%3Bhost%3Bx-amz-client-id%3Bx-amz-date%3Bx-amz-meta-gateway-id%3Bx-amz-meta-"
+          "location&"
+          "X-Amz-Signature=b5e6f8d9a0c1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7";
+
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    ASSERT_NE(nullptr, client);
+
+    this->m_tcp_connect_ret_code.push(ESP_OK);
+
+    const string req_header
+        = "GET "
+          "/topics/gateway/environment/data/sensors/v1/room101/very_long_path"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef012345678";
+    const string req_header2
+        = "9abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "?"
+          "X-Amz-Algorithm=AWS4-HMAC-SHA256&"
+          "X-Amz-Credential=ASIAUTORANDOMID12345%2F20260419%2Fus-west-2%2Fiotdata%2Faws4_request&"
+          "X-Amz-Date=20260419T010434Z&"
+          "X-Amz-Expires=3600&"
+          "X-Amz-SignedHeaders=content-type%3Bhost%3Bx-amz-client-id%3Bx-amz-date%3Bx-amz-meta-gateway-id%3Bx-amz-meta-"
+          "location&"
+          "X-Amz-Signature=b5e6f8d9a0c1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7"
+          " " ESP_HTTP_CLIENT_DEFAULT_HTTP_PROTOCOL
+          "\r\n"
+          "User-Agent: " ESP_HTTP_CLIENT_DEFAULT_HTTP_USER_AGENT
+          "\r\n"
+          "Host: a31415926535897-";
+    const string req_header3
+        = "ats.iot.us-west-2.amazonaws.com"
+          "\r\n"
+          "Content-Length: 0"
+          "\r\n"
+          "\r\n";
+
+    const string resp_content_data = this->addHttpRespHeaderAndData(HttpStatus_Ok, R"({})");
+
+    ASSERT_EQ(ESP_OK, esp_http_client_perform(client));
+
+    TEST_HTTP_EVENT_ON_CONNECTED();
+    TEST_HTTP_EVENT_HEADERS_SENT();
+    TEST_HTTP_EVENT_ON_HEADER("Content-Length", to_string(resp_content_data.length()));
+    TEST_HTTP_EVENT_ON_DATA(resp_content_data.c_str(), resp_content_data.length());
+    TEST_HTTP_EVENT_ON_FINISH();
+    ASSERT_TRUE(this->m_http_event_queue.empty());
+
+    TEST_TCP_WRITE_RECORD(req_header);
+    TEST_TCP_WRITE_RECORD(req_header2);
+    TEST_TCP_WRITE_RECORD(req_header3);
+    ASSERT_TRUE(this->m_tcp_write_queue.empty());
+
+    esp_http_client_cleanup(client);
+}
+
+TEST_F(TestEspHttpClient, test_http_get_split_http_method) // NOLINT
+{
+    esp_http_client_config_t config = {};
+    config.event_handler            = &event_handler;
+    config.buffer_size_tx           = 2;
+
+    config.host = "a.b.c";
+    config.path = "/";
+
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    ASSERT_NE(nullptr, client);
+
+    this->m_tcp_connect_ret_code.push(ESP_OK);
+
+    const string req_header = "GET / " ESP_HTTP_CLIENT_DEFAULT_HTTP_PROTOCOL
+                              "\r\n"
+                              "User-Agent: " ESP_HTTP_CLIENT_DEFAULT_HTTP_USER_AGENT
+                              "\r\n"
+                              "Host: a.b.c\r\n"
+                              "Content-Length: 0\r\n"
+                              "\r\n";
+
+    const string resp_content_data = this->addHttpRespHeaderAndData(HttpStatus_Ok, R"({})");
+
+    ASSERT_EQ(ESP_OK, esp_http_client_perform(client));
+
+    TEST_HTTP_EVENT_ON_CONNECTED();
+    TEST_HTTP_EVENT_HEADERS_SENT();
+    TEST_HTTP_EVENT_ON_HEADER("Content-Length", to_string(resp_content_data.length()));
+    TEST_HTTP_EVENT_ON_DATA(resp_content_data.c_str(), resp_content_data.length());
+    TEST_HTTP_EVENT_ON_FINISH();
+    ASSERT_TRUE(this->m_http_event_queue.empty());
+
+    for (size_t i = 0; i < req_header.length(); i += 1)
+    {
+        const string req_header_part = req_header.substr(i, 1);
+        TEST_TCP_WRITE_RECORD(req_header_part);
+    }
+    ASSERT_TRUE(this->m_tcp_write_queue.empty());
+
+    esp_http_client_cleanup(client);
+}
