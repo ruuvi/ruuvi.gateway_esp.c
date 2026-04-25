@@ -247,28 +247,28 @@ esp_random(void)
     return std::rand();
 }
 
-int
+esp_transport_sync_connect_result_e
 tcp_connect(esp_transport_handle_t t, const char* host, int port, int timeout_ms)
 {
     if (g_pTestClass->m_tcp_connect_ret_code.empty())
     {
-        return ESP_FAIL;
+        return ESP_TRANSPORT_SYNC_CONNECT_RESULT_ERROR;
     }
     const int ret = g_pTestClass->m_tcp_connect_ret_code.front();
     g_pTestClass->m_tcp_connect_ret_code.pop();
-    return ret;
+    return static_cast<esp_transport_sync_connect_result_e>(ret);
 }
 
-int
+esp_transport_async_connect_result_e
 tcp_connect_async(esp_transport_handle_t t, const char* host, int port, int timeout_ms)
 {
     if (g_pTestClass->m_tcp_connect_async_ret_code.empty())
     {
-        return ESP_FAIL;
+        return ESP_TRANSPORT_ASYNC_CONNECT_RESULT_ERROR;
     }
     const int ret = g_pTestClass->m_tcp_connect_async_ret_code.front();
     g_pTestClass->m_tcp_connect_async_ret_code.pop();
-    return ret;
+    return static_cast<esp_transport_async_connect_result_e>(ret);
 }
 
 int

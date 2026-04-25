@@ -159,10 +159,6 @@ static esp_err_t _clear_connection_info(esp_http_client_handle_t client);
 #define DEFAULT_HTTP_PORT (80)
 #define DEFAULT_HTTPS_PORT (443)
 
-#define ASYNC_TRANS_CONNECT_FAIL -1
-#define ASYNC_TRANS_CONNECTING 0
-#define ASYNC_TRANS_CONNECT_PASS 1
-
 static const char *DEFAULT_HTTP_USER_AGENT = "Ruuvi Gateway HTTP Client/1.0";
 static const char *DEFAULT_HTTP_PROTOCOL = "HTTP/1.1";
 static const char *DEFAULT_HTTP_PATH = "/";
@@ -1091,10 +1087,13 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
             case HTTP_STATE_CONNECTING:
                 if (client->is_async) {
                     ESP_LOGD(TAG, "%s: esp_transport_connect_async", __func__);
-                    int ret = esp_transport_connect_async(client->transport, client->connection_info.host,
-                                                          client->connection_info.port, client->timeout_ms);
+                    const esp_transport_async_connect_result_e ret = esp_transport_connect_async(
+                        client->transport,
+                        client->connection_info.host,
+                        client->connection_info.port,
+                        client->timeout_ms);
                     ESP_LOGD(TAG, "%s: esp_transport_connect_async: res=%d", __func__, ret);
-                    if (ret == ASYNC_TRANS_CONNECT_FAIL) {
+                    if (ret == ESP_TRANSPORT_ASYNC_CONNECT_RESULT_ERROR) {
                         esp_tls_error_handle_t err_handle = esp_transport_get_error_handle(client->transport);
                         if (NULL != err_handle) {
                             int esp_tls_code = 0;
@@ -1138,13 +1137,19 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client)
                         }
                         return ESP_ERR_HTTP_CONNECT;
                     }
-                    if (ret == ASYNC_TRANS_CONNECTING) {
+                    if (ret == ESP_TRANSPORT_ASYNC_CONNECT_RESULT_IN_PROGRESS) {
                         ESP_LOGD(TAG, "Connection not yet established");
                         return ESP_ERR_HTTP_EAGAIN;
                     }
                 } else {
                     ESP_LOGD(TAG, "%s: esp_transport_connect", __func__);
-                    if (esp_transport_connect(client->transport, client->connection_info.host, client->connection_info.port, client->timeout_ms) < 0) {
+                    if (esp_transport_connect(
+                            client->transport,
+                            client->connection_info.host,
+                            client->connection_info.port,
+                            client->timeout_ms)
+                        != ESP_TRANSPORT_SYNC_CONNECT_RESULT_CONNECTED)
+                    {
                         ESP_LOGE(TAG, "Connection failed, sock < 0");
                         return ESP_ERR_HTTP_CONNECT;
                     }
@@ -1332,14 +1337,19 @@ static esp_err_t esp_http_client_connect(esp_http_client_handle_t client)
         }
         if (!client->is_async) {
             ESP_LOGD(TAG, "%s: esp_transport_connect", __func__);
-            if (esp_transport_connect(client->transport, client->connection_info.host, client->connection_info.port, client->timeout_ms) < 0) {
+            if (esp_transport_connect(client->transport, client->connection_info.host, client->connection_info.port,
+                                      client->timeout_ms) != ESP_TRANSPORT_SYNC_CONNECT_RESULT_CONNECTED) {
                 ESP_LOGE(TAG, "Connection failed, sock < 0");
                 return ESP_ERR_HTTP_CONNECT;
             }
         } else {
             ESP_LOGD(TAG, "%s: esp_transport_connect_async", __func__);
-            int ret = esp_transport_connect_async(client->transport, client->connection_info.host, client->connection_info.port, client->timeout_ms);
-            if (ret == ASYNC_TRANS_CONNECT_FAIL) {
+            const esp_transport_async_connect_result_e ret = esp_transport_connect_async(
+                client->transport,
+                client->connection_info.host,
+                client->connection_info.port,
+                client->timeout_ms);
+            if (ret == ESP_TRANSPORT_ASYNC_CONNECT_RESULT_ERROR) {
                 int esp_tls_code = 0;
                 int esp_tls_flags = 0;
                 const esp_err_t esp_tls_last_esp_err = esp_tls_get_and_clear_last_error(
@@ -1381,7 +1391,7 @@ static esp_err_t esp_http_client_connect(esp_http_client_handle_t client)
                 }
                 ESP_LOGE(TAG, "Connection failed: Unknown error");
                 return ESP_ERR_HTTP_CONNECT;
-            } else if (ret == ASYNC_TRANS_CONNECTING) {
+            } else if (ret == ESP_TRANSPORT_ASYNC_CONNECT_RESULT_IN_PROGRESS) {
                 ESP_LOGD(TAG, "Connection not yet established");
                 return ESP_ERR_HTTP_CONNECTING;
             }

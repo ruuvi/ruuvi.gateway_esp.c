@@ -14,13 +14,15 @@
 extern "C" {
 #endif
 
-extern int
+extern esp_transport_sync_connect_result_e
 tcp_connect(esp_transport_handle_t t, const char* host, int port, int timeout_ms);
-extern int
+
+extern esp_transport_async_connect_result_e
 tcp_connect_async(esp_transport_handle_t t, const char* host, int port, int timeout_ms);
 
 extern int
 tcp_read(esp_transport_handle_t t, char* buffer, int len, int timeout_ms);
+
 extern int
 tcp_write(esp_transport_handle_t t, const char* buffer, int len, int timeout_ms);
 

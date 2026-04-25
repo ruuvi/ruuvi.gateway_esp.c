@@ -209,9 +209,8 @@ void esp_mbedtls_free_client_session(esp_tls_client_session_t *client_session)
 }
 #endif /* CONFIG_ESP_TLS_CLIENT_SESSION_TICKETS */
 
-int esp_mbedtls_handshake(esp_tls_t *tls, const esp_tls_cfg_t *cfg)
+esp_tls_async_conn_result_e esp_mbedtls_handshake(esp_tls_t *tls, const esp_tls_cfg_t *cfg)
 {
-    int ret;
 #ifdef CONFIG_ESP_TLS_CLIENT_SESSION_TICKETS
     if (cfg->client_session != NULL) {
         /**
@@ -224,14 +223,15 @@ int esp_mbedtls_handshake(esp_tls_t *tls, const esp_tls_cfg_t *cfg)
          */
         if ((NULL == tls->ssl.handshake) || (0 == tls->ssl.handshake->resume)) {
             ESP_LOGD(TAG, "Reusing the already saved client session context");
-            if ((ret = mbedtls_ssl_set_session(&tls->ssl, &(cfg->client_session->saved_session))) != 0 ) {
+            const int ret = mbedtls_ssl_set_session(&tls->ssl, &(cfg->client_session->saved_session));
+            if (ret != 0) {
                 ESP_LOGE(TAG, "mbedtls_ssl_set_session returned -0x%04X", -ret);
-                return -1;
+                return ESP_TLS_ASYNC_CONN_ERROR;
             }
         }
     }
 #endif
-    ret = mbedtls_ssl_handshake(&tls->ssl);
+    const int ret = mbedtls_ssl_handshake(&tls->ssl);
     if (ret == 0) {
         tls->conn_state = ESP_TLS_DONE;
 
@@ -240,7 +240,7 @@ int esp_mbedtls_handshake(esp_tls_t *tls, const esp_tls_cfg_t *cfg)
 #ifdef CONFIG_ESP_TLS_USE_DS_PERIPHERAL
         esp_ds_release_ds_lock();
 #endif
-        return 1;
+        return ESP_TLS_ASYNC_CONN_SUCCESS;
     } else {
         if (ret != ESP_TLS_ERR_SSL_WANT_READ && ret != ESP_TLS_ERR_SSL_WANT_WRITE) {
             str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(ret);
@@ -254,11 +254,11 @@ int esp_mbedtls_handshake(esp_tls_t *tls, const esp_tls_cfg_t *cfg)
                 esp_mbedtls_verify_certificate(tls);
             }
             tls->conn_state = ESP_TLS_FAIL;
-            return -1;
+            return ESP_TLS_ASYNC_CONN_ERROR;
         }
         /* Irrespective of blocking or non-blocking I/O, we return on getting ESP_TLS_ERR_SSL_WANT_READ
         or ESP_TLS_ERR_SSL_WANT_WRITE during handshake */
-        return 0;
+        return ESP_TLS_ASYNC_CONN_IN_PROGRESS;
     }
 }
 

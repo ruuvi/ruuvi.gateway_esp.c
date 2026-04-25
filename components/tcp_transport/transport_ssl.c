@@ -295,15 +295,17 @@ static inline transport_esp_tls_t *ssl_get_context_data(esp_transport_handle_t t
  * @param[in] timeout_ms    Connection timeout in milliseconds
  * @param[in] is_plain_tcp  If true, establishes plain TCP connection; if false, establishes TLS connection
  *
- * @return  1 if connection successfully established
- * @return  0 if connection is in progress (call again to continue)
- * @return <0 on error (connection failed)
+ * @return \c ESP_TRANSPORT_ASYNC_CONNECT_RESULT_CONNECTED if connection successfully established
+ * @return \c ESP_TRANSPORT_ASYNC_CONNECT_RESULT_IN_PROGRESS if connection is in progress (call again to continue)
+ * @return \c ESP_TRANSPORT_ASYNC_CONNECT_RESULT_ERROR on error (connection failed)
  *
  * @note This function maintains internal state across multiple calls to perform non-blocking connection
  * @note For TLS connections, attempts to reuse saved session tickets if available
  * @note Socket descriptor is obtained and stored once connection progresses past initial state
  */
-static int esp_tls_connect_async(esp_transport_handle_t t, const char *host, int port, int timeout_ms, bool is_plain_tcp)
+static esp_transport_async_connect_result_e esp_tls_connect_async(esp_transport_handle_t const t,
+                                                                  const char * const host, const int port,
+                                                                  const int timeout_ms, const bool is_plain_tcp)
 {
     transport_esp_tls_t *ssl = ssl_get_context_data(t);
     if (ssl->conn_state == TRANS_SSL_INIT) {
@@ -324,22 +326,23 @@ static int esp_tls_connect_async(esp_transport_handle_t t, const char *host, int
         ESP_LOGD(TAG, "%s: esp_tls_init, tls=%p", __func__, ssl->tls);
         if (!ssl->tls) {
             ESP_TRANSPORT_LOGE_FUNC("[%s:%d] esp_tls_init failed", host, port);
-            return -1;
+            return ESP_TRANSPORT_ASYNC_CONNECT_RESULT_ERROR;
         }
         ssl->conn_state = TRANS_SSL_CONNECTING;
         ssl->sockfd = INVALID_SOCKET;
     }
     if (ssl->conn_state == TRANS_SSL_CONNECTING) {
         ESP_TRANSPORT_LOGD_FUNC("TRANS_SSL_CONNECTING[%s:%d]", host, port);
-        int progress = esp_tls_conn_new_async(host, strlen(host), port, &ssl->cfg, ssl->tls);
+        const esp_tls_async_conn_result_e progress = esp_tls_conn_new_async(host, strlen(host), port,
+                                                                            &ssl->cfg, ssl->tls);
         ESP_TRANSPORT_LOGD_FUNC("esp_tls_conn_new_async: progress=%d", progress);
-        if (progress >= 0) {
+        if ((ESP_TLS_ASYNC_CONN_IN_PROGRESS == progress) || (ESP_TLS_ASYNC_CONN_SUCCESS == progress)) {
             if (esp_tls_get_conn_sockfd(ssl->tls, &ssl->sockfd) != ESP_OK) {
                 ESP_TRANSPORT_LOGE_FUNC("[%s:%d] Error in obtaining socket fd for the session", host, port);
                 esp_tls_conn_destroy(ssl->tls);
-                return -1;
+                return ESP_TRANSPORT_ASYNC_CONNECT_RESULT_ERROR;
             }
-            if (0 == progress) {
+            if (ESP_TLS_ASYNC_CONN_IN_PROGRESS == progress) {
                 ESP_TRANSPORT_LOGD_FUNC("TRANS_SSL_CONNECTING[%s:%d] esp_tls_conn_new_async: In progress", host, port);
             } else {
                 ESP_TRANSPORT_LOGD_FUNC("TRANS_SSL_CONNECTING[%s:%d] esp_tls_conn_new_async: Connected", host, port);
@@ -355,16 +358,36 @@ static int esp_tls_connect_async(esp_transport_handle_t t, const char *host, int
             ESP_LOGD(TAG, "%s: esp_transport_set_errors", __func__);
             esp_transport_set_errors(t, esp_tls_error_handle);
         }
-        return progress;
-
+        switch (progress) {
+            case ESP_TLS_ASYNC_CONN_SUCCESS:
+                return ESP_TRANSPORT_ASYNC_CONNECT_RESULT_CONNECTED;
+            case ESP_TLS_ASYNC_CONN_IN_PROGRESS:
+                return ESP_TRANSPORT_ASYNC_CONNECT_RESULT_IN_PROGRESS;
+            case ESP_TLS_ASYNC_CONN_ERROR:
+                return ESP_TRANSPORT_ASYNC_CONNECT_RESULT_ERROR;
+        }
+        return ESP_TRANSPORT_ASYNC_CONNECT_RESULT_ERROR;
     }
-    return 0;
+    return ESP_TRANSPORT_ASYNC_CONNECT_RESULT_IN_PROGRESS;
 }
 
-static int ssl_connect_async(esp_transport_handle_t t, const char *host, int port, int timeout_ms)
+/**
+ * @brief Perform an asynchronous connection establishment
+ *
+ * @param[in] t             ESP transport handle for the connection
+ * @param[in] host          Remote host name or IP address
+ * @param[in] port          Remote port number
+ * @param[in] timeout_ms    Connection timeout in milliseconds
+ *
+ * @return \c ESP_TRANSPORT_ASYNC_CONNECT_RESULT_CONNECTED if the connection successfully established
+ * @return \c ESP_TRANSPORT_ASYNC_CONNECT_RESULT_IN_PROGRESS if the connection is in progress (call again to continue)
+ * @return \c ESP_TRANSPORT_ASYNC_CONNECT_RESULT_ERROR on error (connection failed)
+ */
+static esp_transport_async_connect_result_e ssl_connect_async(
+    esp_transport_handle_t t, const char *host, int port, int timeout_ms)
 {
-    const int ret = esp_tls_connect_async(t, host, port, timeout_ms, false);
-    if (0 != ret) {
+    const esp_transport_async_connect_result_e ret = esp_tls_connect_async(t, host, port, timeout_ms, false);
+    if (ESP_TRANSPORT_ASYNC_CONNECT_RESULT_IN_PROGRESS != ret) {
         // Unlock the saved session if connection failed or successful handshake
         transport_esp_tls_t *ssl = ssl_get_context_data(t);
         ESP_TRANSPORT_LOGD_FUNC("[%s] unlock_saved_session", host);
@@ -373,7 +396,8 @@ static int ssl_connect_async(esp_transport_handle_t t, const char *host, int por
     return ret;
 }
 
-static inline int tcp_connect_async(esp_transport_handle_t t, const char *host, int port, int timeout_ms)
+static inline esp_transport_async_connect_result_e tcp_connect_async(
+    esp_transport_handle_t t, const char *host, int port, int timeout_ms)
 {
     return esp_tls_connect_async(t, host, port, timeout_ms, true);
 }
@@ -392,7 +416,8 @@ static int ssl_connect(esp_transport_handle_t t, const char *host, int port, int
         capture_tcp_transport_error(t, ERR_TCP_TRANSPORT_NO_MEM);
         return -1;
     }
-    if (esp_tls_conn_new_sync(host, strlen(host), port, &ssl->cfg, ssl->tls) <= 0) {
+    const esp_tls_sync_conn_result_e res = esp_tls_conn_new_sync(host, strlen(host), port, &ssl->cfg, ssl->tls);
+    if ((ESP_TLS_SYNC_CONN_TIMEOUT == res) || (ESP_TLS_SYNC_CONN_ERROR == res)) {
         ESP_TRANSPORT_LOGE_FUNC("[%s] Failed to open a new connection", host);
         unlock_saved_session(ssl);
         log_heap_info();
@@ -417,7 +442,8 @@ exit_failure:
         return -1;
 }
 
-static int tcp_connect(esp_transport_handle_t t, const char *host, int port, int timeout_ms)
+static esp_transport_sync_connect_result_e tcp_connect(esp_transport_handle_t t,
+                                                       const char *host, int port, int timeout_ms)
 {
     transport_esp_tls_t *ssl = ssl_get_context_data(t);
     esp_tls_last_error_t *err_handle = esp_transport_get_error_handle(t);
