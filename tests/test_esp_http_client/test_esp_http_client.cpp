@@ -298,13 +298,21 @@ tcp_read(esp_transport_handle_t t, char* buffer, int len, int timeout_ms)
 int
 tcp_write(esp_transport_handle_t t, const char* buffer, int len, int timeout_ms)
 {
-    g_pTestClass->m_tcp_write_queue.push(TcpWriteRecord(buffer, len, timeout_ms));
     if (0 == g_pTestClass->m_tcp_write_ret_code.size())
     {
+        g_pTestClass->m_tcp_write_queue.push(TcpWriteRecord(buffer, len, timeout_ms));
         return len;
     }
     const int ret = g_pTestClass->m_tcp_write_ret_code.front();
     g_pTestClass->m_tcp_write_ret_code.pop();
+    if (ret > len)
+    {
+        assert(ret <= len);
+    }
+    if (ret > 0)
+    {
+        g_pTestClass->m_tcp_write_queue.push(TcpWriteRecord(buffer, ret, timeout_ms));
+    }
     return ret;
 }
 
@@ -437,6 +445,44 @@ TEST_F(TestEspHttpClient, test_http_get_by_host_and_default_path) // NOLINT
     const string req_header        = this->addHttpReqHeader(config);
     const string resp_content_data = this->addHttpRespHeaderAndData(HttpStatus_Ok, R"({})");
 
+    ASSERT_EQ(ESP_OK, esp_http_client_perform(client));
+
+    TEST_HTTP_EVENT_ON_CONNECTED();
+    TEST_HTTP_EVENT_HEADERS_SENT();
+    TEST_HTTP_EVENT_ON_HEADER("Content-Length", to_string(resp_content_data.length()));
+    TEST_HTTP_EVENT_ON_DATA(resp_content_data.c_str(), resp_content_data.length());
+    TEST_HTTP_EVENT_ON_FINISH();
+    ASSERT_TRUE(this->m_http_event_queue.empty());
+
+    ASSERT_EQ(
+        "GET / HTTP/1.1\r\n"
+        "User-Agent: Ruuvi Gateway HTTP Client/1.0\r\n"
+        "Host: myhost.com\r\n"
+        "Content-Length: 0\r\n"
+        "\r\n",
+        req_header);
+    TEST_TCP_WRITE_RECORD(req_header);
+    ASSERT_TRUE(this->m_tcp_write_queue.empty());
+
+    esp_http_client_cleanup(client);
+}
+
+TEST_F(TestEspHttpClient, test_http_get_by_host_and_default_path_async) // NOLINT
+{
+    esp_http_client_config_t config = {};
+    config.event_handler            = &event_handler;
+    config.host                     = "myhost.com";
+    config.is_async                 = true;
+
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    ASSERT_NE(nullptr, client);
+
+    this->m_tcp_connect_async_ret_code.push(ESP_TRANSPORT_ASYNC_CONNECT_RESULT_IN_PROGRESS);
+    this->m_tcp_connect_async_ret_code.push(ESP_TRANSPORT_ASYNC_CONNECT_RESULT_CONNECTED);
+    const string req_header        = this->addHttpReqHeader(config);
+    const string resp_content_data = this->addHttpRespHeaderAndData(HttpStatus_Ok, R"({})");
+
+    ASSERT_EQ(ESP_ERR_HTTP_EAGAIN, esp_http_client_perform(client));
     ASSERT_EQ(ESP_OK, esp_http_client_perform(client));
 
     TEST_HTTP_EVENT_ON_CONNECTED();
@@ -951,6 +997,110 @@ TEST_F(TestEspHttpClient, test_http_get_with_long_path_split_req_header) // NOLI
 
     TEST_TCP_WRITE_RECORD(req_header);
     TEST_TCP_WRITE_RECORD(req_header2);
+    ASSERT_TRUE(this->m_tcp_write_queue.empty());
+
+    esp_http_client_cleanup(client);
+}
+
+TEST_F(TestEspHttpClient, test_http_async_get_with_long_path_split_req_header) // NOLINT
+{
+    esp_http_client_config_t config = {};
+    config.event_handler            = &event_handler;
+    config.is_async                 = true;
+
+    config.host = "a31415926535897-ats.iot.us-west-2.amazonaws.com";
+    config.path
+        = "/topics/gateway/environment/data/sensors/v1/room101/temperature?"
+          "X-Amz-Algorithm=AWS4-HMAC-SHA256&"
+          "X-Amz-Credential=ASIAUTORANDOMID12345%2F20260419%2Fus-west-2%2Fiotdata%2Faws4_request&"
+          "X-Amz-Date=20260419T010434Z&"
+          "X-Amz-Expires=3600&"
+          "X-Amz-SignedHeaders=content-type%3Bhost%3Bx-amz-client-id%3Bx-amz-date%3Bx-amz-meta-gateway-id%3Bx-amz-meta-"
+          "location&"
+          "X-Amz-Signature=b5e6f8d9a0c1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7";
+
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    ASSERT_NE(nullptr, client);
+
+    this->m_tcp_connect_async_ret_code.push(ESP_ERR_HTTP_EAGAIN);
+    this->m_tcp_connect_async_ret_code.push(ESP_OK);
+
+    const string req_header
+        = "GET "
+          "/topics/gateway/environment/data/sensors/v1/room101/temperature?"
+          "X-Amz-Algorithm=AWS4-HMAC-SHA256";
+    const string req_header2
+        = "&"
+          "X-Amz-Credential=ASIAUTORANDOMID12345%2F20260419%2Fus-west-2%2Fiotdata%2Faws4_request&"
+          "X-Amz-Date=20";
+    const string req_header3
+        = "260419T010434Z&"
+          "X-Amz-Expires=3600&"
+          "X-Amz-SignedHeaders=content-type%3Bhost%3Bx-amz-client-id%3Bx-amz-";
+    const string req_header4
+        = "date%3Bx-amz-meta-gateway-id%3Bx-amz-meta-"
+          "location&"
+          "X-Amz-Signature=b5e6f8d9a0c1b2c3d4e5f6g7h8i9j0k1l";
+    const string req_header5
+        = "2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7"
+          " " ESP_HTTP_CLIENT_DEFAULT_HTTP_PROTOCOL
+          "\r\n"
+          "User-Agent: " ESP_HTTP_CLIENT_DEFAULT_HTTP_USER_AGENT
+          "\r\n"
+          "Host: a31415926";
+    const string req_header6 = "535897-ats.";
+    const string req_header7
+        = "iot.us-west-2.amazonaws.com"
+          "\r\n"
+          "Content-Length: 0"
+          "\r\n"
+          "\r\n";
+
+    const string resp_content_data = this->addHttpRespHeaderAndData(HttpStatus_Ok, R"({})");
+
+    this->m_tcp_write_ret_code.push(0);
+    this->m_tcp_write_ret_code.push(100);
+    this->m_tcp_write_ret_code.push(0);
+    this->m_tcp_write_ret_code.push(100);
+    this->m_tcp_write_ret_code.push(0);
+    this->m_tcp_write_ret_code.push(100);
+    this->m_tcp_write_ret_code.push(0);
+    this->m_tcp_write_ret_code.push(100);
+    this->m_tcp_write_ret_code.push(0);
+    this->m_tcp_write_ret_code.push(0);
+    this->m_tcp_write_ret_code.push(100);
+    this->m_tcp_write_ret_code.push(11);
+    this->m_tcp_write_ret_code.push(50);
+
+    ASSERT_EQ(ESP_ERR_HTTP_EAGAIN, esp_http_client_perform(client));
+    ASSERT_EQ(ESP_ERR_HTTP_EAGAIN, esp_http_client_perform(client));
+    ASSERT_EQ(ESP_ERR_HTTP_EAGAIN, esp_http_client_perform(client));
+    ASSERT_EQ(ESP_ERR_HTTP_EAGAIN, esp_http_client_perform(client));
+    ASSERT_EQ(ESP_ERR_HTTP_EAGAIN, esp_http_client_perform(client));
+    ASSERT_EQ(ESP_ERR_HTTP_EAGAIN, esp_http_client_perform(client));
+    ASSERT_EQ(ESP_ERR_HTTP_EAGAIN, esp_http_client_perform(client));
+    ASSERT_EQ(ESP_ERR_HTTP_EAGAIN, esp_http_client_perform(client));
+    ASSERT_EQ(ESP_ERR_HTTP_EAGAIN, esp_http_client_perform(client));
+    ASSERT_EQ(ESP_ERR_HTTP_EAGAIN, esp_http_client_perform(client));
+    ASSERT_EQ(ESP_ERR_HTTP_EAGAIN, esp_http_client_perform(client));
+    ASSERT_EQ(ESP_OK, esp_http_client_perform(client));
+
+    ASSERT_EQ(0, this->m_tcp_write_ret_code.size());
+
+    TEST_HTTP_EVENT_ON_CONNECTED();
+    TEST_HTTP_EVENT_HEADERS_SENT();
+    TEST_HTTP_EVENT_ON_HEADER("Content-Length", to_string(resp_content_data.length()));
+    TEST_HTTP_EVENT_ON_DATA(resp_content_data.c_str(), resp_content_data.length());
+    TEST_HTTP_EVENT_ON_FINISH();
+    ASSERT_TRUE(this->m_http_event_queue.empty());
+
+    TEST_TCP_WRITE_RECORD(req_header);
+    TEST_TCP_WRITE_RECORD(req_header2);
+    TEST_TCP_WRITE_RECORD(req_header3);
+    TEST_TCP_WRITE_RECORD(req_header4);
+    TEST_TCP_WRITE_RECORD(req_header5);
+    TEST_TCP_WRITE_RECORD(req_header6);
+    TEST_TCP_WRITE_RECORD(req_header7);
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 
     esp_http_client_cleanup(client);
