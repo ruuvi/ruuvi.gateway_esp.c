@@ -624,8 +624,12 @@ static esp_tls_async_conn_result_e esp_tls_low_level_conn(const char *hostname, 
                 tls->sockfd = -1;
                 return ESP_TLS_ASYNC_CONN_ERROR;
             }
-            ESP_TLS_LOGD_FUNC("[sock=%d][%s] select: rset=%d, wset=%d",
-                              tls->sockfd, esp_tls_get_hostname(tls), (int)(FD_ISSET(tls->sockfd, &tls->rset)), (int)(FD_ISSET(tls->sockfd, &tls->wset)));
+            ESP_TLS_LOGD_FUNC(
+                "[sock=%d][%s] select: rset=%d, wset=%d",
+                tls->sockfd,
+                esp_tls_get_hostname(tls),
+                (int)(FD_ISSET(tls->sockfd, &tls->rset)),
+                (int)(FD_ISSET(tls->sockfd, &tls->wset)));
             if (FD_ISSET(tls->sockfd, &tls->rset) || FD_ISSET(tls->sockfd, &tls->wset)) {
                 int error = 0;
                 socklen_t len = sizeof(error);
